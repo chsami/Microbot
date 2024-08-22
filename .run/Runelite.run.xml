@@ -4,7 +4,7 @@
     <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
     <option name="MAIN_CLASS_NAME" value="net.runelite.client.RuneLite" />
     <module name="client" />
-    <option name="PROGRAM_PARAMETERS" value="-developer-mode -clean-jagex-launcher" />
+    <option name="PROGRAM_PARAMETERS" value="-developer-mode" />
     <option name="VM_PARAMETERS" value="-ea" />
     <method v="2">
       <option name="Make" enabled="true" />
