@@ -44,7 +44,11 @@ public class FlickerScript extends Script {
      * @return true if the script is successfully started, false otherwise.
      */
     public boolean run(PlayerAssistConfig config) {
-        Rs2NpcManager.loadJson();
+        try {
+            Rs2NpcManager.loadJson();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!Microbot.isLoggedIn() || !config.togglePrayer()) return;

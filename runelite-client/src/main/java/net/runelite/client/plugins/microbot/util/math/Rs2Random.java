@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.util.math;
 
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Point;
 import net.runelite.client.plugins.microbot.util.Global;
 
@@ -94,6 +95,7 @@ import java.util.Random;
  * </ul>
  */
 
+@Slf4j
 public class Rs2Random {
 
     private static final double GAUSS_CUTOFF = 4.0;
@@ -115,6 +117,7 @@ public class Rs2Random {
      *
      * @param mean The mean (center) value of the distribution.
      * @param dev  The standard deviation of the distribution.
+     *
      * @return A random double value from the Gaussian distribution.
      */
     public static double gaussRand(double mean, double dev) {
@@ -126,9 +129,10 @@ public class Rs2Random {
      * Generates a random number within the given range using a truncated Gaussian distribution.
      * This ensures that the value is within the bounds of the left and right range.
      *
-     * @param left The minimum bound of the range.
-     * @param right The maximum bound of the range.
+     * @param left   The minimum bound of the range.
+     * @param right  The maximum bound of the range.
      * @param cutoff The cutoff value to restrict extreme values. Defaults to GAUSS_CUTOFF(4) if less than or equal to 0.
+     *
      * @return A random double value within the specified range.
      */
     public static double truncatedGauss(double left, double right, double cutoff) {
@@ -147,9 +151,10 @@ public class Rs2Random {
     /**
      * Generates a random long value within the given range using a truncated Gaussian distribution.
      *
-     * @param left The minimum bound of the range.
-     * @param right The maximum bound of the range.
+     * @param left   The minimum bound of the range.
+     * @param right  The maximum bound of the range.
      * @param cutoff The cutoff value to restrict extreme values.
+     *
      * @return A random long value within the specified range.
      */
     public static long truncatedGauss(long left, long right, double cutoff) {
@@ -160,10 +165,11 @@ public class Rs2Random {
      * Generates a random number skewed towards the specified mode within a specified range.
      * This allows for a biased distribution where the values tend to cluster around the mode.
      *
-     * @param mode The central value around which the distribution is skewed.
-     * @param lo The lower bound of the range.
-     * @param hi The upper bound of the range.
+     * @param mode   The central value around which the distribution is skewed.
+     * @param lo     The lower bound of the range.
+     * @param hi     The upper bound of the range.
      * @param cutoff The cutoff value to restrict extreme values. Defaults to GAUSS_CUTOFF(4) if less than or equal to 0.
+     *
      * @return A random double value skewed towards the mode.
      */
     public static double skewedRand(double mode, double lo, double hi, double cutoff) {
@@ -187,10 +193,11 @@ public class Rs2Random {
     /**
      * Generates a random long value skewed towards the specified mode within a specified range.
      *
-     * @param mode The central value around which the distribution is skewed.
-     * @param lo The lower bound of the range.
-     * @param hi The upper bound of the range.
+     * @param mode   The central value around which the distribution is skewed.
+     * @param lo     The lower bound of the range.
+     * @param hi     The upper bound of the range.
      * @param cutoff The cutoff value to restrict extreme values.
+     *
      * @return A random long value skewed towards the mode.
      */
     public static long skewedRand(long mode, long lo, long hi, double cutoff) {
@@ -201,9 +208,10 @@ public class Rs2Random {
      * Generates a random number within the specified range, biased towards the mean.
      * The distribution has a higher likelihood of generating numbers closer to the midpoint of the range.
      *
-     * @param min The minimum bound of the range.
-     * @param max The maximum bound of the range.
+     * @param min    The minimum bound of the range.
+     * @param max    The maximum bound of the range.
      * @param cutoff The cutoff value to restrict extreme values. Defaults to GAUSS_CUTOFF(4) if less than or equal to 0.
+     *
      * @return A random double value within the specified range, biased towards the middle.
      */
     public static double normalRange(double min, double max, double cutoff) {
@@ -224,9 +232,10 @@ public class Rs2Random {
     /**
      * Generates a random long value within the specified range, biased towards the mean.
      *
-     * @param min The minimum bound of the range.
-     * @param max The maximum bound of the range.
+     * @param min    The minimum bound of the range.
+     * @param max    The maximum bound of the range.
      * @param cutoff The cutoff value to restrict extreme values. Defaults to GAUSS_CUTOFF(4) if less than or equal to 0.
+     *
      * @return A random long value within the specified range, biased towards the middle.
      */
     public static long normalRange(long min, long max, double cutoff) {
@@ -248,9 +257,10 @@ public class Rs2Random {
      * Generates a random point on the screen, weighted around a central point (mean) within a maximum radius.
      * The point is selected to simulate human-like randomness in mouse movement or other actions.
      *
-     * @param mean The central point to weight the randomness around.
+     * @param mean   The central point to weight the randomness around.
      * @param maxRad The maximum radius away from the central point.
      * @param cutoff The cutoff value for restricting extreme values. Defaults to GAUSS_CUTOFF(4) if less than or equal to 0.
+     *
      * @return A random point near the central point, within the specified radius.
      */
     public static Point randomPoint(Point mean, int maxRad, double cutoff) {
@@ -263,8 +273,9 @@ public class Rs2Random {
      * Generates a random point within the bounds of the given rectangle, biased towards the center.
      * This method is useful for simulating human-like randomness in screen interactions.
      *
-     * @param rect The rectangular area within which to generate the random point.
+     * @param rect   The rectangular area within which to generate the random point.
      * @param cutoff The cutoff value for restricting extreme values. Defaults to GAUSS_CUTOFF(4) if less than or equal to 0.
+     *
      * @return A random point within the rectangle, biased towards the middle.
      */
     public static Point randomPoint(Rectangle rect, double cutoff) {
@@ -283,9 +294,10 @@ public class Rs2Random {
      * Generates a random point within the bounds of a rectangle, skewed towards a specified 'from' point.
      * Useful for simulating more human-like randomness in actions such as dragging or moving the mouse.
      *
-     * @param from The point to bias the random point generation towards.
-     * @param rect The rectangular area within which to generate the random point.
+     * @param from  The point to bias the random point generation towards.
+     * @param rect  The rectangular area within which to generate the random point.
      * @param force A multiplier that defines how strongly the point should be skewed towards the 'from' point.
+     *
      * @return A random point within the rectangle, skewed towards the 'from' point.
      */
     public static Point randomPointEx(Point from, Rectangle rect, double force) {
@@ -303,21 +315,35 @@ public class Rs2Random {
     }
 
     /**
-     * Simulates a dice roll, returning true if the random number generated falls within the given chance percentage.
+     * Simulates a dice roll using a fractional probability (e.g., 0.1 for 10%).
      *
-     * @param chancePercent The percentage chance of returning true. Must be between 0 and 100.
+     * @param fractionalChance A decimal between 0 and 1 representing the chance.
+     *
      * @return True if the random number falls within the chance, false otherwise.
      */
-    public static boolean dice(double chancePercent) {
-        return RANDOM.nextDouble() < (chancePercent <= 0.99 ? chancePercent * 100 : chancePercent) / 100;
+    public static boolean diceFractional(double fractionalChance) {
+        // Generate a random number between 0 and 1 and compare
+        return RANDOM.nextDouble() < fractionalChance;
+    }
+
+    /**
+     * Simulates a dice roll using a whole number percentage (e.g., 10 for 10%).
+     *
+     * @param percentageChance A whole number between 0 and 100 representing the chance.
+     *
+     * @return True if the random number falls within the chance, false otherwise.
+     */
+    public static boolean dicePercentage(double percentageChance) {
+        // Generate a random number between 0 and 100 and compare
+        return RANDOM.nextDouble() * 100 < percentageChance;
     }
 
     /**
      * Simulates a wait with a random duration, biased towards the mean, left, or right of the given range.
      * This method is useful for introducing randomness in bot actions to reduce predictability.
      *
-     * @param min The minimum wait time in milliseconds.
-     * @param max The maximum wait time in milliseconds.
+     * @param min    The minimum wait time in milliseconds.
+     * @param max    The maximum wait time in milliseconds.
      * @param weight The direction of bias for the wait time (left, mean, or right skew).
      */
     public static void wait(double min, double max, EWaitDir weight) {
@@ -349,7 +375,7 @@ public class Rs2Random {
      * The wait time is calculated using a normal distribution with the specified mean and standard deviation.
      *
      * @param mean The mean wait time in milliseconds.
-     * @param dev The standard deviation of the wait time.
+     * @param dev  The standard deviation of the wait time.
      */
     public static void waitEx(double mean, double dev) {
         wait(Math.abs(Math.round(gaussRand(mean, dev))), 0, EWaitDir.wdMean);
@@ -369,10 +395,11 @@ public class Rs2Random {
      * Rotates a given point around a specified origin by a certain angle.
      * This method is used for calculating rotated positions in 2D space.
      *
-     * @param point The point to be rotated.
-     * @param angle The angle to rotate the point, in radians.
+     * @param point   The point to be rotated.
+     * @param angle   The angle to rotate the point, in radians.
      * @param originX The x-coordinate of the origin point.
      * @param originY The y-coordinate of the origin point.
+     *
      * @return A new point representing the rotated coordinates.
      */
     private static Point rotatePoint(Point point, double angle, double originX, double originY) {
@@ -383,6 +410,53 @@ public class Rs2Random {
         int newX = (int) (cos * dx - sin * dy + originX);
         int newY = (int) (sin * dx + cos * dy + originY);
         return new Point(newX, newY);
+    }
+
+
+    /**
+     * Generates a random integer between min (inclusive) and max (inclusive) with options
+     * for skewing the distribution towards either the lower or higher bound.
+     *
+     * @param min         The minimum value (inclusive).
+     * @param max         The maximum value (inclusive).
+     * @param skewFactor  The skew factor. A value > 1 will skew the distribution towards the higher end,
+     *                    while a value < 1 will skew it towards the lower end. A value of 1 produces
+     *                    a standard Gaussian distribution centered around the midpoint.
+     * @param useGaussian If true, the method will use a Gaussian distribution instead of a uniform one.
+     *
+     * @return A random integer between min and max, possibly skewed based on the parameters.
+     */
+    public static int nextInt(int min, int max, double skewFactor, boolean useGaussian) {
+        if (min > max) {
+            throw new IllegalArgumentException("Min cannot be greater than Max.");
+        }
+
+        if (useGaussian) {
+            // Generate a Gaussian (normal) distributed value
+            double mean = (max + min) / 2.0; // Center around the middle
+            double deviation = (max - min) / 6.0; // Ensure 99.7% of values are within [min, max]
+
+            // Generate a random value using Gaussian distribution
+            double gaussianRandom = mean + RANDOM.nextGaussian() * deviation;
+
+            // Clamp the result to stay within the [min, max] range
+            int result = (int) Math.round(Math.max(min, Math.min(max, gaussianRandom)));
+
+            return result;
+        } else {
+            // Skewed random number generation
+            double rawRandom = RANDOM.nextDouble();  // A random number between 0 and 1
+
+            // Apply skew factor to bias the result
+            if (skewFactor != 1) {
+                rawRandom = Math.pow(rawRandom, skewFactor);
+            }
+
+            // Scale the result to the [min, max] range
+            int result = (int) Math.round(min + rawRandom * (max - min));
+
+            return result;
+        }
     }
 
 

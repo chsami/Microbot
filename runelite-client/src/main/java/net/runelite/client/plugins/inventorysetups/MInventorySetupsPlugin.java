@@ -616,7 +616,7 @@ public class MInventorySetupsPlugin extends Plugin
 	{
 		Color setupMenuTargetColor = setup.getDisplayColor() == null ? JagexColors.MENU_TARGET : setup.getDisplayColor();
 
-		menuEntry.createSubMenu().createMenuEntry(1)
+		menuEntry.createSubMenu().createMenuEntry(-1)
 			.setOption(OPEN_SETUP_MENU_ENTRY)
 			.setTarget(ColorUtil.prependColorTag(setup.getName(), setupMenuTargetColor))
 			.setType(MenuAction.RUNELITE)

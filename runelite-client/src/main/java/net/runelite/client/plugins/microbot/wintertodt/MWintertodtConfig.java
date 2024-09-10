@@ -62,16 +62,16 @@ public interface MWintertodtConfig extends Config {
         return true;
     }
 
-//    @ConfigItem(
-//            keyName = "FixBrazier",
-//            name = "Fix Brazier",
-//            description = "The Wintertodt will occasionally break the braziers; they must be repaired again before use. This rewards 4x the player's Construction level in experience, provided they own a player-owned house.",
-//            position = 3,
-//            section = generalSection
-//    )
-//    default boolean fixBrazier() {
-//        return true;
-//    }
+    @ConfigItem(
+            keyName = "FixBrazier",
+            name = "Fix Brazier",
+            description = "The Wintertodt will occasionally break the braziers; they must be repaired again before use. This rewards 4x the player's Construction level in experience, provided they own a player-owned house.",
+            position = 3,
+            section = generalSection
+    )
+    default boolean fixBrazier() {
+        return true;
+    }
 
     @ConfigItem(
             keyName = "OpenCrates",

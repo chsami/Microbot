@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.util.camera;
 
 import net.runelite.api.Actor;
 import net.runelite.api.Perspective;
+import net.runelite.api.ScriptID;
 import net.runelite.api.TileObject;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -185,5 +186,11 @@ public class Rs2Camera {
         if (poly == null) return false;
 
         return poly.getBounds2D().getX() <= viewportWidth && poly.getBounds2D().getY() <= viewportHeight;
+    }
+
+    public static void setZoom(int zoom) {
+        Microbot.getClientThread().invokeLater(() -> {
+            Microbot.getClient().runScript(ScriptID.CAMERA_DO_ZOOM, zoom, zoom);
+        });
     }
 }

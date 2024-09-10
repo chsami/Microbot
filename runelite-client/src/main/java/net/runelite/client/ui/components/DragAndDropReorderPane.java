@@ -24,19 +24,13 @@
  */
 package net.runelite.client.ui.components;
 
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.LayoutManager;
-import java.awt.Point;
-import java.awt.Rectangle;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.dnd.DragSource;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
-import javax.swing.BoxLayout;
-import javax.swing.JLayeredPane;
-import javax.swing.SwingUtilities;
 
 /**
  * Pane which allows reordering its components via drag and drop.
@@ -53,9 +47,9 @@ public class DragAndDropReorderPane extends JLayeredPane
 	{
 		super();
 		setLayout(new DragAndDropReorderLayoutManager());
-		MouseAdapter mouseAdapter = new DragAndDropReorderMouseAdapter();
+		/* MouseAdapter mouseAdapter = new DragAndDropReorderMouseAdapter();
 		addMouseListener(mouseAdapter);
-		addMouseMotionListener(mouseAdapter);
+		addMouseMotionListener(mouseAdapter); */
 	}
 
 	@Override

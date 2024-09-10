@@ -18,6 +18,7 @@ public class NewMenuEntry implements MenuEntry {
     private int itemId;
     private Actor actor;
     private TileObject gameObject;
+    private Widget widget;
 
     public NewMenuEntry(int param0, int param1, int opcode, int identifier, int itemId, String target) {
         this.option = "Use";
@@ -190,9 +191,15 @@ public class NewMenuEntry implements MenuEntry {
         return this;
     }
 
+
+    public MenuEntry setWidget(Widget widget) {
+        this.widget = widget;
+        return this;
+    }
+
     @Nullable
     public Widget getWidget() {
-        return null;
+        return widget;
     }
 
     @Nullable

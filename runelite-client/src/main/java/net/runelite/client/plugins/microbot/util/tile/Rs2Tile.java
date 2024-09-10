@@ -215,10 +215,21 @@ public class Rs2Tile {
     public static boolean isTileReachable(WorldPoint targetPoint) {
         boolean[][] visited = new boolean[104][104];
         int[][] flags = Microbot.getClient().getCollisionMaps()[Microbot.getClient().getPlane()].getFlags();
-        WorldPoint playerLoc = Microbot.getClient().getLocalPlayer().getWorldLocation();
-        int startX = playerLoc.getX() - Microbot.getClient().getBaseX();
-        int startY = playerLoc.getY() - Microbot.getClient().getBaseY();
-        int startPoint = (startX << 16) | startY;
+        WorldPoint playerLoc = Rs2Player.getWorldLocation();
+        int startX = 0;
+        int startY = 0;
+        int startPoint = 0;
+        if (Microbot.getClient().isInInstancedRegion()) {
+            LocalPoint localPoint = Rs2Player.getLocalLocation();
+             startX = localPoint.getSceneX();
+             startY = localPoint.getSceneY();
+             startPoint = (startX << 16) | startY;
+        } else {
+             startX = playerLoc.getX() - Microbot.getClient().getBaseX();
+             startY = playerLoc.getY() - Microbot.getClient().getBaseY();
+             startPoint = (startX << 16) | startY;
+        }
+
         ArrayDeque<Integer> queue = new ArrayDeque<>();
         queue.add(startPoint);
         visited[startX][startY] = true;
@@ -274,10 +285,21 @@ public class Rs2Tile {
     }
 
     private static boolean isVisited(WorldPoint worldPoint, boolean[][] visited) {
-        int baseX = Microbot.getClient().getTopLevelWorldView().getBaseX();
-        int baseY = Microbot.getClient().getTopLevelWorldView().getBaseY();
-        int x = worldPoint.getX() - baseX;
-        int y = worldPoint.getY() - baseY;
+        int baseX = 0;
+        int baseY = 0;
+        int x = 0;
+        int y = 0;
+        if (Microbot.getClient().isInInstancedRegion()) {
+            LocalPoint localPoint = Rs2Player.getLocalLocation();
+            x = localPoint.getSceneX();
+            y = localPoint.getSceneY();
+        } else {
+             baseX = Microbot.getClient().getTopLevelWorldView().getBaseX();
+             baseY = Microbot.getClient().getTopLevelWorldView().getBaseY();
+             x = worldPoint.getX() - baseX;
+             y = worldPoint.getY() - baseY;
+        }
+
 
         return isWithinBounds(x, y) && visited[x][y];
     }

@@ -18,7 +18,7 @@ import static net.runelite.client.plugins.microbot.util.npc.Rs2Npc.validateInter
 
 public class BarbarianFishingScript extends Script {
 
-    public static String version = "1.1.2";
+    public static String version = "1.1.3";
     public static int timeout = 0;
     private BarbarianFishingConfig config;
 
@@ -52,7 +52,8 @@ public class BarbarianFishingScript extends Script {
             }
 
             if (Rs2Npc.interact(fishingspot)) {
-                //Rs2Antiban.actionCooldown();
+                Rs2Antiban.actionCooldown();
+                Rs2Antiban.takeMicroBreakByChance();
             }
 
         }, 0, 600, TimeUnit.MILLISECONDS);

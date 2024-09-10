@@ -48,6 +48,7 @@ public class MWintertodtScript extends Script {
     final String SUPPLY_CRATE = "supply crate";
     String axe = "";
     int wintertodtHp = -1;
+    private GameObject brazier;
 
     private static void changeState(State scriptState) {
         changeState(scriptState, false);
@@ -133,7 +134,8 @@ public class MWintertodtScript extends Script {
 
                 boolean wintertodtRespawning = Rs2Widget.hasWidget("returns in");
                 boolean isWintertodtAlive = Rs2Widget.hasWidget("Wintertodt's Energy");
-                GameObject brazier = Rs2GameObject.findObject(BRAZIER_29312, config.brazierLocation().getOBJECT_BRAZIER_LOCATION());
+                brazier = Rs2GameObject.findObject(BRAZIER_29312, config.brazierLocation().getOBJECT_BRAZIER_LOCATION());
+                GameObject brokenBrazier = Rs2GameObject.findObject(ObjectID.BRAZIER_29313, config.brazierLocation().getOBJECT_BRAZIER_LOCATION());
                 GameObject fireBrazier = Rs2GameObject.findObject(ObjectID.BURNING_BRAZIER_29314, config.brazierLocation().getOBJECT_BRAZIER_LOCATION());
                 boolean needBanking = !Rs2Inventory.hasItemAmount(config.food().getName(), config.minFood(), false, false)
                         && !isWintertodtAlive;
@@ -171,10 +173,6 @@ public class MWintertodtScript extends Script {
                     setLockState(State.BANKING, false);
                 }
 
-                //todo: hasFixAction is not working?
-//                if (isNearbyBrazier && isWintertodtAlive && hasFixAction != false && !needBanking) {
-//                    state = State.FIX_BRAZIER;
-//                }
 
                 switch (state) {
                     case BANKING:
@@ -221,13 +219,15 @@ public class MWintertodtScript extends Script {
                         }
                         break;
                     case FLETCH_LOGS:
-                        if (Rs2Player.getAnimation() != AnimationID.FLETCHING_BOW_CUTTING || resetActions)
-                        {
+                        if (Rs2Player.getAnimation() != AnimationID.FLETCHING_BOW_CUTTING || resetActions) {
                             walkToBrazier();
 
                             Rs2Item knife = Rs2Inventory.get("knife");
-                            if (Rs2Inventory.moveItemToSlot(knife, 27))
-                                sleepUntil(() -> Rs2Inventory.slotContains(27, "knife"), 5000);
+                            if (knife.slot != 27) {
+                                sleep(GAME_TICK_LENGTH * 2);
+                                if (Rs2Inventory.moveItemToSlot(knife, 27))
+                                    sleepUntil(() -> Rs2Inventory.slotContains(27, "knife"), 5000);
+                            }
                             Rs2Inventory.combineClosest(ItemID.KNIFE, ItemID.BRUMA_ROOT);
                             resetActions = false;
                             sleep(GAME_TICK_LENGTH);
@@ -238,13 +238,33 @@ public class MWintertodtScript extends Script {
                         break;
                     case BURN_LOGS:
                         if (!Microbot.isGainingExp || resetActions) {
-                            if (fireBrazier == null && brazier != null && config.relightBrazier()) {
-                                Rs2GameObject.interact(brazier, "light");
-                                sleep(1000);
+                            TileObject burningBrazier = Rs2GameObject.findObjectById(BURNING_BRAZIER_29314);
+                            if (brokenBrazier != null && config.fixBrazier()) {
+                                Rs2GameObject.interact(brokenBrazier, "fix");
+                                Microbot.log("Fixing brazier");
+                                sleep(1500);
+                                return;
                             }
-                            if (fireBrazier.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) < 10 && hasItemsToBurn()) {
+                            // this extra check is needed in case all braziers are broken or not burning
+                            if (burningBrazier == null && brazier != null && config.relightBrazier()) {
+
+
+                                Rs2GameObject.interact(brazier, "light");
+                                Microbot.log("Lighting brazier");
+                                sleep(1500);
+                                return;
+                            } else {
+                                if (burningBrazier.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) > 10 && brazier != null && config.relightBrazier()) {
+                                    Rs2GameObject.interact(brazier, "light");
+                                    Microbot.log("Lighting brazier");
+                                    sleep(1500);
+                                    return;
+                                }
+                            }
+                            if (burningBrazier.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) < 10 && hasItemsToBurn()) {
 
                                 Rs2GameObject.interact(BURNING_BRAZIER_29314, "feed");
+                                Microbot.log("Feeding brazier");
                                 resetActions = false;
                                 sleep(GAME_TICK_LENGTH * 3);
                                 Rs2Antiban.actionCooldown();
@@ -253,19 +273,11 @@ public class MWintertodtScript extends Script {
 
                         }
                         break;
-//                    case FIX_BRAZIER: // TODO: fix this state
-//                        if (hasFixAction == false) {
-//                            state = state.BURN_LOGS;
-//                            return;
-//                        }
-//                        Rs2GameObject.interact(brazier);
-//                        Rs2Player.waitForAnimation();
-//                        break;
                 }
 
                 long endTime = System.currentTimeMillis();
                 long totalTime = endTime - startTime;
-                 System.out.println("Total time for loop " + totalTime);
+                System.out.println("Total time for loop " + totalTime);
 
             } catch (Exception ex) {
                 System.out.println(ex.getMessage());
@@ -308,7 +320,7 @@ public class MWintertodtScript extends Script {
     }
 
     private boolean shouldBank(boolean needBanking) {
-        if (!needBanking) return  false;
+        if (!needBanking) return false;
         changeState(State.BANKING);
         return true;
     }
@@ -351,10 +363,10 @@ public class MWintertodtScript extends Script {
         if (!config.fletchRoots() && Rs2Inventory.hasItem(ItemID.KNIFE)) {
             Rs2Inventory.drop(ItemID.KNIFE);
         }
-//        if (!config.fixBrazier() && Rs2Inventory.hasItem(ItemID.HAMMER)) {
-//            Rs2Inventory.drop(ItemID.HAMMER);
-//        }
-        if (Rs2Equipment.hasEquipped(ItemID.BRUMA_TORCH) && Rs2Inventory.hasItem(ItemID.TINDERBOX)) {
+        if (!config.fixBrazier() && Rs2Inventory.hasItem(ItemID.HAMMER)) {
+            Rs2Inventory.drop(ItemID.HAMMER);
+        }
+        if ((Rs2Equipment.hasEquipped(ItemID.BRUMA_TORCH) || Rs2Equipment.hasEquipped(ItemID.BRUMA_TORCH_OFFHAND)) && Rs2Inventory.hasItem(ItemID.TINDERBOX)) {
             Rs2Inventory.drop(ItemID.TINDERBOX);
         }
     }
@@ -376,12 +388,13 @@ public class MWintertodtScript extends Script {
 //            } else {
 //                //sleep(3000);
 //            }
+        } else if (Rs2Player.getWorldLocation().equals(config.brazierLocation().getBRAZIER_LOCATION()) && state == State.WAITING) {
+            Rs2GameObject.hoverOverObject(brazier);
         }
     }
 
     private void dodgeOrbDamage() {
-        for (GraphicsObject graphicsObject : Microbot.getClient().getGraphicsObjects())
-        {
+        for (GraphicsObject graphicsObject : Microbot.getClient().getGraphicsObjects()) {
             if (!resetActions && graphicsObject.getId() == 502
                     && WorldPoint.fromLocalInstance(Microbot.getClient(),
                     graphicsObject.getLocation()).distanceTo(Rs2Player.getWorldLocation()) == 1) {
@@ -418,10 +431,10 @@ public class MWintertodtScript extends Script {
         if (!Rs2Bank.isOpen()) return true;
         Rs2Bank.depositAll();
         int foodCount = (int) Rs2Inventory.getInventoryFood().stream().count();
-//        if (config.fixBrazier()) {
-//            Rs2Bank.withdrawX(true, "hammer", 1);
-//        }
-        if (!Rs2Equipment.hasEquipped(ItemID.BRUMA_TORCH)) {
+        if (config.fixBrazier()) {
+            Rs2Bank.withdrawX(true, "hammer", 1);
+        }
+        if (!Rs2Equipment.hasEquipped(ItemID.BRUMA_TORCH) && !Rs2Equipment.hasEquipped(ItemID.BRUMA_TORCH_OFFHAND)) {
             Rs2Bank.withdrawX(true, "tinderbox", 1, true);
         }
         if (config.fletchRoots()) {

@@ -11,7 +11,6 @@ import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 
 import java.awt.*;
-import java.util.Objects;
 
 public class Rs2UiHelper {
     public static boolean isRectangleWithinViewport(Rectangle rectangle) {
@@ -58,12 +57,8 @@ public class Rs2UiHelper {
         Shape clickbox = Microbot.getClientThread().runOnClientThread(() -> Perspective.getClickbox(Microbot.getClient(), actor.getModel(), actor.getCurrentOrientation(), lp.getX(), lp.getY(),
                 Perspective.getTileHeight(Microbot.getClient(), lp, actor.getWorldLocation().getPlane())));
 
-
-        //check if any of the values are negative and return a new rectangle with positive values
-        assert clickbox != null;
-//        if (clickbox.getBounds().getX() < 0 || clickbox.getBounds().getY() < 0 || clickbox.getBounds().getWidth() < 0 || clickbox.getBounds().getHeight() < 0) {
-//            return new Rectangle((int) Math.abs(clickbox.getBounds().getX()), (int) Math.abs(clickbox.getBounds().getY()), (int) Math.abs(clickbox.getBounds().getWidth()), (int) Math.abs(clickbox.getBounds().getHeight()));
-//        }
+        if (clickbox == null) return new Rectangle(1, 1);  //return a small rectangle if clickbox is null
+        
 
         return new Rectangle(clickbox.getBounds());
     }
@@ -71,14 +66,9 @@ public class Rs2UiHelper {
     public static Rectangle getObjectClickbox(TileObject object) {
 
         if (object == null) return new Rectangle(1, 1);  //return a small rectangle if object is null
-        Shape clickbox = Microbot.getClientThread().runOnClientThread(() -> Objects.requireNonNull(object.getClickbox()));
+        Shape clickbox = Microbot.getClientThread().runOnClientThread(object::getClickbox);
+        if (clickbox == null) return new Rectangle(1, 1);  //return a small rectangle if clickbox is null
 
-
-        //check if any of the values are negative and return a new rectangle with positive values
-        assert clickbox != null;
-//        if (clickbox.getBounds().getX() < 0 || clickbox.getBounds().getY() < 0 || clickbox.getBounds().getWidth() < 0 || clickbox.getBounds().getHeight() < 0) {
-//            return new Rectangle((int) Math.abs(clickbox.getBounds().getX()), (int) Math.abs(clickbox.getBounds().getY()), (int) Math.abs(clickbox.getBounds().getWidth()), (int) Math.abs(clickbox.getBounds().getHeight()));
-//        }
 
         return new Rectangle(clickbox.getBounds());
     }

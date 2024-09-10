@@ -28,7 +28,7 @@ public class AutoFishingScript extends Script {
     public static String version = "1.4.0";
     State state;
 
-    public boolean run(AutoFishingConfig config) {
+    public boolean run(AutoFishConfig config) {
         initialPlayerLocation = null;
         List<String> itemNames = Arrays.stream(config.itemsToBank().split(",")).map(String::toLowerCase).collect(Collectors.toList());
         state = State.FISHING;

@@ -361,6 +361,7 @@ public class Rs2Player {
     }
 
     public static int getAnimation() {
+        if (Microbot.getClient().getLocalPlayer() == null) return -1;
         return Microbot.getClient().getLocalPlayer().getAnimation();
     }
 

@@ -28,6 +28,7 @@ public class MicrobotMouseOverlay extends Overlay {
     public Dimension render(Graphics2D g) {
         if (plugin.getMouseMovement().isActive()) {
             if (!Microbot.getMouse().getTimer().isRunning()) {
+                Microbot.getMouse().getPoints().clear();
                 Microbot.getMouse().getTimer().start();
             }
             //g.setFont(new Font("Tahoma", Font.BOLD, 18));

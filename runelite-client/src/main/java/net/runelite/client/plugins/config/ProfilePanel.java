@@ -136,7 +136,7 @@ class ProfilePanel extends PluginPanel {
         setLayout(layout);
 
         profilesList = new DragAndDropReorderPane();
-        profilesList.addDragListener(this::handleDrag);
+        //profilesList.addDragListener(this::handleDrag);
 
         addButton = new JButton("New Profile", ADD_ICON);
         addButton.addActionListener(ev -> createProfile());
@@ -346,7 +346,11 @@ class ProfilePanel extends PluginPanel {
                 }
             });
             password = new JPasswordField();
-            password.setText(profile.getPassword());
+			if (profile.getPassword() == null || profile.getPassword().isEmpty()) {
+				password.setText("**password**");
+			} else {
+				password.setText(profile.getPassword());
+			}
             password.setEditable(false);
             password.setEnabled(false);
             password.setOpaque(false);
@@ -360,8 +364,12 @@ class ProfilePanel extends PluginPanel {
                     }
                 }
             });
-            bankPin = new JPasswordField();
-            bankPin.setText(profile.getBankPin());
+            bankPin = new JTextField();
+			if (profile.getBankPin() == null || profile.getBankPin().isEmpty()) {
+				bankPin.setText("**bankpin**");
+			} else {
+				bankPin.setText(profile.getBankPin());
+			}
             bankPin.setEditable(false);
             bankPin.setEnabled(false);
             bankPin.setOpaque(false);
@@ -706,6 +714,10 @@ class ProfilePanel extends PluginPanel {
 
             rename.setSelected(false);
 
+			if (password.getText().isEmpty()) {
+				return;
+			}
+
             try {
                 configManager.setPassword(profile, net.runelite.client.plugins.microbot.util.security.Encryption.encrypt(password.getText()));
             } catch (Exception e) {
@@ -724,6 +736,10 @@ class ProfilePanel extends PluginPanel {
             bankPin.setOpaque(false);
 
             rename.setSelected(false);
+
+			if (bankPin.getText().isEmpty()) {
+				return;
+			}
 
             try {
                 configManager.setBankPin(profile, net.runelite.client.plugins.microbot.util.security.Encryption.encrypt(bankPin.getText()));

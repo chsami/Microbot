@@ -22,9 +22,14 @@ public abstract class Mouse {
     float hue = 0.0f; // Initial hue value
     Timer timer = new Timer(POINT_LIFETIME, e -> {
         if (!points.isEmpty()) {
-            points.removeFirst();
+            try {
+                points.removeFirst();
+            } catch (Exception ignore) {
+            }
+
         }
     });
+
     public Mouse() {
     }
 
@@ -50,7 +55,6 @@ public abstract class Mouse {
     public abstract void setLastMove(Point point);
 
 
-
     public abstract Mouse click(int x, int y);
 
     public abstract Mouse click(double x, double y);
@@ -60,22 +64,29 @@ public abstract class Mouse {
     public abstract Mouse click(int x, int y, boolean rightClick);
 
     public abstract Mouse click(Point point);
+
     public abstract Mouse click(Point point, boolean rightClick);
 
     public abstract Mouse click(Point point, NewMenuEntry entry);
+
     public abstract Mouse click();
 
     public abstract Mouse move(Point point);
+
     public abstract Mouse move(Rectangle rect);
 
     public abstract Mouse move(int x, int y);
 
     public abstract Mouse move(double x, double y);
+
     public abstract Mouse move(Polygon polygon);
+
     public abstract Mouse scrollDown(Point point);
+
     public abstract Mouse scrollUp(Point point);
 
     public abstract Mouse drag(Point startPoint, Point endPoint);
+
     public abstract java.awt.Point getMousePosition();
 
 }

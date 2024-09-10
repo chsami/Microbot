@@ -15,6 +15,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerPlugin;
 import net.runelite.client.plugins.microbot.util.antiban.enums.Activity;
 import net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity;
+import net.runelite.client.plugins.microbot.util.antiban.enums.CombatSkills;
 import net.runelite.client.plugins.microbot.util.antiban.ui.MasterPanel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.ui.ClientToolbar;
@@ -135,7 +136,8 @@ public class AntibanPlugin extends Plugin {
                 }
             } else {
                 Rs2AntibanSettings.actionCooldownActive = false;
-                Microbot.pauseAllScripts = false;
+                if (Rs2AntibanSettings.universalAntiban && !Rs2AntibanSettings.microBreakActive)
+                    Microbot.pauseAllScripts = false;
             }
         }
     }
@@ -199,6 +201,11 @@ public class AntibanPlugin extends Plugin {
         }
     }
 
+    // method to check if we have been idle for too long, indicating some issue with the script, use this to reset or reinitialize your script
+    public static boolean isIdleTooLong(int timeout) {
+        return idleTicks > timeout && !Rs2AntibanSettings.actionCooldownActive && !Rs2AntibanSettings.takeMicroBreaks;
+    }
+
     @Subscribe
     public void onGameTick(GameTick event) {
         ticksSinceLogin++;
@@ -217,7 +224,10 @@ public class AntibanPlugin extends Plugin {
         }
 
         if (Rs2AntibanSettings.takeMicroBreaks && !Microbot.isPluginEnabled(BreakHandlerPlugin.class)) {
-            Microbot.log("BreakHandlerPlugin is not enabled, attempting to enable it....");
+            if (Rs2AntibanSettings.devDebug)
+                Microbot.showMessage("Micro breaks depend on the BreakHandlerPlugin, enabling it now.");
+
+            Microbot.log("BreakHandlerPlugin not enabled, enabling it now.");
             String name = BreakHandlerPlugin.class.getName();
             Plugin breakHandlerPlugin = Microbot.getPluginManager().getPlugins().stream()
                     .filter(x -> x.getClass().getName().equals(name))
@@ -234,10 +244,14 @@ public class AntibanPlugin extends Plugin {
             performActionBreak();
         }
 
-        if (Rs2AntibanSettings.simulateAttentionSpan && Rs2AntibanSettings.profileSwitching &&
-                Rs2Antiban.getPlayStyle().shouldSwitchProfileBasedOnAttention()) {
-            Rs2Antiban.setPlayStyle(Rs2Antiban.getPlayStyle().switchProfile());
-            Rs2Antiban.getPlayStyle().resetPlayStyle();
+        if (Rs2AntibanSettings.usePlayStyle) {
+            if (Rs2Antiban.getPlayStyle() == null)
+                return;
+            if (Rs2AntibanSettings.simulateAttentionSpan && Rs2AntibanSettings.profileSwitching &&
+                    Rs2Antiban.getPlayStyle().shouldSwitchProfileBasedOnAttention()) {
+                Rs2Antiban.setPlayStyle(Rs2Antiban.getPlayStyle().switchProfile());
+                Rs2Antiban.getPlayStyle().resetPlayStyle();
+            }
         }
     }
 
@@ -251,10 +265,14 @@ public class AntibanPlugin extends Plugin {
         final int exp = statChanged.getXp();
         final Integer previous = skillExp.put(skill, exp);
 
-        if (lastSkillChanged != null && lastSkillChanged.equals(skill)) {
+        if (lastSkillChanged != null && (lastSkillChanged.equals(skill) || (CombatSkills.isCombatSkill(lastSkillChanged) && CombatSkills.isCombatSkill(skill)))) {
             if (Rs2AntibanSettings.universalAntiban && !Rs2AntibanSettings.actionCooldownActive && Rs2Antiban.getActivity() != null) {
                 Rs2Antiban.actionCooldown();
+                Rs2Antiban.takeMicroBreakByChance();
             }
+            if (Rs2Antiban.getActivity() == null)
+                updateAntibanSettings(skill);
+
             return;
         }
 
@@ -276,6 +294,7 @@ public class AntibanPlugin extends Plugin {
             Microbot.log("Activity changed, new activity: " + activity);
             if (Rs2AntibanSettings.universalAntiban) {
                 Rs2Antiban.actionCooldown();
+                Rs2Antiban.takeMicroBreakByChance();
             }
         }
 
@@ -284,4 +303,6 @@ public class AntibanPlugin extends Plugin {
             Microbot.log("Activity changed, new activity intensity: " + activityIntensity);
         }
     }
+
 }
+

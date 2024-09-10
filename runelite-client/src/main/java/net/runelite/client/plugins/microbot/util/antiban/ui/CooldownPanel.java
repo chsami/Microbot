@@ -64,6 +64,8 @@ public class CooldownPanel extends JPanel {
     }
 
     public void updateValues() {
+        isActionCooldownActive.setSelected(Rs2AntibanSettings.actionCooldownActive);
+        isActionCooldownActive.setEnabled(false);
         actionCooldownChance.setValue((int) (Rs2AntibanSettings.actionCooldownChance * 100));
         actionCooldownChanceLabel.setText("Action Cooldown Chance (%): " + actionCooldownChance.getValue());
         timeout.setValue(Rs2Antiban.getTIMEOUT());

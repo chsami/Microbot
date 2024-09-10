@@ -27,16 +27,16 @@ jobs:
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "1.4.4"
+          automatic_release_tag: "1.4.5"
           prerelease: false
-          title: "Release 1.4.4"
+          title: "Release 1.4.5"
           files: |
             /home/runner/work/microbot/microbot/runelite-client/target/microbot-*.jar
 
       - name: Upload Jar
         uses: "bacongobbler/azure-blob-storage-upload@main"
         with:
-          source_dir: runelite-client/target/jars
+          source_dir: runelite-client/target
           container_name: microbot
           connection_string: ${{ secrets.blobConnectionString }}
           extra_args: '--pattern *.jar --destination-path release'

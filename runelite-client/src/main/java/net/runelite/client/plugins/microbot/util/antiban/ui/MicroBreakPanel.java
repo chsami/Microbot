@@ -84,6 +84,7 @@ public class MicroBreakPanel extends JPanel {
 
     public void updateValues() {
         isMicroBreakActive.setSelected(Rs2AntibanSettings.microBreakActive);
+        isMicroBreakActive.setEnabled(false);
         takeMicroBreaks.setSelected(Rs2AntibanSettings.takeMicroBreaks);
         microBreakDurationLow.setValue(Rs2AntibanSettings.microBreakDurationLow);
         microBreakDurationLowLabel.setText("Micro Break Duration Low (min): " + microBreakDurationLow.getValue());

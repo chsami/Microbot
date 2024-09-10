@@ -39,7 +39,11 @@ public class AttackNpcScript extends Script {
     }
 
     public void run(PlayerAssistConfig config) {
-        Rs2NpcManager.loadJson();
+        try {
+            Rs2NpcManager.loadJson();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         AtomicReference<List<String>> npcsToAttack = new AtomicReference<>(Arrays.stream(Arrays.stream(config.attackableNpcs().split(",")).map(String::trim).toArray(String[]::new)).collect(Collectors.toList()));
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {

@@ -43,8 +43,7 @@ public class AutoMiningScript extends Script {
                 }
 
                 if (!config.ORE().hasRequiredLevel()) {
-                    Microbot.showMessage("You do not have the required mining level to mine this ore.");
-                    shutdown();
+                    Microbot.log("You do not have the required mining level to mine this ore.");
                     return;
                 }
 

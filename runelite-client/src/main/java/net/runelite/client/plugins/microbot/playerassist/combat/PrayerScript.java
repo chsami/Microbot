@@ -14,7 +14,11 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class PrayerScript extends Script {
     public boolean run(PlayerAssistConfig config) {
-        Rs2NpcManager.loadJson();
+        try {
+            Rs2NpcManager.loadJson();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!Microbot.isLoggedIn()) return;

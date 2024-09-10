@@ -94,16 +94,16 @@ public class FletchingScript extends Script {
         Rs2Bank.openBank();
 
         // make sure there's no long bows left
-            if (fletchingMode == FletchingMode.STRUNG) {
-                Rs2Bank.depositAll();
-            } else if (fletchingMode == FletchingMode.PROGRESSIVE) {
-                Rs2Bank.depositAll(model.getFletchingItem().getContainsInventoryName());
-                calculateItemToFletch();
-                secondaryItemToFletch = (model.getFletchingMaterial().getName() + " logs").trim();
-            } else {
-                // make sure there's no long bows left
-                Rs2Bank.depositAll(config.fletchingItem().getContainsInventoryName());
-            }
+        if (fletchingMode == FletchingMode.STRUNG) {
+            Rs2Bank.depositAll();
+        } else if (fletchingMode == FletchingMode.PROGRESSIVE) {
+            Rs2Bank.depositAll(model.getFletchingItem().getContainsInventoryName());
+            calculateItemToFletch();
+            secondaryItemToFletch = (model.getFletchingMaterial().getName() + " logs").trim();
+        } else {
+            // make sure there's no long bows left
+            Rs2Bank.depositAll(config.fletchingItem().getContainsInventoryName());
+        }
 
 
         if (Rs2Bank.isOpen() && !Rs2Bank.hasItem(primaryItemToFletch) && !Rs2Inventory.hasItem(primaryItemToFletch)) {
@@ -165,6 +165,7 @@ public class FletchingScript extends Script {
         sleepUntil(() -> Rs2Widget.getWidget(17694736) == null);
         Rs2Antiban.actionCooldown();
         Rs2Antiban.takeMicroBreakByChance();
+        Rs2Bank.preHover();
         if (fletchingMode == FletchingMode.PROGRESSIVE) {
             sleepUntil(() -> !Rs2Inventory.hasItemAmount(secondaryItemToFletch, model.getFletchingItem().getAmountRequired()) || hasLeveledUp, 60000);
         } else {

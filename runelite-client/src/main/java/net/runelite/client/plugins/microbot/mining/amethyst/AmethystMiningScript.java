@@ -50,7 +50,7 @@ public class AmethystMiningScript extends Script {
     }
 
     private void executeTask() {
-        if (!super.run() || !Microbot.isLoggedIn() || isClickHereToPlayButtonVisible()) {
+        if (!super.run() || !Microbot.isLoggedIn() || isClickHereToPlayButtonVisible() || Rs2Antiban.isIdleTooLong(50)) {
             miningSpot = MiningSpot.NULL;
             oreVein = null;
             return;

@@ -16,6 +16,7 @@ import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.ui.overlay.components.*;
 import net.runelite.client.util.ColorUtil;
+import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
 import java.util.Set;
@@ -139,7 +140,7 @@ public class Rs2Antiban {
     private static PlayStyle playStyle;
 
 
-    public static void setActivity(Activity activity) {
+    public static void setActivity(@NotNull Activity activity) {
         Rs2Antiban.activity = activity;
         Rs2Antiban.category = activity.getCategory();
         Rs2Antiban.activityIntensity = activity.getActivityIntensity();
@@ -226,9 +227,9 @@ public class Rs2Antiban {
      * It includes logic to adjust behaviors such as non-linear intervals, behavioral variability, and random mouse movements
      * to simulate more human-like actions.
      * </p>
-     *<p>
+     * <p>
      * Execute this method at any point in your script where you want to trigger an action cooldown.
-     *</p>
+     * </p>
      * <p>
      * The cooldown can be triggered directly if <code>actionCooldownChance</code> is 1.00 (100%),
      * or by chance if <code>actionCooldownChance</code> is less than 1.00 (100%). Several features like universal antiban,
@@ -262,19 +263,29 @@ public class Rs2Antiban {
      */
 
     public static void actionCooldown() {
-        if (Rs2AntibanSettings.actionCooldownChance <= 0.99) {
-            if (Rs2Random.dice(Rs2AntibanSettings.actionCooldownChance)) {
-                performActionCooldown();
-            }
-            return;
-        }
-
         if (!Rs2AntibanSettings.usePlayStyle) {
-            Microbot.log("PlayStyle not enabled, cannot perform action cooldown");
+            logDebug("PlayStyle not enabled, cannot perform action cooldown");
             return;
         }
+        if (Rs2AntibanSettings.actionCooldownChance == 1.0) {
+            performActionCooldown();
+            return;
+        }
+        if (Rs2AntibanSettings.actionCooldownChance <= 0.0) {
+            logDebug("Action cooldown chance is 0%, cannot perform action cooldown");
+            return;
+        }
+        if (Rs2AntibanSettings.actionCooldownChance <= 0.99 && Rs2Random.diceFractional(Rs2AntibanSettings.actionCooldownChance)) {
+            performActionCooldown();
 
-        performActionCooldown();
+        }
+
+    }
+
+    private static void logDebug(String message) {
+        if (Rs2AntibanSettings.devDebug) {
+            Microbot.log("<col=f44336>" + message + "</col>");
+        }
     }
 
     private static void performActionCooldown() {
@@ -291,7 +302,7 @@ public class Rs2Antiban {
 
         Rs2AntibanSettings.actionCooldownActive = true;
 
-        if (Rs2AntibanSettings.moveMouseRandomly && Rs2Random.dice(Rs2AntibanSettings.moveMouseRandomlyChance)) {
+        if (Rs2AntibanSettings.moveMouseRandomly && Rs2Random.diceFractional(Rs2AntibanSettings.moveMouseRandomlyChance)) {
             Rs2Random.wait(100, 200);
             moveMouseRandomly();
         }
@@ -328,10 +339,15 @@ public class Rs2Antiban {
      *   <li><code>Rs2AntibanSettings.microBreakActive</code> is set to <code>true</code> if the break is triggered.</li>
      *   <li><code>BreakHandlerScript.breakDuration</code> is set to a randomly determined value in seconds.</li>
      * </ul>
+     *
      * @return true if a micro-break is triggered, false otherwise.
      */
 
     public static boolean takeMicroBreakByChance() {
+        if (!Rs2AntibanSettings.takeMicroBreaks && Rs2AntibanSettings.microBreakChance > 0.0) {
+            logDebug("MICRO BREAKS ARE DISABLED, cannot take micro break");
+            return false;
+        }
         if (Math.random() < Rs2AntibanSettings.microBreakChance) {
             Rs2AntibanSettings.microBreakActive = true;
             BreakHandlerScript.breakDuration = Random.random(Rs2AntibanSettings.microBreakDurationLow * 60, Rs2AntibanSettings.microBreakDurationHigh * 60);
@@ -509,6 +525,10 @@ public class Rs2Antiban {
 
     public static void deactivateAntiban() {
         Rs2AntibanSettings.antibanEnabled = false;
+    }
+
+    public static boolean isIdleTooLong(int timeoutTicks) {
+        return AntibanPlugin.isIdleTooLong(timeoutTicks);
     }
 
     // reset all the variables

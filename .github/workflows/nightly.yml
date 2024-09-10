@@ -41,7 +41,7 @@ jobs:
       - name: Upload Jar
         uses: "bacongobbler/azure-blob-storage-upload@main"
         with:
-          source_dir: runelite-client/target/jars
+          source_dir: runelite-client/target
           container_name: microbot
           connection_string: ${{ secrets.blobConnectionString }}
           extra_args: '--pattern *.jar --destination-path nightly'

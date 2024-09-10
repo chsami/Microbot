@@ -2,7 +2,6 @@ package net.runelite.client.plugins.microbot.util.antiban.ui;
 
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
-import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
 
@@ -146,7 +145,7 @@ public class MasterPanel extends PluginPanel {
     //set up the reset button to reset all settings
     public void setupResetButton() {
         resetButton.addActionListener(e -> {
-            Rs2AntibanSettings.reset();
+            Rs2Antiban.resetAntibanSettings();
             loadSettings();
         });
     }
