@@ -135,6 +135,7 @@
 		<module>runelite-client</module>
 		<module>runelite-jshell</module>
 		<module>runelite-maven-plugin</module>
+		<module>runelite-agent</module>
 	</modules>
 
 	<dependencyManagement>
