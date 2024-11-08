@@ -134,4 +134,15 @@ public interface NmzConfig extends Config {
     {
         return true;
     }
+    @ConfigItem(
+            keyName = "Randomly trigger rapid heal",
+            name = "Randomly trigger rapid heal",
+            description = "Will randomly trigger rapid heal",
+            position = 8,
+            section = generalSection
+    )
+    default boolean randomlyTriggerRapidHeal()
+    {
+        return true;
+    }
 }

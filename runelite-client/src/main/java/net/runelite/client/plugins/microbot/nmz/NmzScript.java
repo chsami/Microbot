@@ -18,6 +18,7 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.walker.WalkerState;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.util.concurrent.TimeUnit;
@@ -33,6 +34,11 @@ public class NmzScript extends Script {
     public static boolean useOverload = false;
 
     public static PrayerPotionScript prayerPotionScript;
+
+    public static int maxHealth = Random.random(2, 8);
+    public static int minAbsorption = Random.random(100, 300);
+
+    private WorldPoint center = new WorldPoint(Random.random(2270, 2276), Random.random(4693, 4696), 0);
 
     @Getter
     @Setter
@@ -57,7 +63,7 @@ public class NmzScript extends Script {
                     Microbot.getMouse().click(Random.random(0, Microbot.getClient().getCanvasWidth()), Random.random(0, Microbot.getClient().getCanvasHeight()), true);
                 }
                 boolean isOutsideNmz = Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(new WorldPoint(2602, 3116, 0)) < 20;
-                useOverload = Microbot.getClient().getBoostedSkillLevel(Skill.RANGED) == Microbot.getClient().getRealSkillLevel(Skill.RANGED);
+                useOverload = Microbot.getClient().getBoostedSkillLevel(Skill.RANGED) == Microbot.getClient().getRealSkillLevel(Skill.RANGED) && config.overloadPotionAmount() > 0;
                 if (isOutsideNmz) {
                     Rs2Walker.setTarget(null);
                     handleOutsideNmz();
@@ -101,26 +107,29 @@ public class NmzScript extends Script {
             walkToCenter();
         }
         useOverloadPotion();
-        manageLocatorOrb();
+        manageSelfHarm();
         useAbsorptionPotion();
     }
 
     private void walkToCenter() {
-        WorldPoint center = new WorldPoint(Random.random(2270, 2276), Random.random(4693, 4696), 0);
         if (center.distanceTo(Rs2Player.getWorldLocation()) > 4) {
             Rs2Walker.walkTo(center, 6);
         }
     }
 
     public void startNmzDream() {
+        // Set new center so that it is random for every time joining the dream
+        center = new WorldPoint(Random.random(2270, 2276), Random.random(4693, 4696), 0);
         Rs2Npc.interact(NpcID.DOMINIC_ONION, "Dream");
         sleepUntil(() -> Rs2Widget.hasWidget("Which dream would you like to experience?"));
         Rs2Widget.clickWidget("Previous:");
         sleepUntil(() -> Rs2Widget.hasWidget("Click here to continue"));
         Rs2Widget.clickWidget("Click here to continue");
         sleepUntil(() -> Rs2Widget.hasWidget("Agree to pay"));
-        Rs2Keyboard.typeString("1");
-        Rs2Keyboard.enter();
+        if (Rs2Widget.hasWidget("Agree to pay")) {
+            Rs2Keyboard.typeString("1");
+            Rs2Keyboard.enter();
+        }
     }
 
     public boolean useOrbs() {
@@ -150,27 +159,30 @@ public class NmzScript extends Script {
         return false;
     }
 
-    public void manageLocatorOrb() {
-        if (Rs2Inventory.hasItem(ItemID.LOCATOR_ORB)) {
-            handleLocatorOrbUsage();
-            randomlyToggleRapidHeal();
-        } else if (Rs2Inventory.hasItem(ItemID.DWARVEN_ROCK_CAKE_7510)) {
-            handleDwarvenRockCake();
-            randomlyToggleRapidHeal();
-        }
-    }
+    public void manageSelfHarm() {
+        int currentHP = Microbot.getClient().getBoostedSkillLevel(Skill.HITPOINTS);
+        int currentRangedLevel = Microbot.getClient().getBoostedSkillLevel(Skill.RANGED);
+        int realRangedLevel = Microbot.getClient().getRealSkillLevel(Skill.RANGED);
+        boolean hasOverloadPotions = config.overloadPotionAmount() > 0;
 
-    private void handleDwarvenRockCake() {
-        if (Microbot.getClient().getBoostedSkillLevel(Skill.HITPOINTS) > Random.random(1, 5) && !useOverload
-                && Microbot.getClient().getBoostedSkillLevel(Skill.RANGED) != Microbot.getClient().getRealSkillLevel(Skill.RANGED)) {
-            Rs2Inventory.interact(ItemID.DWARVEN_ROCK_CAKE_7510, "guzzle");
-        }
-    }
+        if (currentHP >= maxHealth
+                && !useOverload
+                && (!hasOverloadPotions || currentRangedLevel != realRangedLevel)) {
+            maxHealth = 1;
 
-    public void handleLocatorOrbUsage() {
-        if (Microbot.getClient().getBoostedSkillLevel(Skill.HITPOINTS) > Random.random(1, 5) && !useOverload
-                && Microbot.getClient().getBoostedSkillLevel(Skill.RANGED) != Microbot.getClient().getRealSkillLevel(Skill.RANGED)) {
-            Rs2Inventory.interact(ItemID.LOCATOR_ORB, "feel");
+            if (Rs2Inventory.hasItem(ItemID.LOCATOR_ORB)) {
+                Rs2Inventory.interact(ItemID.LOCATOR_ORB, "feel");
+            } else if (Rs2Inventory.hasItem(ItemID.DWARVEN_ROCK_CAKE_7510)) {
+                Rs2Inventory.interact(ItemID.DWARVEN_ROCK_CAKE_7510, "guzzle");
+            }
+
+            if (currentHP == 1) {
+                maxHealth = Random.random(2, 8);
+            }
+        }
+
+        if (config.randomlyTriggerRapidHeal()) {
+            randomlyToggleRapidHeal();
         }
     }
 
@@ -190,11 +202,12 @@ public class NmzScript extends Script {
     }
 
     public void useAbsorptionPotion() {
-        if (Microbot.getVarbitValue(NMZ_ABSORPTION) < Random.random(300, 600) && Rs2Inventory.hasItem("absorption")) {
-            for (int i = 0; i < Random.random(1, 5); i++) {
+        if (Microbot.getVarbitValue(NMZ_ABSORPTION) < minAbsorption && Rs2Inventory.hasItem("absorption")) {
+            for (int i = 0; i < Random.random(4, 8); i++) {
                 Rs2Inventory.interact(x -> x.name.toLowerCase().contains("absorption"), "drink");
                 sleep(600, 1000);
             }
+            minAbsorption = Random.random(100, 300);
         }
     }
 

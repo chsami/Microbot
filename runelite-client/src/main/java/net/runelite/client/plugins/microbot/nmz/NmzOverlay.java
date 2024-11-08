@@ -33,6 +33,14 @@ public class NmzOverlay extends OverlayPanel {
                     .left(Microbot.status)
                     .build());
 
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Will self damage at: " + NmzScript.maxHealth)
+                    .build());
+
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Will drink absorption at: " + NmzScript.minAbsorption)
+                    .build());
+
         } catch(Exception ex) {
             System.out.println(ex.getMessage());
         }
