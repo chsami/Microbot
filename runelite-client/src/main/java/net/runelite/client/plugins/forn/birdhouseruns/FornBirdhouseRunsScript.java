@@ -175,6 +175,17 @@ public class FornBirdhouseRunsScript extends Script {
         }
         while (Rs2Inventory.contains(ItemID.BIRD_NEST_5074));
 
+        do {
+            Rs2Inventory.interact(ItemID.BIRD_NEST_22798, "search");
+            sleep(1000);
+        }
+        while (Rs2Inventory.contains(ItemID.BIRD_NEST_22798));
+
+        do {
+            Rs2Inventory.interact(ItemID.BIRD_NEST_22800, "search");
+            sleep(1000);
+        }
+        while (Rs2Inventory.contains(ItemID.BIRD_NEST_22800));
     }
 
     @Override
