@@ -17,6 +17,7 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.models.RS2Item;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 
@@ -200,7 +201,9 @@ public class AgilityScript extends Script {
                     }
                 }
 
-                if (Microbot.getClient().getTopLevelWorldView().getPlane() == 0 && playerWorldLocation.distanceTo(startCourse) > 6 && config.agilityCourse() != GNOME_STRONGHOLD_AGILITY_COURSE) {
+                if (Microbot.getClient().getTopLevelWorldView().getPlane() == 0
+                        && playerWorldLocation.distanceTo(startCourse) > 6
+                        && config.agilityCourse() != GNOME_STRONGHOLD_AGILITY_COURSE) {
                     currentObstacle = 0;
                     LocalPoint startCourseLocal = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), startCourse);
                     if (startCourseLocal == null || playerLocation.distanceTo(startCourseLocal) >= MAX_DISTANCE) {
@@ -208,8 +211,8 @@ public class AgilityScript extends Script {
                             Rs2Magic.alch(config.item(), 50, 100);
                         }
                         if (Rs2Player.getWorldLocation().distanceTo(startCourse) < 100) {//extra check for prif course
-                            Rs2Walker.walkTo(startCourse, 8);
                             Microbot.log("Going back to course's starting point");
+                            Rs2Walker.shortWalkWithState(startCourse, 8);
                             isWalkingToStart = true;
                             return;
                         }
