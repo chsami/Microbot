@@ -151,9 +151,9 @@ public class GildedAltarPlugin extends Plugin {
         boolean hasUnNotedBones = hasUnNotedBones();
 
         // If we have unNoted bones:
-            // If we're in the house, use bones on altar. Else, enter the portal
+        // If we're in the house, use bones on altar. Else, enter the portal
         // If we don't have unNoted bones:
-            // If we're in the house, leave house. Else, talk to Phials
+        // If we're in the house, leave house. Else, talk to Phials
         if (hasUnNotedBones) {
             state = inHouse ? GildedAltarPlayerState.BONES_ON_ALTAR : GildedAltarPlayerState.ENTER_HOUSE;
         } else {
@@ -219,6 +219,7 @@ public class GildedAltarPlugin extends Plugin {
 
     private void enterHouse() {
         // If we've already visited a house this session, use 'Visit-Last' on advertisement board
+        cachedAltar = null;
         if (visitedOnce) {
             Rs2GameObject.interact(ObjectID.HOUSE_ADVERTISEMENT, "Visit-Last");
             setSkipTicks(4);
@@ -284,7 +285,7 @@ public class GildedAltarPlugin extends Plugin {
             visitedOnce = true;
             listen = false;
             setSkipTicks(5);
-            }
+        }
     }
 
     public void bonesOnAltar() {
@@ -294,6 +295,12 @@ public class GildedAltarPlugin extends Plugin {
             if (cachedAltar == null) {
                 cachedAltar = Rs2GameObject.findObjectById(ObjectID.ALTAR_13197);
             }
+            if (cachedAltar == null) {
+                cachedAltar = Rs2GameObject.findObjectById(ObjectID.ALTAR_13198);
+            }
+            if (cachedAltar == null) {
+                cachedAltar = Rs2GameObject.findObjectById(ObjectID.ALTAR_13199);
+            }
         }
         if(portalCoords == null){
             portalCoords = Rs2Player.getWorldLocation();
@@ -302,7 +309,7 @@ public class GildedAltarPlugin extends Plugin {
         // Use bones on the altar if it's valid
         if (cachedAltar != null) {
             Rs2Inventory.useUnNotedItemOnObject("bones", cachedAltar);
-                }
+        }
         if(altarCoords == null){
             altarCoords = Rs2Player.getWorldLocation();
         }
@@ -310,7 +317,7 @@ public class GildedAltarPlugin extends Plugin {
         if(usePortal == null){
             usePortal = altarCoords.distanceTo(portalCoords) <= 10;
         }
-        }
+    }
 
     @Subscribe
     public void onChatMessage(ChatMessage chatMessage) {
@@ -329,5 +336,5 @@ public class GildedAltarPlugin extends Plugin {
             altarCoords = null;
             portalCoords = null;
         }
-}
+    }
 }
