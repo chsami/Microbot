@@ -1003,14 +1003,14 @@
 3304 3117 0	3304 3115 0	Go-through;Shantay pass;4031		1 Shantay pass			2	
 3304 3115 0	3304 3117 0	Go-through;Shantay pass;4031					2	
 3303 3115 0	3304 3117 0	Go-through;Shantay pass;4031					2	
-3193 2843 0	3196 2843 0	Go-through;Shantay pass;41863		1 Shantay pass			3	
-3193 2842 0	3196 2842 0	Go-through;Shantay pass;41863		1 Shantay pass			3	
-3196 2843 0	3193 2843 0	Go-through;Shantay pass;41863					3	
-3196 2842 0	3193 2842 0	Go-through;Shantay pass;41863					3	
-3167 2819 0	3167 2816 0	Go-through;Shantay pass;41863		1 Shantay pass			3	
-3168 2819 0	3168 2816 0	Go-through;Shantay pass;41863		1 Shantay pass			3	
-3167 2816 0	3167 2819 0	Go-through;Shantay pass;41863					3	
-3168 2816 0	3168 2819 0	Go-through;Shantay pass;41863					3	
+3193 2843 0	3196 2843 0	Go-through;Shantay pass;41326		1 Shantay pass			3	
+3193 2842 0	3196 2842 0	Go-through;Shantay pass;41326		1 Shantay pass			3	
+3196 2843 0	3193 2843 0	Go-through;Shantay pass;41326					3	
+3196 2842 0	3193 2842 0	Go-through;Shantay pass;41326					3	
+3167 2819 0	3167 2816 0	Go-through;Shantay pass;41326		1 Shantay pass			3	
+3168 2819 0	3168 2816 0	Go-through;Shantay pass;41326		1 Shantay pass			3	
+3167 2816 0	3167 2819 0	Go-through;Shantay pass;41326					3	
+3168 2816 0	3168 2819 0	Go-through;Shantay pass;41326					3	
 3322 3138 0	3322 3138 1	Climb-up;Ladder;21781						
 3322 3138 1	3322 3138 0	Climb-down;Ladder;21782						
 3312 3184 0	3314 3185 1	Climb-up;Staircase;16671						

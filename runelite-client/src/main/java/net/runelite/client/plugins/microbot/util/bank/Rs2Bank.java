@@ -1439,11 +1439,8 @@ public class Rs2Bank {
             Microbot.log("Unable to enter bankpin with value " + pin);
             return false;
         }
-        Widget bankPinWidget = Rs2Widget.getWidget(ComponentID.BANK_PIN_CONTAINER);
 
-        boolean isBankPinVisible = Microbot.getClientThread().runOnClientThread(() -> bankPinWidget != null && !bankPinWidget.isHidden());
-
-        if (isBankPinVisible) {
+        if (isBankPinWidgetVisible()) {
             for (int i = 0; i < pin.length(); i++){
                 char c = pin.charAt(i);
                 Rs2Widget.clickWidget(String.valueOf(c), Optional.of(213), 0, true);
@@ -1452,6 +1449,10 @@ public class Rs2Bank {
             return true;
         }
         return false;
+    }
+    
+    public static boolean isBankPinWidgetVisible() {
+        return Rs2Widget.isWidgetVisible(ComponentID.BANK_PIN_CONTAINER);
     }
 
     /**

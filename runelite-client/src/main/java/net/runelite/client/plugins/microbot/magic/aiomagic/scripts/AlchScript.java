@@ -14,6 +14,7 @@ import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
+import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Staff;
 import net.runelite.client.plugins.microbot.util.magic.Runes;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
@@ -21,6 +22,7 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 import javax.inject.Inject;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class AlchScript extends Script {
@@ -164,13 +166,31 @@ public class AlchScript extends Script {
     }
 
     private MagicState updateState() {
-        if (state == null) return MagicState.BANKING;
+        if (state == null) {
+            if (hasRequiredItems()) {
+                return MagicState.CASTING;
+            } else {
+                return MagicState.BANKING;
+            }
+        }
         if (state == MagicState.BANKING && hasRequiredItems()) return MagicState.CASTING;
         if (state == MagicState.CASTING && !hasRequiredItems()) return MagicState.BANKING;
         return null;
     }
 
     private boolean hasRequiredItems() {
-        return Rs2Inventory.hasItem(plugin.getAlchItemNames());
+        return Rs2Inventory.hasItem(plugin.getAlchItemNames()) && getRequiredAlchRunes(getAlchCastAmount()).isEmpty();
+    }
+
+    private Map<Runes, Integer> getRequiredAlchRunes(int casts) {
+        Rs2Spells alchSpell = Rs2Player.getRealSkillLevel(Skill.MAGIC) >= 55 ? Rs2Spells.HIGH_LEVEL_ALCHEMY : Rs2Spells.LOW_LEVEL_ALCHEMY;
+        return Rs2Magic.getRequiredRunes(alchSpell, plugin.getStaff(), casts, false);
+    }
+
+    private int getAlchCastAmount() {
+        return Rs2Inventory.items().stream()
+                .filter(item -> plugin.getAlchItemNames().contains(item.getName().toLowerCase()))
+                .mapToInt(Rs2Item::getQuantity)
+                .sum();
     }
 }
