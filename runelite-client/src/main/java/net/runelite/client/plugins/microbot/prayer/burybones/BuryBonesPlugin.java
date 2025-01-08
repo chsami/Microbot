@@ -6,6 +6,8 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.microbot.prayer.burybones.enums.Activity;
+import net.runelite.client.plugins.microbot.util.prayer.Rs2Ashes;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2Bones;
 import javax.inject.Inject;
 import java.awt.*;
@@ -29,7 +31,11 @@ public class BuryBonesPlugin extends Plugin {
     }
 
     @Getter
+    private Activity activity;
+    @Getter
     private Rs2Bones bones;
+    @Getter
+    private Rs2Ashes ashes;
     @Getter
     private boolean afk;
     @Getter
@@ -39,7 +45,9 @@ public class BuryBonesPlugin extends Plugin {
 
     @Override
     protected void startUp() throws AWTException {
+        activity = config.activity();
         bones = config.bones();
+        ashes = config.ashes();
         afk = config.Afk();
         afkMin = config.AfkMin();
         afkMax = config.AfkMax();
@@ -57,8 +65,16 @@ public class BuryBonesPlugin extends Plugin {
             return;
         }
 
+        if (event.getKey().equals(BuryBonesConfig.activityKeyName)) {
+            activity = config.activity();
+        }
+
         if (event.getKey().equals(BuryBonesConfig.bonesKeyName)) {
             bones = config.bones();
+        }
+
+        if (event.getKey().equals(BuryBonesConfig.ashesKeyName)) {
+            ashes = config.ashes();
         }
 
         if (event.getKey().equals(BuryBonesConfig.afkKeyName)) {

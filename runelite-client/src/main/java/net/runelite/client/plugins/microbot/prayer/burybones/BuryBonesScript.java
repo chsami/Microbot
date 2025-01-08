@@ -59,6 +59,9 @@ public class BuryBonesScript extends Script {
                     case BURYING_BONES:
                         handleBuryingBones();
                         break;
+                    case SCATTERING_ASHES:
+                        handleScatteringAshes();
+                        break;
                 }
 
                 long endTime = System.currentTimeMillis();
@@ -76,13 +79,29 @@ public class BuryBonesScript extends Script {
         boolean isBankOpen = Rs2Bank.isNearBank(15) ? Rs2Bank.useBank() : Rs2Bank.walkToBankAndUseBank();
         if (!isBankOpen || !Rs2Bank.isOpen()) return;
 
-        if (!Rs2Bank.hasItem(plugin.getBones().getItemID())) {
-            Microbot.showMessage("Bones not found in bank!");
-            shutdown();
-            return;
+        net.runelite.client.plugins.microbot.prayer.burybones.enums.Activity activity = plugin.getActivity();
+
+        switch (activity) {
+            case BURY:
+                if (!Rs2Bank.hasItem(plugin.getBones().getItemID())) {
+                    Microbot.showMessage("Bones not found in bank!");
+                    shutdown();
+                    return;
+                }
+
+                Rs2Bank.withdrawAll(plugin.getBones().getItemID());
+                break;
+            case SCATTER:
+                if (!Rs2Bank.hasItem(plugin.getAshes().getItemID())) {
+                    Microbot.showMessage("Ashes not found in bank!");
+                    shutdown();
+                    return;
+                }
+
+                Rs2Bank.withdrawAll(plugin.getAshes().getItemID());
+                break;
         }
 
-        Rs2Bank.withdrawAll(plugin.getBones().getItemID());
         Rs2Bank.closeBank();
 
         sleepUntil(() -> !Rs2Bank.isOpen());
@@ -98,16 +117,34 @@ public class BuryBonesScript extends Script {
         Rs2Player.waitForXpDrop(Skill.PRAYER, 10000, false);
     }
 
+    private void handleScatteringAshes() {
+        if (!hasAshes()) {
+            state = State.BANKING;
+            return;
+        }
+
+        Rs2Inventory.interact(plugin.getAshes().getItemID(), "Scatter");
+        Rs2Player.waitForXpDrop(Skill.PRAYER, 10000, false);
+    }
+
+    private boolean hasBones() {
+        return Rs2Inventory.hasItem(plugin.getBones().getItemID());
+    }
+
+    private boolean hasAshes() {
+        return Rs2Inventory.hasItem(plugin.getAshes().getItemID());
+    }
+
     private State updateState() {
         if (hasBones()) {
             return State.BURYING_BONES;
         }
 
-        return State.BANKING;
-    }
+        if (hasAshes()) {
+            return State.SCATTERING_ASHES;
+        }
 
-    private boolean hasBones() {
-        return Rs2Inventory.hasItem(plugin.getBones().getItemID());
+        return State.BANKING;
     }
 
     @Override
