@@ -374,16 +374,18 @@ public class BanksBankStanderScript extends Script {
                     fourthItemSum = fourthItemId != null ? (Rs2Bank.bankItems.stream().filter(item -> item.id == fourthItemId).mapToInt(item -> item.quantity).sum() + Rs2Inventory.count(fourthItemId)) : (Rs2Bank.count(fourthItemIdentifier) + Rs2Inventory.count(fourthItemIdentifier));
                 }
                 long bankCloseTime = System.currentTimeMillis();
-                while (this.isRunning() &&  Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getWidget(786434))!=null
+                while (this.isRunning() && isBankOpen()
                         && (System.currentTimeMillis() - bankCloseTime < 1800)) {
                     //switched our close bank method because searching for a widget by the contained text appears to be significantly slower.
                     Rs2Widget.clickChildWidget(786434, 11);
                     timeValue = System.currentTimeMillis();
-                    sleep = sleepUntilTrue(() -> Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getWidget(786434))==null, Rs2Random.between(60, 97), 600);
+                    sleep = false;
+                    sleep = sleepUntilTrue(() -> !isBankOpen(), Rs2Random.between(60, 97), 600);
                 }
                 randomNum = calculateSleepDuration()-10;
                 if (System.currentTimeMillis()-timeValue<randomNum) { sleep((int) (randomNum-(System.currentTimeMillis()-timeValue))); } else { sleep(Rs2Random.between(14, 28)); }
-                if (Rs2Bank.isOpen()) {
+                //to make our code easier to read, and remove a redundant check.
+                if (!sleep) {
                     sleep(calculateSleepDuration());
                     if (this.isRunning()) { Rs2Player.logout(); }
                     sleep(calculateSleepDuration());
@@ -394,7 +396,9 @@ public class BanksBankStanderScript extends Script {
         }
         return "";
     }
-
+    private boolean isBankOpen(){
+        if (Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getWidget(786434))!=null) { return true; } else { return false; }
+    }
     private boolean combineItems() {
         if (!hasItems()) {
             String missingItem = fetchItems();
