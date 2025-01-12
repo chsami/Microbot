@@ -374,12 +374,12 @@ public class BanksBankStanderScript extends Script {
                     fourthItemSum = fourthItemId != null ? (Rs2Bank.bankItems.stream().filter(item -> item.id == fourthItemId).mapToInt(item -> item.quantity).sum() + Rs2Inventory.count(fourthItemId)) : (Rs2Bank.count(fourthItemIdentifier) + Rs2Inventory.count(fourthItemIdentifier));
                 }
                 long bankCloseTime = System.currentTimeMillis();
-                while (this.isRunning() && isBankOpen()
+                sleep = false;
+                while (this.isRunning() && !sleep
                         && (System.currentTimeMillis() - bankCloseTime < 1800)) {
                     //switched our close bank method because searching for a widget by the contained text appears to be significantly slower.
                     Rs2Widget.clickChildWidget(786434, 11);
                     timeValue = System.currentTimeMillis();
-                    sleep = false;
                     sleep = sleepUntilTrue(() -> !isBankOpen(), Rs2Random.between(60, 97), 600);
                 }
                 randomNum = calculateSleepDuration()-10;
