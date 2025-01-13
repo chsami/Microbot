@@ -2,12 +2,15 @@ package net.runelite.client.plugins.microbot.bankjs.BanksBankStander;
 
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.GameState;
+import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
 import net.runelite.client.ui.overlay.OverlayManager;
@@ -126,6 +129,12 @@ public class BanksBankStanderPlugin extends Plugin {
             if(BanksBankStanderScript.isWaitingForPrompt) {
                 BanksBankStanderScript.isWaitingForPrompt = false;
             }
+        }
+    }
+    @Subscribe
+    public void onGameStateChanged(GameStateChanged gameStateChanged) {
+        if (gameStateChanged.getGameState() == GameState.HOPPING || gameStateChanged.getGameState() == GameState.LOGIN_SCREEN || gameStateChanged.getGameState() == GameState.CONNECTION_LOST) {
+            BanksBankStanderScript.setConfirmedPIN(false);
         }
     }
     //*/ Added by Storm
