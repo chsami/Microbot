@@ -16,6 +16,7 @@ import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
+import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.coords.Rs2LocalPoint;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldArea;
@@ -26,10 +27,8 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
-import net.runelite.client.plugins.microbot.util.math.Random;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
-import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.player.Rs2Pvp;
@@ -42,7 +41,6 @@ import net.runelite.client.ui.overlay.worldmap.WorldMapPoint;
 import java.awt.*;
 import java.util.List;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.stream.Collectors;
@@ -484,7 +482,14 @@ public class Rs2Walker {
 
     public static boolean walkFastCanvas(WorldPoint worldPoint, boolean toggleRun) {
 
-        Rs2Player.toggleRunEnergy(toggleRun);
+        if (Rs2Walker.config.runToBanks()) {
+            Rs2Player.toggleRunEnergy(toggleRun);
+        }
+        else if (isNearBank(Rs2Player.getWorldLocation(), 10))
+        {
+            Rs2Player.toggleRunEnergy(false);
+        }
+
         Point canv;
         LocalPoint localPoint = LocalPoint.fromWorld(Microbot.getClient(), worldPoint);
 
@@ -524,6 +529,15 @@ public class Rs2Walker {
         Microbot.getMouse().click(point);
 
         return worldPoint;
+    }
+
+    private static boolean isNearBank(WorldPoint playerLocation, int radius) {
+        for (BankLocation bank : BankLocation.values()) {
+            if (playerLocation.distanceTo(bank.getWorldPoint()) <= radius) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // takes an avg 200-300 ms
