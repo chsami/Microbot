@@ -284,7 +284,7 @@ public interface ShortestPathConfig extends Config {
             position = 22,
             section = sectionSettings
     )
-    static boolean runToBanks() {
+    default boolean runToBanks() {
         return true;
     }
 

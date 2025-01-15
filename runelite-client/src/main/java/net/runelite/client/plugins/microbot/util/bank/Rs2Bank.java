@@ -10,7 +10,6 @@ import net.runelite.client.plugins.bank.BankPlugin;
 import net.runelite.client.plugins.loottracker.LootTrackerItem;
 import net.runelite.client.plugins.loottracker.LootTrackerRecord;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.shortestpath.ShortestPathConfig;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
@@ -48,13 +47,6 @@ import static net.runelite.client.plugins.microbot.util.npc.Rs2Npc.hoverOverActo
 @SuppressWarnings("unused")
 @Slf4j
 public class Rs2Bank {
-
-    private ShortestPathConfig config; // Declare config without @Inject
-
-    // Assuming you can initialize the config directly, e.g., in the constructor
-    public Rs2Bank(ShortestPathConfig config) {
-        this.config = config;
-    }
 
     public static final int BANK_ITEM_WIDTH = 36;
     public static final int BANK_ITEM_HEIGHT = 32;
@@ -1367,7 +1359,7 @@ public class Rs2Bank {
      */
     public static boolean walkToBank(BankLocation bankLocation) {
         if (Rs2Bank.isOpen()) return true;
-        if(ShortestPathConfig.runToBanks()){Rs2Player.toggleRunEnergy(true);}
+        if(Rs2Walker.config.runToBanks()){Rs2Player.toggleRunEnergy(true);}
         Microbot.status = "Walking to nearest bank " + bankLocation.toString();
         Rs2Walker.walkTo(bankLocation.getWorldPoint(), 4);
         return bankLocation.getWorldPoint().distanceTo2D(Microbot.getClient().getLocalPlayer().getWorldLocation()) <= 4;
@@ -1412,7 +1404,7 @@ public class Rs2Bank {
      */
     public static boolean walkToBankAndUseBank(BankLocation bankLocation) {
         if (Rs2Bank.isOpen()) return true;
-        if(ShortestPathConfig.runToBanks()){Rs2Player.toggleRunEnergy(true);}
+        if(Rs2Walker.config.runToBanks()){Rs2Player.toggleRunEnergy(true);}
         Microbot.status = "Walking to nearest bank " + bankLocation.toString();
         boolean result = bankLocation.getWorldPoint().distanceTo(Microbot.getClient().getLocalPlayer().getWorldLocation()) <= 8;
         if (result) {
