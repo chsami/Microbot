@@ -485,7 +485,7 @@ public class Rs2Walker {
         if (Rs2Walker.config.runToBanks()) {
             Rs2Player.toggleRunEnergy(toggleRun);
         }
-        else if (isNearBank(Rs2Player.getWorldLocation(), 10))
+        else if (Rs2Bank.isNearBank(10))
         {
             Rs2Player.toggleRunEnergy(false);
         }
@@ -529,15 +529,6 @@ public class Rs2Walker {
         Microbot.getMouse().click(point);
 
         return worldPoint;
-    }
-
-    private static boolean isNearBank(WorldPoint playerLocation, int radius) {
-        for (BankLocation bank : BankLocation.values()) {
-            if (playerLocation.distanceTo(bank.getWorldPoint()) <= radius) {
-                return true;
-            }
-        }
-        return false;
     }
 
     // takes an avg 200-300 ms
