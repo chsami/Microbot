@@ -59,7 +59,7 @@ public class SuperHeatScript extends Script {
                     shutdown();
                     return;
                 }
-                
+
                 if (!plugin.getSuperHeatItem().hasRequiredLevel()) {
                     Microbot.showMessage("You do not have the required level for this item");
                     shutdown();
@@ -163,18 +163,22 @@ public class SuperHeatScript extends Script {
     private boolean hasStateChanged() {
         if (state == null) return true;
         if (state == MagicState.BANKING && hasRequiredItems()) return true;
-        return state == MagicState.CASTING && !hasRequiredItems();
+        if (state == MagicState.CASTING && !hasRequiredItems()) return true;
+        return false;
     }
 
     private MagicState updateState() {
-        if (state == null) return MagicState.BANKING;
+        if (state == null) return hasRequiredItems() ? MagicState.CASTING : MagicState.BANKING;
         if (state == MagicState.BANKING && hasRequiredItems()) return MagicState.CASTING;
         if (state == MagicState.CASTING && !hasRequiredItems()) return MagicState.BANKING;
         return null;
     }
 
     private boolean hasRequiredItems() {
-        return Rs2Inventory.hasItem(plugin.getSuperHeatItem().getItemID()) && Rs2Inventory.hasItemAmount(ItemID.COAL, plugin.getSuperHeatItem().getCoalAmount());
+        if (plugin.getSuperHeatItem().getCoalAmount() > 0) {
+            return Rs2Inventory.hasItem(plugin.getSuperHeatItem().getItemID()) && Rs2Inventory.hasItemAmount(ItemID.COAL, plugin.getSuperHeatItem().getCoalAmount());
+        }
+        return Rs2Inventory.hasItem(plugin.getSuperHeatItem().getItemID());
     }
 
     /**

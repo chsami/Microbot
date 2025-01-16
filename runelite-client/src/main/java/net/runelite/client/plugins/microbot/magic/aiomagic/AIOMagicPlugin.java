@@ -5,6 +5,7 @@ import lombok.Getter;
 import net.runelite.api.GraphicID;
 import net.runelite.api.NPC;
 import net.runelite.api.Player;
+import net.runelite.api.Skill;
 import net.runelite.api.events.GraphicChanged;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -17,7 +18,9 @@ import net.runelite.client.plugins.microbot.magic.aiomagic.enums.SuperHeatItem;
 import net.runelite.client.plugins.microbot.magic.aiomagic.enums.TeleportSpell;
 import net.runelite.client.plugins.microbot.magic.aiomagic.scripts.*;
 import net.runelite.client.plugins.microbot.util.magic.Rs2CombatSpells;
+import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Staff;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -58,7 +61,7 @@ public class AIOMagicPlugin extends Plugin {
 	@Inject
 	private TeleAlchScript teleAlchScript;
 
-	public static String version = "1.0.0";
+	public static String version = "1.1.0";
 	
 	@Getter
 	private Rs2CombatSpells combatSpell;
@@ -160,6 +163,10 @@ public class AIOMagicPlugin extends Plugin {
 			if (event.getActor().getGraphic() == GraphicID.SPLASH && player.getInteracting().equals(npc)) {
 			}
 		}
+	}
+	
+	public Rs2Spells getAlchSpell() {
+		return Rs2Player.getRealSkillLevel(Skill.MAGIC) >= 55 ? Rs2Spells.HIGH_LEVEL_ALCHEMY : Rs2Spells.LOW_LEVEL_ALCHEMY;
 	}
 
 	private List<String> updateItemList(String items) {

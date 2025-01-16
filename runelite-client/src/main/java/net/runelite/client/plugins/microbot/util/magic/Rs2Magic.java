@@ -626,6 +626,55 @@ public class Rs2Magic {
 
         return requiredRunes;
     }
+
+    /**
+     * Checks if the player has the required runes to cast a specified spell.
+     *
+     * @param spell          The spell to cast, represented as an {@link Rs2Spells} enum.
+     * @param checkRunePouch A boolean indicating whether to include runes from the rune pouch in the check.
+     * @return true if all required runes (including staff-provided runes) are available; false otherwise.
+     */
+    public static boolean hasRequiredRunes(Rs2Spells spell, boolean checkRunePouch) {
+        // Get the required runes for the spell
+        Map<Runes, Integer> requiredRunes = new HashMap<>(spell.getRequiredRunes());
+        
+        Rs2Staff equippedStaff = getRs2Staff(Rs2Equipment.get(EquipmentInventorySlot.WEAPON).getId());
+        if (equippedStaff != null) {
+            for (Runes providedRune : equippedStaff.getRunes()) {
+                requiredRunes.remove(providedRune);
+            }
+        }
+
+        // Collect available runes from inventory
+        Map<Runes, Integer> availableRunes = new HashMap<>();
+        for (Rs2Item item : Rs2Inventory.items()) {
+            Arrays.stream(Runes.values())
+                    .filter(rune -> rune.getItemId() == item.getId())
+                    .findFirst()
+                    .ifPresent(rune -> availableRunes.merge(rune, item.getQuantity(), Integer::sum));
+        }
+
+        // Optionally include runes from the rune pouch
+        if (checkRunePouch) {
+            RunePouch.getRunes().forEach((runeId, quantity) -> {
+                Arrays.stream(Runes.values())
+                        .filter(rune -> rune.getItemId() == runeId)
+                        .findFirst()
+                        .ifPresent(rune -> availableRunes.merge(rune, quantity, Integer::sum));
+            });
+        }
+
+        // Check if all required runes are available
+        for (Map.Entry<Runes, Integer> entry : requiredRunes.entrySet()) {
+            int requiredAmount = entry.getValue();
+            int availableAmount = availableRunes.getOrDefault(entry.getKey(), 0);
+            if (availableAmount < requiredAmount) {
+                return false; // Not enough of the required rune
+            }
+        }
+
+        return true; // All required runes are available
+    }
     
     //DATA
 

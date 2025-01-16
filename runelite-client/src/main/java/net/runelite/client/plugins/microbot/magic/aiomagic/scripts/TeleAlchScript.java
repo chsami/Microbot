@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.magic.aiomagic.scripts;
 
+import net.runelite.api.ItemID;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
@@ -15,9 +16,11 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
 import net.runelite.client.plugins.microbot.util.magic.Runes;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 import javax.inject.Inject;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -25,6 +28,7 @@ public class TeleAlchScript extends Script {
 
     private MagicState state;
     private final AIOMagicPlugin plugin;
+    private boolean initialSwap = false;
 
     @Inject
     public TeleAlchScript(AIOMagicPlugin plugin) {
@@ -71,43 +75,60 @@ public class TeleAlchScript extends Script {
                             Rs2Bank.withdrawAndEquip(plugin.getStaff().getItemID());
                         }
 
-                        Map<Runes, Integer> requiredTeleportRunes = getRequiredTeleportRunes(plugin.getTotalCasts());
+                        if (!Rs2Magic.hasRequiredRunes(plugin.getTeleportSpell().getRs2Spell(), false)) {
+                            Map<Runes, Integer> requiredTeleportRunes = new HashMap<>(plugin.getTeleportSpell().getRs2Spell().getRequiredRunes());
 
-                        requiredTeleportRunes.forEach((rune, quantity) -> {
-                            if (!isRunning()) return;
-                            int itemID = rune.getItemId();
-                            
-                            if (!Rs2Bank.hasBankItem(itemID, quantity)) {
-                                Microbot.showMessage("Missing Runes");
+                            requiredTeleportRunes.forEach((rune, quantity) -> {
+                                if (!isRunning()) return;
+                                int itemID = rune.getItemId();
+
+                                if (!Rs2Bank.hasItem(itemID)) {
+                                    Microbot.showMessage("Missing Runes");
+                                    shutdown();
+                                    return;
+                                }
+
+                                if (!Rs2Bank.withdrawAll(itemID)) {
+                                    Microbot.log("Failed to withdraw " + rune.name());
+                                }
+
+                                Rs2Inventory.waitForInventoryChanges(1200);
+                            });
+                        }
+
+                        if (!Rs2Magic.hasRequiredRunes(plugin.getAlchSpell(), false)) {
+                            if (!Rs2Inventory.hasItem(ItemID.NATURE_RUNE)) {
+                                if (!Rs2Bank.hasItem(ItemID.NATURE_RUNE)) {
+                                    Microbot.showMessage("Nature Runes not found");
+                                    shutdown();
+                                    return;
+                                }
+
+                                Rs2Bank.withdrawAll(ItemID.NATURE_RUNE);
+                                Rs2Inventory.waitForInventoryChanges(1200);
+                            }
+
+                            if (plugin.getAlchItemNames().stream()
+                                    .noneMatch(itemName -> Rs2Bank.hasItem(itemName) || Rs2Inventory.hasItem(itemName))) {
+                                Microbot.showMessage("No Alch Items Found");
                                 shutdown();
                                 return;
                             }
 
-                            if (!Rs2Bank.withdrawX(itemID, quantity)) {
-                                Microbot.log("Failed to withdraw " + quantity + " of " + rune.name());
-                            }
-                            Rs2Inventory.waitForInventoryChanges(1200);
-                        });
+                            plugin.getAlchItemNames().forEach((itemName) -> {
+                                if (!isRunning()) return;
+                                Rs2Item rs2Item = Rs2Bank.getBankItem(itemName);
 
-                        Rs2Bank.setWithdrawAsNote();
-                        plugin.getAlchItemNames().forEach((itemName) -> {
-                            if (!isRunning()) return;
-                            Rs2Bank.withdrawAll(itemName);
-                            
-                            Rs2Inventory.waitForInventoryChanges(1200);
-                        });
-                        Rs2Bank.setWithdrawAsItem();
+                                if (!rs2Item.isStackable() && Rs2Bank.hasWithdrawAsItem()) {
+                                    Rs2Bank.setWithdrawAsNote();
+                                } else if (rs2Item.isStackable() && Rs2Bank.hasWithdrawAsNote()) {
+                                    Rs2Bank.setWithdrawAsItem();
+                                }
 
-                        int totalAlchCasts = getAlchCastAmount();
-
-                        Map<Runes, Integer> requiredAlchRunes = getRequiredAlchRunes(totalAlchCasts);
-                        requiredAlchRunes.forEach((rune, quantity) -> {
-                            if (!isRunning()) return;
-                            int itemID = rune.getItemId();
-                            if (!Rs2Bank.withdrawX(itemID, quantity)) {
-                                Microbot.log("Failed to withdraw " + quantity + " of " + rune.name());
-                            }
-                        });
+                                Rs2Bank.withdrawAll(itemName);
+                                Rs2Inventory.waitForInventoryChanges(1200);
+                            });
+                        }
 
                         Rs2Bank.closeBank();
                         sleepUntil(() -> !Rs2Bank.isOpen());
@@ -120,6 +141,18 @@ public class TeleAlchScript extends Script {
 
                         Rs2Item alchItem = Rs2Inventory.get(plugin.getAlchItemNames().get(0));
                         int inventorySlot = Rs2Player.getRealSkillLevel(Skill.MAGIC) >= 55 ? 11 : 4;
+
+                        if (!initialSwap && Rs2Inventory.getItemInSlot(inventorySlot) == null) {
+                            Rs2Item natureRunes = Rs2Inventory.get(ItemID.NATURE_RUNE);
+                            if (Rs2Random.dicePercentage(0.5)) {
+                                Rs2Inventory.moveItemToSlot(natureRunes, alchItem.getSlot());
+                            } else {
+                                Rs2Inventory.moveItemToSlot(alchItem, natureRunes.getSlot());
+                            }
+                            initialSwap = true;
+                            return;
+                        }
+
                         if (alchItem.getSlot() != inventorySlot) {
                             Rs2Inventory.moveItemToSlot(alchItem, inventorySlot);
                             return;
@@ -147,42 +180,26 @@ public class TeleAlchScript extends Script {
     @Override
     public void shutdown() {
         Rs2Antiban.resetAntibanSettings();
+        initialSwap = false;
         super.shutdown();
     }
 
     private boolean hasStateChanged() {
         if (state == null) return true;
-        if (!getRequiredTeleportRunes(1).isEmpty() || !getRequiredAlchRunes(1).isEmpty()) return true;
-        return state == MagicState.BANKING && (getRequiredTeleportRunes(plugin.getTotalCasts()).isEmpty() && getRequiredAlchRunes(getAlchCastAmount()).isEmpty());
+        if (state == MagicState.CASTING && (!Rs2Magic.hasRequiredRunes(plugin.getTeleportSpell().getRs2Spell(), false)
+                || !Rs2Magic.hasRequiredRunes(plugin.getAlchSpell(), false))) return true;
+        if (state == MagicState.BANKING && (Rs2Magic.hasRequiredRunes(plugin.getTeleportSpell().getRs2Spell(), false)
+                && Rs2Magic.hasRequiredRunes(plugin.getAlchSpell(), false))) return true;
+        return false;
     }
 
     private MagicState updateState() {
-        if (state == null) {
-            if (!getRequiredTeleportRunes(1).isEmpty() || !getRequiredAlchRunes(getAlchCastAmount()).isEmpty()) {
-                return MagicState.BANKING;
-            } else {
-                return MagicState.CASTING;
-            }
-        }
-        if (!getRequiredTeleportRunes(1).isEmpty() || !getRequiredAlchRunes(1).isEmpty()) return MagicState.BANKING;
-        if (state == MagicState.BANKING && (getRequiredTeleportRunes(plugin.getTotalCasts()).isEmpty() && getRequiredAlchRunes(getAlchCastAmount()).isEmpty()))
-            return MagicState.CASTING;
+        if (state == null) return Rs2Magic.hasRequiredRunes(plugin.getTeleportSpell().getRs2Spell(), false)
+                && Rs2Magic.hasRequiredRunes(plugin.getAlchSpell(), false) ? MagicState.CASTING : MagicState.BANKING;
+        if (state == MagicState.CASTING && (!Rs2Magic.hasRequiredRunes(plugin.getTeleportSpell().getRs2Spell(), false)
+                || !Rs2Magic.hasRequiredRunes(plugin.getAlchSpell(), false))) return MagicState.BANKING;
+        if (state == MagicState.BANKING && (Rs2Magic.hasRequiredRunes(plugin.getTeleportSpell().getRs2Spell(), false)
+                && Rs2Magic.hasRequiredRunes(plugin.getAlchSpell(), false))) return MagicState.CASTING;
         return null;
-    }
-
-    private Map<Runes, Integer> getRequiredTeleportRunes(int casts) {
-        return Rs2Magic.getRequiredRunes(plugin.getTeleportSpell().getRs2Spell(), plugin.getStaff(), casts, false);
-    }
-
-    private Map<Runes, Integer> getRequiredAlchRunes(int casts) {
-        Rs2Spells alchSpell = Rs2Player.getRealSkillLevel(Skill.MAGIC) >= 55 ? Rs2Spells.HIGH_LEVEL_ALCHEMY : Rs2Spells.LOW_LEVEL_ALCHEMY;
-        return Rs2Magic.getRequiredRunes(alchSpell, plugin.getStaff(), casts, false);
-    }
-
-    private int getAlchCastAmount() {
-        return Rs2Inventory.items().stream()
-                .filter(item -> plugin.getAlchItemNames().contains(item.getName().toLowerCase()))
-                .mapToInt(Rs2Item::getQuantity)
-                .sum();
     }
 }
