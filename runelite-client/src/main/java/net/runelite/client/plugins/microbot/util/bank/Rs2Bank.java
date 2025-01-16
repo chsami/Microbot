@@ -1710,6 +1710,45 @@ public class Rs2Bank {
     }
 
     /**
+     * Retrieves an Rs2Item from the bank based on the specified item ID.
+     *
+     * @param itemId the ID of the item to search for.
+     * @return the Rs2Item matching the item ID, or null if not found.
+     */
+    public static Rs2Item getBankItem(int itemId) {
+        return bankItems().stream()
+                .filter(item -> item.getId() == itemId)
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * Retrieves an Rs2Item from the bank based on the specified item name.
+     *
+     * @param itemName the name of the item to search for.
+     * @param exact whether to search for an exact match (true) or a partial match (false).
+     * @return the Rs2Item matching the item name, or null if not found.
+     */
+    public static Rs2Item getBankItem(String itemName, boolean exact) {
+        return bankItems.stream()
+                .filter(item -> exact
+                        ? item.getName().equalsIgnoreCase(itemName)
+                        : item.getName().toLowerCase().contains(itemName.toLowerCase()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * Retrieves an Rs2Item from the bank based on a partial match of the specified item name.
+     *
+     * @param itemName the name of the item to search for.
+     * @return the Rs2Item matching the item name (partial match), or null if not found.
+     */
+    public static Rs2Item getBankItem(String itemName) {
+        return getBankItem(itemName, false);
+    }
+
+    /**
      * Retrieves the list of bank tab widgets.
      * <p>
      * This method runs on the client thread to fetch the bank tab container widget
