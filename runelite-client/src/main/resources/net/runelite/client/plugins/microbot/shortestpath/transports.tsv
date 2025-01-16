@@ -1638,15 +1638,15 @@
 2418 3416 0	2418 3416 1	Climb-up;Staircase;16675						
 2420 3417 0	2418 3416 1	Climb-up;Staircase;16675						
 2420 3418 0	2418 3416 1	Climb-up;Staircase;16675						
-2443 3415 0	2445 3416 1	Climb-up;Staircase;16675						
+2443 3415 0	2445 3416 1	Climb-up;Staircase;16675					10	
 2445 3416 1	2446 3415 0	Climb-down;Staircase;16677						
-2446 3415 0	2445 3416 1	Climb-up;Staircase;16675						
-2446 3414 0	2445 3416 1	Climb-up;Staircase;16675						
-2445 3413 0	2445 3416 1	Climb-up;Staircase;16675						
-2444 3413 0	2445 3416 1	Climb-up;Staircase;16675						
-2443 3414 0	2445 3416 1	Climb-up;Staircase;16675						
-2445 3416 0	2445 3416 1	Climb-up;Staircase;16675						
-2444 3416 0	2445 3416 1	Climb-up;Staircase;16675						
+2446 3415 0	2445 3416 1	Climb-up;Staircase;16675					10	
+2446 3414 0	2445 3416 1	Climb-up;Staircase;16675					10	
+2445 3413 0	2445 3416 1	Climb-up;Staircase;16675					10	
+2444 3413 0	2445 3416 1	Climb-up;Staircase;16675					10	
+2443 3414 0	2445 3416 1	Climb-up;Staircase;16675					10	
+2445 3416 0	2445 3416 1	Climb-up;Staircase;16675					10	
+2444 3416 0	2445 3416 1	Climb-up;Staircase;16675					10	
 2445 3433 1	2444 3434 0	Climb-down;Staircase;16677						
 2444 3434 0	2445 3433 1	Climb-up;Staircase;16675					10	
 2444 3435 0	2445 3433 1	Climb-up;Staircase;16675					10	
@@ -4140,11 +4140,11 @@
 2696 5277 1	2488 5536 0	Enter;Doorway;23052						
 								
 # Slayer Cave								
-2796 3616 0	2808 10002 0	Enter;Cave Entrance;2123						
-2808 10002 0	2796 3615 0	Enter;Tunnel;2141						
-2796 3615 0	2808 10002 0	Enter;Cave Entrance;2123						
-2808 10003 0	2796 3615 0	Enter;Tunnel;2141						
-2796 3614 0	2808 10002 0	Enter;Cave Entrance;2123						
+2796 3616 0	2808 10002 0	Enter;Cave Entrance;2123					1	
+2808 10002 0	2796 3615 0	Enter;Tunnel;2141					1	
+2796 3615 0	2808 10002 0	Enter;Cave Entrance;2123					1	
+2808 10003 0	2796 3615 0	Enter;Tunnel;2141					1	
+2796 3614 0	2808 10002 0	Enter;Cave Entrance;2123					1	
 2808 10001 0	2796 3615 0	Enter;Tunnel;2141						
 2703 9991 0	2703 9989 0	Climb;Steps;29993						
 2703 9989 0	2703 9991 0	Climb;Steps;29993						
