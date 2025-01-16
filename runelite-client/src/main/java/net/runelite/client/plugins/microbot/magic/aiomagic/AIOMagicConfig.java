@@ -21,7 +21,6 @@ public interface AIOMagicConfig extends Config {
 	String npcName = "npcName";
 	String staff = "staff";
 	String teleportSpell = "teleportSpell";
-	String castAmount = "castAmount";
 
 	@ConfigSection(
 			name = "General Settings",
@@ -133,16 +132,5 @@ public interface AIOMagicConfig extends Config {
 	)
 	default Rs2Staff staff() {
 		return Rs2Staff.STAFF_OF_AIR;
-	}
-
-	@ConfigItem(
-			keyName = castAmount,
-			name = "Total amount of casts",
-			description = "Define the amount of teleport casts",
-			position = 2,
-			section = teleportSection
-	)
-	default int castAmount() {
-		return 1000;
 	}
 }

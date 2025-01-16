@@ -75,8 +75,6 @@ public class AIOMagicPlugin extends Plugin {
 	private TeleportSpell teleportSpell;
 	@Getter
 	private Rs2Staff staff;
-	@Getter
-	private int totalCasts;
 	
 	@Override
 	protected void startUp() throws AWTException {
@@ -86,7 +84,6 @@ public class AIOMagicPlugin extends Plugin {
 		npcName = config.npcName();
 		teleportSpell = config.teleportSpell();
 		staff = config.staff();
-		totalCasts = config.castAmount();
 
 		if (overlayManager != null) {
 			overlayManager.add(aioMagicOverlay);
@@ -145,10 +142,6 @@ public class AIOMagicPlugin extends Plugin {
 
 		if (event.getKey().equals(AIOMagicConfig.staff)) {
 			staff = config.staff();
-		}
-
-		if (event.getKey().equals(AIOMagicConfig.castAmount)) {
-			totalCasts = config.castAmount();
 		}
 	}
 	
