@@ -277,6 +277,18 @@ public interface ShortestPathConfig extends Config {
         return 1;
     }
 
+    @ConfigItem(
+            keyName = "runToBanks",
+            name = "Activate Run When Banking",
+            description = "Toggle run to on if it's off when banking",
+            position = 22,
+            section = sectionSettings
+    )
+    default boolean runToBanks() {
+        return true;
+    }
+
+
     @Units(
             value = Units.TICKS
     )
