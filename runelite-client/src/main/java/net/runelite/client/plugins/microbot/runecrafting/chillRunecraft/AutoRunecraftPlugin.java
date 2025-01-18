@@ -19,21 +19,21 @@ import java.awt.*;
         enabledByDefault = false
 )
 @Slf4j
-public class RunecraftPlugin extends Plugin {
+public class AutoRunecraftPlugin extends Plugin {
     @Inject
-    private RunecraftConfig config;
+    private AutoRunecraftConfig config;
     @Provides
-    RunecraftConfig provideConfig(ConfigManager configManager) {
-        return configManager.getConfig(RunecraftConfig.class);
+    AutoRunecraftConfig provideConfig(ConfigManager configManager) {
+        return configManager.getConfig(AutoRunecraftConfig.class);
     }
 
     @Inject
     private OverlayManager overlayManager;
     @Inject
-    private RunecraftOverlay runecraftOverlay;
+    private AutoRunecraftOverlay autoRunecraftOverlay;
 
     @Inject
-    RunecraftScript runecraftScript;
+    AutoRunecraftScript autoRunecraftScript;
 
 
     @Override
@@ -41,15 +41,15 @@ public class RunecraftPlugin extends Plugin {
     {
         if (overlayManager != null)
         {
-            overlayManager.add(runecraftOverlay);
+            overlayManager.add(autoRunecraftOverlay);
         }
-        runecraftScript.run(config);
+        autoRunecraftScript.run(config);
     }
 
     protected void shutDown()
     {
-        runecraftScript.shutdown();
-        overlayManager.remove(runecraftOverlay);
+        autoRunecraftScript.shutdown();
+        overlayManager.remove(autoRunecraftOverlay);
     }
     int ticks = 10;
     @Subscribe

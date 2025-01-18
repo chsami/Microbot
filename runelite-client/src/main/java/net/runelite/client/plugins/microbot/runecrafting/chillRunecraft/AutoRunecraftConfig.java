@@ -5,7 +5,7 @@ import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 
 @ConfigGroup("autoRunecraft")
-public interface RunecraftConfig extends Config
+public interface AutoRunecraftConfig extends Config
 {
     @ConfigItem(
             keyName = "Altar",

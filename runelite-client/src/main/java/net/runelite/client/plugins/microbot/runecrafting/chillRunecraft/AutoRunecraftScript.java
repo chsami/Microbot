@@ -18,7 +18,7 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import java.util.concurrent.TimeUnit;
 
 
-public class RunecraftScript extends Script
+public class AutoRunecraftScript extends Script
 {
     private States state;
     private Altars altar;
@@ -29,7 +29,7 @@ public class RunecraftScript extends Script
     public static int initialRunecraftXp;
     public static int runecraftXp;
 
-    public boolean run(RunecraftConfig config)
+    public boolean run(AutoRunecraftConfig config)
     {
         Microbot.enableAutoRunOn = true;
         Rs2Antiban.resetAntibanSettings();

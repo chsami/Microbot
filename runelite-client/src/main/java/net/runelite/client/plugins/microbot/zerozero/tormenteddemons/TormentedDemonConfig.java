@@ -80,6 +80,19 @@ public interface TormentedDemonConfig extends Config {
         return true;
     }
 
+
+    @ConfigItem(
+            keyName = "dodgeDelay",
+            name = "Dodging delay(ms)",
+            description = "Change this if the dodging is not working properly",
+            section = tormentedDemonSection,
+            position = 5
+    )
+    default int dodgeDelay() {
+        return 800;
+    }
+
+
     @ConfigSection(
             name = "Looting",
             description = "Settings for item looting",
