@@ -436,6 +436,15 @@ public interface PlayerAssistConfig extends Config {
         return false;
     }
 
+    @ConfigItem(
+            keyName =  "eatFoodForSpace",
+            name = "Eat food for space",
+            description = "Eats food before looting if low on space",
+            position = 102,
+            section = lootSection
+    )
+    default boolean eatFoodForSpace() { return false; }
+
     //set center tile manually
     @ConfigItem(
             keyName = "Center Tile",
