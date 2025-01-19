@@ -90,7 +90,7 @@ public class VarrockAnvilScript extends Script {
                         return;
                     }
 
-                    if (expectingXPDrop && Rs2Player.waitForXpDrop(Skill.SMITHING, 4500)) {
+                    if (expectingXPDrop && Rs2Player.waitForXpDrop(Skill.SMITHING, 7500)) {
                         debug("Smithing in progress");
                         Rs2Antiban.actionCooldown();
                         Rs2Antiban.takeMicroBreakByChance();
