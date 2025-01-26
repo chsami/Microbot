@@ -114,12 +114,18 @@ public class HerbrunScript extends Script {
                     case TROLLHEIM_HANDLE_PATCH:
                         if (!Rs2Player.isWalking()) {
                             System.out.println("Current state: TROLLHEIM_HANDLE_PATCH");
-                            printHerbPatchActions(trollheimHerbPatchID);
+                            printHerbPatchActions(trollheimHerbPatchID); // Debugging step
+
+                            // Ensure the herb patch is fully handled before teleporting
                             handleHerbPatch(trollheimHerbPatchID, seedToPlant, config, trollHeimLeprechaunID);
                             sleep(200);
-                            addCompostandSeeds(config, trollheimHerbPatchID, seedToPlant, states.CATHERBY_TELEPORT);
-                            break;
+
+                            // Add compost and seeds, and then move to the next state
+                            if (!Rs2Player.isAnimating() && !Rs2Player.isMoving() && !Rs2Player.isInteracting()) {
+                                addCompostandSeeds(config, trollheimHerbPatchID, seedToPlant, states.CATHERBY_TELEPORT);
+                            }
                         }
+                        break;
                     case CATHERBY_TELEPORT:
                         log("" + config.enableCatherby());
                         if (config.enableCatherby()) {
@@ -340,7 +346,11 @@ public class HerbrunScript extends Script {
                         }
                         break;
                     case FINISHED:
-                        shutdown();  // Optionally handle completion
+                        System.out.println("Herb run completed. Walking to the nearest bank...");
+                        log("Herb run completed. Walking to the nearest bank");
+                        walkToNearestBank(); // Walk to the nearest bank
+                        depositAllItems();   // Deposit all inventory items
+                        shutdown();          // Gracefully end the script
                         break;
                 }
 
@@ -992,4 +1002,23 @@ public class HerbrunScript extends Script {
         }
     }
 
+    private void walkToNearestBank() {
+        WorldPoint nearestBank = Rs2Bank.getNearestBank().getWorldPoint(); // Find the nearest bank
+        if (nearestBank != null) {
+            Rs2Walker.walkTo(nearestBank);
+            sleepUntil(() -> Rs2Player.distanceTo(nearestBank) < 5, 10000); // Wait until the player is close
+            System.out.println("Arrived at the nearest bank.");
+        } else {
+            System.out.println("No nearby bank found!");
+        }
+    }
+
+    private void depositAllItems() {
+        if (!Rs2Bank.isOpen()) {
+            Rs2Bank.useBank();
+            sleepUntil(Rs2Bank::isOpen, 5000); // Wait until the bank is open
+        }
+        Rs2Bank.depositAll();
+        System.out.println("All items have been deposited. Herb run is complete.");
+    }
 }
