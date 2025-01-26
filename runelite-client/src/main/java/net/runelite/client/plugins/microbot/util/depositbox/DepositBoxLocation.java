@@ -179,9 +179,10 @@ public enum DepositBoxLocation {
             case PORT_PISCARILIUS:
             case WINTERTODT_CAMP:
             case MOUNT_QUIDAMORTEM:
+            case HOSIDIUS:
             case MOUNT_KARUULM:
                 // Requires Client of Kourend
-                return Rs2Player.getQuestState(Quest.CLIENT_OF_KOUREND) == QuestState.FINISHED;
+                return Rs2Player.getQuestState(Quest.CLIENT_OF_KOUREND) != QuestState.NOT_STARTED;
             case SHILO_VILLAGE:
                 // Requires Shilo Village to enter the village & use the bank
                 return Rs2Player.getQuestState(Quest.SHILO_VILLAGE) == QuestState.FINISHED;
@@ -199,7 +200,6 @@ public enum DepositBoxLocation {
                 return Rs2Player.getQuestState(Quest.CABIN_FEVER) == QuestState.FINISHED;
             case ARDOUGNE:
             case CATHERBY:
-            case HOSIDIUS:
             case ETCETERIA:
             case LANDS_END:
             case MAGE_ARENA:

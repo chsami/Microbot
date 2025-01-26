@@ -2,36 +2,35 @@ package net.runelite.client.plugins.microbot.util.depositbox;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.GameObject;
-import net.runelite.api.SpriteID;
+import net.runelite.api.MenuAction;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
-import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
+import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
+import java.awt.*;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import static net.runelite.api.widgets.ComponentID.DEPOSIT_BOX_INVENTORY_ITEM_CONTAINER;
 import static net.runelite.client.plugins.microbot.util.Global.*;
 
 @Slf4j
 public class Rs2DepositBox {
 
-    private static final int DEPOSIT_ALL_BUTTON_ID = 1920;
-    private static final int DEPOSIT_INVENTORY_ID = 1921;
-    private static final int DEPOSIT_EQUIPMENT_ID = 1922;
-    private static final int CLOSE_BUTTON_PARENT_ID = DEPOSIT_BOX_INVENTORY_ITEM_CONTAINER - 1;
+    private static final int DEPOSITBOX_PARENT_WIDGET_ID = 192;
+    private static final int DEPOSITBOX_INVENTORY_ITEM_CONTAINER_COMPONENT_ID = 12582935;
 
     /**
      * Checks if the deposit box interface is open.
@@ -43,13 +42,25 @@ public class Rs2DepositBox {
     }
 
     /**
+     * Retrieves the widget for the deposit box if it is currently open.
+     *
+     * @return the deposit box widget, or {@code null} if the deposit box is not open
+     */
+    private static Widget getDepositBoxWidget() {
+        if (!isOpen()) return null;
+        return Rs2Widget.getWidget(DEPOSITBOX_PARENT_WIDGET_ID, 0);
+    }
+
+    /**
      * Closes the deposit box interface.
      *
      * @return true if the deposit box interface was successfully closed, false otherwise.
      */
     public static boolean closeDepositBox() {
         if (!isOpen()) return false;
-        Rs2Widget.clickChildWidget(CLOSE_BUTTON_PARENT_ID, 11); // Assuming close button ID is 11
+        Widget closeDepositBox = Rs2Widget.findWidget("Close", List.of(getDepositBoxWidget()), false);
+        if (closeDepositBox == null) return false;
+        Rs2Widget.clickWidget(closeDepositBox);
         sleepUntilOnClientThread(() -> !isOpen());
         return true;
     }
@@ -82,160 +93,304 @@ public class Rs2DepositBox {
     }
 
     /**
-     * Deposits all items in the inventory into the deposit box.
+     * Deposits all items from the inventory into the deposit box, if open.
      */
     public static void depositAll() {
         Microbot.status = "Depositing all items";
         if (Rs2Inventory.isEmpty()) return;
         if (!isOpen()) return;
-        Widget depositAllWidget = Rs2Widget.findWidget(SpriteID.BANK_DEPOSIT_INVENTORY, null);
+        Widget depositAllWidget = Rs2Widget.findWidget("Deposit Inventory", List.of(getDepositBoxWidget()), false);
         if (depositAllWidget == null) return;
 
-        Microbot.getMouse().click(depositAllWidget.getBounds());
+        Rs2Widget.clickWidget(depositAllWidget);
         sleepUntil(Rs2Inventory::isEmpty);
     }
 
-    public static boolean depositAll(Predicate<Rs2Item> predicate, boolean fastDeposit) {
+    /**
+     * Deposits all inventory items that match the given predicate into the deposit box.
+     *
+     * @param predicate a condition to filter which items to deposit
+     * @return {@code true} if at least one item was deposited, {@code false} otherwise
+     */
+    public static boolean depositAll(Predicate<Rs2Item> predicate) {
+        if (!isOpen()) return false;
         boolean result = false;
         List<Rs2Item> items = Rs2Inventory.items().stream().filter(predicate).distinct().collect(Collectors.toList());
         for (Rs2Item item : items) {
             if (item == null) continue;
-            depositItem(item);
-            if (!fastDeposit)
-                sleep(100, 300);
+            invokeMenu(6, item);
             result = true;
         }
         return result;
     }
 
-    public static boolean depositAll(Predicate<Rs2Item> predicate) {
-        return depositAll(predicate, false);
-    }
-
     /**
-     * Deposits all items in the player's inventory into the bank, except for the items with the specified IDs.
-     * This method uses a lambda function to filter out the items with the specified IDs from the deposit operation.
+     * Deposits all inventory items except those with the specified IDs.
      *
-     * @param ids The IDs of the items to be excluded from the deposit.
-     *
-     * @return true if any items were deposited, false otherwise.
+     * @param ids the IDs of items to exclude from depositing
+     * @return {@code true} if at least one item was deposited, {@code false} otherwise
      */
     public static boolean depositAllExcept(Integer... ids) {
         return depositAll(x -> Arrays.stream(ids).noneMatch(id -> id == x.id));
     }
 
-    public static boolean depositAllExcept(boolean fastDeposit, Integer... ids) {
-        return depositAll(x -> Arrays.stream(ids).noneMatch(id -> id == x.id), fastDeposit);
-    }
 
     /**
-     * Deposits all items in the player's inventory into the bank, except for the items with the specified names.
-     * This method uses a lambda function to filter out the items with the specified names from the deposit operation.
+     * Deposits all inventory items except those with the specified names.
      *
-     * @param names The names of the items to be excluded from the deposit.
-     *
-     * @return true if any items were deposited, false otherwise.
+     * @param names the names of items to exclude from depositing
+     * @return {@code true} if at least one item was deposited, {@code false} otherwise
      */
     public static boolean depositAllExcept(String... names) {
         return depositAll(x -> Arrays.stream(names).noneMatch(name -> name.equalsIgnoreCase(x.name)));
     }
 
-    public static boolean depositAllExcept(boolean fastDeposit, String... names) {
-        return depositAll(x -> Arrays.stream(names).noneMatch(name -> name.equalsIgnoreCase(x.name)), fastDeposit);
-    }
-
     /**
-     * Deposits all items in the player's inventory into the bank, except for the items with the specified names.
-     * This method uses a lambda function to filter out the items with the specified names from the deposit operation.
+     * Deposits all inventory items into the deposit box, excluding items with the specified names.
      *
-     * @param names The names of the items to be excluded from the deposit.
-     *
-     * @return true if any items were deposited, false otherwise.
+     * @param names the names of items to exclude from depositing
+     * @return {@code true} if any items were deposited, {@code false} otherwise
      */
     public static boolean depositAllExcept(List<String> names) {
-        return depositAll(x -> names.stream().noneMatch(name -> name.equalsIgnoreCase(x.name)));
-    }
-
-    public static boolean depositAllExcept(boolean fastDeposit, List<String> names) {
-        return depositAll(x -> names.stream().noneMatch(name -> name.equalsIgnoreCase(x.name)), fastDeposit);
+        return depositAllExcept(names, false);
     }
 
     /**
-     * Deposits all items in the player's inventory into the bank, except for the items with the specified names.
-     * This method uses a lambda function to filter out the items with the specified names from the deposit operation.
-     * It also allows for a delay between deposit operations.
+     * Deposits all inventory items into the deposit box, excluding items with the specified names.
      *
-     * @param names The names of the items to be excluded from the deposit.
-     *
-     * @return true if any items were deposited, false otherwise.
+     * @param names the names of items to exclude from depositing
+     * @param exact {@code true} for exact name matches, {@code false} for partial matches
+     * @return {@code true} if any items were deposited, {@code false} otherwise
      */
-    public static boolean depositAllExcept(boolean exact, boolean fastDeposit, String... names) {
-        if (!exact)
-            return depositAll(x -> Arrays.stream(names).noneMatch(name -> x.name.contains(name.toLowerCase())), fastDeposit);
-        else
-            return depositAll(x -> Arrays.stream(names).noneMatch(name -> name.equalsIgnoreCase(x.name)), fastDeposit);
+    public static boolean depositAllExcept(List<String> names, boolean exact) {
+        return depositAll(x -> exact ? 
+                names.stream().noneMatch(name -> name.equalsIgnoreCase(x.name)) : 
+                names.stream().noneMatch(name -> name.toLowerCase().contains(x.name.toLowerCase())));
     }
 
+    /**
+     * Deposits all inventory items that match the specified names into the deposit box.
+     *
+     * @param names the names of items to exclude from depositing
+     * @return {@code true} if any items were deposited, {@code false} otherwise
+     */
+    public static boolean depositAll(List<String> names) {
+        return depositAll(names, false);
+    }
+
+    /**
+     * Deposits all inventory items that match the specified names into the deposit box.
+     *
+     * @param names the names of items to exclude from depositing
+     * @param exact {@code true} for exact name matches, {@code false} for partial matches
+     * @return {@code true} if any items were deposited, {@code false} otherwise
+     */
+    public static boolean depositAll(List<String> names, boolean exact) {
+        return depositAll(x -> exact ? 
+                names.stream().anyMatch(name -> name.equalsIgnoreCase(x.name)) : 
+                names.stream().anyMatch(name -> name.toLowerCase().contains(x.name.toLowerCase())));
+    }
+
+    /**
+     * Deposits only the inventory items that match the specified IDs into the deposit box.
+     *
+     * @param ids the IDs of items to include in the deposit
+     * @return {@code true} if any items were deposited, {@code false} otherwise
+     */
+    public static boolean depositAll(Integer... ids) {
+        return depositAll(x -> Arrays.stream(ids).anyMatch(id -> id == x.id));
+    }
+
+
+    /**
+     * Deposits all inventory items into the deposit box, excluding items with the specified names.
+     *
+     * @param names the names of items to exclude from depositing
+     * @return {@code true} if any items were deposited, {@code false} otherwise
+     */
+    public static boolean depositAll(String... names) {
+        return depositAll(x -> Arrays.stream(names).anyMatch(name -> name.equalsIgnoreCase(x.name)));
+    }
 
     /**
      * Deposits a specific item by its name.
      *
-     * @param itemName the name of the item to deposit.
+     * @param itemName the name of the item to deposit
      */
-    public static void depositItem(String itemName) {
-        Rs2Item item = Rs2Inventory.get(itemName);
-        if (item == null) return;
-        depositItem(item);
+    public static void depositOne(String itemName) {
+       depositOne(itemName, false);
     }
 
     /**
      * Deposits a specific item by its ID.
      *
-     * @param itemId the ID of the item to deposit.
+     * @param itemId the ID of the item to deposit
      */
-    public static void depositItem(int itemId) {
+    public static void depositOne(int itemId) {
         Rs2Item item = Rs2Inventory.get(itemId);
         if (item == null) return;
-        depositItem(item);
+        depositOne(item);
     }
 
     /**
-     * Deposits a item quickly by its name with a partial or exact name match.
-     * Name and a boolean to determine if the name should be an exact match.
+     * Deposits a specific item by its name, with an option for partial or exact matching.
      *
-     * @param itemName   the name of the item to deposit.
-     * @param exactMatch true if the name should be an exact match, false otherwise.
+     * @param itemName the name of the item to deposit
+     * @param exact {@code true} for exact name matching, {@code false} for partial matching
      */
-    public static void depositItem(String itemName, boolean exactMatch) {
-        Rs2Item item = Rs2Inventory.get(itemName, exactMatch);
+    public static void depositOne(String itemName, boolean exact) {
+        Rs2Item item = Rs2Inventory.get(itemName, exact);
         if (item == null) return;
-        depositItem(item);
+        depositOne(item);
     }
 
 
     /**
-     * Deposits a specific item by its Rs2Item reference.
+     * Deposits a specific item by its {@link Rs2Item} reference.
      *
-     * @param rs2Item the Rs2Item to deposit.
+     * @param rs2Item the Rs2Item to deposit
      */
-    public static void depositItem(Rs2Item rs2Item) {
+    public static void depositOne(Rs2Item rs2Item) {
         if (rs2Item == null || !isOpen()) return;
         if (!Rs2Inventory.hasItem(rs2Item.id)) return;
-        Rs2Inventory.interact(rs2Item, "Deposit-All");
+        
+        invokeMenu(2, rs2Item);
+    }
+
+    /**
+     * Deposits a specified quantity of an item by its ID into the deposit box.
+     *
+     * @param itemId the ID of the item to deposit
+     * @param amount the quantity of the item to deposit
+     */
+    public static void depositX(int itemId, int amount) {
+        Rs2Item rs2Item = Rs2Inventory.get(itemId);
+        if (rs2Item == null || !isOpen()) return;
+        depositX(rs2Item, amount);
+    }
+
+    /**
+     * Deposits a specified quantity of an item by its name into the deposit box.
+     *
+     * @param itemName the name of the item to deposit
+     * @param amount the quantity of the item to deposit
+     */
+    public static void depositX(String itemName, int amount) {
+        depositX(itemName, amount, false);
+    }
+
+    /**
+     * Deposits a specified quantity of an item by its name into the deposit box,
+     * with an option for partial or exact name matching.
+     *
+     * @param itemName the name of the item to deposit
+     * @param amount the quantity of the item to deposit
+     * @param exact {@code true} for exact name matching, {@code false} for partial matching
+     */
+    public static void depositX(String itemName, int amount, boolean exact) {
+        Rs2Item rs2Item = Rs2Inventory.get(itemName, exact);
+        if (rs2Item == null || !isOpen()) return;
+        depositX(rs2Item, amount);
+    }
+
+    /**
+     * Deposits a specified quantity of an item by its {@link Rs2Item} reference into the deposit box.
+     *
+     * @param rs2Item the {@link Rs2Item} to deposit
+     * @param amount the quantity of the item to deposit
+     */
+    public static void depositX(Rs2Item rs2Item, int amount) {
+        if (rs2Item == null || !isOpen()) return;
+        if (!Rs2Inventory.hasItem(rs2Item.id)) return;
+
+        invokeMenu(5, rs2Item);
+
+        sleep(Rs2Random.randomGaussian(1100, 200));
+        Rs2Keyboard.typeString(String.valueOf(amount));
+        Rs2Keyboard.enter();
     }
 
     /**
      * Deposits all equipment into the deposit box.
      */
     public static void depositEquipment() {
-        Widget widget = Rs2Widget.findWidget(SpriteID.BANK_DEPOSIT_EQUIPMENT, null);
-        if (widget == null) return;
+        if (!isOpen()) return;
+        Widget depositWornItems = Rs2Widget.findWidget("Deposit worn items", List.of(getDepositBoxWidget()), false);
+        if (depositWornItems == null) return;
 
-        Microbot.getMouse().click(widget.getBounds());
+        Rs2Widget.clickWidget(depositWornItems);
+    }
+    
+    private static void invokeMenu(int entryIndex, Rs2Item item) {
+        int identifier = entryIndex;
+        String option = "";
+        MenuAction action = MenuAction.CC_OP;
+        
+        switch (identifier) {
+            case 2:
+                option = "Deposit-1";
+                break;
+            case 3:
+                option = "Deposit-5";
+                break;
+            case 4:
+                option = "Deposit-10";
+                break;
+            case 5:
+                option = "Deposit-X";
+                break;
+            case 6:
+                option = "Deposit-All";
+                //action = MenuAction.CC_OP_LOW_PRIORITY;
+                break;
+        }
+        
+        Rectangle itemBoundingBox = itemBounds(item);
+        
+        Microbot.doInvoke(new NewMenuEntry(item.getSlot(), DEPOSITBOX_INVENTORY_ITEM_CONTAINER_COMPONENT_ID, action.getId(), identifier, item.getId(), option),  (itemBoundingBox == null) ? new Rectangle(1, 1) : itemBoundingBox);
     }
 
     /**
-     * Get the nearest despoi tbox
+     * Retrieves the list of item widgets in the deposit box container.
+     *
+     * @return a list of item widgets, or {@code null} if the deposit box is not open or the container is not found
+     */
+    public static List<Widget> getItems() {
+        if (!isOpen()) return null;
+        Widget depositBoxInventoryContainer = Rs2Widget.getWidget(DEPOSITBOX_INVENTORY_ITEM_CONTAINER_COMPONENT_ID);
+        if (depositBoxInventoryContainer != null) {
+            return Arrays.asList(depositBoxInventoryContainer.getDynamicChildren());
+        }
+        return null;
+    }
+
+    /**
+     * Retrieves the widget of an item based on the specified slot ID in the deposit box.
+     *
+     * @param slotId the slot ID of the item
+     * @return the widget for the specified slot, or {@code null} if the slot is invalid or the items list is unavailable
+     */
+    public static Widget getItemWidget(int slotId) {
+        List<Widget> items = getItems();
+        if (items == null) return null;
+        if (slotId < 0 || slotId >= items.size()) return null;
+        return items.get(slotId);
+    }
+
+    /**
+     * Gets the bounding rectangle for the slot of the specified item in the deposit box.
+     *
+     * @param rs2Item the item to retrieve the bounds for
+     * @return the bounding rectangle of the item's slot, or {@code null} if the item is not found
+     */
+    public static Rectangle itemBounds(Rs2Item rs2Item) {
+        Widget itemWidget = getItemWidget(rs2Item.slot);
+        if (itemWidget == null) return null;
+        return itemWidget.getBounds();
+    }
+
+    /**
+     * Get the nearest despoit box
      *
      * @return DepositBoxLocation
      */
@@ -250,7 +405,7 @@ public class Rs2DepositBox {
      * @return DepositBoxLocation
      */
     public static DepositBoxLocation getNearestDepositBox(WorldPoint worldPoint) {
-        Microbot.log("Calculating nearest bank path...");
+        Microbot.log("Calculating nearest deposit box path...");
 
         DepositBoxLocation despoitBoxLocation = Arrays.stream(DepositBoxLocation.values())
                 .parallel()
@@ -275,7 +430,7 @@ public class Rs2DepositBox {
      * @return true if player location is less than 4 tiles away from the bank location
      */
     public static boolean walkToDepositBox(DepositBoxLocation depositBoxLocation) {
-        if (Rs2Bank.isOpen()) return true;
+        if (isOpen()) return true;
         Rs2Player.toggleRunEnergy(true);
         Microbot.status = "Walking to nearest deposit box " + depositBoxLocation.name();
         Rs2Walker.walkTo(depositBoxLocation.getWorldPoint(), 4);
@@ -307,7 +462,7 @@ public class Rs2DepositBox {
      * @return true if bank interface is open
      */
     public static boolean walkToAndUseDepositBox(DepositBoxLocation depositBoxLocation) {
-        if (Rs2Bank.isOpen()) return true;
+        if (isOpen()) return true;
         Rs2Player.toggleRunEnergy(true);
         Microbot.status = "Walking to nearest deposit box " + depositBoxLocation.name();
         boolean result = depositBoxLocation.getWorldPoint().distanceTo(Microbot.getClient().getLocalPlayer().getWorldLocation()) <= 8;
@@ -358,13 +513,7 @@ public class Rs2DepositBox {
         if (Rs2Inventory.getEmptySlots() <= emptySlotCount) {
             boolean isDepositBoxOpen = Rs2DepositBox.walkToAndUseDepositBox();
             if (isDepositBoxOpen) {
-                for (String itemName : itemNames) {
-                    if (exactItemNames) {
-                        Rs2DepositBox.depositItem(itemName, true);
-                    } else {
-                        Rs2DepositBox.depositAll(x -> x.name.toLowerCase().contains(itemName.toLowerCase()));
-                    }
-                }
+                depositAll(itemNames, exactItemNames);
             }
             return false;
         }

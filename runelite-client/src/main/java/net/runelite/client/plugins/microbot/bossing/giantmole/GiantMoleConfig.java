@@ -44,6 +44,15 @@ public interface GiantMoleConfig extends Config {
         return null;
     }
 
+    //Use rock cake
+    @ConfigItem(
+            keyName = "useRockCake",
+            name = "Use rock cake",
+            description = "Will rock cake down to 1hp",
+            position = 101
+    )
+    default boolean useRockCake() { return false; }
+
     @ConfigItem(
             keyName = "Loot items",
             name = "Auto loot items",

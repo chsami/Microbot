@@ -1128,7 +1128,7 @@ public class Rs2Bank {
             }
 
             if (action) {
-                sleepUntil(() -> isOpen() || isBankPinWidgetVisible(), 5000);
+                sleepUntil(Rs2Bank::isOpen, 5000);
             }
             return action;
         } catch (Exception ex) {
@@ -1325,23 +1325,37 @@ public class Rs2Bank {
     }
 
     /**
-     * Walk to the closest bank
+     * Walks to the closest bank using the nearest bank location.
+     * Toggles run energy if the player is not already running.
      *
-     * @return true if player location is less than 4 tiles away from the bank location
+     * @return true if the player's location is within 4 tiles of the bank location.
      */
     public static boolean walkToBank() {
         return walkToBank(getNearestBank());
     }
 
     /**
-     * Walk to bank location
-     * 
-     * @param bankLocation 
-     * @return true if player location is less than 4 tiles away from the bank location
+     * Walks to a specified bank location.
+     * Toggles run energy if the player is not already running.
+     *
+     * @param bankLocation the target bank location to walk to.
+     * @return true if the player's location is within 4 tiles of the specified bank location.
      */
     public static boolean walkToBank(BankLocation bankLocation) {
+        return walkToBank(bankLocation, true);
+    }
+
+    /**
+     * Walks to a specified bank location with an option to toggle run energy.
+     * If the bank is already open, the method exits immediately.
+     *
+     * @param bankLocation the target bank location to walk to.
+     * @param toggleRun    whether to toggle run energy during the walk.
+     * @return true if the player's location is within 4 tiles of the specified bank location.
+     */
+    public static boolean walkToBank(BankLocation bankLocation, boolean toggleRun) {
         if (Rs2Bank.isOpen()) return true;
-        Rs2Player.toggleRunEnergy(true);
+        Rs2Player.toggleRunEnergy(toggleRun);
         Microbot.status = "Walking to nearest bank " + bankLocation.toString();
         Rs2Walker.walkTo(bankLocation.getWorldPoint(), 4);
         return bankLocation.getWorldPoint().distanceTo2D(Microbot.getClient().getLocalPlayer().getWorldLocation()) <= 4;
@@ -1370,23 +1384,37 @@ public class Rs2Bank {
     }
 
     /**
-     * Walk to the closest bank
+     * Walks to the closest bank and attempts to use the bank interface.
+     * Toggles run energy if the player is not already running.
      *
-     * @return true if bank interface is open
+     * @return true if the bank interface is successfully opened.
      */
     public static boolean walkToBankAndUseBank() {
         return walkToBankAndUseBank(getNearestBank());
     }
 
     /**
-     * Walk to bank location & use bank
+     * Walks to a specified bank location and attempts to use the bank interface.
+     * Toggles run energy if the player is not already running.
      *
-     * @param bankLocation 
-     * @return true if bank interface is open
+     * @param bankLocation the target bank location to walk to and use.
+     * @return true if the bank interface is successfully opened.
      */
     public static boolean walkToBankAndUseBank(BankLocation bankLocation) {
+        return walkToBankAndUseBank(bankLocation, true);
+    }
+
+    /**
+     * Walks to a specified bank location with an option to toggle run energy and attempts to use the bank interface.
+     * If the bank is already open, the method exits immediately.
+     *
+     * @param bankLocation the target bank location to walk to and use.
+     * @param toggleRun    whether to toggle run energy during the walk.
+     * @return true if the bank interface is successfully opened.
+     */
+    public static boolean walkToBankAndUseBank(BankLocation bankLocation, boolean toggleRun) {
         if (Rs2Bank.isOpen()) return true;
-        Rs2Player.toggleRunEnergy(true);
+        Rs2Player.toggleRunEnergy(toggleRun);
         Microbot.status = "Walking to nearest bank " + bankLocation.toString();
         boolean result = bankLocation.getWorldPoint().distanceTo(Microbot.getClient().getLocalPlayer().getWorldLocation()) <= 8;
         if (result) {

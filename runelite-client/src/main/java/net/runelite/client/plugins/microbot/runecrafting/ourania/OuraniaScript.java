@@ -15,6 +15,7 @@ import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
 import net.runelite.client.plugins.microbot.util.inventory.RunePouchType;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
@@ -98,8 +99,7 @@ public class OuraniaScript extends Script {
                             return;
                         }
                         
-                        int staffID = Rs2Equipment.get(EquipmentInventorySlot.WEAPON).getId();
-                        if (Rs2Inventory.hasDegradedPouch() && Rs2Magic.getRequiredRunes(Rs2Spells.NPC_CONTACT, Rs2Magic.getRs2Staff(staffID), 1, true).isEmpty()) {
+                        if (Rs2Inventory.hasDegradedPouch() && Rs2Magic.hasRequiredRunes(Rs2Spells.NPC_CONTACT, true)) {
                             Rs2Magic.repairPouchesWithLunar();
                             return;
                         }
@@ -129,23 +129,42 @@ public class OuraniaScript extends Script {
                         
                         Rs2Bank.depositAllExcept(excludedIds);
                         Rs2Inventory.waitForInventoryChanges(1800);
-                        
-                        if (plugin.isUseStaminaPotions() && Rs2Player.getRunEnergy() <= plugin.getDrinkAtPercent()) {
-                            if (!Rs2Inventory.hasItem(Rs2Potion.getStaminaPotion())) {
-                                if (!Rs2Bank.hasItem(Rs2Potion.getStaminaPotion())) {
-                                    Microbot.showMessage("Missing Stamina Potions");
+
+                        if (plugin.isUseEnergyRestorePotions() && Rs2Player.getRunEnergy() <= plugin.getDrinkAtPercent()) {
+                            boolean hasStaminaPotion = Rs2Bank.hasItem(Rs2Potion.getStaminaPotion());
+                            boolean hasEnergyRestorePotion = Rs2Bank.hasItem(Rs2Potion.getRestoreEnergyPotionsVariants());
+
+                            if ((Rs2Player.hasStaminaBuffActive() && hasEnergyRestorePotion) || (!hasStaminaPotion && hasEnergyRestorePotion)) {
+                                Rs2Item energyRestoreItem = Rs2Bank.bankItems().stream()
+                                        .filter(rs2Item -> Rs2Potion.getRestoreEnergyPotionsVariants().stream()
+                                                .anyMatch(variant -> rs2Item.getName().toLowerCase().contains(variant.toLowerCase())))
+                                        .findFirst()
+                                        .orElse(null);
+
+                                if (energyRestoreItem == null) {
+                                    Microbot.showMessage("Unable to find Restore Energy Potion but hasItem?");
                                     shutdown();
                                     return;
                                 }
 
-                                Rs2Bank.withdrawOne(Rs2Potion.getStaminaPotion());
-                                Rs2Inventory.waitForInventoryChanges(1800);
-                                Rs2Inventory.interact(Rs2Potion.getStaminaPotion(), "drink");
-                                Rs2Inventory.waitForInventoryChanges(1800);
-                                if (Rs2Inventory.hasItem(Rs2Potion.getStaminaPotion())) {
-                                    Rs2Bank.depositOne(Rs2Potion.getStaminaPotion());
-                                    Rs2Inventory.waitForInventoryChanges(1800);
+                                withdrawAndDrink(energyRestoreItem.getName());
+                            } else if (hasStaminaPotion) {
+                                Rs2Item staminaPotionItem = Rs2Bank.bankItems().stream()
+                                        .filter(rs2Item -> rs2Item.getName().toLowerCase().contains(Rs2Potion.getStaminaPotion().toLowerCase()))
+                                        .findFirst()
+                                        .orElse(null);
+
+                                if (staminaPotionItem == null) {
+                                    Microbot.showMessage("Unable to find Stamina Potion but hasItem?");
+                                    shutdown();
+                                    return;
                                 }
+
+                                withdrawAndDrink(staminaPotionItem.getName());
+                            } else {
+                                Microbot.showMessage("Unable to find Stamina Potion OR Energy Restore Potions");
+                                shutdown();
+                                return;
                             }
                         }
 
@@ -160,7 +179,7 @@ public class OuraniaScript extends Script {
                                 Rs2Bank.withdrawOne(plugin.getRs2Food().getId());
                                 Rs2Inventory.waitForInventoryChanges(1800);
                                 Rs2Player.useFood();
-                                Rs2Inventory.waitForInventoryChanges(1800);
+                                sleepUntil(() -> !Rs2Inventory.hasItem(plugin.getRs2Food().getId()));
                             }
 
                             if (Rs2Inventory.hasItem(ItemID.JUG)) {
@@ -253,5 +272,17 @@ public class OuraniaScript extends Script {
         NPC eniola = Rs2Npc.getNpc(NpcID.ENIOLA);
         if (eniola == null) return false;
         return Rs2Player.getWorldLocation().distanceTo2D(eniola.getWorldLocation()) < 12;
+    }
+
+    private void withdrawAndDrink(String potionItemName) {
+        String simplifiedPotionName = potionItemName.replaceAll("\\s*\\(\\d+\\)", "").trim();
+        Rs2Bank.withdrawOne(simplifiedPotionName);
+        Rs2Inventory.waitForInventoryChanges(1800);
+        Rs2Inventory.interact(simplifiedPotionName, "drink");
+        Rs2Inventory.waitForInventoryChanges(1800);
+        if (Rs2Inventory.hasItem(simplifiedPotionName)) {
+            Rs2Bank.depositOne(simplifiedPotionName);
+            Rs2Inventory.waitForInventoryChanges(1800);
+        }
     }
 }

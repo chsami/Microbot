@@ -47,6 +47,25 @@ public class SplitFlagMap {
             return false;
         }
 
+   /*     try {
+            if (Rs2Player.getWorldLocation().getRegionID() == 14162) { //toa puzzle room
+                WorldPoint globalWorldPoint = Rs2WorldPoint.convertInstancedWorldPoint(new WorldPoint(x, y, z));
+                if (globalWorldPoint == null) {
+                    Microbot.log("Something went wrong.");
+                } else {
+                    TileObject go = Rs2GameObject.findGroundObjectByLocation(globalWorldPoint);
+                    if (go != null && go.getId() == 45340) {
+                        //System.out.println("found a tile " + globalWorldPoint);
+                        return false;
+                    }
+                }
+            }
+        } catch(Exception ex) {
+            Microbot.log("oops something went wrong");
+        }*/
+
+
+
         return regionMaps[index].get(x, y, z, flag);
     }
 

@@ -7,10 +7,14 @@ public class TransportNode extends Node implements Comparable<TransportNode> {
     public final TransportType transportType;
     public final String displayInfo;
 
-    public TransportNode(WorldPoint position, Node previous, int wait, TransportType transportType, String displayInfo) {
-        super(position, previous, wait);
+    public TransportNode(WorldPoint position, Node previous, int travelTime, TransportType transportType, String displayInfo) {
+        super(position, previous, cost(previous, travelTime));
         this.transportType = transportType;
         this.displayInfo = displayInfo;
+    }
+
+    private static int cost(Node previous, int travelTime) {
+        return (previous != null ? previous.cost : 0) + travelTime;
     }
 
     @Override

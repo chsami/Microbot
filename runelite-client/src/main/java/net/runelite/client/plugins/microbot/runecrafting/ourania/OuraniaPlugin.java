@@ -60,7 +60,7 @@ public class OuraniaPlugin extends Plugin {
     @Getter
     private Rs2Food rs2Food;
     @Getter
-    private boolean useStaminaPotions;
+    private boolean useEnergyRestorePotions;
     @Getter
     private int drinkAtPercent;
     @Getter
@@ -75,7 +75,7 @@ public class OuraniaPlugin extends Plugin {
         essence = config.essence();
         eatAtPercent = config.eatAtPercent();
         rs2Food = config.food();
-        useStaminaPotions = config.useStaminaPotions();
+        useEnergyRestorePotions = config.useEnergyRestorePotions();
         drinkAtPercent = config.drinkAtPercent();
         path = config.path();
         toggleOverlay = config.toggleOverlay();
@@ -120,8 +120,8 @@ public class OuraniaPlugin extends Plugin {
             eatAtPercent = config.eatAtPercent();
         }
 
-        if (event.getKey().equals(OuraniaConfig.useStaminaPotions)){
-            useStaminaPotions = config.useStaminaPotions();
+        if (event.getKey().equals(OuraniaConfig.useEnergyRestorePotions)){
+            useEnergyRestorePotions = config.useEnergyRestorePotions();
         }
 
         if (event.getKey().equals(OuraniaConfig.drinkAtPercent)){

@@ -183,11 +183,6 @@ public class Rs2InventorySetup {
             if (InventorySetupsItem.itemIsDummy(inventorySetupsItem)) continue;
 
             if (inventorySetupsItem.isFuzzy()) {
-                if (!Rs2Bank.hasBankItem(inventorySetupsItem.getName())) {
-                    Microbot.pauseAllScripts = true;
-                    Microbot.showMessage("Bank is missing the following item " + inventorySetupsItem.getName());
-                    break;
-                }
 
                 if (Rs2Inventory.hasItemAmount(inventorySetupsItem.getName(), (int) inventorySetup.getInventory().stream().filter(x -> x.getId() == inventorySetupsItem.getId()).count()))
                     continue;
@@ -256,8 +251,10 @@ public class Rs2InventorySetup {
             } else {
                 withdrawQuantity = groupedByItems.get(key).size();
             }
-            if (!Rs2Inventory.hasItemAmount(inventorySetupsItem.getName(), withdrawQuantity, isStackable))
+            if (!Rs2Inventory.hasItemAmount(inventorySetupsItem.getName(), withdrawQuantity, isStackable)) {
+                Microbot.log("Looking for " + inventorySetupsItem.getName() + " with amount " + withdrawQuantity);
                 found = false;
+            }
         }
 
         return found;
@@ -274,10 +271,12 @@ public class Rs2InventorySetup {
             if (inventorySetupsItem.getId() == -1) continue;
             if (inventorySetupsItem.isFuzzy()) {
                 if (!Rs2Equipment.isWearing(inventorySetupsItem.getName(), false)) {
+                    Microbot.log("Missing item " + inventorySetupsItem.getName());
                     return false;
                 }
             } else {
                 if (!Rs2Equipment.isWearing(inventorySetupsItem.getName(), true)) {
+                    Microbot.log("Missing item " + inventorySetupsItem.getName());
                     return false;
                 }
             }

@@ -74,6 +74,13 @@ public class WorldPointUtil {
         return distanceBetween(previous, current, 1);
     }
 
+    public static int distanceBetween(int packedPoint, WorldPoint current) {
+        final int y = unpackWorldY(packedPoint);
+        final int x = unpackWorldX(packedPoint);
+        final int plane = unpackWorldPlane(packedPoint);
+        return distanceBetween(new WorldPoint(x, y, plane), current, 1);
+    }
+
     public static int distanceBetween(WorldPoint previous, WorldPoint current, int diagonal) {
         return distanceBetween(previous.getX(), previous.getY(), previous.getPlane(),
                 current.getX(), current.getY(), current.getPlane(), diagonal);

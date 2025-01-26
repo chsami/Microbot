@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Adam <Adam@sigterm.info>
+ * Copyright (c) 2025, Adam <Adam@sigterm.info>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,42 +22,19 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.menuentryswapper;
+package net.runelite.api;
 
-import java.util.ArrayList;
-import java.util.List;
-
-class TeleportSwap
+public interface MidiRequest
 {
-	boolean worn;
-	boolean held;
-	String option;
-	List<TeleportSub> subs = new ArrayList<>();
+	/**
+	 * True if this midi request is a jingle, otherwise it is a track.
+	 * @return
+	 */
+	boolean isJingle();
 
-	TeleportSwap addSub(String option, Runnable r)
-	{
-		var sub = new TeleportSub();
-		sub.option = option;
-		sub.execute = r;
-		subs.add(sub);
-		return this;
-	}
-
-	TeleportSwap worn()
-	{
-		worn = true;
-		return this;
-	}
-
-	TeleportSwap held()
-	{
-		held = true;
-		return this;
-	}
-}
-
-class TeleportSub
-{
-	String option;
-	Runnable execute;
+	/**
+	 * Currently playing track/jingle id
+	 * @return
+	 */
+	int getArchiveId();
 }

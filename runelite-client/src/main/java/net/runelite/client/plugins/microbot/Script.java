@@ -6,7 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.widgets.InterfaceID;
-import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.util.Global;
@@ -17,7 +16,6 @@ import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
-import java.awt.event.KeyEvent;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.util.concurrent.Executors;
@@ -43,10 +41,6 @@ public abstract class Script implements IScript {
     protected static WorldPoint initialPlayerLocation;
 
     public LocalTime startTime;
-
-    public Script() {
-
-    }
 
     /**
      * Get the total runtime of the script
@@ -83,6 +77,15 @@ public abstract class Script implements IScript {
         return done;
     }
 
+    /**
+     * sleeps for a specified number of game ticks
+     * @param ticksToWait
+     * @return
+     */
+    public boolean sleepUntilTick(int ticksToWait) {
+        int startTick = Microbot.getClient().getTickCount();
+        return Global.sleepUntil(() -> Microbot.getClient().getTickCount() >= startTick + ticksToWait, ticksToWait * 600 + 2000);
+    }
 
     /**
      * Sleeps until a specified condition is met, running an action periodically, or until a timeout is reached.
@@ -158,6 +161,7 @@ public abstract class Script implements IScript {
     public boolean run() {
         if (startTime == null) {
             startTime = LocalTime.now();
+            //init - things that have to be checked once can be added here
         }
 
         hasLeveledUp = false;
@@ -167,27 +171,21 @@ public abstract class Script implements IScript {
             return false;
 
         if (Microbot.isLoggedIn()) {
-            boolean hasRunEnergy = Microbot.getClient().getEnergy() > Microbot.runEnergyThreshold;
-
-            if (Microbot.enableAutoRunOn && hasRunEnergy)
-                Rs2Player.toggleRunEnergy(true);
-
-            if (Rs2Widget.getWidget(15269889) != null) { //levelup congratulations interface
-                Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
-            }
-            Widget clickHereToPlayButton = Rs2Widget.getWidget(24772680); // on login screen
-
-            if (clickHereToPlayButton != null && !Microbot.getClientThread().runOnClientThread(clickHereToPlayButton::isHidden)) {
-                // Runs a synchronized block to prevent multiple plugins from clicking the play button
-                synchronized (Rs2Widget.class) {
-                    if (!Microbot.getClientThread().runOnClientThread(clickHereToPlayButton::isHidden)) {
-                        Rs2Widget.clickWidget(clickHereToPlayButton.getId());
-
-                        sleepUntil(() -> Microbot.getClientThread().runOnClientThread(clickHereToPlayButton::isHidden), 10000);
+            synchronized (BlockingEventManager.class) {
+                if (!Microbot.getBlockingEventManager().getBlockingEvents().isEmpty()) {
+                    for (BlockingEvent blockingEvent : Microbot.getBlockingEventManager().getBlockingEvents()) {
+                        if (blockingEvent.validate()) {
+                            blockingEvent.execute();
+                            return false;
+                        }
                     }
                 }
             }
-
+            
+            boolean hasRunEnergy = Microbot.getClient().getEnergy() > Microbot.runEnergyThreshold;
+            if (Microbot.enableAutoRunOn && hasRunEnergy)
+                Rs2Player.toggleRunEnergy(true);
+            
 
             if (!hasRunEnergy && Microbot.useStaminaPotsIfNeeded && Rs2Player.isMoving()) {
                 Rs2Inventory.useRestoreEnergyItem();
@@ -196,7 +194,8 @@ public abstract class Script implements IScript {
 
         return true;
     }
-
+    
+    @Deprecated(since = "1.6.9 - Use Rs2Keyboard.keyPress", forRemoval = true)
     public void keyPress(char c) {
         Rs2Keyboard.keyPress(c);
     }

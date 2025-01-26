@@ -112,6 +112,8 @@ public class BirdHunterScript extends Script {
         successfulTraps.addAll(Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE_9377));
         successfulTraps.addAll(Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE_9379));
         successfulTraps.addAll(Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE_9375));
+        successfulTraps.addAll(Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE_9373));
+        successfulTraps.addAll(Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE_9348));
 
         List<GameObject> catchingTraps = new ArrayList<>();
         catchingTraps.addAll(Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE_9348));
@@ -122,6 +124,7 @@ public class BirdHunterScript extends Script {
 
         List<GameObject> failedTraps = Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE);
         List<GameObject> idleTraps = Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE_9345);
+        idleTraps.addAll(Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE_9346));
 
         int availableTraps = getAvailableTraps(Rs2Player.getRealSkillLevel(Skill.HUNTER));
         int totalTraps = successfulTraps.size() + failedTraps.size() + idleTraps.size() + catchingTraps.size();

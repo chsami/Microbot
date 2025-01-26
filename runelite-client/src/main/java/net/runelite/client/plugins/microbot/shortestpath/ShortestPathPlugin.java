@@ -52,7 +52,6 @@ import net.runelite.client.plugins.microbot.shortestpath.pathfinder.SplitFlagMap
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
-import net.runelite.client.plugins.runenergy.RunEnergyPlugin;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.JagexColors;
 import net.runelite.client.ui.NavigationButton;
@@ -93,6 +92,8 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     private static final String SET = "Set";
     private static final String START = ColorUtil.wrapWithColorTag("Start", JagexColors.MENU_TARGET);
     private static final String TARGET = ColorUtil.wrapWithColorTag("Target", JagexColors.MENU_TARGET);
+    private static final String TEST = ColorUtil.wrapWithColorTag("Test Target", JagexColors.MENU_TARGET);
+
     public static final BufferedImage MARKER_IMAGE = ImageUtil.loadImageResource(ShortestPathPlugin.class, "marker.png");
 
     @Inject
@@ -386,6 +387,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
                 client.getMouseCanvasPosition().getX(),
                 client.getMouseCanvasPosition().getY())) {
             addMenuEntry(event, SET, TARGET, 0);
+            addMenuEntry(event, SET, TEST, 0);
             if (pathfinder != null) {
                 if (pathfinder.getTarget() != null) {
                     addMenuEntry(event, SET, START, 0);
@@ -422,8 +424,11 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         if (entry.getOption().equals(SET) && entry.getTarget().equals(TARGET)) {
             WorldPoint worldPoint = getSelectedWorldPoint();
             shortestPathScript.setTriggerWalker(worldPoint);
+        }
+        if (entry.getOption().equals(SET) && entry.getTarget().equals(TEST)) {
             //For debugging you can use setTarget, it will calculate path without walking
-            //setTarget(BankLocation.MINING_GUILD.getWorldPoint());
+            WorldPoint worldPoint = getSelectedWorldPoint();
+            setTarget(worldPoint);
         }
 
         if (entry.getOption().equals(SET) && entry.getTarget().equals(START)) {

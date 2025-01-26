@@ -282,6 +282,25 @@ public class Rs2GameObject {
         return null;
     }
 
+    /**
+     * find ground object by location
+     * @param worldPoint
+     * @return groundobject
+     */
+    public static TileObject findGroundObjectByLocation(WorldPoint worldPoint) {
+
+        List<GroundObject> groundObjects = getGroundObjects();
+
+        if (groundObjects == null) return null;
+
+        for (net.runelite.api.GroundObject groundObject : groundObjects) {
+            if (groundObject.getWorldLocation().equals(worldPoint))
+                return groundObject;
+        }
+
+        return null;
+    }
+
     public static TileObject findObjectByIdAndDistance(int id, int distance) {
 
         List<GameObject> gameObjects = getGameObjectsWithinDistance(distance);

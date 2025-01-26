@@ -18,7 +18,7 @@ public interface OuraniaConfig extends Config {
     
     String essence = "essence";
     String path = "path";
-    String useStaminaPotions = "useStaminaPotions";
+    String useEnergyRestorePotions = "useEnergyRestorePotions";
     String food = "food";
     String eatAtPercent = "eatAtPercent";
     String drinkAtPercent = "drinkAtPercent";
@@ -95,15 +95,16 @@ public interface OuraniaConfig extends Config {
     }
 
     @ConfigItem(
-            keyName = useStaminaPotions,
-            name = "Use Stamina Potions",
-            description = "Should withdraw & use stamina potions",
+            keyName = useEnergyRestorePotions,
+            name = "Use Energy Restore Potions",
+            description = "Should withdraw & use stamina potions OR energy potions",
             position = 2,
             section = suppliesSection
     )
-    default boolean useStaminaPotions() {
+    default boolean useEnergyRestorePotions() {
         return false;
     }
+
 
     @Range(
             min = 1,

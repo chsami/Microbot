@@ -1,9 +1,13 @@
 package net.runelite.client.plugins.microbot.shortestpath.pathfinder;
 
+import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.shortestpath.WorldPointUtil;
+import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
+import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 import java.util.*;
 
@@ -85,7 +89,6 @@ public class CollisionMap {
         final int y = WorldPointUtil.unpackWorldY(node.packedPosition);
         final int z = WorldPointUtil.unpackWorldPlane(node.packedPosition);
 
-
         neighbors.clear();
 
         @SuppressWarnings("unchecked") // Casting EMPTY_LIST to List<Transport> is safe here
@@ -156,6 +159,25 @@ public class CollisionMap {
             if (ignoreCollision.contains(new WorldPoint(x, y, z))) {
                 neighbors.add(new Node(neighborPacked, node));
                 continue;
+            }
+
+            /**
+             * This piece of code is designed to allow web walker to be used in toa puzzle room
+             * it will dodge specific tiles in the sequence room
+             */
+            if (Rs2Player.getWorldLocation().getRegionID() == 14162) { //toa puzzle room
+                final int lx = WorldPointUtil.unpackWorldX(neighborPacked);
+                final int ly = WorldPointUtil.unpackWorldY(neighborPacked);
+                final int lz = WorldPointUtil.unpackWorldPlane(neighborPacked);
+                if (!Objects.equals(target, new WorldPoint(lx, ly, lz))) {
+                    WorldPoint globalWorldPoint = Rs2WorldPoint.convertInstancedWorldPoint(new WorldPoint(lx, ly, lz));
+                    if (globalWorldPoint != null) {
+                        TileObject go = Rs2GameObject.findGroundObjectByLocation(globalWorldPoint);
+                        if (go != null && go.getId() == 45340) {
+                            continue;
+                        }
+                    }
+                }
             }
 
             if (traversable[i]) {

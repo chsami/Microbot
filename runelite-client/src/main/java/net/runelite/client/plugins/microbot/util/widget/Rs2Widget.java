@@ -121,7 +121,7 @@ public class Rs2Widget {
 
     public static boolean clickWidget(int id) {
         Widget widget = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getWidget(id));
-        if (widget == null) return false;
+        if (widget == null || isHidden(id)) return false;
         Microbot.getMouse().click(widget.getBounds());
         return true;
     }
@@ -366,7 +366,7 @@ public class Rs2Widget {
 
     // check if deposit box widget is open
     public static boolean isDepositBoxWidgetOpen() {
-        return isWidgetVisible(ComponentID.DEPOSIT_BOX_INVENTORY_ITEM_CONTAINER);
+        return isWidgetVisible(192, 0);
     }
 
     public static boolean isWildernessInterfaceOpen() {

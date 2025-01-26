@@ -226,13 +226,15 @@ public enum BankLocation {
             case SHAYZIEN_BANK:
             case SHAYZIEN_CHEST:
             case GREAT_KOUREND_CASTLE:
+            case HOSIDIUS_KITCHEN:
+            case VINERY_BANK:
             case MOUNT_KARUULM:
                 // Requires Client of Kourend
-                return Rs2Player.getQuestState(Quest.CLIENT_OF_KOUREND) == QuestState.FINISHED;
+                return Rs2Player.getQuestState(Quest.CLIENT_OF_KOUREND) != QuestState.NOT_STARTED;
             case DWARF_MINE_BANK:
             case BLAST_FURNACE_BANK:
                 // Requires The Giant Dwarf
-                return Rs2Player.getQuestState(Quest.THE_GIANT_DWARF) == QuestState.FINISHED;
+                return Rs2Player.getQuestState(Quest.THE_GIANT_DWARF) != QuestState.NOT_STARTED;
             case CAMODZAAL:
                 // Requires Below Ice Mountain
                 return Rs2Player.getQuestState(Quest.BELOW_ICE_MOUNTAIN) == QuestState.FINISHED;
@@ -259,11 +261,9 @@ public enum BankLocation {
             case YANILLE:
             case GNOME_BANK:
             case MOTHERLOAD:
-            case VINERY_BANK:
             case PEST_CONTROL:
             case ARDOUGNE_NORTH:
             case ARDOUGNE_SOUTH:
-            case HOSIDIUS_KITCHEN:
             case GNOME_TREE_BANK_WEST:
             case BARBARIAN_OUTPOST:
             case GNOME_TREE_BANK_SOUTH:

@@ -8,6 +8,7 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
 import net.runelite.client.ui.overlay.OverlayManager;
@@ -52,52 +53,9 @@ public class BanksBankStanderPlugin extends Plugin {
     @Subscribe
     public void onItemContainerChanged(ItemContainerChanged inventory){
         if(inventory.getContainerId()==93){
-            if(BanksBankStanderScript.currentStatus == CurrentStatus.COMBINE_ITEMS) {
-                if (BanksBankStanderScript.firstItemId != null) {
-                    if (Rs2Inventory.items().stream().filter(item -> item.id == BanksBankStanderScript.firstItemId).mapToInt(item -> item.quantity).sum() < config.firstItemQuantity()) {
-                        if (BanksBankStanderScript.firstItemSum > 0) { BanksBankStanderScript.firstItemSum--; }
-                        BanksBankStanderScript.itemsProcessed++;
-                    }
-                } else {
-                    if (Rs2Inventory.count(BanksBankStanderScript.firstItemIdentifier) < config.firstItemQuantity()) {
-                        if (BanksBankStanderScript.firstItemSum > 0) { BanksBankStanderScript.firstItemSum--; }
-                        BanksBankStanderScript.itemsProcessed++;
-                    }
-                }
-                if(config.secondItemQuantity() > 0) {
-                    if (BanksBankStanderScript.secondItemId != null) {
-                        if (Rs2Inventory.items().stream().filter(item -> item.id == BanksBankStanderScript.secondItemId).mapToInt(item -> item.quantity).sum() < config.secondItemQuantity()) {
-                            if (BanksBankStanderScript.secondItemSum > 0) { BanksBankStanderScript.secondItemSum--; }
-                        }
-                    } else {
-                        if (Rs2Inventory.count(BanksBankStanderScript.secondItemIdentifier) < config.secondItemQuantity()) {
-                            if (BanksBankStanderScript.secondItemSum > 0) { BanksBankStanderScript.secondItemSum--; }
-                        }
-                    }
-                }
-                if(config.thirdItemQuantity() > 0) {
-                    if (BanksBankStanderScript.thirdItemId != null) {
-                        if (Rs2Inventory.items().stream().filter(item -> item.id == BanksBankStanderScript.thirdItemId).mapToInt(item -> item.quantity).sum() < config.thirdItemQuantity()) {
-                            if (BanksBankStanderScript.thirdItemSum > 0) { BanksBankStanderScript.thirdItemSum--; }
-                        }
-                    } else {
-                        if (Rs2Inventory.count(BanksBankStanderScript.thirdItemIdentifier) < config.thirdItemQuantity()) {
-                            if (BanksBankStanderScript.thirdItemSum > 0) { BanksBankStanderScript.thirdItemSum--; }
-                        }
-                    }
-                }
-                if(config.fourthItemQuantity() > 0) {
-                    if (BanksBankStanderScript.fourthItemId != null) {
-                        if (Rs2Inventory.items().stream().filter(item -> item.id == BanksBankStanderScript.fourthItemId).mapToInt(item -> item.quantity).sum() < config.fourthItemQuantity()) {
-                            if (BanksBankStanderScript.fourthItemSum > 0) { BanksBankStanderScript.fourthItemSum--; }
-                        }
-                    } else {
-                        if (Rs2Inventory.count(BanksBankStanderScript.fourthItemIdentifier) < config.fourthItemQuantity()) {
-                            if (BanksBankStanderScript.fourthItemSum > 0) { BanksBankStanderScript.fourthItemSum--; }
-                        }
-                    }
-                }
-            } else { System.out.println("currentStatus : " + BanksBankStanderScript.currentStatus); }
+            if (!Rs2Bank.isOpen()) {
+                BanksBankStanderScript.itemsProcessed++;
+            }
             if (BanksBankStanderScript.secondItemId != null) { // Use secondItemId if it's available
                 if (Arrays.stream(inventory.getItemContainer().getItems())
                         .anyMatch(x -> x.getId() == BanksBankStanderScript.secondItemId)) {
@@ -108,7 +66,7 @@ public class BanksBankStanderPlugin extends Plugin {
                     BanksBankStanderScript.previousItemChange = (System.currentTimeMillis() - 2500);
                 }
             } else { // Use secondItemIdentifier if secondItemId is null
-                Rs2Item item = Rs2Inventory.get(BanksBankStanderScript.secondItemIdentifier);
+                Rs2Item item = Rs2Inventory.get(config.secondItemIdentifier());
                 if (item != null) {
                     // average is 1800, max is 2400~
                     BanksBankStanderScript.previousItemChange = System.currentTimeMillis();
@@ -117,7 +75,6 @@ public class BanksBankStanderPlugin extends Plugin {
                     BanksBankStanderScript.previousItemChange = (System.currentTimeMillis() - 2500);
                 }
             }
-
         }
     }
     @Subscribe

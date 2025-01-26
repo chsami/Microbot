@@ -1,26 +1,13 @@
 package net.runelite.client.plugins.microbot.nmz;
 
-import net.runelite.client.config.Config;
-import net.runelite.client.config.ConfigGroup;
-import net.runelite.client.config.ConfigItem;
-import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.*;
 
 @ConfigGroup("nmz")
+@ConfigInformation("Start outside NMZ with gp in Dominic's coffer and make sure bankpin has been unlocked <br />" +
+        "                \"Make sure you have already set up your hard dream once!  <br />" +
+        "                \"Make sure to turn on AUTO RETALIATE!  <br />")
 public interface NmzConfig extends Config {
     String GROUP = "Nmz";
-
-    @ConfigItem(
-            keyName = "guide",
-            name = "How to use",
-            description = "How to use this plugin",
-            position = 0,
-            section = generalSection
-    )
-    default String GUIDE() {
-        return "Start outside NMZ with gp in Dominic's coffer and make sure bankpin has been unlocked\n" +
-                "Make sure you have already set up your hard dream once!\n" +
-                "Make sure to turn on AUTO RETALIATE!";
-    }
 
     @ConfigSection(
             name = "General",

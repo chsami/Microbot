@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.util.settings;
 
 import net.runelite.api.Varbits;
+import net.runelite.api.widgets.ComponentID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
@@ -9,7 +10,8 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import java.awt.event.KeyEvent;
 
 import static net.runelite.client.plugins.microbot.globval.VarbitIndices.TOGGLE_ROOFS;
-import static net.runelite.client.plugins.microbot.util.Global.*;
+import static net.runelite.client.plugins.microbot.util.Global.sleep;
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
 public class Rs2Settings {
 
@@ -17,6 +19,16 @@ public class Rs2Settings {
     static final int SETTINGS_INTERFACE = 8781825;
     static final int SETTINGS_SEARCHBAR = 8781834;
     static final int ALL_SETTINGS_BUTTON = 7602208;
+
+    public static boolean openSettings() {
+        boolean isSettingsInterfaceVisible = Rs2Widget.isWidgetVisible(ComponentID.SETTINGS_INIT);
+        if (!isSettingsInterfaceVisible) {
+            Rs2Tab.switchToSettingsTab();
+            Rs2Widget.clickWidget(ALL_SETTINGS_BUTTON);
+            return false;
+        }
+        return true;
+    }
 
     public static boolean isDropShiftSettingEnabled() {
         return Microbot.getVarbitValue(DROP_SHIFT_SETTING) == 1;
@@ -136,9 +148,37 @@ public class Rs2Settings {
     /**
      * When casting alchemy spells on items in your inventory
      * if the item is worth more than this value, a warning will be shown
+     *
      * @return
      */
     public static int getMinimumItemValueAlchemyWarning() {
         return Microbot.getVarbitValue(6091);
+    }
+
+    /**
+     * disables levelup interfaces
+     *
+     * @return
+     */
+    public static boolean disableLevelUpInterface() {
+        if (Microbot.getVarbitValue(Varbits.DISABLE_LEVEL_UP_INTERFACE) == 1) return true;
+        if (!openSettings()) return false;
+
+        int tries = 0;
+
+        while (Microbot.getVarbitValue(Varbits.DISABLE_LEVEL_UP_INTERFACE) == 0 || tries > 3) {
+            Rs2Widget.clickWidget(SETTINGS_SEARCHBAR);
+            Rs2Keyboard.typeString("disable level");
+            sleepUntil(() -> Rs2Widget.hasWidget("Disable level-up"));
+            if (Rs2Widget.clickWidget("Disable level-up interface")) {
+                sleepUntil(() -> Microbot.getVarbitValue(Varbits.DISABLE_LEVEL_UP_INTERFACE) == 1);
+            }
+            tries++;
+        }
+
+        Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
+        Rs2Tab.switchToInventoryTab();
+
+        return Microbot.getVarbitValue(Varbits.DISABLE_LEVEL_UP_INTERFACE) == 1;
     }
 }

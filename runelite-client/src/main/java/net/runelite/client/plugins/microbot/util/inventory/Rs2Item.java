@@ -26,6 +26,7 @@ public class Rs2Item {
     List<String> equipmentActions = new ArrayList();
     @Getter
     boolean isStackable;
+    @Getter
     boolean isNoted;
     @Getter
     boolean isTradeable;

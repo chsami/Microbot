@@ -1,10 +1,7 @@
 package net.runelite.client.plugins.microbot.bossing.giantmole;
 
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.NPC;
-import net.runelite.api.ObjectID;
-import net.runelite.api.Skill;
-import net.runelite.api.TileObject;
+import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.bosstimer.Boss;
@@ -61,6 +58,7 @@ public class GiantMoleScript extends Script
     public static boolean checkedIfWorldOccupied = false;
 
     private GiantMoleConfig localConfig;
+    private int rockCakeHp = Rs2Random.between(2, 5);
 
     /**
      * Main runner method for the Giant Mole script.
@@ -95,7 +93,8 @@ public class GiantMoleScript extends Script
 
                 updateState(config);
                 handlePotions();
-                handleFood();
+                handleFood(config);
+                handleDamageItems(config);
 
                 switch (state)
                 {
@@ -389,10 +388,10 @@ public class GiantMoleScript extends Script
     }
 
     // Handles food consumption
-    public void handleFood()
+    public void handleFood(GiantMoleConfig config)
     {
         boolean usingQoLFood = Microbot.getConfigManager().getConfiguration("QoL", "autoEatFood", Boolean.class);
-        if (!(Microbot.isPluginEnabled(QoLPlugin.class) && usingQoLFood))
+        if (!(Microbot.isPluginEnabled(QoLPlugin.class) && usingQoLFood) && !config.useRockCake())
         {
                 Rs2Player.eatAt(Rs2Random.randomGaussian(50, 10));
         }
@@ -416,6 +415,20 @@ public class GiantMoleScript extends Script
         Rs2Player.drinkCombatPotionAt(Skill.STRENGTH);
         Rs2Player.drinkCombatPotionAt(Skill.DEFENCE);
         Rs2Player.drinkCombatPotionAt(Skill.MAGIC);
+    }
+
+    /**
+     * Self damages to 1hp
+     */
+    public void handleDamageItems(GiantMoleConfig config) {
+        if (!config.useRockCake()) return;
+
+        if (Rs2Player.getBoostedSkillLevel(Skill.HITPOINTS) > rockCakeHp)
+            if (!Rs2Inventory.interact(ItemID.DWARVEN_ROCK_CAKE_7510, "Guzzle"))
+                if (!Rs2Inventory.interact(ItemID.LOCATOR_ORB, "Feel"))
+                    return;
+
+        rockCakeHp = Rs2Random.between(2, 5);
     }
 
     /**

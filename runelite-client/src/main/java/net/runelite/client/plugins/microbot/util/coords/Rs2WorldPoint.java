@@ -115,6 +115,21 @@ public class Rs2WorldPoint {
         return distance;
     }
 
+    /**
+     * Converts an instanced worldPoint coordinate to a global worldpoint
+     * this can be used for getting objects in instanced room by location
+     * @param worldPoint
+     * @return
+     */
+    public static WorldPoint convertInstancedWorldPoint(WorldPoint worldPoint) {
+        if (worldPoint == null) return null;
+
+        LocalPoint l = Rs2LocalPoint.fromWorldInstance(worldPoint);
+        WorldPoint globalWorldPoint = WorldPoint.fromLocal(Microbot.getClient(), l);
+
+        return globalWorldPoint;
+    }
+
     // Override equals, hashCode, and toString if necessary
     @Override
     public boolean equals(Object obj) {

@@ -723,7 +723,8 @@ public class Rs2Inventory {
      *
      * @return The first item that matches the ID, or null if not found.
      */
-    public static Rs2Item get(int id) {
+    public static Rs2Item get(Integer id) {
+        if (id == null) return null;
         return items().stream().filter(x -> x.id == id).findFirst().orElse(null);
     }
 
@@ -747,7 +748,7 @@ public class Rs2Inventory {
      * @return The item with the specified name, or null if not found.
      */
     public static Rs2Item get(String name) {
-        return get(name, false);
+        return get(name, false, false);
     }
 
     /**
@@ -763,6 +764,28 @@ public class Rs2Inventory {
             return items().stream().filter(x -> x.name.equalsIgnoreCase(name)).findFirst().orElse(null);
         else
             return items().stream().filter(x -> x.name.toLowerCase().contains(name.toLowerCase())).findFirst().orElse(null);
+    }
+
+    /**
+     * Gets the item in the inventory with the specified name.
+     * this method ignores casing
+     *
+     * @param name The name to match.
+     *
+     * @return The item with the specified name, or null if not found.
+     */
+    public static Rs2Item get(String name, boolean stackable, boolean exact) {
+        if (!stackable) {
+            if (exact)
+                return items().stream().filter(x -> x.name.equalsIgnoreCase(name)).findFirst().orElse(null);
+            else
+                return items().stream().filter(x -> x.name.toLowerCase().contains(name.toLowerCase())).findFirst().orElse(null);
+        }
+
+        if (exact)
+            return items().stream().filter(x -> x.name.equalsIgnoreCase(name) && x.isStackable).findFirst().orElse(null);
+        else
+            return items().stream().filter(x -> x.name.toLowerCase().contains(name.toLowerCase()) && x.isStackable).findFirst().orElse(null);
     }
 
     /**
@@ -826,52 +849,6 @@ public class Rs2Inventory {
     }
 
     /**
-     * Checks if the player has a certain quantity of an item.
-     *
-     * @param id     The id of the item to check.
-     * @param amount The desired quantity of the item.
-     *
-     * @return True if the player has the specified quantity of the item, false otherwise.
-     */
-    public static boolean hasItemAmount(int id, int amount) {
-        Rs2Item rs2Item = get(id);
-        if (rs2Item == null) return false;
-        if (rs2Item.isStackable) {
-            return rs2Item.quantity >= amount;
-        } else {
-            return items().stream().filter(x -> x.id == id).count() >= amount;
-        }
-    }
-
-    /**
-     * Checks if the player has a certain quantity of an item.
-     *
-     * @param id        The id of the item to check.
-     * @param amount    The desired quantity of the item.
-     * @param stackable A boolean indicating if the item is stackable.
-     *
-     * @return True if the player has the specified quantity of the item, false otherwise.
-     */
-    public static boolean hasItemAmount(int id, int amount, boolean stackable) {
-        Rs2Item item = get(id);
-        return stackable ? item.quantity >= amount : items().stream().filter(x -> x.id == id).count() >= amount;
-    }
-
-    /**
-     * Checks if the player has a certain quantity of an item.
-     *
-     * @param name   The name of the item to check.
-     * @param amount The desired quantity of the item.
-     *
-     * @return True if the player has the specified quantity of the item, false otherwise.
-     */
-    public static boolean hasItemAmount(String name, int amount) {
-        Rs2Item item = get(name);
-        if (item == null) return false;
-        return hasItemAmount(name, amount, item.isStackable(), false);
-    }
-
-    /**
      * Retrieves the quantity of an item based on its ID.
      *
      * @param id The ID of the item.
@@ -914,6 +891,55 @@ public class Rs2Inventory {
     /**
      * Checks if the player has a certain quantity of an item.
      *
+     * @param id     The id of the item to check.
+     * @param amount The desired quantity of the item.
+     *
+     * @return True if the player has the specified quantity of the item, false otherwise.
+     */
+    public static boolean hasItemAmount(int id, int amount) {
+       return hasItemAmount(id, amount, false);
+    }
+
+    /**
+     * Checks if the player has a certain quantity of an item.
+     *
+     * @param id     The id of the item to check.
+     * @param amount The desired quantity of the item.
+     *
+     * @return True if the player has the specified quantity of the item, false otherwise.
+     */
+    public static boolean hasItemAmount(Integer id, int amount, boolean exact) {
+        if (id == null) return false;
+        Rs2Item rs2Item = get(id);
+        if (rs2Item == null) return false;
+        if (rs2Item.isStackable) {
+            return rs2Item.quantity >= amount;
+        } else if (exact){
+            return items().stream().filter(x -> x.id == id).count() == amount;
+        } else {
+            return items().stream().filter(x -> x.id == id).count() >= amount;
+
+        }
+    }
+
+
+    /**
+     * Checks if the player has a certain quantity of an item.
+     *
+     * @param name   The name of the item to check.
+     * @param amount The desired quantity of the item.
+     *
+     * @return True if the player has the specified quantity of the item, false otherwise.
+     */
+    public static boolean hasItemAmount(String name, int amount) {
+        Rs2Item item = get(name);
+        if (item == null) return false;
+        return hasItemAmount(name, amount, item.isStackable, false);
+    }
+
+    /**
+     * Checks if the player has a certain quantity of an item.
+     *
      * @param name      The name of the item to check.
      * @param amount    The desired quantity of the item.
      * @param stackable A boolean indicating if the item is stackable.
@@ -943,8 +969,9 @@ public class Rs2Inventory {
             }
         }
 
-        Rs2Item item = get(name, exact);
+        Rs2Item item = get(name, true, exact);
         if (item == null) return false;
+
         return item.quantity >= amount;
     }
 
@@ -953,7 +980,8 @@ public class Rs2Inventory {
      *
      * @return boolean
      */
-    public static boolean hasItem(int id) {
+    public static boolean hasItem(Integer id) {
+        if (id == null) return false;
         return get(id) != null;
     }
 
@@ -981,7 +1009,7 @@ public class Rs2Inventory {
      * @return boolean
      */
     public static boolean hasItem(String name, boolean exact) {
-        return get(name, true) != null;
+        return get(name, false, exact) != null;
     }
 
     /**
@@ -1028,7 +1056,7 @@ public class Rs2Inventory {
 
     public static List<Rs2Item> getInventoryFood() {
         List<Rs2Item> items = items().stream()
-                .filter(x -> Arrays.stream(x.getInventoryActions()).anyMatch(a -> a != null && a.equalsIgnoreCase("eat")) || x.getName().toLowerCase().contains("jug of wine"))
+                .filter(x -> Arrays.stream(x.getInventoryActions()).anyMatch(a -> a != null && a.equalsIgnoreCase("eat")) || x.getName().toLowerCase().contains("jug of wine") && !x.getName().toLowerCase().contains("rock cake"))
                 .collect(Collectors.toList());
         return items;
     }
@@ -1652,6 +1680,7 @@ public class Rs2Inventory {
      * @return True if the slot contains items that match the IDs, false otherwise.
      */
     public static boolean slotContains(int slot, int[] ids) {
+        if (items().isEmpty()) return false;
         Rs2Item item = items().get(slot);
         if (item == null) return false;
         return Arrays.stream(ids).anyMatch(x -> x == item.id);
@@ -1666,6 +1695,7 @@ public class Rs2Inventory {
      * @return True if the slot contains items that match the IDs, false otherwise.
      */
     public static boolean slotContains(int slot, Integer... ids) {
+        if (items().isEmpty()) return false;
         Rs2Item item = items().get(slot);
         if (item == null) return false;
         return Arrays.stream(ids).anyMatch(x -> x == item.id);
@@ -1680,6 +1710,7 @@ public class Rs2Inventory {
      * @return True if the slot contains items that match the names, false otherwise.
      */
     public static boolean slotContains(int slot, String... names) {
+        if (items().isEmpty()) return false;
         Rs2Item item = items().get(slot);
         if (item == null) return false;
         return Arrays.stream(names).anyMatch(x -> x.equalsIgnoreCase(item.name));
@@ -1706,6 +1737,7 @@ public class Rs2Inventory {
      * @return True if the interaction is successful, false otherwise.
      */
     public static boolean slotInteract(int slot, String action) {
+        if (items().isEmpty()) return false;
         Rs2Item item = items().get(slot);
 
         if (item == null) return false;
@@ -1724,6 +1756,7 @@ public class Rs2Inventory {
      * @return True if the slot contains items with names containing the substring, false otherwise.
      */
     public static boolean slotNameContains(int slot, String sub) {
+        if (items().isEmpty()) return false;
         Rs2Item item = items().get(slot);
         if (item == null) return false;
         return item.name.contains(sub);

@@ -54,7 +54,6 @@ public class Rs2Player {
     public static Instant lastAnimationTime = null;
     private static final long COMBAT_TIMEOUT_MS = 10000;
     private static long lastCombatTime = 0;
-    public static boolean lastInteractWasPlayer = false;
     @Getter
     public static int lastAnimationID = AnimationID.IDLE;
 
@@ -527,16 +526,20 @@ public class Rs2Player {
 
     public static boolean useFood() {
         List<Rs2Item> foods = Rs2Inventory.getInventoryFood();
-        if (!foods.isEmpty()) {
-            if (foods.get(0).getName().toLowerCase().contains("jug of wine")) {
-                return Rs2Inventory.interact(foods.get(0), "drink");
-            } else if (foods.get(0).getName().toLowerCase().contains("blighted") && Microbot.getVarbitValue(Varbits.IN_WILDERNESS) == 1) {
-                return Rs2Inventory.interact(foods.get(0), "eat");
-            } else if (!foods.get(0).getName().toLowerCase().contains("blighted")) {
-                return Rs2Inventory.interact(foods.get(0), "eat");
-            }
+        if (foods.isEmpty()) return false;
+
+        boolean inWilderness = Microbot.getVarbitValue(Varbits.IN_WILDERNESS) == 1;
+
+        Rs2Item foodToUse = foods.stream()
+                .filter(rs2Item -> inWilderness && rs2Item.getName().toLowerCase().contains("blighted"))
+                .findFirst()
+                .orElse(foods.get(0));
+
+        if (foodToUse.getName().toLowerCase().contains("jug of wine")) {
+            return Rs2Inventory.interact(foodToUse, "drink");
         }
-        return false;
+
+        return Rs2Inventory.interact(foodToUse, "eat");
     }
 
     /**
@@ -712,14 +715,19 @@ public class Rs2Player {
     }
 
     /**
+     * Get the local player
+     * @return player
+     */
+    public static Player getLocalPlayer() {
+        return Microbot.getClient().getLocalPlayer();
+    }
+
+    /**
      * Checks if the player is in combat based on recent activity.
      *
      * @return True if the player is in combat, false otherwise.
      */
     public static boolean isInCombat() {
-        if (lastInteractWasPlayer) {
-            return (System.currentTimeMillis() - lastCombatTime < COMBAT_TIMEOUT_MS) && Microbot.getVarbitPlayerValue(1075) != -1;
-        }
         return System.currentTimeMillis() - lastCombatTime < COMBAT_TIMEOUT_MS;
     }
 
@@ -981,7 +989,7 @@ public class Rs2Player {
      * @return true if an item was found and interacted with; false otherwise.
      */
     private static boolean usePotion(String... itemNames) {
-        if (Rs2Inventory.contains(x -> Arrays.stream(itemNames).anyMatch(name -> x.name.contains(name)))) {
+        if (Rs2Inventory.contains(x -> Arrays.stream(itemNames).anyMatch(name -> x.name.contains(name) && !x.isNoted()))) {
             Rs2Item potion = Rs2Inventory.get(Arrays.stream(itemNames).collect(Collectors.toList()),false);
             if (potion != null) {
                 return Rs2Inventory.interact(potion, "drink");
