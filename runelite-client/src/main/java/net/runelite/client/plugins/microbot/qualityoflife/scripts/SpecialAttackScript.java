@@ -4,6 +4,7 @@ import net.runelite.api.NPC;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.qualityoflife.QoLConfig;
+import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
@@ -19,6 +20,7 @@ public class SpecialAttackScript extends Script {
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
                 if (!config.useSpecWeapon()) return;
+                if (Rs2Equipment.isWearingFullGuthan()) return;
                 if (Rs2Player.isInteracting()) {
                     npc.set((NPC) Microbot.getClient().getLocalPlayer().getInteracting());
                     if (Microbot.getSpecialAttackConfigs().useSpecWeapon()) {

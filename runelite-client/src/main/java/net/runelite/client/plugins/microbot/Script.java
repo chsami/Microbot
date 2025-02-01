@@ -44,6 +44,7 @@ public abstract class Script implements IScript {
 
     /**
      * Get the total runtime of the script
+     *
      * @return
      */
     public Duration getRunTime() {
@@ -79,6 +80,7 @@ public abstract class Script implements IScript {
 
     /**
      * sleeps for a specified number of game ticks
+     *
      * @param ticksToWait
      * @return
      */
@@ -170,22 +172,22 @@ public abstract class Script implements IScript {
         if (Microbot.pauseAllScripts)
             return false;
 
-        if (Microbot.isLoggedIn()) {
-            synchronized (BlockingEventManager.class) {
-                if (!Microbot.getBlockingEventManager().getBlockingEvents().isEmpty()) {
-                    for (BlockingEvent blockingEvent : Microbot.getBlockingEventManager().getBlockingEvents()) {
-                        if (blockingEvent.validate()) {
-                            blockingEvent.execute();
-                            return false;
-                        }
+        synchronized (BlockingEventManager.class) {
+            if (!Microbot.getBlockingEventManager().getBlockingEvents().isEmpty()) {
+                for (BlockingEvent blockingEvent : Microbot.getBlockingEventManager().getBlockingEvents()) {
+                    if (blockingEvent.validate()) {
+                        blockingEvent.execute();
+                        return false;
                     }
                 }
             }
-            
+        }
+
+        if (Microbot.isLoggedIn()) {
             boolean hasRunEnergy = Microbot.getClient().getEnergy() > Microbot.runEnergyThreshold;
             if (Microbot.enableAutoRunOn && hasRunEnergy)
                 Rs2Player.toggleRunEnergy(true);
-            
+
 
             if (!hasRunEnergy && Microbot.useStaminaPotsIfNeeded && Rs2Player.isMoving()) {
                 Rs2Inventory.useRestoreEnergyItem();
@@ -194,7 +196,7 @@ public abstract class Script implements IScript {
 
         return true;
     }
-    
+
     @Deprecated(since = "1.6.9 - Use Rs2Keyboard.keyPress", forRemoval = true)
     public void keyPress(char c) {
         Rs2Keyboard.keyPress(c);

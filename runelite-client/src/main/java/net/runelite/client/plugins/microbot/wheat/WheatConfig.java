@@ -5,7 +5,7 @@ import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 
-@ConfigGroup("nmz")
+@ConfigGroup(WheatConfig.GROUP)
 public interface WheatConfig extends Config {
     String GROUP = "Wheat";
 

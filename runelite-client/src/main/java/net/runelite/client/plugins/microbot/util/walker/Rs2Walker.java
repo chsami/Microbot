@@ -1033,6 +1033,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                             break;
                         }
                     }
+                    
 
                     GameObject gameObject = Rs2GameObject.getGameObjects(transport.getObjectId(), transport.getOrigin()).stream().findFirst().orElse(null);
                     //check game objects
@@ -1062,17 +1063,16 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                         sleepUntil(() -> !Rs2Player.isAnimating());
                         return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
                     }
-
+                    
+                    // check wall objects
                     List<WallObject> wallObjects = Rs2GameObject.getWallObjects(transport.getObjectId(), transport.getOrigin());
                     TileObject wallObject = wallObjects.stream().findFirst().orElse(null);
-
                     if (wallObject != null && wallObject.getId() == transport.getObjectId()) {
                         handleObject(transport, wallObject);
                         sleepUntil(() -> !Rs2Player.isAnimating());
                         return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
                     }
                 }
-
             }
         }
         return false;
@@ -1143,6 +1143,14 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                 walkFastCanvas(transport.getDestination());
                 sleepUntil(() -> Rs2Player.getWorldLocation().equals(transport.getDestination()));
             }
+            return true;
+        }
+        
+        // Handle Brimhaven Dungeon Entrance
+        if (tileObject.getId() == 20877) {
+            Rs2Dialogue.sleepUntilHasQuestion("Pay 875 coins to enter?");
+            Rs2Dialogue.clickOption("Yes");
+            sleepUntil(() -> Rs2Player.getWorldLocation().equals(transport.getDestination()));
             return true;
         }
         return false;

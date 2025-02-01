@@ -133,13 +133,14 @@ public class AttackNpcScript extends Script {
      */
     private void handleItemOnNpcToKill() {
         NPC npc = Rs2Npc.getNpcsAttackingPlayer(Microbot.getClient().getLocalPlayer()).stream().findFirst().orElse(null);
-        if (npc.getName().equalsIgnoreCase("desert lizard") && npc.getHealthRatio() < 10 && !npc.isDead()) {
+        if (npc == null) return;
+        if (npc.getName().equalsIgnoreCase("desert lizard") && npc.getHealthRatio() < 5) {
             Rs2Inventory.useItemOnNpc(ItemID.ICE_COOLER, npc);
             Rs2Player.waitForAnimation();
-        } else if (npc.getName().equalsIgnoreCase("rockslug") && npc.getHealthRatio() < 10 && !npc.isDead()) {
+        } else if (npc.getName().equalsIgnoreCase("rockslug") && npc.getHealthRatio() < 5) {
             Rs2Inventory.useItemOnNpc(ItemID.BAG_OF_SALT, npc);
             Rs2Player.waitForAnimation();
-        } else if (npc.getName().equalsIgnoreCase("gargoyle") && npc.getHealthRatio() < 10 && !npc.isDead()) {
+        } else if (npc.getName().equalsIgnoreCase("gargoyle") && npc.getHealthRatio() < 3) {
             Rs2Inventory.useItemOnNpc(ItemID.ROCK_HAMMER, npc);
             Rs2Player.waitForAnimation();
         }

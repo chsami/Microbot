@@ -58,9 +58,6 @@ public class GrapeFarmerScript extends Script {
                         if (Rs2Bank.hasItem(ItemID.FARMING_CAPE) || Rs2Bank.hasItem(ItemID.FARMING_CAPET)) {
                             Rs2Bank.withdrawAndEquip(Rs2Bank.hasItem(ItemID.FARMING_CAPE) ? ItemID.FARMING_CAPE : ItemID.FARMING_CAPET);
                         }
-                        if (Rs2Bank.hasItem(ItemID.MAGIC_SECATEURS)) {
-                            Rs2Bank.withdrawAndEquip(ItemID.MAGIC_SECATEURS);
-                        }
                         Rs2Bank.withdrawAllButOne(ItemID.GRAPE_SEED);
                         Rs2Bank.withdrawOne(ItemID.GARDENING_TROWEL);
                         Rs2Bank.withdrawOne(ItemID.SEED_DIBBER);
@@ -73,6 +70,15 @@ public class GrapeFarmerScript extends Script {
                             Rs2Bank.withdrawAndEquip(ItemID.FARMERS_SHIRT);
                             Rs2Bank.withdrawAndEquip(ItemID.FARMERS_BORO_TROUSERS_13641);
                             Rs2Bank.withdrawAndEquip(ItemID.FARMERS_BOOTS_13645);
+                            if (Rs2Bank.hasItem(ItemID.GRACEFUL_CAPE)) {
+                                Rs2Bank.withdrawAndEquip(ItemID.GRACEFUL_CAPE);
+                            }
+                            if (Rs2Bank.hasItem(ItemID.GRACEFUL_GLOVES)) {
+                                Rs2Bank.withdrawAndEquip(ItemID.GRACEFUL_GLOVES);
+                            }
+                        }
+                        if (Rs2Bank.hasItem(ItemID.MAGIC_SECATEURS)) {
+                            Rs2Bank.withdrawAndEquip(ItemID.MAGIC_SECATEURS);
                         }
                         Rs2Bank.closeBank();
                         sleep(300);
@@ -95,7 +101,7 @@ public class GrapeFarmerScript extends Script {
                         if (!this.isRunning()) return;
                         if (Rs2Player.isMoving() || Rs2Player.isAnimating() ||
                                 Rs2Player.isInteracting() || Rs2Player.isWalking()) {
-                            continue; // Wait for the player to be idle
+                            continue;
                         }
 
                         int currentVarbitValue = Microbot.getVarbitValue(varbitKey);
@@ -108,6 +114,7 @@ public class GrapeFarmerScript extends Script {
 
                         switch (currentState) {
                             case CHECK_HEALTH:
+                                System.out.println("Varbit value checkhealth: " + currentVarbitValue);
                                 System.out.println("Checking health of GroundObject ID: " + gameObjectId);
                                 checkHealth(gameObjectId);
                                 break;
@@ -184,6 +191,7 @@ public class GrapeFarmerScript extends Script {
             Rs2Inventory.use(ItemID.ZAMORAKS_GRAPES);
             Rs2Npc.interact(0);
             sleepUntil(() -> !Rs2Inventory.contains(ItemID.ZAMORAKS_GRAPES), 5000);
+            sleep(100,600);
             if (Rs2Inventory.contains(ItemID.GRAPES)) {
                 Rs2Inventory.use(ItemID.GRAPES);
                 Rs2Npc.interact(0);
@@ -192,13 +200,15 @@ public class GrapeFarmerScript extends Script {
             }
 
         }
-        if (Rs2GameObject.interact(gameObjectId)) {
+
+
+        if (!Rs2Inventory.isFull() && Rs2GameObject.interact(gameObjectId)) {
             Rs2Player.waitForAnimation(500);
         }
-
     }
 
     private static State getStateForVarbit(int varbitValue) {
+        log("Current varbit value: " + varbitValue + " State: ");
         if (varbitValue == 0) {
             // Empty, empty+fertilizer
             return State.ADD_SALTPETRE;
@@ -210,10 +220,10 @@ public class GrapeFarmerScript extends Script {
             // Growing grape
             return State.NONE;
         }
-        if (varbitValue == 9 || varbitValue == 10) {
+        if (varbitValue == 9) {
             return State.CHECK_HEALTH;
         }
-        if (varbitValue >= 11 && varbitValue < 15) {
+        if (varbitValue >= 10 && varbitValue < 15) {
             // Harvestable grape
             return State.PICK_GRAPES;
         }
@@ -223,7 +233,6 @@ public class GrapeFarmerScript extends Script {
         return null;
     }
 
-    // Simulates interaction with a game object
     private static void checkHealth(int gameObjectId) {
         System.out.println("Interacting with GroundObject ID: " + gameObjectId + " using action: Check-health");
         Rs2GameObject.interact(gameObjectId);

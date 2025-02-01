@@ -72,6 +72,7 @@ public enum BankLocation {
     NEITIZNOT(new WorldPoint(2337, 3807, 0)),
     PEST_CONTROL(new WorldPoint(2667, 2653, 0)),
     PISCARILIUS(new WorldPoint(1803, 3790, 0)),
+    PISCATORIS_FISHING_COLONY(new WorldPoint(2330, 3689, 0)),
     PORT_KHAZARD(new WorldPoint(2664, 3161, 0)),
     PORT_PHASMATYS(new WorldPoint(3688, 3467, 0)),
     PRIFDDINAS(new WorldPoint(3257, 6106, 0)),
@@ -247,6 +248,9 @@ public enum BankLocation {
             case MYTHS_GUILD:
                 // Requires Dragon Slayer 2
                 return Rs2Player.getQuestState(Quest.DRAGON_SLAYER_II) == QuestState.FINISHED;
+            case PISCATORIS_FISHING_COLONY:
+                // Requires Swan Song
+                return Rs2Player.getQuestState(Quest.SWAN_SONG) == QuestState.FINISHED;
             case ROGUES_DEN_CHEST:
             case CAMELOT:
             case HALLOWED_SEPULCHRE:
@@ -269,6 +273,7 @@ public enum BankLocation {
             case GNOME_TREE_BANK_SOUTH:
             case ROGUES_DEN_EMERALD_BENEDICT:
             case TREE_GNOME_STRONGHOLD_NIEVE:
+            case SHANTY_PASS:
                 return isMember();
             default:
                 return true;

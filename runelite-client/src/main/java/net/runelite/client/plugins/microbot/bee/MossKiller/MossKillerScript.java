@@ -410,14 +410,14 @@ public class MossKillerScript extends Script {
             }
         }
 
-        sleep(600);
-        eatAt(70);
-
         if (Rs2Walker.getDistanceBetween(playerLocation, MOSS_GIANT_SPOT) > 10) {
                         if (bossMode) {
                             BreakHandlerScript.setLockState(true);
                             if (Rs2Inventory.contains(MOSSY_KEY)) {
-                                eatAt(90);
+                                if (eatAt(70)) {
+                                    sleep(1900,2200);
+                                    eatAt(80);
+                                }
                                 Microbot.log("Walking to outside boss gaet spot");
                                 if (Rs2Walker.getDistanceBetween(playerLocation, OUTSIDE_BOSS_GATE_SPOT) > 10) {
                                     Rs2Walker.walkTo(OUTSIDE_BOSS_GATE_SPOT, 10);

@@ -104,6 +104,7 @@ public class MossKillerPlugin extends Plugin {
             overlayManager.add(mossKillerOverlay);
         }
         Microbot.useStaminaPotsIfNeeded = false;
+        Microbot.enableAutoRunOn = false;
         hideOverlay = config.isHideOverlay();
         toggleOverlay(hideOverlay);
         if(!config.wildy()) {

@@ -315,7 +315,7 @@ public class TutorialIslandScript extends Script {
                 return;
             }
 
-            if (plugin.isToggleLevelUp() && !isLevelUpNotificationsEnabled()) {
+            if (plugin.isToggleLevelUp() && isLevelUpNotificationsEnabled()) {
                 disableLevelUpNotifications(true);
                 Rs2Random.waitEx(1200, 300);
                 return;

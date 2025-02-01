@@ -217,6 +217,7 @@ public enum DepositBoxLocation {
             case VOID_KNIGHTS_OUTPOST:
             case NARDAH:
             case YANILLE:
+            case SHANTAY_PASS:
                 return isMember();
             default:
                 return true;

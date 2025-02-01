@@ -76,13 +76,15 @@ public class CollisionMap {
     private final List<Node> neighbors = new ArrayList<>(16);
     private final boolean[] traversable = new boolean[8];
 
-    private final List<WorldPoint> ignoreCollision = Arrays.asList(
+    public static final List<WorldPoint> ignoreCollision = Arrays.asList(
             new WorldPoint(3142, 3457, 0),
             new WorldPoint(3141, 3457, 0),
             new WorldPoint(3142, 3457, 0),
             new WorldPoint(3141, 3458, 0),
             new WorldPoint(3141, 3456, 0),
-            new WorldPoint(3142, 3456, 0));
+            new WorldPoint(3142, 3456, 0),
+            new WorldPoint(2744, 3153, 0),
+            new WorldPoint(2745, 3153, 0));
 
     public List<Node> getNeighbors(Node node, VisitedTiles visited, PathfinderConfig config, WorldPoint target) {
         final int x = WorldPointUtil.unpackWorldX(node.packedPosition);

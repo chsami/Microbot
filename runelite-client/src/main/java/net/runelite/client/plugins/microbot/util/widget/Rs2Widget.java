@@ -2,7 +2,6 @@ package net.runelite.client.plugins.microbot.util.widget;
 
 import net.runelite.api.MenuAction;
 import net.runelite.api.annotations.Component;
-import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -75,8 +74,10 @@ public class Rs2Widget {
     }
 
     public static boolean isWidgetVisible(@Component int id) {
-        Widget widget = getWidget(id);
-        return !Microbot.getClientThread().runOnClientThread(() -> widget == null || widget.isHidden());
+        return !Microbot.getClientThread().runOnClientThread(() -> {
+            Widget widget = getWidget(id);
+            return widget == null || widget.isHidden();
+        });
     }
 
     public static boolean isWidgetVisible(int widgetId, int childId) {

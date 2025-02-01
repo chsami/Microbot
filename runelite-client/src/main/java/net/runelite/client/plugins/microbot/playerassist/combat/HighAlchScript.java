@@ -9,6 +9,7 @@ import net.runelite.client.plugins.microbot.util.item.Rs2ExplorersRing;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.settings.Rs2Settings;
+import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
 
@@ -17,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 
 public class HighAlchScript extends Script {
 
-    int alchemyValueWarningVarbit = 6091;
+    private int timeUntilCheckHighAlch = 60000;
 
     public boolean run(PlayerAssistConfig config) {
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
@@ -42,6 +43,10 @@ public class HighAlchScript extends Script {
                             }
                         }
                     }
+                } else {
+                    Rs2Tab.switchToInventoryTab();
+                    sleep(timeUntilCheckHighAlch);
+                    timeUntilCheckHighAlch = timeUntilCheckHighAlch * 5;
                 }
 
             } catch (Exception ex) {

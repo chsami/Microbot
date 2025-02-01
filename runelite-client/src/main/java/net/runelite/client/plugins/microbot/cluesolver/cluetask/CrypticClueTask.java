@@ -141,7 +141,7 @@ public class CrypticClueTask extends ClueTask {
             state = State.KILLING_ENEMY;
         } else if (clue.getObjectId() != -1) {
             state = State.INTERACTING_WITH_OBJECT;
-        } else if (clue.getNpc() != null && Rs2Npc.getNpc(clue.getNpc()) != null) {
+        } else if (clue.getNpc(clueScrollPlugin) != null && Rs2Npc.getNpc(clue.getNpc(clueScrollPlugin)) != null) {
             state = State.INTERACTING_WITH_NPC;
         } else {
             state = State.COMPLETED;
@@ -193,9 +193,9 @@ public class CrypticClueTask extends ClueTask {
     }
 
     private boolean interactWithNpc() {
-        NPC targetNpc = Rs2Npc.getNpc(clue.getNpc());
+        NPC targetNpc = Rs2Npc.getNpc(clue.getNpc(clueScrollPlugin));
         if (targetNpc == null) {
-            log.warn("NPC {} not found at the location.", clue.getNpc());
+            log.warn("NPC {} not found at the location.", clue.getNpc(clueScrollPlugin));
             return false;
         }
         return Rs2Npc.interact(targetNpc, "Talk-to");

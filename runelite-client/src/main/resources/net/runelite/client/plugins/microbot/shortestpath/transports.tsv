@@ -1523,6 +1523,9 @@
 2775 3234 1	2776 3235 0	Climb-down;Ship's ladder;9745						
 2808 3162 0	2808 3162 1	Climb-up;Ladder;16683					3	
 2808 3162 1	2808 3162 0	Climb-down;Ladder;16679					3	
+2744 3153 0	2713 9564 0	Pay;Dungeon entrance;20877		875 coins				
+2713 9564 0	2744 3153 0	Leave;Exit;20878						
+
 # Karamja Volcano								
 2855 3169 0	2855 9569 0	Climb-down;Rocks;11441						
 2855 9569 0	2856 3167 0	Climb;Climbing rope;18969						
@@ -4693,6 +4696,14 @@
 3264 6024 0	2240 3269 0	Exit;City Gate;36523	 					
 2239 3269 0	3263 6024 0	Enter;City Gate;36518	 					
 3263 6024 0	2239 3269 0	Exit;City Gate;36522
+
+# Piscatoris Fishing Colony
+2344 3650 0	2344 3655 0	Enter;Hole;12656			Swan Song			
+2344 3655 0	2344 3650 0	Enter;Hole;12656			Swan Song			
+2343 3661 0	2343 3663 0	Open;Colony gate;12723			Swan Song			
+2343 3663 0	2343 3661 0	Open;Colony gate;12723			Swan Song			
+2344 3661 0	2344 3663 0	Open;Colony gate;12725			Swan Song			
+2344 3663 0	2344 3661 0	Open;Colony gate;12725			Swan Song			
 # f2p altars (earth, air, fire, body, water)
 2793 4828 0	2980 3511 0	Use;Portal;34749
 2726 4832 0	3182 3162 0	Use;Portal;34750

@@ -29,7 +29,7 @@ jobs:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           automatic_release_tag: "1.7.0"
           prerelease: false
-          title: "Release 1.7.0"
+          title: "Release 1.7.1"
           files: |
             /home/runner/work/Microbot/Microbot/runelite-client/target/microbot-*.jar
 

@@ -25,8 +25,9 @@
 package net.runelite.client.plugins.microbot.ui;
 
 import com.google.common.primitives.Ints;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.Notifier;
+import net.runelite.client.RuneLite;
 import net.runelite.client.config.*;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
@@ -46,7 +47,11 @@ import java.awt.*;
 import java.awt.event.ItemEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.File;
+import java.util.List;
+import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 @Slf4j
 class MicrobotNotificationPanel extends PluginPanel
@@ -116,10 +121,10 @@ class MicrobotNotificationPanel extends PluginPanel
 			{
 				log.debug("Initializing notification {}.{}", configDescriptor.getGroup().value(), configItemDescriptor.getItem().name());
 				notif = new Notification(true, true, true,
-					runeLiteConfig.enableTrayNotifications(), TrayIcon.MessageType.NONE, runeLiteConfig.notificationRequestFocus(),
-					runeLiteConfig.notificationSound(), runeLiteConfig.notificationVolume(), runeLiteConfig.notificationTimeout(),
-					runeLiteConfig.enableGameMessageNotification(), runeLiteConfig.flashNotification(), runeLiteConfig.notificationFlashColor(),
-					runeLiteConfig.sendNotificationsWhenFocused());
+						runeLiteConfig.enableTrayNotifications(), TrayIcon.MessageType.NONE, runeLiteConfig.notificationRequestFocus(),
+						runeLiteConfig.notificationSound(), null, runeLiteConfig.notificationVolume(), runeLiteConfig.notificationTimeout(),
+						runeLiteConfig.enableGameMessageNotification(), runeLiteConfig.flashNotification(), runeLiteConfig.notificationFlashColor(),
+						runeLiteConfig.sendNotificationsWhenFocused());
 			}
 			else
 			{
@@ -153,30 +158,23 @@ class MicrobotNotificationPanel extends PluginPanel
 		return checkbox;
 	}
 
-	private <T extends Enum<T>> JComboBox<Enum<T>> combobox(Class<T> clazz, T value)
+	private <T> JComboBox<T> combobox(T[] options, T value)
 	{
-		JComboBox<Enum<T>> box = new JComboBox<>(clazz.getEnumConstants());
+		JComboBox<T> box = new JComboBox<>(options);
 		// set renderer prior to calling box.getPreferredSize(), since it will invoke the renderer
 		// to build components for each combobox element in order to compute the display size of the
 		// combobox
 		box.setRenderer(new TitleCaseListCellRenderer());
 		box.setPreferredSize(new Dimension(box.getPreferredSize().width, 22));
+		box.setSelectedItem(value);
+		// use TitleCaseListCellRenderer capitalization logic for tooltip
+		box.setToolTipText(value instanceof Enum ? Text.titleCase((Enum<?>) value) : value.toString());
 
-		try
-		{
-			Enum<?> selectedItem = Enum.valueOf(clazz, value.name());
-			box.setSelectedItem(selectedItem);
-			box.setToolTipText(Text.titleCase(selectedItem));
-		}
-		catch (IllegalArgumentException ex)
-		{
-			log.debug("invalid selected item", ex);
-		}
 		box.addItemListener(e ->
 		{
 			if (e.getStateChange() == ItemEvent.SELECTED)
 			{
-				box.setToolTipText(Text.titleCase((Enum<?>) box.getSelectedItem()));
+				box.setToolTipText(box.getSelectedItem() instanceof Enum ? Text.titleCase((Enum<?>) box.getSelectedItem()) : box.getSelectedItem().toString());
 			}
 		});
 
@@ -265,9 +263,9 @@ class MicrobotNotificationPanel extends PluginPanel
 				var n = loadNotification();
 				saveNotification(n.withTray(checkboxTray.isSelected()));
 			});
-			item("Tray notification", "Enables tray notifications", checkboxTray);
+			item("Tray notification", "Enables tray notifications.", checkboxTray);
 
-			var comboboxRequestFocus = combobox(RequestFocusType.class, notif.getRequestFocus());
+			var comboboxRequestFocus = combobox(RequestFocusType.class.getEnumConstants(), notif.getRequestFocus());
 			comboboxRequestFocus.addItemListener(e ->
 			{
 				if (e.getStateChange() == ItemEvent.SELECTED)
@@ -276,18 +274,50 @@ class MicrobotNotificationPanel extends PluginPanel
 					saveNotification(n.withRequestFocus((RequestFocusType) comboboxRequestFocus.getSelectedItem()));
 				}
 			});
-			item("Request focus", "Configures the window focus request type on notification", comboboxRequestFocus);
+			item("Request focus", "Configures the window focus request type on notification.", comboboxRequestFocus);
 
-			var comboboxSound = combobox(Notifier.NativeCustomOff.class, notif.getSound());
-			comboboxSound.addItemListener(e ->
 			{
-				if (e.getStateChange() == ItemEvent.SELECTED)
+				// Native, Custom, Off
+				var options = Arrays.stream(NotificationSound.values())
+						.map(ns -> new NotificationOption(ns, null, ns.toString()))
+						.collect(Collectors.toCollection(ArrayList::new));
+				options.addAll(loadCustomNotifications());
+
+				var existing = options.stream()
+						.filter(no -> no.type == notif.getSound() && Objects.equals(no.soundName, notif.getSoundName()))
+						.findAny()
+						.orElse(null);
+
+				if (existing == null)
 				{
-					var n = loadNotification();
-					saveNotification(n.withSound((Notifier.NativeCustomOff) comboboxSound.getSelectedItem()));
+					// this should only happen for file notifications which have been deleted
+					String optionName = notif.getSoundName().substring(0, notif.getSoundName().length() - ".wav".length());
+					options.add(existing = new NotificationOption(
+							notif.getSound(),
+							notif.getSoundName(),
+							"<html><font color=red>" + optionName + "</font></html>"
+					));
 				}
-			});
-			item("Notification sound", "Enables the playing of a beep sound when notifications are displayed", comboboxSound);
+
+				JComboBox<NotificationOption> comboboxSound = combobox(options.toArray(new NotificationOption[0]), existing);
+				comboboxSound.addItemListener(e ->
+				{
+					if (e.getStateChange() == ItemEvent.SELECTED)
+					{
+						NotificationOption selected = (NotificationOption) comboboxSound.getSelectedItem();
+						NotificationSound sound = selected.type;
+						String soundName = selected.soundName;
+
+						log.debug("Notification changed to {} ({})", sound, soundName != null ? soundName : "no file");
+
+						var n = loadNotification()
+								.withSound(sound)
+								.withSoundName(soundName);
+						saveNotification(n);
+					}
+				});
+				item("Notification sound", "Enables the playing of a sound when notifications are displayed.", comboboxSound);
+			}
 
 			var spinnerVolume = createIntSpinner(0, 100, notif.getVolume(), "%");
 			spinnerVolume.addChangeListener(ce ->
@@ -311,9 +341,9 @@ class MicrobotNotificationPanel extends PluginPanel
 				var n = loadNotification();
 				saveNotification(n.withGameMessage(checkboxGameMessage.isSelected()));
 			});
-			item("Game message notification", "Adds a notification message to the chatbox", checkboxGameMessage);
+			item("Game message notification", "Adds a notification message to the chatbox.", checkboxGameMessage);
 
-			var comboboxFlash = combobox(FlashNotification.class, notif.getFlash());
+			var comboboxFlash = combobox(FlashNotification.class.getEnumConstants(), notif.getFlash());
 			comboboxFlash.addItemListener(e ->
 			{
 				if (e.getStateChange() == ItemEvent.SELECTED)
@@ -322,14 +352,14 @@ class MicrobotNotificationPanel extends PluginPanel
 					saveNotification(n.withFlash((FlashNotification) comboboxFlash.getSelectedItem()));
 				}
 			});
-			item("Flash", "Flashes the game frame as a notification", comboboxFlash);
+			item("Flash", "Flashes the game frame as a notification.", comboboxFlash);
 
 			var colorpickerFlashColor = createColorPicker("Flash color", notif.getFlashColor(), c ->
 			{
 				var n = loadNotification();
 				saveNotification(n.withFlashColor(c));
 			});
-			item("Flash color", "Sets the color of the notification flashes.", colorpickerFlashColor);
+			item("Flash color", "The color of the notification flashes.", colorpickerFlashColor);
 
 			var checkboxSendWhenFocused = checkbox(notif.isSendWhenFocused());
 			checkboxSendWhenFocused.addActionListener(ae ->
@@ -337,14 +367,14 @@ class MicrobotNotificationPanel extends PluginPanel
 				var n = loadNotification();
 				saveNotification(n.withSendWhenFocused(checkboxSendWhenFocused.isSelected()));
 			});
-			item("Send notifications when focused", "Sends the notification even when the client is focused", checkboxSendWhenFocused);
+			item("Send notifications when focused", "Send the notification even when the client is focused.", checkboxSendWhenFocused);
 
 			JButton resetButton = new JButton("Reset");
 			resetButton.addActionListener((e) ->
 			{
 				final int result = JOptionPane.showOptionDialog(resetButton, "Are you sure you want to reset this notification configuration?",
-					"Are you sure?", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE,
-					null, new String[]{"Yes", "No"}, "No");
+						"Are you sure?", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE,
+						null, new String[]{"Yes", "No"}, "No");
 
 				if (result == JOptionPane.YES_OPTION)
 				{
@@ -377,5 +407,38 @@ class MicrobotNotificationPanel extends PluginPanel
 	private void saveNotification(Notification notification)
 	{
 		configManager.setConfiguration(configDescriptor.getGroup().value(), configItemDescriptor.getItem().keyName(), notification);
+	}
+
+	private static List<NotificationOption> loadCustomNotifications()
+	{
+		File[] files = RuneLite.NOTIFICATIONS_DIR.listFiles();
+		if (files == null)
+		{
+			return Collections.emptyList();
+		}
+
+		return Arrays.stream(files)
+				.filter(f -> f.getName().endsWith(".wav"))
+				.map(f -> new NotificationOption(
+						NotificationSound.CUSTOM,
+						f.getName(),
+						// .wav extension is hidden from ui
+						f.getName().substring(0, f.getName().length() - ".wav".length())
+				))
+				.collect(Collectors.toList());
+	}
+
+	@AllArgsConstructor
+	private static class NotificationOption
+	{
+		NotificationSound type;
+		String soundName;
+		String optionName;
+
+		@Override
+		public String toString()
+		{
+			return optionName;
+		}
 	}
 }

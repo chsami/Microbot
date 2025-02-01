@@ -62,9 +62,17 @@ public class ClientThread
 		if (Microbot.getClient().isClientThread()) {
 			return method.call();
 		}
-		final FutureTask<?> task = new FutureTask<Object>(() -> (method.call()));
+		final FutureTask<T> task = new FutureTask<>(method);
 		invoke(task);
-		return (T) task.get();
+		try {
+			return task.get(1000, TimeUnit.MILLISECONDS);
+		} catch (TimeoutException e) {
+			// Handle timeout, e.g., log an error or throw a custom exception
+			if (!Microbot.isDebug()) {
+				Microbot.log("Failed to run a method on the client thread with message " + e.getMessage());
+			}
+			return null;
+		}
 	}
 
 	@SneakyThrows

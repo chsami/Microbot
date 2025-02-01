@@ -7,6 +7,7 @@ import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.devtools.MovementFlag;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.CollisionMap;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldArea;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
@@ -294,6 +295,7 @@ public abstract class Rs2Tile implements Tile{
     public static boolean isTileReachable(WorldPoint targetPoint) {
         if (targetPoint == null) return false;
         if (targetPoint.getPlane() != Rs2Player.getWorldLocation().getPlane()) return false;
+        if (CollisionMap.ignoreCollision.contains(targetPoint)) return true;
         boolean[][] visited = new boolean[104][104];
         int[][] flags = Microbot.getClient().getCollisionMaps()[Microbot.getClient().getPlane()].getFlags();
         WorldPoint playerLoc = Rs2Player.getWorldLocation();

@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.util.events;
 import net.runelite.api.annotations.Component;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.BlockingEvent;
+import net.runelite.client.plugins.microbot.BlockingEventPriority;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
@@ -23,5 +24,10 @@ public class WelcomeScreenEvent implements BlockingEvent {
 
         Global.sleepUntil(() -> !Rs2Widget.isWidgetVisible(WELCOME_SCREEN_COMPONENT_ID), 10000);
         return true;
+    }
+
+    @Override
+    public BlockingEventPriority priority() {
+        return BlockingEventPriority.HIGHEST;
     }
 }

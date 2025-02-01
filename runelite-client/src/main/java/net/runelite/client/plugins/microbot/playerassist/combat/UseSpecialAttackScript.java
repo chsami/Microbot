@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.playerassist.combat;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.playerassist.PlayerAssistConfig;
+import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 import java.util.concurrent.TimeUnit;
@@ -15,6 +16,7 @@ public class UseSpecialAttackScript extends Script {
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
                 if (!config.useSpecialAttack()) return;
+                if (Rs2Equipment.isWearingFullGuthan()) return;
                 if (Rs2Player.isInteracting())
                     Microbot.getSpecialAttackConfigs().useSpecWeapon();
             } catch (Exception ex) {

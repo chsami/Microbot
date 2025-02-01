@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.util.settings;
 import net.runelite.api.Varbits;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
@@ -23,9 +24,12 @@ public class Rs2Settings {
     public static boolean openSettings() {
         boolean isSettingsInterfaceVisible = Rs2Widget.isWidgetVisible(ComponentID.SETTINGS_INIT);
         if (!isSettingsInterfaceVisible) {
-            Rs2Tab.switchToSettingsTab();
+            if (Rs2Tab.getCurrentTab() != InterfaceTab.SETTINGS) {
+                Rs2Tab.switchToSettingsTab();
+                sleepUntil(() -> Rs2Tab.getCurrentTab() == InterfaceTab.SETTINGS);
+            }
             Rs2Widget.clickWidget(ALL_SETTINGS_BUTTON);
-            return false;
+            sleepUntil(() -> Rs2Widget.isWidgetVisible(ComponentID.SETTINGS_INIT));
         }
         return true;
     }
@@ -95,28 +99,22 @@ public class Rs2Settings {
     }
 
     public static boolean isLevelUpNotificationsEnabled() {
-        return Microbot.getVarbitValue(Varbits.DISABLE_LEVEL_UP_INTERFACE) == 1;
+        return Microbot.getVarbitValue(Varbits.DISABLE_LEVEL_UP_INTERFACE) == 0;
     }
 
     public static boolean disableLevelUpNotifications(boolean closeInterface) {
-        if (!isLevelUpNotificationsEnabled()) {
-            Rs2Tab.switchToSettingsTab();
+        if (!isLevelUpNotificationsEnabled()) return true;
+        if (!openSettings()) return false;
 
-            boolean isSettingsInterfaceVisible = Rs2Widget.isWidgetVisible(SETTINGS_INTERFACE);
-            if (!isSettingsInterfaceVisible) {
-                Rs2Widget.clickWidget(ALL_SETTINGS_BUTTON);
-                return false;
-            }
-
-            Rs2Widget.clickWidget(SETTINGS_SEARCHBAR);
-            Rs2Keyboard.typeString("level-");
-            sleep(600);
-            Rs2Widget.clickWidget("Disable level-up interface");
-            sleep(600);
-            if (closeInterface) {
-                Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
-                Rs2Tab.switchToInventoryTab();
-            }
+        Rs2Widget.clickWidget(SETTINGS_SEARCHBAR);
+        Rs2Keyboard.typeString("level-");
+        Rs2Widget.sleepUntilHasWidget("Disable level-up interface");
+        Rs2Widget.clickWidget("Disable level-up interface");
+        sleepUntil(() -> !isLevelUpNotificationsEnabled());
+        
+        if (closeInterface) {
+            Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
+            Rs2Tab.switchToInventoryTab();
         }
         return isLevelUpNotificationsEnabled();
     }
@@ -153,32 +151,5 @@ public class Rs2Settings {
      */
     public static int getMinimumItemValueAlchemyWarning() {
         return Microbot.getVarbitValue(6091);
-    }
-
-    /**
-     * disables levelup interfaces
-     *
-     * @return
-     */
-    public static boolean disableLevelUpInterface() {
-        if (Microbot.getVarbitValue(Varbits.DISABLE_LEVEL_UP_INTERFACE) == 1) return true;
-        if (!openSettings()) return false;
-
-        int tries = 0;
-
-        while (Microbot.getVarbitValue(Varbits.DISABLE_LEVEL_UP_INTERFACE) == 0 || tries > 3) {
-            Rs2Widget.clickWidget(SETTINGS_SEARCHBAR);
-            Rs2Keyboard.typeString("disable level");
-            sleepUntil(() -> Rs2Widget.hasWidget("Disable level-up"));
-            if (Rs2Widget.clickWidget("Disable level-up interface")) {
-                sleepUntil(() -> Microbot.getVarbitValue(Varbits.DISABLE_LEVEL_UP_INTERFACE) == 1);
-            }
-            tries++;
-        }
-
-        Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
-        Rs2Tab.switchToInventoryTab();
-
-        return Microbot.getVarbitValue(Varbits.DISABLE_LEVEL_UP_INTERFACE) == 1;
     }
 }

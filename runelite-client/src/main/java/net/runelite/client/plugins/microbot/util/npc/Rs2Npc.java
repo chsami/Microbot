@@ -19,7 +19,6 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -77,8 +76,15 @@ public class Rs2Npc {
      * @return
      */
     public static Stream<NPC> getNpcs() {
+        return getNpcs(false);
+    }
+
+    /**
+     * @return
+     */
+    public static Stream<NPC> getNpcs(boolean isDead) {
         Stream<NPC> npcs = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getNpcs().stream()
-                .filter(x -> x != null && x.getName() != null && !x.isDead())
+                .filter(x -> x != null && x.getName() != null && isDead == x.isDead())
                 .sorted(Comparator.comparingInt(value -> value.getLocalLocation()
                         .distanceTo(Microbot.getClient().getLocalPlayer().getLocalLocation()))));
 
@@ -412,7 +418,8 @@ public class Rs2Npc {
      * @return
      */
     public static List<NPC> getNpcsAttackingPlayer(Player player) {
-        return getNpcs().filter(x -> x.getInteracting() != null && x.getInteracting() == player).collect(Collectors.toList());
+        //pass isDead = true to fetch npcs like gargoyles
+        return getNpcs(true).filter(x -> x.getInteracting() != null && x.getInteracting() == player).collect(Collectors.toList());
     }
 
     /**

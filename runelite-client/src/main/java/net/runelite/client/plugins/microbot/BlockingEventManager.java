@@ -5,6 +5,7 @@ import net.runelite.client.plugins.microbot.util.events.DisableLevelUpInterfaceE
 import net.runelite.client.plugins.microbot.util.events.WelcomeScreenEvent;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 @Getter
@@ -14,6 +15,7 @@ public class BlockingEventManager {
     public BlockingEventManager() {
         blockingEvents.add(new WelcomeScreenEvent());
         blockingEvents.add(new DisableLevelUpInterfaceEvent());
+        sortBlockingEvents();
     }
     
     public void remove(BlockingEvent blockingEvent) {
@@ -22,5 +24,10 @@ public class BlockingEventManager {
     
     public void add(BlockingEvent blockingEvent) {
         blockingEvents.add(blockingEvent);
+        sortBlockingEvents();
+    }
+
+    private void sortBlockingEvents() {
+        blockingEvents.sort(Comparator.comparingInt(e -> -e.priority().getLevel()));
     }
 }

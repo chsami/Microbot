@@ -40,7 +40,6 @@ import javax.inject.Inject;
 import javax.swing.*;
 import java.awt.*;
 import java.lang.reflect.InvocationTargetException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @PluginDescriptor(
         name = PluginDescriptor.Default + "Microbot",
@@ -150,8 +149,10 @@ public class MicrobotPlugin extends Plugin {
     @Subscribe
     public void onGameStateChanged(GameStateChanged gameStateChanged) {
         if (gameStateChanged.getGameState() == GameState.HOPPING || gameStateChanged.getGameState() == GameState.LOGIN_SCREEN || gameStateChanged.getGameState() == GameState.CONNECTION_LOST) {
-            if (Rs2Bank.bankItems != null)
+            if (Rs2Bank.bankItems != null) {
                 Rs2Bank.bankItems.clear();
+            }
+            Microbot.loggedIn = false;
         }
     }
 
