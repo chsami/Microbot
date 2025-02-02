@@ -4,6 +4,7 @@ package net.runelite.client.plugins.microbot.blastoisefurnace;
 
 import java.util.concurrent.TimeUnit;
 
+import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
@@ -211,7 +212,7 @@ public class BlastoiseFurnaceScript extends Script {
             return;
         }
         depositOre();
-        Rs2Walker.walkFastCanvas(new WorldPoint(1940, 4962, 0));
+        Rs2Walker.walkFastCanvas(new WorldPoint(1939, 4963, 0));
         sleep(3400);
         sleepUntil(() -> {
             return barsInDispenser(this.config.getBars()) > 0;
@@ -244,13 +245,13 @@ public class BlastoiseFurnaceScript extends Script {
         }
        depositOre();
 
-        Rs2Walker.walkFastCanvas(new WorldPoint(1940, 4962, 0));
+        Rs2Walker.walkFastCanvas(new WorldPoint(1939, 4963, 0));
 
         sleep(3400);
         sleepUntil(() -> {
             return barsInDispenser(config.getBars()) > 5;
         }, 300000);
-        Rs2Inventory.interact(ItemID.ICE_GLOVES, "wear");
+            Rs2Inventory.interact(ItemID.ICE_GLOVES, "wear");
     }
 
     private void retrieveItemsForCurrentFurnaceInteraction() {
@@ -520,6 +521,9 @@ public class BlastoiseFurnaceScript extends Script {
         Rs2AntibanSettings.antibanEnabled = true;
         Rs2AntibanSettings.naturalMouse = true;
         Rs2AntibanSettings.devDebug = true;
+        Rs2AntibanSettings.simulateFatigue = true;
+        Rs2AntibanSettings.universalAntiban = true;
+        Rs2AntibanSettings.contextualVariability = true;
 
     }
 
