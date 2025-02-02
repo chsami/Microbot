@@ -71,9 +71,29 @@ public interface FrostyAstralsConfig extends Config {
         return 28;
     }
 
+    @ConfigItem(
+            keyName = "useRunePouch",
+            name = "Use Rune Pouch",
+            description = "Enable or disable the use of rune pouch",
+            position = 7
+    )
+    default boolean useRunePouch() {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "useDustBattlestaff",
+            name = "Use Dust Battlestaff",
+            description = "Enable or disable the use of dust battlestaff",
+            position = 8
+    )
+    default boolean useDustBattlestaff() {
+        return true;
+    }
+
     enum OutfitOption {
         GRACEFUL,
-        RAIMENTS_OF_THE_EYE
+        RAIMENTS_OF_THE_EYE,
     }
 }
 

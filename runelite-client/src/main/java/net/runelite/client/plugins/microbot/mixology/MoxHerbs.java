@@ -7,7 +7,11 @@ public enum MoxHerbs {
     GUAM("guam leaf"),
     Marrentill("marrentill"),
     Tarromin("tarromin"),
-    Harralander("harralander");
+    Harralander("harralander"),
+    GuamUnf("guam potion (unf)"),
+    MarrentillUnf("marrentill potion (unf)"),
+    TarrominUnf("tarromin potion (unf)"),
+    HarralanderUnf("harralander potion (unf)");
 
     private final String itemName;
 

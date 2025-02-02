@@ -7,7 +7,12 @@ public enum AgaHerbs {
     Cadantine("cadantine"),
     Lantadyme("Lantadyme"),
     Dwarf_Weed("dwarf weed"),
-    Torstol("torstol");
+    Torstol("torstol"),
+    IritUnf("irit potion (unf)"),
+    CadantineUnf("cadantine potion (unf)"),
+    LantadymeUnf("lantadyme potion (unf)"),
+    Dwarf_WeedUnf("dwarf weed potion (unf)"),
+    TorstolUnf("torstol potion (unf)");
 
     private final String itemName;
 

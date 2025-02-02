@@ -44,6 +44,7 @@ public class MixologyScript extends Script {
             PotionModifier.CONCENTRATED,
             PotionModifier.HOMOGENOUS
     );
+    private boolean mixalotDigweed = false;
 
     public boolean run(MixologyConfig config) {
         Microbot.enableAutoRunOn = false;
@@ -90,18 +91,12 @@ public class MixologyScript extends Script {
                         return;
                     }
 
-                    if (Rs2Inventory.hasItem("digweed") && !Rs2Player.isAnimating()) {
-                        Optional<Integer> potionItemId = potionOrders
-                                .stream()
-                                .filter(x -> !x.fulfilled() && Rs2Inventory.hasItem(x.potionType().itemId()))
-                                .map(x -> x.potionType().itemId())
-                                .findFirst();
-                        if (potionItemId.isPresent()) {
-                            Rs2Inventory.interact("digweed", "use");
-                            Rs2Inventory.interact(potionItemId.get(), "use");
-                            Rs2Player.waitForAnimation();
-                            return;
-                        }
+                    if (Rs2Inventory.hasItem("digweed") && !Rs2Player.isAnimating() && Rs2Inventory.hasItem(ItemID.MIXALOT_30030) && !mixalotDigweed) {
+                        Rs2Inventory.interact("digweed", "use");
+                        Rs2Inventory.interact(ItemID.MIXALOT_30030, "use");
+                        Rs2Player.waitForAnimation();
+                        mixalotDigweed = true;
+                        return;
                     }
 
                     moxPasteAmount = Integer.parseInt(Rs2Widget.getWidget(882, 2).getDynamicChildren()[8].getText()) + Rs2Inventory.itemQuantity(ItemID.MOX_PASTE);
@@ -296,6 +291,7 @@ public class MixologyScript extends Script {
                             currentAgaPoints = getAgaPoints();
                             currentLyePoints = getLyePoints();
                             currentMoxPoints = getMoxPoints();
+                            mixalotDigweed = false;
                         }
                         break;
                 }

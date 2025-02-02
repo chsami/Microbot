@@ -7,7 +7,12 @@ public enum LyeHerbs {
     Toadflax("toadflax"),
     Avantoe("avantoe"),
     Kwuarm("kwuarm"),
-    Snapdragon("snapdragon");
+    Snapdragon("snapdragon"),
+    RanarrUnf("ranarr potion (unf)"),
+    ToadflaxUnf("toadflax potion (unf)"),
+    AvantoeUnf("avantoe potion (unf)"),
+    KwuarmUnf("kwuarm potion (unf)"),
+    SnapdragonUnf("snapdragon potion (unf)");
 
     private final String itemName;
 
