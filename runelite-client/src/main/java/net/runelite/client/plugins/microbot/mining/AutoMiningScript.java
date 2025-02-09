@@ -30,7 +30,7 @@ enum State {
 
 public class AutoMiningScript extends Script {
 
-    public static final String version = "1.4.3";
+    public static final String version = "1.4.4";
     private static final int GEM_MINE_UNDERGROUND = 11410;
     private static final int BASALT_MINE = 11425;
     State state = State.MINING;
@@ -96,6 +96,8 @@ public class AutoMiningScript extends Script {
                                     return;
                             }
 
+                        } else if (config.dropOres()) {
+                            Rs2Inventory.dropAll(config.ORE().getName());
                         } else {
                             Rs2Inventory.dropAllExcept("pickaxe");
                         }

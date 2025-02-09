@@ -14,7 +14,9 @@ import net.runelite.client.plugins.microbot.mining.enums.Rocks;
         "<p></p>"+
         "<p>4. <strong>Items to Bank:</strong> Specify the items to be banked, separated by commas. The default value is <em>'ore'</em>.</p>"+
         "<p></p>"+
-        "<p>5. <strong>Basalt:</strong> If mining basalt, ensure UseBank is checked and it will automatically note at Snowflake</em>.</p>")
+        "<p>5. <strong>Basalt:</strong> If mining basalt, ensure UseBank is checked and it will automatically note at Snowflake</em>.</p>"+
+        "<p></p>"+
+        "<p>6. <strong>Drop ores in inventory:</strong> If enabled, the bot will drop all ores in the inventory when its full. The default setting is <em>disabled</em>.</p>")
 
 public interface AutoMiningConfig extends Config {
     @ConfigSection(
@@ -70,4 +72,15 @@ public interface AutoMiningConfig extends Config {
         return "ore";
     }
 
+    @ConfigItem(
+            keyName = "dropOres",
+            name = "dropOres",
+            description = "Drop all ores in inventory once full",
+            position = 5,
+            section = generalSection
+    )
+    default boolean dropOres()
+    {
+        return false;
+    }
 }
