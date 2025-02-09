@@ -98,6 +98,10 @@ public class AutoMiningScript extends Script {
 
                         } else if (config.dropOres()) {
                             Rs2Inventory.dropAll(config.ORE().getName());
+                            Rs2Inventory.dropAll("Uncut sapphire");
+                            Rs2Inventory.dropAll("Uncut emerald");
+                            Rs2Inventory.dropAll("Uncut ruby");
+                            Rs2Inventory.dropAll("Uncut diamond");
                         } else {
                             Rs2Inventory.dropAllExcept("pickaxe");
                         }
