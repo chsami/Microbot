@@ -15,8 +15,8 @@ import java.awt.*;
 @PluginDescriptor(
         name = PluginDescriptor.LiftedMango + "Herb runner",
         description = "LiftedMango's Herb runner",
-        tags = {"herb", "liftedmango", "farming", "money making"},
-        enabledByDefault = false
+        tags = {"herb", "liftedmango", "farming", "money making", "skilling"},
+        enabledByDefault = true
 )
 @Slf4j
 public class HerbrunPlugin extends Plugin {
