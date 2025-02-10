@@ -4,6 +4,7 @@ import java.awt.*;
 
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.widgets.ComponentID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -16,12 +17,14 @@ import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 
 import java.util.concurrent.TimeUnit;
 
 import static net.runelite.client.plugins.microbot.Microbot.log;
 import static net.runelite.client.plugins.microbot.herbrun.HerbrunInfo.*;
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
 
 
 public class HerbrunScript extends Script {
@@ -467,7 +470,7 @@ public class HerbrunScript extends Script {
     private boolean trollheimTeleport() {
         sleep(400);
         if (!Rs2Player.isAnimating()) {
-            boolean success = Rs2Inventory.interact(22601, "Troll Stronghold");
+            boolean success = Rs2Inventory.interact(ItemID.STONY_BASALT, "Troll Stronghold");
             Rs2Player.waitForAnimation();
             sleepUntil(() -> !Rs2Player.isAnimating());
             return success;
@@ -649,29 +652,9 @@ public class HerbrunScript extends Script {
             System.out.println("Teleporting to Ardougne farm patch");
             if (config.ARDOUGNE_TELEPORT_OPTION()) {
                 boolean success = Rs2Inventory.interact(config.CLOAK().getItemId(), "Farm Teleport");
-            } else if (Rs2Inventory.contains(ItemID.SKILLS_NECKLACE1)) {
-                Rs2Inventory.interact(ItemID.SKILLS_NECKLACE1, "rub");
-                sleep(800, 1200);
-                Rs2Keyboard.keyPress('1');
-            } else if (Rs2Inventory.contains(ItemID.SKILLS_NECKLACE2)) {
-                Rs2Inventory.interact(ItemID.SKILLS_NECKLACE2, "rub");
-                sleep(800, 1200);
-                Rs2Keyboard.keyPress('1');
-            } else if (Rs2Inventory.contains(ItemID.SKILLS_NECKLACE3)) {
-                Rs2Inventory.interact(ItemID.SKILLS_NECKLACE3, "rub");
-                sleep(800, 1200);
-                Rs2Keyboard.keyPress('1');
-            } else if (Rs2Inventory.contains(ItemID.SKILLS_NECKLACE4)) {
-                Rs2Inventory.interact(ItemID.SKILLS_NECKLACE4, "rub");
-                sleep(800, 1200);
-                Rs2Keyboard.keyPress('1');
-            } else if (Rs2Inventory.contains(ItemID.SKILLS_NECKLACE5)) {
-                Rs2Inventory.interact(ItemID.SKILLS_NECKLACE5, "rub");
-                sleep(800, 1200);
-                Rs2Keyboard.keyPress('1');
-            } else if (Rs2Inventory.contains(ItemID.SKILLS_NECKLACE6)) {
-                Rs2Inventory.interact(ItemID.SKILLS_NECKLACE6, "rub");
-                sleep(800, 1200);
+            } else if (Rs2Inventory.contains(item -> item.getName().toLowerCase().contains("skills necklace"))) {
+                Rs2Inventory.interact("skills necklace", "rub");
+                sleepUntilTrue(() -> !Rs2Widget.isHidden(ComponentID.ADVENTURE_LOG_CONTAINER), Rs2Player::isMoving, 100, 10000);
                 Rs2Keyboard.keyPress('1');
             }
             sleepUntil(() -> !Rs2Player.isAnimating());

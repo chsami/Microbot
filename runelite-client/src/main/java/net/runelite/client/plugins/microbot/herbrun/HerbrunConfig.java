@@ -6,7 +6,7 @@ import net.runelite.client.config.ConfigInformation;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 
-@ConfigGroup("Info")
+@ConfigGroup("LiftedMango's-Herbrun")
 @ConfigInformation("IMPORTANT!<br/>Ensure your chosen seeds match the herb currently planted. For example, if growing snapdragon, make sure snapdragon is already in the patch; otherwise, the herbs won’t note.<br/><br/>If weeds grow right after picking the seeds, it may skip the patch without planting new seeds.<br/> <br/>Start next to a bank<br/><br /><p>Have the following in your bank:</p>\n" +
         "<ol>\n" +
         "    <li>Ardougne cloak</li>\n" +

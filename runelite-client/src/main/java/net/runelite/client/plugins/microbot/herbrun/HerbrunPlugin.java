@@ -16,7 +16,7 @@ import java.awt.*;
         name = PluginDescriptor.LiftedMango + "Herb runner",
         description = "LiftedMango's Herb runner",
         tags = {"herb", "liftedmango", "farming", "money making", "skilling"},
-        enabledByDefault = true
+        enabledByDefault = false
 )
 @Slf4j
 public class HerbrunPlugin extends Plugin {
@@ -52,8 +52,6 @@ public class HerbrunPlugin extends Plugin {
     @Subscribe
     public void onGameTick(GameTick tick)
     {
-        //System.out.println(getName().chars().mapToObj(i -> (char)(i + 3)).map(String::valueOf).collect(Collectors.joining()));
-
         if (ticks > 0) {
             ticks--;
         } else {
