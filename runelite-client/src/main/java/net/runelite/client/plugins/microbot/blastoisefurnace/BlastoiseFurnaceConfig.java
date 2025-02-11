@@ -18,6 +18,14 @@ public interface BlastoiseFurnaceConfig extends Config {
     )
     String bFSettingsSection = "bFSettings";
 
+    @ConfigItem(
+            keyName = "stamina",
+            name = "Energy/Stams",
+            description = "Disable this if you're an ironman without staminas or energy potions!",
+            position = 0,
+            section = "general"
+    )
+
     default boolean useStamina() {
         return true;
     }

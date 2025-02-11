@@ -64,6 +64,7 @@ public class BlastoiseFurnaceScript extends Script {
         this.initScript = true;
         this.config = config;
         Microbot.enableAutoRunOn = false;
+
         state = State.BANKING;
         previousXP = 0;
         waitingXpDrop = true;
@@ -417,6 +418,7 @@ public class BlastoiseFurnaceScript extends Script {
     }
 
     private void useStaminaPotions() {
+        if(!config.useStamina()) return;
 
         boolean usedPotion = false;
 
