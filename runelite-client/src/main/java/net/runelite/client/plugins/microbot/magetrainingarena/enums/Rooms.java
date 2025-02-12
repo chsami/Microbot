@@ -48,7 +48,7 @@ public enum Rooms {
     GRAVEYARD("Graveyard", 23676, new WorldArea(3336, 9614, 54, 51, 1), new WorldPoint(3363, 9640, 1), ItemID.NATURE_RUNE, Points.GRAVEYARD,
             () -> {
                 boolean btp = Rs2Magic.canCast(MagicAction.BONES_TO_PEACHES);
-                if (!Rs2Magic.canCast(MagicAction.BONES_TO_BANANAS) && !Rs2Magic.canCast(MagicAction.BONES_TO_PEACHES)) {
+                if (!Rs2Magic.canCast(MagicAction.BONES_TO_BANANAS) && !btp) {
                     Microbot.log("Missing requirement to cast " + (btp ? MagicAction.BONES_TO_PEACHES : MagicAction.BONES_TO_BANANAS));
                     return false;
                 }

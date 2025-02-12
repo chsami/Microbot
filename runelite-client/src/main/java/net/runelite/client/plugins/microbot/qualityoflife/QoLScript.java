@@ -94,7 +94,7 @@ public class QoLScript extends Script {
         }
 
         try {
-            Rs2InventorySetup inventorySetup = new Rs2InventorySetup(QoLPlugin.loadoutToLoad, mainScheduledFuture);
+            Rs2InventorySetup inventorySetup = new Rs2InventorySetup(QoLPlugin.loadoutToLoad.getName(), mainScheduledFuture);
 
             if (!inventorySetup.doesEquipmentMatch()) {
                 inventorySetup.loadEquipment();

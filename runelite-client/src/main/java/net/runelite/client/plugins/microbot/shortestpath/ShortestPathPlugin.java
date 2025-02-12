@@ -387,7 +387,9 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
                 client.getMouseCanvasPosition().getX(),
                 client.getMouseCanvasPosition().getY())) {
             addMenuEntry(event, SET, TARGET, 0);
-            addMenuEntry(event, SET, TEST, 0);
+            if (Microbot.isDebug()) {
+                addMenuEntry(event, SET, TEST, 0);
+            }
             if (pathfinder != null) {
                 if (pathfinder.getTarget() != null) {
                     addMenuEntry(event, SET, START, 0);

@@ -3455,6 +3455,10 @@
 3513 3239 2	3513 3237 0	Climb-down;Ladder;12781					2	
 3474 3221 0	3473 3221 0	Jump-over;Low fence;12776			In Aid of the Myreque		5	
 3473 3221 0	3475 3221 0	Jump-over;Low fence;12776			In Aid of the Myreque		5	
+3491 3230 0	3491 3231 0	Climb-over;Broken wall;12737					3	
+3491 3231 0	3491 3230 0	Climb-over;Broken wall;12737					3	
+3490 3232 0	3490 9631 0	Climb-down;Trapdoor;12743					2	
+3490 9631 0	3490 3232 0	Climb-up;Ladder;12779					2	
 								
 # Haunted Mine								
 3446 3236 0	3444 3236 0	Climb-over;Mine cart;4918						
@@ -4424,6 +4428,12 @@
 2836 3257 0	2833 9658 0	Enter;Hole;25154					1	
 2998 3032 1	3001 3032 0	Cross;Gangplank;17397						
 3001 3032 0	2998 3032 1	Cross;Gangplank;17396						
+2795 2978 0	2791 2978 0	Climb;Rocks;2231					3	
+2791 2978 0	2795 2978 0	Climb;Rocks;2231					3	
+2795 2979 0	2791 2979 0	Climb;Rocks;2231					3	
+2791 2979 0	2795 2979 0	Climb;Rocks;2231					3	
+2795 2980 0	2791 2980 0	Climb;Rocks;2231					3	
+2791 2980 0	2795 2980 0	Climb;Rocks;2231					3	
 								
 # Lunar Isle								
 2128 3893 2	2126 3893 1	Climb;Ladder;16961					2	

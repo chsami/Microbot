@@ -923,12 +923,12 @@ class ProfilePanel extends PluginPanel {
 
             rename.setSelected(false);
 
-            if (bankPin.getText().isEmpty()) {
-                return;
-            }
-
             try {
-                configManager.setBankPin(profile, net.runelite.client.plugins.microbot.util.security.Encryption.encrypt(bankPin.getText()));
+                if (bankPin.getText().isBlank()) {
+                    configManager.setBankPin(profile,"");
+                } else {
+                    configManager.setBankPin(profile, net.runelite.client.plugins.microbot.util.security.Encryption.encrypt(bankPin.getText()));
+                }
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }

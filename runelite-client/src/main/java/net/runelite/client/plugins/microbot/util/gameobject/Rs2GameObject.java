@@ -14,7 +14,6 @@ import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
-import net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
@@ -657,7 +656,7 @@ public static GameObject findReachableObject(String objectName, boolean exact, i
     public static GameObject findBank() {
         List<GameObject> gameObjects = getGameObjects();
 
-        ArrayList<Integer> possibleBankIds = Rs2Reflection.getObjectByName(new String[]{"bank_booth"}, false);
+        List<Integer> possibleBankIds = Arrays.stream(Rs2BankID.bankIds).collect(Collectors.toList());
 
         possibleBankIds.add(NULL_34810);
 
@@ -694,7 +693,7 @@ public static GameObject findReachableObject(String objectName, boolean exact, i
     public static GameObject findChest() {
         List<GameObject> gameObjects = getGameObjects();
 
-        ArrayList<Integer> possibleBankIds = Rs2Reflection.getObjectByName(new String[]{"chest"}, false);
+        List<Integer> possibleBankIds = Arrays.stream(Rs2BankID.bankIds).collect(Collectors.toList());
 
         possibleBankIds.add(12308); // RFD chest lumbridge basement
         possibleBankIds.add(31427); // Fossil island chest
@@ -733,7 +732,7 @@ public static GameObject findReachableObject(String objectName, boolean exact, i
     public static GameObject findDepositBox() {
         List<GameObject> gameObjects = getGameObjects();
 
-        ArrayList<Integer> possibleBankIds = Rs2Reflection.getObjectByName(new String[]{"bank"}, false);
+        List<Integer> possibleBankIds = Arrays.stream(Rs2BankID.bankIds).collect(Collectors.toList());
 //        possibleBankIds.add(ObjectID.BANK_DEPOSIT_BOX);
 //        possibleBankIds.add(ObjectID.BANK_DEPOSIT_CHEST);
 

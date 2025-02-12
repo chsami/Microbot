@@ -331,7 +331,6 @@ public class Rs2Widget {
 
     public static void clickWidgetFast(Widget widget, int param0, int identifier) {
         int param1 = widget.getId();
-        String option = "Select";
         String target = "";
         MenuAction menuAction = MenuAction.CC_OP;
         Microbot.doInvoke(new NewMenuEntry(param0 != -1 ? param0 : widget.getType(), param1, menuAction.getId(), identifier, widget.getItemId(), target), widget.getBounds());

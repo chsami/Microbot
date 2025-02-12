@@ -5,13 +5,13 @@ import net.runelite.api.*;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
+import net.runelite.client.plugins.microbot.util.security.Login;
 
 import java.awt.event.KeyEvent;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -27,6 +27,16 @@ public class Rs2Reflection {
     static int animationMultiplier = 692374621; //can be found in actor.java (int sequence)
     static String npcDefinition = "ay"; //NPCComposition definition in NPC.class
     static String headIconSpriteIndex = "bj"; //headIconSpriteIndex in NPCComposition.class
+
+    static final byte INDEX_GARBAGE = -28; // found in Varcs.java
+    static final String INDEX_FIELD = "ab"; // Varcs.java
+    static final String INDEX_CLASS = "es"; // login.java
+    public static final String SESSION_FIELD = "gv"; //AsyncHttpResponse.java
+    public static final String SESSION_CLASS = "ag"; // AsyncHttpResponse.java
+    public static final String CHAR_FIELD = "gl"; //DevicePcmPlayerProvider.java
+    public static final String CHAR_CLASS = "am"; //DevicePcmPlayerProvider.java
+    public static final String DISPLAY_FIELD = "cw"; //Login.java
+    public static final String DISPLAY_CLASS = "dh"; //Login.java
 
     /**
      * Credits to EthanApi
@@ -103,36 +113,6 @@ public class Rs2Reflection {
 
          list.get(0)
                 .invoke(menuEntry, itemId); //use the setItemId method through reflection
-    }
-
-
-    @SneakyThrows
-    public static ArrayList<Integer> getObjectByName(String[] names, boolean exact) {
-        ArrayList<Integer> objectIds = new ArrayList<Integer>();
-        Field[] fields = ObjectID.class.getDeclaredFields();
-        for (Field field : fields) {
-            field.setAccessible(true);
-
-            if (field.getType() == int.class) {
-                int fieldValue = field.getInt(null);
-
-                if (exact)
-                    if (Arrays.stream(names).noneMatch(name -> field.getName().equalsIgnoreCase(name)))
-                        continue;
-
-                if (!exact)
-                    if (Arrays.stream(names).noneMatch(name -> field.getName().toLowerCase().contains(name.toLowerCase())))
-                        continue;
-
-                objectIds.add(fieldValue);
-            }
-        }
-        return objectIds;
-    }
-
-    @SneakyThrows
-    public static ArrayList<Integer> getObjectByName(String name, boolean exact) {
-        return getObjectByName(new String[]{name}, exact);
     }
 
     @SneakyThrows
@@ -222,4 +202,54 @@ public class Rs2Reflection {
         }
         return null;
     }
+
+
+    /**
+     * Login with another jagex account without restarting client
+     * @param login
+     * @param account
+     */
+    public static void setLoginWithJagexAccount(boolean login, Account account) {
+        Microbot.getClientThread().invokeLater(() -> {
+            if (Microbot.getClient().getGameState() != GameState.LOGIN_SCREEN) {
+                return;
+            }
+
+            try {
+                //set loginIndex to login screen
+                Class<?> paramComposition = Class.forName(INDEX_CLASS, true, Microbot.getClient().getClass().getClassLoader());
+                Method updateLoginIndex = paramComposition.getDeclaredMethod(INDEX_FIELD, int.class, byte.class);
+                updateLoginIndex.setAccessible(true);
+                updateLoginIndex.invoke(null,  10, INDEX_GARBAGE);
+
+                Class<?> AsyncHttpResponseClass = Class.forName(SESSION_CLASS, true, Microbot.getClient().getClass().getClassLoader());
+                Field sessionIdField = AsyncHttpResponseClass.getDeclaredField(SESSION_FIELD);
+                sessionIdField.setAccessible(true);
+                sessionIdField.set(null, account.getSessionId());
+
+                Class<?> DevicePcmPlayerProviderClass = Class.forName(CHAR_CLASS, true, Microbot.getClient().getClass().getClassLoader());
+                Field characterIdField = DevicePcmPlayerProviderClass.getDeclaredField(CHAR_FIELD);
+                characterIdField.setAccessible(true);
+                characterIdField.set(null, account.getAccountId());
+
+                Class<?> LoginClass = Class.forName(DISPLAY_CLASS, true, Microbot.getClient().getClass().getClassLoader());
+                Field displayNameField = LoginClass.getDeclaredField(DISPLAY_FIELD);
+                displayNameField.setAccessible(true);
+                displayNameField.set(null, account.getDisplayName());
+
+                System.setProperty("JX_CHARACTER_ID", account.getAccountId());
+                System.setProperty("JX_SESSION_ID", account.getSessionId());
+                System.setProperty("JX_DISPLAY_NAME", account.getDisplayName());
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            if (login) {
+                new Login("", "");
+            }
+        });
+    }
+
 }
+

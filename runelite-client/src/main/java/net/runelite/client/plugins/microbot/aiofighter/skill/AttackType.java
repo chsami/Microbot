@@ -1,0 +1,36 @@
+package net.runelite.client.plugins.microbot.aiofighter.skill;
+
+public enum AttackType {
+    CHOP,
+    HACK,
+    SMASH,
+    BLOCK,
+    POUND,
+    PUMMEL,
+    ACCURATE,
+    RAPID,
+    LONGRANGE,
+    SCORCH,
+    FLARE,
+    BLAZE,
+    SHORT_FUSE,
+    MEDIUM_FUSE,
+    LONG_FUSE,
+    AIM_AND_FIRE,
+    KICK,
+    SLASH,
+    LUNGE,
+    STAB,
+    SPIKE,
+    IMPALE,
+    JAB,
+    SWIPE,
+    FEND,
+    BASH,
+    REAP,
+    FLICK,
+    LASH,
+    DEFLECT,
+    FOCUS
+}
+

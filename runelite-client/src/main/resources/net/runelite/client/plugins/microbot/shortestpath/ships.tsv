@@ -1,7 +1,7 @@
 # Origin	Destination	menuOption menuTarget objectID	Skills	Items	Quests	isMembers	Duration	Display info
 # Port Sarim, Musa Point								
-3029 3217 0	2956 3146 0	Pay-fare;Captain Tobias;3644		30 Coins		Y	10	
-2956 3146 0	3029 3217 0	Pay-Fare;Customs officer;3648		30 Coins		Y	10	
+3029 3217 0	2956 3146 0	Pay-fare;Captain Tobias;3644		30 Coins			10	
+2956 3146 0	3029 3217 0	Pay-Fare;Customs officer;3648		30 Coins			10	
 # Ardougne, Brimhaven, Rimmington								
 2683 3271 0	2775 3233 1	Brimhaven;Captain Barnaby;9250		30 Coins		Y	6	Brimhaven
 2683 3271 0	2915 3221 1	Rimmington;Captain Barnaby;9250		30 Coins		Y	6	Rimmington
@@ -41,8 +41,8 @@
 1504 3399 0	1824 3695 1	Port Piscarilius;Captain Magoro;7471				Y	6	Port Piscarilius
 								
 # Port Sarim, Entrana								
-3048 3234 0	2834 3331 1	Travel-boat;Monk of Entrana;1165				Y	15	
-2834 3335 0	3048 3231 1	Travel-boat;Monk of Entrana;1168				Y	15	
+3048 3234 0	2834 3331 1	Take-boat;Monk of Entrana;1165				Y	15	
+2834 3335 0	3048 3231 1	Take-boat;Monk of Entrana;1168				Y	15	
 								
 # Port Sarim, Void Knights' Outpost								
 3041 3202 0	2662 2677 1	Travel;Squire;1770				Y	11	

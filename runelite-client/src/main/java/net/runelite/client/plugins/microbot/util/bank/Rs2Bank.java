@@ -118,13 +118,13 @@ public class Rs2Bank {
     public static boolean isOpen() {
         if (isBankPinWidgetVisible()) {
             try {
-                if (Login.activeProfile.getBankPin().isEmpty()) {
-                    Microbot.showMessage("Your bankpin is empty. Please fill this field in your runelite profile.");
+                if ((Login.activeProfile.getBankPin() == null || Login.activeProfile.getBankPin().isEmpty()) || Login.activeProfile.getBankPin().equalsIgnoreCase("**bankpin**")) {
                     return false;
                 }
                 handleBankPin(Encryption.decrypt(Login.activeProfile.getBankPin()));
             } catch (Exception e) {
-                System.out.println("Something went wrong handling bankpin");
+                System.out.println("Something went wrong handling bankpin ");
+                e.printStackTrace();
             }
             return false;
         }
@@ -1460,7 +1460,7 @@ public class Rs2Bank {
                 char c = pin.charAt(i);
                 String expectedInstruction = digitInstructions[i];
                 
-                boolean instructionVisible = sleepUntil(() -> Rs2Widget.hasWidgetText(expectedInstruction, 213, 10, false), 5000);
+                boolean instructionVisible = sleepUntil(() -> Rs2Widget.hasWidgetText(expectedInstruction, 213, 10, false), 2000);
 
                 if (!instructionVisible) {
                     Microbot.log("Failed to detect instruction within timeout period: " + expectedInstruction);

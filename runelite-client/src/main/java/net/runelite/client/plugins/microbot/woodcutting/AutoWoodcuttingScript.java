@@ -125,7 +125,7 @@ public class AutoWoodcuttingScript extends Script {
     private void resetInventory(AutoWoodcuttingConfig config) {
         switch (config.resetOptions()) {
             case DROP:
-                Rs2Inventory.dropAllExcept("axe", "tinderbox");
+                Rs2Inventory.dropAllExcept(false, config.interactOrder(), "axe", "tinderbox");
                 state = State.WOODCUTTING;
                 break;
             case BANK:
@@ -163,8 +163,8 @@ public class AutoWoodcuttingScript extends Script {
         if (!isFiremake()) {
             Rs2Inventory.waitForInventoryChanges(() -> {
                 Rs2Inventory.use("tinderbox");
-                sleep(Rs2Random.between(300, 600));
-                Rs2Inventory.use(config.TREE().getLog());
+                sleepUntil(Rs2Inventory::isItemSelected);
+                Rs2Inventory.useLast(config.TREE().getLogID());
             });
         }
         sleepUntil(() -> (!isFiremake() && Rs2Player.waitForXpDrop(Skill.FIREMAKING)) || cannotLightFire, 5000);

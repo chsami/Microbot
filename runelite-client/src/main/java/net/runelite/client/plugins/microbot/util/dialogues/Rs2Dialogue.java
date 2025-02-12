@@ -74,7 +74,7 @@ public class Rs2Dialogue {
      * @return true if the "Continue" option is visible in the death dialogue, false otherwise.
      */
     private static boolean hasDeathContinue() {
-        return Rs2Widget.isWidgetVisible(663, 0);
+        return Rs2Widget.isWidgetVisible(633, 0);
     }
 
     /**
@@ -199,17 +199,10 @@ public class Rs2Dialogue {
 
         Widget dialogueOption;
 
-        if (exact) {
-            dialogueOption = getDialogueOptions().stream()
-                    .filter(dialop -> dialop.getText().equalsIgnoreCase(text))
-                    .findFirst()
-                    .orElse(null);
-        } else {
-            dialogueOption = getDialogueOptions().stream()
-                    .filter(dialop -> dialop.getText().toLowerCase().contains(text.toLowerCase()))
-                    .findFirst()
-                    .orElse(null);
-        }
+        dialogueOption = getDialogueOptions().stream()
+                .filter(dialop -> exact ? dialop.getText().equalsIgnoreCase(text) : dialop.getText().toLowerCase().contains(text.toLowerCase()))
+                .findFirst()
+                .orElse(null);
 
         return dialogueOption;
     }
@@ -301,11 +294,26 @@ public class Rs2Dialogue {
      * @return {@code true} if the widget was found and clicked successfully; {@code false} if no matching widget was found
      */
     public static boolean clickOption(String text) {
+        return clickOption(text, false);
+    }
+
+    /**
+     * Attempts to click on a dialogue option widget with the specified text.
+     *
+     * <p>This method searches for a widget that exactly matches the specified option text within the dialogue.
+     * If such a widget is found, it triggers a click action on it using the {@code Rs2Widget.clickWidget} method.
+     * If no matching widget is found, the method returns {@code false}.
+     *
+     * @param text  the text of the dialogue option to click, e.g., "Yes" or "No".
+     * @param exact whether to match the text exactly or allow partial matches.
+     * @return {@code true} if the widget was found and clicked successfully; {@code false} if no matching widget was found.
+     */
+    public static boolean clickOption(String text, boolean exact) {
         if (!hasSelectAnOption()) return false;
-        
-        Widget dialogueOption = getDialogueOption(text);
+
+        Widget dialogueOption = getDialogueOption(text, exact);
         if (dialogueOption == null) return false;
-        
+
         return Rs2Widget.clickWidget(dialogueOption);
     }
 

@@ -1,8 +1,7 @@
 package net.runelite.client.plugins.microbot;
 
 import lombok.Getter;
-import net.runelite.client.plugins.microbot.util.events.DisableLevelUpInterfaceEvent;
-import net.runelite.client.plugins.microbot.util.events.WelcomeScreenEvent;
+import net.runelite.client.plugins.microbot.util.events.*;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -15,6 +14,9 @@ public class BlockingEventManager {
     public BlockingEventManager() {
         blockingEvents.add(new WelcomeScreenEvent());
         blockingEvents.add(new DisableLevelUpInterfaceEvent());
+        blockingEvents.add(new BankTutorialEvent());
+        blockingEvents.add(new DeathEvent());
+        blockingEvents.add(new BankJagexPopupEvent());
         sortBlockingEvents();
     }
     

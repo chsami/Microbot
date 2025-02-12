@@ -65,7 +65,7 @@ public class ClientThread
 		final FutureTask<T> task = new FutureTask<>(method);
 		invoke(task);
 		try {
-			return task.get(1000, TimeUnit.MILLISECONDS);
+			return task.get(10000, TimeUnit.MILLISECONDS);
 		} catch (TimeoutException e) {
 			// Handle timeout, e.g., log an error or throw a custom exception
 			if (!Microbot.isDebug()) {

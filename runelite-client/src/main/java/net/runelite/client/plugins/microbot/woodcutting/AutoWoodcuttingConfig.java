@@ -4,6 +4,7 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
+import net.runelite.client.plugins.microbot.util.inventory.InteractOrder;
 import net.runelite.client.plugins.microbot.woodcutting.enums.WoodcuttingResetOptions;
 import net.runelite.client.plugins.microbot.woodcutting.enums.WoodcuttingTree;
 import net.runelite.client.plugins.microbot.woodcutting.enums.WoodcuttingWalkBack;
@@ -76,17 +77,29 @@ public interface AutoWoodcuttingConfig extends Config {
             keyName = "ItemsToBank",
             name = "Items to bank (Comma seperated)",
             description = "Items to bank",
-            position = 1
+            position = 1,
+            section = resetSection
     )
     default String itemsToBank() {
         return "logs";
+    }
+    
+    @ConfigItem(
+            keyName = "dropOrder",
+            name = "Drop Order",
+            description = "Order to drop items",
+            position = 2,
+            section = resetSection
+    )
+    default InteractOrder interactOrder() {
+        return InteractOrder.STANDARD; 
     }
 
     @ConfigItem(
             keyName = "WalkBack",
             name = "Walk Back",
             description = "Walk back the initial spot or last cut down",
-            position = 2,
+            position = 3,
             section = resetSection
     )
     default WoodcuttingWalkBack walkBack()

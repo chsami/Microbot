@@ -1466,7 +1466,13 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
 
         if (Rs2Npc.canWalkTo(renu, 20) && Rs2Npc.interact(renu, "travel")) {
             Rs2Player.waitForWalking();
-            sleepUntil(() -> Rs2Widget.isWidgetVisible(varlamoreMapParentID, 2));
+            boolean isVarlamoreMapVisible = sleepUntilTrue(() -> Rs2Widget.isWidgetVisible(varlamoreMapParentID, 2), 100, 10000);
+            
+            if (!isVarlamoreMapVisible) {
+                Microbot.log("Varlamore Map Widget not visable within timeout");
+                return false;
+            }
+            
             List<Widget> dynamicWidgetChildren = Arrays.stream(Rs2Widget.getWidget(varlamoreMapParentID, 15).getDynamicChildren())
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());

@@ -22,7 +22,7 @@ public enum BankLocation {
     BURGH_DE_ROTT(new WorldPoint(3495, 3212, 0)),
     CAMELOT(new WorldPoint(2725, 3493, 0)),
     CAMODZAAL(new WorldPoint(2979, 5798, 0)),
-    CAM_TORUM(new WorldPoint(1450, 9557, 1)),
+    CAM_TORUM(new WorldPoint(1453, 9568, 1)),
     CANIFIS(new WorldPoint(3512, 3480, 0)),
     CASTLE_WARS(new WorldPoint(2443, 3083, 0)),
     CATHERBY(new WorldPoint(2808, 3441, 0)),
@@ -115,12 +115,12 @@ public enum BankLocation {
                 boolean isWearingCraftingGuild = (Rs2Equipment.isWearing("brown apron") || Rs2Equipment.isWearing("golden apron")) ||
                         (Rs2Equipment.isWearing("max cape") || Rs2Equipment.isWearing("max hood")) ||
                         (Rs2Equipment.isWearing("crafting cape") || Rs2Equipment.isWearing("crafting hood"));
-
-                if (hasLineOfSight && isMember() && (hasMaxedCrafting || hasFaladorHardDiary)) return true;
-                return isMember() && isWearingCraftingGuild &&
-                        (hasMaxedCrafting || hasFaladorHardDiary);
+                if (!isMember()) return false;
+                if (hasLineOfSight && (hasMaxedCrafting || hasFaladorHardDiary)) return true;
+                return isWearingCraftingGuild && (hasMaxedCrafting || hasFaladorHardDiary);
             case LUMBRIDGE_BASEMENT:
-                return isMember() && Rs2Player.getQuestState(Quest.RECIPE_FOR_DISASTER__ANOTHER_COOKS_QUEST) == QuestState.FINISHED;
+                if (!isMember()) return false;
+                return Rs2Player.getQuestState(Quest.RECIPE_FOR_DISASTER__ANOTHER_COOKS_QUEST) == QuestState.FINISHED;
             case COOKS_GUILD:
                 boolean hasVarrockHardDiary = Microbot.getVarbitValue(Varbits.DIARY_VARROCK_HARD) == 1;
                 boolean hasMaxedCooking = Rs2Player.getSkillRequirement(Skill.COOKING, 99, false);
@@ -129,57 +129,69 @@ public enum BankLocation {
                         (Rs2Equipment.isWearing("max cape") || Rs2Equipment.isWearing("max hood")) ||
                         (Rs2Equipment.isWearing("varrock armour 3") || Rs2Equipment.isWearing("varrock armour 4"));
 
-                if (hasLineOfSight && isMember() && (hasMaxedCooking || hasVarrockHardDiary)) return true;
-                return isMember() && isWearingCooksGuild &&
-                        (hasVarrockHardDiary || hasMaxedCooking);
+                if (!isMember()) return false;
+                if (hasLineOfSight && (hasMaxedCooking || hasVarrockHardDiary)) return true;
+                return isWearingCooksGuild && (hasVarrockHardDiary || hasMaxedCooking);
             case WARRIORS_GUILD:
-                if (hasLineOfSight && isMember()) return true;
-                return isMember() &&
-                        (Rs2Player.getSkillRequirement(Skill.ATTACK, 99, false) || Rs2Player.getSkillRequirement(Skill.STRENGTH, 99, false)) ||
+                if (!isMember()) return false;
+                if (hasLineOfSight) return true;
+                return (Rs2Player.getSkillRequirement(Skill.ATTACK, 99, false) || Rs2Player.getSkillRequirement(Skill.STRENGTH, 99, false)) ||
                         (Rs2Player.getRealSkillLevel(Skill.ATTACK) + Rs2Player.getRealSkillLevel(Skill.STRENGTH) >= 130);
             case WOODCUTTING_GUILD:
-                if (hasLineOfSight && isMember()) return true;
-                return isMember() && Rs2Player.getSkillRequirement(Skill.WOODCUTTING, 60, true);
+                if (!isMember()) return false;
+                if (hasLineOfSight) return true;
+                return Rs2Player.getSkillRequirement(Skill.WOODCUTTING, 60, true);
             case FARMING_GUILD:
-                if (hasLineOfSight && isMember()) return true;
-                return isMember() && Rs2Player.getSkillRequirement(Skill.FARMING, 45, true);
+                if (!isMember()) return false;
+                if (hasLineOfSight) return true;
+                return Rs2Player.getSkillRequirement(Skill.FARMING, 45, true);
             case MINING_GUILD:
                 boolean inRegion = Microbot.getClient().getLocalPlayer().getWorldLocation().getRegionID() == 12183 || Microbot.getClient().getLocalPlayer().getWorldLocation().getRegionID() == 12184;
-                if (hasLineOfSight && isMember()) return true;
-                return inRegion && isMember() && Rs2Player.getSkillRequirement(Skill.MINING, 60, true);
+                if (!isMember()) return false;
+                if (hasLineOfSight) return true;
+                return inRegion && Rs2Player.getSkillRequirement(Skill.MINING, 60, true);
             case FISHING_GUILD:
-                if (hasLineOfSight && isMember()) return true;
-                return isMember() && Rs2Player.getSkillRequirement(Skill.FISHING, 68, true);
+                if (!isMember()) return false;
+                if (hasLineOfSight) return true;
+                return Rs2Player.getSkillRequirement(Skill.FISHING, 68, true);
             case HUNTERS_GUILD:
-                if (hasLineOfSight && isMember()) return true;
-                return isMember() && Rs2Player.getSkillRequirement(Skill.HUNTER, 46, false);
+                if (!isMember()) return false;
+                if (hasLineOfSight) return true;
+                return Rs2Player.getSkillRequirement(Skill.HUNTER, 46, false);
             case LEGENDS_GUILD:
-                if (hasLineOfSight && isMember()) return true;
-                return isMember() && Rs2Player.getQuestState(Quest.LEGENDS_QUEST) == QuestState.FINISHED;
+                if (!isMember()) return false;
+                if (hasLineOfSight) return true;
+                return Rs2Player.getQuestState(Quest.LEGENDS_QUEST) == QuestState.FINISHED;
             case MAGE_TRAINING_ARENA:
-                if (hasLineOfSight && isMember()) return true;
-                return isMember();
+                if (!isMember()) return false;
+                if (hasLineOfSight) return true;
+                return true;
             case PORT_PHASMATYS:
-                if (hasLineOfSight && isMember()) return true;
-                return isMember() && Rs2Player.getQuestState(Quest.GHOSTS_AHOY) == QuestState.FINISHED;
+                if (!isMember()) return false;
+                if (hasLineOfSight) return true;
+                return Rs2Player.getQuestState(Quest.GHOSTS_AHOY) == QuestState.FINISHED;
             case CORSAIR_COVE:
                 // Requires The Corsair Curse
                 return Rs2Player.getQuestState(Quest.THE_CORSAIR_CURSE) == QuestState.FINISHED;
             case SOPHANEM:
+                if (!isMember()) return false;
                 return Rs2Player.getQuestState(Quest.CONTACT) == QuestState.FINISHED;
             case CLAN_HALL:
                 // Requires Clan Membership, varbit 933
                 return Microbot.getVarbitValue(933) > 1;
             case LLETYA:
+                if (!isMember()) return false;
                 // Requires Mournings End Part 1 in progress or completed
                 return Rs2Player.getQuestState(Quest.MOURNINGS_END_PART_I) != QuestState.NOT_STARTED;
             case PRIFDDINAS:
                 // Requires Song of the elves to be completed
                 return Rs2Player.getQuestState(Quest.SONG_OF_THE_ELVES) == QuestState.FINISHED;
             case SHILO_VILLAGE:
+                if (!isMember()) return false;
                 // Requires Shilo Village to enter the village & use the bank
                 return Rs2Player.getQuestState(Quest.SHILO_VILLAGE) == QuestState.FINISHED;
             case LUNAR_ISLE:
+                if (!isMember()) return false;
                 // Requires Lunar Diplomacy & Seal of passage OR Dream Mentor
                 if (Rs2Player.getQuestState(Quest.DREAM_MENTOR) != QuestState.FINISHED) {
                     return Rs2Player.getQuestState(Quest.LUNAR_DIPLOMACY) == QuestState.FINISHED && Rs2Equipment.hasEquipped(ItemID.SEAL_OF_PASSAGE);
@@ -188,18 +200,23 @@ public enum BankLocation {
                 }
             case JATIZSO:
             case NEITIZNOT:
+                if (!isMember()) return false;
                 // Requires The Fremennik Trials & The Fremennik Isles
                 return Rs2Player.getQuestState(Quest.THE_FREMENNIK_TRIALS) == QuestState.FINISHED && Rs2Player.getQuestState(Quest.THE_FREMENNIK_ISLES) == QuestState.FINISHED;
             case BURGH_DE_ROTT:
+                if (!isMember()) return false;
                 // Requires Priest in Peril & In Aid of the Myreque
                 return Rs2Player.getQuestState(Quest.PRIEST_IN_PERIL) == QuestState.FINISHED && Rs2Player.getQuestState(Quest.IN_AID_OF_THE_MYREQUE) != QuestState.NOT_STARTED;
             case CANIFIS:
+                if (!isMember()) return false;
                 // Requires Priest in Peril
                 return Rs2Player.getQuestState(Quest.PRIEST_IN_PERIL) == QuestState.FINISHED;
             case CAM_TORUM:
+                if (!isMember()) return false;
                 // Requires Perilous Moons to be started
                 return Rs2Player.getQuestState(Quest.PERILOUS_MOONS) != QuestState.NOT_STARTED;
             case ZANARIS:
+                if (!isMember()) return false;
                 // Requires Lost City, Fairytale part 1 & starting Fairytale part 2
                 return Rs2Player.getQuestState(Quest.LOST_CITY) == QuestState.FINISHED && 
                         Rs2Player.getQuestState(Quest.FAIRYTALE_I__GROWING_PAINS) == QuestState.FINISHED && 
@@ -208,11 +225,13 @@ public enum BankLocation {
                 // TODO: How to check if the chest has been built? maybe there is a varbit?
             case VOLCANO_BANK:
             case FOSSIL_ISLAND_WRECK:
+                if (!isMember()) return false;
                 // Requires Bone Voyage
                 return Rs2Player.getQuestState(Quest.BONE_VOYAGE) == QuestState.FINISHED;
             case ALDARIN:
             case VARLAMORE_EAST:
             case VARLAMORE_WEST:
+                if (!isMember()) return false;
                 // Requires Children of the Sun
                 return Rs2Player.getQuestState(Quest.CHILDREN_OF_THE_SUN) == QuestState.FINISHED;
             case LOVAKENGJ:
@@ -230,25 +249,31 @@ public enum BankLocation {
             case HOSIDIUS_KITCHEN:
             case VINERY_BANK:
             case MOUNT_KARUULM:
+                if (!isMember()) return false;
                 // Requires Client of Kourend
                 return Rs2Player.getQuestState(Quest.CLIENT_OF_KOUREND) != QuestState.NOT_STARTED;
             case DWARF_MINE_BANK:
             case BLAST_FURNACE_BANK:
+                if (!isMember()) return false;
                 // Requires The Giant Dwarf
                 return Rs2Player.getQuestState(Quest.THE_GIANT_DWARF) != QuestState.NOT_STARTED;
             case CAMODZAAL:
                 // Requires Below Ice Mountain
                 return Rs2Player.getQuestState(Quest.BELOW_ICE_MOUNTAIN) == QuestState.FINISHED;
             case DORGESH_KAAN_BANK:
+                if (!isMember()) return false;
                 // Requires Death to the Dorgeshuun
                 return Rs2Player.getQuestState(Quest.DEATH_TO_THE_DORGESHUUN) == QuestState.FINISHED;
             case DARKMEYER:
+                if (!isMember()) return false;
                 // Requires Sins of the Father
                 return Rs2Player.getQuestState(Quest.SINS_OF_THE_FATHER) == QuestState.FINISHED;
             case MYTHS_GUILD:
+                if (!isMember()) return false;
                 // Requires Dragon Slayer 2
                 return Rs2Player.getQuestState(Quest.DRAGON_SLAYER_II) == QuestState.FINISHED;
             case PISCATORIS_FISHING_COLONY:
+                if (!isMember()) return false;
                 // Requires Swan Song
                 return Rs2Player.getQuestState(Quest.SWAN_SONG) == QuestState.FINISHED;
             case ROGUES_DEN_CHEST:

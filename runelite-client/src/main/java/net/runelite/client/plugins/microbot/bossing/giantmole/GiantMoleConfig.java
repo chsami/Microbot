@@ -2,7 +2,7 @@ package net.runelite.client.plugins.microbot.bossing.giantmole;
 
 import net.runelite.client.config.*;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
-import net.runelite.client.plugins.microbot.playerassist.enums.DefaultLooterStyle;
+import net.runelite.client.plugins.microbot.aiofighter.enums.DefaultLooterStyle;
 @ConfigInformation("<h2>S-1D Giant Mole</h2>\n" +
         "<h3>BETA PREVIEW 1</h3>\n" +
         "<p>1. <strong>Select your Giant Mole inventory setup</strong>.</p>\n" +
