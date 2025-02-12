@@ -1,7 +1,7 @@
 package net.runelite.client.plugins.microbot.storm.common;
 
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
@@ -12,8 +12,8 @@ public class Rs2Storm {
 
 
     // For item name (String)
-    public static Rs2Item getRandomItemWithLimit(String itemName, int max_tries) {
-        List<Rs2Item> matchingItems = Rs2Inventory.items().stream()
+    public static Rs2ItemModel getRandomItemWithLimit(String itemName, int max_tries) {
+        List<Rs2ItemModel> matchingItems = Rs2Inventory.items().stream()
                 .filter(item -> item.getName().equalsIgnoreCase(itemName))
                 .collect(Collectors.toList());
 
@@ -23,8 +23,8 @@ public class Rs2Storm {
 
         return getRandomItemFromListWithLimit(matchingItems, max_tries);
     }
-    public static Rs2Item getRandomItemWithLimit(int itemId, int max_tries) {
-        List<Rs2Item> matchingItems = Rs2Inventory.items().stream()
+    public static Rs2ItemModel getRandomItemWithLimit(int itemId, int max_tries) {
+        List<Rs2ItemModel> matchingItems = Rs2Inventory.items().stream()
                 .filter(item -> item.id == itemId)
                 .collect(Collectors.toList());
 
@@ -32,7 +32,7 @@ public class Rs2Storm {
             return null; // No items match the provided ID
         }
 
-        Rs2Item selectedItem = null;
+        Rs2ItemModel selectedItem = null;
         int tries = 0;
 
         while (tries < max_tries) {
@@ -57,8 +57,8 @@ public class Rs2Storm {
 
         return selectedItem;
     }
-    public static Rs2Item getRandomItemFromListWithLimit(List<Rs2Item> matchingItems, int max_tries) {
-        Rs2Item selectedItem = null;
+    public static Rs2ItemModel getRandomItemFromListWithLimit(List<Rs2ItemModel> matchingItems, int max_tries) {
+        Rs2ItemModel selectedItem = null;
         int tries = 0;
 
         while (tries < max_tries) {

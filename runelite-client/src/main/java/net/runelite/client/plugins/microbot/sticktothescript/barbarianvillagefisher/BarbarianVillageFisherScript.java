@@ -18,6 +18,7 @@ import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
@@ -122,7 +123,7 @@ public class BarbarianVillageFisherScript extends Script {
                     return;
                 }
 
-                NPC fishingSpot = findFishingSpot();
+                var fishingSpot = findFishingSpot();
                 if (fishingSpot == null) {
                     debug("Found no fishing spot");
                     return;
@@ -253,9 +254,9 @@ public class BarbarianVillageFisherScript extends Script {
     }
 
     // Locate the fishing spot and return the NPC
-    private NPC findFishingSpot() {
+    private Rs2NpcModel findFishingSpot() {
         for (int fishingSpotId : FishingSpot.SALMON.getIds()) {
-            NPC fishingSpot = Rs2Npc.getNpc(fishingSpotId);
+            var fishingSpot = Rs2Npc.getNpc(fishingSpotId);
             if (fishingSpot != null) {
                 return fishingSpot;
             }

@@ -8,27 +8,23 @@ import net.runelite.client.plugins.microbot.magic.orbcharger.OrbChargerPlugin;
 import net.runelite.client.plugins.microbot.magic.orbcharger.enums.OrbChargerState;
 import net.runelite.client.plugins.microbot.magic.orbcharger.enums.Teleport;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
-import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.antiban.enums.Activity;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
-import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Potion;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
-import net.runelite.client.plugins.microbot.util.player.Rs2Pvp;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
 
 import javax.inject.Inject;
-import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -89,7 +85,7 @@ public class AirOrbScript extends Script {
                         if (!Rs2Bank.isOpen()) return;
 
                         if (!Rs2Equipment.isWearing("air")) {
-                            List<Rs2Item> filteredAirStaves = Rs2Bank.bankItems().stream()
+                            List<Rs2ItemModel> filteredAirStaves = Rs2Bank.bankItems().stream()
                                     .filter(item -> Arrays.stream(airStaves).anyMatch(id -> item.getId() == id))
                                     .collect(Collectors.toList());
 
@@ -111,13 +107,13 @@ public class AirOrbScript extends Script {
                             List<String> importantPotionNames = new ArrayList<>(Rs2Potion.getRestoreEnergyPotionsVariants());
                             importantPotionNames.add(Rs2Potion.getStaminaPotion());
 
-                            List<Rs2Item> filteredPotions = Rs2Inventory.getFilteredPotionItemsInInventory(importantPotionNames);
+                            List<Rs2ItemModel> filteredPotions = Rs2Inventory.getFilteredPotionItemsInInventory(importantPotionNames);
                             List<String> importantItemNames = filteredPotions.stream()
-                                    .map(Rs2Item::getName)
+                                    .map(Rs2ItemModel::getName)
                                     .collect(Collectors.toList());
                             
-                            Rs2Item cosmicRune = Rs2Inventory.get(ItemID.COSMIC_RUNE);
-                            Rs2Item unpoweredOrb = Rs2Inventory.get(ItemID.UNPOWERED_ORB);
+                            Rs2ItemModel cosmicRune = Rs2Inventory.get(ItemID.COSMIC_RUNE);
+                            Rs2ItemModel unpoweredOrb = Rs2Inventory.get(ItemID.UNPOWERED_ORB);
 
                             if (cosmicRune != null) {
                                 importantItemNames.add(cosmicRune.getName());
@@ -164,7 +160,7 @@ public class AirOrbScript extends Script {
                                     return;
                                 }
 
-                                Rs2Item energyRestoreItem = Rs2Bank.bankItems()
+                                Rs2ItemModel energyRestoreItem = Rs2Bank.bankItems()
                                         .stream()
                                         .filter(item -> Rs2Potion.getRestoreEnergyPotionsVariants().stream()
                                                 .anyMatch(potion -> item.name.contains(potion)))
@@ -307,7 +303,7 @@ public class AirOrbScript extends Script {
     }
 
     private boolean shouldContinueWalking() {
-        return !shouldBank() && !shouldCharge() && !shouldDrinkFromPool() && hasRequiredItems();
+        return (plugin.getTeleport() != Teleport.RING_OF_DUELING) ? !shouldBank() && !shouldCharge() && hasRequiredItems() : !shouldBank() && !shouldCharge() && !shouldDrinkFromPool() && hasRequiredItems();
     }
 
     private boolean shouldHandleBankingOrFleeing() {
@@ -386,11 +382,11 @@ public class AirOrbScript extends Script {
         final Pattern regexPattern = Pattern.compile(plugin.getTeleport().getRegexPattern());
         switch (plugin.getTeleport()) {
             case AMULET_OF_GLORY:
-                Rs2Item equippedAmulet = Rs2Equipment.get(EquipmentInventorySlot.AMULET);
+                Rs2ItemModel equippedAmulet = Rs2Equipment.get(EquipmentInventorySlot.AMULET);
                 if (equippedAmulet == null) return false;
                 return regexPattern.matcher(equippedAmulet.getName()).matches();
             case RING_OF_DUELING:
-                Rs2Item equippedRing = Rs2Equipment.get(EquipmentInventorySlot.RING);
+                Rs2ItemModel equippedRing = Rs2Equipment.get(EquipmentInventorySlot.RING);
                 if (equippedRing == null) return false;
                 return regexPattern.matcher(equippedRing.getName()).matches();
             default:
@@ -410,14 +406,22 @@ public class AirOrbScript extends Script {
     }
 
     private boolean shouldDrinkFromPool() {
-        return plugin.getTeleport() == Teleport.RING_OF_DUELING && Rs2Player.getRunEnergy() < 80 && hasRequiredItems() && Rs2GameObject.exists(ObjectID.POOL_OF_REFRESHMENT);
+        if (plugin.getTeleport() != Teleport.RING_OF_DUELING) return false;
+        if (Rs2Player.getRunEnergy() > 80) return false;
+        if (!hasRequiredItems()) return false;
+        if (!Rs2GameObject.exists(ObjectID.POOL_OF_REFRESHMENT)) return false;
+        
+        TileObject refreshmentPool = Rs2GameObject.findObjectById(ObjectID.POOL_OF_REFRESHMENT);
+        if (refreshmentPool == null) return false;
+        
+        return Rs2Player.getWorldLocation().distanceTo(refreshmentPool.getWorldLocation()) < 8;
     }
 
     private void handleReplaceTeleportItem() {
         if (isTeleportItemEquipped()) return;
 
         final Pattern regexPattern = Pattern.compile(plugin.getTeleport().getRegexPattern());
-        Rs2Item teleportItem = Rs2Bank.bankItems().stream()
+        Rs2ItemModel teleportItem = Rs2Bank.bankItems().stream()
                 .filter(item -> regexPattern.matcher(item.getName()).matches())
                 .findFirst()
                 .orElse(null);
@@ -445,7 +449,7 @@ public class AirOrbScript extends Script {
         Rs2Inventory.equip(teleportItem.getId());
         Rs2Inventory.waitForInventoryChanges(1200);
         if (plugin.getTeleport() == Teleport.AMULET_OF_GLORY) {
-            Rs2Item equippedAmulet = Rs2Equipment.get(EquipmentInventorySlot.AMULET);
+            Rs2ItemModel equippedAmulet = Rs2Equipment.get(EquipmentInventorySlot.AMULET);
             if (equippedAmulet != null && equippedAmulet.getId() == ItemID.AMULET_OF_GLORY) {
                 Rs2Bank.depositOne(equippedAmulet.getId());
                 Rs2Inventory.waitForInventoryChanges(1200);

@@ -15,7 +15,7 @@ import net.runelite.client.plugins.microbot.qualityoflife.enums.FletchingBolt;
 import net.runelite.client.plugins.microbot.qualityoflife.enums.FletchingDarts;
 import net.runelite.client.plugins.microbot.qualityoflife.enums.FletchingLogs;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
@@ -125,13 +125,13 @@ public class FletchingManager
 
     private void quickFletchLogsOnClick(MenuEntry event)
     {
-        List<Rs2Item> fletchableLogs = FletchingLogs.getFletchableLogs(config.fletchingItem());
+        List<Rs2ItemModel> fletchableLogs = FletchingLogs.getFletchableLogs(config.fletchingItem());
         if (fletchableLogs.isEmpty())
         {
             Microbot.log("<col=5F1515>No fletchable logs found in inventory</col>");
             return;
         }
-        Rs2Item logToFletch = fletchableLogs.get(0);
+        Rs2ItemModel logToFletch = fletchableLogs.get(0);
         if (logToFletch.getSlot() == -1)
         {
             Microbot.log("<col=5F1515>Couldn't get item slot</col>");

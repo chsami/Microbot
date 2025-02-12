@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class Rs2Item {
+public class Rs2ItemModel {
     @Getter
     public int id;
     @Getter
@@ -43,7 +43,7 @@ public class Rs2Item {
             ParamID.OC_ITEM_OP8};
 
 
-    public Rs2Item(Item item, ItemComposition itemComposition, int slot) {
+    public Rs2ItemModel(Item item, ItemComposition itemComposition, int slot) {
         this.id = item.getId();
         this.quantity = item.getQuantity();
         this.name = itemComposition.getName();
@@ -105,7 +105,7 @@ public class Rs2Item {
             return false;
         if (getClass() != obj.getClass())
             return false;
-        Rs2Item other = (Rs2Item) obj;
+        Rs2ItemModel other = (Rs2ItemModel) obj;
         return id == other.id;
     }
 }

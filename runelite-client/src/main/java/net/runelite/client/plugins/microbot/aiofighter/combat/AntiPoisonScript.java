@@ -4,7 +4,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.aiofighter.AIOFighterConfig;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 import java.util.List;
@@ -18,11 +18,11 @@ public class AntiPoisonScript extends Script {
                 if (!super.run()) return;
                 if (!config.useAntiPoison()) return;
                 if (Rs2Player.hasAntiPoisonActive()) {
-                    List<Rs2Item> potions = Microbot.getClientThread().runOnClientThread(Rs2Inventory::getPotions);
+                    List<Rs2ItemModel> potions = Microbot.getClientThread().runOnClientThread(Rs2Inventory::getPotions);
                     if (potions == null || potions.isEmpty()) {
                         return;
                     }
-                    for (Rs2Item potion: potions) {
+                    for (Rs2ItemModel potion: potions) {
                         if (potion.name.toLowerCase().contains("poison")) {
                             Rs2Inventory.interact(potion, "drink");
                             Rs2Player.waitForAnimation();

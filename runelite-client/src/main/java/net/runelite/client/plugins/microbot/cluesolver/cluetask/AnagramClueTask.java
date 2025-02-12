@@ -158,7 +158,7 @@ public class AnagramClueTask extends ClueTask {
     }
 
     private boolean handleDialogue() {
-        String answer = clue.getAnswer();
+        String answer = clue.getAnswer(clueScrollPlugin);
         log.info("Answering dialogue: {}", answer);
 
         if (Rs2Dialogue.isInDialogue()) {

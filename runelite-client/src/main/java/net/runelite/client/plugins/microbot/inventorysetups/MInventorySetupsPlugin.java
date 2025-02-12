@@ -86,7 +86,8 @@ import java.util.stream.IntStream;
 @PluginDescriptor(
 		name = PluginDescriptor.Mocrosoft + "MInventory Setups",
 		description = "Save gear setups for specific activities",
-		enabledByDefault = true
+		enabledByDefault = true,
+		alwaysOn = true
 )
 
 @Slf4j

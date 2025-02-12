@@ -10,6 +10,7 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import org.slf4j.Logger;
@@ -169,8 +170,8 @@ public class DriftNetScript extends Script {
      * fish that hasn’t been tagged yet.
      */
 
-    private void chaseNearbyFish(Set<NPC> fishSet) {
-        List<NPC> sortedFish = fishSet.stream()
+    private void chaseNearbyFish(Set<Rs2NpcModel> fishSet) {
+        List<Rs2NpcModel> sortedFish = fishSet.stream()
                 .sorted(Comparator.comparingInt(
                         fish -> fish.getLocalLocation()
                                 .distanceTo(
@@ -179,10 +180,8 @@ public class DriftNetScript extends Script {
                 ))
                 .collect(Collectors.toList());
 
-        for (NPC fish : sortedFish) {
-            if (!DriftNetPlugin.getTaggedFish().containsKey(fish)
-                    && Rs2Npc.getNpcByIndex(fish.getIndex()) != null) {
-
+        for (Rs2NpcModel fish : sortedFish) {
+            if (!DriftNetPlugin.getTaggedFish().containsKey(fish) && Rs2Npc.getNpcByIndex(fish.getIndex()) != null) {
                 Rs2Npc.interact(fish, "Chase");
                 sleepGaussian(1500, 300);
                 break;

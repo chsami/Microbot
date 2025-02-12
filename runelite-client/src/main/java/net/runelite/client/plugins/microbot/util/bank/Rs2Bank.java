@@ -16,7 +16,7 @@ import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.inventory.RunePouchType;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
@@ -57,7 +57,7 @@ public class Rs2Bank {
     private static final int HANDLE_X_UNSET = 6;
     private static final int HANDLE_ALL = 7;
     private static final int WITHDRAW_AS_NOTE_VARBIT = 3958;
-    public static List<Rs2Item> bankItems = new ArrayList<Rs2Item>();
+    public static List<Rs2ItemModel> bankItems = new ArrayList<Rs2ItemModel>();
     /**
      * Container describes from what interface the action happens
      * eg: withdraw means the contailer will be the bank container
@@ -74,7 +74,7 @@ public class Rs2Bank {
      * @param entryIndex The index of the entry to swap.
      * @param rs2Item    The ItemWidget associated with the menu swap.
      */
-    public static void invokeMenu(int entryIndex, Rs2Item rs2Item) {
+    public static void invokeMenu(int entryIndex, Rs2ItemModel rs2Item) {
         int identifier = entryIndex;
         Rectangle itemBoundingBox = null;
 
@@ -102,7 +102,7 @@ public class Rs2Bank {
      *
      * @return The bounding rectangle for the item's slot, or null if the item is not found.
      */
-    public static Rectangle itemBounds(Rs2Item rs2Item) {
+    public static Rectangle itemBounds(Rs2ItemModel rs2Item) {
         Widget itemWidget = getItemWidget(rs2Item.slot);
 
         if (itemWidget == null) return null;
@@ -131,7 +131,7 @@ public class Rs2Bank {
         return Rs2Widget.hasWidgetText("Rearrange mode", 12, 18, false);
     }
 
-    public static List<Rs2Item> bankItems() {
+    public static List<Rs2ItemModel> bankItems() {
         return bankItems;
     }
 
@@ -155,7 +155,7 @@ public class Rs2Bank {
      *
      * @return The bank item widget if found, or null if not found.
      */
-    public static Rs2Item findBankItem(String name) {
+    public static Rs2ItemModel findBankItem(String name) {
         return findBankItem(name, false);
     }
 
@@ -233,7 +233,7 @@ public class Rs2Bank {
      */
     public static boolean hasAllItems(List<String> names, boolean exact, int amount) {
         return names.stream().allMatch(name -> {
-            Rs2Item item = findBankItem(name, exact, amount);
+            Rs2ItemModel item = findBankItem(name, exact, amount);
             return item != null;
         });
     }
@@ -282,7 +282,7 @@ public class Rs2Bank {
     public static boolean hasItem(int[] ids, int amount) {
         return Arrays.stream(ids)
                 .anyMatch(id -> {
-                    Rs2Item item = findBankItem(id);
+                    Rs2ItemModel item = findBankItem(id);
                     return item != null && item.quantity >= amount;
                 });
     }
@@ -297,7 +297,7 @@ public class Rs2Bank {
     public static boolean hasAllItems(int[] ids, int amount) {
         return Arrays.stream(ids)
                 .allMatch(id -> {
-                    Rs2Item item = findBankItem(id);
+                    Rs2ItemModel item = findBankItem(id);
                     return item != null && item.quantity >= amount;
                 });
     }
@@ -349,7 +349,7 @@ public class Rs2Bank {
 
     //hasBankItem overload to check with id and amount
     public static boolean hasBankItem(int id, int amount) {
-        Rs2Item rs2Item = findBankItem(id);
+        Rs2ItemModel rs2Item = findBankItem(id);
         if (rs2Item == null) return false;
         log.info("Item: " + rs2Item.name + " Amount: " + rs2Item.quantity);
         return findBankItem(Objects.requireNonNull(rs2Item).name, true, amount) != null;
@@ -359,7 +359,7 @@ public class Rs2Bank {
      * Query count of item inside of bank
      */
     public static int count(int id) {
-        Rs2Item bankItem = findBankItem(id);
+        Rs2ItemModel bankItem = findBankItem(id);
         if (bankItem == null) return 0;
         return bankItem.quantity;
     }
@@ -368,7 +368,7 @@ public class Rs2Bank {
      * Query count of item inside of bank
      */
     public static int count(String name, boolean exact) {
-        Rs2Item bankItem = findBankItem(name, exact);
+        Rs2ItemModel bankItem = findBankItem(name, exact);
         if (bankItem == null) return 0;
         return bankItem.quantity;
     }
@@ -396,7 +396,7 @@ public class Rs2Bank {
      *
      * @param rs2Item The ItemWidget representing the item to deposit.
      */
-    private static void depositOne(Rs2Item rs2Item) {
+    private static void depositOne(Rs2ItemModel rs2Item) {
         if (!isOpen()) return;
         if (rs2Item == null) return;
         if (!Rs2Inventory.hasItem(rs2Item.id)) return;
@@ -415,7 +415,7 @@ public class Rs2Bank {
      * @param id The ID of the item to deposit.
      */
     public static void depositOne(int id) {
-        Rs2Item rs2Item = Rs2Inventory.get(id);
+        Rs2ItemModel rs2Item = Rs2Inventory.get(id);
         if (rs2Item == null) return;
         depositOne(rs2Item);
     }
@@ -426,7 +426,7 @@ public class Rs2Bank {
      * @param name The name of the item to deposit.
      */
     public static void depositOne(String name, boolean exact) {
-        Rs2Item rs2Item = Rs2Inventory.get(name, exact);
+        Rs2ItemModel rs2Item = Rs2Inventory.get(name, exact);
         if (rs2Item == null) return;
         depositOne(rs2Item);
     }
@@ -449,7 +449,7 @@ public class Rs2Bank {
      * @param rs2Item item to handle
      * @param amount  amount to deposit
      */
-    private static void depositX(Rs2Item rs2Item, int amount) {
+    private static void depositX(Rs2ItemModel rs2Item, int amount) {
         if (!isOpen()) return;
         if (rs2Item == null) return;
         if (!Rs2Inventory.hasItem(rs2Item.id)) return;
@@ -469,7 +469,7 @@ public class Rs2Bank {
      * @param rs2Item The item to handle.
      * @param amount  The desired amount to set.
      */
-    private static boolean handleAmount(Rs2Item rs2Item, int amount) {
+    private static boolean handleAmount(Rs2ItemModel rs2Item, int amount) {
         return handleAmount(rs2Item, amount, false);
     }
 
@@ -485,7 +485,7 @@ public class Rs2Bank {
      * @param amount  The desired amount to set.
      * @param safe    will wait for item to appear in inventory before continuing if set to true
      */
-    private static boolean handleAmount(Rs2Item rs2Item, int amount, boolean safe) {
+    private static boolean handleAmount(Rs2ItemModel rs2Item, int amount, boolean safe) {
         int inventorySize = Rs2Inventory.size();
         if (Microbot.getVarbitValue(X_AMOUNT_VARBIT) == amount) {
             invokeMenu(HANDLE_X_SET, rs2Item);
@@ -512,7 +512,7 @@ public class Rs2Bank {
      * @param id param amount
      */
     public static void depositX(int id, int amount) {
-        Rs2Item rs2Item = Rs2Inventory.get(id);
+        Rs2ItemModel rs2Item = Rs2Inventory.get(id);
         if (rs2Item == null) return;
         depositX(rs2Item, amount);
     }
@@ -525,7 +525,7 @@ public class Rs2Bank {
      *             param exact
      */
     private static void depositX(String name, int amount, boolean exact) {
-        Rs2Item rs2Item = Rs2Inventory.get(name, exact);
+        Rs2ItemModel rs2Item = Rs2Inventory.get(name, exact);
         if (rs2Item == null) return;
         depositX(rs2Item, amount);
     }
@@ -536,7 +536,7 @@ public class Rs2Bank {
      * @param name param amount
      */
     public static void depositX(String name, int amount) {
-        Rs2Item rs2Item = Rs2Inventory.get(name);
+        Rs2ItemModel rs2Item = Rs2Inventory.get(name);
         if (rs2Item == null) return;
         depositX(rs2Item, amount);
     }
@@ -548,7 +548,7 @@ public class Rs2Bank {
      *
      * @returns did deposit anything
      */
-    private static boolean depositAll(Rs2Item rs2Item) {
+    private static boolean depositAll(Rs2ItemModel rs2Item) {
         if (!isOpen()) return false;
         if (rs2Item == null) return false;
         if (!Rs2Inventory.hasItem(rs2Item.id)) return false;
@@ -566,15 +566,15 @@ public class Rs2Bank {
      * @return true if anything deposited
      */
     public static boolean depositAll(int id) {
-        Rs2Item rs2Item = Rs2Inventory.get(id);
+        Rs2ItemModel rs2Item = Rs2Inventory.get(id);
         if (rs2Item == null) return false;
         return depositAll(rs2Item);
     }
 
-    public static boolean depositAll(Predicate<Rs2Item> predicate) {
+    public static boolean depositAll(Predicate<Rs2ItemModel> predicate) {
         boolean result = false;
-        List<Rs2Item> items = Rs2Inventory.items().stream().filter(predicate).distinct().collect(Collectors.toList());
-        for (Rs2Item item : items) {
+        List<Rs2ItemModel> items = Rs2Inventory.items().stream().filter(predicate).distinct().collect(Collectors.toList());
+        for (Rs2ItemModel item : items) {
             if (item == null) continue;
             depositAll(item);
             sleep(Rs2Random.randomGaussian(400,200));
@@ -584,11 +584,11 @@ public class Rs2Bank {
     }
 
     // boolean to determine if we still have items to deposit
-    private static boolean isDepositing(Predicate<Rs2Item> filter) {
-        List<Rs2Item> itemsToDeposit = Rs2Inventory.all(filter)
+    private static boolean isDepositing(Predicate<Rs2ItemModel> filter) {
+        List<Rs2ItemModel> itemsToDeposit = Rs2Inventory.all(filter)
                 .stream()
                 .filter(Objects::nonNull)
-                .filter(Predicates.distinctByProperty(Rs2Item::getName))
+                .filter(Predicates.distinctByProperty(Rs2ItemModel::getName))
                 .collect(Collectors.toList());
 
         return !itemsToDeposit.isEmpty();
@@ -602,7 +602,7 @@ public class Rs2Bank {
      * @param exact does an exact search equalsIgnoreCase
      */
     public static void depositAll(String name, boolean exact) {
-        Rs2Item rs2Item = Rs2Inventory.get(name, exact);
+        Rs2ItemModel rs2Item = Rs2Inventory.get(name, exact);
         if (rs2Item == null) return;
         depositAll(rs2Item);
     }
@@ -688,7 +688,7 @@ public class Rs2Bank {
      *
      * @param rs2Item item to withdraw
      */
-    private static void withdrawOne(Rs2Item rs2Item) {
+    private static void withdrawOne(Rs2ItemModel rs2Item) {
         if (!isOpen()) return;
         if (rs2Item == null) return;
         if (Rs2Inventory.isFull()) return;
@@ -788,7 +788,7 @@ public class Rs2Bank {
      *
      * @param rs2Item item to withdraw
      */
-    private static void withdrawAllButOne(Rs2Item rs2Item) {
+    private static void withdrawAllButOne(Rs2ItemModel rs2Item) {
         if (!isOpen()) return;
         if (rs2Item == null) return;
         if (Rs2Inventory.isFull()) return;
@@ -803,7 +803,7 @@ public class Rs2Bank {
      * @param rs2Item Item to handle
      * @param amount  int
      */
-    private static boolean withdrawXItem(Rs2Item rs2Item, int amount) {
+    private static boolean withdrawXItem(Rs2ItemModel rs2Item, int amount) {
         if (!isOpen()) return false;
         if (rs2Item == null) return false;
         if (Rs2Inventory.isFull() && !Rs2Inventory.hasItem(rs2Item.id) && !rs2Item.isStackable()) return false;
@@ -921,7 +921,7 @@ public class Rs2Bank {
      *
      * @return
      */
-    private static boolean withdrawAll(Rs2Item rs2Item) {
+    private static boolean withdrawAll(Rs2ItemModel rs2Item) {
         if (!isOpen()) return false;
         if (rs2Item == null) return false;
         if (Rs2Inventory.isFull()) return false;
@@ -944,7 +944,7 @@ public class Rs2Bank {
      */
     public static void withdrawAll(boolean checkInv, String name, boolean exact) {
         if (checkInv && !Rs2Bank.hasItem(name, exact)) return;
-        Rs2Item item = findBankItem(name, exact);
+        Rs2ItemModel item = findBankItem(name, exact);
         withdrawAll(item);
     }
 
@@ -982,7 +982,7 @@ public class Rs2Bank {
      *
      * @param rs2Item item to wear
      */
-    private static void wearItem(Rs2Item rs2Item) {
+    private static void wearItem(Rs2ItemModel rs2Item) {
         if (!isOpen()) return;
         if (rs2Item == null) return;
         container = BANK_INVENTORY_ITEM_CONTAINER;
@@ -1196,7 +1196,7 @@ public class Rs2Bank {
      * @param id item id
      */
     private static void handleWearItem(int id) {
-        Rs2Item rs2Item = Rs2Inventory.get(id);
+        Rs2ItemModel rs2Item = Rs2Inventory.get(id);
         if (rs2Item == null) return;
         container = BANK_INVENTORY_ITEM_CONTAINER;
 
@@ -1220,11 +1220,11 @@ public class Rs2Bank {
      * @return bankItem
      */
     @SuppressWarnings("UnnecessaryLocalVariable")
-    private static Rs2Item findBankItem(int id) {
+    private static Rs2ItemModel findBankItem(int id) {
         if (bankItems == null) return null;
         if (bankItems.stream().findAny().isEmpty()) return null;
 
-        Rs2Item bankItem = bankItems.stream().filter(x -> x.id == id).findFirst().orElse(null);
+        Rs2ItemModel bankItem = bankItems.stream().filter(x -> x.id == id).findFirst().orElse(null);
 
         return bankItem;
     }
@@ -1238,7 +1238,7 @@ public class Rs2Bank {
      * @return The item widget, or null if the item isn't found.
      */
     @SuppressWarnings("UnnecessaryLocalVariable")
-    private static Rs2Item findBankItem(String name, boolean exact) {
+    private static Rs2ItemModel findBankItem(String name, boolean exact) {
         return findBankItem(name, exact, 1);
     }
 
@@ -1252,13 +1252,13 @@ public class Rs2Bank {
      * @return The item widget, or null if the item isn't found.
      */
     @SuppressWarnings("UnnecessaryLocalVariable")
-    private static Rs2Item findBankItem(String name, boolean exact, int amount) {
+    private static Rs2ItemModel findBankItem(String name, boolean exact, int amount) {
         if (bankItems == null) return null;
         if (bankItems.stream().findAny().isEmpty()) return null;
 
         final String lowerCaseName = name.toLowerCase();
 
-        Rs2Item bankItem = bankItems.stream().filter(x -> exact
+        Rs2ItemModel bankItem = bankItems.stream().filter(x -> exact
                 ? x.name.equalsIgnoreCase(lowerCaseName)
                 : x.name.toLowerCase().contains(lowerCaseName)).findFirst().orElse(null);
 
@@ -1276,7 +1276,7 @@ public class Rs2Bank {
      * @param amount The minimum amount needed to find in the bank.
      * @return The first matching item widget, or null if no matching item is found.
      */
-    private static Rs2Item findBankItem(List<String> names, boolean exact, int amount) {
+    private static Rs2ItemModel findBankItem(List<String> names, boolean exact, int amount) {
         if (bankItems == null || bankItems.isEmpty()) return null;
 
         return bankItems.stream()
@@ -1440,7 +1440,7 @@ public class Rs2Bank {
      * @param e The event containing the latest bank items.
      */
     public static void storeBankItemsInMemory(ItemContainerChanged e) {
-        List<Rs2Item> list = updateItemContainer(InventoryID.BANK.getId(), e);
+        List<Rs2ItemModel> list = updateItemContainer(InventoryID.BANK.getId(), e);
         if (list != null)
             bankItems = list;
     }
@@ -1645,7 +1645,7 @@ public class Rs2Bank {
      */
 
     public static boolean emptyGemBag() {
-        Rs2Item gemBag = Rs2Inventory.get(ItemID.GEM_BAG_12020,ItemID.OPEN_GEM_BAG);
+        Rs2ItemModel gemBag = Rs2Inventory.get(ItemID.GEM_BAG_12020,ItemID.OPEN_GEM_BAG);
         if (gemBag == null) return false;
         return Rs2Inventory.interact(gemBag, "Empty");
     }
@@ -1657,7 +1657,7 @@ public class Rs2Bank {
      */
 
     public static boolean emptyFishBarrel() {
-        Rs2Item fishBarrel = Rs2Inventory.get(ItemID.FISH_BARREL,ItemID.OPEN_FISH_BARREL);
+        Rs2ItemModel fishBarrel = Rs2Inventory.get(ItemID.FISH_BARREL,ItemID.OPEN_FISH_BARREL);
         if (fishBarrel == null) return false;
         return Rs2Inventory.interact(fishBarrel, "Empty");
     }
@@ -1738,7 +1738,7 @@ public class Rs2Bank {
      * @param itemId the ID of the item to search for.
      * @return the Rs2Item matching the item ID, or null if not found.
      */
-    public static Rs2Item getBankItem(int itemId) {
+    public static Rs2ItemModel getBankItem(int itemId) {
         return bankItems().stream()
                 .filter(item -> item.getId() == itemId)
                 .findFirst()
@@ -1752,7 +1752,7 @@ public class Rs2Bank {
      * @param exact whether to search for an exact match (true) or a partial match (false).
      * @return the Rs2Item matching the item name, or null if not found.
      */
-    public static Rs2Item getBankItem(String itemName, boolean exact) {
+    public static Rs2ItemModel getBankItem(String itemName, boolean exact) {
         return bankItems.stream()
                 .filter(item -> exact
                         ? item.getName().equalsIgnoreCase(itemName)
@@ -1767,7 +1767,7 @@ public class Rs2Bank {
      * @param itemName the name of the item to search for.
      * @return the Rs2Item matching the item name (partial match), or null if not found.
      */
-    public static Rs2Item getBankItem(String itemName) {
+    public static Rs2ItemModel getBankItem(String itemName) {
         return getBankItem(itemName, false);
     }
 

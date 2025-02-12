@@ -316,6 +316,7 @@
 2973 3386 0	2972 3385 1	Climb-up;Staircase;24075					1	
 2972 3385 1	2973 3386 0	Climb-down;Staircase;24076					1	
 2974 3386 0	2972 3385 1	Climb-up;Staircase;24075					1	
+1752 5137 0	2985 3316 0	Climb;Rope;12230					2	
 								
 # Makeover Mage								
 2916 3323 0	2916 3323 1	Climb-up;Ladder;9558					2	

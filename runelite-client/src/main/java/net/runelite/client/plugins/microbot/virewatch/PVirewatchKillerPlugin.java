@@ -19,7 +19,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
@@ -191,10 +191,10 @@ public class PVirewatchKillerPlugin extends Plugin {
 
     private void updateInventoryState()
     {
-        List<Rs2Item> items = Rs2Inventory.items();
+        List<Rs2ItemModel> items = Rs2Inventory.items();
         if (items != null)
         {
-            for (Rs2Item item : items)
+            for (Rs2ItemModel item : items)
             {
                 if (item != null)
                 {

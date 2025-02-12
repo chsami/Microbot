@@ -3,7 +3,7 @@ package net.runelite.client.plugins.microbot.combathotkeys;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.Global;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 public class CombatHotkeysScript extends Script {
     public boolean isSwitchingGear = false;
     public boolean dance = false;
-    public ArrayList<Rs2Item> gearToSwitch = new ArrayList<>();
+    public ArrayList<Rs2ItemModel> gearToSwitch = new ArrayList<>();
 
     public boolean run(CombatHotkeysConfig config) {
         Microbot.enableAutoRunOn = true;

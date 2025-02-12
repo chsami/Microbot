@@ -17,10 +17,11 @@ import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
@@ -259,7 +260,7 @@ public class GotrScript extends Script {
     }
 
     private boolean repairCells() {
-        Rs2Item cell = Rs2Inventory.get(CellType.PoweredCellList().toArray(Integer[]::new));
+        Rs2ItemModel cell = Rs2Inventory.get(CellType.PoweredCellList().toArray(Integer[]::new));
         if (cell != null && isInMainRegion() && isInMiniGame() && !shouldMineGuardianRemains && !isInLargeMine() && !isInHugeMine()) {
             int cellTier = CellType.GetCellTier(cell.getId());
             List<Integer> shieldCellIds = Rs2GameObject.getObjectIdsByName("cell_tile");
@@ -589,7 +590,7 @@ public class GotrScript extends Script {
     private static void repairWithCordelia() {
         if (!Rs2Inventory.hasDegradedPouch()) return;
         if (!Rs2Inventory.hasItem(ItemID.ABYSSAL_PEARLS)) return;
-        NPC pouchRepairNpc = Rs2Npc.getNpc(NpcID.APPRENTICE_CORDELIA_12180);
+        Rs2NpcModel pouchRepairNpc = Rs2Npc.getNpc(NpcID.APPRENTICE_CORDELIA_12180);
         if (pouchRepairNpc == null) return;
         if (!Rs2Npc.hasAction(pouchRepairNpc.getId(), "Repair")) return;
         if (!Rs2Npc.canWalkTo(pouchRepairNpc, 10)) return;

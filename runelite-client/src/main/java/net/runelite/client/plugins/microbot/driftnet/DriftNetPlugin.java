@@ -13,6 +13,7 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -51,9 +52,9 @@ public class DriftNetPlugin extends Plugin {
     private DriftNetOverlay overlay;
 
     @Getter
-    private static final Set<NPC> fish = new HashSet<>();
+    private static final Set<Rs2NpcModel> fish = new HashSet<>();
     @Getter
-    private static final Map<NPC, Integer> taggedFish = new HashMap<>();
+    private static final Map<Rs2NpcModel, Integer> taggedFish = new HashMap<>();
     @Getter
     private static final List<DriftNet> NETS = ImmutableList.of(
             new DriftNet(NullObjectID.NULL_31433, Varbits.NORTH_NET_STATUS, Varbits.NORTH_NET_CATCH_COUNT, ImmutableSet.of(
@@ -238,14 +239,14 @@ public class DriftNetPlugin extends Plugin {
 
     private void tagFish(Actor fish)
     {
-        NPC fishTarget = (NPC) fish;
+        Rs2NpcModel fishTarget = (Rs2NpcModel) fish;
         taggedFish.put(fishTarget, client.getTickCount());
     }
 
     @Subscribe
     public void onNpcSpawned(NpcSpawned event)
     {
-        final NPC npc = event.getNpc();
+        final Rs2NpcModel npc = new Rs2NpcModel(event.getNpc());
         if (npc.getId() == NpcID.FISH_SHOAL)
         {
             fish.add(npc);
@@ -255,7 +256,7 @@ public class DriftNetPlugin extends Plugin {
     @Subscribe
     public void onNpcDespawned(NpcDespawned event)
     {
-        final NPC npc = event.getNpc();
+        final Rs2NpcModel npc = new Rs2NpcModel(event.getNpc());
         fish.remove(npc);
         taggedFish.remove(npc);
     }

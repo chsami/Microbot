@@ -172,11 +172,18 @@ public abstract class Script implements IScript {
         if (Microbot.pauseAllScripts)
             return false;
 
+        // Synchronizing on BlockingEventManager.class to ensure thread safety
+        // This prevents multiple threads from modifying the blocking event list simultaneously.
         synchronized (BlockingEventManager.class) {
+            // Check if there are any blocking events registered in the BlockingEventManager
             if (!Microbot.getBlockingEventManager().getBlockingEvents().isEmpty()) {
+                // Iterate through each blocking event to check if any should be executed
                 for (BlockingEvent blockingEvent : Microbot.getBlockingEventManager().getBlockingEvents()) {
+                    // If the event's validation condition is met, it means we need to execute it
                     if (blockingEvent.validate()) {
+                        // Execute the blocking event to resolve the issue
                         blockingEvent.execute();
+                        // Return false to indicate that an event was executed and further processing should stop
                         return false;
                     }
                 }

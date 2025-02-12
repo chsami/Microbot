@@ -4,7 +4,6 @@ import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.ItemID;
 import net.runelite.api.Skill;
 import net.runelite.api.TileObject;
-import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.crafting.jewelry.enums.*;
@@ -16,10 +15,9 @@ import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.inventory.RunePouch;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
-import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
@@ -218,7 +216,7 @@ public class JewelryScript extends Script {
                                 int alchJewelryInInventory  = getNotedJewelryInInventory();
                                 int alchJewelryInBank  = Rs2Bank.bankItems().stream()
                                         .filter(item -> item.getId() == plugin.getJewelry().getItemID())
-                                        .mapToInt(Rs2Item::getQuantity)
+                                        .mapToInt(Rs2ItemModel::getQuantity)
                                         .sum();
                                 
                                 int totalAlchJewelry = alchJewelryInInventory + alchJewelryInBank;
@@ -233,7 +231,7 @@ public class JewelryScript extends Script {
                                 int natureRunesInInventory = getNatureRunesInInventory();
                                 int natureRunesInBank = Rs2Bank.bankItems().stream()
                                         .filter(item -> item.getId() == ItemID.NATURE_RUNE)
-                                        .mapToInt(Rs2Item::getQuantity)
+                                        .mapToInt(Rs2ItemModel::getQuantity)
                                         .sum();
                                 
                                 int totalNatureRunes = natureRunesInInventory + natureRunesInBank;
@@ -332,7 +330,7 @@ public class JewelryScript extends Script {
                             Rs2Inventory.equip(staffItemID);
                         }
                         
-                        Rs2Item notedJewelry = Rs2Inventory.get(plugin.getJewelry().getItemID() + 1);
+                        Rs2ItemModel notedJewelry = Rs2Inventory.get(plugin.getJewelry().getItemID() + 1);
                         if (notedJewelry.getSlot() != 11) {
                             Rs2Inventory.moveItemToSlot(notedJewelry, 11);
                             return;
@@ -473,14 +471,14 @@ public class JewelryScript extends Script {
     private int getNatureRunesInInventory() {
         return plugin.isUseRunePouch() ? RunePouch.getItemAmount(ItemID.NATURE_RUNE) : Rs2Inventory.items().stream()
                 .filter(item -> item.getId() == ItemID.NATURE_RUNE)
-                .mapToInt(Rs2Item::getQuantity)
+                .mapToInt(Rs2ItemModel::getQuantity)
                 .sum();
     }
     
     private int getNotedJewelryInInventory() {
         return Rs2Inventory.items().stream()
                 .filter(item -> item.getId() == (plugin.getJewelry().getItemID() + 1))
-                .mapToInt(Rs2Item::getQuantity)
+                .mapToInt(Rs2ItemModel::getQuantity)
                 .sum();
     }
 

@@ -173,9 +173,9 @@ public interface MossKillerConfig extends Config {
             position = 3,
             section = basicGuideSection
     )
-    @Range(min = 1, max = 99)
+    @Range(min = 1, max = 125)
     default int defenseLevel() {
-        return 99;
+        return 125;
     }
 
     @ConfigItem(
@@ -185,9 +185,9 @@ public interface MossKillerConfig extends Config {
             position = 4,
             section = basicGuideSection
     )
-    @Range(min = 1, max = 99)
+    @Range(min = 1, max = 125)
     default int attackLevel() {
-        return 99;
+        return 125;
     }
 
     @ConfigItem(
@@ -197,9 +197,9 @@ public interface MossKillerConfig extends Config {
             position = 5,
             section = basicGuideSection
     )
-    @Range(min = 1, max = 99)
+    @Range(min = 1, max = 125)
     default int strengthLevel() {
-        return 99;
+        return 125;
     }
 
     @ConfigItem(

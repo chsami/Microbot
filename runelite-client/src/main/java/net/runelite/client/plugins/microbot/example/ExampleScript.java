@@ -18,7 +18,7 @@ public class ExampleScript extends Script {
                 long startTime = System.currentTimeMillis();
 
                 //CODE HERE
-
+                
                 long endTime = System.currentTimeMillis();
                 long totalTime = endTime - startTime;
                 System.out.println("Total time for loop " + totalTime);

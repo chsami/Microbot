@@ -17,7 +17,7 @@ import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
@@ -182,7 +182,7 @@ public class MageTrainingArenaScript extends Script {
             previousRewards.add(reward.getItemId());
         }
 
-        Predicate<Rs2Item> additionalItemPredicate = x -> !x.name.toLowerCase().contains("rune")
+        Predicate<Rs2ItemModel> additionalItemPredicate = x -> !x.name.toLowerCase().contains("rune")
                 && !x.name.toLowerCase().contains("staff")
                 && !x.name.toLowerCase().contains("tome")
                 && !previousRewards.contains(x.id);

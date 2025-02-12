@@ -9,7 +9,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.settings.Rs2Settings;
@@ -54,7 +54,7 @@ public class Rs2ExplorersRing {
      * @param item The item to interact with.
      * @return True if the interaction was successful, false otherwise.
      */
-    private static boolean interact(Rs2Item item) {
+    private static boolean interact(Rs2ItemModel item) {
         boolean didInteract = false;
 
         // Retrieve total charges for the Explorer's Ring
@@ -95,7 +95,7 @@ public class Rs2ExplorersRing {
      * @param item The item to be alchemized.
      * @return True if the High Alchemy action was successful, false otherwise.
      */
-    public static boolean highAlch(Rs2Item item) {
+    public static boolean highAlch(Rs2ItemModel item) {
         // Check if any Explorer's Ring is in the inventory
         if ((Rs2Inventory.hasItem(ItemID.EXPLORERS_RING_1) ||
                 Rs2Inventory.hasItem(ItemID.EXPLORERS_RING_2) ||

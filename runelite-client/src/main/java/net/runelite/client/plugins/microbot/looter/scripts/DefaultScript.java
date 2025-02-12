@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.looter.scripts;
 
+import net.runelite.api.GameState;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.looter.AutoLooterConfig;
@@ -13,8 +14,9 @@ import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.grounditem.LootingParameters;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import java.util.Arrays;
@@ -24,6 +26,8 @@ import java.util.stream.Collectors;
 public class DefaultScript extends Script {
 
     LooterState state = LooterState.LOOTING;
+    boolean lootExists;
+    int failedLootAttempts = 0;
 
     public boolean run(AutoLooterConfig config) {
         Microbot.enableAutoRunOn = false;
@@ -45,36 +49,64 @@ public class DefaultScript extends Script {
 
                 switch (state) {
                     case LOOTING:
-                        if (config.looterStyle() == DefaultLooterStyle.ITEM_LIST) {
-                            LootingParameters itemLootParams = new LootingParameters(
-                                    config.distanceToStray(),
-                                    1,
-                                    1,
-                                    config.minFreeSlots(),
-                                    config.toggleDelayedLooting(),
-                                    config.toggleLootMyItemsOnly(),
-                                    config.listOfItemsToLoot().split(",")
-                            );
-                            if (Rs2GroundItem.lootItemsBasedOnNames(itemLootParams)) {
-                                Microbot.pauseAllScripts = false;
-                                Rs2Antiban.actionCooldown();
-                                Rs2Antiban.takeMicroBreakByChance();
+                        if (config.worldHop()) {
+                            if (config.looterStyle() == DefaultLooterStyle.ITEM_LIST) {
+                                lootExists = Arrays.stream(config.listOfItemsToLoot().trim().split(","))
+                                        .anyMatch(itemName -> Rs2GroundItem.exists(itemName, config.distanceToStray()));
                             }
-                        } else if (config.looterStyle() == DefaultLooterStyle.GE_PRICE_RANGE) {
-                            LootingParameters valueParams = new LootingParameters(
-                                    config.minPriceOfItem(),
-                                    config.maxPriceOfItem(),
-                                    config.distanceToStray(),
-                                    1,
-                                    config.minFreeSlots(),
-                                    config.toggleDelayedLooting(),
-                                    config.toggleLootMyItemsOnly()
-                            );
-                            if (Rs2GroundItem.lootItemBasedOnValue(valueParams)) {
-                                Microbot.pauseAllScripts = false;
-                                Rs2Antiban.actionCooldown();
+                            else if (config.looterStyle() == DefaultLooterStyle.GE_PRICE_RANGE) {
+                                lootExists = Rs2GroundItem.isItemBasedOnValueOnGround(config.minPriceOfItem(), config.distanceToStray());
+                            }
+                        } else {
+                            lootExists = true;
+                        }
+                        
+                        if (lootExists) {
+                            failedLootAttempts = 0;
+
+                            if (config.looterStyle() == DefaultLooterStyle.ITEM_LIST) {
+                                LootingParameters itemLootParams = new LootingParameters(
+                                        config.distanceToStray(),
+                                        1,
+                                        1,
+                                        config.minFreeSlots(),
+                                        config.toggleDelayedLooting(),
+                                        config.toggleLootMyItemsOnly(),
+                                        config.listOfItemsToLoot().split(",")
+                                );
+                                Rs2GroundItem.lootItemsBasedOnNames(itemLootParams);
+                            }
+                            else if (config.looterStyle() == DefaultLooterStyle.GE_PRICE_RANGE) {
+                                LootingParameters valueParams = new LootingParameters(
+                                        config.minPriceOfItem(),
+                                        config.maxPriceOfItem(),
+                                        config.distanceToStray(),
+                                        1,
+                                        config.minFreeSlots(),
+                                        config.toggleDelayedLooting(),
+                                        config.toggleLootMyItemsOnly()
+                                );
+                                Rs2GroundItem.lootItemBasedOnValue(valueParams);
+                            }
+
+                            Microbot.pauseAllScripts = false;
+                            Rs2Antiban.actionCooldown();
+                            Rs2Antiban.takeMicroBreakByChance();
+                        }
+                        else {
+                            failedLootAttempts++; // No items found, increment failure count
+
+                            if (failedLootAttempts >= 5) { // Hop worlds after 5 failed attempts
+                                Microbot.log("Failed to find loot 5 times, hopping worlds...");
+                                int worldNumber = config.useNextWorld() ? Login.getNextWorld(Rs2Player.isMember()) : Login.getRandomWorld(Rs2Player.isMember());
+                                Microbot.hopToWorld(worldNumber);
+                                sleepUntil(() -> Microbot.getClient().getGameState() == GameState.HOPPING);
+                                sleepUntil(() -> Microbot.getClient().getGameState() == GameState.LOGGED_IN);
+                                failedLootAttempts = 0; // Reset failure count after hopping
+                                return;
                             }
                         }
+
                         if (Rs2Inventory.getEmptySlots() <= config.minFreeSlots()) {
                             state = LooterState.BANKING;
                             return;
@@ -118,9 +150,9 @@ public class DefaultScript extends Script {
 
                 if (state == LooterState.BANKING) {
                     if (config.looterStyle() == DefaultLooterStyle.ITEM_LIST) {
-                        Rs2Bank.bankItemsAndWalkBackToOriginalPosition(Arrays.stream(config.listOfItemsToLoot().split(",")).collect(Collectors.toList()), initialPlayerLocation, config.minFreeSlots());
+                        Rs2Bank.bankItemsAndWalkBackToOriginalPosition(Arrays.stream(config.listOfItemsToLoot().trim().split(",")).collect(Collectors.toList()), initialPlayerLocation, config.minFreeSlots());
                     } else {
-                        Rs2Bank.bankItemsAndWalkBackToOriginalPosition(Rs2Inventory.all().stream().map(Rs2Item::getName).collect(Collectors.toList()), initialPlayerLocation, config.minFreeSlots());
+                        Rs2Bank.bankItemsAndWalkBackToOriginalPosition(Rs2Inventory.all().stream().map(Rs2ItemModel::getName).collect(Collectors.toList()), initialPlayerLocation, config.minFreeSlots());
                     }
                     return;
                 }

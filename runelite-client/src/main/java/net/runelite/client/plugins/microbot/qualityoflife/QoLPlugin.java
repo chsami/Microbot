@@ -14,6 +14,7 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.config.ConfigPlugin;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 import net.runelite.client.plugins.microbot.qualityoflife.enums.WintertodtActions;
 import net.runelite.client.plugins.microbot.qualityoflife.managers.FiremakingManager;
@@ -29,8 +30,15 @@ import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.inventory.RunePouch;
+import net.runelite.client.plugins.microbot.util.inventory.RunePouchType;
+import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
+import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
+import net.runelite.client.plugins.microbot.util.magic.Runes;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
+import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
+import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.SplashScreen;
 import net.runelite.client.ui.overlay.OverlayManager;
@@ -423,6 +431,12 @@ public class QoLPlugin extends Plugin {
             addMenuEntry(event, "<col=FFA500>Do-Last</col>", target, this::customAnvilOnClicked);
         }
 
+        if (config.useQuickTeleportToHouse() && menuEntry.getOption().contains("Open") && menuEntry.getTarget().toLowerCase().contains("rune pouch")) {
+            if (Rs2Magic.isModern()) {
+                addMenuEntry(event, "<col=FFA500>Teleport to House</col>", target, this::quickTeleportToHouse);
+            }
+        }
+
         if (config.smartWorkbench() && menuEntry.getOption().contains("Work-at") && menuEntry.getIdentifier() == ObjectID.WORKBENCH_43754) {
             menuEntry.setOption("<col=FFA500>Smart Work-at</col>");
         }
@@ -557,6 +571,21 @@ public class QoLPlugin extends Plugin {
             anvilMenuEntries.clear();
         }
         Microbot.log("<col=245C2D>Recording actions for: </col>" + option);
+    }
+    
+    private void quickTeleportToHouse(MenuEntry entry) {
+        if (!Rs2Inventory.hasRunePouch()) return;
+        
+        if (!Rs2Magic.hasRequiredRunes(Rs2Spells.TELEPORT_TO_HOUSE)) {
+            Microbot.log("<col=5F1515>Missing Required Runes</col>");
+            return;
+        }
+        
+        Microbot.log("<col=245C2D>Casting: </col>Teleport to House");
+        Microbot.getClientThread().runOnSeperateThread(() -> {
+            Rs2Magic.cast(MagicAction.TELEPORT_TO_HOUSE);
+            return null;
+        });
     }
 
 

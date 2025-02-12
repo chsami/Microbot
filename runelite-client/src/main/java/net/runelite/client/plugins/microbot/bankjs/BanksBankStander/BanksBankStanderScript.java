@@ -4,7 +4,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -43,7 +43,7 @@ public class BanksBankStanderScript extends Script {
     public static boolean isWaitingForPrompt = false;
     private long timeValue;
     private int randomNum;
-    List<Rs2Item> inventorySlots;
+    List<Rs2ItemModel> inventorySlots;
 
     public boolean run(BanksBankStanderConfig config) {
         this.config = config; // Initialize the config object before accessing its parameters
@@ -229,7 +229,7 @@ public class BanksBankStanderScript extends Script {
         if (itemId == null) return;
         if (secondItemId == null && thirdItemId == null && fourthItemId == null && Rs2Inventory.hasItemAmount(itemId, config.firstItemQuantity())) {
             //Process inventory quickly (cleaning herbs)
-            for (Rs2Item itemToInteract : inventorySlots) {
+            for (Rs2ItemModel itemToInteract : inventorySlots) {
                 if (itemToInteract != null) {
                     Rs2Inventory.interact(itemToInteract, config.menu());
                 }

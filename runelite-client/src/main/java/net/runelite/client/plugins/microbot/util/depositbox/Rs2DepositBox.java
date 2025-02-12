@@ -8,7 +8,7 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
@@ -112,11 +112,11 @@ public class Rs2DepositBox {
      * @param predicate a condition to filter which items to deposit
      * @return {@code true} if at least one item was deposited, {@code false} otherwise
      */
-    public static boolean depositAll(Predicate<Rs2Item> predicate) {
+    public static boolean depositAll(Predicate<Rs2ItemModel> predicate) {
         if (!isOpen()) return false;
         boolean result = false;
-        List<Rs2Item> items = Rs2Inventory.items().stream().filter(predicate).distinct().collect(Collectors.toList());
-        for (Rs2Item item : items) {
+        List<Rs2ItemModel> items = Rs2Inventory.items().stream().filter(predicate).distinct().collect(Collectors.toList());
+        for (Rs2ItemModel item : items) {
             if (item == null) continue;
             invokeMenu(6, item);
             result = true;
@@ -142,7 +142,7 @@ public class Rs2DepositBox {
      * @return {@code true} if at least one item was deposited, {@code false} otherwise
      */
     public static boolean depositAllExcept(String... names) {
-        return depositAll(x -> Arrays.stream(names).noneMatch(name -> name.equalsIgnoreCase(x.name)));
+        return depositAll(x -> Arrays.stream(names).noneMatch(name -> x.getName().equalsIgnoreCase(name)));
     }
 
     /**
@@ -164,8 +164,8 @@ public class Rs2DepositBox {
      */
     public static boolean depositAllExcept(List<String> names, boolean exact) {
         return depositAll(x -> exact ? 
-                names.stream().noneMatch(name -> name.equalsIgnoreCase(x.name)) : 
-                names.stream().noneMatch(name -> name.toLowerCase().contains(x.name.toLowerCase())));
+                names.stream().noneMatch(name -> x.getName().equalsIgnoreCase(name)) : 
+                names.stream().noneMatch(name -> x.getName().toLowerCase().contains(name.toLowerCase())));
     }
 
     /**
@@ -187,8 +187,8 @@ public class Rs2DepositBox {
      */
     public static boolean depositAll(List<String> names, boolean exact) {
         return depositAll(x -> exact ? 
-                names.stream().anyMatch(name -> name.equalsIgnoreCase(x.name)) : 
-                names.stream().anyMatch(name -> name.toLowerCase().contains(x.name.toLowerCase())));
+                names.stream().anyMatch(name -> x.getName().equalsIgnoreCase(name)) : 
+                names.stream().anyMatch(name -> x.getName().toLowerCase().contains(name.toLowerCase())));
     }
 
     /**
@@ -209,7 +209,7 @@ public class Rs2DepositBox {
      * @return {@code true} if any items were deposited, {@code false} otherwise
      */
     public static boolean depositAll(String... names) {
-        return depositAll(x -> Arrays.stream(names).anyMatch(name -> name.equalsIgnoreCase(x.name)));
+        return depositAll(x -> Arrays.stream(names).anyMatch(name -> x.getName().equalsIgnoreCase(name)));
     }
 
     /**
@@ -227,7 +227,7 @@ public class Rs2DepositBox {
      * @param itemId the ID of the item to deposit
      */
     public static void depositOne(int itemId) {
-        Rs2Item item = Rs2Inventory.get(itemId);
+        Rs2ItemModel item = Rs2Inventory.get(itemId);
         if (item == null) return;
         depositOne(item);
     }
@@ -239,18 +239,18 @@ public class Rs2DepositBox {
      * @param exact {@code true} for exact name matching, {@code false} for partial matching
      */
     public static void depositOne(String itemName, boolean exact) {
-        Rs2Item item = Rs2Inventory.get(itemName, exact);
+        Rs2ItemModel item = Rs2Inventory.get(itemName, exact);
         if (item == null) return;
         depositOne(item);
     }
 
 
     /**
-     * Deposits a specific item by its {@link Rs2Item} reference.
+     * Deposits a specific item by its {@link Rs2ItemModel} reference.
      *
      * @param rs2Item the Rs2Item to deposit
      */
-    public static void depositOne(Rs2Item rs2Item) {
+    public static void depositOne(Rs2ItemModel rs2Item) {
         if (rs2Item == null || !isOpen()) return;
         if (!Rs2Inventory.hasItem(rs2Item.id)) return;
         
@@ -264,7 +264,7 @@ public class Rs2DepositBox {
      * @param amount the quantity of the item to deposit
      */
     public static void depositX(int itemId, int amount) {
-        Rs2Item rs2Item = Rs2Inventory.get(itemId);
+        Rs2ItemModel rs2Item = Rs2Inventory.get(itemId);
         if (rs2Item == null || !isOpen()) return;
         depositX(rs2Item, amount);
     }
@@ -288,18 +288,18 @@ public class Rs2DepositBox {
      * @param exact {@code true} for exact name matching, {@code false} for partial matching
      */
     public static void depositX(String itemName, int amount, boolean exact) {
-        Rs2Item rs2Item = Rs2Inventory.get(itemName, exact);
+        Rs2ItemModel rs2Item = Rs2Inventory.get(itemName, exact);
         if (rs2Item == null || !isOpen()) return;
         depositX(rs2Item, amount);
     }
 
     /**
-     * Deposits a specified quantity of an item by its {@link Rs2Item} reference into the deposit box.
+     * Deposits a specified quantity of an item by its {@link Rs2ItemModel} reference into the deposit box.
      *
-     * @param rs2Item the {@link Rs2Item} to deposit
+     * @param rs2Item the {@link Rs2ItemModel} to deposit
      * @param amount the quantity of the item to deposit
      */
-    public static void depositX(Rs2Item rs2Item, int amount) {
+    public static void depositX(Rs2ItemModel rs2Item, int amount) {
         if (rs2Item == null || !isOpen()) return;
         if (!Rs2Inventory.hasItem(rs2Item.id)) return;
 
@@ -321,7 +321,7 @@ public class Rs2DepositBox {
         Rs2Widget.clickWidget(depositWornItems);
     }
     
-    private static void invokeMenu(int entryIndex, Rs2Item item) {
+    private static void invokeMenu(int entryIndex, Rs2ItemModel item) {
         int identifier = entryIndex;
         String option = "";
         MenuAction action = MenuAction.CC_OP;
@@ -383,7 +383,7 @@ public class Rs2DepositBox {
      * @param rs2Item the item to retrieve the bounds for
      * @return the bounding rectangle of the item's slot, or {@code null} if the item is not found
      */
-    public static Rectangle itemBounds(Rs2Item rs2Item) {
+    public static Rectangle itemBounds(Rs2ItemModel rs2Item) {
         Widget itemWidget = getItemWidget(rs2Item.slot);
         if (itemWidget == null) return null;
         return itemWidget.getBounds();

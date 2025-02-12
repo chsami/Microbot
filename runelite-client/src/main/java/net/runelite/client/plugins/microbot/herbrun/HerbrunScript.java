@@ -4,6 +4,7 @@ import java.awt.*;
 
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.widgets.ComponentID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -11,14 +12,19 @@ import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
+import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
+import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 
 import java.util.concurrent.TimeUnit;
 
 import static net.runelite.client.plugins.microbot.Microbot.log;
 import static net.runelite.client.plugins.microbot.herbrun.HerbrunInfo.*;
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
 
 
 public class HerbrunScript extends Script {
@@ -102,7 +108,6 @@ public class HerbrunScript extends Script {
                         System.out.println("Current state: TROLLHEIM_TELEPORT");
                         if (config.enableTrollheim()) {
                             handleTeleportToTrollheim();
-//                            botStatus = states.TROLLHEIM_HANDLE_PATCH;
                         } else {
                             botStatus = states.CATHERBY_TELEPORT;
                         }
@@ -112,12 +117,13 @@ public class HerbrunScript extends Script {
                         handleWalkingToPatch(trollheimHerb, states.TROLLHEIM_HANDLE_PATCH);
                         break;
                     case TROLLHEIM_HANDLE_PATCH:
-                        if (!Rs2Player.isWalking()) {
+                        if (Rs2Player.distanceTo(trollheimHerb) < 8) {
                             System.out.println("Current state: TROLLHEIM_HANDLE_PATCH");
                             printHerbPatchActions(trollheimHerbPatchID); // Debugging step
 
                             // Ensure the herb patch is fully handled before teleporting
                             handleHerbPatch(trollheimHerbPatchID, seedToPlant, config, trollHeimLeprechaunID);
+
                             sleep(200);
 
                             // Add compost and seeds, and then move to the next state
@@ -146,7 +152,7 @@ public class HerbrunScript extends Script {
                         if (Rs2Player.distanceTo(catherbyHerb) < 15) {
                             System.out.println("Current state: CATHERBY_HANDLE_PATCH");
                             printHerbPatchActions(catherbyHerbPatchID);
-                            handleHerbPatch(catherbyHerbPatchID, seedToPlant, config, 0);
+                            handleHerbPatch(catherbyHerbPatchID, seedToPlant, config);
                         }
                         if (!Rs2Player.isMoving() &&
                                 !Rs2Player.isAnimating() &&
@@ -173,7 +179,7 @@ public class HerbrunScript extends Script {
                         System.out.println("Handling Morytania patch");
                         if (Rs2Player.distanceTo(morytaniaHerb) < 15) {
                             printHerbPatchActions(morytaniaHerbPatchID);
-                            handleHerbPatch(morytaniaHerbPatchID, seedToPlant, config, 0);
+                            handleHerbPatch(morytaniaHerbPatchID, seedToPlant, config);
                         }
                         if (!Rs2Player.isMoving() &&
                                 !Rs2Player.isAnimating() &&
@@ -198,7 +204,7 @@ public class HerbrunScript extends Script {
                     case VARLAMORE_HANDLE_PATCH:
                         if (!Rs2Player.isMoving() && !Rs2Player.isAnimating() && !Rs2Player.isInteracting()) {
                             printHerbPatchActions(varlamoreHerbPatchID);
-                            handleHerbPatch(varlamoreHerbPatchID, seedToPlant, config, varlamoreLeprechaunID);
+                            handleHerbPatch(varlamoreHerbPatchID, seedToPlant, config);
                             addCompostandSeeds(config, varlamoreHerbPatchID, seedToPlant, states.HOSIDIUS_TELEPORT);
                         }
                         break;
@@ -219,7 +225,7 @@ public class HerbrunScript extends Script {
                     case HOSIDIUS_HANDLE_PATCH:
                         if (Rs2Player.distanceTo(hosidiusHerb) < 15) {
                             printHerbPatchActions(hosidiusHerbPatchID);
-                            handleHerbPatch(hosidiusHerbPatchID, seedToPlant, config, 0);
+                            handleHerbPatch(hosidiusHerbPatchID, seedToPlant, config);
 
                         }
                         if (!Rs2Player.isMoving() &&
@@ -231,6 +237,7 @@ public class HerbrunScript extends Script {
                     case ARDOUGNE_TELEPORT:
                         if (!config.enableArdougne()) {
                             botStatus = states.FALADOR_TELEPORT;
+                            break;
                         } else {
                             handleTeleportToArdougne(config);
                         }
@@ -245,7 +252,7 @@ public class HerbrunScript extends Script {
                     case ARDOUGNE_HANDLE_PATCH:
                         if (Rs2Player.distanceTo(ardougneHerb) < 15) {
                             printHerbPatchActions(ardougneHerbPatchID);
-                            handleHerbPatch(ardougneHerbPatchID, seedToPlant, config, 0);
+                            handleHerbPatch(ardougneHerbPatchID, seedToPlant, config);
                         }
                         if (!Rs2Player.isMoving() &&
                                 !Rs2Player.isAnimating() &&
@@ -270,7 +277,7 @@ public class HerbrunScript extends Script {
                     case FALADOR_HANDLE_PATCH:
                         if (Rs2Player.distanceTo(cabbageHerb) < 15) {
                             printHerbPatchActions(cabbageHerbPatchID);
-                            handleHerbPatch(cabbageHerbPatchID, seedToPlant, config, 0);
+                            handleHerbPatch(cabbageHerbPatchID, seedToPlant, config);
                         }
                         if (!Rs2Player.isMoving() &&
                                 !Rs2Player.isAnimating() &&
@@ -286,9 +293,12 @@ public class HerbrunScript extends Script {
                         }
                         break;
                     case WEISS_HANDLE_PATCH:
-                        sleepUntil(() -> Rs2Player.distanceTo(weissHerb) < 15, 10000);
-                        printHerbPatchActions(weissHerbPatchID);
-                        handleHerbPatch(weissHerbPatchID, seedToPlant, config, 0);
+                        sleep(3000, 5000);
+                        if (Rs2Player.distanceTo(weissHerb) < 15) {
+                            printHerbPatchActions(weissHerbPatchID);
+                            handleHerbPatch(weissHerbPatchID, seedToPlant, config);
+                            sleep(800,1300);
+                        }
                         if (!Rs2Player.isMoving() &&
                                 !Rs2Player.isAnimating() &&
                                 !Rs2Player.isInteracting()) {
@@ -310,7 +320,7 @@ public class HerbrunScript extends Script {
                         if (!Rs2Player.isWalking()) {
                             System.out.println("Current state: HARMONEY_HANDLE_PATCH");
                             printHerbPatchActions(harmonyHerbPatchID);
-                            handleHerbPatch(harmonyHerbPatchID, seedToPlant, config, 0);
+                            handleHerbPatch(harmonyHerbPatchID, seedToPlant, config);
                             sleep(200);
                             addCompostandSeeds(config, harmonyHerbPatchID, seedToPlant, states.GUILD_TELEPORT);
                             break;
@@ -337,7 +347,7 @@ public class HerbrunScript extends Script {
                         log("handling herb patch...");
                         if (Rs2Player.distanceTo(farmingGuildHerb) < 20) {
                             printHerbPatchActions(farmingGuildHerbPatchID);
-                            handleHerbPatch(farmingGuildHerbPatchID, seedToPlant, config, 0);
+                            handleHerbPatch(farmingGuildHerbPatchID, seedToPlant, config);
                         }
                         if (!Rs2Player.isMoving() &&
                                 !Rs2Player.isAnimating() &&
@@ -469,7 +479,7 @@ public class HerbrunScript extends Script {
     }
 
     private boolean trollheimTeleport() {
-        sleep(100);
+        sleep(400);
         if (!Rs2Player.isAnimating()) {
             boolean success = Rs2Inventory.interact(ItemID.STONY_BASALT, "Troll Stronghold");
             Rs2Player.waitForAnimation();
@@ -653,22 +663,11 @@ public class HerbrunScript extends Script {
             System.out.println("Teleporting to Ardougne farm patch");
             if (config.ARDOUGNE_TELEPORT_OPTION()) {
                 boolean success = Rs2Inventory.interact(config.CLOAK().getItemId(), "Farm Teleport");
-            } else if (Rs2Inventory.contains(ItemID.SKILLS_NECKLACE1)) {
-                Rs2Inventory.interact(ItemID.SKILLS_NECKLACE1, "rub");
-            } else if (Rs2Inventory.contains(ItemID.SKILLS_NECKLACE2)) {
-                Rs2Inventory.interact(ItemID.SKILLS_NECKLACE2, "rub");
-            } else if (Rs2Inventory.contains(ItemID.SKILLS_NECKLACE3)) {
-                Rs2Inventory.interact(ItemID.SKILLS_NECKLACE3, "rub");
-            } else if (Rs2Inventory.contains(ItemID.SKILLS_NECKLACE4)) {
-                Rs2Inventory.interact(ItemID.SKILLS_NECKLACE4, "rub");
-            } else if (Rs2Inventory.contains(ItemID.SKILLS_NECKLACE5)) {
-                Rs2Inventory.interact(ItemID.SKILLS_NECKLACE5, "rub");
-            } else if (Rs2Inventory.contains(ItemID.SKILLS_NECKLACE6)) {
-                Rs2Inventory.interact(ItemID.SKILLS_NECKLACE6, "rub");
+            } else if (Rs2Inventory.contains(item -> item.getName().toLowerCase().contains("skills necklace"))) {
+                Rs2Inventory.interact("skills necklace", "rub");
+                sleepUntilTrue(() -> !Rs2Widget.isHidden(ComponentID.ADVENTURE_LOG_CONTAINER), Rs2Player::isMoving, 100, 10000);
+                Rs2Keyboard.keyPress('1');
             }
-            sleep(800, 1200);
-            Rs2Keyboard.keyPress('1');
-            Rs2Player.waitForAnimation();
             sleepUntil(() -> !Rs2Player.isAnimating());
             return true;
         } else {
@@ -784,9 +783,12 @@ public class HerbrunScript extends Script {
         if (!Rs2Player.isAnimating()) {
             System.out.println("Teleporting to Weiss");
             boolean success = Rs2Inventory.interact(ItemID.ICY_BASALT, "Weiss");
-            Rs2Player.waitForAnimation();
             sleepUntil(() -> !Rs2Player.isAnimating());
-            return success;
+            if (Rs2Player.distanceTo(weissHerb) < 10) {
+                System.out.println("Arrived at Weiss teleport spot.");
+                return success;
+            }
+
         }
         return false;
     }
@@ -808,15 +810,15 @@ public class HerbrunScript extends Script {
         // Start walking to the location
         Rs2Walker.walkTo(location);
         // Wait until the player reaches within 2 tiles of the location and has stopped moving
-        sleepUntil(() -> Rs2Player.distanceTo(location) < 10);
-        if (Rs2Player.distanceTo(location) < 10) {
+        sleepUntil(() -> Rs2Player.distanceTo(location) < 5);
+        if (Rs2Player.distanceTo(location) < 5) {
             log("Arrived at herb patch.");
             botStatus = nextState;
         }
     }
 
 
-    private void handleHerbPatch(int patchId, int seedToPlant, HerbrunConfig config, int leprechaunID) {
+    private void handleHerbPatch(int patchId, int seedToPlant, HerbrunConfig config) {
         // Define possible actions the herb patch could have
         if (!Rs2Player.isMoving() &&
                 !Rs2Player.isWalking() &&
@@ -845,7 +847,7 @@ public class HerbrunScript extends Script {
             // Handle the patch based on the action found
             switch (foundAction) {
                 case "pick":
-                    handlePickAction(herbPatch, patchId, leprechaunID, config);
+                    handlePickAction(herbPatch, patchId, config);
                     break;
                 case "rake":
                     handleRakeAction(herbPatch);
@@ -862,18 +864,17 @@ public class HerbrunScript extends Script {
 
     }
 
-    private void handlePickAction(GameObject herbPatch, int patchId, int leprechaunID, HerbrunConfig config) {
+    private void handlePickAction(GameObject herbPatch, int patchId, HerbrunConfig config) {
         System.out.println("Picking herbs...");
 
-        // Check if the inventory is full and note herbs before picking more
+        Rs2NpcModel leprechaun = Rs2Npc.getNpc("Tool leprechaun");
         if (Rs2Inventory.isFull()) {
             System.out.println("Noting herbs with tool leprechaun...");
-            Rs2Inventory.useItemOnNpc(config.SEED().getHerbId(), leprechaunID); // Note the herbs with tool leprechaun
+            Rs2Inventory.useItemOnNpc(config.SEED().getHerbId(), leprechaun); // Note the herbs with tool leprechaun
             Rs2Player.waitForAnimation();
         }
         int timesToLoop = 2 + (int) (Math.random() * 6);
 
-        // Pick herbs from the patch
         Rs2GameObject.interact(herbPatch, "pick");
         Rs2Player.waitForXpDrop(Skill.FARMING);
         for (int i = 0; i < timesToLoop; i++) {
@@ -896,7 +897,7 @@ public class HerbrunScript extends Script {
         // If the inventory becomes full again while picking, note the herbs and pick the remaining ones
         if (Rs2GameObject.hasAction(Rs2GameObject.findObjectComposition(patchId), "Pick") && Rs2Inventory.isFull()) {
             System.out.println("Noting herbs with tool leprechaun...");
-            Rs2Inventory.useItemOnNpc(config.SEED().getHerbId(), leprechaunID);
+            Rs2Inventory.useItemOnNpc(config.SEED().getHerbId(), leprechaun);
             Rs2Player.waitForAnimation();
 
             // Pick any remaining herbs

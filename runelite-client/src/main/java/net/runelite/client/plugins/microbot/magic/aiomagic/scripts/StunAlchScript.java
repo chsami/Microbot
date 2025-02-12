@@ -9,7 +9,7 @@ import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.antiban.enums.Activity;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -46,32 +46,33 @@ public class StunAlchScript extends Script {
 
                 switch (state) {
                     case CASTING:
-                        if (plugin.getAlchItemNames().isEmpty() ||
-                                plugin.getAlchItemNames().stream().noneMatch(Rs2Inventory::hasItem)) {
+                        if (plugin.getAlchItemNames().isEmpty() || plugin.getAlchItemNames().stream().noneMatch(Rs2Inventory::hasItem)) {
                             Microbot.log("Missing alch items...");
                             return;
                         }
 
-                        if (!Rs2Magic.canCast(MagicAction.HIGH_LEVEL_ALCHEMY) || !Rs2Magic.canCast(MagicAction.LOW_LEVEL_ALCHEMY)) {
+                        if (!Rs2Magic.hasRequiredRunes(plugin.getAlchSpell())) {
                             Microbot.log("Unable to cast alchemy spell");
                             return;
                         }
 
-                        Rs2Item alchItem = null;
-                        for (String itemName : plugin.getAlchItemNames()) {
-                            if (Rs2Inventory.hasItem(itemName)) {
-                                alchItem = Rs2Inventory.get(itemName);
-                                break;
-                            }
-                        }
+                        Rs2ItemModel alchItem = plugin.getAlchItemNames().stream()
+                                .filter(Rs2Inventory::hasItem)
+                                .map(Rs2Inventory::get)
+                                .findFirst()
+                                .orElse(null);
+
                         if (alchItem == null) {
                             Microbot.log("Missing alch items...");
                             return;
                         }
-                        int inventorySlot = Rs2Player.getRealSkillLevel(Skill.MAGIC) >= 55 ? 11 : 4;
-                        if (alchItem.getSlot() != inventorySlot) {
-                            Rs2Inventory.moveItemToSlot(alchItem, inventorySlot);
-                            return;
+
+                        if (Rs2AntibanSettings.naturalMouse) {
+                            int inventorySlot = Rs2Player.getSkillRequirement(Skill.MAGIC, 55) ? 11 : 4;
+                            if (alchItem.getSlot() != inventorySlot) {
+                                Rs2Inventory.moveItemToSlot(alchItem, inventorySlot);
+                                return;
+                            }
                         }
 
                         net.runelite.api.NPC npc = (net.runelite.api.NPC) Microbot.getClient().getLocalPlayer().getInteracting();

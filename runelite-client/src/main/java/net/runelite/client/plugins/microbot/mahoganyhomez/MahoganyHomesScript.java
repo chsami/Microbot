@@ -14,7 +14,7 @@ import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
@@ -102,7 +102,7 @@ public class MahoganyHomesScript extends Script {
     private void checkPlankSack() {
         if(plugin.getConfig().usePlankSack() && plugin.getPlankCount() == -1) {
             if (Rs2Inventory.contains(ItemID.PLANK_SACK)) {
-                Rs2Item plankSack = Rs2Inventory.get(ItemID.PLANK_SACK);
+                Rs2ItemModel plankSack = Rs2Inventory.get(ItemID.PLANK_SACK);
                 if (plankSack != null) {
                     Rs2Inventory.interact(plankSack, "Check");
                     sleep(Rs2Random.randomGaussian(800, 200));
@@ -264,14 +264,14 @@ public class MahoganyHomesScript extends Script {
                 && Hotspot.isEverythingFixed()) {
             if(plugin.getConfig().usePlankSack() && planksInPlankSack() > 0){
                 if (Rs2Inventory.contains(ItemID.PLANK_SACK) && Rs2Inventory.contains(ItemID.STEEL_BAR)) {
-                    Rs2Item plankSack = Rs2Inventory.get(ItemID.PLANK_SACK);
+                    Rs2ItemModel plankSack = Rs2Inventory.get(ItemID.PLANK_SACK);
                     if (plankSack != null) {
                         Rs2Inventory.interact(plankSack, "Empty");
                         sleep(Rs2Random.randomGaussian(800, 200));
                     }
                 }
             }
-            NPC npc = Rs2Npc.getNpc(plugin.getCurrentHome().getNpcId());
+            var npc = Rs2Npc.getNpc(plugin.getCurrentHome().getNpcId());
             if (npc == null && Rs2Player.getWorldLocation().getPlane() > 0) {
                 log("We are on the wrong floor, Trying to find ladder to go down");
                 TileObject closestLadder = Rs2GameObject.findObject(plugin.getCurrentHome().getLadders());
@@ -319,7 +319,7 @@ public class MahoganyHomesScript extends Script {
                 log("Getting new contract");
 
 
-                NPC npc = Rs2Npc.getNpcWithAction("Contract");
+                var npc = Rs2Npc.getNpcWithAction("Contract");
                 if (npc == null) {
                     return;
                 }
@@ -368,7 +368,7 @@ public class MahoganyHomesScript extends Script {
                         Global.sleepUntil(() -> planksInPlankSack() == 28, () -> {
                             Rs2Bank.withdrawAll(plugin.getConfig().currentTier().getPlankSelection().getPlankId());
                             sleep(Rs2Random.randomGaussian(800, 200));
-                            Rs2Item plankSack = Rs2Inventory.get(ItemID.PLANK_SACK);
+                            Rs2ItemModel plankSack = Rs2Inventory.get(ItemID.PLANK_SACK);
                             if (plankSack != null) {
                                 // Custom menuEntry as Rs2Inventory.interact seem to set the wrong menuAction type
                                 NewMenuEntry plankSackEntry = new NewMenuEntry();

@@ -2,7 +2,6 @@ package net.runelite.client.plugins.microbot.sandcrabs;
 
 import net.runelite.api.GameState;
 import net.runelite.api.NPC;
-import net.runelite.api.Player;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
@@ -13,8 +12,10 @@ import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Random;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.player.Rs2PlayerModel;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
@@ -189,7 +190,7 @@ public class SandCrabScript extends Script {
      * @return true if npc is aggressive
      */
     private boolean isNpcAggressive() {
-        List<NPC> npcs = Rs2Npc.getNpcs("Sandy rocks").collect(Collectors.toList());
+        List<NPC> npcs = Rs2Npc.getNpcs("Sandy rocks", true).collect(Collectors.toList());
         if (npcs.isEmpty()) {
             return false;
         }
@@ -209,7 +210,7 @@ public class SandCrabScript extends Script {
     private void resetAggro() {
         boolean walkedFarEnough = false;
         if (Rs2Player.getWorldLocation().getX() > 1805) {
-            walkedFarEnough = Rs2Walker.walkTo(new WorldPoint(Random.random(1844, 1849), 3496, 0));
+            walkedFarEnough = Rs2Walker.walkTo(new WorldPoint(Rs2Random.between(1844, 1849), 3496, 0));
         } else {
             walkedFarEnough= Rs2Walker.walkTo(new WorldPoint(initialPlayerLocation.getX(), initialPlayerLocation.getY() + 40, initialPlayerLocation.getPlane()), 4);
         }
@@ -242,10 +243,9 @@ public class SandCrabScript extends Script {
     }
 
     private boolean otherPlayerDetected(WorldPoint worldPoint) {
-        for (Player player : Rs2Player.getPlayers()) {
+        for (Rs2PlayerModel player : Rs2Player.getPlayers(player -> true).collect(Collectors.toList())) {
             if (player.getWorldLocation().distanceTo(worldPoint) > 2)
                 continue;
-            if (player == Microbot.getClient().getLocalPlayer()) continue;
             return true;
         }
         return false;

@@ -52,7 +52,7 @@ public class EelFishingScript extends Script {
                 return;
             }
 
-            NPC fishingspot = findFishingSpot();
+            var fishingspot = findFishingSpot();
             if (fishingspot == null) {
                 return;
             }

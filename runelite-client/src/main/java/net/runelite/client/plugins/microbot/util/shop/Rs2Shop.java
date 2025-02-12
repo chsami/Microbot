@@ -7,7 +7,7 @@ import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
@@ -23,7 +23,7 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntilOnClien
 public class Rs2Shop {
     public static final int SHOP_INVENTORY_ITEM_CONTAINER = 19660800;
     public static final int SHOP_CLOSE_BUTTON = 196960801;
-    public static List<Rs2Item> shopItems = new ArrayList<Rs2Item>();
+    public static List<Rs2ItemModel> shopItems = new ArrayList<Rs2ItemModel>();
 
 
     /**
@@ -74,7 +74,7 @@ public class Rs2Shop {
     public static boolean buyItem(String itemName, String quantity) {
         Microbot.status = "Buying " + quantity + " " + itemName;
         try {
-            Rs2Item rs2Item = shopItems.stream()
+            Rs2ItemModel rs2Item = shopItems.stream()
                     .filter(item -> item.name.equalsIgnoreCase(itemName))
                     .findFirst().orElse(null);
             String actionAndQuantity = "Buy " + quantity;
@@ -111,7 +111,7 @@ public class Rs2Shop {
      */
     public static boolean hasStock(String itemName) {
         // Iterate through the shop items to find the specified item
-        for (Rs2Item item : shopItems) {
+        for (Rs2ItemModel item : shopItems) {
             // Check if the item name matches the specified item name
             if (item.name.equalsIgnoreCase(itemName)) {
                 // System.out.println(item.name + " is in stock. Quantity: " + item.quantity + ", Slot: " + item.getSlot());
@@ -133,7 +133,7 @@ public class Rs2Shop {
     public static boolean hasMinimumStock(String itemName, int minimumQuantity) {
         
         // Iterate through the shop items to find the specified item
-        for (Rs2Item item : shopItems) {
+        for (Rs2ItemModel item : shopItems) {
             // Check if the item name matches the specified item name and quantity is >= minimumQuantity
             if (item.name.equalsIgnoreCase(itemName) && item.quantity >= minimumQuantity) {
                 return true; // Item found in stock with sufficient quantity
@@ -150,7 +150,7 @@ public class Rs2Shop {
      * @param e The event containing the latest shop items.
      */
     public static void storeShopItemsInMemory(ItemContainerChanged e, int id) {
-        List<Rs2Item> list = updateItemContainer(id, e);
+        List<Rs2ItemModel> list = updateItemContainer(id, e);
         if (list != null) {
             System.out.println("Storing shopItems");
             shopItems = list;
@@ -177,7 +177,7 @@ public class Rs2Shop {
     public static int getSlot(String itemName) {
         // Iterate through the shop items to find the specified item
         for (int i = 0; i < shopItems.size(); i++) {
-            Rs2Item item = shopItems.get(i);
+            Rs2ItemModel item = shopItems.get(i);
             // Check if the item name matches the specified item name
             if (item.name.equalsIgnoreCase(itemName)) {
                 return item.getSlot(); // Return the slot number of the item
@@ -194,7 +194,7 @@ public class Rs2Shop {
      * @param rs2Item Current item to interact with
      * @param action  Action used on the item
      */
-    private static void invokeMenu(Rs2Item rs2Item, String action) {
+    private static void invokeMenu(Rs2ItemModel rs2Item, String action) {
         if (rs2Item == null) return;
 
         Microbot.status = action + " " + rs2Item.name;
@@ -262,7 +262,7 @@ public class Rs2Shop {
      *
      * @return Rectangle of the item
      */
-    private static Rectangle itemBounds(Rs2Item rs2Item) {
+    private static Rectangle itemBounds(Rs2ItemModel rs2Item) {
         return Rs2Widget.getWidget(19660816).getDynamicChildren()[getSlot(rs2Item.getName())+1].getBounds();
     }
 }

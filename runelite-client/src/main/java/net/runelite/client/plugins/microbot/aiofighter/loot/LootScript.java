@@ -26,31 +26,36 @@ public class LootScript extends Script {
     public boolean run(AIOFighterConfig config) {
 
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
-            if (!super.run()) return;
-            if (!Microbot.isLoggedIn()) return;
-            if (AIOFighterPlugin.getState() == State.BANKING.name() || AIOFighterPlugin.getState() == State.WALKING.name()) return;
-            if (Rs2Inventory.isFull() || Rs2Inventory.getEmptySlots() <= config.minFreeSlots() || (Rs2Combat.inCombat() && !config.toggleForceLoot()))
-                return;
+            try {
+                if (!super.run()) return;
+                if (!Microbot.isLoggedIn()) return;
+                if (AIOFighterPlugin.getState() == State.BANKING.name() || AIOFighterPlugin.getState() == State.WALKING.name()) return;
+                if (Rs2Inventory.isFull() || Rs2Inventory.getEmptySlots() <= config.minFreeSlots() || (Rs2Combat.inCombat() && !config.toggleForceLoot()))
+                    return;
 
-            if (config.state().equals(State.BANKING)) return;
+                if (config.state().equals(State.BANKING)) return;
 
 
 
-            if (!config.toggleLootItems()) return;
-            if (config.looterStyle().equals(DefaultLooterStyle.MIXED) || config.looterStyle().equals(DefaultLooterStyle.ITEM_LIST)) {
-                lootItemsOnName(config);
+                if (!config.toggleLootItems()) return;
+                if (config.looterStyle().equals(DefaultLooterStyle.MIXED) || config.looterStyle().equals(DefaultLooterStyle.ITEM_LIST)) {
+                    lootItemsOnName(config);
+                }
+
+                if (config.looterStyle().equals(DefaultLooterStyle.GE_PRICE_RANGE) || config.looterStyle().equals(DefaultLooterStyle.MIXED)) {
+                    lootItemsByValue(config);
+                }
+                lootBones(config);
+                lootAshes(config);
+                lootRunes(config);
+                lootCoins(config);
+                lootUntradeableItems(config);
+                lootArrows(config);
+
+            } catch(Exception ex) {
+                Microbot.log("Looterscript: " + ex.getMessage());
+                ex.printStackTrace();
             }
-
-            if (config.looterStyle().equals(DefaultLooterStyle.GE_PRICE_RANGE) || config.looterStyle().equals(DefaultLooterStyle.MIXED)) {
-                lootItemsByValue(config);
-            }
-            lootBones(config);
-            lootAshes(config);
-            lootRunes(config);
-            lootCoins(config);
-            lootUntradeableItems(config);
-            lootArrows(config);
-
 
         }, 0, 200, TimeUnit.MILLISECONDS);
         return true;

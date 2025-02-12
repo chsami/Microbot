@@ -31,6 +31,29 @@ import com.google.common.collect.*;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.google.inject.Provides;
+import java.awt.image.BufferedImage;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import javax.annotation.Nullable;
+import javax.inject.Inject;
+import javax.swing.SwingUtilities;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NonNull;
@@ -66,20 +89,6 @@ import net.runelite.http.api.loottracker.LootRecord;
 import net.runelite.http.api.loottracker.LootRecordType;
 import org.apache.commons.text.WordUtils;
 
-import javax.annotation.Nullable;
-import javax.inject.Inject;
-import javax.swing.*;
-import java.awt.image.BufferedImage;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
 @PluginDescriptor(
 	name = "Loot Tracker",
 	description = "Tracks loot from monsters and minigames",
@@ -97,6 +106,7 @@ public class LootTrackerPlugin extends Plugin
 	private static final int THEATRE_OF_BLOOD_REGION = 12867;
 	private static final int THEATRE_OF_BLOOD_LOBBY = 14642;
 	private static final int ARAXXOR_LAIR = 14489;
+	private static final int ROYAL_TITANS_REGION = 11669;
 
 	// Herbiboar loot handling
 	@VisibleForTesting
@@ -327,6 +337,7 @@ public class LootTrackerPlugin extends Plugin
 	private boolean chestLooted;
 	private boolean lastLoadingIntoInstance;
 	private String lastPickpocketTarget;
+	private int lastNpcTypeTarget;
 
 	private List<String> ignoredItems = new ArrayList<>();
 	private List<String> ignoredEvents = new ArrayList<>();
@@ -1170,11 +1181,17 @@ public class LootTrackerPlugin extends Plugin
 	@Subscribe
 	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
-		// There are some pickpocket targets who show up in the chat box with a different name (e.g. H.A.M. members -> man/woman)
-		// We use the value selected from the right-click menu as a fallback for the event lookup in those cases.
-		if (isNPCOp(event.getMenuAction()) && event.getMenuOption().equals("Pickpocket"))
+		if (isNPCOp(event.getMenuAction()))
 		{
-			lastPickpocketTarget = Text.removeTags(event.getMenuTarget());
+			// There are some pickpocket targets who show up in the chat box with a different name (e.g. H.A.M. members -> man/woman)
+			// We use the value selected from the right-click menu as a fallback for the event lookup in those cases.
+			if (event.getMenuOption().equals("Pickpocket"))
+			{
+				lastPickpocketTarget = Text.removeTags(event.getMenuTarget());
+			}
+
+			NPC npc = event.getMenuEntry().getNpc();
+			lastNpcTypeTarget = npc != null ? npc.getId() : -1;
 		}
 		else if (isObjectOp(event.getMenuAction()) && event.getMenuOption().equals("Open") && SHADE_CHEST_OBJECTS.containsKey(event.getId()))
 		{
@@ -1290,10 +1307,19 @@ public class LootTrackerPlugin extends Plugin
 	public void onAnimationChanged(AnimationChanged animationChanged)
 	{
 		Actor actor = animationChanged.getActor();
-		if (actor == client.getLocalPlayer() && actor.getAnimation() == AnimationID.FARMING_HARVEST_HERB && inAraxxorRegion())
+		if (actor != client.getLocalPlayer() || actor.getAnimation() != AnimationID.FARMING_HARVEST_HERB)
 		{
-			log.debug("Harvest Araxxor");
-			onInvChange(InventoryID.INVENTORY, collectInvAndGroundItems(LootRecordType.NPC, "Araxxor"), 4);
+			return;
+		}
+
+		int region = WorldPoint.fromLocalInstance(client, actor.getLocalLocation()).getRegionID();
+		if (region == ARAXXOR_LAIR && lastNpcTypeTarget == NpcID.ARAXXOR_13669
+			|| region == ROYAL_TITANS_REGION && (lastNpcTypeTarget == NpcID.BRANDA_THE_FIRE_QUEEN_14148 || lastNpcTypeTarget == NpcID.ELDRIC_THE_ICE_KING_14149))
+		{
+			Object metadata = region == ROYAL_TITANS_REGION ? client.getPlayers().size() : null;
+			NPCComposition type = client.getNpcDefinition(lastNpcTypeTarget);
+			onInvChange(InventoryID.INVENTORY, collectInvAndGroundItems(LootRecordType.NPC, type.getName(), metadata), 4);
+			log.debug("Harvesting {}", type.getName());
 		}
 	}
 
@@ -1472,12 +1498,6 @@ public class LootTrackerPlugin extends Plugin
 	{
 		int region = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
 		return region == THEATRE_OF_BLOOD_REGION || region == THEATRE_OF_BLOOD_LOBBY;
-	}
-
-	private boolean inAraxxorRegion()
-	{
-		int region = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
-		return region == ARAXXOR_LAIR;
 	}
 
 	void toggleItem(String name, boolean ignore)

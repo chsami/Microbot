@@ -8,7 +8,7 @@ import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
@@ -127,7 +127,7 @@ public class ArceuusRcScript extends Script {
     }
 
     public void chipEssence() {
-        Rs2Item chisel = Rs2Inventory.get(ItemID.CHISEL);
+        Rs2ItemModel chisel = Rs2Inventory.get(ItemID.CHISEL);
         if (Rs2Inventory.moveItemToSlot(chisel,27)) {
             sleepUntil(()->Rs2Inventory.slotContains(27,chisel.id),6000);
         }

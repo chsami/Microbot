@@ -49,7 +49,7 @@ public interface AutoLooterConfig extends Config {
         return LooterActivity.DEFAULT;
     }
 
-    @Range(min = 1, max = 28)
+    @Range(max = 28)
     @ConfigItem(
             name = "Min. free slots",
             keyName = "minFreeSlots",
@@ -63,12 +63,23 @@ public interface AutoLooterConfig extends Config {
 
     @ConfigItem(
             keyName = "Hop",
-            name = "Autohop when player detected",
-            description = "Auto hop when a nearby player is detected",
+            name = "Auto World Hop",
+            description = "Auto Hop when no loot is found within 5 attempts or when player is detected",
             position = 2,
             section = generalSection
     )
-    default boolean hopWhenPlayerDetected() {
+    default boolean worldHop() {
+        return false;
+    }
+
+    @ConfigItem(
+            keyName = "useNextWorld",
+            name = "Use Next World",
+            description = "When enabled, it will hop to the next world, instead of using a random world",
+            position = 3,
+            section = generalSection
+    )
+    default boolean useNextWorld() {
         return false;
     }
 

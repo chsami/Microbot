@@ -10,6 +10,7 @@ import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -25,9 +26,9 @@ public class TemporossOverlay extends Overlay {
     private final TemporossPlugin plugin;
     // Add a setter method to feed the list of NPCs
     @Setter
-    private static List<NPC> npcList; // Add this field to store the list of NPCs
+    private static List<Rs2NpcModel> npcList; // Add this field to store the list of NPCs
     @Setter
-    private static List<NPC> fishList; // Add this field to store the list of NPCs
+    private static List<Rs2NpcModel> fishList; // Add this field to store the list of NPCs
     @Setter
     private static List<GameObject> cloudList; // Add this field to store the list of NPCs
 
@@ -46,7 +47,7 @@ public class TemporossOverlay extends Overlay {
 
         // Render NPC overlays if the list is not null
         if (npcList != null) {
-            for (NPC npc : npcList) {
+            for (Rs2NpcModel npc : npcList) {
                 Rs2WorldPoint npcLocation = new Rs2WorldPoint(npc.getWorldLocation());
                 Rs2WorldPoint playerLocation = new Rs2WorldPoint(Microbot.getClient().getLocalPlayer().getWorldLocation());
                 renderNpcOverlay(graphics, npc, Color.RED,    npcLocation.distanceToPath(playerLocation.getWorldPoint()) + " tiles");

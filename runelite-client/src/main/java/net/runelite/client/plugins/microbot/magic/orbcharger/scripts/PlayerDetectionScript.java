@@ -1,11 +1,11 @@
 package net.runelite.client.plugins.microbot.magic.orbcharger.scripts;
 
 import net.runelite.api.ItemID;
-import net.runelite.api.Player;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.magic.orbcharger.OrbChargerPlugin;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.player.Rs2PlayerModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Pvp;
 
 import javax.inject.Inject;
@@ -24,7 +24,7 @@ public class PlayerDetectionScript extends Script {
             ItemID.DUST_BATTLESTAFF,
     };
 
-    private final List<Player> detectedDangerousPlayers = new CopyOnWriteArrayList<>();
+    private final List<Rs2PlayerModel> detectedDangerousPlayers = new CopyOnWriteArrayList<>();
 
     @Inject
     public PlayerDetectionScript(OrbChargerPlugin plugin) {
@@ -37,7 +37,7 @@ public class PlayerDetectionScript extends Script {
                 if (!super.run() || !Microbot.isLoggedIn()) return;
 
                 if (Rs2Pvp.isInWilderness()) {
-                    List<Player> newDangerousPlayers = Rs2Player.getPlayersInCombatLevelRange().stream()
+                    List<Rs2PlayerModel> newDangerousPlayers = Rs2Player.getPlayersInCombatLevelRange().stream()
                             .filter(player -> !Rs2Player.hasPlayerEquippedItem(player, airStaves))
                             .filter(player -> !detectedDangerousPlayers.contains(player))
                             .collect(Collectors.toList());

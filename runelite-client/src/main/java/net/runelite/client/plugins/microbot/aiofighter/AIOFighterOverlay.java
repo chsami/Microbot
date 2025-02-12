@@ -6,6 +6,7 @@ import net.runelite.api.Point;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.aiofighter.model.Monster;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -70,7 +71,7 @@ public class AIOFighterOverlay extends OverlayPanel {
             }
         }
 
-        for (net.runelite.api.NPC npc :
+        for (Rs2NpcModel npc :
                 attackableNpcs) {
             if (npc != null && npc.getCanvasTilePoly() != null) {
                 try {

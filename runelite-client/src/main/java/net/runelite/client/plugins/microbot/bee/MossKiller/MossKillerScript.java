@@ -1,6 +1,5 @@
 package net.runelite.client.plugins.microbot.bee.MossKiller;
 
-import net.runelite.api.NPC;
 import net.runelite.api.Player;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
@@ -23,6 +22,7 @@ import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.models.RS2Item;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
@@ -306,10 +306,10 @@ public class MossKillerScript extends Script {
         checkAndDrinkStrengthPotion();
 
 
-        List<NPC> monsters = Microbot.getClient().getNpcs();
+        List<Rs2NpcModel> monsters = Rs2Npc.getNpcs().collect(Collectors.toList());
 
 
-        for (NPC npc : monsters) {
+        for (Rs2NpcModel npc : monsters) {
             if ("Growthling".equals(npc.getName()) || npc.getId() == 8194) {
 
                 if(!growthlingAttacked){

@@ -163,7 +163,7 @@ public class Rs2Combat {
     public static boolean inCombat() {
         if (!Microbot.isLoggedIn()) return false;
         if (Microbot.getClient().getLocalPlayer().getInteracting() == null) return false;
-        if (Microbot.getClient().getLocalPlayer().getInteracting().getCombatLevel() < 1) return false;
+        if (Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getLocalPlayer().getInteracting().getCombatLevel() < 1)) return false;
         return Microbot.getClient().getLocalPlayer().isInteracting() || Microbot.getClient().getLocalPlayer().getAnimation() != -1;
     }
 }

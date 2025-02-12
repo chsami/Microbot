@@ -13,7 +13,7 @@ import net.runelite.client.plugins.microbot.util.antiban.enums.Activity;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Staff;
 import net.runelite.client.plugins.microbot.util.magic.Runes;
@@ -79,7 +79,7 @@ public class SuperHeatScript extends Script {
                                 .anyMatch(Rs2Equipment::hasEquipped);
 
                         if (!hasFireStaffEquipped) {
-                            Rs2Item staffItem = Rs2Bank.bankItems().stream()
+                            Rs2ItemModel staffItem = Rs2Bank.bankItems().stream()
                                     .filter(rs2Item -> staffList.stream()
                                             .map(Rs2Staff::getItemID)
                                             .anyMatch(id -> id == rs2Item.getId()))

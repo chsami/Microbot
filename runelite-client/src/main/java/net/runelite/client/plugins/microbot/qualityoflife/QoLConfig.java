@@ -108,6 +108,14 @@ public interface QoLConfig extends Config {
     )
     String runecraftingSection = "runecraftingSection";
 
+    // Magic section
+    @ConfigSection(
+            name = "Magic",
+            description = "Magic settings",
+            position = 83
+    )
+    String magicSection = "magicSection";
+
     // boolean to render Max Hit Overlay
     @ConfigItem(
             keyName = "renderMaxHitOverlay",
@@ -221,12 +229,12 @@ public interface QoLConfig extends Config {
     @ConfigItem(
             keyName = "useBankPin",
             name = "Use bankpin",
-            description = "Automatically uses bankpin",
+            description = "Automatically uses bankpin stored in runelite profile",
             position = 1,
             section = bankSection
     )
-    default String bankPin() {
-        return "";
+    default boolean useBankPin() {
+        return false;
     }
 
     // boolean to automate quest dialogue options
@@ -770,5 +778,15 @@ public interface QoLConfig extends Config {
         return true;
     }
 
-
+    // boolean to add quick teleport to house menu entry
+    @ConfigItem(
+            keyName = "useQuickTeleportToHouse",
+            name = "Quick Teleport to House",
+            description = "Adds a custom menu entry to rune-pouches to quickly cast teleport to house",
+            position = 0,
+            section = magicSection
+    )
+    default boolean useQuickTeleportToHouse() {
+        return true;
+    }
 }

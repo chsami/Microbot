@@ -24,12 +24,13 @@ import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.player.Rs2Pvp;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
@@ -187,8 +188,7 @@ public class Rs2Walker {
                 setTarget(null);
             }
 
-            if (Rs2Npc.getNpcsAttackingPlayer(Microbot.getClient().getLocalPlayer()) != null
-                    && Rs2Npc.getNpcsAttackingPlayer(Microbot.getClient().getLocalPlayer()).stream().anyMatch(x -> x.getId() == 4417)) { //dead tree in draynor
+            if (Rs2Npc.getNpcsForPlayer(npc -> npc.getId() == 4417).findAny().isPresent()) { //dead tree in draynor
                 var moveableTiles = Rs2Tile.getReachableTilesFromTile(Rs2Player.getWorldLocation(), 5).keySet().toArray(new WorldPoint[0]);
                 walkMiniMap(moveableTiles[Rs2Random.between(0, moveableTiles.length)]);
                 sleepGaussian(1000, 300);
@@ -443,18 +443,16 @@ public class Rs2Walker {
                 && Rs2Tile.isWalkable(point.dy(-1));
     }
 
-    public static boolean walkMiniMap(WorldPoint worldPoint, int zoomDistance) {
+    public static boolean walkMiniMap(WorldPoint worldPoint, double zoomDistance) {
         if (Microbot.getClient().getMinimapZoom() != zoomDistance)
             Microbot.getClient().setMinimapZoom(zoomDistance);
 
-        Point point = worldToMinimap(worldPoint);
+        Point point = Rs2MiniMap.worldToMinimap(worldPoint);
 
-        if (point == null) {
-            return false;
-        }
+        if (point == null) return false;
+        //if (!Rs2MiniMap.isPointInsideMinimap(point)) return false;
 
         Microbot.getMouse().click(point);
-
         return true;
     }
 
@@ -485,7 +483,7 @@ public class Rs2Walker {
 
         Rs2Player.toggleRunEnergy(toggleRun);
         Point canv;
-        LocalPoint localPoint = LocalPoint.fromWorld(Microbot.getClient(), worldPoint);
+        LocalPoint localPoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), worldPoint);
 
         if (Microbot.getClient().getTopLevelWorldView().isInstance() && localPoint == null) {
             localPoint = Rs2LocalPoint.fromWorldInstance(worldPoint);
@@ -938,7 +936,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                         if (transport.getType() == TransportType.SHIP || transport.getType() == TransportType.NPC || transport.getType() == TransportType.BOAT
                                 || transport.getType() == TransportType.CHARTER_SHIP) {
 
-                            NPC npc = Rs2Npc.getNpc(transport.getName());
+                            Rs2NpcModel npc = Rs2Npc.getNpc(transport.getName());
 
                             if (Rs2Npc.canWalkTo(npc, 20) && Rs2Npc.interact(npc, transport.getAction())) {
                                 Rs2Player.waitForWalking();
@@ -1214,7 +1212,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
     }
 
     public static boolean handleInventoryTeleports(Transport transport, int itemId) {
-        Rs2Item rs2Item = Rs2Inventory.get(itemId);
+        Rs2ItemModel rs2Item = Rs2Inventory.get(itemId);
         if (rs2Item == null) return false;
 
         List<String> locationKeyWords = Arrays.asList("farm", "monastery", "lletya", "prifddinas", "rellekka", "waterbirth island", "neitiznot", "jatiszo",
@@ -1290,7 +1288,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
             if (transport.getDisplayInfo().contains(":")) {
                 String[] values = transport.getDisplayInfo().split(":");
                 String destination = values[1].trim().toLowerCase();
-                Rs2Item rs2Item = Rs2Equipment.get(itemId);
+                Rs2ItemModel rs2Item = Rs2Equipment.get(itemId);
                 if (transport.getDisplayInfo().toLowerCase().contains("slayer ring")) {
                     Rs2Equipment.invokeMenu(rs2Item, "teleport");
                     Rs2Dialogue.sleepUntilSelectAnOption();
@@ -1461,8 +1459,8 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
         int varlamoreMapParentID = 874;
         String displayInfo = transport.getDisplayInfo();
         if (displayInfo == null || displayInfo.isEmpty()) return false;
-        
-        NPC renu = Rs2Npc.getNpc(NpcID.RENU_13350);
+
+        Rs2NpcModel renu = Rs2Npc.getNpc(NpcID.RENU_13350);
 
         if (Rs2Npc.canWalkTo(renu, 20) && Rs2Npc.interact(renu, "travel")) {
             Rs2Player.waitForWalking();
@@ -1491,7 +1489,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
     
     private static boolean handleMagicCarpet(Transport transport) {
         final int flyingPoseAnimation = 6936;
-        NPC rugMerchant = Rs2Npc.getNpc(transport.getObjectId());
+        var rugMerchant = Rs2Npc.getNpc(transport.getObjectId());
         if (rugMerchant == null) return false;
 
         Rs2Npc.interact(rugMerchant, transport.getAction());
@@ -1543,7 +1541,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
         boolean isGliderMenuVisible = Rs2Widget.getWidget(GLIDER_PARENT_WIDGET, GLIDER_CHILD_WIDGET) != null;
         if (!isGliderMenuVisible) {
             // Find the glider NPC
-            NPC gnome = Rs2Npc.getNpc(npcName);  // Use the NPC name to find the NPC
+            var gnome = Rs2Npc.getNpc(npcName);  // Use the NPC name to find the NPC
             if (gnome == null) {
                 return false;
             }
@@ -1598,7 +1596,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
     private static final int SLOT_TWO_ACW_ROTATION = 26083350;
     private static final int SLOT_THREE_CW_ROTATION = 26083351;
     private static final int SLOT_THREE_ACW_ROTATION = 26083352;
-    private static Rs2Item startingWeapon = null;
+    private static Rs2ItemModel startingWeapon = null;
     private static int startingWeaponId;
     private static int fairyRingGraphicId = 569;
 

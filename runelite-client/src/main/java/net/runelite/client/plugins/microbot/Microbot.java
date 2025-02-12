@@ -28,7 +28,7 @@ import net.runelite.client.plugins.loottracker.LootTrackerRecord;
 import net.runelite.client.plugins.microbot.configs.SpecialAttackConfigs;
 import net.runelite.client.plugins.microbot.dashboard.PluginRequestModel;
 import net.runelite.client.plugins.microbot.qualityoflife.scripts.pouch.PouchScript;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.mouse.Mouse;
@@ -268,9 +268,9 @@ public class Microbot {
     }
 
 
-    public static List<Rs2Item> updateItemContainer(int id, ItemContainerChanged e) {
+    public static List<Rs2ItemModel> updateItemContainer(int id, ItemContainerChanged e) {
         if (e.getContainerId() == id) {
-            List<Rs2Item> list = new ArrayList<>();
+            List<Rs2ItemModel> list = new ArrayList<>();
             int i = -1;
             for (Item item : e.getItemContainer().getItems()) {
                 if (item == null) {
@@ -282,7 +282,7 @@ public class Microbot {
                 boolean isPlaceholder = composition.getPlaceholderTemplateId() > 0;
                 if (isPlaceholder) continue;
 
-                list.add(new Rs2Item(item, composition, i));
+                list.add(new Rs2ItemModel(item, composition, i));
             }
             return list;
         }

@@ -274,7 +274,7 @@ public class TutorialIslandScript extends Script {
     }
 
     public void GettingStarted() {
-        NPC npc = Rs2Npc.getNpc(NpcID.GIELINOR_GUIDE);
+        var npc = Rs2Npc.getNpc(NpcID.GIELINOR_GUIDE);
 
         if (hasContinue()) return;
 
@@ -339,7 +339,7 @@ public class TutorialIslandScript extends Script {
     }
 
     public void SurvivalGuide() {
-        NPC npc = Rs2Npc.getNpc(NpcID.SURVIVAL_EXPERT);
+        var npc = Rs2Npc.getNpc(NpcID.SURVIVAL_EXPERT);
 
         if (Microbot.getVarbitPlayerValue(281) == 10 || Microbot.getVarbitPlayerValue(281) == 20 || Microbot.getVarbitPlayerValue(281) == 60) {
             if (!Rs2Npc.hasLineOfSight(npc)) {
@@ -385,7 +385,7 @@ public class TutorialIslandScript extends Script {
     }
 
     public void MageGuide() {
-        NPC npc = Rs2Npc.getNpc(NpcID.MAGIC_INSTRUCTOR);
+        var npc = Rs2Npc.getNpc(NpcID.MAGIC_INSTRUCTOR);
 
         if (Microbot.getVarbitPlayerValue(281) == 610 || Microbot.getVarbitPlayerValue(281) == 620) {
             WorldPoint worldPoint = new WorldPoint(3141, 3088, 0);
@@ -437,7 +437,7 @@ public class TutorialIslandScript extends Script {
     }
 
     public void PrayerGuide() {
-        NPC npc = Rs2Npc.getNpc(NpcID.BROTHER_BRACE);
+        var npc = Rs2Npc.getNpc(NpcID.BROTHER_BRACE);
 
         if (Microbot.getVarbitPlayerValue(281) == 640 || Microbot.getVarbitPlayerValue(281) == 550 || Microbot.getVarbitPlayerValue(281) == 540) {
             Rs2Walker.walkTo(new WorldPoint(3124, 3106, 0));
@@ -462,7 +462,7 @@ public class TutorialIslandScript extends Script {
     }
 
     public void BankerGuide() {
-        NPC npc = Rs2Npc.getNpc(NpcID.ACCOUNT_GUIDE);
+        var npc = Rs2Npc.getNpc(NpcID.ACCOUNT_GUIDE);
 
         if (Microbot.getVarbitPlayerValue(281) == 510) {
             Rs2GameObject.interact(ObjectID.BANK_BOOTH_10083);
@@ -529,7 +529,7 @@ public class TutorialIslandScript extends Script {
     }
 
     public void CombatGuide() {
-        NPC npc = Rs2Npc.getNpc(NpcID.COMBAT_INSTRUCTOR);
+        var npc = Rs2Npc.getNpc(NpcID.COMBAT_INSTRUCTOR);
 
         if (Microbot.getVarbitPlayerValue(281) <= 370) {
             Rs2Walker.walkTo(new WorldPoint(random(3106, 3108), random(9508, 9510), 0));
@@ -611,7 +611,7 @@ public class TutorialIslandScript extends Script {
     }
 
     public void MiningGuide() {
-        NPC npc = Rs2Npc.getNpc(NpcID.MINING_INSTRUCTOR);
+        var npc = Rs2Npc.getNpc(NpcID.MINING_INSTRUCTOR);
 
         if (Microbot.getVarbitPlayerValue(281) == 260) {
             Rs2Walker.walkTo(new WorldPoint(random(3082, 3085), random(9502, 9505), 0));
@@ -668,7 +668,7 @@ public class TutorialIslandScript extends Script {
     }
 
     public void QuestGuide() {
-        NPC npc = Rs2Npc.getNpc(NpcID.QUEST_GUIDE);
+        var npc = Rs2Npc.getNpc(NpcID.QUEST_GUIDE);
 
         if (Microbot.getVarbitPlayerValue(281) == 200 || Microbot.getVarbitPlayerValue(281) == 210) {
             Rs2Walker.walkTo(new WorldPoint(random(3083, 3086), random(3127, 3129), 0));
@@ -689,7 +689,7 @@ public class TutorialIslandScript extends Script {
     }
 
     public void CookingGuide() {
-        NPC npc = Rs2Npc.getNpc(NpcID.MASTER_CHEF);
+        var npc = Rs2Npc.getNpc(NpcID.MASTER_CHEF);
         
         if (Microbot.getVarbitPlayerValue(281) == 120) {
             Rs2Random.waitEx(1200, 300);

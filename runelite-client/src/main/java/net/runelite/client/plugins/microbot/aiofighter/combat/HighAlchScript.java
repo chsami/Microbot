@@ -4,7 +4,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.aiofighter.AIOFighterConfig;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.item.Rs2ExplorersRing;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
@@ -24,17 +24,17 @@ public class HighAlchScript extends Script {
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!Microbot.isLoggedIn() || !super.run() || !config.toggleHighAlchProfitable()) return;
-                List<Rs2Item> items = Rs2Inventory.getList(Rs2Item::isHaProfitable);
+                List<Rs2ItemModel> items = Rs2Inventory.getList(Rs2ItemModel::isHaProfitable);
 
                 if (items.isEmpty()) return;
 
                 if (Rs2ExplorersRing.hasRing() && Rs2ExplorersRing.hasCharges()) {
-                    for (Rs2Item item: items) {
+                    for (Rs2ItemModel item: items) {
                         Rs2ExplorersRing.highAlch(item);
                     }
                     Rs2ExplorersRing.closeInterface();
                 } else  if (Rs2Magic.canCast(MagicAction.HIGH_LEVEL_ALCHEMY)) {
-                    for (Rs2Item item: items) {
+                    for (Rs2ItemModel item: items) {
                         Rs2Magic.alch(item);
                         if (item.getHaPrice() > Rs2Settings.getMinimumItemValueAlchemyWarning()) {
                             sleepUntil(() -> Rs2Widget.hasWidget("Proceed to cast High Alchemy on it"));

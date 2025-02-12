@@ -11,7 +11,7 @@ import net.runelite.client.plugins.microbot.tithefarm.models.TitheFarmPlant;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -171,7 +171,7 @@ public class TitheFarmingScript extends Script {
                 if (init) {
                     state = STARTING;
                     plants = new ArrayList<>();
-                    Rs2Item rs2ItemSeed = Rs2Inventory.get(TitheFarmMaterial.getSeedForLevel().getFruitId());
+                    Rs2ItemModel rs2ItemSeed = Rs2Inventory.get(TitheFarmMaterial.getSeedForLevel().getFruitId());
                     initialFruit = rs2ItemSeed == null ? 0 : rs2ItemSeed.quantity;
                     init = false;
                     sleep(2000); //extra sleep to have the game initialize correctly

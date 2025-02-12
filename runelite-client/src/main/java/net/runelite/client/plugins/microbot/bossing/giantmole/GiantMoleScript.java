@@ -23,7 +23,7 @@ import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.grounditem.LootingParameters;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Food;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Potion;
@@ -270,7 +270,7 @@ public class GiantMoleScript extends Script
         {
             if (Rs2Walker.walkTo(moleHill.getWorldLocation(), 0))
             {
-                Rs2Item spade = Rs2Inventory.get("Spade");
+                Rs2ItemModel spade = Rs2Inventory.get("Spade");
                 Rs2Inventory.interact(spade, "Dig");
             }
         }
@@ -352,7 +352,7 @@ public class GiantMoleScript extends Script
      */
     public void attackMole()
     {
-        NPC mole = getMole();
+        var mole = getMole();
         if (mole != null && !Rs2Combat.inCombat())
         {
             // Mole's "dig" animation is 3314; if it's mid-dig or dead, skip

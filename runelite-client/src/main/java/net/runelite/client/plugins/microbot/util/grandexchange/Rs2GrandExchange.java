@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.util.grandexchange;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.runelite.api.GrandExchangeOfferState;
+import net.runelite.api.MenuAction;
 import net.runelite.api.NPC;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
@@ -11,14 +12,17 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
+import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.awt.*;
 import java.io.StringReader;
 import java.net.*;
 import java.net.http.HttpClient;
@@ -82,7 +86,7 @@ public class Rs2GrandExchange {
             if (Rs2Inventory.isItemSelected())
                 Microbot.getMouse().click();
             if (isOpen()) return true;
-            NPC npc = Rs2Npc.getNpc("Grand Exchange Clerk");
+            Rs2NpcModel npc = Rs2Npc.getNpc("Grand Exchange Clerk");
             if (npc == null) return false;
             Rs2Npc.interact(npc, "exchange");
             sleepUntil(Rs2GrandExchange::isOpen, 5000);
@@ -394,7 +398,7 @@ public class Rs2GrandExchange {
      * @return
      */
     public static boolean sellInventory() {
-        for (Rs2Item item : Rs2Inventory.items()) {
+        for (Rs2ItemModel item : Rs2Inventory.items()) {
 
             if (!item.isTradeable()) continue;
 
@@ -406,6 +410,61 @@ public class Rs2GrandExchange {
             Rs2GrandExchange.sellItemUnder5Percent(item.name);
         }
         return Rs2Inventory.isEmpty();
+    }
+
+    /**
+     * Aborts the offer
+     *
+     * @param name         name of the item to abort offer on
+     * @param collectToBank collect the item to the bank
+     * @return true if the offer has been aborted
+     */
+    public static boolean abortOffer(String name, boolean collectToBank) {
+        if (useGrandExchange()) return false;
+        try {
+            for (GrandExchangeSlots slot : GrandExchangeSlots.values()) {
+                Widget parent = getSlot(slot);
+                if (parent == null) continue;
+                if(isSlotAvailable(slot)) continue; // skip if slot is empty
+                Widget child = parent.getChild(19);
+                if (child == null) continue;
+                if (child.getText().equalsIgnoreCase(name)) {
+                    Microbot.doInvoke(new NewMenuEntry("Abort offer", 2, parent.getId(), MenuAction.CC_OP.getId(), 2, -1, ""), new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()));
+                    sleep(1000);
+                    collect(collectToBank);
+                    return true;
+                }
+            }
+        } catch (Exception ex) {
+            System.out.println(ex.getMessage());
+        }
+        return false;
+    }
+
+    /**
+     * Aborts all offers
+     *
+     * @param collectToBank collect the items to the bank
+     * @return true if all the offers have been aborted
+     */
+    public static boolean abortAllOffers(boolean collectToBank) {
+        if (useGrandExchange()) return false;
+        try {
+            for (GrandExchangeSlots slot : GrandExchangeSlots.values()) {
+                Widget parent = getSlot(slot);
+                if (parent == null) continue;
+                if(isSlotAvailable(slot)) continue; // skip if slot is empty
+                Widget child = parent.getChild(19);
+                if (child == null) continue;
+                Microbot.doInvoke(new NewMenuEntry("Abort offer", 2, parent.getId(), MenuAction.CC_OP.getId(), 2, -1, ""), new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()));
+            }
+            sleep(1000);
+            collect(collectToBank);
+            return isAllSlotsEmpty();
+        } catch (Exception ex) {
+            System.out.println(ex.getMessage());
+            return false;
+        }
     }
 
     public static Pair<Widget, Integer> getSearchResultWidget(String search) {

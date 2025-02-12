@@ -138,6 +138,9 @@ public final class Varbits
 	public static final int RUNE_POUCH_AMOUNT5 = 15375;
 	public static final int RUNE_POUCH_AMOUNT6 = 15376;
 
+	public static final int PRAYER_DEADEYE_UNLOCKED = 16097;
+	public static final int PRAYER_MYSTIC_VIGOUR_UNLOCKED = 16098;
+
 	/**
 	 * Prayers
 	 */
@@ -967,6 +970,8 @@ public final class Varbits
 	public static final int COMBAT_TASK_MASTER = 12889;
 	public static final int COMBAT_TASK_GRANDMASTER = 12890;
 
+	public static final int LEPRECHAUNS_LUCK = 15344;
+
 	public static final int LEAGUES_MELEE_COMBAT_MASTERY_LEVEL = 11580;
 	public static final int LEAGUES_RANGED_COMBAT_MASTERY_LEVEL = 11581;
 	public static final int LEAGUES_MAGIC_COMBAT_MASTERY_LEVEL = 11582;
@@ -979,4 +984,14 @@ public final class Varbits
 	 * 3 = Null
 	 */
 	public static final int BURTHORPE_SLAYER_MASTER = 10782;
+
+	/**
+	 * The state of Jarvis' gravestone.
+	 * <p>
+	 * 0, 2, 3 = Bush (eg. saved Jarvis, or did not partake in the 2017 Halloween event)
+	 * 1 = Gravestone
+	 *
+	 * @see <a href="https://oldschool.runescape.wiki/w/Gravestone_(Jarvis)">Gravestone (Jarvis) - OSRS Wiki</a>
+	 */
+	public static final int JARVIS_GRAVESTONE = 6008;
 }

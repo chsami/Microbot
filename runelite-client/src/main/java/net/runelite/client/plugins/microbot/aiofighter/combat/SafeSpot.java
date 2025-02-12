@@ -1,6 +1,5 @@
 package net.runelite.client.plugins.microbot.aiofighter.combat;
 
-import net.runelite.api.NPC;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
@@ -40,7 +39,7 @@ public boolean run(AIOFighterConfig config) {
             }
             if (isDefaultSafeSpot(currentSafeSpot) || isPlayerAtSafeSpot(currentSafeSpot)) {
                 //ckeck if there is an NPC targeting us
-                List<NPC> npcList = Rs2Npc.getNpcsAttackingPlayer(Microbot.getClient().getLocalPlayer());
+                var npcList = Rs2Npc.getNpcsForPlayer(npc -> true).collect(Collectors.toList());
 
                 //if there is an NPC interacting with us, and we are not Interacting with it, attack it again
                 if (!npcList.isEmpty() && !Rs2Player.isInMulti()) {
@@ -65,7 +64,7 @@ public boolean run(AIOFighterConfig config) {
                 sleepUntil(() -> isPlayerAtSafeSpot(currentSafeSpot));
                 Microbot.pauseAllScripts = false;
                 //ckeck if there is an NPC targeting us
-                List<NPC> npcList = Rs2Npc.getNpcsAttackingPlayer(Microbot.getClient().getLocalPlayer());
+                var npcList = Rs2Npc.getNpcsForPlayer(npc -> true).collect(Collectors.toList());
 
                 //if there is an NPC interacting with us, and we are not Interacting with it, attack it again
                 if (!npcList.isEmpty() && !Rs2Player.isInMulti()) {

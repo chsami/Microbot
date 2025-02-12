@@ -18,7 +18,7 @@ import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.math.Random;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -384,7 +384,7 @@ public class ShootingStarScript extends Script {
         return getNearestWalkableTile(distance + 1);
     }
 
-    private Pickaxe getBestPickaxe(List<Rs2Item> items) {
+    private Pickaxe getBestPickaxe(List<Rs2ItemModel> items) {
         Pickaxe bestPickaxe = null;
 
         for (Pickaxe pickaxe : Pickaxe.values()) {

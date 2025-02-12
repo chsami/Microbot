@@ -3,7 +3,7 @@ package net.runelite.client.plugins.microbot.qualityoflife.enums;
 import net.runelite.api.ItemID;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 import java.util.List;
@@ -50,7 +50,7 @@ public enum FiremakingLogs {
         return null;
     }
 
-    public static List<Rs2Item> getLogs() {
+    public static List<Rs2ItemModel> getLogs() {
         return Rs2Inventory.all( log -> {
             for (FiremakingLogs firemakingLog : values()) {
                 if (firemakingLog.getId() == log.getId() && firemakingLog.getLevelRequirement() <= Rs2Player.getRealSkillLevel(Skill.FIREMAKING)) {

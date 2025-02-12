@@ -10,7 +10,7 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -66,7 +66,7 @@ public class BanksBankStanderPlugin extends Plugin {
                     BanksBankStanderScript.previousItemChange = (System.currentTimeMillis() - 2500);
                 }
             } else { // Use secondItemIdentifier if secondItemId is null
-                Rs2Item item = Rs2Inventory.get(config.secondItemIdentifier());
+                Rs2ItemModel item = Rs2Inventory.get(config.secondItemIdentifier());
                 if (item != null) {
                     // average is 1800, max is 2400~
                     BanksBankStanderScript.previousItemChange = System.currentTimeMillis();

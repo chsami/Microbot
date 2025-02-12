@@ -13,6 +13,7 @@ import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
@@ -89,13 +90,13 @@ public class PestControlScript extends Script {
                     Rs2Combat.setSpecState(true, config.specialAttackPercentage() * 10);
                     Widget activity = Rs2Widget.getWidget(26738700); //145 = 100%
                     if (activity != null && activity.getChild(0).getWidth() <= 20 && !Rs2Combat.inCombat()) {
-                        Stream<NPC> npcs = Rs2Npc.getAttackableNpcs();
+                        Stream<Rs2NpcModel> npcs = Rs2Npc.getAttackableNpcs();
                         Rs2Npc.attack(npcs.findFirst().get().getId());
                         return;
                     }
 
-                    net.runelite.api.NPC brawler = Rs2Npc.getNpc("brawler");
-                    if (brawler != null && Rs2Npc.getWorldLocation(brawler).distanceTo(Rs2Player.getWorldLocation()) < 3) {
+                    var brawler = Rs2Npc.getNpc("brawler");
+                    if (brawler != null && brawler.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) < 3) {
                         Rs2Npc.attack(brawler);
                         sleepUntil(() -> !Rs2Combat.inCombat());
                         return;
@@ -129,7 +130,7 @@ public class PestControlScript extends Script {
                         }
                     } else {
                         if (!Microbot.getClient().getLocalPlayer().isInteracting()) {
-                            Stream<net.runelite.api.NPC> npcs = Rs2Npc.getAttackableNpcs();
+                            Stream<Rs2NpcModel> npcs = Rs2Npc.getAttackableNpcs();
                             Rs2Npc.attack(npcs.findFirst().get().getId());
                         }
                     }

@@ -59,6 +59,7 @@ public enum BankLocation {
     LEGENDS_GUILD(new WorldPoint(2732, 3379, 2)),
     LLETYA(new WorldPoint(2353, 3163, 0)),
     LOVAKENGJ(new WorldPoint(1526, 3739, 0)),
+    LUMBRIDGE_FRONT(new WorldPoint(3221, 3217, 0)),
     LUMBRIDGE_BASEMENT(new WorldPoint(3218, 9623, 0)),
     LUMBRIDGE_TOP(new WorldPoint(3209, 3220, 2)),
     LUNAR_ISLE(new WorldPoint(2099, 3919, 0)),
@@ -276,6 +277,9 @@ public enum BankLocation {
                 if (!isMember()) return false;
                 // Requires Swan Song
                 return Rs2Player.getQuestState(Quest.SWAN_SONG) == QuestState.FINISHED;
+            case LUMBRIDGE_FRONT:
+                // Requires to be in a PvP World
+                return Microbot.getClient().getWorldType().contains(WorldType.PVP);
             case ROGUES_DEN_CHEST:
             case CAMELOT:
             case HALLOWED_SEPULCHRE:

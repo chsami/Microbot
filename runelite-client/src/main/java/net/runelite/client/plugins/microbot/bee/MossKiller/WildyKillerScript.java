@@ -26,6 +26,7 @@ import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.player.Rs2PlayerModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Pvp;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
@@ -583,7 +584,7 @@ public class WildyKillerScript extends Script {
         if (target != null && target.getCombatLevel() < 88) {
             if (!mossKillerPlugin.lobsterEaten()
                     && Microbot.getClient().getLocalPlayer().getInteracting() != target
-                    && getPlayersInCombatLevelRange().contains(target)
+                    && getPlayersInCombatLevelRange(true).contains(target)
                     && !TOTAL_FEROX_ENCLAVE.contains(playerLocation)) {
                 if (!Rs2Player.isInMulti() && !isNpcInteractingWithMe()) {
                     if (ShortestPathPlugin.getPathfinder() == null)
@@ -791,7 +792,7 @@ public class WildyKillerScript extends Script {
                     Rs2Inventory.interact(RUNE_SCIMITAR, "Wield");
                 }
                 if (localPlayer.getInteracting() != target &&
-                        getPlayersInCombatLevelRange().contains(target) &&
+                        getPlayersInCombatLevelRange(true).contains(target) &&
                         !mossKillerPlugin.lobsterEaten()) {
                     if (ShortestPathPlugin.getPathfinder() == null && Microbot.getClient().getLocalPlayer().getInteracting() != target) {
                         Rs2Walker.setTarget(null);
@@ -845,7 +846,7 @@ public class WildyKillerScript extends Script {
                 }
 
                 if (localPlayer.getInteracting() != target &&
-                        getPlayersInCombatLevelRange().contains(target) &&
+                        getPlayersInCombatLevelRange(true).contains(target) &&
                         !mossKillerPlugin.lobsterEaten()) {
                     if (ShortestPathPlugin.getPathfinder() == null && Microbot.getClient().getLocalPlayer().getInteracting() != target)
                         if (doWeFocusCamera(target)) {

@@ -4,7 +4,7 @@ import net.runelite.api.ItemID;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.fletching.enums.FletchingItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 import java.util.EnumMap;
@@ -112,7 +112,7 @@ public enum FletchingLogs {
         return 1; // Default level if not found
     }
 
-    public static List<Rs2Item> getFletchableLogs(FletchingItem type) {
+    public static List<Rs2ItemModel> getFletchableLogs(FletchingItem type) {
         return Rs2Inventory.all(item -> {
             for (FletchingLogs log : FletchingLogs.values()) {
                 if (item.getId() == log.getId() && calculateLevelRequirement(log, type) <= Rs2Player.getRealSkillLevel(Skill.FLETCHING)){

@@ -334,7 +334,7 @@ public class MossKillerPlugin extends Plugin {
             return;
         }
 
-        List<Player> potentialTargets = Rs2Player.getPlayersInCombatLevelRange();
+        List<Player> potentialTargets = Rs2Player.getPlayersInCombatLevelRange(true);
 
         // Update attackers map based on interactions
         for (Player player : potentialTargets) {
@@ -506,7 +506,7 @@ public class MossKillerPlugin extends Plugin {
      * Determines which player caused the hitsplat based on interaction and proximity.
      */
     private Player getAttackerForHitsplat(Player localPlayer) {
-        for (Player player : Rs2Player.getPlayersInCombatLevelRange()) {
+        for (Player player : Rs2Player.getPlayersInCombatLevelRange(true)) {
             if (player.getInteracting() == localPlayer && !isNonCombatAnimation(player)) {
                 ;
                 return player;

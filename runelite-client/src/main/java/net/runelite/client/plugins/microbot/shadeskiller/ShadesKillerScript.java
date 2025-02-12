@@ -8,14 +8,12 @@ import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
-import java.awt.event.KeyEvent;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -45,7 +43,7 @@ public class ShadesKillerScript extends Script {
     }
 
     private String getKeyInBank() {
-        for (String key: keys) {
+        for (String key : keys) {
             if (Rs2Bank.hasItem(key))
                 return key;
         }
@@ -53,7 +51,7 @@ public class ShadesKillerScript extends Script {
     }
 
     private String getKeyInInventory() {
-        for (String key: keys) {
+        for (String key : keys) {
             if (Rs2Inventory.hasItem(key))
                 return key;
         }
@@ -201,7 +199,7 @@ public class ShadesKillerScript extends Script {
                     case FIGHT_SHADES:
                         boolean isLooting = Rs2GroundItem.lootAtGePrice(config.priceOfItemsToLoot());
                         if (isLooting) return;
-                        net.runelite.api.NPC npc = Rs2Npc.getNpcsForPlayer(config.SHADES().names.get(0)).stream().findFirst().orElse(null);
+                        var npc = Rs2Npc.getNpcsForPlayer(config.SHADES().names.get(0)).stream().findFirst().orElse(null);
                         //if npc is attacking us, then attack back
                         if (npc != null && !Microbot.getClient().getLocalPlayer().isInteracting()) {
                             Rs2Npc.attack(npc);

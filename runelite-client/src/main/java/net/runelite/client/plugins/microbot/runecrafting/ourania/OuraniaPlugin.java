@@ -11,13 +11,10 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.plugins.microbot.magic.orbcharger.OrbChargerConfig;
-import net.runelite.client.plugins.microbot.mining.shootingstar.ShootingStarOverlay;
 import net.runelite.client.plugins.microbot.runecrafting.ourania.enums.Essence;
 import net.runelite.client.plugins.microbot.runecrafting.ourania.enums.Path;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Food;
 import net.runelite.client.ui.overlay.OverlayManager;
 

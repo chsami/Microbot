@@ -2,13 +2,13 @@ package net.runelite.client.plugins.microbot.chompy;
 
 import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.GameObject;
-import net.runelite.api.NPC;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 import java.util.List;
@@ -42,7 +42,7 @@ public class ChompyScript extends Script {
     public ChompyState state = ChompyState.FILLING_BELLOWS;
 
     private boolean bloated_toad_on_ground() {
-        Stream<NPC> npcs=Rs2Npc.getNpcs();
+        Stream<Rs2NpcModel> npcs=Rs2Npc.getNpcs();
         long num_toads = npcs.filter(element -> element.getWorldLocation().equals(Rs2Player.getWorldLocation()) && element.getId() == ID_BLOATED_TOAD_GROUND).count();
 
         return num_toads>0;

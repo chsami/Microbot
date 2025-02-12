@@ -62,7 +62,8 @@ public class BankerScript extends Script {
         this.config = config;
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
-                if (Microbot.isLoggedIn() && config.bank() && needsBanking()) {
+                if (!Microbot.isLoggedIn()) return;
+                if (config.bank() && needsBanking()) {
                     if (config.eatFoodForSpace())
                         if (Rs2Player.eatAt(100))
                             return;

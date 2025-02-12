@@ -13,6 +13,7 @@ import net.runelite.client.plugins.microbot.util.coords.Rs2LocalPoint;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
@@ -43,7 +44,7 @@ public class ScurriusScript extends Script {
     final WorldPoint bossLocation = new WorldPoint(3279, 9869, 0);
     final List<Integer> scurriusNpcIds = List.of(7221, 7222);
     public static State state = State.BANKING;
-    net.runelite.api.NPC scurrius = null;
+    Rs2NpcModel scurrius = null;
     private State previousState = null;
     private boolean hasLoggedRespawnWait = false;
     private Boolean previousInFightRoom = null;

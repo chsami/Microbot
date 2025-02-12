@@ -54,7 +54,7 @@ public class FlaxScript extends Script {
                             state = LooterState.BANKING;
                             return;
                         }
-                        if (config.hopWhenPlayerDetected() && Rs2Player.hopIfPlayerDetected(1, 10, 10)) return;
+                        if (config.worldHop() && Rs2Player.hopIfPlayerDetected(1, 10, 10)) return;
                         
                         GameObject flaxObject = Rs2GameObject.findObject("flax", false, config.distanceToStray(), true, initialPlayerLocation);
                         if (flaxObject != null) {

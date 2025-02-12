@@ -19,7 +19,7 @@ import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
@@ -159,7 +159,7 @@ public class AmethystMiningScript extends Script {
     private void chiselAmethysts() {
         AmethystCraftingOption craftingOption = config.amethystCraftingOption();
         int requiredLevel = craftingOption.getRequiredLevel();
-        Rs2Item chisel = Rs2Inventory.get("chisel");
+        Rs2ItemModel chisel = Rs2Inventory.get("chisel");
         Rs2Inventory.moveItemToSlot(chisel, 27);
         sleepUntil(() -> Rs2Inventory.slotContains(27, "chisel"), 5000);
         if (Microbot.getClient().getRealSkillLevel(Skill.CRAFTING) >= requiredLevel ) {

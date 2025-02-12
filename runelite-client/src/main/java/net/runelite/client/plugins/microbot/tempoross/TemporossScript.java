@@ -20,6 +20,7 @@ import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
@@ -51,11 +52,11 @@ public class TemporossScript extends Script {
     public static boolean isFilling = false;
     public static boolean isFightingFire = false;
     public static HarpoonType harpoonType;
-    public static NPC temporossPool;
-    public static List<NPC> sortedFires = new ArrayList<>();
+    public static Rs2NpcModel temporossPool;
+    public static List<Rs2NpcModel> sortedFires = new ArrayList<>();
     public static List<GameObject> sortedClouds = new ArrayList<>();
-    public static List<NPC> fishSpots = new ArrayList<>();
-    static final Predicate<NPC> filterDangerousNPCs = npc -> !inCloud(npc.getWorldLocation(),1);
+    public static List<Rs2NpcModel> fishSpots = new ArrayList<>();
+    static final Predicate<Rs2NpcModel> filterDangerousNPCs = npc -> !inCloud(npc.getWorldLocation(),1);
 
 
 
@@ -144,7 +145,7 @@ public class TemporossScript extends Script {
     }
 
     private void finishGame() {
-        NPC exitNpc = Rs2Npc.getNearestNpcWithAction("Leave");
+        var exitNpc = Rs2Npc.getNearestNpcWithAction("Leave");
         if (exitNpc != null) {
             int emptyBucketCount = Rs2Inventory.count(ItemID.BUCKET);
             if (emptyBucketCount > 0) {
@@ -177,7 +178,7 @@ public class TemporossScript extends Script {
 
     public void handleForfeit() {
         if ((INTENSITY >= 94 && state == State.THIRD_COOK)) {
-            NPC forfeitNpc = Rs2Npc.getNearestNpcWithAction("Forfeit");
+            var forfeitNpc = Rs2Npc.getNearestNpcWithAction("Forfeit");
             if (forfeitNpc != null) {
                 if (Rs2Npc.interact(forfeitNpc, "Forfeit")) {
                     sleepUntil(() -> !isInMinigame(), 15000);
@@ -318,7 +319,10 @@ public class TemporossScript extends Script {
     }
 
     public static void updateFireData(){
-        List<NPC> allFires = Rs2Npc.getNpcs().filter(npc -> Arrays.asList(npc.getComposition().getActions()).contains("Douse")).collect(Collectors.toList());
+        List<Rs2NpcModel> allFires = Rs2Npc
+                .getNpcs(npc -> Arrays.asList(npc.getComposition().getActions()).contains("Douse"))
+                .map(Rs2NpcModel::new)
+                .collect(Collectors.toList());
         Rs2WorldPoint playerLocation = new Rs2WorldPoint(Microbot.getClient().getLocalPlayer().getWorldLocation());
         sortedFires = allFires.stream()
                 .filter(y -> playerLocation.distanceToPath(y.getWorldLocation()) < 35)
@@ -358,7 +362,7 @@ public class TemporossScript extends Script {
             return;
         }
             isFightingFire = true;
-            for (NPC fire : sortedFires) {
+            for (Rs2NpcModel fire : sortedFires) {
                 if (Rs2Player.isInteracting()) {
                     if (Microbot.getClient().getLocalPlayer().getInteracting().equals(fire)) {
                         return;
@@ -475,7 +479,7 @@ public class TemporossScript extends Script {
                     return;
                 }
 
-                NPC fishSpot = fishSpots.stream()
+                var fishSpot = fishSpots.stream()
                         .findFirst()
                         .orElse(null);
 
@@ -536,13 +540,13 @@ public class TemporossScript extends Script {
             case EMERGENCY_FILL:
             case SECOND_FILL:
             case INITIAL_FILL:
-                List<NPC> ammoCrates = Rs2Npc.getNpcs()
-                        .filter(npc -> Arrays.asList(npc.getComposition().getActions()).contains("Fill") && npc.getWorldLocation().distanceTo(workArea.mastPoint) <= 4)
+                List<Rs2NpcModel> ammoCrates = Rs2Npc
+                        .getNpcs(npc -> Arrays.asList(npc.getComposition().getActions()).contains("Fill") && npc.getWorldLocation().distanceTo(workArea.mastPoint) <= 4)
                         .collect(Collectors.toList());
                 if (inCloud(Microbot.getClient().getLocalPlayer().getLocalLocation())) {
                     log("In cloud, walking to safe point");
 
-                    NPC ammoCrate = ammoCrates.stream()
+                    var ammoCrate = ammoCrates.stream()
                             .max(Comparator.comparingInt(value -> new Rs2WorldPoint(value.getWorldLocation()).distanceToPath( Microbot.getClient().getLocalPlayer().getWorldLocation()))).orElse(null);
                     if (ammoCrate != null) {
 
@@ -556,7 +560,7 @@ public class TemporossScript extends Script {
                     return;
                 }
 
-                NPC ammoCrate =ammoCrates.stream()
+                var ammoCrate =ammoCrates.stream()
                         .min(Comparator.comparingInt(value -> new Rs2WorldPoint(value.getWorldLocation()).distanceToPath(Microbot.getClient().getLocalPlayer().getWorldLocation()))).orElse(null);
 
                 if (ammoCrate != null) {

@@ -6,7 +6,7 @@ import net.runelite.client.config.ConfigInformation;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 
-@ConfigGroup("example")
+@ConfigGroup("LiftedMango's-Herbrun")
 @ConfigInformation("IMPORTANT!<br/>Ensure your chosen seeds match the herb currently planted. For example, if growing snapdragon, make sure snapdragon is already in the patch; otherwise, the herbs won’t note.<br/><br/>If weeds grow right after picking the seeds, it may skip the patch without planting new seeds.<br/> <br/>Start next to a bank<br/><br /><p>Have the following in your bank:</p>\n" +
         "<ol>\n" +
         "    <li>Ardougne cloak</li>\n" +
@@ -53,6 +53,17 @@ public interface HerbrunConfig extends Config {
     }
 
     @ConfigItem(
+            keyName = "enableGearing",
+            name = "Enable Gearing",
+            description = "Enable Gearing? Helps with debugging a specific location...",
+            position = 13,
+            section = settingsSection
+    )
+    default boolean enableGearing() {
+        return true;
+    }
+
+    @ConfigItem(
             keyName = "farmingCape",
             name = "Use Farming cape?",
             description = "Use Farming cape instead of Skills necklace?",
@@ -66,7 +77,7 @@ public interface HerbrunConfig extends Config {
     @ConfigItem(
             keyName = "ardougne_teleport",
             name = "Use Ardougne cloak?",
-            description = "Does your adougne cloak still have charges for today? If not the script will use Ardy tab",
+            description = "Does your ardougne cloak still have charges for today? If not the script will use Ardy tab",
             position = 4,
             section = settingsSection
     )
@@ -143,7 +154,7 @@ public interface HerbrunConfig extends Config {
 
     @ConfigItem(
             keyName = "varlamore_teleport",
-            name = "Use Quetzal Whistle??",
+            name = "Use Quetzal Whistle?",
             description = "Use Quetzal Whistle? If not Civitas tab will be used.",
             position = 4,
             section = settingsSection
@@ -161,17 +172,6 @@ public interface HerbrunConfig extends Config {
     )
     default HerbrunInfo.trollheimTeleport TROLLHEIMTELEPORT() {
         return HerbrunInfo.trollheimTeleport.STONY_BASALT;
-    }
-
-    @ConfigItem(
-            keyName = "enableGearing",
-            name = "Enable Gearing",
-            description = "Enable Gearing? Helps with debugging a specific location...",
-            position = 0,
-            section = locationSection
-    )
-    default boolean enableGearing() {
-        return true;
     }
 
     // Location toggles for each patch location

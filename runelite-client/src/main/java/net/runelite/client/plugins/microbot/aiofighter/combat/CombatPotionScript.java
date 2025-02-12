@@ -5,7 +5,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.aiofighter.AIOFighterConfig;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -20,8 +20,8 @@ public class CombatPotionScript extends Script {
                 if (!config.toggleCombatPotion() && !config.toggleRangingPotion()) return;
                 if (Microbot.getClient().getBoostedSkillLevel(Skill.ATTACK) - Microbot.getClient().getRealSkillLevel(Skill.ATTACK) > 5) return;
                 if (Microbot.getClient().getBoostedSkillLevel(Skill.RANGED) - Microbot.getClient().getRealSkillLevel(Skill.RANGED) > 5) return;
-                List<Rs2Item> rs2Items = Rs2Inventory.getPotions();
-                for (Rs2Item rs2Item: rs2Items
+                List<Rs2ItemModel> rs2Items = Rs2Inventory.getPotions();
+                for (Rs2ItemModel rs2Item: rs2Items
                 ) {
                     if (rs2Item.name.toLowerCase().contains("combat") || rs2Item.name.toLowerCase().contains("ranging") || rs2Item.name.toLowerCase().contains("bastion")) {
                         Rs2Inventory.interact(rs2Item, "drink");

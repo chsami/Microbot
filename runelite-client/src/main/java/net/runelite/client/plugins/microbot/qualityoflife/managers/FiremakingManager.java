@@ -10,7 +10,7 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.qualityoflife.QoLConfig;
 import net.runelite.client.plugins.microbot.qualityoflife.enums.FiremakingLogs;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 
 import java.util.List;
@@ -45,14 +45,14 @@ public class FiremakingManager {
     }
 
     private void lightLogsOnClick(MenuEntry event) {
-        List<Rs2Item> logToLight = FiremakingLogs.getLogs();
+        List<Rs2ItemModel> logToLight = FiremakingLogs.getLogs();
 
         if (logToLight.isEmpty()) {
             Microbot.log("<col=5F1515>No logs available or level too low to light logs</col>");
             return;
         }
 
-        Rs2Item logItem = logToLight.get(0);
+        Rs2ItemModel logItem = logToLight.get(0);
         if (logItem == null) {
             Microbot.log("<col=5F1515>Could not find the selected log in inventory</col>");
             return;

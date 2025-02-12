@@ -15,7 +15,7 @@ import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
@@ -170,7 +170,7 @@ public class BirdHunterScript extends Script {
     }
 
     private void layBirdSnare() {
-        Rs2Item birdSnare = Rs2Inventory.get(ItemID.BIRD_SNARE);
+        Rs2ItemModel birdSnare = Rs2Inventory.get(ItemID.BIRD_SNARE);
         if (Rs2Inventory.interact(birdSnare, "Lay")) {
             if (sleepUntil(Rs2Player::isAnimating, 2000)) {
                 sleepUntil(() -> !Rs2Player.isAnimating(), 3000);
@@ -275,8 +275,8 @@ public class BirdHunterScript extends Script {
     private void buryBones(BirdHunterConfig config) {
         if (!config.buryBones() || !Rs2Inventory.hasItem("Bones")) return;
 
-        List<Rs2Item> bones = Rs2Inventory.getBones();
-        for (Rs2Item bone : bones) {
+        List<Rs2ItemModel> bones = Rs2Inventory.getBones();
+        for (Rs2ItemModel bone : bones) {
             if (Rs2Inventory.interact(bone, "Bury")) {
                 if (Rs2Player.waitForXpDrop(Skill.PRAYER, true)) {
                     Microbot.log("Bone was successfully buried.");

@@ -117,7 +117,7 @@ public class CipherClueTask extends ClueTask {
     }
 
     private boolean interactWithNpc() {
-        NPC npc = Rs2Npc.getNpc(clue.getNpcId());
+        var npc = Rs2Npc.getNpc(clue.getNpcId());
         if (npc == null) {
             log.warn("NPC with ID {} not found at the location.", clue.getNpcId());
             return false;

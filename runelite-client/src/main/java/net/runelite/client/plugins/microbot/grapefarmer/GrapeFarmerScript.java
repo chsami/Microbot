@@ -7,6 +7,7 @@ import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 import java.util.*;
@@ -100,7 +101,7 @@ public class GrapeFarmerScript extends Script {
 
                         if (!this.isRunning()) return;
                         if (Rs2Player.isMoving() || Rs2Player.isAnimating() ||
-                                Rs2Player.isInteracting() || Rs2Player.isWalking()) {
+                                Rs2Player.isInteracting() || Rs2Player.isMoving()) {
                             continue;
                         }
 
@@ -187,20 +188,21 @@ public class GrapeFarmerScript extends Script {
     }
 
     private void pickGrapes(int gameObjectId) {
-        if (Rs2Inventory.isFull()) {
-            Rs2Inventory.use(ItemID.ZAMORAKS_GRAPES);
-            Rs2Npc.interact(0);
-            sleepUntil(() -> !Rs2Inventory.contains(ItemID.ZAMORAKS_GRAPES), 5000);
-            sleep(100,600);
-            if (Rs2Inventory.contains(ItemID.GRAPES)) {
-                Rs2Inventory.use(ItemID.GRAPES);
-                Rs2Npc.interact(0);
-                sleepUntil(() -> !Rs2Inventory.contains(ItemID.GRAPES), 5000);
-                sleep(50, 500);
+        Rs2NpcModel leprechaun = Rs2Npc.getNpc(0);
+        if (leprechaun != null) {
+            if (Rs2Inventory.isFull()) {
+                Rs2Inventory.use(ItemID.ZAMORAKS_GRAPES);
+                Rs2Npc.interact(leprechaun);
+                sleepUntil(() -> !Rs2Inventory.contains(ItemID.ZAMORAKS_GRAPES), 5000);
+                sleep(100,600);
+                if (Rs2Inventory.contains(ItemID.GRAPES)) {
+                    Rs2Inventory.use(ItemID.GRAPES);
+                    Rs2Npc.interact(leprechaun);
+                    sleepUntil(() -> !Rs2Inventory.contains(ItemID.GRAPES), 5000);
+                    sleep(50, 500);
+                }
             }
-
         }
-
 
         if (!Rs2Inventory.isFull() && Rs2GameObject.interact(gameObjectId)) {
             Rs2Player.waitForAnimation(500);
@@ -208,7 +210,7 @@ public class GrapeFarmerScript extends Script {
     }
 
     private static State getStateForVarbit(int varbitValue) {
-        log("Current varbit value: " + varbitValue + " State: ");
+        log("Current varbit value: " + varbitValue);
         if (varbitValue == 0) {
             // Empty, empty+fertilizer
             return State.ADD_SALTPETRE;

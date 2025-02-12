@@ -6,7 +6,7 @@ import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.nmz.NmzConfig;
 import net.runelite.client.plugins.microbot.aiofighter.AIOFighterConfig;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.math.Random;
 
 import java.util.List;
@@ -20,11 +20,11 @@ public class PrayerPotionScript extends Script {
                 if (!super.run()) return;
                 if (!config.togglePrayerPotions()) return;
                 if ((Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER) * 100) /  Microbot.getClient().getRealSkillLevel(Skill.PRAYER) > Random.random(25, 30)) return;
-                List<Rs2Item> potions = Microbot.getClientThread().runOnClientThread(Rs2Inventory::getPotions);
+                List<Rs2ItemModel> potions = Microbot.getClientThread().runOnClientThread(Rs2Inventory::getPotions);
                 if (potions == null || potions.isEmpty()) {
                     return;
                 }
-                for (Rs2Item potion: potions) {
+                for (Rs2ItemModel potion: potions) {
                     if (potion.name.toLowerCase().contains("prayer") || potion.name.toLowerCase().contains("super restore") || potion.name.toLowerCase().contains("moonlight potion")) {
                         Rs2Inventory.interact(potion, "drink");
                         sleep(1200, 2000);
@@ -45,11 +45,11 @@ public class PrayerPotionScript extends Script {
                 if (!super.run()) return;
                 if (!config.togglePrayerPotions()) return;
                 if ((Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER) * 100) /  Microbot.getClient().getRealSkillLevel(Skill.PRAYER) > Random.random(25, 30)) return;
-                List<Rs2Item> potions = Microbot.getClientThread().runOnClientThread(Rs2Inventory::getPotions);
+                List<Rs2ItemModel> potions = Microbot.getClientThread().runOnClientThread(Rs2Inventory::getPotions);
                 if (potions == null || potions.isEmpty()) {
                     return;
                 }
-                for (Rs2Item potion: potions) {
+                for (Rs2ItemModel potion: potions) {
                     if (potion.name.toLowerCase().contains("prayer")) {
                         Rs2Inventory.interact(potion, "drink");
                         sleep(1200, 2000);

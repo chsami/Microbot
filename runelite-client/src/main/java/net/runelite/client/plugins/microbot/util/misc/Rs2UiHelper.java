@@ -1,12 +1,13 @@
 package net.runelite.client.plugins.microbot.util.misc;
 
-import net.runelite.api.Actor;
-import net.runelite.api.Perspective;
+import net.runelite.api.*;
 import net.runelite.api.Point;
-import net.runelite.api.TileObject;
 import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
+import net.runelite.client.plugins.microbot.util.coords.Rs2LocalPoint;
+import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 
@@ -85,6 +86,23 @@ public class Rs2UiHelper {
 
 
         return new Rectangle(clickbox.getBounds());
+    }
+    
+    public static Rectangle getTileClickbox(Tile tile) {
+        if (tile == null) return new Rectangle(1, 1);
+
+        LocalPoint localPoint = tile.getLocalLocation();
+        if (localPoint == null) return new Rectangle(1, 1);
+
+        // Get the screen point of the tile center
+        Point screenPoint = Perspective.localToCanvas(Microbot.getClient(), localPoint, Microbot.getClient().getPlane());
+
+        if (screenPoint == null) return new Rectangle(1, 1); 
+        
+        int tileSize = Perspective.LOCAL_TILE_SIZE;
+        int halfSize = tileSize / 4;
+
+        return new Rectangle(screenPoint.getX() - halfSize, screenPoint.getY() - halfSize, tileSize / 2, tileSize / 2);
     }
 
     // check if a menu entry is a actor

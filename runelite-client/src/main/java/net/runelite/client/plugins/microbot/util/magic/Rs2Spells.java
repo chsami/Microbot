@@ -52,6 +52,11 @@ public enum Rs2Spells {
             Runes.AIR, 2,
             Runes.COSMIC, 1,
             Runes.ASTRAL, 1
+    )),
+    TELEPORT_TO_HOUSE(MagicAction.TELEPORT_TO_HOUSE, Map.of(
+            Runes.AIR, 1,
+            Runes.EARTH, 1,
+            Runes.LAW, 1
     ));
 
     private final MagicAction action;

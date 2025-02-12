@@ -9,8 +9,9 @@ import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.antiban.enums.Activity;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
+import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
 
@@ -56,32 +57,33 @@ public class AlchScript extends Script {
 
                 switch (state) {
                     case CASTING:
-                        if (!Rs2Magic.canCast(MagicAction.HIGH_LEVEL_ALCHEMY) || !Rs2Magic.canCast(MagicAction.LOW_LEVEL_ALCHEMY)) {
-                            Microbot.log("Unable to cast alchemy spell");
-                            return;
-                        }
-
-                        if (plugin.getAlchItemNames().isEmpty() ||
-                                plugin.getAlchItemNames().stream().noneMatch(Rs2Inventory::hasItem)) {
+                        if (plugin.getAlchItemNames().isEmpty() || plugin.getAlchItemNames().stream().noneMatch(Rs2Inventory::hasItem)) {
                             Microbot.log("Missing alch items...");
                             return;
                         }
 
-                        Rs2Item alchItem = null;
-                        for (String itemName : plugin.getAlchItemNames()) {
-                            if (Rs2Inventory.hasItem(itemName)) {
-                                alchItem = Rs2Inventory.get(itemName);
-                                break;
-                            }
+                        if (!Rs2Magic.hasRequiredRunes(plugin.getAlchSpell())) {
+                            Microbot.log("Unable to cast alchemy spell");
+                            return;
                         }
+                        
+                        Rs2ItemModel alchItem = plugin.getAlchItemNames().stream()
+                                .filter(Rs2Inventory::hasItem)
+                                .map(Rs2Inventory::get)
+                                .findFirst()
+                                .orElse(null);
+                        
                         if (alchItem == null) {
                             Microbot.log("Missing alch items...");
                             return;
                         }
-                        int inventorySlot = Rs2Player.getRealSkillLevel(Skill.MAGIC) >= 55 ? 11 : 4;
-                        if (alchItem.getSlot() != inventorySlot) {
-                            Rs2Inventory.moveItemToSlot(alchItem, inventorySlot);
-                            return;
+                        
+                        if (Rs2AntibanSettings.naturalMouse) {
+                            int inventorySlot = Rs2Player.getSkillRequirement(Skill.MAGIC, 55) ? 11 : 4;
+                            if (alchItem.getSlot() != inventorySlot) {
+                                Rs2Inventory.moveItemToSlot(alchItem, inventorySlot);
+                                return;
+                            }
                         }
                         
                         Rs2Magic.alch(alchItem);
@@ -104,6 +106,10 @@ public class AlchScript extends Script {
     public void shutdown() {
         Rs2Antiban.resetAntibanSettings();
         super.shutdown();
+    }
+    
+    private Rs2Spells getAlchSpell() {
+        return Rs2Player.getBoostedSkillLevel(Skill.MAGIC) >= 55 ? Rs2Spells.HIGH_LEVEL_ALCHEMY : Rs2Spells.LOW_LEVEL_ALCHEMY;
     }
 
 }

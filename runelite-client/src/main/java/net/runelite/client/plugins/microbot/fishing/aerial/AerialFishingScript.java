@@ -11,7 +11,7 @@ import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Item;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -69,7 +69,7 @@ public class AerialFishingScript extends Script {
                     sleepUntil(() -> Rs2Equipment.isWearing(ItemID.CORMORANTS_GLOVE_22817), () -> {
                         if((Rs2Inventory.getEmptySlots() <= 1 && Rs2Equipment.isWearing(ItemID.CORMORANTS_GLOVE)) || (Rs2Inventory.getEmptySlots() == 0 && Rs2Equipment.isWearing(ItemID.CORMORANTS_GLOVE_22817))) {
                             Microbot.log("Empty slot count:" + Rs2Inventory.getEmptySlots());
-                            Rs2Item knife = Rs2Inventory.get(ItemID.KNIFE);
+                            Rs2ItemModel knife = Rs2Inventory.get(ItemID.KNIFE);
                             Rs2Inventory.hover(knife);
 
                         }
@@ -105,8 +105,8 @@ public class AerialFishingScript extends Script {
     }
 
     private void cutFish() {
-        Rs2Item randomFish = Rs2Inventory.getRandom(ItemID.BLUEGILL,ItemID.COMMON_TENCH,ItemID.MOTTLED_EEL,ItemID.GREATER_SIREN);
-        Rs2Item knife = Rs2Inventory.get(ItemID.KNIFE);
+        Rs2ItemModel randomFish = Rs2Inventory.getRandom(ItemID.BLUEGILL,ItemID.COMMON_TENCH,ItemID.MOTTLED_EEL,ItemID.GREATER_SIREN);
+        Rs2ItemModel knife = Rs2Inventory.get(ItemID.KNIFE);
         Rs2Inventory.combine(knife,randomFish);
         sleepUntil(() -> !Rs2Inventory.hasItem(ItemID.BLUEGILL,ItemID.COMMON_TENCH,ItemID.MOTTLED_EEL,ItemID.GREATER_SIREN),1000*60);
         Rs2Random.waitEx(2000,2000);

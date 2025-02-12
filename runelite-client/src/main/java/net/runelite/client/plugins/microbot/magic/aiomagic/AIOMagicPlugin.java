@@ -5,6 +5,7 @@ import lombok.Getter;
 import net.runelite.api.GraphicID;
 import net.runelite.api.NPC;
 import net.runelite.api.Player;
+import net.runelite.api.Skill;
 import net.runelite.api.events.GraphicChanged;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -17,6 +18,8 @@ import net.runelite.client.plugins.microbot.magic.aiomagic.enums.SuperHeatItem;
 import net.runelite.client.plugins.microbot.magic.aiomagic.enums.TeleportSpell;
 import net.runelite.client.plugins.microbot.magic.aiomagic.scripts.*;
 import net.runelite.client.plugins.microbot.util.magic.Rs2CombatSpells;
+import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -154,19 +157,6 @@ public class AIOMagicPlugin extends Plugin {
 			stunNpcName = config.stunNpcName();
 		}
 	}
-	
-	@Subscribe
-	public void onGraphicChanged(GraphicChanged event) {
-		if (event.getActor() instanceof Player) return;
-		
-		if (event.getActor() instanceof NPC) {
-			NPC npc = (NPC) event.getActor();
-			Player player = Microbot.getClient().getLocalPlayer();
-			
-			if (event.getActor().getGraphic() == GraphicID.SPLASH && player.getInteracting().equals(npc)) {
-			}
-		}
-	}
 
 	private List<String> updateItemList(String items) {
 		if (items == null || items.isBlank()) {
@@ -178,5 +168,9 @@ public class AIOMagicPlugin extends Plugin {
 				.filter(item -> !item.isEmpty())
 				.map(String::toLowerCase)
 				.collect(Collectors.toList());
+	}
+	
+	public Rs2Spells getAlchSpell() {
+		return Rs2Player.getSkillRequirement(Skill.MAGIC, 55) ? Rs2Spells.HIGH_LEVEL_ALCHEMY : Rs2Spells.LOW_LEVEL_ALCHEMY;
 	}
 }
