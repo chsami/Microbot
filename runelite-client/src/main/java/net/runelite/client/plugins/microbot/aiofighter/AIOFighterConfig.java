@@ -849,6 +849,43 @@ public interface AIOFighterConfig extends Config {
         return true;
     }
 
+    // checkbox to withdraw/empty herb sack when banking
+    @ConfigItem(
+            keyName = "useHerbSack",
+            name = "Use Herb Sack",
+            description = "Empty Herb Sack when banking",
+            position = 10,
+            section = banking
+    )
+    default boolean emptyHerbSack() { return false; }
+
+    @ConfigItem(
+            keyName = "herbSackValue",
+            name = "Herb Sack",
+            description = "Amount of herb sack to withdraw",
+            hidden = true,
+            section = banking
+    )
+    default int herbSackValue() { return 1; }
+
+    @ConfigItem(
+            keyName = "useGemBag",
+            name = "Use Gem Bag",
+            description = "Empty Gem Bag when banking",
+            position = 11,
+            section = banking
+    )
+    default boolean emptyGemBag() { return false; }
+
+    @ConfigItem(
+            keyName = "gemBagValue",
+            name = "Gem Bag",
+            description = "Amount of gem bag to withdraw",
+            hidden = true,
+            section = banking
+    )
+    default int gemBagValue() { return 1; }
+
     // Safety section
     @ConfigItem(
             keyName = "useSafety",

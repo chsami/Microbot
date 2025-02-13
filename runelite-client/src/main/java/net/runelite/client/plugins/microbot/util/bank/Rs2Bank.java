@@ -1662,6 +1662,17 @@ public class Rs2Bank {
         return Rs2Inventory.interact(fishBarrel, "Empty");
     }
 
+    /**
+     * Empty herb sack
+     *
+     * @return true if herb sack was emptied
+     */
+
+    public static boolean emptyHerbSack() {
+        Rs2ItemModel herbSack = Rs2Inventory.get(ItemID.HERB_SACK,ItemID.OPEN_HERB_SACK);
+        if (herbSack == null) return false;
+        return Rs2Inventory.interact(herbSack, "Empty");
+    }
 
     /**
      * Withdraw items from the lootTrackerPlugin

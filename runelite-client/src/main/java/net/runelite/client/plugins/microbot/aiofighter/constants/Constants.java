@@ -405,6 +405,16 @@ public class Constants {
             ItemID.UNCUT_DIAMOND
     );
 
+    public static final Set<Integer> GEM_BAG_IDS = ImmutableSet.of(
+            ItemID.GEM_BAG,
+            ItemID.OPEN_GEM_BAG
+    );
+
+    public static final Set<Integer> HERB_SACK_IDS = ImmutableSet.of(
+            ItemID.HERB_SACK,
+            ItemID.OPEN_HERB_SACK
+    );
+
     public static final Set<Integer> ESSENCE_POUCH_IDS = ImmutableSet.of(
             ItemID.COLOSSAL_POUCH,
             ItemID.COLOSSAL_POUCH_26786,

@@ -29,7 +29,9 @@ enum ItemToKeep {
     ANTIPOISON(Constants.ANTI_POISON_POTION_IDS, AIOFighterConfig::useAntipoison, AIOFighterConfig::antipoisonValue),
     ANTIFIRE(Constants.ANTI_FIRE_POTION_IDS, AIOFighterConfig::useAntifire, AIOFighterConfig::antifireValue),
     COMBAT(Constants.STRENGTH_POTION_IDS, AIOFighterConfig::useCombat, AIOFighterConfig::combatValue),
-    RESTORE(Constants.RESTORE_POTION_IDS, AIOFighterConfig::useRestore, AIOFighterConfig::restoreValue);
+    RESTORE(Constants.RESTORE_POTION_IDS, AIOFighterConfig::useRestore, AIOFighterConfig::restoreValue),
+    HERBSACK(Constants.HERB_SACK_IDS, AIOFighterConfig::emptyHerbSack, AIOFighterConfig::herbSackValue),
+    GEMBAG(Constants.GEM_BAG_IDS, AIOFighterConfig::emptyGemBag, AIOFighterConfig::gemBagValue);
 
     @Getter
     private final List<Integer> ids;
@@ -151,6 +153,12 @@ public class BankerScript extends Script {
         Rs2Prayer.disableAllPrayers();
         if (Rs2Bank.walkToBankAndUseBank()) {
             depositAllExcept(config);
+            if(config.emptyGemBag()) {
+                Rs2Bank.emptyGemBag();
+            }
+            if(config.emptyHerbSack()) {
+                Rs2Bank.emptyHerbSack();
+            }
             withdrawUpkeepItems(config);
         }
         return !needsBanking();
