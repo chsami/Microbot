@@ -21,6 +21,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static net.runelite.client.plugins.microbot.util.Global.sleepGaussian;
+
 enum ItemToKeep {
     TELEPORT(Constants.TELEPORT_IDS, AIOFighterConfig::ignoreTeleport, AIOFighterConfig::staminaValue),
     STAMINA(Constants.STAMINA_POTION_IDS, AIOFighterConfig::useStamina, AIOFighterConfig::staminaValue),
@@ -153,11 +155,15 @@ public class BankerScript extends Script {
         Rs2Prayer.disableAllPrayers();
         if (Rs2Bank.walkToBankAndUseBank()) {
             depositAllExcept(config);
-            if(config.emptyGemBag()) {
-                Rs2Bank.emptyGemBag();
+            if (config.emptyGemBag()) {
+                if (Rs2Bank.emptyGemBag()) {
+                    sleepGaussian(400, 200);
+                }
             }
-            if(config.emptyHerbSack()) {
-                Rs2Bank.emptyHerbSack();
+            if (config.emptyHerbSack()) {
+                if (Rs2Bank.emptyHerbSack()) {
+                    sleepGaussian(400, 200);
+                }
             }
             withdrawUpkeepItems(config);
         }
