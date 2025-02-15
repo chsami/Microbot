@@ -96,15 +96,7 @@ public class ArtioPrayerPlugin extends Plugin {
             }
         }
     }
-
-    @Subscribe
-    public void onNpcSpawned(NpcSpawned event) {
-        if (event.getNpc().getId() == BossData.ARTIO.getNpcId()) {
-            Rs2Random.randomGaussian(1600,200);
-            freezeArtio();
-        }
-    }
-
+    
     @Subscribe
     public void onProjectileMoved(ProjectileMoved event) {
         int currentTick = client.getTickCount();
@@ -140,25 +132,6 @@ public class ArtioPrayerPlugin extends Plugin {
             switchPrayer(Rs2PrayerEnum.PROTECT_RANGE);
         }
     }
-
-    private void freezeArtio() {
-        NPC artio = Rs2Npc.getNpc(boss.getNpcId());
-        if (artio == null) return;
-        int maxDistance = 10;
-
-        while (true) {
-            if (Rs2Player.getWorldLocation().distanceTo(artio.getWorldLocation()) > maxDistance) {
-                return;
-            }
-            Rs2Magic.castOn(MagicAction.ICE_BARRAGE, artio);
-            Rs2Random.randomGaussian(800, 200);
-
-            if (Rs2Player.waitForXpDrop(Skill.HITPOINTS)) {
-                return;
-            }
-        }
-    }
-
 
     private void switchPrayer(Rs2PrayerEnum activate) {
         if (currentPrayer != activate) {
