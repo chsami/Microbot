@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.frosty;
+package net.runelite.client.plugins.microbot.frosty.artioprayer;
 
 import lombok.Getter;
 
