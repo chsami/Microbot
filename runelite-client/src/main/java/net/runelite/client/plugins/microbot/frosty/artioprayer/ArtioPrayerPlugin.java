@@ -96,7 +96,7 @@ public class ArtioPrayerPlugin extends Plugin {
             }
         }
     }
-    
+
     @Subscribe
     public void onProjectileMoved(ProjectileMoved event) {
         int currentTick = client.getTickCount();
