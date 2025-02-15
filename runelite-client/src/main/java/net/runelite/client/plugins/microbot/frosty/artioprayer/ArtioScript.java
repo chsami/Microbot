@@ -7,7 +7,7 @@ import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
-import net.runelite.client.plugins.microbot.frosty.BossData;
+import net.runelite.client.plugins.microbot.frosty.artioprayer.BossData;
 import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
 import net.runelite.client.plugins.microbot.frosty.artioprayer.ArtioPrayerPlugin;
 import net.runelite.client.plugins.microbot.Script;
