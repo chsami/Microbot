@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @PluginDescriptor(
         name = PluginDescriptor.FrostyX + "Threat Detector",
-        description = "Automatically alerts and teleports if a player is detected in the Wilderness.",
+        description = "Automatically alerts and communes away if a player is detected in the Wilderness.",
         tags = {"wilderness", "pvp", "escape"}
 )
 public class ThreatDetectorPlugin extends Plugin {
