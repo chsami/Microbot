@@ -1,4 +1,4 @@
-# Origin	Destination	menuOption menuTarget objectID	Skills	Items	Quests	isMembers	Duration	Display info
+# Origin	Destination	menuOption menuTarget objectID	Skills	Currency	Quests	isMembers	Duration	Display info
 # Port Sarim, Musa Point								
 3029 3217 0	2956 3146 0	Pay-fare;Captain Tobias;3644		30 Coins			10	
 2956 3146 0	3029 3217 0	Pay-Fare;Customs officer;3648		30 Coins			10	

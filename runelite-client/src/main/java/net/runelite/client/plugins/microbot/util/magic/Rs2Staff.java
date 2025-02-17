@@ -35,7 +35,8 @@ public enum Rs2Staff {
     MYSTIC_MIST_STAFF(ItemID.MYSTIC_MIST_STAFF, List.of(Runes.AIR, Runes.WATER)),
     MYSTIC_MUD_STAFF(ItemID.MYSTIC_MUD_STAFF, List.of(Runes.WATER, Runes.EARTH)),
     MYSTIC_SMOKE_STAFF(ItemID.MYSTIC_SMOKE_STAFF, List.of(Runes.AIR, Runes.FIRE)),
-    MYSTIC_STEAM_STAFF(ItemID.MYSTIC_STEAM_STAFF, List.of(Runes.WATER, Runes.FIRE));
+    MYSTIC_STEAM_STAFF(ItemID.MYSTIC_STEAM_STAFF, List.of(Runes.WATER, Runes.FIRE)),
+    TWINFLAME_STAFF(ItemID.TWINFLAME_STAFF, List.of(Runes.FIRE, Runes.WATER));
 
     private final int itemID;
     private final List<Runes> runes;

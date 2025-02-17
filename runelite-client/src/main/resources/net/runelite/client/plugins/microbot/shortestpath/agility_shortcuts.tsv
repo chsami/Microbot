@@ -1,4 +1,4 @@
-# Origin	Destination	menuOption menuTarget objectID	Skills	Items	Quests	Duration	Display Info
+# Origin	Destination	menuOption menuTarget objectID	Skills	Item IDs	Quests	Duration	Display Info
 3033 3389 1	3033 3390 0	Jump;Wall;17051	4 Agility				
 3032 3389 1	3032 3388 0	Jump;Wall;17052	4 Agility				
 2556 3073 1	2556 3072 0	Jump;Wall;17048	4 Agility				
@@ -9,9 +9,9 @@
 3259 3179 0	3246 3179 0	Grapple;Broken Raft;17068	8 Agility;37 Ranged;19 Strength				
 2546 2873 0	2546 2871 0	Climb;Rocks;31757	10 Agility				
 2546 2871 0	2546 2873 0	Climb;Rocks;31757	10 Agility				
-2766 3665 0	2766 3663 0	Use;Rope -> Boulder;5842	10 Agility	1 Rope		10	260>=1
-3033 3390 0	3033 3389 1	Grapple;Wall;17049	11 Agility;19 Ranged;37 Strength	1 Mithril grapple			
-3032 3388 0	3032 3389 1	Grapple;Wall;17050	11 Agility;19 Ranged;37 Strength	1 Mithril grapple			
+2766 3665 0	2766 3663 0	Use;Rope -> Boulder;5842	10 Agility	237		10	260>=1
+3033 3390 0	3033 3389 1	Grapple;Wall;17049	11 Agility;19 Ranged;37 Strength	9419			
+3032 3388 0	3032 3389 1	Grapple;Wall;17050	11 Agility;19 Ranged;37 Strength	9419			
 2575 3107 0	2575 3112 0	Climb-under;Castle wall;16519	16 Agility				
 2575 3112 0	2575 3107 0	Climb-into;Hole;16520	16 Agility				
 2603 3477 0	2598 3477 0	Walk-across;Log balance;23274	20 Agility				
@@ -35,17 +35,17 @@
 3153 3363 0	3152 3363 0	Jump-onto;Stepping stone;16533	31 Agility			4	
 3152 3363 0	3151 3363 0	Jump-onto;Stepping stone;16533	31 Agility			4	
 3151 3363 0	3150 3363 0	Jump-onto;Stepping stone;16533	31 Agility			4	
-2866 3428 0	2869 3428 0	Grapple;Rocks;17042	32 Agility;35 Ranged;35 Strength	1 Mithril grapple			
+2866 3428 0	2869 3428 0	Grapple;Rocks;17042	32 Agility;35 Ranged;35 Strength	9419			
 2602 3336 0	2598 3336 0	Walk-across;Log balance;16548	33 Agility				
 2598 3336 0	2602 3336 0	Walk-across;Log balance;16546	33 Agility				
 2599 3337 0	2602 3336 0	Walk-across;Log balance;16546	33 Agility				
-2841 3427 0	2841 3433 0	Grapple Crossbow;Tree;17062	36 Agility;39 Ranged;22 Strength	1 Mithril grapple			
+2841 3427 0	2841 3433 0	Grapple Crossbow;Tree;17062	36 Agility;39 Ranged;22 Strength	9419			
 2486 3515 0	2489 3521 0	Climb;Rocks;16534	37 Agility		The Grand Tree	9	
 2489 3521 0	2486 3515 0	Climb;Rocks;16535	37 Agility		The Grand Tree	9	
 3306 3315 0	3302 3315 0	Climb;Rocks;16549	38 Agility				
 3302 3315 0	3306 3315 0	Climb;Rocks;16550	38 Agility				
-2556 3072 0	2556 3073 1	Grapple;Wall;17047	39 Agility;21 Ranged;38 Strength	1 Mithril grapple			
-2556 3075 0	2556 3074 1	Grapple;Wall;17047	39 Agility;21 Ranged;38 Strength	1 Mithril grapple			
+2556 3072 0	2556 3073 1	Grapple;Wall;17047	39 Agility;21 Ranged;38 Strength	9419			
+2556 3075 0	2556 3074 1	Grapple;Wall;17047	39 Agility;21 Ranged;38 Strength	9419			
 2872 3671 0	2869 3671 0	Climb;Rocks;16521	41 Agility				
 2869 3671 0	2872 3671 0	Climb;Rocks;16521	41 Agility				
 3070 3260 0	3064 3260 0	Climb-into;Underwall tunnel;19036	100 Agility		Diary		
@@ -86,10 +86,10 @@
 1769 3849 0	1774 3849 0	Climb;Rocks;27988	52 Agility				
 1774 3849 0	1769 3849 0	Climb;Rocks;27988	52 Agility				
 2998 3916 0	2998 3931 0	Open;Door;23555	52 Agility				
-2874 3133 0	2874 3127 0	Grapple;Strong Tree;17074	53 Agility;42 Ranged;21 Strength	1 Mithril grapple			
-2874 3127 0	2874 3133 0	Grapple;Strong Tree;17074	53 Agility;42 Ranged;21 Strength	1 Mithril grapple			
-2874 3136 0	2874 3142 0	Grapple;Strong Tree;17074	53 Agility;42 Ranged;21 Strength	1 Mithril grapple			
-2874 3142 0	2874 3136 0	Grapple;Strong Tree;17074	53 Agility;42 Ranged;21 Strength	1 Mithril grapple			
+2874 3133 0	2874 3127 0	Grapple;Strong Tree;17074	53 Agility;42 Ranged;21 Strength	9419			
+2874 3127 0	2874 3133 0	Grapple;Strong Tree;17074	53 Agility;42 Ranged;21 Strength	9419			
+2874 3136 0	2874 3142 0	Grapple;Strong Tree;17074	53 Agility;42 Ranged;21 Strength	9419			
+2874 3142 0	2874 3136 0	Grapple;Strong Tree;17074	53 Agility;42 Ranged;21 Strength	9419			
 2573 3859 0	2575 3861 0	Cross;Stepping stone;11768	55 Agility				
 2575 3861 0	2573 3859 0	Cross;Stepping stone;11768	55 Agility				
 2688 3697 0	2691 3697 0	Jump;Broken Fence;544	57 Agility				
@@ -128,8 +128,8 @@
 1761 3872 0	1761 3874 0	Climb;Rocks;34741	69 Agility			2	
 3295 3157 0	3295 3159 0	Climb;Broken wall;33344	70 Agility		Prince Ali Rescue		
 3295 3159 0	3295 3157 0	Enter;Big window;33348	70 Agility		Prince Ali Rescue		
-2886 9799 0	2892 9799 0	Squeeze-through;Obstacle pipe;16509	70 Agility
-2892 9799 0	2886 9799 0	Squeeze-through;Obstacle pipe;16509	70 Agility
+2886 9799 0	2892 9799 0	Squeeze-through;Obstacle pipe;16509	70 Agility				
+2892 9799 0	2886 9799 0	Squeeze-through;Obstacle pipe;16509	70 Agility				
 2886 9823 0	2888 9823 1	Jump-up;Rocks;154	70 Agility				
 2888 9823 1	2886 9823 0	Jump-down;Rocks;14106	70 Agility				
 3447 3575 1	3447 3575 2	Climb-up;Spikey chain;16537	71 Agility				
@@ -171,12 +171,12 @@
 2925 2949 0	2925 2948 0	Cross;Stepping stones;23647	30 Agility			2	
 2925 2947 0	2925 2948 0	Cross;Stepping stones;23647	30 Agility			2	
 3713 3830 0	3715 3815 0	Climb through;Hole;31482	70 Agility				
-3715 3815 0	3713 3830 0	Climb through;Hole;31481	70 Agility
-2946 3439 0	2943 3439 0	Climb-up;Climbing rocks;53255	66 Agility
-1324 3777 0	1324 3784 0	Climb;Rocks;34397	29 Agility			4
-1324 3787 0	1324 3795 0	Climb;Rocks;34396	62 Agility			4
-1324 3784 0	1324 3777 0	Climb;Rocks;34397	29 Agility			4
-1324 3795 0	1324 3787 0	Climb;Rocks;34396	62 Agility			4
+3715 3815 0	3713 3830 0	Climb through;Hole;31481	70 Agility				
+2946 3439 0	2943 3439 0	Climb-up;Climbing rocks;53255	66 Agility				
+1324 3777 0	1324 3784 0	Climb;Rocks;34397	29 Agility			4	
+1324 3787 0	1324 3795 0	Climb;Rocks;34396	62 Agility			4	
+1324 3784 0	1324 3777 0	Climb;Rocks;34397	29 Agility			4	
+1324 3795 0	1324 3787 0	Climb;Rocks;34396	62 Agility			4	
 2400 4402 0	2400 4404 0	Squeeze-past;Jutting Wall;17002	46 Agility			4	
 2400 4404 0	2400 4402 0	Squeeze-past;Jutting Wall;17002	46 Agility			4	
 2409 4402 0	2409 4400 0	Squeeze-past;Jutting Wall;17002	66 Agility			4	
@@ -191,5 +191,17 @@
 3334 10118 0	3334 10122 0	Squeeze-through;Crevice;53259	77 Agility			4	
 3371 2958 0	3373 2955 0	Cross;Stepping stone;53241	71 Agility			2	
 3373 2955 0	3371 2958 0	Cross;Stepping stone;53241	71 Agility			2	
-3240 3336 0	3240 3334 0	Jump-over;Fence;16518	13 Agility			3
-3240 3334 0	3240 3336 0	Jump-over;Fence;16518	13 Agility			3
+3240 3336 0	3240 3334 0	Jump-over;Fence;16518	13 Agility			3	
+3240 3334 0	3240 3336 0	Jump-over;Fence;16518	13 Agility			3	
+3222 12441 0	3216 12441 0	Pass;Tight Gap;36692	78 Agility	 		3	
+3216 12441 0	3222 12441 0	Pass;Tight Gap;36693	78 Agility	 		3	
+3232 12420 0	3242 12420 0	Pass;Tight Gap;36695	84 Agility	 		3	
+3242 12420 0	3232 12420 0	Pass;Tight Gap;36694	84 Agility	 		3	
+2670 9583 2	2674 9583 0	Climb;Vine;26882	87 Agility			3	
+2674 9583 0	2670 9583 2	Climb;Vine;26880	87 Agility			3	
+2655 9573 0	2655 9566 0	Squeeze-through;Pipe;21728	22 Agility			3	
+2655 9566 0	2655 9573 0	Squeeze-through;Pipe;21728	22 Agility			3	
+2682 9548 0	2690 9547 0	Cross;Stepping stone;19040	56 Agility			4	
+2690 9547 0	2682 9548 0	Cross;Stepping stone;19040	56 Agility			4	
+2695 9533 0	2697 9525 0	Cross;Stepping stone;19040	56 Agility			4	
+2697 9525 0	2695 9533 0	Cross;Stepping stone;19040	56 Agility			4	

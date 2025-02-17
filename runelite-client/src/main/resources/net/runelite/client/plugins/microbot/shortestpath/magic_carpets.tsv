@@ -1,4 +1,4 @@
-# Origin	Destination	menuOption menuTarget objectID	Items	Quests	Duration	Display info
+# Origin	Destination	menuOption menuTarget objectID	Currency	Quests	Duration	Display info
 3309 3110 0	3470 3113 0	Travel;Rug Merchant;17	200 Coins	The Golem	3	Uzer
 3468 3110 0	3309 3110 0	Travel;Rug Merchant;20	200 Coins	The Golem	3	Shantay Pass
 						

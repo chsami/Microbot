@@ -46,6 +46,36 @@ public class TemporossProgressionOverlay extends OverlayPanel {
                         .right(currentState.name())
                         .build());
 
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Is completed:")
+                        .right(currentState.isComplete() ? "Yes" : "No")
+                        .build());
+
+                // Add fish count
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Fish count:")
+                        .right(String.valueOf(getAllFish()))
+                        .build());
+                // Add cooked fish count
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Cooked fish count:")
+                        .right(String.valueOf(State.getCookedFish()))
+                        .build());
+                // Add raw fish count
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Raw fish count:")
+                        .right(String.valueOf(State.getRawFish()))
+                        .build());
+                // Add total available fish slots
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Total available fish slots:")
+                        .right(String.valueOf(getTotalAvailableFishSlots()))
+                        .build());
+                if(currentState.isComplete()){
+                    TemporossScript.isFilling = false;
+                    TemporossScript.state = currentState.next == null ? State.THIRD_CATCH : currentState.next;
+                }
+
                 // Add progression bar
                 double progression = calculateProgression(currentState);
                 final ProgressBarComponent progressBar = new ProgressBarComponent();

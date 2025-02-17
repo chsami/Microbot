@@ -130,6 +130,14 @@ public class Rs2WorldPoint {
         return globalWorldPoint;
     }
 
+
+    public static WorldPoint toLocalInstance(WorldPoint worldPoint) {
+        if (worldPoint == null) return null;
+
+
+        return WorldPoint.toLocalInstance(Microbot.getClient().getTopLevelWorldView(),worldPoint).stream().findFirst().orElse(null);
+    }
+
     // Override equals, hashCode, and toString if necessary
     @Override
     public boolean equals(Object obj) {

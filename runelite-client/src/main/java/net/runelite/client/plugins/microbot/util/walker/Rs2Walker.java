@@ -1151,6 +1151,11 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
             sleepUntil(() -> Rs2Player.getWorldLocation().equals(transport.getDestination()));
             return true;
         }
+        // Handle Brimhaven Dungeon Stepping Stones
+        if (tileObject.getId() == ObjectID.STEPPING_STONE_21738 || tileObject.getId() == ObjectID.STEPPING_STONE_21739) {
+            Rs2Player.waitForAnimation(4200);
+            return true;
+        }
         return false;
     }
     

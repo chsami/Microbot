@@ -84,7 +84,18 @@ public class CollisionMap {
             new WorldPoint(3141, 3456, 0),
             new WorldPoint(3142, 3456, 0),
             new WorldPoint(2744, 3153, 0),
-            new WorldPoint(2745, 3153, 0));
+            new WorldPoint(2745, 3153, 0),
+            new WorldPoint(3674, 3882, 0),
+            new WorldPoint(3673, 3884, 0),
+            new WorldPoint(3673, 3885, 0),
+            new WorldPoint(3673, 3886, 0),
+            new WorldPoint(3672, 3888, 0),
+            new WorldPoint(3675, 3893, 0),
+            new WorldPoint(3678, 3893, 0),
+            new WorldPoint(3684, 3845, 0),
+            new WorldPoint(3670, 3836, 0),
+            new WorldPoint(3672, 3862, 0)
+    );
 
     public List<Node> getNeighbors(Node node, VisitedTiles visited, PathfinderConfig config, WorldPoint target) {
         final int x = WorldPointUtil.unpackWorldX(node.packedPosition);

@@ -1070,7 +1070,7 @@ public class Rs2Player {
             int prayerRestore = (maxPrayer / 4) + 7;
             int herbloreRestore = (int) Math.floor((maxHerblore * 3.0 / 10.0)) + 7;
             restoreAmount = Math.max(prayerRestore, herbloreRestore);
-        } else if (hasPotion("super restore")) {
+        } else if (hasPotion("super restore") || hasPotion("blighted super restore") ) {
             restoreAmount = (maxPrayer / 4) + 8;
         } else {
             restoreAmount = (maxPrayer / 4) + 7;

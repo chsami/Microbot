@@ -8,9 +8,13 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.itemcharges.ItemChargeConfig;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.*;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.inventory.RunePouch;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
+import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
+import net.runelite.client.plugins.microbot.util.magic.Runes;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
@@ -88,6 +92,11 @@ public class PathfinderConfig {
     @Setter
     // Used for manual calculating paths without teleport & items in caves
     private boolean ignoreTeleportAndItems = false;
+    
+    @Getter
+    @Setter
+    // Used to include bank items when searching for item requirements
+    private boolean useBankItems = false;
 
     public PathfinderConfig(SplitFlagMap mapData, Map<WorldPoint, Set<Transport>> transports,
                             List<Restriction> restrictions,
@@ -145,7 +154,11 @@ public class PathfinderConfig {
             refreshTransports();
             //START microbot variables
             refreshRestrictionData();
-            Rs2Tab.switchToInventoryTab();
+            
+            // Do not switch back to inventory tab if we are inside of the telekinetic room in Mage Training Arena
+            if (Rs2Player.getWorldLocation().getRegionID() != 13463) {
+                Rs2Tab.switchToInventoryTab();
+            }
             //END microbot variables
         }
     }
@@ -224,7 +237,7 @@ public class PathfinderConfig {
             Set<Transport> usableTransports = new HashSet<>(entry.getValue().size());
             for (Transport transport : entry.getValue()) {
 
-                if (point == null && useTransport(transport) && hasRequiredItems(transport)) {
+                if (point == null && useTransport(transport)) {
                     usableTeleports.add(transport);
                 } else if (useTransport(transport)) {
                     usableTransports.add(transport);
@@ -411,8 +424,8 @@ public class PathfinderConfig {
         if (!varbitChecks(transport)) return false;
         // If the transport has varplayer requirements & the varplayers do not match
         if (!varplayerChecks(transport)) return false;
-        // If you don't have the required Items & Amount for transport (used for charters & minecarts)
-        if (transport.getAmtItemRequired() > 0 && !Rs2Inventory.hasItemAmount(transport.getItemRequired(), transport.getAmtItemRequired())) return false;
+        // If you don't have the required currency & amount for transport
+        if (transport.getCurrencyAmount() > 0 && !Rs2Inventory.hasItemAmount(transport.getCurrencyName(), transport.getCurrencyAmount())) return false;
         // Check Teleport Item Settings
         if (transport.getType() == TELEPORTATION_ITEM) return isTeleportationItemUsable(transport);
         // Check Teleport Spell Settings
@@ -527,17 +540,21 @@ public class PathfinderConfig {
     }
 
     /** Checks if the player has all the required equipment and inventory items for the transport */
+    /** Checks if the player has all the required equipment and inventory items for the transport */
     private boolean hasRequiredItems(Transport transport) {
         // Global flag to disable teleports
-        if ((transport.getType() == TELEPORTATION_ITEM || transport.getType() == TELEPORTATION_SPELL) && Rs2Walker.disableTeleports) return false;
+        if ((transport.getType() == TELEPORTATION_ITEM || transport.getType() == TELEPORTATION_SPELL) && Rs2Walker.disableTeleports) {
+            return false;
+        }
 
         if (requiresChronicle(transport)) return hasChronicleCharges();
-        
+
         return transport.getItemIdRequirements()
                 .stream()
                 .flatMap(Collection::stream)
-                .anyMatch(itemId -> Rs2Equipment.isWearing(itemId) || Rs2Inventory.hasItem(itemId));
+                .anyMatch(itemId -> Rs2Equipment.isWearing(itemId) || Rs2Inventory.hasItem(itemId) || (useBankItems && Rs2Bank.hasItem(itemId)));
     }
+
     
     private boolean isTeleportationSpellUsable(Transport transport) {
         // Global flag to disable teleports
@@ -547,7 +564,10 @@ public class PathfinderConfig {
         String displayInfo = hasMultipleDestination
                 ? transport.getDisplayInfo().split(":")[0].trim().toLowerCase()
                 : transport.getDisplayInfo();
-        return Rs2Magic.quickCanCast(displayInfo);
+        Rs2Spells rs2Spell = Rs2Magic.getRs2Spell(displayInfo);
+        if (rs2Spell == null) return false;
+        return Rs2Magic.hasRequiredRunes(rs2Spell, Rs2Inventory.hasRunePouch(), useBankItems);
+//        return Rs2Magic.quickCanCast(displayInfo);
     }
 
     /** Checks if the transport requires the Chronicle */

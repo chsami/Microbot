@@ -1,127 +1,127 @@
-# Origin	Destination	menuOption menuTarget objectID	Skills	Items	Quests	Wait	Display Info	Varbits
-# Fishing Platform								
-2720 3301 0	2782 3273 0	Travel;Holgart;7789			Sea Slug	9		
-2782 3273 0	2720 3301 0	Travel;Holgart;5070			Sea Slug	9		
-								
-# Post Phasmatys, Braindeath Island								
-3680 3536 0	2162 5114 1	Talk-to;Pirate Pete;601			Rum Deal	9		
-2162 5114 1	3680 3536 0	Talk-to;Pirate Pete;602			Rum Deal	9		
-								
-# Port Phasmatys, Dragontooth Island								
-3703 3487 0	3792 3560 0	Travel;Ghost captain;3005		25 Ecto-token		6		
-3792 3560 0	3703 3487 0	Travel;Ghost captain;3005				6		
-								
-# Mort Myre, Mort'ton								
-3498 3380 0	3522 3285 0	Board;Swamp Boaty;6970				18		
-3499 3380 0	3522 3285 0	Board;Swamp Boaty;6970				18		
-3500 3380 0	3522 3285 0	Board;Swamp Boaty;6970				18		
-3501 3378 0	3522 3285 0	Board;Swamp Boaty;6970				18		
-3501 3379 0	3522 3285 0	Board;Swamp Boaty;6970				18		
-3522 3284 0	3498 3380 0	Quick-board;Swamp Boaty;6969		10 Coins		18		
-3522 3285 0	3498 3380 0	Quick-board;Swamp Boaty;6969		10 Coins		18		
-3522 3286 0	3498 3380 0	Quick-board;Swamp Boaty;6969		10 Coins		18		
-								
-# Rellekka, Waterbirth Island								
-2621 3683 0	2544 3761 0	Waterbirth Island;Jarvald;6535			The Fremennik Trials	7		
-2544 3761 0	2621 3683 0	Rellekka;Jarvald;10407			The Fremennik Trials	7		
-								
-# Rellekka, Jatizso								
-2644 3709 0	2421 3781 0	Jatizso;Mord Gunnars;1900			The Fremennik Trials	10		
-2421 3781 0	2644 3709 0	Rellekka;Mord Gunnars;1940			The Fremennik Trials	10		
-								
-# Rellekka, Neitiznot								
-2644 3710 0	2311 3781 0	Neitiznot;Maria Gunnars;1883			The Fremennik Trials	14		
-2311 3781 0	2644 3710 0	Rellekka;Maria Gunnars;1882			The Fremennik Trials	14		
-								
-# Rellekka, Pirates' Cove								
-2620 3693 0	2213 3794 0	Pirate's Cove;Lokar Searunner;3855			The Fremennik Trials;Lunar Diplomacy	9		
-2213 3794 0	2620 3693 0	Rellekka;Lokar Searunner;9306			The Fremennik Trials;Lunar Diplomacy	9		
-								
-# Rellekka, Iceberg								
-2707 3736 0	2660 3989 1	Iceberg;Boat;21176			Cold War	9		
-2658 3988 1	2706 3735 0	Travel;Boat;21175			Cold War	9		
-2707 3735 0	2660 3989 1	Iceberg;Boat;21176			Cold War	9		
-2659 3988 1	2706 3735 0	Travel;Boat;21175			Cold War	9		
-2711 3732 0	2660 3989 1	Iceberg;Boat;21176			Cold War	9		
-								
-# Rellekka, Weiss								
-2707 3735 0	2849 3968 0	Weiss;Boat;21176			Making Friends with My Arm	12		
-2707 3736 0	2849 3968 0	Weiss;Boat;21176			Making Friends with My Arm	12		
-2711 3732 0	2849 3968 0	Weiss;Boat;21176			Making Friends with My Arm	12		
-2848 3966 0	2706 3735 0	Travel;Boat;21177			Making Friends with My Arm	12		
-2849 3967 0	2706 3735 0	Travel;Boat;21177			Making Friends with My Arm	12		
-2849 3968 0	2706 3735 0	Travel;Boat;21177			Making Friends with My Arm	12		
-								
-# Rellekka, Island of Stone								
-2472 3994 0	2621 3692 0	Travel;Fremennik Boat;37408			The Fremennik Exiles	6		
-2473 3994 0	2621 3692 0	Travel;Fremennik Boat;37408			The Fremennik Exiles	6		
-2621 3690 0	2472 3994 0	Travel;Fremennik Boat;37432			The Fremennik Exiles	6		
-2621 3691 0	2472 3994 0	Travel;Fremennik Boat;37432			The Fremennik Exiles	6		
-2621 3692 0	2472 3994 0	Travel;Fremennik Boat;37432			The Fremennik Exiles	6		
-2621 3693 0	2472 3994 0	Travel;Fremennik Boat;37432			The Fremennik Exiles	6		
-2621 3694 0	2472 3994 0	Travel;Fremennik Boat;37432			The Fremennik Exiles	6		
-								
-# Rellekka, Ungael								
-2277 4034 0	2640 3697 0	Travel;Fremennik Boat;31989			Dragon Slayer II	6		
-2278 4034 0	2640 3697 0	Travel;Fremennik Boat;31989			Dragon Slayer II	6		
-2640 3696 0	2277 4034 0	Travel;Fremennik Boat;29917			Dragon Slayer II	6		
-2640 3697 0	2277 4034 0	Travel;Fremennik Boat;29917			Dragon Slayer II	6		
-2640 3698 0	2277 4034 0	Travel;Fremennik Boat;29917			Dragon Slayer II	6		
-2640 3699 0	2277 4034 0	Travel;Fremennik Boat;29917			Dragon Slayer II	6		
-								
-# Fossil Island, Lithkren								
-3660 3848 0	3583 3973 0	Travel;Rowboat;29916			Dragon Slayer II	5		
-3583 3973 0	3660 3849 0	Travel;Rowboat;32079			Dragon Slayer II	5		
-3660 3849 0	3583 3973 0	Travel;Rowboat;29916			Dragon Slayer II	5		
-3582 3973 0	3660 3849 0	Travel;Rowboat;32079			Dragon Slayer II	5		
-								
-# Fossil Island, Underwater								
-3724 3807 0	3734 3893 0	Travel;Rowboat;30914				4		
-3734 3893 0	3724 3807 0	Travel;Rowboat;30915				3		
-3734 3893 0	3768 3898 0	Travel;Rowboat;30915				3		
-3768 3898 0	3734 3893 0	Travel;Rowboat;30919				3		
-								
-# Hosidius, Crabclaw Isle								
-1783 3458 0	1779 3417 0	Travel;Sandicrahb;7483				5		
-1779 3417 0	1783 3458 0	Travel;Sandicrahb;7484				5		
-								
-# Crash Island, Ape Atoll								
-2892 2724 0	2803 2706 0	Travel;Lumdo;1454				5		
-2803 2706 0	2892 2724 0	Travel;Lumdo;1454				5		
-								
-# Al Kharid, Tempoross								
-3271 3144 0	3148 2843 0	Board;Ferry;41311				8		
-3272 3143 0	3148 2843 0	Board;Ferry;41311				8		
-3148 2843 0	3272 3143 0	Board;Ferry;41311				8		
-3148 2842 0	3272 3143 0	Board;Ferry;41311				8		
-								
-# Stranglewood, Mount Quidamortem								
-1229 3470 0	1194 3452 0	Travel;Rowboat;48721			Desert Treasure II - The Fallen Empire	7		
-1229 3469 0	1194 3452 0	Travel;Rowboat;48721			Desert Treasure II - The Fallen Empire	7		
-1194 3452 0	1229 3469 0	Travel;Rowboat;48720			Desert Treasure II - The Fallen Empire	7		
-1195 3452 0	1229 3469 0	Travel;Rowboat;48720			Desert Treasure II - The Fallen Empire	7		
-# Port Phasmatys, Slepe								
-3671 3544 0	3661 3277 0	Travel;Row boat;32601		10000 Coins		5		
-3672 3544 0	3661 3277 0	Travel;Row boat;32601		10000 Coins		5		
-3661 3278 0	3671 3542 0	Travel;Row boat;32602		10000 Coins		5		
-3661 3278 0	3671 3542 0	Travel;Row boat;32602		10000 Coins		5		
-3661 3278 0	3671 3542 0	Travel;Row boat;32602		10000 Coins		5		
-# Burgh de Rott, Meiyerditch, Icyene Graveyard, Slepe								
-3525 3170 0	3605 3161 1	Board;Boat;38089				13	1: Meiyerditch.	7255=42
-3525 3170 0	3684 3176 0	Board;Boat;38089				13	2: Icyene Graveyard.	7255=42
-3525 3170 0	3663 3277 0	Board;Boat;38089				13	3: Slepe.	7255=88
-3605 3161 1	3525 3170 0	Board;Boat;38089				13	1: Burgh de Rott.	7255=42
-3605 3161 1	3684 3176 0	Board;Boat;38089				13	2: Icyene Graveyard.	7255=42
-3605 3161 1	3663 3277 0	Board;Boat;38089				13	3: Slepe.	7255=88
-3684 3176 0	3525 3170 0	Board;Boat;38089				13	1: Burgh de Rott.	7255=42
-3684 3176 0	3605 3161 1	Board;Boat;38089				13	2: Meiyerditch.	7255=42
-3684 3176 0	3663 3277 0	Board;Boat;38089				13	3: Slepe.	7255=88
-3684 3175 0	3525 3170 0	Board;Boat;38089				13	1: Burgh de Rott.	7255=42
-3684 3175 0	3605 3161 1	Board;Boat;38089				13	2: Meiyerditch.	7255=42
-3684 3175 0	3663 3277 0	Board;Boat;38089				13	3: Slepe.	7255=88
-3684 3174 0	3525 3170 0	Board;Boat;38089				13	1: Burgh de Rott.	7255=42
-3684 3174 0	3605 3161 1	Board;Boat;38089				13	2: Meiyerditch.	7255=42
-3684 3174 0	3663 3277 0	Board;Boat;38089				13	3: Slepe.	7255=88
-3663 3277 0	3525 3170 0	Board;Boat;38089				13	1: Burgh de Rott.	7255=88
-3663 3277 0	3605 3161 1	Board;Boat;38089				13	2: Meiyerditch.	7255=88
-3663 3277 0	3684 3176 0	Board;Boat;38089				13	3: Icyene Graveyard.	7255=88
+# Origin	Destination	menuOption menuTarget objectID	Skills	Item IDs	Currency	Quests	Wait	Display Info	Varbits
+# Fishing Platform									
+2720 3301 0	2782 3273 0	Travel;Holgart;7789				Sea Slug	9		
+2782 3273 0	2720 3301 0	Travel;Holgart;5070				Sea Slug	9		
+									
+# Post Phasmatys, Braindeath Island									
+3680 3536 0	2162 5114 1	Talk-to;Pirate Pete;601				Rum Deal	9		
+2162 5114 1	3680 3536 0	Talk-to;Pirate Pete;602				Rum Deal	9		
+									
+# Port Phasmatys, Dragontooth Island									
+3703 3487 0	3792 3560 0	Travel;Ghost captain;3005			25 Ecto-token		6		
+3792 3560 0	3703 3487 0	Travel;Ghost captain;3005					6		
+									
+# Mort Myre, Mort'ton									
+3498 3380 0	3522 3285 0	Board;Swamp Boaty;6970					18		
+3499 3380 0	3522 3285 0	Board;Swamp Boaty;6970					18		
+3500 3380 0	3522 3285 0	Board;Swamp Boaty;6970					18		
+3501 3378 0	3522 3285 0	Board;Swamp Boaty;6970					18		
+3501 3379 0	3522 3285 0	Board;Swamp Boaty;6970					18		
+3522 3284 0	3498 3380 0	Quick-board;Swamp Boaty;6969			10 Coins		18		
+3522 3285 0	3498 3380 0	Quick-board;Swamp Boaty;6969			10 Coins		18		
+3522 3286 0	3498 3380 0	Quick-board;Swamp Boaty;6969			10 Coins		18		
+									
+# Rellekka, Waterbirth Island									
+2621 3683 0	2544 3761 0	Waterbirth Island;Jarvald;6535				The Fremennik Trials	7		
+2544 3761 0	2621 3683 0	Rellekka;Jarvald;10407				The Fremennik Trials	7		
+									
+# Rellekka, Jatizso									
+2644 3709 0	2421 3781 0	Jatizso;Mord Gunnars;1900				The Fremennik Trials	10		
+2421 3781 0	2644 3709 0	Rellekka;Mord Gunnars;1940				The Fremennik Trials	10		
+									
+# Rellekka, Neitiznot									
+2644 3710 0	2311 3781 0	Neitiznot;Maria Gunnars;1883				The Fremennik Trials	14		
+2311 3781 0	2644 3710 0	Rellekka;Maria Gunnars;1882				The Fremennik Trials	14		
+									
+# Rellekka, Pirates' Cove									
+2620 3693 0	2213 3794 0	Pirate's Cove;Lokar Searunner;3855				The Fremennik Trials;Lunar Diplomacy	9		
+2213 3794 0	2620 3693 0	Rellekka;Lokar Searunner;9306				The Fremennik Trials;Lunar Diplomacy	9		
+									
+# Rellekka, Iceberg									
+2707 3736 0	2660 3989 1	Iceberg;Boat;21176				Cold War	9		
+2658 3988 1	2706 3735 0	Travel;Boat;21175				Cold War	9		
+2707 3735 0	2660 3989 1	Iceberg;Boat;21176				Cold War	9		
+2659 3988 1	2706 3735 0	Travel;Boat;21175				Cold War	9		
+2711 3732 0	2660 3989 1	Iceberg;Boat;21176				Cold War	9		
+									
+# Rellekka, Weiss									
+2707 3735 0	2849 3968 0	Weiss;Boat;21176				Making Friends with My Arm	12		
+2707 3736 0	2849 3968 0	Weiss;Boat;21176				Making Friends with My Arm	12		
+2711 3732 0	2849 3968 0	Weiss;Boat;21176				Making Friends with My Arm	12		
+2848 3966 0	2706 3735 0	Travel;Boat;21177				Making Friends with My Arm	12		
+2849 3967 0	2706 3735 0	Travel;Boat;21177				Making Friends with My Arm	12		
+2849 3968 0	2706 3735 0	Travel;Boat;21177				Making Friends with My Arm	12		
+									
+# Rellekka, Island of Stone									
+2472 3994 0	2621 3692 0	Travel;Fremennik Boat;37408				The Fremennik Exiles	6		
+2473 3994 0	2621 3692 0	Travel;Fremennik Boat;37408				The Fremennik Exiles	6		
+2621 3690 0	2472 3994 0	Travel;Fremennik Boat;37432				The Fremennik Exiles	6		
+2621 3691 0	2472 3994 0	Travel;Fremennik Boat;37432				The Fremennik Exiles	6		
+2621 3692 0	2472 3994 0	Travel;Fremennik Boat;37432				The Fremennik Exiles	6		
+2621 3693 0	2472 3994 0	Travel;Fremennik Boat;37432				The Fremennik Exiles	6		
+2621 3694 0	2472 3994 0	Travel;Fremennik Boat;37432				The Fremennik Exiles	6		
+									
+# Rellekka, Ungael									
+2277 4034 0	2640 3697 0	Travel;Fremennik Boat;31989				Dragon Slayer II	6		
+2278 4034 0	2640 3697 0	Travel;Fremennik Boat;31989				Dragon Slayer II	6		
+2640 3696 0	2277 4034 0	Travel;Fremennik Boat;29917				Dragon Slayer II	6		
+2640 3697 0	2277 4034 0	Travel;Fremennik Boat;29917				Dragon Slayer II	6		
+2640 3698 0	2277 4034 0	Travel;Fremennik Boat;29917				Dragon Slayer II	6		
+2640 3699 0	2277 4034 0	Travel;Fremennik Boat;29917				Dragon Slayer II	6		
+									
+# Fossil Island, Lithkren									
+3660 3848 0	3583 3973 0	Travel;Rowboat;29916				Dragon Slayer II	5		
+3583 3973 0	3660 3849 0	Travel;Rowboat;32079				Dragon Slayer II	5		
+3660 3849 0	3583 3973 0	Travel;Rowboat;29916				Dragon Slayer II	5		
+3582 3973 0	3660 3849 0	Travel;Rowboat;32079				Dragon Slayer II	5		
+									
+# Fossil Island, Underwater									
+3724 3807 0	3734 3893 0	Travel;Rowboat;30914					4		
+3734 3893 0	3724 3807 0	Travel;Rowboat;30915					3		
+3734 3893 0	3768 3898 0	Travel;Rowboat;30915					3		
+3768 3898 0	3734 3893 0	Travel;Rowboat;30919					3		
+									
+# Hosidius, Crabclaw Isle									
+1783 3458 0	1779 3417 0	Travel;Sandicrahb;7483					5		
+1779 3417 0	1783 3458 0	Travel;Sandicrahb;7484					5		
+									
+# Crash Island, Ape Atoll									
+2892 2724 0	2803 2706 0	Travel;Lumdo;1454					5		
+2803 2706 0	2892 2724 0	Travel;Lumdo;1454					5		
+									
+# Al Kharid, Tempoross									
+3271 3144 0	3148 2843 0	Board;Ferry;41311					8		
+3272 3143 0	3148 2843 0	Board;Ferry;41311					8		
+3148 2843 0	3272 3143 0	Board;Ferry;41311					8		
+3148 2842 0	3272 3143 0	Board;Ferry;41311					8		
+									
+# Stranglewood, Mount Quidamortem									
+1229 3470 0	1194 3452 0	Travel;Rowboat;48721				Desert Treasure II - The Fallen Empire	7		
+1229 3469 0	1194 3452 0	Travel;Rowboat;48721				Desert Treasure II - The Fallen Empire	7		
+1194 3452 0	1229 3469 0	Travel;Rowboat;48720				Desert Treasure II - The Fallen Empire	7		
+1195 3452 0	1229 3469 0	Travel;Rowboat;48720				Desert Treasure II - The Fallen Empire	7		
+# Port Phasmatys, Slepe									
+3671 3544 0	3661 3277 0	Travel;Row boat;32601			10000 Coins		5		
+3672 3544 0	3661 3277 0	Travel;Row boat;32601			10000 Coins		5		
+3661 3278 0	3671 3542 0	Travel;Row boat;32602			10000 Coins		5		
+3661 3278 0	3671 3542 0	Travel;Row boat;32602			10000 Coins		5		
+3661 3278 0	3671 3542 0	Travel;Row boat;32602			10000 Coins		5		
+# Burgh de Rott, Meiyerditch, Icyene Graveyard, Slepe									
+3525 3170 0	3605 3161 1	Board;Boat;38089					13	1: Meiyerditch.	7255=42
+3525 3170 0	3684 3176 0	Board;Boat;38089					13	2: Icyene Graveyard.	7255=42
+3525 3170 0	3663 3277 0	Board;Boat;38089					13	3: Slepe.	7255=88
+3605 3161 1	3525 3170 0	Board;Boat;38089					13	1: Burgh de Rott.	7255=42
+3605 3161 1	3684 3176 0	Board;Boat;38089					13	2: Icyene Graveyard.	7255=42
+3605 3161 1	3663 3277 0	Board;Boat;38089					13	3: Slepe.	7255=88
+3684 3176 0	3525 3170 0	Board;Boat;38089					13	1: Burgh de Rott.	7255=42
+3684 3176 0	3605 3161 1	Board;Boat;38089					13	2: Meiyerditch.	7255=42
+3684 3176 0	3663 3277 0	Board;Boat;38089					13	3: Slepe.	7255=88
+3684 3175 0	3525 3170 0	Board;Boat;38089					13	1: Burgh de Rott.	7255=42
+3684 3175 0	3605 3161 1	Board;Boat;38089					13	2: Meiyerditch.	7255=42
+3684 3175 0	3663 3277 0	Board;Boat;38089					13	3: Slepe.	7255=88
+3684 3174 0	3525 3170 0	Board;Boat;38089					13	1: Burgh de Rott.	7255=42
+3684 3174 0	3605 3161 1	Board;Boat;38089					13	2: Meiyerditch.	7255=42
+3684 3174 0	3663 3277 0	Board;Boat;38089					13	3: Slepe.	7255=88
+3663 3277 0	3525 3170 0	Board;Boat;38089					13	1: Burgh de Rott.	7255=88
+3663 3277 0	3605 3161 1	Board;Boat;38089					13	2: Meiyerditch.	7255=88
+3663 3277 0	3684 3176 0	Board;Boat;38089					13	3: Icyene Graveyard.	7255=88

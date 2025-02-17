@@ -53,6 +53,7 @@ public enum MagicAction implements SkillAction
 	BASIC_REANIMATION("Basic Reanimation", 16, 32, SpriteID.SPELL_BASIC_REANIMATION, true, Spellbook.ARCEUUS),
 	WIND_BOLT("Wind Bolt", 17, 13.5f, SpriteID.SPELL_WIND_BOLT, false, Spellbook.NORMAL),
 	DRAYNOR_MANOR_TELEPORT("Draynor Manor Teleport", 17, 16, SpriteID.SPELL_DRAYNOR_MANOR_TELEPORT, true, Spellbook.ARCEUUS),
+	BATTLEFRONT_TELEPORT("Battlefront Teleport", 23, 19, 1255, true, Spellbook.ARCEUUS),
 	CURSE("Curse", 19, 29, SpriteID.SPELL_CURSE, false, Spellbook.NORMAL),
 	BIND("Bind", 20, 30, SpriteID.SPELL_BIND, false, Spellbook.NORMAL),
 	LOW_LEVEL_ALCHEMY("Low Level Alchemy", 21, 31, SpriteID.SPELL_LOW_LEVEL_ALCHEMY, false, Spellbook.NORMAL),
@@ -220,6 +221,12 @@ public enum MagicAction implements SkillAction
 	HEAL_GROUP("Heal Group", 95, 124, SpriteID.SPELL_HEAL_GROUP, true, Spellbook.LUNAR),
 	GHORROCK_TELEPORT("Ghorrock Teleport", 96, 106, SpriteID.SPELL_GHORROCK_TELEPORT, true, Spellbook.ANCIENT),
 	SPELLBOOK_SWAP("Spellbook Swap", 96, 130, SpriteID.SPELL_SPELLBOOK_SWAP, true, Spellbook.LUNAR),
+	RESURRECT_LESSER_GHOST("Resurrect Lesser Ghost", 38, 55, 1270, true, Spellbook.ARCEUUS),
+	RESURRECT_LESSER_SKELETON("Resurrect Lesser Skeleton", 38, 55, 1271, true, Spellbook.ARCEUUS),
+	RESURRECT_LESSER_ZOMBIE("Resurrect Lesser Zombie", 38, 55, 1300, true, Spellbook.ARCEUUS),
+	RESURRECT_SUPERIOR_GHOST("Resurrect Superior Ghost", 57, 70, 2979, true, Spellbook.ARCEUUS),
+	RESURRECT_SUPERIOR_SKELETON("Resurrect Superior Skeleton", 57, 70, 2981, true, Spellbook.ARCEUUS),
+	RESURRECT_SUPERIOR_ZOMBIE("Resurrect Superior Zombie", 57, 70, 2983, true, Spellbook.ARCEUUS),
 	;
 
 	private final String name;

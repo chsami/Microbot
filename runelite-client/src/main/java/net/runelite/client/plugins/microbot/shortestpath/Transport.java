@@ -102,11 +102,11 @@ public class Transport {
      */
     @Getter
     private final Set<TransportVarPlayer> varplayers = new HashSet<>();
-
+    
     @Getter
-    private int amtItemRequired = 0;
+    private String currencyName = "";
     @Getter
-    private String itemRequired = "";
+    private int currencyAmount = 0;
 
     /**
      * Transport requires player to be in a members world
@@ -159,8 +159,8 @@ public class Transport {
         this.name = origin.getName();
         this.objectId = origin.getObjectId();
         this.action = origin.getAction();
-        this.amtItemRequired = origin.getAmtItemRequired();
-        this.itemRequired = origin.getItemRequired();
+        this.currencyName = origin.getCurrencyName();
+        this.currencyAmount = origin.getCurrencyAmount();
         this.isMembers = origin.isMembers;
         //END microbot variables
     }
@@ -210,13 +210,14 @@ public class Transport {
                 System.out.println("Skipped invalid value: " + value);
             }
         }
-        if ((value = fieldMap.get("Items")) != null) {
+        
+        if ((value = fieldMap.get("Currency")) != null) {
             // Split the string by space
             String[] parts = value.split(" ");
             if (parts.length > 1) {
                 // Parse the first part as an integer amount
-                amtItemRequired = Integer.parseInt(parts[0]);
-                itemRequired = parts[1];
+                currencyAmount = Integer.parseInt(parts[0]);
+                currencyName = parts[1];
             }
         }
         //END microbot variables

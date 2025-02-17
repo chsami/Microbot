@@ -2,63 +2,682 @@ package net.runelite.client.plugins.microbot.util.magic;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import net.runelite.api.Skill;
+import net.runelite.api.Varbits;
+import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
 
 import java.util.Map;
 
 @Getter
-@RequiredArgsConstructor
+/**
+ * TODO: Add Tele-other spells from modern spellbook
+ */
 public enum Rs2Spells {
+    CONFUSE(MagicAction.CONFUSE, Map.of(
+            Runes.EARTH, 2,
+            Runes.WATER, 3,
+            Runes.BODY, 1
+    ), Rs2Spellbook.MODERN),
+    WEAKEN(MagicAction.WEAKEN, Map.of(
+            Runes.EARTH, 2,
+            Runes.WATER, 3,
+            Runes.BODY, 1
+    ), Rs2Spellbook.MODERN),
+    CURSE(MagicAction.CURSE, Map.of(
+            Runes.EARTH, 2,
+            Runes.WATER, 3,
+            Runes.BODY, 1
+    ), Rs2Spellbook.MODERN),
+    BIND(MagicAction.BIND, Map.of(
+            Runes.EARTH, 3,
+            Runes.WATER, 3,
+            Runes.NATURE, 2
+    ), Rs2Spellbook.MODERN),
+    SNARE(MagicAction.SNARE, Map.of(
+            Runes.EARTH, 4,
+            Runes.WATER, 4,
+            Runes.NATURE, 3
+    ), Rs2Spellbook.MODERN),
+    VULNERABILITY(MagicAction.VULNERABILITY, Map.of(
+            Runes.EARTH, 5,
+            Runes.WATER, 5,
+            Runes.SOUL, 1
+    ), Rs2Spellbook.MODERN),
+    ENFEEBLE(MagicAction.ENFEEBLE, Map.of(
+            Runes.EARTH, 8,
+            Runes.WATER, 8,
+            Runes.SOUL, 1
+    ), Rs2Spellbook.MODERN),
+    ENTANGLE(MagicAction.ENTANGLE, Map.of(
+            Runes.EARTH, 5,
+            Runes.WATER, 5,
+            Runes.NATURE, 4
+    ), Rs2Spellbook.MODERN),
+    STUN(MagicAction.STUN, Map.of(
+            Runes.EARTH, 12,
+            Runes.WATER, 12,
+            Runes.SOUL, 1
+    ), Rs2Spellbook.MODERN),
+    TELE_BLOCK(MagicAction.TELE_BLOCK, Map.of(
+            Runes.CHAOS, 1,
+            Runes.DEATH, 1,
+            Runes.LAW, 1
+    ), Rs2Spellbook.MODERN),
     VARROCK_TELEPORT(MagicAction.VARROCK_TELEPORT, Map.of(
             Runes.FIRE, 1,
             Runes.AIR, 3,
             Runes.LAW, 1
-    )),
+    ), Rs2Spellbook.MODERN),
     LUMBRIDGE_TELEPORT(MagicAction.LUMBRIDGE_TELEPORT, Map.of(
             Runes.EARTH, 1,
             Runes.AIR, 3,
             Runes.LAW, 1
-    )),
+    ), Rs2Spellbook.MODERN),
     FALADOR_TELEPORT(MagicAction.FALADOR_TELEPORT, Map.of(
             Runes.WATER, 1,
             Runes.AIR, 3,
             Runes.LAW, 1
-    )),
-    CAMELOT_TELEPORT(MagicAction.CAMELOT_TELEPORT, Map.of(
-            Runes.AIR, 5,
-            Runes.LAW, 1
-    )),
-    ARDOUGNE_TELEPORT(MagicAction.ARDOUGNE_TELEPORT, Map.of(
-            Runes.WATER, 2,
-            Runes.LAW, 2
-    )),
-    WATCHTOWER_TELEPORT(MagicAction.WATCHTOWER_TELEPORT, Map.of(
-            Runes.EARTH, 2,
-            Runes.LAW, 2
-    )),
-    TROLLHEIM_TELEPORT(MagicAction.TROLLHEIM_TELEPORT, Map.of(
-            Runes.FIRE, 2,
-            Runes.LAW, 2
-    )),
-    LOW_LEVEL_ALCHEMY(MagicAction.LOW_LEVEL_ALCHEMY, Map.of(
-            Runes.FIRE, 3,
-            Runes.NATURE, 1
-    )),
-    HIGH_LEVEL_ALCHEMY(MagicAction.HIGH_LEVEL_ALCHEMY, Map.of(
-            Runes.FIRE, 5,
-            Runes.NATURE, 1
-    )),
-    NPC_CONTACT(MagicAction.NPC_CONTACT, Map.of(
-            Runes.AIR, 2,
-            Runes.COSMIC, 1,
-            Runes.ASTRAL, 1
-    )),
+    ), Rs2Spellbook.MODERN),
     TELEPORT_TO_HOUSE(MagicAction.TELEPORT_TO_HOUSE, Map.of(
             Runes.AIR, 1,
             Runes.EARTH, 1,
             Runes.LAW, 1
-    ));
+    ), Rs2Spellbook.MODERN),
+    CAMELOT_TELEPORT(MagicAction.CAMELOT_TELEPORT, Map.of(
+            Runes.AIR, 5,
+            Runes.LAW, 1
+    ), Rs2Spellbook.MODERN),
+    ARDOUGNE_TELEPORT(MagicAction.ARDOUGNE_TELEPORT, Map.of(
+            Runes.WATER, 2,
+            Runes.LAW, 2
+    ), Rs2Spellbook.MODERN),
+    WATCHTOWER_TELEPORT(MagicAction.WATCHTOWER_TELEPORT, Map.of(
+            Runes.EARTH, 2,
+            Runes.LAW, 2
+    ), Rs2Spellbook.MODERN),
+    TROLLHEIM_TELEPORT(MagicAction.TROLLHEIM_TELEPORT, Map.of(
+            Runes.FIRE, 2,
+            Runes.LAW, 2
+    ), Rs2Spellbook.MODERN),
+    CIVITAS_ILLA_FORTIS_TELEPORT(MagicAction.CIVITAS_ILLA_FORTIS_TELEPORT, Map.of(
+            Runes.LAW, 2,
+            Runes.EARTH, 1,
+            Runes.FIRE, 1
+    ), Rs2Spellbook.MODERN),
+    KOUREND_CASTLE_TELEPORT(MagicAction.KOUREND_CASTLE_TELEPORT, Map.of(
+            Runes.LAW, 2,
+            Runes.WATER, 1,
+            Runes.FIRE, 1
+    ), Rs2Spellbook.MODERN),
+    
+    TELEKINETIC_GRAB(MagicAction.TELEKINETIC_GRAB, Map.of(
+            Runes.AIR, 1,
+            Runes.LAW, 1
+    ), Rs2Spellbook.MODERN),
+    BONES_TO_BANANAS(MagicAction.BONES_TO_BANANAS, Map.of(
+            Runes.WATER, 2,
+            Runes.EARTH, 2,
+            Runes.NATURE, 1
+    ), Rs2Spellbook.MODERN),
+    BONES_TO_PEACHES(MagicAction.BONES_TO_PEACHES, Map.of(
+            Runes.WATER, 4,
+            Runes.EARTH, 4,
+            Runes.NATURE, 2
+    ), Rs2Spellbook.MODERN),
+    LOW_LEVEL_ALCHEMY(MagicAction.LOW_LEVEL_ALCHEMY, Map.of(
+            Runes.FIRE, 3,
+            Runes.NATURE, 1
+    ), Rs2Spellbook.MODERN),
+    SUPERHEAT_ITEM(MagicAction.SUPERHEAT_ITEM, Map.of(
+            Runes.FIRE, 4,
+            Runes.NATURE, 1
+    ), Rs2Spellbook.MODERN),
+    HIGH_LEVEL_ALCHEMY(MagicAction.HIGH_LEVEL_ALCHEMY, Map.of(
+            Runes.FIRE, 5,
+            Runes.NATURE, 1
+    ), Rs2Spellbook.MODERN),
+    
+    ENCHANT_OPAL_BOLTS(MagicAction.ENCHANT_OPAL_BOLT, Map.of(
+            Runes.AIR, 2,
+            Runes.COSMIC, 1
+    ), Rs2Spellbook.MODERN),
+    ENCHANT_SAPPHIRE_BOLT(MagicAction.ENCHANT_SAPPHIRE_BOLT, Map.of(
+            Runes.WATER, 1,
+            Runes.MIND, 1,
+            Runes.COSMIC, 1
+    ), Rs2Spellbook.MODERN),
+    ENCHANT_JADE_BOLT(MagicAction.ENCHANT_JADE_BOLT, Map.of(
+            Runes.EARTH, 2,
+            Runes.COSMIC, 1
+    ), Rs2Spellbook.MODERN),
+    ENCHANT_PEARL_BOLT(MagicAction.ENCHANT_PEARL_BOLT, Map.of(
+            Runes.WATER, 2,
+            Runes.COSMIC, 1
+    ), Rs2Spellbook.MODERN),
+    ENCHANT_EMERALD_BOLT(MagicAction.ENCHANT_EMERALD_BOLT, Map.of(
+            Runes.AIR, 3,
+            Runes.COSMIC, 1,
+            Runes.NATURE, 1
+    ), Rs2Spellbook.MODERN),
+    ENCHANT_TOPAZ_BOLT(MagicAction.ENCHANT_TOPAZ_BOLT, Map.of(
+            Runes.FIRE, 2,
+            Runes.COSMIC, 1
+    ), Rs2Spellbook.MODERN),
+    ENCHANT_RUBY_BOLT(MagicAction.ENCHANT_RUBY_BOLT, Map.of(
+            Runes.FIRE, 5,
+            Runes.BLOOD, 1,
+            Runes.COSMIC, 1
+    ), Rs2Spellbook.MODERN),
+    ENCHANT_DIAMOND_BOLT(MagicAction.ENCHANT_DIAMOND_BOLT, Map.of(
+            Runes.EARTH, 10,
+            Runes.COSMIC, 1,
+            Runes.LAW, 2
+    ), Rs2Spellbook.MODERN),
+    ENCHANT_DRAGONSTONE_BOLT(MagicAction.ENCHANT_DRAGONSTONE_BOLT, Map.of(
+            Runes.EARTH, 15,
+            Runes.COSMIC, 1,
+            Runes.SOUL, 1
+    ), Rs2Spellbook.MODERN),
+    ENCHANT_ONYX_BOLT(MagicAction.ENCHANT_ONYX_BOLT, Map.of(
+            Runes.FIRE, 20,
+            Runes.COSMIC, 1,
+            Runes.DEATH, 1
+    ), Rs2Spellbook.MODERN),
+    
+    ENCHANT_SAPPHIRE_JEWELLERY(MagicAction.ENCHANT_SAPPHIRE_JEWELLERY, Map.of(
+            Runes.COSMIC, 1,
+            Runes.WATER, 1
+    ), Rs2Spellbook.MODERN),
+    ENCHANT_EMERALD_JEWELLERY(MagicAction.ENCHANT_EMERALD_JEWELLERY, Map.of(
+            Runes.COSMIC, 1,
+            Runes.AIR, 3
+    ), Rs2Spellbook.MODERN),
+    ENCHANT_RUBY_JEWELLERY(MagicAction.ENCHANT_RUBY_JEWELLERY, Map.of(
+            Runes.COSMIC, 1,
+            Runes.FIRE, 5
+    ), Rs2Spellbook.MODERN),
+    ENCHANT_DIAMOND_JEWELLERY(MagicAction.ENCHANT_DIAMOND_JEWELLERY, Map.of(
+            Runes.COSMIC, 1,
+            Runes.EARTH, 10
+    ), Rs2Spellbook.MODERN),
+    ENCHANT_DRAGONSTONE_JEWELLERY(MagicAction.ENCHANT_DRAGONSTONE_JEWELLERY, Map.of(
+            Runes.COSMIC, 1,
+            Runes.WATER, 15
+    ), Rs2Spellbook.MODERN),
+    ENCHANT_ONYX_JEWELLERY(MagicAction.ENCHANT_ONYX_JEWELLERY, Map.of(
+            Runes.COSMIC, 1,
+            Runes.FIRE, 20
+    ), Rs2Spellbook.MODERN),
+    CHARGE_WATER_ORB(MagicAction.CHARGE_WATER_ORB, Map.of(
+            Runes.WATER, 30,
+            Runes.COSMIC, 3
+    ), Rs2Spellbook.MODERN),
+    CHARGE_EARTH_ORB(MagicAction.CHARGE_EARTH_ORB, Map.of(
+            Runes.EARTH, 30,
+            Runes.COSMIC, 3
+    ), Rs2Spellbook.MODERN),
+    CHARGE_FIRE_ORB(MagicAction.CHARGE_FIRE_ORB, Map.of(
+            Runes.FIRE, 30,
+            Runes.COSMIC, 3
+    ), Rs2Spellbook.MODERN),
+    CHARGE_AIR_ORB(MagicAction.CHARGE_AIR_ORB, Map.of(
+            Runes.AIR, 30,
+            Runes.COSMIC, 3
+    ), Rs2Spellbook.MODERN),
+    
+    PADDEWWA_TELEPORT(MagicAction.PADDEWWA_TELEPORT, Map.of(
+            Runes.AIR, 1,
+            Runes.FIRE, 1,
+            Runes.LAW, 2
+    ), Rs2Spellbook.ANCIENT),
+    SENNTISTEN_TELEPORT(MagicAction.SENNTISTEN_TELEPORT, Map.of(
+            Runes.LAW, 2,
+            Runes.SOUL, 1
+    ), Rs2Spellbook.ANCIENT),
+    KHARYRLL_TELEPORT(MagicAction.KHARYRLL_TELEPORT, Map.of(
+            Runes.BLOOD, 1,
+            Runes.LAW, 2
+    ), Rs2Spellbook.ANCIENT),
+    LASSAR_TELEPORT(MagicAction.LASSAR_TELEPORT, Map.of(
+            Runes.WATER, 4,
+            Runes.LAW, 2
+    ), Rs2Spellbook.ANCIENT),
+    DAREEYAK_TELEPORT(MagicAction.DAREEYAK_TELEPORT, Map.of(
+            Runes.AIR, 2,
+            Runes.FIRE, 3,
+            Runes.LAW, 2
+    ), Rs2Spellbook.ANCIENT),
+    CARRALLANGER_TELEPORT(MagicAction.CARRALLANGER_TELEPORT, Map.of(
+            Runes.LAW, 2,
+            Runes.SOUL, 2
+    ), Rs2Spellbook.ANCIENT),
+    ANNAKARL_TELEPORT(MagicAction.ANNAKARL_TELEPORT, Map.of(
+            Runes.BLOOD, 2,
+            Runes.LAW, 2
+    ), Rs2Spellbook.ANCIENT),
+    GHORROCK_TELEPORT(MagicAction.GHORROCK_TELEPORT, Map.of(
+            Runes.WATER, 8,
+            Runes.LAW, 2
+    ), Rs2Spellbook.ANCIENT),
 
+    MONSTER_EXAMINE(MagicAction.MONSTER_EXAMINE, Map.of(
+            Runes.ASTRAL, 1,
+            Runes.COSMIC, 1,
+            Runes.MIND, 1
+    ), Rs2Spellbook.LUNAR),
+    CURE_OTHER(MagicAction.CURE_OTHER, Map.of(
+            Runes.EARTH, 10,
+            Runes.ASTRAL, 1,
+            Runes.LAW, 1
+    ), Rs2Spellbook.LUNAR),
+    CURE_ME(MagicAction.CURE_ME, Map.of(
+            Runes.ASTRAL, 2,
+            Runes.COSMIC, 2,
+            Runes.LAW, 1
+    ), Rs2Spellbook.LUNAR),
+    CURE_GROUP(MagicAction.CURE_GROUP, Map.of(
+            Runes.ASTRAL, 2,
+            Runes.COSMIC, 2,
+            Runes.LAW, 2
+    ), Rs2Spellbook.LUNAR),
+    STAT_SPY(MagicAction.STAT_SPY, Map.of(
+            Runes.ASTRAL, 2,
+            Runes.BODY, 5,
+            Runes.COSMIC, 1
+    ), Rs2Spellbook.LUNAR),
+    DREAM(MagicAction.DREAM, Map.of(
+            Runes.ASTRAL, 2,
+            Runes.BODY, 5,
+            Runes.COSMIC, 1
+    ), Rs2Spellbook.LUNAR),
+    STAT_RESTORE_POT_SHARE(MagicAction.STAT_RESTORE_POT_SHARE, Map.of(
+            Runes.EARTH, 10,
+            Runes.WATER, 10,
+            Runes.ASTRAL, 2
+    ), Rs2Spellbook.LUNAR),
+    BOOST_POTION_SHARE(MagicAction.BOOST_POTION_SHARE, Map.of(
+            Runes.EARTH, 12,
+            Runes.WATER, 10,
+            Runes.ASTRAL, 3
+    ), Rs2Spellbook.LUNAR),
+    ENERGY_TRANSFER(MagicAction.ENERGY_TRANSFER, Map.of(
+            Runes.ASTRAL, 3,
+            Runes.LAW, 2,
+            Runes.NATURE, 1
+    ), Rs2Spellbook.LUNAR),
+    HEAL_OTHER(MagicAction.HEAL_OTHER, Map.of(
+            Runes.ASTRAL, 3,
+            Runes.BLOOD, 1,
+            Runes.LAW, 3
+    ), Rs2Spellbook.LUNAR),
+    VENGEANCE_OTHER(MagicAction.VENGEANCE_OTHER, Map.of(
+            Runes.EARTH, 10,
+            Runes.ASTRAL, 3,
+            Runes.DEATH, 2
+    ), Rs2Spellbook.LUNAR),
+    VENGEANCE(MagicAction.VENGEANCE, Map.of(
+            Runes.EARTH, 10,
+            Runes.ASTRAL, 4,
+            Runes.DEATH, 2
+    ), Rs2Spellbook.LUNAR),
+    HEAL_GROUP(MagicAction.HEAL_GROUP, Map.of(
+            Runes.ASTRAL, 4,
+            Runes.BLOOD, 3,
+            Runes.LAW, 6
+    ), Rs2Spellbook.LUNAR),
+
+    MOONCLAN_TELEPORT(MagicAction.MOONCLAN_TELEPORT, Map.of(
+            Runes.EARTH, 2,
+            Runes.ASTRAL, 2,
+            Runes.LAW, 1
+    ), Rs2Spellbook.LUNAR),
+    TELE_GROUP_MOONCLAN(MagicAction.TELE_GROUP_MOONCLAN, Map.of(
+            Runes.EARTH, 4,
+            Runes.ASTRAL, 2,
+            Runes.LAW, 1
+    ), Rs2Spellbook.LUNAR),
+    OURANIA_TELEPORT(MagicAction.OURANIA_TELEPORT, Map.of(
+            Runes.EARTH, 6,
+            Runes.ASTRAL, 2,
+            Runes.LAW, 1
+    ), Rs2Spellbook.LUNAR),
+    WATERBIRTH_TELEPORT(MagicAction.WATERBIRTH_TELEPORT, Map.of(
+            Runes.WATER, 1,
+            Runes.ASTRAL, 2,
+            Runes.LAW, 1
+    ), Rs2Spellbook.LUNAR),
+    TELE_GROUP_WATERBIRTH(MagicAction.TELE_GROUP_WATERBIRTH, Map.of(
+            Runes.WATER, 5,
+            Runes.ASTRAL, 2,
+            Runes.LAW, 1
+    ), Rs2Spellbook.LUNAR),
+    BARBARIAN_TELEPORT(MagicAction.BARBARIAN_TELEPORT, Map.of(
+            Runes.FIRE, 3,
+            Runes.ASTRAL, 2,
+            Runes.LAW, 2
+    ), Rs2Spellbook.LUNAR),
+    TELE_GROUP_BARBARIAN(MagicAction.TELE_GROUP_BARBARIAN, Map.of(
+            Runes.FIRE, 6,
+            Runes.ASTRAL, 2,
+            Runes.LAW, 2
+    ), Rs2Spellbook.LUNAR),
+    KHAZARD_TELEPORT(MagicAction.KHAZARD_TELEPORT, Map.of(
+            Runes.WATER, 4,
+            Runes.ASTRAL, 2,
+            Runes.LAW, 2
+    ), Rs2Spellbook.LUNAR),
+    TELE_GROUP_KHAZARD(MagicAction.TELE_GROUP_KHAZARD, Map.of(
+            Runes.WATER, 8,
+            Runes.ASTRAL, 2,
+            Runes.LAW, 2
+    ), Rs2Spellbook.LUNAR),
+    FISHING_GUILD_TELEPORT(MagicAction.FISHING_GUILD_TELEPORT, Map.of(
+            Runes.WATER, 10,
+            Runes.ASTRAL, 3,
+            Runes.LAW, 3
+    ), Rs2Spellbook.LUNAR),
+    TELE_GROUP_FISHING_GUILD(MagicAction.TELE_GROUP_FISHING_GUILD, Map.of(
+            Runes.WATER, 15,
+            Runes.ASTRAL, 3,
+            Runes.LAW, 3
+    ), Rs2Spellbook.LUNAR),
+    CATHERBY_TELEPORT(MagicAction.CATHERBY_TELEPORT, Map.of(
+            Runes.WATER, 10,
+            Runes.ASTRAL, 3,
+            Runes.LAW, 3
+    ), Rs2Spellbook.LUNAR),
+    TELE_GROUP_CATHERBY(MagicAction.TELE_GROUP_CATHERBY, Map.of(
+            Runes.WATER, 15,
+            Runes.ASTRAL, 3,
+            Runes.LAW, 3
+    ), Rs2Spellbook.LUNAR),
+    ICE_PLATEAU_TELEPORT(MagicAction.ICE_PLATEAU_TELEPORT, Map.of(
+            Runes.WATER, 8,
+            Runes.ASTRAL, 3,
+            Runes.LAW, 3
+    ), Rs2Spellbook.LUNAR),
+    TELE_GROUP_ICE_PLATEAU(MagicAction.TELE_GROUP_ICE_PLATEAU, Map.of(
+            Runes.WATER, 16,
+            Runes.ASTRAL, 3,
+            Runes.LAW, 3
+    ), Rs2Spellbook.LUNAR),
+    BAKE_PIE(MagicAction.BAKE_PIE, Map.of(
+            Runes.FIRE, 5,
+            Runes.WATER, 4,
+            Runes.ASTRAL, 1
+    ), Rs2Spellbook.LUNAR),
+    GEOMANCY(MagicAction.GEOMANCY, Map.of(
+            Runes.EARTH, 8,
+            Runes.ASTRAL, 3,
+            Runes.NATURE, 3
+    ), Rs2Spellbook.LUNAR),
+    CURE_PLANT(MagicAction.CURE_PLANT, Map.of(
+            Runes.EARTH, 8,
+            Runes.ASTRAL, 1
+    ), Rs2Spellbook.LUNAR),
+    NPC_CONTACT(MagicAction.NPC_CONTACT, Map.of(
+            Runes.AIR, 2,
+            Runes.ASTRAL, 1,
+            Runes.COSMIC, 1
+    ), Rs2Spellbook.LUNAR),
+    HUMIDIFY(MagicAction.HUMIDIFY, Map.of(
+            Runes.FIRE, 1,
+            Runes.WATER, 3,
+            Runes.ASTRAL, 1
+    ), Rs2Spellbook.LUNAR),
+    HUNTER_KIT(MagicAction.HUNTER_KIT, Map.of(
+            Runes.EARTH, 2,
+            Runes.ASTRAL, 2
+    ), Rs2Spellbook.LUNAR),
+    SPIN_FLAX(MagicAction.SPIN_FLAX, Map.of(
+            Runes.AIR, 5,
+            Runes.ASTRAL, 1,
+            Runes.NATURE, 2
+    ), Rs2Spellbook.LUNAR),
+    SUPERGLASS_MAKE(MagicAction.SUPERGLASS_MAKE, Map.of(
+            Runes.AIR, 10,
+            Runes.FIRE, 6,
+            Runes.ASTRAL, 2
+    ), Rs2Spellbook.LUNAR),
+    TAN_LEATHER(MagicAction.TAN_LEATHER, Map.of(
+            Runes.FIRE, 5,
+            Runes.ASTRAL, 2,
+            Runes.NATURE, 1
+    ), Rs2Spellbook.LUNAR),
+    STRING_JEWELLERY(MagicAction.STRING_JEWELLERY, Map.of(
+            Runes.EARTH, 10,
+            Runes.WATER, 5,
+            Runes.ASTRAL, 2
+    ), Rs2Spellbook.LUNAR),
+    MAGIC_IMBUE(MagicAction.MAGIC_IMBUE, Map.of(
+            Runes.FIRE, 7,
+            Runes.WATER, 7,
+            Runes.ASTRAL, 2
+    ), Rs2Spellbook.LUNAR),
+    FERTILE_SOIL(MagicAction.FERTILE_SOIL, Map.of(
+            Runes.EARTH, 15,
+            Runes.ASTRAL, 3,
+            Runes.NATURE, 2
+    ), Rs2Spellbook.LUNAR),
+    PLANK_MAKE(MagicAction.PLANK_MAKE, Map.of(
+            Runes.EARTH, 15,
+            Runes.ASTRAL, 2,
+            Runes.NATURE, 1
+    ), Rs2Spellbook.LUNAR),
+    RECHARGE_DRAGONSTONE(MagicAction.RECHARGE_DRAGONSTONE, Map.of(
+            Runes.WATER, 4,
+            Runes.ASTRAL, 1,
+            Runes.SOUL, 1
+    ), Rs2Spellbook.LUNAR),
+    SPELLBOOK_SWAP(MagicAction.SPELLBOOK_SWAP, Map.of(
+            Runes.ASTRAL, 3,
+            Runes.COSMIC, 2,
+            Runes.LAW, 1
+    ), Rs2Spellbook.LUNAR),
+
+    ARCEUUS_LIBRARY_TELEPORT(MagicAction.ARCEUUS_LIBRARY_TELEPORT, Map.of(
+            Runes.EARTH, 2,
+            Runes.LAW, 1
+    ), Rs2Spellbook.ARCEUUS),
+    DRAYNOR_MANOR_TELEPORT(MagicAction.DRAYNOR_MANOR_TELEPORT, Map.of(
+            Runes.EARTH, 1,
+            Runes.WATER, 1,
+            Runes.LAW, 1
+    ), Rs2Spellbook.ARCEUUS),
+    BATTLEFRONT_TELEPORT(MagicAction.BATTLEFRONT_TELEPORT, Map.of(
+            Runes.EARTH, 1,
+            Runes.FIRE, 1,
+            Runes.LAW, 1
+    ), Rs2Spellbook.ARCEUUS),
+    MIND_ALTAR_TELEPORT(MagicAction.MIND_ALTAR_TELEPORT, Map.of(
+            Runes.LAW, 1,
+            Runes.MIND, 2
+    ), Rs2Spellbook.ARCEUUS),
+    RESPAWN_TELEPORT(MagicAction.RESPAWN_TELEPORT, Map.of(
+            Runes.LAW, 1,
+            Runes.SOUL, 1
+    ), Rs2Spellbook.ARCEUUS),
+    SALVE_GRAVEYARD_TELEPORT(MagicAction.SALVE_GRAVEYARD_TELEPORT, Map.of(
+            Runes.LAW, 1,
+            Runes.SOUL, 2
+    ), Rs2Spellbook.ARCEUUS),
+    FENKENSTRAINS_CASTLE_TELEPORT(MagicAction.FENKENSTRAINS_CASTLE_TELEPORT, Map.of(
+            Runes.EARTH, 1,
+            Runes.LAW, 1,
+            Runes.SOUL, 1
+    ), Rs2Spellbook.ARCEUUS),
+    HARMONY_ISLAND_TELEPORT(MagicAction.HARMONY_ISLAND_TELEPORT, Map.of(
+            Runes.LAW, 1,
+            Runes.NATURE, 1,
+            Runes.SOUL, 1
+    ), Rs2Spellbook.ARCEUUS),
+    CEMETERY_TELEPORT(MagicAction.CEMETERY_TELEPORT, Map.of(
+            Runes.BLOOD, 1,
+            Runes.LAW, 1,
+            Runes.SOUL, 1
+    ), Rs2Spellbook.ARCEUUS),
+    BARROWS_TELEPORT(MagicAction.BARROWS_TELEPORT, Map.of(
+            Runes.BLOOD, 1,
+            Runes.LAW, 2,
+            Runes.SOUL, 2
+    ), Rs2Spellbook.ARCEUUS),
+    APE_ATOLL_TELEPORT(MagicAction.APE_ATOLL_TELEPORT, Map.of(
+            Runes.BLOOD, 2,
+            Runes.LAW, 2,
+            Runes.SOUL, 2
+    ), Rs2Spellbook.ARCEUUS),
+    GHOSTLY_GRASP(MagicAction.GHOSTLY_GRASP, Map.of(
+            Runes.AIR, 4,
+            Runes.CHAOS, 1
+    ), Rs2Spellbook.ARCEUUS),
+    SKELETAL_GRASP(MagicAction.SKELETAL_GRASP, Map.of(
+            Runes.EARTH, 8,
+            Runes.DEATH, 1
+    ), Rs2Spellbook.ARCEUUS),
+    UNDEAD_GRASP(MagicAction.UNDEAD_GRASP, Map.of(
+            Runes.FIRE, 12,
+            Runes.BLOOD, 1
+    ), Rs2Spellbook.ARCEUUS),
+    INFERIOR_DEMONBANE(MagicAction.INFERIOR_DEMONBANE, Map.of(
+            Runes.FIRE, 4,
+            Runes.CHAOS, 1
+    ), Rs2Spellbook.ARCEUUS),
+    SUPERIOR_DEMONBANE(MagicAction.SUPERIOR_DEMONBANE, Map.of(
+            Runes.FIRE, 8,
+            Runes.SOUL, 1
+    ), Rs2Spellbook.ARCEUUS),
+    DARK_DEMONBANE(MagicAction.DARK_DEMONBANE, Map.of(
+            Runes.FIRE, 12,
+            Runes.SOUL, 2
+    ), Rs2Spellbook.ARCEUUS),
+    LESSER_CORRUPTION(MagicAction.LESSER_CORRUPTION, Map.of(
+            Runes.DEATH, 1,
+            Runes.SOUL, 2
+    ), Rs2Spellbook.ARCEUUS),
+    GREATER_CORRUPTION(MagicAction.GREATER_CORRUPTION, Map.of(
+            Runes.BLOOD, 1,
+            Runes.SOUL, 3
+    ), Rs2Spellbook.ARCEUUS),
+    RESURRECT_LESSER_GHOST(MagicAction.RESURRECT_LESSER_GHOST, Map.of(
+            Runes.AIR, 10,
+            Runes.COSMIC, 1,
+            Runes.MIND, 5
+    ), Rs2Spellbook.ARCEUUS),
+    RESURRECT_LESSER_SKELETON(MagicAction.RESURRECT_LESSER_SKELETON, Map.of(
+            Runes.AIR, 10,
+            Runes.COSMIC, 1,
+            Runes.MIND, 5
+    ), Rs2Spellbook.ARCEUUS),
+    RESURRECT_LESSER_ZOMBIE(MagicAction.RESURRECT_LESSER_ZOMBIE, Map.of(
+            Runes.AIR, 10,
+            Runes.COSMIC, 1,
+            Runes.MIND, 5
+    ), Rs2Spellbook.ARCEUUS),
+    RESURRECT_SUPERIOR_GHOST(MagicAction.RESURRECT_SUPERIOR_GHOST, Map.of(
+            Runes.EARTH, 10,
+            Runes.COSMIC, 1,
+            Runes.DEATH, 5
+    ), Rs2Spellbook.ARCEUUS),
+    RESURRECT_SUPERIOR_SKELETON(MagicAction.RESURRECT_SUPERIOR_SKELETON, Map.of(
+            Runes.EARTH, 10,
+            Runes.COSMIC, 1,
+            Runes.DEATH, 5
+    ), Rs2Spellbook.ARCEUUS),
+    RESURRECT_SUPERIOR_ZOMBIE(MagicAction.RESURRECT_SUPERIOR_ZOMBIE, Map.of(
+            Runes.EARTH, 10,
+            Runes.COSMIC, 1,
+            Runes.DEATH, 5
+    ), Rs2Spellbook.ARCEUUS),
+    DARK_LURE(MagicAction.DARK_LURE, Map.of(
+            Runes.DEATH, 1,
+            Runes.NATURE, 1
+    ), Rs2Spellbook.ARCEUUS),
+    MARK_OF_DARKNESS(MagicAction.MARK_OF_DARKNESS, Map.of(
+            Runes.COSMIC, 1,
+            Runes.SOUL, 1
+    ), Rs2Spellbook.ARCEUUS),
+    WARD_OF_ARCEUUS(MagicAction.WARD_OF_ARCEUUS, Map.of(
+            Runes.COSMIC, 1,
+            Runes.NATURE, 2,
+            Runes.SOUL, 4
+    ), Rs2Spellbook.ARCEUUS),
+    BASIC_REANIMATION(MagicAction.BASIC_REANIMATION, Map.of(
+            Runes.BODY, 4,
+            Runes.NATURE, 2
+    ), Rs2Spellbook.ARCEUUS),
+    ADEPT_REANIMATION(MagicAction.ADEPT_REANIMATION, Map.of(
+            Runes.BODY, 4,
+            Runes.NATURE, 3,
+            Runes.SOUL, 1
+    ), Rs2Spellbook.ARCEUUS),
+    EXPERT_REANIMATION(MagicAction.EXPERT_REANIMATION, Map.of(
+            Runes.BLOOD, 1,
+            Runes.NATURE, 3,
+            Runes.SOUL, 2
+    ), Rs2Spellbook.ARCEUUS),
+    MASTER_REANIMATION(MagicAction.MASTER_REANIMATION, Map.of(
+            Runes.BLOOD, 2,
+            Runes.NATURE, 4,
+            Runes.SOUL, 4
+    ), Rs2Spellbook.ARCEUUS),
+    DEMONIC_OFFERING(MagicAction.DEMONIC_OFFERING, Map.of(
+            Runes.SOUL, 1,
+            Runes.WRATH, 1
+    ), Rs2Spellbook.ARCEUUS),
+    SINISTER_OFFERING(MagicAction.SINISTER_OFFERING, Map.of(
+            Runes.BLOOD, 1,
+            Runes.WRATH, 1
+    ), Rs2Spellbook.ARCEUUS),
+    SHADOW_VEIL(MagicAction.SHADOW_VEIL, Map.of(
+            Runes.EARTH, 5,
+            Runes.FIRE, 5,
+            Runes.COSMIC, 5
+    ), Rs2Spellbook.ARCEUUS),
+    VILE_VIGOUR(MagicAction.VILE_VIGOUR, Map.of(
+            Runes.AIR, 3,
+            Runes.SOUL, 1
+    ), Rs2Spellbook.ARCEUUS),
+    DEGRIME(MagicAction.DEGRIME, Map.of(
+            Runes.EARTH, 4,
+            Runes.NATURE, 2
+    ), Rs2Spellbook.ARCEUUS),
+    RESURRECT_CROPS(MagicAction.RESURRECT_CROPS, Map.of(
+            Runes.EARTH, 25,
+            Runes.BLOOD, 8,
+            Runes.NATURE, 12,
+            Runes.SOUL, 8
+    ), Rs2Spellbook.ARCEUUS),
+    DEATH_CHARGE(MagicAction.DEATH_CHARGE, Map.of(
+            Runes.BLOOD, 1,
+            Runes.DEATH, 1,
+            Runes.SOUL, 1
+    ), Rs2Spellbook.ARCEUUS);
+    
+    private final String name;
     private final MagicAction action;
     private final Map<Runes, Integer> requiredRunes;
+    private final Rs2Spellbook spellbook;
+    private final int requiredLevel;
+    
+    public boolean hasRequiredLevel() {
+        return Rs2Player.getSkillRequirement(Skill.MAGIC, this.requiredLevel);
+    }
+    
+    public boolean hasRequiredSpellbook() {
+        return Microbot.getVarbitValue(Varbits.SPELLBOOK) == getSpellbook().getValue();
+    }
+    
+    private boolean hasRequirements() {
+        return hasRequiredLevel() && hasRequiredSpellbook();
+    }
+
+    Rs2Spells(MagicAction action, Map<Runes, Integer> requiredRunes, Rs2Spellbook spellbook) {
+        this.action = action;
+        this.requiredRunes = requiredRunes;
+        this.spellbook = spellbook;
+        this.name = action.getName();
+        this.requiredLevel = action.getLevel();
+    }
 }
