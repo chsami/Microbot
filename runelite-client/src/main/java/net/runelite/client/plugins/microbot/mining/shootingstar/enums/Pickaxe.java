@@ -17,7 +17,14 @@ public enum Pickaxe {
     MITHRIL_PICKAXE("mithril pickaxe", ItemID.MITHRIL_PICKAXE, 21, 20),
     ADAMANT_PICKAXE("adamant pickaxe", ItemID.ADAMANT_PICKAXE, 31, 30),
     RUNE_PICKAXE("rune pickaxe", ItemID.RUNE_PICKAXE, 41, 40),
+    GILDED_PICKAXE("gilded pickaxe", ItemID.GILDED_PICKAXE, 41, 40),
     DRAGON_PICKAXE("dragon pickaxe", ItemID.DRAGON_PICKAXE, 61, 60),
+    DRAGON_PICKAXE_UPGRADED("dragon pickaxe (upgraded)", ItemID.DRAGON_PICKAXE_12797, 61, 60),
+    DRAGON_PICKAXE_OR("dragon pickaxe (or)", ItemID.DRAGON_PICKAXE_OR, 61, 60),
+    DRAGON_PICKAXE_OR_25376("dragon pickaxe (or) (trailblazer)", ItemID.DRAGON_PICKAXE_OR_25376, 61, 60),
+    DRAGON_PICKAXE_OR_25112("trailblazer pickaxe", 25112, 61, 60),
+    INFERNAL_PICKAXE("infernal pickaxe", ItemID.INFERNAL_PICKAXE, 61, 60),
+    THIRD_AGE_PICKAXE("3rd age pickaxe", 20014, 61, 65),
     CRYSTAL_PICKAXE("crystal pickaxe", ItemID.CRYSTAL_PICKAXE, 71, 70);
 
     private final String itemName;
@@ -27,5 +34,9 @@ public enum Pickaxe {
 
     public boolean hasRequirements() {
         return Rs2Player.getSkillRequirement(Skill.MINING, this.miningLevel) && Rs2Player.getSkillRequirement(Skill.ATTACK, this.attackLevel);
+    }
+
+    public boolean hasUseRequirements() {
+        return Rs2Player.getSkillRequirement(Skill.MINING, this.miningLevel);
     }
 }

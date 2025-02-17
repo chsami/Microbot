@@ -219,7 +219,6 @@ public class ShootingStarScript extends Script {
                 System.out.println("Total time for loop " + totalTime);
 
             } catch (Exception ex) {
-                ex.printStackTrace();
                 Microbot.log(ex.getMessage());
             }
         }, 0, 600, TimeUnit.MILLISECONDS);
@@ -372,7 +371,7 @@ public class ShootingStarScript extends Script {
 
         for (Pickaxe pickaxe : Pickaxe.values()) {
             if (items.stream().noneMatch(i -> i.name.toLowerCase().contains(pickaxe.getItemName()))) continue;
-            if (pickaxe.hasRequirements()) {
+            if (pickaxe.hasUseRequirements()) {
                 if (bestPickaxe == null || pickaxe.getMiningLevel() > bestPickaxe.getMiningLevel()) {
                     bestPickaxe = pickaxe;
                 }
