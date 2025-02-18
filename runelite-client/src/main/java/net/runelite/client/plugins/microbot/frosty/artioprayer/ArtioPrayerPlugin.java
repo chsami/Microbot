@@ -28,6 +28,8 @@ import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
 import java.util.Random;
+import java.util.HashMap;
+import java.util.Map;
 
 import static net.runelite.client.plugins.microbot.Microbot.log;
 
@@ -55,13 +57,16 @@ public class ArtioPrayerPlugin extends Plugin {
     private Rs2PrayerEnum currentPrayer = Rs2PrayerEnum.PROTECT_RANGE;
     private int lastAttackTick = -1;
     private int lastMageProjectileTick = -1;
-    private WorldPoint lastNpcPosition = null;
-    private int movingForTicks = 0;
+    private int lastPotionDrinkTick = -1;
+    @Getter
+    private NPC cachedArtio = null;
 
     @Override
     protected void startUp() {
         overlayManager.add(overlay);
     }
+
+
     @Override
     protected void shutDown() {
         Rs2Prayer.disableAllPrayers();
@@ -70,29 +75,34 @@ public class ArtioPrayerPlugin extends Plugin {
 
     @Subscribe
     public void onGameTick(GameTick event) {
-        int maxPrayer = Microbot.getClient().getRealSkillLevel(Skill.PRAYER);
-        int currentPrayerLvl = Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER);
-        int randomThreshold = (int) (maxPrayer * (0.2 + new Random().nextDouble() * 0.2));
         int currentTick = client.getTickCount();
 
-        NPC artio = Rs2Npc.getNpc(boss.getNpcId());
-        if (artio == null || artio.isDead()) {
+        if (cachedArtio == null || cachedArtio.isDead() || cachedArtio.getId() != boss.getNpcId()) {
+            cachedArtio = Rs2Npc.getNpc(boss.getNpcId());
+        }
+
+        if (cachedArtio == null || cachedArtio.isDead()) {
             Rs2Prayer.disableAllPrayers();
-            lastNpcPosition = null;
-            movingForTicks = 0;
             return;
         }
 
         if (!Rs2Prayer.isQuickPrayerEnabled()) {
             Rs2Prayer.toggleQuickPrayer(true);
         }
-        if (lastMageProjectileTick != -1 && currentTick - lastMageProjectileTick >=2) {
+
+        if (lastMageProjectileTick != -1 && currentTick - lastMageProjectileTick >= 2) {
             switchPrayer(Rs2PrayerEnum.PROTECT_RANGE);
             lastMageProjectileTick = -1;
         }
-        if (currentPrayerLvl <= randomThreshold) {
+
+        int maxPrayer = Microbot.getClient().getRealSkillLevel(Skill.PRAYER);
+        int currentPrayerLvl = Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER);
+        int randomThreshold = (int) (maxPrayer * (0.2 + new Random().nextDouble() * 0.2));
+
+        if (currentPrayerLvl <= randomThreshold && (lastPotionDrinkTick == -1 || currentTick - lastPotionDrinkTick >= 15)) {
             if (Rs2Inventory.interact(Rs2Potion.getPrayerPotionsVariants(), "Drink")) {
                 log("Drank");
+                lastPotionDrinkTick = currentTick;
             }
         }
     }
@@ -106,8 +116,7 @@ public class ArtioPrayerPlugin extends Plugin {
 
         if (projectile.getId() == boss.getRangeProjectile()) {
             switchPrayer(Rs2PrayerEnum.PROTECT_RANGE);
-        }
-        if (projectile.getId() == boss.getMageProjectile()) {
+        } else if (projectile.getId() == boss.getMageProjectile()) {
             switchPrayer(Rs2PrayerEnum.PROTECT_MAGIC);
             lastMageProjectileTick = currentTick;
         }
@@ -118,6 +127,7 @@ public class ArtioPrayerPlugin extends Plugin {
         if (!(event.getActor() instanceof NPC)) return;
         NPC npc = (NPC) event.getActor();
         if (npc.getId() != boss.getNpcId()) return;
+
         int animationID = npc.getAnimation();
         int currentTick = client.getTickCount();
 
@@ -134,20 +144,20 @@ public class ArtioPrayerPlugin extends Plugin {
     }
 
     private void switchPrayer(Rs2PrayerEnum activate) {
-        if (currentPrayer != activate) {
+        if (currentPrayer == activate) return;
+
+        Rs2Prayer.toggle(activate, true);
+        int attempts = 0;
+        while (attempts < 2 && !Rs2Prayer.isPrayerActive(activate)) {
+            Rs2Random.randomGaussian(100, 50);
             Rs2Prayer.toggle(activate, true);
-            int attempts = 0;
-            while (attempts < 2 && !Rs2Prayer.isPrayerActive(activate)) {
-                Rs2Random.randomGaussian(100, 50);
-                Rs2Prayer.toggle(activate, true);
-                attempts ++;
-            }
-            if (Rs2Prayer.isPrayerActive(activate)) {
-                currentPrayer = activate;
-                log("Successfully switched to" + activate.name());
-            } else {
-                log("Faield to switch to" + activate.name());
-            }
+            attempts++;
+        }
+        if (Rs2Prayer.isPrayerActive(activate)) {
+            currentPrayer = activate;
+            log("Successfully switched to " + activate.name());
+        } else {
+            log("Failed to switch to " + activate.name());
         }
     }
 }

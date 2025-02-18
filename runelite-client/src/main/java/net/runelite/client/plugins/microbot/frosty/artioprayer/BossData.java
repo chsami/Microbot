@@ -32,4 +32,5 @@ public enum BossData {
         }
         return null;
     }
+
 }
