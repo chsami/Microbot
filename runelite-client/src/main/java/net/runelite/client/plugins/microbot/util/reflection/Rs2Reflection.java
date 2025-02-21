@@ -24,19 +24,19 @@ public class Rs2Reflection {
      * sequence maps to an actor animation
      * actor can be an npc/player
      */
-    static int animationMultiplier = 692374621; //can be found in actor.java (int sequence)
-    static String npcDefinition = "ay"; //NPCComposition definition in NPC.class
-    static String headIconSpriteIndex = "bj"; //headIconSpriteIndex in NPCComposition.class
+      static int animationMultiplier = 527657827;
+      static String npcDefinition = "ab";
+      static String headIconSpriteIndex = "bn";
 
-    static final byte INDEX_GARBAGE = -28; // found in Varcs.java
-    static final String INDEX_FIELD = "ab"; // Varcs.java
-    static final String INDEX_CLASS = "es"; // login.java
-    public static final String SESSION_FIELD = "gv"; //AsyncHttpResponse.java
-    public static final String SESSION_CLASS = "ag"; // AsyncHttpResponse.java
-    public static final String CHAR_FIELD = "gl"; //DevicePcmPlayerProvider.java
-    public static final String CHAR_CLASS = "am"; //DevicePcmPlayerProvider.java
-    public static final String DISPLAY_FIELD = "cw"; //Login.java
-    public static final String DISPLAY_CLASS = "dh"; //Login.java
+    static final int INDEX_GARBAGE = 470309621;
+    static final String INDEX_FIELD = "it"; 
+    static final String INDEX_CLASS = "aw";
+    public static final String SESSION_FIELD = "gb";
+    public static final String SESSION_CLASS = "fk";
+    public static final String CHAR_FIELD = "gt"; 
+    public static final String CHAR_CLASS = "gu"; 
+    public static final String DISPLAY_FIELD = "cg";
+    public static final String DISPLAY_CLASS = "cr";
 
     /**
      * Credits to EthanApi
