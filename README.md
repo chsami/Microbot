@@ -3,7 +3,7 @@
 
 
 # Microbot
-Microbot is an opensource oldschool runescape client based on runelite. It uses a plugin system to enable scripting. Here is a youtube channel showing off some of the scripts
+Microbot es un cliente de Runescape de código abierto basado en Runelite. Utiliza un sistema de complementos para habilitar la creación de scripts. Aquí hay un canal de YouTube que muestra algunos de los scripts.
 
 ## Youtube
 
@@ -14,14 +14,14 @@ Microbot is an opensource oldschool runescape client based on runelite. It uses 
 [![Discord Banner 1](https://discord.com/api/guilds/1087718903985221642/widget.png?style=banner1)](https://discord.gg/zaGrfqFEWE)
 
  
-If you have any questions, please join our [Discord](https://discord.gg/zaGrfqFEWE) server.
+Si tienes alguna pregunta, únete a nuestro [Discord](https://discord.gg/zaGrfqFEWE) servidor.
 
 
-## ☕ Buy Me a Coffee
+## ☕ Invítame a un café
 
-If you enjoy my open source work and would like to support me, consider buying me a coffee! Your support helps me stay caffeinated and motivated to keep improving and creating awesome projects.
+Si te gusta mi trabajo de código abierto y te gustaría apoyarme, ¡considera invitarme a un café! Tu apoyo me ayuda a mantenerme con energía y motivado para seguir mejorando y creando proyectos increíbles.
 
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-donate-yellow)](https://www.paypal.com/paypalme/MicrobotBE?country.x=BE)
+[![Invítame a un café](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-donate-yellow)](https://www.paypal.com/paypalme/MicrobotBE?country.x=BE)
 
 
 ![image](https://github.com/user-attachments/assets/c510631d-5ecf-4968-a916-2942f9b754f8)
@@ -36,30 +36,30 @@ ETC Address: 0xf8A6d6Fae32319A93341aE45F1ED87DA2Aa04132
 DOGE Address: DNHQDHKn7MKdMQRZyoSrJ68Lnd1D9bjbTn
 
 
-Thank you for your support! 😊
+¡Gracias por su apoyo! 😊
 
-# I Want To Play
+# Quiero jugar
 
-## Non jagex account
+## Cuenta que no es de Jagex
 
-Here is a youtube video on how to setup microbot from scratch for **NON-JAGEX ACCOUNTS**
+Aquí hay un video de YouTube sobre cómo configurar Microbot desde cero para **CUENTAS QUE NO SON DE JAGEX**
 
 https://www.youtube.com/watch?v=EbtdZnxq5iw
 
-## Jagex Account
+## Cuenta Jagex
 
-Follow the runelite wiki for setting up jagex accounts: https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts
+Siga la wiki de Runelite para configurar cuentas de Jagex: https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts
 
-After you've done setting it up follow these two steps:
+Una vez que hayas terminado de configurarlo, sigue estos dos pasos:
 
-1) Simply login with the jagex launcher for the first time. This will create a token for your account. Close everything after succesfully login in through the jagex launcher. 
-2) Open the microbot.jar from microbot and this should prompt you with the jagex account to login.
+1) Simplemente inicie sesión con el lanzador de jagex por primera vez. Esto creará un token para su cuenta. Cierre todo después de iniciar sesión con éxito a través del lanzador de jagex.
+2) Abra el archivo microbot.jar desde microbot y esto debería indicarle la cuenta de jagex para iniciar sesión.
 
-# I Want To Develop
+# Quiero desarrollarme
 
-## First Time Running the project as a Developer?
+## ¿Primera vez corriendo el proyecto como desarrollador?
 
-Make sure to follow this guide if it's your first time running the project
+Asegúrate de seguir esta guía si es la primera vez que ejecutas el proyecto.
 
 [https://github.com/runelite/runelite/wiki/Building-with-IntelliJ-IDEA](https://github.com/chsami/microbot/wiki/Building-with-IntelliJ-IDEA)
 
@@ -67,15 +67,15 @@ Make sure to follow this guide if it's your first time running the project
 
 [![image](https://github.com/user-attachments/assets/92adb50f-1500-44c0-a069-ff976cccd317)](https://chatgpt.com/g/g-LM0fGeeXB-microbot-documentation)
 
-Use this AI Chatbot to learn how to write scripts in [Microbot GPT](https://chatgpt.com/g/g-LM0fGeeXB-microbot-documentation)
+Utilice este chatbot de IA para aprender a escribir scripts en [Microbot GPT](https://chatgpt.com/g/g-LM0fGeeXB-microbot-documentation)
 
-## Project Layout
+## Diseño del proyecto
 
-Under the Microbot Plugin you'll find a util folder that has all the utility classes which make it easier to interact with the game
+Debajo del complemento Microbot encontrarás una carpeta de utilidades que contiene todas las clases de utilidades que facilitan la interacción con el juego.
 
-Utility Classes are prefixed with Rs2. So for player it is Rs2Player. Npcs is Rs2Npc and so on...
+Las clases de utilidad tienen el prefijo Rs2. Por lo tanto, para el jugador es Rs2Player. Para los NPC es Rs2Npc y así sucesivamente...
 
-If you can't find a specific thing in a utility class you can always call the Microbot object which has access to every object runelite exposes. So to get the location of a player you can do
+Si no puedes encontrar algo específico en una clase de utilidad, siempre puedes llamar al objeto Microbot que tiene acceso a todos los objetos que expone Runelite. Entonces, para obtener la ubicación de un jugador, puedes hacer lo siguiente:
 
 ```java 
 Microbot.getClient().getLocalPlayer().getWorldLocation()
@@ -85,11 +85,11 @@ Microbot.getClient().getLocalPlayer().getWorldLocation()
 
 ## ExampleScript
 
-There is an example script which you can use to play around with the api.
+Hay un script de ejemplo que puedes usar para jugar con la API.
 
 ![img_1.png](img_1.png)
 
-How does the example script look like?
+¿Cómo se ve el script de ejemplo?
 
 ```java
 public class ExampleScript extends Script {
@@ -112,7 +112,7 @@ public static double version = 1.0;
 
                 long startTime = System.currentTimeMillis();
                 
-                //YOUR CODE COMES HERE
+                //TU CÓDIGO VIENE AQUÍ
                 Rs2Npc.attack("guard");
                 
                 long endTime = System.currentTimeMillis();
@@ -133,12 +133,12 @@ public static double version = 1.0;
 }
 ```
 
-All our scripts exist of Config. This is the settings for a specific script
-Overlay, this is a visual overlay for a specific script
-Plugin which handles the code for starting and stopping the script
-Script which handles all of the code that microbot has to execute.
+Todos nuestros scripts tienen una configuración. Esta es la configuración para un script específico.
+Superposición, esta es una superposición visual para un script específico.
+Plugin que maneja el código para iniciar y detener el script.
+Script que maneja todo el código que microbot tiene que ejecutar.
 
-Inside the startup of a plugin we can call the script code like this:
+Dentro del inicio de un plugin podemos llamar al código del script de esta manera:
 
 ```java
 @Override
@@ -146,16 +146,15 @@ protected void startUp() throws AWTException {
 if (overlayManager != null) {
 overlayManager.add(exampleOverlay);
 }
-//CALL YOUR SCRIPT.RUN
+//Llama a tu SCRIPT.RUN
 exampleScript.run(config);
 }
 ```
 
-Credits to runelite for making all of this possible <3
+Créditos a runelite por hacer todo esto posible. <3
 
 https://github.com/runelite/runelite
 
-### License
+### Licencia
 
-RuneLite is licensed under the BSD 2-clause license. See the license header in the respective file to be sure.
-
+RuneLite tiene licencia BSD de 2 cláusulas. Consulta el encabezado de la licencia en el archivo correspondiente para estar seguro.
