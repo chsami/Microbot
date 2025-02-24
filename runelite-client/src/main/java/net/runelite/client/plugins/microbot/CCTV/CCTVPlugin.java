@@ -16,7 +16,7 @@ import java.util.Random;
 import java.util.concurrent.Executors;
 
 @PluginDescriptor(
-        name = PluginDescriptor.LT + "CCTV Callisto",
+        name = PluginDescriptor.LT + "CCTV Callisto Level 3",
         description = "Habilite esto y nunca cerrará sesión"
 )
 public class CCTVPlugin extends Plugin {
