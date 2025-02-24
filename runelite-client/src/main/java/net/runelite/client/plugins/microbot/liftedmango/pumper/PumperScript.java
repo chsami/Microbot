@@ -19,8 +19,7 @@ public class PumperScript extends Script {
                 if (!super.run()) return;
                 long startTime = System.currentTimeMillis();
 
-                //CODE HERE
-                if (!Rs2Player.isInteracting()) {
+                if (!Rs2Player.isAnimating()) {
                     Rs2GameObject.interact(9090, "operate");
                     sleep(50,200);
                 }
