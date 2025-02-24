@@ -2,17 +2,21 @@ package net.runelite.client.plugins.microbot.CCTV;
 
 import com.google.inject.Inject;
 import net.runelite.api.Client;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import java.awt.event.KeyEvent;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Executors;
 
 @PluginDescriptor(
-        name = PluginDescriptor.LT + "CCTV",
+        name = PluginDescriptor.LT + "CCTV Callisto",
         description = "Habilite esto y nunca cerrará sesión"
 )
 public class CCTVPlugin extends Plugin {
@@ -24,6 +28,7 @@ public class CCTVPlugin extends Plugin {
     @Override
     protected void startUp() throws Exception {
         this.randomDelay = this.randomDelay();
+        subirACuevaCallisto();  // Llamamos la función al iniciar el plugin
     }
 
     @Override
@@ -61,5 +66,21 @@ public class CCTVPlugin extends Plugin {
         this.client.getCanvas().dispatchEvent(keyRelease);
         KeyEvent keyTyped = new KeyEvent(this.client.getCanvas(), KeyEvent.KEY_TYPED, System.currentTimeMillis(), 0, KeyEvent.VK_SPACE, KeyEvent.CHAR_UNDEFINED);
         this.client.getCanvas().dispatchEvent(keyTyped);
+    }
+
+    // Ruta optimizada para evitar obeliscos, Poison Spiders y Lesser Demons
+    private void subirACuevaCallisto() {
+        List<WorldPoint> rutaSegura = Arrays.asList(
+                new WorldPoint(3210, 3790, 0), // Inicio seguro cerca del borde de la wilderness
+                new WorldPoint(3235, 3805, 0), // Esquivamos el obelisco del nivel 19
+                new WorldPoint(3255, 3820, 0), // Pasamos lejos de Poison Spiders
+                new WorldPoint(3270, 3835, 0), // Movemos hacia una zona sin NPCs
+                new WorldPoint(3285, 3845, 0), // Evitamos Lesser Demons cerca de la entrada
+                new WorldPoint(3294, 3854, 0)  // Entrada exacta de la cueva de Callisto
+        );
+
+        for (WorldPoint waypoint : rutaSegura) {
+            Rs2Walker.walkTo(waypoint);
+        }
     }
 }

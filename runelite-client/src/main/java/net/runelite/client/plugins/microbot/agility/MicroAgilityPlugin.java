@@ -8,6 +8,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.agility.models.AgilityObstacleModel;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.plugins.microbot.util.misc.Operation;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import javax.inject.Inject;
 import java.awt.*;
 import java.util.ArrayList;
@@ -211,7 +212,25 @@ public class MicroAgilityPlugin extends Plugin {
 
         //Werewolf
 
-        //Wilderness
+        // Wilderness Agility Course
+        agilityScript.wildernessCourse.add(new AgilityObstacleModel(OBSTACLE_PIPE_23137)); // Entrada del curso
+        agilityScript.wildernessCourse.add(new AgilityObstacleModel(ROPESWING_23132)); // Cuerda para cruzar
+        agilityScript.wildernessCourse.add(new AgilityObstacleModel(STEPPING_STONE_23556)); // Piedras en el camino
+        agilityScript.wildernessCourse.add(new AgilityObstacleModel(LOG_BALANCE_23542)); // Tronco de equilibrio
+        agilityScript.wildernessCourse.add(new AgilityObstacleModel(OBSTACLE_PIPE_23138)); // Salida del curso
+
+// Agility Dispenser - Punto donde se canjean los Wilderness Agility Tickets
+       /* agilityScript.wildernessCourse.add(new AgilityObstacleModel(AGILITY_DISPENSER));
+
+// Canjear Wilderness Agility Tickets si se tienen 10 o más
+        agilityScript.setOnCourseComplete(() -> {
+            int ticketCount = agilityScript.getInventory().count(TICKET_DISPENSER);
+
+            if (ticketCount >= 10) {
+                agilityScript.getInventory().interact(TICKET_DISPENSER, "Redeem");
+                log.info("Canjeando 10 Wilderness Agility Tickets...");
+            }
+        });*/
 
         agilityScript.run(config);
     }
@@ -233,6 +252,7 @@ public class MicroAgilityPlugin extends Plugin {
         agilityScript.shayzienbasicCourse = new ArrayList<>();
         agilityScript.shayzienadvancedCourse = new ArrayList<>();
         agilityScript.apeatollCourse = new ArrayList<>();
+        agilityScript.wildernessCourse = new ArrayList<>();
 
 
         overlayManager.remove(agilityOverlay);

@@ -54,6 +54,7 @@ public class AgilityScript extends Script {
     public List<AgilityObstacleModel> wyrmadvancedCourse = new ArrayList<>();
     public List<AgilityObstacleModel> shayzienbasicCourse = new ArrayList<>();
     public List<AgilityObstacleModel> shayzienadvancedCourse = new ArrayList<>();
+    public List<AgilityObstacleModel> wildernessCourse = new ArrayList<>();
 
     WorldPoint startCourse = null;
 
@@ -99,6 +100,8 @@ public class AgilityScript extends Script {
                 return shayzienbasicCourse;
             case SHAYZIEN_ADVANCED_COURSE:
                 return shayzienadvancedCourse;
+            case WILDERNESS_CURSE_COURSE:
+                return wildernessCourse;
             default:
                 return canafisCourse;
         }
@@ -152,6 +155,9 @@ public class AgilityScript extends Script {
                 startCourse = new WorldPoint(1551, 3632, 0);
                 break;
             case SHAYZIEN_ADVANCED_COURSE:
+                startCourse = new WorldPoint(1551, 3632, 0);
+                break;
+            case WILDERNESS_CURSE_COURSE:
                 startCourse = new WorldPoint(1551, 3632, 0);
                 break;
         }

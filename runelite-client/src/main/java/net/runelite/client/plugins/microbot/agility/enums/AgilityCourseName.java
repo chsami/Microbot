@@ -19,8 +19,8 @@ public enum AgilityCourseName
     SEERS_VILLAGE_ROOFTOP_COURSE("Seers' Village Rooftop Course", new WorldPoint(2728, 3488, 0)),
     SHAYZIEN_BASIC_COURSE("Shayzien Basic Agility Course", new WorldPoint(1551, 3632, 0)),
     SHAYZIEN_ADVANCED_COURSE("Shayzien Advanced Agility Course", new WorldPoint(1551, 3632, 0)),
-    VARROCK_ROOFTOP_COURSE("Varrock Rooftop Course", new WorldPoint(3219, 3414, 0));
-
+    VARROCK_ROOFTOP_COURSE("Varrock Rooftop Course", new WorldPoint(3219, 3414, 0)),
+    WILDERNESS_CURSE_COURSE("Wilderness Curse Course", new WorldPoint(3030, 3920, 0));
 
     private final String tooltip;
     private final WorldPoint location;

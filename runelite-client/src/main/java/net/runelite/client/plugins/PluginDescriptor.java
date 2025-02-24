@@ -39,7 +39,8 @@ public @interface PluginDescriptor
     String DrDeath = "<html>[<font color=#FF0000>DD</font>]";
     String Bee = "<html>[<font color=#FFD700><b>B</b></font>] ";
     String Nate = "<html>[<font color=orange>N</font>] ";
-    String Mocrosoft = "<html>[<font color=#b8f704M>M</font>] ";
+	String Mocrosoft = "<html>[<font color=#b8f704M>M</font>] ";
+	String LT = "<html>[<font color=#b8f704M>LT</font>] ";
     String OG = "<html>[<font color=#FF69B4>O</font>] ";
     String Default = "<html>[<font color=green>D</font>] ";
     String SaCo = "<html>[<font color=#0d937b>S</font>] ";
