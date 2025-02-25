@@ -452,6 +452,7 @@ public enum Activity {
     KILLING_HOBGOBLINS("Killing hobgoblins", Category.COMBAT_MID, ActivityIntensity.MODERATE),
     MINING_GOLD_ORE_CRAFTING_GUILD("Mining gold ore (Crafting Guild)", Category.SKILLING_MINING, ActivityIntensity.LOW),
     KILLING_WIZARDS("Killing wizards", Category.COMBAT_LOW, ActivityIntensity.LOW),
+    CRAFTING_BLOODS_TRUE_ALTAR("Crafting bloods at true altar", Category.SKILLING_RUNECRAFT, ActivityIntensity.MODERATE),
     KILLING_BEARS("Killing bears", Category.COMBAT_MID, ActivityIntensity.MODERATE),
     MINING_COAL_AND_SUPERHEATING_MITHRIL_BARS("Mining coal and superheating Mithril bars", Category.SKILLING_MINING, ActivityIntensity.MODERATE),
     MINING_COAL_FREE_TO_PLAY("Mining coal (free-to-play)", Category.SKILLING_MINING, ActivityIntensity.MODERATE),

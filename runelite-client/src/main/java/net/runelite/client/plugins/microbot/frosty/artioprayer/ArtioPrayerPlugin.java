@@ -66,7 +66,6 @@ public class ArtioPrayerPlugin extends Plugin {
         overlayManager.add(overlay);
     }
 
-
     @Override
     protected void shutDown() {
         Rs2Prayer.disableAllPrayers();
@@ -140,6 +139,8 @@ public class ArtioPrayerPlugin extends Plugin {
             switchPrayer(Rs2PrayerEnum.PROTECT_MAGIC);
         } else if (animationID == boss.getRangeAnimation()) {
             switchPrayer(Rs2PrayerEnum.PROTECT_RANGE);
+        } else if (animationID == boss.getMeleeAnimation()){
+            switchPrayer((Rs2PrayerEnum.PROTECT_MELEE));
         }
     }
 

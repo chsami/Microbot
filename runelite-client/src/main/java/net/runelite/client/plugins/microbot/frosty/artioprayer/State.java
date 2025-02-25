@@ -1,9 +1,13 @@
 package net.runelite.client.plugins.microbot.frosty.artioprayer;
 
 public enum State {
-    FREEZING,
-    MOVING,
-    ATTACKING,
-    RESETTING,
+    BANKING,
+    GOING_BACK,
+    FIGHTING,
     IDLE,
+    HOME,
+    WALKING,
+    CHECKING,
+    ENTERING,
+    HOPPING,
 }
