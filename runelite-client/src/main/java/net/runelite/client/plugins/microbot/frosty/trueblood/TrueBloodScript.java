@@ -104,6 +104,7 @@ package net.runelite.client.plugins.microbot.frosty.trueblood;
 
 import net.runelite.api.Client;
 import net.runelite.api.GameObject;
+import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
@@ -151,6 +152,8 @@ public class TrueBloodScript extends Script {
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
                 long startTime = System.currentTimeMillis();
+
+
 
 
                 //CODE HERE
@@ -252,10 +255,7 @@ public class TrueBloodScript extends Script {
                     && Rs2Player.getWorldLocation().getRegionID() == 13721, 1200);
             return;
         }
-        sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving()
-                && Rs2Player.getWorldLocation().getRegionID() == 13721, 1200);
-
-        Microbot.log("Teleport successful! Switching to IDLE.");
+        sleep(1200);
         state = State.WALKING_TO;
     }
 
@@ -303,6 +303,7 @@ public class TrueBloodScript extends Script {
                         attempts++;
                         continue;
                     }
+                    sleep(1200);
 
                     // Wait for position or region change
                     entered = sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving() &&
@@ -402,23 +403,21 @@ public class TrueBloodScript extends Script {
         }
 
         // Try to enter the altar
-        boolean enteredAltar = Rs2GameObject.interact(altar.getAltarID(), "Enter");
+        boolean enteredAltar = Rs2GameObject.interact(altar.getRuinsID(), "Enter");
         if (!enteredAltar) {
             Microbot.log("ERROR: Could not interact with the altar (ID: " + altar.getAltarID() + ")");
             return;
         }
-        sleepUntil(() -> !Rs2Player.isAnimating(), 5000);
 
         // Try to craft runes at the ruins
-        boolean craftingRunes = Rs2GameObject.interact(altar.getRuinsID(), "Craft-rune");
+        boolean craftingRunes = Rs2GameObject.interact(altar.getAltarID(), "Craft-rune");
         if (!craftingRunes) {
             Microbot.log("ERROR: Could not craft runes at the altar.");
             return;
         }
+        sleepUntil(() -> Rs2Player.waitForXpDrop(Skill.RUNECRAFT));
 
-        sleepUntil(() -> !Rs2Player.isAnimating(), 5000);
 
-        // Change state only after crafting completes successfully
         state = State.BANKING;
     }
 
