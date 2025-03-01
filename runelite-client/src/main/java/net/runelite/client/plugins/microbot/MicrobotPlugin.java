@@ -9,6 +9,7 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.ProfileManager;
+import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.game.ItemManager;
@@ -19,6 +20,7 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.PluginManager;
+import net.runelite.client.plugins.microbot.gboc.GbocPlugin;
 import net.runelite.client.plugins.microbot.qualityoflife.scripts.pouch.PouchOverlay;
 import net.runelite.client.plugins.microbot.qualityoflife.scripts.pouch.PouchScript;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -43,6 +45,9 @@ import javax.inject.Inject;
 import javax.swing.*;
 import java.awt.*;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 
 @PluginDescriptor(
         name = PluginDescriptor.Default + "Microbot",
@@ -53,6 +58,7 @@ import java.lang.reflect.InvocationTargetException;
 )
 @Slf4j
 public class MicrobotPlugin extends Plugin {
+
     @Inject
     Notifier notifier;
     @Inject
@@ -208,6 +214,13 @@ public class MicrobotPlugin extends Plugin {
     private void onMenuOptionClicked(MenuOptionClicked event) {
         Microbot.getPouchScript().onMenuOptionClicked(event);
         Rs2Gembag.onMenuOptionClicked(event);
+        for (Microbot.MenuOptionClickedHandler callback : Microbot.menuOptionClickedHandlers) {
+            try {
+                callback.onMenuOptionClicked(event);
+            } catch (Exception e) {
+                log.error("Error in menu callback", e);
+            }
+        }
         Microbot.targetMenu = null;
         System.out.println(event.getMenuEntry());
     }

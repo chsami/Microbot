@@ -35,6 +35,7 @@ import net.runelite.client.plugins.microbot.util.mouse.Mouse;
 import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.NaturalMouse;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.ui.overlay.infobox.InfoBoxManager;
+import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.client.ui.overlay.tooltip.TooltipManager;
 import net.runelite.client.ui.overlay.worldmap.WorldMapOverlay;
 import net.runelite.client.ui.overlay.worldmap.WorldMapPointManager;
@@ -50,6 +51,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -77,6 +79,13 @@ public class Microbot {
     public static String status = "IDLE";
     public static boolean enableAutoRunOn = true;
     public static boolean useStaminaPotsIfNeeded = true;
+    public interface MenuOptionClickedHandler {
+        void onMenuOptionClicked(MenuOptionClicked event);
+    }
+    public static final List<MenuOptionClickedHandler> menuOptionClickedHandlers = new ArrayList<>();
+    public static void registerMenuOptionClickedHandler(MenuOptionClickedHandler callback) {
+        Microbot.menuOptionClickedHandlers.add(callback);
+    }
     public static int runEnergyThreshold = 1000;
     @Getter
     @Setter
@@ -356,7 +365,6 @@ public class Microbot {
             }
         } catch (ArrayIndexOutOfBoundsException e) {
             e.printStackTrace();
-            // Handle the error as needed
         }
     }
 
