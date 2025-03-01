@@ -20,7 +20,6 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.PluginManager;
-import net.runelite.client.plugins.microbot.gboc.GbocPlugin;
 import net.runelite.client.plugins.microbot.qualityoflife.scripts.pouch.PouchOverlay;
 import net.runelite.client.plugins.microbot.qualityoflife.scripts.pouch.PouchScript;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -45,9 +44,6 @@ import javax.inject.Inject;
 import javax.swing.*;
 import java.awt.*;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
 
 @PluginDescriptor(
         name = PluginDescriptor.Default + "Microbot",
@@ -58,7 +54,6 @@ import java.util.List;
 )
 @Slf4j
 public class MicrobotPlugin extends Plugin {
-
     @Inject
     Notifier notifier;
     @Inject
@@ -218,7 +213,7 @@ public class MicrobotPlugin extends Plugin {
             try {
                 callback.onMenuOptionClicked(event);
             } catch (Exception e) {
-                log.error("Error in menu callback", e);
+                System.out.println("Error in menu handler: " + e);
             }
         }
         Microbot.targetMenu = null;

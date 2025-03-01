@@ -51,7 +51,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -365,6 +364,7 @@ public class Microbot {
             }
         } catch (ArrayIndexOutOfBoundsException e) {
             e.printStackTrace();
+            // Handle the error as needed
         }
     }
 
