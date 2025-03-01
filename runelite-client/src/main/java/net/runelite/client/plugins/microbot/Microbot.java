@@ -85,6 +85,9 @@ public class Microbot {
     public static void registerMenuOptionClickedHandler(MenuOptionClickedHandler callback) {
         Microbot.menuOptionClickedHandlers.add(callback);
     }
+    public static void unregisterMenuOptionClickedHandler(MenuOptionClickedHandler callback) {
+        Microbot.menuOptionClickedHandlers.remove(callback);
+    }
     public static int runEnergyThreshold = 1000;
     @Getter
     @Setter
