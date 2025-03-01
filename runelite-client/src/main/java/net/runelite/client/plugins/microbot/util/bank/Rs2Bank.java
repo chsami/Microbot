@@ -401,8 +401,8 @@ public class Rs2Bank {
 
         Microbot.doInvoke(new NewMenuEntry("Deposit worn items", "", 1, MenuAction.CC_OP, -1, 786478, false), (itemBoundingBox == null) ? new Rectangle(1, 1) : itemBoundingBox);
 
-        // Wait for equipment to change - NOT YET IMPLEMENTED
-        // Rs2Equipment.waitForEquipmentChanges(10000);
+        var previous_items = Rs2Bank.bankItems;
+        sleepUntil(() -> Rs2Bank.bankItems() != previous_items, 1800);
     }
 
     /**
@@ -717,6 +717,8 @@ public class Rs2Bank {
         } else {
             invokeMenu(2, rs2Item);
         }
+
+        sleepUntil(() -> Rs2Inventory.hasItem(rs2Item.id), 2500);
     }
 
     /**
@@ -1006,6 +1008,7 @@ public class Rs2Bank {
         container = BANK_INVENTORY_ITEM_CONTAINER;
 
         invokeMenu(8, rs2Item);
+        sleepUntil(() -> !Rs2Inventory.hasItem(rs2Item.id), 1800);
     }
 
     /**
@@ -1220,9 +1223,7 @@ public class Rs2Bank {
     private static void handleWearItem(int id) {
         Rs2ItemModel rs2Item = Rs2Inventory.get(id);
         if (rs2Item == null) return;
-        container = BANK_INVENTORY_ITEM_CONTAINER;
-
-        invokeMenu(8, rs2Item);
+        wearItem(rs2Item);
     }
 
     /**
