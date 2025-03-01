@@ -337,6 +337,28 @@ public class Rs2Player {
     }
 
     /**
+     * Checks if the player is within the specified distance of a target point.
+     *
+     * @param target The target WorldPoint to check distance to
+     * @param distance The maximum distance the player can be from the target
+     * @return true if player is within the specified distance of the target, false otherwise
+     */
+    public static boolean isWithinDistance(WorldPoint target, int distance) {
+        WorldPoint playerLocation = Rs2Player.getWorldLocation();
+
+        // If they're in different planes, they're not near each other
+        if (playerLocation.getPlane() != target.getPlane()) {
+            return false;
+        }
+
+        // Calculate the actual distance between the points
+        int actualDistance = playerLocation.distanceTo(target);
+
+        // Return true if the player is closer than or equal to the specified distance
+        return actualDistance <= distance;
+    }
+
+    /**
      * Checks if the player is currently interacting with another entity (NPC, player, or object).
      *
      * @return {@code true} if the player is interacting with another entity, {@code false} otherwise.
