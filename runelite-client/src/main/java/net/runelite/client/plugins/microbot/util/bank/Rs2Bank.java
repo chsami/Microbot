@@ -147,7 +147,7 @@ public class Rs2Bank {
      */
     public static boolean closeBank() {
         if (!isOpen()) return false;
-        Rs2Widget.clickChildWidget(786434, 11);
+        Microbot.doInvoke(new NewMenuEntry("Close", "", 1, MenuAction.CC_OP, 11, 786434, false), new Rectangle(1, 1));
         sleepUntilOnClientThread(() -> !isOpen());
 
         return true;
