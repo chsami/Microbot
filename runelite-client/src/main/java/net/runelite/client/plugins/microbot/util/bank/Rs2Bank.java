@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.util.bank;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
+import net.runelite.api.Point;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.widgets.ComponentID;
@@ -389,10 +390,19 @@ public class Rs2Bank {
      * This method finds and clicks the "Deposit Equipment" button in the bank interface.
      */
     public static void depositEquipment() {
+        Microbot.status = "Deposit equipment";
+        if (Rs2Equipment.isNaked()) return;
+        if (!Rs2Bank.isOpen()) return;
+
         Widget widget = Rs2Widget.findWidget(SpriteID.BANK_DEPOSIT_EQUIPMENT, null);
         if (widget == null) return;
 
-        Microbot.getMouse().click(widget.getBounds());
+        var itemBoundingBox = widget.getBounds();
+
+        Microbot.doInvoke(new NewMenuEntry("Deposit worn items", "", 1, MenuAction.CC_OP, -1, 786478, false), (itemBoundingBox == null) ? new Rectangle(1, 1) : itemBoundingBox);
+
+        // Wait for equipment to change - NOT YET IMPLEMENTED
+        // Rs2Equipment.waitForEquipmentChanges(10000);
     }
 
     /**
@@ -630,8 +640,12 @@ public class Rs2Bank {
 
         Widget widget = Rs2Widget.findWidget(SpriteID.BANK_DEPOSIT_INVENTORY, null);
         if (widget == null) return;
-        
-        Rs2Widget.clickWidget(widget);
+
+        var itemBoundingBox = widget.getBounds();
+
+        Microbot.doInvoke(new NewMenuEntry("Deposit inventory", "", 1, MenuAction.CC_OP, -1, 786476, false), (itemBoundingBox == null) ? new Rectangle(1, 1) : itemBoundingBox);
+
+        // Wait for inventory to change
         Rs2Inventory.waitForInventoryChanges(10000);
     }
 
