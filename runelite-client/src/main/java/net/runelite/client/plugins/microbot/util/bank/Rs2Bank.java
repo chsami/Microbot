@@ -147,7 +147,10 @@ public class Rs2Bank {
      */
     public static boolean closeBank() {
         if (!isOpen()) return false;
-        Microbot.doInvoke(new NewMenuEntry("Close", "", 1, MenuAction.CC_OP, 11, 786434, false), new Rectangle(1, 1));
+        Widget closeWidget = Rs2Widget.getWidget(11, 786434);
+        if (closeWidget == null) return false;
+        Rectangle widgetBounds = closeWidget.getBounds();
+        Microbot.doInvoke(new NewMenuEntry("Close", "", 1, MenuAction.CC_OP, 11, 786434, false), widgetBounds == null ? new Rectangle(1, 1) : widgetBounds);
         sleepUntilOnClientThread(() -> !isOpen());
 
         return true;
@@ -718,7 +721,7 @@ public class Rs2Bank {
             invokeMenu(2, rs2Item);
         }
 
-        sleepUntil(() -> Rs2Inventory.hasItem(rs2Item.id), 2500);
+        Rs2Inventory.waitForInventoryChanges(10000);
     }
 
     /**
@@ -1008,7 +1011,7 @@ public class Rs2Bank {
         container = BANK_INVENTORY_ITEM_CONTAINER;
 
         invokeMenu(8, rs2Item);
-        sleepUntil(() -> !Rs2Inventory.hasItem(rs2Item.id), 1800);
+        Rs2Inventory.waitForInventoryChanges(10000);
     }
 
     /**
