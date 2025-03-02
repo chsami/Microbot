@@ -147,9 +147,11 @@ public class Rs2Bank {
      */
     public static boolean closeBank() {
         if (!isOpen()) return false;
-        Widget closeWidget = Rs2Widget.getWidget(11, 786434);
-        if (closeWidget == null) return false;
-        Rectangle widgetBounds = closeWidget.getBounds();
+        Widget closeWidget = Rs2Widget.getWidget(786434, 11);
+        Rectangle widgetBounds = null;
+        if (closeWidget != null) {
+            widgetBounds = closeWidget.getBounds();
+        }
         Microbot.doInvoke(new NewMenuEntry("Close", "", 1, MenuAction.CC_OP, 11, 786434, false), widgetBounds == null ? new Rectangle(1, 1) : widgetBounds);
         sleepUntilOnClientThread(() -> !isOpen());
 
