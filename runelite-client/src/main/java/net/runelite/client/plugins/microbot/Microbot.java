@@ -35,7 +35,6 @@ import net.runelite.client.plugins.microbot.util.mouse.Mouse;
 import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.NaturalMouse;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.ui.overlay.infobox.InfoBoxManager;
-import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.client.ui.overlay.tooltip.TooltipManager;
 import net.runelite.client.ui.overlay.worldmap.WorldMapOverlay;
 import net.runelite.client.ui.overlay.worldmap.WorldMapPointManager;
@@ -78,16 +77,6 @@ public class Microbot {
     public static String status = "IDLE";
     public static boolean enableAutoRunOn = true;
     public static boolean useStaminaPotsIfNeeded = true;
-    public interface MenuOptionClickedHandler {
-        void onMenuOptionClicked(MenuOptionClicked event);
-    }
-    public static final List<MenuOptionClickedHandler> menuOptionClickedHandlers = new ArrayList<>();
-    public static void registerMenuOptionClickedHandler(MenuOptionClickedHandler callback) {
-        Microbot.menuOptionClickedHandlers.add(callback);
-    }
-    public static void unregisterMenuOptionClickedHandler(MenuOptionClickedHandler callback) {
-        Microbot.menuOptionClickedHandlers.remove(callback);
-    }
     public static int runEnergyThreshold = 1000;
     @Getter
     @Setter
@@ -161,6 +150,9 @@ public class Microbot {
     
     @Getter
     public static final BlockingEventManager blockingEventManager = new BlockingEventManager();
+
+    @Getter
+    public static final MenuOptionEventManager menuOptionManager = new MenuOptionEventManager();
 
     @Getter
     public static HashMap<String, Integer> scriptRuntimes = new HashMap<>();

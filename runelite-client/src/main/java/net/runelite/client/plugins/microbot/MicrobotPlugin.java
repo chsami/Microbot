@@ -9,7 +9,6 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.ProfileManager;
-import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.game.ItemManager;
@@ -98,6 +97,7 @@ public class MicrobotPlugin extends Plugin {
     private PouchScript pouchScript;
     @Inject
     private PouchOverlay pouchOverlay;
+    private MenuOptionEventManager menuOptionEventManager;
 
     @Override
     protected void startUp() throws AWTException {
@@ -119,6 +119,7 @@ public class MicrobotPlugin extends Plugin {
         Microbot.setChatMessageManager(chatMessageManager);
         Microbot.setConfigManager(configManager);
         Microbot.setTooltipManager(toolTipManager);
+        this.menuOptionEventManager = Microbot.getMenuOptionManager();
         if (overlayManager != null) {
             overlayManager.add(microbotOverlay);
             overlayManager.add(gembagOverlay);
@@ -201,21 +202,30 @@ public class MicrobotPlugin extends Plugin {
                     System.out.println(e.getMessage());
                 }
             }
+
             this.client.setMenuEntries(new MenuEntry[]{entry});
         }
+
+        menuOptionEventManager.getAddedEvents().forEach((addedEvent) -> {
+            try {
+                addedEvent.execute(event);
+            } catch (Exception e) {
+                System.out.println("Error in menu event: " + e);
+            }
+        });
     }
 
     @Subscribe
     private void onMenuOptionClicked(MenuOptionClicked event) {
         Microbot.getPouchScript().onMenuOptionClicked(event);
         Rs2Gembag.onMenuOptionClicked(event);
-        for (Microbot.MenuOptionClickedHandler callback : Microbot.menuOptionClickedHandlers) {
+        menuOptionEventManager.getClickEvents().forEach((clickEvent) -> {
             try {
-                callback.onMenuOptionClicked(event);
+                clickEvent.execute(event);
             } catch (Exception e) {
-                System.out.println("Error in menu handler: " + e);
+                System.out.println("Error in menu event: " + e);
             }
-        }
+        });
         Microbot.targetMenu = null;
         System.out.println(event.getMenuEntry());
     }
