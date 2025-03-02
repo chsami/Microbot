@@ -5,7 +5,9 @@ import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
@@ -36,6 +38,8 @@ public class MoonlightMothScript extends Script {
         shutdown();
         currentState = State.CHECK_STATE;
 
+        Rs2Antiban.resetAntibanSettings();
+        Rs2Antiban.antibanSetupTemplates.applyHunterSetup();
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!Microbot.isLoggedIn() || !super.run()) return;
@@ -73,9 +77,11 @@ public class MoonlightMothScript extends Script {
             logOnceToChat("Graceful equipment already equipped. Skipping graceful banking.", true);
         }
 
-        // Check if Moonlight Moth is in the inventory
-        if (Rs2Inventory.hasItem("Moonlight moth")) {
-            logOnceToChat("Moonlight Moths found in inventory. Proceeding to BANKING.", false);
+        int moonlightMothCount = Rs2Inventory.count("Moonlight moth");
+
+        // If inventory contains more than 25 Moonlight Moths, go to BANKING state
+        if (moonlightMothCount > 25) {
+            logOnceToChat("Inventory contains " + moonlightMothCount + " Moonlight Moths. Proceeding to BANKING.", false);
             currentState = State.BANKING;
             return;
         }
@@ -107,16 +113,21 @@ public class MoonlightMothScript extends Script {
         currentState = State.BANKING;
     }
 
+
+
     private void handleBanking(MoonlightMothConfig config) {
         Microbot.status = "Banking process initiated";
 
-        if (!Rs2Bank.walkToBankAndUseBank()) {
+        if (!Rs2Bank.walkToBankAndUseBank(BankLocation.HUNTERS_GUILD)) {
             logOnceToChat("Failed to open bank.", false);
             return;
         }
 
-        if (Rs2Inventory.hasItem("Moonlight moth")) {
+        if (Rs2Inventory.hasItem("Moonlight moth") || Rs2Inventory.contains("Vial")) {
             Rs2Bank.depositAll("Moonlight moth");
+            sleep(Rs2Random.randomGaussian(1300, 200));
+            Rs2Bank.depositAll("Vial");
+            sleep(Rs2Random.randomGaussian(900,200));
         }
 
         if (config.useStamina()) {
@@ -233,9 +244,9 @@ public class MoonlightMothScript extends Script {
             return;
         }
 
-        if (config.enableWorldHopping() && Rs2Player.hopIfPlayerDetected(1, 5000, 3)) {
-            logOnceToChat("Player detected nearby for too long. Hopped to a new world.", false);
-            return; // Stop further actions until the world hop is complete
+        if (Rs2Player.hopIfPlayerDetected(1, 1200, 5)) {
+            Microbot.log("Player nearby, hopping");
+            return;
         }
 
         WorldArea excludedArea = new WorldArea(1550, 9426, 21, 8, 0);
@@ -253,6 +264,7 @@ public class MoonlightMothScript extends Script {
                 }
             } else {
                 logOnceToChat("Player is already performing an action. Waiting...", true);
+                currentState = State.BANKING;
             }
         });
     }
@@ -286,12 +298,16 @@ public class MoonlightMothScript extends Script {
             // Check if the player needs to drink the stamina potion
             if (!Rs2Player.hasStaminaActive() && Rs2Player.getRunEnergy() < staminaThreshold) {
                 Rs2Inventory.interact("stamina potion", "drink");
-                sleepGaussian(600, 150);
+                sleepGaussian(900, 200);
                 logOnceToChat("Drank stamina potion.", true);
             }
         } else if (Rs2Bank.isOpen() || Rs2Bank.openBank()) {
             // Withdraw stamina potion if none are left in the inventory
             if (Rs2Bank.hasItem("stamina potion")) {
+                if (Rs2Inventory.contains("Vial")) {
+                    Rs2Bank.depositAll("Vial");
+                    sleep(Rs2Random.randomGaussian(1300, 200));
+                }
                 Rs2Bank.withdrawOne("stamina potion");
                 sleepUntil(() -> Rs2Inventory.hasItem("stamina potion"), 5000);
                 logOnceToChat("Withdrew stamina potion from the bank.", true);

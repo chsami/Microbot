@@ -64,7 +64,7 @@ public @interface PluginDescriptor {
     String FrostyX = "<html>[<font color=#00ccff>\u2744</font>] Frosty X";
     String Gage = "<html>[<font color=#00008B>Gage</font>]";
     String FrostyX = "<html>[<font color=#00ccff>\u2744</font>] ";
-
+    String Bradley = "<html>[<font color=#E32636>BR</font>] ";
 
     String name();
 

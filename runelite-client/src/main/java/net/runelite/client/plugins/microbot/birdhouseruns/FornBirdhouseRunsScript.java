@@ -12,6 +12,7 @@ import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
@@ -44,16 +45,15 @@ public class FornBirdhouseRunsScript extends Script {
                 switch (botStatus) {
                     case GEARING:
                         if (Rs2Bank.openBank()) {
-                            Rs2Bank.depositAll();
                             if (config.GRACEFUL()) {
                                 Rs2Bank.depositEquipment();
                                 equipGraceful();
                             }
                             withdrawDigsitePendant();
                             if (config.TELEPORT()) {
-                                Rs2Bank.withdrawOne(ItemID.LAW_RUNE);
-                                Rs2Bank.withdrawOne(ItemID.FIRE_RUNE);
-                                Rs2Bank.withdrawX(ItemID.AIR_RUNE, 3);
+                                if (!Rs2Equipment.isWearing(9781)) {
+                                    Rs2Bank.withdrawItem(9781);
+                                }
                             }
                             Rs2Bank.withdrawOne(ItemID.HAMMER);
                             Rs2Bank.withdrawOne(ItemID.CHISEL);
@@ -123,11 +123,14 @@ public class FornBirdhouseRunsScript extends Script {
                         break;
                     case FINISHING:
                         if (config.TELEPORT()) {
-                            Rs2Magic.cast(MagicAction.VARROCK_TELEPORT);
+                            Rs2Equipment.interact(9781, "Teleport");
                             sleep(2500);
                         }
 
                         emptyNests();
+                        sleep(Rs2Random.randomGaussian(1000,200));
+                        Rs2Bank.openBank();
+                        Rs2Bank.depositAll();
 
                         botStatus = states.FINISHED;
                         notifier.notify(Notification.ON, "Birdhouse run is finished.");
@@ -147,43 +150,43 @@ public class FornBirdhouseRunsScript extends Script {
     private void emptyNests() {
         do {
             Rs2Inventory.interact(ItemID.BIRD_NEST, "search");
-            sleep(1000);
+            sleep(Rs2Random.randomGaussian(1200, 200));
         }
         while (Rs2Inventory.contains(ItemID.BIRD_NEST));
 
         do {
             Rs2Inventory.interact(ItemID.BIRD_NEST_5071, "search");
-            sleep(1000);
+            sleep(Rs2Random.randomGaussian(1000,200));
         }
         while (Rs2Inventory.contains(ItemID.BIRD_NEST_5071));
 
         do {
             Rs2Inventory.interact(ItemID.BIRD_NEST_5072, "search");
-            sleep(1000);
+            sleep(Rs2Random.randomGaussian(1200, 200));
         }
         while (Rs2Inventory.contains(ItemID.BIRD_NEST_5072));
 
         do {
             Rs2Inventory.interact(ItemID.BIRD_NEST_5073, "search");
-            sleep(1000);
+            sleep(Rs2Random.randomGaussian(1000, 200));
         }
         while (Rs2Inventory.contains(ItemID.BIRD_NEST_5073));
 
         do {
             Rs2Inventory.interact(ItemID.BIRD_NEST_5074, "search");
-            sleep(1000);
+            sleep(Rs2Random.randomGaussian(1200, 200));
         }
         while (Rs2Inventory.contains(ItemID.BIRD_NEST_5074));
 
         do {
             Rs2Inventory.interact(ItemID.BIRD_NEST_22798, "search");
-            sleep(1000);
+            sleep(Rs2Random.randomGaussian(800, 200));
         }
         while (Rs2Inventory.contains(ItemID.BIRD_NEST_22798));
 
         do {
             Rs2Inventory.interact(ItemID.BIRD_NEST_22800, "search");
-            sleep(1000);
+            sleep(Rs2Random.randomGaussian(1400, 200));
         }
         while (Rs2Inventory.contains(ItemID.BIRD_NEST_22800));
     }
