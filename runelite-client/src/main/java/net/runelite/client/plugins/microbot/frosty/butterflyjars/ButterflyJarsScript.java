@@ -101,19 +101,37 @@ public class ButterflyJarsScript extends Script {
 
     private void handleBanking() {
         Microbot.log("Entering handleBanking()");
+
         if (Rs2Inventory.onlyContains("Coins") && (!Rs2Inventory.contains("Butterfly jar"))) {
             state = State.BUYING;
         }
+
         if (!Rs2Bank.isOpen()) {
             Rs2Bank.openBank();
             Microbot.log("Opened bank");
+            Rs2Bank.depositAll();
+            sleep(Rs2Random.randomGaussian(1100, 200));
         }
-        if (!Rs2Inventory.contains("Coins")) {
+
+        if (!Rs2Inventory.contains(995)) {
             Rs2Bank.withdrawX(995, 10000);
-            Microbot.log("Withdrawing 10,000 coins");
+            sleep(Rs2Random.randomGaussian(1100, 300));
+            Microbot.log("Withdrawing 10,000 coins because balance is below 1000");
+            Rs2Inventory.waitForInventoryChanges(1200);
+        }
+
+        /*// Get the amount of coins in inventory
+        int coinCount = Rs2Inventory.count(995);
+        sleep(Rs2Random.randomGaussian(1100, 300));
+
+        // If coin count is less than 1000, withdraw 10,000 coins
+        if (coinCount < 1000) {
+            Rs2Bank.withdrawX(995, 10000);
+            sleep(Rs2Random.randomGaussian(1100, 300));
+            Microbot.log("Withdrawing 10,000 coins because balance is below 1000");
             Rs2Inventory.waitForInventoryChanges(1200);
             sleep(Rs2Random.randomGaussian(900, 200));
-        }
+        }*/
 
         if (Rs2Inventory.contains("Butterfly jar")) {
             Rs2Bank.depositAll("Butterfly jar");
@@ -124,8 +142,11 @@ public class ButterflyJarsScript extends Script {
             Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
             sleep(Rs2Random.randomGaussian(900, 200));
             Microbot.log("Closing bank and moving to BUYING");
-        } else { state = State.BUYING; }
+        } else {
+            state = State.BUYING;
+        }
     }
+
 
     private void handleBuyingJars() {
         Microbot.log("Entering handleBuyingJars()");

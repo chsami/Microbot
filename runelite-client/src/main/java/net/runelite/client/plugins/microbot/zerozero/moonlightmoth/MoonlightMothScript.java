@@ -10,12 +10,14 @@ import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.shop.Rs2Shop;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
+import java.awt.event.KeyEvent;
 import java.util.concurrent.TimeUnit;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleepGaussian;
@@ -160,7 +162,7 @@ public class MoonlightMothScript extends Script {
             }
         }
 
-        Rs2Bank.closeBank();
+        Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
         sleepGaussian(600, 150);
         currentState = State.CHECK_STATE;
         logOnceToChat("Banking process completed.", true);
@@ -243,7 +245,7 @@ public class MoonlightMothScript extends Script {
             currentState = State.BANKING;
             return;
         }
-
+        Rs2Player.hopIfPlayerDetected(1, 1200, 5);
         if (Rs2Player.hopIfPlayerDetected(1, 1200, 5)) {
             Microbot.log("Player nearby, hopping");
             return;
@@ -262,7 +264,7 @@ public class MoonlightMothScript extends Script {
                 } else {
                     logOnceToChat("Failed to interact with Moonlight Moth.", true);
                 }
-            } else {
+            } else if (!Rs2Inventory.contains("Butterfly jar")) {
                 logOnceToChat("Player is already performing an action. Waiting...", true);
                 currentState = State.BANKING;
             }
