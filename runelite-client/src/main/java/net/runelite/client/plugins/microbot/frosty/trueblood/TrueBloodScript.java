@@ -246,6 +246,7 @@ public class TrueBloodScript extends Script {
         }
     }
 
+
     private void handleGoingHome() {
         handleConCape();
         if (Rs2Player.getRunEnergy() < 40) {

@@ -3,8 +3,6 @@ package net.runelite.client.plugins.microbot.frosty.trueblood;
 
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Client;
-import net.runelite.api.Skill;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -27,10 +25,6 @@ import java.awt.*;
 public class TrueBloodPlugin extends Plugin {
     @Inject
     private TrueBloodConfig config;
-    @Inject
-    private TrueBloodOverlay overlay;
-    @Inject
-    private Client client;
     @Provides
     TrueBloodConfig provideConfig(ConfigManager configManager) {
         return configManager.getConfig(TrueBloodConfig.class);
@@ -45,32 +39,26 @@ public class TrueBloodPlugin extends Plugin {
     @Override
     protected void startUp() throws AWTException {
         if (overlayManager != null) {
-            overlayManager.add(overlay);
         }
         exampleScript.run(config);
     }
 
-    @Override
     protected void shutDown() {
-        if (overlayManager != null) {
-            overlayManager.remove(overlay);
-        }
         exampleScript.shutdown();
+
     }
-
-
     int ticks = 10;
     @Subscribe
-    public void onGameTick(GameTick tick) {
-        int currentXp = client.getSkillExperience(Skill.RUNECRAFT);
-        int xpGained = currentXp - exampleScript.getInitialRcXp(); // Ensure script initializes XP properly
+    public void onGameTick(GameTick tick)
+    {
+        //System.out.println(getName().chars().mapToObj(i -> (char)(i + 3)).map(String::valueOf).collect(Collectors.joining()));
 
-        // Debugging logs
-        log.info("XP Tracking - Current XP: " + currentXp + ", Initial XP: " + exampleScript.getInitialRcXp() + ", Gained XP: " + xpGained);
+        if (ticks > 0) {
+            ticks--;
+        } else {
+            ticks = 10;
+        }
 
-        // Update overlay manually
-        overlay.updateXpGained(xpGained);
     }
-
 
 }
