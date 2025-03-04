@@ -18,6 +18,7 @@ import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Potion;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.shop.Rs2Shop;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
@@ -1981,6 +1982,21 @@ public class Rs2Inventory {
         sleep(100);
         if (!isItemSelected()) return false;
         Rs2Npc.interact(npcID);
+        return true;
+    }
+
+    /**
+     * @param item
+     * @param Npc
+     *
+     * @return
+     */
+    public static boolean useItemOnNpc(Rs2ItemModel item, Rs2NpcModel Npc) {
+        if (Rs2Bank.isOpen()) return false;
+        use(item);
+        sleep(100);
+        if (!isItemSelected()) return false;
+        Rs2Npc.interact(Npc);
         return true;
     }
 
