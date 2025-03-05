@@ -68,7 +68,7 @@ import static net.runelite.client.plugins.timersandbuffs.GameTimer.*;
 	name = "Timers & Buffs",
 	configName = "TimersPlugin",
 	description = "Show various timers and buffs in an infobox",
-	tags = {"combat", "items", "magic", "potions", "prayer", "overlay", "abyssal", "sire", "inferno", "fight", "Caves", "cape", "timer", "tzhaar", "thieving", "pickpocket", "hunter", "impling", "puro", "buff"}
+	tags = {"combat", "items", "magic", "potions", "prayer", "overlay", "abyssal", "sire", "inferno", "fight", "caves", "cape", "timer", "tzhaar", "thieving", "pickpocket", "hunter", "impling", "puro", "buff"}
 )
 @Slf4j
 public class TimersAndBuffsPlugin extends Plugin

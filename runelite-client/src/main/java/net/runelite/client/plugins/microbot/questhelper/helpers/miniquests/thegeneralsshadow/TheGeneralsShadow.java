@@ -204,7 +204,7 @@ public class TheGeneralsShadow extends BasicQuestHelper {
                 "Enter the cave south east of the Fishing Guild. Be prepared to fight Bouncer (level 160).", combatGear, serveredLeg);
 
         enterCrack = new ObjectStep(this, ObjectID.CRACK_21800, new WorldPoint(2617, 9827, 0), "Enter the crack in " +
-                "the north east of the Caves.", combatGear, serveredLeg);
+                "the north east of the caves.", combatGear, serveredLeg);
         enterCrack.addDialogStep("Yes");
 
         killBouncer = new NpcStep(this, NpcID.BOUNCER_3509, new WorldPoint(8969, 2184, 0), "Kill Bouncer. You cannot " +

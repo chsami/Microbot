@@ -298,7 +298,7 @@ public class KourendMedium extends ComplexStateQuestHelper {
 
         // Use the boulder leap shortcut
         useBoulderShortcut = new ObjectStep(this, ObjectID.BOULDER_27990, new WorldPoint(1776, 3883, 0),
-                "Use the boulder leap shortcut from the path to the Soul Locations.", new SkillRequirement(Skill.AGILITY, 49));
+                "Use the boulder leap shortcut from the path to the Soul Altar.", new SkillRequirement(Skill.AGILITY, 49));
 
         // Subdue the Wintertodt
         subdueWintertodt = new ObjectStep(this, ObjectID.DOORS_OF_DINH, new WorldPoint(1631, 3962, 0),

@@ -273,7 +273,7 @@ public class CreatureOfFenkenstrain extends BasicQuestHelper {
                 decapitatedHead.highlighted(), pickledBrain.highlighted());
 
         useStarOnGrave = new ObjectStep(this, ObjectID.MEMORIAL, new WorldPoint(3578, 3528, 0),
-                "Use the Star Amulet on the memorial and push it to go in the Caves.", starAmulet.highlighted());
+                "Use the Star Amulet on the memorial and push it to go in the caves.", starAmulet.highlighted());
         useStarOnGrave.addIcon(ItemID.STAR_AMULET);
 
         enterExperimentCave = new ObjectStep(this, ObjectID.MEMORIAL, new WorldPoint(3578, 3528, 0),
@@ -286,7 +286,7 @@ public class CreatureOfFenkenstrain extends BasicQuestHelper {
         killExperiment.addSubSteps(pickupKey);
 
         leaveExperimentCave = new ObjectStep(this, ObjectID.LADDER_17387, new WorldPoint(3504, 9970, 0),
-                "Leave the Caves by going north-west, be sure to pick up the key from the level 51 experiment.");
+                "Leave the caves by going north-west, be sure to pick up the key from the level 51 experiment.");
 
         getTorso = new DigStep(this, new WorldPoint(3503, 3576, 0), "Use your spade on this tile to get the torso.");
 
@@ -296,7 +296,7 @@ public class CreatureOfFenkenstrain extends BasicQuestHelper {
 
         deliverBodyParts = new NpcStep(this, NpcID.DR_FENKENSTRAIN, new WorldPoint(3551, 3548, 0),
                 "Deliver the body parts to Dr. Fenkenstrain, use a teleport to Fenkenstrain's castle or run back through " +
-                        "the Caves.");
+                        "the caves.");
         deliverBodyParts.addDialogStep("I have some body parts for you.");
 
         gatherNeedleAndThread = new NpcStep(this, NpcID.DR_FENKENSTRAIN, new WorldPoint(3551, 3548, 0),

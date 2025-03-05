@@ -22,7 +22,7 @@ public class GildedAltarOverlay extends OverlayPanel {
         try {
             panelComponent.setPreferredSize(new Dimension(200, 300));
             panelComponent.getChildren().add(TitleComponent.builder()
-                    .text("Micro Gilded Locations V1.1.0")
+                    .text("Micro Gilded Altar V1.1.0")
                     .color(Color.GREEN)
                     .build());
 

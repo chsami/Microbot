@@ -1160,7 +1160,7 @@ public class LegendsQuest extends BasicQuestHelper {
         allSteps.add(new PanelDetails("Contacting the locals", Arrays.asList(enterJungleWithRoarer, spinBull, talkToGujuo, enterMossyRock, investigateFireWall, leaveCave, spinBullAgain,
                 talkToGujuoAgain),
                 completeNotes, bullroarer, axe, machete, lockpick, pickaxe, soulRune, mindRune, earthRune, lawRune2, opal, jade, topaz, sapphire, emerald, ruby, diamond));
-        PanelDetails runePuzzlePanel = new PanelDetails("Unlocking the Caves", Arrays.asList(enterMossyRockAgain, enterBookcase, enterGate1, enterGate2, searchMarkedWall, useSoul, useMind, useEarth, useLaw, useLaw2),
+        PanelDetails runePuzzlePanel = new PanelDetails("Unlocking the caves", Arrays.asList(enterMossyRockAgain, enterBookcase, enterGate1, enterGate2, searchMarkedWall, useSoul, useMind, useEarth, useLaw, useLaw2),
                 completeNotes, bullroarer, axe, machete, lockpick, pickaxe, soulRune, mindRune, earthRune, lawRune2, opal, jade,
                 topaz, sapphire, emerald, ruby, diamond);
         runePuzzlePanel.setLockingStep(runePuzzle);

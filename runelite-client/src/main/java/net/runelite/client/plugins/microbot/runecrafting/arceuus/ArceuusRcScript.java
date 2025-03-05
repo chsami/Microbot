@@ -106,11 +106,11 @@ public class ArceuusRcScript extends Script {
 
     public boolean shouldUseBloodAltar() {
         return  Rs2Inventory.hasItem(ItemID.DARK_ESSENCE_FRAGMENTS)
-                && Rs2GameObject.findObject("Blood Locations", true,10,false,Rs2Player.getWorldLocation()) != null;
+                && Rs2GameObject.findObject("Blood Altar", true,10,false,Rs2Player.getWorldLocation()) != null;
     }
 
     public void useBloodAltar() {
-        GameObject bloodAltar = Rs2GameObject.findObject("Blood Locations", true,10,false,Rs2Player.getWorldLocation());
+        GameObject bloodAltar = Rs2GameObject.findObject("Blood Altar", true,10,false,Rs2Player.getWorldLocation());
         if (bloodAltar != null) {
             if (Rs2GameObject.interact(bloodAltar,"Bind"))
                 Rs2Inventory.waitForInventoryChanges(6000);
@@ -123,7 +123,7 @@ public class ArceuusRcScript extends Script {
         return Rs2Inventory.isFull() && !Rs2Inventory.hasItem(ItemID.DARK_ESSENCE_FRAGMENTS) && Rs2Inventory.hasItem(ItemID.DARK_ESSENCE_BLOCK)
                 || (!Rs2Inventory.hasItem(ItemID.DARK_ESSENCE_FRAGMENTS)
                     && Rs2Inventory.hasItem(ItemID.DARK_ESSENCE_BLOCK)
-                    && Rs2GameObject.findObject("Blood Locations", true,10,false,Rs2Player.getWorldLocation()) != null);
+                    && Rs2GameObject.findObject("Blood Altar", true,10,false,Rs2Player.getWorldLocation()) != null);
     }
 
     public void chipEssence() {

@@ -351,7 +351,7 @@ public class ArdougneMedium extends ComplexStateQuestHelper {
                 new UnlockReward("Unicow, Newtroost, and Spidine drops will be noted at the Tower of Life"),
                 new UnlockReward("10% increased chance to pickpocket in Ardougne (even if the cloak is not equipped or in inventory)"),
                 new UnlockReward("Ability to toggle the Ring of life teleport to Ardougne"),
-                new UnlockReward("Receive additional runes when crafting essence at the Ourania Locations")
+                new UnlockReward("Receive additional runes when crafting essence at the Ourania Altar")
         );
     }
 

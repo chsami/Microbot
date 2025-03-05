@@ -51,7 +51,7 @@ public enum WorldMapArea {
     MOLE_HOLE("Mole Hole"),
     MORYTANIA_UNDERGROUND("Morytania Underground"),
     MOS_LEHARMLESS_CAVE("Mos Le'Harmless Cave"),
-    OURANIA_ALTAR("Ourania Locations"),
+    OURANIA_ALTAR("Ourania Altar"),
     RUINS_OF_CAMDOZAAL("Ruins of Camdozaal"),
     FREMENNIK_SLAYER_CAVE("Fremennik Slayer Cave"),
     STRONGHOLD_OF_SECURITY("Stronghold of Security"),

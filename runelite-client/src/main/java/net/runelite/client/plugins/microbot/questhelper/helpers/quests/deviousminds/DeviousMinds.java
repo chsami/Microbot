@@ -169,11 +169,11 @@ public class DeviousMinds extends BasicQuestHelper {
         enterLawRift = new ObjectStep(this, ObjectID.LAW_RIFT, new WorldPoint(3049, 4839, 0),
                 "Enter the central area through a gap/passage/eyes. Enter the Law Rift.", illumPouch, noEquipment);
         leaveLawAltar = new ObjectStep(this, ObjectID.PORTAL_34755, new WorldPoint(2464, 4817, 0),
-                "Enter the portal to leave the Law Locations.", illumPouch, noEquipment);
+                "Enter the portal to leave the Law Altar.", illumPouch, noEquipment);
 
         //Surprise!
         usePouchOnAltar = new ObjectStep(this, NullObjectID.NULL_10638, new WorldPoint(2853, 3349, 0),
-                "Use the illuminated pouch on the Locations in the Entrana Church.", illumPouch.highlighted());
+                "Use the illuminated pouch on the Altar in the Entrana Church.", illumPouch.highlighted());
         usePouchOnAltar.addIcon(ItemID.LARGE_POUCH_6819);
 
         gotoDeadMonk = new NpcStep(this, NpcID.DEAD_MONK, new WorldPoint(3406, 3494, 0),

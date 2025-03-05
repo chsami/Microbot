@@ -374,7 +374,7 @@ public class LumbridgeHard extends ComplexStateQuestHelper {
         belladonnaSteps.setLockingStep(belladonnaTask);
         allSteps.add(belladonnaSteps);
 
-        PanelDetails smiteAltarSteps = new PanelDetails("Smite Locations", Collections.singletonList(smiteAltar),
+        PanelDetails smiteAltarSteps = new PanelDetails("Smite Altar", Collections.singletonList(smiteAltar),
                 new SkillRequirement(Skill.PRAYER, 52));
         smiteAltarSteps.setDisplayCondition(notSmiteAltar);
         smiteAltarSteps.setLockingStep(smiteAltarTask);

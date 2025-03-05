@@ -31,7 +31,7 @@ public enum ArceuusSpells implements Spell {
     BASIC_REANIMATION("Basic Reanimation"),
     DRAYNOR_MANOR_TELEPORT("Draynor Manor Teleport"),
     BATTLEFRONT_TELEPORT("Battlefront Teleport"),
-    MIND_ALTAR_TELEPORT("Mind Locations Teleport"),
+    MIND_ALTAR_TELEPORT("Mind Altar Teleport"),
     RESPAWN_TELEPORT("Respawn Teleport"),
     GHOSTLY_GRASP("Ghostly Grasp"),
     RESURRECT_LESSER_GHOST("Resurrect Lesser Ghost"),

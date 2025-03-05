@@ -89,7 +89,7 @@ public class PathfinderConfig {
 
     @Getter
     @Setter
-    // Used for manual calculating paths without teleport & items in Caves
+    // Used for manual calculating paths without teleport & items in caves
     private boolean ignoreTeleportAndItems = false;
     
     @Getter

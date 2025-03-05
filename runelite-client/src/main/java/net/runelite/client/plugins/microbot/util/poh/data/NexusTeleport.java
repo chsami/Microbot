@@ -27,7 +27,7 @@ public enum NexusTeleport {
     ARCEUUS_LIBRARY(TeleportType.ARCEUUS_MAGIC, "Arceuus Library", new WorldPoint(1632, 3838, 0)),
     DRAYNOR_MANOR(TeleportType.ARCEUUS_MAGIC, "Draynor Manor", new WorldPoint(3108, 3352, 0)),
     BATTLEFRONT(TeleportType.ARCEUUS_MAGIC, "Battlefront", new WorldPoint(1349, 3739, 0)),
-    MIND_ALTAR(TeleportType.ARCEUUS_MAGIC, "Mind Locations", new WorldPoint(2979, 3509, 0)),
+    MIND_ALTAR(TeleportType.ARCEUUS_MAGIC, "Mind Altar", new WorldPoint(2979, 3509, 0)),
     FENKENSTRAINS_CASTLE(TeleportType.ARCEUUS_MAGIC, "Fenken' Castle", new WorldPoint(3548, 3528, 0)),
     SALVE_GRAVEYARD(TeleportType.ARCEUUS_MAGIC, "Salve Graveyard", new WorldPoint(3433, 3461, 0)),
     WEST_ARDOUGNE(TeleportType.ARCEUUS_MAGIC, "West Ardougne", new WorldPoint(2500, 3291, 0)),

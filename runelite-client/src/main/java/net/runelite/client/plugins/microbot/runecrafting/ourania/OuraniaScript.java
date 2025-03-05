@@ -259,7 +259,7 @@ public class OuraniaScript extends Script {
 
             } catch (Exception ex) {
                 System.out.println(ex.getMessage());
-                Microbot.log("Error in Ourania Locations Script: " + ex.getMessage());
+                Microbot.log("Error in Ourania Altar Script: " + ex.getMessage());
             }
         }, 0, 1000, TimeUnit.MILLISECONDS);
         return true;

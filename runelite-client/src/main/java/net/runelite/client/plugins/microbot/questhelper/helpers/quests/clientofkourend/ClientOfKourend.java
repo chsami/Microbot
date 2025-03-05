@@ -148,7 +148,7 @@ public class ClientOfKourend extends BasicQuestHelper {
         returnToVeos = new NpcStep(this, NpcID.VEOS_10727, new WorldPoint(1824, 3690, 0), "Return to Veos on Piscarilius docks.");
         returnToVeos.addDialogStep("Let's talk about your client...");
         returnToVeos.addDialogStep("I've lost something you've given me.");
-        goToAltar = new DetailedQuestStep(this, new WorldPoint(1712, 3883, 0), "Activate the mysterious orb at the Dark Locations. You can either run there through Arceuus, teleport to Wintertodt with the Games Necklace and run south, or teleport straight there on the Arceuus spellbook.", mysteriousOrb);
+        goToAltar = new DetailedQuestStep(this, new WorldPoint(1712, 3883, 0), "Activate the mysterious orb at the Dark Altar. You can either run there through Arceuus, teleport to Wintertodt with the Games Necklace and run south, or teleport straight there on the Arceuus spellbook.", mysteriousOrb);
 
         finishQuest = new NpcStep(this, NpcID.VEOS_10727, new WorldPoint(1824, 3690, 0), "Return to Veos on Piscarilius docks.");
         finishQuest.addDialogStep("Let's talk about your client...");
@@ -191,7 +191,7 @@ public class ClientOfKourend extends BasicQuestHelper {
 
         allSteps.add(new PanelDetails("Starting off", Arrays.asList(talkToVeos, useFeatherOnScroll), feather));
         allSteps.add(new PanelDetails("Learn about Kourend", Arrays.asList(talkToLeenz, talkToRegath, talkToMunty, talkToJennifer, talkToHorace, returnToVeos)));
-        allSteps.add(new PanelDetails("The Dark Locations", Arrays.asList(goToAltar, finishQuest)));
+        allSteps.add(new PanelDetails("The Dark Altar", Arrays.asList(goToAltar, finishQuest)));
         return allSteps;
     }
 }

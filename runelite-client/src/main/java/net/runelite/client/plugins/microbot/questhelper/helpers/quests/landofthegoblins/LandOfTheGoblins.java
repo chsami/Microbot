@@ -603,7 +603,7 @@ public class LandOfTheGoblins extends BasicQuestHelper {
         climbDorgeshKaanStairsF1 = new ObjectStep(this, ObjectID.STAIRS_22941, new WorldPoint(2723, 5253, 1), "Climb up the stairs to the south to enter the Dorgesh-Kaan cave.");
         climbLadderTop = new ObjectStep(this, ObjectID.LADDER_TOP, new WorldPoint(2719, 5241, 3), "Climb down the ladder to the west.");
         talkToOldakAtMachine = new NpcStep(this, NpcID.OLDAK_11385, new WorldPoint(2741, 5220, 0), "Talk to Oldak near the machine at the fairy ring " +
-                "in the the Caves south of Dorgesh-Kaan.");
+                "in the the caves south of Dorgesh-Kaan.");
         inspectMachine = new ObjectStep(this, ObjectID.MACHINE_43101, new WorldPoint(2740, 5219, 0), "Fix the machine.");
 
         increaseFirst = new WidgetStep(this, "Set the first value to 9.", 738, 21);

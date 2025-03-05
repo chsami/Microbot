@@ -613,8 +613,8 @@ public class RoyalTrouble extends BasicQuestHelper {
         }
         allSteps.add(new PanelDetails("Repair the lift", Arrays.asList(talkToDonal, usePropOnCrevice, enterCrevice, takePulley, usePulleyOnScaffold, takePulley2, takeBeam, useBeamOnPulley, takeBeam2, useBeamOnLongPulley,
                 useLongerPulleyOnScaffold, takePulley3, usePulleyOnScaffold2, takeRope, useRopeOnScaffold, takeBeam3, useBeamOnPlatform, pickUpEngine, useEngineOnPlatform, putCoalIntoEngine, takeRope2)));
-        allSteps.add(new PanelDetails("Investigate the Caves", Arrays.asList(useLift, takePlank, enterTunnelFromPlankRoom, attachRope, swingOverRope, searchFire1, plankRock1, searchFire2, searchFire3, searchFire4, searchFire5, readDiary, enterSnakesRoom)));
-        allSteps.add(new PanelDetails("Investigate the Caves", Arrays.asList(talkToArmod, enterBossRoom, killBoss, pickUpBox, leaveBossRoom, goUpRope, talkToSigridToFinish, talkToVargasToFinish)));
+        allSteps.add(new PanelDetails("Investigate the caves", Arrays.asList(useLift, takePlank, enterTunnelFromPlankRoom, attachRope, swingOverRope, searchFire1, plankRock1, searchFire2, searchFire3, searchFire4, searchFire5, readDiary, enterSnakesRoom)));
+        allSteps.add(new PanelDetails("Investigate the caves", Arrays.asList(talkToArmod, enterBossRoom, killBoss, pickUpBox, leaveBossRoom, goUpRope, talkToSigridToFinish, talkToVargasToFinish)));
 
         return allSteps;
     }

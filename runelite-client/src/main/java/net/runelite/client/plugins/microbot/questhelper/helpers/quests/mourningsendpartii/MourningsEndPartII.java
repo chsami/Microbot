@@ -636,9 +636,9 @@ public class MourningsEndPartII extends BasicQuestHelper {
 
         enterCave = new ObjectStep(this, ObjectID.DOOR_8789, new WorldPoint(2034, 4636, 0), "Enter the Mourner Caves.", newKey);
 
-        searchCorpse = new ObjectStep(this, ObjectID.GUARD_34963, new WorldPoint(1925, 4642, 0), "Follow the Caves to the west until you reach the Temple of Light. Search the guard corpse nearby.");
+        searchCorpse = new ObjectStep(this, ObjectID.GUARD_34963, new WorldPoint(1925, 4642, 0), "Follow the caves to the west until you reach the Temple of Light. Search the guard corpse nearby.");
 
-        goUpStairsTemple = new ObjectStep(this, ObjectID.STAIRCASE_10015, new WorldPoint(1903, 4639, 0), "Follow the Caves to the west to the Temple of Light. Go up the stairs in it.");
+        goUpStairsTemple = new ObjectStep(this, ObjectID.STAIRCASE_10015, new WorldPoint(1903, 4639, 0), "Follow the caves to the west to the Temple of Light. Go up the stairs in it.");
 
         goUpSouthLadder = new ObjectStep(this, ObjectID.STAIRCASE_10017, new WorldPoint(1894, 4620, 1), "Go up the south staircase.");
 
@@ -918,14 +918,14 @@ public class MourningsEndPartII extends BasicQuestHelper {
 
         if (questHelperPlugin.getPlayerStateManager().getAccountType().isAnyIronman()) {
             if (client.getRealSkillLevel(Skill.SLAYER) > 85) {
-                getDeathTalisman = new DetailedQuestStep(this, "You need to get a Death Talisman. Either kill Dark Beasts for one, or bring 50 items requested by Thorgel at the Death Locations to him.");
+                getDeathTalisman = new DetailedQuestStep(this, "You need to get a Death Talisman. Either kill Dark Beasts for one, or bring 50 items requested by Thorgel at the Death Altar to him.");
                 getDeathTalismanInCentre = new ObjectStep(this, NullObjectID.NULL_9939, new WorldPoint(1881, 4639, 0),
                         "Get a Death Talisman by either getting the dwarf at the altar 50 items, or killing Dark Beasts. " +
                                 "TURN THE MIDDLE PILLAR TO POINT BACK EAST OR YOU'LL HAVE TO RETURN VIA THE UNDERGROUND PASS.");
                 getDeathTalismanInCentreDoorCorrect = new NpcStep(this, NpcID.THORGEL, new WorldPoint(1860, 4641, 0),
                         "Get a Death Talisman by either getting the dwarf at the altar 50 items, or killing Dark Beasts.");
             } else {
-                getDeathTalisman = new DetailedQuestStep(this, "You need to get a Death Talisman. Talk to the dwarf at the Death Locations to help him collect 50 items for one.");
+                getDeathTalisman = new DetailedQuestStep(this, "You need to get a Death Talisman. Talk to the dwarf at the Death Altar to help him collect 50 items for one.");
                 getDeathTalismanInCentre = new ObjectStep(this, NullObjectID.NULL_9939, new WorldPoint(1881, 4639, 0),
                         "Bring the Thorgel the items he needs for a Death Talisman. TURN THE MIDDLE PILLAR TO POINT BACK " +
                                 "EAST OR YOU'LL HAVE TO RETURN VIA THE UNDERGROUND PASS.");
@@ -933,7 +933,7 @@ public class MourningsEndPartII extends BasicQuestHelper {
                         "Bring the dwarf the items he needs for a Death Talisman.");
             }
         } else {
-            getDeathTalisman = new DetailedQuestStep(this, "You need to get a Death Talisman. Buy one, or talk to the dwarf at the Death Locations to help him collect 50 items for one.");
+            getDeathTalisman = new DetailedQuestStep(this, "You need to get a Death Talisman. Buy one, or talk to the dwarf at the Death Altar to help him collect 50 items for one.");
             getDeathTalismanInCentre = new ObjectStep(this, NullObjectID.NULL_9939, new WorldPoint(1881, 4639, 0),
                     "Get a Death Talisman and return. Buy one, or help Thorgel at the altar for one. TURN THE MIDDLE " +
                             "PILLAR TO POINT BACK EAST OR YOU'LL HAVE TO RETURN VIA THE UNDERGROUND PASS.");
@@ -954,7 +954,7 @@ public class MourningsEndPartII extends BasicQuestHelper {
         enterMournerBasementCharging = new ObjectStep(this, ObjectID.TRAPDOOR_8783, new WorldPoint(2542, 3327, 0), "Enter the Mourner HQ basement.");
         enterMournerCaveCharging = new ObjectStep(this, ObjectID.DOOR_8789, new WorldPoint(2034, 4636, 0), "Enter the Mourner Caves.", newKey);
         enterUndergroundPass = new ObjectStep(this, ObjectID.CAVE_ENTRANCE_4006, new WorldPoint(2314, 3217, 0),
-                "You didn't unlock the light door from the Mourner entrance, so you'll need to return to the Death Locations via the Underground Pass. Enter from the Elven Lands entrance. Bring a Death Talisman, or items for Thorgel for his Death Talisman.",
+                "You didn't unlock the light door from the Mourner entrance, so you'll need to return to the Death Altar via the Underground Pass. Enter from the Elven Lands entrance. Bring a Death Talisman, or items for Thorgel for his Death Talisman.",
                 deathTalisman, newlyMadeCrystal);
         enterWell = new ObjectStep(this, ObjectID.WELL_4005, new WorldPoint(2342, 9623, 0), "Enter the Well of Voyage.");
         leavePassCentre = new ObjectStep(this, ObjectID.DOOR_3333, new WorldPoint(2016, 4712, 1), "Leave the well area, and head to the dwarven camp below to the south.");
@@ -972,7 +972,7 @@ public class MourningsEndPartII extends BasicQuestHelper {
         useCrystalOnAltar = new ObjectStep(this, ObjectID.ALTAR_34770, new WorldPoint(2205, 4836, 0), "Use the newly made crystal on the death altar.", newlyMadeCrystalHighlight);
         useCrystalOnAltar.addIcon(ItemID.NEWLY_MADE_CRYSTAL);
 
-        leaveDeathAltar = new ObjectStep(this, ObjectID.PORTAL_34758, new WorldPoint(2208, 4829, 0), "Leave the Death Locations and go use the charged crystal on the dark crystal.");
+        leaveDeathAltar = new ObjectStep(this, ObjectID.PORTAL_34758, new WorldPoint(2208, 4829, 0), "Leave the Death Altar and go use the charged crystal on the dark crystal.");
         turnPillarFromTemple = new ObjectStep(this, NullObjectID.NULL_9939, new WorldPoint(1881, 4639, 0), "Enter the central area, and turn the pillar's mirror east.", chargedCrystal);
         goUpFromCentre = new ObjectStep(this, ObjectID.STAIRCASE_10015, new WorldPoint(1888, 4639, 0), "Go up to the dark crystal.", chargedCrystal);
         goUpToNorthToCharge = new ObjectStep(this, ObjectID.STAIRCASE_10015, new WorldPoint(1891, 4642, 1), "Go up the stairs to the north.", chargedCrystal);
@@ -1047,7 +1047,7 @@ public class MourningsEndPartII extends BasicQuestHelper {
         allSteps.add(new PanelDetails("Starting off",
                 new ArrayList<>(Collections.singletonList(talkToArianwyn))));
 
-        allSteps.add(new PanelDetails("Explore the Caves",
+        allSteps.add(new PanelDetails("Explore the caves",
                 Arrays.asList(talkToEssyllt, enterCave, searchCorpse, goUpStairsTemple, goUpSouthLadder, goToMiddleFromSouth, goUpFromMiddleToNorth, useChisel, bringCrystalToArianwyn,
                         talkToElunedAfterGivingCrystal, talkToArianwynAfterGivingCrystal), Arrays.asList(chisel, mournersOutfit),
                 Arrays.asList(westArdougneTeleport, lletyaTeleport)));
@@ -1069,7 +1069,7 @@ public class MourningsEndPartII extends BasicQuestHelper {
                 goUpFromMiddleToNorthPuzzle5, puzzle5Pillar7, goDownToMiddleFromNorthPuzzle5, puzzle5Pillar8, puzzle5Pillar9, puzzle5Pillar10, puzzle5Pillar11, goDownFromF2Puzzle5,
                 goDownFromF1Puzzle5, puzzle5Pillar12, puzzle5Pillar13, puzzle5Pillar14, searchMagentaYellowChest)));
 
-        allSteps.add(new PanelDetails("Reach the Death Locations", Arrays.asList(pullDispenser6, goUpToF1Puzzle6, puzzle6Pillar1,
+        allSteps.add(new PanelDetails("Reach the Death Altar", Arrays.asList(pullDispenser6, goUpToF1Puzzle6, puzzle6Pillar1,
                 puzzle6Pillar2, goDownFromF1Puzzle6, puzzle6Pillar3, puzzle6Pillar4,
                 puzzle6Pillar5, puzzle6Pillar6, puzzle6Pillar7, puzzle6Pillar8, goUpToF1Puzzle6, puzzle6Pillar9, goUpNorthLadderToF2Puzzle6, puzzle6Pillar10, goDownNorthLadderToF1Puzzle6, goUpToFloor2Puzzle6,
                 puzzle6Pillar11, puzzle6Pillar12, puzzle6Pillar13, goDownToMiddleFromSouthPuzzle6, goUpFromMiddleToNorthPuzzle6, puzzle6Pillar14, puzzle6Pillar15, puzzle6Pillar16, puzzle6Pillar17, goDownToCentre, turnKeyMirror)));

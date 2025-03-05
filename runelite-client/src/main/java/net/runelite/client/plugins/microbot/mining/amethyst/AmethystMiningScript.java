@@ -122,7 +122,6 @@ public class AmethystMiningScript extends Script {
         }
     }
 
-    //bankOre
     private void bankItems() {
         if (Rs2Walker.walkTo(BankLocation.MINING_GUILD.getWorldPoint()))
             bank();
@@ -183,7 +182,6 @@ public class AmethystMiningScript extends Script {
         }
     }
 
-    //handleMining
     private void handleMining() {
         if (oreVein != null && AntibanPlugin.isMining()) return;
         if (miningSpot == MiningSpot.NULL)
@@ -199,7 +197,6 @@ public class AmethystMiningScript extends Script {
 
     }
 
-    //mineRock
     private boolean mineVein() {
         if (Rs2Player.isMoving()) return false;
 
@@ -238,13 +235,11 @@ public class AmethystMiningScript extends Script {
         }
     }
 
-    //walkToMiningLocation
     private boolean walkToMiningSpot() {
         WorldPoint miningWorldPoint = miningSpot.getWorldPoint();
         return Rs2Walker.walkTo(miningWorldPoint, 8);
     }
 
-    //moveToMiningLocation
     private void moveToMiningSpot() {
         Rs2Walker.walkFastCanvas(miningSpot.getWorldPoint());
     }

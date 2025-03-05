@@ -238,15 +238,15 @@ public class RagAndBoneManI extends BasicQuestHelper {
                 NpcID.GOBLIN_3047, NpcID.GOBLIN_3048);
 
         addRope = new ObjectStep(this, ObjectID.DARK_HOLE, new WorldPoint(3169, 3172, 0),
-                "Enter the hole to the Lumbridge Swamp Caves.", rope.highlighted(), lightSource, tinderbox);
+                "Enter the hole to the Lumbridge Swamp caves.", rope.highlighted(), lightSource, tinderbox);
         addRope.addIcon(ItemID.ROPE);
         leaveJunaRoom = new ObjectStep(this, ObjectID.TUNNEL_6658, new WorldPoint(3219, 9534, 2),
-                "Enter the Lumbridge Swamp Caves.");
+                "Enter the Lumbridge Swamp caves.");
         enterSwamp = new ObjectStep(this, ObjectID.DARK_HOLE, new WorldPoint(3169, 3172, 0),
-                "Enter the hole to the Lumbridge Swamp Caves.", lightSource, tinderbox);
+                "Enter the hole to the Lumbridge Swamp caves.", lightSource, tinderbox);
         enterSwamp.addSubSteps(addRope, leaveJunaRoom);
         killFrog = new NpcStep(this, NpcID.BIG_FROG, new WorldPoint(3153, 9558, 0),
-                "Kill a big frog in the south west of the Caves. Make sure to RUN between the two marked run tiles to " +
+                "Kill a big frog in the south west of the caves. Make sure to RUN between the two marked run tiles to " +
                         "avoid the Wall Beast.", true);
         killFrog.addTileMarker(new QuestTile(new WorldPoint(3161, 9574, 0), SpriteID.OPTIONS_RUNNING));
         killFrog.addTileMarker(new QuestTile(new WorldPoint(3163, 9574, 0), SpriteID.OPTIONS_RUNNING));

@@ -267,7 +267,7 @@ public class ArdougneHard extends ComplexStateQuestHelper {
                 "Smith a Dragon sq shield in West Ardougne.", shieldLeft, shieldRight, hammer);
 
         enterMournerHQ = new ObjectStep(this, ObjectID.DOOR_2036, new WorldPoint(2551, 3320, 0),
-                "Enter the Mourner HQ, or enter the Death Locations via the Abyss.", deathAccess, highEss, crystalTrink, newKey,
+                "Enter the Mourner HQ, or enter the Death Altar via the Abyss.", deathAccess, highEss, crystalTrink, newKey,
                 gasMask.equipped(), mournerTop.equipped(), mournerTrousers.equipped(),
                 mournerCloak.equipped(), mournerGloves.equipped(), mournerBoots.equipped());
         enterMournerBasement = new ObjectStep(this, ObjectID.TRAPDOOR_8783, new WorldPoint(2542, 3327, 0),

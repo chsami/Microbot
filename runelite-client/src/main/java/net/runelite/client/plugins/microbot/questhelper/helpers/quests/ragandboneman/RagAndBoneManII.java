@@ -361,12 +361,12 @@ public class RagAndBoneManII extends BasicQuestHelper {
     public void setupSteps() {
         finishP1 = new DetailedQuestStep(this, "Finish Rag and Bone Man I.");
         addRope = new ObjectStep(this, ObjectID.DARK_HOLE, new WorldPoint(3169, 3172, 0),
-                "Enter the hole to the Lumbridge Swamp Caves.", rope.highlighted(), lightSource, tinderbox);
+                "Enter the hole to the Lumbridge Swamp caves.", rope.highlighted(), lightSource, tinderbox);
         addRope.addIcon(ItemID.ROPE);
         leaveJunaRoom = new ObjectStep(this, ObjectID.TUNNEL_6658, new WorldPoint(3219, 9534, 2),
-                "Enter the Lumbridge Swamp Caves.");
+                "Enter the Lumbridge Swamp caves.");
         enterSwamp = new ObjectStep(this, ObjectID.DARK_HOLE, new WorldPoint(3169, 3172, 0),
-                "Enter the hole to the Lumbridge Swamp Caves.", lightSource, tinderbox);
+                "Enter the hole to the Lumbridge Swamp caves.", lightSource, tinderbox);
         enterSwamp.addSubSteps(addRope, leaveJunaRoom);
 
         killBat = new NpcStep(this, NpcID.BAT, new WorldPoint(3367, 3486, 0),

@@ -226,7 +226,7 @@ public class WildernessEasy extends ComplexStateQuestHelper {
                         "less than your max prayer points.");
 
         chaosAltar = new ObjectStep(this, ObjectID.CHAOS_ALTAR_411, new WorldPoint(2947, 3821, 0),
-                "Pray at the Chaos Locations.");
+                "Pray at the Chaos Altar.");
 
         enterKBDLair = new ObjectStep(this, ObjectID.LADDER_18987, new WorldPoint(3017, 3849, 0),
                 "Climb down the ladder that leads to the King Black Dragon Lair.", oneClick);
@@ -320,7 +320,7 @@ public class WildernessEasy extends ComplexStateQuestHelper {
         mammothSteps.setLockingStep(killMammothTask);
         allSteps.add(mammothSteps);
 
-        PanelDetails chaosSteps = new PanelDetails("Chaos RC Locations", Collections.singletonList(chaosTemple),
+        PanelDetails chaosSteps = new PanelDetails("Chaos RC Altar", Collections.singletonList(chaosTemple),
                 chaosAccess);
         chaosSteps.setDisplayCondition(notChaosTemple);
         chaosSteps.setLockingStep(chaosTempleTask);
@@ -337,7 +337,7 @@ public class WildernessEasy extends ComplexStateQuestHelper {
         ruinsSteps.setLockingStep(demonicPrayerTask);
         allSteps.add(ruinsSteps);
 
-        PanelDetails altarSteps = new PanelDetails("Pray at Chaos Locations", Collections.singletonList(chaosAltar));
+        PanelDetails altarSteps = new PanelDetails("Pray at Chaos Altar", Collections.singletonList(chaosAltar));
         altarSteps.setDisplayCondition(notChaosAltar);
         altarSteps.setLockingStep(chaosAltarTask);
         allSteps.add(altarSteps);

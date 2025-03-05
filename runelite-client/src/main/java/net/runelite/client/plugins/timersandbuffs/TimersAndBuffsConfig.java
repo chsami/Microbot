@@ -318,8 +318,8 @@ public interface TimersAndBuffsConfig extends Config
 
 	@ConfigItem(
 		keyName = "showTzhaarTimers",
-		name = "Fight Caves and inferno timers",
-		description = "Display elapsed time in the fight Caves and inferno.",
+		name = "Fight caves and inferno timers",
+		description = "Display elapsed time in the fight caves and inferno.",
 		section = bossesSection
 	)
 	default boolean showTzhaarTimers()

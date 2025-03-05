@@ -347,14 +347,14 @@ public class QoLPlugin extends Plugin {
 
             }
         }
-        if (config.smartRunecraft() && event.getMenuOption().contains("Smart Craft-rune") && event.getMenuTarget().contains("Locations")) {
+        if (config.smartRunecraft() && event.getMenuOption().contains("Smart Craft-rune") && event.getMenuTarget().contains("Altar")) {
             if(Rs2Inventory.anyPouchFull()) {
                 Microbot.getClientThread().runOnSeperateThread(() -> {
                     Rs2Inventory.waitForInventoryChanges(50000);
                     Global.sleepUntil(() -> !Rs2Inventory.anyPouchFull(), ()-> {
                                 Rs2Inventory.emptyPouches();
                                 Rs2Inventory.waitForInventoryChanges(3000);
-                                Rs2GameObject.interact("Locations");
+                                Rs2GameObject.interact("Altar");
                                 Rs2Inventory.waitForInventoryChanges(3000);
                             }
                             ,10000, 200);
@@ -471,7 +471,7 @@ public class QoLPlugin extends Plugin {
         if (config.smartGotrMine() && menuEntry.getOption().contains("Mine") && menuEntry.getIdentifier() == ObjectID.HUGE_GUARDIAN_REMAINS) {
             menuEntry.setOption("<col=FFA500>Smart Mine</col>");
         }
-        if (config.smartRunecraft() && menuEntry.getOption().contains("Craft-rune") && menuEntry.getTarget().contains("Locations")) {
+        if (config.smartRunecraft() && menuEntry.getOption().contains("Craft-rune") && menuEntry.getTarget().contains("Altar")) {
             menuEntry.setOption("<col=FFA500>Smart Craft-rune</col>");
         }
 

@@ -471,7 +471,7 @@ public class Watchtower extends BasicQuestHelper {
         jumpGap.addDialogStep("Okay, I'll pay it.");
 
         talkToCityGuard = new NpcStep(this, NpcID.CITY_GUARD, new WorldPoint(2543, 3032, 0), "Talk to the City Guard.");
-        talkToCityGuard.addDialogStep("I seek passage into the skavid Caves.");
+        talkToCityGuard.addDialogStep("I seek passage into the skavid caves.");
         talkToCityGuardAgain = new NpcStep(this, NpcID.CITY_GUARD, new WorldPoint(2543, 3032, 0), "Talk to the City Guard again.", deathRune);
 
         enterScaredSkavidCave = new ObjectStep(this, ObjectID.CAVE_ENTRANCE_2809, new WorldPoint(2554, 3035, 0), "Enter the skavid cave entrance in east Gu'Tanoth.", skavidMap, lightSource);
@@ -479,18 +479,18 @@ public class Watchtower extends BasicQuestHelper {
         talkToScaredSkavid = new NpcStep(this, NpcID.SCARED_SKAVID, new WorldPoint(2502, 9433, 0), "Talk to the scared skavid.");
         talkToScaredSkavid.addDialogStep("Okay, okay, I'm not going to hurt you.");
 
-        leaveScaredSkavidRoom = new ObjectStep(this, ObjectID.CAVE_EXIT_2821, new WorldPoint(2504, 9442, 0), "Talk to four other skavids in their Caves.");
+        leaveScaredSkavidRoom = new ObjectStep(this, ObjectID.CAVE_EXIT_2821, new WorldPoint(2504, 9442, 0), "Talk to four other skavids in their caves.");
 
-        enterSkavid1Cave = new ObjectStep(this, ObjectID.CAVE_ENTRANCE_2808, new WorldPoint(2554, 3053, 0), "Talk to four other skavids in their Caves.", skavidMap, lightSource);
+        enterSkavid1Cave = new ObjectStep(this, ObjectID.CAVE_ENTRANCE_2808, new WorldPoint(2554, 3053, 0), "Talk to four other skavids in their caves.", skavidMap, lightSource);
         enterSkavid1Cave.addDialogStep("I'll be fine without a tinderbox.");
 
-        enterSkavid2Cave = new ObjectStep(this, ObjectID.CAVE_ENTRANCE_2807, new WorldPoint(2541, 3053, 0), "Talk to four other skavids in their Caves.", skavidMap, lightSource);
+        enterSkavid2Cave = new ObjectStep(this, ObjectID.CAVE_ENTRANCE_2807, new WorldPoint(2541, 3053, 0), "Talk to four other skavids in their caves.", skavidMap, lightSource);
         enterSkavid2Cave.addDialogStep("I'll be fine without a tinderbox.");
 
-        enterSkavid3Cave = new ObjectStep(this, ObjectID.CAVE_ENTRANCE_2806, new WorldPoint(2524, 3069, 0), "Talk to four other skavids in their Caves.", skavidMap, lightSource);
+        enterSkavid3Cave = new ObjectStep(this, ObjectID.CAVE_ENTRANCE_2806, new WorldPoint(2524, 3069, 0), "Talk to four other skavids in their caves.", skavidMap, lightSource);
         enterSkavid3Cave.addDialogStep("I'll be fine without a tinderbox.");
 
-        enterSkavid4Cave = new ObjectStep(this, ObjectID.CAVE_ENTRANCE_2805, new WorldPoint(2561, 3024, 0), "Talk to four other skavids in their Caves.", skavidMap, lightSource);
+        enterSkavid4Cave = new ObjectStep(this, ObjectID.CAVE_ENTRANCE_2805, new WorldPoint(2561, 3024, 0), "Talk to four other skavids in their caves.", skavidMap, lightSource);
         enterSkavid4Cave.addDialogStep("I'll be fine without a tinderbox.");
 
         talkToSkavid1 = new NpcStep(this, NpcID.SKAVID_4378, new WorldPoint(2503, 9449, 0), "Talk to the skavid.");
@@ -505,9 +505,9 @@ public class Watchtower extends BasicQuestHelper {
         talkToSkavid4 = new NpcStep(this, NpcID.SKAVID_4379, new WorldPoint(2503, 9449, 0), "Talk to the skavid.");
         talkToSkavid4.addDialogStep("Nod.");
 
-        leaveSkavid1 = new ObjectStep(this, ObjectID.CAVE_EXIT_2820, new WorldPoint(2497, 9451, 0), "Talk to four other skavids in their Caves.");
-        leaveSkavid2 = new ObjectStep(this, ObjectID.CAVE_EXIT_2819, new WorldPoint(2518, 9456, 0), "Talk to four other skavids in their Caves.");
-        leaveSkavid3 = new ObjectStep(this, ObjectID.CAVE_EXIT_2818, new WorldPoint(2532, 9470, 0), "Talk to four other skavids in their Caves.");
+        leaveSkavid1 = new ObjectStep(this, ObjectID.CAVE_EXIT_2820, new WorldPoint(2497, 9451, 0), "Talk to four other skavids in their caves.");
+        leaveSkavid2 = new ObjectStep(this, ObjectID.CAVE_EXIT_2819, new WorldPoint(2518, 9456, 0), "Talk to four other skavids in their caves.");
+        leaveSkavid3 = new ObjectStep(this, ObjectID.CAVE_EXIT_2818, new WorldPoint(2532, 9470, 0), "Talk to four other skavids in their caves.");
         leaveSkavid4 = new ObjectStep(this, ObjectID.CAVE_EXIT_2817, new WorldPoint(2497, 9418, 0), "Go talk to the mad skavid.");
 
         enterSkavid1Cave.addSubSteps(enterSkavid2Cave, enterSkavid3Cave, enterSkavid4Cave, talkToSkavid1, talkToSkavid2, talkToSkavid3, talkToSkavid4, leaveSkavid1, leaveSkavid2, leaveSkavid3, leaveSkavid4, leaveScaredSkavidRoom);

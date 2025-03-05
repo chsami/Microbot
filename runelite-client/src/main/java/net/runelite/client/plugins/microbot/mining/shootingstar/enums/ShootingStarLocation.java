@@ -64,7 +64,7 @@ public enum ShootingStarLocation {
     EAST_LUMBRIDGE_SWAMP_MINE(new WorldPoint(3232, 3152, 0), "East Lumbridge Swamp mine", "E Lumbridge Swamp", false),
     RIMMINGTON_MINE(new WorldPoint(2974, 3243, 0), "Rimmington mine", "Rimmington", false),
     BURGH_DE_ROTT__BANK(new WorldPoint(3497, 3220, 0), "Burgh de Rott bank", "Burgh de Rott", false),
-    KARAMJA_JUNGLE_MINE__NATURE_ALTAR(new WorldPoint(2843, 3033, 0), "Nature Locations mine north of Shilo", "Nature Locations", false),
+    KARAMJA_JUNGLE_MINE__NATURE_ALTAR(new WorldPoint(2843, 3033, 0), "Nature Altar mine north of Shilo", "Nature Altar", false),
     SHILO_VILLAGE_MINE(new WorldPoint(2825, 2997, 0), "Shilo Village gem mine", "Shilo Gem Mine", false),
     RESOURCE_AREA(new WorldPoint(3188, 3935, 0), "Wilderness Resource Area", "Wilderness Resource Area", true),
     JATIZSO_MINE_ENTRANCE(new WorldPoint(2392, 3811, 0), "Jatizso mine entrance", "Jatizso", false),

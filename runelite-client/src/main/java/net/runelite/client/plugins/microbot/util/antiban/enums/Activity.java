@@ -326,7 +326,7 @@ public enum Activity {
     MAKING_TEAK_PLANKS("Making teak planks", Category.PROCESSING, ActivityIntensity.MODERATE),
     COOKING_RAW_SHARKS("Cooking raw sharks", Category.SKILLING_COOKING, ActivityIntensity.LOW),
     CUTTING_RUBY_BOLT_TIPS("Cutting ruby bolt tips", Category.PROCESSING, ActivityIntensity.LOW),
-    CRAFTING_RUNES_AT_OURANIA_ALTAR("Crafting runes at Ourania Locations", Category.SKILLING_RUNECRAFT, ActivityIntensity.MODERATE),
+    CRAFTING_RUNES_AT_OURANIA_ALTAR("Crafting runes at Ourania Altar", Category.SKILLING_RUNECRAFT, ActivityIntensity.MODERATE),
     COLLECTING_BLACK_SCIMITARS_FROM_ARDOUGNE_CASTLE("Collecting black scimitars from Ardougne Castle", Category.COLLECTING, ActivityIntensity.LOW),
     MAKING_UNCOOKED_BERRY_PIES("Making uncooked berry pies", Category.PROCESSING, ActivityIntensity.LOW),
     PICKING_BANANAS("Picking bananas", Category.COLLECTING, ActivityIntensity.MODERATE),

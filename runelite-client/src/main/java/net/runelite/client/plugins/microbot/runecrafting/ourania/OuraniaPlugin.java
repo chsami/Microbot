@@ -24,8 +24,8 @@ import java.awt.*;
 import java.time.Instant;
 
 @PluginDescriptor(
-        name = PluginDescriptor.GMason + "Ourania Locations",
-        description = "Microbot Ourania Locations plugin",
+        name = PluginDescriptor.GMason + "Ourania Altar",
+        description = "Microbot Ourania Altar plugin",
         tags = {"runecrafting", "microbot", "skilling"},
         enabledByDefault = false
 )

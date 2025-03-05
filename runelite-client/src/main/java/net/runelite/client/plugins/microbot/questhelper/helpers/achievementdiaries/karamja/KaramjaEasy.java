@@ -174,11 +174,11 @@ public class KaramjaEasy extends ComplexStateQuestHelper {
         pickupSeaweed = new DetailedQuestStep(this, new WorldPoint(2756, 3125, 0),
                 "Pick up 5 seaweed on Karamja's coast. You can just drop a piece and pick it up again 5 times.", seaweed);
         enterCave = new ObjectStep(this, ObjectID.ROCKS_11441, new WorldPoint(2857, 3169, 0),
-                "Enter the fight pits or fight Caves in Mor Ul Rek under the Karamja Volcano.");
+                "Enter the fight pits or fight caves in Mor Ul Rek under the Karamja Volcano.");
         enterTzhaar = new ObjectStep(this, ObjectID.CAVE_ENTRANCE_11835, new WorldPoint(2864, 9572, 0),
-                "Enter the fight pits or fight Caves in Mor Ul Rek under the Karamja Volcano.");
+                "Enter the fight pits or fight caves in Mor Ul Rek under the Karamja Volcano.");
         enterFightCave = new ObjectStep(this, ObjectID.CAVE_ENTRANCE_11833, new WorldPoint(2438, 5167, 0),
-                "Enter the fight pits or fight Caves in Mor Ul Rek under the Karamja Volcano.");
+                "Enter the fight pits or fight caves in Mor Ul Rek under the Karamja Volcano.");
         enterFightCave.addSubSteps(enterCave, enterTzhaar);
         enterPothole = new ObjectStep(this, ObjectID.ROCKS_2584, new WorldPoint(2825, 3119, 0),
                 "Enter the dungeon east of Tai Bwo Wannai, and kill a Jogre in there.", combatGear);

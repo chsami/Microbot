@@ -229,7 +229,7 @@ public class TheAscentOfArceuus extends BasicQuestHelper {
                 "Return to Kaal-Ket-Jor.");
         talkToKaalAgain.addSubSteps(enterKaruulmAgain);
 
-        searchRocks = new ObjectStep(this, ObjectID.ROCKS_33595, new WorldPoint(1710, 3882, 0), "Inspect the rocks near the Arceuus Locations until you find a device.", true);
+        searchRocks = new ObjectStep(this, ObjectID.ROCKS_33595, new WorldPoint(1710, 3882, 0), "Inspect the rocks near the Arceuus Altar until you find a device.", true);
         ((ObjectStep) searchRocks).addAlternateObjects(ObjectID.ROCKS_33593);
 
         goUpstairsInTowerToFinish = new ObjectStep(this, ObjectID.STAIRS_33575, new WorldPoint(1585, 3821, 0),

@@ -88,7 +88,7 @@ public class MapClue extends ClueScroll implements ObjectClueScroll
 		new MapClue(CLUE_SCROLL_ELITE_12130, new WorldPoint(2449, 3130, 0), "South-west of Tree Gnome Village."),
 		new MapClue(CLUE_SCROLL_ELITE_19782, new WorldPoint(2953, 9523, 1), "In the Mogre Camp, near Port Khazard. You require a Diving Apparatus and a Fishbowl Helmet"),
 		new MapClue(CLUE_SCROLL_ELITE_19783, new WorldPoint(2202, 3062, 0), "Zul-Andra. Fairy ring BJS"),
-		new MapClue(CLUE_SCROLL_ELITE_19784, new WorldPoint(1815, 3852, 0), "At the Soul Locations, north-east of the Arceuus essence mine."),
+		new MapClue(CLUE_SCROLL_ELITE_19784, new WorldPoint(1815, 3852, 0), "At the Soul Altar, north-east of the Arceuus essence mine."),
 		new MapClue(CLUE_SCROLL_ELITE_19785, new WorldPoint(3538, 3208, 0), "East of Burgh de Rott."),
 		new MapClue(CLUE_SCROLL_ELITE_19786, new WorldPoint(2703, 2716, 0), CRATE_6616, "The crate in south-western Ape Atoll"),
 		new MapClue(TREASURE_SCROLL_23068, new WorldPoint(3203, 3213, 0), "Behind Lumbridge Castle, just outside the kitchen door"),

@@ -215,7 +215,7 @@ public class TheSlugMenace extends BasicQuestHelper {
 
         necklaceOfPassage = new ItemRequirement("Necklace of Passage", ItemCollections.NECKLACE_OF_PASSAGES);
 
-        airAltarTeleport = new ItemRequirement("Teleport near Air Locations", ItemCollections.SKILLS_NECKLACES);
+        airAltarTeleport = new ItemRequirement("Teleport near Air Altar", ItemCollections.SKILLS_NECKLACES);
         airAltarTeleport.addAlternates(ItemID.FALADOR_TELEPORT, ItemID.RIMMINGTON_TELEPORT);
         airAltarTeleport.setDisplayMatchedItemName(true);
         airAltarTeleport.setTooltip("The best items for this are (in order):");
@@ -224,7 +224,7 @@ public class TheSlugMenace extends BasicQuestHelper {
         airAltarTeleport.appendToTooltip("Falador Teleport");
         airAltarTeleport.appendToTooltip("Rimmington/House Teleport");
 
-        earthAltarTeleport = new ItemRequirement("Teleport near Earth Locations", ItemCollections.DIGSITE_PENDANTS);
+        earthAltarTeleport = new ItemRequirement("Teleport near Earth Altar", ItemCollections.DIGSITE_PENDANTS);
         earthAltarTeleport.addAlternates(ItemID.VARROCK_TELEPORT, ItemID.LUMBERYARD_TELEPORT, ItemID.DIGSITE_TELEPORT);
         earthAltarTeleport.setDisplayMatchedItemName(true);
         earthAltarTeleport.setTooltip("The best items for this are (in order):");
@@ -234,23 +234,23 @@ public class TheSlugMenace extends BasicQuestHelper {
         earthAltarTeleport.appendToTooltip("Digsite Teleport");
         earthAltarTeleport.appendToTooltip("Varrock Teleports");
 
-        fireAltarTeleport = new ItemRequirement("Teleport near Fire Locations", ItemCollections.RING_OF_DUELINGS);
+        fireAltarTeleport = new ItemRequirement("Teleport near Fire Altar", ItemCollections.RING_OF_DUELINGS);
         fireAltarTeleport.addAlternates(ItemCollections.AMULET_OF_GLORIES);
         fireAltarTeleport.setTooltip("The best items for this are (in order):");
         fireAltarTeleport.appendToTooltip("Ring Of The Elements");
         fireAltarTeleport.appendToTooltip("Ring of Dueling");
         fireAltarTeleport.appendToTooltip("Amulet of Glory (to Al Kharid)");
 
-        waterAltarTeleport = new ItemRequirement("Teleport near Water Locations", ItemID.LUMBRIDGE_TELEPORT);
+        waterAltarTeleport = new ItemRequirement("Teleport near Water Altar", ItemID.LUMBRIDGE_TELEPORT);
         waterAltarTeleport.setTooltip("The best items for this are (in order):");
         waterAltarTeleport.appendToTooltip("Ring Of The Elements");
         waterAltarTeleport.appendToTooltip("Lumbridge Teleport");
 
-        mindAltarTeleport = new ItemRequirement("Teleport near Mind Locations", ItemID.MIND_ALTAR_TELEPORT);
+        mindAltarTeleport = new ItemRequirement("Teleport near Mind Altar", ItemID.MIND_ALTAR_TELEPORT);
         mindAltarTeleport.addAlternates(ItemID.FALADOR_TELEPORT, ItemID.LASSAR_TELEPORT, ItemID.TAVERLEY_TELEPORT);
         mindAltarTeleport.addAlternates(ItemCollections.COMBAT_BRACELETS);
         mindAltarTeleport.setTooltip("The best items for this are (in order):");
-        mindAltarTeleport.appendToTooltip("Mind Locations Teleport (highly recommended)");
+        mindAltarTeleport.appendToTooltip("Mind Altar Teleport (highly recommended)");
         mindAltarTeleport.appendToTooltip("Lassar Teleport (Ice Mountain)");
         mindAltarTeleport.appendToTooltip("Combat Bracelet to Monastery");
         mindAltarTeleport.appendToTooltip("Falador Teleport");
@@ -337,7 +337,7 @@ public class TheSlugMenace extends BasicQuestHelper {
         solvePuzzle = new PuzzleWrapperStep(this, new PuzzleStep(this), "Combine the fragments.");
 
         // TODO: Expand out this section to be more descriptive and guiding
-        useEmptyRunes = new DetailedQuestStep(this, "Right-click each page to turn rune/pure essence into empty runes. Take each empty rune and use it on its respective Runecrafting Locations. Bring extra essence (~10 extra) as it is possible to accidentally destroy the essence upon creation.", page1, page2, page3, essence, chisel);
+        useEmptyRunes = new DetailedQuestStep(this, "Right-click each page to turn rune/pure essence into empty runes. Take each empty rune and use it on its respective Runecrafting Altar. Bring extra essence (~10 extra) as it is possible to accidentally destroy the essence upon creation.", page1, page2, page3, essence, chisel);
 
         enterDungeonAgain = new ObjectStep(this, ObjectID.OLD_RUIN_ENTRANCE, new WorldPoint(2696, 3283, 0), "Prepare to fight the Slug Prince (level 62). Only melee can hurt it. Then, enter the old ruin entrance west of Witchaven.", meleeGear, airRune, waterRune, earthRune, fireRune, mindRune);
         enterDungeonAgainUsedRunes = new ObjectStep(this, ObjectID.OLD_RUIN_ENTRANCE, new WorldPoint(2696, 3283, 0), "Prepare to fight the Slug Prince (level 62). Only melee can hurt it. Then, enter the old ruin entrance west of Witchaven.", meleeGear);

@@ -6,9 +6,6 @@ import net.runelite.api.Skill;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
-import net.runelite.client.ui.overlay.components.LineComponent;
-import net.runelite.client.ui.overlay.components.PanelComponent;
-import net.runelite.client.ui.overlay.components.TitleComponent;
 import net.runelite.client.ui.overlay.OverlayPriority;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 
@@ -18,7 +15,6 @@ import java.awt.*;
 public class ArtioPrayerOverlay extends Overlay {
     private final Client client;
     private final ArtioPrayerPlugin plugin;
-    private final PanelComponent panelComponent = new PanelComponent();
 
     @Inject
     public ArtioPrayerOverlay(Client client, ArtioPrayerPlugin plugin) {
@@ -26,10 +22,6 @@ public class ArtioPrayerOverlay extends Overlay {
         this.plugin = plugin;
         setPosition(OverlayPosition.TOP_LEFT);
         setLayer(OverlayLayer.ABOVE_WIDGETS);
-
-        // Improve background visuals
-        panelComponent.setBorder(new Rectangle(8, 8, 8, 8));
-        panelComponent.setBackgroundColor(new Color(0, 0, 0, 180)); // Semi-transparent background
         setPriority(OverlayPriority.HIGH);
     }
 
@@ -50,11 +42,18 @@ public class ArtioPrayerOverlay extends Overlay {
         graphics.setColor(new Color(0, 0, 0, 150));
         graphics.fillRoundRect(x, y, width, height, 10, 10);
 
+        graphics.setColor(Color.WHITE);
+        graphics.drawRoundRect(x, y, width, height, 10, 10);
 
         graphics.setFont(new Font("Arial", Font.BOLD, 14));
         graphics.setColor(Color.YELLOW);
         graphics.drawString("Prayer Overlay", x + 10, y + 20);
 
+        graphics.setFont(new Font("Arial", Font.PLAIN, 12));
+        graphics.setColor(Color.WHITE);
+        graphics.drawString("Current Prayer: " + plugin.getCurrentPrayer().name(), x + 10, y + 40);
+
+        int currentPrayer = client.getBoostedSkillLevel(Skill.PRAYER);
         int maxPrayer = client.getRealSkillLevel(Skill.PRAYER);
         graphics.drawString("Prayer: " + currentPrayer + "/" + maxPrayer, x + 10, y + 60);
 

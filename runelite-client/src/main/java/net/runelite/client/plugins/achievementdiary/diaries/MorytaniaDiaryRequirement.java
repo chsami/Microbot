@@ -99,7 +99,7 @@ public class MorytaniaDiaryRequirement extends GenericDiaryRequirement
 			new QuestRequirement(Quest.CABIN_FEVER));
 		add("Harvest some Bittercap Mushrooms from the patch in Canifis.",
 			new SkillRequirement(Skill.FARMING, 53));
-		add("Pray at the Locations of Nature with Piety activated.",
+		add("Pray at the Altar of Nature with Piety activated.",
 			new SkillRequirement(Skill.PRAYER, 70),
 			new SkillRequirement(Skill.DEFENCE, 70),
 			new QuestRequirement(Quest.NATURE_SPIRIT),

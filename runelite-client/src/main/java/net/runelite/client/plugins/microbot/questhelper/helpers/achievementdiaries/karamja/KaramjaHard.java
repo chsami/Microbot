@@ -160,7 +160,7 @@ public class KaramjaHard extends ComplexStateQuestHelper {
         oomlieWrap.setTooltip("You can make one by using a palm leaf on a raw oomlie and cooking it. Both are " +
                 "obtained from the Kharazi Jungle");
         pureEssence = new ItemRequirement("Pure essence", ItemID.PURE_ESSENCE).showConditioned(notCraftedNature);
-        natureTalismanOrAbyss = new ItemRequirement("Access to the Nature Locations", ItemID.NATURE_TALISMAN)
+        natureTalismanOrAbyss = new ItemRequirement("Access to the Nature Altar", ItemID.NATURE_TALISMAN)
                 .showConditioned(notCraftedNature).isNotConsumed();
         natureTalismanOrAbyss.addAlternates(ItemID.NATURE_TIARA);
         natureTalismanOrAbyss.setTooltip("Nature talisman or tiara");
@@ -239,7 +239,7 @@ public class KaramjaHard extends ComplexStateQuestHelper {
         enterTzhaar = new ObjectStep(this, ObjectID.CAVE_ENTRANCE_11835, new WorldPoint(2864, 9572, 0),
                 "Enter Mor Ul Rek under the Karamja Volcano.");
         enterFightCaves = new ObjectStep(this, ObjectID.CAVE_ENTRANCE_11833, new WorldPoint(2438, 5167, 0),
-                "Enter the fight Caves in Mor Ul Rek, ready to reach at least wave 31 to defeat a Ket-Zek.",
+                "Enter the fight caves in Mor Ul Rek, ready to reach at least wave 31 to defeat a Ket-Zek.",
                 fightCaveCombatGear);
         enterFightCaves.addSubSteps(enterHole, enterTzhaar);
 

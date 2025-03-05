@@ -250,7 +250,7 @@ public class TaleOfTheRighteous extends BasicQuestHelper {
         tryToEnterBarrier.addSubSteps(killLizardman);
 
         inspectUnstableAltar = new ObjectStep(this, ObjectID.UNSTABLE_ALTAR, new WorldPoint(1172, 9929, 0),
-                "Inspect the Unstable Locations in the south room.");
+                "Inspect the Unstable Altar in the south room.");
         leaveCave = new ObjectStep(this, ObjectID.ROPE_31967, new WorldPoint(1168, 9973, 0),
                 "Leave the cavern. You can hop worlds to appear back at the entrance.");
         returnToDuffy = new NpcStep(this, NpcID.HISTORIAN_DUFFY_8163, new WorldPoint(1278, 3561, 0),
@@ -259,9 +259,9 @@ public class TaleOfTheRighteous extends BasicQuestHelper {
                 "Enter the crevice west side of Quidamortem again.");
         enterCreviceAgain.addDialogStep("Yes.");
         talkToDuffyInCrevice = new NpcStep(this, NpcID.HISTORIAN_DUFFY, new WorldPoint(1172, 9929, 0),
-                "Talk to Historian Duffy near the Unstable Locations.");
+                "Talk to Historian Duffy near the Unstable Altar.");
         talkToGnosi = new NpcStep(this, NpcID.GNOSI, new WorldPoint(1172, 9929, 0),
-                "Talk to Gnosi near the Unstable Locations.");
+                "Talk to Gnosi near the Unstable Altar.");
         returnUpToShiro = new ObjectStep(this, ObjectID.LADDER_42207, new WorldPoint(1481, 3633, 0),
                 "Return to Shiro upstairs in the War Tent located on the west side of the Shayzien Encampment.");
         returnToShiro = new NpcStep(this, NpcID.LORD_SHIRO_SHAYZIEN_11038, new WorldPoint(1484, 3634, 1),
