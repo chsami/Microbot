@@ -251,7 +251,7 @@ public class WhatLiesBelow extends BasicQuestHelper {
 
     @Override
     public List<UnlockReward> getUnlockRewards() {
-        return Collections.singletonList(new UnlockReward("Access to a shortcut to the Chaos Altar"));
+        return Collections.singletonList(new UnlockReward("Access to a shortcut to the Chaos Locations"));
     }
 
     @Override

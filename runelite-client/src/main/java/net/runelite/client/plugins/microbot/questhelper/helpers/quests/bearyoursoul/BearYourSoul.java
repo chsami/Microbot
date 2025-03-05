@@ -103,7 +103,7 @@ public class BearYourSoul extends BasicQuestHelper {
         findSoulJourneyAndRead = new DetailedQuestStep(this, new WorldPoint(1632, 3808, 0), "Go to the Arceuus library and find The Soul journey book in one of the bookcases, then read it. You can ask Biblia for help locating it, or make use of the Runelite Kourend Library plugin.");
 
         talkToAretha = new NpcStep(this, NpcID.ARETHA, new WorldPoint(1814, 3851, 0),
-                "Talk to Aretha at the Soul Altar.");
+                "Talk to Aretha at the Soul Locations.");
         talkToAretha.addDialogStep("I've been reading your book...");
         talkToAretha.addDialogStep("Yes please.");
 

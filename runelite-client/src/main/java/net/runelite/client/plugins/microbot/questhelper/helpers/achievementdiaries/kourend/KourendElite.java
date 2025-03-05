@@ -242,7 +242,7 @@ public class KourendElite extends ComplexStateQuestHelper {
         bloodMineDenseEssence = new ObjectStep(this, ObjectID.DENSE_RUNESTONE, new WorldPoint(1764, 3858, 0),
                 "Mine a dense essence block.", pickaxe, chisel);
         bloodVenerateEssenceBlock = new ObjectStep(this, ObjectID.DARK_ALTAR, new WorldPoint(1716, 3883, 0),
-                "Venerate the essence block on the Dark Altar.", denseEssenceBlock);
+                "Venerate the essence block on the Dark Locations.", denseEssenceBlock);
         chiselEssenceBlock = new ItemStep(this, "Chisel the dark essence block.", chisel.highlighted(),
                 darkEssenceBlock.highlighted());
         craftBloodRune = new ObjectStep(this, ObjectID.BLOOD_ALTAR, new WorldPoint(1718, 3828, 0),

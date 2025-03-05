@@ -447,7 +447,7 @@ public class AKingdomDivided extends BasicQuestHelper {
         volcanicSulphur.setTooltip("Untradeable. Must be mined in Lovakengj.");
         moltenGlass = new ItemRequirement("Molten glass", ItemID.MOLTEN_GLASS);
         darkEssenceBlock = new ItemRequirement("Dark essence block", ItemID.DARK_ESSENCE_BLOCK);
-        darkEssenceBlock.setTooltip("Untradeable. Mine a Dense essence block in Arceuus then use the Dark Altar.");
+        darkEssenceBlock.setTooltip("Untradeable. Mine a Dense essence block in Arceuus then use the Dark Locations.");
         brokenRedirector = new ItemRequirement("Broken redirector", ItemID.BROKEN_REDIRECTOR);
         brokenRedirector.setTooltip("You can get a new one by talking to Lord Arceuus at Xeric's Lookout");
         sulphurPotion = new ItemRequirement("Sulphur potion", ItemID.SULPHUR_POTION);

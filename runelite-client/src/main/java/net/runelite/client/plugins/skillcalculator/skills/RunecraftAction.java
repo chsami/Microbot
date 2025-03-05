@@ -75,7 +75,7 @@ public enum RunecraftAction implements ItemSkillAction
 		@Override
 		public String getName(final ItemManager itemManager)
 		{
-			return "Blood rune (True Altar)";
+			return "Blood rune (True Locations)";
 		}
 	},
 	ZEAH_BLOOD_RUNE(ItemID.BLOOD_RUNE, 77, 24.425f, true)

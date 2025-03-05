@@ -15,8 +15,8 @@ import net.runelite.client.config.ConfigItem;
 public interface AutoRunecraftConfig extends Config
 {
     @ConfigItem(
-            keyName = "Altar",
-            name = "Altar",
+            keyName = "Locations",
+            name = "Locations",
             description = "Choose the altar to RC at",
             position = 0
     )

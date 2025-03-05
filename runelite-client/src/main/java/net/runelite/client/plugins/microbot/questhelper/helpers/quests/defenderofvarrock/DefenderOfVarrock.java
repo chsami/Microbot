@@ -222,7 +222,7 @@ public class DefenderOfVarrock extends BasicQuestHelper {
         bottleOfMist = new ItemRequirement("Bottle of mist", ItemID.BOTTLE_OF_MIST);
 
         varrockTeleport = new TeleportItemRequirement("Varrock teleport", ItemID.VARROCK_TELEPORT);
-        mindAltarOrLassarTeleport = new TeleportItemRequirement("Mind Altar or Lassar teleport tablet or spell", ItemID.MIND_ALTAR_TELEPORT);
+        mindAltarOrLassarTeleport = new TeleportItemRequirement("Mind Locations or Lassar teleport tablet or spell", ItemID.MIND_ALTAR_TELEPORT);
         mindAltarOrLassarTeleport.addAlternates(ItemID.LASSAR_TELEPORT);
         lumberyardTeleport = new TeleportItemRequirement("Teleport to the Lumberyard", ItemID.LUMBERYARD_TELEPORT);
         lumberyardTeleport.addAlternates(ItemID.RING_OF_THE_ELEMENTS, ItemID.RING_OF_THE_ELEMENTS_26818);

@@ -62,7 +62,7 @@ public enum MagicAction implements SkillAction
 	VARROCK_TELEPORT("Varrock Teleport", 25, 35, SpriteID.SPELL_VARROCK_TELEPORT, false, Spellbook.NORMAL),
 	ENCHANT_EMERALD_BOLT("Enchant Emerald Bolt", 27, 37, SpriteID.SPELL_ENCHANT_CROSSBOW_BOLT, true, Spellbook.NORMAL),
 	ENCHANT_EMERALD_JEWELLERY("Lvl-2 Enchant", 27, 37, 1766, false, Spellbook.NORMAL),
-	MIND_ALTAR_TELEPORT("Mind Altar Teleport", 28, 22, SpriteID.SPELL_MIND_ALTAR_TELEPORT, true, Spellbook.ARCEUUS),
+	MIND_ALTAR_TELEPORT("Mind Locations Teleport", 28, 22, SpriteID.SPELL_MIND_ALTAR_TELEPORT, true, Spellbook.ARCEUUS),
 	EARTH_BOLT("Earth Bolt", 29, 19.5f, SpriteID.SPELL_EARTH_BOLT, false, Spellbook.NORMAL),
 	ENCHANT_TOPAZ_BOLT("Enchant Topaz Bolt", 29, 33, SpriteID.SPELL_ENCHANT_CROSSBOW_BOLT, true, Spellbook.NORMAL),
 	LUMBRIDGE_TELEPORT("Lumbridge Teleport", 31, 41, SpriteID.SPELL_LUMBRIDGE_TELEPORT, false, Spellbook.NORMAL),

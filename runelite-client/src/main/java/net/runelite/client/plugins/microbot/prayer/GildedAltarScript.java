@@ -183,7 +183,7 @@ public class GildedAltarScript extends Script {
         Widget containerEnter = Rs2Widget.getWidget(52, 19);
         if (containerNames == null || containerNames.getChildren() == null) return;
 
-        //Sort house advertisements by Gilded Altar availability
+        //Sort house advertisements by Gilded Locations availability
         toggleArrow = Rs2Widget.getWidget(3407877);
         if (toggleArrow.getSpriteId() == 1050) {
             Rs2Widget.clickWidget(3407877);

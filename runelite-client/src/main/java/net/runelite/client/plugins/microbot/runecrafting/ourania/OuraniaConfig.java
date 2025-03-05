@@ -8,7 +8,7 @@ import net.runelite.client.plugins.microbot.util.misc.Rs2Food;
 
 @ConfigGroup(OuraniaConfig.configGroup)
 @ConfigInformation(
-        "• This plugin will craft runes at Ourania Altar (ZMI Altar) <br />" +
+        "• This plugin will craft runes at Ourania Locations (ZMI Locations) <br />" +
         "• Ensure you have auto-pay configured with Eniola. <br />" +
         "• If using deposit all feature, <b>ensure you lock the slots you wish to keep in inventory</b> <br />" +
         "• Requires Lunar Spellbook and to speak with Baby Yaga to learn Ourania Teleport. <br />" +

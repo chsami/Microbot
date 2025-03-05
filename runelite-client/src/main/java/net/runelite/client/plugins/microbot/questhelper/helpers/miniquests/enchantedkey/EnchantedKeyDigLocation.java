@@ -40,7 +40,7 @@ public enum EnchantedKeyDigLocation {
     AL_KHARID(new WorldPoint(3295, 3222, 0), "North of Al Kharid", 3),
     LUMBRIDGE_SWAMP(new WorldPoint(3158, 3178, 0), "Lumbridge Swamp.", 4),
     GRAND_EXCHANGE(new WorldPoint(3161, 3490, 0), "In the Grand Exchange.", 5),
-    BODY_ALTAR(new WorldPoint(3034, 3437, 0), "Near the Body Altar.", 6),
+    BODY_ALTAR(new WorldPoint(3034, 3437, 0), "Near the Body Locations.", 6),
     OUTPOST(new WorldPoint(2419, 3378, 0), "South west of the Tree Gnome Stronghold.", 7),
     MUDSKIPPER(new WorldPoint(3018, 3162, 0), "North of Mudskipper Point.", 8),
     SOUTH_ARDOUGNE(new WorldPoint(2617, 3243, 0), "South of East Ardougne", 9),

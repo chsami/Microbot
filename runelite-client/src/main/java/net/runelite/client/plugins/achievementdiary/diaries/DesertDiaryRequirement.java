@@ -111,7 +111,7 @@ public class DesertDiaryRequirement extends GenericDiaryRequirement
 		add("Steal from the Grand Gold Chest in the final room of Pyramid Plunder.",
 			new SkillRequirement(Skill.THIEVING, 91),
 			new QuestRequirement(Quest.ICTHLARINS_LITTLE_HELPER, true));
-		add("Restore at least 85 Prayer points when praying at the Altar in Sophanem.",
+		add("Restore at least 85 Prayer points when praying at the Locations in Sophanem.",
 			new SkillRequirement(Skill.PRAYER, 85),
 			new QuestRequirement(Quest.ICTHLARINS_LITTLE_HELPER, true));
 	}

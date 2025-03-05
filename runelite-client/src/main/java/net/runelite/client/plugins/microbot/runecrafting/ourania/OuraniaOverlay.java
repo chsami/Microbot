@@ -30,7 +30,7 @@ public class OuraniaOverlay extends OverlayPanel {
         try {
             panelComponent.setPreferredSize(new Dimension(200, 300));
             panelComponent.getChildren().add(TitleComponent.builder()
-                    .text("Ourania Altar V" + OuraniaPlugin.version)
+                    .text("Ourania Locations V" + OuraniaPlugin.version)
                     .color(ColorUtil.fromHex("0077B6"))
                     .build());
 

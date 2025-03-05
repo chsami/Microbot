@@ -462,7 +462,7 @@ public class Wanted extends BasicQuestHelper {
         goToMcGruborsWood = new ObjectStep(this, ObjectID.LOOSE_RAILING, new WorldPoint(2662, 3500, 0), "Go to McGrubor's Wood. Fairy ring ALS.", commorb);
         goToSlayerTower = new DetailedQuestStep(this, new WorldPoint(3428, 3537, 0), "Go to the Slayer Tower in Morytania.", commorb);
         goToYanillePub = new DetailedQuestStep(this, new WorldPoint(2551, 3081, 0), "Go to the pub in Yanille.", commorb);
-        enterLumbridgeSwampCavesFromTears = new ObjectStep(this, ObjectID.TUNNEL_6658, new WorldPoint(3219, 9534, 2), "Enter the Lumbridge Swamp caves.");
+        enterLumbridgeSwampCavesFromTears = new ObjectStep(this, ObjectID.TUNNEL_6658, new WorldPoint(3219, 9534, 2), "Enter the Lumbridge Swamp Caves.");
         goToEndOfLumbridgeSwampCaves = new DetailedQuestStep(this, new WorldPoint(3221, 9550, 0),
                 "Go to the point indicated in the Lumbridge Swamp Caves.", commorb, lightSource, spinyHelmet.equipped());
         goDownToLumbridgeSwampCaves = new ObjectStep(this, ObjectID.DARK_HOLE, new WorldPoint(3169, 3172, 0),

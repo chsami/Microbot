@@ -371,7 +371,7 @@ public class TheFremennikExiles extends BasicQuestHelper {
                 "Leave the mine.");
 
         makeLunarGlass = new ObjectStep(this, ObjectID.ALTAR_34771, new WorldPoint(2158, 3864, 0), "Use the Lunar " +
-                "Altar to make some lunar glass.", moltenGlassI, astralRunes.quantity(100));
+                "Locations to make some lunar glass.", moltenGlassI, astralRunes.quantity(100));
         smeltLunarBars = new DetailedQuestStep(this, "Smelt the lunar ore into bars at any furnace.",
                 lunarOre.quantity(3));
         smithSigil = new DetailedQuestStep(this, "Make the V sigil on any anvil.", lunarBar.quantity(3));

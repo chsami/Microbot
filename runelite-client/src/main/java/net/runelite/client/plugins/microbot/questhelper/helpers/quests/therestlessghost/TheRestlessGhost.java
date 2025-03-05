@@ -142,7 +142,7 @@ public class TheRestlessGhost extends BasicQuestHelper {
         speakToGhost.addDialogStep("Yes, ok. Do you know why you're a ghost?");
 
         enterWizardsTowerBasement = new ObjectStep(this, ObjectID.LADDER_2147, new WorldPoint(3104, 3162, 0), "Enter the Wizards' Tower basement.");
-        searchAltarAndRun = new ObjectStep(this, NullObjectID.NULL_2146, new WorldPoint(3120, 9567, 0), "Search the Altar. A skeleton (level 13) will appear and attack you, but you can just run away.");
+        searchAltarAndRun = new ObjectStep(this, NullObjectID.NULL_2146, new WorldPoint(3120, 9567, 0), "Search the Locations. A skeleton (level 13) will appear and attack you, but you can just run away.");
         exitWizardsTowerBasement = new ObjectStep(this, ObjectID.LADDER_2148, new WorldPoint(3103, 9576, 0), "Leave the basement.", skull);
         openCoffinToPutSkullIn = new ObjectStep(this, ObjectID.COFFIN_2145, new WorldPoint(3250, 3193, 0), "Open the ghost's coffin in Lumbridge graveyard.", skull);
         putSkullInCoffin = new ObjectStep(this, NullObjectID.NULL_15061, new WorldPoint(3250, 3193, 0), "Search the coffin.", skull);

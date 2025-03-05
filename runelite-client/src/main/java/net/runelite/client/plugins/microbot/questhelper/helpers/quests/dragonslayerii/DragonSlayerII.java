@@ -1157,7 +1157,7 @@ public class DragonSlayerII extends BasicQuestHelper {
                 // 6140 0->1 means talked to Primula
                 new UnlockReward("Ability to make Super Antifire Potions"),
                 new UnlockReward("Access to the Fountain of Uhld."),
-                new UnlockReward("Access to the Wrath Altar."),
+                new UnlockReward("Access to the Wrath Locations."),
                 new UnlockReward("Ability to purchase the Mythical Cape"),
                 new UnlockReward("Access to Adamant and Rune Dragons"),
                 new UnlockReward("Access to Vorkath"),

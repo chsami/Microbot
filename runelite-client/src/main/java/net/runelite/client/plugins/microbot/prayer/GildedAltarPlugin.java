@@ -14,8 +14,8 @@ import javax.inject.Inject;
 import java.awt.*;
 
 @PluginDescriptor(
-        name = PluginDescriptor.Mocrosoft + "Gilded Altar",
-        description = "Gilded Altar plugin",
+        name = PluginDescriptor.Mocrosoft + "Gilded Locations",
+        description = "Gilded Locations plugin",
         tags = {"prayer", "microbot"},
         enabledByDefault = false
 )

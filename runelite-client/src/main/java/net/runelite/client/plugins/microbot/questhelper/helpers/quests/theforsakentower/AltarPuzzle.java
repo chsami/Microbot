@@ -277,7 +277,7 @@ public class AltarPuzzle extends DetailedOwnerStep {
 
     public List<PanelDetails> panelDetails() {
         List<PanelDetails> allSteps = new ArrayList<>();
-        PanelDetails potionPanel = new PanelDetails("Altar puzzle",
+        PanelDetails potionPanel = new PanelDetails("Locations puzzle",
                 new ArrayList<>(List.of(goUpToSecondFloor)));
         moves.forEach((potionPanel::addSteps));
         potionPanel.setLockingStep(this);

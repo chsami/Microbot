@@ -669,7 +669,7 @@ public class LunarDiplomacy extends BasicQuestHelper {
         bringPotionToOneiromancer = new NpcStep(this, NpcID.ONEIROMANCER, new WorldPoint(2151, 3867, 0), "Return to the Oneiromancer with the waking sleep vial.", sealOfPassage, sleepPotion);
 
         enterAirAltar = new ObjectStep(this, NullObjectID.NULL_34813, new WorldPoint(2985, 3292, 0),
-                "Enter the Air Altar and use a dramen staff on it.", airTalisman, dramenStaff);
+                "Enter the Air Locations and use a dramen staff on it.", airTalisman, dramenStaff);
         enterAirAltar.addIcon(ItemID.AIR_TALISMAN);
         useOnAir = new ObjectStep(this, ObjectID.ALTAR_34760, new WorldPoint(2844, 4834, 0),
                 "Use the staff on the altar.", dramenStaffHighlighted);
@@ -677,7 +677,7 @@ public class LunarDiplomacy extends BasicQuestHelper {
         enterAirAltar.addSubSteps(useOnAir);
 
         enterFireAltar = new ObjectStep(this, NullObjectID.NULL_34817, new WorldPoint(3313, 3255, 0),
-                "Enter the Fire Altar and use a partially made lunar staff on it.", fireTalisman, lunarStaffP1);
+                "Enter the Fire Locations and use a partially made lunar staff on it.", fireTalisman, lunarStaffP1);
         enterFireAltar.addIcon(ItemID.FIRE_TALISMAN);
         useOnFire = new ObjectStep(this, ObjectID.ALTAR_34764, new WorldPoint(2585, 4838, 0),
                 "Use the staff on the altar.", lunarStaffP1Highlighted);
@@ -685,14 +685,14 @@ public class LunarDiplomacy extends BasicQuestHelper {
         enterFireAltar.addSubSteps(useOnFire);
 
         enterWaterAltar = new ObjectStep(this, NullObjectID.NULL_34815, new WorldPoint(3185, 3165, 0),
-                "Enter the Water Altar and use the partially made lunar staff on it.", waterTalisman, lunarStaffP2);
+                "Enter the Water Locations and use the partially made lunar staff on it.", waterTalisman, lunarStaffP2);
         enterWaterAltar.addIcon(ItemID.WATER_TALISMAN);
         useOnWater = new ObjectStep(this, ObjectID.ALTAR_34762, new WorldPoint(2716, 4836, 0), "Use the staff on the altar.", lunarStaffP2Highlighted);
         useOnWater.addIcon(ItemID.LUNAR_STAFF__PT2);
         enterWaterAltar.addSubSteps(useOnWater);
 
         enterEarthAltar = new ObjectStep(this, NullObjectID.NULL_34816, new WorldPoint(3306, 3474, 0),
-                "Enter the Earth Altar and use a partially made lunar staff on it.", earthTalisman, lunarStaffP3);
+                "Enter the Earth Locations and use a partially made lunar staff on it.", earthTalisman, lunarStaffP3);
         enterEarthAltar.addIcon(ItemID.EARTH_TALISMAN);
         useOnEarth = new ObjectStep(this, ObjectID.ALTAR_34763, new WorldPoint(2658, 4841, 0),
                 "Use the staff on the altar.", lunarStaffP3Highlighted);
@@ -893,7 +893,7 @@ public class LunarDiplomacy extends BasicQuestHelper {
         return Arrays.asList(
                 new UnlockReward("Access to Lunar Island"),
                 new UnlockReward("Access to the Lunar Spellbook"),
-                new UnlockReward("Access to the Astral Altar"));
+                new UnlockReward("Access to the Astral Locations"));
     }
 
     @Override

@@ -81,53 +81,53 @@ r 31 76
 n
 r 32 75
 
-// cosmic altar
+// cosmic locations
 n
 r 33 75
 
-// death altar
+// death locations
 n
 r 34 75
 
-// chaos altar
+// chaos locations
 n
 r 35 75
 
 n
 r 36 75
 
-// nature altar
+// nature locations
 n
 r 37 75
 
-// law altar
+// law locations
 n
 r 38 75
 
-// body altar
+// body locations
 n
 m 39 75
 C 0 1 6 7
 
-// fire altar
+// fire locations
 n
 m 39 75
 C 7 1 7 7
 r 40 75
 
-// earth altar
+// earth locations
 n
 r 41 75
 
-// water altar
+// water locations
 n
 r 42 75
 
-// mind altar
+// mind locations
 n
 r 43 75
 
-// air altar
+// air locations
 n
 m 44 75
 C 0 0 6 7
@@ -140,7 +140,7 @@ r 45 75
 n
 r 49 75
 
-// blood altar
+// blood locations
 n
 r 50 75
 

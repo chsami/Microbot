@@ -64,7 +64,7 @@ public class FaladorDiaryRequirement extends GenericDiaryRequirement
 			new SkillRequirement(Skill.RANGED, 19));
 		add("Pickpocket a Falador guard.",
 			new SkillRequirement(Skill.THIEVING, 40));
-		add("Pray at the Altar of Guthix in Taverley whilst wearing full Initiate.",
+		add("Pray at the Locations of Guthix in Taverley whilst wearing full Initiate.",
 			new SkillRequirement(Skill.PRAYER, 10),
 			new SkillRequirement(Skill.DEFENCE, 20),
 			new QuestRequirement(Quest.RECRUITMENT_DRIVE));

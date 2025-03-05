@@ -460,7 +460,7 @@ public class VarrockHard extends ComplexStateQuestHelper {
         fancyStoneSteps.setLockingStep(fancyStoneTask);
         allSteps.add(fancyStoneSteps);
 
-        PanelDetails smitedSteps = new PanelDetails("Altar Smited", Arrays.asList(moveToUpstairs,
+        PanelDetails smitedSteps = new PanelDetails("Locations Smited", Arrays.asList(moveToUpstairs,
                 prayAtAltar), new SkillRequirement(Skill.PRAYER, 52));
         smitedSteps.setDisplayCondition(notSmiteAltar);
         smitedSteps.setLockingStep(smiteAltarTask);

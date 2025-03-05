@@ -163,7 +163,7 @@ public class FaladorEasy extends ComplexStateQuestHelper {
 
         //Recommended
         teleportFalador = new TeleportItemRequirement("Multiple teleports to Falador", ItemID.FALADOR_TELEPORT, -1);
-        teleportMindAltar = new TeleportItemRequirement("A Teleport to the Mind Altar", ItemID.MIND_ALTAR_TELEPORT);
+        teleportMindAltar = new TeleportItemRequirement("A Teleport to the Mind Locations", ItemID.MIND_ALTAR_TELEPORT);
         explorersRing = new TeleportItemRequirement("Explorers Ring (2) or above.", ItemID.EXPLORERS_RING_2).isNotConsumed();
         explorersRing.addAlternates(ItemID.EXPLORERS_RING_3, ItemID.EXPLORERS_RING_4);
 
@@ -268,9 +268,9 @@ public class FaladorEasy extends ComplexStateQuestHelper {
 
         //Make a Mind Tiara
         enterMindAltar = new ObjectStep(this, ObjectID.MYSTERIOUS_RUINS_29094, new WorldPoint(2982, 3514, 0),
-                "Use the mind talisman on the Mysterious Ruins to access the Mind Altar.", mindTalisman.highlighted(), tiara);
+                "Use the mind talisman on the Mysterious Ruins to access the Mind Locations.", mindTalisman.highlighted(), tiara);
         getMindTiara = new ObjectStep(this, ObjectID.ALTAR_34761, new WorldPoint(2786, 4841, 0),
-                "Use the mind talisman on the Altar", mindTalisman.highlighted(), tiara);
+                "Use the mind talisman on the Locations", mindTalisman.highlighted(), tiara);
         getMindTiara.addIcon(ItemID.MIND_TALISMAN);
         enterMindAltar.addSubSteps(getMindTiara);
 
