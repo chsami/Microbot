@@ -103,19 +103,25 @@ public class TrueBloodScript extends Script {
 package net.runelite.client.plugins.microbot.frosty.trueblood;
 
 import lombok.Getter;
+import lombok.Setter;
 import net.runelite.api.Client;
 import net.runelite.api.GameObject;
 import net.runelite.api.ObjectID;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.itemstats.potions.StaminaPotion;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.frosty.bloodx.enums.Caves;
 import net.runelite.client.plugins.microbot.frosty.trueblood.enums.Altar;
+import net.runelite.client.plugins.microbot.frosty.trueblood.enums.HomeTeleports;
+import net.runelite.client.plugins.microbot.frosty.trueblood.enums.Teleports;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.enums.Activity;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
+import net.runelite.client.plugins.microbot.util.equipment.JewelleryLocationEnum;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
@@ -132,6 +138,7 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import javax.inject.Inject;
 import java.awt.event.KeyEvent;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -141,16 +148,21 @@ public class TrueBloodScript extends Script {
     @Inject
     private TrueBloodScript script;
     @Inject
+    private TrueBloodConfig config;
+    @Inject
     private Client client;
     private int currentRegionId;
     @Getter
     private State state = State.BANKING;
+    @Getter
+    @Setter
     private Altar altar = Altar.TRUE_BLOOD;
     @Getter
     private int bloodRunesCrafted = 0;
     @Getter
     private int initialRcXp = 0;
     public static boolean test = false;
+
 
     public boolean run(TrueBloodConfig config) {
         Microbot.enableAutoRunOn = false;
@@ -166,10 +178,24 @@ public class TrueBloodScript extends Script {
                 if (!super.run()) return;
                 long startTime = System.currentTimeMillis();
 
+                Teleports selectedTeleport = config.teleports();
+
+                for (Integer itemId : selectedTeleport.getItemIds()) {
+                    if (Rs2Inventory.hasItem(itemId)) {
+
+                    }
+                }
+                if (Rs2Player.getWorldLocation().getRegionID() != selectedTeleport.getBankingRegionId() &&
+                !Rs2Inventory.isFull()) {
+                    Microbot.log("Not in correct banking region and inventory is not full, attempting to teleport.");
+                    handleBankTeleport(config);
+                    return;
+                }
                 if (Rs2Player.getWorldLocation().getRegionID() == 12894) {
                     Rs2Equipment.interact(9781, "Teleport");
                     sleep(Rs2Random.randomGaussian(900, 200));
                     state = State.BANKING;
+                    return;
                 }
 
                 switch (state) {
@@ -205,8 +231,12 @@ public class TrueBloodScript extends Script {
         super.shutdown();
         if (mainScheduledFuture != null && !mainScheduledFuture.isCancelled()) {
             mainScheduledFuture.cancel(true);
+            mainScheduledFuture = null;
         }
+        scheduledExecutorService.shutdownNow();
         state = State.BANKING;
+        bloodRunesCrafted = 0;
+        initialRcXp = 0;
     }
     private void updateRegion() {
         if (client.getLocalPlayer() != null) {
@@ -216,15 +246,20 @@ public class TrueBloodScript extends Script {
     }
 
     private void handleBanking() {
+        HomeTeleports selectedHomeTeleport = config.homeTeleports();
+        if (Rs2Inventory.anyPouchUnknown()) {
+            Rs2Inventory.checkPouches();
+            return;
+        }
         if (Rs2Inventory.hasDegradedPouch()) {
             Rs2Magic.repairPouchesWithLunar();
-            sleep(Rs2Random.randomGaussian(1200, 400));
+            sleep(Rs2Random.randomGaussian(1300, 400));
             return;
         }
 
         if (Rs2Inventory.allPouchesFull() && Rs2Inventory.isFull() &&
-                Rs2Player.getWorldLocation().getRegionID() == 11571) {
-            Microbot.log("Pouches and inventory are full. Skipping banking and going home...");
+                Rs2Inventory.contains("Pure essence")) {
+            Microbot.log("We are full, lets go home");
             state = State.GOING_HOME;
             return;
         } else {
@@ -232,23 +267,55 @@ public class TrueBloodScript extends Script {
         }
         updateRegion();
         Microbot.log("Current Region ID: " + currentRegionId);
+        Teleports selectedTeleport = config.teleports();
+        int bankingRegion = selectedTeleport.getBankingRegionId();
 
-        if (currentRegionId == 11571) {
-            if (!Rs2Inventory.allPouchesFull() || !Rs2Inventory.isFull()) {
-                handleFillPouch();
+        if (Rs2Player.getWorldLocation().getRegionID() == bankingRegion) {
+            Microbot.log("Banking at" + selectedTeleport.getName() + "location");
+            Rs2Bank.openBank();
+            if (!Rs2Inventory.contains(26392)) {
+                Rs2Bank.withdrawItem(26390);
+                sleep(Rs2Random.randomGaussian(900, 200));
             }
+            if (!Rs2Inventory.contains(8013) && selectedHomeTeleport == HomeTeleports.HOUSE_TAB) {
+                Rs2Bank.withdrawX(8013, 50);
+            }
+
+            handleRing();
+            handleFillPouch();
+
             if (Rs2Bank.isOpen() && Rs2Inventory.allPouchesFull() && Rs2Inventory.isFull()) {
-                Microbot.log("Inventory and pouches are full. Closing bank and switching to GOING_HOME...");
+                Microbot.log("Inventory and pouches are full. Closing bank and going home");
                 Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
+                sleep(Rs2Random.randomGaussian(900, 200));
+                if (config.useBloodEssence()) {
+                    if (Rs2Inventory.contains(26390)) {
+                        Rs2Inventory.interact(26390, "Activate");
+                        sleep(Rs2Random.randomGaussian(1300, 200));
+                    }
+                }
                 sleepUntil(() -> !Rs2Bank.isOpen(), 1200);
                 state = State.GOING_HOME;
             }
         }
     }
 
-
     private void handleGoingHome() {
-        handleConCape();
+        HomeTeleports selectedHomeTeleport = config.homeTeleports();
+
+        if (selectedHomeTeleport == HomeTeleports.HOUSE_TAB) {
+            if (Rs2Inventory.hasItem(8013)) {
+                Microbot.log("Using House Teleport tablet to teleport to POH.");
+                Rs2Inventory.interact(8013, "Break");
+                sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 53739);
+                sleep(Rs2Random.randomGaussian(900, 200));
+            } else {
+                Microbot.log("House Teleport tablet not found.");
+            }
+        }
+        else if (selectedHomeTeleport == HomeTeleports.CONSTRUCTION_CAPE) {
+            handleConCape();
+        }
         if (Rs2Player.getRunEnergy() < 40) {
             Microbot.log("Low run energy. Drinking from pool...");
             Rs2GameObject.interact(29241, "Drink");
@@ -261,16 +328,130 @@ public class TrueBloodScript extends Script {
             sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving()
                     && Rs2Player.getWorldLocation() != null
                     && Rs2Player.getWorldLocation().getRegionID() == 13721, 1200);
-        } else {
-            sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 13721, 1200);
         }
+        sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 13721);
         sleep(Rs2Random.randomGaussian(1300, 200));
-        sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 13721, 1200);
         state = State.WALKING_TO;
-
     }
 
     private void handleWalking() {
+        if (config.has74Agility()) {
+            Microbot.log("Using agility shortcut for cave traversal.");
+            handle74Agility();
+        } else {
+            Microbot.log("Using standard travel method (no agility shortcut).");
+            handleWalkingNoAgility();
+        }
+    }
+
+    /*private void handleWalking() {
+        for (Caves cave : Caves.values()) {
+            Microbot.log("Attempting to enter: " + cave.getWhichCave());
+            sleepUntil(() -> Microbot.getClient().getGameState().getState() == 30, 4000);
+            sleep(Rs2Random.randomGaussian(1300,200));
+            WorldPoint beforePosition = Rs2Player.getWorldLocation();
+
+            int beforeRegion = Rs2Player.getWorldLocation().getRegionID();
+            int attempts = 0;
+            boolean entered = false;
+
+            if (cave == Caves.FOURTH_CAVE) {
+                interactWithFourth(cave);
+                sleep(Rs2Random.randomGaussian(900, 200));
+                entered = sleepUntil(() -> !Rs2Player.isAnimating() &&
+                        (!Rs2Player.getWorldLocation().equals(beforePosition) ||
+                                Rs2Player.getWorldLocation().getRegionID() != beforeRegion), 7000);
+                sleep(Rs2Random.randomGaussian(900, 200));
+            } else if (cave == Caves.AGILITY_74) {
+                interactWithFifth(cave);
+                entered = sleepUntil(() -> !Rs2Player.isAnimating() &&
+                                (!Rs2Player.getWorldLocation().equals(beforePosition) ||
+                                        Rs2Player.getWorldLocation().getRegionID() != beforeRegion),
+                        7000);
+                sleep(Rs2Random.randomGaussian(1100, 200));
+            } else {
+                while (attempts < 3 && !entered) {
+                    Microbot.log("Attempt #" + (attempts + 1) + " to enter " + cave.getWhichCave());
+                    sleep(Rs2Random.randomGaussian(1300, 200));
+
+                    boolean interacted = Rs2GameObject.interact(cave.getIdCave(), "Enter");
+                    if (!interacted) {
+                        Microbot.log("Interaction failed, retrying...");
+                        sleep(1800);
+                        attempts++;
+                        continue;
+                    } else { sleep(Rs2Random.randomGaussian(1100, 200));}
+                    sleep(Rs2Random.randomGaussian(1300, 200));
+                    entered = sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving() &&
+                                    (!Rs2Player.getWorldLocation().equals(beforePosition) ||
+                                            Rs2Player.getWorldLocation().getRegionID() != beforeRegion),
+                            7000);
+
+                    if (!entered) {
+                        Microbot.log("Entry attempt failed, retrying...");
+                        sleep(Rs2Random.randomGaussian(1500, 200));
+                        attempts++;
+                    }
+                }
+            }
+
+            if (!entered) {
+                Microbot.log("WARNING: Player did not enter " + cave.getWhichCave() + " after 3 attempts. Skipping...");
+                continue;
+            }
+            sleepUntil(() -> !Rs2Player.isMoving() && !Rs2Player.isAnimating(), 1200);
+            Microbot.log("Successfully entered: " + cave.getWhichCave());
+        }
+
+        Microbot.log("All caves traversed successfully!");
+        sleep(Rs2Random.randomGaussian(1300, 400));
+        state = State.CRAFTING;
+    }*/
+    private void interactWithFourth(Caves cave) {
+        sleep(Rs2Random.randomGaussian(700, 200));
+        Microbot.log("Looking for the furthest cave entrance: " + cave.getWhichCave());
+        // Get all instances of the cave entrance (ID: 12771)
+        List<GameObject> caveEntrances = Rs2GameObject.getGameObjects(cave.getIdCave());
+        if (caveEntrances.isEmpty()) {
+            Microbot.log("ERROR: No cave entrances found!");
+            return;
+        }
+        WorldPoint playerPosition = Rs2Player.getWorldLocation();
+        // Find the furthest cave entrance
+        GameObject furthestCave = caveEntrances.stream()
+                .max(Comparator.comparingInt(obj -> obj.getWorldLocation().distanceTo(playerPosition)))
+                .orElse(null);
+
+        if (furthestCave == null) {
+            Microbot.log("ERROR: Could not determine the furthest cave entrance.");
+            state = State.BANKING;
+            return;
+        }
+        Microbot.log("Furthest cave entrance found at: " + furthestCave.getWorldLocation());
+
+        Rs2Camera.turnTo(furthestCave);
+        sleep(Rs2Random.randomGaussian(900, 200));
+        // Interact with the furthest cave entrance
+        boolean interacted = Rs2GameObject.interact(furthestCave, "Enter");
+        sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 13977 && !Rs2Player.isAnimating());
+
+        if (!interacted) {
+            state = State.BANKING;
+            Microbot.log("ERROR: Failed to interact with the furthest cave entrance.");
+        }
+    }
+    private void interactWithFifth(Caves cave) {
+        Microbot.log("Navigating to the fifth cave entrance: " + cave.getWhichCave());
+        Rs2Walker.walkTo(3556, 9823, 0);
+        sleep(Rs2Random.randomGaussian(900, 200));
+        boolean interacted = Rs2GameObject.interact(cave.getIdCave(), "Enter");
+        if (!interacted) {
+            Microbot.log("ERROR: Could not interact with the cave (Object ID " + cave.getIdCave() + ")");
+        } else { sleepUntil(() -> !Rs2Player.isAnimating());
+            sleep(Rs2Random.randomGaussian(900, 200)); }
+    }
+
+    private void handle74Agility() {
         for (Caves cave : Caves.values()) {
             Microbot.log("Attempting to enter: " + cave.getWhichCave());
             sleepUntil(() -> Microbot.getClient().getGameState().getState() == 30, 4000);
@@ -333,57 +514,15 @@ public class TrueBloodScript extends Script {
         sleep(Rs2Random.randomGaussian(1300, 400));
         state = State.CRAFTING;
     }
-    private void interactWithFourth(Caves cave) {
+
+    private void handleWalkingNoAgility() {
+        Rs2GameObject.interact(Caves.FIRST_CAVE.getIdCave(), "Enter");
+        sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 13977);
         sleep(Rs2Random.randomGaussian(700, 200));
-        Microbot.log("Looking for the furthest cave entrance: " + cave.getWhichCave());
-        // Get all instances of the cave entrance (ID: 12771)
-        List<GameObject> caveEntrances = Rs2GameObject.getGameObjects(cave.getIdCave());
-        if (caveEntrances.isEmpty()) {
-            Microbot.log("ERROR: No cave entrances found!");
-            return;
-        }
-        //sleep(Rs2Random.randomGaussian(600, 200));
-        WorldPoint playerPosition = Rs2Player.getWorldLocation();
-        // Find the furthest cave entrance
-        GameObject furthestCave = caveEntrances.stream()
-                .max(Comparator.comparingInt(obj -> obj.getWorldLocation().distanceTo(playerPosition)))
-                .orElse(null);
-
-        if (furthestCave == null) {
-            Microbot.log("ERROR: Could not determine the furthest cave entrance.");
-            return;
-        }
-        Microbot.log("Furthest cave entrance found at: " + furthestCave.getWorldLocation());
-
-        Rs2Camera.turnTo(furthestCave);
-        sleep(Rs2Random.randomGaussian(900, 200));
-        // Interact with the furthest cave entrance
-        boolean interacted = Rs2GameObject.interact(furthestCave, "Enter");
-        sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 13977 && !Rs2Player.isAnimating());
-
-        if (!interacted) {
-            Microbot.log("ERROR: Failed to interact with the furthest cave entrance.");
-        }
+        Rs2Walker.walkTo(3555, 9778, 0);
+        sleep(Rs2Random.randomGaussian(1100, 200));
+        state = State.CRAFTING;
     }
-    private void interactWithFifth(Caves cave) {
-        Microbot.log("Navigating to the fifth cave entrance: " + cave.getWhichCave());
-        Rs2Walker.walkTo(3556, 9823, 0);
-        sleep(Rs2Random.randomGaussian(900, 200));
-        boolean interacted = Rs2GameObject.interact(cave.getIdCave(), "Enter");
-        if (!interacted) {
-            Microbot.log("ERROR: Could not interact with the cave (Object ID " + cave.getIdCave() + ")");
-        } else { sleepUntil(() -> !Rs2Player.isAnimating());
-            sleep(Rs2Random.randomGaussian(900, 200)); }
-    }
-    /*private void interactWithSixth(Caves cave) {
-        Microbot.log("Interacting with last cave" + cave.getWhichCave());
-        boolean interacted = Rs2GameObject.interact(cave.getIdCave(), "Enter");
-        if (!interacted) {
-            Microbot.log("Error interacting with last cave");
-        } else { sleepUntil(() -> (!Rs2Player.isAnimating() && !Rs2Player.isMoving() && !Rs2Player.isInteracting()));}
-        sleep(Rs2Random.randomGaussian(1200, 200));
-        sleepUntil(() -> (!Rs2Player.isAnimating() && !Rs2Player.isMoving() && !Rs2Player.isInteracting()));
-    }*/
 
     private void handleCrafting() {
         Rs2GameObject.interact(25380, "Enter");
@@ -396,11 +535,18 @@ public class TrueBloodScript extends Script {
         bloodRunesCrafted = Rs2Inventory.count("Blood rune");
 
         if (Rs2Inventory.allPouchesEmpty() && !Rs2Inventory.contains("Pure essence")) {
-            sleep(Rs2Random.randomGaussian(1500,200));
+            handleBankTeleport(config);
+        }
+
+
+        /*if (Rs2Inventory.allPouchesEmpty() && !Rs2Inventory.contains("Pure essence")) {
+            sleep(Rs2Random.randomGaussian(1300,200));
+            Rs2Tab.switchToEquipmentTab();
+            sleep(Rs2Random.randomGaussian(900, 200));
             Rs2Equipment.interact(9781, "Teleport");
             sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 11571);
             Rs2Tab.switchToInventoryTab();
-        } else { handleCrafting(); }
+        } else { handleCrafting(); }*/
         state = State.BANKING;
     }
 
@@ -415,9 +561,9 @@ public class TrueBloodScript extends Script {
         }
     }
     private void handleFillPouch() {
-        while (!Rs2Inventory.allPouchesFull() && isRunning()) {
+        while (!Rs2Inventory.allPouchesFull() || !Rs2Inventory.isFull() && isRunning()) {
             Microbot.log("Pouches are not full. Continuing banking process...");
-            if (Rs2Bank.openBank()) {
+            if (Rs2Bank.isOpen()) {
                 if (Rs2Inventory.contains("Blood rune")) {
                     Rs2Bank.depositAll("Blood rune");
                     sleep(Rs2Random.randomGaussian(900, 200));
@@ -435,6 +581,10 @@ public class TrueBloodScript extends Script {
             }
         }
     }
+    private void checkPouches() {
+        Rs2Inventory.interact(26784, "Check");
+    }
+
     private void handleConCape(){
         if (Rs2Inventory.hasItem(9790)) {
             Microbot.log("Found Construction Cape, using it to teleport to POH.");
@@ -447,7 +597,82 @@ public class TrueBloodScript extends Script {
             Microbot.log("No Construction Cape found, returning.");
         }
     }
-    private void checkPouches() {
-        Rs2Inventory.interact(26784, "Check");
+    /*private void handleCraftingCape(TrueBloodConfig config) {
+        if (config.useCraftingCape() && Rs2Inventory.allPouchesEmpty() && !Rs2Inventory.contains("Pure essence")) {
+            Rs2Tab.switchToEquipmentTab();
+            sleep(Rs2Random.randomGaussian(1300, 200));
+            Rs2Equipment.interact(9781, "Teleport");
+            sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 11571);
+            Rs2Tab.switchToInventoryTab();
+        }
+    }*/
+    private void handleBankTeleport(TrueBloodConfig config) {
+        Teleports selectedTeleport = config.teleports();
+        if (!Rs2Inventory.allPouchesEmpty() || Rs2Inventory.contains("Pure essence")) {
+            handleCrafting();
+            return;
+        }
+
+        Rs2Tab.switchToEquipmentTab();
+        sleep(Rs2Random.randomGaussian(1300, 200));
+
+        if (selectedTeleport == Teleports.CRAFTING_CAPE) {
+            Microbot.log("Using Crafting Cape to teleport.");
+            Rs2Equipment.interact(9781, "Teleport");
+            sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 11571);
+            Rs2Tab.switchToInventoryTab();
+            state = State.BANKING;
+            return;
+        }
+        else if (selectedTeleport == Teleports.RING_OF_DUELING) {
+            for (Integer itemId : selectedTeleport.getItemIds()) {
+                if (Rs2Equipment.isWearing("Ring of dueling")) {
+                    Microbot.log("Using Ring of Dueling (ID: " + itemId + ") to teleport to Castle Wars.");
+                    Rs2Equipment.useRingAction(JewelleryLocationEnum.CASTLE_WARS);
+                    sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 9776);
+                    sleep(Rs2Random.randomGaussian(700, 200));
+                    Rs2Tab.switchToInventoryTab();
+                    state = State.BANKING;
+                    return;
+                }
+            }
+        }
     }
+
+    private void handleRing() {
+        boolean hasEquipped = false;
+
+        for (int id : config.teleports().getItemIds()) {
+            if (Rs2Equipment.hasEquipped(id)) {
+                Microbot.log("We have ring equipped");
+                hasEquipped = true;
+                break;
+            }
+        }
+        if (!hasEquipped) {
+            Rs2Bank.withdrawAndEquip(config.teleports().getItemIds()[0]);
+            sleep(Rs2Random.randomGaussian(900, 200));
+        }
+    }
+
+    /*private void handleStamina() {
+        if (Rs2Player.getRunEnergy() <40) {
+            Rs2Bank.withdrawItem("Stamina potion");
+            Rs2Inventory.waitForInventoryChanges(1200);
+            Rs2Inventory.interact("Stamina potion", "Drink");
+            sleepUntil(Rs2Player::hasStaminaBuffActive);
+            sleep(Rs2Random.randomGaussian(900, 200));
+        }
+    }*/
+
+
+
+    /*private void handleGear() {
+        if (!Rs2Equipment.hasEquipped(9781)) { //Crafting cape
+            Rs2Bank.withdrawAndEquip(9781);
+        }
+        if (!Rs2Inventory.contains(9790)) { //Con cape
+            Rs2Bank.withdrawItem(9790);
+        }
+    }*/
 }

@@ -170,7 +170,6 @@ public class DefaultScript extends Script {
 
     private void applyAntiBanSettings() {
         Rs2AntibanSettings.antibanEnabled = true;
-        Rs2AntibanSettings.usePlayStyle = true;
         Rs2AntibanSettings.simulateFatigue = true;
         Rs2AntibanSettings.simulateAttentionSpan = true;
         Rs2AntibanSettings.behavioralVariability = true;
@@ -178,13 +177,8 @@ public class DefaultScript extends Script {
         Rs2AntibanSettings.naturalMouse = true;
         Rs2AntibanSettings.moveMouseOffScreen = true;
         Rs2AntibanSettings.contextualVariability = true;
-        Rs2AntibanSettings.dynamicIntensity = true;
         Rs2AntibanSettings.devDebug = false;
         Rs2AntibanSettings.moveMouseRandomly = true;
-        Rs2AntibanSettings.microBreakDurationLow = 3;
-        Rs2AntibanSettings.microBreakDurationHigh = 15;
-        Rs2AntibanSettings.actionCooldownChance = 0.4;
-        Rs2AntibanSettings.microBreakChance = 0.15;
         Rs2AntibanSettings.moveMouseRandomlyChance = 0.1;
     }
 }

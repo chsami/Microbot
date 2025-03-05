@@ -25,13 +25,10 @@ import javax.inject.Inject;
 public class ButterflyJarsPlugin extends Plugin {
     @Inject
     private Client client;
-
     @Inject
     private ButterflyJarsConfig config;
-
     @Inject
     private OverlayManager overlayManager;
-
     @Inject
     private ButterflyJarsOverlay overlay;
 

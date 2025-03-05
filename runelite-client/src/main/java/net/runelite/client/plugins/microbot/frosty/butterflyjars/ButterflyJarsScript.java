@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.frosty.butterflyjars;
 
+import lombok.Getter;
 import net.runelite.api.GameState;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.widgets.ComponentID;
@@ -28,6 +29,9 @@ import java.util.concurrent.TimeUnit;
 public class ButterflyJarsScript extends Script {
     public static boolean test = false;
     private State state = State.BANKING;
+    @Getter
+    private int jarsBought = 0;
+
 
     public boolean run(ButterflyJarsConfig config) {
         Microbot.enableAutoRunOn = false;
@@ -83,21 +87,8 @@ public class ButterflyJarsScript extends Script {
 
         if (!isHopped) {
             Microbot.log("Failed to hop to world: " + world);
-            return;
         }
-        /*sleepUntil(() -> Microbot.getClient().getGameState() == GameState.HOPPING);
-        sleepUntil(() -> Microbot.getClient().getGameState() == GameState.LOGGED_IN);
-
-        Microbot.log("World transition complete, reopening shop");
-
-        sleep(Rs2Random.randomGaussian(1500, 300));  // Small delay to ensure world is fully loaded
-        Rs2Npc.interact(1350, "Trade");  // Open the shop after hopping
-        sleepUntil(() -> Rs2Widget.isWidgetVisible(ComponentID.SHOP_INVENTORY_ITEM_CONTAINER));
-
-        Microbot.log("Shop reopened, returning to BUYING");
-        state = State.BUYING;*/
     }
-
 
     private void handleBanking() {
         Microbot.log("Entering handleBanking()");
@@ -116,7 +107,7 @@ public class ButterflyJarsScript extends Script {
         if (!Rs2Inventory.contains(995)) {
             Rs2Bank.withdrawX(995, 10000);
             sleep(Rs2Random.randomGaussian(1100, 300));
-            Microbot.log("Withdrawing 10,000 coins because balance is below 1000");
+            Microbot.log("Withdrawing 10,000 coins.");
             Rs2Inventory.waitForInventoryChanges(1200);
         }
 
@@ -147,7 +138,6 @@ public class ButterflyJarsScript extends Script {
         }
     }
 
-
     private void handleBuyingJars() {
         Microbot.log("Entering handleBuyingJars()");
         walkToNardahShop();
@@ -168,6 +158,9 @@ public class ButterflyJarsScript extends Script {
         Rs2Shop.buyItem("Butterfly Jar", "50");
         Rs2Inventory.waitForInventoryChanges(1300);
         Microbot.log("Bought Butterfly Jars");
+        int jarsInInventory = Rs2Inventory.count("Butterfly jar");
+        jarsBought += jarsInInventory;
+        Microbot.log("Bought " + jarsInInventory + " Butterfly Jars. Total: " + jarsBought);
 
         if (Rs2Inventory.contains("Butterfly jar") && !Rs2Inventory.isEmpty()) {
             if (Rs2Shop.isOpen()) {
@@ -185,6 +178,7 @@ public class ButterflyJarsScript extends Script {
             Microbot.log("No jars in inventory after buying, retrying");
         }
     }
+
     public void walkToNardahShop() {
         WorldPoint targetLocation = new WorldPoint(3437, 2900, 0); // Nardah shop coordinates
         WorldPoint playerLocation = Rs2Player.getWorldLocation();
@@ -198,41 +192,6 @@ public class ButterflyJarsScript extends Script {
         }
     }
 
-
-    /*private void checkState() {
-        Microbot.log("Checking current state...");
-
-        if (Rs2Bank.isOpen()) {
-            Microbot.log("Bank is open, switching to BANKING.");
-            state = State.BANKING;
-            return;
-        }
-
-        if (Rs2Shop.isOpen()) {
-            Microbot.log("Shop is open, switching to BUYING.");
-            state = State.BUYING;
-            return;
-        }
-
-        if (Rs2Inventory.contains("Butterfly jar")) {
-            Microbot.log("Inventory contains Butterfly Jars, switching to BANKING.");
-            state = State.BANKING;
-            return;
-        }
-
-        if (!Rs2Inventory.contains("Butterfly jar") && Rs2Inventory.contains("Coins")) {
-            Microbot.log("No Butterfly Jars, but coins available. Switching to BUYING.");
-            state = State.BUYING;
-            return;
-        }
-
-        Microbot.log("State unknown, defaulting to BANKING.");
-        state = State.BANKING;
-    }*/
-
-
-
-
     @Override
     public void shutdown() {
         Microbot.log("Shutting down script");
@@ -240,8 +199,6 @@ public class ButterflyJarsScript extends Script {
         Rs2Antiban.resetAntibanSettings();
         super.shutdown();
     }
-
-
 
     private enum State {
         BANKING, BUYING, HOPPING

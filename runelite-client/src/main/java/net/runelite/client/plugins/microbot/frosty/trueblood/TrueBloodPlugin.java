@@ -33,19 +33,20 @@ public class TrueBloodPlugin extends Plugin {
     @Inject
     private OverlayManager overlayManager;
     @Inject
-    TrueBloodScript exampleScript;
+    TrueBloodScript trueBloodScript;
 
 
     @Override
     protected void startUp() throws AWTException {
         if (overlayManager != null) {
         }
-        exampleScript.run(config);
+        trueBloodScript.run(config);
     }
-
+    @Override
     protected void shutDown() {
-        exampleScript.shutdown();
-
+        if (trueBloodScript != null) {
+            trueBloodScript.shutdown();
+        }
     }
     int ticks = 10;
     @Subscribe
