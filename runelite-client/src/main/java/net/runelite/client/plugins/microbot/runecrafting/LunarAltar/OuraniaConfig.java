@@ -7,7 +7,7 @@ import net.runelite.client.plugins.microbot.util.misc.Rs2Food;
 
 @ConfigGroup(OuraniaConfig.configGroup)
 @ConfigInformation(
-        "• This plugin will craft runes at Ourania Altar (ZMI Altar) <br />" +
+        "• This plugin will craft runes at Lunar Altar<br />" +
         "• If using deposit all feature, <b>ensure you lock the slots you wish to keep in inventory</b> <br />" +
         "• Ensure you have a runepouch with your runes for teleport to LunarIsles <br />"
 )
