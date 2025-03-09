@@ -2,7 +2,6 @@ package net.runelite.client.plugins.microbot.zerozero.tormenteddemons;
 
 import net.runelite.api.HeadIcon;
 import net.runelite.api.ItemID;
-import net.runelite.api.NPC;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -16,13 +15,14 @@ import net.runelite.client.plugins.microbot.util.grounditem.LootingParameters;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
 import net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
-import net.runelite.client.plugins.microbot.zerozero.tormenteddemons.TormentedDemonConfig.MODE;
 import net.runelite.client.plugins.microbot.zerozero.tormenteddemons.TormentedDemonConfig.CombatPotionType;
+import net.runelite.client.plugins.microbot.zerozero.tormenteddemons.TormentedDemonConfig.MODE;
 import net.runelite.client.plugins.microbot.zerozero.tormenteddemons.TormentedDemonConfig.RangingPotionType;
 
 import java.util.ArrayList;
@@ -32,13 +32,13 @@ import java.util.concurrent.TimeUnit;
 
 public class TormentedDemonScript extends Script {
 
-    public static final double VERSION = 1.0;
+    public static final double VERSION = 1.1;
     private boolean isRunning = false;
     public static int killCount = 0;
     private Rs2PrayerEnum currentDefensivePrayer = null;
     private Rs2PrayerEnum currentOffensivePrayer = null;
     private HeadIcon currentOverheadIcon = null;
-    private NPC currentTarget;
+    private Rs2NpcModel currentTarget;
     private boolean lootAttempted = false;
     private String lastChatMessage = "";
     private boolean isRestocking = false;
@@ -328,7 +328,7 @@ public class TormentedDemonScript extends Script {
         currentOffensivePrayer = newOffensivePrayer;
     }
 
-    private NPC findNewTarget(TormentedDemonConfig config) {
+    private Rs2NpcModel findNewTarget(TormentedDemonConfig config) {
         return Rs2Npc.getAttackableNpcs("Tormented Demon")
                 .filter(npc -> npc.getInteracting() == null || npc.getInteracting() == Microbot.getClient().getLocalPlayer())
                 .filter(npc -> {

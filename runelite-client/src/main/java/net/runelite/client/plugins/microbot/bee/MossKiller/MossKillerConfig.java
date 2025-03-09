@@ -35,7 +35,7 @@ public interface MossKillerConfig extends Config {
     default String equipmentGuide() {
         return "1x Rune Chainbody\n"
                 + "1x Rune Scimitar\n"
-                + "1x Bryophyta Staff (Uncharged)\n"
+                + "(optional) 1x Bryophyta Staff (Uncharged)\n"
                 + "--\n"
                 + "EVERYTHING BELOW THIS POINT IS MINIMUM RECOMMENDED AMOUNTS, THE SCRIPT WILL STOP WHEN YOU RUN OUT OF SUPPLIES\n"
                 + "--\n"
@@ -66,14 +66,13 @@ public interface MossKillerConfig extends Config {
     )
     default String instructionsGuide() {
         return  "Select Wildy Mode.\n"
-                + "Start the plugin near a bank in f2p with no armor or weapons and every listed piece of equipment in the bank.\n"
+                + "For the first run start the plugin near a bank in f2p with no armor or weapons and every listed piece of equipment in the bank.\n"
                 + "Turn on Teleportation spells in Web Walker configuration. Turn on Breakhandler. Turn on PK skull prevention in OSRS settings and have fixed mode enabled.\n"
                 + "Minimum required skill levels:\n"
                 + "- 40 Range\n"
                 + "- 41 Mage\n"
                 + "- 40 Attack\n"
                 + "- 40 Defense\n"
-                + "- 30 Strength\n"
                 + "Ideal skill levels:\n"
                 + "- 70 Strength\n"
                 + "- 55 Magic\n"
@@ -100,8 +99,7 @@ public interface MossKillerConfig extends Config {
             keyName = "wildySelector",
             name = "Wildy Mode",
             description = "Enable this for killing Moss Giants in the Wilderness.",
-            position = 2,
-            section = advancedGuideSection
+            position = 10
     )
     default boolean wildy() {
         return false;
@@ -110,7 +108,7 @@ public interface MossKillerConfig extends Config {
     @ConfigItem(
             keyName = "combatMode",
             name = "Combat Mode",
-            description = "Select the combat mode: Flee, Fight, or Lure",
+            description = "Select the combat mode: Flee, Fight, or Lure (Currently only Fight)",
             position = 3,
             section = advancedGuideSection
     )
@@ -123,7 +121,7 @@ public interface MossKillerConfig extends Config {
             keyName = "hideOverlay",
             name = "Overlay Hider",
             description = "Select this if you want to hide the overlay",
-            position = 8
+            position = 7
     )
     default boolean isHideOverlay() {
         return false;
@@ -133,18 +131,27 @@ public interface MossKillerConfig extends Config {
     @ConfigItem(
             keyName = "buryBones",
             name = "Bury Bones",
-            description = "Select this if you want to loot and bury bones",
-            position = 4,
-            section = advancedGuideSection
+            description = "Select this if you want to bury bones",
+            position = 9
     )
     default boolean buryBones() {
         return false;
     }
 
     @ConfigItem(
+            keyName = "alchLoot",
+            name = "Alch loot",
+            description = "Select this if you want to loot alchables and alch them and loot coins",
+            position = 8
+    )
+    default boolean alchLoot() {
+        return false;
+    }
+
+    @ConfigItem(
             keyName = "forceDefensive",
             name = "Force Defensive",
-            description = "Select this if you want to autocast defensive after 60 Defence.",
+            description = "Select this if you want to autocast defensive after 50 Defence.",
             position = 5,
             section = advancedGuideSection
     )
@@ -159,7 +166,7 @@ public interface MossKillerConfig extends Config {
             keyName = "keyThreshold",
             name = "Key Threshold",
             description = "How many Mossy Keys should be collected before killing the boss.",
-            position = 7,
+            position = 8,
             section = basicGuideSection
     )
     default int keyThreshold() {
@@ -217,7 +224,7 @@ public interface MossKillerConfig extends Config {
             keyName = "isSlashWeaponEquipped",
             name = "Slash Weapon Equipped?",
             description = "Do you have a slash weapon equipped for spider's web? If False, have a knife in the bank.",
-            position = 6,
+            position = 7,
             section = basicGuideSection // Belongs to Basic Guide
     )
     default boolean isSlashWeaponEquipped() {

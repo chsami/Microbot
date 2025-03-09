@@ -52,14 +52,14 @@ public class TemporossOverlay extends Overlay {
         // Render NPC overlays if the list is not null
         if (npcList != null) {
             for (Rs2NpcModel npc : npcList) {
-                Rs2WorldPoint npcLocation = new Rs2WorldPoint(Rs2WorldPoint.toLocalInstance(npc.getNpc().getWorldLocation()));
+                Rs2WorldPoint npcLocation = new Rs2WorldPoint(Rs2WorldPoint.toLocalInstance(npc.getRuneliteNpc().getWorldLocation()));
                 Rs2WorldPoint playerLocation = new Rs2WorldPoint(Microbot.getClient().getLocalPlayer().getWorldLocation());
                 renderNpcOverlay(graphics, npc, Color.RED,    npcLocation.distanceToPath(playerLocation.getWorldPoint()) + " tiles");
             }
         }
         if (ammoList != null) {
             for (Rs2NpcModel npc : ammoList) {
-                Rs2WorldPoint npcLocation = new Rs2WorldPoint(Rs2WorldPoint.toLocalInstance(npc.getNpc().getWorldLocation()));
+                Rs2WorldPoint npcLocation = new Rs2WorldPoint(Rs2WorldPoint.toLocalInstance(npc.getRuneliteNpc().getWorldLocation()));
                 Rs2WorldPoint playerLocation = new Rs2WorldPoint(Microbot.getClient().getLocalPlayer().getWorldLocation());
                 renderNpcOverlay(graphics, npc, Color.RED,    npcLocation.distanceToPath(playerLocation.getWorldPoint()) + " tiles");
             }

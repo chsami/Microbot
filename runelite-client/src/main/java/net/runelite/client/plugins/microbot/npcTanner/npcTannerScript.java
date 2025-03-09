@@ -78,10 +78,10 @@ public class npcTannerScript extends Script {
                 sleep(1000,3000);
             }
         } else {
-            if(Rs2Widget.getWidget(21233756)!=null || Rs2Widget.getWidget(21233753)!=null){
+            if(Rs2Widget.getWidget(21233789)!=null || Rs2Widget.getWidget(21233753)!=null){
                 Microbot.log("Tanning All");
                 if(whattotan.equals("Cowhide")){
-                    Widget tagetWidget = Rs2Widget.getWidget(21233756);
+                    Widget tagetWidget = Rs2Widget.getWidget(21233789);
                     Rs2Widget.clickWidget(tagetWidget);
                 }
                 if(whattotan.equals("Green dragonhide")){
@@ -156,7 +156,7 @@ public class npcTannerScript extends Script {
                     }
                     tries++;
                 }
-                if((!Rs2Inventory.contains("Coins"))||(Rs2Inventory.get("Coins").getQuantity()<=1000)||(Rs2Inventory.count(whattotan)==0)){
+                if((!Rs2Inventory.contains("Coins"))||(Rs2Inventory.get("Coins").getQuantity()<=80)||(Rs2Inventory.count(whattotan)==0)){
                     Microbot.log("Out of Coins or "+whattotan);
                     shutdown();
                 }
@@ -167,7 +167,7 @@ public class npcTannerScript extends Script {
         if(whattotan.equals("Unset")){
             if(Rs2Inventory.contains("Cowhide")){
                 whattotan = "Cowhide";
-                product = "Leather";
+                product = "Hard leather";
                 return;
             }
             if(Rs2Inventory.contains("Green dragonhide")){
@@ -207,7 +207,7 @@ public class npcTannerScript extends Script {
                     if(Rs2Bank.openBank()){
                         if(Rs2Bank.count("Cowhide") > 10){
                             whattotan = "Cowhide";
-                            product = "Leather";
+                            product = "Hard leather";
                         }
                         if(Rs2Bank.count("Green dragonhide") > 10){
                             whattotan = "Green dragonhide";

@@ -5,6 +5,7 @@ import net.runelite.api.*;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.security.Login;
 
 import java.awt.event.KeyEvent;
@@ -25,10 +26,6 @@ public class Rs2Reflection {
      * actor can be an npc/player
      */
     static int animationMultiplier = 527657827; //can be found in actor.java (int sequence)
-    static String npcDefinition = "ab"; // NPCComposition definition in NPC.class
-    static String headIconSpriteIndex = "bn"; // headIconSpriteIndex in NPCComposition.class
-
- 
     static final byte INDEX_GARBAGE = -28; // found in Varcs.java
     static final String INDEX_FIELD = "ab"; // Varcs.java
     static final String INDEX_CLASS = "es"; // login.java
@@ -46,13 +43,13 @@ public class Rs2Reflection {
      * @return
      */
     @SneakyThrows
-    public static int getAnimation(NPC npc) {
+    public static int getAnimation(Rs2NpcModel npc) {
         if (npc == null) {
             return -1;
         }
         try {
             if (animationField == null) {
-                for (Field declaredField : npc.getClass().getSuperclass().getDeclaredFields()) {
+                for (Field declaredField : npc.getRuneliteNpc().getClass().getSuperclass().getDeclaredFields()) {
                     if (declaredField == null) {
                         continue;
                     }
@@ -66,24 +63,24 @@ public class Rs2Reflection {
                     if (Modifier.isStatic(declaredField.getModifiers())) {
                         continue;
                     }
-                    int value = declaredField.getInt(npc);
-                    declaredField.setInt(npc, 4795789);
-                    if (npc.getAnimation() == animationMultiplier * 4795789) {
+                    int value = declaredField.getInt(npc.getRuneliteNpc());
+                    declaredField.setInt(npc.getRuneliteNpc(), 4795789);
+                    if (npc.getRuneliteNpc().getAnimation() == animationMultiplier * 4795789) {
                         animationField = declaredField.getName();
-                        declaredField.setInt(npc, value);
+                        declaredField.setInt(npc.getRuneliteNpc(), value);
                         declaredField.setAccessible(false);
                         break;
                     }
-                    declaredField.setInt(npc, value);
+                    declaredField.setInt(npc.getRuneliteNpc(), value);
                     declaredField.setAccessible(false);
                 }
             }
             if (animationField == null) {
                 return -1;
             }
-            Field animation = npc.getClass().getSuperclass().getDeclaredField(animationField);
+            Field animation = npc.getRuneliteNpc().getClass().getSuperclass().getDeclaredField(animationField);
             animation.setAccessible(true);
-            int anim = animation.getInt(npc) * animationMultiplier;
+            int anim = animation.getInt(npc.getRuneliteNpc()) * animationMultiplier;
             animation.setAccessible(false);
             return anim;
         } catch(Exception ex) {
@@ -182,20 +179,20 @@ public class Rs2Reflection {
     }
 
     @SneakyThrows
-    public static HeadIcon getHeadIcon(NPC npc) {
+    public static HeadIcon getHeadIcon(Rs2NpcModel npc) {
         if(npc==null) return null;
-        HeadIcon icon = getOldHeadIcon(npc);
+        HeadIcon icon = getOldHeadIcon(npc.getRuneliteNpc());
         if(icon!=null){
             //System.out.println("Icon returned using oldHeadIcon");
             return icon;
         }
-        icon = getOlderHeadicon(npc);
+        icon = getOlderHeadicon(npc.getRuneliteNpc());
         if(icon!=null){
             //System.out.println("Icon returned using OlderHeadicon");
             return icon;
         }
         //System.out.println("Icon returned using headIconThruLengthEightArrays");
-        icon = headIconThruLengthEightArrays(npc);
+        icon = headIconThruLengthEightArrays(npc.getRuneliteNpc());
         return icon;
     }
 

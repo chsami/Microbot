@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.autoBuyer;
+package net.runelite.client.plugins.microbot.farmTreeRun;
 
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.ui.overlay.OverlayPanel;
@@ -9,10 +9,10 @@ import net.runelite.client.ui.overlay.components.TitleComponent;
 import javax.inject.Inject;
 import java.awt.*;
 
-public class AutoBuyerOverlay extends OverlayPanel {
+public class FarmTreeRunOverlay extends OverlayPanel {
 
     @Inject
-    AutoBuyerOverlay(AutoBuyerPlugin plugin)
+    FarmTreeRunOverlay(FarmTreeRunPlugin plugin)
     {
         super(plugin);
         setPosition(OverlayPosition.TOP_LEFT);
@@ -23,7 +23,7 @@ public class AutoBuyerOverlay extends OverlayPanel {
         try {
             panelComponent.setPreferredSize(new Dimension(200, 300));
             panelComponent.getChildren().add(TitleComponent.builder()
-                    .text("GE buyer v1.1")
+                    .text("Acun's farm tree runner (v1.3.0)")
                     .color(Color.GREEN)
                     .build());
 

@@ -1,9 +1,9 @@
 package net.runelite.client.plugins.microbot.liftedmango.autoGauntletPrayer;
 
-import javax.inject.Inject;
-
 import com.google.inject.Provides;
-import net.runelite.api.*;
+import net.runelite.api.HeadIcon;
+import net.runelite.api.ItemID;
+import net.runelite.api.NPC;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ProjectileMoved;
@@ -11,13 +11,15 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
 import net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection;
 
+import javax.inject.Inject;
 import java.util.Set;
 
 import static net.runelite.client.plugins.microbot.Microbot.log;
@@ -72,7 +74,7 @@ public class AutoGauntletPrayer extends Plugin {
             Rs2Prayer.toggle(nextPrayer, true);
         }
 
-        NPC hunllef = Microbot.getClient().getNpcs().stream()
+        Rs2NpcModel hunllef = Rs2Npc.getNpcs()
                 .filter(npc -> HUNLLEF_IDS.contains(npc.getId()))
                 .findFirst()
                 .orElse(null);

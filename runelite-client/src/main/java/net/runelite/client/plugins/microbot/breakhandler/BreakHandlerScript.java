@@ -28,6 +28,7 @@ public class BreakHandlerScript extends Script {
     @Getter
     public static boolean lockState = false;
     private String title = "";
+    private BreakHandlerConfig config;
 
     public static boolean isBreakActive() {
         return breakDuration > 0;
@@ -41,13 +42,19 @@ public class BreakHandlerScript extends Script {
     }
 
     public boolean run(BreakHandlerConfig config) {
-
+        this.config = config;
         Microbot.enableAutoRunOn = false;
         title = ClientUI.getFrame().getTitle();
         breakIn = Rs2Random.between(config.timeUntilBreakStart() * 60, config.timeUntilBreakEnd() * 60);
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
-
+                
+                if (config.breakNow() && !Microbot.pauseAllScripts && !isLockState()) {
+                    Microbot.log("Break triggered via config toggle: " + config.breakNow());
+                    startBreak();
+                    return;
+                }
+               
                 if (config.playSchedule().isOutsideSchedule() && config.usePlaySchedule() && !isLockState()) {
                     Duration untilNextSchedule = config.playSchedule().timeUntilNextSchedule();
                     breakIn = -1;
@@ -94,25 +101,14 @@ public class BreakHandlerScript extends Script {
                     if (Rs2AntibanSettings.takeMicroBreaks) {
                         Rs2AntibanSettings.microBreakActive = false;
                     }
+                    if (config.breakNow()) {
+                        Microbot.getConfigManager().setConfiguration(BreakHandlerConfig.configGroup, "breakNow", false);
+                    }
                     return;
                 }
 
                 if ((breakIn <= 0 && !Microbot.pauseAllScripts && !isLockState()) || (Rs2AntibanSettings.microBreakActive && !Microbot.pauseAllScripts && !isLockState())) {
-                    Microbot.pauseAllScripts = true;
-
-                    if (Rs2AntibanSettings.microBreakActive)
-                        return;
-                    if (config.playSchedule().isOutsideSchedule() && config.usePlaySchedule()) {
-                        Rs2Player.logout();
-                        return;
-                    }
-
-
-                    breakDuration = Rs2Random.between(config.breakDurationStart() * 60, config.breakDurationEnd() * 60);
-
-                    if (config.logoutAfterBreak()) {
-                        Rs2Player.logout();
-                    }
+                    startBreak();
                 }
 
             } catch (Exception ex) {
@@ -120,6 +116,26 @@ public class BreakHandlerScript extends Script {
             }
         }, 0, 1000, TimeUnit.MILLISECONDS);
         return true;
+    }
+
+    private void startBreak() {
+        // Log before processing the break
+        Microbot.log("Starting break. breakNow setting: " + config.breakNow());
+        
+        Microbot.pauseAllScripts = true;
+
+        if (Rs2AntibanSettings.microBreakActive)
+            return;
+        if (config.playSchedule().isOutsideSchedule() && config.usePlaySchedule()) {
+            Rs2Player.logout();
+            return;
+        }
+
+        breakDuration = Rs2Random.between(config.breakDurationStart() * 60, config.breakDurationEnd() * 60);
+
+        if (config.logoutAfterBreak()) {
+            Rs2Player.logout();
+        }
     }
 
     @Override

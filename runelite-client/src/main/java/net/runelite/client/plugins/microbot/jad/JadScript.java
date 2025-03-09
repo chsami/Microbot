@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.jad;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
 import net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection;
@@ -13,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class JadScript extends Script {
-    public static final String VERSION = "1.0.3";
+    public static final String VERSION = "1.0.4";
     public static final Map<Integer, Long> npcAttackCooldowns = new HashMap<>();
 
     public boolean run(JadConfig config) {
@@ -24,7 +25,7 @@ public class JadScript extends Script {
 
                 var jadNpcs = Rs2Npc.getNpcs("Jad", false);
 
-                for (net.runelite.api.NPC jadNpc : jadNpcs.collect(Collectors.toList())) {
+                for (Rs2NpcModel jadNpc : jadNpcs.collect(Collectors.toList())) {
                     if (jadNpc == null) continue;
 
                     long currentTimeMillis = System.currentTimeMillis();

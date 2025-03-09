@@ -15,6 +15,7 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
+import net.runelite.client.plugins.microbot.util.misc.NumberExtractor;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -191,7 +192,73 @@ public class Rs2GrandExchange {
     }
 
     /**
-     * TODO: test this method
+     * Buys item from the grand exchange and increases the price by custom percent
+     *
+     * @param itemName
+     * @param quantity
+     * @param percent the percentage to increase
+     * @return
+     */
+    public static boolean buyItemAboveXPercent(String itemName, int quantity, int percent) {
+        try {
+            if (!isOpen()) {
+                openExchange();
+            }
+            Pair<GrandExchangeSlots, Integer> slot = getAvailableSlot();
+            Widget buyOffer = getOfferBuyButton(slot.getLeft());
+
+            if (buyOffer == null) return false;
+
+            Microbot.getMouse().click(buyOffer.getBounds());
+            sleepUntil(Rs2GrandExchange::isOfferTextVisible);
+            sleepUntil(() -> Rs2Widget.hasWidget("What would you like to buy?"));
+            if (Rs2Widget.hasWidget("What would you like to buy?"))
+                Rs2Keyboard.typeString(itemName);
+            sleepUntil(() -> Rs2Widget.hasWidget(itemName)); //GE Search Results
+            sleep(1200, 1600);
+            Pair<Widget, Integer> itemResult = getSearchResultWidget(itemName);
+            if (itemResult != null) {
+                Rs2Widget.clickWidgetFast(itemResult.getLeft(), itemResult.getRight(), 1);
+                sleepUntil(() -> !Rs2Widget.hasWidget("Choose an item..."));
+                sleep(600, 1600);
+            }
+            setQuantity(quantity);
+
+            Widget pricePerItemButtonXPercent = getPricePerItemButton_PlusXPercent();
+            if (pricePerItemButtonXPercent != null) {
+                int basePrice = getItemPrice();
+                int currentPercent = NumberExtractor.extractNumber(pricePerItemButtonXPercent.getText());
+
+                // Update Price per item custom percentage if it doesn't match
+                if (currentPercent != percent) {
+                    // If current percentage is empty (indicated by +X%)
+                    if (currentPercent == -1) {
+                        Microbot.getMouse().click(pricePerItemButtonXPercent.getBounds());
+                    } else {
+                        Microbot.doInvoke(new NewMenuEntry("Customise", 15, pricePerItemButtonXPercent.getId(), MenuAction.CC_OP.getId(), 2, -1, ""), new Rectangle(pricePerItemButtonXPercent.getBounds()));
+                    }
+                    sleep(300, 1200);
+                    sleepUntil(() -> Rs2Widget.hasWidget("Set a percentage to decrease/increase"), 2000);
+                    Rs2Keyboard.typeString(Integer.toString(percent));
+                    Rs2Keyboard.enter();
+                    sleepUntil(() -> currentPercent == NumberExtractor.extractNumber(pricePerItemButtonXPercent.getText()), 2000);
+                    sleep(300, 1200);
+                }
+
+                Microbot.getMouse().click(pricePerItemButtonXPercent.getBounds());
+                sleepUntil(() -> hasOfferPriceChanged(basePrice), 2000);
+
+                confirm();
+                return true;
+            }
+
+        } catch (Exception ex) {
+            System.out.println(ex.getMessage());
+        }
+        return false;
+    }
+
+    /**
      * Buys item from the grand exchange 5% above the average price
      *
      * @param itemName
@@ -596,6 +663,12 @@ public class Rs2GrandExchange {
         var parent = getOfferContainer();
 
         return Optional.ofNullable(parent).map(p -> p.getChild(13)).orElse(null);
+    }
+
+    public static Widget getPricePerItemButton_PlusXPercent() {
+        var parent = getOfferContainer();
+
+        return Optional.ofNullable(parent).map(p -> p.getChild(15)).orElse(null);
     }
 
     public static Widget getChooseItem() {

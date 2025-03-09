@@ -14,12 +14,15 @@ import java.util.concurrent.TimeUnit;
 public class AutoBuyerScript extends Script {
 
     public static boolean test = false;
-    private static boolean initialized;
-    private static int initialCount;
+    private static boolean initialized = false;
+    private static int initialCount = 0;
     private static int totalBought = 0;
     private static Map<String, Integer> itemsList;
+    private Integer timesToClickIncrease = null;
+    private Integer percent = null;
 
     public boolean run(AutoBuyerConfig config) {
+
         Microbot.enableAutoRunOn = false;
         // Replace any spaces around commas with just a comma since G.E. has whitespace sensitivity
         String listOfItemsToBuy = config.listOfItemsToBuy().replaceAll("\\s*,\\s*", ",");
@@ -38,19 +41,21 @@ public class AutoBuyerScript extends Script {
                     itemsList = mapItems(splitItemsByCommas(listOfItemsToBuy));
                     initialCount = itemsList.size();
                     initialized = true;
+
+                    if (config.pricePerItem().equals(Percentage.PERCENT_5))
+                        timesToClickIncrease = 1;
+                    else if (config.pricePerItem().equals(Percentage.PERCENT_10)) {
+                        timesToClickIncrease = 2;
+                    }
+                    else {
+                        percent = config.pricePerItem().getValue();
+                    }
                     if (!isRunning())
                         return;
                 }
 
                 if (!Rs2GrandExchange.isOpen()) {
                     Rs2GrandExchange.openExchange();
-                }
-
-                int timesToClick;
-                if (config.pricePerItem().equals(Percentage.PERCENT_10))
-                    timesToClick = 2;
-                else {
-                    timesToClick = 1;
                 }
 
                 itemsList.forEach((itemName, quantity) -> {
@@ -66,7 +71,12 @@ public class AutoBuyerScript extends Script {
                             return;
                         }
                     }
-                    Rs2GrandExchange.buyItemAbove5Percent(itemName, quantity, timesToClick);
+
+                    if (timesToClickIncrease != null ) {
+                        Rs2GrandExchange.buyItemAbove5Percent(itemName, quantity, timesToClickIncrease);
+                    } else {
+                        Rs2GrandExchange.buyItemAboveXPercent(itemName, quantity, percent);
+                    }
                     itemsList.remove(itemName); // Remove from list so we don't buy the same item again
                     totalBought++;
                 });
@@ -138,7 +148,11 @@ public class AutoBuyerScript extends Script {
     @Override
     public void shutdown() {
         initialized = false;
+        initialCount = 0;
         totalBought = 0;
+        itemsList.clear();
+        timesToClickIncrease = null;
+        percent = null;
         super.shutdown();
     }
 }

@@ -463,9 +463,12 @@ public class Rs2GroundItem {
      * @return
      */
     public static boolean loot(int itemId) {
+        return loot(itemId, 50);
+    }
+    public static boolean loot(int itemId, int range) {
         if (Rs2Inventory.isFull(itemId)) return false;
         RS2Item[] groundItems = Microbot.getClientThread().runOnClientThread(() ->
-                Rs2GroundItem.getAll(50)
+                Rs2GroundItem.getAll(range)
         );
         for (RS2Item rs2Item : groundItems) {
             if (rs2Item.getItem().getId() == itemId) {

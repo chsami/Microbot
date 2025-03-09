@@ -1,6 +1,6 @@
 package net.runelite.client.plugins.microbot.bee.MossKiller;
 
-import net.runelite.api.Player;
+import net.runelite.api.NPC;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.PluginInstantiationException;
@@ -23,6 +23,7 @@ import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.player.Rs2PlayerModel;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
@@ -33,7 +34,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static net.runelite.api.ItemID.*;
+import static net.runelite.api.Skill.MAGIC;
 import static net.runelite.client.plugins.microbot.util.player.Rs2Player.eatAt;
+import static net.runelite.client.plugins.skillcalculator.skills.MagicAction.HIGH_LEVEL_ALCHEMY;
 
 
 public class MossKillerScript extends Script {
@@ -62,20 +65,21 @@ public class MossKillerScript extends Script {
     // Items
     public final int AIR_RUNE = 556;
     public final int FIRE_RUNE = 554;
-    public final int LAW_RUNE = 563;
+    public static final int LAW_RUNE = 563;
 
     // TODO: convert axe and food to be a list of all available stuff
     public int BRONZE_AXE = 1351;
     public int FOOD = SWORDFISH;
 
-    public int MOSSY_KEY = 22374;
+    public static int MOSSY_KEY = 22374;
 
-    public int NATURE_RUNE = 561;
-    public int DEATH_RUNE = 560;
-    public int CHAOS_RUNE = 562;
+    public static int NATURE_RUNE = 561;
+    public static int DEATH_RUNE = 560;
+    public static int CHAOS_RUNE = 562;
     // TODO: add stuff for boss too
     public int[] LOOT_LIST = new int[]{MOSSY_KEY, LAW_RUNE, AIR_RUNE, FIRE_RUNE, DEATH_RUNE, CHAOS_RUNE, NATURE_RUNE};
-
+    public static final int[] LOOT_LIST1 = new int[]{BIG_BONES, RUNE_PLATELEGS, RUNE_LONGSWORD, RUNE_MED_HELM, RUNE_CHAINBODY, RUNE_PLATESKIRT, RUNE_SQ_SHIELD, RUNE_SWORD, ADAMANT_PLATEBODY, ADAMANT_KITESHIELD, NATURE_RUNE, COSMIC_RUNE, LAW_RUNE, DEATH_RUNE, CHAOS_RUNE, ADAMANT_ARROW, RUNITE_BAR, UNCUT_RUBY, UNCUT_DIAMOND, STEEL_BAR, COINS, STRENGTH_POTION4, BRYOPHYTAS_ESSENCE, MOSSY_KEY};
+    public int[] ALCHABLES = new int[]{STEEL_KITESHIELD, MITHRIL_SWORD, BLACK_SQ_SHIELD};
 
     public MossKillerState state = MossKillerState.BANK;
 
@@ -243,6 +247,62 @@ public class MossKillerScript extends Script {
             }
         }
 
+        // Check if loot is nearby and pick it up if it's in LOOT_LIST
+        if (config.alchLoot()) {
+            for (int lootItem : LOOT_LIST) {
+                if (Rs2GroundItem.exists(lootItem, 7) && Rs2Inventory.getEmptySlots() == 0) {
+                    eatAt(100);
+                    sleepUntil(() -> !Rs2Inventory.isFull());
+                    Rs2GroundItem.interact(lootItem, "Take", 7);
+                    sleep(2000, 3500);
+
+                } else if (Rs2GroundItem.exists(lootItem, 7)
+                        && Rs2Inventory.getEmptySlots() > 0) {
+                    Rs2GroundItem.interact(lootItem, "Take", 7);
+                    sleep(2000, 3500);
+                }
+            }
+
+            if (Rs2GroundItem.loot("Coins", 119, 7)) {
+                sleep(2000, 3500);
+            }
+
+            if (Rs2Inventory.contains(NATURE_RUNE) &&
+                    !Rs2Inventory.hasItemAmount(FIRE_RUNE, 5) &&
+                    Rs2Inventory.contains(ALCHABLES)) {
+
+                if (Microbot.getClient().getRealSkillLevel(MAGIC) > 54 && Rs2Magic.canCast(HIGH_LEVEL_ALCHEMY)) {
+
+                    if (Rs2Inventory.contains(STEEL_KITESHIELD)) {
+                        Rs2Magic.alch("Steel kiteshield");
+                    } else if (Rs2Inventory.contains(BLACK_SQ_SHIELD)) {
+                        Rs2Magic.alch("Black sq shield");
+                    } else if (Rs2Inventory.contains(MITHRIL_SWORD)) {
+                        Rs2Magic.alch("Mithril sword");
+                    }
+
+                    Rs2Player.waitForXpDrop(Skill.MAGIC, 10000, false);
+                }
+            }
+        }
+
+
+        if (config.buryBones()) {
+            if (Rs2Inventory.contains(BIG_BONES)) {
+                sleep(100, 1750);
+                Rs2Inventory.interact(BIG_BONES, "Bury");
+                Rs2Player.waitForAnimation();
+            }
+            if (!Rs2Inventory.isFull() && Rs2GroundItem.interact(BIG_BONES, "Take", 2)) {
+                sleepUntil(() -> Rs2Inventory.contains(BIG_BONES));
+                if (Rs2Inventory.contains(BIG_BONES)) {
+                    sleep(100, 1750);
+                    Rs2Inventory.interact(BIG_BONES, "Bury");
+                    Rs2Player.waitForAnimation();
+                }
+            }
+        }
+
         // Check if any players are near
         if(!getNearbyPlayers(7).isEmpty() && config.hopWhenPlayerIsNear()){
             // todo: add check in config if member or not
@@ -274,12 +334,12 @@ public class MossKillerScript extends Script {
         sleep(800, 2000);
     }
 
-    public List<Player> getNearbyPlayers(int distance) {
+    public List<Rs2PlayerModel> getNearbyPlayers(int distance) {
         WorldPoint playerLocation = Rs2Player.getWorldLocation();
-        List<Player> players = Rs2Player.getPlayers();
 
-        return players.stream()
-                .filter(p -> p != null && p.getWorldLocation().distanceTo(playerLocation) <= distance)
+        // Use the predicate-based getPlayers method directly
+        return Rs2Player.getPlayers(p -> p != null &&
+                        p.getWorldLocation().distanceTo(playerLocation) <= distance)
                 .collect(Collectors.toList());
     }
 
@@ -311,17 +371,6 @@ public class MossKillerScript extends Script {
         for (Rs2NpcModel npc : monsters) {
             if ("Growthling".equals(npc.getName()) || npc.getId() == 8194) {
 
-                if(!growthlingAttacked){
-                    if (Rs2Npc.interact(npc.getId(), "attack")) {
-                        Microbot.log("Attacking growthling!");
-                        growthlingAttacked = true;
-                        sleep(250, 1000);
-                    }
-                } else {
-                    Rs2Npc.attack(npc.getId());
-                }
-
-
                 double health = Rs2Npc.getHealth(npc);
 
                 if (health <= 10.0) {
@@ -331,24 +380,52 @@ public class MossKillerScript extends Script {
                         sleep(750, 1250);
                     }
                 }
+
+                // Get the player's current target (who they are interacting with)
+                NPC interactingNpc = (NPC) Microbot.getClient().getLocalPlayer().getInteracting();
+
+                // If we're already interacting with a Growthling, skip attacking
+                if (interactingNpc != null && interactingNpc.getId() == 8194) {
+                    continue;
+                }
+
+                // If we haven't attacked a Growthling yet, attack it and set the flag
+                if (!growthlingAttacked) {
+                    if (Rs2Npc.interact(npc.getId(), "Attack")) {
+                        Microbot.log("Attacking Growthling!");
+                        growthlingAttacked = true;
+                        sleep(250, 1000);
+                    }
+                } else {
+                    Rs2Npc.attack(npc.getId());
+                }
             }
         }
 
         if (Rs2Npc.getNpc("Bryophyta") == null) {
             Microbot.log("Boss is dead, let's loot.");
-            Microbot.log("Sleeping for 5-10 seconds for loot to appear");
-            sleep(5000,10000);
+            Microbot.log("Sleeping for 3-5 seconds for loot to appear");
+            sleep(3000, 5000);
 
-            for (var item : Rs2GroundItem.getAll(10)) { // Iterate through the item list
-                if (item != null && !Rs2Inventory.isFull() && Rs2GroundItem.interact(item.getItem().getId(), "Take", 10)) {
-                    Rs2Inventory.waitForInventoryChanges(5000);
-                }
-            }
+            Microbot.log("attempting to take loot");
+            lootWorldPoint(MossKillerPlugin.bryoTile);
+            sleep(3000, 5000);
 
-            sleep(1000, 3000);
+            Microbot.log("Moving to TELEPORT state");
             state = MossKillerState.TELEPORT;
         } else if(!growthlingAttacked){
-            Rs2Npc.attack(Rs2Npc.getNpc("Bryophyta"));
+            Microbot.log("Bryophyta is still alive, attacking");
+            NPC interactingNpc = (NPC) Microbot.getClient().getLocalPlayer().getInteracting();
+            if (interactingNpc == null) Rs2Npc.attack("Bryophyta");
+        }
+    }
+
+
+    public void lootWorldPoint(WorldPoint worldPoint) {
+        for (int lootItem : LOOT_LIST1) {
+            Microbot.log("Attempting to loot item ID: " + lootItem + " at tile: " + MossKillerPlugin.bryoTile);
+            Rs2GroundItem.loot(MossKillerPlugin.bryoTile, lootItem);
+            sleep(300, 600);
         }
     }
 

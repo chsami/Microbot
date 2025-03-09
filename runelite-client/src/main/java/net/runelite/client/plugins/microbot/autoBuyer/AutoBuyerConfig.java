@@ -6,7 +6,7 @@ import net.runelite.client.config.ConfigInformation;
 import net.runelite.client.config.ConfigItem;
 
 @ConfigGroup("GE buyer")
-@ConfigInformation("Acun <br> 0.1.0-alpha.1 <br><br> Start near GE. <br> Make sure to spell item names correct. " +
+@ConfigInformation("Acun's GE buyer <br><br> Start near GE. <br> Make sure to spell item names correct. " +
         "Collects items to bank. " +
         "<br> Be cautious and monitor when using, because there are no failsafes added yet. " +
         "<br><br> Item name[quantity] for example: rune arrow[50],amulet of glory(6)[1]"
@@ -29,6 +29,6 @@ public interface AutoBuyerConfig extends Config {
             position = 1
     )
     default Percentage pricePerItem() {
-        return Percentage.PERCENT_5;
+        return Percentage.PERCENT_10;
     }
 }

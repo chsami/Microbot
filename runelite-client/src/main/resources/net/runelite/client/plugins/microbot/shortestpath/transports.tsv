@@ -1913,6 +1913,10 @@
 1420 3589 0	1432 9913 0	Enter;Cave;42248									
 1420 3588 0	1432 9913 0	Enter;Cave;42248									
 1432 9913 0	1420 3588 0	Exit;Cave;42247									
+1509 3593 0	1509 3593 1	Climb-up;Ladder;42207	 								
+1509 3593 1	1509 3593 0	Climb-down;Ladder;42208	 								
+1511 3592 1	1507 3592 2	Climb;Stairs;27199									
+1507 3592 2	1511 3592 1	Climb;Stairs;27200									
 											
 # Meyerditch											
 3649 3220 0	3631 3219 0	Enter;Door;32660				Darkness of Hallowvale					
@@ -4476,17 +4480,21 @@
 2452 4473 0	3201 3169 0	Use;Fairy ring;12094								6	
 3202 3169 0	2452 4473 0	Open;Door;2406								6	
 2486 4471 0	3260 3171 0	Use;Fairy ring;12003								6	
+											
 # Wintertodt											
 1630 3968 0	1630 3963 0	Enter;Doors of dinh;29322								1	
 1630 3963 0	1630 3968 0	Enter;Doors of dinh;29322								1	
+											
 # Camdozaal											
 2998 3494 0	2952 5762 0	Enter;Ruins Entrance;41357				Below Ice Mountain					
 2952 5762 0	2998 3494 0	Exit;Ruins Exit;41446				Below Ice Mountain					
+											
 # Magic guild											
 2590 3088 0	2590 3092 1	Climb-up;Staircase;15645									
 2591 3088 0	2591 3092 1	Climb-up;Staircase;15645									
 2591 3092 1	2590 3088 0	Climb-down;Staircase;15648									
 2590 3092 1	2590 3088 0	Climb-down;Staircase;15648									
+											
 # Asgarnian ice dungeon											
 3009 3150 0	3009 9550 0	Climb-down;Trapdoor;1738									
 3007 9550 0	3007 3150 0	Climb-up;Ladder;17385									
@@ -4495,18 +4503,23 @@
 3056 9555 0	3056 9562 0	Enter;Icy Cavern;10595	 								
 3060 9555 0	3060 9557 0	Climb;Steps;8729									
 3060 9557 0	3060 9555 0	Climb;Steps;8729									
+											
 # Sawmill											
 3310 3508 1	3310 3508 0	Climb-down;Ladder;11795									
 3310 3508 0	3310 3508 1	Climb-up;Ladder;11794									
+											
 # Desert mining camp											
 3290 3035 0	3290 3035 1	Climb-up;Ladder;18903									
 3290 3037 1	3290 3037 0	Climb-down;Ladder;18904									
+											
 # Kovac											
 3366 11483 0	3361 3148 0	Exit;Exit;44636									
 3361 3148 0	3366 11483 0	Enter;Cave;44635									
+											
 # Hazeel cult											
 2567 9680 0	2606 9692 0	Board;Raft;2849									
 2606 9692 0	2567 9680 0	Board;Raft;2849									
+											
 # Murder mystery											
 2736 3580 1	2736 3580 0	Climb-down;Staircase;25683									
 2736 3580 0	2736 3580 1	Climb-up;Staircase;25682									
@@ -4520,16 +4533,20 @@
 3219 9532 2	3226 9542 0	Enter;Tunnel;6658									
 3317 9603 0	2748 5374 0	Open;Door;6919									
 2748 5374 0	3317 9603 0	Open;Bone door;22945									
+											
 # Mountain camp											
 2761 3657 0	2761 3660 0	Climb-over;Rockslide;5847									
 2761 3660 0	2761 3657 0	Climb-over;Rockslide;5847									
+											
 # Varrock pub											
 3285 3496 0	3285 3492 1	Climb-up;Staircase;11797									
 3285 3492 1	3285 3496 0	Climb-down;Staircase;11799									
+											
 # Dungeon Zogre flesh eaters											
 2477 9437 2	2485 3045 0	Climb-up;Stairs;6842									
 2457 3048 0	2455 3048 0	Climb-over;Crushed barricade;6878									
 2442 9417 0	2446 9417 2	Climb-over;Stairs;6842									
+											
 # Shayzien Encampent											
 1482 3633 0	1482 3633 1	Climb-up;Ladder;42207									
 1482 3633 1	1482 3633 0	Climb-down;Ladder;42208									
@@ -4553,21 +4570,25 @@
 1457 10076 2	1457 10076 1	Enter;Lift;30258									
 1457 10075 1	1457 10075 2	Enter;Lift;30259									
 1457 10076 1	1457 10076 2	Enter;Lift;30259									
+											
 # dungeon shayzien mountain camp											
 1169 9973 0	1171 9946 0	Pass;Magic gate;31967									
 9363 1050 0	1214 3557 0	Climb;Rope;32507									
-# dragon slayer 2 Magical Barrier											
+											
+# dragon slayer 2											
 2458 2860 0	2458 2862 0	Pass;Magical Barrier;31616									
 2457 2860 0	2457 2862 0	Pass;Magical Barrier;31616									
 2456 2860 0	2456 2862 0	Pass;Magical Barrier;31616									
 2458 2862 0	2458 2860 0	Pass;Magical Barrier;31616									
 2457 2862 0	2457 2860 0	Pass;Magical Barrier;31616									
 2456 2862 0	2456 2860 0	Pass;Magical Barrier;31616									
+											
 # watchtower											
 2933 4712 2	2549 3112 1	Climb-down;Ladder;2797									
 2549 3112 1	2933 4712 2	Climb-down;Ladder;2797									
 2544 3112 1	2544 3112 0	Climb-down;Ladder;17122									
 2544 3112 0	2544 3112 1	Climb-down;Ladder;17122									
+											
 # kourend											
 1618 3680 0	1614 3680 1	Climb-up;Staircase;11807									
 1614 3680 1	1618 3680 0	Climb-down;Staircase;11799									
@@ -4600,6 +4621,36 @@
 1850 9935 0	1850 9934 0	Slash;Web;733									
 1847 9920 0	1847 9919 0	Slash;Web;733									
 1847 9919 0	1847 9920 0	Slash;Web;733									
+											
+# Arceuus Library											
+1617 3826 0	1610 3826 1	Climb;Stairs;27853									
+1617 3827 0	1610 3827 1	Climb;Stairs;27854									
+1610 3826 1	1617 3826 0	Climb;Stairs;27855									
+1610 3827 1	1617 3827 0	Climb;Stairs;27856									
+1615 3818 1	1608 3818 2	Climb;Stairs;27851	 								
+1615 3819 1	1608 3819 2	Climb;Stairs;27851	 								
+1608 3818 2	1615 3818 1	Climb;Stairs;27852	 								
+1608 3819 2	1615 3819 1	Climb;Stairs;27852	 								
+1639 3810 1	1639 3803 2	Climb;Stairs;27851									
+1638 3810 1	1638 3803 2	Climb;Stairs;27851									
+1639 3803 2	1639 3810 1	Climb;Stairs;27852									
+1638 3803 2	1638 3810 1	Climb;Stairs;27852									
+1617 3795 0	1610 3795 1	Climb;Stairs;27853									
+1617 3796 0	1610 3796 1	Climb;Stairs;27854									
+1610 3795 1	1617 3795 0	Climb;Stairs;27855									
+1610 3796 1	1617 3796 0	Climb;Stairs;27856									
+1621 3791 1	1621 3798 2	Climb;Stairs;27851									
+1622 3791 1	1622 3798 2	Climb;Stairs;27851									
+1621 3798 2	1621 3791 1	Climb;Stairs;27852									
+1622 3798 2	1622 3791 1	Climb;Stairs;27852									
+1644 3818 0	1644 3825 1	Climb;Stairs;27853									
+1645 3818 0	1645 3825 1	Climb;Stairs;27854									
+1644 3825 1	1644 3818 0	Climb;Stairs;27855									
+1645 3825 1	1645 3818 0	Climb;Stairs;27856									
+1643 3829 1	1650 3829 2	Climb;Stairs;27851									
+1643 3828 1	1650 3828 2	Climb;Stairs;27851									
+1650 3829 2	1643 3829 1	Climb;Stairs;27852									
+1650 3828 2	1643 3828 1	Climb;Stairs;27852									
 # Corsair Cove											
 2578 2840 0	2578 2837 1	Cross;Gangplank;31756								1	
 2578 2837 1	2578 2840 0	Cross;Gangplank;31756								1	
@@ -4607,29 +4658,42 @@
 2012 9004 1	2523 2860 0	Climb;Vine ladder;31790								2	
 2483 2889 0	1971 9035 1	Enter;Cave;31766								2	
 1971 9035 1	2483 2889 0	Enter;Cave;31806								2	
-#mining guild											
+											
+# mining guild											
 3021 9739 0	3021 3339 0	Climb-up;Ladder;17385									
 3021 3339 0	3021 9739 0	Climb-down;Ladder;30367									
-#portal to gotr											
+											
+# portal to gotr											
 3104 9573 0	3615 9470 0	Enter;Portal;43841									
 3615 9470 0	3104 9573 0	Enter;Portal;43692									
+											
 # Necropolis											
 3347 2759 0	3349 2759 0	Climb-over;Rubble;44003								4	
 3349 2759 0	3347 2759 0	Climb-over;Rubble;44003								4	
+											
 # Villa entry aldarin											
 1425 2933 0	1427 2933 0	Pass-through;Entryway;54707								4	
 1427 2933 0	1425 2933 0	Pass-through;Entryway;54707								4	
+											
 # Fortis Colosseum											
 1795 3107 0	1799 9506 0	Enter;Colosseum entrance;50749								8	
 1799 9506 0	1795 3107 0	Exit;Stairs;50750								8	
+											
 # Hunter Guild											
 1558 3047 0	1558 9451 0	Climb-down;Stairs;51641								8	
 1558 9451 0	1558 3047 0	Climb-up;Stairs;51642								8	
+1553 3033 0	1553 3033 1	Climb-up;Ladder;52614									
+1553 3033 1	1553 3033 0	Climb-down;Ladder;52620									
+1556 3034 1	1556 3034 2	Climb-up;Ladder;52614									
+1556 3034 2	1556 3034 1	Climb-down;Ladder;52620									
+											
 # Piscatoris Hunting Area											
 2371 3622 0	2371 3620 0	Climb-over;Stile;19222								8	
 2371 3620 0	2371 3622 0	Climb-over;Stile;19222								8	
+											
 # Taverly dungeon											
 2924 9803 0	2923 9803 0	Open;Gate;2623									Taverly gate
+											
 # Fight Caves											
 2493 5174 0	2495 5174 0	Pass;Hot vent door;30266								2	
 2495 5174 0	2493 5174 0	Pass;Hot vent door;30266								2	

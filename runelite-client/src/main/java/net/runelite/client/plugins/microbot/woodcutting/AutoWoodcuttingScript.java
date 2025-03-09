@@ -10,6 +10,7 @@ import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
+import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
@@ -74,6 +75,14 @@ public class AutoWoodcuttingScript extends Script {
                     Microbot.showMessage("You do not have the required woodcutting level to cut this tree.");
                     shutdown();
                     return;
+                }
+                
+                if (!Rs2Inventory.hasItem("axe")) {
+                    if (!Rs2Equipment.hasEquippedContains("axe")) {
+                        Microbot.showMessage("Unable to find axe in inventory/equipped");
+                        shutdown();
+                        return;
+                    }
                 }
 
                 if (state != State.RESETTING && (Rs2Player.isMoving() || Rs2Player.isAnimating() || Microbot.pauseAllScripts))

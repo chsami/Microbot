@@ -298,7 +298,7 @@ public class PathfinderConfig {
             boolean restrictionApplies = false;
 
             // Check if there are no quests, varbits, varplayers, doesn't require a members world or skills, used for explicit restrictions
-            if (entry.getQuests().isEmpty() && entry.getVarbits().isEmpty() && entry.getVarplayers().isEmpty() && !entry.isMembers() && Arrays.stream(entry.getSkillLevels()).allMatch(level -> level == 0)) {
+            if (entry.getQuests().isEmpty() && entry.getVarbits().isEmpty() && entry.getVarplayers().isEmpty() && !entry.isMembers() && Arrays.stream(entry.getSkillLevels()).allMatch(level -> level == 0) && entry.getItemIdRequirements().isEmpty()) {
                 restrictionApplies = true;
             }
             
@@ -348,8 +348,10 @@ public class PathfinderConfig {
                 restrictionApplies = true;
             }
             
-            if (!restrictionApplies && !hasRequiredItems(entry)) {
-                restrictionApplies = true;
+            if (!restrictionApplies && !entry.getItemIdRequirements().isEmpty()) {
+                if (!hasRequiredItems(entry)) {
+                    restrictionApplies = true;
+                }
             }
 
             if (restrictionApplies) {

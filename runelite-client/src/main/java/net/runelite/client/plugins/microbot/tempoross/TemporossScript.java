@@ -332,8 +332,8 @@ public class TemporossScript extends Script {
                 .collect(Collectors.toList());
         Rs2WorldPoint playerLocation = new Rs2WorldPoint(Microbot.getClient().getLocalPlayer().getWorldLocation());
         sortedFires = allFires.stream()
-                .filter(y -> playerLocation.distanceToPath(Rs2WorldPoint.toLocalInstance(y.getNpc().getWorldLocation())) < 35)
-                .sorted(Comparator.comparingInt(x -> playerLocation.distanceToPath( Rs2WorldPoint.toLocalInstance(x.getNpc().getWorldLocation()))))
+                .filter(y -> playerLocation.distanceToPath(Rs2WorldPoint.toLocalInstance(y.getRuneliteNpc().getWorldLocation())) < 35)
+                .sorted(Comparator.comparingInt(x -> playerLocation.distanceToPath( Rs2WorldPoint.toLocalInstance(x.getRuneliteNpc().getWorldLocation()))))
                 .collect(Collectors.toList());
         TemporossOverlay.setNpcList(sortedFires);
     }
@@ -366,7 +366,7 @@ public class TemporossScript extends Script {
         // if double fishing spot is present, prioritize it
         fishSpots = Rs2Npc.getNpcs()
                 .filter(npc -> npc.getId() == NpcID.FISHING_SPOT_10569 || npc.getId() == NpcID.FISHING_SPOT_10568 || npc.getId() == NpcID.FISHING_SPOT_10565)
-                .filter(npc -> !inCloud(npc.getNpc().getWorldLocation(),2))
+                .filter(npc -> !inCloud(npc.getRuneliteNpc().getWorldLocation(),2))
                 .filter(npc -> npc.getWorldLocation().distanceTo(workArea.rangePoint) <= 20)
                 .sorted(Comparator
                         .comparingInt(npc -> npc.getId() == NpcID.FISHING_SPOT_10569 ? 0 : 1))

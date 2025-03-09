@@ -25,7 +25,10 @@ public enum FletchingItem
     }
 
     public char getOption(FletchingMaterial material, FletchingMode fletchingMode) {
-        if (fletchingMode == FletchingMode.STRUNG) return '1';
+        if (fletchingMode == FletchingMode.STRUNG
+                || fletchingMode == FletchingMode.PROGRESSIVE_STRUNG) {
+            return '1';
+        }
         if (material == FletchingMaterial.LOG && option == '2') return '3';
         if (material == FletchingMaterial.LOG && option == '3') return '4';
         //redwood is an exception

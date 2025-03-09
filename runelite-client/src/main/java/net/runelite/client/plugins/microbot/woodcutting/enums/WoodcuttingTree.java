@@ -9,7 +9,7 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 @Getter
 @RequiredArgsConstructor
 public enum WoodcuttingTree {
-    TREE("tree", "Logs", ItemID.LOGS, 1, "Chop down"),
+    TREE("tree" , "Logs", ItemID.LOGS, 1, "Chop down"),
     OAK("oak tree", "Oak logs", ItemID.OAK_LOGS,15, "Chop down"),
     WILLOW("willow tree", "Willow logs", ItemID.WILLOW_LOGS, 30, "Chop down"),
     TEAK_TREE("teak tree", "Teak logs", ItemID.TEAK_LOGS, 35, "Chop down"),
@@ -18,7 +18,9 @@ public enum WoodcuttingTree {
     YEW("yew tree", "Yew logs", ItemID.YEW_LOGS, 60, "Chop down"),
     BLISTERWOOD("blisterwood tree", "Blisterwood logs", ItemID.BLISTERWOOD_LOGS, 62, "Chop"),
     MAGIC("magic tree", "Magic logs", ItemID.MAGIC_LOGS, 75, "Chop down"),
-    REDWOOD("redwood tree", "Redwood logs", ItemID.REDWOOD_LOGS, 90, "Cut");
+    REDWOOD("redwood tree", "Redwood logs", ItemID.REDWOOD_LOGS, 90, "Cut"),
+    EVERGREEN_TREE("evergreen tree" , "Logs", ItemID.LOGS, 1, "Chop down"),
+    DEAD_TREE("dead tree" , "Logs", ItemID.LOGS, 1, "Chop down");
 
 
     private final String name;
