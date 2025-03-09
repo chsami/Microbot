@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.runecrafting.ourania;
+package net.runelite.client.plugins.microbot.runecrafting.LunarAltar;
 
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.misc.TimeUtils;

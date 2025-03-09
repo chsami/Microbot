@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.runecrafting.ourania;
+package net.runelite.client.plugins.microbot.runecrafting.LunarAltar;
 
 import com.google.inject.Inject;
 import com.google.inject.Provides;
@@ -13,8 +13,8 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerPlugin;
-import net.runelite.client.plugins.microbot.runecrafting.ourania.enums.Essence;
-import net.runelite.client.plugins.microbot.runecrafting.ourania.enums.Path;
+import net.runelite.client.plugins.microbot.runecrafting.LunarAltar.enums.Essence;
+import net.runelite.client.plugins.microbot.runecrafting.LunarAltar.enums.Path;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Food;
@@ -24,8 +24,8 @@ import java.awt.*;
 import java.time.Instant;
 
 @PluginDescriptor(
-        name = PluginDescriptor.GMason + "Ourania Altar",
-        description = "Microbot Ourania Altar plugin",
+        name = PluginDescriptor.GMason + "Lunar Altar",
+        description = "Microbot Lunar Altar plugin",
         tags = {"runecrafting", "microbot", "skilling"},
         enabledByDefault = false
 )

@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.runecrafting.ourania.enums;
+package net.runelite.client.plugins.microbot.runecrafting.LunarAltar.enums;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

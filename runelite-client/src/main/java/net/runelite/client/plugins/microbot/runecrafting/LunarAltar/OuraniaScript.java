@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.runecrafting.ourania;
+package net.runelite.client.plugins.microbot.runecrafting.LunarAltar;
 
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldArea;
@@ -7,8 +7,8 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
 import net.runelite.client.plugins.microbot.qualityoflife.scripts.pouch.Pouch;
-import net.runelite.client.plugins.microbot.runecrafting.ourania.enums.OuraniaState;
-import net.runelite.client.plugins.microbot.runecrafting.ourania.enums.Path;
+import net.runelite.client.plugins.microbot.runecrafting.LunarAltar.enums.OuraniaState;
+import net.runelite.client.plugins.microbot.runecrafting.LunarAltar.enums.Path;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.enums.Activity;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -16,6 +16,7 @@ import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.inventory.RunePouchType;
+import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
@@ -34,10 +35,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
-
+import java.awt.event.KeyEvent;
 public class OuraniaScript extends Script {
     
-    private final WorldArea ouraniaAltarArea = new WorldArea(new WorldPoint(3054, 5574, 0), 12, 12);
+    private final WorldArea lunarAltarArea = new WorldArea(new WorldPoint(2150, 3860, 0), 12, 12);
     private final List<Integer> massWorlds = List.of(327, 480);
     private final OuraniaPlugin plugin;
     public static OuraniaState state;
@@ -64,7 +65,7 @@ public class OuraniaScript extends Script {
                     shutdown();
                     return;
                 }
-                
+
                 if (Rs2Inventory.anyPouchUnknown()) {
                     Rs2Inventory.checkPouches();
                     return;
@@ -94,7 +95,7 @@ public class OuraniaScript extends Script {
 
                 switch (state) {
                     case CRAFTING:
-                        Rs2GameObject.interact(ObjectID.ALTAR_29631, "craft-rune");
+                        Rs2GameObject.interact(ObjectID.ALTAR_34771, "craft-rune");
                         Rs2Player.waitForXpDrop(Skill.RUNECRAFT, false);
                         if (Rs2Inventory.hasAnyPouch() && !Rs2Inventory.allPouchesEmpty()) {
                             Rs2Inventory.emptyPouches();
@@ -102,20 +103,21 @@ public class OuraniaScript extends Script {
                         }
                         break;
                     case RESETTING:
-                        if (Rs2Player.getWorldLocation().distanceTo(new WorldPoint(2468, 3246, 0)) > 24) {
-                            Rs2Magic.cast(MagicAction.OURANIA_TELEPORT);
+                        if (Rs2Player.getWorldLocation().distanceTo(new WorldPoint(2064, 3864, 0)) > 24) {
+                            Rs2Magic.cast(MagicAction.MOONCLAN_TELEPORT);
                         }
-                        sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(new WorldPoint(2468, 3246, 0)) < 24);
+                        sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(new WorldPoint(2064, 3864, 0)) < 24);
                         
                         if (plugin.isBreakHandlerEnabled()) {
                             BreakHandlerScript.setLockState(false);
                         }
-                        
+
                         if (Rs2Inventory.hasDegradedPouch() && Rs2Magic.hasRequiredRunes(Rs2Spells.NPC_CONTACT)) {
+                            Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
                             Rs2Magic.repairPouchesWithLunar();
                             return;
                         }
-                        Rs2Walker.walkTo(new WorldPoint(3014, 5625, 0));
+                        Rs2Walker.walkTo(new WorldPoint(2102, 3919, 0));
                         break;
                     case BANKING:
                         if (plugin.isRanOutOfAutoPay()) {
@@ -123,9 +125,9 @@ public class OuraniaScript extends Script {
                             shutdown();
                             return;
                         }
-                        
+
                         if (!Rs2Bank.isOpen()) {
-                            Rs2NpcModel eniola = Rs2Npc.getNpc(NpcID.ENIOLA);
+                            Rs2NpcModel eniola = Rs2Npc.getNpc(NpcID.SIRSAL_BANKER);
                             if (eniola == null) return;
                             Rs2Npc.interact(eniola, "bank");
                             return;
@@ -244,7 +246,7 @@ public class OuraniaScript extends Script {
                         if (plugin.isBreakHandlerEnabled()) {
                             BreakHandlerScript.setLockState(true);
                         }
-                        
+
                         Rs2Walker.walkTo(plugin.getPath().getWorldPoint());
                         if (plugin.getPath().equals(Path.LONG)) {
                             Rs2GameObject.interact(ObjectID.CRACK_29626, "squeeze-through");
@@ -301,11 +303,11 @@ public class OuraniaScript extends Script {
     }
     
     private boolean isNearAltar() {
-        return ouraniaAltarArea.contains(Rs2Player.getWorldLocation());
+        return lunarAltarArea.contains(Rs2Player.getWorldLocation());
     }
     
     private boolean isNearEniola() {
-        Rs2NpcModel eniola = Rs2Npc.getNpc(NpcID.ENIOLA);
+        Rs2NpcModel eniola = Rs2Npc.getNpc(NpcID.SIRSAL_BANKER);
         if (eniola == null) return false;
         return Rs2Player.getWorldLocation().distanceTo2D(eniola.getWorldLocation()) < 12;
     }

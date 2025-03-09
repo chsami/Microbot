@@ -1,18 +1,15 @@
-package net.runelite.client.plugins.microbot.runecrafting.ourania;
+package net.runelite.client.plugins.microbot.runecrafting.LunarAltar;
 
 import net.runelite.client.config.*;
-import net.runelite.client.plugins.microbot.magic.orbcharger.enums.Teleport;
-import net.runelite.client.plugins.microbot.runecrafting.ourania.enums.Essence;
-import net.runelite.client.plugins.microbot.runecrafting.ourania.enums.Path;
+import net.runelite.client.plugins.microbot.runecrafting.LunarAltar.enums.Essence;
+import net.runelite.client.plugins.microbot.runecrafting.LunarAltar.enums.Path;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Food;
 
 @ConfigGroup(OuraniaConfig.configGroup)
 @ConfigInformation(
         "• This plugin will craft runes at Ourania Altar (ZMI Altar) <br />" +
-        "• Ensure you have auto-pay configured with Eniola. <br />" +
         "• If using deposit all feature, <b>ensure you lock the slots you wish to keep in inventory</b> <br />" +
-        "• Requires Lunar Spellbook and to speak with Baby Yaga to learn Ourania Teleport. <br />" +
-        "• Ensure you have a runepouch with your runes for teleport to Ourania & payment runes. <br />"
+        "• Ensure you have a runepouch with your runes for teleport to LunarIsles <br />"
 )
 public interface OuraniaConfig extends Config {
     String configGroup = "micro-ourania";
