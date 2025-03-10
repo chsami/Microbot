@@ -38,6 +38,7 @@ import java.util.List;
 public enum ItemCollections {
     // Tools
     AXES("Axe", ImmutableList.of(
+            ItemID.BRONZE_AXE,
             ItemID.CRYSTAL_AXE,
             ItemID.CRYSTAL_FELLING_AXE,
             ItemID._3RD_AGE_AXE,
@@ -62,11 +63,11 @@ public enum ItemCollections {
             ItemID.STEEL_FELLING_AXE,
             ItemID.IRON_AXE,
             ItemID.IRON_FELLING_AXE,
-            ItemID.BRONZE_AXE,
             ItemID.BRONZE_FELLING_AXE
     )),
 
     PICKAXES("Pickaxe", ImmutableList.of(
+            ItemID.BRONZE_PICKAXE,
             ItemID.INFERNAL_PICKAXE_OR,
             ItemID.ECHO_PICKAXE,
             ItemID.CRYSTAL_PICKAXE,
@@ -83,20 +84,21 @@ public enum ItemCollections {
             ItemID.MITHRIL_PICKAXE,
             ItemID.BLACK_PICKAXE,
             ItemID.STEEL_PICKAXE,
-            ItemID.IRON_PICKAXE,
-            ItemID.BRONZE_PICKAXE
+            ItemID.IRON_PICKAXE
     )),
 
     HARPOONS("Harpoon", ImmutableList.of(
+            ItemID.HARPOON,
             ItemID.INFERNAL_HARPOON_OR,
             ItemID.ECHO_HARPOON,
             ItemID.INFERNAL_HARPOON,
             ItemID.DRAGON_HARPOON,
-            ItemID.BARBTAIL_HARPOON,
-            ItemID.HARPOON
+            ItemID.BARBTAIL_HARPOON
+
     )),
 
     MACHETE("Machete", ImmutableList.of(
+            ItemID.MACHETE,
             ItemID.RED_TOPAZ_MACHETE,
             ItemID.JADE_MACHETE,
             ItemID.OPAL_MACHETE,
@@ -116,9 +118,9 @@ public enum ItemCollections {
     )),
 
     NAILS("Nails", ImmutableList.of(
+            ItemID.BRONZE_NAILS,
             ItemID.STEEL_NAILS,
             ItemID.IRON_NAILS,
-            ItemID.BRONZE_NAILS,
             ItemID.BLACK_NAILS,
             ItemID.MITHRIL_NAILS,
             ItemID.ADAMANTITE_NAILS,
@@ -126,6 +128,7 @@ public enum ItemCollections {
     )),
 
     BOWS("Bows", ImmutableList.of(
+            ItemID.SHORTBOW,
             ItemID.MAGIC_SHORTBOW,
             ItemID.MAGIC_SHORTBOW_I,
             ItemID.DARK_BOW,
@@ -138,11 +141,11 @@ public enum ItemCollections {
             ItemID.WILLOW_LONGBOW,
             ItemID.OAK_SHORTBOW,
             ItemID.OAK_LONGBOW,
-            ItemID.SHORTBOW,
             ItemID.LONGBOW
     )),
 
     CROSSBOWS("Crossbows", ImmutableList.of(
+            ItemID.CROSSBOW,
             ItemID.ARMADYL_CROSSBOW,
             ItemID.DRAGON_HUNTER_CROSSBOW,
             ItemID.HUNTERS_CROSSBOW,
@@ -156,13 +159,12 @@ public enum ItemCollections {
             ItemID.STEEL_CROSSBOW,
             ItemID.IRON_CROSSBOW,
             ItemID.BRONZE_CROSSBOW,
-            ItemID.PHOENIX_CROSSBOW,
-            ItemID.CROSSBOW
+            ItemID.PHOENIX_CROSSBOW
     )),
 
     SWORDS("Swords", ImmutableList.of(
-            ItemID.TRAINING_SWORD,
             ItemID.BRONZE_SWORD,
+            ItemID.TRAINING_SWORD,
             ItemID.BRONZE_LONGSWORD,
             ItemID.IRON_SWORD,
             ItemID.IRON_LONGSWORD,
@@ -183,33 +185,33 @@ public enum ItemCollections {
     )),
 
     METAL_ARROWS(ImmutableList.of(
+            ItemID.BRONZE_ARROW,
             ItemID.RUNE_ARROW,
             ItemID.ADAMANT_ARROW,
             ItemID.MITHRIL_ARROW,
             ItemID.STEEL_ARROW,
-            ItemID.IRON_ARROW,
-            ItemID.BRONZE_ARROW
+            ItemID.IRON_ARROW
     )),
 
     ARROWS(ImmutableList.of(
+            ItemID.BRONZE_ARROW,
             ItemID.DRAGON_ARROW,
             ItemID.AMETHYST_ARROW,
             ItemID.RUNE_ARROW,
             ItemID.ADAMANT_ARROW,
             ItemID.MITHRIL_ARROW,
             ItemID.STEEL_ARROW,
-            ItemID.IRON_ARROW,
-            ItemID.BRONZE_ARROW
+            ItemID.IRON_ARROW
     )),
 
     BRUTAL_ARROWS(ImmutableList.of(
+            ItemID.BRONZE_BRUTAL,
             ItemID.RUNE_BRUTAL,
             ItemID.ADAMANT_BRUTAL,
             ItemID.MITHRIL_BRUTAL,
             ItemID.BLACK_BRUTAL,
             ItemID.STEEL_BRUTAL,
-            ItemID.IRON_BRUTAL,
-            ItemID.BRONZE_BRUTAL
+            ItemID.IRON_BRUTAL
     )),
 
     FIRE_ARROWS(ImmutableList.of(
