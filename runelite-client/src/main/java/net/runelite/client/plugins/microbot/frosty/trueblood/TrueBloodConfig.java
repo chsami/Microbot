@@ -6,6 +6,7 @@ import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 import net.runelite.client.plugins.microbot.frosty.trueblood.enums.HomeTeleports;
 import net.runelite.client.plugins.microbot.frosty.trueblood.enums.Teleports;
+import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
 
 @ConfigGroup("Frosty")
 public interface TrueBloodConfig extends Config {

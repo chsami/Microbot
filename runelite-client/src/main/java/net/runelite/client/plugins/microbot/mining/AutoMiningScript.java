@@ -97,7 +97,7 @@ public class AutoMiningScript extends Script {
                             }
 
                         } else {
-                            Rs2Inventory.dropAllExcept(false, config.interactOrder(), Arrays.stream(config.itemsToKeep().split(",")).map(String::trim).toArray(String[]::new));
+                            Rs2Inventory.dropAll();
                         }
 
                         state = State.MINING;
