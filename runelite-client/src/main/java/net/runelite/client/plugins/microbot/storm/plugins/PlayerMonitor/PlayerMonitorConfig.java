@@ -78,4 +78,6 @@ import java.awt.*;
    default boolean mouseAlarm() { return true; }
    @ConfigItem(position = 5, keyName = "MouseAlarmSound", name = "Alarm Sound", description = "Pick Sound ID to play", section = mouse)
    default SoundEffectID mouseAlarmSound() { return SoundEffectID.ATTACK_HIT; }
+   @ConfigItem(keyName = "combatLevelRange", name = "ONLY in Combat Level Range", description = "Only act if they can attack you", position = 16, section = playerAlarm)
+   default boolean onlyIfInCombatLevelRange() { return true; }
  }
