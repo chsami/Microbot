@@ -5,6 +5,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Point;
 import net.runelite.api.*;
+import net.runelite.api.annotations.Component;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
@@ -12,6 +13,7 @@ import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.devtools.MovementFlag;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.shortestpath.ShortestPathConfig;
 import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
@@ -30,6 +32,7 @@ import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
+import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -1006,12 +1009,10 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                     if (origin != null && origin.getPlane() != Rs2Player.getWorldLocation().getPlane())
                         continue;
                     if (path.stream().noneMatch(x -> x.equals(transport.getDestination()))) continue;
-                    if ((transport.getType() == TransportType.TELEPORTATION_ITEM ||
-                            transport.getType() == TransportType.TELEPORTATION_SPELL) &&
-                                    Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 3) continue;
+                    if (TransportType.isTeleport(transport.getType()) && Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 3) continue;
 
                     // we don't need to check for teleportation_item & teleportation_spell as they will be set on the first tile
-                    if (transport.getType() != TransportType.TELEPORTATION_ITEM && transport.getType() != TransportType.TELEPORTATION_SPELL) {
+                    if (!TransportType.isTeleport(transport.getType())) {
                         int indexOfOrigin = IntStream.range(0, path.size())
                                 .filter(f -> path.get(f).equals(transport.getOrigin()))
                                 .findFirst()
@@ -1064,6 +1065,13 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                             sleep(600 * 2); // wait 2 ticks befor einteracting, this is a delay of ships
                         }
                     }
+                    
+                    if (transport.getType() == TransportType.CANOE) {
+                        if (handleCanoe(transport)) {
+                            sleep(600 * 2); // wait 2 extra ticks before walking
+                            break;
+                        }
+                    }
 
                     if (transport.getType() == TransportType.SPIRIT_TREE) {
                         if (handleSpiritTree(transport)) {
@@ -1106,20 +1114,26 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                     if (transport.getType() == TransportType.FAIRY_RING && !Rs2Player.getWorldLocation().equals(transport.getDestination())) {
                         handleFairyRing(transport);
                     }
+                    
+                    if (transport.getType() == TransportType.TELEPORTATION_MINIGAME) {
+                        if (handleMinigameTeleport(transport)) {
+                            sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < (OFFSET * 2));
+                            break;
+                        }
+                    }
 
                     if (transport.getType() == TransportType.TELEPORTATION_ITEM) {
                         if (handleTeleportItem(transport)) {
                             sleepUntil(() -> !Rs2Player.isAnimating());
-                            sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
+                            sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < OFFSET);
                             break;
                         }
                     }
 
                     if (transport.getType() == TransportType.TELEPORTATION_SPELL) {
-                        //if (Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < config.distanceBeforeUsingTeleport()) break;
                         if (handleTeleportSpell(transport)) {
                             sleepUntil(() -> !Rs2Player.isAnimating());
-                            sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
+                            sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < OFFSET);
                             Rs2Tab.switchToInventoryTab();
                             break;
                         }
@@ -1134,7 +1148,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                         }
                         handleObject(transport, gameObject);
                         sleepUntil(() -> !Rs2Player.isAnimating());
-                        return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
+                        return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < OFFSET);
                     }
 
                     //check tile objects
@@ -1152,7 +1166,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                         }
                         handleObject(transport, tileObject);
                         sleepUntil(() -> !Rs2Player.isAnimating());
-                        return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
+                        return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < OFFSET);
                     }
                     
                     // check wall objects
@@ -1161,7 +1175,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                     if (wallObject != null && wallObject.getId() == transport.getObjectId()) {
                         handleObject(transport, wallObject);
                         sleepUntil(() -> !Rs2Player.isAnimating());
-                        return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
+                        return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < OFFSET);
                     }
                 }
             }
@@ -1551,6 +1565,170 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
 
         return false;
 
+    }
+
+    private static boolean handleMinigameTeleport(Transport transport) {
+        final Object[] selectedOpListener = new Object[]{489, 0, 0};
+        final List<Integer> teleportGraphics = List.of(800, 802, 803, 804);
+
+        @Component final int GROUPING_BUTTON_COMPONENT_ID = 46333957; // 707.5
+
+        @Component final int DROPDOWN_BUTTON_COMPONENT_ID = 4980760; // 76.24
+        final int DROPDOWN_SELECTED_SPRITE_ID = 773;
+
+        @Component final int MINIGAME_LIST = 4980758; // 76.22
+        @Component final int SELECTED_MINIGAME = 4980747; // 76.11
+        @Component final int TELEPORT_BUTTON = 4980768; // 76.32
+
+        if (Rs2Tab.getCurrentTab() != InterfaceTab.CHAT) {
+            Rs2Tab.switchToGroupingTab();
+            sleepUntil(() -> Rs2Tab.getCurrentTab() == InterfaceTab.CHAT);
+        }
+
+        Widget groupingBtn = Rs2Widget.getWidget(GROUPING_BUTTON_COMPONENT_ID);
+        if (groupingBtn == null) return false;
+
+        if (!Arrays.equals(groupingBtn.getOnOpListener(), selectedOpListener)) {
+            Rs2Widget.clickWidget(groupingBtn);
+            sleepUntil(() -> Arrays.equals(groupingBtn.getOnOpListener(), selectedOpListener));
+        }
+
+        boolean hasMultipleDestination = transport.getDisplayInfo().contains(":");
+        String destination = hasMultipleDestination
+                ? transport.getDisplayInfo().split(":")[0].trim().toLowerCase()
+                : transport.getDisplayInfo().trim().toLowerCase();
+
+        Widget selectedWidget = Rs2Widget.getWidget(SELECTED_MINIGAME);
+        if (selectedWidget == null) return false;
+        if (!selectedWidget.getText().equalsIgnoreCase(destination)) {
+            Widget dropdownBtn = Rs2Widget.getWidget(DROPDOWN_BUTTON_COMPONENT_ID);
+            if (dropdownBtn == null) return false;
+
+            if (dropdownBtn.getSpriteId() != DROPDOWN_SELECTED_SPRITE_ID) {
+                Rs2Widget.clickWidget(dropdownBtn);
+                sleepUntil(() -> Rs2Widget.findWidget(DROPDOWN_SELECTED_SPRITE_ID, List.of(Rs2Widget.getWidget(DROPDOWN_BUTTON_COMPONENT_ID))) != null);
+            }
+
+            Widget minigameWidgetParent = Rs2Widget.getWidget(MINIGAME_LIST);
+            if (minigameWidgetParent == null) return false;
+            List<Widget> minigameWidgetList = Arrays.stream(minigameWidgetParent.getDynamicChildren())
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
+            Widget destinationWidget = Rs2Widget.findWidget(destination, minigameWidgetList);
+            if (destinationWidget == null) return false;
+
+            NewMenuEntry destinationMenuEntry = new NewMenuEntry("Select", "", 1, MenuAction.CC_OP, destinationWidget.getIndex(), minigameWidgetParent.getId(), false);
+            Microbot.doInvoke(destinationMenuEntry, new Rectangle(1, 1));
+            sleepUntil(() -> Rs2Widget.getWidget(SELECTED_MINIGAME).getText().equalsIgnoreCase(destination));
+        }
+
+        Widget teleportBtn = Rs2Widget.getWidget(TELEPORT_BUTTON);
+        if (teleportBtn == null) return false;
+        Rs2Widget.clickWidget(teleportBtn);
+
+        if (transport.getDisplayInfo().toLowerCase().contains("rat pits")) {
+            Rs2Dialogue.sleepUntilSelectAnOption();
+            Rs2Dialogue.clickOption(transport.getDisplayInfo().split(":")[1].trim().toLowerCase());
+        }
+
+        sleepUntil(Rs2Player::isAnimating);
+        return sleepUntilTrue(() -> !Rs2Player.isAnimating() && teleportGraphics.stream().noneMatch(Rs2Player::hasSpotAnimation), 100, 20000);
+    }
+
+    private static boolean handleCanoe(Transport transport) {
+        String displayInfo = transport.getDisplayInfo();
+        if (displayInfo == null || displayInfo.isEmpty()) return false;
+
+        List<String> validActions = List.of("chop-down", "shape-canoe", "float canoe", "paddle canoe");
+        ObjectComposition CANOE_COMPOSITION = Rs2GameObject.getObjectComposition(transport.getObjectId());
+        if (CANOE_COMPOSITION == null) return false;
+
+        String currentAction = Arrays.stream(CANOE_COMPOSITION.getActions())
+                .filter(Objects::nonNull)
+                .filter(act -> validActions.contains(act.toLowerCase())).findFirst().orElse(null);
+        if (currentAction == null || currentAction.isEmpty()) {
+            Microbot.log("Unable to find canoe action");
+            return false;
+        }
+
+        switch (currentAction) {
+            case "Chop-down":
+                Rs2GameObject.interact(transport.getObjectId(), "Chop-down");
+                sleepUntil(() -> Rs2Player.isAnimating(1200));
+                return sleepUntilTrue(() -> {
+                    ObjectComposition composition = Rs2GameObject.findObjectComposition(transport.getObjectId());
+
+                    if (composition == null) return false;
+                    return Arrays.stream(composition.getActions()).filter(Objects::nonNull).noneMatch(currentAction::equals) && !Rs2Player.isAnimating();
+                }, 300, 10000);
+            case "Shape-Canoe":
+                @Component final int CANOE_SELECTION_PARENT = 27262976; // 416.3
+                @Component final int CANOE_SHAPING_TEXT = 27262986; // 416.10
+
+                Rs2GameObject.interact(transport.getObjectId(), "Shape-Canoe");
+                boolean isCanoeShapeTextVisible = sleepUntilTrue(() -> Rs2Widget.isWidgetVisible(CANOE_SHAPING_TEXT), 100, 10000);
+                if (!isCanoeShapeTextVisible) {
+                    Microbot.log("Canoe shape text is not visible within timeout period");
+                    return false;
+                }
+
+                final int woodcuttingLevel = Rs2Player.getRealSkillLevel(Skill.WOODCUTTING);
+                String canoeOption;
+                if (woodcuttingLevel >= 57) {
+                    canoeOption = "Waka canoe";
+                } else if (woodcuttingLevel >= 42) {
+                    canoeOption = "Stable dugout canoe";
+                } else if (woodcuttingLevel >= 27) {
+                    canoeOption = "Dugout canoe";
+                } else if (woodcuttingLevel >= 12) {
+                    canoeOption = "Log canoe";
+                } else {
+                    // Not high enough level to make any canoe
+                    return false;
+                }
+
+                Widget canoeSelectionParentWidget = Rs2Widget.getWidget(CANOE_SELECTION_PARENT);
+                if (canoeSelectionParentWidget == null) return false;
+                Widget canoeSelectionWidget = Rs2Widget.findWidget("Make " + canoeOption, List.of(canoeSelectionParentWidget));
+                Rs2Widget.clickWidget(canoeSelectionWidget);
+                sleepUntil(() -> Rs2Player.isAnimating(1200));
+                return sleepUntilTrue(() -> {
+                    ObjectComposition composition = Rs2GameObject.findObjectComposition(transport.getObjectId());
+
+                    if (composition == null) return false;
+                    return Arrays.stream(composition.getActions()).filter(Objects::nonNull).noneMatch(currentAction::equals) && !Rs2Player.isAnimating();
+                }, 300, 10000);
+            case "Float Canoe":
+                Rs2GameObject.interact(transport.getObjectId(), "Float Canoe");
+                sleepUntil(() -> Rs2Player.isAnimating(1200));
+                return sleepUntilTrue(() -> {
+                    ObjectComposition composition = Rs2GameObject.findObjectComposition(transport.getObjectId());
+
+                    if (composition == null) return false;
+                    return Arrays.stream(composition.getActions()).filter(Objects::nonNull).noneMatch(currentAction::equals) && !Rs2Player.isAnimating();
+                }, 300, 10000);
+            case "Paddle Canoe":
+                @Component final int DESTINATION_MAP_PARENT = 42401792; // 647.3
+                @Component final int DESTINATION_LIST = 42401795; // 647.13
+
+                Rs2GameObject.interact(transport.getObjectId(), "Paddle Canoe");
+
+                boolean isDestinationMapVisible = sleepUntilTrue(() -> Rs2Widget.isWidgetVisible(DESTINATION_MAP_PARENT), 100, 10000);
+                if (!isDestinationMapVisible) {
+                    Microbot.log("Destination map is not visible within timeout period");
+                    return false;
+                }
+
+                Widget destinationListWidget = Rs2Widget.getWidget(DESTINATION_LIST);
+                if (destinationListWidget == null) return false;
+                Widget destination = Rs2Widget.findWidget("Travel to " + displayInfo, List.of(destinationListWidget), false);
+                Rs2Widget.clickWidget(destination);
+
+                Rs2Dialogue.waitForCutScene(100, 15000);
+                return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo2D(transport.getDestination()) < (OFFSET * 2), 100, 5000);
+        }
+        return false;
     }
     
     private static boolean handleQuetzal(Transport transport) {

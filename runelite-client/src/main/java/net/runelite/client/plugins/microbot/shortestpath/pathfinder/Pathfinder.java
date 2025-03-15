@@ -130,7 +130,7 @@ public class Pathfinder implements Runnable {
 
             node = boundary.removeFirst();
 
-            if (wildernessLevel > 19) {
+            if (wildernessLevel > 0) {
                 // We don't need to remove teleports when going from 20 to 21 or higher,
                 // because the teleport is either used at the very start of the
                 // path or when going from 31 or higher to 30, or from 21 or higher to 20.
@@ -145,6 +145,10 @@ public class Pathfinder implements Runnable {
                 }
                 if (wildernessLevel > 19 && !config.isInLevel19Wilderness(node.packedPosition)) {
                     wildernessLevel = 19;
+                    update = true;
+                }
+                if (wildernessLevel > 0 && !config.isInWilderness(node.packedPosition)) {
+                    wildernessLevel = 0;
                     update = true;
                 }
                 if (update) {

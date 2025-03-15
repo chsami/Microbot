@@ -84,7 +84,7 @@ public class Rs2Dialogue {
      *
      * @return true if the "Continue" option is visible in either sprite-based dialogue, false otherwise.
      */
-
+    
     private static boolean hasSpriteContinue() {
         return Rs2Widget.isWidgetVisible(InterfaceID.DIALOG_SPRITE, 0) || Rs2Widget.isWidgetVisible(InterfaceID.DIALOG_SPRITE, 3) || Rs2Widget.isWidgetVisible(InterfaceID.DIALOG_DOUBLE_SPRITE, 4);
     }
@@ -129,10 +129,10 @@ public class Rs2Dialogue {
     public static boolean hasSelectAnOption() {
         boolean isWidgetVisible = Rs2Widget.isWidgetVisible(InterfaceID.DIALOG_OPTION, 1);
         if (!isWidgetVisible) return false;
-
+        
         Widget widget = Rs2Widget.getWidget(InterfaceID.DIALOG_OPTION, 1);
         if (widget == null) return false;
-
+        
         return widget.getDynamicChildren() != null;
     }
 
@@ -440,7 +440,7 @@ public class Rs2Dialogue {
     public static boolean sleepUntilHasQuestion(String text) {
         return sleepUntilHasQuestion(text, false);
     }
-
+    
     /**
      * Checks if the combination dialogue widget is currently visible.
      *
@@ -578,11 +578,11 @@ public class Rs2Dialogue {
         if (!hasCombinationDialogue()) return false;
 
         Widget option = getCombinationOption(text, exact);
-
+        
         if (option == null) return false;
-
+        
         return Rs2Widget.clickWidget(option);
-
+        
     }
 
     /**
@@ -608,7 +608,7 @@ public class Rs2Dialogue {
      * Pauses the current thread until a specific combination dialogue option becomes available.
      *
      * <p>This method continuously checks for a combination dialogue option that matches the specified
-     * text. If an exact match is required, it will search for an option that exactly matches the text;
+     * text. If an exact match is required, it will search for an option that exactly matches the text; 
      * otherwise, it will look for an option containing the text.
      *
      * @param text  the text to search for within the combination dialogue options.
@@ -630,7 +630,7 @@ public class Rs2Dialogue {
     public static boolean sleepUntilHasCombinationOption(String text) {
         return sleepUntilHasCombinationOption(text, false);
     }
-
+    
     /**
      * Determines whether the game is currently in a cutscene.
      * <p>
@@ -659,4 +659,24 @@ public class Rs2Dialogue {
         }
         return false;
     }
+
+    /**
+     * Waits for a cutscene to start and end using default polling and timeout values.
+     */
+    public static void waitForCutScene() {
+        waitForCutScene(100, 5000);
+    }
+
+    /**
+     * Waits for a cutscene to start and end using the specified polling interval and timeout.
+     *
+     * @param time    the polling interval in milliseconds
+     * @param timeout the maximum time to wait in milliseconds
+     */
+    public static void waitForCutScene(int time, int timeout) {
+        boolean result = sleepUntilTrue(Rs2Dialogue::isInCutScene, time, timeout);
+        if (!result) return;
+        sleepUntilTrue(() -> !Rs2Dialogue.isInCutScene(), time, timeout);
+    }
+
 }

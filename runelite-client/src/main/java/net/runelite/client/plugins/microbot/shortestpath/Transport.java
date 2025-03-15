@@ -213,7 +213,7 @@ public class Transport {
         
         if ((value = fieldMap.get("Currency")) != null) {
             // Split the string by space
-            String[] parts = value.split(" ");
+            String[] parts = value.split(DELIM);
             if (parts.length > 1) {
                 // Parse the first part as an integer amount
                 currencyAmount = Integer.parseInt(parts[0]);
@@ -266,13 +266,10 @@ public class Transport {
             this.duration = Integer.parseInt(value);
         }
 
-        if (TransportType.TELEPORTATION_ITEM.equals(transportType)
-                || TransportType.TELEPORTATION_SPELL.equals(transportType)) {
-            // Teleportation items and spells should always have a non-zero wait,
+        if (TransportType.isTeleport(transportType)) {
+            // Teleports should always have a non-zero wait,
             // so the pathfinder doesn't calculate the cost by distance
-            //MICROBOT - The reason we commented this out is to avoid using teleport items when being to close to the target
-            // We overwrite this value based on a config "distance to teleport"
-            // this.duration = duration;
+            this.duration = Math.max(this.duration, 1);
         }
 
         if ((value = fieldMap.get("Display info")) != null) {
@@ -305,6 +302,12 @@ public class Transport {
                 } else if (varbitCheck.contains("=")) {
                     parts = varbitCheck.split("=");
                     operator = TransportVarbit.Operator.EQUAL;
+                } else if (varbitCheck.contains("&")) {
+                    parts = varbitCheck.split("&");
+                    operator = TransportVarbit.Operator.BIT_SET;
+                } else if (varbitCheck.contains("@")) {
+                    parts = varbitCheck.split("@");
+                    operator = TransportVarbit.Operator.COOLDOWN_MINUTES;
                 } else {
                     throw new IllegalArgumentException("Invalid varbit format: " + varbitCheck);
                 }
@@ -329,6 +332,12 @@ public class Transport {
                 } else if (varplayerCheck.contains("=")) {
                     parts = varplayerCheck.split("=");
                     operator = TransportVarPlayer.Operator.EQUAL;
+                } else if (varplayerCheck.contains("&")) {
+                    parts = varplayerCheck.split("&");
+                    operator = TransportVarPlayer.Operator.BIT_SET;
+                } else if (varplayerCheck.contains("@")) {
+                    parts = varplayerCheck.split("@");
+                    operator = TransportVarPlayer.Operator.COOLDOWN_MINUTES;
                 } else {
                     throw new IllegalArgumentException("Invalid varplayer format: " + varplayerCheck);
                 }
@@ -485,6 +494,7 @@ public class Transport {
         addTransports(transports, "spirit_trees.tsv", TransportType.SPIRIT_TREE, 5);
         addTransports(transports, "quetzals.tsv", TransportType.QUETZAL, 6);
         addTransports(transports, "teleportation_items.tsv", TransportType.TELEPORTATION_ITEM);
+        addTransports(transports, "teleportation_minigames.tsv", TransportType.TELEPORTATION_MINIGAME);
         addTransports(transports, "teleportation_levers.tsv", TransportType.TELEPORTATION_LEVER);
         addTransports(transports, "teleportation_portals.tsv", TransportType.TELEPORTATION_PORTAL);
         addTransports(transports, "teleportation_spells.tsv", TransportType.TELEPORTATION_SPELL);

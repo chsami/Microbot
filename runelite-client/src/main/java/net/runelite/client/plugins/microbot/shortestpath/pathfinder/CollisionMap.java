@@ -112,9 +112,7 @@ public class CollisionMap {
         for (Transport transport : transports) {
             //START microbot variables
             if (visited.get(transport.getDestination())) continue;
-            if (config.isIgnoreTeleportAndItems() &&
-                    (transport.getType() == TransportType.TELEPORTATION_SPELL ||
-                            transport.getType() == TransportType.TELEPORTATION_ITEM)) continue;
+            if (config.isIgnoreTeleportAndItems() && TransportType.isTeleport(transport.getType())) continue;
 
             //EXCEPTION
             if (transport.getType() == TransportType.MINECART) {
@@ -125,7 +123,7 @@ public class CollisionMap {
                 }
             }
 
-            if (transport.getType() == TransportType.TELEPORTATION_ITEM || transport.getType() == TransportType.TELEPORTATION_SPELL) {
+            if (TransportType.isTeleport(transport.getType())) {
                 neighbors.add(new TransportNode(transport.getDestination(), node, config.getDistanceBeforeUsingTeleport() + transport.getDuration(), transport.getType(), transport.getDisplayInfo()));
             } else {
                 neighbors.add(new TransportNode(transport.getDestination(), node, transport.getDuration(), transport.getType(), transport.getDisplayInfo()));
