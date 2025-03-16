@@ -427,11 +427,10 @@ public class TrueBloodScript extends Script {
                         continue;
                     } else { sleep(Rs2Random.randomGaussian(1100, 200));}
                     sleep(Rs2Random.randomGaussian(1300, 200));
-                    entered = sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving() &&
+                    entered = sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving() && !Rs2Player.isInteracting() &&
                                     (!Rs2Player.getWorldLocation().equals(beforePosition) ||
                                             Rs2Player.getWorldLocation().getRegionID() != beforeRegion),
                             7000);
-
                     if (!entered) {
                         Microbot.log("Entry attempt failed, retrying...");
                         sleep(Rs2Random.randomGaussian(1500, 200));
