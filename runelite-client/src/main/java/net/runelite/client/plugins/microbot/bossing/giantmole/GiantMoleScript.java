@@ -256,7 +256,7 @@ public class GiantMoleScript extends Script
         if (moleHill != null)
         {
             Rs2GameObject.interact(moleHill, "Look-inside");
-            Global.sleepUntilTrue(() -> checkedIfWorldOccupied, 200, 7000);
+            Global.sleepUntil(() -> checkedIfWorldOccupied, 200, 7000);
         }
     }
 

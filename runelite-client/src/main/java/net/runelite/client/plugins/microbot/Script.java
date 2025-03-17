@@ -1,6 +1,5 @@
 package net.runelite.client.plugins.microbot;
 
-import com.google.common.base.Stopwatch;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.coords.WorldPoint;
@@ -9,6 +8,8 @@ import net.runelite.api.widgets.InterfaceID;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.util.Global;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -18,18 +19,17 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.time.Duration;
 import java.time.LocalTime;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.function.BooleanSupplier;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.*;
 
 @Slf4j
-public abstract class Script implements IScript {
+public abstract class Script extends Global implements IScript  {
 
     protected ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(10);
     protected ScheduledFuture<?> scheduledFuture;
-    public ScheduledFuture<?> mainScheduledFuture;
+    protected ScheduledFuture<?> preRequisiteFuture;
+    protected ScheduledFuture<?> mainScheduledFuture;
     public static boolean hasLeveledUp = false;
     public static boolean useStaminaPotsIfNeeded = true;
 
@@ -42,122 +42,144 @@ public abstract class Script implements IScript {
 
     public LocalTime startTime;
 
+    @Getter
+    protected List<ScriptItem> requiredItems = new ArrayList<>();
+
+    private static boolean requiredItemsHandled = false;
+
     /**
      * Get the total runtime of the script
      *
-     * @return
+     * @return the total runtime of the script
      */
     public Duration getRunTime() {
         if (startTime == null) return Duration.ofSeconds(0);
 
         LocalTime currentTime = LocalTime.now();
 
-        Duration runtime = Duration.between(startTime, currentTime); // Calculate runtime
-
-        return runtime;
+        return Duration.between(startTime, currentTime);
     }
-
-    public void sleep(int time) {
-        Global.sleep(time);
-    }
-
-    public void sleep(int start, int end) {
-        Global.sleep(start, end);
-    }
-
-    public boolean sleepUntil(BooleanSupplier awaitedCondition) {
-        return Global.sleepUntil(awaitedCondition, 5000);
-    }
-
-    public boolean sleepUntil(BooleanSupplier awaitedCondition, int time) {
-        boolean done;
-        long startTime = System.currentTimeMillis();
-        do {
-            done = awaitedCondition.getAsBoolean();
-        } while (!done && System.currentTimeMillis() - startTime < time);
-        return done;
-    }
-
-    /**
-     * sleeps for a specified number of game ticks
-     *
-     * @param ticksToWait
-     * @return
-     */
-    public boolean sleepUntilTick(int ticksToWait) {
-        int startTick = Microbot.getClient().getTickCount();
-        return Global.sleepUntil(() -> Microbot.getClient().getTickCount() >= startTick + ticksToWait, ticksToWait * 600 + 2000);
-    }
-
-    /**
-     * Sleeps until a specified condition is met, running an action periodically, or until a timeout is reached.
-     *
-     * @param awaitedCondition The condition to wait for.
-     * @param action           The action to run periodically while waiting.
-     * @param timeoutMillis    The maximum time to wait in milliseconds.
-     * @param sleepMillis      The time to sleep between action executions in milliseconds.
-     * @return true if the condition was met within the timeout, false otherwise.
-     */
-    public boolean sleepUntil(BooleanSupplier awaitedCondition, Runnable action, long timeoutMillis, int sleepMillis) {
-        long startTime = System.nanoTime();
-        long timeoutNanos = TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
-        try {
-            while (System.nanoTime() - startTime < timeoutNanos) {
-                action.run();
-                if (awaitedCondition.getAsBoolean()) {
-                    return true;
-                }
-                sleep(sleepMillis);
-            }
-        } catch (Exception e) {
-            Thread.currentThread().interrupt(); // Restore the interrupt status
-        }
-        return false; // Timeout reached without satisfying the condition
-    }
-
-
-    public boolean sleepUntil(BooleanSupplier awaitedCondition, BooleanSupplier resetCondition, int timeout) {
-        final Stopwatch watch = Stopwatch.createStarted();
-        while (!awaitedCondition.getAsBoolean() && watch.elapsed(TimeUnit.MILLISECONDS) < timeout) {
-            sleep(100);
-            if (resetCondition.getAsBoolean() && Microbot.isLoggedIn()) {
-                watch.reset();
-                watch.start();
-            }
-        }
-        return awaitedCondition.getAsBoolean();
-    }
-
-    public void sleepUntilOnClientThread(BooleanSupplier awaitedCondition) {
-        sleepUntilOnClientThread(awaitedCondition, 5000);
-    }
-
-    public void sleepUntilOnClientThread(BooleanSupplier awaitedCondition, int time) {
-        boolean done;
-        long startTime = System.currentTimeMillis();
-        do {
-            Microbot.status = "[ConditionalSleep] for " + time / 1000 + " seconds";
-            done = Microbot.getClientThread().runOnClientThread(() -> awaitedCondition.getAsBoolean() || hasLeveledUp);
-        } while (!done && System.currentTimeMillis() - startTime < time);
-    }
-
 
     public void shutdown() {
+        if (mainScheduledFuture != null && !mainScheduledFuture.isDone()) {
+            mainScheduledFuture.cancel(true);
+        }
         if (scheduledFuture != null && !scheduledFuture.isDone()) {
             scheduledFuture.cancel(true);
         }
-        if (mainScheduledFuture != null && !mainScheduledFuture.isDone()) {
-            mainScheduledFuture.cancel(true);
-            ShortestPathPlugin.exit();
-            if (Microbot.getClientThread().scheduledFuture != null)
-                Microbot.getClientThread().scheduledFuture.cancel(true);
-            initialPlayerLocation = null;
-            Microbot.pauseAllScripts = false;
-            Rs2Walker.disableTeleports = false;
-            Microbot.getSpecialAttackConfigs().reset();
-            Rs2Walker.setTarget(null);
+        if (preRequisiteFuture != null && !preRequisiteFuture.isDone()) {
+            preRequisiteFuture.cancel(true);
         }
+        scheduledFuture = null;
+        preRequisiteFuture = null;
+
+        ShortestPathPlugin.exit();
+        if (Microbot.getClientThread().scheduledFuture != null)
+            Microbot.getClientThread().scheduledFuture.cancel(true);
+        initialPlayerLocation = null;
+        Microbot.pauseAllScripts = false;
+        Rs2Walker.disableTeleports = false;
+        Microbot.getSpecialAttackConfigs().reset();
+        Rs2Walker.setTarget(null);
         startTime = null;
+        requiredItemsHandled = false;
+    }
+
+    /**
+     * Handles retrieving required items from bank and equipping required equipment
+     * @return true if all required items and equipment are handled, false otherwise
+     */
+    public boolean handlePrerequisites() {
+        if (requiredItemsHandled) {
+            return true;
+        }
+
+        // If no required items or equipment, mark as handled and continue
+        if (requiredItems.isEmpty()) {
+            requiredItemsHandled = true;
+            return true;
+        }
+
+        // Create lists of missing items and equipment
+        List<ScriptItem> missingItems = new ArrayList<>();
+
+        // Check if we have all required items in inventory
+        for (ScriptItem item : requiredItems) {
+            if(item.isEquipped() && ! item.isWearing()) {
+                missingItems.add(item);
+            } else if (!item.hasInInventory()) {
+                missingItems.add(item);
+            }
+        }
+
+        // If nothing is missing, we're done
+        if (missingItems.isEmpty()) {
+            requiredItemsHandled = true;
+            return true;
+        }
+
+        // We need to go to the bank
+        if (!Rs2Bank.openBank()) {
+            BankLocation bankLocation = Rs2Bank.getNearestBank();
+            boolean arrived = Rs2Walker.walkTo(bankLocation.getWorldPoint());
+            sleepUntil(() -> arrived);
+            Rs2Bank.openBank();
+        }
+
+        // Only proceed if bank is actually open
+        if (Rs2Bank.isOpen()) {
+
+            // We could check for required items here, but lets just do this for now.
+            Rs2Bank.depositAll();
+            Rs2Bank.depositEquipment();
+
+            if (requiredItems.stream().anyMatch(ScriptItem::isEquipped)) {
+                Rs2Bank.depositEquipment();
+            }
+
+            // Withdraw required items
+            for (ScriptItem item : requiredItems) {
+                item.withdraw();
+            }
+
+            // Close bank
+            Rs2Bank.closeBank();
+            sleepUntil(() -> !Rs2Bank.isOpen());
+        }
+
+        // Equip required equipment
+        for (ScriptItem item : requiredItems) {
+            if (item.isEquipped()) {
+                item.wear();
+            }
+        }
+
+        // Verify all items and equipment are handled
+        StringBuilder missingItemsMessage = new StringBuilder();
+        boolean allItemsObtained = true;
+
+        for (ScriptItem item : requiredItems) {
+            if ((item.isEquipped() && !item.isWearing()) || (!item.isEquipped() && !item.hasInInventory())) {
+                String itemName = item.getName() != null ? item.getName() : "ID:" + item.getId();
+                missingItemsMessage.append("Missing required item: ").append(itemName)
+                        .append(" x").append(item.getQuantity()).append("\n");
+                allItemsObtained = false;
+            }
+        }
+
+        // If any items are still missing, show message and shutdown
+        if (!allItemsObtained) {
+            String errorMessage = "Cannot continue script execution.\n" + missingItemsMessage.toString() +
+                    "Please ensure you have all required items in your bank.";
+            Microbot.showMessage(errorMessage);
+            log.error(errorMessage);
+            shutdown();
+            return false;
+        }
+
+        // All items are present
+        requiredItemsHandled = true;
+        return true;
     }
 
     public boolean run() {
@@ -196,13 +218,17 @@ public abstract class Script implements IScript {
             if (Microbot.enableAutoRunOn && hasRunEnergy)
                 Rs2Player.toggleRunEnergy(true);
 
+            // Handle required items and equipment before proceeding with script
+            if (!requiredItemsHandled && preRequisiteFuture == null) {
+                preRequisiteFuture = scheduledExecutorService.schedule(this::handlePrerequisites, 0, TimeUnit.MILLISECONDS);
+            }
 
             if (!hasRunEnergy && Microbot.useStaminaPotsIfNeeded && Rs2Player.isMoving()) {
                 Rs2Inventory.useRestoreEnergyItem();
             }
         }
 
-        return true;
+        return preRequisiteFuture == null || preRequisiteFuture.isDone();
     }
 
     @Deprecated(since = "1.6.9 - Use Rs2Keyboard.keyPress", forRemoval = true)

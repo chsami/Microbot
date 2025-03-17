@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static net.runelite.client.plugins.microbot.blackjack.enums.State.*;
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 import static net.runelite.client.plugins.microbot.util.math.Random.random;
 import static net.runelite.client.plugins.microbot.util.walker.Rs2Walker.getTile;
 
@@ -558,12 +558,12 @@ public class BlackJackScript extends Script {
     public boolean lure_NPC(NPC npc){
         sleep(200,260);
         Rs2Npc.interact(npc, "Lure");
-        boolean lureStarted = sleepUntilTrue(() -> Rs2Widget.hasWidget("Psst. Come here, I want to show you something."), 300, 15000);
+        boolean lureStarted = sleepUntil(() -> Rs2Widget.hasWidget("Psst. Come here, I want to show you something."), 300, 15000);
         Rs2Player.toggleRunEnergy(false);
         if(lureStarted){
             sleep(120,160);
             Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
-            sleepUntilTrue(() -> !Rs2Widget.hasWidget("Psst. Come here, I want to show you something."), 300, 3000);
+            sleepUntil(() -> !Rs2Widget.hasWidget("Psst. Come here, I want to show you something."), 300, 3000);
             sleep(120,160);
         } else {
             return false;
@@ -571,7 +571,7 @@ public class BlackJackScript extends Script {
         boolean lureResult = Rs2Widget.hasWidget("What is it?");
         if(lureResult){
             Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
-            sleepUntilTrue(() -> !Rs2Widget.hasWidget("What is it?"), 300, 3000);
+            sleepUntil(() -> !Rs2Widget.hasWidget("What is it?"), 300, 3000);
             sleep(320,460);
             Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
             sleep(320,460);

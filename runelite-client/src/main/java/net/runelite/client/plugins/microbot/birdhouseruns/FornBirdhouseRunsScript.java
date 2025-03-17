@@ -1,26 +1,27 @@
 package net.runelite.client.plugins.microbot.birdhouseruns;
 
 import net.runelite.api.ItemID;
-import net.runelite.api.MenuAction;
+import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.Notifier;
 import net.runelite.client.config.Notification;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
-import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
-import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
+import net.runelite.client.plugins.microbot.ScriptItem;
+import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
-import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
 
 import javax.inject.Inject;
-import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static net.runelite.client.plugins.microbot.birdhouseruns.FornBirdhouseRunsInfo.*;
 
@@ -36,37 +37,80 @@ public class FornBirdhouseRunsScript extends Script {
 
     public boolean run(FornBirdhouseRunsConfig config) {
         Microbot.enableAutoRunOn = true;
+        super.requiredItems = List.of(
+                ScriptItem.builder()
+                        .id(config.LOG().getItemId())
+                        .quantity(4)
+                        .build(),
+                ScriptItem.builder()
+                        .id(ItemID.HAMMER)
+                        .build(),
+                ScriptItem.builder()
+                        .id(ItemID.CHISEL)
+                        .build(),
+                ScriptItem.builder()
+                        .id(config.SEED().getItemId())
+                        .quantity(config.SEED().getAmountPerHouse() * 4)
+                        .build(),
+                ScriptItem.builder()
+                        .name("Digsite pendant")  // Using name since there are multiple IDs (1-5)
+                        .build()
+        );
+
+        if (config.TELEPORT()) {
+            super.requiredItems = new ArrayList<>(super.requiredItems);
+            super.requiredItems.addAll(List.of(
+                    ScriptItem.builder()
+                            .id(ItemID.LAW_RUNE)
+                            .build(),
+                    ScriptItem.builder()
+                            .id(ItemID.FIRE_RUNE)
+                            .build(),
+                    ScriptItem.builder()
+                            .id(ItemID.AIR_RUNE)
+                            .quantity(3)
+                            .build()
+            ));
+        }
+
+        if (config.GRACEFUL()) {
+            super.requiredItems.addAll(List.of(
+                    ScriptItem.builder()
+                            .name("Graceful hood")
+                            .equipped(true)
+                            .build(),
+                    ScriptItem.builder()
+                            .name("Graceful cape")
+                            .equipped(true)
+                            .build(),
+                    ScriptItem.builder()
+                            .name("Graceful top")
+                            .equipped(true)
+                            .build(),
+                    ScriptItem.builder()
+                            .name("Graceful legs")
+                            .equipped(true)
+                            .build(),
+                    ScriptItem.builder()
+                            .name("Graceful gloves")
+                            .equipped(true)
+                            .build(),
+                    ScriptItem.builder()
+                            .name("Graceful boots")
+                            .equipped(true)
+                            .build()
+            ));
+        }
+
+        botStatus = states.TELEPORTING;
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
-                if (!Microbot.isLoggedIn()) return;
-                if (!super.run()) return;
+                if (!Microbot.isLoggedIn() || !super.run()) return;
 
                 switch (botStatus) {
-                    case GEARING:
-                        if (Rs2Bank.openBank()) {
-                            Rs2Bank.depositAll();
-                            if (config.GRACEFUL()) {
-                                Rs2Bank.depositEquipment();
-                                equipGraceful();
-                            }
-                            withdrawDigsitePendant();
-                            if (config.TELEPORT()) {
-                                Rs2Bank.withdrawOne(ItemID.LAW_RUNE);
-                                Rs2Bank.withdrawOne(ItemID.FIRE_RUNE);
-                                Rs2Bank.withdrawX(ItemID.AIR_RUNE, 3);
-                            }
-                            Rs2Bank.withdrawOne(ItemID.HAMMER);
-                            Rs2Bank.withdrawOne(ItemID.CHISEL);
-                            Rs2Bank.withdrawX(selectedLogs, 4);
-                            Rs2Bank.withdrawX(selectedSeed, seedAmount * 4);
-                            Rs2Bank.closeBank();
-                            botStatus = states.TELEPORTING;
-                        }
-                        break;
                     case TELEPORTING:
-                        Microbot.doInvoke(new NewMenuEntry(-1, 25362449, MenuAction.CC_OP.getId(), 3, -1, "Equip"),
-                                new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()));
-                        sleep(3000, 4000);
+                        boolean arrivedThere = Rs2Walker.walkTo(new WorldPoint(3764, 3869, 1));
+                        sleepUntil(() -> arrivedThere);
                         botStatus = states.VERDANT_TELEPORT;
                         break;
                     case VERDANT_TELEPORT:
@@ -147,43 +191,43 @@ public class FornBirdhouseRunsScript extends Script {
     private void emptyNests() {
         do {
             Rs2Inventory.interact(ItemID.BIRD_NEST, "search");
-            sleep(1000);
+            Rs2Inventory.waitForInventoryChanges(1000);
         }
         while (Rs2Inventory.contains(ItemID.BIRD_NEST));
 
         do {
             Rs2Inventory.interact(ItemID.BIRD_NEST_5071, "search");
-            sleep(1000);
+            Rs2Inventory.waitForInventoryChanges(1000);
         }
         while (Rs2Inventory.contains(ItemID.BIRD_NEST_5071));
 
         do {
             Rs2Inventory.interact(ItemID.BIRD_NEST_5072, "search");
-            sleep(1000);
+            Rs2Inventory.waitForInventoryChanges(1000);
         }
         while (Rs2Inventory.contains(ItemID.BIRD_NEST_5072));
 
         do {
             Rs2Inventory.interact(ItemID.BIRD_NEST_5073, "search");
-            sleep(1000);
+            Rs2Inventory.waitForInventoryChanges(1000);
         }
         while (Rs2Inventory.contains(ItemID.BIRD_NEST_5073));
 
         do {
             Rs2Inventory.interact(ItemID.BIRD_NEST_5074, "search");
-            sleep(1000);
+            Rs2Inventory.waitForInventoryChanges(1000);
         }
         while (Rs2Inventory.contains(ItemID.BIRD_NEST_5074));
 
         do {
             Rs2Inventory.interact(ItemID.BIRD_NEST_22798, "search");
-            sleep(1000);
+            Rs2Inventory.waitForInventoryChanges(1000);
         }
         while (Rs2Inventory.contains(ItemID.BIRD_NEST_22798));
 
         do {
             Rs2Inventory.interact(ItemID.BIRD_NEST_22800, "search");
-            sleep(1000);
+            Rs2Inventory.waitForInventoryChanges(1000);
         }
         while (Rs2Inventory.contains(ItemID.BIRD_NEST_22800));
     }
@@ -193,12 +237,6 @@ public class FornBirdhouseRunsScript extends Script {
         super.shutdown();
     }
 
-    private void checkBeforeWithdrawAndEquip(String itemName) {
-        if (!Rs2Equipment.isWearing(itemName)) {
-            Rs2Bank.withdrawAndEquip(itemName);
-        }
-    }
-
     private boolean interactWithObject(int objectId) {
         Rs2GameObject.interact(objectId);
         sleepUntil(Rs2Player::isInteracting);
@@ -206,68 +244,28 @@ public class FornBirdhouseRunsScript extends Script {
         return true;
     }
 
-    private void equipGraceful() {
-        checkBeforeWithdrawAndEquip("GRACEFUL HOOD");
-        checkBeforeWithdrawAndEquip("GRACEFUL CAPE");
-        checkBeforeWithdrawAndEquip("GRACEFUL BOOTS");
-        checkBeforeWithdrawAndEquip("GRACEFUL GLOVES");
-        checkBeforeWithdrawAndEquip("GRACEFUL TOP");
-        checkBeforeWithdrawAndEquip("GRACEFUL LEGS");
-    }
-
-    private void withdrawDigsitePendant() {
-        if (Rs2Equipment.isWearing(ItemID.DIGSITE_PENDANT_1)
-                || Rs2Equipment.isWearing(ItemID.DIGSITE_PENDANT_2)
-                || Rs2Equipment.isWearing(ItemID.DIGSITE_PENDANT_3)
-                || Rs2Equipment.isWearing(ItemID.DIGSITE_PENDANT_4)
-                || Rs2Equipment.isWearing(ItemID.DIGSITE_PENDANT_5)
-        ) return;
-
-        if (Rs2Bank.hasItem(ItemID.DIGSITE_PENDANT_1)) {
-            Rs2Bank.withdrawAndEquip(ItemID.DIGSITE_PENDANT_1);
-        } else if (Rs2Bank.hasItem(ItemID.DIGSITE_PENDANT_2)) {
-            Rs2Bank.withdrawAndEquip(ItemID.DIGSITE_PENDANT_2);
-        } else if (Rs2Bank.hasItem(ItemID.DIGSITE_PENDANT_3)) {
-            Rs2Bank.withdrawAndEquip(ItemID.DIGSITE_PENDANT_3);
-        } else if (Rs2Bank.hasItem(ItemID.DIGSITE_PENDANT_4)) {
-            Rs2Bank.withdrawAndEquip(ItemID.DIGSITE_PENDANT_4);
-        } else {
-            Rs2Bank.withdrawAndEquip(ItemID.DIGSITE_PENDANT_5);
-        }
-    }
-
     private void seedHouse(WorldPoint worldPoint, states status) {
-        if (Rs2Inventory.use(selectedSeed) && Rs2GameObject.interact(worldPoint)) {
-            sleep(1500, 2000);
-            botStatus = status;
-        }
+        Rs2Inventory.use(selectedSeed);
+        sleep(100);
+        Rs2GameObject.interact(worldPoint);
+        sleepUntil(Rs2Dialogue::isInDialogue, 1000);
+        botStatus = status;
     }
 
     private void buildBirdhouse(WorldPoint worldPoint, states status) {
         if (!Rs2Inventory.hasItem(birdhouseType) && Rs2Inventory.hasItem(ItemID.CLOCKWORK)) {
             Rs2Inventory.use(ItemID.HAMMER);
             Rs2Inventory.use(selectedLogs);
-            sleep(1000, 2000);
+            Rs2Inventory.waitForInventoryChanges(1000);
         }
-        if (!Rs2Player.isAnimating() &&
-            !Rs2Player.isInteracting() &&
-            Rs2GameObject.interact(worldPoint, "build")) {
-            sleep(1000, 1500);
-            if (!Rs2Inventory.hasItem(birdhouseType)) {
-                botStatus = status;
-            }
-        }
+        Rs2GameObject.interact(worldPoint, "build");
+        sleepUntil(Rs2Player::isAnimating);
+        botStatus = status;
     }
 
     private void dismantleBirdhouse(int itemId, states status) {
-        if (Rs2Inventory.hasItem(ItemID.CLOCKWORK)) {
-            botStatus = status;
-        } else if (!Rs2Player.isMoving() &&
-                !Rs2Player.isAnimating() &&
-                !Rs2Player.isInteracting()
-        ) {
-
-            Rs2GameObject.interact(itemId, "empty");
-        }
+        Rs2GameObject.interact(itemId, "empty");
+        Rs2Player.waitForXpDrop(Skill.HUNTER);
+        botStatus = status;
     }
 }

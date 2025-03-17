@@ -119,11 +119,11 @@ public class Rs2Camera {
 
         if (getAngleTo(targetDegrees) > maxAngle) {
             Rs2Keyboard.keyHold(KeyEvent.VK_LEFT);
-            Global.sleepUntilTrue(() -> Math.abs(getAngleTo(targetDegrees)) <= maxAngle, 50, 5000);
+            Global.sleepUntil(() -> Math.abs(getAngleTo(targetDegrees)) <= maxAngle, 50, 5000);
             Rs2Keyboard.keyRelease(KeyEvent.VK_LEFT);
         } else if (getAngleTo(targetDegrees) < -maxAngle) {
             Rs2Keyboard.keyHold(KeyEvent.VK_RIGHT);
-            Global.sleepUntilTrue(() -> Math.abs(getAngleTo(targetDegrees)) <= maxAngle, 50, 5000);
+            Global.sleepUntil(() -> Math.abs(getAngleTo(targetDegrees)) <= maxAngle, 50, 5000);
             Rs2Keyboard.keyRelease(KeyEvent.VK_RIGHT);
         }
         Microbot.getClient().setCameraSpeed((float) defaultCameraSpeed);
@@ -134,11 +134,11 @@ public class Rs2Camera {
 
         if (currentPitchPercentage < percentage) {
             Rs2Keyboard.keyHold(KeyEvent.VK_UP);
-            Global.sleepUntilTrue(() -> cameraPitchPercentage() >= percentage, 50, 5000);
+            Global.sleepUntil(() -> cameraPitchPercentage() >= percentage, 50, 5000);
             Rs2Keyboard.keyRelease(KeyEvent.VK_UP);
         } else {
             Rs2Keyboard.keyHold(KeyEvent.VK_DOWN);
-            Global.sleepUntilTrue(() -> cameraPitchPercentage() <= percentage, 50, 5000);
+            Global.sleepUntil(() -> cameraPitchPercentage() <= percentage, 50, 5000);
             Rs2Keyboard.keyRelease(KeyEvent.VK_DOWN);
         }
     }

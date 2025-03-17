@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
 enum State {
     SPINNING,
@@ -62,7 +62,7 @@ public class FlaxSpinScript extends Script {
                         sleepUntil(() -> !Rs2Player.isMoving());
                         Rs2Widget.sleepUntilHasWidget("how many do you wish to make?");
                         Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
-                        sleepUntilTrue(() -> !Rs2Inventory.hasItem(ItemID.FLAX), 600, 150000);
+                        sleepUntil(() -> !Rs2Inventory.hasItem(ItemID.FLAX), 600, 150000);
                         state = State.BANKING;
                         break;
                     case BANKING:
@@ -78,7 +78,7 @@ public class FlaxSpinScript extends Script {
                         break;
                     case WALKING:
                         Rs2Walker.walkTo(config.flaxSpinLocation().getWorldPoint(), 4);
-                        sleepUntilTrue(() -> isNearSpinningWheel(config, 4) && !Rs2Player.isMoving(), 600, 300000);
+                        sleepUntil(() -> isNearSpinningWheel(config, 4) && !Rs2Player.isMoving(), 600, 300000);
                         if (!isNearSpinningWheel(config, 4)) return;
                         Optional<GameObject> spinningWheel = Rs2GameObject.getGameObjects().stream()
                                 .filter(obj -> obj.getId() == config.flaxSpinLocation().getObjectID())

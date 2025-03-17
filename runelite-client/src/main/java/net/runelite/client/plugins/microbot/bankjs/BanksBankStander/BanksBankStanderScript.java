@@ -15,7 +15,7 @@ import java.awt.event.KeyEvent;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 import static net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory.calculateInteractOrder;
 
 // heaps of new features added by Storm
@@ -325,9 +325,9 @@ public class BanksBankStanderScript extends Script {
                         lastItem == 2 && Objects.equals(item, config.secondItemIdentifier()) ||
                         lastItem == 1) {
                     if (id != null) {
-                        sleepUntilTrue(() -> Rs2Inventory.hasItemAmount(id, amount), 40, 1800);
+                        sleepUntil(() -> Rs2Inventory.hasItemAmount(id, amount), 40, 1800);
                     } else {
-                        sleepUntilTrue(() -> Rs2Inventory.hasItemAmount(item, amount), 40, 1800);
+                        sleepUntil(() -> Rs2Inventory.hasItemAmount(item, amount), 40, 1800);
                     }
                 }
 
@@ -347,7 +347,7 @@ public class BanksBankStanderScript extends Script {
         if (config.depositAll() && Rs2Inventory.getEmptySlots() < 28) {
             timeValue = System.currentTimeMillis();
             Rs2Bank.depositAll();
-            sleepUntilTrue(() -> Rs2Inventory.getEmptySlots() == 28,40, 1800);
+            sleepUntil(() -> Rs2Inventory.getEmptySlots() == 28,40, 1800);
             randomNum = calculateSleepDuration(1);
             if (System.currentTimeMillis() - timeValue < randomNum) {
                 sleep((int) (randomNum - (System.currentTimeMillis() - timeValue)));
@@ -360,7 +360,7 @@ public class BanksBankStanderScript extends Script {
                 Microbot.showMessage("Bank is full, unable to deposit items.");
                 long start = System.currentTimeMillis();
                 while (this.isRunning() && ((System.currentTimeMillis()-start) < 120000) && Rs2Inventory.getEmptySlots() < 28) {
-                    sleepUntilTrue(() -> Rs2Inventory.getEmptySlots() == 28,1800, 3600);
+                    sleepUntil(() -> Rs2Inventory.getEmptySlots() == 28,1800, 3600);
                     if (Rs2Inventory.getEmptySlots() == 28) sleep(10000);
                 }
                 if (this.isRunning() && Rs2Inventory.getEmptySlots() < 28) {

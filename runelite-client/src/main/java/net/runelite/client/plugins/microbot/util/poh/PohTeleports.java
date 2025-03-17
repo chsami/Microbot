@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
 
 /**
  * Contains all the functionality for your POH Teleports
@@ -172,7 +171,7 @@ public class PohTeleports {
         // Using shortkeys should always work even if the teleport is not visible on the screen
         Rs2Keyboard.typeString(String.valueOf(shortKey));
 
-        boolean isWildernessInterfaceOpen = sleepUntilTrue(Rs2Widget::isWildernessInterfaceOpen, 100, 1000);
+        boolean isWildernessInterfaceOpen = sleepUntil(Rs2Widget::isWildernessInterfaceOpen, 100, 1000);
 
         if (isWildernessInterfaceOpen) {
             Rs2Widget.enterWilderness();

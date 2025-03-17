@@ -150,7 +150,7 @@ public class Rs2Walker {
                 if (ShortestPathPlugin.getMarker() == null) {
                     setTarget(null);
                 }
-                boolean isInit = sleepUntilTrue(() -> ShortestPathPlugin.getPathfinder() != null, 100, 2000);
+                boolean isInit = sleepUntil(() -> ShortestPathPlugin.getPathfinder() != null, 100, 2000);
                 if (!isInit) {
                     Microbot.log("Pathfinder took to long to initialize, exiting walker: 140");
                     setTarget(null);
@@ -158,7 +158,7 @@ public class Rs2Walker {
                 }
             }
             if (!ShortestPathPlugin.getPathfinder().isDone()) {
-                boolean isDone = sleepUntilTrue(() -> ShortestPathPlugin.getPathfinder().isDone(), 100, 10000);
+                boolean isDone = sleepUntil(() -> ShortestPathPlugin.getPathfinder().isDone(), 100, 10000);
                 if (!isDone) {
                     System.out.println("Pathfinder took to long to calculate path, exiting: 149");
                     setTarget(null);
@@ -1038,7 +1038,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                                     Rs2Dialogue.clickContinue();
                                 }
                                 sleepUntil(() -> !Rs2Player.isAnimating());
-                                sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
+                                sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
                                 sleep(600 * 4);
                             } else {
                                 Rs2Walker.walkFastCanvas(path.get(i));
@@ -1049,7 +1049,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
 
                     if (handleTrapdoor(transport)) {
                         sleepUntil(() -> !Rs2Player.isAnimating());
-                        sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
+                        sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
                         break;
                     }
 
@@ -1060,7 +1060,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
 
                             Rs2Widget.clickWidget(destination);
                             sleepUntil(() -> !Rs2Player.isAnimating());
-                            sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
+                            sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
                             sleep(600 * 2); // wait 2 ticks befor einteracting, this is a delay of ships
                         }
                     }
@@ -1068,7 +1068,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                     if (transport.getType() == TransportType.SPIRIT_TREE) {
                         if (handleSpiritTree(transport)) {
                             sleepUntil(() -> !Rs2Player.isAnimating());
-                            sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
+                            sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
                             break;
                         }
                     }
@@ -1097,7 +1097,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                     if (transport.getType() == TransportType.GNOME_GLIDER) {
                         if (handleGlider(transport)) {
                             sleepUntil(() -> !Rs2Player.isAnimating());
-                            sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
+                            sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
                             sleep(600 * 3); // wait 3 extra ticks before walking
                             break;
                         }
@@ -1110,7 +1110,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                     if (transport.getType() == TransportType.TELEPORTATION_ITEM) {
                         if (handleTeleportItem(transport)) {
                             sleepUntil(() -> !Rs2Player.isAnimating());
-                            sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
+                            sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
                             break;
                         }
                     }
@@ -1119,7 +1119,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                         //if (Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < config.distanceBeforeUsingTeleport()) break;
                         if (handleTeleportSpell(transport)) {
                             sleepUntil(() -> !Rs2Player.isAnimating());
-                            sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
+                            sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
                             Rs2Tab.switchToInventoryTab();
                             break;
                         }
@@ -1134,7 +1134,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                         }
                         handleObject(transport, gameObject);
                         sleepUntil(() -> !Rs2Player.isAnimating());
-                        return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
+                        return sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
                     }
 
                     //check tile objects
@@ -1152,7 +1152,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                         }
                         handleObject(transport, tileObject);
                         sleepUntil(() -> !Rs2Player.isAnimating());
-                        return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
+                        return sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
                     }
                     
                     // check wall objects
@@ -1161,7 +1161,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                     if (wallObject != null && wallObject.getId() == transport.getObjectId()) {
                         handleObject(transport, wallObject);
                         sleepUntil(() -> !Rs2Player.isAnimating());
-                        return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
+                        return sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < 10);
                     }
                 }
             }
@@ -1261,7 +1261,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
             Rs2GameObject.interact(obelisk, transport.getAction());
             sleepUntil(() -> Rs2GameObject.getGameObjects(ObjectID.OBELISK_14825, transport.getOrigin()).stream().findFirst().orElse(null) != null);
             walkFastCanvas(transport.getOrigin());
-            return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo2D(transport.getDestination()) < OFFSET, 100, 10000);
+            return sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo2D(transport.getDestination()) < OFFSET, 100, 10000);
         }
         return false;
     }
@@ -1375,7 +1375,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
             }
 
             Microbot.log("Traveling to " + transport.getDisplayInfo());
-            return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo2D(transport.getDestination()) < OFFSET, 100, 5000);
+            return sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo2D(transport.getDestination()) < OFFSET, 100, 5000);
         }
 
         return false;
@@ -1399,7 +1399,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                     }
                 }
                 Microbot.log("Traveling to " + transport.getDisplayInfo());
-                return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo2D(transport.getDestination()) < OFFSET, 100, 5000);
+                return sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo2D(transport.getDestination()) < OFFSET, 100, 5000);
             }
         }
         return false;
@@ -1562,7 +1562,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
 
         if (Rs2Npc.canWalkTo(renu, 20) && Rs2Npc.interact(renu, "travel")) {
             Rs2Player.waitForWalking();
-            boolean isVarlamoreMapVisible = sleepUntilTrue(() -> Rs2Widget.isWidgetVisible(varlamoreMapParentID, 2), 100, 10000);
+            boolean isVarlamoreMapVisible = sleepUntil(() -> Rs2Widget.isWidgetVisible(varlamoreMapParentID, 2), 100, 10000);
             
             if (!isVarlamoreMapVisible) {
                 Microbot.log("Varlamore Map Widget not visable within timeout");
@@ -1579,7 +1579,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
             if (actionWidget != null) {
                 Rs2Widget.clickWidget(actionWidget);
                 Microbot.log("Traveling to " + transport.getDisplayInfo());
-                return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo2D(transport.getDestination()) < OFFSET, 100, 5000);
+                return sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo2D(transport.getDestination()) < OFFSET, 100, 5000);
             }
         }
         return false;
@@ -1594,7 +1594,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
         Rs2Dialogue.sleepUntilInDialogue();
         Rs2Dialogue.clickOption(transport.getDisplayInfo());
         sleepUntil(() -> Rs2Player.getPoseAnimation() == flyingPoseAnimation, 10000);
-        return sleepUntilTrue(() -> Rs2Player.getPoseAnimation() != flyingPoseAnimation, 600,60000);
+        return sleepUntil(() -> Rs2Player.getPoseAnimation() != flyingPoseAnimation, 600,60000);
     }
     /**
      * interact with interfaces like spirit tree & xeric talisman etc...
@@ -1605,7 +1605,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
         if (transport.getDisplayInfo() == null || transport.getDisplayInfo().isEmpty()) return false;
 
         // Wait for the widget to become visible
-        boolean isAdventureLogVisible = sleepUntilTrue(() -> !Rs2Widget.isHidden(ComponentID.ADVENTURE_LOG_CONTAINER), Rs2Player::isMoving, 100, 10000);
+        boolean isAdventureLogVisible = sleepUntil(() -> !Rs2Widget.isHidden(ComponentID.ADVENTURE_LOG_CONTAINER), Rs2Player::isMoving, 100, 10000);
 
         if (!isAdventureLogVisible) {
             Microbot.log("Widget did not become visible within the timeout.");
@@ -1615,7 +1615,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
         char key = transport.getDisplayInfo().charAt(0);
         Rs2Keyboard.keyPress(key);
         Microbot.log("Traveling to " + transport.getDisplayInfo());
-        return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo2D(transport.getDestination()) < OFFSET, 100, 5000);
+        return sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo2D(transport.getDestination()) < OFFSET, 100, 5000);
     }
 
     public static boolean handleGlider(Transport transport) {
@@ -1652,7 +1652,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
 
 
         // Wait for the widget to become visible
-        boolean widgetVisible = sleepUntilTrue(() -> !Rs2Widget.isHidden(GLIDER_PARENT_WIDGET, GLIDER_CHILD_WIDGET), Rs2Player::isMoving, 100, 10000);
+        boolean widgetVisible = sleepUntil(() -> !Rs2Widget.isHidden(GLIDER_PARENT_WIDGET, GLIDER_CHILD_WIDGET), Rs2Player::isMoving, 100, 10000);
         
         if (!widgetVisible) {
             Microbot.log("Widget did not become visible within the timeout.");

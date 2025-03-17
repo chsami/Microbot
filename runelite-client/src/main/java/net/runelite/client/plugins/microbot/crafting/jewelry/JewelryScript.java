@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
 public class JewelryScript extends Script {
 
@@ -320,7 +320,7 @@ public class JewelryScript extends Script {
                         }
 
                         Rs2GameObject.interact(furnaceObject, "smelt");
-                        sleepUntilTrue(() -> Rs2Widget.isGoldCraftingWidgetOpen() || Rs2Widget.isSilverCraftingWidgetOpen(), 500, 20000);
+                        sleepUntil(() -> Rs2Widget.isGoldCraftingWidgetOpen() || Rs2Widget.isSilverCraftingWidgetOpen(), 500, 20000);
                         Rs2Widget.clickWidget(plugin.getJewelry().getItemName());
                         Rs2Antiban.actionCooldown();
                         Rs2Antiban.takeMicroBreakByChance();

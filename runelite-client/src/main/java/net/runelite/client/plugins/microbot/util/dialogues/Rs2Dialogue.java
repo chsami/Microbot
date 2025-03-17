@@ -13,7 +13,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
 public class Rs2Dialogue {
 
@@ -379,7 +379,7 @@ public class Rs2Dialogue {
      * @return true if the specified dialogue option appears within the timeout period, otherwise false
      */
     public static boolean sleepUntilHasDialogueOption(String text, boolean exact) {
-        return sleepUntilTrue(() -> hasDialogueOption(text, exact));
+        return sleepUntil(() -> hasDialogueOption(text, exact));
     }
 
 
@@ -389,7 +389,7 @@ public class Rs2Dialogue {
      * @return true if the player enters a dialogue within the timeout period, otherwise false
      */
     public static boolean sleepUntilInDialogue() {
-        return sleepUntilTrue(Rs2Dialogue::isInDialogue);
+        return sleepUntil(Rs2Dialogue::isInDialogue);
     }
 
     /**
@@ -398,7 +398,7 @@ public class Rs2Dialogue {
      * @return true if the player exits dialogue within the timeout period, otherwise false
      */
     public static boolean sleepUntilNotInDialogue() {
-        return sleepUntilTrue(() -> !isInDialogue());
+        return sleepUntil(() -> !isInDialogue());
     }
 
     /**
@@ -407,7 +407,7 @@ public class Rs2Dialogue {
      * @return true if the "Select an Option" dialogue appears within the timeout period, otherwise false
      */
     public static boolean sleepUntilSelectAnOption() {
-        return sleepUntilTrue(Rs2Dialogue::hasSelectAnOption);
+        return sleepUntil(Rs2Dialogue::hasSelectAnOption);
     }
 
     /**
@@ -416,7 +416,7 @@ public class Rs2Dialogue {
      * @return true if the "Continue" option appears within the timeout period, otherwise false
      */
     public static boolean sleepUntilHasContinue() {
-        return sleepUntilTrue(Rs2Dialogue::hasContinue);
+        return sleepUntil(Rs2Dialogue::hasContinue);
     }
 
     /**
@@ -427,7 +427,7 @@ public class Rs2Dialogue {
      * @return true if the dialogue question appears within the timeout period, otherwise false.
      */
     public static boolean sleepUntilHasQuestion(String text, boolean exact) {
-        return sleepUntilTrue(() -> hasQuestion(text, exact));
+        return sleepUntil(() -> hasQuestion(text, exact));
     }
 
     /**
@@ -525,7 +525,7 @@ public class Rs2Dialogue {
      * @return true if the dialogue text appears within the timeout period, otherwise false.
      */
     public static boolean sleepUntilHasDialogueText(String text, boolean exact) {
-        return sleepUntilTrue(() -> hasDialogueText(text, exact));
+        return sleepUntil(() -> hasDialogueText(text, exact));
     }
 
     /**
@@ -601,7 +601,7 @@ public class Rs2Dialogue {
      * @return true if the combination dialogue appears within the timeout period, otherwise false.
      */
     public static boolean sleepUntilHasCombinationDialogue() {
-        return sleepUntilTrue(Rs2Dialogue::hasCombinationDialogue);
+        return sleepUntil(Rs2Dialogue::hasCombinationDialogue);
     }
 
     /**
@@ -616,7 +616,7 @@ public class Rs2Dialogue {
      * @return true if the combination dialogue option appears within the timeout period, otherwise false.
      */
     public static boolean sleepUntilHasCombinationOption(String text, boolean exact) {
-        return sleepUntilTrue(() -> getCombinationOption(text, exact) != null);
+        return sleepUntil(() -> getCombinationOption(text, exact) != null);
     }
 
     /**
@@ -658,5 +658,24 @@ public class Rs2Dialogue {
             }
         }
         return false;
+    }
+
+    /**
+     * Waits for a cutscene to start and end using default polling and timeout values.
+     */
+    public static void waitForCutScene() {
+        waitForCutScene(100, 5000);
+    }
+
+    /**
+     * Waits for a cutscene to start and end using the specified polling interval and timeout.
+     *
+     * @param time    the polling interval in milliseconds
+     * @param timeout the maximum time to wait in milliseconds
+     */
+    public static void waitForCutScene(int time, int timeout) {
+        boolean result = sleepUntil(Rs2Dialogue::isInCutScene, time, timeout);
+        if (!result) return;
+        sleepUntil(() -> !Rs2Dialogue.isInCutScene(), time, timeout);
     }
 }

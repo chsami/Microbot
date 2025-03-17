@@ -45,7 +45,7 @@ public class FornBirdhouseRunsPlugin extends Plugin {
         }
         fornBirdhouseRunsScript.run(config);
 //        botStatus = config.STEP(); for debugging
-        FornBirdhouseRunsInfo.botStatus = FornBirdhouseRunsInfo.states.GEARING;
+        FornBirdhouseRunsInfo.botStatus = FornBirdhouseRunsInfo.states.TELEPORTING;
         FornBirdhouseRunsInfo.selectedSeed = config.SEED().getItemId();
         FornBirdhouseRunsInfo.seedAmount = config.SEED().getAmountPerHouse();
         FornBirdhouseRunsInfo.selectedLogs = config.LOG().getItemId();

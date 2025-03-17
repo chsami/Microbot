@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 
 import static net.runelite.client.plugins.microbot.Microbot.log;
 import static net.runelite.client.plugins.microbot.util.Global.sleepGaussian;
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
 
 public class GotrScript extends Script {
@@ -432,7 +432,7 @@ public class GotrScript extends Script {
                     TileObject rcPortal = findPortalToLeaveAltar();
                     if (Rs2GameObject.interact(rcPortal.getId())) {
                         log("Leaving the altar...");
-                        sleepUntilTrue(GotrScript::isInMainRegion,100,10000);
+                        sleepUntil(GotrScript::isInMainRegion,100,10000);
                         sleep(Rs2Random.randomGaussian(750, 150));
                     }
                 }

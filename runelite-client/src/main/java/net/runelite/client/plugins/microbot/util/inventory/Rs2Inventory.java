@@ -406,6 +406,11 @@ public class Rs2Inventory {
         return false;
     }
 
+    private static void drop(Rs2ItemModel item) {
+        invokeMenu(item, "Drop");
+        Rs2Inventory.waitForInventoryChanges(1000);
+    }
+
     /**
      * Drops the item with the specified ID from the inventory.
      *
@@ -416,8 +421,7 @@ public class Rs2Inventory {
     public static boolean drop(int id) {
         Rs2ItemModel item = items().stream().filter(x -> x.id == id).findFirst().orElse(null);
         if (item == null) return false;
-
-        invokeMenu(item, "Drop");
+        drop(item);
 
         return true;
     }
@@ -447,8 +451,7 @@ public class Rs2Inventory {
         }
         if (item == null) return false;
 
-        invokeMenu(item, "Drop");
-
+        drop(item);
         return true;
     }
 
@@ -463,7 +466,7 @@ public class Rs2Inventory {
         Rs2ItemModel item = items().stream().filter(predicate).findFirst().orElse(null);
         if (item == null) return false;
 
-        invokeMenu(item, "Drop");
+        drop(item);
 
         return true;
     }
@@ -1890,6 +1893,7 @@ public class Rs2Inventory {
         if (!Rs2Inventory.hasItem(name)) return false;
         if (Rs2Equipment.isWearing(name, true)) return false;
         invokeMenu(get(name), "wield");
+        Rs2Inventory.waitForInventoryChanges(10000);
         return true;
     }
 
@@ -2248,7 +2252,7 @@ public class Rs2Inventory {
     public static boolean waitForInventoryChanges(int time) {
         final List<Rs2ItemModel> initialInventory = new ArrayList<>(inventoryItems);
 
-        return sleepUntilTrue(() -> !hasInventoryUnchanged(initialInventory), 100, time);
+        return sleepUntil(() -> !hasInventoryUnchanged(initialInventory), 100, time);
     }
 
     /**
@@ -2274,7 +2278,7 @@ public class Rs2Inventory {
     public static boolean waitForInventoryChanges(Runnable actionWhileWaiting, int time, int timeout) {
         final List<Rs2ItemModel> initialInventory = new ArrayList<>(inventoryItems);
 
-        return sleepUntilTrue(() -> {
+        return sleepUntil(() -> {
             actionWhileWaiting.run();
             return !hasInventoryUnchanged(initialInventory);
         }, time, timeout);

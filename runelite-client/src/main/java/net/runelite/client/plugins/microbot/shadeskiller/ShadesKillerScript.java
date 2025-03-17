@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static net.runelite.client.plugins.microbot.shadeskiller.enums.State.USE_TELEPORT_TO_BANK;
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
 import static net.runelite.client.plugins.microbot.util.player.Rs2Player.eatAt;
 
 
@@ -94,10 +93,10 @@ public class ShadesKillerScript extends Script {
         sleepUntil(() -> !Rs2Bank.isOpen());
         sleep(800, 1200);
         Rs2Inventory.interact("coffin", "configure");
-        boolean isEmptyCoffin = sleepUntilTrue(() -> Rs2Widget.hasWidget("Empty Coffin."), 100, 3000);
+        boolean isEmptyCoffin = sleepUntil(() -> Rs2Widget.hasWidget("Empty Coffin."), 100, 3000);
         if (!isEmptyCoffin) return;
         Rs2Widget.clickWidget("Empty Coffin");
-        boolean isMakeInterface = sleepUntilTrue(() -> Rs2Widget.hasWidget("What would you like to take?"), 100, 3000);
+        boolean isMakeInterface = sleepUntil(() -> Rs2Widget.hasWidget("What would you like to take?"), 100, 3000);
         if (!isMakeInterface) {
             boolean isCoffinEmpty = Rs2Widget.hasWidget("Your coffin is empty.");
             if (isCoffinEmpty) {
@@ -213,7 +212,7 @@ public class ShadesKillerScript extends Script {
                         if (Rs2Inventory.isFull() && config.useCoffin()) {
                             Rs2Inventory.interact("coffin", "fill");
                             coffinHasItems = true;
-                            boolean isInventoryNoLongerFull = sleepUntilTrue(() -> !Rs2Inventory.isFull(), 100, 2000);
+                            boolean isInventoryNoLongerFull = sleepUntil(() -> !Rs2Inventory.isFull(), 100, 2000);
                             if (!isInventoryNoLongerFull && Rs2Inventory.getInventoryFood().isEmpty()) {
                                 state = USE_TELEPORT_TO_BANK;
                             }

@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.util;
 
+import com.google.common.base.Stopwatch;
 import lombok.SneakyThrows;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
@@ -22,167 +23,153 @@ public class Global {
         return scheduledFuture;
     }
 
-    public static void sleep(int start) {
+    /**
+     * Sleeps (blocking) for a set number of milliseconds,
+     * checking for interruption and returning immediately if interrupted.
+     */
+    public static void sleep(int time) {
+        if (time <= 0) return;
+        // Avoid sleeping on the client thread
         if (Microbot.getClient().isClientThread()) return;
         try {
-            Thread.sleep(start);
+            Thread.sleep(time);
         } catch (InterruptedException e) {
-            System.out.println(e.getMessage());
+            // Restore the interrupt status and return
+            Thread.currentThread().interrupt();
         }
     }
 
+    /**
+     * Sleeps for a random duration between start and end (inclusive).
+     * Also checks for interruption, returning immediately if interrupted.
+     */
     public static void sleep(int start, int end) {
+        if (start > end) return;
         int randomSleep = Rs2Random.between(start, end);
-        try {
-            Thread.sleep(randomSleep);
-        } catch (InterruptedException e) {
-            System.out.println(e.getMessage());
-        }
+        sleep(randomSleep);
     }
 
+    /**
+     * Sleeps using a Gaussian-distributed random around mean, with stddev standard deviations.
+     * Also checks for interruption, returning if interrupted.
+     */
     public static void sleepGaussian(int mean, int stddev) {
         int randomSleep = Rs2Random.randomGaussian(mean, stddev);
-        try {
-            Thread.sleep(randomSleep);
-        } catch (InterruptedException e) {
-            System.out.println(e.getMessage());
-        }
+        sleep(randomSleep);
     }
 
-    public static void sleepUntil(BooleanSupplier awaitedCondition) {
-        sleepUntil(awaitedCondition, 5000);
+    /**
+     * Sleep until a condition is true, or 5 seconds is reached, whichever comes first.
+     */
+    public static boolean sleepUntil(BooleanSupplier awaitedCondition) {
+        return sleepUntil(awaitedCondition, 5000);
     }
 
-    @SneakyThrows
-    public static <T> T sleepUntilNotNull(Callable<T> method, int time) {
-        if (Microbot.getClient().isClientThread()) return null;
-        boolean done;
-        T methodResponse;
-        long startTime = System.currentTimeMillis();
-        do {
-            methodResponse = method.call();
-            done = methodResponse != null;
-            sleep(100);
-        } while (!done && System.currentTimeMillis() - startTime < time);
-        return methodResponse;
-    }
-
-
+    /**
+     * Sleep until a condition is true or time milliseconds is reached.
+     */
     public static boolean sleepUntil(BooleanSupplier awaitedCondition, int time) {
         if (Microbot.getClient().isClientThread()) return false;
         boolean done;
         long startTime = System.currentTimeMillis();
-        do {
-            done = awaitedCondition.getAsBoolean();
-            sleep(100);
-        } while (!done && System.currentTimeMillis() - startTime < time);
 
-        return done;
+        while (!Thread.currentThread().isInterrupted() && (System.currentTimeMillis() - startTime < time)) {
+            done = awaitedCondition.getAsBoolean();
+            if (done) {
+                return true;
+            }
+            sleep(100);
+        }
+        return awaitedCondition.getAsBoolean();
+    }
+
+    public static boolean sleepUntil(BooleanSupplier awaitedCondition, BooleanSupplier resetCondition, int timeout) {
+        final Stopwatch watch = Stopwatch.createStarted();
+        while (!awaitedCondition.getAsBoolean() && watch.elapsed(TimeUnit.MILLISECONDS) < timeout) {
+            sleep(100);
+            if (resetCondition.getAsBoolean() && Microbot.isLoggedIn()) {
+                watch.reset();
+                watch.start();
+            }
+        }
+        return awaitedCondition.getAsBoolean();
     }
 
     /**
      * Sleeps until a specified condition is met, running an action periodically, or until a timeout is reached.
-     *
-     * @param awaitedCondition The condition to wait for.
-     * @param action           The action to run periodically while waiting.
-     * @param timeoutMillis    The maximum time to wait in milliseconds.
-     * @param sleepMillis      The time to sleep between action executions in milliseconds.
-     * @return true if the condition was met within the timeout, false otherwise.
      */
     public static boolean sleepUntil(BooleanSupplier awaitedCondition, Runnable action, long timeoutMillis, int sleepMillis) {
         long startTime = System.nanoTime();
         long timeoutNanos = TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
-        try {
-            while (System.nanoTime() - startTime < timeoutNanos) {
-                action.run();
-                if (awaitedCondition.getAsBoolean()) {
-                    return true;
-                }
-                sleep(sleepMillis);
+
+        while (!Thread.currentThread().isInterrupted() && (System.nanoTime() - startTime < timeoutNanos)) {
+            action.run();
+            if (awaitedCondition.getAsBoolean()) {
+                return true;
             }
-        } catch (Exception e) {
-            Thread.currentThread().interrupt(); // Restore the interrupt status
+            sleep(sleepMillis);
         }
-        return false; // Timeout reached without satisfying the condition
+        return awaitedCondition.getAsBoolean();
     }
 
     /**
-     * Sleeps until the given condition is true or a default timeout of 5 seconds is reached.
-     *
-     * @param awaitedCondition the condition to wait for, represented as a {@link BooleanSupplier}.
-     * @return {@code true} if the condition became true within the timeout, {@code false} otherwise.
-     * Returns {@code false} immediately if called on the client thread.
+     * Sleeps until not null or a designated max time. (Example usage)
      */
-    public static boolean sleepUntilTrue(BooleanSupplier awaitedCondition) {
-        if (Microbot.getClient().isClientThread()) return false;
+    @SneakyThrows
+    public static <T> T sleepUntilNotNull(Callable<T> method, int time) {
+        if (Microbot.getClient().isClientThread()) return null;
         long startTime = System.currentTimeMillis();
+        T response;
         do {
-            if (awaitedCondition.getAsBoolean()) {
-                return true;
+            if (Thread.currentThread().isInterrupted()) {
+                return null;
+            }
+            response = method.call();
+            if (response != null) {
+                return response;
             }
             sleep(100);
-        } while (System.currentTimeMillis() - startTime < 5000);
-        return false;
+        } while (System.currentTimeMillis() - startTime < time);
+        return null;
     }
 
     /**
-     * Sleeps until the given condition is true or a specified timeout is reached.
-     *
-     * @param awaitedCondition the condition to wait for, represented as a {@link BooleanSupplier}.
-     * @param time             the interval in milliseconds to sleep between condition checks.
-     * @param timeout          the maximum time in milliseconds to wait for the condition to become true.
-     * @return {@code true} if the condition became true within the timeout, {@code false} otherwise.
-     * Returns {@code false} immediately if called on the client thread.
+     * Sleeps until the given condition is true or a specified timeout is reached, on the client thread.
      */
-    public static boolean sleepUntilTrue(BooleanSupplier awaitedCondition, int time, int timeout) {
+    public static boolean sleepUntil(BooleanSupplier awaitedCondition, int intervalMillis, int timeoutMillis) {
         if (Microbot.getClient().isClientThread()) return false;
         long startTime = System.currentTimeMillis();
-        do {
+        while (!Thread.currentThread().isInterrupted() && (System.currentTimeMillis() - startTime < timeoutMillis)) {
             if (awaitedCondition.getAsBoolean()) {
                 return true;
             }
-            sleep(time);
-        } while (System.currentTimeMillis() - startTime < timeout);
-        return false;
-    }
-
-    /**
-     * Sleeps until the given condition is true or a specified timeout is reached,
-     * while allowing a reset condition to restart the timeout.
-     *
-     * @param awaitedCondition the condition to wait for, represented as a {@link BooleanSupplier}.
-     * @param resetCondition   a condition that, when true, resets the timeout timer.
-     * @param time             the interval in milliseconds to sleep between condition checks.
-     * @param timeout          the maximum time in milliseconds to wait for the {@code awaitedCondition} to become true.
-     * @return {@code true} if the {@code awaitedCondition} became true within the timeout, {@code false} otherwise.
-     * Returns {@code false} immediately if called on the client thread.
-     */
-    public static boolean sleepUntilTrue(BooleanSupplier awaitedCondition, BooleanSupplier resetCondition, int time, int timeout) {
-        if (Microbot.getClient().isClientThread()) return false;
-        long startTime = System.currentTimeMillis();
-        do {
-            if (resetCondition.getAsBoolean()) {
-                startTime = System.currentTimeMillis();
-            }
-
-            if (awaitedCondition.getAsBoolean()) {
-                return true;
-            }
-            sleep(time);
-        } while (System.currentTimeMillis() - startTime < timeout);
-        return false;
+            sleep(intervalMillis);
+        }
+        return awaitedCondition.getAsBoolean();
     }
 
     public static void sleepUntilOnClientThread(BooleanSupplier awaitedCondition) {
-        sleepUntilOnClientThread(awaitedCondition, Rs2Random.between(2500, 5000));
+        sleepUntilOnClientThread(awaitedCondition, 5000);
     }
 
     public static void sleepUntilOnClientThread(BooleanSupplier awaitedCondition, int time) {
         if (Microbot.getClient().isClientThread()) return;
-        boolean done;
         long startTime = System.currentTimeMillis();
-        do {
-            done = Microbot.getClientThread().runOnClientThread(() -> awaitedCondition.getAsBoolean());
-        } while (!done && System.currentTimeMillis() - startTime < time);
+        while (!Thread.currentThread().isInterrupted() && (System.currentTimeMillis() - startTime < time)) {
+            // Run the condition on the client thread
+            if (Microbot.getClientThread().runOnClientThread(awaitedCondition::getAsBoolean)) {
+                return;
+            }
+            sleep(100);
+        }
+    }
+
+    public static void sleepUntilTick(int ticksToWait) {
+        int startTick = Microbot.getClient().getTickCount();
+        // Typically ~600 ms per game tick; we add 2s grace.
+        sleepUntil(() ->
+                        Microbot.getClient().getTickCount() >= (startTick + ticksToWait),
+                ticksToWait * 600 + 2000
+        );
     }
 }

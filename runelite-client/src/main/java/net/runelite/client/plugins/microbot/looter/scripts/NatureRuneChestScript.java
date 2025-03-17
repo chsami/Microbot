@@ -19,7 +19,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
 public class NatureRuneChestScript extends Script {
 
@@ -61,14 +61,14 @@ public class NatureRuneChestScript extends Script {
                         if (natureRuneChest.isPresent()) {
                             if(Rs2GameObject.interact(natureRuneChest.get(), "Search for traps")){
                                 Rs2Antiban.actionCooldown();
-                                sleepUntilTrue(() -> !Rs2Player.isInteracting(), 500, 8000);
+                                sleepUntil(() -> !Rs2Player.isInteracting(), 500, 8000);
                                 sleep(Rs2Random.between(18000, 20000));
                             }
                         }
                         break;
                     case WALKING:
                         Rs2Walker.walkTo(config.natureRuneChestLocation().getWorldPoint());
-                        sleepUntilTrue(() -> isNearNatureRuneChest(config, 6) && !Rs2Player.isMoving(), 600, 300000);
+                        sleepUntil(() -> isNearNatureRuneChest(config, 6) && !Rs2Player.isMoving(), 600, 300000);
                         if (!isNearNatureRuneChest(config, 6)) return;
                         state = LooterState.LOOTING;
                         break;

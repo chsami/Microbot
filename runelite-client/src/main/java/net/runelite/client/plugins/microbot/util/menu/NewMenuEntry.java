@@ -145,11 +145,11 @@ public class NewMenuEntry implements MenuEntry {
 
     @Override
     public int getWorldViewId() {
-        return 0;
+        return -1;
     }
 
     @Override
-    public MenuEntry setWorldViewId(int worldViewId) {
+    public NewMenuEntry setWorldViewId(int worldViewId) {
         return null;
     }
 

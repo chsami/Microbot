@@ -13,16 +13,15 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
 
 public class Rs2Widget {
 
     public static boolean sleepUntilHasWidgetText(String text, int widgetId, int childId, boolean exact, int sleep) {
-        return sleepUntilTrue(() -> hasWidgetText(text, widgetId, childId, exact), 300, sleep);
+        return sleepUntil(() -> hasWidgetText(text, widgetId, childId, exact), 300, sleep);
     }
 
     public static boolean sleepUntilHasNotWidgetText(String text, int widgetId, int childId, boolean exact, int sleep) {
-        return sleepUntilTrue(() -> !hasWidgetText(text, widgetId, childId, exact), 300, sleep);
+        return sleepUntil(() -> !hasWidgetText(text, widgetId, childId, exact), 300, sleep);
     }
 
     public static boolean sleepUntilHasWidget(String text) {

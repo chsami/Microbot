@@ -17,7 +17,7 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
 public class FlaxScript extends Script {
 
@@ -70,7 +70,7 @@ public class FlaxScript extends Script {
                         break;
                     case WALKING:
                         Rs2Walker.walkTo(config.flaxLocation().getWorldPoint(), 6);
-                        sleepUntilTrue(() -> isNearFlaxLocation(config, 6) && !Rs2Player.isMoving(), 600, 300000);
+                        sleepUntil(() -> isNearFlaxLocation(config, 6) && !Rs2Player.isMoving(), 600, 300000);
                         if (!isNearFlaxLocation(config, 6)) return;
                         initialPlayerLocation = Rs2Player.getWorldLocation();
                         state = LooterState.LOOTING;

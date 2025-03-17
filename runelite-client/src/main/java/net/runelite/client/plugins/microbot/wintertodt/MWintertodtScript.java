@@ -34,7 +34,7 @@ import static net.runelite.api.Constants.GAME_TICK_LENGTH;
 import static net.runelite.api.ObjectID.BRAZIER_29312;
 import static net.runelite.api.ObjectID.BURNING_BRAZIER_29314;
 import static net.runelite.client.plugins.microbot.util.Global.sleepGaussian;
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 import static net.runelite.client.plugins.microbot.util.player.Rs2Player.eatAt;
 
 
@@ -501,7 +501,7 @@ public class MWintertodtScript extends Script {
             return true;
         }
         Rs2Bank.withdrawX(config.food().getId(), config.foodAmount() - foodCount);
-        return sleepUntilTrue(() -> Rs2Inventory.hasItemAmount(config.food().getName(), config.foodAmount(), false, true), 100, 5000);
+        return sleepUntil(() -> Rs2Inventory.hasItemAmount(config.food().getName(), config.foodAmount(), false, true), 100, 5000);
     }
 
     public int getWarmthLevel() {

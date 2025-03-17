@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleepGaussian;
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
 public class MageTrainingArenaScript extends Script {
     public static String version = "1.1.2";
@@ -534,7 +534,7 @@ public class MageTrainingArenaScript extends Script {
         if (room.getSuggestion() == null) {
             Rs2GameObject.interact("Cupboard", "Search");
 
-            if (sleepUntilTrue(Rs2Player::isMoving, 100, 1000))
+            if (sleepUntil(Rs2Player::isMoving, 100, 1000))
                 sleepUntil(() -> !Rs2Player.isMoving());
         }
         else {

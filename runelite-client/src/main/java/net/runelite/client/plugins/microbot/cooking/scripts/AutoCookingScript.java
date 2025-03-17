@@ -28,7 +28,7 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import java.awt.event.KeyEvent;
 import java.util.concurrent.TimeUnit;
 
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
 enum CookingState {
     COMBINE,
@@ -105,7 +105,7 @@ public class AutoCookingScript extends Script {
                             Rs2Antiban.takeMicroBreakByChance();
 
                             sleepUntil(() -> (Rs2Player.getAnimation() != AnimationID.IDLE));
-                            sleepUntilTrue(() -> (!hasRawItem(cookingItem) && !Rs2Player.isAnimating(3500))
+                            sleepUntil(() -> (!hasRawItem(cookingItem) && !Rs2Player.isAnimating(3500))
                                     || Rs2Dialogue.isInDialogue() || Rs2Player.isWalking(), 500, 150000);
                             if (hasRawItem(cookingItem)) {
                                 break;
@@ -121,7 +121,7 @@ public class AutoCookingScript extends Script {
                     case DROPPING:
                         Microbot.status = "Dropping " + cookingItem.getBurntItemName();
                         Rs2Inventory.dropAll(item -> item.name.equalsIgnoreCase(cookingItem.getBurntItemName()), config.getDropOrder());
-                        sleepUntilTrue(() -> !hasBurntItem(cookingItem), 500, 150000);
+                        sleepUntil(() -> !hasBurntItem(cookingItem), 500, 150000);
                         state = CookingState.BANKING;
                         break;
                     case BANKING:

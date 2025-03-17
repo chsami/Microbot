@@ -202,7 +202,7 @@ public class Rs2Player {
      * Wait for walking
      */
     public static void waitForWalking() {
-        boolean result = sleepUntilTrue(Rs2Player::isWalking, 100, 5000);
+        boolean result = sleepUntil(Rs2Player::isWalking, 100, 5000);
         if (!result) return;
         sleepUntil(() -> !Rs2Player.isWalking());
     }
@@ -215,7 +215,7 @@ public class Rs2Player {
      *             If the player does not start walking within this time, the method exits early.
      */
     public static void waitForWalking(int time) {
-        boolean result = sleepUntilTrue(Rs2Player::isWalking, 100, time);
+        boolean result = sleepUntil(Rs2Player::isWalking, 100, time);
         if (!result) return;
         sleepUntil(() -> !Rs2Player.isWalking(), time);
     }
@@ -262,7 +262,7 @@ public class Rs2Player {
      */
     public static boolean waitForXpDrop(Skill skill, int time, boolean inventoryFullCheck) {
         final int skillExp = Microbot.getClient().getSkillExperience(skill);
-        return sleepUntilTrue(() ->
+        return sleepUntil(() ->
                         skillExp != Microbot.getClient().getSkillExperience(skill) ||
                                 (inventoryFullCheck && Rs2Inventory.isFull()),
                 100, time
@@ -273,7 +273,7 @@ public class Rs2Player {
      * Wait for animation
      */
     public static void waitForAnimation() {
-        boolean result = sleepUntilTrue(Rs2Player::isAnimating, 100, 5000);
+        boolean result = sleepUntil(Rs2Player::isAnimating, 100, 5000);
         if (!result) return;
         sleepUntil(() -> !Rs2Player.isAnimating());
     }
@@ -286,7 +286,7 @@ public class Rs2Player {
      *             If the player does not start animating within this time, the method exits early.
      */
     public static void waitForAnimation(int time) {
-        boolean result = sleepUntilTrue(() -> Rs2Player.isAnimating(time), 100, 5000);
+        boolean result = sleepUntil(() -> Rs2Player.isAnimating(time), 100, 5000);
         if (!result) return;
         sleepUntil(() -> !Rs2Player.isAnimating(time));
     }
@@ -1011,8 +1011,7 @@ public class Rs2Player {
     public static WorldPoint getWorldLocation() {
         if (Microbot.getClient().getTopLevelWorldView().getScene().isInstance()) {
             LocalPoint l = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), getLocalPlayer().getWorldLocation());
-            WorldPoint playerInstancedWorldLocation = WorldPoint.fromLocalInstance(Microbot.getClient(), l);
-            return playerInstancedWorldLocation;
+            return WorldPoint.fromLocalInstance(Microbot.getClient(), l);
         } else {
             return getLocalPlayer().getWorldLocation();
         }

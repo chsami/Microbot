@@ -393,6 +393,8 @@ public class Rs2Bank {
         if (widget == null) return;
 
         Microbot.getMouse().click(widget.getBounds());
+        var items = Rs2Bank.bankItems();
+        sleepUntil(() -> items != Rs2Bank.bankItems(), 1000);
     }
 
     /**
@@ -495,7 +497,7 @@ public class Rs2Bank {
             invokeMenu(HANDLE_X_SET, rs2Item);
 
             if (safe)
-                return sleepUntilTrue(() -> inventorySize != Rs2Inventory.size(), 100, 2500);
+                return sleepUntil(() -> inventorySize != Rs2Inventory.size(), 100, 2500);
 
             return true;
         } else {
@@ -632,7 +634,7 @@ public class Rs2Bank {
         if (widget == null) return;
         
         Rs2Widget.clickWidget(widget);
-        Rs2Inventory.waitForInventoryChanges(10000);
+        Rs2Inventory.waitForInventoryChanges(1000);
     }
 
     /**
@@ -703,6 +705,8 @@ public class Rs2Bank {
         } else {
             invokeMenu(2, rs2Item);
         }
+
+        sleepUntil(() -> Rs2Inventory.hasItem(rs2Item.id));
     }
 
     /**
@@ -904,7 +908,7 @@ public class Rs2Bank {
      * @param amount amount to withdraw
      * @param exact  exact search based on equalsIgnoreCase
      */
-    private static boolean withdrawX(String name, int amount, boolean exact) {
+    public static boolean withdrawX(String name, int amount, boolean exact) {
         return withdrawXItem(findBankItem(name, exact), amount);
     }
 
@@ -992,6 +996,7 @@ public class Rs2Bank {
         container = BANK_INVENTORY_ITEM_CONTAINER;
 
         invokeMenu(8, rs2Item);
+        Rs2Inventory.waitForInventoryChanges(1000);
     }
 
     /**
@@ -1589,8 +1594,8 @@ public class Rs2Bank {
     public static boolean setWithdrawAsNote() {
         if (hasWithdrawAsNote()) return true;
         Rs2Widget.clickWidget(786458);
-        sleep(Rs2Random.randomGaussian(550,100));
-        return hasWithdrawAsNote();
+        sleepUntil(Rs2Bank::hasWithdrawAsNote);
+        return true;
     }
 
     /**
@@ -1601,8 +1606,8 @@ public class Rs2Bank {
     public static boolean setWithdrawAsItem() {
         if (hasWithdrawAsItem()) return true;
         Rs2Widget.clickWidget(786456);
-        sleep(Rs2Random.randomGaussian(550,100));
-        return hasWithdrawAsItem();
+        sleepUntil(Rs2Bank::hasWithdrawAsItem);
+        return true;
     }
 
     /**

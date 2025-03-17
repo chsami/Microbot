@@ -8,7 +8,6 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import java.util.Optional;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
 import static net.runelite.client.plugins.microbot.util.widget.Rs2Widget.*;
 
 /**
@@ -31,7 +30,7 @@ public class Rs2SpellBookSettings {
 
         Rs2Tab.switchToMagicTab();
 
-        if (!sleepUntilTrue(() -> Rs2Tab.getCurrentTab() == InterfaceTab.MAGIC, 300, 2000)) {
+        if (!sleepUntil(() -> Rs2Tab.getCurrentTab() == InterfaceTab.MAGIC, 300, 2000)) {
             return false;
         }
 

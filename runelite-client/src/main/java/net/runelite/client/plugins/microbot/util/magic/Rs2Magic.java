@@ -342,7 +342,7 @@ public class Rs2Magic {
         final int chooseCharacterWidgetId = 4915200;
         boolean didCast = cast(MagicAction.NPC_CONTACT);
         if (!didCast) return false;
-        boolean result = sleepUntilTrue(() -> Rs2Widget.getWidget(chooseCharacterWidgetId) != null && !Rs2Widget.isHidden(chooseCharacterWidgetId), 100, 5000);
+        boolean result = sleepUntil(() -> Rs2Widget.getWidget(chooseCharacterWidgetId) != null && !Rs2Widget.isHidden(chooseCharacterWidgetId), 100, 5000);
         if (!result) return false;
         Widget chooseCharacterWidget = Rs2Widget.getWidget(chooseCharacterWidgetId);
         Widget npcWidget = Rs2Widget.findWidget(npcName);
