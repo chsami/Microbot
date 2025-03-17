@@ -6,7 +6,6 @@ import net.runelite.api.NpcID;
 import net.runelite.api.ObjectID;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -15,7 +14,7 @@ import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.math.Random;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.WalkerState;
@@ -35,6 +34,7 @@ public class RoguesDenScript extends Script {
     public static int mazeRunsCompleted = 0;
     int currentObstacleIndex;
     boolean hasStaminaPotionInBank = true;
+    boolean hasEnergyPotionInBank = true;
 
     boolean init = false;
 
@@ -146,7 +146,7 @@ public class RoguesDenScript extends Script {
                         return;
                     }
 
-                    Rs2Camera.setPitch(Random.random(300, 383));
+                    Rs2Camera.setPitch(Rs2Random.between(300, 383));
                     initObstacles();
                     Microbot.enableAutoRunOn = false;
                     Rs2Walker.disableTeleports = true;
@@ -161,7 +161,7 @@ public class RoguesDenScript extends Script {
                     currentObstacleIndex = 0;
 
                     if (storeAllItemsInBank()) return;
-
+                    if (useEnergyPotions()) return;
                     if (useStaminaPotion()) return;
 
                     enterMinigame();
@@ -207,7 +207,7 @@ public class RoguesDenScript extends Script {
 
         if (closestIndex == 0 && !Rs2Player.getWorldLocation().equals(currentObstacle.getTile())) {
             Rs2GameObject.interact(currentObstacle.getObjectId());
-            sleepUntil(() -> Rs2Player.getWorldLocation().equals(currentObstacle));
+            sleepUntil(() -> Rs2Player.getWorldLocation().equals(currentObstacle.getTile()));
             return true;
         }
 
@@ -287,6 +287,30 @@ public class RoguesDenScript extends Script {
         return false;
     }
 
+    private boolean useEnergyPotions() {
+        while (Rs2Player.getRunEnergy() < 70 && hasEnergyPotionInBank) {
+            Microbot.log("Looking to withdraw energy potion...");
+            if (Rs2Bank.openBank()) {
+                if (!Rs2Bank.isOpen()) return true;
+                if (Rs2Bank.hasItem("energy potion")) {
+                    Rs2Bank.withdrawOne("energy potion");
+                    sleepUntil(() -> Rs2Inventory.hasItem("energy potion"));
+                    Rs2Inventory.interact("energy potion", "drink");
+                    sleepGaussian(600, 150);
+                    if (Rs2Player.getRunEnergy() > 70) {
+                        return true;
+                    }
+                } else {
+                    hasEnergyPotionInBank = false;
+                    Microbot.log("No energy potion potion found in the bank. Continue without it...");
+                }
+                Rs2Bank.depositAll();
+                sleepGaussian(600, 150);
+            }
+        }
+        return false;
+    }
+
     private void enterMinigame() {
         WalkerState state = Rs2Walker.walkWithState(new WorldPoint(3056, 4991, 1));
         if (state == WalkerState.ARRIVED) {
@@ -304,8 +328,9 @@ public class RoguesDenScript extends Script {
             sleep(60_000, 120_000);
             return;
         }
-        if (Random.random(1, 10) == 7) {
+        if (Rs2Random.between(1, 10) == 7) {
             Rs2Camera.angleToTile(obstacle.getTile());
+            Microbot.log("Rotating camera");
         }
 
         if (obstacle.getObjectId() != -1) {

@@ -9,9 +9,9 @@ import net.runelite.client.plugins.bosstimer.BossTimersPlugin;
 import net.runelite.client.plugins.bosstimer.RespawnTimer;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.aiofighter.enums.DefaultLooterStyle;
 import net.runelite.client.plugins.microbot.bossing.giantmole.enums.State;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
-import net.runelite.client.plugins.microbot.aiofighter.enums.DefaultLooterStyle;
 import net.runelite.client.plugins.microbot.qualityoflife.QoLPlugin;
 import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.util.Global;
@@ -43,9 +43,9 @@ import static net.runelite.client.plugins.microbot.util.player.Rs2Player.isMembe
 @Slf4j
 public class GiantMoleScript extends Script
 {
-    public static State state = State.IDLE;
+    public static State state = State.BANKING;
 
-    public static final String VERSION = "0.0.1";
+    public static final String VERSION = "0.0.2";
 
     // Region IDs
     public static final List<Integer> FAlADOR_REGIONS = List.of(11828, 12084);
@@ -154,10 +154,10 @@ public class GiantMoleScript extends Script
         return true;
     }
 
-    @Override
     public void shutdown()
     {
         super.shutdown();
+        Rs2Walker.disableTeleports = false;
     }
 
     /**

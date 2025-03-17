@@ -19,6 +19,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.misc.TimeUtils;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -139,7 +140,13 @@ public class MWintertodtPlugin extends Plugin {
         if (messageNode.getValue().startsWith("You did not earn enough points")) {
             lost++;
         }
+            
+        if (chatMessage.getType() != ChatMessageType.GAMEMESSAGE) return;
 
+        if (chatMessage.getMessage().equalsIgnoreCase("oh dear, you are dead!")) {
+            Rs2Walker.setTarget(null);
+            shutDown();
+        }
     }
 
     private boolean isInWintertodtRegion() {

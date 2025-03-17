@@ -1,7 +1,6 @@
 package net.runelite.client.plugins.microbot.nateplugins.skilling.natefishing;
 
 import net.runelite.api.ItemID;
-import net.runelite.api.NPC;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.nateplugins.skilling.natefishing.enums.Fish;
@@ -9,16 +8,19 @@ import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
+import net.runelite.client.plugins.microbot.util.depositbox.Rs2DepositBox;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import static net.runelite.client.plugins.microbot.util.npc.Rs2Npc.validateInteractable;
 
@@ -29,14 +31,18 @@ enum State {
 
 public class AutoFishingScript extends Script {
 
-    public static String version = "1.5.0";
+    private static final List<String> rawFishNames = List.of("raw shrimps", "raw anchovies", "raw sardine", "raw herring", "raw mackerel", "raw cod", "raw bass", "raw trout", "raw salmon", "raw pike", "raw tuna", "raw swordfish", "raw cave eel", "raw slimy eel", "raw lobster", "raw monkfish", "raw karambwanji", "raw shark", "raw anglerfish", "raw karambwan");
+    public static String version = "1.6.0";
     State state;
 
     public boolean run(AutoFishConfig config) {
         initialPlayerLocation = null;
-        List<String> itemNames = Arrays.stream(config.itemsToBank().split(",")).map(String::toLowerCase).collect(Collectors.toList());
-        state = State.FISHING;
+        List<String> fishList = new ArrayList<>(rawFishNames);
         Fish fish = config.fish();
+        if (fish.equals(Fish.KARAMBWAN) || fish.equals(Fish.KARAMBWANJI)) {
+            fishList.remove("raw karambwanji");
+        }
+        state = State.FISHING;
         Rs2Antiban.resetAntibanSettings();
         Rs2Antiban.antibanSetupTemplates.applyFishingSetup();
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
@@ -49,7 +55,17 @@ public class AutoFishingScript extends Script {
                     initialPlayerLocation = Rs2Player.getWorldLocation();
                 }
 
-                if (!hasRequiredItems(fish,config.useEchoHarpoon())) {
+                if (config.useEchoHarpoon()) {
+                    if (!Rs2Equipment.hasEquipped(ItemID.ECHO_HARPOON)) {
+                        if (!Rs2Inventory.hasItem(ItemID.ECHO_HARPOON)) {
+                            Microbot.showMessage("Missing Echo harpoon");
+                            shutdown();
+                            return;
+                        }
+                    }
+                }
+
+                if (!hasRequiredItems(fish)) {
                     Microbot.showMessage("You are missing the required tools to catch this fish");
                     shutdown();
                     return;
@@ -59,7 +75,7 @@ public class AutoFishingScript extends Script {
 
                 switch (state) {
                     case FISHING:
-                        NPC fishingSpot = getFishingSpot(fish);
+                        Rs2NpcModel fishingSpot = getFishingSpot(fish);
                         if (fishingSpot == null || Rs2Inventory.isFull()) {
                             state = State.RESETTING;
                             return;
@@ -68,6 +84,13 @@ public class AutoFishingScript extends Script {
                         if (!Rs2Camera.isTileOnScreen(fishingSpot.getLocalLocation())) {
                             validateInteractable(fishingSpot);
                         }
+
+                        if (fish.equals(Fish.KARAMBWAN) && Rs2Inventory.hasItem(ItemID.RAW_KARAMBWANJI)) {
+                            if (Rs2Inventory.hasItem(ItemID.KARAMBWAN_VESSEL)) {
+                                Rs2Inventory.waitForInventoryChanges(() -> Rs2Inventory.combineClosest(ItemID.RAW_KARAMBWANJI, ItemID.KARAMBWAN_VESSEL), 600, 5000);
+                            }
+                        }
+
                         if (Rs2Npc.interact(fishingSpot, fish.getAction())) {
                             Rs2Antiban.actionCooldown();
                             Rs2Antiban.takeMicroBreakByChance();
@@ -75,17 +98,32 @@ public class AutoFishingScript extends Script {
                         break;
                     case RESETTING:
                         if (config.useBank()) {
-                            if (Rs2Bank.walkToBankAndUseBank()){
-                                for (String itemName : itemNames) {
-                                    Rs2Bank.depositAll(itemName,false);
-                                    //Rs2Bank.depositAll(x -> x.name.toLowerCase().contains(itemName));
+                            if (Rs2Bank.walkToBankAndUseBank()) {
+                                Rs2Bank.depositAll(i -> fishList.stream().anyMatch(fl -> i.getName().equalsIgnoreCase(fl)));
+                                if (config.shouldBankClueBottles()) {
+                                    Rs2Bank.depositAll("clue bottle");
+                                }
+                                if (config.shouldBankCaskets()) {
+                                    Rs2Bank.depositAll("casket");
                                 }
                                 Rs2Bank.emptyFishBarrel();
 
                                 Rs2Walker.walkTo(initialPlayerLocation);
                             }
+                        } else if (config.useDepositBox()) {
+                            if (Rs2DepositBox.walkToAndUseDepositBox()) {
+                                Rs2DepositBox.depositAll(i -> fishList.stream().anyMatch(fl -> i.getName().equalsIgnoreCase(fl)));
+                                if (config.shouldBankClueBottles()) {
+                                    Rs2DepositBox.depositAll("clue bottle");
+                                }
+                                if (config.shouldBankCaskets()) {
+                                    Rs2DepositBox.depositAll("casket");
+                                }
+                                
+                                Rs2Walker.walkTo(initialPlayerLocation);
+                            }
                         } else {
-                            Rs2Inventory.dropAllExcept(false, config.getDropOrder(), "rod", "net", "pot", "harpoon", "feather", "bait", "vessel", "candle", "lantern");
+                            Rs2Inventory.dropAll(i -> fishList.stream().anyMatch(fl -> fl.equalsIgnoreCase(i.getName())), config.getDropOrder());
                         }
                         state = State.FISHING;
                         break;
@@ -97,10 +135,7 @@ public class AutoFishingScript extends Script {
         return true;
     }
 
-    private boolean hasRequiredItems(Fish fish, boolean echoHarpoon) {
-        if(echoHarpoon){
-            return Rs2Inventory.hasItem("Echo harpoon") || Rs2Equipment.hasEquipped(ItemID.ECHO_HARPOON);
-        }
+    private boolean hasRequiredItems(Fish fish) {
         switch (fish) {
             case MONKFISH:
             case KARAMBWANJI:
@@ -115,7 +150,7 @@ public class AutoFishingScript extends Script {
                 return Rs2Inventory.hasItem("fly fishing rod") && Rs2Inventory.hasItem("feather");
             case TUNA:
             case SHARK:
-                return Rs2Inventory.hasItem("harpoon") || Rs2Equipment.hasEquipped(ItemID.DRAGON_HARPOON) ||  Rs2Equipment.hasEquipped(ItemID.DRAGON_HARPOON_OR);
+                return Rs2Inventory.hasItem("harpoon") || Rs2Equipment.isWearing("harpoon");
             case LOBSTER:
                 return Rs2Inventory.hasItem("lobster pot");
             case LAVA_EEL:
@@ -124,24 +159,23 @@ public class AutoFishingScript extends Script {
                 return Rs2Inventory.hasItem("fishing rod") && Rs2Inventory.hasItem("fishing bait");
             case ANGLERFISH:
                 return Rs2Inventory.hasItem("fishing rod") && Rs2Inventory.hasItem("sandworms");
-                default:
+            case KARAMBWAN:
+                return (Rs2Inventory.hasItem(ItemID.KARAMBWAN_VESSEL) || Rs2Inventory.hasItem(ItemID.KARAMBWAN_VESSEL_3159) && Rs2Inventory.hasItem(ItemID.RAW_KARAMBWANJI));
+            default:
                 return false;
         }
     }
 
-    private NPC getFishingSpot(Fish fish) {
-        NPC fishingspot;
-        for (int fishingSpotId : fish.getFishingSpot()) {
-            fishingspot = Rs2Npc.getNpc(fishingSpotId);
-            if (fishingspot != null) {
-                return fishingspot;
-            }
-        }
-        return null;
+    private Rs2NpcModel getFishingSpot(Fish fish) {
+        return Arrays.stream(fish.getFishingSpot())
+                .mapToObj(Rs2Npc::getNpc)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
     }
-    
+
     @Override
-    public void shutdown(){
+    public void shutdown() {
         super.shutdown();
         Rs2Antiban.resetAntibanSettings();
     }

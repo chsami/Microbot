@@ -1,30 +1,29 @@
 package net.runelite.client.plugins.microbot.liftedmango.herbrun;
 
-import java.awt.*;
-
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.widgets.ComponentID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
-import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
-
+import java.awt.*;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import static net.runelite.client.plugins.microbot.Microbot.log;
-import static net.runelite.client.plugins.microbot.liftedmango.herbrun.HerbrunInfo.*;
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
+import static net.runelite.client.plugins.microbot.liftedmango.herbrun.HerbrunInfo.botStatus;
+import static net.runelite.client.plugins.microbot.liftedmango.herbrun.HerbrunInfo.states;
 
+@Slf4j
 
 public class HerbrunScript extends Script {
 
@@ -60,7 +59,6 @@ public class HerbrunScript extends Script {
     //seed type
 //    public static ItemID seeds = ;
     public static boolean test = false;
-
     public HerbrunScript() throws AWTException {
     }
 
@@ -81,16 +79,17 @@ public class HerbrunScript extends Script {
                     case GEARING:
                         if (!config.enableGearing()) {
                             botStatus = states.TROLLHEIM_TELEPORT;
-                            break;
                         } else {
-                            //Bank everything and withdraw all farming equipment
-                            System.out.println("Gearing up");
+                            log.info("State: GEARING - Gearing up");
                             if (!Rs2Bank.isOpen()) {
-                                System.out.println("Bank opened");
+                                log.info("State: GEARING - Bank opened");
                                 Rs2Bank.useBank();
                                 Rs2Bank.depositAll();
+                                Rs2Inventory.waitForInventoryChanges(2000);
                                 if (config.GRACEFUL()) {
+                                    log.info("State: GEARING - Depositing equipment for graceful mode");
                                     Rs2Bank.depositEquipment();
+                                    sleepUntil(Rs2Equipment::isNaked);
                                     sleep(200);
                                     equipGraceful(config);
                                 }
@@ -98,259 +97,261 @@ public class HerbrunScript extends Script {
                             withdrawHerbSetup(config);
                             Rs2Bank.closeBank();
                             sleep(100);
-                            System.out.println("Gearing complete");
-                            sleep(200, 800);
+                            log.info("State: GEARING - Gearing complete");
+                            sleep(200, 800); // Random sleep retained only in GEARING state
                             botStatus = states.TROLLHEIM_TELEPORT;
-                            break;
                         }
+                        break;
+
                     case TROLLHEIM_TELEPORT:
-                        System.out.println("Current state: TROLLHEIM_TELEPORT");
+                        log.info("State: TROLLHEIM_TELEPORT - Teleporting to Trollheim");
                         if (config.enableTrollheim()) {
                             handleTeleportToTrollheim();
                         } else {
                             botStatus = states.CATHERBY_TELEPORT;
                         }
                         break;
+
                     case TROLLHEIM_WALKING_TO_PATCH:
-                        System.out.println("Current state: TROLLHEIM_WALKING_TO_PATCH");
+                        log.info("State: TROLLHEIM_WALKING_TO_PATCH - Walking to Trollheim patch");
                         handleWalkingToPatch(trollheimHerb, states.TROLLHEIM_HANDLE_PATCH);
                         break;
+
                     case TROLLHEIM_HANDLE_PATCH:
                         if (Rs2Player.distanceTo(trollheimHerb) < 8) {
-                            System.out.println("Current state: TROLLHEIM_HANDLE_PATCH");
+                            log.info("State: TROLLHEIM_HANDLE_PATCH - Handling Trollheim patch");
                             printHerbPatchActions(trollheimHerbPatchID);
-                            handleHerbPatch(trollheimHerbPatchID, seedToPlant, config);
-                            sleep(200);
-                            addCompostandSeeds(config, trollheimHerbPatchID, seedToPlant, states.CATHERBY_TELEPORT);
-                            break;
+                            handleHerbPatch(trollheimHerbPatchID, seedToPlant, config, states.CATHERBY_TELEPORT);
                         }
+                        break;
+
                     case CATHERBY_TELEPORT:
-                        log("" + config.enableCatherby());
+                        log.info("State: CATHERBY_TELEPORT - Catherby enabled: {}", config.enableCatherby());
                         if (config.enableCatherby()) {
-                            System.out.println("Current state: CATHERBY_TELEPORT");
+                            log.info("State: CATHERBY_TELEPORT - Teleporting to Catherby");
                             handleTeleportToCatherby();
                         } else {
                             botStatus = states.MORYTANIA_TELEPORT;
-                            break;
-                        }
-                    case CATHERBY_WALKING_TO_PATCH:
-                        if (!Rs2Player.isMoving() &&
-                                !Rs2Player.isAnimating() &&
-                                !Rs2Player.isInteracting()) {
-                            System.out.println("Current state: CATHERBY_WALKING_TO_PATCH");
-                            handleWalkingToPatch(catherbyHerb, states.CATHERBY_HANDLE_PATCH);
-                        }
-                    case CATHERBY_HANDLE_PATCH:
-                        if (Rs2Player.distanceTo(catherbyHerb) < 15) {
-                            System.out.println("Current state: CATHERBY_HANDLE_PATCH");
-                            printHerbPatchActions(catherbyHerbPatchID);
-                            handleHerbPatch(catherbyHerbPatchID, seedToPlant, config);
-                        }
-                        if (!Rs2Player.isMoving() &&
-                                !Rs2Player.isAnimating() &&
-                                !Rs2Player.isInteracting()) {
-                            addCompostandSeeds(config, catherbyHerbPatchID, seedToPlant, states.MORYTANIA_TELEPORT);
                         }
                         break;
+
+                    case CATHERBY_WALKING_TO_PATCH:
+                        if (!Rs2Player.isMoving() && !Rs2Player.isAnimating() && !Rs2Player.isInteracting()) {
+                            log.info("State: CATHERBY_WALKING_TO_PATCH - Walking to Catherby patch");
+                            handleWalkingToPatch(catherbyHerb, states.CATHERBY_HANDLE_PATCH);
+                        }
+                        break;
+
+                    case CATHERBY_HANDLE_PATCH:
+                        if (Rs2Player.distanceTo(catherbyHerb) < 15) {
+                            log.info("State: CATHERBY_HANDLE_PATCH - Handling Catherby patch");
+                            printHerbPatchActions(catherbyHerbPatchID);
+                            handleHerbPatch(catherbyHerbPatchID, seedToPlant, config, states.MORYTANIA_TELEPORT);
+                        }
+                        break;
+
                     case MORYTANIA_TELEPORT:
+                        log.info("State: MORYTANIA_TELEPORT - Teleporting to Morytania");
                         if (config.enableMorytania()) {
                             handleTeleportToMorytania(config);
-                            sleep(600, 1200);
+                            // Removed random sleep call here
                         } else {
                             botStatus = states.VARLAMORE_TELEPORT;
                         }
                         break;
+
                     case MORYTANIA_WALKING_TO_PATCH:
-                        if (!Rs2Player.isMoving() &&
-                                !Rs2Player.isAnimating() &&
-                                !Rs2Player.isInteracting()) {
+                        if (!Rs2Player.isMoving() && !Rs2Player.isAnimating() && !Rs2Player.isInteracting()) {
+                            log.info("State: MORYTANIA_WALKING_TO_PATCH - Walking to Morytania patch");
                             handleWalkingToPatch(morytaniaHerb, states.MORYTANIA_HANDLE_PATCH);
-                            break;
-                        }
-                    case MORYTANIA_HANDLE_PATCH:
-                        System.out.println("Handling Morytania patch");
-                        if (Rs2Player.distanceTo(morytaniaHerb) < 15) {
-                            printHerbPatchActions(morytaniaHerbPatchID);
-                            handleHerbPatch(morytaniaHerbPatchID, seedToPlant, config);
-                        }
-                        if (!Rs2Player.isMoving() &&
-                                !Rs2Player.isAnimating() &&
-                                !Rs2Player.isInteracting()) {
-                            addCompostandSeeds(config, morytaniaHerbPatchID, seedToPlant, states.VARLAMORE_TELEPORT);
                         }
                         break;
+
+                    case MORYTANIA_HANDLE_PATCH:
+                        log.info("State: MORYTANIA_HANDLE_PATCH - Handling Morytania patch");
+                        if (Rs2Player.distanceTo(morytaniaHerb) < 15) {
+                            printHerbPatchActions(morytaniaHerbPatchID);
+                            handleHerbPatch(morytaniaHerbPatchID, seedToPlant, config, states.VARLAMORE_TELEPORT);
+                        }
+                        break;
+
                     case VARLAMORE_TELEPORT:
+                        log.info("State: VARLAMORE_TELEPORT - Teleporting to Varlamore");
                         if (config.enableVarlamore()) {
                             handleTeleportToVarlamore(config);
                         } else {
                             botStatus = states.HOSIDIUS_TELEPORT;
                         }
                         break;
+
                     case VARLAMORE_WALKING_TO_PATCH:
-                        if (!Rs2Player.isMoving() &&
-                                !Rs2Player.isAnimating() &&
-                                !Rs2Player.isInteracting()) {
+                        if (!Rs2Player.isMoving() && !Rs2Player.isAnimating() && !Rs2Player.isInteracting()) {
+                            log.info("State: VARLAMORE_WALKING_TO_PATCH - Walking to Varlamore patch");
                             handleWalkingToPatch(varlamoreHerb, states.VARLAMORE_HANDLE_PATCH);
                         }
                         break;
+
                     case VARLAMORE_HANDLE_PATCH:
                         if (!Rs2Player.isMoving() && !Rs2Player.isAnimating() && !Rs2Player.isInteracting()) {
+                            log.info("State: VARLAMORE_HANDLE_PATCH - Handling Varlamore patch");
                             printHerbPatchActions(varlamoreHerbPatchID);
-                            handleHerbPatch(varlamoreHerbPatchID, seedToPlant, config);
-                            addCompostandSeeds(config, varlamoreHerbPatchID, seedToPlant, states.HOSIDIUS_TELEPORT);
+                            handleHerbPatch(varlamoreHerbPatchID, seedToPlant, config, states.HOSIDIUS_TELEPORT);
                         }
                         break;
+
                     case HOSIDIUS_TELEPORT:
+                        log.info("State: HOSIDIUS_TELEPORT - Teleporting to Hosidius");
                         if (config.enableHosidius()) {
                             handleTeleportToHosidius();
                         } else {
                             botStatus = states.ARDOUGNE_TELEPORT;
                         }
                         break;
+
                     case HOSIDIUS_WALKING_TO_PATCH:
-                        if (!Rs2Player.isMoving() &&
-                                !Rs2Player.isAnimating() &&
-                                !Rs2Player.isInteracting()) {
+                        if (!Rs2Player.isMoving() && !Rs2Player.isAnimating() && !Rs2Player.isInteracting()) {
+                            log.info("State: HOSIDIUS_WALKING_TO_PATCH - Walking to Hosidius patch");
                             handleWalkingToPatch(hosidiusHerb, states.HOSIDIUS_HANDLE_PATCH);
                         }
                         break;
+
                     case HOSIDIUS_HANDLE_PATCH:
+                        log.info("State: HOSIDIUS_HANDLE_PATCH - Handling Hosidius patch");
                         if (Rs2Player.distanceTo(hosidiusHerb) < 15) {
                             printHerbPatchActions(hosidiusHerbPatchID);
-                            handleHerbPatch(hosidiusHerbPatchID, seedToPlant, config);
-
-                        }
-                        if (!Rs2Player.isMoving() &&
-                                !Rs2Player.isAnimating() &&
-                                !Rs2Player.isInteracting()) {
-                            addCompostandSeeds(config, hosidiusHerbPatchID, seedToPlant, states.ARDOUGNE_TELEPORT);
+                            handleHerbPatch(hosidiusHerbPatchID, seedToPlant, config, states.ARDOUGNE_TELEPORT);
                         }
                         break;
+
                     case ARDOUGNE_TELEPORT:
+                        log.info("State: ARDOUGNE_TELEPORT - Teleporting to Ardougne");
                         if (!config.enableArdougne()) {
                             botStatus = states.FALADOR_TELEPORT;
-                            break;
                         } else {
                             handleTeleportToArdougne(config);
                         }
+                        break;
+
                     case ARDOUGNE_WALKING_TO_PATCH:
-                        if (!Rs2Player.isMoving() &&
-                                !Rs2Player.isAnimating() &&
-                                !Rs2Player.isInteracting()) {
-                            log("Current state: ARDOUGNE_WALKING_TO_PATCH");
+                        if (!Rs2Player.isMoving() && !Rs2Player.isAnimating() && !Rs2Player.isInteracting()) {
+                            log.info("State: ARDOUGNE_WALKING_TO_PATCH - Walking to Ardougne patch");
                             handleWalkingToPatch(ardougneHerb, states.ARDOUGNE_HANDLE_PATCH);
                         }
                         break;
+
                     case ARDOUGNE_HANDLE_PATCH:
+                        log.info("State: ARDOUGNE_HANDLE_PATCH - Handling Ardougne patch");
                         if (Rs2Player.distanceTo(ardougneHerb) < 15) {
                             printHerbPatchActions(ardougneHerbPatchID);
-                            handleHerbPatch(ardougneHerbPatchID, seedToPlant, config);
+                            handleHerbPatch(ardougneHerbPatchID, seedToPlant, config, states.FALADOR_TELEPORT);
                         }
-                        if (!Rs2Player.isMoving() &&
-                                !Rs2Player.isAnimating() &&
-                                !Rs2Player.isInteracting()) {
-                            addCompostandSeeds(config, ardougneHerbPatchID, seedToPlant, states.FALADOR_TELEPORT);
-                        }
+
                         break;
+
                     case FALADOR_TELEPORT:
+                        log.info("State: FALADOR_TELEPORT - Teleporting to Falador");
                         if (config.enableFalador()) {
                             handleTeleportToFalador(config);
                         } else {
                             botStatus = states.WEISS_TELEPORT;
                         }
                         break;
+
                     case FALADOR_WALKING_TO_PATCH:
-                        if (!Rs2Player.isMoving() &&
-                                !Rs2Player.isAnimating() &&
-                                !Rs2Player.isInteracting()) {
+                        if (!Rs2Player.isMoving() && !Rs2Player.isAnimating() && !Rs2Player.isInteracting()) {
+                            log.info("State: FALADOR_WALKING_TO_PATCH - Walking to Falador patch");
                             handleWalkingToPatch(cabbageHerb, states.FALADOR_HANDLE_PATCH);
                         }
                         break;
+
                     case FALADOR_HANDLE_PATCH:
+                        log.info("State: FALADOR_HANDLE_PATCH - Handling Falador patch");
                         if (Rs2Player.distanceTo(cabbageHerb) < 15) {
                             printHerbPatchActions(cabbageHerbPatchID);
-                            handleHerbPatch(cabbageHerbPatchID, seedToPlant, config);
-                        }
-                        if (!Rs2Player.isMoving() &&
-                                !Rs2Player.isAnimating() &&
-                                !Rs2Player.isInteracting()) {
-                            addCompostandSeeds(config, cabbageHerbPatchID, seedToPlant, botStatus = states.WEISS_TELEPORT);
+                            handleHerbPatch(cabbageHerbPatchID, seedToPlant, config, states.WEISS_TELEPORT);
                         }
                         break;
+
                     case WEISS_TELEPORT:
+                        log.info("State: WEISS_TELEPORT - Teleporting to Weiss");
                         if (config.enableWeiss()) {
                             handleTeleportToWeiss();
                         } else {
-                            botStatus = states.GUILD_TELEPORT;
+                            botStatus = states.HARMONY_TELEPORT;
                         }
                         break;
+
+                    case WEISS_WALKING_TO_PATCH:
+                        if (!Rs2Player.isMoving() && !Rs2Player.isAnimating() && !Rs2Player.isInteracting()) {
+                            log.info("State: WEISS_WALKING_TO_PATCH - Walking to Weiss patch");
+                            handleWalkingToPatch(weissHerb, states.WEISS_HANDLE_PATCH);
+                        }
+                        break;
+
                     case WEISS_HANDLE_PATCH:
-                        sleep(3000, 5000);
+                        log.info("State: WEISS_HANDLE_PATCH - Handling Weiss patch");
+                        // Removed random sleep calls (sleep(3000, 5000) and sleep(800, 1300))
                         if (Rs2Player.distanceTo(weissHerb) < 15) {
                             printHerbPatchActions(weissHerbPatchID);
-                            handleHerbPatch(weissHerbPatchID, seedToPlant, config);
-                            sleep(800,1300);
+                            handleHerbPatch(weissHerbPatchID, seedToPlant, config, states.HARMONY_TELEPORT);
                         }
-                        if (!Rs2Player.isMoving() &&
-                                !Rs2Player.isAnimating() &&
-                                !Rs2Player.isInteracting()) {
-                            addCompostandSeeds(config, weissHerbPatchID, seedToPlant, states.HARMONY_TELEPORT);
-                            break;
-                        }
+                        break;
+
                     case HARMONY_TELEPORT:
+                        log.info("State: HARMONY_TELEPORT - Teleporting to Harmony");
                         if (config.enableHarmony()) {
                             handleTeleportToHarmony();
                         } else {
                             botStatus = states.GUILD_TELEPORT;
                         }
                         break;
+
                     case HARMONY_WALKING_TO_PATCH:
-                        System.out.println("Current state: HARMONY_WALKING_TO_PATCH");
+                        log.info("State: HARMONY_WALKING_TO_PATCH - Walking to Harmony patch");
                         handleWalkingToPatch(harmonyHerb, states.HARMONY_HANDLE_PATCH);
                         break;
+
                     case HARMONY_HANDLE_PATCH:
-                        if (!Rs2Player.isWalking()) {
-                            System.out.println("Current state: HARMONEY_HANDLE_PATCH");
+                        if (!Rs2Player.isMoving()) {
+                            log.info("State: HARMONY_HANDLE_PATCH - Handling Harmony patch");
                             printHerbPatchActions(harmonyHerbPatchID);
-                            handleHerbPatch(harmonyHerbPatchID, seedToPlant, config);
-                            sleep(200);
-                            addCompostandSeeds(config, harmonyHerbPatchID, seedToPlant, states.GUILD_TELEPORT);
-                            break;
+                            handleHerbPatch(harmonyHerbPatchID, seedToPlant, config, states.GUILD_TELEPORT);
                         }
+                        break;
+
                     case GUILD_TELEPORT:
+                        log.info("State: GUILD_TELEPORT - Teleporting to Guild");
                         if (config.enableGuild()) {
                             handleTeleportToGuild(config);
                             sleep(400);
                             botStatus = states.GUILD_WALKING_TO_PATCH;
-                            break;
                         } else {
                             botStatus = states.FINISHED;
-                            break;
                         }
+                        break;
+
                     case GUILD_WALKING_TO_PATCH:
-                        if (!Rs2Player.isMoving() &&
-                                !Rs2Player.isAnimating() &&
-                                !Rs2Player.isInteracting()) {
+                        if (!Rs2Player.isMoving() && !Rs2Player.isAnimating() && !Rs2Player.isInteracting()) {
+                            log.info("State: GUILD_WALKING_TO_PATCH - Walking to Guild patch");
                             handleWalkingToPatch(farmingGuildHerb, states.GUILD_HANDLE_PATCH);
                         }
                         break;
+
                     case GUILD_HANDLE_PATCH:
-                        log(Rs2Player.isAnimating() + "");
-                        log("handling herb patch...");
+                        log.info("State: GUILD_HANDLE_PATCH - Handling farming guild herb patch");
                         if (Rs2Player.distanceTo(farmingGuildHerb) < 20) {
                             printHerbPatchActions(farmingGuildHerbPatchID);
-                            handleHerbPatch(farmingGuildHerbPatchID, seedToPlant, config);
-                        }
-                        if (!Rs2Player.isMoving() &&
-                                !Rs2Player.isAnimating() &&
-                                !Rs2Player.isInteracting()) {
-                            addCompostandSeeds(config, farmingGuildHerbPatchID, seedToPlant, botStatus = states.FINISHED);
+                            handleHerbPatch(farmingGuildHerbPatchID, seedToPlant, config, states.FINISHED);
                         }
                         break;
+
                     case FINISHED:
-                        shutdown();  // Optionally handle completion
+                        log.info("State: FINISHED - Shutting down");
+                        shutdown();
                         break;
                 }
+
+
 
             } catch (Exception ex) {
                 System.out.println(ex.getMessage());
@@ -466,330 +467,56 @@ public class HerbrunScript extends Script {
         checkBeforeWithdrawAndEquip("Magic secateurs");
     }
 
-    private boolean trollheimTeleport() {
-        sleep(400);
-        if (!Rs2Player.isAnimating()) {
-            boolean success = Rs2Inventory.interact(ItemID.STONY_BASALT, "Troll Stronghold");
-            Rs2Player.waitForAnimation();
-            sleepUntil(() -> !Rs2Player.isAnimating());
-            return success;
-        }
-        return true;
-    }
-
     private void handleTeleportToTrollheim() {
-        if (!Rs2Player.isAnimating()) {
-            System.out.println("Teleporting to Trollheim");
-            boolean success = trollheimTeleport();
-            if (success) {
-                sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving());
-                System.out.println("Arrived at Trollheim teleport spot.");
-                botStatus = states.TROLLHEIM_WALKING_TO_PATCH;
-            }
-        }
-    }
-
-    private boolean harmonyTeleport() {
-        sleep(100);
-        if (!Rs2Player.isAnimating()) {
-            System.out.println("Teleporting to Catherby");
-            boolean success = Rs2Inventory.interact(ItemID.HARMONY_ISLAND_TELEPORT, "Break");
-            Rs2Player.waitForAnimation();
-            sleepUntil(() -> !Rs2Player.isAnimating());
-            return success;
-        }
-        return false;
+        System.out.println("Teleporting to Trollheim");
+        botStatus = states.TROLLHEIM_WALKING_TO_PATCH;
     }
 
     private void handleTeleportToHarmony() {
-        if (!Rs2Player.isAnimating()) {
-            System.out.println("Teleporting to Harmony...");
-            boolean success = harmonyTeleport();
-
-            if (success) {
-                sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving());
-                System.out.println("Arrived at Harmony teleport spot.");
-                botStatus = states.HARMONY_WALKING_TO_PATCH;
-            } else {
-                System.out.println("Teleport to Harmony failed!");
-            }
-        }
-    }
-
-
-    private boolean catherbyTeleport() {
-        sleep(100);
-        if (!Rs2Player.isAnimating()) {
-            System.out.println("Teleporting to Catherby");
-            boolean success = Rs2Inventory.interact(ItemID.CAMELOT_TELEPORT, "Break");
-            Rs2Player.waitForAnimation();
-            sleepUntil(() -> !Rs2Player.isAnimating());
-            return success;
-        }
-        return false;
+        System.out.println("Teleporting to Harmony...");
+        botStatus = states.HARMONY_WALKING_TO_PATCH;
     }
 
     private void handleTeleportToCatherby() {
-        if (!Rs2Player.isAnimating()) {
-            System.out.println("Teleporting to Catherby...");
-            boolean success = catherbyTeleport();
-
-            if (success) {
-                sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving());
-                System.out.println("Arrived at Catherby teleport spot.");
-                botStatus = states.CATHERBY_WALKING_TO_PATCH;
-            } else {
-                System.out.println("Teleport to Catherby failed!");
-            }
-        }
+        System.out.println("Teleporting to Catherby...");
+        botStatus = states.CATHERBY_WALKING_TO_PATCH;
     }
-
-
-    private boolean morytaniaTeleport(HerbrunConfig config) {
-        sleep(100);
-        if (!Rs2Player.isAnimating()) {
-            System.out.println("Teleporting to Morytania");
-            if (config.USE_ECTOPHIAL()) {
-                Rs2Inventory.interact(ItemID.ECTOPHIAL, "empty");
-            } else {
-                Rs2Inventory.interact(ItemID.FENKENSTRAINS_CASTLE_TELEPORT, "break");
-            }
-            Rs2Player.waitForAnimation();
-            sleepUntil(() -> !Rs2Player.isAnimating());
-            return true;
-        }
-        return false;
-    }
-
 
     private void handleTeleportToMorytania(HerbrunConfig config) {
-        if (!Rs2Player.isAnimating()) {
-            System.out.println("Teleporting to Morytania...");
-            boolean success = morytaniaTeleport(config);  // Perform the teleport
-
-            if (success) {
-                // Wait until the player has stopped animating and moving
-                sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving(), 10000);
-                System.out.println("Arrived at Morytania teleport spot.");
-                botStatus = states.MORYTANIA_WALKING_TO_PATCH;  // Move to the next state
-            } else {
-                System.out.println("Teleport to Morytania failed!");
-            }
-        }
+        System.out.println("Teleporting to Morytania...");
+        botStatus = states.MORYTANIA_WALKING_TO_PATCH;
     }
-
-    private boolean varlamoreTeleport(HerbrunConfig config) {
-        sleep(100);
-        if (!Rs2Player.isAnimating()) {
-            System.out.println("Teleporting to Varlamore");
-            if (config.USE_QUETZAL_WHISTLE()) {
-                if (Rs2Inventory.contains(ItemID.PERFECTED_QUETZAL_WHISTLE)) {
-                    boolean success = Rs2Inventory.interact(ItemID.PERFECTED_QUETZAL_WHISTLE, "Signal");
-                } else if (Rs2Inventory.contains(ItemID.ENHANCED_QUETZAL_WHISTLE)) {
-                    boolean success = Rs2Inventory.interact(ItemID.ENHANCED_QUETZAL_WHISTLE, "Signal");
-                } else if (Rs2Inventory.contains(ItemID.BASIC_QUETZAL_WHISTLE)) {
-                    boolean success = Rs2Inventory.interact(ItemID.BASIC_QUETZAL_WHISTLE, "Signal");
-                }
-            } else {
-                boolean success = Rs2Inventory.interact(ItemID.CIVITAS_ILLA_FORTIS_TELEPORT, "break");
-            }
-            Rs2Player.waitForAnimation();
-            sleepUntil(() -> !Rs2Player.isAnimating());
-            return true;
-        }
-        return false;
-    }
-
 
     private void handleTeleportToVarlamore(HerbrunConfig config) {
-        if (!Rs2Player.isAnimating()) {
-            System.out.println("Teleporting to Varlamore...");
-            boolean success = varlamoreTeleport(config);  // Perform teleportation
-            if (success) {
-                sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving());
-                System.out.println("Arrived at Varlamore teleport spot.");
-                botStatus = states.VARLAMORE_WALKING_TO_PATCH;
-            } else {
-                System.out.println("Teleport to Varlamore failed!");
-            }
-        }
-    }
-
-    private boolean hosidiusTeleport() {
-        sleep(100);
-        if (!Rs2Player.isAnimating()) {
-            System.out.println("Teleporting to Hosidius");
-            boolean success = Rs2Inventory.interact(ItemID.XERICS_TALISMAN, "rub");
-            sleep(700, 1200);
-            Rs2Keyboard.keyPress('2');
-//            Rs2Widget.clickWidget("2: Xeric's glade");
-            Rs2Player.waitForAnimation();
-            sleepUntil(() -> !Rs2Player.isAnimating());
-            return success;
-        }
-        return false;
+        System.out.println("Teleporting to Varlamore...");
+        botStatus = states.VARLAMORE_WALKING_TO_PATCH;
     }
 
     private void handleTeleportToHosidius() {
-        if (!Rs2Player.isAnimating()) {
-            System.out.println("Teleporting to Hosidius...");
-            boolean success = hosidiusTeleport();
-
-            if (success) {
-                sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving());
-                System.out.println("Arrived at Hosidius teleport spot.");
-                botStatus = states.HOSIDIUS_WALKING_TO_PATCH;
-            } else {
-                System.out.println("Teleport to Hosidius failed!");
-            }
-        }
-    }
-
-    private boolean ardougneTeleport(HerbrunConfig config) {
-
-        if (!Rs2Player.isAnimating() && !Rs2Player.isMoving() && !Rs2Player.isInteracting()) {
-            System.out.println("Teleporting to Ardougne farm patch");
-            if (config.ARDOUGNE_TELEPORT_OPTION()) {
-                boolean success = Rs2Inventory.interact(config.CLOAK().getItemId(), "Farm Teleport");
-            } else if (Rs2Inventory.contains(item -> item.getName().toLowerCase().contains("skills necklace"))) {
-                Rs2Inventory.interact("skills necklace", "rub");
-                sleepUntilTrue(() -> !Rs2Widget.isHidden(ComponentID.ADVENTURE_LOG_CONTAINER), Rs2Player::isMoving, 100, 10000);
-                Rs2Keyboard.keyPress('1');
-            }
-            sleepUntil(() -> !Rs2Player.isAnimating());
-            return true;
-        } else {
-            boolean success = Rs2Inventory.interact(ItemID.ARDOUGNE_TELEPORT, "Break");
-
-            Rs2Player.waitForAnimation();
-            sleepUntil(() -> !Rs2Player.isAnimating());
-            sleep(100, 400);
-            return true;
-        }
+        System.out.println("Teleporting to Hosidius...");
+        botStatus = states.HOSIDIUS_WALKING_TO_PATCH;
     }
 
     private void handleTeleportToArdougne(HerbrunConfig config) {
-        if (!Rs2Player.isAnimating()) {
-            System.out.println("Teleporting to Ardougne...");
-            boolean success = ardougneTeleport(config);
-            if (success) {
-                // Wait until the player stops animating and moving after the teleport
-                sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving(), 30000);
-
-                // Ensure the teleport was successful before moving to the next state
-                if (!Rs2Player.isAnimating() && !Rs2Player.isMoving()) {
-                    System.out.println("Arrived at Ardougne teleport spot.");
-                    if (Rs2Inventory.contains(config.CLOAK().getItemId())) {
-                        botStatus = states.ARDOUGNE_HANDLE_PATCH; // Move to the next step only if teleport is complete
-                    } else {
-                        botStatus = states.ARDOUGNE_WALKING_TO_PATCH;
-                    }
-
-                } else {
-                    System.out.println("Teleport to Ardougne failed! Retrying...");
-                    botStatus = states.ARDOUGNE_TELEPORT; // Retry teleport if failed
-                }
-            }
-        }
-    }
-
-    private boolean faladorTeleport(HerbrunConfig config) {
-        sleep(100);
-        if (!Rs2Player.isAnimating()) {
-            System.out.println("Teleporting to Falador herb patch");
-            boolean success = Rs2Inventory.interact(config.RING().getItemId(), "Teleport");
-            Rs2Player.waitForAnimation();
-            sleepUntil(() -> !Rs2Player.isAnimating());
-            sleep(200, 600);
-            return true;
-        }
-        return false;
+        System.out.println("Teleporting to Ardougne...");
+        botStatus = states.ARDOUGNE_WALKING_TO_PATCH;
     }
 
     private void handleTeleportToFalador(HerbrunConfig config) {
-        if (!Rs2Player.isAnimating()) {
-            System.out.println("Teleporting to Falador...");
-            boolean success = faladorTeleport(config);  // Perform the teleport
-
-            if (success) {
-                // Wait until the player has stopped animating and moving
-                sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving());
-                System.out.println("Arrived at Falador teleport spot.");
-                botStatus = states.FALADOR_WALKING_TO_PATCH;  // Move to the next state
-            } else {
-                System.out.println("Teleport to Falador failed!");
-            }
-        }
-    }
-
-    private boolean guildTeleport(HerbrunConfig config) {
-        sleep(100);
-        if (!Rs2Player.isAnimating()) {
-            System.out.println("Teleporting to the Farming guild");
-            if (!config.FARMING_CAPE()) {
-                if (Rs2Inventory.contains(ItemID.SKILLS_NECKLACE1)) {
-                    Rs2Inventory.interact(ItemID.SKILLS_NECKLACE1, "rub");
-                } else if (Rs2Inventory.contains(ItemID.SKILLS_NECKLACE2)) {
-                    Rs2Inventory.interact(ItemID.SKILLS_NECKLACE2, "rub");
-                } else if (Rs2Inventory.contains(ItemID.SKILLS_NECKLACE3)) {
-                    Rs2Inventory.interact(ItemID.SKILLS_NECKLACE3, "rub");
-                } else if (Rs2Inventory.contains(ItemID.SKILLS_NECKLACE4)) {
-                    Rs2Inventory.interact(ItemID.SKILLS_NECKLACE4, "rub");
-                } else if (Rs2Inventory.contains(ItemID.SKILLS_NECKLACE5)) {
-                    Rs2Inventory.interact(ItemID.SKILLS_NECKLACE5, "rub");
-                } else if (Rs2Inventory.contains(ItemID.SKILLS_NECKLACE6)) {
-                    Rs2Inventory.interact(ItemID.SKILLS_NECKLACE6, "rub");
-                }
-                sleep(700, 1100);
-                Rs2Keyboard.keyPress('6');
-                Rs2Player.waitForAnimation();
-                sleepUntil(() -> !Rs2Player.isAnimating());
-                return true;
-            } else if (Rs2Equipment.hasEquipped(ItemID.FARMING_CAPE)) {
-                Rs2Equipment.interact(ItemID.FARMING_CAPE, "teleport");
-                return true;
-            } else if (Rs2Equipment.hasEquipped(ItemID.FARMING_CAPET)) {
-                Rs2Equipment.interact(ItemID.FARMING_CAPET, "teleport");
-                return true;
-            }
-        }
-        return false;
+        System.out.println("Teleporting to Falador...");
+        botStatus = states.FALADOR_WALKING_TO_PATCH;
     }
 
     private void handleTeleportToGuild(HerbrunConfig config) {
-        boolean hasTeleported = false;
-        if (!hasTeleported) {
-            System.out.println("Teleporting to the Farming guild...");
-            guildTeleport(config);  // Perform guild teleport
-            hasTeleported = true;
-        }
+        System.out.println("Teleporting to the Farming guild...");
         botStatus = states.GUILD_WALKING_TO_PATCH;
     }
 
-    private boolean weissTeleport() {
-        sleep(100);
-        if (!Rs2Player.isAnimating()) {
-            System.out.println("Teleporting to Weiss");
-            boolean success = Rs2Inventory.interact(ItemID.ICY_BASALT, "Weiss");
-            sleepUntil(() -> !Rs2Player.isAnimating());
-            if (Rs2Player.distanceTo(weissHerb) < 10) {
-                System.out.println("Arrived at Weiss teleport spot.");
-                return success;
-            }
-
-        }
-        return false;
-    }
-
     private void handleTeleportToWeiss() {
-        boolean hasTeleported = false;
-        if (!hasTeleported) {
-            System.out.println("Teleporting to Weiss...");
-            weissTeleport();  // Perform WEISS teleport
-            hasTeleported = true;
-        }
-        botStatus = states.WEISS_HANDLE_PATCH;
+        System.out.println("Teleporting to Weiss...");
+        botStatus = states.WEISS_WALKING_TO_PATCH;
     }
+
 
 
     private void handleWalkingToPatch(WorldPoint location, states nextState) {
@@ -806,13 +533,12 @@ public class HerbrunScript extends Script {
     }
 
 
-    private void handleHerbPatch(int patchId, int seedToPlant, HerbrunConfig config) {
+    private void handleHerbPatch(int patchId, int seedToPlant, HerbrunConfig config, states nextState) {
         // Define possible actions the herb patch could have
         if (!Rs2Player.isMoving() &&
-                !Rs2Player.isWalking() &&
                 !Rs2Player.isAnimating() &&
                 !Rs2Player.isInteracting()) {
-            String[] possibleActions = {"pick", "rake", "Clear", "Inspect"};
+            String[] possibleActions = {"Pick", "Rake", "Clear", "Inspect"};
 
             GameObject herbPatch = null;
             String foundAction = null;
@@ -834,15 +560,25 @@ public class HerbrunScript extends Script {
 
             // Handle the patch based on the action found
             switch (foundAction) {
-                case "pick":
+                case "Pick":
                     handlePickAction(herbPatch, patchId, config);
                     break;
-                case "rake":
+                case "Rake":
                     handleRakeAction(herbPatch);
                     break;
                 case "Clear":
                     handleClearAction(herbPatch);
                     break;
+                case "Inspect":
+                    if(Rs2GameObject.convertGameObjectToObjectComposition(herbPatch.getId()).getName().equals("Herbs")) {
+                        botStatus = nextState;
+                    }
+                    else {
+                        log.info("Patch is empty, planting seeds...");
+                        addCompostandSeeds(config, patchId, seedToPlant, nextState);
+                    }
+                    break;
+
                 default:
                     System.out.println("Unexpected action found on herb patch: " + foundAction);
                     break;
@@ -854,58 +590,59 @@ public class HerbrunScript extends Script {
 
     private void handlePickAction(GameObject herbPatch, int patchId, HerbrunConfig config) {
         System.out.println("Picking herbs...");
-
         Rs2NpcModel leprechaun = Rs2Npc.getNpc("Tool leprechaun");
+
+        // If inventory is full, note herbs first
         if (Rs2Inventory.isFull()) {
-            System.out.println("Noting herbs with tool leprechaun...");
-            Rs2Inventory.useItemOnNpc(config.SEED().getHerbId(), leprechaun); // Note the herbs with tool leprechaun
-            Rs2Player.waitForAnimation();
+            noteHerbs(config, leprechaun);
         }
-        int timesToLoop = 2 + (int) (Math.random() * 6);
 
-        Rs2GameObject.interact(herbPatch, "pick");
-        Rs2Player.waitForXpDrop(Skill.FARMING);
-        for (int i = 0; i < timesToLoop; i++) {
-            Rs2GameObject.interact(herbPatch, "pick");
-            sleep(25, 100);
-        }
-        Rs2Player.waitForAnimation();
+        int loopCount = Rs2Random.randomGaussian(5, 2);
+        pickHerbs(herbPatch, config, loopCount);
 
-        // Wait for the picking to complete (player stops animating and patch no longer has the "Pick" action)
-        sleepUntil(() -> !Rs2GameObject.hasAction(Rs2GameObject.findObjectComposition(patchId), "Pick") ||
-                (!Rs2Player.isAnimating() && !Rs2Player.isInteracting() && !Rs2Player.isMoving()));
+        // Continuously update the patch composition for each check
+        sleepUntil(() -> !Rs2GameObject.hasAction(getPatchComp(patchId), "Pick") ||
+                !Rs2Player.isAnimating());
 
-        // After picking herbs, check if "rake" is an available action
-        if (Rs2GameObject.hasAction(Rs2GameObject.findObjectComposition(patchId), "rake")) {
+        // If the patch now offers the "rake" action, handle raking and exit.
+        if (Rs2GameObject.hasAction(getPatchComp(patchId), "rake")) {
             System.out.println("Weeds grew, switching to rake action...");
-            handleRakeAction(herbPatch);  // Handle raking if weeds grew
-            return;  // Exit the method after raking
+            handleRakeAction(herbPatch);
+            return;
         }
 
-        // If the inventory becomes full again while picking, note the herbs and pick the remaining ones
-        if (Rs2GameObject.hasAction(Rs2GameObject.findObjectComposition(patchId), "Pick") && Rs2Inventory.isFull()) {
-            System.out.println("Noting herbs with tool leprechaun...");
-            Rs2Inventory.useItemOnNpc(config.SEED().getHerbId(), leprechaun);
-            Rs2Player.waitForAnimation();
+        // If still pickable and inventory is full, note herbs and pick the remaining ones.
+        if (Rs2GameObject.hasAction(getPatchComp(patchId), "Pick") && Rs2Inventory.isFull()) {
+            noteHerbs(config, leprechaun);
+            loopCount = Rs2Random.randomGaussian(5, 2);
+            pickHerbs(herbPatch, config, loopCount);
+        }
 
-            // Pick any remaining herbs
-            Rs2GameObject.interact(herbPatch, "pick");
+    }
 
-            if (config.FAST_HERB()) {
-                Rs2Player.waitForXpDrop(Skill.FARMING);
-                timesToLoop = 2 + (int) (Math.random() * 6);
-                for (int i = 0; i < timesToLoop; i++) {
-                    Rs2GameObject.interact(herbPatch, "pick");
-                    sleep(25, 100);
-                }
+    private void noteHerbs(HerbrunConfig config, Rs2NpcModel leprechaun) {
+        System.out.println("Noting herbs with tool leprechaun...");
+        Rs2Inventory.useItemOnNpc(config.SEED().getHerbId(), leprechaun);
+        Rs2Inventory.waitForInventoryChanges(7000);
+    }
+
+    private void pickHerbs(GameObject herbPatch, HerbrunConfig config, int loopCount) {
+        Rs2GameObject.interact(herbPatch, "pick");
+        if (config.FAST_HERB()) {
+            Rs2Player.waitForXpDrop(Skill.FARMING);
+            for (int i = 0; i < loopCount; i++) {
+                Rs2GameObject.interact(herbPatch, "pick");
+                sleep(25, 100);
             }
-
-            Rs2Player.waitForAnimation();
-            sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isInteracting());
         }
+        Rs2Player.waitForAnimation(15000);
+    }
 
-        // Final check to ensure no lingering animations or interactions
-        sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving() && !Rs2Player.isInteracting(), 200);
+    /**
+     * Helper method to update and retrieve the current patch composition.
+     */
+    private ObjectComposition getPatchComp(int patchId) {
+        return Rs2GameObject.findObjectComposition(patchId);
     }
 
 
@@ -915,17 +652,14 @@ public class HerbrunScript extends Script {
         // Rake the patch
         Rs2GameObject.interact(herbPatch, "rake");
 
-        Rs2Player.waitForAnimation();
-        sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isInteracting());
+        Rs2Player.waitForAnimation(12000);
 
         // Drop the weeds (assuming weeds are added to the inventory)
         if (!Rs2Player.isMoving() &&
                 !Rs2Player.isAnimating() &&
-                !Rs2Player.isInteracting() && !Rs2Player.isWalking()) {
+                !Rs2Player.isInteracting()) {
             System.out.println("Dropping weeds...");
             Rs2Inventory.dropAll(ItemID.WEEDS);
-            Rs2Player.waitForAnimation();
-            sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isInteracting());
         }
     }
 
@@ -934,8 +668,6 @@ public class HerbrunScript extends Script {
 
         // Try to interact with the patch using the "clear" action
         boolean interactionSuccess = Rs2GameObject.interact(herbPatch, "clear");
-        Rs2Player.waitForAnimation();
-        sleepUntil(() -> !Rs2Player.isAnimating());
 
         if (!interactionSuccess) {
             System.out.println("Failed to interact with the herb patch to clear it.");
@@ -943,18 +675,17 @@ public class HerbrunScript extends Script {
         }
 
         // Wait for the clearing animation to finish
-        Rs2Player.waitForAnimation();
-        sleepUntil(() -> !Rs2Player.isAnimating() && Rs2Player.isInteracting() && Rs2Player.isWalking());
+        Rs2Player.waitForAnimation(12000);
     }
 
     private void printHerbPatchActions(int patchId) {
-        GameObject herbPatch = Rs2GameObject.findObjectByImposter(patchId, "clear");
+        TileObject herbPatch = Rs2GameObject.findObjectById(patchId);
         if (herbPatch == null) {
             System.out.println("Herb patch not found for ID: " + patchId);
             return;
         }
 
-        ObjectComposition herbPatchComposition = Rs2GameObject.findObjectComposition(patchId);
+        ObjectComposition herbPatchComposition = Objects.requireNonNull(Rs2GameObject.findObjectComposition(patchId)).getImpostor();
         System.out.println("Available actions for herb patch:");
         for (String action : herbPatchComposition.getActions()) {
             if (action != null) {
@@ -966,24 +697,22 @@ public class HerbrunScript extends Script {
     private void addCompostandSeeds(HerbrunConfig config, int patchId, int seedToPlant, states state) {
         // Check that the player is idle before interacting with the patch
         if (!Rs2Player.isMoving() && !Rs2Player.isAnimating() &&
-                !Rs2Player.isInteracting() && !Rs2Player.isWalking()) {
+                !Rs2Player.isInteracting()) {
 
             // Apply compost based on configuration
             System.out.println("Applying compost...");
             int compostItemId = config.COMPOST() ? ItemID.BOTTOMLESS_COMPOST_BUCKET_22997 : ItemID.ULTRACOMPOST;
-            Rs2Inventory.use(compostItemId);
-            Rs2GameObject.interact(patchId, "use");
+            Rs2Inventory.useItemOnObject(compostItemId, patchId);
             // Wait for farming XP drop to confirm compost application
             Rs2Player.waitForXpDrop(Skill.FARMING);
             sleep(50, 1200);
 
             // Plant seeds in the patch
             System.out.println("Planting seeds...");
-            Rs2Inventory.use(seedToPlant);
-            Rs2GameObject.interact(patchId, "use");
+            Rs2Inventory.useItemOnObject(seedToPlant, patchId);
 
             // Wait until interaction is complete
-            sleepUntil(Rs2Player::isInteracting);
+            Rs2Player.waitForAnimation();
             if (Rs2Inventory.contains(ItemID.EMPTY_BUCKET)) Rs2Inventory.drop(ItemID.EMPTY_BUCKET);
 
             // Update the bot status

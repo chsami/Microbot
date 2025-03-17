@@ -23,12 +23,18 @@ public class TransportVarPlayer {
                 return actualValue > value;
             case LESS_THAN:
                 return actualValue < value;
+            case BIT_SET:
+                return (actualValue & value) > 0;
+            case COOLDOWN_MINUTES:
+                return ((System.currentTimeMillis() / 60000) - actualValue) > value;
             default:
                 throw new IllegalArgumentException("Unsupported operator: " + operator);
         }
     }
 
     public enum Operator {
+        BIT_SET,
+        COOLDOWN_MINUTES,
         EQUAL,
         GREATER_THAN,
         LESS_THAN

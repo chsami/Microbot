@@ -162,7 +162,6 @@ public enum MagicAction implements SkillAction
 	SHADOW_BLITZ("Shadow Blitz", 76, 43, SpriteID.SPELL_SHADOW_BLITZ, true, Spellbook.ANCIENT),
 	SPIN_FLAX("Spin Flax", 76, 75, SpriteID.SPELL_SPIN_FLAX, true, Spellbook.LUNAR),
 	TELE_GROUP_BARBARIAN("Tele Group Barbarian", 76, 77, SpriteID.SPELL_TELE_GROUP_ICE_PLATEAU, true, Spellbook.LUNAR),
-	RESURRECT_GREATER_THRALL("Resurrect Greater Thrall", 76, 88, SpriteID.SPELL_RESURRECT_GREATER_ZOMBIE, true, Spellbook.ARCEUUS),
 	SUPERGLASS_MAKE("Superglass Make", 77, 78, SpriteID.SPELL_SUPERGLASS_MAKE, true, Spellbook.LUNAR),
 	KHAZARD_TELEPORT("Khazard Teleport", 78, 80, SpriteID.SPELL_KHAZARD_TELEPORT, true, Spellbook.LUNAR),
 	TAN_LEATHER("Tan Leather", 78, 81, SpriteID.SPELL_TAN_LEATHER, true, Spellbook.LUNAR),
@@ -227,6 +226,9 @@ public enum MagicAction implements SkillAction
 	RESURRECT_SUPERIOR_GHOST("Resurrect Superior Ghost", 57, 70, 2979, true, Spellbook.ARCEUUS),
 	RESURRECT_SUPERIOR_SKELETON("Resurrect Superior Skeleton", 57, 70, 2981, true, Spellbook.ARCEUUS),
 	RESURRECT_SUPERIOR_ZOMBIE("Resurrect Superior Zombie", 57, 70, 2983, true, Spellbook.ARCEUUS),
+	RESURRECT_GREATER_GHOST("Resurrect Greater Ghost", 76, 88, 2980, true, Spellbook.ARCEUUS),
+	RESURRECT_GREATER_SKELETON("Resurrect Greater Skeleton", 76, 88, 2982, true, Spellbook.ARCEUUS),
+	RESURRECT_GREATER_ZOMBIE("Resurrect Greater Zombie", 76, 88, SpriteID.SPELL_RESURRECT_GREATER_ZOMBIE, true, Spellbook.ARCEUUS),
 	;
 
 	private final String name;

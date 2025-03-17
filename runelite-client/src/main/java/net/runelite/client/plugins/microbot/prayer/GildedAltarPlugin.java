@@ -37,7 +37,7 @@ public class GildedAltarPlugin extends Plugin {
     @Inject
     GildedAltarScript gildedAltarScript;
 
-
+ 
     @Override
     protected void startUp() throws AWTException {
         if (overlayManager != null) {
@@ -55,12 +55,9 @@ public class GildedAltarPlugin extends Plugin {
 
     @Subscribe
     public void onChatMessage(ChatMessage chatMessage) {
-        if(chatMessage.getType() == ChatMessageType.PUBLICCHAT){
-            return;
-        }
+        if (chatMessage.getType() != ChatMessageType.GAMEMESSAGE && chatMessage.getType() != ChatMessageType.SPAM) return;
         String chatMsg = chatMessage.getMessage().toLowerCase();
-        System.out.println(chatMsg);
-        if(chatMsg.contains("that player is offline")||chatMsg.contains("haven't visited anyone this session")){
+        if(chatMsg.contains("that player is offline") || chatMsg.contains("haven't visited anyone this session") || chatMsg.contains("house is no longer accessible")){
             // If we try to use Visit-Last unsuccessfully, these chat messages will appear, and we need to reset vars.
             gildedAltarScript.visitedOnce= false;
             gildedAltarScript.usePortal = null;
@@ -68,5 +65,5 @@ public class GildedAltarPlugin extends Plugin {
             gildedAltarScript.portalCoords = null;
             gildedAltarScript.addNameToBlackList();
         }
-}
+    }
 }

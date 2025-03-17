@@ -590,6 +590,21 @@ public enum Rs2Spells {
             Runes.COSMIC, 1,
             Runes.DEATH, 5
     ), Rs2Spellbook.ARCEUUS),
+    RESURRECT_GREATER_GHOST(MagicAction.RESURRECT_GREATER_GHOST, Map.of(
+            Runes.FIRE, 10,
+            Runes.COSMIC, 1,
+            Runes.BLOOD, 5
+    ), Rs2Spellbook.ARCEUUS),
+    RESURRECT_GREATER_SKELETON(MagicAction.RESURRECT_GREATER_SKELETON, Map.of(
+            Runes.FIRE, 10,
+            Runes.COSMIC, 1,
+            Runes.BLOOD, 5
+    ), Rs2Spellbook.ARCEUUS),
+    RESURRECT_GREATER_ZOMBIE(MagicAction.RESURRECT_GREATER_ZOMBIE, Map.of(
+            Runes.FIRE, 10,
+            Runes.COSMIC, 1,
+            Runes.BLOOD, 5
+    ), Rs2Spellbook.ARCEUUS),
     DARK_LURE(MagicAction.DARK_LURE, Map.of(
             Runes.DEATH, 1,
             Runes.NATURE, 1

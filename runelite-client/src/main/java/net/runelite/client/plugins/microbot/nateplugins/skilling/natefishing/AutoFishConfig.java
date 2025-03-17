@@ -7,14 +7,23 @@ import net.runelite.client.config.ConfigSection;
 import net.runelite.client.plugins.microbot.nateplugins.skilling.natefishing.enums.Fish;
 import net.runelite.client.plugins.microbot.util.inventory.InteractOrder;
 
-@ConfigGroup("Fishing")
+@ConfigGroup(AutoFishConfig.configGroup)
 public interface AutoFishConfig extends Config {
+    
+    String configGroup = "micro-fishing";
     @ConfigSection(
             name = "General",
             description = "General",
             position = 0
     )
     String generalSection = "general";
+    
+    @ConfigSection(
+            name = "Banking",
+            description = "Bank Configuration",
+            position = 1
+    )
+    String bankingSection = "banking";
 
     @ConfigItem(
             keyName = "Fish",
@@ -43,8 +52,8 @@ public interface AutoFishConfig extends Config {
             keyName = "UseBank",
             name = "UseBank",
             description = "Use bank and walk back to original location",
-            position = 2,
-            section = generalSection
+            position = 0,
+            section = bankingSection
     )
     default boolean useBank()
     {
@@ -52,13 +61,37 @@ public interface AutoFishConfig extends Config {
     }
 
     @ConfigItem(
-            keyName = "ItemsToBank",
-            name = "Items to bank (Comma seperated)",
-            description = "Items to bank",
-            position = 3
+            keyName = "useDepositBox",
+            name = "Use DepositBox",
+            description = "Use depositbox and walk back to original location",
+            position = 1,
+            section = bankingSection
     )
-    default String itemsToBank() {
-        return "swordfish,lobster,tuna,trout,salmon,shrimp,anchovies,shark,crab,monkfish,angler,eel,clue,casket";
+    default boolean useDepositBox()
+    {
+        return false;
+    }
+
+    @ConfigItem(
+            keyName = "bankClueBottles",
+            name = "Bank Clue Bottles",
+            description = "Should bank clue bottles",
+            position = 2,
+            section = bankingSection
+    )
+    default boolean shouldBankClueBottles() {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "bankCaskets",
+            name = "Bank Caskets",
+            description = "Should bank caskets",
+            position = 3,
+            section = bankingSection
+    )
+    default boolean shouldBankCaskets() {
+        return true;
     }
 
     // boolean if to use Echo harpoon
@@ -66,7 +99,7 @@ public interface AutoFishConfig extends Config {
             keyName = "UseEchoHarpoon",
             name = "Echo Harpoon",
             description = "Use Echo Harpoon",
-            position = 4,
+            position = 2,
             section = generalSection
     )
     default boolean useEchoHarpoon()

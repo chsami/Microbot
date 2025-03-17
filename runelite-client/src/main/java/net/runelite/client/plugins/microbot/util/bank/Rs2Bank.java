@@ -12,10 +12,10 @@ import net.runelite.client.plugins.loottracker.LootTrackerRecord;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
+import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Gembag;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.inventory.RunePouchType;
@@ -1309,31 +1309,51 @@ public class Rs2Bank {
     public static BankLocation getNearestBank() {
         return getNearestBank(Microbot.getClient().getLocalPlayer().getWorldLocation());
     }
+
     /**
-     * Get the nearest bank to world point
+     * Iterate over each candidate bank to find the nearest one relative to a target world point.
+     *
+     * For each bank in candidateBanks:
+     *   1. Calculate a heuristic distance (using quickDistance, a Chebyshev distance) between the bank's location and the target.
+     *   2. If the heuristic distance is greater than the current best path length (bestPathLength), break out of the loop.
+     *      - Since the banks are sorted by this heuristic, no later bank will have a shorter path.
+     *   3. Otherwise, compute the actual path length (using Rs2Walker.getTotalTiles) between the target and the bank.
+     *   4. If this actual path length is shorter than bestPathLength, update bestPathLength and mark this bank as the nearest.
      *
      * @return BankLocation
      */
-
     public static BankLocation getNearestBank(WorldPoint worldPoint) {
         Microbot.log("Calculating nearest bank path...");
 
-        // Convert the enum values to a Stream, filter out those
-        // that don't meet requirements, then work in parallel.
-        BankLocation nearest = Arrays.stream(BankLocation.values())
-                .parallel()
+        // Get candidate banks that meet requirements and sort them by a cheap distance metric.
+        List<BankLocation> candidateBanks = Arrays.stream(BankLocation.values())
                 .filter(BankLocation::hasRequirements)
-                .min(Comparator.comparingInt(bankLocation ->
-                        Rs2Walker.getTotalTiles(worldPoint,bankLocation.getWorldPoint())))
-                .orElse(null);
+                .sorted(Comparator.comparingInt(bank -> Rs2WorldPoint.quickDistance(bank.getWorldPoint(), worldPoint)))
+                .collect(Collectors.toList());
 
-        if (nearest != null) {
-            Microbot.log("Found nearest bank: " + nearest.name());
+        BankLocation nearestbank = null;
+        int bestPathLength = Integer.MAX_VALUE;
+
+        for (BankLocation bank : candidateBanks) {
+            int heuristicDistance = Rs2WorldPoint.quickDistance(bank.getWorldPoint(), worldPoint);
+            if (heuristicDistance > bestPathLength) {
+                // Since the candidates are sorted, no later bank can beat the best one.
+                break;
+            }
+
+            int pathLength = Rs2Walker.getTotalTiles(worldPoint, bank.getWorldPoint());
+            if (pathLength < bestPathLength) {
+                bestPathLength = pathLength;
+                nearestbank = bank;
+            }
+        }
+
+        if (nearestbank != null) {
+            Microbot.log("Found nearest bank: " + nearestbank.name());
         } else {
             Microbot.log("Unable to find nearest bank");
-            return null;
         }
-        return nearest;
+        return nearestbank;
     }
 
     /**
