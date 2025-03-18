@@ -38,7 +38,7 @@ import net.runelite.client.plugins.timetracking.Tab;
 import java.util.*;
 
 @Singleton
-class FarmingWorld {
+public class FarmingWorld {
     private final Comparator<FarmingPatch> tabSorter = Comparator
             .comparing(FarmingPatch::getImplementation)
             .thenComparing((FarmingPatch p) -> p.getRegion().getName())

@@ -1137,7 +1137,7 @@ public class Rs2Bank {
             }
 
             if (action) {
-                sleepUntil(Rs2Bank::isOpen, 5000);
+                sleepUntil(Rs2Bank::isOpen, 30000);
             }
             return action;
         } catch (Exception ex) {

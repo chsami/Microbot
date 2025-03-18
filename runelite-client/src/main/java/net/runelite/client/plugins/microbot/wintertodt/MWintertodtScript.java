@@ -33,8 +33,6 @@ import java.util.regex.Pattern;
 import static net.runelite.api.Constants.GAME_TICK_LENGTH;
 import static net.runelite.api.ObjectID.BRAZIER_29312;
 import static net.runelite.api.ObjectID.BURNING_BRAZIER_29314;
-import static net.runelite.client.plugins.microbot.util.Global.sleepGaussian;
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 import static net.runelite.client.plugins.microbot.util.player.Rs2Player.eatAt;
 
 

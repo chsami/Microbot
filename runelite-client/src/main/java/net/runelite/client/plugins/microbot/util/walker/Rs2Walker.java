@@ -1605,7 +1605,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
         if (transport.getDisplayInfo() == null || transport.getDisplayInfo().isEmpty()) return false;
 
         // Wait for the widget to become visible
-        boolean isAdventureLogVisible = sleepUntil(() -> !Rs2Widget.isHidden(ComponentID.ADVENTURE_LOG_CONTAINER), Rs2Player::isMoving, 100, 10000);
+        boolean isAdventureLogVisible = sleep().until(() -> !Rs2Widget.isHidden(ComponentID.ADVENTURE_LOG_CONTAINER)).withReset(Rs2Player::isMoving).timeout(100).interval(10000).execute();
 
         if (!isAdventureLogVisible) {
             Microbot.log("Widget did not become visible within the timeout.");
@@ -1650,10 +1650,9 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
             }
         }
 
-
         // Wait for the widget to become visible
-        boolean widgetVisible = sleepUntil(() -> !Rs2Widget.isHidden(GLIDER_PARENT_WIDGET, GLIDER_CHILD_WIDGET), Rs2Player::isMoving, 100, 10000);
-        
+        boolean widgetVisible = sleep().until(() -> !Rs2Widget.isHidden(GLIDER_PARENT_WIDGET, GLIDER_CHILD_WIDGET)).withReset(Rs2Player::isMoving).timeout(100).interval(10000).execute();
+
         if (!widgetVisible) {
             Microbot.log("Widget did not become visible within the timeout.");
             return false;

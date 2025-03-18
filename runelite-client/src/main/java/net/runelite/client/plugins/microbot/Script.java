@@ -10,6 +10,7 @@ import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
+import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -82,6 +83,7 @@ public abstract class Script extends Global implements IScript  {
         Microbot.getSpecialAttackConfigs().reset();
         Rs2Walker.setTarget(null);
         startTime = null;
+        requiredItems = new ArrayList<>();
         requiredItemsHandled = false;
     }
 
@@ -122,7 +124,7 @@ public abstract class Script extends Global implements IScript  {
         if (!Rs2Bank.openBank()) {
             BankLocation bankLocation = Rs2Bank.getNearestBank();
             boolean arrived = Rs2Walker.walkTo(bankLocation.getWorldPoint());
-            sleepUntil(() -> arrived);
+            sleepUntil(() -> arrived, 20000);
             Rs2Bank.openBank();
         }
 
@@ -131,9 +133,8 @@ public abstract class Script extends Global implements IScript  {
 
             // We could check for required items here, but lets just do this for now.
             Rs2Bank.depositAll();
-            Rs2Bank.depositEquipment();
 
-            if (requiredItems.stream().anyMatch(ScriptItem::isEquipped)) {
+            if (requiredItems.stream().anyMatch(ScriptItem::isEquipped) && !Rs2Equipment.equipmentItems.isEmpty()) {
                 Rs2Bank.depositEquipment();
             }
 

@@ -41,7 +41,7 @@ public class HerbrunPlugin extends Plugin {
         if (overlayManager != null) {
             overlayManager.add(HerbrunOverlay);
         }
-        herbrunScript.run(config);
+        herbrunScript.run();
     }
 
     protected void shutDown() {

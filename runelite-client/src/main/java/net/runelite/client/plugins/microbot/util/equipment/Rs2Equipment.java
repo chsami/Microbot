@@ -390,6 +390,9 @@ public class Rs2Equipment {
         return equipmentItems.stream().allMatch(x -> x.id == -1);
     }
 
+    public static void open() {
+        Rs2Tab.switchToEquipmentTab();
+    }
     public static void invokeMenu(Rs2ItemModel rs2Item, String action) {
         if (rs2Item == null) return;
 
