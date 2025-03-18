@@ -38,6 +38,8 @@ public class GiantMolePlugin extends Plugin {
 
     @Inject
     GiantMoleScript giantMoleScript;
+    @Inject
+    private HighAlchScript highAlchScript;
     @Provides
     GiantMoleConfig provideConfig(ConfigManager configManager) {
         return configManager.getConfig(GiantMoleConfig.class);
@@ -51,10 +53,12 @@ public class GiantMolePlugin extends Plugin {
             overlayManager.add(giantMoleOverlay);
         }
         giantMoleScript.run(config);
+        highAlchScript.run(config);
     }
 
     protected void shutDown() {
         giantMoleScript.shutdown();
+        highAlchScript.shutdown();
         overlayManager.remove(giantMoleOverlay);
     }
     int ticks = 10;

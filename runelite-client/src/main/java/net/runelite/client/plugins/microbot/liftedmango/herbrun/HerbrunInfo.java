@@ -48,6 +48,7 @@ public class HerbrunInfo {
 
         // Weiss
         WEISS_TELEPORT,
+        WEISS_WALKING_TO_PATCH,
         WEISS_HANDLE_PATCH,
 
         // Weiss

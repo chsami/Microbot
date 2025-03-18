@@ -11,10 +11,8 @@ import net.runelite.client.plugins.microbot.shortestpath.*;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.RunePouch;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
-import net.runelite.client.plugins.microbot.util.magic.Runes;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
@@ -67,6 +65,7 @@ public class PathfinderConfig {
             useQuetzals,
             useSpiritTrees,
             useTeleportationLevers,
+            useTeleportationMinigames,
             useTeleportationPortals,
             useTeleportationSpells,
             useMagicCarpets,
@@ -135,6 +134,7 @@ public class PathfinderConfig {
         useQuetzals = config.useQuetzals();
         useSpiritTrees = config.useSpiritTrees();
         useTeleportationItems = config.useTeleportationItems();
+        useTeleportationMinigames = config.useTeleportationMinigames();
         useTeleportationLevers = config.useTeleportationLevers();
         useTeleportationPortals = config.useTeleportationPortals();
         useTeleportationSpells = config.useTeleportationSpells();
@@ -364,7 +364,7 @@ public class PathfinderConfig {
         return WILDERNESS_ABOVE_GROUND.distanceTo(p) == 0 || WILDERNESS_UNDERGROUND.distanceTo(p) == 0;
     }
 
-    public static boolean isInWilderness(int packedPoint) {
+    public boolean isInWilderness(int packedPoint) {
         return WorldPointUtil.distanceToArea(packedPoint, WILDERNESS_ABOVE_GROUND) == 0
                 || WorldPointUtil.distanceToArea(packedPoint, WILDERNESS_UNDERGROUND) == 0;
     }
@@ -432,6 +432,8 @@ public class PathfinderConfig {
         if (!varplayerChecks(transport)) return false;
         // If you don't have the required currency & amount for transport
         if (transport.getCurrencyAmount() > 0 && !Rs2Inventory.hasItemAmount(transport.getCurrencyName(), transport.getCurrencyAmount())) return false;
+        // Check if Teleports are globally disabled 
+        if (TransportType.isTeleport(transport.getType()) && Rs2Walker.disableTeleports) return false;
         // Check Teleport Item Settings
         if (transport.getType() == TELEPORTATION_ITEM) return isTeleportationItemUsable(transport);
         // Check Teleport Spell Settings
@@ -488,6 +490,7 @@ public class PathfinderConfig {
                 case QUETZAL:
                 case WILDERNESS_OBELISK:
                 case TELEPORTATION_LEVER:
+                case TELEPORTATION_MINIGAME:
                 case MAGIC_CARPET:
                 case SPIRIT_TREE:
                     return false;
@@ -521,6 +524,8 @@ public class PathfinderConfig {
                 return useSpiritTrees;
             case TELEPORTATION_ITEM:
                 return useTeleportationItems != TeleportationItem.NONE;
+            case TELEPORTATION_MINIGAME:
+                return useTeleportationMinigames;
             case TELEPORTATION_LEVER:
                 return useTeleportationLevers;
             case TELEPORTATION_PORTAL:
@@ -547,11 +552,6 @@ public class PathfinderConfig {
 
     /** Checks if the player has any of the required equipment and inventory items for the transport */
     private boolean hasRequiredItems(Transport transport) {
-        // Global flag to disable teleports
-        if ((transport.getType() == TELEPORTATION_ITEM || transport.getType() == TELEPORTATION_SPELL) && Rs2Walker.disableTeleports) {
-            return false;
-        }
-
         if (requiresChronicle(transport)) return hasChronicleCharges();
 
         return transport.getItemIdRequirements()
@@ -570,8 +570,6 @@ public class PathfinderConfig {
 
     
     private boolean isTeleportationSpellUsable(Transport transport) {
-        // Global flag to disable teleports
-        if (Rs2Walker.disableTeleports) return false;
         
         boolean hasMultipleDestination = transport.getDisplayInfo().contains(":");
         String displayInfo = hasMultipleDestination

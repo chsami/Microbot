@@ -1,8 +1,7 @@
 package net.runelite.client.plugins.microbot.liftedmango.herbrun;
 
-import net.runelite.api.Skill;
-import net.runelite.api.TileObject;
-import net.runelite.api.widgets.ComponentID;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.*;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
@@ -17,7 +16,6 @@ import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
-import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.timetracking.Tab;
 import net.runelite.client.plugins.timetracking.farming.CropState;
 
@@ -27,6 +25,7 @@ import javax.inject.Inject;
 
 import static net.runelite.client.plugins.microbot.Microbot.log;
 
+@Slf4j
 public class HerbrunScript extends Script {
     @Inject
     private ConfigManager configManager;
@@ -72,7 +71,6 @@ public class HerbrunScript extends Script {
             requiredItems.add(ScriptItem.builder().name("Ultracompost").quantity(herbPatches.size()).build());
         }
 
-
         // Add items from herb patches
         for (HerbPatch patch : herbPatches) {
             for (Map.Entry<String, Integer> entry : patch.getItems().entrySet()) {
@@ -89,7 +87,6 @@ public class HerbrunScript extends Script {
                         break;
                     }
                 }
-
                 // If not found, add a new item
                 if (!found) {
                     requiredItems.add(ScriptItem.builder().name(itemName).quantity(itemAmount).build());

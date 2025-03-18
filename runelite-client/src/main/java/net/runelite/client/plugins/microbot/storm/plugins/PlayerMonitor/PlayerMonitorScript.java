@@ -10,6 +10,8 @@ import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.ui.ClientUI;
 import net.runelite.client.ui.overlay.OverlayManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.awt.*;
@@ -17,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 public class PlayerMonitorScript extends Script {
+    private static final Logger log = LoggerFactory.getLogger(PlayerMonitorScript.class);
     public static String version = "1.0.0";
     @Inject
     private PlayerMonitorConfig config;
@@ -29,6 +32,7 @@ public class PlayerMonitorScript extends Script {
     boolean newPlayer;
     WorldPoint otherPlayerLocation;
     int otherPlayerWorld;
+    private boolean logoutInitiated = false;
     Color offColor = new Color(0, 0, 0, 0);
 
     public boolean run(PlayerMonitorConfig config, OverlayManager overlayManager) {
@@ -43,7 +47,7 @@ public class PlayerMonitorScript extends Script {
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             if (!super.run()) return;
             if (!Microbot.isLoggedIn()) return;
-            try {
+            try { if (!config.liteMode()) {
                 if (Microbot.getClient().getGameCycle() % 20 >= 10) {
                     if(!playAlarm) {
                         if (plugin.isOverlayOn()) {
@@ -61,11 +65,7 @@ public class PlayerMonitorScript extends Script {
                                 Microbot.getClientThread().runOnSeperateThread(() -> {
                                     switch (config.emergencyAction()) {
                                         case LOGOUT:
-                                            ClientUI.getClient().setEnabled(false);
-                                            if (this.isRunning()) { sleep(61, 93); }
-                                            if (this.isRunning()) { Rs2Player.logout(); }
-                                            if (this.isRunning()) { sleep(61, 93); }
-                                            ClientUI.getClient().setEnabled(true);
+                                            logoutPlayer();
                                             break;
                                         case HOP_WORLDS:
                                             ClientUI.getClient().setEnabled(false);
@@ -105,6 +105,18 @@ public class PlayerMonitorScript extends Script {
                 }
                 if (newPlayer && !plugin.isOverlayOn() && (Rs2Player.getWorldLocation().distanceTo(otherPlayerLocation) > 32 || otherPlayerWorld != Rs2Player.getWorld())){
                     newPlayer = false;
+                } }
+
+                if (config.liteMode()) {
+                    if (plugin.isPlayerDetected() && !logoutInitiated) {
+                        log.info("Player detected - initiating logout");
+                        Microbot.log("PlayerMonitorLite: Player detected - logging out");
+                        logoutInitiated = true;
+                        // Perform logout
+                        logoutPlayer();
+                    } else if (!plugin.isPlayerDetected() && logoutInitiated) {
+                        logoutInitiated = false;
+                    }
                 }
             } catch (Exception ex) {
                 Microbot.log(ex.getMessage());
@@ -112,6 +124,18 @@ public class PlayerMonitorScript extends Script {
         }, 0, 1, TimeUnit.MILLISECONDS);
         return true;
     }
+
+    private void logoutPlayer() {
+        ClientUI.getClient().setEnabled(false);
+        if (this.isRunning()) {
+            sleep(61, 93);}
+        if (this.isRunning()) {
+            Rs2Player.logout();}
+        if (this.isRunning()) {
+            sleep(61, 93);}
+        ClientUI.getClient().setEnabled(true);
+    }
+
     @Override
     public void shutdown() {
         if (mainScheduledFuture != null) {

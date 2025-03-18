@@ -42,9 +42,9 @@
 1680 3134 0	54 Magic	Twilight's Promise	19	4070=0	Y	4	Civitas illa Fortis Teleport
 							
 # Watchtower Teleport							
-2549 3112 2	58 Magic	Watchtower Quest	19	4070=0	Y	10	Watchtower Teleport
+2549 3112 2	58 Magic	Watchtower Quest	19	4070=0;4548=0	Y	10	Watchtower Teleport
 # Varbit 4460 is DIARY_ARDOUGNE_HARD							
-2584 3097 0	58 Magic	Watchtower Quest	19	4070=0;4460=1	Y	10	Watchtower Teleport: Yanille
+2584 3097 0	58 Magic	Watchtower Quest	19	4070=0;4460=1;4548=1	Y	10	Watchtower Teleport: Yanille
 							
 # Trollheim Teleport							
 2890 3679 0	61 Magic	Eadgar's Ruse	19	4070=0	Y	10	Trollheim Teleport

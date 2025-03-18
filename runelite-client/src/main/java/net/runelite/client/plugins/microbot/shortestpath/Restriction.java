@@ -129,6 +129,12 @@ public class Restriction {
                 } else if (varbitCheck.contains("=")) {
                     parts = varbitCheck.split("=");
                     operator = TransportVarbit.Operator.EQUAL;
+                } else if (varbitCheck.contains("&")) {
+                    parts = varbitCheck.split("&");
+                    operator = TransportVarbit.Operator.BIT_SET;
+                } else if (varbitCheck.contains("@")) {
+                    parts = varbitCheck.split("@");
+                    operator = TransportVarbit.Operator.COOLDOWN_MINUTES;
                 } else {
                     throw new IllegalArgumentException("Invalid varbit format: " + varbitCheck);
                 }
@@ -153,6 +159,12 @@ public class Restriction {
                 } else if (varplayerCheck.contains("=")) {
                     parts =  varplayerCheck.split("=");
                     operator = TransportVarPlayer.Operator.EQUAL;
+                } else if (varplayerCheck.contains("&")) {
+                    parts = varplayerCheck.split("&");
+                    operator = TransportVarPlayer.Operator.BIT_SET;
+                } else if (varplayerCheck.contains("@")) {
+                    parts = varplayerCheck.split("@");
+                    operator = TransportVarPlayer.Operator.COOLDOWN_MINUTES;
                 } else {
                     throw new IllegalArgumentException("Invalid varplayer format: " + varplayerCheck);
                 }

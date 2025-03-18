@@ -52,7 +52,11 @@ public enum PlaySchedule {
 
     SHORT_DAY(LocalTime.of(9, 0), LocalTime.of(17, 0)),
     MEDIUM_DAY(LocalTime.of(8, 0), LocalTime.of(18, 0)),
-    LONG_DAY(LocalTime.of(6, 0), LocalTime.of(22, 0));
+    LONG_DAY(LocalTime.of(6, 0), LocalTime.of(22, 0)),
+
+    SHORT_NIGHT(LocalTime.of(23, 0), LocalTime.of(7, 0)),
+    MEDIUM_NIGHT(LocalTime.of(21, 0), LocalTime.of(9, 0)),
+    LONG_NIGHT(LocalTime.of(19, 0), LocalTime.of(11, 0));
 
     private final LocalTime startTime;
     private final LocalTime endTime;

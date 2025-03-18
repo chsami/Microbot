@@ -25,12 +25,6 @@ import java.awt.*;
 public class AutoFishPlugin extends Plugin {
     @Inject
     private AutoFishConfig config;
-    @Inject
-    private Client client;
-    @Inject
-    private ClientThread clientThread;
-    @Inject
-    Notifier notifier;
 
     @Provides
     AutoFishConfig provideConfig(ConfigManager configManager) {
@@ -43,16 +37,11 @@ public class AutoFishPlugin extends Plugin {
     private AutoFishOverlay fishingOverlay;
 
     @Inject
-    AutoFishingScript fishingScript;
+    private AutoFishingScript fishingScript;
 
 
     @Override
     protected void startUp() throws AWTException {
-        Microbot.pauseAllScripts = false;
-        Microbot.setClient(client);
-        Microbot.setClientThread(clientThread);
-        Microbot.setNotifier(notifier);
-        Microbot.setMouse(new VirtualMouse());
         if (overlayManager != null) {
             overlayManager.add(fishingOverlay);
         }

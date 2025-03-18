@@ -18,15 +18,16 @@ import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.player.Rs2PlayerModel;
 import net.runelite.client.ui.overlay.OverlayManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.FileWriter;
-
 import javax.inject.Inject;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -61,6 +62,9 @@ import java.util.stream.Collectors;
    @Inject
    private MouseManager mouseManager;
    private MouseListener mouseListener;
+   @Getter
+   private boolean playerDetected = false;
+   private boolean wasPlayerDetected = false;
    static int leftClickCounter;
 
    private static final File CLICK_TOTAL_DIR = new File(RuneLite.RUNELITE_DIR, "PlayerMonitor");
@@ -75,18 +79,53 @@ import java.util.stream.Collectors;
    private boolean overlayOn = false;
    private final HashMap<String, Integer> playerNameToTimeInRange = new HashMap<>();
 
+   private boolean isDangerousPlayerNearby() {
+     // Get local player's position
+     LocalPoint currentPosition = client.getLocalPlayer().getLocalLocation();
+
+     // Get players in combat level range from the Rs2Player utility class
+     List<Rs2PlayerModel> threatPlayers = Rs2Player.getPlayersInCombatLevelRange();
+
+     if (!threatPlayers.isEmpty()) {
+       //log.debug("Found {} players in combat level range", threatPlayers.size());
+     }
+
+     // Check if any of them are within the configured alarm radius
+     for (Rs2PlayerModel playerModel : threatPlayers) {
+       LocalPoint playerLocation = playerModel.getPlayer().getLocalLocation();
+       float distanceInTiles = playerLocation.distanceTo(currentPosition) / 128f;
+
+       if (distanceInTiles <= config.alarmRadius()) {
+         log.debug("Player {} is within alarm radius: {} tiles",
+                 playerModel.getPlayer().getName(), distanceInTiles);
+         return true;
+       }
+     }
+
+     return false;
+   }
+
+   /**
+    * Used by the script to check if a player is detected
+    * @return true if a dangerous player is detected
+    */
+   public boolean isPlayerDetected() {
+     return playerDetected;
+   }
 
    protected void startUp() throws Exception {
+     if(!config.liteMode()){
      overlayManager.add(mouseOverlay);
      loadMouseClicks();
      this.mouseListener = new MouseListener(this.client);
      this.mouseManager.registerMouseListener((net.runelite.client.input.MouseListener) this.mouseListener);
      this.previousClickTime=System.currentTimeMillis();
-     playerMonitorScript.run(config, overlayManager);
+     playerMonitorScript.run(config, overlayManager);}
    }
 
    @Subscribe
    public void onClientTick(ClientTick clientTick) {
+     if(!config.liteMode()) {
      List<Player> dangerousPlayers = getPlayersInRange().stream().filter(this::shouldPlayerTriggerAlarm).collect(Collectors.toList());
      if (this.config.timeoutToIgnore() > 0)
      { updatePlayersInRange(); }
@@ -98,8 +137,32 @@ import java.util.stream.Collectors;
      }
      if (!shouldAlarm) {
        this.overlayOn = false;
-     } 
-   }
+     } }
+      if(config.liteMode()) {
+        if (client.getGameState() != GameState.LOGGED_IN) {
+          if (playerDetected) {
+            playerDetected = false;
+            //log.debug("Not logged in, player detection disabled");
+          }
+          return;
+        }
+
+        // Check if there are dangerous players nearby
+        playerDetected = isDangerousPlayerNearby();
+
+        // Log state changes to avoid spamming logs
+        if (playerDetected != wasPlayerDetected) {
+          if (playerDetected) {
+            log.info("Dangerous player detected!");
+            Microbot.log("PlayerMonitorLite: Dangerous player detected!");
+          } else {
+            log.debug("No dangerous players detected");
+          }
+          wasPlayerDetected = playerDetected;
+        }
+      }
+     }
+
    private List<Player> getPlayersInRange() {
      LocalPoint currentPosition = this.client.getLocalPlayer().getLocalLocation();
      return this.client.getPlayers()

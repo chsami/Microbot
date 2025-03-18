@@ -78,9 +78,9 @@ public class StunAlchScript extends Script {
                         var npc = (Rs2NpcModel) Rs2Player.getInteracting();
 
                         if (npc != null) {
-                            Rs2Magic.castOn(plugin.getStunSpell().getSpell(), npc);
+                            Rs2Magic.castOn(plugin.getStunSpell().getRs2Spell().getAction(), npc);
                         } else {
-                            Rs2Magic.castOn(plugin.getStunSpell().getSpell(), Rs2Npc.getNpc(plugin.getStunNpcName()));
+                            Rs2Magic.castOn(plugin.getStunSpell().getRs2Spell().getAction(), Rs2Npc.getNpc(plugin.getStunNpcName()));
                         }
 
                         if (Rs2AntibanSettings.naturalMouse) {

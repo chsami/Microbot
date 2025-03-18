@@ -909,7 +909,7 @@ public class Rs2Player {
     public static void updateCombatTime() {
         Microbot.getClientThread().runOnClientThread(() -> {
             Player localPlayer = Microbot.getClient().getLocalPlayer();
-            if (localPlayer != null && localPlayer.getInteracting() != null) {
+            if (localPlayer != null) {
                 lastCombatTime = System.currentTimeMillis();
             }
             return null;
