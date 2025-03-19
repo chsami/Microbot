@@ -234,7 +234,7 @@ public class BanksBankStanderScript extends Script {
                     Rs2Inventory.interact(itemToInteract, config.menu());
                 }
             }
-            sleepUntilTick(1);
+            sleep().ticks(1).execute();
         } else {
             Rs2Inventory.interact(itemId, config.menu());
         }

@@ -58,24 +58,19 @@ public abstract class Script implements IScript {
     }
 
     public void sleep(int time) {
-        Global.sleep(time);
+        Global.sleep().until(time).execute();
     }
 
     public void sleep(int start, int end) {
-        Global.sleep(start, end);
+        Global.sleep().between(start, end).execute();
     }
 
     public boolean sleepUntil(BooleanSupplier awaitedCondition) {
-        return Global.sleepUntil(awaitedCondition, 5000);
+        return Global.sleep().until(awaitedCondition).execute();
     }
 
     public boolean sleepUntil(BooleanSupplier awaitedCondition, int time) {
-        boolean done;
-        long startTime = System.currentTimeMillis();
-        do {
-            done = awaitedCondition.getAsBoolean();
-        } while (!done && System.currentTimeMillis() - startTime < time);
-        return done;
+        return Global.sleep().until(awaitedCondition).timeout(time).execute();
     }
 
     /**
@@ -85,60 +80,24 @@ public abstract class Script implements IScript {
      * @return
      */
     public boolean sleepUntilTick(int ticksToWait) {
-        int startTick = Microbot.getClient().getTickCount();
-        return Global.sleepUntil(() -> Microbot.getClient().getTickCount() >= startTick + ticksToWait, ticksToWait * 600 + 2000);
+        return Global.sleep().ticks(ticksToWait).execute();
     }
 
-    /**
-     * Sleeps until a specified condition is met, running an action periodically, or until a timeout is reached.
-     *
-     * @param awaitedCondition The condition to wait for.
-     * @param action           The action to run periodically while waiting.
-     * @param timeoutMillis    The maximum time to wait in milliseconds.
-     * @param sleepMillis      The time to sleep between action executions in milliseconds.
-     * @return true if the condition was met within the timeout, false otherwise.
-     */
     public boolean sleepUntil(BooleanSupplier awaitedCondition, Runnable action, long timeoutMillis, int sleepMillis) {
-        long startTime = System.nanoTime();
-        long timeoutNanos = TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
-        try {
-            while (System.nanoTime() - startTime < timeoutNanos) {
-                action.run();
-                if (awaitedCondition.getAsBoolean()) {
-                    return true;
-                }
-                sleep(sleepMillis);
-            }
-        } catch (Exception e) {
-            Thread.currentThread().interrupt(); // Restore the interrupt status
-        }
-        return false; // Timeout reached without satisfying the condition
+        return Global.sleep().until(awaitedCondition).withAction(action).timeout(timeoutMillis).interval(sleepMillis).execute();
     }
 
 
     public boolean sleepUntil(BooleanSupplier awaitedCondition, BooleanSupplier resetCondition, int timeout) {
-        final Stopwatch watch = Stopwatch.createStarted();
-        while (!awaitedCondition.getAsBoolean() && watch.elapsed(TimeUnit.MILLISECONDS) < timeout) {
-            sleep(100);
-            if (resetCondition.getAsBoolean() && Microbot.isLoggedIn()) {
-                watch.reset();
-                watch.start();
-            }
-        }
-        return awaitedCondition.getAsBoolean();
+        return Global.sleep().until(awaitedCondition).withReset(resetCondition).timeout(timeout).execute();
     }
 
     public void sleepUntilOnClientThread(BooleanSupplier awaitedCondition) {
-        sleepUntilOnClientThread(awaitedCondition, 5000);
+        Global.sleep().until(awaitedCondition).onClientThread().execute();
     }
 
     public void sleepUntilOnClientThread(BooleanSupplier awaitedCondition, int time) {
-        boolean done;
-        long startTime = System.currentTimeMillis();
-        do {
-            Microbot.status = "[ConditionalSleep] for " + time / 1000 + " seconds";
-            done = Microbot.getClientThread().runOnClientThread(() -> awaitedCondition.getAsBoolean() || hasLeveledUp);
-        } while (!done && System.currentTimeMillis() - startTime < time);
+        Global.sleep().until(awaitedCondition).onClientThread().timeout(time).execute();
     }
 
 

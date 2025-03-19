@@ -13,6 +13,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
+import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
@@ -501,10 +502,10 @@ public class Rs2Bank {
         } else {
             invokeMenu(HANDLE_X_UNSET, rs2Item);
 
-            sleep(Rs2Random.randomGaussian(1100,200));
+            sleep().until(() -> Rs2Widget.hasWidget("Enter amount")).execute();
             Rs2Keyboard.typeString(String.valueOf(amount));
             Rs2Keyboard.enter();
-            sleepUntil(() -> Rs2Inventory.hasItem(rs2Item.id), 2500);
+            sleep().until(() -> Rs2Inventory.hasItem(rs2Item.id)).timeout(2500).execute();
             return true;
         }
     }
@@ -581,7 +582,7 @@ public class Rs2Bank {
         for (Rs2ItemModel item : items) {
             if (item == null) continue;
             depositAll(item);
-            sleep(Rs2Random.randomGaussian(400,200));
+            Rs2Inventory.waitForInventoryChanges(1000);
             result = true;
         }
         return result;
@@ -754,7 +755,7 @@ public class Rs2Bank {
 
     public static void withdrawOne(String name, int sleepTime) {
         withdrawOne(name, false);
-        sleep(sleepTime);
+        sleep().until(sleepTime).execute();
     }
 
     /**
@@ -1021,7 +1022,7 @@ public class Rs2Bank {
     public static void withdrawXAndEquip(int id, int amount) {
         if (Rs2Equipment.isWearing(id)) return;
         withdrawX(id, amount);
-        sleepUntil(() -> Rs2Inventory.hasItem(id));
+        sleep().until(() -> Rs2Inventory.hasItem(id)).execute();
         wearItem(id);
     }
 
@@ -1156,7 +1157,6 @@ public class Rs2Bank {
             }
 
             sleepUntil(Rs2Bank::isOpen);
-            sleep(Rs2Random.randomGaussian(800,200));
             return true;
         } catch (Exception ex) {
             System.out.println(ex.getMessage());
@@ -1190,7 +1190,6 @@ public class Rs2Bank {
             }
 
             sleepUntil(Rs2Bank::isOpen);
-            sleep(Rs2Random.randomGaussian(800,200));
             return true;
         } catch (Exception ex) {
             System.out.println(ex.getMessage());
@@ -1609,8 +1608,7 @@ public class Rs2Bank {
     public static boolean setWithdrawAsNote() {
         if (hasWithdrawAsNote()) return true;
         Rs2Widget.clickWidget(786458);
-        sleep(Rs2Random.randomGaussian(550,100));
-        return hasWithdrawAsNote();
+        return sleep().until(Rs2Bank::hasWithdrawAsNote).execute();
     }
 
     /**
@@ -1621,8 +1619,7 @@ public class Rs2Bank {
     public static boolean setWithdrawAsItem() {
         if (hasWithdrawAsItem()) return true;
         Rs2Widget.clickWidget(786456);
-        sleep(Rs2Random.randomGaussian(550,100));
-        return hasWithdrawAsItem();
+        return sleep().until(Rs2Bank::hasWithdrawAsItem).execute();
     }
 
     /**

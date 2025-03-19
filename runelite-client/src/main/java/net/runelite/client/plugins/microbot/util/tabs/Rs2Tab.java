@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.util.tabs;
 
 import net.runelite.api.VarClientInt;
+import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.VarcIntValues;
@@ -57,7 +58,7 @@ public class Rs2Tab {
             return true;
         }
         Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4678), InterfaceTab.INVENTORY));
-        return getCurrentTab() == InterfaceTab.INVENTORY;
+        return sleep().between(200, 300).execute();
     }
 
     public static boolean switchToCombatOptionsTab() {
@@ -65,7 +66,7 @@ public class Rs2Tab {
             return true;
         }
         Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4675), InterfaceTab.COMBAT));
-        return getCurrentTab() == InterfaceTab.COMBAT;
+        return sleep().between(200, 300).execute();
     }
 
     public static boolean switchToSkillsTab() {
@@ -73,7 +74,7 @@ public class Rs2Tab {
             return true;
         }
         Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4676), InterfaceTab.SKILLS));
-        return getCurrentTab() == InterfaceTab.SKILLS;
+        return sleep().between(200, 300).execute();
     }
 
     public static boolean switchToQuestTab() {
@@ -81,7 +82,7 @@ public class Rs2Tab {
             return true;
         }
         Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4677), InterfaceTab.QUESTS));
-        return getCurrentTab() == InterfaceTab.QUESTS;
+        return sleep().between(200, 300).execute();
     }
 
 
@@ -90,7 +91,7 @@ public class Rs2Tab {
             return true;
         }
         Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4679), InterfaceTab.EQUIPMENT));
-        return getCurrentTab() == InterfaceTab.EQUIPMENT;
+        return sleep().between(200, 300).execute();
     }
 
     public static boolean switchToPrayerTab() {
@@ -98,7 +99,7 @@ public class Rs2Tab {
             return true;
         }
         Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4680), InterfaceTab.PRAYER));
-        return getCurrentTab() == InterfaceTab.PRAYER;
+        return sleep().between(200, 300).execute();
     }
 
     public static boolean switchToMagicTab() {
@@ -106,7 +107,7 @@ public class Rs2Tab {
             return true;
         }
         Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4682), InterfaceTab.MAGIC));
-        return getCurrentTab() == InterfaceTab.MAGIC;
+        return sleep().between(200, 300).execute();
     }
 
     public static boolean switchToGroupingTab() {
@@ -114,7 +115,7 @@ public class Rs2Tab {
             return true;
         }
         Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4683), InterfaceTab.CHAT));
-        return getCurrentTab() == InterfaceTab.CHAT;
+        return sleep().between(200, 300).execute();
     }
 
     public static boolean switchToFriendsTab() {
@@ -122,7 +123,7 @@ public class Rs2Tab {
             return true;
         }
         Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4684), InterfaceTab.FRIENDS));
-        return getCurrentTab() == InterfaceTab.FRIENDS;
+        return sleep().between(200, 300).execute();
     }
 
     public static boolean switchToAccountManagementTab() {
@@ -130,7 +131,7 @@ public class Rs2Tab {
             return true;
         }
         Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(6517),  InterfaceTab.ACC_MAN));
-        return getCurrentTab() == InterfaceTab.ACC_MAN;
+        return sleep().between(200, 300).execute();
     }
 
 
@@ -139,7 +140,7 @@ public class Rs2Tab {
             return true;
         }
         Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4686),InterfaceTab.SETTINGS));
-        return getCurrentTab() == InterfaceTab.SETTINGS;
+        return sleep().between(200, 300).execute();
     }
 
     public static boolean switchToEmotesTab() {
@@ -147,7 +148,7 @@ public class Rs2Tab {
             return true;
         }
         Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4687), InterfaceTab.EMOTES));
-        return getCurrentTab() == InterfaceTab.EMOTES;
+        return sleep().between(200, 300).execute();
     }
 
     public static boolean switchToMusicTab() {
@@ -155,7 +156,7 @@ public class Rs2Tab {
             return true;
         }
         Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4688), InterfaceTab.MUSIC));
-        return getCurrentTab() == InterfaceTab.MUSIC;
+        return sleep().between(200, 300).execute();
     }
 
     public static boolean switchToLogout() {
@@ -169,9 +170,7 @@ public class Rs2Tab {
         if (tab == null) return false;
 
         Microbot.getMouse().click(tab.getBounds());
-        sleep(200, 600);
-
-        return getCurrentTab() == InterfaceTab.LOGOUT;
+        return sleep().between(200, 300).execute();
     }
 
     private static int getLogoutWidgetId() {
