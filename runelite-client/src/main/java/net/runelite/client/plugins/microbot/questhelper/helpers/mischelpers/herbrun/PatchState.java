@@ -29,7 +29,7 @@ import net.runelite.client.plugins.timetracking.farming.CropState;
 import net.runelite.client.plugins.timetracking.farming.Produce;
 
 @Value
-class PatchState {
+public class PatchState {
     Produce produce;
     CropState cropState;
     int stage;

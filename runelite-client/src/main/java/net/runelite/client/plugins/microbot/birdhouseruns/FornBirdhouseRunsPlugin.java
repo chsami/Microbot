@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.birdhouseruns;
 
 import com.google.inject.Provides;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.plugins.Plugin;
@@ -44,12 +45,6 @@ public class FornBirdhouseRunsPlugin extends Plugin {
             overlayManager.add(fornBirdhouseRunsOverlay);
         }
         fornBirdhouseRunsScript.run(config);
-//        botStatus = config.STEP(); for debugging
-        FornBirdhouseRunsInfo.botStatus = FornBirdhouseRunsInfo.states.GEARING;
-        FornBirdhouseRunsInfo.selectedSeed = config.SEED().getItemId();
-        FornBirdhouseRunsInfo.seedAmount = config.SEED().getAmountPerHouse();
-        FornBirdhouseRunsInfo.selectedLogs = config.LOG().getItemId();
-        FornBirdhouseRunsInfo.birdhouseType = config.LOG().getBirdhouseType();
     }
 
     protected void shutDown() {

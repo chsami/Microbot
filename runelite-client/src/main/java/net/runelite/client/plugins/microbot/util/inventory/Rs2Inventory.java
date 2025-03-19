@@ -154,7 +154,7 @@ public class Rs2Inventory {
         if (!primaryItemInteracted) {
             return false;
         }
-        sleep(100, 175);
+        sleepUntil(Rs2Inventory::isItemSelected);
 
         // Get a secondary item that isn't the same as the primary
         Rs2ItemModel secondaryItem = get(item -> item.getId() == secondary.getId() && item.getSlot() != primaryItem.getSlot());
@@ -204,7 +204,7 @@ public class Rs2Inventory {
         }
 
         boolean primaryItemInteracted = use(closestPrimaryItem);
-        sleep(100, 175);
+        sleepUntil(Rs2Inventory::isItemSelected);
         boolean secondaryItemInteracted = use(closestSecondaryItem);
         return primaryItemInteracted && secondaryItemInteracted;
 
@@ -246,7 +246,7 @@ public class Rs2Inventory {
         }
 
         boolean primaryItemInteracted = use(closestPrimaryItem);
-        sleep(100, 175);
+        sleepUntil(Rs2Inventory::isItemSelected);
         boolean secondaryItemInteracted = use(closestSecondaryItem);
         return primaryItemInteracted && secondaryItemInteracted;
     }
@@ -479,7 +479,7 @@ public class Rs2Inventory {
             if (item == null) continue;
             invokeMenu(item, "Drop");
             if (!Rs2AntibanSettings.naturalMouse)
-                sleep(150, 300);
+                sleep(150, 300);;
         }
         return true;
     }
@@ -497,7 +497,7 @@ public class Rs2Inventory {
             if (item == null) continue;
             invokeMenu(item, "Drop");
             if (!Rs2AntibanSettings.naturalMouse)
-                sleep(150, 300);
+                sleep(150, 300);;
         }
         return true;
     }
@@ -515,7 +515,7 @@ public class Rs2Inventory {
             if (item == null) continue;
             invokeMenu(item, "Drop");
             if (!Rs2AntibanSettings.naturalMouse)
-                sleep(150, 300);
+                sleep(150, 300);;
         }
         return true;
     }
@@ -533,7 +533,7 @@ public class Rs2Inventory {
             if (item == null) continue;
             invokeMenu(item, "Drop");
             if (!Rs2AntibanSettings.naturalMouse)
-                sleep(150, 300);
+                sleep(150, 300);;
         }
         return true;
     }
@@ -551,7 +551,7 @@ public class Rs2Inventory {
             if (item == null) continue;
             invokeMenu(item, "Drop");
             if (!Rs2AntibanSettings.naturalMouse)
-                sleep(150, 300);
+                sleep(150, 300);;
         }
         return true;
     }
@@ -569,7 +569,7 @@ public class Rs2Inventory {
             if (item == null) continue;
             invokeMenu(item, "Drop");
             if (!Rs2AntibanSettings.naturalMouse)
-                sleep(150, 300);
+                sleep(150, 300);;
         }
         return true;
     }
@@ -597,7 +597,7 @@ public class Rs2Inventory {
             if (item == null) continue;
             invokeMenu(item, "Drop");
             if (!Rs2AntibanSettings.naturalMouse)
-                sleep(150, 300);
+                sleep(150, 300);;
         }
         return true;
     }
@@ -659,7 +659,7 @@ public class Rs2Inventory {
             if (item == null) continue;
             invokeMenu(item, "Drop");
             if (!Rs2AntibanSettings.naturalMouse)
-                sleep(150, 300);
+                sleep(150, 300);;
         }
         return true;
     }
@@ -694,7 +694,7 @@ public class Rs2Inventory {
 
             invokeMenu(item, "Drop");
             if (!Rs2AntibanSettings.naturalMouse)
-                sleep(150, 300);
+                sleep(150, 300);;
         }
         return true;
     }
@@ -1953,7 +1953,7 @@ public class Rs2Inventory {
     public static boolean useUnNotedItemOnObject(String item, TileObject object) {
         if (Rs2Bank.isOpen()) return false;
         useUnNoted(item);
-        sleep(100);
+        sleepUntil(Rs2Inventory::isItemSelected);
         if (!isItemSelected()) return false;
         Rs2GameObject.interact(object);
         return true;
@@ -1970,7 +1970,7 @@ public class Rs2Inventory {
     public static boolean useItemOnObject(int item, int objectID) {
         if (Rs2Bank.isOpen()) return false;
         use(item);
-        sleep(100);
+        sleepUntil(Rs2Inventory::isItemSelected);
         if (!isItemSelected()) return false;
         Rs2GameObject.interact(objectID);
         return true;
@@ -1985,7 +1985,7 @@ public class Rs2Inventory {
     public static boolean useItemOnNpc(int itemId, int npcID) {
         if (Rs2Bank.isOpen()) return false;
         use(itemId);
-        sleep(100);
+        sleepUntil(Rs2Inventory::isItemSelected);
         if (!isItemSelected()) return false;
         Rs2Npc.interact(npcID);
         return true;
@@ -2000,7 +2000,7 @@ public class Rs2Inventory {
     public static boolean useItemOnNpc(int itemId, NPC Npc) {
         if (Rs2Bank.isOpen()) return false;
         use(itemId);
-        sleep(100);
+        sleepUntil(Rs2Inventory::isItemSelected);
         if (!isItemSelected()) return false;
         Rs2Npc.interact(Npc);
         return true;
@@ -2149,7 +2149,6 @@ public class Rs2Inventory {
         }
 
         if (!action.isEmpty()) {
-            assert inventoryWidgets != null;
             var itemWidget = Arrays.stream(inventoryWidgets).filter(x -> x != null && x.getIndex() == rs2Item.slot).findFirst().orElseGet(null);
 
             String[] actions = itemWidget != null && itemWidget.getActions() != null ?

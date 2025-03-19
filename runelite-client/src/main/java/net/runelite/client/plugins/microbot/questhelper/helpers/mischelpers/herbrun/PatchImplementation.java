@@ -37,7 +37,7 @@ import javax.annotation.Nullable;
 public enum PatchImplementation {
     BELLADONNA(Tab.SPECIAL, "", false) {
         @Override
-        PatchState forVarbitValue(int value) {
+        public PatchState forVarbitValue(int value) {
             if (value >= 0 && value <= 3) {
                 // Belladonna patch[Rake,Inspect,Guide] 7560,7559,7558,7557
                 return new PatchState(Produce.WEEDS, CropState.GROWING, 3 - value);
@@ -67,7 +67,7 @@ public enum PatchImplementation {
     },
     MUSHROOM(Tab.SPECIAL, "", false) {
         @Override
-        PatchState forVarbitValue(int value) {
+        public PatchState forVarbitValue(int value) {
             if (value >= 0 && value <= 3) {
                 // Mushroom patch[Rake,Inspect,Guide] 8314,8313,8312,8311
                 return new PatchState(Produce.WEEDS, CropState.GROWING, 3 - value);
@@ -97,7 +97,7 @@ public enum PatchImplementation {
     },
     HESPORI(Tab.SPECIAL, "", true) {
         @Override
-        PatchState forVarbitValue(int value) {
+        public PatchState forVarbitValue(int value) {
             if (value >= 0 && value <= 3) {
                 // Hespori patch[Rake,Inspect,Guide] 33722,33723,33724,33725
                 return new PatchState(Produce.WEEDS, CropState.GROWING, 3 - value);
@@ -119,7 +119,7 @@ public enum PatchImplementation {
     },
     ALLOTMENT(Tab.ALLOTMENT, "", false) {
         @Override
-        PatchState forVarbitValue(int value) {
+        public PatchState forVarbitValue(int value) {
             if (value >= 0 && value <= 3) {
                 // Allotment[Rake,Inspect,Guide] 8576,8575,8574,8573
                 return new PatchState(Produce.WEEDS, CropState.GROWING, 3 - value);
@@ -385,7 +385,7 @@ public enum PatchImplementation {
     },
     HERB(Tab.HERB, "", false) {
         @Override
-        PatchState forVarbitValue(int value) {
+        public PatchState forVarbitValue(int value) {
             if (value >= 0 && value <= 3) {
                 // Herb patch[Rake,Inspect,Guide] 8135,8134,8133,8132
                 return new PatchState(Produce.WEEDS, CropState.GROWING, 3 - value);
@@ -599,7 +599,7 @@ public enum PatchImplementation {
     },
     FLOWER(Tab.FLOWER, "", false) {
         @Override
-        PatchState forVarbitValue(int value) {
+        public PatchState forVarbitValue(int value) {
             if (value >= 0 && value <= 3) {
                 // Flower Patch[Rake,Inspect,Guide] 7843,7842,7841,7840
                 return new PatchState(Produce.WEEDS, CropState.GROWING, 3 - value);
@@ -817,7 +817,7 @@ public enum PatchImplementation {
     },
     BUSH(Tab.BUSH, "", true) {
         @Override
-        PatchState forVarbitValue(int value) {
+        public PatchState forVarbitValue(int value) {
             if (value >= 0 && value <= 3) {
                 // Bush Patch[Rake,Inspect,Guide] 7576,7575,7574,7573
                 return new PatchState(Produce.WEEDS, CropState.GROWING, 3 - value);
@@ -1003,7 +1003,7 @@ public enum PatchImplementation {
     },
     FRUIT_TREE(Tab.FRUIT_TREE, "", true) {
         @Override
-        PatchState forVarbitValue(int value) {
+        public PatchState forVarbitValue(int value) {
             if (value >= 0 && value <= 3) {
                 // Fruit Tree Patch[Rake,Inspect,Guide] 8050,8049,8048,8047
                 return new PatchState(Produce.WEEDS, CropState.GROWING, 3 - value);
@@ -1229,7 +1229,7 @@ public enum PatchImplementation {
     },
     HOPS(Tab.HOPS, "", false) {
         @Override
-        PatchState forVarbitValue(int value) {
+        public PatchState forVarbitValue(int value) {
             if (value >= 0 && value <= 3) {
                 // Hops Patch[Rake,Inspect,Guide] 8210,8209,8208,8207
                 return new PatchState(Produce.WEEDS, CropState.GROWING, 3 - value);
@@ -1471,7 +1471,7 @@ public enum PatchImplementation {
     },
     TREE(Tab.TREE, "", true) {
         @Override
-        PatchState forVarbitValue(int value) {
+        public PatchState forVarbitValue(int value) {
             if (value >= 0 && value <= 3) {
                 // Tree patch[Rake,Inspect,Guide] 8395,8394,8393,8392
                 return new PatchState(Produce.WEEDS, CropState.GROWING, 3 - value);
@@ -1697,7 +1697,7 @@ public enum PatchImplementation {
     },
     HARDWOOD_TREE(Tab.TREE, "Hardwood Trees", true) {
         @Override
-        PatchState forVarbitValue(int value) {
+        public PatchState forVarbitValue(int value) {
             if (value >= 0 && value <= 3) {
                 // Tree patch[Rake,Inspect,Guide] 30479,30478,30477,30476
                 return new PatchState(Produce.WEEDS, CropState.GROWING, 3 - value);
@@ -1763,7 +1763,7 @@ public enum PatchImplementation {
     },
     REDWOOD(Tab.TREE, "Redwood Trees", true) {
         @Override
-        PatchState forVarbitValue(int value) {
+        public PatchState forVarbitValue(int value) {
             if (value >= 0 && value <= 3) {
                 // Redwood tree patch[Rake,Inspect,Guide] 34050,34049,34048,34047
                 return new PatchState(Produce.WEEDS, CropState.GROWING, 3 - value);
@@ -1801,7 +1801,7 @@ public enum PatchImplementation {
     },
     SPIRIT_TREE(Tab.TREE, "Spirit Trees", true) {
         @Override
-        PatchState forVarbitValue(int value) {
+        public PatchState forVarbitValue(int value) {
             if (value >= 0 && value <= 3) {
                 // Spirit Tree Patch[Rake,Inspect,Guide] 8342,8341,8340,8339
                 return new PatchState(Produce.WEEDS, CropState.GROWING, 3 - value);
@@ -1839,7 +1839,7 @@ public enum PatchImplementation {
     },
     ANIMA(Tab.SPECIAL, "", false) {
         @Override
-        PatchState forVarbitValue(int value) {
+        public PatchState forVarbitValue(int value) {
             if (value >= 0 && value <= 3) {
                 // Anima patch[Rake,Inspect,Guide] 33983,33982,33981,33980
                 return new PatchState(Produce.WEEDS, CropState.GROWING, 3 - value);
@@ -1878,7 +1878,7 @@ public enum PatchImplementation {
     },
     CACTUS(Tab.SPECIAL, "Cactus", true) {
         @Override
-        PatchState forVarbitValue(int value) {
+        public PatchState forVarbitValue(int value) {
             if (value >= 0 && value <= 3) {
                 // Cactus patch[Rake,Inspect,Guide] 7746,7745,7744,7743
                 return new PatchState(Produce.WEEDS, CropState.GROWING, 3 - value);
@@ -1936,7 +1936,7 @@ public enum PatchImplementation {
     },
     SEAWEED(Tab.SPECIAL, "Seaweed", false) {
         @Override
-        PatchState forVarbitValue(int value) {
+        public PatchState forVarbitValue(int value) {
             if (value >= 0 && value <= 3) {
                 // Seaweed patch[Rake,Inspect,Guide] 30486,30485,30484,30483
                 return new PatchState(Produce.WEEDS, CropState.GROWING, 3 - value);
@@ -1966,7 +1966,7 @@ public enum PatchImplementation {
     },
     CALQUAT(Tab.FRUIT_TREE, "Calquat", true) {
         @Override
-        PatchState forVarbitValue(int value) {
+        public PatchState forVarbitValue(int value) {
             if (value >= 0 && value <= 3) {
                 // Calquat patch[Rake,Inspect,Guide] 7775,7774,7773,7772
                 return new PatchState(Produce.WEEDS, CropState.GROWING, 3 - value);
@@ -2000,7 +2000,7 @@ public enum PatchImplementation {
     },
     CELASTRUS(Tab.FRUIT_TREE, "Celastrus", true) {
         @Override
-        PatchState forVarbitValue(int value) {
+        public PatchState forVarbitValue(int value) {
             if (value >= 0 && value <= 3) {
                 // Celastrus patch[Rake,Inspect,Guide] 33698,33697,33696,33695
                 return new PatchState(Produce.WEEDS, CropState.GROWING, 3 - value);
@@ -2046,7 +2046,7 @@ public enum PatchImplementation {
     },
     GRAPES(Tab.GRAPE, "", true) {
         @Override
-        PatchState forVarbitValue(int value) {
+        public PatchState forVarbitValue(int value) {
             if (value >= 0 && value <= 1) {
                 // Empty, empty+fertilizer
                 return new PatchState(Produce.WEEDS, CropState.GROWING, 3);
@@ -2065,7 +2065,7 @@ public enum PatchImplementation {
     },
     CRYSTAL_TREE(Tab.FRUIT_TREE, "Crystal Tree", true) {
         @Override
-        PatchState forVarbitValue(int value) {
+        public PatchState forVarbitValue(int value) {
             if (value >= 0 && value <= 3) {
                 // Crystal tree patch[Rake,Inspect,Guide] 34910,34909,34908,34907
                 return new PatchState(Produce.WEEDS, CropState.GROWING, 3 - value);
@@ -2087,7 +2087,7 @@ public enum PatchImplementation {
     },
     COMPOST(Tab.SPECIAL, "Compost Bin", true) {
         @Override
-        PatchState forVarbitValue(int value) {
+        public PatchState forVarbitValue(int value) {
             if (value == 0) {
                 // Compost bin[Examine] 7808
                 return new PatchState(Produce.EMPTY_COMPOST_BIN, CropState.EMPTY, 0);
@@ -2145,7 +2145,7 @@ public enum PatchImplementation {
     },
     BIG_COMPOST(Tab.SPECIAL, "Big Compost Bin", true) {
         @Override
-        PatchState forVarbitValue(int value) {
+        public PatchState forVarbitValue(int value) {
             if (value == 0) {
                 // Big compost bin[Examine] 33762
                 return new PatchState(Produce.EMPTY_BIG_COMPOST_BIN, CropState.EMPTY, 0);
@@ -2231,5 +2231,5 @@ public enum PatchImplementation {
     private final boolean healthCheckRequired;
 
     @Nullable
-    abstract PatchState forVarbitValue(int value);
+    public abstract PatchState forVarbitValue(int value);
 }

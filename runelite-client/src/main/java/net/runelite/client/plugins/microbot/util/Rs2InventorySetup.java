@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.util;
 
+import lombok.Getter;
 import net.runelite.api.Varbits;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
@@ -25,7 +26,7 @@ import static net.runelite.client.plugins.microbot.util.Global.sleep;
  * the correct items are equipped and in the inventory.
  */
 public class Rs2InventorySetup {
-
+    @Getter
     InventorySetup inventorySetup;
 
     ScheduledFuture<?> _mainScheduler;

@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.birdhouseruns;
+package net.runelite.client.plugins.microbot.dailytasks;
 
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -7,10 +7,9 @@ import net.runelite.client.ui.overlay.components.TitleComponent;
 import javax.inject.Inject;
 import java.awt.*;
 
-public class FornBirdhouseRunsOverlay extends OverlayPanel {
-
+public class DailyTasksOverlay extends OverlayPanel {
     @Inject
-    FornBirdhouseRunsOverlay(FornBirdhouseRunsPlugin plugin)
+    DailyTasksOverlay(DailyTasksPlugin plugin)
     {
         super(plugin);
         setPosition(OverlayPosition.TOP_LEFT);
@@ -21,7 +20,7 @@ public class FornBirdhouseRunsOverlay extends OverlayPanel {
         try {
             panelComponent.setPreferredSize(new Dimension(200, 300));
             panelComponent.getChildren().add(TitleComponent.builder()
-                    .text("Status: " + FornBirdhouseRunsInfo.botStatus)
+                    .text("Status: " + DailyTasksPlugin.currentState)
                     .color(Color.GREEN)
                     .build());
 

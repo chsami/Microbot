@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.liftedmango.herbrun;
+package net.runelite.client.plugins.microbot.herbrun;
 
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
@@ -12,13 +12,13 @@ import net.runelite.client.ui.overlay.OverlayManager;
 import javax.inject.Inject;
 import java.awt.*;
 
+@Slf4j
 @PluginDescriptor(
-        name = PluginDescriptor.LiftedMango + "Herb runner",
-        description = "LiftedMango's Herb runner",
-        tags = {"herb", "liftedmango", "farming", "money making", "skilling", "s1-duck"},
+        name = PluginDescriptor.Mocrosoft + "Herb runner",
+        description = "Herb runner",
+        tags = {"herb", "farming", "money making", "skilling"},
         enabledByDefault = false
 )
-@Slf4j
 public class HerbrunPlugin extends Plugin {
     @Inject
     private HerbrunConfig config;
@@ -35,13 +35,15 @@ public class HerbrunPlugin extends Plugin {
     @Inject
     HerbrunScript herbrunScript;
 
+    static String status;
+
 
     @Override
     protected void startUp() throws AWTException {
         if (overlayManager != null) {
             overlayManager.add(HerbrunOverlay);
         }
-        herbrunScript.run(config);
+        herbrunScript.run();
     }
 
     protected void shutDown() {
