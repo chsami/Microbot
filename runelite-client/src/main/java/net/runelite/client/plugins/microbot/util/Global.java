@@ -49,8 +49,8 @@ public class Global {
         }
     }
 
-    public static void sleepUntil(BooleanSupplier awaitedCondition) {
-        sleepUntil(awaitedCondition, 5000);
+    public static boolean sleepUntil(BooleanSupplier awaitedCondition) {
+        return sleepUntil(awaitedCondition, 5000);
     }
 
     @SneakyThrows

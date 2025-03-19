@@ -9,6 +9,8 @@ import net.runelite.api.widgets.InterfaceID;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.util.Global;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -18,18 +20,19 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.time.Duration;
 import java.time.LocalTime;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.*;
 import java.util.function.BooleanSupplier;
+import java.util.stream.Collectors;
 
 @Slf4j
-public abstract class Script implements IScript {
+public abstract class Script implements IScript  {
 
     protected ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(10);
     protected ScheduledFuture<?> scheduledFuture;
-    public ScheduledFuture<?> mainScheduledFuture;
+    protected ScheduledFuture<?> preRequisiteFuture;
+    protected ScheduledFuture<?> mainScheduledFuture;
     public static boolean hasLeveledUp = false;
     public static boolean useStaminaPotsIfNeeded = true;
 
@@ -42,10 +45,15 @@ public abstract class Script implements IScript {
 
     public LocalTime startTime;
 
+    @Getter
+    protected List<ScriptItem> requiredItems = new ArrayList<>();
+
+    private static boolean requiredItemsHandled = false;
+
     /**
      * Get the total runtime of the script
      *
-     * @return
+     * @return the total runtime of the script
      */
     public Duration getRunTime() {
         if (startTime == null) return Duration.ofSeconds(0);
@@ -143,22 +151,107 @@ public abstract class Script implements IScript {
 
 
     public void shutdown() {
+        if (mainScheduledFuture != null && !mainScheduledFuture.isDone()) {
+            mainScheduledFuture.cancel(true);
+        }
         if (scheduledFuture != null && !scheduledFuture.isDone()) {
             scheduledFuture.cancel(true);
         }
-        if (mainScheduledFuture != null && !mainScheduledFuture.isDone()) {
-            mainScheduledFuture.cancel(true);
-            ShortestPathPlugin.exit();
-            if (Microbot.getClientThread().scheduledFuture != null)
-                Microbot.getClientThread().scheduledFuture.cancel(true);
-            initialPlayerLocation = null;
-            Microbot.pauseAllScripts = false;
-            Rs2Walker.disableTeleports = false;
-            Microbot.getSpecialAttackConfigs().reset();
-            Rs2Walker.setTarget(null);
+        if (preRequisiteFuture != null && !preRequisiteFuture.isDone()) {
+            preRequisiteFuture.cancel(true);
         }
+        scheduledFuture = null;
+        preRequisiteFuture = null;
+
+        ShortestPathPlugin.exit();
+        if (Microbot.getClientThread().scheduledFuture != null)
+            Microbot.getClientThread().scheduledFuture.cancel(true);
+        initialPlayerLocation = null;
+        Microbot.pauseAllScripts = false;
+        Rs2Walker.disableTeleports = false;
+        Microbot.getSpecialAttackConfigs().reset();
+        Rs2Walker.setTarget(null);
         startTime = null;
+        requiredItems.clear();
+        requiredItemsHandled = false;
     }
+
+    /**
+     * Handles retrieving required items from bank and equipping required equipment
+     * @return true if all required items and equipment are handled, false otherwise
+     */
+    public boolean handlePrerequisites() {
+        if (requiredItemsHandled || requiredItems.isEmpty()) {
+            requiredItemsHandled = true;
+            return true;
+        }
+
+        // Check if we already have all required items
+        List<ScriptItem> missingItems = new ArrayList<>();
+        for (ScriptItem item : requiredItems) {
+            if ((item.isEquipped() && !item.isWearing()) || (!item.isEquipped() && !item.hasInInventory())) {
+                missingItems.add(item);
+            }
+        }
+
+        // If nothing is missing, we're done
+        if (missingItems.isEmpty()) {
+            requiredItemsHandled = true;
+            return true;
+        }
+
+        // Go to bank if needed
+        if (!Rs2Bank.isOpen() && !Rs2Bank.openBank()) {
+            BankLocation bankLocation = Rs2Bank.getNearestBank();
+            Rs2Walker.walkTo(bankLocation.getWorldPoint());
+            sleepUntil(Rs2Bank::openBank, 20000);
+        }
+
+        // Only proceed if bank is actually open
+        if (Rs2Bank.isOpen()) {
+            //TODO: We should deposit only unwanted items and equipment
+            Rs2Bank.depositAll();
+            Rs2Bank.depositEquipment();
+
+            // Withdraw missing items
+            for (ScriptItem item : requiredItems) {
+                item.withdraw();
+            }
+
+            Rs2Bank.closeBank();
+            sleepUntil(() -> !Rs2Bank.isOpen(), 5000);
+        }
+
+        // Equip required equipment
+        requiredItems.stream()
+                .filter(item -> item.isEquipped() && !item.isWearing() && item.hasInInventory())
+                .forEach(ScriptItem::wear);
+
+        // Verify all items are handled
+        List<ScriptItem> stillMissing = requiredItems.stream()
+                .filter(item -> (item.isEquipped() && !item.isWearing()) ||
+                        (!item.isEquipped() && !item.hasInInventory()))
+                .collect(Collectors.toList());
+
+        if (!stillMissing.isEmpty()) {
+            StringBuilder message = new StringBuilder("Cannot continue script execution.\n");
+            stillMissing.forEach(item -> {
+                String itemName = item.getName() != null ? item.getName() : "ID:" + item.getId();
+                message.append("Missing required item: ").append(itemName)
+                        .append(" x").append(item.getQuantity()).append("\n");
+            });
+            message.append("Please ensure you have all required items in your bank.");
+
+            Microbot.showMessage(message.toString());
+            log.error(message.toString());
+            shutdown();
+            return false;
+        }
+
+        requiredItemsHandled = true;
+        return true;
+    }
+
 
     public boolean run() {
         if (startTime == null) {
@@ -196,13 +289,17 @@ public abstract class Script implements IScript {
             if (Microbot.enableAutoRunOn && hasRunEnergy)
                 Rs2Player.toggleRunEnergy(true);
 
+            // Handle required items and equipment before proceeding with script
+            if (!requiredItemsHandled && preRequisiteFuture == null) {
+                preRequisiteFuture = scheduledExecutorService.schedule(this::handlePrerequisites, 0, TimeUnit.MILLISECONDS);
+            }
 
             if (!hasRunEnergy && Microbot.useStaminaPotsIfNeeded && Rs2Player.isMoving()) {
                 Rs2Inventory.useRestoreEnergyItem();
             }
         }
 
-        return true;
+        return preRequisiteFuture == null || preRequisiteFuture.isDone();
     }
 
     @Deprecated(since = "1.6.9 - Use Rs2Keyboard.keyPress", forRemoval = true)

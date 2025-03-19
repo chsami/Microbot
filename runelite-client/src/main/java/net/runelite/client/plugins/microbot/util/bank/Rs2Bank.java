@@ -703,6 +703,7 @@ public class Rs2Bank {
         } else {
             invokeMenu(2, rs2Item);
         }
+        sleepUntil(() -> Rs2Inventory.hasItem(rs2Item.id), 1000);
     }
 
     /**
@@ -904,7 +905,7 @@ public class Rs2Bank {
      * @param amount amount to withdraw
      * @param exact  exact search based on equalsIgnoreCase
      */
-    private static boolean withdrawX(String name, int amount, boolean exact) {
+    public static boolean withdrawX(String name, int amount, boolean exact) {
         return withdrawXItem(findBankItem(name, exact), amount);
     }
 
