@@ -68,6 +68,16 @@ public class ScriptSchedulerWindow extends JFrame {
             }
         };
 
+        tableModel.addTableModelListener(e -> {
+            if (e.getColumn() == 4) { // Enabled column
+                int row = e.getFirstRow();
+                Boolean enabled = (Boolean) tableModel.getValueAt(row, 4);
+                ScheduledScript script = plugin.getScheduledScripts().get(row);
+                script.setEnabled(enabled);
+                plugin.saveScheduledScripts(); // Call the method to save changes
+            }
+        });
+
         // Create the table
         scheduleTable = new JTable(tableModel);
         scheduleTable.setFillsViewportHeight(true);

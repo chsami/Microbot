@@ -17,7 +17,8 @@ import java.awt.*;
         name = PluginDescriptor.Mocrosoft + "Herb runner",
         description = "Herb runner",
         tags = {"herb", "farming", "money making", "skilling"},
-        enabledByDefault = false
+        enabledByDefault = false,
+        canBeScheduled = true
 )
 public class HerbrunPlugin extends Plugin {
     @Inject
@@ -49,17 +50,6 @@ public class HerbrunPlugin extends Plugin {
     protected void shutDown() {
         herbrunScript.shutdown();
         overlayManager.remove(HerbrunOverlay);
-    }
-    int ticks = 10;
-    @Subscribe
-    public void onGameTick(GameTick tick)
-    {
-        if (ticks > 0) {
-            ticks--;
-        } else {
-            ticks = 10;
-        }
-
     }
 
 }

@@ -13,7 +13,8 @@ import static net.runelite.client.plugins.PluginDescriptor.Mocrosoft;
         name = Mocrosoft + "Daily Tasks",
         description = "Microbot daily tasks plugin",
         tags = {"misc"},
-        enabledByDefault = false
+        enabledByDefault = false,
+        canBeScheduled = true
 )
 public class DailyTasksPlugin extends Plugin {
     static final String CONFIG_GROUP = "dailytasks";

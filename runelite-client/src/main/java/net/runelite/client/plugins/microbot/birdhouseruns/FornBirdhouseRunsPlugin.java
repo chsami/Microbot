@@ -17,7 +17,8 @@ import java.awt.*;
         name = PluginDescriptor.Forn + "Birdhouse Runner",
         description = "Does a birdhouse run",
         tags = {"FornBirdhouseRuns", "forn"},
-        enabledByDefault = false
+        enabledByDefault = false,
+        canBeScheduled = true
 )
 @Slf4j
 public class FornBirdhouseRunsPlugin extends Plugin {

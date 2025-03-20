@@ -12,12 +12,11 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.accountselector.AutoLoginPlugin;
-import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerPlugin;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.util.ImageUtil;
 
 import javax.inject.Inject;
 import java.awt.image.BufferedImage;
@@ -77,11 +76,11 @@ public class ScriptSchedulerPlugin extends Plugin {
     protected void startUp() {
         panel = new ScriptSchedulerPanel(this, config);
 
-        BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
+        final BufferedImage icon = ImageUtil.loadImageResource(ScriptSchedulerPlugin.class, "icon.png");
         navButton = NavigationButton.builder()
                 .tooltip("Script Scheduler")
                 .priority(10)
-                .icon(image)
+                .icon(icon)
                 .panel(panel)
                 .build();
 
@@ -279,7 +278,7 @@ public class ScriptSchedulerPlugin extends Plugin {
         return new ArrayList<>(scheduledScripts);
     }
 
-    private void saveScheduledScripts() {
+    void saveScheduledScripts() {
         // Convert to JSON and save to config
         String json = ScheduledScript.toJson(scheduledScripts);
         config.setScheduledScripts(json);
@@ -295,14 +294,7 @@ public class ScriptSchedulerPlugin extends Plugin {
 
     public List<String> getAvailableScripts() {
         return Microbot.getPluginManager().getPlugins().stream()
-                .filter(x -> x.getClass().getPackage().getName().toLowerCase().contains("microbot")
-                        && !x.getClass().getSimpleName().equalsIgnoreCase("QuestHelperPlugin")
-                        && !x.getClass().getSimpleName().equalsIgnoreCase("MInventorySetupsPlugin")
-                        && !x.getClass().getSimpleName().equalsIgnoreCase("MicrobotPlugin")
-                        && !x.getClass().getSimpleName().equalsIgnoreCase("MicrobotConfigPlugin")
-                        && !x.getClass().getSimpleName().equalsIgnoreCase("ShortestPathPlugin")
-                        && !x.getClass().getSimpleName().equalsIgnoreCase("AntibanPlugin")
-                        && !x.getClass().getSimpleName().equalsIgnoreCase("ExamplePlugin"))
+                .filter(x -> x.getClass().getAnnotation(PluginDescriptor.class).canBeScheduled())
                 .map(Plugin::getName)
                 .sorted()
                 .collect(Collectors.toList());
