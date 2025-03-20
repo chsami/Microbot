@@ -5,6 +5,8 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
@@ -57,6 +59,11 @@ public class DailyTasksScript extends Script {
             if (currentTask == null) {
                 if (tasksToComplete.isEmpty()) {
                     DailyTasksPlugin.currentState = "Finished";
+                    if (config.goToBank()) {
+                        BankLocation bankLocation = Rs2Bank.getNearestBank();
+                        boolean arrived = Rs2Walker.walkTo(bankLocation.getWorldPoint());
+                        sleepUntil(() -> arrived, 20000);
+                    }
                     shutdown();
                     return;
                 }

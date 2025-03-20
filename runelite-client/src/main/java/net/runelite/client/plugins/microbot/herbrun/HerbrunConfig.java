@@ -34,6 +34,17 @@ public interface HerbrunConfig extends Config {
     }
 
     @ConfigItem(
+            keyName = "goToBank",
+            name = "Go to bank",
+            description = "Go to closest bank after run",
+            position = 2,
+            section = settingsSection
+    )
+    default boolean goToBank() {
+        return true;
+    }
+
+    @ConfigItem(
             keyName = "enableTrollheim",
             name = "Enable Trollheim Patch",
             description = "Enable Trollheim patch in herb run",

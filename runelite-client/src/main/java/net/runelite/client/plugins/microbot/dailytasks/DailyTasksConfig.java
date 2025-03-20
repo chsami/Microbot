@@ -17,6 +17,17 @@ public interface DailyTasksConfig extends Config {
     default String inventorySetup() {
         return "";
     }
+
+    @ConfigItem(
+            keyName = "goToBank",
+            name = "Go to bank",
+            description = "Go to closest bank after run",
+            position = 1
+    )
+    default boolean goToBank() {
+        return true;
+    }
+
     @ConfigSection(
             name = "Tasks",
             description = "Configure which daily tasks to complete",

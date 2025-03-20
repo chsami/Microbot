@@ -10,6 +10,9 @@ import net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.herb
 import net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.herbrun.FarmingPatch;
 import net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.herbrun.FarmingWorld;
 import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
+import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
@@ -17,6 +20,7 @@ import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.timetracking.Tab;
 import net.runelite.client.plugins.timetracking.farming.CropState;
 
@@ -70,6 +74,11 @@ public class HerbrunScript extends Script {
             if (currentPatch == null) getNextPatch();
             if (currentPatch == null) {
                 HerbrunPlugin.status = "Finished";
+                if (config.goToBank()) {
+                    BankLocation bankLocation = Rs2Bank.getNearestBank();
+                    boolean arrived = Rs2Walker.walkTo(bankLocation.getWorldPoint());
+                    sleepUntil(() -> arrived, 20000);
+                }
                 shutdown();
             }
 
@@ -112,13 +121,13 @@ public class HerbrunScript extends Script {
 
     private boolean handleHerbPatch() {
         if (Rs2Inventory.isFull()) {
-        Rs2NpcModel leprechaun = Rs2Npc.getNpc("Tool leprechaun");
-        if (leprechaun != null) {
-            Rs2ItemModel unNoted = Rs2Inventory.getUnNotedItem("Grimy", false);
-            Rs2Inventory.use(unNoted);
-            Rs2Npc.interact(leprechaun, "Use");
-            Rs2Inventory.waitForInventoryChanges(10000);
-        }
+            Rs2NpcModel leprechaun = Rs2Npc.getNpc("Tool leprechaun");
+            if (leprechaun != null) {
+                Rs2ItemModel unNoted = Rs2Inventory.getUnNotedItem("Grimy", false);
+                Rs2Inventory.use(unNoted);
+                Rs2Npc.interact(leprechaun, "Use");
+                Rs2Inventory.waitForInventoryChanges(10000);
+            }
             return false;
         }
 
@@ -146,6 +155,13 @@ public class HerbrunScript extends Script {
                 Rs2GameObject.interact(obj, "Plant");
                 sleepUntil(() -> getHerbPatchState(obj).equals("Growing"));
                 return false;
+//            case "Diseased":
+//                Rs2Inventory.use("Spade");
+//                Rs2GameObject.interact(obj);
+//                sleepUntil(() -> Rs2Widget.findWidget("I want to clear it") != null);
+//                Rs2Widget.clickWidget("I want to clear it");
+//                sleepUntil(() -> getHerbPatchState(obj).equals("Empty"));
+//                return false;
             case "Harvestable":
                 Rs2GameObject.interact(obj, "Pick");
                 Rs2Player.waitForWalking();
