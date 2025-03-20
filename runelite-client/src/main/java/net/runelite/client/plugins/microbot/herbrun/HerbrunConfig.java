@@ -6,9 +6,15 @@ import net.runelite.client.config.ConfigInformation;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 
+@ConfigInformation("This plugin will run the herb run.\n" +
+        "Setup an appropriate inventory setup with seeds, \n" +
+        "teleports for the enabled locations, \n" +
+        "rake, spade, seed dibber \n" +
+        "and ultracompost or bottomless compost.")
 @ConfigGroup("Herbrun")
 
 public interface HerbrunConfig extends Config {
+
     @ConfigSection(
             name = "Settings",
             description = "Settings",
@@ -89,7 +95,9 @@ public interface HerbrunConfig extends Config {
             position = 6,
             section = locationSection
     )
-    default boolean enableArdougne() { return true; }
+    default boolean enableArdougne() {
+        return true;
+    }
 
     @ConfigItem(
             keyName = "enableFalador",
@@ -124,7 +132,7 @@ public interface HerbrunConfig extends Config {
         return true;
     }
 
-//    @ConfigItem(
+    //    @ConfigItem(
 //            keyName = "enableHarmony",
 //            name = "Enable Harmony Island Patch",
 //            description = "Enable Harmony Island patch in herb run",

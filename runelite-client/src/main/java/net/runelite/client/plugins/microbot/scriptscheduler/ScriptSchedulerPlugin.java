@@ -162,10 +162,10 @@ public class ScriptSchedulerPlugin extends Plugin {
             }
         }
 
-        // If no scheduled script is running and default script is set, run it
-        if (currentScript == null && config.defaultScript() != null && !config.defaultScript().isEmpty()) {
-            startScript(config.defaultScript());
-        }
+//         If no scheduled script is running and default script is set, run it
+//        if (currentScript == null && config.defaultScript() != null && !config.defaultScript().isEmpty()) {
+//            startScript(config.defaultScript());
+//        }
     }
 
     private void scheduleScriptStop(ScheduledScript script) {

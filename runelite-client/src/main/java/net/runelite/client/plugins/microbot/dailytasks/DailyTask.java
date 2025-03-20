@@ -4,27 +4,19 @@ import lombok.Getter;
 import net.runelite.api.MenuAction;
 import net.runelite.api.VarPlayer;
 import net.runelite.api.Varbits;
-import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.Script;
-import net.runelite.client.plugins.microbot.ScriptItem;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
-import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
-import net.runelite.client.plugins.microbot.util.shop.Rs2Shop;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
-import javax.inject.Inject;
 import java.awt.*;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
@@ -49,8 +41,7 @@ public enum DailyTask {
                 sleepUntil(() -> !Rs2Inventory.hasItem("Herb box"), 20000);
 
             },
-            DailyTasksConfig::collectHerbBoxes,
-            List.of(ScriptItem.builder().name("Yanille teleport").build())
+            DailyTasksConfig::collectHerbBoxes
     ),
 
     BATTLESTAVES(
@@ -66,11 +57,7 @@ public enum DailyTask {
                 Rs2Widget.clickWidget("Yes");
                 Rs2Inventory.waitForInventoryChanges(1000);
             },
-            DailyTasksConfig::collectStaves,
-            List.of(
-                    ScriptItem.builder().name("Coins").quantity(210000).build(),
-                    ScriptItem.builder().name("Varrock teleport").build()
-            )
+            DailyTasksConfig::collectStaves
     ),
 
     PURE_ESSENCE(
@@ -82,10 +69,7 @@ public enum DailyTask {
                 Rs2Npc.interact(8481, "Claim");
                 Rs2Inventory.waitForInventoryChanges(1000);
             },
-            DailyTasksConfig::collectEssence,
-            List.of(
-                    ScriptItem.builder().name("Ardougne teleport").build()
-            )
+            DailyTasksConfig::collectEssence
     ),
 
 //    FREE_RUNES(
@@ -110,11 +94,7 @@ public enum DailyTask {
                 Rs2Dialogue.clickOption("Agree");
                 Rs2Inventory.waitForInventoryChanges(1000);
             },
-            DailyTasksConfig::collectFlax,
-            List.of(
-                    ScriptItem.builder().name("Flax").noted(true).quantity(30).build(),
-                    ScriptItem.builder().name("Camelot teleport").build()
-            )
+            DailyTasksConfig::collectFlax
     ),
 
 //    BONEMEAL(
@@ -179,13 +159,7 @@ public enum DailyTask {
                 Rs2Keyboard.keyPress(50000);
                 Rs2Keyboard.enter();
             },
-            DailyTasksConfig::handleMiscellania,
-            List.of(
-                    ScriptItem.builder().name("Ring of wealth (").build(),
-                    ScriptItem.builder().name("Rake").build(),
-                    ScriptItem.builder().name("Pickaxe").build(),
-                    ScriptItem.builder().name("Coins").quantity(50000).build()
-            )
+            DailyTasksConfig::handleMiscellania
 
     );
 
@@ -197,18 +171,14 @@ public enum DailyTask {
     private final Runnable executeTask;
     @Getter
     private final Function<DailyTasksConfig, Boolean> configEnabled;
-    @Getter
-    private final List<ScriptItem> requiredItems;
 
     DailyTask(String name, WorldPoint location, BooleanSupplier isAvailable,
-              Runnable executeTask, Function<DailyTasksConfig, Boolean> configEnabled,
-              List<ScriptItem> requiredItems) {
+              Runnable executeTask, Function<DailyTasksConfig, Boolean> configEnabled) {
         this.name = name;
         this.location = location;
         this.isAvailable = isAvailable;
         this.executeTask = executeTask;
         this.configEnabled = configEnabled;
-        this.requiredItems = requiredItems;
     }
 
     public boolean isAvailable() {

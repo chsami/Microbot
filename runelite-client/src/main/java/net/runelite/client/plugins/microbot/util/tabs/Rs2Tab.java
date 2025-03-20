@@ -1,7 +1,6 @@
 package net.runelite.client.plugins.microbot.util.tabs;
 
 import net.runelite.api.VarClientInt;
-import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.VarcIntValues;
@@ -170,6 +169,8 @@ public class Rs2Tab {
         if (tab == null) return false;
 
         Microbot.getMouse().click(tab.getBounds());
+        sleep(200, 600);
+
         return getCurrentTab() == InterfaceTab.LOGOUT;
     }
 

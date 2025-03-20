@@ -32,7 +32,7 @@ public class ScriptSchedulerWindow extends JFrame {
     private JButton removeButton;
     private JButton editButton;
     private JButton runNowButton;
-    private JComboBox<String> defaultScriptComboBox;
+//    private JComboBox<String> defaultScriptComboBox;
 
     private ScheduledScript editingScript = null;
 
@@ -223,21 +223,21 @@ public class ScriptSchedulerWindow extends JFrame {
         formPanel.add(runNowButton, c);
 
         // Default script section
-        JPanel defaultScriptPanel = new JPanel(new BorderLayout(5, 0));
-        defaultScriptPanel.setBorder(BorderFactory.createTitledBorder("Default Script"));
+//        JPanel defaultScriptPanel = new JPanel(new BorderLayout(5, 0));
+//        defaultScriptPanel.setBorder(BorderFactory.createTitledBorder("Default Script"));
 
-        defaultScriptComboBox = new JComboBox<>();
-        defaultScriptComboBox.insertItemAt("", 0);
-        defaultScriptComboBox.setSelectedItem(this.config.defaultScript());
-        defaultScriptComboBox.addActionListener(e -> {
-            String selected = (String) defaultScriptComboBox.getSelectedItem();
-            if (selected != null) {
-                this.config.defaultScript();
-            }
-        });
-
-        defaultScriptPanel.add(new JLabel("Script:"), BorderLayout.WEST);
-        defaultScriptPanel.add(defaultScriptComboBox, BorderLayout.CENTER);
+//        defaultScriptComboBox = new JComboBox<>();
+//        defaultScriptComboBox.insertItemAt("", 0);
+//        defaultScriptComboBox.setSelectedItem(this.config.defaultScript());
+//        defaultScriptComboBox.addActionListener(e -> {
+//            String selected = (String) defaultScriptComboBox.getSelectedItem();
+//            if (selected != null) {
+//                this.config.defaultScript();
+//            }
+//        });
+//
+//        defaultScriptPanel.add(new JLabel("Script:"), BorderLayout.WEST);
+//        defaultScriptPanel.add(defaultScriptComboBox, BorderLayout.CENTER);
 
         // Table selection listener
         scheduleTable.getSelectionModel().addListSelectionListener(e -> {
@@ -267,7 +267,7 @@ public class ScriptSchedulerWindow extends JFrame {
 
         JPanel bottomPanel = new JPanel(new BorderLayout());
         bottomPanel.add(formWrapper, BorderLayout.CENTER);
-        bottomPanel.add(defaultScriptPanel, BorderLayout.SOUTH);
+//        bottomPanel.add(defaultScriptPanel, BorderLayout.SOUTH);
 
         mainPanel.add(tablePanel, BorderLayout.CENTER);
         mainPanel.add(bottomPanel, BorderLayout.SOUTH);
@@ -292,17 +292,17 @@ public class ScriptSchedulerWindow extends JFrame {
             scriptComboBox.addItem(script);
         }
 
-        defaultScriptComboBox.removeAllItems();
-        defaultScriptComboBox.addItem(""); // Empty option
-        for (String script : scripts) {
-            defaultScriptComboBox.addItem(script);
-        }
+//        defaultScriptComboBox.removeAllItems();
+//        defaultScriptComboBox.addItem(""); // Empty option
+//        for (String script : scripts) {
+//            defaultScriptComboBox.addItem(script);
+//        }
 
-        // Set the default script if it was previously configured
-        String defaultScript = this.config.defaultScript();
-        if (defaultScript != null && !defaultScript.isEmpty()) {
-            defaultScriptComboBox.setSelectedItem(defaultScript);
-        }
+//        // Set the default script if it was previously configured
+//        String defaultScript = this.config.defaultScript();
+//        if (defaultScript != null && !defaultScript.isEmpty()) {
+//            defaultScriptComboBox.setSelectedItem(defaultScript);
+//        }
     }
 
     private void refreshTable() {

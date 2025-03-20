@@ -1,7 +1,6 @@
 package net.runelite.client.plugins.microbot.accountselector;
 
 import com.google.inject.Provides;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.client.Notifier;
