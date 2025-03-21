@@ -57,7 +57,7 @@ public class HerbrunScript extends Script {
                 initialized = true;
                 HerbrunPlugin.status = "Gearing up";
                 populateHerbPatches();
-                inventorySetup = new Rs2InventorySetup(config.inventorySetup(), mainScheduledFuture);
+                inventorySetup = new Rs2InventorySetup(config.inventorySetup(), this);
                 if (herbPatches.isEmpty()) {
                     log("No herb patches ready to farm");
                     shutdown();

@@ -277,7 +277,7 @@ public class ShootingStarScript extends Script {
     private ShootingStarState updateStarState() {
         if (state == null) {
             if (isUsingInventorySetup()) {
-                rs2InventorySetup = new Rs2InventorySetup(plugin.getInventorySetup(), mainScheduledFuture);
+                rs2InventorySetup = new Rs2InventorySetup(plugin.getInventorySetup(), this);
                 if (!rs2InventorySetup.hasSpellBook()) {
                     Microbot.showMessage("Your spellbook is not matching the inventory setup.");
                     shutdown();

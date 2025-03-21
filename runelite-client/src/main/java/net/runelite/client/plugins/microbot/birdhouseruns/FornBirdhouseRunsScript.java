@@ -43,7 +43,7 @@ public class FornBirdhouseRunsScript extends Script {
                 if (!Microbot.isLoggedIn()) return;
                 if (!initialized) {
                     initialized = true;
-                    inventorySetup = new Rs2InventorySetup(config.inventorySetup(), mainScheduledFuture);
+                    inventorySetup = new Rs2InventorySetup(config.inventorySetup(), this);
                 }
                 if (!super.run()) return;
 

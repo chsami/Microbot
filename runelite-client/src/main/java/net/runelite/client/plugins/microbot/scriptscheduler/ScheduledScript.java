@@ -5,208 +5,137 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import net.runelite.client.plugins.microbot.scriptscheduler.type.ScheduleType;
 
 import java.lang.reflect.Type;
-import java.time.DayOfWeek;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ScheduledScript {
-    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
-
+@Getter
+public class ScheduledScript implements Comparable<ScheduledScript> {
     private String scriptName;
-    private String startTime; // Format: "HH:mm"
-    private String duration; // Format: "HH:mm", optional
     private ScheduleType scheduleType;
-    private List<Integer> days = new ArrayList<>(); // 1 = Monday, 7 = Sunday
-    private boolean enabled = true;
+    private int intervalValue; // The numeric value for the interval
+    private String duration; // Optional duration to run the script
+    private boolean enabled;
+    private LocalDateTime lastRunTime; // Track when the script last ran
 
-    public enum ScheduleType {
-        HOURLY("Hourly"),
-        DAILY("Daily"),
-        WEEKDAYS("Weekdays"),
-        WEEKENDS("Weekends"),
-        CUSTOM("Custom");
+    // Static formatter for time display
+    public static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
-        private final String displayName;
-
-        ScheduleType(String displayName) {
-            this.displayName = displayName;
-        }
-
-        @Override
-        public String toString() {
-            return displayName;
-        }
+    public ScheduledScript(String scriptName, ScheduleType scheduleType, int intervalValue,
+                           String duration, boolean enabled) {
+        this.scriptName = scriptName;
+        this.scheduleType = scheduleType != null ? scheduleType : ScheduleType.HOURS;
+        this.intervalValue = Math.max(1, intervalValue); // Ensure interval is at least 1
+        this.duration = duration;
+        this.enabled = enabled;
+        this.lastRunTime = LocalDateTime.now(); // Set lastRunTime to now to prevent immediate execution
     }
 
+
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public void setLastRunTime(LocalDateTime lastRunTime) { this.lastRunTime = lastRunTime; }
+
     /**
-     * Gets a formatted description of the schedule
+     * Calculate the next time this script should run
      */
-    public String getScheduleDescription() {
-        if (scheduleType == null) {
-            return "Unknown";
-        }
-
-        switch (scheduleType) {
-            case HOURLY:
-                return "Hourly";
-            case DAILY:
-                return "Daily";
-            case WEEKDAYS:
-                return "Weekdays";
-            case WEEKENDS:
-                return "Weekends";
-            case CUSTOM:
-                if (days == null || days.isEmpty()) {
-                    return "Custom (No days selected)";
-                }
-                return days.stream()
-                        .map(day -> {
-                            switch (day) {
-                                case 1: return "Mon";
-                                case 2: return "Tue";
-                                case 3: return "Wed";
-                                case 4: return "Thu";
-                                case 5: return "Fri";
-                                case 6: return "Sat";
-                                case 7: return "Sun";
-                                default: return "";
-                            }
-                        })
-                        .collect(Collectors.joining(", "));
-            default:
-                return "Unknown";
-        }
-    }
-
     /**
-     * Checks if the given day is valid for this script's schedule
-     */
-    public boolean isCorrectDay(int day) {
-        switch (scheduleType) {
-            case HOURLY:
-            case DAILY:
-                return true;
-            case WEEKDAYS:
-                return day >= 1 && day <= 5;
-            case WEEKENDS:
-                return day == 6 || day == 7;
-            case CUSTOM:
-                return days.contains(day);
-            default:
-                return false;
-        }
-    }
-
-    /**
-     * Checks if this script should run at the current time
-     */
-    public boolean shouldRunNow(LocalDateTime now) {
-        if (!enabled) {
-            return false;
-        }
-
-        LocalTime currentTime = now.toLocalTime();
-        int currentDay = now.getDayOfWeek().getValue();
-
-        if (!isCorrectDay(currentDay)) {
-            return false;
-        }
-
-        if (scheduleType == ScheduleType.HOURLY) {
-            try {
-                LocalTime scheduleTime = LocalTime.parse(startTime, TIME_FORMATTER);
-
-                // For hourly schedules, we only care if the minute matches
-                // We should run at the specified minute every hour
-                return currentTime.getMinute() == scheduleTime.getMinute();
-            } catch (Exception e) {
-                return false;
-            }
-        } else {
-            return currentTime.getHour() == LocalTime.parse(startTime, TIME_FORMATTER).getHour()
-                    && currentTime.getMinute() == LocalTime.parse(startTime, TIME_FORMATTER).getMinute();
-        }
-    }
-
-    /**
-     * Calculates the next time this script will run
+     * Calculate the next time this script should run
      */
     public LocalDateTime getNextRunTime(LocalDateTime now) {
-        if (!enabled) {
-            return null;
+        if (!enabled || lastRunTime == null) {
+            return now.plusHours(1); // Default to 1 hour from now if disabled or no last run time
         }
 
-        try {
-            LocalTime scheduleTime = LocalTime.parse(startTime, TIME_FORMATTER);
-
-            if (scheduleType == ScheduleType.HOURLY) {
-                int scheduleMinute = scheduleTime.getMinute();
-                int scheduleHour = scheduleTime.getHour();
-
-                // Create a candidate time with the current hour and the scheduled minute
-                LocalDateTime candidate = now.withMinute(scheduleMinute).withSecond(0).withNano(0);
-
-                // If we haven't reached the start time yet today
-                LocalDateTime startTimeToday = now.toLocalDate().atTime(scheduleHour, scheduleMinute);
-                if (now.isBefore(startTimeToday)) {
-                    // The first run will be at the start time
-                    candidate = startTimeToday;
-                } else if (candidate.isBefore(now)) {
-                    // If the candidate time is in the past, move to the next hour
-                    candidate = candidate.plusHours(1);
-                }
-
-                // Check if this day is valid for the schedule
-                if (isCorrectDay(candidate.getDayOfWeek().getValue())) {
-                    return candidate;
-                } else {
-                    // Find the next valid day
-                    for (int i = 1; i <= 7; i++) {
-                        candidate = candidate.plusDays(1).withHour(scheduleHour).withMinute(scheduleMinute);
-                        if (isCorrectDay(candidate.getDayOfWeek().getValue())) {
-                            return candidate;
-                        }
-                    }
-                }
-            } else {
-                // For other schedule types, find the next occurrence of the time
-                LocalDateTime candidate = now.withHour(scheduleTime.getHour())
-                        .withMinute(scheduleTime.getMinute())
-                        .withSecond(0)
-                        .withNano(0);
-
-                if (candidate.isBefore(now)) {
-                    candidate = candidate.plusDays(1);
-                }
-
-                // Find the next valid day
-                for (int i = 0; i < 7; i++) {
-                    if (isCorrectDay(candidate.getDayOfWeek().getValue())) {
-                        return candidate;
-                    }
-                    candidate = candidate.plusDays(1);
-                }
-            }
-        } catch (Exception e) {
-            // If we can't parse the time, return null
-            return null;
+        // Handle null scheduleType
+        if (scheduleType == null) {
+            return lastRunTime.plusHours(intervalValue);
         }
 
-        return null;
+        // Calculate next run time based on schedule type and interval
+        switch (scheduleType) {
+            case MINUTES:
+                return lastRunTime.plusMinutes(intervalValue);
+            case HOURS:
+                return lastRunTime.plusHours(intervalValue);
+            case DAYS:
+                return lastRunTime.plusDays(intervalValue);
+            default:
+                return lastRunTime.plusHours(1); // Default fallback
+        }
     }
 
     /**
-     * Gets the duration in minutes, or 0 if no duration is set
+     * Check if the script is due to run
+     */
+    public boolean isDueToRun(LocalDateTime now) {
+        if (!enabled) {
+            return false;
+        }
+
+        if (lastRunTime == null) {
+            // If lastRunTime is null, set it to now and return false to prevent immediate execution
+            lastRunTime = now;
+            return false;
+        }
+
+        LocalDateTime nextRun = getNextRunTime(now);
+        return !now.isBefore(nextRun);
+    }
+
+
+    /**
+     * Get a formatted display of the interval
+     */
+    public String getIntervalDisplay() {
+        if (scheduleType == null) {
+            return "Every " + intervalValue + " hours"; // Default to hours if scheduleType is null
+        }
+        return "Every " + intervalValue + " " + scheduleType.toString().toLowerCase();
+    }
+
+    /**
+     * Get a formatted display of when this script will run next
+     */
+    public String getNextRunDisplay(LocalDateTime now) {
+        if (!enabled) {
+            return "Disabled";
+        }
+
+        if (lastRunTime == null) {
+            return "Ready to run";
+        }
+
+        LocalDateTime nextRun = getNextRunTime(now);
+        Duration timeUntil = Duration.between(now, nextRun);
+
+        if (timeUntil.isNegative() || timeUntil.isZero()) {
+            return "Ready to run";
+        }
+
+        long hours = timeUntil.toHours();
+        long minutes = timeUntil.toMinutesPart();
+
+        if (hours > 0) {
+            return String.format("In %dh %dm", hours, minutes);
+        } else {
+            return String.format("In %dm", minutes);
+        }
+    }
+
+    /**
+     * Get the duration in minutes
      */
     public long getDurationMinutes() {
         if (duration == null || duration.isEmpty()) {
@@ -221,15 +150,104 @@ public class ScheduledScript {
         }
     }
 
+    /**
+     * Get the start time for hourly schedules
+     */
+    public String getStartTime() {
+        if (lastRunTime != null) {
+            return lastRunTime.format(TIME_FORMATTER);
+        }
+        return "--:--";
+    }
+
+    /**
+     * Convert a list of ScheduledScript objects to JSON
+     */
     public static String toJson(List<ScheduledScript> scripts) {
-        Gson gson = new GsonBuilder().create();
+        Gson gson = new GsonBuilder()
+                .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
+                .create();
         return gson.toJson(scripts);
     }
 
+    /**
+     * Parse JSON into a list of ScheduledScript objects
+     */
     public static List<ScheduledScript> fromJson(String json) {
-        Gson gson = new GsonBuilder().create();
-        Type type = new TypeToken<List<ScheduledScript>>(){}.getType();
-        List<ScheduledScript> scripts = gson.fromJson(json, type);
-        return scripts != null ? scripts : new ArrayList<>();
+        if (json == null || json.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        try {
+            Gson gson = new GsonBuilder()
+                    .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
+                    .create();
+            Type listType = new TypeToken<ArrayList<ScheduledScript>>(){}.getType();
+            List<ScheduledScript> scripts = gson.fromJson(json, listType);
+
+            // Fix any null scheduleType values
+            for (ScheduledScript script : scripts) {
+                if (script.getScheduleType() == null) {
+                    script.scheduleType = ScheduleType.HOURS; // Default to HOURS
+                }
+            }
+
+            return scripts;
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+
+
+    /**
+     * Adapter class to handle serialization/deserialization of LocalDateTime
+     */
+    private static class LocalDateTimeAdapter implements com.google.gson.JsonSerializer<LocalDateTime>,
+            com.google.gson.JsonDeserializer<LocalDateTime> {
+        private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+
+        @Override
+        public com.google.gson.JsonElement serialize(LocalDateTime src,
+                                                     java.lang.reflect.Type typeOfSrc,
+                                                     com.google.gson.JsonSerializationContext context) {
+            return src == null ? null : new com.google.gson.JsonPrimitive(formatter.format(src));
+        }
+
+        @Override
+        public LocalDateTime deserialize(com.google.gson.JsonElement json,
+                                         java.lang.reflect.Type typeOfT,
+                                         com.google.gson.JsonDeserializationContext context)
+                throws com.google.gson.JsonParseException {
+            return json == null ? null : LocalDateTime.parse(json.getAsString(), formatter);
+        }
+    }
+
+    @Override
+    public int compareTo(ScheduledScript other) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime thisNext = this.getNextRunTime(now);
+        LocalDateTime otherNext = other.getNextRunTime(now);
+
+        // Handle null cases
+        if (thisNext == null && otherNext == null) return 0;
+        if (thisNext == null) return 1;
+        if (otherNext == null) return -1;
+
+        return thisNext.compareTo(otherNext);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ScheduledScript that = (ScheduledScript) o;
+        return Objects.equals(scriptName, that.scriptName) &&
+                Objects.equals(scheduleType, that.scheduleType) &&
+                intervalValue == that.intervalValue;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(scriptName, scheduleType, intervalValue);
     }
 }

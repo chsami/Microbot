@@ -91,7 +91,7 @@ public class BankerScript extends Script {
 
     public boolean withdrawUpkeepItems(AIOFighterConfig config) {
         if (config.useInventorySetup()) {
-            Rs2InventorySetup inventorySetup = new Rs2InventorySetup(config.inventorySetup().getName(), mainScheduledFuture);
+            Rs2InventorySetup inventorySetup = new Rs2InventorySetup(config.inventorySetup().getName(), this);
             if (!inventorySetup.doesEquipmentMatch()) {
                 inventorySetup.loadEquipment();
             }

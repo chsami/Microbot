@@ -131,7 +131,7 @@ public class VorkathScript extends Script {
                 }
 
                 if (init) {
-                    rs2InventorySetup = new Rs2InventorySetup("vorkath", mainScheduledFuture);
+                    rs2InventorySetup = new Rs2InventorySetup("vorkath", this);
                     if (!rs2InventorySetup.hasSpellBook()) {
                         Microbot.showMessage("Your spellbook is not matching the inventory setup.");
                         sleep(10000);

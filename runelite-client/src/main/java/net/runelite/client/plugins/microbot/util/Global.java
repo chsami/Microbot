@@ -28,7 +28,6 @@ public class Global {
             Thread.sleep(start);
         } catch (Exception e) {
             Thread.currentThread().interrupt();
-            System.out.println(e.getMessage());
         }
     }
 

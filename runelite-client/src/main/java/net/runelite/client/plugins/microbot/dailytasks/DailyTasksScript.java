@@ -43,7 +43,7 @@ public class DailyTasksScript extends Script {
             if (!initialized) {
                 initialized = true;
                 initializeTasks();
-                inventorySetup = new Rs2InventorySetup(config.inventorySetup(), mainScheduledFuture);
+                inventorySetup = new Rs2InventorySetup(config.inventorySetup(), this);
 
                 if (tasksToComplete.isEmpty()) {
                     Microbot.log("No daily tasks available to complete");

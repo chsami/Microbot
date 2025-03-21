@@ -9,6 +9,7 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.PluginChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -89,12 +90,6 @@ public class ScriptSchedulerPlugin extends Plugin {
         // Load saved schedules from config
         loadScheduledScripts();
 
-        executorService.schedule(() -> {
-            if (panel != null) {
-                panel.updateScriptListsWhenReady();
-            }
-        }, 2, TimeUnit.SECONDS);
-
         startScheduler();
     }
 
@@ -125,14 +120,17 @@ public class ScriptSchedulerPlugin extends Plugin {
 
     private void startScheduler() {
         if (schedulerTask != null && !schedulerTask.isDone()) {
-            return;
+            return; // Scheduler is already running
         }
 
+        // Check for scripts to run every minute
         schedulerTask = executorService.scheduleAtFixedRate(() -> {
-            if (!isRunning) {
+            try {
                 checkSchedule();
+            } catch (Exception e) {
+                log.error("Error in script scheduler", e);
             }
-        }, 0, 10, TimeUnit.SECONDS);
+        }, 0, 1, TimeUnit.MINUTES);
     }
 
     private void stopScheduler() {
@@ -145,26 +143,24 @@ public class ScriptSchedulerPlugin extends Plugin {
     private void checkSchedule() {
         LocalDateTime now = LocalDateTime.now();
 
-        // Check if any scheduled script should run now
-        for (ScheduledScript scheduledScript : scheduledScripts) {
-            if (scheduledScript.shouldRunNow(now)) {
-                // Stop current script if running
-                stopCurrentScript();
+        for (ScheduledScript script : scheduledScripts) {
+            if (script.isDueToRun(now) && !isRunning) {
+                // Run the script
+                startScript(script.getScriptName());
 
-                // Start the scheduled script
-                startScript(scheduledScript.getScriptName());
+                // Update the last run time
+                script.setLastRunTime(now);
+                saveScheduledScripts();
 
-                // Schedule script to stop after duration if specified
-                scheduleScriptStop(scheduledScript);
+                // Schedule script to stop if it has a duration
+                if (script.getDuration() != null && !script.getDuration().isEmpty()) {
+                    scheduleScriptStop(script);
+                }
 
-                return;
+                // Only run one script at a time
+                break;
             }
         }
-
-//         If no scheduled script is running and default script is set, run it
-//        if (currentScript == null && config.defaultScript() != null && !config.defaultScript().isEmpty()) {
-//            startScript(config.defaultScript());
-//        }
     }
 
     private void scheduleScriptStop(ScheduledScript script) {
@@ -203,7 +199,7 @@ public class ScriptSchedulerPlugin extends Plugin {
             isRunning = true;
             if (!Microbot.isLoggedIn()) {
                 new Login();
-                Global.sleepUntil((Microbot::isLoggedIn), 10000);
+                Global.sleepUntil((Microbot::isLoggedIn), 20000);
             }
             Microbot.getClientThread().runOnSeperateThread(() -> {
                 Microbot.startPlugin(script);
@@ -215,6 +211,7 @@ public class ScriptSchedulerPlugin extends Plugin {
             scriptStartTime = null;
             currentScript = null;
             isRunning = false;
+            updatePanels();
         }
     }
 
@@ -222,19 +219,10 @@ public class ScriptSchedulerPlugin extends Plugin {
         if (currentScript != null) {
             log.info("Stopping current script: " + currentScriptName);
 
-            // Cancel any pending stop task
-            if (scriptStopTask != null && !scriptStopTask.isDone()) {
-                scriptStopTask.cancel(false);
-                scriptStopTask = null;
-            }
             Microbot.getClientThread().runOnSeperateThread(() -> {
                 Microbot.stopPlugin(currentScript);
                 return false;
             });
-            currentScript = null;
-            currentScriptName = null;
-            scriptStartTime = null;
-            isRunning = false;
         }
     }
 
@@ -247,16 +235,40 @@ public class ScriptSchedulerPlugin extends Plugin {
 
     @Subscribe
     public void onGameTick(GameTick event) {
-        // Check if the current script has finished
-        if (isRunning && currentScript != null && !Microbot.isPluginEnabled(currentScript.getClass())) {
-            isRunning = false;
-            currentScript = null;
-            currentScriptName = null;
-            scriptStartTime = null;
+        updatePanels();
+    }
+
+    @Subscribe
+    public void onPluginChanged(PluginChanged event) {
+        if (event.getPlugin() == currentScript) {
+            if (!Microbot.getPluginManager().isPluginEnabled(currentScript)) {
+                currentScript = null;
+                currentScriptName = null;
+                scriptStartTime = null;
+                isRunning = false;
+            }
+            updatePanels();
+        }
+    }
+
+    /**
+     * Update all UI panels with the current state
+     */
+    private void updatePanels() {
+        // Update the main panel
+        if (panel != null) {
+            panel.updateScriptInfo();
+            panel.updateNextScriptInfo();
+        }
+
+        // Update the scheduler window if it's open
+        if (schedulerWindow != null && schedulerWindow.isVisible()) {
+            schedulerWindow.updateControlButton();
         }
     }
 
     public void addScheduledScript(ScheduledScript script) {
+        script.setLastRunTime(LocalDateTime.now());
         scheduledScripts.add(script);
         saveScheduledScripts();
     }
@@ -278,7 +290,7 @@ public class ScriptSchedulerPlugin extends Plugin {
         return new ArrayList<>(scheduledScripts);
     }
 
-    void saveScheduledScripts() {
+    public void saveScheduledScripts() {
         // Convert to JSON and save to config
         String json = ScheduledScript.toJson(scheduledScripts);
         config.setScheduledScripts(json);
@@ -294,7 +306,10 @@ public class ScriptSchedulerPlugin extends Plugin {
 
     public List<String> getAvailableScripts() {
         return Microbot.getPluginManager().getPlugins().stream()
-                .filter(x -> x.getClass().getAnnotation(PluginDescriptor.class).canBeScheduled())
+                .filter(plugin -> {
+                    PluginDescriptor descriptor = plugin.getClass().getAnnotation(PluginDescriptor.class);
+                    return descriptor != null && descriptor.canBeScheduled();
+                })
                 .map(Plugin::getName)
                 .sorted()
                 .collect(Collectors.toList());

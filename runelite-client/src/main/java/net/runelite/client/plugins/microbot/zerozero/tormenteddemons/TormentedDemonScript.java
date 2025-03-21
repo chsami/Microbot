@@ -175,7 +175,7 @@ public class TormentedDemonScript extends Script {
 
             case BANK:
                 if (isRestocking) {
-                    Rs2InventorySetup inventorySetup = new Rs2InventorySetup("tormented", mainScheduledFuture);
+                    Rs2InventorySetup inventorySetup = new Rs2InventorySetup("tormented", this);
                     inventorySetup.wearEquipment();
                 }
 
@@ -188,7 +188,7 @@ public class TormentedDemonScript extends Script {
 
             case LOAD_INVENTORY:
                 Microbot.status = "Loading inventory and equipment setup...";
-                Rs2InventorySetup inventorySetup = new Rs2InventorySetup("tormented", mainScheduledFuture);
+                Rs2InventorySetup inventorySetup = new Rs2InventorySetup("tormented", this);
                 boolean equipmentLoaded = inventorySetup.loadEquipment();
                 boolean inventoryLoaded = inventorySetup.loadInventory();
 

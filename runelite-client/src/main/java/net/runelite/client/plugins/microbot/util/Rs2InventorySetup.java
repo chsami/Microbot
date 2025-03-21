@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.util;
 import lombok.Getter;
 import net.runelite.api.Varbits;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetupsItem;
 import net.runelite.client.plugins.microbot.inventorysetups.MInventorySetupsPlugin;
@@ -29,17 +30,17 @@ public class Rs2InventorySetup {
     @Getter
     InventorySetup inventorySetup;
 
-    ScheduledFuture<?> _mainScheduler;
+    Script _runningScript;
 
     /**
      * Constructor to initialize the Rs2InventorySetup with a specific setup name and scheduler.
      *
      * @param name          The name of the inventory setup to load.
-     * @param mainScheduler The scheduler to monitor for cancellation.
+     * @param runningScript  The script initializing this class
      */
-    public Rs2InventorySetup(String name, ScheduledFuture<?> mainScheduler) {
+    public Rs2InventorySetup(String name, Script runningScript) {
         inventorySetup = MInventorySetupsPlugin.getInventorySetups().stream().filter(Objects::nonNull).filter(x -> x.getName().equalsIgnoreCase(name)).findFirst().orElse(null);
-        _mainScheduler = mainScheduler;
+        _runningScript = runningScript;
         if (inventorySetup == null) {
             Microbot.showMessage("Inventory load with name " + name + " not found!");
             Microbot.pauseAllScripts = true;
@@ -51,24 +52,15 @@ public class Rs2InventorySetup {
      * The setup can now directly be fetched from the new config selector.
      *
      * @param setup          The inventory setup to load.
-     * @param mainScheduler The scheduler to monitor for cancellation.
+     * @param runningScript  The script initializing this class
      */
-    public Rs2InventorySetup(InventorySetup setup, ScheduledFuture<?> mainScheduler) {
+    public Rs2InventorySetup(InventorySetup setup, Script runningScript) {
         inventorySetup = setup;
-        _mainScheduler = mainScheduler;
+        _runningScript = runningScript;
         if (inventorySetup == null) {
             Microbot.showMessage("Inventory load error!");
             Microbot.pauseAllScripts = true;
         }
-    }
-
-    /**
-     * Checks if the main scheduler has been cancelled.
-     *
-     * @return true if the scheduler is cancelled, false otherwise.
-     */
-    private boolean isMainSchedulerCancelled() {
-        return _mainScheduler != null && _mainScheduler.isCancelled();
     }
 
     /**
@@ -85,7 +77,7 @@ public class Rs2InventorySetup {
         Map<Integer, List<InventorySetupsItem>> groupedByItems = inventorySetup.getInventory().stream().collect(Collectors.groupingBy(InventorySetupsItem::getId));
 
         for (Map.Entry<Integer, List<InventorySetupsItem>> entry : groupedByItems.entrySet()) {
-            if (isMainSchedulerCancelled()) break;
+            if (!_runningScript.isRunning()) break;
 
             InventorySetupsItem inventorySetupsItem = entry.getValue().get(0);
             int key = entry.getKey();
@@ -197,7 +189,7 @@ public class Rs2InventorySetup {
         }
 
         for (InventorySetupsItem inventorySetupsItem : inventorySetup.getEquipment()) {
-            if (isMainSchedulerCancelled()) break;
+            if (!_runningScript.isRunning()) break;
             if (InventorySetupsItem.itemIsDummy(inventorySetupsItem)) continue;
 
             String lowerCaseName = inventorySetupsItem.getName().toLowerCase();

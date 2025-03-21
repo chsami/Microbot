@@ -439,7 +439,7 @@ public class GiantMoleScript extends Script
         Rs2Walker.disableTeleports = false;
         if (Rs2Bank.walkToBankAndUseBank(BankLocation.FALADOR_EAST))
         {
-            Rs2InventorySetup setup = new Rs2InventorySetup(config.inventorySetup(), mainScheduledFuture);
+            Rs2InventorySetup setup = new Rs2InventorySetup(config.inventorySetup(), this);
             if (setup.loadEquipment() && setup.loadInventory())
             {
                 Rs2Bank.closeBank();
