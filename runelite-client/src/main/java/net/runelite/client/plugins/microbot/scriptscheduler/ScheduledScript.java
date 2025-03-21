@@ -171,6 +171,10 @@ public class ScheduledScript {
             return "Disabled";
         }
 
+        if (isRunning()) {
+            return "Running";
+        }
+
         if (currentTimeMillis >= nextRunTime) {
             return "Ready to run";
         }

@@ -3,7 +3,6 @@ package net.runelite.client.plugins.microbot.scriptscheduler;
 import com.google.inject.Provides;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.client.config.ConfigManager;
@@ -12,7 +11,6 @@ import net.runelite.client.events.PluginChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
@@ -59,8 +57,10 @@ public class ScriptSchedulerPlugin extends Plugin {
     private ScheduledScript currentScript;
 
     private List<ScheduledScript> scheduledScripts = new ArrayList<>();
-    @Getter
-    private boolean isRunning = false;
+
+    public boolean isRunning() {
+        return currentScript != null && currentScript.isRunning();
+    }
     private ScheduledFuture<?> scriptStopTask;
 
     @Override
@@ -122,7 +122,7 @@ public class ScriptSchedulerPlugin extends Plugin {
         long currentTime = System.currentTimeMillis();
 
         for (ScheduledScript script : scheduledScripts) {
-            if (script.isDueToRun(currentTime) && !isRunning) {
+            if (script.isDueToRun(currentTime) && !isRunning()) {
                 // Run the script
                 startScript(script);
                 saveScheduledScripts();
@@ -163,7 +163,6 @@ public class ScriptSchedulerPlugin extends Plugin {
         if (!script.start()) {
             log.error("Failed to start script: " + script.getCleanName());
             currentScript = null;
-            isRunning = false;
             return;
         }
 
@@ -178,7 +177,6 @@ public class ScriptSchedulerPlugin extends Plugin {
             log.info("Stopping current script: " + currentScript.getCleanName());
             if (currentScript.stop()) {
                 currentScript = null;
-                isRunning = false;
             } else {
                 log.error("Failed to stop script: " + currentScript.getCleanName());
             }
@@ -197,7 +195,6 @@ public class ScriptSchedulerPlugin extends Plugin {
     public void onPluginChanged(PluginChanged event) {
         if (currentScript != null && event.getPlugin() == currentScript.getPlugin() && !currentScript.isRunning()) {
             currentScript = null;
-            isRunning = false;
             updatePanels();
         }
     }

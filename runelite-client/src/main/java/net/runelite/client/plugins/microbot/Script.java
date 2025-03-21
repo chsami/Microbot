@@ -126,9 +126,9 @@ public abstract class Script extends Global implements IScript  {
                 Microbot.log("Missing items or equipment, aborting script");
                 shutdown();
             }
-        }
 
-        if (Rs2Bank.isOpen()) Rs2Bank.closeBank();
+            if (Rs2Bank.isOpen()) Rs2Bank.closeBank();
+        }
 
         if (startingLocation != null) {
             boolean arrived = Rs2Walker.walkTo(startingLocation);

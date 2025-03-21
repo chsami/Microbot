@@ -215,20 +215,19 @@ public class ScheduleFormPanel extends JPanel {
         button.setFont(FontManager.getRunescapeSmallFont());
         button.setFocusPainted(false);
         button.setForeground(Color.WHITE);
-        button.setBackground(color);
+        button.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         button.setBorder(new CompoundBorder(
                 BorderFactory.createLineBorder(color.darker(), 1),
                 BorderFactory.createEmptyBorder(5, 5, 5, 5)
         ));
 
-        // Add hover effect
         button.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
-                button.setBackground(color.brighter());
+                button.setBackground(ColorScheme.DARKER_GRAY_HOVER_COLOR);
             }
 
             public void mouseExited(java.awt.event.MouseEvent evt) {
-                button.setBackground(color);
+                button.setBackground(ColorScheme.DARKER_GRAY_COLOR);
             }
         });
 
@@ -396,48 +395,24 @@ public class ScheduleFormPanel extends JPanel {
     }
 
     public void updateControlButton() {
-        boolean isScriptRunning = selectedScript != null && selectedScript.isRunning();
 
-        if (isScriptRunning) {
+        if (plugin.isRunning()) {
             // If a script is running, show "Stop Script" button
-            controlButton.setText("Stop Script");
-            controlButton.setBackground(ColorScheme.PROGRESS_ERROR_COLOR);
+            controlButton.setText("Stop Running Script");
             controlButton.setEnabled(true);
-            updateButtonHoverEffect(controlButton, ColorScheme.PROGRESS_ERROR_COLOR);
         } else if (selectedScript != null) {
             controlButton.setText("Run \"" + selectedScript.getCleanName() + "\" Now");
-            controlButton.setBackground(ColorScheme.PROGRESS_COMPLETE_COLOR);
             controlButton.setEnabled(true);
-            updateButtonHoverEffect(controlButton, ColorScheme.PROGRESS_COMPLETE_COLOR);
         } else {
             // If no script is selected, disable the button
             controlButton.setText("Select a Script");
-            controlButton.setBackground(ColorScheme.MEDIUM_GRAY_COLOR);
             controlButton.setEnabled(false);
         }
     }
 
-    private void updateButtonHoverEffect(JButton button, Color baseColor) {
-        // Remove existing mouse listeners
-        for (java.awt.event.MouseListener listener : button.getMouseListeners()) {
-            button.removeMouseListener(listener);
-        }
-
-        // Add new hover effect
-        button.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
-                button.setBackground(baseColor.brighter());
-            }
-
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                button.setBackground(baseColor);
-            }
-        });
-    }
-
     private void onControlButtonClicked(ActionEvent e) {
 
-        if (selectedScript.isRunning()) {
+        if (plugin.isRunning()) {
             // Stop the current script
             plugin.stopCurrentScript();
         } else if (selectedScript != null) {
