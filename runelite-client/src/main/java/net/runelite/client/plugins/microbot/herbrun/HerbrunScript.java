@@ -16,6 +16,7 @@ import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -115,7 +116,7 @@ public class HerbrunScript extends Script {
             if (herbPatches.isEmpty()) {
                 return;
             }
-            currentPatch = herbPatches.remove(0);
+            currentPatch = herbPatches.remove(Rs2Random.between(0, herbPatches.size()));
         }
     }
 
