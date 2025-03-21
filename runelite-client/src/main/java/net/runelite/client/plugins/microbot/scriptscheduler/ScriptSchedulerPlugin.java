@@ -18,8 +18,10 @@ import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.ImageUtil;
+import net.runelite.client.util.SwingUtil;
 
 import javax.inject.Inject;
+import javax.swing.*;
 import java.awt.image.BufferedImage;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -57,17 +59,14 @@ public class ScriptSchedulerPlugin extends Plugin {
 
     private NavigationButton navButton;
     private ScriptSchedulerPanel panel;
-    private ScheduledFuture<?> schedulerTask;
+    private ScheduledFuture<?> updateTask;
     private ScriptSchedulerWindow schedulerWindow;
 
     @Getter
-    private Plugin currentScript;
+    private ScheduledScript currentScript;
 
     @Getter
-    private String currentScriptName;
-
-    @Getter
-    private LocalDateTime scriptStartTime;
+    private long scriptStartTime;
 
     private List<ScheduledScript> scheduledScripts = new ArrayList<>();
     private boolean isRunning = false;
@@ -90,7 +89,12 @@ public class ScriptSchedulerPlugin extends Plugin {
         // Load saved schedules from config
         loadScheduledScripts();
 
-        startScheduler();
+        updateTask = executorService.scheduleAtFixedRate(() -> {
+            SwingUtilities.invokeLater(() -> {
+                checkSchedule();
+                updatePanels();
+            });
+        }, 0, 1, TimeUnit.SECONDS);
     }
 
     public void openSchedulerWindow() {
@@ -109,8 +113,12 @@ public class ScriptSchedulerPlugin extends Plugin {
     @Override
     protected void shutDown() {
         clientToolbar.removeNavigation(navButton);
-        stopScheduler();
         stopCurrentScript();
+
+        if (updateTask != null) {
+            updateTask.cancel(false);
+            updateTask = null;
+        }
 
         if (schedulerWindow != null) {
             schedulerWindow.dispose();
@@ -118,38 +126,13 @@ public class ScriptSchedulerPlugin extends Plugin {
         }
     }
 
-    private void startScheduler() {
-        if (schedulerTask != null && !schedulerTask.isDone()) {
-            return; // Scheduler is already running
-        }
-
-        // Check for scripts to run every minute
-        schedulerTask = executorService.scheduleAtFixedRate(() -> {
-            try {
-                checkSchedule();
-            } catch (Exception e) {
-                log.error("Error in script scheduler", e);
-            }
-        }, 0, 1, TimeUnit.MINUTES);
-    }
-
-    private void stopScheduler() {
-        if (schedulerTask != null) {
-            schedulerTask.cancel(false);
-            schedulerTask = null;
-        }
-    }
-
     private void checkSchedule() {
-        LocalDateTime now = LocalDateTime.now();
+        long currentTime = System.currentTimeMillis();
 
         for (ScheduledScript script : scheduledScripts) {
-            if (script.isDueToRun(now) && !isRunning) {
+            if (script.isDueToRun(currentTime) && !isRunning) {
                 // Run the script
-                startScript(script.getScriptName());
-
-                // Update the last run time
-                script.setLastRunTime(now);
+                startScript(script);
                 saveScheduledScripts();
 
                 // Schedule script to stop if it has a duration
@@ -180,49 +163,31 @@ public class ScriptSchedulerPlugin extends Plugin {
         }
     }
 
-    public void startScript(String scriptName) {
-        if (scriptName == null || scriptName.isEmpty()) {
-            return;
+    public void startScript(ScheduledScript script) {
+        if (script == null) return;
+        log.info("Starting scheduled script: " + script.getCleanName());
+        if (!Microbot.isLoggedIn()) {
+            new Login();
+            Global.sleepUntil((Microbot::isLoggedIn), 20000);
         }
-
-        try {
-            log.info("Starting scheduled script: " + scriptName);
-            currentScriptName = scriptName;
-            scriptStartTime = LocalDateTime.now();
-
-            Plugin script = Microbot.getPluginManager().getPlugins().stream()
-                    .filter(plugin -> Objects.equals(plugin.getName(), scriptName))
-                    .findFirst()
-                    .orElseThrow();
-
+        if (script.start()) {
             currentScript = script;
-            isRunning = true;
-            if (!Microbot.isLoggedIn()) {
-                new Login();
-                Global.sleepUntil((Microbot::isLoggedIn), 20000);
-            }
-            Microbot.getClientThread().runOnSeperateThread(() -> {
-                Microbot.startPlugin(script);
-                return false;
-            });
-        } catch (Exception e) {
-            log.error("Failed to start script: " + scriptName, e);
-            currentScriptName = null;
-            scriptStartTime = null;
+        } else {
+            log.error("Failed to start script: " + script.getCleanName());
             currentScript = null;
             isRunning = false;
-            updatePanels();
         }
     }
 
     public void stopCurrentScript() {
         if (currentScript != null) {
-            log.info("Stopping current script: " + currentScriptName);
-
-            Microbot.getClientThread().runOnSeperateThread(() -> {
-                Microbot.stopPlugin(currentScript);
-                return false;
-            });
+            log.info("Stopping current script: " + currentScript.getCleanName());
+            if (currentScript.stop()) {
+                currentScript = null;
+                isRunning = false;
+            } else {
+                log.error("Failed to stop script: " + currentScript.getCleanName());
+            }
         }
     }
 
@@ -234,19 +199,10 @@ public class ScriptSchedulerPlugin extends Plugin {
     }
 
     @Subscribe
-    public void onGameTick(GameTick event) {
-        updatePanels();
-    }
-
-    @Subscribe
     public void onPluginChanged(PluginChanged event) {
-        if (event.getPlugin() == currentScript) {
-            if (!Microbot.getPluginManager().isPluginEnabled(currentScript)) {
-                currentScript = null;
-                currentScriptName = null;
-                scriptStartTime = null;
-                isRunning = false;
-            }
+        if (currentScript != null && event.getPlugin() == currentScript.getPlugin() && !currentScript.isRunning()) {
+            currentScript = null;
+            isRunning = false;
             updatePanels();
         }
     }
@@ -263,12 +219,13 @@ public class ScriptSchedulerPlugin extends Plugin {
 
         // Update the scheduler window if it's open
         if (schedulerWindow != null && schedulerWindow.isVisible()) {
+            schedulerWindow.refreshData();
             schedulerWindow.updateControlButton();
         }
     }
 
     public void addScheduledScript(ScheduledScript script) {
-        script.setLastRunTime(LocalDateTime.now());
+        script.setLastRunTime(System.currentTimeMillis());
         scheduledScripts.add(script);
         saveScheduledScripts();
     }
@@ -315,30 +272,21 @@ public class ScriptSchedulerPlugin extends Plugin {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Determines the next script that will run based on the current time and schedule.
-     * @return The next ScheduledScript to run, or null if none are scheduled
-     */
     public ScheduledScript getNextScheduledScript() {
         if (scheduledScripts.isEmpty()) {
             return null;
         }
 
-        LocalDateTime now = LocalDateTime.now();
-
         ScheduledScript nextScript = null;
-        LocalDateTime nextRunTime = null;
+        long earliestNextRun = Long.MAX_VALUE;
 
         for (ScheduledScript script : scheduledScripts) {
             if (!script.isEnabled()) {
                 continue;
             }
 
-            LocalDateTime scriptNextRun = script.getNextRunTime(now);
-
-            // Update the next script if this one runs sooner
-            if (scriptNextRun != null && (nextRunTime == null || scriptNextRun.isBefore(nextRunTime))) {
-                nextRunTime = scriptNextRun;
+            if (script.getNextRunTime() < earliestNextRun) {
+                earliestNextRun = script.getNextRunTime();
                 nextScript = script;
             }
         }

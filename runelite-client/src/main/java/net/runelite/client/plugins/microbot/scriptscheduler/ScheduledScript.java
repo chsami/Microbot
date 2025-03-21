@@ -7,31 +7,41 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.scriptscheduler.type.ScheduleType;
+import net.runelite.client.plugins.microbot.util.Global;
+import net.runelite.client.plugins.microbot.util.security.Login;
 
 import java.lang.reflect.Type;
-import java.time.Duration;
-import java.time.LocalDateTime;
+import java.text.SimpleDateFormat;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
-public class ScheduledScript implements Comparable<ScheduledScript> {
+public class ScheduledScript {
+    private transient Plugin plugin;
     private String scriptName;
     private ScheduleType scheduleType;
     private int intervalValue; // The numeric value for the interval
     private String duration; // Optional duration to run the script
     private boolean enabled;
-    private LocalDateTime lastRunTime; // Track when the script last ran
+    private long lastRunTime; // When the script last ran (epoch millis)
+    private long nextRunTime; // When the script should next run (epoch millis)
+    private String cleanName;
 
     // Static formatter for time display
     public static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+    private static final SimpleDateFormat TIME_FORMAT = new SimpleDateFormat("HH:mm");
+    private static final SimpleDateFormat DATE_TIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm");
 
     public ScheduledScript(String scriptName, ScheduleType scheduleType, int intervalValue,
                            String duration, boolean enabled) {
@@ -40,98 +50,151 @@ public class ScheduledScript implements Comparable<ScheduledScript> {
         this.intervalValue = Math.max(1, intervalValue); // Ensure interval is at least 1
         this.duration = duration;
         this.enabled = enabled;
-        this.lastRunTime = LocalDateTime.now(); // Set lastRunTime to now to prevent immediate execution
+        this.cleanName = scriptName.replaceAll("<html>|</html>", "")
+                .replaceAll("<[^>]*>([^<]*)</[^>]*>", "$1")
+                .replaceAll("<[^>]*>", "");
+
+        // Set nextRunTime to now by default (run immediately)
+        this.nextRunTime = roundToMinutes(System.currentTimeMillis());
     }
 
+    public Plugin getPlugin() {
+        if (plugin == null) {
+            plugin = Microbot.getPluginManager().getPlugins().stream()
+                    .filter(p -> Objects.equals(p.getName(), scriptName))
+                    .findFirst()
+                    .orElse(null);
+        }
+        return plugin;
+    }
 
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
-    public void setLastRunTime(LocalDateTime lastRunTime) { this.lastRunTime = lastRunTime; }
+    public boolean start() {
+        if (getPlugin() == null) {
+            return false;
+        }
+
+        try {
+            Microbot.getClientThread().runOnSeperateThread(() -> {
+                Microbot.startPlugin(plugin);
+                return false;
+            });
+
+            // Update the last run time and calculate next run
+            updateAfterRun();
+
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public boolean stop() {
+        if (getPlugin() == null) {
+            return false;
+        }
+
+        try {
+            Microbot.getClientThread().runOnSeperateThread(() -> {
+                Microbot.stopPlugin(plugin);
+                return false;
+            });
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    // Check if the script is enabled
+    public boolean isRunning() {
+        return getPlugin() != null && Microbot.getPluginManager().isPluginEnabled(plugin);
+    }
 
     /**
-     * Calculate the next time this script should run
+     * Round time to nearest minute (remove seconds and milliseconds)
      */
+    private long roundToMinutes(long timeMillis) {
+        return (timeMillis / 60000) * 60000;
+    }
+
     /**
-     * Calculate the next time this script should run
+     * Set when this script should next run
      */
-    public LocalDateTime getNextRunTime(LocalDateTime now) {
-        if (!enabled || lastRunTime == null) {
-            return now.plusHours(1); // Default to 1 hour from now if disabled or no last run time
-        }
-
-        // Handle null scheduleType
-        if (scheduleType == null) {
-            return lastRunTime.plusHours(intervalValue);
-        }
-
-        // Calculate next run time based on schedule type and interval
-        switch (scheduleType) {
-            case MINUTES:
-                return lastRunTime.plusMinutes(intervalValue);
-            case HOURS:
-                return lastRunTime.plusHours(intervalValue);
-            case DAYS:
-                return lastRunTime.plusDays(intervalValue);
-            default:
-                return lastRunTime.plusHours(1); // Default fallback
-        }
+    public void setNextRunTime(long timeMillis) {
+        this.nextRunTime = roundToMinutes(timeMillis);
     }
 
     /**
      * Check if the script is due to run
      */
-    public boolean isDueToRun(LocalDateTime now) {
+    public boolean isDueToRun(long currentTimeMillis) {
+        currentTimeMillis = roundToMinutes(currentTimeMillis);
+
         if (!enabled) {
             return false;
         }
 
-        if (lastRunTime == null) {
-            // If lastRunTime is null, set it to now and return false to prevent immediate execution
-            lastRunTime = now;
-            return false;
-        }
-
-        LocalDateTime nextRun = getNextRunTime(now);
-        return !now.isBefore(nextRun);
+        return currentTimeMillis >= nextRunTime;
     }
 
+    /**
+     * Update the lastRunTime to now and calculate the next run time
+     */
+    public void updateAfterRun() {
+        lastRunTime = roundToMinutes(System.currentTimeMillis());
+
+        // Calculate next run time based on schedule type and interval
+        switch (scheduleType) {
+            case MINUTES:
+                nextRunTime = lastRunTime + TimeUnit.MINUTES.toMillis(intervalValue);
+                break;
+            case HOURS:
+                nextRunTime = lastRunTime + TimeUnit.HOURS.toMillis(intervalValue);
+                break;
+            case DAYS:
+                nextRunTime = lastRunTime + TimeUnit.DAYS.toMillis(intervalValue);
+                break;
+            default:
+                nextRunTime = lastRunTime + TimeUnit.HOURS.toMillis(1); // Default fallback
+        }
+    }
 
     /**
      * Get a formatted display of the interval
      */
     public String getIntervalDisplay() {
-        if (scheduleType == null) {
-            return "Every " + intervalValue + " hours"; // Default to hours if scheduleType is null
-        }
         return "Every " + intervalValue + " " + scheduleType.toString().toLowerCase();
     }
 
     /**
      * Get a formatted display of when this script will run next
      */
-    public String getNextRunDisplay(LocalDateTime now) {
+    public String getNextRunDisplay(long currentTimeMillis) {
+        currentTimeMillis = roundToMinutes(currentTimeMillis);
+
         if (!enabled) {
             return "Disabled";
         }
 
-        if (lastRunTime == null) {
+        if (currentTimeMillis >= nextRunTime) {
             return "Ready to run";
         }
 
-        LocalDateTime nextRun = getNextRunTime(now);
-        Duration timeUntil = Duration.between(now, nextRun);
-
-        if (timeUntil.isNegative() || timeUntil.isZero()) {
-            return "Ready to run";
-        }
-
-        long hours = timeUntil.toHours();
-        long minutes = timeUntil.toMinutesPart();
+        long timeUntilMillis = nextRunTime - currentTimeMillis;
+        long hours = TimeUnit.MILLISECONDS.toHours(timeUntilMillis);
+        long minutes = TimeUnit.MILLISECONDS.toMinutes(timeUntilMillis) % 60;
 
         if (hours > 0) {
             return String.format("In %dh %dm", hours, minutes);
         } else {
             return String.format("In %dm", minutes);
         }
+    }
+
+    /**
+     * Get a formatted time string for the next run
+     */
+    public String getNextRunTimeString() {
+        return TIME_FORMAT.format(new Date(nextRunTime));
     }
 
     /**
@@ -143,30 +206,23 @@ public class ScheduledScript implements Comparable<ScheduledScript> {
         }
 
         try {
-            LocalTime durationTime = LocalTime.parse(duration, TIME_FORMATTER);
-            return durationTime.getHour() * 60L + durationTime.getMinute();
+            String[] parts = duration.split(":");
+            if (parts.length == 2) {
+                int hours = Integer.parseInt(parts[0]);
+                int minutes = Integer.parseInt(parts[1]);
+                return hours * 60L + minutes;
+            }
         } catch (Exception e) {
-            return 0;
+            // Fall through to return 0
         }
-    }
-
-    /**
-     * Get the start time for hourly schedules
-     */
-    public String getStartTime() {
-        if (lastRunTime != null) {
-            return lastRunTime.format(TIME_FORMATTER);
-        }
-        return "--:--";
+        return 0;
     }
 
     /**
      * Convert a list of ScheduledScript objects to JSON
      */
     public static String toJson(List<ScheduledScript> scripts) {
-        Gson gson = new GsonBuilder()
-                .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
-                .create();
+        Gson gson = new GsonBuilder().create();
         return gson.toJson(scripts);
     }
 
@@ -179,10 +235,9 @@ public class ScheduledScript implements Comparable<ScheduledScript> {
         }
 
         try {
-            Gson gson = new GsonBuilder()
-                    .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
-                    .create();
-            Type listType = new TypeToken<ArrayList<ScheduledScript>>(){}.getType();
+            Gson gson = new GsonBuilder().create();
+            Type listType = new TypeToken<ArrayList<ScheduledScript>>() {
+            }.getType();
             List<ScheduledScript> scripts = gson.fromJson(json, listType);
 
             // Fix any null scheduleType values
@@ -190,50 +245,16 @@ public class ScheduledScript implements Comparable<ScheduledScript> {
                 if (script.getScheduleType() == null) {
                     script.scheduleType = ScheduleType.HOURS; // Default to HOURS
                 }
+
+                // Ensure times are rounded to minutes
+                script.lastRunTime = script.roundToMinutes(script.lastRunTime);
+                script.nextRunTime = script.roundToMinutes(script.nextRunTime);
             }
 
             return scripts;
         } catch (Exception e) {
             return new ArrayList<>();
         }
-    }
-
-
-    /**
-     * Adapter class to handle serialization/deserialization of LocalDateTime
-     */
-    private static class LocalDateTimeAdapter implements com.google.gson.JsonSerializer<LocalDateTime>,
-            com.google.gson.JsonDeserializer<LocalDateTime> {
-        private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
-
-        @Override
-        public com.google.gson.JsonElement serialize(LocalDateTime src,
-                                                     java.lang.reflect.Type typeOfSrc,
-                                                     com.google.gson.JsonSerializationContext context) {
-            return src == null ? null : new com.google.gson.JsonPrimitive(formatter.format(src));
-        }
-
-        @Override
-        public LocalDateTime deserialize(com.google.gson.JsonElement json,
-                                         java.lang.reflect.Type typeOfT,
-                                         com.google.gson.JsonDeserializationContext context)
-                throws com.google.gson.JsonParseException {
-            return json == null ? null : LocalDateTime.parse(json.getAsString(), formatter);
-        }
-    }
-
-    @Override
-    public int compareTo(ScheduledScript other) {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime thisNext = this.getNextRunTime(now);
-        LocalDateTime otherNext = other.getNextRunTime(now);
-
-        // Handle null cases
-        if (thisNext == null && otherNext == null) return 0;
-        if (thisNext == null) return 1;
-        if (otherNext == null) return -1;
-
-        return thisNext.compareTo(otherNext);
     }
 
     @Override

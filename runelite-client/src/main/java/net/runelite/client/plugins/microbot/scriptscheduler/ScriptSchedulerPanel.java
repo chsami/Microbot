@@ -13,6 +13,7 @@ import java.awt.event.ActionEvent;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.concurrent.TimeUnit;
 
 public class ScriptSchedulerPanel extends PluginPanel {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
@@ -200,18 +201,18 @@ public class ScriptSchedulerPanel extends PluginPanel {
         updateNextScriptInfo();
     }
 
-    public void updateScriptInfo() {
-        String currentScriptName = plugin.getCurrentScriptName();
-        LocalDateTime startTime = plugin.getScriptStartTime();
+    void updateScriptInfo() {
+        ScheduledScript currentScript = plugin.getCurrentScript();
+        long startTime = plugin.getScriptStartTime();
 
-        if (currentScriptName != null && !currentScriptName.isEmpty()) {
-            currentScriptLabel.setText(currentScriptName);
+        if (currentScript != null) {
+            currentScriptLabel.setText(currentScript.getCleanName());
 
-            if (startTime != null) {
-                Duration runtime = Duration.between(startTime, LocalDateTime.now());
-                long hours = runtime.toHours();
-                long minutes = runtime.toMinutesPart();
-                long seconds = runtime.toSecondsPart();
+            if (startTime > 0) {
+                long runtimeMillis = System.currentTimeMillis() - startTime;
+                long hours = TimeUnit.MILLISECONDS.toHours(runtimeMillis);
+                long minutes = TimeUnit.MILLISECONDS.toMinutes(runtimeMillis) % 60;
+                long seconds = TimeUnit.MILLISECONDS.toSeconds(runtimeMillis) % 60;
                 runtimeLabel.setText(String.format("%02d:%02d:%02d", hours, minutes, seconds));
             } else {
                 runtimeLabel.setText("00:00:00");
@@ -221,23 +222,12 @@ public class ScriptSchedulerPanel extends PluginPanel {
             runtimeLabel.setText("00:00:00");
         }
     }
-
-    public void updateNextScriptInfo() {
+    void updateNextScriptInfo() {
         ScheduledScript nextScript = plugin.getNextScheduledScript();
 
         if (nextScript != null) {
             nextScriptNameLabel.setText(nextScript.getScriptName());
-
-            // Calculate the next run time
-            LocalDateTime now = LocalDateTime.now();
-            LocalDateTime nextRunTime = nextScript.getNextRunTime(now);
-
-            if (nextRunTime != null) {
-                String timeDisplay = nextRunTime.format(TIME_FORMATTER);
-                nextScriptTimeLabel.setText(timeDisplay);
-            } else {
-                nextScriptTimeLabel.setText("--:--");
-            }
+            nextScriptTimeLabel.setText(nextScript.getNextRunTimeString());
 
             // Format the schedule description
             String scheduleDesc = nextScript.getIntervalDisplay();

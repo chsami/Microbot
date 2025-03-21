@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.scriptscheduler.ui;
 
+import lombok.Getter;
 import net.runelite.client.plugins.microbot.scriptscheduler.ScheduledScript;
 import net.runelite.client.plugins.microbot.scriptscheduler.ScriptSchedulerPlugin;
 import net.runelite.client.plugins.microbot.scriptscheduler.type.ScheduleType;
@@ -13,24 +14,31 @@ import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.time.LocalTime;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 
 public class ScheduleFormPanel extends JPanel {
     private final ScriptSchedulerPlugin plugin;
 
+    @Getter
     private JComboBox<String> scriptComboBox;
     private JSpinner intervalSpinner;
     private JComboBox<ScheduleType> scheduleTypeComboBox;
     private JCheckBox enableDurationCheckbox;
     private JSpinner durationSpinner;
+
+    // First run time components
+    private JRadioButton runNowRadio;
+    private JRadioButton runLaterRadio;
+    private JSpinner firstRunTimeSpinner;
+
     private JButton addButton;
     private JButton updateButton;
     private JButton removeButton;
     private JButton controlButton;
 
-    private ScheduledScript currentScript;
+    private ScheduledScript selectedScript;
 
     public ScheduleFormPanel(ScriptSchedulerPlugin plugin) {
         this.plugin = plugin;
@@ -70,6 +78,7 @@ public class ScheduleFormPanel extends JPanel {
         gbc.gridwidth = 3;
         scriptComboBox = new JComboBox<>();
         formPanel.add(scriptComboBox, gbc);
+        updateScriptList(plugin.getAvailableScripts());
 
         // Schedule type
         gbc.gridx = 0;
@@ -93,9 +102,63 @@ public class ScheduleFormPanel extends JPanel {
         scheduleTypeComboBox = new JComboBox<>(ScheduleType.values());
         formPanel.add(scheduleTypeComboBox, gbc);
 
-        // Duration
+        // First run time
         gbc.gridx = 0;
         gbc.gridy = 2;
+        gbc.gridwidth = 1;
+        JLabel firstRunLabel = new JLabel("First run:");
+        firstRunLabel.setForeground(Color.WHITE);
+        firstRunLabel.setFont(FontManager.getRunescapeFont());
+        formPanel.add(firstRunLabel, gbc);
+
+        // Radio buttons for first run options
+        gbc.gridx = 1;
+        gbc.gridy = 2;
+        gbc.gridwidth = 1;
+        runNowRadio = new JRadioButton("Now");
+        runNowRadio.setForeground(Color.WHITE);
+        runNowRadio.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        runNowRadio.setFont(FontManager.getRunescapeFont());
+        runNowRadio.setSelected(true);
+        formPanel.add(runNowRadio, gbc);
+
+        gbc.gridx = 2;
+        gbc.gridy = 2;
+        gbc.gridwidth = 1;
+        runLaterRadio = new JRadioButton("At:");
+        runLaterRadio.setForeground(Color.WHITE);
+        runLaterRadio.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        runLaterRadio.setFont(FontManager.getRunescapeFont());
+        formPanel.add(runLaterRadio, gbc);
+
+        // Group the radio buttons
+        ButtonGroup firstRunGroup = new ButtonGroup();
+        firstRunGroup.add(runNowRadio);
+        firstRunGroup.add(runLaterRadio);
+
+        // Time spinner for first run
+        gbc.gridx = 3;
+        gbc.gridy = 2;
+        gbc.gridwidth = 1;
+        SpinnerDateModel firstRunModel = new SpinnerDateModel();
+        firstRunTimeSpinner = new JSpinner(firstRunModel);
+        firstRunTimeSpinner.setEditor(new JSpinner.DateEditor(firstRunTimeSpinner, "HH:mm"));
+        firstRunTimeSpinner.setEnabled(false);
+
+        // Set default first run time to current time + 1 hour
+        Calendar calendar = Calendar.getInstance();
+        calendar.add(Calendar.HOUR_OF_DAY, 1);
+        firstRunTimeSpinner.setValue(calendar.getTime());
+
+        formPanel.add(firstRunTimeSpinner, gbc);
+
+        // Enable/disable time spinner based on radio selection
+        runNowRadio.addActionListener(e -> firstRunTimeSpinner.setEnabled(false));
+        runLaterRadio.addActionListener(e -> firstRunTimeSpinner.setEnabled(true));
+
+        // Duration
+        gbc.gridx = 0;
+        gbc.gridy = 3;
         gbc.gridwidth = 1;
         enableDurationCheckbox = new JCheckBox("Run for duration:");
         enableDurationCheckbox.setForeground(Color.WHITE);
@@ -106,7 +169,7 @@ public class ScheduleFormPanel extends JPanel {
         formPanel.add(enableDurationCheckbox, gbc);
 
         gbc.gridx = 1;
-        gbc.gridy = 2;
+        gbc.gridy = 3;
         gbc.gridwidth = 3;
         SpinnerDateModel durationModel = new SpinnerDateModel();
         durationSpinner = new JSpinner(durationModel);
@@ -114,7 +177,7 @@ public class ScheduleFormPanel extends JPanel {
         durationSpinner.setEnabled(false);
 
         // Set default duration to 1 hour
-        Calendar calendar = Calendar.getInstance();
+        calendar = Calendar.getInstance();
         calendar.set(Calendar.HOUR_OF_DAY, 1);
         calendar.set(Calendar.MINUTE, 0);
         calendar.set(Calendar.SECOND, 0);
@@ -184,7 +247,7 @@ public class ScheduleFormPanel extends JPanel {
     }
 
     public void loadScript(ScheduledScript script) {
-        this.currentScript = script;
+        this.selectedScript = script;
 
         // Set script
         scriptComboBox.setSelectedItem(script.getScriptName());
@@ -194,34 +257,46 @@ public class ScheduleFormPanel extends JPanel {
         scheduleTypeComboBox.setSelectedItem(script.getScheduleType() != null ?
                 script.getScheduleType() : ScheduleType.HOURS);
 
+        // Set first run time - for existing scripts, we'll default to "Now"
+        runNowRadio.setSelected(true);
+        firstRunTimeSpinner.setEnabled(false);
+
         // Set duration
         if (script.getDuration() != null && !script.getDuration().isEmpty()) {
             enableDurationCheckbox.setSelected(true);
             durationSpinner.setEnabled(true);
             try {
-                LocalTime duration = LocalTime.parse(script.getDuration(), ScheduledScript.TIME_FORMATTER);
-                // Convert LocalTime to java.util.Date
-                Calendar calendar = Calendar.getInstance();
-                calendar.set(Calendar.HOUR_OF_DAY, duration.getHour());
-                calendar.set(Calendar.MINUTE, duration.getMinute());
-                calendar.set(Calendar.SECOND, 0);
-                durationSpinner.setValue(calendar.getTime());
+                String[] parts = script.getDuration().split(":");
+                if (parts.length == 2) {
+                    int hours = Integer.parseInt(parts[0]);
+                    int minutes = Integer.parseInt(parts[1]);
+
+                    Calendar calendar = Calendar.getInstance();
+                    calendar.set(Calendar.HOUR_OF_DAY, hours);
+                    calendar.set(Calendar.MINUTE, minutes);
+                    calendar.set(Calendar.SECOND, 0);
+                    calendar.set(Calendar.MILLISECOND, 0);
+                    durationSpinner.setValue(calendar.getTime());
+                }
             } catch (Exception e) {
                 // Use 01:00 as default duration if parsing fails
                 Calendar calendar = Calendar.getInstance();
                 calendar.set(Calendar.HOUR_OF_DAY, 1);
                 calendar.set(Calendar.MINUTE, 0);
                 calendar.set(Calendar.SECOND, 0);
+                calendar.set(Calendar.MILLISECOND, 0);
                 durationSpinner.setValue(calendar.getTime());
             }
         } else {
             enableDurationCheckbox.setSelected(false);
             durationSpinner.setEnabled(false);
         }
-    }
 
+        // Update the control button to reflect the current script
+        updateControlButton();
+    }
     public void clearForm() {
-        currentScript = null;
+        selectedScript = null;
 
         // Reset script selection
         if (scriptComboBox.getItemCount() > 0) {
@@ -234,14 +309,26 @@ public class ScheduleFormPanel extends JPanel {
         // Reset schedule type to HOURS
         scheduleTypeComboBox.setSelectedItem(ScheduleType.HOURS);
 
+        // Reset first run time to "Now"
+        runNowRadio.setSelected(true);
+        firstRunTimeSpinner.setEnabled(false);
+
+        // Reset first run time spinner to current time + 1 hour
+        Calendar calendar = Calendar.getInstance();
+        calendar.add(Calendar.HOUR_OF_DAY, 1);
+        firstRunTimeSpinner.setValue(calendar.getTime());
+
         // Reset duration to 1 hour and disable
         enableDurationCheckbox.setSelected(false);
         durationSpinner.setEnabled(false);
-        Calendar calendar = Calendar.getInstance();
+        calendar = Calendar.getInstance();
         calendar.set(Calendar.HOUR_OF_DAY, 1);
         calendar.set(Calendar.MINUTE, 0);
         calendar.set(Calendar.SECOND, 0);
         durationSpinner.setValue(calendar.getTime());
+
+        // Update the control button
+        updateControlButton();
     }
 
     public ScheduledScript getScriptFromForm() {
@@ -277,11 +364,39 @@ public class ScheduleFormPanel extends JPanel {
             durationStr = new java.text.SimpleDateFormat("HH:mm").format(durationDate);
         }
 
-        return new ScheduledScript(scriptName, scheduleType, intervalValue, durationStr, true);
+        // Create the script with default settings
+        ScheduledScript script = new ScheduledScript(scriptName, scheduleType, intervalValue, durationStr, true);
+
+        if (runLaterRadio.isSelected()) {
+            // User wants to run at a specific time
+            Date selectedTime = (Date) firstRunTimeSpinner.getValue();
+            Calendar selectedCal = Calendar.getInstance();
+            selectedCal.setTime(selectedTime);
+
+            // Get hours and minutes from the spinner
+            int hours = selectedCal.get(Calendar.HOUR_OF_DAY);
+            int minutes = selectedCal.get(Calendar.MINUTE);
+
+            // Create a Date for today at the specified time
+            Calendar targetCal = Calendar.getInstance();
+            targetCal.set(Calendar.HOUR_OF_DAY, hours);
+            targetCal.set(Calendar.MINUTE, minutes);
+            targetCal.set(Calendar.SECOND, 0);
+            targetCal.set(Calendar.MILLISECOND, 0);
+
+            // If the time is in the past, add a day to make it future
+            if (targetCal.getTimeInMillis() < System.currentTimeMillis()) {
+                targetCal.add(Calendar.DAY_OF_MONTH, 1);
+            }
+
+            script.setNextRunTime(targetCal.getTimeInMillis());
+        }
+
+        return script;
     }
 
     public void updateControlButton() {
-        boolean isScriptRunning = plugin.getCurrentScriptName() != null && !plugin.getCurrentScriptName().isEmpty();
+        boolean isScriptRunning = selectedScript != null && selectedScript.isRunning();
 
         if (isScriptRunning) {
             // If a script is running, show "Stop Script" button
@@ -291,8 +406,8 @@ public class ScheduleFormPanel extends JPanel {
 
             // Update hover effect for red button
             updateButtonHoverEffect(controlButton, ColorScheme.PROGRESS_ERROR_COLOR);
-        } else if (currentScript != null) {
-            controlButton.setText("Run now!");
+        } else if (selectedScript != null) {
+            controlButton.setText("Run \"" + selectedScript.getCleanName() + "\" Now");
             controlButton.setBackground(ColorScheme.PROGRESS_COMPLETE_COLOR);
             controlButton.setEnabled(true);
 
@@ -327,14 +442,13 @@ public class ScheduleFormPanel extends JPanel {
     }
 
     private void onControlButtonClicked(ActionEvent e) {
-        boolean isScriptRunning = plugin.getCurrentScriptName() != null && !plugin.getCurrentScriptName().isEmpty();
 
-        if (isScriptRunning) {
+        if (selectedScript.isRunning()) {
             // Stop the current script
             plugin.stopCurrentScript();
-        } else if (currentScript != null) {
+        } else if (selectedScript != null) {
             // Run the selected script now
-            plugin.startScript(currentScript.getScriptName());
+            plugin.startScript(selectedScript);
         }
     }
 
@@ -342,6 +456,9 @@ public class ScheduleFormPanel extends JPanel {
         updateButton.setEnabled(editMode);
         removeButton.setEnabled(editMode);
         addButton.setEnabled(!editMode);
+
+        // Update control button based on edit mode
+        updateControlButton();
     }
 
     public void setAddButtonAction(ActionListener listener) {

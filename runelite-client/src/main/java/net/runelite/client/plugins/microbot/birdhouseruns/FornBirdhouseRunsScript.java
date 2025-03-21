@@ -108,12 +108,10 @@ public class FornBirdhouseRunsScript extends Script {
                         break;
                     case FINISHING:
                         if (config.goToBank()) {
-                            BankLocation bankLocation = Rs2Bank.getNearestBank();
-                            boolean arrived = Rs2Walker.walkTo(bankLocation.getWorldPoint());
-                            sleepUntil(() -> arrived);
+                            boolean arrived = Rs2Walker.walkTo(Rs2Bank.getNearestBank().getWorldPoint());
+                            sleepUntil(() -> arrived, this::emptyNests, 100, 20000);
                         }
 
-                        emptyNests();
                         botStatus = states.FINISHED;
                         notifier.notify(Notification.ON, "Birdhouse run is finished.");
                         super.shutdown();

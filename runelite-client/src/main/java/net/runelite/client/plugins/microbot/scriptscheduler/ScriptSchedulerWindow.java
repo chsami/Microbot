@@ -64,9 +64,8 @@ public class ScriptSchedulerWindow extends JFrame {
         refreshData();
     }
 
-    private void refreshData() {
+    public void refreshData() {
         tablePanel.refreshTable();
-        formPanel.updateScriptList(plugin.getAvailableScripts());
     }
 
     private void onScriptSelected(ScheduledScript script) {
@@ -110,7 +109,6 @@ public class ScriptSchedulerWindow extends JFrame {
         }
     }
 
-    // Add this method to update the control button
     public void updateControlButton() {
         if (formPanel != null) {
             formPanel.updateControlButton();

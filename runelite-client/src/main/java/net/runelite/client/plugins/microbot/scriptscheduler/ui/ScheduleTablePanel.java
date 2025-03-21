@@ -15,6 +15,7 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.function.Consumer;
 
 public class ScheduleTablePanel extends JPanel {
@@ -158,18 +159,38 @@ public class ScheduleTablePanel extends JPanel {
     }
 
     public void refreshTable() {
-        tableModel.setRowCount(0);
-        LocalDateTime now = LocalDateTime.now();
+        // Get current scripts
+        List<ScheduledScript> scripts = plugin.getScheduledScripts();
+        long currentTime = System.currentTimeMillis();
 
-        for (ScheduledScript script : plugin.getScheduledScripts()) {
-            tableModel.addRow(new Object[]{
-                    script.getScriptName(),
-                    script.getIntervalDisplay(),
-                    script.getDuration() != null && !script.getDuration().isEmpty() ?
-                            script.getDuration() : "Until stopped",
-                    script.getNextRunDisplay(now),
-                    script.isEnabled()
-            });
+        // Update existing rows and add new ones
+        for (int i = 0; i < scripts.size(); i++) {
+            ScheduledScript script = scripts.get(i);
+
+            if (i < tableModel.getRowCount()) {
+                // Update existing row
+                tableModel.setValueAt(script.getScriptName(), i, 0);
+                tableModel.setValueAt(script.getIntervalDisplay(), i, 1);
+                tableModel.setValueAt(script.getDuration() != null && !script.getDuration().isEmpty() ?
+                        script.getDuration() : "Until stopped", i, 2);
+                tableModel.setValueAt(script.getNextRunDisplay(currentTime), i, 3);
+                tableModel.setValueAt(script.isEnabled(), i, 4);
+            } else {
+                // Add new row
+                tableModel.addRow(new Object[]{
+                        script.getScriptName(),
+                        script.getIntervalDisplay(),
+                        script.getDuration() != null && !script.getDuration().isEmpty() ?
+                                script.getDuration() : "Until stopped",
+                        script.getNextRunDisplay(currentTime),
+                        script.isEnabled()
+                });
+            }
+        }
+
+        // Remove excess rows if there are more rows than scripts
+        while (tableModel.getRowCount() > scripts.size()) {
+            tableModel.removeRow(tableModel.getRowCount() - 1);
         }
     }
 
@@ -203,19 +224,5 @@ public class ScheduleTablePanel extends JPanel {
         if (selectionListener != null) {
             selectionListener.accept(null);
         }
-    }
-
-    /**
-     * Add a "Clear Selection" button to the panel
-     */
-    public void addClearSelectionButton() {
-        JButton clearButton = new JButton("Clear Selection");
-        clearButton.addActionListener(e -> clearSelection());
-
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        buttonPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        buttonPanel.add(clearButton);
-
-        add(buttonPanel, BorderLayout.SOUTH);
     }
 }
