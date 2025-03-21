@@ -1,19 +1,17 @@
 package net.runelite.client.plugins.microbot.banksorter;
 
 import lombok.Getter;
+import lombok.Setter;
+import net.runelite.client.plugins.microbot.Microbot;
 
 @Getter
 public class BankItem {
     private final int id;
     private final String name;
-    private final int quantity;
-    private final int originalIndex;
 
-    public BankItem(int id, String name, int quantity, int originalIndex) {
+    public BankItem(int id, String name) {
         this.id = id;
         this.name = name;
-        this.quantity = quantity;
-        this.originalIndex = originalIndex;
     }
 
 }

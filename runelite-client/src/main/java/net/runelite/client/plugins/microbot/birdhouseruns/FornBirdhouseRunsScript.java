@@ -109,7 +109,8 @@ public class FornBirdhouseRunsScript extends Script {
                     case FINISHING:
                         if (config.goToBank()) {
                             boolean arrived = Rs2Walker.walkTo(Rs2Bank.getNearestBank().getWorldPoint());
-                            sleepUntil(() -> arrived, this::emptyNests, 100, 20000);
+                            sleepUntil(() -> arrived, 20000);
+                            emptyNests();
                         }
 
                         botStatus = states.FINISHED;
@@ -139,8 +140,7 @@ public class FornBirdhouseRunsScript extends Script {
         );
 
         for ( int id : ids) {
-            Rs2Inventory.interact(id, "Search");
-            Rs2Inventory.waitForInventoryChanges(1000);
+            if (Rs2Inventory.interact(id, "Search")) Rs2Inventory.waitForInventoryChanges(1000);
         }
     }
 
@@ -172,7 +172,7 @@ public class FornBirdhouseRunsScript extends Script {
         if (!Rs2Inventory.hasItem("bird house") && Rs2Inventory.hasItem(ItemID.CLOCKWORK)) {
             Rs2Inventory.use(ItemID.HAMMER);
             Rs2Inventory.use(" logs");
-            Rs2Inventory.waitForInventoryChanges(1000);
+            Rs2Inventory.waitForInventoryChanges(5000);
         }
         Rs2GameObject.interact(worldPoint, "build");
         sleepUntil(Rs2Player::isAnimating);

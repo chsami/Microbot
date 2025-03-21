@@ -1,16 +1,12 @@
 package net.runelite.client.plugins.microbot.banksorter;
 
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Client;
-import net.runelite.api.InventoryID;
-import net.runelite.api.ItemContainer;
-import net.runelite.api.Point;
-import net.runelite.api.widgets.ComponentID;
+import net.runelite.api.*;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.mouse.Mouse;
 
 import javax.inject.Inject;
@@ -39,15 +35,20 @@ public class BankTabSorterScript extends Script {
             }
 
             Microbot.log("Starting bank tab sorting!");
-            // Get the visible items in the current bank tab
-            List<BankItem> visibleItems = getVisibleBankItems();
-
-            if (visibleItems.isEmpty()) {
-                Microbot.log("No items found in the current tab");
-                return false;
+            // Get the items in current tab
+            var currentTab = Rs2Bank.getCurrentTab();
+            var indexStart = getTabStartIndex(currentTab);
+            var indexEnd = getTabStartIndex(currentTab + 1);
+            List<BankItem> items = new ArrayList<>();
+            for (Widget widget : Rs2Bank.getItems()) {
+                int index = widget.getIndex();
+                String name = widget.getName().replaceAll(".*<col=[^>]*>(.*?)</col>.*", "$1");
+                if (indexStart <= index && index < indexEnd) {
+                    items.add(new BankItem(widget.getItemId(), name));
+                }
             }
             // Sort the items
-            List<BankItem> sortedItems = sortItemsByName(visibleItems);
+            List<BankItem> sortedItems = sortItemsByName(items);
 
             // Perform the actual sorting in the bank
             rearrangeBankItems(sortedItems);
@@ -58,128 +59,57 @@ public class BankTabSorterScript extends Script {
         return true;
     }
 
-    private List<BankItem> getVisibleBankItems() {
-        return Microbot.getClientThread().runOnClientThread(() -> {
-            List<BankItem> items = new ArrayList<>();
-
-            // Get the bank item container widget
-            Widget bankContainer = client.getWidget(ComponentID.BANK_ITEM_CONTAINER);
-            if (bankContainer == null) {
-                Microbot.log("Bank container not found");
-                return items;
-            }
-
-            // Get all item widgets in the container
-            Widget[] bankItemWidgets = bankContainer.getDynamicChildren();
-
-            // Process each widget to extract item information
-            for (int i = 0; i < bankItemWidgets.length; i++) {
-                Widget widget = bankItemWidgets[i];
-
-                // Skip empty slots
-                if (widget.getItemId() == -1 || widget.isHidden()) {
-                    continue;
-                }
-
-                // Get item details
-                int itemId = widget.getItemId();
-                int quantity = widget.getItemQuantity();
-                String itemName = client.getItemDefinition(itemId).getName();
-
-                // Add to our list with the widget index as the original position
-                items.add(new BankItem(itemId, itemName, quantity, i));
-            }
-
-            return items;
-        });
-    }
-
-    private void rearrangeBankItems(List<BankItem> sortedItems) {
-        if (sortedItems.isEmpty()) {
+    private void rearrangeBankItems(List<BankItem> sorted) {
+        if (sorted.isEmpty()) {
             return;
         }
+        Microbot.log("Starting bank item rearrangement with " + sorted.size() + " items");
 
-        Microbot.log("Starting enhanced bank item rearrangement with " + sortedItems.size() + " items");
 
-        // Keep track of which items we've moved already
-        Set<String> movedItems = new HashSet<>();
+        for (int i = 0; i < sorted.size(); i++) {
+            BankItem item = sorted.get(i);
+            if (!isRunning()) break;
 
-        // Process each position in the sorted order
-        for (int targetPos = 0; targetPos < sortedItems.size(); targetPos++) {
-            // Re-fetch the bank container for each operation
-            Widget bankContainer = client.getWidget(ComponentID.BANK_ITEM_CONTAINER);
-            if (bankContainer == null) {
-                Microbot.log("Bank container disappeared during sorting");
-                return;
-            }
+            int currentTab = Rs2Bank.getCurrentTab();
+            int tabStartIndex = getTabStartIndex(currentTab);
+            int oldSlot = Rs2Bank.getItems().stream().filter(_item -> Objects.equals(_item.getItemId(), item.getId())).findFirst().get().getIndex();
+            int newSlot = tabStartIndex + i;
 
-            // Re-get all item widgets after each move
-            Widget[] bankItemWidgets = bankContainer.getDynamicChildren();
+            Widget sourceWidget = Rs2Bank.getItemWidget(oldSlot);
+            Widget targetWidget = Rs2Bank.getItemWidget(newSlot);
 
-            // Get the item that should be in this target position
-            BankItem targetItem = sortedItems.get(targetPos);
-            String targetItemKey = targetItem.getId() + "-" + targetItem.getName() + "-" + targetItem.getQuantity();
-
-            // Skip if we've already moved this item
-            if (movedItems.contains(targetItemKey)) {
+            if (sourceWidget == null || targetWidget == null) {
+                Microbot.log("No widget found.");
                 continue;
             }
 
-            // Log which row we're working on (for debugging and user feedback)
-            int currentRow = targetPos / 8 + 1;
-            int posInRow = targetPos % 8 + 1;
-            Microbot.log("Sorting position: Row " + currentRow + ", Item " + posInRow +
-                    " (" + targetItem.getName() + ")");
-
-            // Check if the correct item is already in this position
-            Widget widgetAtTargetPos = null;
-            for (Widget widget : bankItemWidgets) {
-                if (widget.getIndex() == targetPos) {
-                    widgetAtTargetPos = widget;
-                    break;
-                }
-            }
-
-            // Check if the correct item is already there
-            if (widgetAtTargetPos != null && widgetAtTargetPos.getItemId() == targetItem.getId()) {
-                Microbot.log(targetItem.getName() + " already in the correct position " + targetPos);
-                movedItems.add(targetItemKey);
+            if (sourceWidget.getItemId() == targetWidget.getItemId()) {
+                Microbot.log(item.getName() + " already in the correct spot!");
                 continue;
             }
 
-            // Find where our target item currently is
-            Widget sourceWidget = null;
-            for (Widget widget : bankItemWidgets) {
-                if (widget.getItemId() == targetItem.getId()) {
-                    // For items with the same ID, we'd ideally check quantity as well
-                    sourceWidget = widget;
-                    break;
-                }
-            }
-
-            if (sourceWidget == null) {
-                Microbot.log("Cannot find widget for item: " + targetItem.getName());
-                continue;
-            }
-
-            // Make sure we have a valid target position
-            if (widgetAtTargetPos == null) {
-                Microbot.log("Cannot find widget at target position: " + targetPos);
-                continue;
-            }
-
-            Microbot.log("Moving " + targetItem.getName() + " from position " +
-                    sourceWidget.getIndex() + " to position " + targetPos);
+            Microbot.log("Moving " + item.getName() + " from position " +
+                    oldSlot + " to position " + newSlot);
 
             // Calculate drag points
             Point sourcePoint = new Point(
-                    sourceWidget.getCanvasLocation().getX() + sourceWidget.getWidth() / 2,
-                    sourceWidget.getCanvasLocation().getY() + sourceWidget.getHeight() / 2
+                    Rs2Random.between(
+                            sourceWidget.getCanvasLocation().getX(),
+                            sourceWidget.getCanvasLocation().getX() + sourceWidget.getWidth()),
+                    Rs2Random.between(
+                            sourceWidget.getCanvasLocation().getY(),
+                            sourceWidget.getCanvasLocation().getY() + sourceWidget.getHeight())
             );
 
             Point targetPoint = new Point(
-                    widgetAtTargetPos.getCanvasLocation().getX() + widgetAtTargetPos.getWidth() / 2,
-                    widgetAtTargetPos.getCanvasLocation().getY() + widgetAtTargetPos.getHeight() / 2
+                    Rs2Random.between(
+                            targetWidget.getCanvasLocation().getX(),
+                            targetWidget.getCanvasLocation().getX() + targetWidget.getWidth()
+                    ),
+                    Rs2Random.between(
+                            targetWidget.getCanvasLocation().getY(),
+                            targetWidget.getCanvasLocation().getY() + targetWidget.getHeight()
+                    )
             );
 
             // Execute the drag
@@ -187,15 +117,8 @@ public class BankTabSorterScript extends Script {
                 Microbot.getMouse().drag(sourcePoint, targetPoint);
             }
 
-            // Mark this item as moved
-            movedItems.add(targetItemKey);
-
             // Allow a short delay between operations
-            try {
-                Thread.sleep(250 + (int) (Math.random() * 150));
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            sleep(Rs2Random.between(400, 500));
         }
 
         Microbot.log("Enhanced bank tab sorting completed!");
@@ -247,8 +170,8 @@ public class BankTabSorterScript extends Script {
             }
         }
 
-        Collections.sort(teleportGroups, (a, b) -> a.getKey().compareToIgnoreCase(b.getKey()));
-        Collections.sort(nonTeleportGroups, (a, b) -> a.getKey().compareToIgnoreCase(b.getKey()));
+        teleportGroups.sort(Comparator.comparing(a -> a.getKey().toLowerCase()));
+        nonTeleportGroups.sort(Comparator.comparing(a -> a.getKey().toLowerCase()));
 
         // Step 4: Create final sorted list using a row-based approach
         List<BankItem> sortedItems = new ArrayList<>();
@@ -270,6 +193,30 @@ public class BankTabSorterScript extends Script {
 
         return sortedItems;
     }
+
+    /**
+     * Calculates the starting index for a given tab in the global bank container
+     */
+    private int getTabStartIndex(int tabNumber) {
+        if (tabNumber == 0) {
+            // For tab 0 (main tab), items start after all other tab items
+            int itemsInOtherTabs = 0;
+            for (int i = 0; i < 9; i++) {
+                int tabVar = 4171 + i; // BANK_TAB_ONE_COUNT to BANK_TAB_NINE_COUNT
+                itemsInOtherTabs += Microbot.getVarbitValue(tabVar);
+            }
+            return itemsInOtherTabs;
+        } else {
+            // For tabs 1-9, calculate the starting position by counting items in previous tabs
+            int startPos = 0;
+            for (int i = 0; i < tabNumber - 1; i++) {
+                int tabVar = 4171 + i; // BANK_TAB_ONE_COUNT to BANK_TAB_NINE_COUNT
+                startPos += Microbot.getVarbitValue(tabVar);
+            }
+            return startPos;
+        }
+    }
+
 
     private void processSameNameGroups(List<BankItem> sortedItems,
                                        List<Map.Entry<String, List<BankItem>>> groups,
