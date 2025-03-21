@@ -1,6 +1,5 @@
 package net.runelite.client.plugins.microbot.scriptscheduler;
 
-import net.runelite.client.plugins.microbot.scriptscheduler.type.ScheduleType;
 import net.runelite.client.plugins.microbot.scriptscheduler.ui.ScheduleFormPanel;
 import net.runelite.client.plugins.microbot.scriptscheduler.ui.ScheduleTablePanel;
 
@@ -9,19 +8,16 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.time.LocalDateTime;
 
 public class ScriptSchedulerWindow extends JFrame {
     private final ScriptSchedulerPlugin plugin;
-    private final ScriptSchedulerConfig config;
 
-    private ScheduleTablePanel tablePanel;
-    private ScheduleFormPanel formPanel;
+    private final ScheduleTablePanel tablePanel;
+    private final ScheduleFormPanel formPanel;
 
-    public ScriptSchedulerWindow(ScriptSchedulerPlugin plugin, ScriptSchedulerConfig config) {
+    public ScriptSchedulerWindow(ScriptSchedulerPlugin plugin) {
         super("Script Scheduler");
         this.plugin = plugin;
-        this.config = config;
 
         setSize(650, 500);
         setLocationRelativeTo(null); // Center on screen
@@ -48,7 +44,6 @@ public class ScriptSchedulerWindow extends JFrame {
         formPanel.setAddButtonAction(e -> onAddScript());
         formPanel.setUpdateButtonAction(e -> onUpdateScript());
         formPanel.setRemoveButtonAction(e -> onRemoveScript());
-        // No need to set runNowButton action anymore, it's handled by the controlButton
 
         // Disable edit buttons initially
         formPanel.setEditMode(false);

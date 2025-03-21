@@ -6,7 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.events.GameTick;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.PluginChanged;
@@ -18,15 +17,12 @@ import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.ImageUtil;
-import net.runelite.client.util.SwingUtil;
 
 import javax.inject.Inject;
 import javax.swing.*;
 import java.awt.image.BufferedImage;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -40,9 +36,6 @@ import java.util.stream.Collectors;
         enabledByDefault = false
 )
 public class ScriptSchedulerPlugin extends Plugin {
-    @Inject
-    private Client client;
-
     @Inject
     private ScriptSchedulerConfig config;
 
@@ -65,10 +58,8 @@ public class ScriptSchedulerPlugin extends Plugin {
     @Getter
     private ScheduledScript currentScript;
 
-    @Getter
-    private long scriptStartTime;
-
     private List<ScheduledScript> scheduledScripts = new ArrayList<>();
+    @Getter
     private boolean isRunning = false;
     private ScheduledFuture<?> scriptStopTask;
 
@@ -89,6 +80,7 @@ public class ScriptSchedulerPlugin extends Plugin {
         // Load saved schedules from config
         loadScheduledScripts();
 
+        // Run the main loop
         updateTask = executorService.scheduleAtFixedRate(() -> {
             SwingUtilities.invokeLater(() -> {
                 checkSchedule();
@@ -99,7 +91,7 @@ public class ScriptSchedulerPlugin extends Plugin {
 
     public void openSchedulerWindow() {
         if (schedulerWindow == null) {
-            schedulerWindow = new ScriptSchedulerWindow(this, this.config);
+            schedulerWindow = new ScriptSchedulerWindow(this);
         }
 
         if (!schedulerWindow.isVisible()) {
@@ -166,17 +158,19 @@ public class ScriptSchedulerPlugin extends Plugin {
     public void startScript(ScheduledScript script) {
         if (script == null) return;
         log.info("Starting scheduled script: " + script.getCleanName());
-        if (!Microbot.isLoggedIn()) {
-            new Login();
-            Global.sleepUntil((Microbot::isLoggedIn), 20000);
-        }
-        if (script.start()) {
-            currentScript = script;
-        } else {
+        currentScript = script;
+
+        if (!script.start()) {
             log.error("Failed to start script: " + script.getCleanName());
             currentScript = null;
             isRunning = false;
+            return;
         }
+
+        if (!Microbot.isLoggedIn()) {
+            Microbot.getClientThread().runOnClientThread(Login::new);
+        }
+        updatePanels();
     }
 
     public void stopCurrentScript() {
@@ -189,6 +183,7 @@ public class ScriptSchedulerPlugin extends Plugin {
                 log.error("Failed to stop script: " + currentScript.getCleanName());
             }
         }
+        updatePanels();
     }
 
     @Subscribe
@@ -211,13 +206,11 @@ public class ScriptSchedulerPlugin extends Plugin {
      * Update all UI panels with the current state
      */
     private void updatePanels() {
-        // Update the main panel
         if (panel != null) {
             panel.updateScriptInfo();
             panel.updateNextScriptInfo();
         }
 
-        // Update the scheduler window if it's open
         if (schedulerWindow != null && schedulerWindow.isVisible()) {
             schedulerWindow.refreshData();
             schedulerWindow.updateControlButton();

@@ -10,12 +10,9 @@ import lombok.NoArgsConstructor;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.scriptscheduler.type.ScheduleType;
-import net.runelite.client.plugins.microbot.util.Global;
-import net.runelite.client.plugins.microbot.util.security.Login;
 
 import java.lang.reflect.Type;
 import java.text.SimpleDateFormat;
-import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
@@ -104,7 +101,6 @@ public class ScheduledScript {
         }
     }
 
-    // Check if the script is enabled
     public boolean isRunning() {
         return getPlugin() != null && Microbot.getPluginManager().isPluginEnabled(plugin);
     }

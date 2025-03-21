@@ -10,33 +10,23 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.concurrent.TimeUnit;
 
 public class ScriptSchedulerPanel extends PluginPanel {
-    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
-
     private final ScriptSchedulerPlugin plugin;
-    private final ScriptSchedulerConfig config;
 
     // Current script section
-    private JLabel currentScriptLabel;
-    private JLabel runtimeLabel;
+    private final JLabel currentScriptLabel;
+    private final JLabel runtimeLabel;
 
     // Next script section
-    private JLabel nextScriptNameLabel;
-    private JLabel nextScriptTimeLabel;
-    private JLabel nextScriptScheduleLabel;
-
-    // Control buttons
-    private JButton openConfigButton;
+    private final JLabel nextScriptNameLabel;
+    private final JLabel nextScriptTimeLabel;
+    private final JLabel nextScriptScheduleLabel;
 
     public ScriptSchedulerPanel(ScriptSchedulerPlugin plugin, ScriptSchedulerConfig config) {
         super(false);
         this.plugin = plugin;
-        this.config = config;
 
         setBorder(new EmptyBorder(10, 10, 10, 10));
         setBackground(ColorScheme.DARK_GRAY_COLOR);
@@ -132,7 +122,8 @@ public class ScriptSchedulerPanel extends PluginPanel {
         buttonPanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
         buttonPanel.setBorder(new EmptyBorder(10, 0, 0, 0));
 
-        openConfigButton = createButton("Open Scheduler Config", ColorScheme.BRAND_ORANGE);
+        // Control buttons
+        JButton openConfigButton = createButton();
         openConfigButton.addActionListener(this::onOpenConfigButtonClicked);
         buttonPanel.add(openConfigButton);
 
@@ -170,42 +161,36 @@ public class ScriptSchedulerPanel extends PluginPanel {
         return label;
     }
 
-    private JButton createButton(String text, Color color) {
-        JButton button = new JButton(text);
+    private JButton createButton() {
+        JButton button = new JButton("Open Scheduler Config");
         button.setFont(FontManager.getRunescapeSmallFont());
         button.setFocusPainted(false);
         button.setForeground(Color.WHITE);
-        button.setBackground(color);
+        button.setBackground(ColorScheme.BRAND_ORANGE);
         button.setBorder(new CompoundBorder(
-                BorderFactory.createLineBorder(color.darker(), 1),
+                BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE.darker(), 1),
                 BorderFactory.createEmptyBorder(5, 15, 5, 15)
         ));
 
         // Add hover effect
         button.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
-                button.setBackground(color.brighter());
+                button.setBackground(ColorScheme.BRAND_ORANGE.brighter());
             }
 
             public void mouseExited(java.awt.event.MouseEvent evt) {
-                button.setBackground(color);
+                button.setBackground(ColorScheme.BRAND_ORANGE);
             }
         });
 
         return button;
     }
 
-    public void updateScripts() {
-        // This method is called from the plugin to update script lists
-        updateScriptInfo();
-        updateNextScriptInfo();
-    }
-
     void updateScriptInfo() {
         ScheduledScript currentScript = plugin.getCurrentScript();
-        long startTime = plugin.getScriptStartTime();
 
         if (currentScript != null) {
+            long startTime = currentScript.getLastRunTime();
             currentScriptLabel.setText(currentScript.getCleanName());
 
             if (startTime > 0) {

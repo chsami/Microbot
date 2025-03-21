@@ -6,16 +6,6 @@ import net.runelite.client.config.ConfigItem;
 
 @ConfigGroup("ScriptScheduler")
 public interface ScriptSchedulerConfig extends Config {
-//    @ConfigItem(
-//            keyName = "defaultScript",
-//            name = "Default Script",
-//            description = "Script to run when no scheduled script is active",
-//            position = 1
-//    )
-//    default String defaultScript() {
-//        return "";
-//    }
-
     @ConfigItem(
             keyName = "scheduledScripts",
             name = "Scheduled Scripts",

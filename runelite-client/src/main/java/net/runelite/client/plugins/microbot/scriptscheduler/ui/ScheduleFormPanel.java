@@ -403,15 +403,11 @@ public class ScheduleFormPanel extends JPanel {
             controlButton.setText("Stop Script");
             controlButton.setBackground(ColorScheme.PROGRESS_ERROR_COLOR);
             controlButton.setEnabled(true);
-
-            // Update hover effect for red button
             updateButtonHoverEffect(controlButton, ColorScheme.PROGRESS_ERROR_COLOR);
         } else if (selectedScript != null) {
             controlButton.setText("Run \"" + selectedScript.getCleanName() + "\" Now");
             controlButton.setBackground(ColorScheme.PROGRESS_COMPLETE_COLOR);
             controlButton.setEnabled(true);
-
-            // Update hover effect for green button
             updateButtonHoverEffect(controlButton, ColorScheme.PROGRESS_COMPLETE_COLOR);
         } else {
             // If no script is selected, disable the button
@@ -424,9 +420,7 @@ public class ScheduleFormPanel extends JPanel {
     private void updateButtonHoverEffect(JButton button, Color baseColor) {
         // Remove existing mouse listeners
         for (java.awt.event.MouseListener listener : button.getMouseListeners()) {
-            if (listener.getClass() == java.awt.event.MouseAdapter.class) {
-                button.removeMouseListener(listener);
-            }
+            button.removeMouseListener(listener);
         }
 
         // Add new hover effect
