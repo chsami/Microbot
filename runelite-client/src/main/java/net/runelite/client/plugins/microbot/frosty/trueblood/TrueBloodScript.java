@@ -109,7 +109,6 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.itemstats.potions.StaminaPotion;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
-import net.runelite.client.plugins.microbot.frosty.bloodx.enums.Caves;
 import net.runelite.client.plugins.microbot.frosty.trueblood.enums.Altar;
 import net.runelite.client.plugins.microbot.frosty.trueblood.enums.HomeTeleports;
 import net.runelite.client.plugins.microbot.frosty.trueblood.enums.Teleports;
@@ -247,10 +246,10 @@ public class TrueBloodScript extends Script {
 
     private void handleBanking() {
         HomeTeleports selectedHomeTeleport = config.homeTeleports();
-        if (Rs2Inventory.anyPouchUnknown()) {
+        /*if (Rs2Inventory.anyPouchUnknown()) {
             Rs2Inventory.checkPouches();
             return;
-        }
+        }*/
         if (Rs2Inventory.hasDegradedPouch()) {
             Rs2Magic.repairPouchesWithLunar();
             sleep(Rs2Random.randomGaussian(900, 200));
