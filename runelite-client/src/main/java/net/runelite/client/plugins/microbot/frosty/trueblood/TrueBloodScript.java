@@ -104,10 +104,7 @@ package net.runelite.client.plugins.microbot.frosty.trueblood;
 
 import lombok.Getter;
 import lombok.Setter;
-import net.runelite.api.Client;
-import net.runelite.api.GameObject;
-import net.runelite.api.ObjectID;
-import net.runelite.api.Skill;
+import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.itemstats.potions.StaminaPotion;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -165,12 +162,14 @@ public class TrueBloodScript extends Script {
 
 
     public boolean run(TrueBloodConfig config) {
+        sleep(Rs2Random.randomGaussian(900, 200));
         Microbot.enableAutoRunOn = false;
         Rs2Antiban.resetAntibanSettings();
         Rs2Antiban.antibanSetupTemplates.applyRunecraftingSetup();
         Rs2Antiban.setActivity(Activity.CRAFTING_BLOODS_TRUE_ALTAR);
         Rs2Camera.setZoom(200);
         checkPouches();
+        state = State.BANKING;
         initialRcXp = client.getSkillExperience(Skill.RUNECRAFT);
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
@@ -206,7 +205,7 @@ public class TrueBloodScript extends Script {
                         handleGoingHome();
                         break;
                     case WALKING_TO:
-                        handleWalking();
+                        handleWalkingTest();
                         break;
                     case CRAFTING:
                         handleCrafting();
@@ -335,7 +334,7 @@ public class TrueBloodScript extends Script {
         state = State.WALKING_TO;
     }
 
-    private void handleWalking() {
+    /*private void handleWalking() {
         if (config.has74Agility()) {
             Microbot.log("Using agility shortcut for cave traversal.");
             handle74Agility();
@@ -343,9 +342,21 @@ public class TrueBloodScript extends Script {
             Microbot.log("Using standard travel method (no agility shortcut).");
             handleWalkingNoAgility();
         }
+    }*/
+
+    private void handleWalkingTest() {
+        sleep(Rs2Random.randomGaussian(900, 200));
+        Rs2GameObject.interact(16308, "Enter");
+        sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 13977 && !Rs2Player.isAnimating());
+        sleep(Rs2Random.randomGaussian(1700, 200));
+        Rs2Walker.walkTo(3555, 9783, 0);
+        sleepUntil(() -> !Rs2Player.isMoving() && !Rs2Player.isAnimating() && !Rs2Player.isInteracting() &&
+                Rs2Player.getWorldLocation().getRegionID() == 14232);
+        state = State.CRAFTING;
+
     }
 
-    private void interactWithFourth(Caves cave) {
+    /*private void interactWithFourth(Caves cave) {
         sleep(Rs2Random.randomGaussian(700, 200));
         Microbot.log("Looking for the furthest cave entrance: " + cave.getWhichCave());
         // Get all instances of the cave entrance (ID: 12771)
@@ -459,7 +470,7 @@ public class TrueBloodScript extends Script {
         Rs2Walker.walkTo(3555, 9778, 0);
         sleep(Rs2Random.randomGaussian(1100, 200));
         state = State.CRAFTING;
-    }
+    }*/
 
     private void handleCrafting() {
         Rs2GameObject.interact(25380, "Enter");
@@ -520,6 +531,7 @@ public class TrueBloodScript extends Script {
     }
     private void checkPouches() {
         Rs2Inventory.interact(26784, "Check");
+        sleep(Rs2Random.randomGaussian(900, 200));
     }
 
     private void handleConCape(){
