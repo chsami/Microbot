@@ -5,7 +5,6 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
-import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection;
 
 import java.util.concurrent.TimeUnit;
@@ -24,10 +23,14 @@ public class ExampleScript extends Script {
 
                 //CODE HERE
 
-                Rs2NpcModel npc = (Rs2NpcModel) Rs2Player.getInteracting();
+                var chicken = Rs2Npc.getNpc("chicken");
+
+                System.out.println(chicken.getInteracting() != null ? chicken.getInteracting().getName() : "null");
+
+               /* Rs2NpcModel npc = (Rs2NpcModel) Rs2Player.getInteracting();
 
 
-                System.out.println(npc.getName());
+                System.out.println(npc.getName());*/
 
            //     var currentTarget = Rs2Npc.getNpc("guard");
 

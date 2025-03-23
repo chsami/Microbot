@@ -32,7 +32,6 @@ import com.google.inject.Guice;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 import joptsimple.*;
-import joptsimple.util.EnumConverter;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
@@ -154,6 +153,12 @@ public class RuneLiteDebug {
     private MicrobotPluginManager microbotPluginManager;
 
     public static void main(String[] args) throws Exception {
+/*
+
+        var githubDownloader = new GithubDownloader("chsami", "microbot", "docs");
+
+        githubDownloader.downloadFolder();*/
+
         Locale.setDefault(Locale.ENGLISH);
 
         final OptionParser parser = new OptionParser(false);
