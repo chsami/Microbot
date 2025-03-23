@@ -372,6 +372,8 @@ public class RuneLiteDebug {
         Updater updater = injector.getInstance(Updater.class);
         updater.update(); // will exit if an update is in progress
 
+        microbotPluginManager.loadSideLoadPlugins();
+
         SplashScreen.stage(.70, null, "Finalizing configuration");
 
         // Plugins have provided their config, so set default config

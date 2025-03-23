@@ -2,7 +2,6 @@ package net.runelite.client.plugins.microbot.github;
 
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.ImageUtil;
@@ -26,7 +25,7 @@ public class GithubPlugin extends Plugin {
     @Override
     protected void startUp() {
         panel = injector.getInstance(GithubPanel.class);
-        final BufferedImage icon = ImageUtil.loadImageResource(ShortestPathPlugin.class, "panel_icon.png");
+        final BufferedImage icon = ImageUtil.loadImageResource(GithubPlugin.class, "github_icon.png");
         navButton = NavigationButton.builder()
                 .tooltip("Github Repository")
                 .icon(icon)
@@ -34,7 +33,6 @@ public class GithubPlugin extends Plugin {
                 .panel(panel)
                 .build();
         clientToolbar.addNavigation(navButton);
-        System.out.println("Github plugin started");
     }
 
     @Override

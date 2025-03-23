@@ -3,13 +3,17 @@ package net.runelite.client.plugins.microbot.github;
 import lombok.SneakyThrows;
 import net.runelite.client.RuneLite;
 import net.runelite.client.plugins.microbot.github.models.FileInfo;
+import net.runelite.client.plugins.microbot.sideloading.MicrobotPluginManager;
+import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import javax.inject.Inject;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 public class GithubPanel extends PluginPanel {
@@ -23,8 +27,12 @@ public class GithubPanel extends PluginPanel {
     private JButton fetchButton = new JButton("Fetch from GitHub");
     private JButton downloadButton = new JButton("Download Selected");
     private JButton downloadAllButton = new JButton("Download All");
-    private JButton deleteButton = new JButton("Delete Local Matches");
+    private JButton openMicrobotSideLoadPluginFolder = new JButton("Open side-loading folder");
 
+    @Inject
+    MicrobotPluginManager microbotPluginManager;
+
+    @Inject
     public GithubPanel() {
 
 
@@ -33,6 +41,15 @@ public class GithubPanel extends PluginPanel {
         // Top panel for inputs
         // Keep BoxLayout
         JPanel inputPanel = new JPanel(new GridBagLayout());
+        /*inputPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        inputPanel.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE),
+                "Github Repository",
+                TitledBorder.LEFT,
+                TitledBorder.TOP,
+                new Font("Arial", Font.BOLD, 12),
+                Color.WHITE
+        ));*/
         GridBagConstraints gbc = new GridBagConstraints();
 
 
@@ -42,30 +59,47 @@ public class GithubPanel extends PluginPanel {
         gbc.gridwidth = GridBagConstraints.REMAINDER;
         gbc.anchor = GridBagConstraints.WEST;
 
-        inputPanel.add(new JLabel("<html>The primary rate limit for <b>unauthenticated</b> requests is 60 requests per hour. <br /></html>"), gbc);
-        inputPanel.add(new JLabel("<html>The primary rate limit for <b>unauthenticated</b> requests is 5000 requests per hour. <br/></html>"), gbc);
+        GridBagConstraints gbci = new GridBagConstraints();
+
+
+        gbci.insets = new Insets(10, 2, 10, 2); // Add some padding
+        gbci.fill = GridBagConstraints.HORIZONTAL;
+        gbci.weightx = 1.0;
+        gbci.gridwidth = GridBagConstraints.REMAINDER;
+        gbci.anchor = GridBagConstraints.WEST;
 
         inputPanel.add(new JLabel("Repo Url:*"), gbc);
-        inputPanel.add(repoField, gbc);
+        repoField.setBorder(BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE));
+        inputPanel.add(repoField, gbci);
 
         inputPanel.add(new JLabel("Folder: (empty = root folder)"), gbc);
-        inputPanel.add(folderField, gbc);
+        folderField.setBorder(BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE));
+
+        inputPanel.add(folderField, gbci);
 
         inputPanel.add(new JLabel("Token:"), gbc);
-        inputPanel.add(tokenField, gbc);
+        tokenField.setBorder(BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE));
+        inputPanel.add(tokenField, gbci);
+        inputPanel.add(new JLabel(""), gbci);
+
 
         // Button panel
-        JPanel buttonPanel = new JPanel(new GridLayout(4, 1));
+        JPanel buttonPanel = new JPanel(new GridLayout(5, 1, 10, 10));
+        fetchButton.setBorder(BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE));
+        downloadButton.setBorder(BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE));
+        downloadAllButton.setBorder(BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE));
+        openMicrobotSideLoadPluginFolder.setBorder(BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE));
         buttonPanel.add(fetchButton);
         buttonPanel.add(downloadButton);
         buttonPanel.add(downloadAllButton);
-        buttonPanel.add(deleteButton);
+        buttonPanel.add(openMicrobotSideLoadPluginFolder);
+        buttonPanel.add(new JLabel(""));
 
         // Main layout
         setLayout(new BorderLayout());
         add(inputPanel, BorderLayout.NORTH);
-        add(new JScrollPane(fileList), BorderLayout.CENTER);
-        add(buttonPanel, BorderLayout.SOUTH);
+        add(buttonPanel, BorderLayout.CENTER);
+        add(new JScrollPane(fileList), BorderLayout.SOUTH);
 
 
         fileList.setCellRenderer(new DefaultListCellRenderer() {
@@ -94,7 +128,8 @@ public class GithubPanel extends PluginPanel {
         fetchButton.addActionListener(e -> fetchFiles());
         downloadButton.addActionListener(e -> downloadSelected());
         downloadAllButton.addActionListener(e -> downloadAll());
-        deleteButton.addActionListener(e -> deleteLocalFiles());
+        openMicrobotSideLoadPluginFolder.addActionListener(e -> openMicrobotSideLoadingFolder());
+
 
         // Empty cell to align button
 
@@ -102,30 +137,22 @@ public class GithubPanel extends PluginPanel {
 
     }
 
-    private void deleteLocalFiles() {
-        File downloadDir = new File(RuneLite.RUNELITE_DIR, "microbot-plugins");
-        if (!downloadDir.exists()) {
-            JOptionPane.showMessageDialog(this, "No downloads directory found.");
-            return;
-        }
+    /**
+     * Deletes all files in the downloads directory.
+     */
+    private void openMicrobotSideLoadingFolder() {
+        String userHome = System.getProperty("user.home");
+        File folder = new File(userHome, ".runelite/microbot-plugins");
 
-        File[] localFiles = downloadDir.listFiles();
-        if (localFiles == null) return;
-
-        int deleted = 0;
-        for (File file : localFiles) {
-            for (int i = 0; i < listModel.size(); i++) {
-                if (listModel.getElementAt(i).getName().equals(file.getName())) {
-                    var result = file.delete();
-                    if (result) {
-                        deleted++;
-                        break;
-                    }
-                }
+        if (folder.exists()) {
+            try {
+                Desktop.getDesktop().open(folder);
+            } catch (IOException e) {
+                System.err.println("Failed to open folder: " + e.getMessage());
             }
+        } else {
+            System.err.println("Folder does not exist: " + folder.getAbsolutePath());
         }
-        fileList.repaint();
-        JOptionPane.showMessageDialog(this, "Deleted " + deleted + " files.");
     }
 
     /**
@@ -184,16 +211,14 @@ public class GithubPanel extends PluginPanel {
             protected void done() {
                 progressDialog.dispose();
                 fileList.repaint(); // update any downloaded indicators
-                SwingUtilities.invokeAndWait(() ->
-                {
-                    JOptionPane.showConfirmDialog(null, "All files downloaded.", "Download Succesfull!",
-                            JOptionPane.DEFAULT_OPTION);
-                });
+                JOptionPane.showConfirmDialog(parentWindow, "All files downloaded.", "Download Succesfull!",
+                        JOptionPane.DEFAULT_OPTION);
             }
         };
 
         worker.execute();
         progressDialog.setVisible(true); // blocks until worker finishes
+        microbotPluginManager.loadSideLoadPlugins();
 
     }
 
