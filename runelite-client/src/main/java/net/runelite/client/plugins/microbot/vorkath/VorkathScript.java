@@ -299,7 +299,10 @@ public class VorkathScript extends Script {
                             Rs2Tab.switchToInventoryTab();
                             state = State.FIGHT_VORKATH;
                             sleepUntil(() -> Rs2Npc.getNpc("Zombified Spawn") == null);
-                            
+                            if (doesProjectileExistById(redProjectileId)) {
+                                handleRedBall();
+                                sleep(300);
+                            }
                         }
                         break;
                     case ACID:
