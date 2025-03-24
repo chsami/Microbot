@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.pluginscheduler.ui;
 import lombok.Getter;
 import net.runelite.client.plugins.microbot.pluginscheduler.type.Scheduled;
 import net.runelite.client.plugins.microbot.pluginscheduler.SchedulerPlugin;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
 import net.runelite.client.plugins.microbot.pluginscheduler.type.ScheduleType;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
@@ -14,9 +15,12 @@ import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.time.ZonedDateTime;
+import java.time.ZoneId;
 
 public class ScheduleFormPanel extends JPanel {
     private final SchedulerPlugin plugin;
@@ -39,6 +43,8 @@ public class ScheduleFormPanel extends JPanel {
     private JButton controlButton;
 
     private Scheduled selectedPlugin;
+    private ConditionConfigPanel conditionConfigPanel;
+    private JCheckBox conditionBasedCheckbox;
 
     public ScheduleFormPanel(SchedulerPlugin plugin) {
         this.plugin = plugin;
@@ -47,14 +53,12 @@ public class ScheduleFormPanel extends JPanel {
         setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createCompoundBorder(
                         BorderFactory.createMatteBorder(1, 1, 1, 1, ColorScheme.DARK_GRAY_COLOR),
-                        BorderFactory.createEmptyBorder(5, 5, 5, 5)
-                ),
+                        BorderFactory.createEmptyBorder(5, 5, 5, 5)),
                 "Schedule Configuration",
                 TitledBorder.DEFAULT_JUSTIFICATION,
                 TitledBorder.DEFAULT_POSITION,
                 FontManager.getRunescapeBoldFont(),
-                Color.WHITE
-        ));
+                Color.WHITE));
         setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
         // Create the form panel with GridBagLayout for flexibility
@@ -164,8 +168,7 @@ public class ScheduleFormPanel extends JPanel {
         enableDurationCheckbox.setForeground(Color.WHITE);
         enableDurationCheckbox.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         enableDurationCheckbox.setFont(FontManager.getRunescapeFont());
-        enableDurationCheckbox.addActionListener(e ->
-                durationSpinner.setEnabled(enableDurationCheckbox.isSelected()));
+        enableDurationCheckbox.addActionListener(e -> durationSpinner.setEnabled(enableDurationCheckbox.isSelected()));
         formPanel.add(enableDurationCheckbox, gbc);
 
         gbc.gridx = 1;
@@ -187,6 +190,59 @@ public class ScheduleFormPanel extends JPanel {
 
         // Add the form panel to the center
         add(formPanel, BorderLayout.CENTER);
+
+        conditionConfigPanel = new ConditionConfigPanel();
+        conditionConfigPanel.setConditionUpdateCallback(conditions -> {
+            if (selectedPlugin != null) {
+                selectedPlugin.getConditionManager().getConditions().clear();
+                for (Condition condition : conditions) {
+                    selectedPlugin.getConditionManager().addCondition(condition);
+                }
+            }
+        });
+        conditionConfigPanel.setStopOnConditionsMetCallback(stop -> {
+            if (selectedPlugin != null) {
+                selectedPlugin.setStopOnConditionsMet(stop);
+            }
+        });
+        conditionConfigPanel.setRequireAllCallback(requireAll -> {
+            if (selectedPlugin != null) {
+                if (requireAll) {
+                    selectedPlugin.getConditionManager().requireAll();
+                } else {
+                    selectedPlugin.getConditionManager().requireAny();
+                }
+            }
+        });
+        // In the constructor, add:
+        conditionBasedCheckbox = new JCheckBox("Condition-based execution (ignore time intervals)");
+        conditionBasedCheckbox.setForeground(Color.WHITE);
+        conditionBasedCheckbox.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        conditionBasedCheckbox.addActionListener(e -> {
+            boolean conditionBased = conditionBasedCheckbox.isSelected();
+            intervalSpinner.setEnabled(!conditionBased);
+            scheduleTypeComboBox.setEnabled(!conditionBased);
+            runNowRadio.setEnabled(!conditionBased);
+            runLaterRadio.setEnabled(!conditionBased);
+            firstRunTimeSpinner.setEnabled(!conditionBased && runLaterRadio.isSelected());
+            enableDurationCheckbox.setEnabled(!conditionBased);
+            durationSpinner.setEnabled(!conditionBased && enableDurationCheckbox.isSelected());
+        });
+
+        // Add the condition-based checkbox to the layout
+        gbc.gridx = 1;
+        gbc.gridy = 4;
+        gbc.gridwidth = GridBagConstraints.REMAINDER; // Span all columns
+        formPanel.add(conditionBasedCheckbox, gbc);
+        // Add condition configuration panel
+        gbc.gridx = 0;
+        gbc.gridy = 4;
+        gbc.gridwidth = GridBagConstraints.REMAINDER; // Span all columns
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.weightx = 1.0;
+        gbc.weighty = 1.0; // Let it take extra vertical space
+        gbc.insets = new Insets(10, 5, 5, 5); // Add some extra top padding
+        formPanel.add(conditionConfigPanel, gbc);
 
         // Create button panel
         JPanel buttonPanel = new JPanel(new GridLayout(2, 2, 5, 5));
@@ -218,8 +274,7 @@ public class ScheduleFormPanel extends JPanel {
         button.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         button.setBorder(new CompoundBorder(
                 BorderFactory.createLineBorder(color.darker(), 1),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)
-        ));
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
 
         button.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
@@ -253,8 +308,8 @@ public class ScheduleFormPanel extends JPanel {
 
         // Set interval and type
         intervalSpinner.setValue(plugin.getIntervalValue());
-        scheduleTypeComboBox.setSelectedItem(plugin.getScheduleType() != null ?
-                plugin.getScheduleType() : ScheduleType.HOURS);
+        scheduleTypeComboBox
+                .setSelectedItem(plugin.getScheduleType() != null ? plugin.getScheduleType() : ScheduleType.HOURS);
 
         // Set first run time - for existing plugins, we'll default to "Now"
         runNowRadio.setSelected(true);
@@ -290,10 +345,14 @@ public class ScheduleFormPanel extends JPanel {
             enableDurationCheckbox.setSelected(false);
             durationSpinner.setEnabled(false);
         }
-
+        conditionConfigPanel.loadConditions(
+                plugin.getConditions(),
+                plugin.shouldStopOnConditionsMet(),
+                plugin.getConditionManager().requiresAll());
         // Update the control button to reflect the current plugin
         updateControlButton();
     }
+
     public void clearForm() {
         selectedPlugin = null;
 
@@ -325,12 +384,103 @@ public class ScheduleFormPanel extends JPanel {
         calendar.set(Calendar.MINUTE, 0);
         calendar.set(Calendar.SECOND, 0);
         durationSpinner.setValue(calendar.getTime());
-
+        conditionConfigPanel.loadConditions(new ArrayList<>(), true, true);
         // Update the control button
         updateControlButton();
     }
 
     public Scheduled getPluginFromForm() {
+        String pluginName = (String) pluginComboBox.getSelectedItem();
+        if (pluginName == null || pluginName.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Please select a plugin.",
+                    "Invalid Input",
+                    JOptionPane.ERROR_MESSAGE);
+            return null;
+        }
+
+        Scheduled plugin;
+
+        if (conditionBasedCheckbox.isSelected()) {
+            // Create a condition-based schedule
+            plugin = Scheduled.createConditionBased(pluginName, true);
+        } else {
+            // Create a traditional time-interval based schedule
+            // Get interval value and ensure it's at least 1
+            int intervalValue = (Integer) intervalSpinner.getValue();
+            if (intervalValue < 1) {
+                JOptionPane.showMessageDialog(this,
+                        "The schedule interval must be at least 1.",
+                        "Invalid Interval",
+                        JOptionPane.ERROR_MESSAGE);
+                return null;
+            }
+
+            // Get schedule type
+            ScheduleType scheduleType = (ScheduleType) scheduleTypeComboBox.getSelectedItem();
+            if (scheduleType == null) {
+                scheduleType = ScheduleType.HOURS; // Default to HOURS if null
+            }
+
+            // Get duration (if enabled)
+            String durationStr = "";
+            if (enableDurationCheckbox.isSelected()) {
+                java.util.Date durationDate = (java.util.Date) durationSpinner.getValue();
+                durationStr = new java.text.SimpleDateFormat("HH:mm").format(durationDate);
+            }
+
+            // Create the plugin with default settings
+            plugin = new Scheduled(pluginName, scheduleType, intervalValue, durationStr, true);
+
+            if (runLaterRadio.isSelected()) {
+                // Set specific start time
+                Date selectedTime = (Date) firstRunTimeSpinner.getValue();
+                Calendar selectedCal = Calendar.getInstance();
+                selectedCal.setTime(selectedTime);
+
+                // Get hours and minutes from the spinner
+                int hours = selectedCal.get(Calendar.HOUR_OF_DAY);
+                int minutes = selectedCal.get(Calendar.MINUTE);
+
+                // Create a Date for today at the specified time
+                Calendar targetCal = Calendar.getInstance();
+                targetCal.set(Calendar.HOUR_OF_DAY, hours);
+                targetCal.set(Calendar.MINUTE, minutes);
+                targetCal.set(Calendar.SECOND, 0);
+                targetCal.set(Calendar.MILLISECOND, 0);
+
+                // If the time is in the past, add a day to make it future
+                if (targetCal.getTimeInMillis() < System.currentTimeMillis()) {
+                    targetCal.add(Calendar.DAY_OF_MONTH, 1);
+                }
+
+                // Convert Calendar to ZonedDateTime
+                ZonedDateTime nextRunTime = ZonedDateTime.ofInstant(
+                        targetCal.toInstant(),
+                        ZoneId.systemDefault());
+                plugin.setNextRunTime(nextRunTime);
+            }
+        }
+
+        // Add conditions from the panel
+        for (Condition condition : conditionConfigPanel.getConditions()) {
+            plugin.addCondition(condition);
+        }
+
+        // Set condition logic
+        if (conditionConfigPanel.isRequireAll()) {
+            plugin.getConditionManager().requireAll();
+        } else {
+            plugin.getConditionManager().requireAny();
+        }
+
+        // Set stop behavior
+        plugin.setStopOnConditionsMet(conditionConfigPanel.isStopOnConditionsMet());
+
+        return plugin;
+    }
+
+    public Scheduled _getPluginFromForm() {
         String pluginName = (String) pluginComboBox.getSelectedItem();
         if (pluginName == null || pluginName.isEmpty()) {
             JOptionPane.showMessageDialog(this,
@@ -388,9 +538,26 @@ public class ScheduleFormPanel extends JPanel {
                 targetCal.add(Calendar.DAY_OF_MONTH, 1);
             }
 
-            plugin.setNextRunTime(targetCal.getTimeInMillis());
+            // Convert Calendar to ZonedDateTime
+            ZonedDateTime nextRunTime = ZonedDateTime.ofInstant(
+                    targetCal.toInstant(),
+                    ZoneId.systemDefault());
+            plugin.setNextRunTime(nextRunTime);
+        }
+        // Add conditions from the panel
+        for (Condition condition : conditionConfigPanel.getConditions()) {
+            plugin.addCondition(condition);
         }
 
+        // Set condition logic
+        if (conditionConfigPanel.isRequireAll()) {
+            plugin.getConditionManager().requireAll();
+        } else {
+            plugin.getConditionManager().requireAny();
+        }
+
+        // Set stop behavior
+        plugin.setStopOnConditionsMet(conditionConfigPanel.isStopOnConditionsMet());
         return plugin;
     }
 

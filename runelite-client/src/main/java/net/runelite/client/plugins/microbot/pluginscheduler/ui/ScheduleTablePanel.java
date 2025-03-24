@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.pluginscheduler.ui;
 
 import net.runelite.client.plugins.microbot.pluginscheduler.type.Scheduled;
 import net.runelite.client.plugins.microbot.pluginscheduler.SchedulerPlugin;
+import net.runelite.client.plugins.microbot.pluginscheduler.api.StoppingConditionProvider;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 
@@ -164,25 +165,50 @@ public class ScheduleTablePanel extends JPanel {
 
         // Update existing rows and add new ones
         for (int i = 0; i < plugins.size(); i++) {
-            Scheduled plugin = plugins.get(i);
-
+            Scheduled scheduled = plugins.get(i);
+            String pluginName = scheduled.getName();
+            
+            // Check for custom conditions
+            boolean hasCustomConditions = !scheduled.getConditionManager().getConditions().isEmpty();
+            
+            // Check for plugin-provided conditions
+            boolean hasPluginProvidedConditions = scheduled.getPlugin() instanceof StoppingConditionProvider;
+            
+            // Create schedule display with condition indicators
+            String scheduleDisplay = scheduled.getIntervalDisplay();
+            if (hasCustomConditions) {
+                scheduleDisplay += " + Conditions";
+            }
+            if (hasPluginProvidedConditions) {
+                scheduleDisplay += " + Plugin Conditions";
+            }
+            
+            // Update or add table row
             if (i < tableModel.getRowCount()) {
                 // Update existing row
-                tableModel.setValueAt(plugin.getName(), i, 0);
-                tableModel.setValueAt(plugin.getIntervalDisplay(), i, 1);
-                tableModel.setValueAt(plugin.getDuration() != null && !plugin.getDuration().isEmpty() ?
-                        plugin.getDuration() : "Until stopped", i, 2);
-                tableModel.setValueAt(plugin.getNextRunDisplay(currentTime), i, 3);
-                tableModel.setValueAt(plugin.isEnabled(), i, 4);
+                tableModel.setValueAt(pluginName, i, 0);
+                tableModel.setValueAt(scheduleDisplay, i, 1);
+                
+                // Duration column - show conditions if present
+                String durationDisplay = scheduled.getDuration() != null && !scheduled.getDuration().isEmpty() ?
+                        scheduled.getDuration() : 
+                        hasCustomConditions ? "Until conditions met" : "Until stopped";
+                tableModel.setValueAt(durationDisplay, i, 2);
+                
+                tableModel.setValueAt(scheduled.getNextRunDisplay(currentTime), i, 3);
+                tableModel.setValueAt(scheduled.isEnabled(), i, 4);
             } else {
-                // Add new row
+                // Add new row with same logic
+                String durationDisplay = scheduled.getDuration() != null && !scheduled.getDuration().isEmpty() ?
+                        scheduled.getDuration() : 
+                        hasCustomConditions ? "Until conditions met" : "Until stopped";
+                
                 tableModel.addRow(new Object[]{
-                        plugin.getName(),
-                        plugin.getIntervalDisplay(),
-                        plugin.getDuration() != null && !plugin.getDuration().isEmpty() ?
-                                plugin.getDuration() : "Until stopped",
-                        plugin.getNextRunDisplay(currentTime),
-                        plugin.isEnabled()
+                        pluginName,
+                        scheduleDisplay,
+                        durationDisplay,
+                        scheduled.getNextRunDisplay(currentTime),
+                        scheduled.isEnabled()
                 });
             }
         }

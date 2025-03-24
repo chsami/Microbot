@@ -1,5 +1,8 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.event;
 
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+
 import lombok.Getter;
 import net.runelite.client.plugins.Plugin;
 
@@ -9,8 +12,9 @@ import net.runelite.client.plugins.Plugin;
 @Getter
 public class ScheduledStopEvent {
     private final Plugin plugin;
-
-    public ScheduledStopEvent(Plugin plugin) {
+    private final ZonedDateTime stopDateTime;
+    public ScheduledStopEvent(Plugin plugin, ZonedDateTime stopDateTime) {
         this.plugin = plugin;
+        this.stopDateTime = stopDateTime;
     }
 }
