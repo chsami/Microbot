@@ -299,7 +299,7 @@ public class VorkathScript extends Script {
                             Rs2Tab.switchToInventoryTab();
                             state = State.FIGHT_VORKATH;
                             sleepUntil(() -> Rs2Npc.getNpc("Zombified Spawn") == null);
-                            sleep(1000);
+                            
                         }
                         break;
                     case ACID:
@@ -407,7 +407,7 @@ public class VorkathScript extends Script {
             } catch (Exception ex) {
                 System.out.println(ex.getMessage());
             }
-        }, 0, 100, TimeUnit.MILLISECONDS);
+        }, 0, 90, TimeUnit.MILLISECONDS);
         return true;
     }
 
@@ -580,7 +580,7 @@ public class VorkathScript extends Script {
             if (playerLocation.equals(safeTile)) {
                 Rs2Npc.interact(vorkath, "attack");
             } else {
-                Rs2Player.eatAt(75);
+                Rs2Player.eatAt(60);
                 Rs2Walker.walkFastLocal(LocalPoint.fromWorld(Microbot.getClient(), safeTile));
             }
         }
