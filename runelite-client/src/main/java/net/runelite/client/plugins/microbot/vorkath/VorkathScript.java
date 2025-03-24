@@ -224,7 +224,7 @@ public class VorkathScript extends Script {
                             Rs2Npc.interact(NpcID.VORKATH_8059, "Poke");
                             Rs2Player.waitForWalking();
                             Rs2Npc.interact(NpcID.VORKATH_8059, "Poke");
-                            Rs2Player.waitForAnimation(10000);
+                            Rs2Player.waitForAnimation(4000);
                             walkToCenter();
                             Rs2Player.waitForWalking();
                             handlePrayer();
