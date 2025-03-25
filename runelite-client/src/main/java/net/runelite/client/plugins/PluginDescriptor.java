@@ -66,7 +66,8 @@ public @interface PluginDescriptor
     String ChillX = "<html>[<font color=#05e1f5>C</font>] ";
     String Gage = "<html>[<font color=#00008B>Gage</font>] ";
 	String Bradley = "<html>[<font color=#E32636>BR</font>] ";
-    
+	String Misty = "<html>[<font color=#990c78>Misty</font>] ";
+
 	String name();
 
 	/**
