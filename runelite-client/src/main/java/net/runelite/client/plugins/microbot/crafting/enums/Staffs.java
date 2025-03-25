@@ -1,24 +1,57 @@
 package net.runelite.client.plugins.microbot.crafting.enums;
+
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import net.runelite.api.ItemID;
 
 @Getter
 @RequiredArgsConstructor
 public enum Staffs {
-    NONE(" ","",0,""),
-    PROGRESSIVE("Progressive Mode","None", 1, ""),
-    WATER_BATTLESTAFF("Water Battlestaff", "Water Battlestaff", 54, "Water Orb"),
-    EARTH_BATTLESTAFF("Earth Battlestaff", "Earth Battlestaff", 58, "Earth Orb"),
-    FIRE_BATTLESTAFF("Fire Battlestaff", "Fire Battlestaff", 62, "Fire Orb"),
-    AIR_BATTLESTAFF("Air Battlestaff", "Air Battlestaff", 66, "Air Orb");
+        NONE(
+                        " ",
+                        0,
+                        0,
+                        "",
+                        0),
+        PROGRESSIVE(
+                        "Progressive Mode",
+                        0,
+                        1,
+                        "",
+                        0),
+        WATER_BATTLESTAFF(
+                        "Water Battlestaff",
+                        ItemID.WATER_BATTLESTAFF,
+                        54,
+                        "Water Orb",
+                        ItemID.WATER_ORB),
+        EARTH_BATTLESTAFF(
+                        "Earth Battlestaff",
+                        ItemID.EARTH_BATTLESTAFF,
+                        58,
+                        "Earth Orb",
+                        ItemID.EARTH_ORB),
+        FIRE_BATTLESTAFF(
+                        "Fire Battlestaff",
+                        ItemID.FIRE_BATTLESTAFF,
+                        62,
+                        "Fire Orb",
+                        ItemID.FIRE_ORB),
+        AIR_BATTLESTAFF(
+                        "Air Battlestaff",
+                        ItemID.AIR_BATTLESTAFF,
+                        66,
+                        "Air Orb",
+                        ItemID.AIR_ORB);
 
-    private final String label;
-    private final String itemName;
-    private final int levelRequired;
-    private final String orb;
-    @Override
-    public String toString()
-    {
-        return label;
-    }
+        private final String label;
+        private final int itemID;
+        private final int levelRequired;
+        private final String orbName;
+        private final int orbID;
+
+        @Override
+        public String toString() {
+                return label;
+        }
 }

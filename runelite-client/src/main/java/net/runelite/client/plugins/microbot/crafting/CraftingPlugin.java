@@ -3,7 +3,6 @@ package net.runelite.client.plugins.microbot.crafting;
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
-import net.runelite.api.Skill;
 import net.runelite.client.Notifier;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
@@ -12,20 +11,26 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.crafting.enums.Activities;
 import net.runelite.client.plugins.microbot.crafting.scripts.*;
+import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.mouse.VirtualMouse;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
 import java.awt.*;
 
-@PluginDescriptor(
-        name = PluginDescriptor.Mocrosoft + "Crafting",
-        description = "Microbot crafting plugin",
-        tags = {"skilling", "microbot", "crafting"},
-        enabledByDefault = false
-)
+@PluginDescriptor(name = PluginDescriptor.Mocrosoft + "Crafting", description = "Microbot crafting plugin", tags = {
+        "skilling",
+        "microbot",
+        "crafting",
+        "staffs",
+        "gems",
+        "glass",
+        "flax"
+}, enabledByDefault = false)
 @Slf4j
 public class CraftingPlugin extends Plugin {
+
+    public static String version = "V1.1.0";
 
     private final DefaultScript defaultScript = new DefaultScript();
     private final GemsScript gemsScript = new GemsScript();
@@ -57,12 +62,13 @@ public class CraftingPlugin extends Plugin {
         Microbot.setClientThread(clientThread);
         Microbot.setNotifier(notifier);
         Microbot.setMouse(new VirtualMouse());
+        Rs2Antiban.antibanSetupTemplates.applyCraftingSetup();
+
         if (overlayManager != null) {
             overlayManager.add(craftingOverlay);
         }
 
-//        if (config.activityType() == Activities.DEFAULT) {
-
+        craftingOverlay.startTime = System.currentTimeMillis();
         if (config.activityType() == Activities.GEM_CUTTING) {
             gemsScript.run(config);
         } else if (config.activityType() == Activities.GLASSBLOWING) {
@@ -80,6 +86,8 @@ public class CraftingPlugin extends Plugin {
         gemsScript.shutdown();
         defaultScript.shutdown();
         flaxSpinScript.shutdown();
+        craftingOverlay.startTime = 0;
         overlayManager.remove(craftingOverlay);
+        Rs2Antiban.resetAntibanSettings();
     }
 }

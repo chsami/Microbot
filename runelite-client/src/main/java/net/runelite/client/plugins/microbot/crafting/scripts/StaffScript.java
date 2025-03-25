@@ -2,102 +2,180 @@ package net.runelite.client.plugins.microbot.crafting.scripts;
 
 import lombok.Getter;
 import lombok.Setter;
+import net.runelite.api.AnimationID;
+import net.runelite.api.ItemID;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.crafting.CraftingConfig;
 import net.runelite.client.plugins.microbot.crafting.enums.Staffs;
+import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
+import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
-import net.runelite.client.plugins.microbot.util.math.Random;
+import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
+import java.awt.event.KeyEvent;
 import java.util.concurrent.TimeUnit;
 
+@Getter
+@Setter
 class ProgressiveStaffmakingModel {
-    @Getter
-    @Setter
     private Staffs itemToCraft;
 }
 
 public class StaffScript extends Script {
 
-    public static double version = 1.0;
     ProgressiveStaffmakingModel model = new ProgressiveStaffmakingModel();
 
-    String battleStaff = "Battlestaff";
+    int battleStaff = ItemID.BATTLESTAFF;
     Staffs itemToCraft;
 
+    private int staffsWithdrawn = 0; // Tracks how many staffs to expect
+    private int orbsWithdrawn = 0; // Tracks how many staffs to expect
+    private boolean debugMessages = false; // Controls chatbox debug messages
+    private boolean firstStaff = false; // Controls make "All" widget click
+
     public void run(CraftingConfig config) {
+        debugMessage("Starting staff crafting script");
+
+        // Everyone makes mistakes
+        Rs2AntibanSettings.simulateMistakes = true;
+
         if (config.staffType() == Staffs.PROGRESSIVE)
             calculateItemToCraft();
 
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
-            if (!super.run()) return;
-            if (config.Afk() && Random.random(1, 100) == 2)
-                sleep(1000, 60000);
+            if (!super.run())
+                return;
+
+            // Enable ingame chatbox debug messages according to config
+            debugMessages = config.chatMessages();
+
+            // If AFK config variable is set randomly sleep for a period between
+            // 1 and 5 minutes before moving on if the trigger occurs
+            if (config.Afk() && Math.random() < 0.1) {
+                Rs2Antiban.moveMouseOffScreen();
+                int breakDuration = Rs2Random.between(1, 5);
+                debugMessage(String.format("Going AFK for: %d minutes", breakDuration));
+                sleep(breakDuration * 1000 * 60);
+            }
+
             try {
-
-                if (config.staffType() == Staffs.PROGRESSIVE) {
+                if (config.staffType() == Staffs.PROGRESSIVE)
                     itemToCraft = model.getItemToCraft();
-                } else {
+                else
                     itemToCraft = config.staffType();
-                }
 
-                if (Rs2Inventory.hasItem(battleStaff)
-                        && Rs2Inventory.hasItem(itemToCraft.getOrb())) {
-                    craft(config);
-                }
-                if (!Rs2Inventory.hasItem(battleStaff)
-                        || !Rs2Inventory.hasItem(itemToCraft.getOrb())) {
+                staffsWithdrawn = Rs2Inventory.count(battleStaff);
+                orbsWithdrawn = Rs2Inventory.count(itemToCraft.getOrbID());
+                if (staffsWithdrawn == 0 || orbsWithdrawn == 0)
                     bank(config);
+
+                if (Rs2Inventory.hasItem(battleStaff) && Rs2Inventory.hasItem(itemToCraft.getOrbID())) {
+                    craft(config);
+                    sleepUntil(() -> !Rs2Player.isAnimating(), 15000);
                 }
 
+                bank(config);
             } catch (Exception ex) {
                 System.out.println(ex.getMessage());
             }
-        }, 0, 600, TimeUnit.MILLISECONDS);
+        }, 0, 500, TimeUnit.MILLISECONDS);
     }
 
     private void bank(CraftingConfig config) {
-        Rs2Bank.openBank();
-        sleepUntilOnClientThread(() -> Rs2Bank.isOpen());
+        // Turn camera to the bank - this seems more like a human interaction
+        Rs2NpcModel bankNpc = Rs2Npc.getNearestNpcWithAction("Bank");
+        Rs2Camera.turnTo(bankNpc);
+        sleepUntil(() -> Rs2Bank.openBank(bankNpc), 500);
 
-        Rs2Bank.depositAll(itemToCraft.getItemName());
-        sleepUntilOnClientThread(() -> !Rs2Inventory.hasItem(itemToCraft.getItemName()));
+        debugMessage("Depositing inventory into bank");
+        Rs2Bank.depositAll();
 
-        Rs2Bank.withdrawX(true, battleStaff, 14);
-        sleepUntilOnClientThread(() -> Rs2Inventory.hasItem(battleStaff));
+        // Ensure the bank contains at least 1 of each required item
+        verifyItemInBank("Battlestaff", battleStaff);
+        verifyItemInBank(itemToCraft.getOrbName(), itemToCraft.getOrbID());
 
-        verifyItemInBank(itemToCraft.getOrb());
+        debugMessage("Withdrawing staffs and orbs");
+        Rs2Bank.withdrawX(itemToCraft.getOrbID(), 14);
+        sleepUntil(() -> Rs2Inventory.hasItem(itemToCraft.getOrbID()), 500);
+        Rs2Bank.withdrawX(battleStaff, 14);
+        sleepUntil(() -> Rs2Inventory.hasItem(battleStaff), 500);
 
-        Rs2Bank.withdrawX(true, itemToCraft.getOrb(), 14);
-        sleepUntilOnClientThread(() -> Rs2Inventory.hasItem(itemToCraft.getOrb()));
+        debugMessage("Exiting bank interface");
+        Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
+        if (Rs2Bank.isOpen())
+            Rs2Bank.closeBank();
 
-        sleep(600, 3000);
-        Rs2Bank.closeBank();
+        // Store how many staffs & orbs were withdrawn incase uneven total
+        staffsWithdrawn = Rs2Inventory.count(battleStaff);
+        orbsWithdrawn = Rs2Inventory.count(itemToCraft.getOrbID());
     }
 
-    private void verifyItemInBank(String item) {
+    private void verifyItemInBank(String name, int item) {
         if (Rs2Bank.isOpen() && !Rs2Bank.hasItem(item)) {
-            Rs2Bank.closeBank();
-            Microbot.status = "[Shutting down] - Reason: " + item + " not found in the bank.";
-            Microbot.getNotifier().notify(Microbot.status);
-            shutdown();
+            // Double check the required items are not noted in player's inventory
+            if (Rs2Inventory.hasNotedItem(name) || Rs2Inventory.hasItem(item)) {
+                Rs2Bank.depositAll(item);
+                if (!Rs2Bank.closeBank())
+                    Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
+                return;
+            }
+            Microbot.status = "[Shutting down] - Reason: " + name + " not found in the bank.";
+            Microbot.showMessage(Microbot.status);
+            this.shutdown();
         }
     }
 
     private void craft(CraftingConfig config) {
-        Rs2Inventory.combine(battleStaff, itemToCraft.getOrb());
+        // If bank is open exit with escape key then continue
+        if (Rs2Bank.isOpen())
+            Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
 
-        sleepUntilOnClientThread(() -> Rs2Widget.getWidget(17694734) != null);
+        // If already crafting finish and exit early
+        if (Rs2Player.getLocalPlayer().getAnimation() == AnimationID.CRAFTING_BATTLESTAVES) {
+            debugMessage("Already crafting");
+            sleepUntil(() -> Rs2Inventory.hasItemAmount(itemToCraft.getOrbID(), 0)
+                    || Rs2Inventory.hasItemAmount(battleStaff, 0), 15000);
+            return;
+        }
 
-        keyPress('1');
+        debugMessage("Starting crafting staffs");
 
-        sleepUntilOnClientThread(() -> Rs2Widget.getWidget(17694734) == null);
+        // Combine with orb first as battlestaffs have a skill requirement
+        // This is pointless because it will auto use the "use" menu item
+        Rs2Inventory.combine(itemToCraft.getOrbID(), battleStaff);
 
-        sleepUntilOnClientThread(() -> !Rs2Inventory.hasItem(itemToCraft.getOrb()), 60000);
+        debugMessage("Waiting for crafting interface");
+        sleepUntil(() -> Rs2Widget.isWidgetVisible(17694734), 1500);
+
+        // Only on the first time crafting the make "All" widget should be pressed
+        if (!firstStaff) {
+            debugMessage("First craft - selecting make all");
+            firstStaff = true;
+            if (!Rs2Widget.clickWidget(17694732))
+                Rs2Widget.clickWidgetFast(Rs2Widget.getWidget(17694732, 17694732));
+        }
+
+        // If clicking the widget fails fallback to pressing space (1 would work too)
+        sleepUntil(() -> Rs2Widget.isWidgetVisible(17694733, 17694734), 1500);
+        if (!Rs2Widget.clickWidget(17694733, 17694734))
+            Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
+
+        debugMessage("Waiting to finish crafting staffs");
+
+        // Crafting any type of battle staff is a 2 tick action
+        sleepUntilTick(Math.min(staffsWithdrawn, orbsWithdrawn) * 2);
+        // Ensure the crafting is complete before moving on
+        sleepUntil(() -> Rs2Inventory.hasItemAmount(itemToCraft.getItemID(),
+                Math.min(staffsWithdrawn, orbsWithdrawn)) && !Rs2Player.isAnimating(), 1500);
     }
 
     public ProgressiveStaffmakingModel calculateItemToCraft() {
@@ -116,6 +194,17 @@ public class StaffScript extends Script {
 
     @Override
     public void shutdown() {
+        // Reset values
+        staffsWithdrawn = 0;
+        orbsWithdrawn = 0;
+        debugMessages = false;
+        firstStaff = false;
         super.shutdown();
+    }
+
+    // Display debug messages in the ingame chatbox
+    private void debugMessage(String str) {
+        if (debugMessages)
+            Microbot.log(String.format("[Crafter] %s", str));
     }
 }
