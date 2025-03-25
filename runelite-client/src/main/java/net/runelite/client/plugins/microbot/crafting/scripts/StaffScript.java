@@ -105,9 +105,14 @@ public class StaffScript extends Script {
 
         debugMessage("Withdrawing staffs and orbs");
         Rs2Bank.withdrawX(itemToCraft.getOrbID(), 14);
-        sleepUntil(() -> Rs2Inventory.hasItem(itemToCraft.getOrbID()), 500);
+        sleepUntil(() -> Rs2Inventory.hasItem(itemToCraft.getOrbID()), 1500);
         Rs2Bank.withdrawX(battleStaff, 14);
-        sleepUntil(() -> Rs2Inventory.hasItem(battleStaff), 500);
+        sleepUntil(() -> Rs2Inventory.hasItem(battleStaff), 1500);
+
+        if (!Rs2Inventory.hasItem(battleStaff) || !Rs2Inventory.hasItem(itemToCraft.getOrbID())) {
+            Rs2Bank.depositAll();
+            return;
+        }
 
         debugMessage("Exiting bank interface");
         Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
