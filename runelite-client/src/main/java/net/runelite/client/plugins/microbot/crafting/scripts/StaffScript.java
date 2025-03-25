@@ -60,7 +60,7 @@ public class StaffScript extends Script {
 
             // If AFK config variable is set randomly sleep for a period between
             // 1 and 5 minutes before moving on if the trigger occurs
-            if (config.Afk() && Math.random() < 0.1) {
+            if (config.Afk() && Math.random() < 0.05) {
                 Rs2Antiban.moveMouseOffScreen();
                 int breakDuration = Rs2Random.between(1, 5);
                 debugMessage(String.format("Going AFK for: %d minutes", breakDuration));
@@ -181,12 +181,16 @@ public class StaffScript extends Script {
     public ProgressiveStaffmakingModel calculateItemToCraft() {
         int craftinglvl = Microbot.getClient().getRealSkillLevel(Skill.CRAFTING);
         if (craftinglvl < Staffs.EARTH_BATTLESTAFF.getLevelRequired()) {
+            debugMessage("Crafting Water Battlestaffs");
             model.setItemToCraft(Staffs.WATER_BATTLESTAFF);
         } else if (craftinglvl < Staffs.FIRE_BATTLESTAFF.getLevelRequired()) {
+            debugMessage("Crafting Earth Battlestaffs");
             model.setItemToCraft(Staffs.EARTH_BATTLESTAFF);
         } else if (craftinglvl < Staffs.AIR_BATTLESTAFF.getLevelRequired()) {
+            debugMessage("Crafting Fire Battlestaffs");
             model.setItemToCraft(Staffs.FIRE_BATTLESTAFF);
-        } else if (craftinglvl < 99) {
+        } else {
+            debugMessage("Crafting Air Battlestaffs");
             model.setItemToCraft(Staffs.AIR_BATTLESTAFF);
         }
         return model;
