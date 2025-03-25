@@ -12,6 +12,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.crafting.enums.Activities;
 import net.runelite.client.plugins.microbot.crafting.scripts.*;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
+import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.mouse.VirtualMouse;
 import net.runelite.client.ui.overlay.OverlayManager;
 
@@ -63,6 +64,8 @@ public class CraftingPlugin extends Plugin {
         Microbot.setNotifier(notifier);
         Microbot.setMouse(new VirtualMouse());
         Rs2Antiban.antibanSetupTemplates.applyCraftingSetup();
+        // Everyone makes mistakes
+        Rs2AntibanSettings.simulateMistakes = true;
 
         if (overlayManager != null) {
             overlayManager.add(craftingOverlay);
