@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.crafting.scripts;
 import lombok.Getter;
 import lombok.Setter;
 import net.runelite.api.AnimationID;
+import net.runelite.api.GameObject;
 import net.runelite.api.ItemID;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -10,14 +11,13 @@ import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.crafting.CraftingConfig;
 import net.runelite.client.plugins.microbot.crafting.enums.Staffs;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
-import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
+import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
-import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
-import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
@@ -43,10 +43,8 @@ public class StaffScript extends Script {
     private boolean firstStaff = false; // Controls make "All" widget click
 
     public void run(CraftingConfig config) {
+        sleepUntil(() -> Microbot.isLoggedIn(), 1500);
         debugMessage("Starting staff crafting script");
-
-        // Everyone makes mistakes
-        Rs2AntibanSettings.simulateMistakes = true;
 
         if (config.staffType() == Staffs.PROGRESSIVE)
             calculateItemToCraft();
@@ -59,12 +57,12 @@ public class StaffScript extends Script {
             debugMessages = config.chatMessages();
 
             // If AFK config variable is set randomly sleep for a period between
-            // 1 and 5 minutes before moving on if the trigger occurs
-            if (config.Afk() && Math.random() < 0.05) {
+            // 3 and 60 seconds before moving on if the trigger occurs
+            if (config.Afk() && Rs2Random.nzRandom() > 0.95) {
+                int breakDuration = Rs2Random.between(3, 60);
+                debugMessage(String.format("Going AFK for: %d seconds", breakDuration));
                 Rs2Antiban.moveMouseOffScreen();
-                int breakDuration = Rs2Random.between(1, 5);
-                debugMessage(String.format("Going AFK for: %d minutes", breakDuration));
-                sleep(breakDuration * 1000 * 60);
+                sleep(breakDuration * 1000);
             }
 
             try {
@@ -91,10 +89,16 @@ public class StaffScript extends Script {
     }
 
     private void bank(CraftingConfig config) {
-        // Turn camera to the bank - this seems more like a human interaction
-        Rs2NpcModel bankNpc = Rs2Npc.getNearestNpcWithAction("Bank");
-        Rs2Camera.turnTo(bankNpc);
-        sleepUntil(() -> Rs2Bank.openBank(bankNpc), 500);
+        // Find, walk and turn to the closest bank
+        GameObject bankObject = Rs2GameObject.findBank();
+        if (!Rs2Walker.canReach(bankObject.getWorldLocation())) {
+            debugMessage("Walking to closest bank");
+            Rs2Walker.walkCanvas(bankObject.getWorldLocation());
+        }
+        Rs2Camera.turnTo(bankObject.getLocalLocation());
+
+        debugMessage("Opening bank interface");
+        sleepUntil(() -> Rs2Bank.openBank(), 500);
 
         debugMessage("Depositing inventory into bank");
         Rs2Bank.depositAll();
@@ -156,7 +160,8 @@ public class StaffScript extends Script {
 
         // Combine with orb first as battlestaffs have a skill requirement
         // This is pointless because it will auto use the "use" menu item
-        Rs2Inventory.combine(itemToCraft.getOrbID(), battleStaff);
+        if (!Rs2Inventory.combine(itemToCraft.getOrbID(), battleStaff))
+            Rs2Inventory.combine(itemToCraft.getOrbName(), "Battlestaff");
 
         debugMessage("Waiting for crafting interface");
         sleepUntil(() -> Rs2Widget.isWidgetVisible(17694734), 1500);
@@ -203,11 +208,15 @@ public class StaffScript extends Script {
 
     @Override
     public void shutdown() {
+        debugMessage("Shutting down staff crafter script");
         // Reset values
         staffsWithdrawn = 0;
         orbsWithdrawn = 0;
         debugMessages = false;
         firstStaff = false;
+        if (mainScheduledFuture != null) {
+            mainScheduledFuture.cancel(true);
+        }
         super.shutdown();
     }
 
