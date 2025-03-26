@@ -70,6 +70,7 @@ public class StaffScript extends Script {
                 debugMessage("Checking skills tab progress");
                 if (!Rs2Tab.switchToSkillsTab())
                     Rs2Keyboard.keyPress(KeyEvent.VK_F1);
+                Microbot.status = "Checking skills tab";
                 sleep(Rs2Random.between(1, 3) * 1000);
             }
 
@@ -81,7 +82,9 @@ public class StaffScript extends Script {
 
                 staffsWithdrawn = Rs2Inventory.count(battleStaff);
                 orbsWithdrawn = Rs2Inventory.count(itemToCraft.getOrbID());
-                if (Rs2Inventory.hasItem(battleStaff) && Rs2Inventory.hasItem(itemToCraft.getOrbID()))
+
+                if (Rs2Inventory.hasItem(battleStaff) &&
+                        Rs2Inventory.hasItem(itemToCraft.getOrbID()))
                     craft(config);
 
                 bank(config);
@@ -148,8 +151,14 @@ public class StaffScript extends Script {
 
         debugMessage("Starting crafting staffs");
 
+        if (!Rs2Tab.switchToInventoryTab())
+            Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
+
         // Combine with orb first as battlestaffs have a skill requirement
         // This is pointless because it will auto use the "use" menu item
+        if (!Rs2Inventory.hasItem(itemToCraft.getOrbID()) || !Rs2Inventory.hasItem(battleStaff))
+            return;
+
         if (!Rs2Inventory.combine(itemToCraft.getOrbID(), battleStaff))
             Rs2Inventory.combine(itemToCraft.getOrbName(), "Battlestaff");
 
@@ -164,10 +173,8 @@ public class StaffScript extends Script {
                 Rs2Widget.clickWidgetFast(Rs2Widget.getWidget(17694732, 17694732));
         }
 
-        // If clicking the widget fails fallback to pressing space (1 would work too)
-        sleepUntil(() -> Rs2Widget.isWidgetVisible(17694733, 17694734), 1500);
-        if (!Rs2Widget.clickWidget(17694733, 17694734))
-            Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
+        // Space triggers the make action to craft all battlestaffs
+        Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
 
         debugMessage("Waiting to finish crafting staffs");
 
