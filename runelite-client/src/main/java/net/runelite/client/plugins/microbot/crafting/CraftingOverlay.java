@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.crafting;
 
+import net.runelite.api.MenuAction;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -7,16 +8,19 @@ import net.runelite.client.ui.overlay.components.LineComponent;
 import net.runelite.client.ui.overlay.components.TitleComponent;
 
 import javax.inject.Inject;
+
 import java.awt.*;
 import java.time.Duration;
 
 public class CraftingOverlay extends OverlayPanel {
 
-    public long startTime = 0;
+    CraftingPlugin _plugin;
 
     @Inject
     CraftingOverlay(CraftingPlugin plugin) {
         super(plugin);
+        this._plugin = plugin;
+        setPreferredPosition(OverlayPosition.BOTTOM_LEFT);
         setPosition(OverlayPosition.BOTTOM_LEFT);
         setNaughty();
     }
@@ -24,7 +28,7 @@ public class CraftingOverlay extends OverlayPanel {
     @Override
     public Dimension render(Graphics2D graphics) {
         try {
-            panelComponent.setPreferredSize(new Dimension(150, 400));
+            panelComponent.setPreferredSize(new Dimension(175, 400));
             panelComponent.getChildren().add(TitleComponent.builder()
                     .text("[ Micro Crafter ]")
                     .color(Color.ORANGE)
@@ -39,11 +43,9 @@ public class CraftingOverlay extends OverlayPanel {
 
             addLine("");
 
-            long s = Duration.ofMillis(System.currentTimeMillis() - startTime).toSeconds();
             panelComponent.getChildren().add(LineComponent.builder()
                     .left("Run Time: ")
-                    .right(
-                            String.format("%02d:%02d:%02d", s / 3600, (s % 3600) / 60, (s % 60)))
+                    .right(_plugin.getTimeRunning())
                     .build());
 
             addLine("");

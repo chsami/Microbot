@@ -6,6 +6,8 @@ import net.runelite.api.Client;
 import net.runelite.client.Notifier;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -13,11 +15,14 @@ import net.runelite.client.plugins.microbot.crafting.enums.Activities;
 import net.runelite.client.plugins.microbot.crafting.scripts.*;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
+import net.runelite.client.plugins.microbot.util.misc.TimeUtils;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.mouse.VirtualMouse;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
 import java.awt.*;
+import java.time.Instant;
 
 @PluginDescriptor(name = PluginDescriptor.Mocrosoft + "Crafting", description = "Microbot crafting plugin", tags = {
         "skilling",
@@ -32,6 +37,7 @@ import java.awt.*;
 public class CraftingPlugin extends Plugin {
 
     public static String version = "V1.1.0";
+    public Instant scriptStartTime;
 
     private final DefaultScript defaultScript = new DefaultScript();
     private final GemsScript gemsScript = new GemsScript();
@@ -63,15 +69,19 @@ public class CraftingPlugin extends Plugin {
         Microbot.setClientThread(clientThread);
         Microbot.setNotifier(notifier);
         Microbot.setMouse(new VirtualMouse());
+        Rs2Antiban.resetAntibanSettings();
         Rs2Antiban.antibanSetupTemplates.applyCraftingSetup();
         // Everyone makes mistakes
         Rs2AntibanSettings.simulateMistakes = true;
+        Rs2AntibanSettings.takeMicroBreaks = true;
+        Rs2AntibanSettings.microBreakChance = 0.2;
+        Rs2Walker.disableTeleports = true;
 
         if (overlayManager != null) {
             overlayManager.add(craftingOverlay);
         }
 
-        craftingOverlay.startTime = System.currentTimeMillis();
+        scriptStartTime = Instant.now();
         if (config.activityType() == Activities.GEM_CUTTING) {
             gemsScript.run(config);
         } else if (config.activityType() == Activities.GLASSBLOWING) {
@@ -83,13 +93,17 @@ public class CraftingPlugin extends Plugin {
         }
     }
 
+    protected String getTimeRunning() {
+        return scriptStartTime != null ? TimeUtils.getFormattedDurationBetween(scriptStartTime, Instant.now()) : "";
+    }
+
     protected void shutDown() {
         staffScript.shutdown();
         glassblowingScript.shutdown();
         gemsScript.shutdown();
         defaultScript.shutdown();
         flaxSpinScript.shutdown();
-        craftingOverlay.startTime = 0;
+        scriptStartTime = null;
         overlayManager.remove(craftingOverlay);
         Rs2Antiban.resetAntibanSettings();
     }

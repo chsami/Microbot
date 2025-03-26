@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.crafting.scripts;
 
 import lombok.Getter;
 import lombok.Setter;
+
 import net.runelite.api.GameObject;
 import net.runelite.api.ItemID;
 import net.runelite.api.Skill;
@@ -12,6 +13,7 @@ import net.runelite.client.plugins.microbot.crafting.enums.Staffs;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
+import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
@@ -23,6 +25,8 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.awt.event.KeyEvent;
 import java.util.concurrent.TimeUnit;
+
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
 
 @Getter
 @Setter
@@ -58,20 +62,19 @@ public class StaffScript extends Script {
 
             // If AFK config variable is set randomly sleep for a period between
             // 15 and 120 seconds before moving on if the trigger occurs
-            if (config.Afk() && Rs2Random.nzRandom() < 0.1) {
-                int breakDuration = Rs2Random.between(15, 90);
-                debugMessage(String.format("Going AFK for: %d seconds", breakDuration));
+            if (config.Afk() && Rs2Random.nzRandom() < 0.15) {
+                debugMessage(String.format("Going AFK for between 15 and 90 seconds"));
+                Microbot.status = String.format("Taking randomised AFK break");
                 Rs2Antiban.moveMouseOffScreen();
-                Microbot.status = "AFK break";
-                sleep(breakDuration * 1000);
+                Rs2Random.wait(15000, 90000);
             }
 
-            if (Rs2Random.nzRandom() < 0.05) {
+            if (Rs2Random.nzRandom() < 0.1) {
                 debugMessage("Checking skills tab progress");
                 if (!Rs2Tab.switchToSkillsTab())
                     Rs2Keyboard.keyPress(KeyEvent.VK_F1);
                 Microbot.status = "Checking skills tab";
-                sleep(Rs2Random.between(1, 3) * 1000);
+                Rs2Random.wait(1000, 3000);
             }
 
             try {
@@ -99,15 +102,19 @@ public class StaffScript extends Script {
         GameObject bankObject = Rs2GameObject.findBank();
         if (!Rs2Walker.canReach(bankObject.getWorldLocation())) {
             debugMessage("Walking to closest bank");
+            Microbot.status = "Walking to bank";
             Rs2Walker.walkCanvas(bankObject.getWorldLocation());
+            Rs2Antiban.actionCooldown();
         }
         Rs2Camera.turnTo(bankObject.getLocalLocation());
+        Rs2Bank.preHover();
 
         debugMessage("Opening bank interface");
         sleepUntil(() -> Rs2Bank.openBank(), 500);
 
         debugMessage("Depositing inventory into bank");
         Rs2Bank.depositAll();
+        Rs2Antiban.actionCooldown();
 
         // Ensure the bank contains at least 1 of each required item
         verifyItemInBank("Battlestaff", battleStaff);
@@ -115,18 +122,20 @@ public class StaffScript extends Script {
 
         debugMessage("Withdrawing staffs and orbs");
         Rs2Bank.withdrawX(itemToCraft.getOrbID(), 14);
-        sleepUntil(() -> Rs2Inventory.hasItem(itemToCraft.getOrbID()), 1500);
+        Rs2Inventory.waitForInventoryChanges(1800);
+        Rs2Antiban.actionCooldown();
         Rs2Bank.withdrawX(battleStaff, 14);
-        sleepUntil(() -> Rs2Inventory.hasItem(battleStaff), 1500);
-
-        // Store how many staffs & orbs were withdrawn incase uneven total
-        staffsWithdrawn = Rs2Inventory.count(battleStaff);
-        orbsWithdrawn = Rs2Inventory.count(itemToCraft.getOrbID());
+        Rs2Inventory.waitForInventoryChanges(1800);
+        Rs2Antiban.actionCooldown();
 
         debugMessage("Exiting bank interface");
         Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
         if (Rs2Bank.isOpen())
             Rs2Bank.closeBank();
+
+        // Store how many staffs & orbs were withdrawn incase uneven total
+        staffsWithdrawn = Rs2Inventory.count(battleStaff);
+        orbsWithdrawn = Rs2Inventory.count(itemToCraft.getOrbID());
     }
 
     private void verifyItemInBank(String name, int item) {
@@ -136,6 +145,7 @@ public class StaffScript extends Script {
                 Rs2Bank.depositAll(item);
                 if (!Rs2Bank.closeBank())
                     Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
+                Rs2Antiban.actionCooldown();
                 return;
             }
             Microbot.status = "[Shutting down] - Reason: " + name + " not found in the bank.";
@@ -161,9 +171,10 @@ public class StaffScript extends Script {
 
         if (!Rs2Inventory.combine(itemToCraft.getOrbID(), battleStaff))
             Rs2Inventory.combine(itemToCraft.getOrbName(), "Battlestaff");
+        Rs2Antiban.actionCooldown();
 
         debugMessage("Waiting for crafting interface");
-        sleepUntil(() -> Rs2Widget.isWidgetVisible(17694734), 1500);
+        Rs2Dialogue.sleepUntilHasCombinationDialogue();
 
         // Only on the first time crafting the make "All" widget should be pressed
         if (!firstStaff) {
@@ -175,6 +186,9 @@ public class StaffScript extends Script {
 
         // Space triggers the make action to craft all battlestaffs
         Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
+        Rs2Antiban.actionCooldown();
+
+        Microbot.status = "Crafting " + itemToCraft.getLabel();
 
         debugMessage("Waiting to finish crafting staffs");
 
@@ -183,6 +197,8 @@ public class StaffScript extends Script {
         // Ensure the crafting is complete before moving on
         sleepUntil(() -> Rs2Inventory.hasItemAmount(itemToCraft.getItemID(),
                 Math.min(staffsWithdrawn, orbsWithdrawn)) && !Rs2Player.isAnimating(), 1500);
+        Rs2Antiban.actionCooldown();
+        Rs2Antiban.takeMicroBreakByChance();
     }
 
     public ProgressiveStaffmakingModel calculateItemToCraft() {
