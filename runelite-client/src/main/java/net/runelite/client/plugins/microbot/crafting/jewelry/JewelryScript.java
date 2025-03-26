@@ -1,9 +1,11 @@
 package net.runelite.client.plugins.microbot.crafting.jewelry;
 
+import net.runelite.api.AnimationID;
 import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.ItemID;
 import net.runelite.api.Skill;
 import net.runelite.api.TileObject;
+import net.runelite.api.coords.LocalPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.crafting.jewelry.enums.*;
@@ -14,15 +16,19 @@ import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
+import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.inventory.RunePouch;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import javax.inject.Inject;
+
+import java.awt.event.KeyEvent;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -49,19 +55,24 @@ public class JewelryScript extends Script {
         Rs2Walker.disableTeleports = true;
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
-                if (!Microbot.isLoggedIn()) return;
-                if (!super.run()) return;
-                long startTime = System.currentTimeMillis();
-                
+                if (!Microbot.isLoggedIn())
+                    return;
+                if (!super.run())
+                    return;
+
                 if (hasStateChanged()) {
                     state = updateState();
                 }
-                
-                if (state == null) return; // Used to switch into completion action 
-                
-                if (Rs2Player.isMoving() || Rs2Player.isAnimating() || Rs2Antiban.getCategory().isBusy() || Microbot.pauseAllScripts) return;
-                if (Rs2AntibanSettings.actionCooldownActive) return;
-                
+
+                if (state == null)
+                    return; // Used to switch into completion action
+
+                if (Rs2Player.isMoving() || Rs2Player.isAnimating() || Rs2Antiban.getCategory().isBusy()
+                        || Microbot.pauseAllScripts)
+                    return;
+                if (Rs2AntibanSettings.actionCooldownActive)
+                    return;
+
                 switch (state) {
                     case CUTTING:
                         Rs2Inventory.combineClosest(ItemID.CHISEL, plugin.getJewelry().getGem().getUncutItemID());
@@ -73,19 +84,28 @@ public class JewelryScript extends Script {
                         Rs2Bank.preHover();
                         break;
                     case BANKING:
-                        boolean isBankOpen = Rs2Bank.isNearBank(plugin.getCraftingLocation().getBankLocation(),15) ? Rs2Bank.useBank() : Rs2Bank.walkToBankAndUseBank();
-                        
-                        if (!isBankOpen || !Rs2Bank.isOpen()) return;
-                        
-                        boolean shouldCutGems = plugin.getJewelry().getGem() != Gem.NONE 
+                        TileObject bankObject = Rs2GameObject
+                                .findObjectByLocation(
+                                        plugin.getCraftingLocation().getBankLocation().getWorldPoint());
+
+                        if (bankObject == null) {
+                            Rs2Walker.walkTo(plugin.getCraftingLocation().getBankLocation().getWorldPoint());
+                        }
+
+                        if (!Rs2Camera.isTileOnScreen(bankObject.getLocalLocation())) {
+                            Rs2Camera.turnTo(bankObject.getLocalLocation());
+                        }
+
+                        sleepUntil(() -> Rs2Bank.openBank(), 500);
+
+                        boolean shouldCutGems = plugin.getJewelry().getGem() != Gem.NONE
                                 && Rs2Bank.hasItem(plugin.getJewelry().getGem().getUncutItemID());
-                        
+
                         if (shouldCutGems) {
                             if (!Rs2Inventory.isEmpty()) {
                                 Rs2Bank.depositAllExcept(ItemID.CHISEL);
-                                Rs2Inventory.waitForInventoryChanges(1800);
                             }
-                            
+
                             if (!Rs2Inventory.hasItem(ItemID.CHISEL)) {
                                 if (!Rs2Bank.hasItem(ItemID.CHISEL)) {
                                     Microbot.showMessage("Missing Chisel in Bank!");
@@ -93,28 +113,29 @@ public class JewelryScript extends Script {
                                     return;
                                 }
                                 Rs2Bank.withdrawOne(ItemID.CHISEL);
-                                Rs2Inventory.waitForInventoryChanges(1800);
                             }
-                            
+
                             Rs2Bank.withdrawAll(plugin.getJewelry().getGem().getUncutItemID());
-                            Rs2Inventory.waitForInventoryChanges(1800);
-                            Rs2Bank.closeBank();
+                            if (!Rs2Bank.closeBank())
+                                Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
                             sleepUntil(() -> !Rs2Bank.isOpen());
                             return;
                         }
 
                         int withdrawAmount = plugin.getJewelry().getGem() != Gem.NONE ? 13 : 27;
-                        
-                        boolean shouldCraftJewelry = plugin.getJewelry().getGem() != Gem.NONE 
-                                ? Rs2Bank.hasBankItem(plugin.getJewelry().getGem().getCutItemID(), withdrawAmount) && Rs2Bank.hasBankItem(plugin.getJewelry().getJewelryType().getItemID(), withdrawAmount)
+
+                        // TODO: Simplify this ternary it is an eyesore
+                        boolean shouldCraftJewelry = plugin.getJewelry().getGem() != Gem.NONE
+                                ? Rs2Bank.hasBankItem(plugin.getJewelry().getGem().getCutItemID(), withdrawAmount)
+                                        && Rs2Bank.hasBankItem(plugin.getJewelry().getJewelryType().getItemID(),
+                                                withdrawAmount)
                                 : Rs2Bank.hasBankItem(plugin.getJewelry().getJewelryType().getItemID(), withdrawAmount);
-                        
+
                         if (shouldCraftJewelry) {
-                            if (!Rs2Inventory.isEmpty()){
+                            if (!Rs2Inventory.isEmpty()) {
                                 Rs2Bank.depositAllExcept(plugin.getJewelry().getToolItemID());
-                                Rs2Inventory.waitForInventoryChanges(1800);
                             }
-                            
+
                             if (!Rs2Inventory.hasItem(plugin.getJewelry().getToolItemID())) {
                                 if (!Rs2Bank.hasItem(plugin.getJewelry().getToolItemID())) {
                                     Microbot.showMessage("Missing tool item");
@@ -122,105 +143,108 @@ public class JewelryScript extends Script {
                                     return;
                                 }
                                 Rs2Bank.withdrawOne(plugin.getJewelry().getToolItemID());
-                                Rs2Inventory.waitForInventoryChanges(1800);
                             }
-                            
+
                             if (plugin.getJewelry().getGem() != null) {
                                 Rs2Bank.withdrawX(plugin.getJewelry().getGem().getCutItemID(), withdrawAmount);
-                                Rs2Inventory.waitForInventoryChanges(1800);
+                                Rs2Bank.withdrawX(plugin.getJewelry().getJewelryType().getItemID(), withdrawAmount);
                             }
-                            
-                            Rs2Bank.withdrawX(plugin.getJewelry().getJewelryType().getItemID(), withdrawAmount);
-                            Rs2Inventory.waitForInventoryChanges(1800);
-                            Rs2Bank.closeBank();
+
+                            if (!Rs2Bank.closeBank())
+                                Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
                             sleepUntil(() -> !Rs2Bank.isOpen());
+
                             return;
                         }
-                        
+
                         switch (plugin.getCompletionAction()) {
-//                            case ENCHANT:
-//                                if (!Rs2Inventory.isEmpty()) {
-//                                    Rs2Bank.depositAllExcept(false,"coins", "rune", plugin.getJewelry().getItemName());
-//                                    Rs2Random.waitEx(900, 100);
-//                                }
-//                                if (plugin.getStaff().equals(Staff.NONE)) {
-//                                    staffItemID = findSuitableStaff(plugin.getJewelry().getEnchantSpell());
-//
-//                                    if (staffItemID == -1) {
-//                                        Microbot.showMessage("No suitable staff found for enchanting!");
-//                                        shutdown();
-//                                        return;
-//                                    }
-//                                } else {
-//                                    staffItemID = plugin.getStaff().getItemID();
-//                                }
-//
-//                                // Withdraw and equip the staff if needed
-//                                if (!Rs2Equipment.hasEquipped(staffItemID)) {
-//                                    Rs2Bank.withdrawOne(staffItemID);
-//                                    Rs2Random.waitEx(1200, 300);
-//                                    Rs2Bank.wearItem(staffItemID);
-//                                    Rs2Random.waitEx(1200, 300);
-//                                }
-//
-//                                // Calculate total jewelry
-//                                int enchantJewelryInInventory = getNotedJewelryInInventory();
-//                                int enchantJewelryInBank = Rs2Bank.bankItems().stream()
-//                                        .filter(item -> item.getId() == plugin.getJewelry().getItemID())
-//                                        .mapToInt(Rs2Item::getQuantity)
-//                                        .sum();
-//
-//                                int totalEnchantJewelry = enchantJewelryInInventory + enchantJewelryInBank;
-//                                
-//
-//                                Map<Integer, Integer> runesNeeded = calculateRunesNeeded(plugin.getJewelry().getEnchantSpell(), totalEnchantJewelry);
-//                                if (!runesNeeded.isEmpty()) {
-//                                    for (Map.Entry<Integer, Integer> entry : runesNeeded.entrySet()) {
-//                                        int runeID = entry.getKey();
-//                                        int quantityNeeded = entry.getValue();
-//
-//                                        if (Rs2Bank.hasBankItem(runeID, quantityNeeded)) {
-//                                            Rs2Bank.withdrawX(runeID, quantityNeeded);
-//                                            Rs2Random.waitEx(900, 100);
-//                                        } else {
-//                                            Microbot.showMessage("Missing required rune: " + runeID);
-//                                            shutdown();
-//                                            return;
-//                                        }
-//                                    }
-//                                }
-//
-//                                // Withdraw all jewelry and remaining nature runes
-//                                if (totalEnchantJewelry > 0) {
-//                                    Rs2Bank.withdrawAll(plugin.getJewelry().getItemID());
-//                                    Rs2Random.waitEx(900, 100);
-//                                }
-//                                
-//                                Rs2Bank.closeBank();
-//                                sleepUntil(() -> !Rs2Bank.isOpen());
-//                                break;
-//                                
+                            case ENCHANT:
+                                if (!Rs2Inventory.isEmpty()) {
+                                    Rs2Bank.depositAllExcept("coins", "rune",
+                                            plugin.getJewelry().getItemName());
+                                }
+                                if (plugin.getStaff().equals(Staff.NONE)) {
+                                    staffItemID = findSuitableStaff(plugin.getJewelry().getEnchantSpell());
+
+                                    if (staffItemID == -1) {
+                                        Microbot.showMessage(
+                                                "No suitable staff found for enchanting! Banking instead.");
+                                        plugin.setCompletionAction = BANK;
+                                        return;
+                                    }
+                                } else {
+                                    staffItemID = plugin.getStaff().getItemID();
+                                }
+
+                                // Withdraw and equip the staff if needed
+                                if (!Rs2Equipment.hasEquipped(staffItemID)) {
+                                    Rs2Bank.withdrawOne(staffItemID);
+                                    Rs2Random.waitEx(1200, 300);
+                                    Rs2Bank.wearItem(staffItemID);
+                                    Rs2Random.waitEx(1200, 300);
+                                }
+
+                                // Calculate total jewelry
+                                int enchantJewelryInInventory = getNotedJewelryInInventory();
+                                int enchantJewelryInBank = Rs2Bank.bankItems().stream()
+                                        .filter(item -> item.getId() == plugin.getJewelry().getItemID())
+                                        .mapToInt(Rs2Item::getQuantity)
+                                        .sum();
+
+                                int totalEnchantJewelry = enchantJewelryInInventory + enchantJewelryInBank;
+
+                                Map<Integer, Integer> runesNeeded = calculateRunesNeeded(
+                                        plugin.getJewelry().getEnchantSpell(),
+                                        totalEnchantJewelry);
+                                if (!runesNeeded.isEmpty()) {
+                                    for (Map.Entry<Integer, Integer> entry : runesNeeded.entrySet()) {
+                                        int runeID = entry.getKey();
+                                        int quantityNeeded = entry.getValue();
+
+                                        if (Rs2Bank.hasBankItem(runeID, quantityNeeded)) {
+                                            Rs2Bank.withdrawX(runeID, quantityNeeded);
+                                            Rs2Random.waitEx(900, 100);
+                                        } else {
+                                            Microbot.showMessage("Missing required rune: " + runeID);
+                                            shutdown();
+                                            return;
+                                        }
+                                    }
+                                }
+
+                                // Withdraw all jewelry and remaining nature runes
+                                if (totalEnchantJewelry > 0) {
+                                    Rs2Bank.withdrawAll(plugin.getJewelry().getItemID());
+                                    Rs2Random.waitEx(900, 100);
+                                }
+
+                                if (!Rs2Bank.closeBank())
+                                    Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
+                                sleepUntil(() -> !Rs2Bank.isOpen());
+                                break;
+
                             case ALCH:
                                 // Find the required staff
                                 if (staffItemID == -1 || staffItemID == 0) {
-                                    staffItemID = plugin.getStaff() != Staff.NONE ? plugin.getStaff().getItemID() : findSuitableFireStaff();
-                                    
+                                    staffItemID = plugin.getStaff() != Staff.NONE ? plugin.getStaff().getItemID()
+                                            : findSuitableFireStaff();
+
                                     if (staffItemID == -1) {
                                         Microbot.showMessage("No staff of fire-type found!");
                                         shutdown();
                                         return;
                                     }
                                 }
-                                
+
                                 // Calculate total jewelry
-                                int alchJewelryInInventory  = getNotedJewelryInInventory();
-                                int alchJewelryInBank  = Rs2Bank.bankItems().stream()
+                                int alchJewelryInInventory = getNotedJewelryInInventory();
+                                int alchJewelryInBank = Rs2Bank.bankItems().stream()
                                         .filter(item -> item.getId() == plugin.getJewelry().getItemID())
                                         .mapToInt(Rs2ItemModel::getQuantity)
                                         .sum();
-                                
+
                                 int totalAlchJewelry = alchJewelryInInventory + alchJewelryInBank;
-                                
+
                                 if (totalAlchJewelry == 0) {
                                     Microbot.showMessage("All Jewelry has been alched!");
                                     shutdown();
@@ -233,23 +257,24 @@ public class JewelryScript extends Script {
                                         .filter(item -> item.getId() == ItemID.NATURE_RUNE)
                                         .mapToInt(Rs2ItemModel::getQuantity)
                                         .sum();
-                                
+
                                 int totalNatureRunes = natureRunesInInventory + natureRunesInBank;
 
                                 // Check if required items are available
-                                if (totalNatureRunes < totalAlchJewelry || (!Rs2Bank.hasItem(staffItemID) && !Rs2Equipment.hasEquipped(staffItemID))) {
+                                if (totalNatureRunes < totalAlchJewelry
+                                        || (!Rs2Bank.hasItem(staffItemID) && !Rs2Equipment.hasEquipped(staffItemID))) {
                                     Microbot.showMessage("Missing required items");
                                     shutdown();
                                     return;
                                 }
-                                
+
                                 if (Rs2Inventory.hasItem(plugin.getJewelry().getItemID())) {
                                     Rs2Bank.depositAll(plugin.getJewelry().getItemID());
                                     Rs2Inventory.waitForInventoryChanges(1800);
                                 }
-                                
+
                                 if (!Rs2Inventory.isEmpty()) {
-                                    Rs2Bank.depositAllExcept(false,"coins", "rune", plugin.getJewelry().getItemName());
+                                    Rs2Bank.depositAllExcept(false, "coins", "rune", plugin.getJewelry().getItemName());
                                     Rs2Inventory.waitForInventoryChanges(1800);
                                 }
 
@@ -259,7 +284,6 @@ public class JewelryScript extends Script {
                                     Rs2Inventory.waitForInventoryChanges(1800);
                                     Rs2Inventory.equip(staffItemID);
                                 }
-
 
                                 // Withdraw all jewelry and remaining nature runes
                                 if (totalAlchJewelry > 0) {
@@ -271,14 +295,15 @@ public class JewelryScript extends Script {
 
                                 int natureRunesToWithdraw = totalAlchJewelry - natureRunesInInventory;
 
-                                if (plugin.isUseRunePouch()) { // Check if the rune pouch is not already in the inventory
-                                    if (!Rs2Inventory.hasRunePouch()) { 
+                                if (plugin.isUseRunePouch()) { // Check if the rune pouch is not already in the
+                                                               // inventory
+                                    if (!Rs2Inventory.hasRunePouch()) {
                                         if (!Rs2Bank.hasRunePouch()) {
                                             Microbot.showMessage("Rune Pouch not found! Check your magic settings");
                                             shutdown();
                                             return;
                                         }
-                                        
+
                                         Rs2Bank.withdrawRunePouch();
                                         Rs2Inventory.waitForInventoryChanges(1800);
                                     }
@@ -293,22 +318,37 @@ public class JewelryScript extends Script {
                                     }
                                 }
 
-                                Rs2Bank.closeBank();
+                                if (!Rs2Bank.closeBank())
+                                    Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
                                 sleepUntil(() -> !Rs2Bank.isOpen());
                                 break;
-                            case NONE:
-                                if (!Rs2Inventory.isEmpty()) {
-                                    Rs2Bank.depositAll();
+                            case BANK:
+                                TileObject bankObject = Rs2GameObject
+                                        .findObjectByLocation(
+                                                plugin.getCraftingLocation().getBankLocation().getWorldPoint());
+
+                                if (bankObject == null) {
+                                    Rs2Walker.walkTo(plugin.getCraftingLocation().getBankLocation().getWorldPoint());
                                 }
+
+                                if (!Rs2Camera.isTileOnScreen(bankObject.getLocalLocation())) {
+                                    Rs2Camera.turnTo(bankObject.getLocalLocation());
+                                }
+
+                                sleepUntil(() -> Rs2Bank.openBank(), 500);
+                                if (!Rs2Inventory.isEmpty()) {
+                                    Rs2Bank.depositAllExcept(plugin.getJewelry().getToolItemID());
+                                    Rs2Inventory.waitForInventoryChanges(1800);
+                                }
+                                Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
                                 Microbot.showMessage("Crafting has been completed!");
-                                shutdown();
-                                return;
+                                break;
                         }
-                        
                         break;
                     case CRAFTING:
-                        TileObject furnaceObject = Rs2GameObject.findObjectById(plugin.getCraftingLocation().getFurnanceObjectID());
-                        
+                        TileObject furnaceObject = Rs2GameObject
+                                .findObjectById(plugin.getCraftingLocation().getFurnanceObjectID());
+
                         if (furnaceObject == null) {
                             Rs2Walker.walkTo(plugin.getCraftingLocation().getFurnaceLocation());
                             return;
@@ -320,7 +360,9 @@ public class JewelryScript extends Script {
                         }
 
                         Rs2GameObject.interact(furnaceObject, "smelt");
-                        sleepUntilTrue(() -> Rs2Widget.isGoldCraftingWidgetOpen() || Rs2Widget.isSilverCraftingWidgetOpen(), 500, 20000);
+                        sleepUntilTrue(
+                                () -> Rs2Widget.isGoldCraftingWidgetOpen() || Rs2Widget.isSilverCraftingWidgetOpen(),
+                                500, 20000);
                         Rs2Widget.clickWidget(plugin.getJewelry().getItemName());
                         Rs2Antiban.actionCooldown();
                         Rs2Antiban.takeMicroBreakByChance();
@@ -329,152 +371,189 @@ public class JewelryScript extends Script {
                         if (!Rs2Equipment.hasEquipped(staffItemID)) {
                             Rs2Inventory.equip(staffItemID);
                         }
-                        
+
                         Rs2ItemModel notedJewelry = Rs2Inventory.get(plugin.getJewelry().getItemID() + 1);
                         if (notedJewelry.getSlot() != 11) {
                             Rs2Inventory.moveItemToSlot(notedJewelry, 11);
                             return;
                         }
-                        
+
                         Rs2Magic.alch(notedJewelry);
                         Rs2Player.waitForXpDrop(Skill.MAGIC, 10000);
                         Rs2Antiban.actionCooldown();
                         break;
-//                    case ENCHANTING:
-//                        if (!Rs2Equipment.hasEquipped(staffItemID)) {
-//                            Rs2Inventory.equip(staffItemID);
-//                            Rs2Random.waitEx(900, 100);
-//                        }
-//                        
-//                        Rs2Magic.cast(plugin.getJewelry().getEnchantSpell().getMagicAction());
-//                        Rs2Inventory.interact(plugin.getJewelry().getItemName());
-//                        Rs2Antiban.actionCooldown();
-//                        sleepUntil(() -> !Rs2Inventory.hasItem(plugin.getJewelry().getItemName()), 30000);
-//                        break;
+                    case ENCHANTING:
+                        if (!Rs2Equipment.hasEquipped(staffItemID)) {
+                            Rs2Inventory.equip(staffItemID);
+                            Rs2Random.waitEx(900, 100);
+                        }
+
+                        Rs2Magic.cast(plugin.getJewelry().getEnchantSpell().getMagicAction());
+                        Rs2Inventory.interact(plugin.getJewelry().getItemName());
+                        Rs2Antiban.actionCooldown();
+                        sleepUntil(() -> !Rs2Inventory.hasItem(plugin.getJewelry().getItemName()),
+                                30000);
+                        break;
                 }
 
-                long endTime = System.currentTimeMillis();
-                long totalTime = endTime - startTime;
-                System.out.println("Total time for loop " + totalTime);
+                System.out.println("Total time for loop " + plugin.getTimeRunning());
 
             } catch (Exception ex) {
                 System.out.println(ex.getMessage());
             }
         }, 0, 600, TimeUnit.MILLISECONDS);
         return true;
+
     }
 
     @Override
     public void shutdown() {
-        super.shutdown();
         Rs2Antiban.resetAntibanSettings();
         state = null;
+        if (mainScheduledFuture != null && !mainScheduledFuture.isDone())
+            mainScheduledFuture.cancel(true);
+        super.shutdown();
     }
-    
+
     private boolean hasStateChanged() {
         // If state is null (on plugin start) OR switch to completion action
-        if (state == null) return true;
-        // If the player should bank (has finished cutting gems, crafting jewelry, alching, or enchanting)
-        if (state != State.BANKING && shouldBank()) return true;
-        if (state == State.BANKING && isCutting()) return true;
-        if (state == State.BANKING && isCrafting()) return true;
+        if (state == null)
+            return true;
+        // If the player should bank (has finished cutting gems, crafting jewelry,
+        // alching, or enchanting)
+        if (state != State.BANKING && shouldBank())
+            return true;
+        if (state == State.BANKING && isCutting())
+            return true;
+        if (state == State.BANKING && isCrafting())
+            return true;
         switch (plugin.getCompletionAction()) {
-            case NONE:
-//            case ENCHANT:
-//                return state == State.BANKING && isEnchanting();
+            case BANK:
+                break;
+            case ENCHANT:
+                return state == State.BANKING && isEnchanting();
+                break;
             case ALCH:
                 return state == State.BANKING && isAlching();
+                break;
         }
         return false;
     }
-    
+
     private State updateState() {
-        if (shouldBank()) return State.BANKING;
-        if (isCutting()) return State.CUTTING;
-        if (isCrafting()) return State.CRAFTING;
+        if (shouldBank())
+            return State.BANKING;
+        if (isCutting())
+            return State.CUTTING;
+        if (isCrafting())
+            return State.CRAFTING;
         if (state == null) {
             switch (plugin.getCompletionAction()) {
-                case NONE:
-//                case ENCHANT:
-//                    if (isEnchanting()) return State.ENCHANTING;
-//                    return State.BANKING;
+                case BANK:
+                case ENCHANT:
+                    if (isEnchanting())
+                        return State.ENCHANTING;
+                    return State.BANKING;
                 case ALCH:
-                    if (isAlching()) return State.ALCHING;
+                    if (isAlching())
+                        return State.ALCHING;
                     return State.BANKING;
             }
         }
         return null;
     }
-    
+
     private boolean shouldBank() {
         return hasFinishedCutting() || hasFinishedCrafting() || hasFinishedAlching() || hasFinishedEnchanting();
     }
-    
+
     private boolean hasFinishedCutting() {
-        if (plugin.getJewelry().getGem() == Gem.NONE) return false;
-        if(!Rs2Inventory.hasItem(ItemID.CHISEL)) return false;
-        return Rs2Inventory.hasItem(plugin.getJewelry().getGem().getCutItemID()) && !Rs2Inventory.hasItem(plugin.getJewelry().getGem().getUncutItemID());
+        if (plugin.getJewelry().getGem() == Gem.NONE)
+            return false;
+        if (!Rs2Inventory.hasItem(ItemID.CHISEL))
+            return false;
+        return Rs2Inventory.hasItem(plugin.getJewelry().getGem().getCutItemID())
+                && !Rs2Inventory.hasItem(plugin.getJewelry().getGem().getUncutItemID());
     }
-    
+
     private boolean hasFinishedCrafting() {
-        if (!Rs2Inventory.hasItem(plugin.getJewelry().getToolItemID())) return false;
+        if (!Rs2Inventory.hasItem(plugin.getJewelry().getToolItemID()))
+            return false;
 
         boolean hasCraftingItem = Rs2Inventory.hasItem(plugin.getJewelry().getJewelryType().getItemID());
         boolean hasNoGem = plugin.getJewelry().getGem() == Gem.NONE;
         boolean hasCutGem = Rs2Inventory.hasItem(plugin.getJewelry().getGem().getCutItemID());
+        boolean hasBar = Rs2Inventory.hasItem(plugin.getJewelry().getBars().getCutItemID());
 
-        return Rs2Inventory.hasItem(plugin.getJewelry().getItemID()) 
+        return Rs2Inventory.hasItem(plugin.getJewelry().getItemID())
                 && hasNoGem ? !hasCraftingItem : !hasCraftingItem && !hasCutGem;
     }
-    
+
     private boolean hasFinishedEnchanting() {
         return Rs2Equipment.hasEquipped(staffItemID) && !Rs2Inventory.hasItem(plugin.getJewelry().getItemName());
     }
-    
+
     private boolean isCutting() {
-        if (plugin.getJewelry().getGem() == Gem.NONE) return false;
-        if (!Rs2Inventory.hasItem(ItemID.CHISEL)) return false;
-        return Rs2Inventory.hasItem(plugin.getJewelry().getGem().getUncutItemID());
+        if (plugin.getJewelry().getGem() == Gem.NONE)
+            return false;
+        if (!Rs2Inventory.hasItem(ItemID.CHISEL))
+            return false;
+        List<Integer> cuttingAnimations = Arrays.asList(
+                AnimationID.GEM_CUTTING_JADE,
+                AnimationID.GEM_CUTTING_OPAL,
+                AnimationID.GEM_CUTTING_RUBY,
+                AnimationID.GEM_CUTTING_DIAMOND,
+                AnimationID.GEM_CUTTING_EMERALD,
+                AnimationID.GEM_CUTTING_AMETHYST,
+                AnimationID.GEM_CUTTING_REDTOPAZ,
+                AnimationID.GEM_CUTTING_SAPPHIRE);
+        return cuttingAnimations.contains(Rs2Player.getLocalPlayer().getAnimation());
     }
-    
+
     private boolean isCrafting() {
-        if(!Rs2Inventory.hasItem(plugin.getJewelry().getToolItemID())) return false;
-        
+        if (!Rs2Inventory.hasItem(plugin.getJewelry().getToolItemID()))
+            return false;
+
         boolean hasCraftingItem = Rs2Inventory.hasItem(plugin.getJewelry().getJewelryType().getItemID());
         boolean hasNoGem = plugin.getJewelry().getGem() == Gem.NONE;
         boolean hasCutGem = Rs2Inventory.hasItem(plugin.getJewelry().getGem().getCutItemID());
-        
+
         return hasNoGem ? hasCraftingItem : hasCraftingItem && hasCutGem;
     }
-    
+
     private boolean isAlching() {
-        if (!plugin.getCompletionAction().equals(CompletionAction.ALCH)) return false;
-        if (!Rs2Equipment.hasEquippedSlot(EquipmentInventorySlot.WEAPON)) return false;
+        if (!plugin.getCompletionAction().equals(CompletionAction.ALCH))
+            return false;
+        if (!Rs2Equipment.hasEquippedSlot(EquipmentInventorySlot.WEAPON))
+            return false;
 
         staffItemID = plugin.getStaff() != Staff.NONE ? plugin.getStaff().getItemID() : findSuitableFireStaff();
 
-        if (staffItemID == -1) return false; // No Fire Rune Staff equipped
-        
+        if (staffItemID == -1)
+            return false; // No Fire Rune Staff equipped
+
         // Check if the noted jewelry item is in the inventory
-        if (!Rs2Inventory.hasItem(plugin.getJewelry().getItemID() + 1)) return false;
-        
+        if (!Rs2Inventory.hasItem(plugin.getJewelry().getItemID() + 1))
+            return false;
+
         int notedJewelryAmount = Rs2Inventory.get(plugin.getJewelry().getItemID() + 1).quantity;
         int natureRuneAmount = getNatureRunesInInventory();
-        
+
         return notedJewelryAmount <= natureRuneAmount || (plugin.isUseRunePouch() && !Rs2Inventory.hasRunePouch());
     }
-    
+
     private boolean hasFinishedAlching() {
         return Rs2Equipment.hasEquipped(staffItemID) && !Rs2Inventory.hasItem(plugin.getJewelry().getItemID() + 1);
     }
-    
+
     private int getNatureRunesInInventory() {
-        return plugin.isUseRunePouch() ? RunePouch.getItemAmount(ItemID.NATURE_RUNE) : Rs2Inventory.items().stream()
-                .filter(item -> item.getId() == ItemID.NATURE_RUNE)
-                .mapToInt(Rs2ItemModel::getQuantity)
-                .sum();
+        return plugin.isUseRunePouch() ? RunePouch.getItemAmount(ItemID.NATURE_RUNE)
+                : Rs2Inventory.items().stream()
+                        .filter(item -> item.getId() == ItemID.NATURE_RUNE)
+                        .mapToInt(Rs2ItemModel::getQuantity)
+                        .sum();
     }
-    
+
     private int getNotedJewelryInInventory() {
         return Rs2Inventory.items().stream()
                 .filter(item -> item.getId() == (plugin.getJewelry().getItemID() + 1))
@@ -482,19 +561,23 @@ public class JewelryScript extends Script {
                 .sum();
     }
 
-//    private boolean isEnchanting() {
-//        if (!plugin.getCompletionAction().equals(CompletionAction.ENCHANT)) return false;
-//
-//        staffItemID = findSuitableStaff(plugin.getJewelry().getEnchantSpell());
-//        if (staffItemID == -1 || (!Rs2Equipment.hasEquipped(staffItemID) && !Rs2Bank.hasItem(staffItemID))) return false;
-//        
-//        if (!Rs2Inventory.hasItem(plugin.getJewelry().getItemID())) return false;
-//        
-//        int totalJewelry = Rs2Inventory.get(plugin.getJewelry().getItemID()).quantity;
-//        Map<Integer, Integer> runesNeeded = calculateRunesNeeded(plugin.getJewelry().getEnchantSpell(), totalJewelry);
-//
-//        return runesNeeded.isEmpty();
-//    }
+    private boolean isEnchanting() {
+        if (!plugin.getCompletionAction().equals(CompletionAction.ENCHANT))
+            return false;
+
+        staffItemID = findSuitableStaff(plugin.getJewelry().getEnchantSpell());
+        if (staffItemID == -1 || (!Rs2Equipment.hasEquipped(staffItemID) &&
+                !Rs2Bank.hasItem(staffItemID)))
+            return false;
+
+        if (!Rs2Inventory.hasItem(plugin.getJewelry().getItemID()))
+            return false;
+
+        int totalJewelry = Rs2Inventory.get(plugin.getJewelry().getItemID()).quantity;
+        Map<Integer, Integer> runesNeeded = calculateRunesNeeded(plugin.getJewelry().getEnchantSpell(), totalJewelry);
+
+        return runesNeeded.isEmpty();
+    }
 
     private int findSuitableStaff(EnchantSpell enchantSpell) {
         List<Integer> requiredRuneIDs = getRequiredRuneIDs(plugin.getJewelry().getEnchantSpell());
@@ -504,14 +587,15 @@ public class JewelryScript extends Script {
                 .filter(staff -> !staff.equals(Staff.NONE)) // Skip NONE
                 .filter(staff -> staff.getRuneItemIDs().stream().anyMatch(requiredRuneIDs::contains))
                 .map(Staff::getItemID)
-                .filter(itemID -> Rs2Inventory.hasItem(itemID) || Rs2Equipment.hasEquipped(itemID) || Rs2Bank.hasItem(itemID))
+                .filter(itemID -> Rs2Inventory.hasItem(itemID) || Rs2Equipment.hasEquipped(itemID)
+                        || Rs2Bank.hasItem(itemID))
                 .findFirst()
                 .orElse(-1); // Return -1 if no staff is found
     }
-    
+
     private List<Integer> getRequiredRuneIDs(EnchantSpell enchantSpell) {
         Set<Map<Integer, Integer>> requiredRunes = enchantSpell.getRequiredRunes();
-        
+
         return requiredRunes.stream()
                 .flatMap(map -> map.keySet().stream())
                 .distinct()
@@ -538,7 +622,8 @@ public class JewelryScript extends Script {
      *
      * @param enchantSpell The spell requiring runes.
      * @param totalJewelry The total amount of jewelry that needs to be processed.
-     * @return A map where the key is the rune ID and the value is the additional runes needed.
+     * @return A map where the key is the rune ID and the value is the additional
+     *         runes needed.
      */
     private Map<Integer, Integer> calculateRunesNeeded(EnchantSpell enchantSpell, int totalJewelry) {
         // Step 1: Aggregate required runes based on the number of casts
