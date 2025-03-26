@@ -2,7 +2,6 @@ package net.runelite.client.plugins.microbot.crafting.scripts;
 
 import lombok.Getter;
 import lombok.Setter;
-import net.runelite.api.AnimationID;
 import net.runelite.api.GameObject;
 import net.runelite.api.ItemID;
 import net.runelite.api.Skill;
@@ -17,6 +16,7 @@ import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
@@ -57,12 +57,20 @@ public class StaffScript extends Script {
             debugMessages = config.chatMessages();
 
             // If AFK config variable is set randomly sleep for a period between
-            // 3 and 60 seconds before moving on if the trigger occurs
-            if (config.Afk() && Rs2Random.nzRandom() > 0.95) {
-                int breakDuration = Rs2Random.between(3, 60);
+            // 15 and 120 seconds before moving on if the trigger occurs
+            if (config.Afk() && Rs2Random.nzRandom() < 0.1) {
+                int breakDuration = Rs2Random.between(15, 90);
                 debugMessage(String.format("Going AFK for: %d seconds", breakDuration));
                 Rs2Antiban.moveMouseOffScreen();
+                Microbot.status = "AFK break";
                 sleep(breakDuration * 1000);
+            }
+
+            if (Rs2Random.nzRandom() < 0.05) {
+                debugMessage("Checking skills tab progress");
+                if (!Rs2Tab.switchToSkillsTab())
+                    Rs2Keyboard.keyPress(KeyEvent.VK_F1);
+                sleep(Rs2Random.between(1, 3) * 1000);
             }
 
             try {
@@ -73,13 +81,8 @@ public class StaffScript extends Script {
 
                 staffsWithdrawn = Rs2Inventory.count(battleStaff);
                 orbsWithdrawn = Rs2Inventory.count(itemToCraft.getOrbID());
-                if (staffsWithdrawn == 0 || orbsWithdrawn == 0)
-                    bank(config);
-
-                if (Rs2Inventory.hasItem(battleStaff) && Rs2Inventory.hasItem(itemToCraft.getOrbID())) {
+                if (Rs2Inventory.hasItem(battleStaff) && Rs2Inventory.hasItem(itemToCraft.getOrbID()))
                     craft(config);
-                    sleepUntil(() -> !Rs2Player.isAnimating(), 15000);
-                }
 
                 bank(config);
             } catch (Exception ex) {
@@ -113,19 +116,14 @@ public class StaffScript extends Script {
         Rs2Bank.withdrawX(battleStaff, 14);
         sleepUntil(() -> Rs2Inventory.hasItem(battleStaff), 1500);
 
-        if (!Rs2Inventory.hasItem(battleStaff) || !Rs2Inventory.hasItem(itemToCraft.getOrbID())) {
-            Rs2Bank.depositAll();
-            return;
-        }
+        // Store how many staffs & orbs were withdrawn incase uneven total
+        staffsWithdrawn = Rs2Inventory.count(battleStaff);
+        orbsWithdrawn = Rs2Inventory.count(itemToCraft.getOrbID());
 
         debugMessage("Exiting bank interface");
         Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
         if (Rs2Bank.isOpen())
             Rs2Bank.closeBank();
-
-        // Store how many staffs & orbs were withdrawn incase uneven total
-        staffsWithdrawn = Rs2Inventory.count(battleStaff);
-        orbsWithdrawn = Rs2Inventory.count(itemToCraft.getOrbID());
     }
 
     private void verifyItemInBank(String name, int item) {
@@ -148,14 +146,6 @@ public class StaffScript extends Script {
         if (Rs2Bank.isOpen())
             Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
 
-        // If already crafting finish and exit early
-        if (Rs2Player.getLocalPlayer().getAnimation() == AnimationID.CRAFTING_BATTLESTAVES) {
-            debugMessage("Already crafting");
-            sleepUntil(() -> Rs2Inventory.hasItemAmount(itemToCraft.getOrbID(), 0)
-                    || Rs2Inventory.hasItemAmount(battleStaff, 0), 15000);
-            return;
-        }
-
         debugMessage("Starting crafting staffs");
 
         // Combine with orb first as battlestaffs have a skill requirement
@@ -168,8 +158,8 @@ public class StaffScript extends Script {
 
         // Only on the first time crafting the make "All" widget should be pressed
         if (!firstStaff) {
-            debugMessage("First craft - selecting make all");
             firstStaff = true;
+            debugMessage("First craft - selecting make all");
             if (!Rs2Widget.clickWidget(17694732))
                 Rs2Widget.clickWidgetFast(Rs2Widget.getWidget(17694732, 17694732));
         }
@@ -214,7 +204,7 @@ public class StaffScript extends Script {
         orbsWithdrawn = 0;
         debugMessages = false;
         firstStaff = false;
-        if (mainScheduledFuture != null) {
+        if (mainScheduledFuture != null && !mainScheduledFuture.isDone()) {
             mainScheduledFuture.cancel(true);
         }
         super.shutdown();
