@@ -576,27 +576,42 @@ public class Rs2Npc {
                 Microbot.log("Error: Could not get NPC composition or actions for NPC: " + npc.getName());
                 return false;
             }
+   MenuAction menuAction;
+            if (Rs2Inventory.isItemSelected()) {
+                menuAction = MenuAction.WIDGET_TARGET_ON_NPC;
+            } else {
+                int index = -1;
+                String[] actions = npcComposition.getActions();
 
-            int index = -1;
-            String[] actions = npcComposition.getActions();
-            if (actions != null) {
-                for (int i = 0; i < actions.length; i++) {
-                    if (actions[i] != null && actions[i].equalsIgnoreCase(action)) {
-                        index = i;
-                        break;
+                if (action == null || action.isEmpty()) {
+                    for (int i = 0; i < actions.length; i++) {
+                        if (actions[i] != null && !actions[i].isEmpty()) {
+                            index = i;
+                            action = actions[i];
+                            break;
+                        }
+                    }
+                } else {
+                    if (actions != null) {
+                        for (int i = 0; i < actions.length; i++) {
+                            if (actions[i] != null && actions[i].equalsIgnoreCase(action)) {
+                                index = i;
+                                break;
+                            }
+                        }
                     }
                 }
-            }
 
-            if (index == -1) {
-                Microbot.log("Error: Action '" + action + "' not found for NPC: " + npc.getName());
-                return false;
-            }
+                if (index == -1) {
+                    Microbot.log("Error: Action '" + action + "' not found for NPC: " + npc.getName());
+                    return false;
+                }
 
-            MenuAction menuAction = getMenuAction(index);
-            if (menuAction == null) {
-                Microbot.log("Error: Could not get menu action for action '" + action + "' on NPC: " + npc.getName());
-                return false;
+                menuAction = getMenuAction(index);
+                if (menuAction == null) {
+                    Microbot.log("Error: Could not get menu action for action '" + action + "' on NPC: " + npc.getName());
+                    return false;
+                }
             }
 
             Microbot.doInvoke(new NewMenuEntry(0, 0, menuAction.getId(), npc.getIndex(), -1, npc.getName(), npc),
