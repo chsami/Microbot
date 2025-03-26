@@ -2,9 +2,10 @@ package net.runelite.client.plugins.microbot.crafting.scripts;
 
 import lombok.Getter;
 import lombok.Setter;
-import net.runelite.api.GameObject;
 import net.runelite.api.ItemID;
 import net.runelite.api.Skill;
+import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.coords.WorldArea;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.crafting.CraftingConfig;
@@ -12,6 +13,7 @@ import net.runelite.client.plugins.microbot.crafting.enums.Amethyst;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
+import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
@@ -20,6 +22,8 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
+
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
 
 import java.awt.event.KeyEvent;
 import java.util.concurrent.TimeUnit;
@@ -60,13 +64,12 @@ public class AmethystScript extends Script {
             debugMessages = config.chatMessages();
 
             // If AFK config variable is set randomly sleep for a period between
-            // 15 and 120 seconds before moving on if the trigger occurs
-            if (config.Afk() && Rs2Random.nzRandom() < 0.15) {
-                int breakDuration = Rs2Random.between(15, 90);
-                debugMessage(String.format("Going AFK for: %02d seconds", breakDuration));
+            // 15 and 90 seconds before moving on if the trigger occurs
+            if (config.Afk() && Rs2Random.nzRandom() < 0.05) {
+                debugMessage(String.format("Going AFK for between 15 and 90 seconds"));
+                Microbot.status = String.format("Taking randomised AFK break");
                 Rs2Antiban.moveMouseOffScreen();
-                Microbot.status = String.format("AFK break: %02ds", breakDuration);
-                sleep(breakDuration * 1000);
+                Rs2Random.wait(15000, 90000);
             }
 
             if (Rs2Random.nzRandom() < 0.1) {
@@ -74,7 +77,7 @@ public class AmethystScript extends Script {
                 if (!Rs2Tab.switchToSkillsTab())
                     Rs2Keyboard.keyPress(KeyEvent.VK_F1);
                 Microbot.status = "Checking skills tab";
-                sleep(Rs2Random.between(1, 3) * 1000);
+                Rs2Random.wait(1000, 3000);
             }
 
             try {
@@ -96,21 +99,23 @@ public class AmethystScript extends Script {
 
     private void bank(CraftingConfig config) {
         // Find, walk and turn to the closest bank
-        GameObject bankObject = Rs2GameObject.findBank();
-        if (!Rs2Walker.canReach(bankObject.getWorldLocation())) {
+        WorldArea bankArea = Rs2Bank.getNearestBank().getWorldPoint().toWorldArea();
+        if (!Rs2Walker.canReach(bankArea.toWorldPoint())) {
             debugMessage("Walking to closest bank");
             Microbot.status = "Walking to bank";
-            Rs2Walker.walkCanvas(bankObject.getWorldLocation());
+            Rs2Walker.walkTo(bankArea.toWorldPoint());
         }
-        Rs2Camera.turnTo(bankObject.getLocalLocation());
+        Rs2Bank.preHover();
+        LocalPoint bankTile = Rs2GameObject.findBank().getLocalLocation();
+        Rs2Camera.turnTo(bankTile);
+        Rs2Bank.preHover();
 
         debugMessage("Opening bank interface");
         sleepUntil(() -> Rs2Bank.openBank(), 500);
+        Microbot.status = "Banking";
 
         debugMessage("Depositing inventory into bank");
-        Rs2Bank.depositAllExcept(chisel);
-        if (Rs2Inventory.count(chisel) > 1)
-            Rs2Bank.depositX(chisel, Rs2Inventory.count(chisel)-1);
+        Rs2Bank.depositAllExcept("Chisel");
 
         // Ensure the bank contains at least 1 of each required item
         verifyItemInBank("Chisel", chisel);
@@ -119,10 +124,8 @@ public class AmethystScript extends Script {
         debugMessage("Withdrawing chisel and amethyst");
         if (!Rs2Inventory.hasItem(chisel)) {
             Rs2Bank.withdrawX(chisel, 1);
-            sleepUntil(() -> Rs2Inventory.hasItem(chisel), 1500);
         }
         Rs2Bank.withdrawAll(ItemID.AMETHYST);
-        sleepUntil(() -> Rs2Inventory.hasItem(ItemID.AMETHYST), 1500);
 
         debugMessage("Exiting bank interface");
         Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
@@ -158,10 +161,9 @@ public class AmethystScript extends Script {
         if (!Rs2Inventory.hasItem(chisel) || !Rs2Inventory.hasItem(ItemID.AMETHYST))
             return;
 
-        Rs2Inventory.combine(chisel, ItemID.AMETHYST);
-
         debugMessage("Waiting for crafting interface");
-        sleepUntil(() -> Rs2Widget.isWidgetVisible(17694734), 1500);
+        Rs2Inventory.combineClosest(chisel, ItemID.AMETHYST);
+        Rs2Dialogue.sleepUntilHasCombinationDialogue();
 
         // Only on the first time crafting the make "All" widget should be pressed
         if (!firstCut) {
@@ -171,8 +173,15 @@ public class AmethystScript extends Script {
                 Rs2Widget.clickWidgetFast(Rs2Widget.getWidget(17694732, 17694732));
         }
 
-        // Space triggers the make action to craft all battlestaffs
-        Rs2Keyboard.keyPress(itemToCut.getCraftOptionKey());
+        // Keypress to trigger the make action to craft all amethysts iiems
+        if (!Rs2Widget.clickWidget(17694733, 17694733 + itemToCut.getCraftOptionKey())) {
+            Rs2Widget.clickWidget("Amethyst " + itemToCut.getItemName());
+            Rs2Keyboard.keyPress(itemToCut.getCraftOptionKey());
+        }
+
+        int amCount = Rs2Inventory.count(ItemID.AMETHYST);
+        sleepUntilTick(amCount * 2);
+        sleepUntilTrue(() -> !Rs2Inventory.hasItem(ItemID.AMETHYST));
 
         Microbot.status = "Crafting " + itemToCut.getItemName();
 
@@ -180,8 +189,7 @@ public class AmethystScript extends Script {
 
         // Cutting any type of amethyst item is a 2 tick action
         sleepUntilTick(Rs2Inventory.count(ItemID.AMETHYST) * 2);
-        // Ensure the cutting is complete before moving on
-        sleepUntil(() -> Rs2Inventory.hasItem(itemToCut.getItemId()) && !Rs2Player.isAnimating(), 1500);
+        Rs2Antiban.actionCooldown();
     }
 
     public ProgressiveAmethystCuttingModel calculateItemToCut() {
