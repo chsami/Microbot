@@ -6,6 +6,8 @@ import lombok.Setter;
 import net.runelite.api.GameObject;
 import net.runelite.api.ItemID;
 import net.runelite.api.Skill;
+import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.coords.WorldArea;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.crafting.CraftingConfig;
@@ -25,8 +27,6 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.awt.event.KeyEvent;
 import java.util.concurrent.TimeUnit;
-
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
 
 @Getter
 @Setter
@@ -61,7 +61,7 @@ public class StaffScript extends Script {
             debugMessages = config.chatMessages();
 
             // If AFK config variable is set randomly sleep for a period between
-            // 15 and 120 seconds before moving on if the trigger occurs
+            // 15 and 90 seconds before moving on if the trigger occurs
             if (config.Afk() && Rs2Random.nzRandom() < 0.15) {
                 debugMessage(String.format("Going AFK for between 15 and 90 seconds"));
                 Microbot.status = String.format("Taking randomised AFK break");
@@ -99,18 +99,20 @@ public class StaffScript extends Script {
 
     private void bank(CraftingConfig config) {
         // Find, walk and turn to the closest bank
-        GameObject bankObject = Rs2GameObject.findBank();
-        if (!Rs2Walker.canReach(bankObject.getWorldLocation())) {
+        WorldArea bankArea = Rs2Bank.getNearestBank().getWorldPoint().toWorldArea();
+        if (!Rs2Walker.canReach(bankArea.toWorldPoint())) {
             debugMessage("Walking to closest bank");
             Microbot.status = "Walking to bank";
-            Rs2Walker.walkCanvas(bankObject.getWorldLocation());
-            Rs2Antiban.actionCooldown();
+            Rs2Walker.walkTo(bankArea.toWorldPoint());
         }
-        Rs2Camera.turnTo(bankObject.getLocalLocation());
+        Rs2Bank.preHover();
+        LocalPoint bankTile = Rs2GameObject.findBank().getLocalLocation();
+        Rs2Camera.turnTo(bankTile);
         Rs2Bank.preHover();
 
         debugMessage("Opening bank interface");
         sleepUntil(() -> Rs2Bank.openBank(), 500);
+        Microbot.status = "Banking";
 
         debugMessage("Depositing inventory into bank");
         Rs2Bank.depositAll();

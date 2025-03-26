@@ -6,8 +6,6 @@ import net.runelite.api.Client;
 import net.runelite.client.Notifier;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
-import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -44,6 +42,7 @@ public class CraftingPlugin extends Plugin {
     private final GlassblowingScript glassblowingScript = new GlassblowingScript();
     private final StaffScript staffScript = new StaffScript();
     private final FlaxSpinScript flaxSpinScript = new FlaxSpinScript();
+    private final AmethystScript amethystScript = new AmethystScript();
     @Inject
     private CraftingConfig config;
     @Inject
@@ -90,6 +89,8 @@ public class CraftingPlugin extends Plugin {
             staffScript.run(config);
         } else if (config.activityType() == Activities.FLAX_SPINNING) {
             flaxSpinScript.run(config);
+        } else if (config.activityType() == Activities.CUTTING_AMETHYST) {
+            amethystScript.run(config);
         }
     }
 
