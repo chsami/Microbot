@@ -33,7 +33,7 @@ public interface CraftingConfig extends Config {
                 return Activities.NONE;
         }
 
-        @ConfigItem(keyName = "Afk", name = "Random AFKs", description = "Randomy afks between 3 and 60 seconds", position = 1, section = generalSection)
+        @ConfigItem(keyName = "Afk", name = "Random AFKs", description = "Randomy afks between 15 and 90 seconds", position = 1, section = generalSection)
         default boolean Afk() {
                 return false;
         }
