@@ -9,7 +9,7 @@ import net.runelite.client.plugins.microbot.crafting.enums.*;
 @ConfigGroup(CraftingConfig.GROUP)
 public interface CraftingConfig extends Config {
 
-        String GROUP = "Crafting";
+        public String GROUP = "micro-crafting";
 
         @ConfigSection(name = "General", description = "General", position = 0)
         String generalSection = "general";
@@ -17,6 +17,8 @@ public interface CraftingConfig extends Config {
         String gemSection = "gem";
         @ConfigSection(name = "Glass", description = "Config for glass blowing", position = 2, closedByDefault = true)
         String glassSection = "glass";
+        @ConfigSection(name = "Amethyst", description = "Config for amethyst cutting", position = 4, closedByDefault = true)
+        String amethystSection = "amethyst";
 
         @ConfigItem(keyName = "fletchIntoBoltTips", name = "Fletch into Bolt Tips", description = "Fletch cut gems into bolt tips if possible", position = 1, section = gemSection)
         default boolean fletchIntoBoltTips() {
@@ -61,5 +63,11 @@ public interface CraftingConfig extends Config {
         @ConfigItem(keyName = "ChatMsgs", name = "Chat Messages", description = "Enable debug chatbox messages", position = 2, section = generalSection)
         default boolean chatMessages() {
                 return false;
+        }
+
+        @ConfigItem(keyName = "Amethyst", name = "Amethyst Item", description = "Item " +
+                        "to cut from Amethyst", position = 4, section = amethystSection)
+        default Amethyst amethystType() {
+                return Amethyst.NONE;
         }
 }
