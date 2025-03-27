@@ -31,10 +31,10 @@ OrCondition skillsOr = manager.or()
     .addCondition(fishingLevelCondition)
     .addCondition(fishingXpCondition);
 
-AndCondition rootCondition = manager.and()
+AndCondition rootLogicalCondition = manager.and()
     .addCondition(itemsOr)
     .addCondition(skillsOr);
 
-manager.setRootCondition(rootCondition);
+manager.setRootLogicalCondition(rootLogicalCondition);
 
 ```

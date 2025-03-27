@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.pluginscheduler;
 
-import net.runelite.client.plugins.microbot.pluginscheduler.type.Scheduled;
+
+import net.runelite.client.plugins.microbot.pluginscheduler.type.ScheduledPlugin;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
@@ -11,7 +12,10 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.time.ZonedDateTime;
 import java.util.concurrent.TimeUnit;
+
+
 
 public class SchedulerPanel extends PluginPanel {
     private final SchedulerPlugin plugin;
@@ -24,6 +28,9 @@ public class SchedulerPanel extends PluginPanel {
     private final JLabel nextPluginNameLabel;
     private final JLabel nextPluginTimeLabel;
     private final JLabel nextPluginScheduleLabel;
+
+    // Scheduler status section
+    private final JLabel schedulerStatusLabel;
 
     public SchedulerPanel(SchedulerPlugin plugin, SchedulerConfig config) {
         super(false);
@@ -83,22 +90,54 @@ public class SchedulerPanel extends PluginPanel {
         nextPluginScheduleLabel = createValueLabel("None");
         nextPluginPanel.add(nextPluginScheduleLabel, createGbc(1, 2));
 
-        // Button panel
-        JPanel buttonPanel = new JPanel(new GridLayout(1, 1, 0, 0));
-        buttonPanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
-        buttonPanel.setBorder(new EmptyBorder(10, 0, 0, 0));
+        // Scheduler status panel
+        JPanel statusPanel = createInfoPanel("Scheduler Status");
+        JLabel statusLabel = new JLabel("Status:");
+        statusLabel.setForeground(Color.WHITE);
+        statusLabel.setFont(FontManager.getRunescapeFont());
+        statusPanel.add(statusLabel, createGbc(0, 0));
 
+        schedulerStatusLabel = createValueLabel("Inactive");
+        schedulerStatusLabel.setForeground(Color.YELLOW);
+        statusPanel.add(schedulerStatusLabel, createGbc(1, 0));
+
+        // Button panel - vertical layout (one button per row)
+        JPanel buttonPanel = new JPanel(new GridLayout(3, 1, 0, 5));
+        buttonPanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
+        
+        // Add config button
+        JButton configButton = createButton("Open Scheduler");
+        configButton.addActionListener(this::onOpenConfigButtonClicked);
+        
         // Control buttons
-        JButton openConfigButton = createButton();
-        openConfigButton.addActionListener(this::onOpenConfigButtonClicked);
-        buttonPanel.add(openConfigButton);
+        Color greenColor = new Color(76, 175, 80);
+        JButton runButton = createButton("Run Scheduler", greenColor);
+        runButton.addActionListener(e -> {
+            plugin.startScheduler();
+            refresh();
+        });
+
+        Color redColor = new Color(244, 67, 54);
+        JButton stopButton = createButton("Stop Scheduler", redColor);
+        stopButton.addActionListener(e -> {
+            plugin.stopScheduler();
+            refresh();
+        });
+
+        // Add buttons in order starting with Open Scheduler
+        buttonPanel.add(configButton);
+        buttonPanel.add(runButton);
+        buttonPanel.add(stopButton);
 
         // Add components to main panel
         mainPanel.add(infoPanel);
         mainPanel.add(Box.createRigidArea(new Dimension(0, 10)));
         mainPanel.add(nextPluginPanel);
         mainPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        mainPanel.add(statusPanel);
+        mainPanel.add(Box.createRigidArea(new Dimension(0, 10)));
         mainPanel.add(buttonPanel);
+        mainPanel.add(Box.createRigidArea(new Dimension(0, 10)));
 
         add(mainPanel, BorderLayout.NORTH);
     }
@@ -144,25 +183,29 @@ public class SchedulerPanel extends PluginPanel {
         return label;
     }
 
-    private JButton createButton() {
-        JButton button = new JButton("Open Scheduler Config");
+    private JButton createButton(String text) {
+        return createButton(text, ColorScheme.BRAND_ORANGE);
+    }
+
+    private JButton createButton(String text, Color backgroundColor) {
+        JButton button = new JButton(text);
         button.setFont(FontManager.getRunescapeSmallFont());
         button.setFocusPainted(false);
         button.setForeground(Color.WHITE);
-        button.setBackground(ColorScheme.BRAND_ORANGE);
+        button.setBackground(backgroundColor);
         button.setBorder(new CompoundBorder(
-                BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE.darker(), 1),
+                BorderFactory.createLineBorder(backgroundColor.darker(), 1),
                 BorderFactory.createEmptyBorder(5, 15, 5, 15)
         ));
 
-        // Add hover effect
+        // Add hover effect that maintains the button's color theme
         button.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
-                button.setBackground(ColorScheme.BRAND_ORANGE.brighter());
+                button.setBackground(backgroundColor.brighter());
             }
 
             public void mouseExited(java.awt.event.MouseEvent evt) {
-                button.setBackground(ColorScheme.BRAND_ORANGE);
+                button.setBackground(backgroundColor);
             }
         });
 
@@ -172,17 +215,23 @@ public class SchedulerPanel extends PluginPanel {
     void refresh() {
         updatePluginInfo();
         updateNextPluginInfo();
+        
+        // Update scheduler status
+        boolean isActive = plugin.isSchedulerActive();
+        schedulerStatusLabel.setText(isActive ? "Active" : "Inactive");
+        schedulerStatusLabel.setForeground(isActive ? new Color(76, 175, 80) : Color.YELLOW);
     }
 
     void updatePluginInfo() {
-        Scheduled currentPlugin = plugin.getCurrentPlugin();
+        ScheduledPlugin currentPlugin = plugin.getCurrentPlugin();
 
         if (currentPlugin != null) {
-            long startTime = currentPlugin.getLastRunTime();
+            ZonedDateTime startTimeZdt = currentPlugin.getLastRunTime();
             currentPluginLabel.setText(currentPlugin.getCleanName());
 
-            if (startTime > 0) {
-                long runtimeMillis = System.currentTimeMillis() - startTime;
+            if (startTimeZdt != null) {
+                long startTimeMillis = startTimeZdt.toInstant().toEpochMilli();
+                long runtimeMillis = System.currentTimeMillis() - startTimeMillis;
                 long hours = TimeUnit.MILLISECONDS.toHours(runtimeMillis);
                 long minutes = TimeUnit.MILLISECONDS.toMinutes(runtimeMillis) % 60;
                 long seconds = TimeUnit.MILLISECONDS.toSeconds(runtimeMillis) % 60;
@@ -195,14 +244,15 @@ public class SchedulerPanel extends PluginPanel {
             runtimeLabel.setText("00:00:00");
         }
     }
+    
     void updateNextPluginInfo() {
-        Scheduled nextPlugin = plugin.getNextScheduledPlugin();
+        ScheduledPlugin nextPlugin = plugin.getNextScheduledPlugin();
 
         if (nextPlugin != null) {
             nextPluginNameLabel.setText(nextPlugin.getName());
             nextPluginTimeLabel.setText(nextPlugin.getNextRunTimeString());
 
-            // Format the schedule depluginion
+            // Format the schedule description
             String scheduleDesc = nextPlugin.getIntervalDisplay();
             if (nextPlugin.getDuration() != null && !nextPlugin.getDuration().isEmpty()) {
                 scheduleDesc += " for " + nextPlugin.getDuration();

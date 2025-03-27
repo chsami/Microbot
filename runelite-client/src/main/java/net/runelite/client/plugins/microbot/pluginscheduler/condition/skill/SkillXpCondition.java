@@ -1,8 +1,10 @@
-package net.runelite.client.plugins.microbot.pluginscheduler.type.condition;
+package net.runelite.client.plugins.microbot.pluginscheduler.condition.skill;
 
 import lombok.Getter;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.ConditionType;
 
 /**
  * Skill XP-based condition for script execution.
@@ -11,13 +13,17 @@ import net.runelite.client.plugins.microbot.Microbot;
 public class SkillXpCondition implements Condition {
     private final Skill skill;
     private final int targetXp;
-    private final int startXp;
+    private int startXp;
     
     public SkillXpCondition(Skill skill, int targetXp) {
         this.skill = skill;
         this.targetXp = targetXp;
-        this.startXp = Microbot.getClient().getSkillExperience(skill);
+        this.startXp = getCurrentXp();
     }
+    public void reset() {
+        startXp = getCurrentXp();
+    }
+
     
     /**
      * Create a skill XP condition with random target between min and max
@@ -54,11 +60,38 @@ public class SkillXpCondition implements Condition {
     }
     
     /**
+     * Gets the current XP
+     */
+    public int getCurrentXp() {
+        return Microbot.getClientThread().runOnClientThread( ()->Microbot.getClient().getSkillExperience(skill));
+    }
+    /**
+     * Gets the starting XP
+     */
+    public int getStartingXp() {
+        return startXp;
+    }
+    /**
      * Gets progress percentage towards target
      */
+    @Override
     public double getProgressPercentage() {
-        if (targetXp <= 0) return 100.0;
-        return Math.min(100.0, (getXpGained() / (double) targetXp) * 100);
+        int currentXp = getCurrentXp();
+        int startingXp = getStartingXp();
+        int targetXp = getTargetXp();
+        
+        if (currentXp >= targetXp) {
+            return 100.0;
+        }
+        
+        int xpGained = currentXp - startingXp;
+        int xpNeeded = targetXp - startingXp;
+        
+        if (xpNeeded <= 0) {
+            return 100.0;
+        }
+        
+        return (100.0 * xpGained) / xpNeeded;
     }
     
     @Override

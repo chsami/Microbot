@@ -9,7 +9,9 @@ public enum ConditionType {
     SKILL_XP("skill_xp"),
     ITEM("item"),
     PROFIT("profit"),
-    COMBINED("combined");
+    LOCATION("location"),
+    LOGICAL("LOGICAL");
+    
     
     private final String identifier;
     

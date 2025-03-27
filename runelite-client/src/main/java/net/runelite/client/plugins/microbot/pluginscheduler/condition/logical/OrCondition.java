@@ -1,4 +1,6 @@
-package net.runelite.client.plugins.microbot.pluginscheduler.condition;
+package net.runelite.client.plugins.microbot.pluginscheduler.condition.logical;
+
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
 
 /**
  * Logical OR combination of conditions - any can be met.
@@ -23,5 +25,11 @@ public class OrCondition extends LogicalCondition {
         }
         sb.append(")");
         return sb.toString();
+    }
+    @Override
+    public void reset() {
+        for (Condition condition : conditions) {
+            condition.reset();
+        }
     }
 }
