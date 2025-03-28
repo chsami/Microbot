@@ -2,11 +2,13 @@ package net.runelite.client.plugins.microbot.github;
 
 import lombok.SneakyThrows;
 import net.runelite.client.RuneLite;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.plugins.microbot.github.models.FileInfo;
 import net.runelite.client.plugins.microbot.sideloading.MicrobotPluginManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import javax.inject.Inject;
@@ -14,29 +16,45 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+
+import static javax.swing.JOptionPane.showMessageDialog;
 
 public class GithubPanel extends PluginPanel {
 
-    private JTextField repoField = new JTextField("https://github.com/chsami/microbot", 10);
+    private JComboBox<String> repoDropdown = new JComboBox();
     private JTextField folderField = new JTextField("", 10);
     private JTextField tokenField = new JTextField("", 10);
 
     private DefaultListModel<FileInfo> listModel = new DefaultListModel<FileInfo>();
     private JList<FileInfo> fileList = new JList<>(listModel);
+    private JButton addRepoButton = new JButton("Add Repo Url");
+    private JButton deleteRepoButton = new JButton("Delete Repo Url");
+
     private JButton fetchButton = new JButton("Fetch from GitHub");
     private JButton downloadButton = new JButton("Download Selected");
     private JButton downloadAllButton = new JButton("Download All");
-    private JButton openMicrobotSideLoadPluginFolder = new JButton("Open side-loading folder");
+    private JButton openMicrobotSideLoadPluginFolder = new JButton("Open folder");
 
     @Inject
     MicrobotPluginManager microbotPluginManager;
 
+
     @Inject
-    public GithubPanel() {
+    ConfigManager configManager;
+
+    GithubPlugin plugin;
 
 
-    //    setBorder(createCenteredTitledBorder("Download Plugins From Github Repository", "/net/runelite/client/plugins/microbot/shortestpath/Farming_patch_icon.png"));
+    @Inject
+    public GithubPanel(GithubPlugin plugin) {
+
+
+        this.plugin = plugin;
+        //    setBorder(createCenteredTitledBorder("Download Plugins From Github Repository", "/net/runelite/client/plugins/microbot/shortestpath/Farming_patch_icon.png"));
 
         // Top panel for inputs
         // Keep BoxLayout
@@ -69,8 +87,12 @@ public class GithubPanel extends PluginPanel {
         gbci.anchor = GridBagConstraints.WEST;
 
         inputPanel.add(new JLabel("Repo Url:*"), gbc);
-        repoField.setBorder(BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE));
-        inputPanel.add(repoField, gbci);
+        repoDropdown.setBorder(BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE));
+        inputPanel.add(repoDropdown, gbci);
+        for (String option : getOptionsList()) {
+            repoDropdown.addItem(option);
+        }
+
 
         inputPanel.add(new JLabel("Folder: (empty = root folder)"), gbc);
         folderField.setBorder(BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE));
@@ -85,10 +107,14 @@ public class GithubPanel extends PluginPanel {
 
         // Button panel
         JPanel buttonPanel = new JPanel(new GridLayout(5, 1, 10, 10));
+        addRepoButton.setBorder(BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE));
+        deleteRepoButton.setBorder(BorderFactory.createLineBorder(ColorScheme.PROGRESS_ERROR_COLOR));
         fetchButton.setBorder(BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE));
         downloadButton.setBorder(BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE));
         downloadAllButton.setBorder(BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE));
         openMicrobotSideLoadPluginFolder.setBorder(BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE));
+        buttonPanel.add(addRepoButton);
+        buttonPanel.add(deleteRepoButton);
         buttonPanel.add(fetchButton);
         buttonPanel.add(downloadButton);
         buttonPanel.add(downloadAllButton);
@@ -125,6 +151,8 @@ public class GithubPanel extends PluginPanel {
         });
 
         // Button actions
+        addRepoButton.addActionListener(e -> addRepoUrl());
+        deleteRepoButton.addActionListener(e -> deleteRepoUrl());
         fetchButton.addActionListener(e -> fetchFiles());
         downloadButton.addActionListener(e -> downloadSelected());
         downloadAllButton.addActionListener(e -> downloadAll());
@@ -135,6 +163,44 @@ public class GithubPanel extends PluginPanel {
 
         // Button Action
 
+    }
+
+    /**
+     * Deletes a repository URL from the dropdown and saves the updated list to the configuration.
+     */
+    private void deleteRepoUrl() {
+        String selected = (String) repoDropdown.getSelectedItem();
+        if (selected != null) {
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "Are you sure you want to delete the selected repository URL?",
+                    "Confirm Deletion",
+                    JOptionPane.YES_NO_OPTION);
+
+            if (confirm == JOptionPane.YES_OPTION) {
+                List<String> currentItems = getOptionsList();
+                currentItems.remove(selected);
+                String updatedConfig = String.join(",", currentItems);
+
+                configManager.setConfiguration("GithubPlugin", "repoUrls", updatedConfig);
+                repoDropdown.removeItem(selected);
+            }
+        }
+    }
+
+    /**
+     * Adds a repository URL to the dropdown and saves it to the configuration.
+     */
+    private void addRepoUrl() {
+        String url = JOptionPane.showInputDialog(this, "Enter the repository URL:");
+        if (url != null && !url.isEmpty()) {
+            repoDropdown.addItem(url);
+            repoDropdown.setSelectedItem(url);
+            List<String> currentItems = getOptionsList();
+            currentItems.add(url);
+            String updatedConfig = String.join(",", currentItems);
+
+            configManager.setConfiguration("GithubPlugin", "repoUrls", updatedConfig);
+        }
     }
 
     /**
@@ -160,7 +226,9 @@ public class GithubPanel extends PluginPanel {
      */
     @SneakyThrows
     private void downloadAll() {
-        if (folderField.getText().isEmpty() && GithubDownloader.isLargeRepo(repoField.getText(), tokenField.getText())) {
+        if (!isRepoSelected()) return;
+
+        if (folderField.getText().isEmpty() && GithubDownloader.isLargeRepo(repoDropdown.getSelectedItem().toString(), tokenField.getText())) {
             int choice = JOptionPane.showConfirmDialog(this,
                     String.format("⚠ The repository is over 50MB.\nAre you sure you want to continue?"),
                     "Large Repository",
@@ -172,7 +240,7 @@ public class GithubPanel extends PluginPanel {
         Window parentWindow = SwingUtilities.getWindowAncestor(this);
         JDialog dialog = createLoadingDialog(parentWindow, "Scanning Repo...");
 
-        List<FileInfo> allFiles = GithubDownloader.getAllFilesRecursively(repoField.getText(), folderField.getText(), tokenField.getText());
+        List<FileInfo> allFiles = GithubDownloader.getAllFilesRecursively(repoDropdown.getSelectedItem().toString(), folderField.getText(), tokenField.getText());
 
         dialog.setVisible(false);
         parentWindow.remove(dialog);
@@ -223,6 +291,19 @@ public class GithubPanel extends PluginPanel {
     }
 
     /**
+     * Checks if a repository URL is selected.
+     *
+     * @return
+     */
+    private boolean isRepoSelected() {
+        if (repoDropdown.getSelectedItem() == null) {
+            showMessageDialog(this, "Please select a repository URL.", "Error", JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * Downloads the selected files in the list.
      */
     @SneakyThrows
@@ -238,17 +319,23 @@ public class GithubPanel extends PluginPanel {
      * Fetches the files in the specified GitHub repository folder and adds them to the list.
      */
     private void fetchFiles() {
-        String json = GithubDownloader.fetchFiles(repoField.getText(), folderField.getText(), tokenField.getText());
-        JSONArray arr = new JSONArray(json);
+        if (!isRepoSelected()) return;
+        try {
+            String json = GithubDownloader.fetchFiles(repoDropdown.getSelectedItem().toString(), folderField.getText(), tokenField.getText());
+            JSONArray arr = new JSONArray(json);
 
-        listModel.clear();
-        for (int i = 0; i < arr.length(); i++) {
-            JSONObject obj = arr.getJSONObject(i);
-            if (obj.getString("type").equals("file")) {
-                String fileName = obj.getString("name");
-                String downloadUrl = obj.getString("download_url");
-                listModel.addElement(new FileInfo(fileName, downloadUrl));
+            listModel.clear();
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject obj = arr.getJSONObject(i);
+                if (obj.getString("type").equals("file") && obj.getString("name").endsWith(".jar")) {
+                    String fileName = obj.getString("name");
+                    String downloadUrl = obj.getString("download_url");
+                    listModel.addElement(new FileInfo(fileName, downloadUrl));
+                }
             }
+        } catch (JSONException ex) {
+            // show dialog box with message failed
+            showMessageDialog(this, "Failed to fetch files from repository.", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -266,5 +353,15 @@ public class GithubPanel extends PluginPanel {
         dialog.add(progressBar, BorderLayout.CENTER);
         dialog.setLocationRelativeTo(parent);
         return dialog;
+    }
+
+    private List<String> getOptionsList() {
+        String raw = plugin.config.repoUrls();
+        if (raw == null || raw.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return Arrays.stream(raw.split(","))
+                .map(String::trim)
+                .collect(Collectors.toList());
     }
 }

@@ -1,5 +1,8 @@
 package net.runelite.client.plugins.microbot.github;
 
+import com.google.inject.Provides;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
@@ -13,15 +16,25 @@ import java.awt.image.BufferedImage;
         name = "Github plugin",
         description = "Allows to download plugins from a github and sideload them",
         tags = {"github", "microbot"},
-        enabledByDefault = true,
-        hidden = true
+        enabledByDefault = false,
+        hidden = false
 )
+@Slf4j
 public class GithubPlugin extends Plugin {
 
     GithubPanel panel;
     NavigationButton navButton;
     @Inject
     ClientToolbar clientToolbar;
+
+    @Inject
+    public GithubConfig config;
+
+    @Provides
+    GithubConfig provideConfig(ConfigManager configManager) {
+        return configManager.getConfig(GithubConfig.class);
+    }
+
     @Override
     protected void startUp() {
         panel = injector.getInstance(GithubPanel.class);
