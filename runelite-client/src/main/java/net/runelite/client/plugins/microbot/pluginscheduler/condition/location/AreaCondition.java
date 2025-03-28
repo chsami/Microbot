@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.condition.location;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
@@ -18,9 +19,9 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
  */
 @Slf4j
 public class AreaCondition implements Condition {
+    @Getter
     private final WorldArea area;
-    private boolean isInArea = false;
-    private boolean registered = false;
+    private boolean isInArea = false;    
 
     /**
      * Create a condition that is met when the player is inside the specified area
@@ -49,19 +50,23 @@ public class AreaCondition implements Condition {
     }
 
     @Override
-    public boolean isMet() {
-        if (!registered) {
-            Microbot.getEventBus().register(this);
-            registered = true;
+    public boolean isSatisfied() {
+        
+            
+
             // Check immediately on first call
             checkArea();
-        }
+        
         return isInArea;
     }
 
     @Override
     public void reset() {
         isInArea = false;
+    }
+    @Override
+    public void reset(boolean randomize) {
+        reset();
     }
 
     @Override
@@ -71,11 +76,20 @@ public class AreaCondition implements Condition {
 
     @Override
     public String getDescription() {
-        return String.format("Player in area: %d,%d to %d,%d (plane %d)",
+        WorldPoint location = Rs2Player.getWorldLocation();
+        String statusInfo = "";
+        
+        if (location != null) {
+            boolean inArea = area.contains(location);
+            statusInfo = String.format(" (currently %s)", inArea ? "inside area" : "outside area");
+        }
+        
+        return String.format("Player in area: %d,%d to %d,%d (plane %d)%s",
                 area.getX(), area.getY(),
                 area.getX() + area.getWidth() - 1,
                 area.getY() + area.getHeight() - 1,
-                area.getPlane());
+                area.getPlane(),
+                statusInfo);
     }
 
     @Subscribe
@@ -103,11 +117,5 @@ public class AreaCondition implements Condition {
         }
     }
 
-    @Override
-    public void unregisterEvents() {
-        if (registered) {
-            Microbot.getEventBus().unregister(this);
-            registered = false;
-        }
-    }
+    
 }

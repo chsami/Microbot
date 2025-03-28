@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.condition.location;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
@@ -16,7 +17,9 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
  */
 @Slf4j
 public class PositionCondition implements Condition {
+    @Getter
     private final WorldPoint targetPosition;
+    @Getter
     private final int maxDistance;
     private boolean isAtPosition = false;
     private boolean registered = false;
@@ -57,7 +60,7 @@ public class PositionCondition implements Condition {
     }
 
     @Override
-    public boolean isMet() {
+    public boolean isSatisfied() {
         if (!registered) {
             Microbot.getEventBus().register(this);
             registered = true;
@@ -71,6 +74,10 @@ public class PositionCondition implements Condition {
     public void reset() {
         isAtPosition = false;
     }
+    @Override
+    public void reset(boolean randomize) {
+        reset();
+    }
 
     @Override
     public ConditionType getType() {
@@ -79,10 +86,20 @@ public class PositionCondition implements Condition {
 
     @Override
     public String getDescription() {
+        WorldPoint currentLocation = Rs2Player.getWorldLocation();
+        String distanceInfo = "";
+        
+        if (currentLocation != null && currentLocation.getPlane() == targetPosition.getPlane()) {
+            int distance = currentLocation.distanceTo(targetPosition);
+            distanceInfo = String.format(" (current distance: %d tiles)", distance);
+        }
+        
         if (maxDistance == 0) {
-            return "Player at position: " + targetPosition.getX() + ", " + targetPosition.getY() + ", " + targetPosition.getPlane();
+            return String.format("Player at position: %d, %d, %d%s", 
+                    targetPosition.getX(), targetPosition.getY(), targetPosition.getPlane(), distanceInfo);
         } else {
-            return "Player within " + maxDistance + " tiles of: " + targetPosition.getX() + ", " + targetPosition.getY() + ", " + targetPosition.getPlane();
+            return String.format("Player within %d tiles of: %d, %d, %d%s", 
+                    maxDistance, targetPosition.getX(), targetPosition.getY(), targetPosition.getPlane(), distanceInfo);
         }
     }
 
@@ -112,11 +129,5 @@ public class PositionCondition implements Condition {
         }
     }
 
-    @Override
-    public void unregisterEvents() {
-        if (registered) {
-            Microbot.getEventBus().unregister(this);
-            registered = false;
-        }
-    }
+  
 }

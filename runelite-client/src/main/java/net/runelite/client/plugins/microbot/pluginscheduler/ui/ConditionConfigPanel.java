@@ -197,8 +197,7 @@ public class ConditionConfigPanel extends JPanel {
                 "Skill Level", 
                 "Skill XP Goal", 
                 "Item Collection",
-                "Time Window", 
-                "Day of Week"
+                "Not In Time Window",
             };
         } else {
             conditionTypes = new String[]{
@@ -828,7 +827,7 @@ public class ConditionConfigPanel extends JPanel {
         return button;
     }
 
-        private void updateConfigPanel() {
+    private void updateConfigPanel() {
         configPanel.removeAll();
         
         JPanel panel = new JPanel(new GridBagLayout());
@@ -844,37 +843,46 @@ public class ConditionConfigPanel extends JPanel {
         if (stopConditionPanel) {
             switch (selectedType) {
                 case "Time Duration":
-                    createTimeConfigPanel(panel, gbc);
+                    ConditionConfigPanelUtil.createTimeConfigPanel(panel, gbc,  configPanel);
                     break;
                 case "Skill Level":
-                    createSkillLevelConfigPanel(panel, gbc);
+                    ConditionConfigPanelUtil.createSkillLevelConfigPanel(panel, gbc,configPanel, true);
                     break;
                 case "Skill XP Goal":
-                    createSkillXpConfigPanel(panel, gbc);
+                    ConditionConfigPanelUtil.createSkillXpConfigPanel(panel, gbc,  configPanel);
                     break;
                 case "Item Collection":
-                    createItemConfigPanel(panel, gbc);
+                    ConditionConfigPanelUtil.createItemConfigPanel(panel, gbc, configPanel, true);
                     break;
-                case "Time Window":
-                    createTimeWindowConfigPanel(panel, gbc);
+                case "Not In Time Window":
+                    ConditionConfigPanelUtil.createTimeWindowConfigPanel(panel, gbc,configPanel,false);
+                    break;                
+                case "Inventory Item Count":
+                    ConditionConfigPanelUtil.createInventoryItemCountPanel(panel, gbc, configPanel);
                     break;
-                case "Day of Week":
-                    createDayOfWeekConfigPanel(panel, gbc);
+                case "Bank Item Count":
+                    ConditionConfigPanelUtil.createBankItemCountPanel(panel, gbc, configPanel);
                     break;
             }
         } else {
             switch (selectedType) {
                 case "Time Window":
-                    createTimeWindowConfigPanel(panel, gbc);
+                    ConditionConfigPanelUtil.createTimeWindowConfigPanel(panel, gbc,configPanel,true);
                     break;
                 case "Day of Week":
-                    createDayOfWeekConfigPanel(panel, gbc);
+                    ConditionConfigPanelUtil.createDayOfWeekConfigPanel(panel, gbc, configPanel);
                     break;
                 case "Skill Level Required":
-                    createSkillLevelConfigPanel(panel, gbc);
+                    ConditionConfigPanelUtil.createSkillLevelConfigPanel(panel, gbc, configPanel, false);
                     break;
                 case "Item Required":
-                    createItemConfigPanel(panel, gbc);
+                    ConditionConfigPanelUtil.createItemConfigPanel(panel, gbc,configPanel,false);
+                    break;
+                case "Inventory Item Count":
+                    ConditionConfigPanelUtil.createInventoryItemCountPanel(panel, gbc, configPanel);
+                    break;
+                case "Bank Item Count":
+                    ConditionConfigPanelUtil.createBankItemCountPanel(panel, gbc, configPanel);
                     break;
             }
         }
@@ -884,868 +892,35 @@ public class ConditionConfigPanel extends JPanel {
         configPanel.repaint();
     }
     
-    private void createTimeConfigPanel(JPanel panel, GridBagConstraints gbc) {
-        JLabel durationLabel = new JLabel("Duration Range:");
-        durationLabel.setForeground(Color.WHITE);
-        durationLabel.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.BOLD));
-        gbc.gridx = 0;
-        gbc.gridy++;
-        gbc.gridwidth = 2;
-        panel.add(durationLabel, gbc);
-        
-        // Time range panel with combined HH:MM format
-        gbc.gridy++;
-        JPanel timeRangePanel = new JPanel(new GridLayout(2, 2, 5, 5));
-        timeRangePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        
-        // Min time input
-        JLabel minTimeLabel = new JLabel("Min Duration (HH:MM):");
-        minTimeLabel.setForeground(Color.WHITE);
-        timeRangePanel.add(minTimeLabel);
-        
-        // Create combined min time panel
-        JPanel minTimePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
-        minTimePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        
-        // Use a formatted text field with validation for "HH:MM" format
-        JTextField minTimeField = new JTextField(5);
-        minTimeField.setText("01:00"); // Default 1 hour
-        minTimeField.setForeground(Color.WHITE);
-        minTimeField.setBackground(ColorScheme.DARKER_GRAY_COLOR.brighter());
-        minTimePanel.add(minTimeField);
-        
-        timeRangePanel.add(minTimePanel);
-        
-        // Max time input
-        JLabel maxTimeLabel = new JLabel("Max Duration (HH:MM):");
-        maxTimeLabel.setForeground(Color.WHITE);
-        timeRangePanel.add(maxTimeLabel);
-        
-        // Create combined max time panel
-        JPanel maxTimePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
-        maxTimePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        
-        // Use a formatted text field with validation for "HH:MM" format
-        JTextField maxTimeField = new JTextField(5);
-        maxTimeField.setText("02:30"); // Default 2:30 hours
-        maxTimeField.setForeground(Color.WHITE);
-        maxTimeField.setBackground(ColorScheme.DARKER_GRAY_COLOR.brighter());
-        maxTimePanel.add(maxTimeField);
-        
-        timeRangePanel.add(maxTimePanel);
-        
-        panel.add(timeRangePanel, gbc);
-        
-        // Add input validation for time fields
-        minTimeField.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusLost(FocusEvent e) {
-                validateTimeField(minTimeField, maxTimeField, true);
-            }
-        });
-        
-        maxTimeField.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusLost(FocusEvent e) {
-                validateTimeField(minTimeField, maxTimeField, false);
-            }
-        });
-        
-        // Randomization options
-        gbc.gridy++;
-        JPanel randomPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        randomPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        
-        JCheckBox randomizeCheckBox = new JCheckBox("Randomize within range");
-        randomizeCheckBox.setForeground(Color.WHITE);
-        randomizeCheckBox.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        randomizeCheckBox.setSelected(true);
-        randomPanel.add(randomizeCheckBox);
-        
-        JLabel randomFactorLabel = new JLabel("Random Factor:");
-        randomFactorLabel.setForeground(Color.WHITE);
-        randomPanel.add(randomFactorLabel);
-        
-        SpinnerNumberModel randomFactorModel = new SpinnerNumberModel(0.3, 0.0, 1.0, 0.05);
-        JSpinner randomFactorSpinner = new JSpinner(randomFactorModel);
-        randomFactorSpinner.setPreferredSize(new Dimension(70, randomFactorSpinner.getPreferredSize().height));
-        randomPanel.add(randomFactorSpinner);
-        
-        // Disable random factor when randomize is unchecked
-        randomizeCheckBox.addChangeListener(e -> {
-            randomFactorSpinner.setEnabled(randomizeCheckBox.isSelected());
-        });
-        
-        panel.add(randomPanel, gbc);
-        
-        // Add a helpful description
-        gbc.gridy++;
-        JLabel descriptionLabel = new JLabel("Plugin will stop after a random time between min and max");
-        descriptionLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-        descriptionLabel.setFont(FontManager.getRunescapeSmallFont());
-        panel.add(descriptionLabel, gbc);
-        
-        // Store components for later access when creating conditions
-        configPanel.putClientProperty("minTimeField", minTimeField);
-        configPanel.putClientProperty("maxTimeField", maxTimeField);
-        configPanel.putClientProperty("randomizeCheckBox", randomizeCheckBox);
-        configPanel.putClientProperty("randomFactorSpinner", randomFactorSpinner);
-    }
+   
 
-    /**
-     * Validates a time field to ensure it contains a valid HH:MM format
-     * Enforces min ≤ max constraint when comparing fields
-     */
-    private void validateTimeField(JTextField minField, JTextField maxField, boolean isMinField) {
-        try {
-            // Parse the current field
-            String text = isMinField ? minField.getText() : maxField.getText();
-            String[] parts = text.split(":");
-            
-            if (parts.length != 2) {
-                throw new NumberFormatException("Invalid format");
-            }
-            
-            int hours = Integer.parseInt(parts[0]);
-            int minutes = Integer.parseInt(parts[1]);
-            
-            // Validate ranges
-            hours = Math.min(23, Math.max(0, hours));
-            minutes = Math.min(59, Math.max(0, minutes));
-            
-            // Format properly
-            String formatted = String.format("%02d:%02d", hours, minutes);
-            
-            if (isMinField) {
-                minField.setText(formatted);
-                
-                // Check min ≤ max
-                String[] maxParts = maxField.getText().split(":");
-                if (maxParts.length == 2) {
-                    int maxHours = Integer.parseInt(maxParts[0]);
-                    int maxMinutes = Integer.parseInt(maxParts[1]);
-                    
-                    if (hours > maxHours || (hours == maxHours && minutes > maxMinutes)) {
-                        maxField.setText(formatted);
-                    }
-                }
-            } else {
-                maxField.setText(formatted);
-                
-                // Check max ≥ min
-                String[] minParts = minField.getText().split(":");
-                if (minParts.length == 2) {
-                    int minHours = Integer.parseInt(minParts[0]);
-                    int minMinutes = Integer.parseInt(minParts[1]);
-                    
-                    if (hours < minHours || (hours == minHours && minutes < minMinutes)) {
-                        minField.setText(formatted);
-                    }
-                }
-            }
-        } catch (NumberFormatException e) {
-            // Reset to a default valid value if parsing fails
-            if (isMinField) {
-                minField.setText("01:00");
-            } else {
-                maxField.setText("02:00");
-            }
-        }
-    }
-
-    private void createTimeWindowConfigPanel(JPanel panel, GridBagConstraints gbc) {
-        JLabel startTimeLabel = new JLabel("Start Time (24h format):");
-        startTimeLabel.setForeground(Color.WHITE);
-        panel.add(startTimeLabel, gbc);
-        
-        // Start time panel with hour and minute
-        gbc.gridy++;
-        JPanel startTimePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        startTimePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        
-        SpinnerNumberModel startHourModel = new SpinnerNumberModel(9, 0, 23, 1);
-        JSpinner startHourSpinner = new JSpinner(startHourModel);
-        startTimePanel.add(startHourSpinner);
-        
-        JLabel hourLabel = new JLabel("hour");
-        hourLabel.setForeground(Color.WHITE);
-        startTimePanel.add(hourLabel);
-        
-        SpinnerNumberModel startMinuteModel = new SpinnerNumberModel(0, 0, 59, 1);
-        JSpinner startMinuteSpinner = new JSpinner(startMinuteModel);
-        startTimePanel.add(startMinuteSpinner);
-        
-        JLabel minuteLabel = new JLabel("min");
-        minuteLabel.setForeground(Color.WHITE);
-        startTimePanel.add(minuteLabel);
-        
-        panel.add(startTimePanel, gbc);
-        
-        // End time
-        gbc.gridy++;
-        JLabel endTimeLabel = new JLabel("End Time (24h format):");
-        endTimeLabel.setForeground(Color.WHITE);
-        panel.add(endTimeLabel, gbc);
-        
-        gbc.gridy++;
-        JPanel endTimePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        endTimePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        
-        SpinnerNumberModel endHourModel = new SpinnerNumberModel(17, 0, 23, 1);
-        JSpinner endHourSpinner = new JSpinner(endHourModel);
-        endTimePanel.add(endHourSpinner);
-        
-        JLabel endHourLabel = new JLabel("hour");
-        endHourLabel.setForeground(Color.WHITE);
-        endTimePanel.add(endHourLabel);
-        
-        SpinnerNumberModel endMinuteModel = new SpinnerNumberModel(0, 0, 59, 1);
-        JSpinner endMinuteSpinner = new JSpinner(endMinuteModel);
-        endTimePanel.add(endMinuteSpinner);
-        
-        JLabel endMinuteLabel = new JLabel("min");
-        endMinuteLabel.setForeground(Color.WHITE);
-        endTimePanel.add(endMinuteLabel);
-        
-        panel.add(endTimePanel, gbc);
-        
-        // Description
-        gbc.gridy++;
-        JLabel descriptionLabel = new JLabel("Plugin will only run during specified hours");
-        descriptionLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-        descriptionLabel.setFont(FontManager.getRunescapeSmallFont());
-        panel.add(descriptionLabel, gbc);
-        
-        gbc.gridy++;
-        JLabel crossDayLabel = new JLabel("Note: If start > end, window crosses midnight");
-        crossDayLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-        crossDayLabel.setFont(FontManager.getRunescapeSmallFont());
-        panel.add(crossDayLabel, gbc);
-        
-        // Store the components for later
-        configPanel.putClientProperty("startHourSpinner", startHourSpinner);
-        configPanel.putClientProperty("startMinuteSpinner", startMinuteSpinner);
-        configPanel.putClientProperty("endHourSpinner", endHourSpinner);
-        configPanel.putClientProperty("endMinuteSpinner", endMinuteSpinner);
-    }
-
-
-    private void createDayOfWeekConfigPanel(JPanel panel, GridBagConstraints gbc) {
-        JLabel daysLabel = new JLabel("Active Days:");
-        daysLabel.setForeground(Color.WHITE);
-        panel.add(daysLabel, gbc);
-        
-        // Preset options
-        gbc.gridy++;
-        JPanel presetPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        presetPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        
-        JButton weekdaysButton = new JButton("Weekdays");
-        weekdaysButton.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        weekdaysButton.setForeground(Color.WHITE);
-        
-        JButton weekendsButton = new JButton("Weekends");
-        weekendsButton.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        weekendsButton.setForeground(Color.WHITE);
-        
-        JButton allDaysButton = new JButton("All Days");
-        allDaysButton.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        allDaysButton.setForeground(Color.WHITE);
-        
-        presetPanel.add(weekdaysButton);
-        presetPanel.add(weekendsButton);
-        presetPanel.add(allDaysButton);
-        
-        panel.add(presetPanel, gbc);
-        
-        // Day checkboxes
-        gbc.gridy++;
-        JPanel daysPanel = new JPanel(new GridLayout(0, 3));
-        daysPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        
-        String[] dayNames = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
-        JCheckBox[] dayCheckboxes = new JCheckBox[7];
-        
-        for (int i = 0; i < dayNames.length; i++) {
-            dayCheckboxes[i] = new JCheckBox(dayNames[i]);
-            dayCheckboxes[i].setBackground(ColorScheme.DARKER_GRAY_COLOR);
-            dayCheckboxes[i].setForeground(Color.WHITE);
-            daysPanel.add(dayCheckboxes[i]);
-        }
-        
-        // Set up weekdays button
-        weekdaysButton.addActionListener(e -> {
-            for (int i = 0; i < 5; i++) {
-                dayCheckboxes[i].setSelected(true);
-            }
-            dayCheckboxes[5].setSelected(false);
-            dayCheckboxes[6].setSelected(false);
-        });
-        
-        // Set up weekends button
-        weekendsButton.addActionListener(e -> {
-            for (int i = 0; i < 5; i++) {
-                dayCheckboxes[i].setSelected(false);
-            }
-            dayCheckboxes[5].setSelected(true);
-            dayCheckboxes[6].setSelected(true);
-        });
-        
-        // Set up all days button
-        allDaysButton.addActionListener(e -> {
-            for (JCheckBox checkbox : dayCheckboxes) {
-                checkbox.setSelected(true);
-            }
-        });
-        
-        panel.add(daysPanel, gbc);
-        
-        // Description
-        gbc.gridy++;
-        JLabel descriptionLabel = new JLabel("Plugin will only run on selected days of the week");
-        descriptionLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-        descriptionLabel.setFont(FontManager.getRunescapeSmallFont());
-        panel.add(descriptionLabel, gbc);
-        
-        // Store components for later access
-        configPanel.putClientProperty("dayCheckboxes", dayCheckboxes);
-    }
-    private void createSkillLevelConfigPanel(JPanel panel, GridBagConstraints gbc) {
-        JLabel skillLabel = new JLabel("Skill:");
-        skillLabel.setForeground(Color.WHITE);
-        panel.add(skillLabel, gbc);
-        
-        gbc.gridx++;
-        JComboBox<String> skillComboBox = new JComboBox<>();
-        for (Skill skill : Skill.values()) {
-            skillComboBox.addItem(skill.getName());
-        }
-        panel.add(skillComboBox, gbc);
-        
-        // Target level panel
-        gbc.gridx = 0;
-        gbc.gridy++;
-        gbc.gridwidth = 2;
-        
-        JPanel levelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        levelPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        
-        JLabel targetLevelLabel = new JLabel("Target Level:");
-        targetLevelLabel.setForeground(Color.WHITE);
-        levelPanel.add(targetLevelLabel);
-        
-        SpinnerNumberModel levelModel = new SpinnerNumberModel(10, 1, 99, 1);
-        JSpinner levelSpinner = new JSpinner(levelModel);
-        levelPanel.add(levelSpinner);
-        
-        JCheckBox randomizeCheckBox = new JCheckBox("Randomize");
-        randomizeCheckBox.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        randomizeCheckBox.setForeground(Color.WHITE);
-        levelPanel.add(randomizeCheckBox);
-        
-        panel.add(levelPanel, gbc);
-        
-        // Min/Max panel (only visible when randomize is checked)
-        gbc.gridy++;
-        JPanel minMaxPanel = new JPanel(new GridLayout(1, 4, 5, 0));
-        minMaxPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        
-        JLabel minLabel = new JLabel("Min:");
-        minLabel.setForeground(Color.WHITE);
-        minMaxPanel.add(minLabel);
-        
-        SpinnerNumberModel minModel = new SpinnerNumberModel(5, 1, 99, 1);
-        JSpinner minSpinner = new JSpinner(minModel);
-        minMaxPanel.add(minSpinner);
-        
-        JLabel maxLabel = new JLabel("Max:");
-        maxLabel.setForeground(Color.WHITE);
-        minMaxPanel.add(maxLabel);
-        
-        SpinnerNumberModel maxModel = new SpinnerNumberModel(10, 1, 99, 1);
-        JSpinner maxSpinner = new JSpinner(maxModel);
-        minMaxPanel.add(maxSpinner);
-        
-        minMaxPanel.setVisible(false);
-        panel.add(minMaxPanel, gbc);
-        
-        // Toggle min/max panel visibility based on randomize checkbox
-        randomizeCheckBox.addChangeListener(e -> {
-            minMaxPanel.setVisible(randomizeCheckBox.isSelected());
-            levelSpinner.setEnabled(!randomizeCheckBox.isSelected());
-            
-            // If enabling randomize, set min/max from current level
-            if (randomizeCheckBox.isSelected()) {
-                int level = (Integer) levelSpinner.getValue();
-                minSpinner.setValue(Math.max(1, level - 5));
-                maxSpinner.setValue(Math.min(99, level + 5));
-            }
-            
-            panel.revalidate();
-            panel.repaint();
-        });
-        
-        // Add value change listeners for min/max validation
-        minSpinner.addChangeListener(e -> {
-            int min = (Integer) minSpinner.getValue();
-            int max = (Integer) maxSpinner.getValue();
-            
-            if (min > max) {
-                maxSpinner.setValue(min);
-            }
-        });
-        
-        maxSpinner.addChangeListener(e -> {
-            int min = (Integer) minSpinner.getValue();
-            int max = (Integer) maxSpinner.getValue();
-            
-            if (max < min) {
-                minSpinner.setValue(max);
-            }
-        });
-        
-        // Description
-        gbc.gridy++;
-        JLabel descriptionLabel;
-        if (stopConditionPanel) {
-            descriptionLabel = new JLabel("Plugin will stop when skill reaches target level");
-        } else {
-            descriptionLabel = new JLabel("Plugin will only start when skill is at or above target level");
-        }
-        descriptionLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-        descriptionLabel.setFont(FontManager.getRunescapeSmallFont());
-        panel.add(descriptionLabel, gbc);
-        
-        // Store components
-        configPanel.putClientProperty("skillComboBox", skillComboBox);
-        configPanel.putClientProperty("levelSpinner", levelSpinner);
-        configPanel.putClientProperty("minLevelSpinner", minSpinner);
-        configPanel.putClientProperty("maxLevelSpinner", maxSpinner);
-        configPanel.putClientProperty("randomizeSkillLevel", randomizeCheckBox);
-    }
-
-    // Improved Skill XP panel
-    private void createSkillXpConfigPanel(JPanel panel, GridBagConstraints gbc) {
-        JLabel skillLabel = new JLabel("Skill:");
-        skillLabel.setForeground(Color.WHITE);
-        panel.add(skillLabel, gbc);
-        
-        gbc.gridx++;
-        JComboBox<String> skillComboBox = new JComboBox<>();
-        for (Skill skill : Skill.values()) {
-            skillComboBox.addItem(skill.getName());
-        }
-        panel.add(skillComboBox, gbc);
-        
-        // Target XP panel
-        gbc.gridx = 0;
-        gbc.gridy++;
-        gbc.gridwidth = 2;
-        
-        JPanel xpPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        xpPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        
-        JLabel targetXpLabel = new JLabel("Target XP:");
-        targetXpLabel.setForeground(Color.WHITE);
-        xpPanel.add(targetXpLabel);
-        
-        SpinnerNumberModel xpModel = new SpinnerNumberModel(10000, 1, 200000000, 1000);
-        JSpinner xpSpinner = new JSpinner(xpModel);
-        // Make XP spinner wider to accommodate larger numbers
-        xpSpinner.setPreferredSize(new Dimension(100, xpSpinner.getPreferredSize().height));
-        xpPanel.add(xpSpinner);
-        
-        JCheckBox randomizeCheckBox = new JCheckBox("Randomize");
-        randomizeCheckBox.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        randomizeCheckBox.setForeground(Color.WHITE);
-        xpPanel.add(randomizeCheckBox);
-        
-        panel.add(xpPanel, gbc);
-        
-        // Min/Max panel (only visible when randomize is checked)
-        gbc.gridy++;
-        JPanel minMaxPanel = new JPanel(new GridLayout(1, 4, 5, 0));
-        minMaxPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        
-        JLabel minLabel = new JLabel("Min XP:");
-        minLabel.setForeground(Color.WHITE);
-        minMaxPanel.add(minLabel);
-        
-        SpinnerNumberModel minModel = new SpinnerNumberModel(5000, 1, 200000000, 1000);
-        JSpinner minSpinner = new JSpinner(minModel);
-        minSpinner.setPreferredSize(new Dimension(100, minSpinner.getPreferredSize().height));
-        minMaxPanel.add(minSpinner);
-        
-        JLabel maxLabel = new JLabel("Max XP:");
-        maxLabel.setForeground(Color.WHITE);
-        minMaxPanel.add(maxLabel);
-        
-        SpinnerNumberModel maxModel = new SpinnerNumberModel(15000, 1, 200000000, 1000);
-        JSpinner maxSpinner = new JSpinner(maxModel);
-        maxSpinner.setPreferredSize(new Dimension(100, maxSpinner.getPreferredSize().height));
-        minMaxPanel.add(maxSpinner);
-        
-        minMaxPanel.setVisible(false);
-        panel.add(minMaxPanel, gbc);
-        
-        // Toggle min/max panel visibility based on randomize checkbox
-        randomizeCheckBox.addChangeListener(e -> {
-            minMaxPanel.setVisible(randomizeCheckBox.isSelected());
-            xpSpinner.setEnabled(!randomizeCheckBox.isSelected());
-            
-            // If enabling randomize, set min/max from current XP
-            if (randomizeCheckBox.isSelected()) {
-                int xp = (Integer) xpSpinner.getValue();
-                minSpinner.setValue(Math.max(1, xp - 5000));
-                maxSpinner.setValue(Math.min(200000000, xp + 5000));
-            }
-            
-            panel.revalidate();
-            panel.repaint();
-        });
-        
-        // Add value change listeners for min/max validation
-        minSpinner.addChangeListener(e -> {
-            int min = (Integer) minSpinner.getValue();
-            int max = (Integer) maxSpinner.getValue();
-            
-            if (min > max) {
-                maxSpinner.setValue(min);
-            }
-        });
-        
-        maxSpinner.addChangeListener(e -> {
-            int min = (Integer) minSpinner.getValue();
-            int max = (Integer) maxSpinner.getValue();
-            
-            if (max < min) {
-                minSpinner.setValue(max);
-            }
-        });
-        
-        // Description
-        gbc.gridy++;
-        JLabel descriptionLabel = new JLabel("Plugin will stop when skill XP reaches target value");
-        descriptionLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-        descriptionLabel.setFont(FontManager.getRunescapeSmallFont());
-        panel.add(descriptionLabel, gbc);
-        
-        // Store components
-        configPanel.putClientProperty("xpSkillComboBox", skillComboBox);
-        configPanel.putClientProperty("xpSpinner", xpSpinner);
-        configPanel.putClientProperty("minXpSpinner", minSpinner);
-        configPanel.putClientProperty("maxXpSpinner", maxSpinner);
-        configPanel.putClientProperty("randomizeSkillXp", randomizeCheckBox);
-    }
     
-    // Improved Item Collection panel
-    private void createItemConfigPanel(JPanel panel, GridBagConstraints gbc) {
-        JLabel itemsLabel = new JLabel("Item Names (comma-separated, supports regex):");
-        itemsLabel.setForeground(Color.WHITE);
-        panel.add(itemsLabel, gbc);
-        
-        gbc.gridx = 0;
-        gbc.gridy++;
-        gbc.gridwidth = 2;
-        JTextField itemsField = new JTextField();
-        itemsField.setToolTipText("Examples: 'Bones', 'Shark|Lobster', '.*rune$' (all items ending with 'rune')");
-        panel.add(itemsField, gbc);
-        
-        // Tracking options
-        gbc.gridy++;
-        JPanel trackingPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        trackingPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        
-        JCheckBox trackInventoryCheckBox = new JCheckBox("Track Inventory");
-        trackInventoryCheckBox.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        trackInventoryCheckBox.setForeground(Color.WHITE);
-        trackInventoryCheckBox.setSelected(true);
-        trackingPanel.add(trackInventoryCheckBox);
-        
-        JCheckBox trackBankCheckBox = new JCheckBox("Track Bank");
-        trackBankCheckBox.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        trackBankCheckBox.setForeground(Color.WHITE);
-        trackBankCheckBox.setSelected(false);
-        trackingPanel.add(trackBankCheckBox);
-        
-        panel.add(trackingPanel, gbc);
-        
-        // Target amount panel
-        gbc.gridy++;
-        JPanel amountPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        amountPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        
-        JLabel amountLabel = new JLabel("Target Amount:");
-        amountLabel.setForeground(Color.WHITE);
-        amountPanel.add(amountLabel);
-        
-        SpinnerNumberModel amountModel = new SpinnerNumberModel(100, 1, 2147483647, 10);
-        JSpinner amountSpinner = new JSpinner(amountModel);
-        amountSpinner.setPreferredSize(new Dimension(100, amountSpinner.getPreferredSize().height));
-        amountPanel.add(amountSpinner);
-        
-        JCheckBox randomizeCheckBox = new JCheckBox("Randomize");
-        randomizeCheckBox.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        randomizeCheckBox.setForeground(Color.WHITE);
-        amountPanel.add(randomizeCheckBox);
-        if (!stopConditionPanel) {
-            randomizeCheckBox.setVisible(false);
-        }
-        panel.add(amountPanel, gbc);
-        
-        // Min/Max panel
-        gbc.gridy++;
-        JPanel minMaxPanel = new JPanel(new GridLayout(1, 4, 5, 0));
-        minMaxPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        
-        JLabel minLabel = new JLabel("Min:");
-        minLabel.setForeground(Color.WHITE);
-        minMaxPanel.add(minLabel);
-        
-        SpinnerNumberModel minModel = new SpinnerNumberModel(50, 1, 2147483647, 10);
-        JSpinner minSpinner = new JSpinner(minModel);
-        minMaxPanel.add(minSpinner);
-        
-        JLabel maxLabel = new JLabel("Max:");
-        maxLabel.setForeground(Color.WHITE);
-        minMaxPanel.add(maxLabel);
-        
-        SpinnerNumberModel maxModel = new SpinnerNumberModel(150, 1, 2147483647, 10);
-        JSpinner maxSpinner = new JSpinner(maxModel);
-        minMaxPanel.add(maxSpinner);
-        
-        minMaxPanel.setVisible(false);
-        panel.add(minMaxPanel, gbc);
-        
-        // Toggle min/max panel based on randomize checkbox
-        randomizeCheckBox.addChangeListener(e -> {
-            minMaxPanel.setVisible(randomizeCheckBox.isSelected());
-            amountSpinner.setEnabled(!randomizeCheckBox.isSelected());
-            
-            // If enabling randomize, set min/max from current amount
-            if (randomizeCheckBox.isSelected()) {
-                int amount = (Integer) amountSpinner.getValue();
-                minSpinner.setValue(Math.max(1, amount - 50));
-                maxSpinner.setValue(amount + 50);
-            }
-            
-            panel.revalidate();
-            panel.repaint();
-        });
-        
-        // Add value change listeners for min/max validation
-        minSpinner.addChangeListener(e -> {
-            int min = (Integer) minSpinner.getValue();
-            int max = (Integer) maxSpinner.getValue();
-            
-            if (min > max) {
-                maxSpinner.setValue(min);
-            }
-        });
-        
-        maxSpinner.addChangeListener(e -> {
-            int min = (Integer) minSpinner.getValue();
-            int max = (Integer) maxSpinner.getValue();
-            
-            if (max < min) {
-                minSpinner.setValue(max);
-            }
-        });
-        
-        // Description
-        gbc.gridy++;
-        JLabel descriptionLabel;
-        if (stopConditionPanel) {
-            descriptionLabel = new JLabel("Plugin will stop when target amount of items is collected");
-        } else {
-            descriptionLabel = new JLabel("Plugin will only start when you have the required items");
-        }
-        descriptionLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-        descriptionLabel.setFont(FontManager.getRunescapeSmallFont());
-        panel.add(descriptionLabel, gbc);
-        
-        // Add regex help
-        gbc.gridy++;
-        JLabel regexHelpLabel = new JLabel("Regex help: Use '|' for OR, '.*' for any characters");
-        regexHelpLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-        regexHelpLabel.setFont(FontManager.getRunescapeSmallFont());
-        panel.add(regexHelpLabel, gbc);
-        
-        // Store components
-        configPanel.putClientProperty("itemsField", itemsField);        
-        configPanel.putClientProperty("amountSpinner", amountSpinner);
-        configPanel.putClientProperty("minAmountSpinner", minSpinner);
-        configPanel.putClientProperty("maxAmountSpinner", maxSpinner);
-        configPanel.putClientProperty("randomizeItemAmount", randomizeCheckBox);
-    }
+   
+
+
+    
+   
+
+  
+    
+    
     
     public void setUserConditionUpdateCallback(Consumer<LogicalCondition> callback) {
         this.userConditionUpdateCallback = callback;
     }
         
         
-    private TimeWindowCondition createTimeWindowCondition() {
-        JSpinner startHourSpinner = (JSpinner) configPanel.getClientProperty("startHourSpinner");
-        JSpinner startMinuteSpinner = (JSpinner) configPanel.getClientProperty("startMinuteSpinner");
-        JSpinner endHourSpinner = (JSpinner) configPanel.getClientProperty("endHourSpinner");
-        JSpinner endMinuteSpinner = (JSpinner) configPanel.getClientProperty("endMinuteSpinner");
-        
-        int startHour = (Integer) startHourSpinner.getValue();
-        int startMinute = (Integer) startMinuteSpinner.getValue();
-        int endHour = (Integer) endHourSpinner.getValue();
-        int endMinute = (Integer) endMinuteSpinner.getValue();
-        
-        LocalTime startTime = LocalTime.of(startHour, startMinute);
-        LocalTime endTime = LocalTime.of(endHour, endMinute);
-        
-        return new TimeWindowCondition(startTime, endTime);
-    }
     
-    // Add method to create DayOfWeekCondition
-    private DayOfWeekCondition createDayOfWeekCondition() {
-        JCheckBox[] dayCheckboxes = (JCheckBox[]) configPanel.getClientProperty("dayCheckboxes");
-        Set<DayOfWeek> activeDays = EnumSet.noneOf(DayOfWeek.class);
-        
-        // Map checkbox indices to DayOfWeek enum values (0 = Monday)
-        if (dayCheckboxes[0].isSelected()) activeDays.add(DayOfWeek.MONDAY);
-        if (dayCheckboxes[1].isSelected()) activeDays.add(DayOfWeek.TUESDAY);
-        if (dayCheckboxes[2].isSelected()) activeDays.add(DayOfWeek.WEDNESDAY);
-        if (dayCheckboxes[3].isSelected()) activeDays.add(DayOfWeek.THURSDAY);
-        if (dayCheckboxes[4].isSelected()) activeDays.add(DayOfWeek.FRIDAY);
-        if (dayCheckboxes[5].isSelected()) activeDays.add(DayOfWeek.SATURDAY);
-        if (dayCheckboxes[6].isSelected()) activeDays.add(DayOfWeek.SUNDAY);
-        
-        return new DayOfWeekCondition(activeDays);
-    }
     
-    // Update SkillLevelCondition to use randomization
-    private SkillLevelCondition createSkillLevelCondition() {
-        JComboBox<String> skillComboBox = (JComboBox<String>) configPanel.getClientProperty("skillComboBox");
-        JCheckBox randomizeCheckBox = (JCheckBox) configPanel.getClientProperty("randomizeSkillLevel");
-        
-        String skillName = (String) skillComboBox.getSelectedItem();
-        Skill skill = Skill.valueOf(skillName.toUpperCase());
-        
-        if (randomizeCheckBox.isSelected()) {
-            JSpinner minLevelSpinner = (JSpinner) configPanel.getClientProperty("minLevelSpinner");
-            JSpinner maxLevelSpinner = (JSpinner) configPanel.getClientProperty("maxLevelSpinner");
-            
-            int minLevel = (Integer) minLevelSpinner.getValue();
-            int maxLevel = (Integer) maxLevelSpinner.getValue();
-            
-            return SkillLevelCondition.createRandomized(skill, minLevel, maxLevel);
-        } else {
-            JSpinner levelSpinner = (JSpinner) configPanel.getClientProperty("levelSpinner");
-            int level = (Integer) levelSpinner.getValue();
-            
-            return new SkillLevelCondition(skill, level);
-        }
-    }
+   
     
-    // Update SkillXpCondition to use randomization
-    private SkillXpCondition createSkillXpCondition() {
-        JComboBox<String> skillComboBox = (JComboBox<String>) configPanel.getClientProperty("xpSkillComboBox");
-        JCheckBox randomizeCheckBox = (JCheckBox) configPanel.getClientProperty("randomizeSkillXp");
-        
-        String skillName = (String) skillComboBox.getSelectedItem();
-        Skill skill = Skill.valueOf(skillName.toUpperCase());
-        
-        if (randomizeCheckBox.isSelected()) {
-            JSpinner minXpSpinner = (JSpinner) configPanel.getClientProperty("minXpSpinner");
-            JSpinner maxXpSpinner = (JSpinner) configPanel.getClientProperty("maxXpSpinner");
-            
-            int minXp = (Integer) minXpSpinner.getValue();
-            int maxXp = (Integer) maxXpSpinner.getValue();
-            
-            return SkillXpCondition.createRandomized(skill, minXp, maxXp);
-        } else {
-            JSpinner xpSpinner = (JSpinner) configPanel.getClientProperty("xpSpinner");
-            int xp = (Integer) xpSpinner.getValue();
-            
-            return new SkillXpCondition(skill, xp);
-        }
-    }
+   
     
-    // Update LootItemCondition to handle regex and track options
-    private List<LootItemCondition> createItemCondition() {
-        JTextField itemsField = (JTextField) configPanel.getClientProperty("itemsField");        
-        
-        JCheckBox randomizeCheckBox = (JCheckBox) configPanel.getClientProperty("randomizeItemAmount");
-        
-        String itemNamesString = itemsField.getText().trim();
-        if (itemNamesString.isEmpty()) {
-            return null; // Invalid item name
-        }
-        
-        // Split by comma and trim each item name
-        String[] itemNamesArray = itemNamesString.split(",");
-        List<String> itemNames = new ArrayList<>();
-        
-        for (String itemName : itemNamesArray) {
-            itemName = itemName.trim();
-            if (!itemName.isEmpty()) {
-                itemNames.add(itemName);
-            }
-        }
-        
-        if (itemNames.isEmpty()) {
-            return null;
-        }
-        
-        List<LootItemCondition> lootItemConditions = new ArrayList<>();
-        for (String itemName : itemNames) {
-            LootItemCondition condition;
-            
-            if (randomizeCheckBox.isSelected()) {
-                JSpinner minAmountSpinner = (JSpinner) configPanel.getClientProperty("minAmountSpinner");
-                JSpinner maxAmountSpinner = (JSpinner) configPanel.getClientProperty("maxAmountSpinner");
-                
-                int minAmount = (Integer) minAmountSpinner.getValue();
-                int maxAmount = (Integer) maxAmountSpinner.getValue();
-                
-                condition = LootItemCondition.createRandomized(itemName, minAmount, maxAmount);
-            } else {
-                JSpinner amountSpinner = (JSpinner) configPanel.getClientProperty("amountSpinner");
-                int amount = (Integer) amountSpinner.getValue();
-                
-                condition = new LootItemCondition(itemName, amount);
-            }                                            
-            lootItemConditions.add(condition);
-        }
-        
-        return lootItemConditions;
-    }
     
-    private IntervalCondition createTimeCondition() {
-        JTextField minTimeField = (JTextField) configPanel.getClientProperty("minTimeField");
-        JTextField maxTimeField = (JTextField) configPanel.getClientProperty("maxTimeField");
-        JCheckBox randomizeCheckBox = (JCheckBox) configPanel.getClientProperty("randomizeCheckBox");
-        JSpinner randomFactorSpinner = (JSpinner) configPanel.getClientProperty("randomFactorSpinner");
-        
-        // Parse min time
-        String[] minParts = minTimeField.getText().split(":");
-        int minHours = Integer.parseInt(minParts[0]);
-        int minMinutes = Integer.parseInt(minParts[1]);
-        
-        // Parse max time
-        String[] maxParts = maxTimeField.getText().split(":");
-        int maxHours = Integer.parseInt(maxParts[0]);
-        int maxMinutes = Integer.parseInt(maxParts[1]);
-        
-        boolean randomize = randomizeCheckBox.isSelected();
-        double randomFactor = randomize ? (Double) randomFactorSpinner.getValue() : 0.0;
-        
-        Duration minDuration = Duration.ofHours(minHours).plusMinutes(minMinutes);
-        Duration maxDuration = Duration.ofHours(maxHours).plusMinutes(maxMinutes);
-        
-        // Check if min and max are the same
-        if (minHours == maxHours && minMinutes == maxMinutes) {
-            return new IntervalCondition(minDuration, randomize, randomFactor);
-        }
-        
-        // Create randomized interval condition
-        return IntervalCondition.createRandomized(minDuration, maxDuration);
-    }
+    
+    
+    
+   
     private void editSelectedCondition() {
         int selectedIndex = conditionList.getSelectedIndex();
         if (selectedIndex < 0 || selectedIndex >= getCurrentConditions().size()) {
@@ -2215,55 +1390,70 @@ public class ConditionConfigPanel extends JPanel {
         refreshDisplay();
         return true;
     }
+   
+
     private void addCurrentCondition() {
-        String selectedType = (String) conditionTypeComboBox.getSelectedItem();
+        if (selectScheduledPlugin == null) {
+            JOptionPane.showMessageDialog(this, "No plugin selected!");
+            return;
+        }
         
-        if (stopConditionPanel) {
-            switch (selectedType) {
-                case "Time Duration":
-                    addConditionToPlugin(createTimeCondition());
-                    break;
-                case "Skill Level":
-                    addConditionToPlugin(createSkillLevelCondition());
-                    break;
-                case "Skill XP Goal":
-                    addConditionToPlugin(createSkillXpCondition());
-                    break;
-                case "Item Collection":
-                    List<LootItemCondition> lootItemConditions = createItemCondition();
-                    if (lootItemConditions != null && !lootItemConditions.isEmpty()) {
-                        for (LootItemCondition condition : lootItemConditions) {
-                            addConditionToPlugin(condition);
-                        }
-                    }
-                    break;
-                case "Time Window":
-                    addConditionToPlugin(createTimeWindowCondition());
-                    break;
-                case "Day of Week":
-                    addConditionToPlugin(createDayOfWeekCondition());
-                    break;
+        String conditionType = (String) conditionTypeComboBox.getSelectedItem();
+        Condition condition = null;
+        
+        try {
+            if (stopConditionPanel) {
+                switch (conditionType) {
+                    case "Time Duration":
+                        condition = ConditionConfigPanelUtil.createTimeCondition(this.configPanel);
+                        break;
+                    case "Skill Level":
+                        condition = ConditionConfigPanelUtil.createSkillLevelCondition(this.configPanel);
+                        break;
+                    case "Skill XP Goal":
+                        condition = ConditionConfigPanelUtil.createSkillXpCondition(this.configPanel);
+                        break;
+                    case "Item Collection":
+                        condition = ConditionConfigPanelUtil.createItemCondition(this.configPanel);                                                                    
+                        return;
+                    case "Not In Time Window":
+                        condition = ConditionConfigPanelUtil.createTimeWindowCondition(this.configPanel);
+                        break;                    
+                    case "Inventory Item Count":
+                        condition = ConditionConfigPanelUtil.createInventoryItemCountCondition(this.configPanel);
+                        break;
+                    case "Bank Item Count":
+                        condition = ConditionConfigPanelUtil.createBankItemCountCondition(this.configPanel);
+                        break;
+                }
+            } else {
+                switch (conditionType) {
+                    case "Time Window":
+                        condition = ConditionConfigPanelUtil.createTimeWindowCondition(this.configPanel);
+                        break;
+                    case "Day of Week":
+                        condition = ConditionConfigPanelUtil.createDayOfWeekCondition(this.configPanel);
+                        break;
+                    case "Skill Level Required":
+                        condition = ConditionConfigPanelUtil.createSkillLevelCondition(this.configPanel);
+                        break;
+                    case "Item Required":
+                        // Similar handling as for stop conditions
+                        break;
+                    case "Inventory Item Count":
+                        condition = ConditionConfigPanelUtil.createInventoryItemCountCondition(this.configPanel);
+                        break;
+                    case "Bank Item Count":
+                        condition = ConditionConfigPanelUtil.createBankItemCountCondition(this.configPanel);
+                        break;
+                }
             }
-        } else {
-            switch (selectedType) {
-                case "Time Window":
-                    addConditionToPlugin(createTimeWindowCondition());
-                    break;
-                case "Day of Week":
-                    addConditionToPlugin(createDayOfWeekCondition());
-                    break;
-                case "Skill Level Required":
-                    addConditionToPlugin(createSkillLevelCondition());
-                    break;
-                case "Item Required":
-                    List<LootItemCondition> lootItemConditions = createItemCondition();
-                    if (lootItemConditions != null && !lootItemConditions.isEmpty()) {
-                        for (LootItemCondition condition : lootItemConditions) {
-                            addConditionToPlugin(condition);
-                        }
-                    }
-                    break;
+            
+            if (condition != null) {
+                addConditionToPlugin(condition);
             }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Error creating condition: " + e.getMessage());
         }
     }
     

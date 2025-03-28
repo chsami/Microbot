@@ -5,6 +5,7 @@ import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.ConditionType;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 
 /**
  * Skill XP-based condition for script execution.
@@ -12,16 +13,35 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.ConditionT
 @Getter 
 public class SkillXpCondition implements Condition {
     private final Skill skill;
-    private final int targetXp;
+    private int currentTargetXp;
+    private final int targetXpMin;
+    private final int targetXpMax;
     private int startXp;
     
     public SkillXpCondition(Skill skill, int targetXp) {
         this.skill = skill;
-        this.targetXp = targetXp;
+        this.currentTargetXp = targetXp;
+        this.targetXpMin = targetXp;
+        this.targetXpMax = targetXp;
         this.startXp = getCurrentXp();
     }
-    public void reset() {
+    public SkillXpCondition(Skill skill, int targetXpMin, int targetXpMax) {
+        targetXpMin = Math.max(0, targetXpMin);
+        targetXpMax = Math.min(Integer.MAX_VALUE, targetXpMax);
+        
+        this.skill = skill;
+        this.currentTargetXp = Rs2Random.between(targetXpMin, targetXpMax);
+        this.targetXpMin = targetXpMin;
+        this.targetXpMax = targetXpMax;
+        this.startXp = getCurrentXp();
+    }
+    
+    
+    public void reset(boolean randomize) {
         startXp = getCurrentXp();
+        if (randomize) {
+            currentTargetXp = Rs2Random.between(targetXpMin, targetXpMax);
+        }
     }
 
     
@@ -33,15 +53,14 @@ public class SkillXpCondition implements Condition {
             return new SkillXpCondition(skill, minXp);
         }
         
-        int range = maxXp - minXp;
-        int randomXp = minXp + (int)(Math.random() * (range + 1));
-        return new SkillXpCondition(skill, randomXp);
+        
+        return new SkillXpCondition(skill, minXp, maxXp);
     }
     
     @Override
-    public boolean isMet() {
+    public boolean isSatisfied() {
         int currentXp = Microbot.getClient().getSkillExperience(skill);
-        return (currentXp - startXp) >= targetXp;
+        return (currentXp - startXp) >= currentTargetXp;
     }
     
     /**
@@ -56,7 +75,7 @@ public class SkillXpCondition implements Condition {
      * Gets the amount of XP remaining to reach target
      */
     public int getXpRemaining() {
-        return Math.max(0, targetXp - getXpGained());
+        return Math.max(0, currentTargetXp - getXpGained());
     }
     
     /**
@@ -78,7 +97,7 @@ public class SkillXpCondition implements Condition {
     public double getProgressPercentage() {
         int currentXp = getCurrentXp();
         int startingXp = getStartingXp();
-        int targetXp = getTargetXp();
+        int targetXp = currentTargetXp;
         
         if (currentXp >= targetXp) {
             return 100.0;
@@ -97,10 +116,10 @@ public class SkillXpCondition implements Condition {
     @Override
     public String getDescription() {
         return String.format("Gain %d %s XP (Current: %d/%d - %.1f%%)", 
-            targetXp, 
+            currentTargetXp, 
             skill.getName(),
             getXpGained(),
-            targetXp,
+            currentTargetXp,
             getProgressPercentage());
     }
     

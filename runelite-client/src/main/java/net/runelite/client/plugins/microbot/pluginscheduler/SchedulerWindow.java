@@ -123,15 +123,26 @@ public class SchedulerWindow extends JFrame {
         updateButtonState();
     }
 
-    // Add method to update button state
+    // Update the updateButtonState method
     private void updateButtonState() {
+        SchedulerState state = plugin.getCurrentState();
         boolean isActive = plugin.isSchedulerActive();
         
-        runSchedulerButton.setEnabled(!isActive);
-        runSchedulerButton.setToolTipText(isActive ? "Scheduler is already running" : "Start running the scheduler");
+        // Only enable run button if we're in READY or HOLD state
+        runSchedulerButton.setEnabled(!isActive && (state == SchedulerState.READY || state == SchedulerState.HOLD));
         
+        runSchedulerButton.setToolTipText(
+            !runSchedulerButton.isEnabled() ? 
+            "Scheduler cannot be started in " + state.getDisplayName() + " state" :
+            "Start running the scheduler");
+        
+        // Only enable stop button if scheduler is active
         stopSchedulerButton.setEnabled(isActive);
-        stopSchedulerButton.setToolTipText(isActive ? "Stop the scheduler" : "Scheduler is not running");
+        stopSchedulerButton.setToolTipText(
+            isActive ? "Stop the scheduler" : "Scheduler is not running");
+        
+        // Add a status indication
+        this.setTitle("Plugin Scheduler - " + state.getDisplayName());
     }
 
     void refresh() {

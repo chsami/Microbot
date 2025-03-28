@@ -4,9 +4,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.ConditionType;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 
 import java.time.Duration;
 import java.time.LocalTime;
@@ -20,10 +18,15 @@ import java.time.format.DateTimeFormatter;
  */
 @Getter
 @Slf4j
-public class TimeWindowCondition implements Condition {
-    private final LocalTime startTime;
-    private final LocalTime endTime;
-    private boolean registered = false;
+public class TimeWindowCondition extends TimeCondition {
+    private LocalTime currentStartTime;
+    private final LocalTime startTimeMin;
+    private final LocalTime startTimeMax;
+    
+    private LocalTime currentEndTime;
+    private final LocalTime endTimeMin;
+    private final LocalTime endTimeMax;
+    
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     
     /**
@@ -36,8 +39,44 @@ public class TimeWindowCondition implements Condition {
      * @param endMinute Ending minute (0-59)
      */
     public TimeWindowCondition(int startHour, int startMinute, int endHour, int endMinute) {
-        this.startTime = LocalTime.of(startHour, startMinute);
-        this.endTime = LocalTime.of(endHour, endMinute);
+        startHour = Math.max(0, Math.min(23, startHour));
+        startMinute = Math.max(0, Math.min(59, startMinute));
+        endHour = Math.max(0, Math.min(23, endHour));
+        endMinute = Math.max(0, Math.min(59, endMinute));
+        this.startTimeMin = LocalTime.of(startHour, startMinute);
+        this.startTimeMax = LocalTime.of(startHour, startMinute);
+        this.endTimeMin = LocalTime.of(endHour, endMinute);
+        this.endTimeMax = LocalTime.of(endHour, endMinute);
+        this.currentStartTime = LocalTime.of(startHour, startMinute);
+        this.currentEndTime = LocalTime.of(endHour, endMinute);
+    }
+    public TimeWindowCondition(int startHourMin, int startHourMax,
+        int startMinuteMin, int startMinuteMax,
+        int endHourMin, int endHourMax,
+        int endMinuteMin, int endMinuteMax) {
+        startHourMin = Math.max(0, Math.min(23, startHourMin));
+        startHourMax = Math.max(0, Math.min(23, startHourMax));
+        startMinuteMin = Math.max(0, Math.min(59, startMinuteMin));
+        startMinuteMax = Math.max(0, Math.min(59, startMinuteMax));
+        endHourMin = Math.max(0, Math.min(23, endHourMin));
+        endHourMax = Math.max(0, Math.min(23, endHourMax));
+        endMinuteMin = Math.max(0, Math.min(59, endMinuteMin));
+        endMinuteMax = Math.max(0, Math.min(59, endMinuteMax));
+        this.startTimeMin = LocalTime.of(startHourMin, startMinuteMin);
+        this.startTimeMax = LocalTime.of(startHourMax, startMinuteMax);
+        this.endTimeMin = LocalTime.of(endHourMin, endMinuteMin);
+        this.endTimeMax = LocalTime.of(endHourMax, endMinuteMax);
+        
+        randomizeTimeWindow();
+     
+        
+
+    }
+    private void randomizeTimeWindow() {
+        this.currentStartTime = LocalTime.of(   Rs2Random.between(startTimeMin.getHour(), startTimeMax.getHour()),
+                                                Rs2Random.between(startTimeMin.getMinute(), startTimeMax.getMinute()));
+        this.currentEndTime = LocalTime.of(     Rs2Random.between(endTimeMin.getHour(), endTimeMax.getHour()),
+                                                Rs2Random.between(endTimeMin.getMinute(), endTimeMax.getMinute()));
     }
 
     
@@ -46,8 +85,13 @@ public class TimeWindowCondition implements Condition {
      * Creates a time window condition using LocalTime objects
      */
     public TimeWindowCondition(LocalTime startTime, LocalTime endTime) {
-        this.startTime = startTime;
-        this.endTime = endTime;
+        this.startTimeMin = startTime;
+        this.startTimeMax = startTime;
+        this.endTimeMin = endTime;
+        this.endTimeMax = endTime;
+        this.currentStartTime = startTime;
+        this.currentEndTime = endTime;
+
     }
     
     /**
@@ -108,8 +152,9 @@ public class TimeWindowCondition implements Condition {
         int endHour = (startHour + durationHours) % 24;
         
         return new TimeWindowCondition(
-                startHour, 0,  // Start at the beginning of the hour
-                endHour, 0     // End at the beginning of the hour
+            earliestStart,   
+            latestStart,0,0,
+            earliestStart + minDurationHours, latestStart + maxDurationHours,0,0
         );
     }
 
@@ -120,38 +165,33 @@ public class TimeWindowCondition implements Condition {
      * @return The duration of the time window
      */
     public Duration getTotalDuration() {
-        if (startTime.isAfter(endTime)) {
+        if (currentStartTime.isAfter(currentEndTime)) {
             // Window crosses midnight
-            Duration toMidnight = Duration.between(startTime, LocalTime.MAX);
-            Duration fromMidnight = Duration.between(LocalTime.MIN, endTime);
+            Duration toMidnight = Duration.between(currentStartTime, LocalTime.MAX);
+            Duration fromMidnight = Duration.between(LocalTime.MIN, currentEndTime);
             return toMidnight.plus(fromMidnight).plusNanos(1); // Add 1 nano for midnight itself
         } else {
-            return Duration.between(startTime, endTime);
+            return Duration.between(currentStartTime, currentEndTime);
         }
     }
     @Override
-    public boolean isMet() {
-        // Register for events if not already registered
-        if (!registered) {
-            Microbot.getEventBus().register(this);
-            registered = true;
-        }
-        
+    public boolean isSatisfied() {
+                
         LocalTime now = LocalTime.now();
         boolean result;
         
         // Handle case where time window crosses midnight
-        if (startTime.isAfter(endTime)) {
-            result = !now.isAfter(endTime) || !now.isBefore(startTime);
+        if (currentStartTime.isAfter(currentEndTime)) {
+            result = !now.isAfter(currentEndTime) || !now.isBefore(currentStartTime);
         } else {
-            result = !now.isBefore(startTime) && !now.isAfter(endTime);
+            result = !now.isBefore(currentStartTime) && !now.isAfter(currentEndTime);
         }
         
         if (result) {
             log.debug("Time window condition met: current time {} is within window {}-{}", 
                     now.format(TIME_FORMATTER), 
-                    startTime.format(TIME_FORMATTER), 
-                    endTime.format(TIME_FORMATTER));
+                    currentStartTime.format(TIME_FORMATTER), 
+                    currentEndTime.format(TIME_FORMATTER));
         }
         
         return result;
@@ -168,36 +208,36 @@ public class TimeWindowCondition implements Condition {
         LocalTime currentTime = now.toLocalTime();
         
         // If window crosses midnight
-        if (startTime.isAfter(endTime)) {
+        if (currentStartTime.isAfter(currentEndTime)) {
             // If we're in the window (after start or before end)
-            if (!currentTime.isBefore(startTime) || !currentTime.isAfter(endTime)) {
+            if (!currentTime.isBefore(currentStartTime) || !currentTime.isAfter(currentEndTime)) {
                 // If we're after start time, end time is end time today
-                if (!currentTime.isBefore(startTime)) {
-                    return now.with(endTime).plusDays(1);
+                if (!currentTime.isBefore(currentStartTime)) {
+                    return now.with(currentEndTime).plusDays(1);
                 }
                 // If we're before end time, end time is end time today
-                return now.with(endTime);
+                return now.with(currentEndTime);
             } else {
                 // We're not in the window, next window starts at start time today
-                if (currentTime.isBefore(startTime)) {
-                    return now.with(startTime);
+                if (currentTime.isBefore(currentStartTime)) {
+                    return now.with(currentStartTime);
                 }
                 // If we're after end time, next window starts at start time tomorrow
-                return now.with(startTime).plusDays(1);
+                return now.with(currentStartTime).plusDays(1);
             }
         } else {
             // Normal window (doesn't cross midnight)
-            if (!currentTime.isBefore(startTime) && !currentTime.isAfter(endTime)) {
+            if (!currentTime.isBefore(currentStartTime) && !currentTime.isAfter(currentEndTime)) {
                 // We're in the window, end time is end time today
-                return now.with(endTime);
+                return now.with(currentEndTime);
             } else {
                 // We're not in the window
-                if (currentTime.isBefore(startTime)) {
+                if (currentTime.isBefore(currentStartTime)) {
                     // Window starts later today
-                    return now.with(startTime);
+                    return now.with(currentStartTime);
                 } else {
                     // Window starts tomorrow
-                    return now.with(startTime).plusDays(1);
+                    return now.with(currentStartTime).plusDays(1);
                 }
             }
         }
@@ -209,79 +249,43 @@ public class TimeWindowCondition implements Condition {
     
     @Override
     public void reset() {
-        // Nothing to reset for this condition
+        reset(false);
+    }
+    @Override
+    public void reset(boolean randomize) {
+        if (randomize) {
+            randomizeTimeWindow();
+        }
     }
     
     @Override
     public String getDescription() {
-        ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault());
-        LocalTime currentTime = now.toLocalTime();
-        boolean isActive = isMet();
+        LocalTime now = LocalTime.now();
+        boolean isActive = isInTimeWindow(now);
         
-        StringBuilder sb = new StringBuilder(String.format("Run during time window: %s - %s", 
-                startTime.format(TIME_FORMATTER), 
-                endTime.format(TIME_FORMATTER)));
-        
-        // Add progress information
-        if (isActive) {
-            // We're in the active window, calculate progress
-            Duration windowDuration = getTotalDuration();
-            
-            // Calculate time elapsed in the current window
-            Duration elapsed;
-            if (startTime.isAfter(endTime)) {
-                // Window crosses midnight
-                if (currentTime.isBefore(endTime)) {
-                    // In the part after midnight
-                    elapsed = Duration.between(startTime, LocalTime.MAX).plus(
-                            Duration.between(LocalTime.MIN, currentTime));
-                } else {
-                    // In the part before midnight
-                    elapsed = Duration.between(startTime, currentTime);
-                }
-            } else {
-                // Normal window
-                elapsed = Duration.between(startTime, currentTime);
-            }
-            
-            // Calculate progress percentage
-            double progressPercent = 100.0 * elapsed.toSeconds() / (double) windowDuration.toSeconds();
-            progressPercent = Math.min(100.0, Math.max(0.0, progressPercent));
-            
-            sb.append(String.format(", progress: %.1f%%", progressPercent));
-            sb.append(" (active now)");
-        } else {
-            // Not active, calculate time until next window
-            ZonedDateTime nextStart = getEndTime(); // In this class, getEndTime() returns next start if not active
-            Duration timeUntilNext = Duration.between(now, nextStart);
-            
-            long hoursUntil = timeUntilNext.toHours();
-            long minutesUntil = timeUntilNext.toMinutesPart();
-            
-            if (hoursUntil > 0) {
-                sb.append(String.format(", starts in %dh %dm", hoursUntil, minutesUntil));
-            } else {
-                sb.append(String.format(", starts in %dm", minutesUntil));
-            }
+        String randomRangeInfo = "";
+        if (!startTimeMin.equals(startTimeMax) || !endTimeMin.equals(endTimeMax)) {
+            randomRangeInfo = String.format(" (randomized from %s-%s to %s-%s)", 
+                    startTimeMin.format(TIME_FORMATTER),
+                    startTimeMax.format(TIME_FORMATTER),
+                    endTimeMin.format(TIME_FORMATTER),
+                    endTimeMax.format(TIME_FORMATTER));
         }
         
-        return sb.toString();
+        return String.format("Time window: %s to %s%s (currently %s)", 
+                currentStartTime.format(TIME_FORMATTER), 
+                currentEndTime.format(TIME_FORMATTER),
+                randomRangeInfo,
+                isActive ? "active" : "inactive");
     }
-    
-    @Override
-    public ConditionType getType() {
-        return ConditionType.TIME;
-    }
-    
-    @Override
-    public void unregisterEvents() {
-        if (registered) {
-            try {
-                Microbot.getEventBus().unregister(this);
-            } catch (Exception e) {
-                log.debug("Error unregistering time window condition", e);
-            }
-            registered = false;
+
+    private boolean isInTimeWindow(LocalTime now) {
+        if (currentEndTime.isAfter(currentStartTime)) {
+            // Normal case (e.g., 8:00 to 16:00)
+            return !now.isBefore(currentStartTime) && !now.isAfter(currentEndTime);
+        } else {
+            // Overnight case (e.g., 22:00 to 6:00)
+            return !now.isBefore(currentStartTime) || !now.isAfter(currentEndTime);
         }
     }
 }

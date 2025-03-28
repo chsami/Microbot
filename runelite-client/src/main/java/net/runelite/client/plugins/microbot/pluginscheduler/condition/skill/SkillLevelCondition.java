@@ -5,6 +5,7 @@ import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.ConditionType;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 
 /**
  * Skill level-based condition for script execution.
@@ -12,17 +13,39 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.ConditionT
 @Getter 
 public class SkillLevelCondition implements Condition {
     private final Skill skill;
-    private final int targetLevel;
+    private int currentTargetLevel;
+    private final int targetLevelMin;
+    private final int targetLevelMax;
     private int startLevel;
     
     public SkillLevelCondition(Skill skill, int targetLevel) {
         this.skill = skill;
-        this.targetLevel = targetLevel;
+        this.currentTargetLevel = targetLevel;
+        this.targetLevelMin = targetLevel;
+        this.targetLevelMax = targetLevel;
+        this.startLevel = getCurrentLevel();
+    }
+    public SkillLevelCondition(Skill skill, int targetMinLevel, int targetMaxLevel) {
+        this.skill = skill;
+        targetMinLevel = Math.max(1, targetMinLevel);
+        targetMaxLevel = Math.min(99, targetMaxLevel);
+        this.currentTargetLevel = Rs2Random.between(targetMinLevel, targetMaxLevel);
+        this.targetLevelMin = targetMinLevel;
+        this.targetLevelMax = targetMaxLevel;
         this.startLevel = getCurrentLevel();
     }
     @Override
     public void reset() {
-        startLevel = getCurrentLevel();
+        reset(false);
+    }
+
+    @Override
+    public void reset(boolean randomize) {
+        if (randomize) {
+            currentTargetLevel = Rs2Random.between(targetLevelMin, targetLevelMax);
+        }
+        startLevel = getCurrentLevel();        
+
     }
     /**
      * Create a skill level condition with random target between min and max
@@ -32,14 +55,12 @@ public class SkillLevelCondition implements Condition {
             return new SkillLevelCondition(skill, minLevel);
         }
         
-        int range = maxLevel - minLevel;
-        int randomLevel = minLevel + (int)(Math.random() * (range + 1));
-        return new SkillLevelCondition(skill, randomLevel);
+        return new SkillLevelCondition(skill, minLevel, maxLevel);
     }
     
     @Override
-    public boolean isMet() {
-        return getCurrentLevel() >= targetLevel;
+    public boolean isSatisfied() {
+        return getCurrentLevel() >= currentTargetLevel;
     }
     
     /**
@@ -54,16 +75,26 @@ public class SkillLevelCondition implements Condition {
      */
     public int getLevelsRemaining() {
         int currentLevel = getCurrentLevel();
-        return Math.max(0, targetLevel - currentLevel);
+        return Math.max(0, currentTargetLevel - currentLevel);
     }
     
     @Override
     public String getDescription() {
-        return String.format("Reach %s level %d (Current: %d, Remaining: %d)", 
-            skill.getName(), 
-            targetLevel,
-            getCurrentLevel(),
-            getLevelsRemaining());
+        int currentLevel = getCurrentLevel();
+        int levelsNeeded = Math.max(0, currentTargetLevel - currentLevel);
+        String randomRangeInfo = "";
+        
+        if (targetLevelMin != targetLevelMax) {
+            randomRangeInfo = String.format(" (randomized from %d-%d)", targetLevelMin, targetLevelMax);
+        }
+        
+        if (levelsNeeded <= 0) {
+            return String.format("%s level %d or higher%s (currently %d, goal reached)", 
+                    skill.getName(), currentTargetLevel, randomRangeInfo, currentLevel);
+        } else {
+            return String.format("%s level %d or higher%s (currently %d, need %d more)", 
+                    skill.getName(), currentTargetLevel, randomRangeInfo, currentLevel, levelsNeeded);
+        }
     }
     /**
      * Gets the current skill level
@@ -86,7 +117,7 @@ public class SkillLevelCondition implements Condition {
     public double getProgressPercentage() {
         int currentLevel = getCurrentLevel();
         int startingLevel = getStartingLevel();
-        int targetLevel = getTargetLevel();
+        int targetLevel = getCurrentTargetLevel();
         
         if (currentLevel >= targetLevel) {
             return 100.0;
@@ -101,4 +132,5 @@ public class SkillLevelCondition implements Condition {
         
         return (100.0 * levelsGained) / levelsNeeded;
     }
+    
 }

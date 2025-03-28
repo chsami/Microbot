@@ -1,16 +1,18 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.condition;
 
+import net.runelite.api.NPC;
+
 /**
  * Defines the types of conditions available for script execution.
  */
 public enum ConditionType {
-    TIME("time"),
-    SKILL_LEVEL("skill_level"),
-    SKILL_XP("skill_xp"),
-    ITEM("item"),
-    PROFIT("profit"),
+    TIME("TIME"),
+    SKILL_LEVEL("SKILL_LEVEL"),
+    SKILL_XP("SKILL_XP"),
+    RESOURCE("RESOURCE"),    
     LOCATION("location"),
-    LOGICAL("LOGICAL");
+    LOGICAL("LOGICAL"),
+    NPC("NPC");
     
     
     private final String identifier;

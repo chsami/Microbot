@@ -31,6 +31,10 @@ public class SchedulerPanel extends PluginPanel {
 
     // Scheduler status section
     private final JLabel schedulerStatusLabel;
+    // Control buttons
+    private final JButton configButton;
+    private final JButton runButton;
+    private final JButton stopButton;
 
     public SchedulerPanel(SchedulerPlugin plugin, SchedulerConfig config) {
         super(false);
@@ -108,6 +112,7 @@ public class SchedulerPanel extends PluginPanel {
         // Add config button
         JButton configButton = createButton("Open Scheduler");
         configButton.addActionListener(this::onOpenConfigButtonClicked);
+        this.configButton = configButton;
         
         // Control buttons
         Color greenColor = new Color(76, 175, 80);
@@ -116,6 +121,7 @@ public class SchedulerPanel extends PluginPanel {
             plugin.startScheduler();
             refresh();
         });
+        this.runButton = runButton;
 
         Color redColor = new Color(244, 67, 54);
         JButton stopButton = createButton("Stop Scheduler", redColor);
@@ -123,6 +129,7 @@ public class SchedulerPanel extends PluginPanel {
             plugin.stopScheduler();
             refresh();
         });
+        this.stopButton = stopButton;
 
         // Add buttons in order starting with Open Scheduler
         buttonPanel.add(configButton);
@@ -215,11 +222,45 @@ public class SchedulerPanel extends PluginPanel {
     void refresh() {
         updatePluginInfo();
         updateNextPluginInfo();
+        updateButtonStates();
         
         // Update scheduler status
-        boolean isActive = plugin.isSchedulerActive();
-        schedulerStatusLabel.setText(isActive ? "Active" : "Inactive");
-        schedulerStatusLabel.setForeground(isActive ? new Color(76, 175, 80) : Color.YELLOW);
+        SchedulerState state = plugin.getCurrentState();
+        schedulerStatusLabel.setText(state.getDisplayName());
+        schedulerStatusLabel.setForeground(state.getColor());
+        schedulerStatusLabel.setToolTipText(state.getDescription());
+    }
+      
+    /**
+     * Updates button states based on plugin initialization status
+     */
+    private void updateButtonStates() {
+        
+        boolean active = plugin.isSchedulerActive();
+        SchedulerState state = plugin.getCurrentState();
+        
+        configButton.setEnabled(state != SchedulerState.UNINITIALIZED || state != SchedulerState.ERROR || state != SchedulerState.INITIALIZING);
+        
+        // Only enable run button if we're in READY or HOLD state
+        runButton.setEnabled(!active && (state != SchedulerState.UNINITIALIZED || state != SchedulerState.ERROR || state != SchedulerState.INITIALIZING));
+        
+        // Only enable stop button in certain states
+        stopButton.setEnabled(active);
+        
+        // Add tooltips
+        if (state == SchedulerState.UNINITIALIZED || state == SchedulerState.ERROR || state == SchedulerState.INITIALIZING) {
+            configButton.setToolTipText("Plugin not initialized yet");
+            runButton.setToolTipText("Plugin not initialized yet");
+            stopButton.setToolTipText("Plugin not initialized yet");
+        } else {
+            configButton.setToolTipText("Open scheduler configuration");
+            runButton.setToolTipText(!runButton.isEnabled() ? 
+                "Cannot start scheduler in " + state.getDisplayName() + " state" : 
+                "Start the scheduler");
+            stopButton.setToolTipText(!stopButton.isEnabled() ? 
+                "Cannot stop scheduler: not running" : 
+                "Stop the scheduler");
+        }
     }
 
     void updatePluginInfo() {

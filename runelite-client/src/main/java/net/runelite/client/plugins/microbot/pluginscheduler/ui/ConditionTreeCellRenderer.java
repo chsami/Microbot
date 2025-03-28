@@ -163,7 +163,7 @@ public class ConditionTreeCellRenderer extends DefaultTreeCellRenderer {
             setIcon(getConditionTypeIcon(condition));
             
             // Color based on condition status
-            if (condition.isMet()) {
+            if (condition.isSatisfied()) {
                 setForeground(new Color(0, 150, 0));  // Green for met conditions
             } else {
                 setForeground(Color.WHITE);

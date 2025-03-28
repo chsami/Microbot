@@ -5,7 +5,19 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.api.events.StatChanged;
+import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.events.GroundObjectDespawned;
+import net.runelite.api.events.GroundObjectSpawned;
+import net.runelite.api.events.MenuOptionClicked;
+import net.runelite.api.events.NpcChanged;
+import net.runelite.api.events.NpcDespawned;
+import net.runelite.api.events.NpcSpawned;
+import net.runelite.api.Varbits;
+import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.HitsplatApplied;
+import net.runelite.api.events.InteractingChanged;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.AndCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
@@ -61,10 +73,10 @@ public class ConditionManager {
         if (userLogicalCondition == null){
             requiresAll();            
         }
-        userConditionsMet = userLogicalCondition.isMet();                            
+        userConditionsMet = userLogicalCondition.isSatisfied();                            
         if (pluginCondition != null) {          
 
-            return userConditionsMet && pluginCondition.isMet();
+            return userConditionsMet && pluginCondition.isSatisfied();
         }
         return userConditionsMet;                                                
     }
@@ -88,6 +100,7 @@ public class ConditionManager {
         if (eventsRegistered) {
             return;
         }
+        log.info(getDescription() + " Registering events");
         eventBus.register(this);
         eventsRegistered = true;
     }
@@ -96,33 +109,12 @@ public class ConditionManager {
         if (!eventsRegistered) {
             return;
         }
+        log.info(getDescription() + " Unregistering events");
         eventBus.unregister(this);
         eventsRegistered = false;
     }
     
-    @Subscribe
-    public void onStatChanged(StatChanged event) {
-        
-        // Propagate event to all conditions
-        for (Condition condition : userLogicalCondition.getConditions()) {
-            condition.onStatChanged(event);
-        }
-        if (pluginCondition != null) {
-            pluginCondition.onStatChanged(event);
-        }
-    }
-    
-    @Subscribe
-    public void onItemContainerChanged(ItemContainerChanged event) {
-         // Propagate event to all conditions
-         for (Condition condition : userLogicalCondition.getConditions()) {
-            condition.onItemContainerChanged(event);
-        }
-        if (pluginCondition != null) {
-            pluginCondition.onItemContainerChanged(event);
-        }
-    }
-    
+   
     public void setRequireAll() {
         userLogicalCondition = new AndCondition();
         setUserLogicalCondition(userLogicalCondition);
@@ -186,6 +178,12 @@ public class ConditionManager {
             pluginCondition.reset();
         }
         
+    }
+    public void reset(boolean randomize) {
+        userLogicalCondition.reset(randomize);
+        if (pluginCondition != null) {
+            pluginCondition.reset(randomize);
+        }
     }
 
     /**
@@ -438,5 +436,265 @@ public class ConditionManager {
         
         // If no plugin conditions, just return user logical
         return userLogicalCondition;
+    }
+
+    @Subscribe(priority = -1)
+    public void onStatChanged(StatChanged event) {
+        // Propagate event to all conditions
+        for (Condition condition : userLogicalCondition.getConditions()) {
+            try {
+                condition.onStatChanged(event);
+            } catch (Exception e) {
+                log.error("Error in condition {} during StatChanged event: {}", 
+                    condition.getDescription(), e.getMessage(), e);
+            }
+        }
+        if (pluginCondition != null) {
+            try {
+                pluginCondition.onStatChanged(event);
+            } catch (Exception e) {
+                log.error("Error in plugin condition during StatChanged event: {}", 
+                    e.getMessage(), e);
+            }
+        }
+    }
+    
+    @Subscribe(priority = -1)
+    public void onItemContainerChanged(ItemContainerChanged event) {
+         // Propagate event to all conditions
+         log.info("ItemContainerChanged event" + event);
+         for (Condition condition : userLogicalCondition.getConditions()) {
+            try {
+                condition.onItemContainerChanged(event);
+            } catch (Exception e) {
+                log.error("Error in condition {} during ItemContainerChanged event: {}", 
+                    condition.getDescription(), e.getMessage(), e);
+            }
+        }
+        if (pluginCondition != null) {
+            try {
+                pluginCondition.onItemContainerChanged(event);
+            } catch (Exception e) {
+                log.error("Error in plugin condition during ItemContainerChanged event: {}", 
+                    e.getMessage(), e);
+            }
+        }
+    }
+    @Subscribe(priority = -1)
+    public void onGameTick(GameTick gameTick) {
+        // Propagate event to all conditions
+        for (Condition condition : userLogicalCondition.getConditions()) {
+            try {
+                condition.onGameTick(gameTick);
+            } catch (Exception e) {
+                log.error("Error in condition {} during GameTick event: {}", 
+                    condition.getDescription(), e.getMessage(), e);
+            }
+        }
+        if (pluginCondition != null) {
+            try {
+                pluginCondition.onGameTick(gameTick);
+            } catch (Exception e) {
+                log.error("Error in plugin condition during GameTick event: {}", 
+                    e.getMessage(), e);
+            }
+        }
+    }
+
+    @Subscribe(priority = -1)
+    public void onGroundObjectSpawned(GroundObjectSpawned event) {
+        // Propagate event to all conditions
+        for (Condition condition : userLogicalCondition.getConditions()) {
+            try {
+                condition.onGroundObjectSpawned(event);
+            } catch (Exception e) {
+                log.error("Error in condition {} during GroundItemSpawned event: {}", 
+                    condition.getDescription(), e.getMessage(), e);
+            }
+        }
+        if (pluginCondition != null) {
+            try {
+                pluginCondition.onGroundObjectSpawned(event);
+            } catch (Exception e) {
+                log.error("Error in plugin condition during GroundItemSpawned event: {}", 
+                    e.getMessage(), e);
+            }
+        }
+    }
+
+    @Subscribe(priority = -1)
+    public void onGroundObjectDespawned(GroundObjectDespawned event) {
+        for (Condition condition : userLogicalCondition.getConditions()) {
+            try {
+                condition.onGroundObjectDespawned(event);
+            } catch (Exception e) {
+                log.error("Error in condition {} during GroundItemDespawned event: {}", 
+                    condition.getDescription(), e.getMessage(), e);
+            }
+        }
+        if (pluginCondition != null) {
+            try {
+                pluginCondition.onGroundObjectDespawned(event);
+            } catch (Exception e) {
+                log.error("Error in plugin condition during GroundItemDespawned event: {}", 
+                    e.getMessage(), e);
+            }
+        }
+    }
+
+    @Subscribe(priority = -1)
+    public void onMenuOptionClicked(MenuOptionClicked event) {
+        for (Condition condition : userLogicalCondition.getConditions()) {
+            try {
+                condition.onMenuOptionClicked(event);
+            } catch (Exception e) {
+                log.error("Error in condition {} during MenuOptionClicked event: {}", 
+                    condition.getDescription(), e.getMessage(), e);
+            }
+        }
+        if (pluginCondition != null) {
+            try {
+                pluginCondition.onMenuOptionClicked(event);
+            } catch (Exception e) {
+                log.error("Error in plugin condition during MenuOptionClicked event: {}", 
+                    e.getMessage(), e);
+            }
+        }
+    }
+
+    @Subscribe(priority = -1)
+    public void onChatMessage(ChatMessage event) {
+        for (Condition condition : userLogicalCondition.getConditions()) {
+            try {
+                condition.onChatMessage(event);
+            } catch (Exception e) {
+                log.error("Error in condition {} during ChatMessage event: {}", 
+                    condition.getDescription(), e.getMessage(), e);
+            }
+        }
+        if (pluginCondition != null) {
+            try {
+                pluginCondition.onChatMessage(event);
+            } catch (Exception e) {
+                log.error("Error in plugin condition during ChatMessage event: {}", 
+                    e.getMessage(), e);
+            }
+        }
+    }
+
+    @Subscribe(priority = -1)
+    public void onHitsplatApplied(HitsplatApplied event) {
+        for (Condition condition : userLogicalCondition.getConditions()) {
+            try {
+                condition.onHitsplatApplied(event);
+            } catch (Exception e) {
+                log.error("Error in condition {} during HitsplatApplied event: {}", 
+                    condition.getDescription(), e.getMessage(), e);
+            }
+        }
+        if (pluginCondition != null) {
+            try {
+                pluginCondition.onHitsplatApplied(event);
+            } catch (Exception e) {
+                log.error("Error in plugin condition during HitsplatApplied event: {}", 
+                    e.getMessage(), e);
+            }
+        }
+    }
+    @Subscribe(priority = -1)
+	public void onVarbitChanged(VarbitChanged event)
+	{
+		for (Condition condition : userLogicalCondition.getConditions()) {
+            try {
+                condition.onVarbitChanged(event);
+            } catch (Exception e) {
+                log.error("Error in condition {} during VarbitChanged event: {}", 
+                    condition.getDescription(), e.getMessage(), e);
+            }
+        }
+        if (pluginCondition != null) {
+            try {
+                pluginCondition.onVarbitChanged(event);
+            } catch (Exception e) {
+                log.error("Error in plugin condition during VarbitChanged event: {}", 
+                    e.getMessage(), e);
+            }
+        }      
+	}
+    @Subscribe(priority = -1)
+    void onNpcChanged(NpcChanged event){
+        for (Condition condition : userLogicalCondition.getConditions()) {
+            try {
+                condition.onNpcChanged(event);
+            } catch (Exception e) {
+                log.error("Error in condition {} during NpcChanged event: {}", 
+                    condition.getDescription(), e.getMessage(), e);
+            }
+        }
+        if (pluginCondition != null) {
+            try {
+                pluginCondition.onNpcChanged(event);
+            } catch (Exception e) {
+                log.error("Error in plugin condition during NpcChanged event: {}", 
+                    e.getMessage(), e);
+            }
+        }
+    }
+    @Subscribe(priority = -1)
+    void onNpcSpawned(NpcSpawned npcSpawned){
+        for (Condition condition : userLogicalCondition.getConditions()) {
+            try {
+                condition.onNpcSpawned(npcSpawned);
+            } catch (Exception e) {
+                log.error("Error in condition {} during NpcSpawned event: {}", 
+                    condition.getDescription(), e.getMessage(), e);
+            }
+        }
+        if (pluginCondition != null) {
+            try {
+                pluginCondition.onNpcSpawned(npcSpawned);
+            } catch (Exception e) {
+                log.error("Error in plugin condition during NpcSpawned event: {}", 
+                    e.getMessage(), e);
+            }
+        }
+    }
+    @Subscribe(priority = -1)
+    void onNpcDespawned(NpcDespawned npcDespawned){
+        for (Condition condition : userLogicalCondition.getConditions()) {
+            try {
+                condition.onNpcDespawned(npcDespawned);
+            } catch (Exception e) {
+                log.error("Error in condition {} during NpcDespawned event: {}", 
+                    condition.getDescription(), e.getMessage(), e);
+            }
+        }
+        if (pluginCondition != null) {
+            try {
+                pluginCondition.onNpcDespawned(npcDespawned);
+            } catch (Exception e) {
+                log.error("Error in plugin condition during NpcDespawned event: {}", 
+                    e.getMessage(), e);
+            }
+        }
+    }
+    @Subscribe(priority = -1)
+    void onInteractingChanged(InteractingChanged event){
+        for (Condition condition : userLogicalCondition.getConditions()) {
+            try {
+                condition.onInteractingChanged(event);
+            } catch (Exception e) {
+                log.error("Error in condition {} during InteractingChanged event: {}", 
+                    condition.getDescription(), e.getMessage(), e);
+            }
+        }
+        if (pluginCondition != null) {
+            try {
+                pluginCondition.onInteractingChanged(event);
+            } catch (Exception e) {
+                log.error("Error in plugin condition during InteractingChanged event: {}", 
+                    e.getMessage(), e);
+            }
+        }
     }
 }

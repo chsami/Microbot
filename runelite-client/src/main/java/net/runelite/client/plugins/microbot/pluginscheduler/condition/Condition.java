@@ -1,7 +1,18 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.condition;
 
+import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.GroundObjectDespawned;
+import net.runelite.api.events.GroundObjectSpawned;
+import net.runelite.api.events.HitsplatApplied;
+import net.runelite.api.events.InteractingChanged;
 import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.events.MenuOptionClicked;
+import net.runelite.api.events.NpcChanged;
+import net.runelite.api.events.NpcDespawned;
+import net.runelite.api.events.NpcSpawned;
 import net.runelite.api.events.StatChanged;
+import net.runelite.api.events.VarbitChanged;
 
 /**
  * Base interface for script execution conditions.
@@ -12,7 +23,7 @@ public interface Condition {
      * Checks if the condition is currently met
      * @return true if condition is satisfied, false otherwise
      */
-    boolean isMet();
+    boolean isSatisfied();
     
     /**
      * Returns a human-readable description of this condition
@@ -32,11 +43,13 @@ public interface Condition {
      * will update the reference timestamp used for calculating
      * time intervals.
      */
-    void reset();
-    
-    default void unregisterEvents(){
-
+    default void reset(){
+        reset(false);
     }
+
+    void reset (boolean randomize);
+    
+    
 
     default void onStatChanged(StatChanged event) {
         // This event handler is called whenever a skill stat changes
@@ -46,7 +59,62 @@ public interface Condition {
         // This event handler is called whenever inventory or bank contents change
         // Useful for item-based conditions
     }
-
+    default void onGameTick(GameTick gameTick) {
+        // This event handler is called every game tick (approximately once per 0.6 seconds)
+        // Useful for time-based conditions
+    }
+    default void onNpcChanged(NpcChanged event){
+        // This event handler is called whenever an NPC changes
+        // Useful for NPC-based conditions
+    }
+    default void onNpcSpawned(NpcSpawned npcSpawned){
+        // This event handler is called whenever an NPC spawns
+        // Useful for NPC-based conditions
+    }
+    default void onNpcDespawned(NpcDespawned npcDespawned){
+        // This event handler is called whenever an NPC despawns
+        // Useful for NPC-based conditions
+    }
+     /**
+     * Called when a ground item is spawned in the game world
+     */
+    default void onGroundObjectSpawned(GroundObjectSpawned event) {
+        // Optional implementation
+    }
+    
+    /**
+     * Called when a ground item is despawned from the game world
+     */
+    default void onGroundObjectDespawned(GroundObjectDespawned event) {
+        // Optional implementation
+    }
+    
+    /**
+     * Called when a menu option is clicked
+     */
+    default void onMenuOptionClicked(MenuOptionClicked event) {
+        // Optional implementation  
+    }
+    
+    /**
+     * Called when a chat message is received
+     */
+    default void onChatMessage(ChatMessage event) {
+        // Optional implementation
+    }
+    
+    /**
+     * Called when a hitsplat is applied to a character
+     */
+    default void onHitsplatApplied(HitsplatApplied event) {
+        // Optional implementation
+    }
+    default void onVarbitChanged(VarbitChanged event){
+        // Optional implementation
+    }
+    default void onInteractingChanged(InteractingChanged event){
+        // Optional implementation
+    }
     /**
      * Returns the progress percentage for this condition (0-100).
      * For simple conditions that are either met or not met, this will return 0 or 100.
@@ -56,7 +124,7 @@ public interface Condition {
      */
     default double getProgressPercentage() {
         // Default implementation returns 0 for not met, 100 for met
-        return isMet() ? 100.0 : 0.0;
+        return isSatisfied() ? 100.0 : 0.0;
     }
     
     /**
@@ -78,7 +146,7 @@ public interface Condition {
      * @return Number of met leaf conditions in this tree
      */
     default int getMetConditionCount() {
-        return isMet() ? 1 : 0; // Simple conditions return 1 if met, 0 otherwise
+        return isSatisfied() ? 1 : 0; // Simple conditions return 1 if met, 0 otherwise
     }
     
     /**
@@ -92,12 +160,12 @@ public interface Condition {
         StringBuilder sb = new StringBuilder();
         
         String indentation = " ".repeat(indent);
-        boolean isMet = isMet();
+        boolean isSatisfied = isSatisfied();
         
         sb.append(indentation)
           .append(getDescription())
           .append(" [")
-          .append(isMet ? "MET" : "NOT MET")
+          .append(isSatisfied ? "SATISFIED" : "NOT SATISFIED")
           .append("]");
         
         if (showProgress) {

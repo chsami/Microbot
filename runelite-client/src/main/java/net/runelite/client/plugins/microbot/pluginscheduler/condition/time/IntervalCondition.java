@@ -2,16 +2,9 @@ package net.runelite.client.plugins.microbot.pluginscheduler.condition.time;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.events.GameTick;
-import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.ConditionType;
 
 import java.time.Duration;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -20,13 +13,11 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 @Getter
 @Slf4j
-public class IntervalCondition implements Condition {
+public class IntervalCondition extends TimeCondition {
     private final Duration interval;
     private ZonedDateTime nextTriggerTime;
     private boolean randomize;
     private double randomFactor;
-    private boolean registered = false;
-    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss");
     
     /**
      * Creates an interval condition that triggers at regular intervals
@@ -48,7 +39,7 @@ public class IntervalCondition implements Condition {
         this.interval = interval;
         this.randomize = randomize;
         this.randomFactor = Math.max(0, Math.min(1.0, randomFactor));
-        this.nextTriggerTime = calculateNextTriggerTime();
+        this.nextTriggerTime = calculateNextTriggerTime(randomize, randomFactor);
     }
     
     /**
@@ -80,185 +71,89 @@ public class IntervalCondition implements Condition {
      * @return A randomized interval condition
      */
     public static IntervalCondition createRandomized(Duration minDuration, Duration maxDuration) {
-        if (minDuration.equals(maxDuration)) {
-            return new IntervalCondition(minDuration);
-        }
-        
         long minSeconds = minDuration.getSeconds();
         long maxSeconds = maxDuration.getSeconds();
-        double randomFactor = 0.0;
-        
-        if (maxSeconds > minSeconds) {
-            // Calculate randomization factor based on the difference between min and max
-            long avgSeconds = (minSeconds + maxSeconds) / 2;
-            randomFactor = (double)(maxSeconds - minSeconds) / (2 * avgSeconds);
-            
-            // Create the interval condition with randomization
-            return new IntervalCondition(Duration.ofSeconds(avgSeconds), true, randomFactor);
-        } else {
-            return new IntervalCondition(minDuration);
-        }
+        long randomSeconds = ThreadLocalRandom.current().nextLong(minSeconds, maxSeconds + 1);
+        return new IntervalCondition(Duration.ofSeconds(randomSeconds));
     }
 
-    /**
-     * Creates an interval condition from a ZonedDateTime object.
-     * The interval will be the duration between now and the specified time,
-     * which will repeat indefinitely.
-     * 
-     * @param firstTrigger The first time this interval should trigger
-     * @return An interval condition
-     */
-    public static IntervalCondition fromFirstTrigger(ZonedDateTime firstTrigger) {
-        ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault());
-        Duration initialDelay = Duration.between(now, firstTrigger);
+    @Override
+    public boolean isSatisfied() {
         
-        // If the time is in the past, adjust to make it valid
-        if (initialDelay.isNegative() || initialDelay.isZero()) {
-            log.warn("First trigger time is in the past, using default 1 hour interval");
-            return new IntervalCondition(Duration.ofHours(1));
+        
+        ZonedDateTime now = getNow();
+        if (now.isAfter(nextTriggerTime)) {            
+            return true;
         }
-        
-        // We'll use the initial delay as the interval duration
-        return new IntervalCondition(initialDelay);
+        return false;
     }
 
-    /**
-     * Gets the total duration of this interval (always returns the base interval).
-     * 
-     * @return The interval duration
-     */
-    public Duration getTotalDuration() {
-        return interval;
-    }
-   /**
-     * Gets the end time for this interval condition.
-     * This is when the next trigger will occur.
-     * 
-     * @return The next trigger time
-     */
-    public ZonedDateTime getEndTime() {
-        return nextTriggerTime;
-    }
-    private ZonedDateTime calculateNextTriggerTime() {
-        ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault());
-        Duration actualInterval = interval;
-        
-        if (randomize && randomFactor > 0) {
-            long baseSeconds = interval.getSeconds();
-            long variation = (long)(baseSeconds * randomFactor);
-            long lower = Math.max(1, baseSeconds - variation);
-            long upper = baseSeconds + variation;
-            long randomSeconds = ThreadLocalRandom.current().nextLong(lower, upper + 1);
-            actualInterval = Duration.ofSeconds(randomSeconds);
-        }
-        
-        return now.plus(actualInterval);
-    }
-    
-    @Override
-    public boolean isMet() {
-        // Register for events if not already registered
-        if (!registered) {
-            Microbot.getEventBus().register(this);
-            registered = true;
-        }
-        
-            
-        
-        ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault());
-        boolean result = now.isEqual(nextTriggerTime) || now.isAfter(nextTriggerTime);
-        
-        if (result) {
-            //log.info("Interval condition met at {}, current trigger at {}", 
-            //        now.format(TIME_FORMATTER),
-            //        nextTriggerTime.format(TIME_FORMATTER));
-            
-            // Schedule next trigger
-            //nextTriggerTime = calculateNextTriggerTime();
-            
-        }
-        
-        return result;
-    }
-    
-    @Subscribe
-    public void onGameTick(GameTick event) {
-        // This ensures we check the condition on every game tick
-    }
-    
-    @Override
-    public void reset() {
-        nextTriggerTime = calculateNextTriggerTime();
-    }
-    
-    /**
-     * Gets the time remaining until the next trigger
-     */
-    public Duration getTimeRemaining() {
-        ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault());
-        return Duration.between(now, nextTriggerTime).isNegative() ? 
-                Duration.ZERO : Duration.between(now, nextTriggerTime);
-    }
-    
     @Override
     public String getDescription() {
-        long hours = interval.toHours();
-        long minutes = interval.toMinutesPart();
-        long seconds = interval.toSecondsPart();
+        ZonedDateTime now = getNow();
+        String timeLeft = "";
         
-        StringBuilder sb = new StringBuilder("Triggers every ");
-        if (hours > 0) sb.append(hours).append("h ");
-        if (minutes > 0 || hours > 0) sb.append(minutes).append("m ");
-        if (seconds > 0 || (hours == 0 && minutes == 0)) sb.append(seconds).append("s");
+        if (nextTriggerTime != null) {
+            if (now.isAfter(nextTriggerTime)) {
+                timeLeft = " (ready now)";
+            } else {
+                Duration remaining = Duration.between(now, nextTriggerTime);
+                long seconds = remaining.getSeconds();
+                timeLeft = String.format(" (next in %02d:%02d:%02d)", 
+                    seconds / 3600, (seconds % 3600) / 60, seconds % 60);
+            }
+        }
         
         if (randomize) {
-            sb.append(" (±").append((int)(randomFactor * 100)).append("%)");
+            return String.format("Every %s±%.0f%%%s", 
+                    formatDuration(interval), randomFactor * 100, timeLeft);
+        } else {
+            return String.format("Every %s%s", formatDuration(interval), timeLeft);
         }
-        
-        // Calculate progress based on time remaining until next trigger
-        Duration remaining = getTimeRemaining();
-        Duration total = getTotalDuration();
-        
-        if (remaining.isZero()) {
-            // Condition is met
-            sb.append(", progress: 100.0%");
-        } else if (!total.isZero()) {
-            // Calculate progress as percentage of time elapsed
-            double progressPercent = 100.0 * (1.0 - (double)remaining.toMillis() / total.toMillis());
-            progressPercent = Math.min(100.0, Math.max(0.0, progressPercent)); // Clamp between 0-100%
-            sb.append(String.format(", progress: %.1f%%", progressPercent));
-        }
-        
-        sb.append(", next at ").append(nextTriggerTime.format(TIME_FORMATTER));
-        return sb.toString();
     }
-    
+
     @Override
-    public ConditionType getType() {
-        return ConditionType.TIME;
-    }
-    
-    @Override
-    public void unregisterEvents() {
-        if (registered) {
-            try {
-                Microbot.getEventBus().unregister(this);
-            } catch (Exception e) {
-                log.debug("Error unregistering interval condition", e);
-            }
-            registered = false;
-        }
+    public void reset(boolean randomize) {
+        this.nextTriggerTime = calculateNextTriggerTime(randomize, randomFactor);
     }
     
     @Override
     public double getProgressPercentage() {
-        Duration total = getTotalDuration();
-        Duration remaining = getTimeRemaining();
-        
-        if (total.isZero()) {
-            return isMet() ? 100.0 : 0.0;
+        ZonedDateTime now = getNow();
+        if (now.isAfter(nextTriggerTime)) {
+            return 100.0;
         }
         
-        return 100.0 * (1.0 - (double)remaining.toMillis() / total.toMillis());
+        // Calculate how much time has passed since the last trigger
+        Duration timeUntilNextTrigger = Duration.between(now, nextTriggerTime);
+        double elapsedRatio = 1.0 - (timeUntilNextTrigger.toMillis() / (double) interval.toMillis());
+        return Math.max(0, Math.min(100, elapsedRatio * 100));
+    }
+    
+    private ZonedDateTime calculateNextTriggerTime(boolean randomize, double factor) {
+        ZonedDateTime now = getNow();
+        
+        if (!randomize || factor <= 0) {
+            return now.plus(interval);
+        }
+        
+        // Apply randomization to the interval
+        long intervalMillis = interval.toMillis();
+        long variance = (long) (intervalMillis * factor);
+        long randomAdditionalMillis = ThreadLocalRandom.current().nextLong(-variance, variance + 1);
+        
+        Duration randomizedInterval = Duration.ofMillis(intervalMillis + randomAdditionalMillis);
+        return now.plus(randomizedInterval);
+    }
+    
+    private String formatDuration(Duration duration) {
+        long seconds = duration.getSeconds();
+        if (seconds < 60) {
+            return seconds + "s";
+        } else if (seconds < 3600) {
+            return String.format("%dm %ds", seconds / 60, seconds % 60);
+        } else {
+            return String.format("%dh %dm", seconds / 3600, (seconds % 3600) / 60);
+        }
     }
 }

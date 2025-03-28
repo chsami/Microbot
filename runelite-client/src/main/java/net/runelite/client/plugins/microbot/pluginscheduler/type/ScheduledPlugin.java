@@ -480,8 +480,8 @@ public class ScheduledPlugin {
         
         for (int i = 0; i < conditionList.size(); i++) {
             Condition condition = conditionList.get(i);
-            boolean isMet = condition.isMet();
-            if (isMet) metCount++;
+            boolean isSatisfied = condition.isSatisfied();
+            if (isSatisfied) metCount++;
             
             // Use the new getStatusInfo method for detailed status
             sb.append("  ").append(i + 1).append(". ")

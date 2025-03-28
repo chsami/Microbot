@@ -7,9 +7,9 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
  */
 public class AndCondition extends LogicalCondition {
     @Override
-    public boolean isMet() {
+    public boolean isSatisfied() {
         if (conditions.isEmpty()) return true;
-        return conditions.stream().allMatch(Condition::isMet);
+        return conditions.stream().allMatch(Condition::isSatisfied);
     }
     
     @Override
@@ -31,5 +31,12 @@ public class AndCondition extends LogicalCondition {
         for (Condition condition : conditions) {
             condition.reset();
         }
+    }
+    @Override
+    public void reset(boolean randomize) {
+        for (Condition condition : conditions) {
+            condition.reset(randomize);
+        }
+        
     }
 }

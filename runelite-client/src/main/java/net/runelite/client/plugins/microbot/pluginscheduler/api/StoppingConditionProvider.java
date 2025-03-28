@@ -86,5 +86,18 @@ public interface StoppingConditionProvider {
     
     public void onScheduledStopEvent(ScheduledStopEvent event);
     
+    /**
+     * Determines if this plugin can be forcibly terminated by the scheduler through a hard stop.
+     * 
+     * A hard stop means the scheduler can immediately terminate the plugin's execution
+     * without waiting for the plugin to reach a safe stopping point.
+     * When false (default), the scheduler will only perform soft stops, allowing the plugin
+     * to terminate gracefully at designated checkpoints.
+     * 
+     * @return true if this plugin supports being forcibly terminated, false otherwise
+     */
+    default public boolean allowsHardStop(){
+        return false;
+    }
 
 }

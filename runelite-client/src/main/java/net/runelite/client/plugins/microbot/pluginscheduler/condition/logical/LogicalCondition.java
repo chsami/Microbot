@@ -86,7 +86,7 @@ public abstract class LogicalCondition implements Condition {
     @Override
     public double getProgressPercentage() {
         if (conditions.isEmpty()) {
-            return isMet() ? 100.0 : 0.0;
+            return isSatisfied() ? 100.0 : 0.0;
         }
         
         // For AND conditions, use the minimum progress (weakest link)
@@ -141,12 +141,12 @@ public abstract class LogicalCondition implements Condition {
         
         // Add the logical condition info
         String indentation = " ".repeat(indent);
-        boolean isMet = isMet();
+        boolean isSatisfied = isSatisfied();
         
         sb.append(indentation)
           .append(getDescription())
           .append(" [")
-          .append(isMet ? "MET" : "NOT MET")
+          .append(isSatisfied ? "SATISFIED" : "NOT SATISFIED")
           .append("]");
         
         if (showProgress) {
@@ -159,7 +159,7 @@ public abstract class LogicalCondition implements Condition {
             int total = getTotalConditionCount();
             int met = getMetConditionCount();
             if (total > 0) {
-                sb.append(" - ").append(met).append("/").append(total).append(" conditions met");
+                sb.append(" - ").append(met).append("/").append(total).append(" conditions SATISFIED");
             }
         }
         

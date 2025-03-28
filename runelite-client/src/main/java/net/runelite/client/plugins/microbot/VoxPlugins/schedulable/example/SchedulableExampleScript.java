@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.VoxPlugins.schedulable.woodcutting;
+package net.runelite.client.plugins.microbot.VoxPlugins.schedulable.example;
 
 import net.runelite.api.GameObject;
 import net.runelite.api.coords.WorldPoint;
@@ -14,8 +14,8 @@ import net.runelite.client.plugins.microbot.woodcutting.enums.WoodcuttingTree;
 
 import java.util.concurrent.TimeUnit;
 
-public class SchedulableWoodcuttingScript extends Script {
-    private SchedulableWoodcuttingConfig config;
+public class SchedulableExampleScript extends Script {
+    private SchedulableExampleConfig config;
     private WorldPoint returnPoint;
     private int logsCollected = 0;
     private boolean needsReset = false;
@@ -29,7 +29,7 @@ public class SchedulableWoodcuttingScript extends Script {
 
     
     
-    public boolean main(SchedulableWoodcuttingConfig config) {
+    public boolean main(SchedulableExampleConfig config) {
         if (!Microbot.isLoggedIn()) return false;
         if (!super.run()) return false;
         
@@ -38,14 +38,14 @@ public class SchedulableWoodcuttingScript extends Script {
             initialPlayerLocation = Rs2Player.getWorldLocation();
         }
         
-        if (returnPoint == null) {
-            returnPoint = initialPlayerLocation;
+        if (this.returnPoint == null) {
+            this.returnPoint = initialPlayerLocation;
         }
         
         // Check if we have an axe
         if (!hasAxe()) {
             Microbot.status = "No axe found! Stopping...";
-            shutdown();
+//            shutdown();
             return false;
         }
         
@@ -71,12 +71,14 @@ public class SchedulableWoodcuttingScript extends Script {
         return true;
     }
     
-    public boolean run(SchedulableWoodcuttingConfig config, WorldPoint savedLocation) {
+    public boolean run(SchedulableExampleConfig config, WorldPoint savedLocation) {
         this.returnPoint = savedLocation;
         this.config = config;
         this.mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
-                run();
+                if (!Microbot.isLoggedIn()) return;
+                if (!super.run()) return ;
+                return; //manuel play testing the Scheduler plugin.. doing nothing for now
             } catch (Exception ex) {
                 Microbot.log(ex.getMessage());
             }

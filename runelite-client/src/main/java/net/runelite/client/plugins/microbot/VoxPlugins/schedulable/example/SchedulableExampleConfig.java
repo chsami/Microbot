@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.VoxPlugins.schedulable.woodcutting;
+package net.runelite.client.plugins.microbot.VoxPlugins.schedulable.example;
 
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
@@ -8,7 +8,7 @@ import net.runelite.client.plugins.microbot.woodcutting.enums.WoodcuttingResetOp
 import net.runelite.client.plugins.microbot.woodcutting.enums.WoodcuttingTree;
 
 @ConfigGroup("SchedulableWoodcutting")
-public interface SchedulableWoodcuttingConfig extends Config {
+public interface SchedulableExampleConfig extends Config {
     @ConfigSection(
             name = "General",
             description = "General settings",

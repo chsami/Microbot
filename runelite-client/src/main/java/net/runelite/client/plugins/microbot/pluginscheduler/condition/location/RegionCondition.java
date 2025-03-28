@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.condition.location;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
@@ -20,6 +21,7 @@ import java.util.Set;
  */
 @Slf4j
 public class RegionCondition implements Condition {
+    @Getter
     private final Set<Integer> targetRegions;
     private boolean isInRegion = false;
     private boolean registered = false;
@@ -37,7 +39,7 @@ public class RegionCondition implements Condition {
     }
 
     @Override
-    public boolean isMet() {
+    public boolean isSatisfied() {
         if (!registered) {
             Microbot.getEventBus().register(this);
             registered = true;
@@ -51,6 +53,10 @@ public class RegionCondition implements Condition {
     public void reset() {
         isInRegion = false;
     }
+    @Override
+    public void reset(boolean randomize) {
+        reset();
+    }
 
     @Override
     public ConditionType getType() {
@@ -59,7 +65,17 @@ public class RegionCondition implements Condition {
 
     @Override
     public String getDescription() {
-        return "Player in regions: " + Arrays.toString(targetRegions.toArray());
+        WorldPoint location = Rs2Player.getWorldLocation();
+        String currentRegionInfo = "";
+        
+        if (location != null) {
+            int currentRegion = location.getRegionID();
+            boolean inTargetRegion = targetRegions.contains(currentRegion);
+            currentRegionInfo = String.format(" (current region: %d, %s)", 
+                    currentRegion, inTargetRegion ? "matched" : "not matched");
+        }
+        
+        return "Player in regions: " + Arrays.toString(targetRegions.toArray()) + currentRegionInfo;
     }
 
     @Subscribe
@@ -88,11 +104,5 @@ public class RegionCondition implements Condition {
         }
     }
 
-    @Override
-    public void unregisterEvents() {
-        if (registered) {
-            Microbot.getEventBus().unregister(this);
-            registered = false;
-        }
-    }
+  
 }

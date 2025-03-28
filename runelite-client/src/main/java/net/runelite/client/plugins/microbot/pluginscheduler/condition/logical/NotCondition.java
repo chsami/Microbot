@@ -18,8 +18,8 @@ public class NotCondition implements Condition {
     }
     
     @Override
-    public boolean isMet() {
-        return !condition.isMet();
+    public boolean isSatisfied() {
+        return !condition.isSatisfied();
     }
     
     @Override
@@ -46,6 +46,10 @@ public class NotCondition implements Condition {
     public void reset() {
         condition.reset();
     }
+    @Override
+    public void reset(boolean randomize) {        
+        condition.reset(randomize);        
+    }
     
     @Override
     public double getProgressPercentage() {
@@ -60,12 +64,12 @@ public class NotCondition implements Condition {
         
         // Add the NOT condition info
         String indentation = " ".repeat(indent);
-        boolean isMet = isMet();
+        boolean isSatisfied = isSatisfied();
         
         sb.append(indentation)
           .append(getDescription())
           .append(" [")
-          .append(isMet ? "MET" : "NOT MET")
+          .append(isSatisfied ? "SATISFIED" : "NOT SATISFIED")
           .append("]");
         
         if (showProgress) {

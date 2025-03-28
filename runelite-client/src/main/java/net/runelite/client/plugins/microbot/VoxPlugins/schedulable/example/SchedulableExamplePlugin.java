@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.VoxPlugins.schedulable.woodcutting;
+package net.runelite.client.plugins.microbot.VoxPlugins.schedulable.example;
 
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
@@ -27,33 +27,33 @@ import java.time.Duration;
 
 @PluginDescriptor(
         name = "Schedulable Woodcutting",
-        description = "Automated woodcutting designed for use with the scheduler",
-        tags = {"microbot", "woodcutting", "scheduler"},
+        description = "Designed for use the scheduler and test its features",
+        tags = {"microbot", "woodcutting", "combat","scheduler"},
         enabledByDefault = false,
         canBeScheduled = true
 )
 @Slf4j
-public class SchedulableWoodcuttingPlugin extends Plugin implements StoppingConditionProvider {
+public class SchedulableExamplePlugin extends Plugin implements StoppingConditionProvider {
     
     @Inject
-    private SchedulableWoodcuttingConfig config;
+    private SchedulableExampleConfig config;
     
     @Inject
     private Client client;
    
     @Provides
-    SchedulableWoodcuttingConfig provideConfig(ConfigManager configManager) {
-        return configManager.getConfig(SchedulableWoodcuttingConfig.class);
+    SchedulableExampleConfig provideConfig(ConfigManager configManager) {
+        return configManager.getConfig(SchedulableExampleConfig.class);
     }
     
-    private SchedulableWoodcuttingScript script;
+    private SchedulableExampleScript script;
     private WorldPoint lastLocation = null;
     private int logsCollected = 0;
     
     @Override
     protected void startUp() {
         loadLastLocation();
-        script = new SchedulableWoodcuttingScript();
+        script = new SchedulableExampleScript();
         
         
         script.run(config,lastLocation);
