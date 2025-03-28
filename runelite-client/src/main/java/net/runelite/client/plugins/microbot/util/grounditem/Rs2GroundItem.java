@@ -194,34 +194,38 @@ public class Rs2GroundItem {
     }
 
     public static RS2Item[] getAllFromWorldPoint(int range, WorldPoint worldPoint) {
-        List<RS2Item> temp = new ArrayList<>();
-        int safespotX = worldPoint.getX();
-        int safespotY = worldPoint.getY();
+    List<RS2Item> temp = new ArrayList<>();
+    
+    // Convert WorldPoint to LocalPoint for sorting
+    LocalPoint safespotLocalPoint = LocalPoint.fromWorld(Client.getClient(), worldPoint);
+    
+    int safespotX = safespotLocalPoint.getX();
+    int safespotY = safespotLocalPoint.getY();
 
-        int minX = safespotX - range, minY = safespotY - range;
-        int maxX = safespotX + range, maxY = safespotY + range;
+    int minX = safespotX - range, minY = safespotY - range;
+    int maxX = safespotX + range, maxY = safespotY + range;
 
-        for (int x = minX; x < maxX; x++) {
-            for (int y = minY; y < maxY; y++) {
-                RS2Item[] items = getAllAt(x, y);
-                if (items != null) {
-                    for (RS2Item item : items) {
-                        if (item == null) {
-                            continue;
-                        }
-                        temp.add(item);
+    for (int x = minX; x < maxX; x++) {
+        for (int y = minY; y < maxY; y++) {
+            RS2Item[] items = getAllAt(x, y);
+            if (items != null) {
+                for (RS2Item item : items) {
+                    if (item == null) {
+                        continue;
                     }
+                    temp.add(item);
                 }
             }
         }
+    }
 
-        // Sort items based on distance from the safespot
-        temp = temp.stream()
-                .sorted(Comparator.comparingInt(value ->
-                        value.getTile().getLocalLocation().distanceTo(new LocalPoint(safespotX, safespotY))))
-                .collect(Collectors.toList());
+    // Sort items based on distance from the safespot local point
+    temp = temp.stream()
+            .sorted(Comparator.comparingInt(value ->
+                    value.getTile().getLocalLocation().distanceTo(safespotLocalPoint)))
+            .collect(Collectors.toList());
 
-        return temp.toArray(new RS2Item[temp.size()]);
+    return temp.toArray(new RS2Item[temp.size()]);
     }
 
 
