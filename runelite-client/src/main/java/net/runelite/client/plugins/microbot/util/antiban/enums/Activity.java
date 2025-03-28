@@ -132,6 +132,7 @@ public enum Activity {
     OPENING_ECLECTIC_IMPLING_JARS("Opening eclectic impling jars", Category.PROCESSING, ActivityIntensity.HIGH),
     MAKING_TOY_CATS("Making toy cats", Category.PROCESSING, ActivityIntensity.HIGH),
     CRAFTING_SUNFIRE_RUNES("Crafting sunfire runes", Category.SKILLING_RUNECRAFT, ActivityIntensity.HIGH),
+    CRAFTING_BLOODS_TRUE_ALTAR("Crafting bloods at true altar", Category.SKILLING_RUNECRAFT, ActivityIntensity.HIGH),
     SMELTING_RUNITE_BARS_AT_BLAST_FURNACE("Smelting runite bars at Blast Furnace", Category.SKILLING_SMITHING, ActivityIntensity.HIGH),
     FILLING_BULLSEYE_LANTERN_EMPTY("Filling bullseye lantern (empty)", Category.PROCESSING, ActivityIntensity.MODERATE),
     KILLING_THE_THERMONUCLEAR_SMOKE_DEVIL("Killing the Thermonuclear smoke devil", Category.COMBAT_HIGH, ActivityIntensity.HIGH),
