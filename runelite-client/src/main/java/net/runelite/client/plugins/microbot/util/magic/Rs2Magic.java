@@ -15,6 +15,7 @@ import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.inventory.RunePouch;
+import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
@@ -29,6 +30,7 @@ import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
 import org.apache.commons.lang3.NotImplementedException;
 
 import java.awt.*;
+import java.awt.event.KeyEvent;
 import java.util.List;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -366,14 +368,18 @@ public class Rs2Magic {
     public static boolean repairPouchesWithLunar() {
         log("Repairing pouches...");
         if (npcContact("dark mage")) {
-            sleep(Rs2Random.randomGaussian(900, 300));
+            sleep(Rs2Random.randomGaussian(1100, 200));
+            Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
             Rs2Dialogue.clickContinue();
-            sleep(Rs2Random.randomGaussian(900, 500));
+            sleep(Rs2Random.randomGaussian(1100, 200));
             Rs2Widget.sleepUntilHasWidget("Can you repair my pouches?");
             sleep(Rs2Random.randomGaussian(900, 300));
+            Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
             Rs2Widget.clickWidget("Can you repair my pouches?", Optional.of(162), 0, true);
-            sleep(Rs2Random.randomGaussian(900, 500));
-            Rs2Dialogue.clickContinue();
+            sleep(Rs2Random.randomGaussian(900, 200));
+            Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
+            sleepGaussian(700,200);
+            Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
             sleep(Rs2Random.randomGaussian(1500, 300));
             Rs2Tab.switchToInventoryTab();
         }
