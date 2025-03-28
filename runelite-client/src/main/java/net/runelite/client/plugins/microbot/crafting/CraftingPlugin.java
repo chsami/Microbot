@@ -43,6 +43,7 @@ public class CraftingPlugin extends Plugin {
     private final StaffScript staffScript = new StaffScript();
     private final FlaxSpinScript flaxSpinScript = new FlaxSpinScript();
     private final AmethystScript amethystScript = new AmethystScript();
+    private final DriftNetScript driftNetScript = new DriftNetScript();
     @Inject
     private CraftingConfig config;
     @Inject
@@ -91,6 +92,8 @@ public class CraftingPlugin extends Plugin {
             flaxSpinScript.run(config);
         } else if (config.activityType() == Activities.CUTTING_AMETHYST) {
             amethystScript.run(config);
+        } else if (config.activityType() == Activities.WEAVING_NETS) {
+            driftNetScript.run(config);
         }
     }
 
@@ -104,8 +107,11 @@ public class CraftingPlugin extends Plugin {
         gemsScript.shutdown();
         defaultScript.shutdown();
         flaxSpinScript.shutdown();
+        amethystScript.shutdown();
+        driftNetScript.shutdown();
         scriptStartTime = null;
         overlayManager.remove(craftingOverlay);
+        Microbot.pauseAllScripts = true;
         Rs2Antiban.resetAntibanSettings();
     }
 }

@@ -60,6 +60,9 @@ public class DefaultScript extends Script {
     }
 
     public void shutDown() {
+        if (mainScheduledFuture != null && !mainScheduledFuture.isDone()) {
+            mainScheduledFuture.cancel(true);
+        }
         super.shutdown();
     }
 }

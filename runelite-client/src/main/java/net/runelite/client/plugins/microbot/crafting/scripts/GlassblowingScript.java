@@ -33,17 +33,22 @@ public class GlassblowingScript extends Script {
 
     public void run(CraftingConfig config) {
 
-        if (config.glassType() == Glass.PROGRESSIVE) calculateItemToCraft();
+        if (config.glassType() == Glass.PROGRESSIVE)
+            calculateItemToCraft();
 
         Rs2Antiban.resetAntibanSettings();
         Rs2Antiban.antibanSetupTemplates.applyCraftingSetup();
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
-                if (!Microbot.isLoggedIn()) return;
-                if (!super.run()) return;
+                if (!Microbot.isLoggedIn())
+                    return;
+                if (!super.run())
+                    return;
 
-                if (Rs2Player.isAnimating(3000) || Rs2Antiban.getCategory().isBusy() || Microbot.pauseAllScripts) return;
-                if (Rs2AntibanSettings.actionCooldownActive) return;
+                if (Rs2Player.isAnimating(3000) || Rs2Antiban.getCategory().isBusy() || Microbot.pauseAllScripts)
+                    return;
+                if (Rs2AntibanSettings.actionCooldownActive)
+                    return;
 
                 if (config.glassType() == Glass.PROGRESSIVE) {
                     itemToCraft = model.getItemToCraft();
@@ -128,6 +133,9 @@ public class GlassblowingScript extends Script {
 
     @Override
     public void shutdown() {
+        Microbot.pauseAllScripts = true;
+        if (mainScheduledFuture != null && !mainScheduledFuture.isDone())
+            mainScheduledFuture.cancel(true);
         Rs2Antiban.resetAntibanSettings();
         super.shutdown();
     }
