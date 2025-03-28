@@ -19,6 +19,8 @@ public interface CraftingConfig extends Config {
         String glassSection = "glass";
         @ConfigSection(name = "Amethyst", description = "Config for amethyst cutting", position = 4, closedByDefault = true)
         String amethystSection = "amethyst";
+        @ConfigSection(name = "Drift Net", description = "Config for crafting drift nets", position = 5, closedByDefault = true)
+        String driftNetSection = "driftnet";
 
         @ConfigItem(keyName = "fletchIntoBoltTips", name = "Fletch into Bolt Tips", description = "Fletch cut gems into bolt tips if possible", position = 1, section = gemSection)
         default boolean fletchIntoBoltTips() {
@@ -69,5 +71,10 @@ public interface CraftingConfig extends Config {
                         "to cut from Amethyst", position = 4, section = amethystSection)
         default Amethyst amethystType() {
                 return Amethyst.NONE;
+        }
+
+        @ConfigItem(keyName = "Loom", name = "Loom Location", description = "Location to weave the drift net", position = 1, section = driftNetSection)
+        default Loom loomLocation() {
+                return Loom.NONE;
         }
 }

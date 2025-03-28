@@ -43,7 +43,7 @@ The `Rs2Bank` class manages interactions with the banking system in the game, fa
 - **Signature**: `public static Rs2Item findBankItem(String name)`
 - **Description**: Searches for a bank item by its name, supporting both exact and partial matches.
 
-### `getNearestBank`
+### `getnearestbank`
 - **Signature**: `public static BankLocation getNearestBank()`
 - **Description**: Identifies the nearest bank location relative to the player's current position.
 
