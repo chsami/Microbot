@@ -4,7 +4,7 @@ import lombok.Getter;
 
 @Getter
 public enum CompletionAction {
-    NONE,
+    BANK,
     ALCH,
-//    ENCHANT,
+    ENCHANT;
 }
