@@ -100,12 +100,14 @@ public class DriftNetScript extends Script {
         // Find, walk and turn to the closest bank
         debugMessage("Walking to closest bank");
         Microbot.status = "Walking to bank";
-        Rs2Bank.walkToBank();
-        Rs2Player.waitForWalking(18000);
+        if (!Rs2Bank.walkToBank())
+            Rs2Bank.openBank();
+        if (!Rs2Bank.isOpen())
+            Rs2Player.waitForWalking(18000);
         Rs2Camera.turnTo(Rs2GameObject.findBank());
 
         debugMessage("Opening bank interface");
-        sleepUntil(() -> Rs2Bank.openBank(), 500);
+        sleepUntil(() -> !Rs2Bank.isOpen() && Rs2Bank.openBank());
         Microbot.status = "Banking";
         debugMessage("Depositing inventory into bank");
         Rs2Bank.depositAll();
@@ -157,9 +159,11 @@ public class DriftNetScript extends Script {
             return;
 
         GameObject loom = Rs2GameObject.getGameObject(config.loomLocation().loomWorldPoint);
-        if (Rs2Walker.canReach(loom.getWorldLocation())) {
-            Rs2Walker.walkWithState(loom.getWorldLocation());
-            Rs2Player.waitForWalking(18000);
+        if (Rs2Player.distanceTo(loom.getWorldLocation()) > 4) {
+            if (Rs2Walker.canReach(loom.getWorldLocation())) {
+                Rs2Walker.walkWithState(loom.getWorldLocation());
+                Rs2Player.waitForWalking(18000);
+            }
         }
         Rs2Camera.turnTo(loom.getLocalLocation());
         Rs2Inventory.useItemOnObject(juteFibre, loom.getId());
