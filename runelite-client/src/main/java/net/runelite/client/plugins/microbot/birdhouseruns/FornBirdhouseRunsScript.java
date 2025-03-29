@@ -13,6 +13,7 @@ import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
@@ -43,7 +44,6 @@ public class FornBirdhouseRunsScript extends Script {
 
     public boolean run() {
         Microbot.enableAutoRunOn = true;
-
         botStatus = states.GEARING;
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
@@ -123,6 +123,8 @@ public class FornBirdhouseRunsScript extends Script {
                         if (config.goToBank()) {
                             Rs2Walker.walkTo(Rs2Bank.getNearestBank().getWorldPoint());
                             emptyNests();
+                            if (!Rs2Bank.isOpen()) Rs2Bank.openBank();
+                            Rs2Bank.depositAll();
                         }
 
                         botStatus = states.FINISHED;
@@ -151,8 +153,10 @@ public class FornBirdhouseRunsScript extends Script {
                 ItemID.BIRD_NEST_22800
         );
 
-        for ( int id : ids) {
-            if (Rs2Inventory.interact(id, "Search")) Rs2Inventory.waitForInventoryChanges(1000);
+        for (Rs2ItemModel item : Rs2Inventory.items()) {
+            if (ids.contains(item.id)) {
+                Rs2Inventory.interact(item, "Search");
+            }
         }
     }
 

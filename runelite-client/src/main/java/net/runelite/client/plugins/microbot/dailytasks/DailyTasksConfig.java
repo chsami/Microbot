@@ -41,7 +41,8 @@ public interface DailyTasksConfig extends Config {
             name = "Collect Herb Boxes",
             description = "Collect daily herb boxes from NMZ",
             position = 0,
-            section = tasksSection
+            section = tasksSection,
+            hidden = true
     )
     default boolean collectHerbBoxes() {
         return true;
@@ -118,7 +119,8 @@ public interface DailyTasksConfig extends Config {
             name = "Handle Miscellania",
             description = "Handle Miscellania daily tasks",
             position = 9,
-            section = tasksSection
+            section = tasksSection,
+            hidden = true
     )
     default boolean handleMiscellania() {
         return true;

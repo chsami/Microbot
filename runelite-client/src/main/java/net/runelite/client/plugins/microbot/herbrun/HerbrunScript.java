@@ -19,6 +19,7 @@ import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.timetracking.Tab;
 import net.runelite.client.plugins.timetracking.farming.CropState;
 
@@ -84,8 +85,9 @@ public class HerbrunScript extends Script {
             if (currentPatch == null) {
                 HerbrunPlugin.status = "Finishing up";
                 if (config.goToBank()) {
-                    BankLocation bankLocation = Rs2Bank.getNearestBank();
-                    Rs2Walker.walkTo(bankLocation.getWorldPoint());
+                    Rs2Walker.walkTo(Rs2Bank.getNearestBank().getWorldPoint());
+                    if (!Rs2Bank.isOpen()) Rs2Bank.openBank();
+                    Rs2Bank.depositAll();
                 }
                 HerbrunPlugin.status = "Finished";
                 Microbot.stopPlugin(plugin);
@@ -141,7 +143,7 @@ public class HerbrunScript extends Script {
             if (leprechaun != null) {
                 Rs2ItemModel unNoted = Rs2Inventory.getUnNotedItem("Grimy", false);
                 Rs2Inventory.use(unNoted);
-                Rs2Npc.interact(leprechaun, "Use");
+                Rs2Npc.interact(leprechaun, "Talk-to");
                 Rs2Inventory.waitForInventoryChanges(10000);
             }
             return false;
