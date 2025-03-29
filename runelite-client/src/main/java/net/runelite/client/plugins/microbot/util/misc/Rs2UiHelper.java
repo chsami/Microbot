@@ -9,6 +9,7 @@ import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 
 import java.awt.*;
+import java.awt.geom.Line2D;
 
 public class Rs2UiHelper {
     public static boolean isRectangleWithinViewport(Rectangle rectangle) {
@@ -34,26 +35,35 @@ public class Rs2UiHelper {
     }
 
     public static Point getClickingPoint(Rectangle rectangle, boolean randomize) {
-        if (rectangle == null) return new Point(1, 1);
-        if (rectangle.getX() == 1 && rectangle.getY() == 1) return new Point(1, 1);
-        if (rectangle.getX() == 0 && rectangle.getY() == 0) return new Point(1, 1);
+        if (rectangle == null)
+            return new Point(1, 1);
+        if (rectangle.getX() == 1 && rectangle.getY() == 1)
+            return new Point(1, 1);
+        if (rectangle.getX() == 0 && rectangle.getY() == 0)
+            return new Point(1, 1);
 
-        if (!randomize) return new Point((int) rectangle.getCenterX(), (int) rectangle.getCenterY());
+        // if (!randomize)
+        // return new Line2D(rectangle.getCenterX(), rectangle.getCenterY());
 
-        //check if mouse is already within the rectangle and return current position
+        // check if mouse is already within the rectangle and return current position
         if (Rs2AntibanSettings.naturalMouse) {
             java.awt.Point mousePos = Microbot.getMouse().getMousePosition();
-            if (isMouseWithinRectangle(rectangle)) return new Point(mousePos.x, mousePos.y);
-            else return Rs2Random.randomPointEx(new Point(mousePos.x, mousePos.y), rectangle, 0.78);
+
+            if (isMouseWithinRectangle(rectangle))
+                return new Point(mousePos.x, mousePos.y);
+            else
+                return Rs2Random.randomPointEx(new Point(mousePos.x, mousePos.y), rectangle, 0.78);
         } else
             return Rs2Random.randomPointEx(Microbot.getMouse().getLastClick(), rectangle, 0.78);
     }
 
-    //check if mouse is already within the rectangle
+    // check if mouse is already within the rectangle
     public static boolean isMouseWithinRectangle(Rectangle rectangle) {
         java.awt.Point mousePos = Microbot.getMouse().getMousePosition();
-        if (rectangle.getX() == 1 && rectangle.getY() == 1) return true;
-        if (rectangle.getX() == 0 && rectangle.getY() == 0) return true;
+        if (rectangle.getX() == 1 && rectangle.getY() == 1)
+            return true;
+        if (rectangle.getX() == 0 && rectangle.getY() == 0)
+            return true;
         return rectangle.contains(mousePos);
     }
 
@@ -64,38 +74,45 @@ public class Rs2UiHelper {
             return new Rectangle(1, 1);
         }
 
+        Shape clickbox = Microbot.getClientThread()
+                .runOnClientThread(() -> Perspective.getClickbox(Microbot.getClient(), actor.getModel(),
+                        actor.getCurrentOrientation(), lp.getX(), lp.getY(),
+                        Perspective.getTileHeight(Microbot.getClient(), lp, actor.getWorldLocation().getPlane())));
 
-        Shape clickbox = Microbot.getClientThread().runOnClientThread(() -> Perspective.getClickbox(Microbot.getClient(), actor.getModel(), actor.getCurrentOrientation(), lp.getX(), lp.getY(),
-                Perspective.getTileHeight(Microbot.getClient(), lp, actor.getWorldLocation().getPlane())));
-
-        if (clickbox == null) return new Rectangle(1, 1);  //return a small rectangle if clickbox is null
-        
+        if (clickbox == null)
+            return new Rectangle(1, 1); // return a small rectangle if clickbox is null
 
         return new Rectangle(clickbox.getBounds());
     }
 
     public static Rectangle getObjectClickbox(TileObject object) {
 
-        if (object == null) return new Rectangle(1, 1);  //return a small rectangle if object is null
+        if (object == null)
+            return new Rectangle(1, 1); // return a small rectangle if object is null
         Shape clickbox = Microbot.getClientThread().runOnClientThread(object::getClickbox);
-        if (clickbox == null) return new Rectangle(1, 1);  //return a small rectangle if clickbox is null
-        if (clickbox.getBounds() == null) return new Rectangle(1, 1);
-
+        if (clickbox == null)
+            return new Rectangle(1, 1); // return a small rectangle if clickbox is null
+        if (clickbox.getBounds() == null)
+            return new Rectangle(1, 1);
 
         return new Rectangle(clickbox.getBounds());
     }
-    
+
     public static Rectangle getTileClickbox(Tile tile) {
-        if (tile == null) return new Rectangle(1, 1);
+        if (tile == null)
+            return new Rectangle(1, 1);
 
         LocalPoint localPoint = tile.getLocalLocation();
-        if (localPoint == null) return new Rectangle(1, 1);
+        if (localPoint == null)
+            return new Rectangle(1, 1);
 
         // Get the screen point of the tile center
-        Point screenPoint = Perspective.localToCanvas(Microbot.getClient(), localPoint, Microbot.getClient().getPlane());
+        Point screenPoint = Perspective.localToCanvas(Microbot.getClient(), localPoint,
+                Microbot.getClient().getPlane());
 
-        if (screenPoint == null) return new Rectangle(1, 1); 
-        
+        if (screenPoint == null)
+            return new Rectangle(1, 1);
+
         int tileSize = Perspective.LOCAL_TILE_SIZE;
         int halfSize = tileSize / 4;
 

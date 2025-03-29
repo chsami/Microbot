@@ -2,61 +2,62 @@ package net.runelite.client.plugins.microbot.crafting.scripts;
 
 import lombok.Getter;
 import lombok.Setter;
-
 import net.runelite.api.ItemID;
 import net.runelite.api.Skill;
 import net.runelite.api.TileObject;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.coords.WorldArea;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.crafting.CraftingConfig;
-import net.runelite.client.plugins.microbot.crafting.enums.Staffs;
+import net.runelite.client.plugins.microbot.crafting.enums.Amethyst;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
+import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
-import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
-
-import java.awt.event.KeyEvent;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.ScheduledFuture;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
 
+import java.awt.event.KeyEvent;
+import java.util.concurrent.TimeUnit;
+
 @Getter
 @Setter
-class ProgressiveStaffmakingModel {
-    private Staffs itemToCraft;
+class ProgressiveAmethystCuttingModel {
+    private Amethyst itemToCut;
 }
 
-public class StaffScript extends Script {
+public class AmethystScript extends Script {
 
-    ProgressiveStaffmakingModel model = new ProgressiveStaffmakingModel();
+    ProgressiveAmethystCuttingModel model = new ProgressiveAmethystCuttingModel();
 
-    int battleStaff = ItemID.BATTLESTAFF;
-    Staffs itemToCraft;
+    int chisel = ItemID.CHISEL;
+    Amethyst itemToCut;
 
-    private int staffsWithdrawn = 0; // Tracks how many staffs to expect
-    private int orbsWithdrawn = 0; // Tracks how many staffs to expect
     private boolean debugMessages = false; // Controls chatbox debug messages
-    private boolean firstStaff = false; // Controls make "All" widget click
+    private boolean firstCut = false; // Controls make "All" widget click
 
     public void run(CraftingConfig config) {
+        if (Rs2Player.getRealSkillLevel(Skill.CRAFTING) < Amethyst.BOLT_TIPS.getRequiredLevel()) {
+            debugMessage("Crafting level too low to cut amethyst");
+            this.shutdown();
+        }
+
         sleepUntil(() -> Microbot.isLoggedIn(), 1500);
-        debugMessage("Starting staff crafting script");
-        //
-        // Find, walk and turn to the closest bank
-        if (config.staffType() == Staffs.PROGRESSIVE)
-            calculateItemToCraft();
+        debugMessage("Starting amethyst item crafting script");
+
+        if (config.amethystType() == Amethyst.PROGRESSIVE)
+            calculateItemToCut();
 
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             if (!super.run())
@@ -69,30 +70,30 @@ public class StaffScript extends Script {
             // 15 and 90 seconds before moving on if the trigger occurs
             if (config.Afk() && (!Rs2Player.isMoving() || !Rs2Player.isInteracting()) && Rs2Random.nzRandom() < 0.05) {
                 debugMessage(String.format("Going AFK for between 15 and 90 seconds"));
-                Microbot.status = String.format("Taking short AFK break");
+                int delay = Rs2Random.between(15000, 90000);
+                Microbot.status = String.format("Taking short AFK break %02s", delay / 1000);
                 Rs2Antiban.moveMouseOffScreen();
-                Rs2Random.wait(15000, 90000);
+                sleep(delay);
             }
 
-            if (Rs2Random.nzRandom() < 0.1) {
+            if ((Rs2Player.isMoving() || Rs2Player.isInteracting()) && Rs2Random.nzRandom() < 0.05) {
                 debugMessage("Checking skills tab progress");
                 if (!Rs2Tab.switchToSkillsTab())
                     Rs2Keyboard.keyPress(KeyEvent.VK_F1);
                 Microbot.status = "Checking skills tab";
-                Rs2Random.wait(1000, 3000);
+                sleep(1000, 3000);
+                if (!Rs2Tab.switchToInventoryTab())
+                    Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
             }
 
             try {
-                if (config.staffType() == Staffs.PROGRESSIVE)
-                    itemToCraft = model.getItemToCraft();
+                if (config.amethystType() == Amethyst.PROGRESSIVE)
+                    itemToCut = model.getItemToCut();
                 else
-                    itemToCraft = config.staffType();
+                    itemToCut = config.amethystType();
 
-                staffsWithdrawn = Rs2Inventory.count(battleStaff);
-                orbsWithdrawn = Rs2Inventory.count(itemToCraft.getOrbID());
-
-                if (Rs2Inventory.hasItem(battleStaff) &&
-                        Rs2Inventory.hasItem(itemToCraft.getOrbID()))
+                if (Rs2Inventory.hasItem(chisel) &&
+                        Rs2Inventory.hasItem(ItemID.AMETHYST))
                     craft(config);
 
                 bank(config);
@@ -103,49 +104,46 @@ public class StaffScript extends Script {
     }
 
     private void bank(CraftingConfig config) {
-        // Find, walk and turn to the closest bank
-        debugMessage("Walking to closest bank");
-        Microbot.status = "Walking to bank";
-        Rs2Camera.turnTo(Rs2GameObject.findBank());
-        Rs2Bank.walkToBank();
+        if (Rs2Bank.getNearestBank(Rs2Player.getWorldLocation()) == (BankLocation) null) {
+            // Find, walk and turn to the closest bank
+            debugMessage("Walking to closest bank");
+            Microbot.status = "Walking to bank";
+            TileObject bank = Rs2GameObject.findReachableObject("Bank", true, 500, Rs2Player.getWorldLocation());
+            Rs2Walker.walkWithState(bank.getWorldLocation());
+            Rs2Player.waitForWalking(18000);
+            Rs2Camera.turnTo(Rs2GameObject.findBank());
+        }
 
         debugMessage("Opening bank interface");
         sleepUntil(() -> Rs2Bank.openBank(), 500);
         Microbot.status = "Banking";
 
         debugMessage("Depositing inventory into bank");
-        Rs2Bank.depositAll();
+        Rs2Bank.depositAllExcept(ItemID.CHISEL, ItemID.CHISEL_5601, ItemID.CHISEL_28414);
 
         // Ensure the bank contains at least 1 of each required item
-        verifyItemInBank("Battlestaff", battleStaff);
-        verifyItemInBank(itemToCraft.getOrbName(), itemToCraft.getOrbID());
+        debugMessage("Withdrawing chisel and amethyst");
+        if (!Rs2Inventory.hasItem("Chisel"))
+            verifyItemInBank("Chisel", chisel);
+        Rs2Bank.withdrawOne("Chisel");
 
-        debugMessage("Withdrawing staffs and orbs");
-        Rs2Bank.withdrawX(itemToCraft.getOrbID(), 14);
-        Rs2Inventory.waitForInventoryChanges(1800);
-        Rs2Bank.withdrawX(battleStaff, 14);
+        verifyItemInBank("Amethyst", ItemID.AMETHYST);
+        Rs2Bank.withdrawAll(ItemID.AMETHYST);
         Rs2Inventory.waitForInventoryChanges(1800);
 
         debugMessage("Exiting bank interface");
         Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
         if (Rs2Bank.isOpen())
             Rs2Bank.closeBank();
-        Rs2Antiban.actionCooldown();
-        Rs2Antiban.takeMicroBreakByChance();
-
-        // Store how many staffs & orbs were withdrawn incase uneven total
-        staffsWithdrawn = Rs2Inventory.count(battleStaff);
-        orbsWithdrawn = Rs2Inventory.count(itemToCraft.getOrbID());
     }
 
     private void verifyItemInBank(String name, int item) {
         if (Rs2Bank.isOpen() && !Rs2Bank.hasItem(item)) {
             // Double check the required items are not noted in player's inventory
-            if (Rs2Inventory.hasNotedItem(name) || Rs2Inventory.hasItem(item)) {
+            if (Rs2Inventory.hasNotedItem(name)) {
                 Rs2Bank.depositAll(item);
                 if (!Rs2Bank.closeBank())
                     Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
-                Rs2Antiban.actionCooldown();
                 return;
             }
             Microbot.status = "[Shutting down] - Reason: " + name + " not found in the bank.";
@@ -159,73 +157,68 @@ public class StaffScript extends Script {
         if (Rs2Bank.isOpen())
             Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
 
-        debugMessage("Starting crafting staffs");
+        debugMessage("Starting cutting amethyst");
 
         if (!Rs2Tab.switchToInventoryTab())
             Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
 
-        // Combine with orb first as battlestaffs have a skill requirement
-        // This is pointless because it will auto use the "use" menu item
-        if (!Rs2Inventory.hasItem(itemToCraft.getOrbID()) || !Rs2Inventory.hasItem(battleStaff))
+        if (!Rs2Inventory.hasItem(chisel) || !Rs2Inventory.hasItem(ItemID.AMETHYST))
             return;
 
-        if (!Rs2Inventory.combine(itemToCraft.getOrbID(), battleStaff))
-            Rs2Inventory.combine(itemToCraft.getOrbName(), "Battlestaff");
-
         debugMessage("Waiting for crafting interface");
+        Rs2Inventory.combineClosest(chisel, ItemID.AMETHYST);
         Rs2Dialogue.sleepUntilHasCombinationDialogue();
 
         // Only on the first time crafting the make "All" widget should be pressed
-        if (!firstStaff) {
-            firstStaff = true;
-            debugMessage("First craft - selecting make all");
+        if (!firstCut) {
+            firstCut = true;
+            debugMessage("First cut - selecting make all");
             if (!Rs2Widget.clickWidget(17694732))
                 Rs2Widget.clickWidgetFast(Rs2Widget.getWidget(17694732, 17694732));
         }
 
-        // Space triggers the make action to craft all battlestaffs
-        Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
+        // Keypress to trigger the make action to craft all amethysts iiems
+        if (!Rs2Widget.clickWidget(17694733, 17694733 + itemToCut.getCraftOptionKey())) {
+            Rs2Widget.clickWidget("Amethyst " + itemToCut.getItemName());
+            Rs2Keyboard.keyPress(itemToCut.getCraftOptionKey());
+        }
 
-        Microbot.status = "Crafting " + itemToCraft.getLabel();
+        Microbot.status = "Crafting " + itemToCut.getItemName();
+        debugMessage("Waiting to finish cutting amethyst");
 
-        debugMessage("Waiting to finish crafting staffs");
+        // Cutting any type of amethyst item is a 2 tick action
+        int amCount = Rs2Inventory.count(ItemID.AMETHYST);
+        sleepUntilTick(amCount * 2);
+        sleepUntilTrue(() -> !Rs2Inventory.hasItem(ItemID.AMETHYST));
 
-        // Crafting any type of battle staff is a 2 tick action
-        sleepUntilTick(Math.min(staffsWithdrawn, orbsWithdrawn) * 2);
-        // Ensure the crafting is complete before moving on
-        sleepUntil(() -> Rs2Inventory.hasItemAmount(itemToCraft.getItemID(),
-                Math.min(staffsWithdrawn, orbsWithdrawn)) && !Rs2Player.isAnimating(), 1500);
         Rs2Antiban.actionCooldown();
         Rs2Antiban.takeMicroBreakByChance();
     }
 
-    public ProgressiveStaffmakingModel calculateItemToCraft() {
+    public ProgressiveAmethystCuttingModel calculateItemToCut() {
         int craftinglvl = Microbot.getClient().getRealSkillLevel(Skill.CRAFTING);
-        if (craftinglvl < Staffs.EARTH_BATTLESTAFF.getLevelRequired()) {
-            debugMessage("Crafting Water Battlestaffs");
-            model.setItemToCraft(Staffs.WATER_BATTLESTAFF);
-        } else if (craftinglvl < Staffs.FIRE_BATTLESTAFF.getLevelRequired()) {
-            debugMessage("Crafting Earth Battlestaffs");
-            model.setItemToCraft(Staffs.EARTH_BATTLESTAFF);
-        } else if (craftinglvl < Staffs.AIR_BATTLESTAFF.getLevelRequired()) {
-            debugMessage("Crafting Fire Battlestaffs");
-            model.setItemToCraft(Staffs.FIRE_BATTLESTAFF);
+        if (craftinglvl < Amethyst.ARROWTIPS.getRequiredLevel()) {
+            debugMessage("Crafting Amethyst Bolt Tips");
+            model.setItemToCut(Amethyst.BOLT_TIPS);
+        } else if (craftinglvl < Amethyst.JAVELIN_HEADS.getRequiredLevel()) {
+            debugMessage("Crafting Amethyst Arrowtips");
+            model.setItemToCut(Amethyst.ARROWTIPS);
+        } else if (craftinglvl < Amethyst.DART_TIP.getRequiredLevel()) {
+            debugMessage("Crafting Amethyst Javelin Heads");
+            model.setItemToCut(Amethyst.JAVELIN_HEADS);
         } else {
-            debugMessage("Crafting Air Battlestaffs");
-            model.setItemToCraft(Staffs.AIR_BATTLESTAFF);
+            debugMessage("Crafting Amethyst Dart Tips");
+            model.setItemToCut(Amethyst.DART_TIP);
         }
         return model;
     }
 
     @Override
     public void shutdown() {
+        debugMessage("Shutting down amethyst item cutting script");
         Microbot.pauseAllScripts = true;
-        debugMessage("Shutting down staff crafter script");
-        // Reset values
-        staffsWithdrawn = 0;
-        orbsWithdrawn = 0;
         debugMessages = false;
-        firstStaff = false;
+        firstCut = false;
         if (mainScheduledFuture != null && !mainScheduledFuture.isDone()) {
             mainScheduledFuture.cancel(true);
         }
@@ -235,6 +228,6 @@ public class StaffScript extends Script {
     // Display debug messages in the ingame chatbox
     private void debugMessage(String str) {
         if (debugMessages)
-            Microbot.log(String.format("[Battlestaffs] %s", str));
+            Microbot.log(String.format("[Amethyst Tools] %s", str));
     }
 }
