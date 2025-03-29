@@ -6,6 +6,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.game.npcoverlay.HighlightedNpc;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
@@ -141,7 +142,7 @@ public class Rs2Npc {
             if (npcName == null || npcName.isEmpty()) return false;
             return (exact ? npcName.equalsIgnoreCase(name) : npcName.toLowerCase().contains(name.toLowerCase())) && x.getInteracting() == Microbot.getClient().getLocalPlayer();
         }).sorted(Comparator.comparingInt(value -> value.getLocalLocation().distanceTo(Microbot.getClient().getLocalPlayer().getLocalLocation())))
-          .collect(Collectors.toList());
+                .collect(Collectors.toList());
     }
 
     /**
@@ -544,12 +545,12 @@ public class Rs2Npc {
      * @param action The action to perform on the NPC (e.g., "Talk-to", "Attack", "Trade").
      * @return {@code true} if the interaction was successfully executed, {@code false} if the NPC was unreachable.
      */
-
     public static boolean interact(Rs2NpcModel npc, String action) {
         if (npc == null) return false;
-
         Microbot.status = action + " " + npc.getName();
         try {
+
+            // Handling unreachable NPC detection
             if (Microbot.isCantReachTargetDetectionEnabled && Microbot.cantReachTarget) {
                 if (!hasLineOfSight(npc)) {
                     if (Microbot.cantReachTargetRetries >= Rs2Random.between(3, 5)) {
@@ -577,27 +578,47 @@ public class Rs2Npc {
                 return false;
             }
 
-            int index = -1;
-            String[] actions = npcComposition.getActions();
-            if (actions != null) {
-                for (int i = 0; i < actions.length; i++) {
-                    if (actions[i] != null && actions[i].equalsIgnoreCase(action)) {
-                        index = i;
-                        break;
+            MenuAction menuAction;
+            if (Rs2Inventory.isItemSelected()) {
+                menuAction = MenuAction.WIDGET_TARGET_ON_NPC;
+            } else {
+                int index = -1;
+                String[] actions = npcComposition.getActions();
+
+                if (action == null || action.isEmpty()) {
+                    for (int i = 0; i < actions.length; i++) {
+                        if (actions[i] != null && !actions[i].isEmpty()) {
+                            index = i;
+                            action = actions[i];
+                            break;
+                        }
                     }
+                } else {
+                    if (actions != null) {
+                        for (int i = 0; i < actions.length; i++) {
+                            if (actions[i] != null && actions[i].equalsIgnoreCase(action)) {
+                                index = i;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (index == -1) {
+                    Microbot.log("Error: Action '" + action + "' not found for NPC: " + npc.getName());
+                    return false;
+                }
+
+                menuAction = getMenuAction(index);
+                if (menuAction == null) {
+                    Microbot.log("Error: Could not get menu action for action '" + action + "' on NPC: " + npc.getName());
+                    return false;
                 }
             }
 
-            if (index == -1) {
-                Microbot.log("Error: Action '" + action + "' not found for NPC: " + npc.getName());
-                return false;
-            }
 
-            MenuAction menuAction = getMenuAction(index);
-            if (menuAction == null) {
-                Microbot.log("Error: Could not get menu action for action '" + action + "' on NPC: " + npc.getName());
-                return false;
-            }
+
+
 
             Microbot.doInvoke(new NewMenuEntry(0, 0, menuAction.getId(), npc.getIndex(), -1, npc.getName(), npc),
                     Rs2UiHelper.getActorClickbox(npc));
@@ -609,6 +630,7 @@ public class Rs2Npc {
             return false;
         }
     }
+
     /**
      * Retrieves the corresponding {@link MenuAction} for a given interaction index.
      *
