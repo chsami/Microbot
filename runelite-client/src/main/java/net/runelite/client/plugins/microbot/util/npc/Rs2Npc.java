@@ -83,6 +83,19 @@ public class Rs2Npc {
     }
 
     /**
+     * Checks if the NPC is currently moving based on its pose animation.
+     * An NPC is considered moving if its pose animation is different from its idle pose animation.
+     *
+     * @param npc The NPC to check.
+     * @return {@code true} if the NPC is moving, {@code false} if it is idle.
+     */
+    public static boolean isMoving(NPC npc) {
+        return Microbot.getClientThread().runOnClientThread(() ->
+                npc.getPoseAnimation() != npc.getIdlePoseAnimation()
+        );
+    }
+
+    /**
      * Retrieves a list of NPCs currently interacting with the local player.
      *
      * @return A sorted list of {@link NPC} objects interacting with the local player.
