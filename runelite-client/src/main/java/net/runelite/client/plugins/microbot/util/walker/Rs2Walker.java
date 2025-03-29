@@ -1580,6 +1580,12 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
         @Component final int SELECTED_MINIGAME = 4980747; // 76.11
         @Component final int TELEPORT_BUTTON = 4980768; // 76.32
 
+        // Minigame teleports cant be used if a dialogue is open.
+        if (Rs2Dialogue.isInDialogue()) {
+            var playerLocation = Rs2Player.getLocalLocation();
+            walkFastLocal(playerLocation);
+        }
+
         if (Rs2Tab.getCurrentTab() != InterfaceTab.CHAT) {
             Rs2Tab.switchToGroupingTab();
             sleepUntil(() -> Rs2Tab.getCurrentTab() == InterfaceTab.CHAT);
