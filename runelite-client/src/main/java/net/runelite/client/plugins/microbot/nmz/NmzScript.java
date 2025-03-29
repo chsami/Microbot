@@ -8,6 +8,9 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.aiofighter.combat.PrayerPotionScript;
+import net.runelite.client.plugins.microbot.herbrun.HerbrunConfig;
+import net.runelite.client.plugins.microbot.herbrun.HerbrunPlugin;
+import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
@@ -15,6 +18,7 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
@@ -23,16 +27,19 @@ import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
+import javax.inject.Inject;
 import java.util.concurrent.TimeUnit;
 
 import static net.runelite.api.ObjectID.OVERLOAD_POTION;
 import static net.runelite.api.Varbits.NMZ_ABSORPTION;
+import static net.runelite.client.plugins.microbot.Microbot.log;
 
 public class NmzScript extends Script {
 
     public static double version = 2.1;
 
-    public static NmzConfig config;
+    private NmzConfig config;
+    private NmzPlugin plugin;
 
     public static boolean useOverload = false;
 
@@ -46,26 +53,47 @@ public class NmzScript extends Script {
     @Getter
     @Setter
     private static boolean hasSurge = false;
+    private boolean initialized = false;
+    private long lastCombatTime = 0;
 
     public boolean canStartNmz() {
         return Rs2Inventory.count("overload (4)") == config.overloadPotionAmount() ||
                 (Rs2Inventory.hasItem("prayer potion") && config.togglePrayerPotions());
     }
 
+    @Inject
+    public NmzScript(NmzPlugin plugin, NmzConfig config) {
+        this.plugin = plugin;
+        this.config = config;
+    }
 
-    public boolean run(NmzConfig config) {
-        NmzScript.config = config;
+
+    public boolean run() {
         prayerPotionScript = new PrayerPotionScript();
         Microbot.getSpecialAttackConfigs().setSpecialAttack(true);
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!Microbot.isLoggedIn()) return;
+                if (!initialized) {
+                    initialized = true;
+                    var inventorySetup = new Rs2InventorySetup(config.inventorySetup(), mainScheduledFuture);
+                    if (!inventorySetup.doesInventoryMatch() || !inventorySetup.doesEquipmentMatch()) {
+                        Rs2Walker.walkTo(Rs2Bank.getNearestBank().getWorldPoint(), 20);
+                        if (!inventorySetup.loadEquipment() || !inventorySetup.loadInventory()) {
+                            Microbot.log("Failed to load inventory setup");
+                            Microbot.stopPlugin(plugin);
+                            return;
+                        }
+                        Rs2Bank.closeBank();
+                    }
+                    Rs2Walker.walkTo(new WorldPoint(2609, 3114, 0), 5);
+                }
                 if (!super.run()) return;
                 Rs2Combat.enableAutoRetialiate();
                 if (Rs2Random.between(1, 50) == 1 && config.randomMouseMovements()) {
                     Microbot.getMouse().click(Rs2Random.between(0, Microbot.getClient().getCanvasWidth()), Rs2Random.between(0, Microbot.getClient().getCanvasHeight()), true);
                 }
-                boolean isOutsideNmz = Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(new WorldPoint(2602, 3116, 0)) < 20;
+                boolean isOutsideNmz = isOutside();
                 useOverload = Microbot.getClient().getBoostedSkillLevel(Skill.RANGED) == Microbot.getClient().getRealSkillLevel(Skill.RANGED) && config.overloadPotionAmount() > 0;
                 if (isOutsideNmz) {
                     Rs2Walker.setTarget(null);
@@ -78,6 +106,16 @@ public class NmzScript extends Script {
             }
         }, 0, 1000, TimeUnit.MILLISECONDS);
         return true;
+    }
+
+    @Override
+    public void shutdown() {
+        super.shutdown();
+        initialized = false;
+    }
+
+    public boolean isOutside() {
+        return Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(new WorldPoint(2602, 3116, 0)) < 20;
     }
 
     public void handleOutsideNmz() {
@@ -105,6 +143,16 @@ public class NmzScript extends Script {
     }
 
     public void handleInsideNmz() {
+        if (Rs2Player.isInCombat()) {
+            lastCombatTime = System.currentTimeMillis();
+        }
+        if (!Rs2Player.isInCombat() && System.currentTimeMillis() - lastCombatTime > 20000) {
+            Rs2NpcModel closestNpc = Rs2Npc.getNearestNpcWithAction("Attack");
+
+            if (closestNpc != null) {
+                Rs2Npc.interact(closestNpc, "Attack");
+            }
+        }
         prayerPotionScript.run();
         if (config.togglePrayerPotions())
             Rs2Prayer.toggle(Rs2PrayerEnum.PROTECT_MELEE, true);
@@ -293,7 +341,7 @@ public class NmzScript extends Script {
         if (!Rs2Inventory.isFull()) {
             if ((absorptionAmt < (config.absorptionPotionAmount() * 4) || overloadAmt < config.overloadPotionAmount() * 4) && nmzPoints < 100000) {
                 Microbot.showMessage("BOT SHUTDOWN: Not enough points to buy potions");
-                shutdown();
+                Microbot.stopPlugin(plugin);
                 return;
             }
         }

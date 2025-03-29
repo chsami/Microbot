@@ -1,11 +1,20 @@
 package net.runelite.client.plugins.microbot.nmz;
 
 import net.runelite.client.config.*;
+import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
+import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
 
 @ConfigGroup("nmz")
-@ConfigInformation("Start outside NMZ with gp in Dominic's coffer and make sure bankpin has been unlocked <br />" +
-        "                \"Make sure you have already set up your hard dream once!  <br />" +
-        "                \"Make sure to turn on AUTO RETALIATE!  <br />")
+@ConfigInformation(
+        "Before starting: <br>" +
+                "<ul>" +
+                "<li>Set up your inventory setup with required items</li>" +
+                "<li>Ensure you have GP in the coffer</li>" +
+                "<li>Have a previous dream setup already</li>" +
+                "<li>Turn ON Auto Retaliate in combat settings</li>" +
+                "</ul>" +
+                "<p>These steps are essential for the plugin to function correctly.</p>"
+)
 public interface NmzConfig extends Config {
     String GROUP = "Nmz";
 
@@ -16,6 +25,15 @@ public interface NmzConfig extends Config {
             closedByDefault = false
     )
     String generalSection = "general";
+
+    @ConfigItem(
+            keyName = "inventorySetup",
+            name = "Inventory Setup",
+            description = "Inventory Setup to use for NMZ",
+            position = 1,
+            section = generalSection
+    )
+    default InventorySetup inventorySetup() { return null; }
 
     @ConfigItem(
             keyName = "How many overload potions to use",
