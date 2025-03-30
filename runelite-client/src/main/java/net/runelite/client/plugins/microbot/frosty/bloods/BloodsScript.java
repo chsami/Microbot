@@ -3,7 +3,9 @@ package net.runelite.client.plugins.microbot.frosty.bloods;
 import net.runelite.api.Client;
 import net.runelite.api.GameObject;
 import net.runelite.api.Skill;
+import net.runelite.api.Varbits;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.frosty.bloods.enums.HomeTeleports;
@@ -48,7 +50,6 @@ public class BloodsScript extends Script {
     private BloodsConfig config;
     @Inject
     private Client client;
-
     public boolean run() {
         Microbot.enableAutoRunOn = false;
         Rs2Antiban.resetAntibanSettings();
@@ -86,7 +87,8 @@ public class BloodsScript extends Script {
                             handleGoingHome();
                         } else {
                             handleArdyCloak();
-                            break;}
+                            break;
+                        }
                     case WALKING_TO:
                         handleWalking();
                         break;
@@ -106,6 +108,7 @@ public class BloodsScript extends Script {
         }, 0, 1000, TimeUnit.MILLISECONDS);
         return true;
     }
+
     @Override
     public void shutdown() {
         Rs2Antiban.resetAntibanSettings();
@@ -113,6 +116,7 @@ public class BloodsScript extends Script {
         Microbot.log("Script has been stopped");
         //Rs2Player.logout();
     }
+
     private void checkPouches() {
         Rs2Inventory.interact(26784, "Check");
         sleepGaussian(900, 200);
@@ -126,10 +130,10 @@ public class BloodsScript extends Script {
             return;
         }
         if (Rs2Inventory.isFull() && Rs2Inventory.allPouchesFull() && Rs2Inventory.contains("Pure essence")) {
-                    Microbot.log("We are full, skipping bank");
-                    state = State.GOING_HOME;
-                    return;
-                }
+            Microbot.log("We are full, skipping bank");
+            state = State.GOING_HOME;
+            return;
+        }
         if (!config.usePoh()) {
             handleFeroxRunEnergy();
         }
@@ -147,7 +151,7 @@ public class BloodsScript extends Script {
             sleepGaussian(700, 200);
         }
 
-        if (config.usePoh()){
+        if (config.usePoh()) {
             if (Rs2Player.getRealSkillLevel(Skill.CRAFTING) == 99 && !Rs2Equipment.isWearing("Crafting cape")) {
                 if (Rs2Bank.hasItem("Crafting cape")) {
                     Rs2Bank.withdrawAndEquip("Crafting cape");
@@ -161,16 +165,7 @@ public class BloodsScript extends Script {
             sleepGaussian(700, 200);
         }
 
-        if (config.useDramenStaff() && !Rs2Equipment.isWearing(772)) {
-            Microbot.log("Getting dramen staff from bank and equipping");
-            Rs2Bank.withdrawAndEquip(772);
-            sleepGaussian(700, 200);
-        }
-
-        if (!config.usePoh() && !Rs2Equipment.isWearing("Ardougne cloak")) {
-            Rs2Bank.withdrawAndEquip("Ardougne cloak");
-            sleepGaussian(700, 200);
-        }
+        checkLumbyDiary();
 
         if (config.usePoh()) {
             boolean hasConstructionCape = Rs2Inventory.contains(HomeTeleports.CONSTRUCTION_CAPE.getItemIds());
@@ -199,7 +194,6 @@ public class BloodsScript extends Script {
         }
 
 
-
         if (!Rs2Equipment.isWearing("Ring of dueling")) {
             Rs2Bank.withdrawAndEquip(2552);
             sleepUntil(() -> Rs2Equipment.isWearing("Ring of duelling"));
@@ -224,17 +218,17 @@ public class BloodsScript extends Script {
             Microbot.log("We are full, lets go");
             Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
             sleepGaussian(600, 200);
-                if (Rs2Inventory.contains(26390)) {
-                    Rs2Inventory.interact(26390, "Activate");
-                    Microbot.log("Activating blood essence");
-                    sleepGaussian(700, 200);
-                }
+            if (Rs2Inventory.contains(26390)) {
+                Rs2Inventory.interact(26390, "Activate");
+                Microbot.log("Activating blood essence");
+                sleepGaussian(700, 200);
+            }
             state = State.GOING_HOME;
         }
     }
 
     private void handleFeroxRunEnergy() {
-        if (Rs2Player.getRunEnergy() <40) {
+        if (Rs2Player.getRunEnergy() < 40) {
             Microbot.log("We are thirsty...let us Drink");
             Rs2Walker.walkTo(3129, 3636, 0);
             Rs2GameObject.interact(39651, "Drink");
@@ -242,11 +236,14 @@ public class BloodsScript extends Script {
             sleepGaussian(1100, 200);
         }
     }
+
     private void handleWalking() {
         Microbot.log("Walking to ruins");
         if (!Rs2GameObject.interact(16308, "Enter")) {
             Microbot.log("Failed to find first cave");
-        } else { Microbot.log("Entering first cave");}
+        } else {
+            Microbot.log("Entering first cave");
+        }
         sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 13977 && !Rs2Player.isAnimating());
         sleepGaussian(1500, 200);
 
@@ -261,7 +258,7 @@ public class BloodsScript extends Script {
         Rs2GameObject.interact(12770, "Enter");
         Microbot.log("Entering third cave...");
         sleepUntil(() -> !Rs2Player.isInteracting() && !Rs2Player.isMoving() && !Rs2Player.isAnimating(900)
-        && Rs2Player.getWorldLocation().getRegionID() == 13978);
+                && Rs2Player.getWorldLocation().getRegionID() == 13978);
         sleepGaussian(1500, 200);
 
         Microbot.log("..Calling walker");
@@ -409,7 +406,19 @@ public class BloodsScript extends Script {
                 && Rs2Player.getWorldLocation().getRegionID() == 13721, 1200);
         state = State.WALKING_TO;
     }
+
+    public void checkLumbyDiary() {
+        Microbot.getClientThread().invoke(() ->  {
+            int lumbyElite = Microbot.getClient().getVarbitValue(Varbits.DIARY_LUMBRIDGE_ELITE);
+            if (lumbyElite != 1) {Rs2Bank.withdrawAndEquip(772);
+                sleepGaussian(1100, 200);
+            } else {
+                Microbot.log("No Dramen staff found");
+            }
+        });
+    }
 }
+
 
 
 

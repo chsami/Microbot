@@ -26,17 +26,6 @@ public interface BloodsConfig extends Config {
     String settingsSection = "Settings";
 
     @ConfigItem(
-            keyName = "use Dramen staff",
-            name = "Use Dramen staff",
-            description = "Check this if you are using Dramen staff",
-            position = 4,
-            section = settingsSection
-    )
-    default boolean useDramenStaff() {
-        return false;
-    }
-
-    @ConfigItem(
             keyName = "Use POH",
             name = "Use POH",
             description = "Check if you have fairy ring and pool in POH",
