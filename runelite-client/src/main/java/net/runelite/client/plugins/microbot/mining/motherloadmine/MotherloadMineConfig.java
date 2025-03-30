@@ -6,22 +6,11 @@ import net.runelite.client.config.ConfigItem;
 
 @ConfigGroup("MotherloadMine")
 public interface MotherloadMineConfig extends Config {
-
-    @ConfigItem(
-            keyName = "guide",
-            name = "How to use",
-            description = "How to use this plugin",
-            position = 0
-    )
-    default String GUIDE() {
-        return "1. Have a hammer in your inventory \n2. Start near the bank chest in motherload mine";
-    }
-
     @ConfigItem(
             keyName = "PickAxeInInventory",
             name = "Pick Axe In Inventory?",
             description = "Pick Axe in inventory?",
-            position = 1
+            position = 0
     )
     default boolean pickAxeInInventory() {
         return false;
@@ -32,7 +21,7 @@ public interface MotherloadMineConfig extends Config {
             keyName = "MineUpstairs",
             name = "Mine Upstairs?",
             description = "Mine upstairs?",
-            position = 2
+            position = 1
     )
     default boolean mineUpstairs() {
         return false;
@@ -43,7 +32,7 @@ public interface MotherloadMineConfig extends Config {
             keyName = "UpstairsHopperUnlocked",
             name = "Upstairs Hopper Unlocked?",
             description = "Upstairs hopper unlocked?",
-            position = 3
+            position = 2
     )
     default boolean upstairsHopperUnlocked() {
         return false;
