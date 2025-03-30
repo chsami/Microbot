@@ -14,26 +14,41 @@ import static net.runelite.client.plugins.microbot.mining.motherloadmine.Motherl
 
 
 public class MotherloadMineOverlay extends OverlayPanel {
+    MotherloadMinePlugin _plugin;
+
     @Inject
     MotherloadMineOverlay(MotherloadMinePlugin plugin)
     {
         super(plugin);
-        setPosition(OverlayPosition.TOP_LEFT);
+        _plugin = plugin;
+        setPosition(OverlayPosition.BOTTOM_LEFT);
         setSnappable(true);
+        setNaughty();
     }
+
     @Override
     public Dimension render(Graphics2D graphics) {
         try {
 
-            panelComponent.setPreferredSize(new Dimension(275, 900));
+            panelComponent.setPreferredSize(new Dimension(100, 200));
             panelComponent.getChildren().add(TitleComponent.builder()
-                    .text("\uD83E\uDD86 Motherlode Mine \uD83E\uDD86")
+                    .text("[ Motherlode Mine ]"")
                     .color(Color.ORANGE)
                     .build());
 
+            addEmptyLine();
 
-            if(Rs2AntibanSettings.devDebug)
-                Rs2Antiban.renderAntibanOverlayComponents(panelComponent);
+            panelComponent.getChildren().add(LineComponent.builder()
+                .left("Version: "))
+                .right(MotherloadMineScript.VERSION)
+                .build());
+
+            addEmptyLine();
+
+            panelComponent.getChildren().add(LineComponent.builder()
+                .left("Run Time: "))
+                .right(_plugin.getRunTime())
+                .build());
 
             addEmptyLine();
 
@@ -45,9 +60,9 @@ public class MotherloadMineOverlay extends OverlayPanel {
             addEmptyLine();
 
             panelComponent.getChildren().add(LineComponent.builder()
-                    .left(status.toString())
-                    .right("Version: " + MotherloadMineScript.VERSION)
-                    .build());
+                .left("Status: "))
+                .right(Microbot.status)
+                .build());
         } catch(Exception ex) {
             System.out.println(ex.getMessage());
         }

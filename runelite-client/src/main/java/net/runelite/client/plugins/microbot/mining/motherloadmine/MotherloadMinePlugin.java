@@ -17,7 +17,7 @@ import java.awt.*;
 @PluginDescriptor(
         name = PluginDescriptor.Mocrosoft + "MotherlodeMine",
         description = "A bot that mines paydirt in the motherlode mine",
-        tags = {"paydirt", "mine", "motherlode"},
+        tags = {"paydirt", "mine", "mining", "minigame",, "motherlode"},
         enabledByDefault = false
 )
 public class MotherloadMinePlugin extends Plugin {
@@ -25,11 +25,12 @@ public class MotherloadMinePlugin extends Plugin {
     private MotherloadMineConfig config;
     @Inject
     private OverlayManager overlayManager;
-
     @Inject
     private MotherloadMineOverlay motherloadMineOverlay;
     @Inject
     private MotherloadMineScript motherloadMineScript;
+
+    private Instant scriptStartTime;
 
     @Provides
     MotherloadMineConfig provideConfig(ConfigManager configManager) {
@@ -57,6 +58,13 @@ public class MotherloadMinePlugin extends Plugin {
             e.printStackTrace();
         }
 
+    }
+
+    protected String getTimeRunning() {
+        return scriptStartTime != null ?
+            TimeUtils.getFormattedDurationBetween(
+                scriptStartTime, Instant.now()
+            ) :"";
     }
 
     protected void shutDown() {
