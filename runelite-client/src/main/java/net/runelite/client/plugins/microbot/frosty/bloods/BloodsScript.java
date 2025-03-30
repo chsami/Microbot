@@ -12,11 +12,13 @@ import net.runelite.client.plugins.microbot.frosty.bloods.enums.Teleports;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.enums.Activity;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.equipment.JewelleryLocationEnum;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -29,6 +31,7 @@ import javax.inject.Inject;
 import java.awt.event.KeyEvent;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleepGaussian;
@@ -79,8 +82,11 @@ public class BloodsScript extends Script {
                         handleBanking();
                         break;
                     case GOING_HOME:
-                        handleGoingHome();
-                        break;
+                        if (config.usePoh()) {
+                            handleGoingHome();
+                        } else {
+                            handleArdyCloak();
+                            break;}
                     case WALKING_TO:
                         handleWalking();
                         break;
@@ -113,6 +119,7 @@ public class BloodsScript extends Script {
     }
 
     private void handleBanking() {
+        Rs2Tab.switchToInventoryTab();
         if (Rs2Inventory.hasDegradedPouch()) {
             Rs2Magic.repairPouchesWithLunar();
             sleepGaussian(900, 200);
@@ -123,12 +130,30 @@ public class BloodsScript extends Script {
                     state = State.GOING_HOME;
                     return;
                 }
-
+        if (!config.usePoh()) {
+            handleFeroxRunEnergy();
+        }
         Rs2Bank.openBank();
+        sleepUntil(Rs2Bank::isOpen);
+        sleepGaussian(1100, 200);
 
         if (!Rs2Inventory.hasAnyPouch()) {
             Rs2Bank.withdrawItem(26784);
             sleepGaussian(700, 200);
+        }
+
+        if (!config.usePoh() && !Rs2Equipment.isWearing("Ardougne cloak")) {
+            Rs2Bank.withdrawAndEquip("Ardougne cloak");
+            sleepGaussian(700, 200);
+        }
+
+        if (config.usePoh()){
+            if (Rs2Player.getRealSkillLevel(Skill.CRAFTING) == 99 && !Rs2Equipment.isWearing("Crafting cape")) {
+                if (Rs2Bank.hasItem("Crafting cape")) {
+                    Rs2Bank.withdrawAndEquip("Crafting cape");
+                    sleepUntil(() -> Rs2Equipment.isWearing("Crafting cape"), 2400);
+                }
+            }
         }
 
         if (!Rs2Inventory.hasRunePouch()) {
@@ -136,118 +161,111 @@ public class BloodsScript extends Script {
             sleepGaussian(700, 200);
         }
 
-
-        if (config.teleports() == Teleports.RING_OF_DUELING && !Rs2Equipment.isWearing("Ring of dueling")) {
-            Microbot.log("Getting RoD from bank and equipping");
-            Rs2Bank.withdrawAndEquip(2552);
-            sleepGaussian(700, 200);
-        }
-        if (config.teleports() == Teleports.CRAFTING_CAPE && !Rs2Equipment.isWearing(9781)) {
-            Microbot.log("Getting Crafting cape (t) from bank and equipping");
-            Rs2Bank.withdrawAndEquip(9781);
-            sleepGaussian(700, 200);
-        }
-        if (config.homeTeleports() == HomeTeleports.HOUSE_TAB && !Rs2Inventory.contains(8013)) {
-            Microbot.log("Getting house tabs from bank");
-            Rs2Bank.withdrawAll(8013);
-            sleepGaussian(700, 200);
-        }
-        if (config.homeTeleports() == HomeTeleports.CONSTRUCTION_CAPE && !Rs2Inventory.contains(9790)) {
-            Microbot.log("Getting Con cape from bank");
-            Rs2Bank.withdrawItem(9790);
-            sleepGaussian(700, 200);
-        }
         if (config.useDramenStaff() && !Rs2Equipment.isWearing(772)) {
             Microbot.log("Getting dramen staff from bank and equipping");
             Rs2Bank.withdrawAndEquip(772);
             sleepGaussian(700, 200);
         }
 
-        if (!Rs2Inventory.contains(26392)) {
-            if (!Rs2Bank.hasItem(26392)) {
-                Rs2Bank.withdrawItem(26390);
-                sleepGaussian(900, 200);
-            } else {
-                Rs2Bank.withdrawItem(26392);
+        if (!config.usePoh() && !Rs2Equipment.isWearing("Ardougne cloak")) {
+            Rs2Bank.withdrawAndEquip("Ardougne cloak");
+            sleepGaussian(700, 200);
+        }
+
+        if (config.usePoh()) {
+            boolean hasConstructionCape = Rs2Inventory.contains(HomeTeleports.CONSTRUCTION_CAPE.getItemIds());
+            if (!hasConstructionCape) {
+                for (Integer itemId : HomeTeleports.CONSTRUCTION_CAPE.getItemIds()) {
+                    if (Rs2Bank.hasItem(itemId)) {
+                        Rs2Bank.withdrawItem(itemId);
+                        Rs2Inventory.waitForInventoryChanges(1200);
+                        if (Rs2Inventory.contains(itemId)) {
+                            break;
+                        }
+                    }
+                }
+
+                if (!Rs2Inventory.contains(HomeTeleports.CONSTRUCTION_CAPE.getItemIds())) {
+                    for (Integer tabId : HomeTeleports.HOUSE_TAB.getItemIds()) {
+                        if (Rs2Bank.hasItem(tabId)) {
+                            Rs2Bank.withdrawAll(tabId);
+                            Rs2Inventory.waitForInventoryChanges(1200);
+                            Microbot.log("Withdrawing all House Tabs from the bank.");
+                            break;
+                        }
+                    }
+                }
             }
         }
 
-        while (!Rs2Inventory.allPouchesFull() || !Rs2Inventory.isFull() && isRunning()) {
-            Microbot.log("Pouches are not full yet");
-            if (Rs2Bank.isOpen()) {
-                if (Rs2Inventory.contains("Blood rune")) {
-                    Rs2Bank.depositAll("Blood rune");
-                    sleepGaussian(500, 200);
-                }
-                Rs2Bank.withdrawAll("Pure essence");
-                Rs2Inventory.fillPouches();
-                sleepGaussian(700, 200);
-            }
-            if (!Rs2Inventory.isFull()) {
-                Rs2Bank.withdrawAll("Pure essence");
-                sleepUntil(Rs2Inventory::isFull);
+
+
+        if (!Rs2Equipment.isWearing("Ring of dueling")) {
+            Rs2Bank.withdrawAndEquip(2552);
+            sleepUntil(() -> Rs2Equipment.isWearing("Ring of duelling"));
+        } else {
+            Microbot.log("No RoD found");
+        }
+
+        if (!Rs2Inventory.contains(26392)) {
+            if (!Rs2Bank.hasItem(26392)) {
+                Rs2Bank.withdrawItem(26390);
+                Microbot.log("Withdrawing blood essence");
+                sleepGaussian(900, 200);
+            } else {
+                Rs2Bank.withdrawItem(26392);
+                sleepGaussian(900, 200);
             }
         }
+
+        handleFillPouch();
+
         if (Rs2Bank.isOpen() && Rs2Inventory.allPouchesFull() && Rs2Inventory.isFull()) {
-            Microbot.log("We are full, lets go home");
+            Microbot.log("We are full, lets go");
             Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
             sleepGaussian(600, 200);
-            if (config.useBloodEssence()) {
                 if (Rs2Inventory.contains(26390)) {
                     Rs2Inventory.interact(26390, "Activate");
+                    Microbot.log("Activating blood essence");
                     sleepGaussian(700, 200);
                 }
-            }
             state = State.GOING_HOME;
         }
     }
 
-    private void handleGoingHome() {
-        HomeTeleports homeTeleport = config.homeTeleports();
-        for (Integer itemId : homeTeleport.getItemIds()) {
-            if (Rs2Inventory.contains(itemId)) {
-                Microbot.log("Using " + homeTeleport.getName() + " to go home.");
-                Rs2Inventory.interact(itemId, homeTeleport.getInteraction());
-                sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 7769 && !Rs2Player.isAnimating());
-                sleepGaussian(900, 200);
-                break;
-            }
+    private void handleFeroxRunEnergy() {
+        if (Rs2Player.getRunEnergy() <40) {
+            Microbot.log("We are thirsty...let us Drink");
+            Rs2Walker.walkTo(3129, 3636, 0);
+            Rs2GameObject.interact(39651, "Drink");
+            sleepUntil(() -> (!Rs2Player.isInteracting()) && !Rs2Player.isAnimating() && Rs2Player.getRunEnergy() > 90);
+            sleepGaussian(1100, 200);
         }
-
-        if (Rs2Player.getRunEnergy() < 40) {
-            Microbot.log("We are thirsty..let us Drink");
-            List<Integer> poolObjectIds = Arrays.asList(29241, 29240, 29239, 29238, 29237);
-            for (int objectId : poolObjectIds) {
-                Rs2GameObject.interact(objectId, "Drink");
-                sleepUntil(() -> (!Rs2Player.isInteracting()) && Rs2Player.getRunEnergy() > 90);
-            }
-        }
-
-        Microbot.log("Interacting with the fairies");
-        Rs2GameObject.interact(27097, "Ring-last-destination (DLS)");
-            sleepGaussian(1300, 200);
-            Microbot.log("Waiting for animation and region");
-            Rs2Player.waitForAnimation(1200);
-            sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving()
-                    && Rs2Player.getWorldLocation() != null
-                    && Rs2Player.getWorldLocation().getRegionID() == 13721, 1200);
-
-        state = State.WALKING_TO;
     }
-
     private void handleWalking() {
         Microbot.log("Walking to ruins");
         if (!Rs2GameObject.interact(16308, "Enter")) {
             Microbot.log("Failed to find first cave");
-        }
+        } else { Microbot.log("Entering first cave");}
         sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 13977 && !Rs2Player.isAnimating());
         sleepGaussian(1500, 200);
+
+        //These caves are so strange, this is the way to prevent walker from starting in first loop
+
         Rs2GameObject.interact(5046, "Enter");
-        sleepGaussian(500, 200);
-        Rs2GameObject.interact(5046, "Enter");
-        sleepUntil(() -> !Rs2Player.isInteracting() && !Rs2Player.isMoving() && !Rs2Player.isAnimating(900));
-        sleepGaussian(1300, 200);
-        Rs2Walker.walkTo(3555, 9783, 0);
+        Microbot.log("Entering second cave");
+        sleepGaussian(1700, 200);
+        sleepUntil(() -> !Rs2Player.isMoving() && !Rs2Player.isAnimating() && !Rs2Player.isInteracting());
+        sleepGaussian(1900, 200);
+
+        Rs2GameObject.interact(12770, "Enter");
+        Microbot.log("Entering third cave...");
+        sleepUntil(() -> !Rs2Player.isInteracting() && !Rs2Player.isMoving() && !Rs2Player.isAnimating(900)
+        && Rs2Player.getWorldLocation().getRegionID() == 13978);
+        sleepGaussian(1500, 200);
+
+        Microbot.log("..Calling walker");
+        Rs2Walker.walkTo(3559, 9782, 0);
         state = State.CRAFTING;
     }
 
@@ -265,6 +283,26 @@ public class BloodsScript extends Script {
             handleBankTeleport();
             sleepGaussian(500, 200);
         }
+        state = State.BANKING;
+    }
+
+    private void handleFillPouch() {
+        while (!Rs2Inventory.allPouchesFull() || !Rs2Inventory.isFull() && isRunning()) {
+            Microbot.log("Pouches are not full yet");
+            if (Rs2Bank.isOpen()) {
+                if (Rs2Inventory.contains("Blood rune")) {
+                    Rs2Bank.depositAll("Blood rune");
+                    sleepGaussian(500, 200);
+                }
+                Rs2Bank.withdrawAll("Pure essence");
+                Rs2Inventory.fillPouches();
+                sleepGaussian(900, 200);
+            }
+            if (!Rs2Inventory.isFull()) {
+                Rs2Bank.withdrawAll("Pure essence");
+                sleepUntil(Rs2Inventory::isFull);
+            }
+        }
     }
 
     private void handleEmptyPouch() {
@@ -280,31 +318,99 @@ public class BloodsScript extends Script {
     }
 
     private void handleBankTeleport() {
-        Teleports selectedTeleport = config.teleports();
-        if (selectedTeleport == Teleports.CRAFTING_CAPE) {
-            Microbot.log("Banking with crafting cape.");
-            Rs2Tab.switchToEquipmentTab();
-            sleepGaussian(700, 200);
-            Rs2Equipment.interact(9781, "Teleport");
-            sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 11571);
-            Rs2Tab.switchToInventoryTab();
-            state = State.BANKING;
-        } else if (selectedTeleport == Teleports.RING_OF_DUELING) {
-            for (Integer itemId : selectedTeleport.getItemIds()) {
-                if (Rs2Equipment.isWearing("Ring of Dueling")) {
-                    Microbot.log("Banking with RoD: " + itemId);
-                    Rs2Tab.switchToEquipmentTab();
-                    sleepGaussian(700, 200);
-                    Rs2Equipment.useRingAction(JewelleryLocationEnum.CASTLE_WARS);
-                    sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 9776);
-                    Rs2Tab.switchToInventoryTab();
-                    state = State.BANKING;
-                    return;
+        Rs2Tab.switchToEquipmentTab();
+        sleepGaussian(900, 200);
+
+        Teleports bankTeleport = Teleports.CRAFTING_CAPE;
+        for (Integer itemId : bankTeleport.getItemIds()) {
+            if (!Rs2Equipment.isWearing(itemId)) {
+                bankTeleport = Teleports.FEROX_ENCLAVE;
+                break;
+            }
+
+            if (Rs2Equipment.hasEquipped(itemId)) {
+                Microbot.log("Using " + bankTeleport.getName());
+                Rs2Equipment.interact(itemId, bankTeleport.getInteraction());
+                Teleports finalBankTeleport = bankTeleport;
+                sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == finalBankTeleport.getBankingRegionId());
+                sleepGaussian(900, 200);
+                break;
+            }
+        }
+
+        if (bankTeleport == Teleports.FEROX_ENCLAVE) {
+            for (Integer itemId : bankTeleport.getItemIds()) {
+                if (Rs2Equipment.hasEquipped(itemId)) {
+                    Microbot.log("Using " + bankTeleport.getName());
+                    Rs2Equipment.interact(itemId, bankTeleport.getInteraction());
+                    Teleports finalBankTeleport1 = bankTeleport;
+                    sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == finalBankTeleport1.getBankingRegionId());
+                    sleepGaussian(900, 200);
+                    break;
                 }
             }
         }
     }
 
+    private void handleArdyCloak() {
+        if (Rs2Equipment.isWearing("Ardougne Cloak")) {
+            Rs2Equipment.interact("Ardougne cloak", "Kandarin Monastery");
+        }
+        sleepGaussian(900, 200);
+        sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 10290);
+        Rs2Walker.walkTo(2656, 3230, 0);
+        sleepGaussian(700, 200);
+
+
+        Microbot.log("Interacting with the fairies");
+        Rs2GameObject.interact(29495, "Last-destination (DLS)");
+        sleepGaussian(1300, 200);
+        Microbot.log("Waiting for animation and region");
+        Rs2Player.waitForAnimation(1200);
+        sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving()
+                && Rs2Player.getWorldLocation() != null
+                && Rs2Player.getWorldLocation().getRegionID() == 13721, 1200);
+
+        state = State.WALKING_TO;
+    }
+
+    private void handleGoingHome() {
+        HomeTeleports homeTeleport = HomeTeleports.CONSTRUCTION_CAPE;
+        if (!Rs2Inventory.contains(homeTeleport.getItemIds())) {
+            Microbot.log("Con cape not found");
+            homeTeleport = HomeTeleports.HOUSE_TAB;
+        }
+        for (Integer itemId : homeTeleport.getItemIds()) {
+            if (Rs2Inventory.contains(itemId)) {
+                Microbot.log("Using " + homeTeleport.getName());
+                Rs2Inventory.interact(itemId, homeTeleport.getInteraction());
+                sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 7769 && !Rs2Player.isAnimating());
+                sleepGaussian(900, 200);
+                break;
+            }
+        }
+        if (Rs2Player.getRunEnergy() < 40) {
+            sleepGaussian(700, 200);
+            Microbot.log("We are thirsty..let us Drink");
+            List<Integer> poolObjectIds = Arrays.asList(29241, 29240, 29239, 29238, 29237);
+            poolObjectIds.stream().filter(Rs2GameObject::exists).findFirst()
+                    .ifPresent(objectId -> {
+                        Rs2GameObject.interact(objectId, "Drink");
+                        sleepUntil(() -> !Rs2Player.isInteracting() && Rs2Player.getRunEnergy() > 90);
+                    });
+        }
+        Microbot.log("Interacting with the fairies");
+        Rs2GameObject.interact(27097, "Ring-last-destination (DLS)");
+        sleepGaussian(1300, 200);
+        Microbot.log("Waiting for animation and region");
+        Rs2Player.waitForAnimation(1200);
+        sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving()
+                && Rs2Player.getWorldLocation() != null
+                && Rs2Player.getWorldLocation().getRegionID() == 13721, 1200);
+        state = State.WALKING_TO;
+    }
 }
+
+
 
 
