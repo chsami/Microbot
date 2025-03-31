@@ -13,8 +13,7 @@ import net.runelite.client.plugins.microbot.frosty.bloods.enums.Teleports;
         "• Ensure you have a Colossal pouch <br />" +
         "• Ensure you have Tiara or a bound Hat of the Eye equipped <br />" +
         "• Ensure you have a RunePouch <b> with runes for NPC contact </b> for pouch repair <br />" +
-        "• Start at Crafting guild or Ferox Enclave lobby <br />" +
-        "• Check the Dramen staff if you need to use one<br />"
+        "• Start at Crafting guild or Ferox Enclave lobby <br />"
 
 )
 public interface BloodsConfig extends Config {
@@ -36,9 +35,3 @@ public interface BloodsConfig extends Config {
         return false;
     }
 }
-
-/* To do:
-        breakhandler lock to only unlock in bank or while in altar and essence remains
-        state determination
-
- */

@@ -1,9 +1,6 @@
 package net.runelite.client.plugins.microbot.frosty.bloods;
 
-import net.runelite.api.Client;
-import net.runelite.api.GameObject;
-import net.runelite.api.Skill;
-import net.runelite.api.Varbits;
+import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -50,6 +47,9 @@ public class BloodsScript extends Script {
     private BloodsConfig config;
     @Inject
     private Client client;
+    @Inject
+    private ClientThread clientThread;
+    private int lumbyElite = -1;
     public boolean run() {
         Microbot.enableAutoRunOn = false;
         Rs2Antiban.resetAntibanSettings();
@@ -64,6 +64,13 @@ public class BloodsScript extends Script {
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
                 long startTime = System.currentTimeMillis();
+
+                if (lumbyElite == -1) {
+                    clientThread.invoke(() -> {
+                        lumbyElite = Microbot.getClient().getVarbitValue(Varbits.DIARY_LUMBRIDGE_ELITE);
+                    });
+                    return;
+                }
 
                 if (Rs2Inventory.anyPouchUnknown()) {
                     checkPouches();
@@ -124,6 +131,7 @@ public class BloodsScript extends Script {
 
     private void handleBanking() {
         Rs2Tab.switchToInventoryTab();
+
         if (Rs2Inventory.hasDegradedPouch()) {
             Rs2Magic.repairPouchesWithLunar();
             sleepGaussian(900, 200);
@@ -165,8 +173,6 @@ public class BloodsScript extends Script {
             sleepGaussian(700, 200);
         }
 
-        checkLumbyDiary();
-
         if (config.usePoh()) {
             boolean hasConstructionCape = Rs2Inventory.contains(HomeTeleports.CONSTRUCTION_CAPE.getItemIds());
             if (!hasConstructionCape) {
@@ -197,8 +203,13 @@ public class BloodsScript extends Script {
         if (!Rs2Equipment.isWearing("Ring of dueling")) {
             Rs2Bank.withdrawAndEquip(2552);
             sleepUntil(() -> Rs2Equipment.isWearing("Ring of duelling"));
-        } else {
-            Microbot.log("No RoD found");
+        }
+
+        if (lumbyElite != 1) {
+            if (!Rs2Inventory.contains(772)) {
+                Rs2Bank.withdrawAndEquip(772);
+                sleepUntil(() -> Rs2Equipment.isWearing(772));
+            }
         }
 
         if (!Rs2Inventory.contains(26392)) {
@@ -228,7 +239,7 @@ public class BloodsScript extends Script {
     }
 
     private void handleFeroxRunEnergy() {
-        if (Rs2Player.getRunEnergy() < 40) {
+        if (Rs2Player.getRunEnergy() < 45) {
             Microbot.log("We are thirsty...let us Drink");
             Rs2Walker.walkTo(3129, 3636, 0);
             Rs2GameObject.interact(39651, "Drink");
@@ -262,7 +273,7 @@ public class BloodsScript extends Script {
         sleepGaussian(1500, 200);
 
         Microbot.log("..Calling walker");
-        Rs2Walker.walkTo(3559, 9782, 0);
+        Rs2Walker.walkTo(3555, 9783, 0);
         state = State.CRAFTING;
     }
 
@@ -382,7 +393,7 @@ public class BloodsScript extends Script {
                 Microbot.log("Using " + homeTeleport.getName());
                 Rs2Inventory.interact(itemId, homeTeleport.getInteraction());
                 sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 7769 && !Rs2Player.isAnimating());
-                sleepGaussian(900, 200);
+                sleepGaussian(1500, 200);
                 break;
             }
         }
@@ -407,16 +418,6 @@ public class BloodsScript extends Script {
         state = State.WALKING_TO;
     }
 
-    public void checkLumbyDiary() {
-        Microbot.getClientThread().invoke(() ->  {
-            int lumbyElite = Microbot.getClient().getVarbitValue(Varbits.DIARY_LUMBRIDGE_ELITE);
-            if (lumbyElite != 1) {Rs2Bank.withdrawAndEquip(772);
-                sleepGaussian(1100, 200);
-            } else {
-                Microbot.log("No Dramen staff found");
-            }
-        });
-    }
 }
 
 
