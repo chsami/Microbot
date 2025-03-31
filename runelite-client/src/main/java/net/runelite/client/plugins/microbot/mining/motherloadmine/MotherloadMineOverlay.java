@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.mining.motherloadmine;
 
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.ui.overlay.OverlayPanel;
@@ -14,7 +15,7 @@ import static net.runelite.client.plugins.microbot.mining.motherloadmine.Motherl
 
 
 public class MotherloadMineOverlay extends OverlayPanel {
-    MotherloadMinePlugin _plugin;
+    private MotherloadMinePlugin _plugin;
 
     @Inject
     MotherloadMineOverlay(MotherloadMinePlugin plugin)
@@ -22,46 +23,46 @@ public class MotherloadMineOverlay extends OverlayPanel {
         super(plugin);
         _plugin = plugin;
         setPosition(OverlayPosition.BOTTOM_LEFT);
-        setSnappable(true);
         setNaughty();
     }
 
     @Override
     public Dimension render(Graphics2D graphics) {
         try {
+            panelComponent.setPreferredSize(new Dimension(225, 200));
 
-            panelComponent.setPreferredSize(new Dimension(100, 200));
             panelComponent.getChildren().add(TitleComponent.builder()
-                    .text("[ Motherlode Mine ]"")
+                    .text("[ Motherlode Mine ]")
                     .color(Color.ORANGE)
                     .build());
 
             addEmptyLine();
 
             panelComponent.getChildren().add(LineComponent.builder()
-                .left("Version: "))
+                .left("Version: ")
                 .right(MotherloadMineScript.VERSION)
                 .build());
 
             addEmptyLine();
 
             panelComponent.getChildren().add(LineComponent.builder()
-                .left("Run Time: "))
-                .right(_plugin.getRunTime())
+                .left("Run Time: ")
+                .right(_plugin.getTimeRunning())
                 .build());
 
             addEmptyLine();
 
 
             panelComponent.getChildren().add(LineComponent.builder()
-                    .left("Mining Location: " + MotherloadMineScript.miningSpot.name())
+                    .left("Mining Location: ")
+                    .right(MotherloadMineScript.miningSpot.name())
                     .build());
 
             addEmptyLine();
 
             panelComponent.getChildren().add(LineComponent.builder()
-                .left("Status: "))
-                .right(Microbot.status)
+                .left("Status: ")
+                    .right(MotherloadMineScript.status.name())
                 .build());
         } catch(Exception ex) {
             System.out.println(ex.getMessage());
