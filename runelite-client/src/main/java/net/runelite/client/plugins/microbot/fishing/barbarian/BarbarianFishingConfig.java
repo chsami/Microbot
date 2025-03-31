@@ -44,4 +44,14 @@ public interface BarbarianFishingConfig extends Config {
         return InteractOrder.STANDARD;
     }
 
+    @ConfigItem(
+            keyName = "harpoonSpec",
+            name = "Harpoon spec",
+            description = "Use dragon harpoon spec?",
+            position = 2,
+            section = generalSection
+    )
+    default boolean useSpec() {
+        return false;
+    }
 }
