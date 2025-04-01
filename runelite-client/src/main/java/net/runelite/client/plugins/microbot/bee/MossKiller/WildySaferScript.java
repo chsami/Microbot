@@ -118,7 +118,6 @@ public class WildySaferScript extends Script {
                 }
 
                 if (isAtSafeSpot() && move) {
-                    System.out.println("getting here buddy what the crack");
                     walkFastCanvas(SAFESPOT1);
                     sleep(900,1400);
                     Rs2Npc.interact(MOSS_GIANT_2093,"attack");
@@ -306,21 +305,18 @@ public class WildySaferScript extends Script {
                         }
                     }
                 }
-            }
 
-            // Handle bones separately if enabled
-            if (config.buryBones() && !Rs2Inventory.isFull()) {
-                for (RS2Item item : items) {
-                    if (item.getItem().getId() == BIG_BONES) {
-                        Rs2GroundItem.loot(BIG_BONES);
-                        sleep(1000, 3000);
-                        break;
+                // Handle bones separately if enabled
+                if (config.buryBones() && !Rs2Inventory.isFull()) {
+                        if (item.getItem().getId() == BIG_BONES) {
+                            Rs2GroundItem.loot(BIG_BONES);
+                            sleep(1000, 3000);
+                            break;
+                        }
                     }
                 }
             }
-
         }
-    }
 
     private boolean desired2093Exists() {
         Stream<Rs2NpcModel> mossGiantsStream = getNpcs(MOSS_GIANT_2093);
