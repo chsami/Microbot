@@ -22,7 +22,8 @@ public class RuneMysteries extends BaseQuest {
         QuestStep questStep = getQuestHelperPlugin().getSelectedQuest().getCurrentStep().getActiveStep();
         try {
             var objectStep = (ObjectStep) questStep;
-            if (objectStep.getRequirements() != null && objectStep.getRequirements().stream().findFirst().orElse(null) instanceof ItemRequirement) {
+            if (objectStep.getRequirements() != null && objectStep.getRequirements().stream().findFirst().orElse(null) instanceof ItemRequirement
+            && ((ItemRequirement) objectStep.getRequirements().stream().findFirst().get()).getId() == ItemID.AIR_TALISMAN) {
                 if (!Rs2Inventory.hasItem(ItemID.AIR_TALISMAN)) {
                     if (Rs2Dialogue.hasSelectAnOption()) {
                         Rs2Dialogue.keyPressForDialogueOption("What did you want me to do again?");
