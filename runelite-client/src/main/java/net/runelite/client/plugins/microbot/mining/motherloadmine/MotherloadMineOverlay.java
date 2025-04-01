@@ -1,8 +1,5 @@
 package net.runelite.client.plugins.microbot.mining.motherloadmine;
 
-import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
-import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
@@ -11,7 +8,6 @@ import net.runelite.client.ui.overlay.components.TitleComponent;
 import javax.inject.Inject;
 import java.awt.*;
 
-import static net.runelite.client.plugins.microbot.mining.motherloadmine.MotherloadMineScript.status;
 
 
 public class MotherloadMineOverlay extends OverlayPanel {
