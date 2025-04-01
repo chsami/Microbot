@@ -43,5 +43,4 @@ public interface BarbarianFishingConfig extends Config {
     default InteractOrder dropOrder() {
         return InteractOrder.STANDARD;
     }
-
 }
