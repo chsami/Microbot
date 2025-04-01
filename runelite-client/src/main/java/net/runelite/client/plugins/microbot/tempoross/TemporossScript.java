@@ -726,7 +726,7 @@ public class TemporossScript extends Script {
                         return;
                     }
                     // get interacting name ran on clientThread
-                    // String iteractingName = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getLocalPlayer().getInteracting().getName());
+                    // String iteractingName = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getLocalPlayer().getInteracting().getName());
 
 
 //                        if (Objects.equals(Microbot.getClient().getLocalPlayer().getInteracting().getName(), ammoCrate.getName())) {

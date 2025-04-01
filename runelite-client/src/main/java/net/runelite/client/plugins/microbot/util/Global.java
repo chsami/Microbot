@@ -152,7 +152,8 @@ public class Global {
         long startTime = System.currentTimeMillis();
         try {
             do {
-                done = Microbot.getClientThread().runOnClientThread(awaitedCondition::getAsBoolean);
+                done = Microbot.getClientThread().runOnClientThreadOptional(awaitedCondition::getAsBoolean)
+                        .orElse(false);
             } while (!done && System.currentTimeMillis() - startTime < time);
         } catch (Exception e) {
             Thread.currentThread().interrupt();

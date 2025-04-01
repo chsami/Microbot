@@ -224,7 +224,10 @@ public class PestControlScript extends Script {
         if (!Microbot.getClient().getLocalPlayer().isInteracting()) {
             Rs2NpcModel npcPortal = Rs2Npc.getNpc("portal");
             if (npcPortal == null) return false;
-            NPCComposition npc = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getNpcDefinition(npcPortal.getId()));
+            NPCComposition npc = Microbot.getClientThread().runOnClientThreadOptional(() ->
+                    Microbot.getClient().getNpcDefinition(npcPortal.getId())).orElse(null);
+            if (npc == null) return false;
+
             if (Arrays.stream(npc.getActions()).anyMatch(x -> x != null && x.equalsIgnoreCase("attack"))) {
                 return Rs2Npc.interact(npcPortal, "attack");
             } else {

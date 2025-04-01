@@ -157,10 +157,10 @@ public class Rs2Gembag {
         }
         if (itemId == -1) return null;
 
-        return Microbot.getClientThread().runOnClientThread(() -> {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             ItemComposition itemComposition = Microbot.getClient().getItemDefinition(itemId);
             return new Rs2ItemModel(new Item(itemId, 0), itemComposition, getGemSlot(gemName));
-        });
+        }).orElse(null);
     }
 
     private static int getGemSlot(String gemName) {

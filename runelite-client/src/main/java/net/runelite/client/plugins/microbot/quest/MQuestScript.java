@@ -129,7 +129,8 @@ public class MQuestScript extends Script {
                     questLogic.executeCustomLogic();
                 }
 
-                if (getQuestHelperPlugin().getSelectedQuest() != null && !Microbot.getClientThread().runOnClientThread(() -> getQuestHelperPlugin().getSelectedQuest().isCompleted())) {
+                if (getQuestHelperPlugin().getSelectedQuest() != null && !Microbot.getClientThread().runOnClientThreadOptional(() ->
+                        getQuestHelperPlugin().getSelectedQuest().isCompleted()).orElse(null)) {
                     if (Rs2Widget.isWidgetVisible(ComponentID.DIALOG_OPTION_OPTIONS) && getQuestHelperPlugin().getSelectedQuest().getQuest().getId() != Quest.COOKS_ASSISTANT.getId() && !Rs2Bank.isOpen()) {
                         boolean hasOption = Rs2Dialogue.handleQuestOptionDialogueSelection();
                         //if there is no quest option in the dialogue, just click player location to remove
@@ -423,7 +424,8 @@ public class MQuestScript extends Script {
     }
 
     private String chooseCorrectObjectOption(QuestStep step, TileObject object) {
-        ObjectComposition objComp = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getObjectDefinition(object.getId()));
+        ObjectComposition objComp = Microbot.getClientThread().runOnClientThreadOptional(() ->
+                Microbot.getClient().getObjectDefinition(object.getId())).orElse(null);
 
         if (objComp == null)
             return "";
@@ -444,7 +446,8 @@ public class MQuestScript extends Script {
     }
 
     private String chooseCorrectNPCOption(QuestStep step, NPC npc) {
-        var npcComp = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getNpcDefinition(npc.getId()));
+        var npcComp = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getNpcDefinition(npc.getId()))
+                .orElse(null);
 
         if (npcComp == null)
             return "Talk-to";

@@ -292,10 +292,10 @@ public class Rs2Magic {
     private static void alch(Widget alch, Rs2ItemModel item, int sleepMin, int sleepMax) {
         if (alch == null) return;
         Point point = new Point((int) alch.getBounds().getCenterX(), (int) alch.getBounds().getCenterY());
-        sleepUntil(() -> Microbot.getClientThread().runOnClientThread(() -> Rs2Tab.getCurrentTab() == InterfaceTab.MAGIC), 5000);
+        sleepUntil(() -> Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2Tab.getCurrentTab() == InterfaceTab.MAGIC).orElse(false), 5000);
         sleep(sleepMin, sleepMax);
         Microbot.getMouse().click(point);
-        sleepUntil(() -> Microbot.getClientThread().runOnClientThread(() -> Rs2Tab.getCurrentTab() == InterfaceTab.INVENTORY), 5000);
+        sleepUntil(() -> Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2Tab.getCurrentTab() == InterfaceTab.INVENTORY).orElse(false), 5000);
         sleep(sleepMin, sleepMax);
         if (item == null) {
             Microbot.status = "Alching x: " + point.getX() + " y: " + point.getY();
@@ -309,10 +309,10 @@ public class Rs2Magic {
     private static void superHeat(Widget superheat, Rs2ItemModel item, int sleepMin, int sleepMax) {
         if (superheat == null) return;
         Point point = new Point((int) superheat.getBounds().getCenterX(), (int) superheat.getBounds().getCenterY());
-        sleepUntil(() -> Microbot.getClientThread().runOnClientThread(() -> Rs2Tab.getCurrentTab() == InterfaceTab.MAGIC), 5000);
+        sleepUntil(() -> Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2Tab.getCurrentTab() == InterfaceTab.MAGIC).orElse(false), 5000);
         sleep(sleepMin, sleepMax);
         Microbot.getMouse().click(point);
-        sleepUntil(() -> Microbot.getClientThread().runOnClientThread(() -> Rs2Tab.getCurrentTab() == InterfaceTab.INVENTORY), 5000);
+        sleepUntil(() -> Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2Tab.getCurrentTab() == InterfaceTab.INVENTORY).orElse(false), 5000);
         sleep(sleepMin, sleepMax);
         if (item == null) {
             Microbot.status = "Superheating x: " + point.getX() + " y: " + point.getY();

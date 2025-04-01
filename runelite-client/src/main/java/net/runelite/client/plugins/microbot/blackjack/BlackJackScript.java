@@ -3,10 +3,10 @@ package net.runelite.client.plugins.microbot.blackjack;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.blackjack.enums.Area;
-import net.runelite.client.plugins.microbot.blackjack.enums.State;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.blackjack.enums.Area;
+import net.runelite.client.plugins.microbot.blackjack.enums.State;
 import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
@@ -26,9 +26,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static net.runelite.client.plugins.microbot.blackjack.enums.State.*;
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
 import static net.runelite.client.plugins.microbot.util.math.Random.random;
 import static net.runelite.client.plugins.microbot.util.walker.Rs2Walker.getTile;
 
@@ -348,12 +348,12 @@ public class BlackJackScript extends Script {
                                 }
                                 npcIsTrapped=false;
                                 state = TRAP_NPC;
-                                npc = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getNpcs().stream()
+                                npc = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getNpcs().stream()
                                         .filter(x -> x != null && x.getName() != null && !x.isDead()
                                         && Objects.requireNonNull(x.getName()).contains(config.THUGS().displayName)
                                         && x.getCombatLevel()==config.THUGS().thugLevel)
                                         .sorted(Comparator.comparingInt(value -> value.getLocalLocation()
-                                        .distanceTo(new LocalPoint(3337,2950,0))))).findFirst().get();
+                                        .distanceTo(new LocalPoint(3337,2950,0))))).orElse(Stream.empty()).findFirst().get();
                                 return;
                             } else {
                                 if(npcsInArea.size()>1){

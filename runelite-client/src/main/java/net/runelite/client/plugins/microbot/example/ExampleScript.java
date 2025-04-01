@@ -37,7 +37,7 @@ public class ExampleScript extends Script {
 
 
 
-          //      Microbot.getClientThread().runOnClientThread(() ->  { System.out.println(Microbot.getClient().getLocalPlayer().getInteracting().getName()); return null;});
+          //      Microbot.getClientThread().runOnClientThreadOptional(() ->  { System.out.println(Microbot.getClient().getLocalPlayer().getInteracting().getName()); return null;});
 
                 //System.out.println(Microbot.getClient().getLocalPlayer().getInteracting().getName());
 //               System.out.println(Microbot.getClient().getLocalPlayer().getInteracting() == actor);

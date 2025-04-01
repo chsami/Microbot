@@ -131,7 +131,7 @@ public class Rs2Reflection {
         }
 
         doAction.setAccessible(true);
-        Microbot.getClientThread().runOnClientThread(() -> doAction.invoke(null, param0, param1, opcode, identifier, itemId, option, target, x, y));
+        Microbot.getClientThread().runOnClientThreadOptional(() -> doAction.invoke(null, param0, param1, opcode, identifier, itemId, option, target, x, y));
         if (Microbot.getClient().getKeyboardIdleTicks() > Rs2Random.between(5000, 10000)) {
             Rs2Keyboard.keyPress(KeyEvent.VK_BACK_SPACE);
         }

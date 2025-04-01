@@ -65,8 +65,9 @@ public class Rs2UiHelper {
         }
 
 
-        Shape clickbox = Microbot.getClientThread().runOnClientThread(() -> Perspective.getClickbox(Microbot.getClient(), actor.getModel(), actor.getCurrentOrientation(), lp.getX(), lp.getY(),
-                Perspective.getTileHeight(Microbot.getClient(), lp, actor.getWorldLocation().getPlane())));
+        Shape clickbox = Microbot.getClientThread().runOnClientThreadOptional(() -> Perspective.getClickbox(Microbot.getClient(), actor.getModel(), actor.getCurrentOrientation(), lp.getX(), lp.getY(),
+                Perspective.getTileHeight(Microbot.getClient(), lp, actor.getWorldLocation().getPlane())))
+                .orElse(null);
 
         if (clickbox == null) return new Rectangle(1, 1);  //return a small rectangle if clickbox is null
         
@@ -77,7 +78,7 @@ public class Rs2UiHelper {
     public static Rectangle getObjectClickbox(TileObject object) {
 
         if (object == null) return new Rectangle(1, 1);  //return a small rectangle if object is null
-        Shape clickbox = Microbot.getClientThread().runOnClientThread(object::getClickbox);
+        Shape clickbox = Microbot.getClientThread().runOnClientThreadOptional(object::getClickbox).orElse(null);
         if (clickbox == null) return new Rectangle(1, 1);  //return a small rectangle if clickbox is null
         if (clickbox.getBounds() == null) return new Rectangle(1, 1);
 

@@ -26,12 +26,12 @@ public class ActorModel implements Actor {
 
     @Override
     public int getCombatLevel() {
-        return Microbot.getClientThread().runOnClientThread(actor::getCombatLevel);
+        return Microbot.getClientThread().runOnClientThreadOptional(actor::getCombatLevel).orElse(0);
     }
 
     @Override
     public @Nullable String getName() {
-        return Microbot.getClientThread().runOnClientThread(actor::getName);
+        return Microbot.getClientThread().runOnClientThreadOptional(actor::getName).orElse(null);
     }
 
     @Override

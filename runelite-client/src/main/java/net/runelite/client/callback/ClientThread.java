@@ -32,6 +32,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 
 import javax.inject.Singleton;
 import java.util.Iterator;
+import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.function.BooleanSupplier;
 
@@ -57,7 +58,14 @@ public class ClientThread
 		});
 	}
 
+	/**
+	 * Run a method on the client thread, returning the result.
+	 * @param method
+	 * @return
+	 * @param <T>
+	 */
 	@SneakyThrows
+	@Deprecated(since = "1.7.9", forRemoval = true)
 	public <T> T runOnClientThread(Callable<T> method) {
 		if (Microbot.getClient().isClientThread()) {
 			return method.call();
@@ -66,15 +74,54 @@ public class ClientThread
 		invoke(task);
 		try {
 			return task.get(10000, TimeUnit.MILLISECONDS);
-		} catch (TimeoutException e) {
-			// Handle timeout, e.g., log an error or throw a custom exception
+		} catch (InterruptedException | TimeoutException | ExecutionException e) {
+			if (e instanceof InterruptedException) {
+				Thread.currentThread().interrupt();
+			}
 			if (!Microbot.isDebug()) {
-				Microbot.log("Failed to run a method on the client thread with message " + e.getMessage());
+				Microbot.log("Exception during task execution: " + e.getClass().getSimpleName() + ": " + e.getMessage());
 			}
 			return null;
 		}
 	}
 
+	/**
+	 * Run a method on the client thread, returning an optional of the result.
+	 * @param method
+	 * @return
+	 * @param <T>
+	 */
+	@SneakyThrows
+	public <T> Optional<T> runOnClientThreadOptional(Callable<T> method) {
+		if (Microbot.getClient().isClientThread()) {
+			try {
+				return Optional.ofNullable(method.call());
+			} catch (Exception e) {
+				if (!Microbot.isDebug()) {
+					Microbot.log("Exception in client thread execution: " + e.getMessage());
+				}
+				return Optional.empty();
+			}
+		}
+		final FutureTask<T> task = new FutureTask<>(method);
+		invoke(task);
+		try {
+			return Optional.ofNullable(task.get(10000, TimeUnit.MILLISECONDS));
+		} catch (InterruptedException | TimeoutException | ExecutionException e) {
+			if (e instanceof InterruptedException) {
+				Thread.currentThread().interrupt();
+			}
+			if (!Microbot.isDebug()) {
+				Microbot.log("Exception during task execution: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+			}
+			return Optional.empty();
+		}
+	}
+
+	/**
+	 * Run a method on the client thread, returning the result.
+	 * @param method
+	 */
 	@SneakyThrows
 	public void runOnSeperateThread(Callable method) {
 		if (scheduledFuture != null && !scheduledFuture.isDone()) return;

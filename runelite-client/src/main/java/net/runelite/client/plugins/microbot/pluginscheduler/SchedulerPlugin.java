@@ -186,7 +186,7 @@ public class SchedulerPlugin extends Plugin {
         }
 
         if (!Microbot.isLoggedIn()) {
-            Microbot.getClientThread().runOnClientThread(Login::new);
+            Microbot.getClientThread().runOnClientThreadOptional(Login::new);
         }
         updatePanels();
     }

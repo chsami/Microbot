@@ -313,12 +313,14 @@ public class NmzScript extends Script {
 
     public void consumeEmptyVial() {
         final int EMPTY_VIAL = 26291;
-        if (Microbot.getClientThread().runOnClientThread(() -> Rs2Widget.getWidget(129, 6) == null || Rs2Widget.getWidget(129, 6).isHidden())) {
+        if (Microbot.getClientThread().runOnClientThreadOptional(() ->
+                Rs2Widget.getWidget(129, 6) == null || Rs2Widget.getWidget(129, 6).isHidden())
+                .orElse(false)) {
             Rs2GameObject.interact(EMPTY_VIAL, "drink");
         }
         sleep(2000,4000);
         Widget widget = Rs2Widget.getWidget(129, 6);
-        if (!Microbot.getClientThread().runOnClientThread(widget::isHidden)) {
+        if (!Microbot.getClientThread().runOnClientThreadOptional(widget::isHidden).orElse(false)) {
             Rs2Widget.clickWidget(widget.getId());
             sleep(300);
             Rs2Widget.clickWidget(widget.getId());

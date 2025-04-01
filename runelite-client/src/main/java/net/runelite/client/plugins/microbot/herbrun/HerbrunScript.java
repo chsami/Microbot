@@ -111,7 +111,7 @@ public class HerbrunScript extends Script {
     private void populateHerbPatches() {
         this.farmingHandler = new FarmingHandler(Microbot.getClient(), configManager);
         herbPatches.clear();
-        clientThread.runOnClientThread(() -> {
+        clientThread.runOnClientThreadOptional(() -> {
             for (FarmingPatch patch : farmingWorld.getTabs().get(Tab.HERB)) {
                 HerbPatch _patch = new HerbPatch(patch, config, farmingHandler);
                 if (_patch.getPrediction() != CropState.GROWING && _patch.isEnabled()) herbPatches.add(_patch);

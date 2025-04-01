@@ -128,7 +128,8 @@ public class Rs2GameObject {
 
     @Deprecated(since = "Use findObjectById", forRemoval = true)
     public static ObjectComposition findObject(int id) {
-        return Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getObjectDefinition(id));
+        return Microbot.getClientThread().runOnClientThreadOptional(() ->
+                Microbot.getClient().getObjectDefinition(id)).orElse(null);
     }
 
     public static boolean exists(int id) {
@@ -815,11 +816,14 @@ public static GameObject findReachableObject(String objectName, boolean exact, i
     }
 
     public static ObjectComposition convertGameObjectToObjectComposition(TileObject tileObject) {
-        return Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getObjectDefinition(tileObject.getId()));
+        return Microbot.getClientThread().runOnClientThreadOptional(() ->
+                Microbot.getClient().getObjectDefinition(tileObject.getId()))
+                .orElse(null);
     }
 
     public static ObjectComposition convertGameObjectToObjectComposition(int objectId) {
-        return Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getObjectDefinition(objectId));
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getObjectDefinition(objectId))
+                .orElse(null);
     }
 
     public static WallObject findDoor(int id) {
@@ -1349,7 +1353,9 @@ public static GameObject findReachableObject(String objectName, boolean exact, i
 
     @Nullable
     public static ObjectComposition getObjectComposition(int id) {
-        ObjectComposition objectComposition = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getObjectDefinition(id));
+        ObjectComposition objectComposition = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getObjectDefinition(id))
+                .orElse(null);
+        if (objectComposition == null) return null;
         return objectComposition.getImpostorIds() == null ? objectComposition : objectComposition.getImpostor();
     }
 

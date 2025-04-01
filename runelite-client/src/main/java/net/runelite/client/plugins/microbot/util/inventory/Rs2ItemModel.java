@@ -53,9 +53,12 @@ public class Rs2ItemModel {
         this.slot = slot;
         this.isStackable = itemComposition.isStackable();
         this.isNoted = itemComposition.getNote() == 799;
-        this.isTradeable = this.isNoted
-                ? Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getItemDefinition(this.id - 1)).isTradeable()
-                : itemComposition.isTradeable();
+        if (this.isNoted) {
+            Microbot.getClientThread().runOnClientThreadOptional(() ->
+                    Microbot.getClient().getItemDefinition(this.id - 1)).ifPresent(itemDefinition -> this.isTradeable = itemDefinition.isTradeable());
+        } else {
+            itemComposition.isTradeable();
+        }
         this.inventoryActions = itemComposition.getInventoryActions();
         this.itemComposition = itemComposition;
         addEquipmentActions(itemComposition);
@@ -83,8 +86,8 @@ public class Rs2ItemModel {
     }
 
     public int getPrice() {
-        return Microbot.getClientThread().runOnClientThread(() ->
-                Microbot.getItemManager().getItemPrice(id) * quantity);
+        return Microbot.getClientThread().runOnClientThreadOptional(() ->
+                Microbot.getItemManager().getItemPrice(id) * quantity).orElse(0);
     }
 
     public int getHaPrice() {
@@ -92,8 +95,8 @@ public class Rs2ItemModel {
     }
 
     public boolean isHaProfitable() {
-        int natureRunePrice = Microbot.getClientThread().runOnClientThread(() ->
-                Microbot.getItemManager().getItemPrice(ItemID.NATURE_RUNE));
+        int natureRunePrice = Microbot.getClientThread().runOnClientThreadOptional(() ->
+                Microbot.getItemManager().getItemPrice(ItemID.NATURE_RUNE)).orElse(0);
         return (getHaPrice() - natureRunePrice) > (getPrice()/quantity) && isTradeable;
 
     }

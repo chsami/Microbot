@@ -257,7 +257,7 @@ public class BankTabSorterScript extends Script {
     }
 
     private boolean arePlaceholdersEnabled() {
-        return Microbot.getClientThread().runOnClientThread(() -> {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             // Get the placeholder button widget
             Widget placeholderButton = client.getWidget(786472);
 
@@ -270,6 +270,6 @@ public class BankTabSorterScript extends Script {
             // Check the sprite ID - when enabled/selected it should be 1356
             // If it's 1357, it's not selected
             return placeholderButton.getSpriteId() == 179;
-        });
+        }).orElse(false);
     }
 }

@@ -248,7 +248,7 @@ public class FarmTreeRunScript extends Script {
                         botStatus = FINISHED;
                         break;
                     case FINISHED:
-                        Microbot.getClientThread().runOnClientThread(() -> {
+                        Microbot.getClientThread().runOnClientThreadOptional(() -> {
                                     Microbot.getClient().addChatMessage(ChatMessageType.ENGINE, "", "Tree run completed.", "Acun", false);
                                     Microbot.getClient().addChatMessage(ChatMessageType.ENGINE, "", "Made with love by Acun.", "Acun", false);
                                     return null;
@@ -435,7 +435,7 @@ public class FarmTreeRunScript extends Script {
 
     private void checkIfPlayerHasItem(FarmingItem item) {
         if (!Rs2Bank.hasItem(new int[]{item.getItemId()}, item.getQuantity()) && !item.isOptional()) {
-            Microbot.showMessage("Not enough items: " + Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getItemDefinition(item.getItemId()).getName()) + ". " +
+            Microbot.showMessage("Not enough items: " + Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getItemDefinition(item.getItemId()).getName()) + ". " +
                     "Need " + item.getQuantity() + ". Shut down.");
             shutdown();
         }

@@ -73,8 +73,8 @@ public class Rs2GrandExchange {
      * @return
      */
     public static boolean isOpen() {
-        return !Microbot.getClientThread().runOnClientThread(() -> Rs2Widget.getWidget(ComponentID.GRAND_EXCHANGE_WINDOW_CONTAINER) == null
-                || Rs2Widget.getWidget(ComponentID.GRAND_EXCHANGE_WINDOW_CONTAINER).isHidden());
+        return !Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2Widget.getWidget(ComponentID.GRAND_EXCHANGE_WINDOW_CONTAINER) == null
+                || Rs2Widget.getWidget(ComponentID.GRAND_EXCHANGE_WINDOW_CONTAINER).isHidden()).orElse(false);
     }
 
     /**
