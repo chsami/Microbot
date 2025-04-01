@@ -126,7 +126,9 @@ public class MQuestScript extends Script {
                  */
                 var questLogic = QuestRegistry.getQuest(getQuestHelperPlugin().getSelectedQuest().getQuest().getId());
                 if (questLogic != null) {
-                    questLogic.executeCustomLogic();
+                    if (!questLogic.executeCustomLogic()) {
+                        return;
+                    }
                 }
 
                 if (getQuestHelperPlugin().getSelectedQuest() != null && !Microbot.getClientThread().runOnClientThreadOptional(() ->

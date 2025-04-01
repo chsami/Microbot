@@ -63,6 +63,9 @@ public class RuneMysteries extends BaseQuest {
                     }
                     return false;
                 }
+            } else if (Rs2Dialogue.hasDialogueOption("Anything useful in that package I gave you?")) {
+                Rs2Dialogue.keyPressForDialogueOption("Anything useful in that package I gave you?");
+                return false;
             }
         } catch (Exception ex) {
             //ignore error
