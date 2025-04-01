@@ -228,6 +228,11 @@ public class GithubPanel extends PluginPanel {
     private void downloadAll() {
         if (!isRepoSelected()) return;
 
+        if (listModel.isEmpty()) {
+            showMessageDialog(this, "No files to download.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
         if (folderField.getText().isEmpty() && GithubDownloader.isLargeRepo(repoDropdown.getSelectedItem().toString(), tokenField.getText())) {
             int choice = JOptionPane.showConfirmDialog(this,
                     String.format("⚠ The repository is over 50MB.\nAre you sure you want to continue?"),
@@ -308,6 +313,13 @@ public class GithubPanel extends PluginPanel {
      */
     @SneakyThrows
     private void downloadSelected() {
+        if (!isRepoSelected()) return;
+
+        if (listModel.isEmpty()) {
+            showMessageDialog(this, "No files to download.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
         List<FileInfo> selectedFileInfoList = fileList.getSelectedValuesList();
         for (FileInfo fileInfo : selectedFileInfoList) {
             GithubDownloader.downloadFile(fileInfo.getUrl());
@@ -332,6 +344,9 @@ public class GithubPanel extends PluginPanel {
                     String downloadUrl = obj.getString("download_url");
                     listModel.addElement(new FileInfo(fileName, downloadUrl));
                 }
+            }
+            if (listModel.isEmpty()) {
+                showMessageDialog(this, "No jar files found in repository.", "Error", JOptionPane.ERROR_MESSAGE);
             }
         } catch (JSONException ex) {
             // show dialog box with message failed
