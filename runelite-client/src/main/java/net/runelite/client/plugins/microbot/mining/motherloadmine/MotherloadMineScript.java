@@ -22,6 +22,7 @@ import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
@@ -96,6 +97,10 @@ public class MotherloadMineScript extends Script {
                 }
             }
 
+            if (Rs2Player.getWorldLocation().getRegionID() == MLM_REGION_ID &&
+                hasRequiredTools())
+                status = MLMStatus.IDLE;
+
             WorldPoint dwarfMineEntrace = new WorldPoint(3061, 3377, 0);
 
             if (!Rs2Player.isInCave() && Rs2Player.getWorldLocation().getRegionID() != DWARF_MINE_REGION_ID && Rs2Player.getWorldLocation().getRegionID() != MLM_REGION_ID) {
@@ -131,17 +136,16 @@ public class MotherloadMineScript extends Script {
             }
 
             // in mlm
-            if (Rs2Player.getWorldLocation().getRegionID() == MLM_REGION_ID && Rs2Walker.canReach(BankLocation.MOTHERLOAD.getWorldPoint())) {
-                bankItems();
-                return;
-            }
-
-            Microbot.log("Walking to Motherload mine centre");
-            if (!walkAndTrack(new WorldPoint(3759, 5664, 0))) {
+            if (Rs2Player.getWorldLocation().getRegionID() == MLM_REGION_ID) {
                 if (!hasRequiredTools())
-                    bankItems();
-                Rs2Antiban.actionCooldown();
-                Rs2Antiban.takeMicroBreakByChance();
+                    Microbot.log("Walking to Motherload mine centre");
+                    if (walkAndTrack(new WorldPoint(3759, 5664, 0))) {
+                        bankItems();
+                }
+                status = MLMStatus.IDLE;
+            } else {
+                Microbot.showMessage("Unable to initialise in Motherload Mine");
+                return;
             }
 
             mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> { executeTask(); }
@@ -172,13 +176,13 @@ public class MotherloadMineScript extends Script {
                     shutdown();
                 }
                 status = MLMStatus.IDLE;
-                break;
             case MINING:
                 if (Rs2Antiban.isMining())
                     Rs2Antiban.setActivityIntensity(ActivityIntensity.VERY_LOW);
-                else
+                else {
                     Rs2Antiban.setActivityIntensity(ActivityIntensity.HIGH);
-                handleMining();
+                    handleMining();
+                }
                 break;
             case EMPTY_SACK:
                 Rs2Antiban.setActivityIntensity(ActivityIntensity.EXTREME);
@@ -198,6 +202,7 @@ public class MotherloadMineScript extends Script {
 
     private void getPickaxe(boolean equip) {
         Rs2Bank.openBank();
+
         sleepUntil(() -> Rs2Bank.isOpen(), 18000);
         List<Integer> picks = Rs2Bank.getItems().stream()
             .filter((i) -> i.getName().contains("pickaxe"))
@@ -248,10 +253,6 @@ public class MotherloadMineScript extends Script {
                 } else {
                     status = MLMStatus.DEPOSIT_HOPPER;
                 }
-                if (Rs2Inventory.contains(ItemID.UNCUT_SAPPHIRE,
-                ItemID.UNCUT_EMERALD, ItemID.UNCUT_RUBY, ItemID.UNCUT_DIAMOND,
-                ItemID.UNCUT_DRAGONSTONE))
-                    status = MLMStatus.BANKING;
             } else {
                 status = MLMStatus.BANKING;
             }
@@ -264,9 +265,9 @@ public class MotherloadMineScript extends Script {
 
     private boolean hasRequiredTools() {
         boolean hasHammer = Rs2Inventory.hasItem("hammer");
-        boolean hasPickaxe = !config.pickAxeInInventory() || Rs2Inventory.hasItem(pickaxeName)
-                || Rs2Equipment.isEquipped("pickaxe", EquipmentInventorySlot.WEAPON, false);
-
+        boolean hasPickaxe = config.pickAxeInInventory() ?
+            Rs2Inventory.hasItem("pickaxe") :
+            Rs2Equipment.isEquipped("pickaxe", EquipmentInventorySlot.WEAPON, false);
         return hasHammer && hasPickaxe;
     }
 
@@ -342,6 +343,13 @@ public class MotherloadMineScript extends Script {
             if (Microbot.getVarbitValue(Varbits.SACK_NUMBER) > maxSackSize - 28) {
                 shouldEmptySack = true;
             }
+            if (Rs2Inventory.contains(ItemID.UNCUT_SAPPHIRE,
+                ItemID.UNCUT_EMERALD, ItemID.UNCUT_RUBY, ItemID.UNCUT_DIAMOND,
+                ItemID.UNCUT_DRAGONSTONE)) {
+                if (isUpperFloor())
+                    goDown();
+                bankItems();
+            }
         } else {
             walkAndTrack(hopperDeposit);
         }
@@ -352,7 +360,15 @@ public class MotherloadMineScript extends Script {
         Rs2Camera.turnTo(localPoint);
         if (Rs2Bank.useBank()) {
             sleepUntil(Rs2Bank::isOpen);
-            Rs2Bank.depositAllExcept("hammer", pickaxeName);
+            List<Integer> invPicks = Rs2Inventory.items().stream()
+            .filter((i) -> i.toString().contains("pickaxe"))
+            .map((w) -> w.getId())
+            .collect(Collectors.toList());
+            if (config.pickAxeInInventory() && invPicks.isEmpty()) {
+                Rs2Bank.depositAllExcept("hammer");
+            } else if (config.pickAxeInInventory() && !invPicks.isEmpty()) {
+                Rs2Bank.depositAllExcept("hammer", getBestPickaxe(invPicks).toString());
+            }
             Rs2Inventory.waitForInventoryChanges(500);
 
             if (!Rs2Inventory.hasItem("hammer")) {
@@ -363,7 +379,7 @@ public class MotherloadMineScript extends Script {
                 Rs2Bank.withdrawOne("hammer", true);
             }
 
-            if (config.pickAxeInInventory() && !Rs2Inventory.hasItem("pickaxe")) {
+            if (config.pickAxeInInventory() && invPicks.isEmpty()) {
                 List<Integer> picks = Rs2Bank.getItems().stream()
                     .filter((i) -> i.getName().contains("pickaxe"))
                     .map((w) -> w.getItemId())
@@ -384,7 +400,7 @@ public class MotherloadMineScript extends Script {
     private boolean walkAndTrack(WorldPoint location) {
         LocalPoint locationPoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), location);
         Rs2Camera.turnTo(locationPoint) ;
-        Microbot.getClient().setCameraYawTarget(Rs2Camera.calculateCameraYaw(Rs2Camera.angleToTile(locationPoint)));
+        // Microbot.getClient().setCameraYawTarget(Rs2Camera.calculateCameraYaw(Rs2Camera.angleToTile(locationPoint)));
 
         return Rs2Walker.walkTo(location);
     }
@@ -416,12 +432,13 @@ public class MotherloadMineScript extends Script {
             return;
         }
 
-        Microbot.getClient().setCameraYawTarget(Rs2Camera.calculateCameraYaw(Rs2Camera.angleToTile(vein.getLocalLocation())));
+        // Microbot.getClient().setCameraYawTarget(Rs2Camera.calculateCameraYaw(Rs2Camera.angleToTile(vein.getLocalLocation())));
         Rs2Camera.turnTo(vein.getLocalLocation());
         if (Rs2GameObject.interact(vein)) {
             oreVein = vein;
-            sleepUntil(() -> !Rs2Antiban.isMining(), 5000);
-            oreVein = null;
+            sleepUntil(Rs2Player::isAnimating, 5000);
+            if (!Rs2Player.isAnimating())
+                oreVein = null;
         }
     }
 
@@ -466,8 +483,8 @@ public class MotherloadMineScript extends Script {
     }
 
     private void repositionCameraAndMove() {
-        Rs2Camera.resetPitch();
-        Rs2Camera.resetZoom();
+        // Rs2Camera.resetPitch();
+        // Rs2Camera.resetZoom();
         walkAndTrack(miningSpot.getWorldPoint().get(0));
     }
 
