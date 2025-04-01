@@ -158,11 +158,6 @@ public class GithubPanel extends PluginPanel {
         downloadAllButton.addActionListener(e -> downloadAll());
         openMicrobotSideLoadPluginFolder.addActionListener(e -> openMicrobotSideLoadingFolder());
 
-
-        // Empty cell to align button
-
-        // Button Action
-
     }
 
     /**
