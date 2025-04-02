@@ -7,6 +7,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Point;
 import net.runelite.api.*;
+import net.runelite.api.annotations.Component;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.Notifier;
@@ -42,20 +43,22 @@ import net.runelite.client.ui.overlay.worldmap.WorldMapOverlay;
 import net.runelite.client.ui.overlay.worldmap.WorldMapPointManager;
 import net.runelite.client.util.WorldUtil;
 import net.runelite.http.api.worlds.World;
-import net.runelite.api.annotations.Component;
 import org.slf4j.event.Level;
 
 import javax.inject.Inject;
-import javax.swing.*;
 import javax.swing.Timer;
+import javax.swing.*;
 import java.awt.*;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -162,6 +165,23 @@ public class Microbot {
     public static HashMap<String, Integer> scriptRuntimes = new HashMap<>();
 
     public static boolean loggedIn = false;
+
+    @Setter
+    public static Instant loginTime;
+
+    /**
+     * Get the total runtime of the script
+     * @return
+     */
+    public static Duration getLoginTime()
+    {
+        if (loginTime == null)
+        {
+            return Duration.of(0, ChronoUnit.MILLIS);
+        }
+
+        return Duration.between(loginTime, Instant.now());
+    }
 
     /**
      * Checking the Report button will ensure that we are logged in, as there seems to be a small moment in time

@@ -44,6 +44,7 @@ import javax.inject.Inject;
 import javax.swing.*;
 import java.awt.*;
 import java.lang.reflect.InvocationTargetException;
+import java.time.Instant;
 
 @PluginDescriptor(
         name = PluginDescriptor.Default + "Microbot",
@@ -161,6 +162,9 @@ public class MicrobotPlugin extends Plugin {
 
     @Subscribe
     public void onGameStateChanged(GameStateChanged gameStateChanged) {
+        if (gameStateChanged.getGameState() == GameState.LOGGED_IN) {
+            Microbot.setLoginTime(Instant.now());
+        }
         if (gameStateChanged.getGameState() == GameState.HOPPING || gameStateChanged.getGameState() == GameState.LOGIN_SCREEN || gameStateChanged.getGameState() == GameState.CONNECTION_LOST) {
             if (Rs2Bank.bankItems != null) {
                 Rs2Bank.bankItems.clear();
