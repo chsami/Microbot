@@ -241,9 +241,12 @@ public class MotherloadMineScript extends Script {
     private void determineStatusFromInventory() {
         updateSackSize();
         if (!hasRequiredTools()) {
-            bankItems();
+            withdrawEssentials();
             return;
         }
+
+        if (Rs2Inventory.isFull())
+            status = MLMStatus.BANKING;
 
         int sackCount = Microbot.getVarbitValue(Varbits.SACK_NUMBER);
         if (sackCount > maxSackSize || (shouldEmptySack && !Rs2Inventory.contains(ItemID.PAYDIRT))) {
@@ -251,13 +254,10 @@ public class MotherloadMineScript extends Script {
             status = MLMStatus.EMPTY_SACK;
         } else if (!Rs2Inventory.isFull()) {
             status = MLMStatus.MINING;
-        } else // Inventory is full
-        {
+        } else {
             resetMiningState();
-            if (Rs2Inventory.hasItem(ItemID.PAYDIRT))
-            {
-                if (Rs2GameObject.getGameObjects(ObjectID.BROKEN_STRUT).size() > 1 && Rs2Inventory.hasItem("hammer"))
-                {
+            if (Rs2Inventory.hasItem(ItemID.PAYDIRT)) {
+                if (Rs2GameObject.getGameObjects(ObjectID.BROKEN_STRUT).size() > 1 && Rs2Inventory.hasItem("hammer")) {
                     status = MLMStatus.FIXING_WATERWHEEL;
                 } else {
                     status = MLMStatus.DEPOSIT_HOPPER;
@@ -265,10 +265,6 @@ public class MotherloadMineScript extends Script {
             } else {
                 status = MLMStatus.BANKING;
             }
-        }
-
-        if (hasOreInInventory() && Rs2Inventory.isFull()) {
-            status = MLMStatus.BANKING;
         }
     }
 
@@ -304,17 +300,12 @@ public class MotherloadMineScript extends Script {
 
     private void emptySack() {
         ensureLowerFloor();
-
         while (Microbot.getVarbitValue(Varbits.SACK_NUMBER) > 0) {
-            if (Rs2Inventory.size() <= 2) {
-                Rs2GameObject.interact(SACK_ID);
-                sleepUntil(this::hasOreInInventory);
-            }
-            if (hasOreInInventory()) {
-                bankItems();
-            }
+            Rs2GameObject.interact(SACK_ID);
+            sleepUntil(this::hasOreInInventory);
+            if (hasOreInInventory() || Rs2Inventory.contains((u) -> u.toString().contains("uncut")))
+                depositNonEssentials(true);
         }
-
         shouldEmptySack = false;
         Rs2Antiban.takeMicroBreakByChance();
         status = MLMStatus.IDLE;
@@ -352,44 +343,59 @@ public class MotherloadMineScript extends Script {
         if (isUpperFloor() && !config.upstairsHopperUnlocked())
             ensureLowerFloor();
 
+        if (Rs2Inventory.contains((x) -> x.name.toLowerCase().contains("uncut"))) {
+            depositNonEssentials(true);
+        }
+
         int sackDelta = Rs2Inventory.count(ItemID.PAYDIRT);
         if (Rs2GameObject.interact(hopper)) {
             sleepUntil(() -> !Rs2Inventory.contains(ItemID.PAYDIRT), 5000);
             if (Microbot.getVarbitValue(Varbits.SACK_NUMBER) > maxSackSize - sackDelta)
                 shouldEmptySack = true;
         }
+        Rs2Antiban.actionCooldown();
+    }
 
-        if (Rs2Inventory.contains((x) -> x.name.toLowerCase().contains("uncut"))) {
-            if (isUpperFloor())
-                goDown();
-            Rs2Bank.walkToBankAndUseBank(BankLocation.MOTHERLOAD);
-            Rs2Player.waitForWalking(5000);
-            sleepUntil(() -> Rs2Bank.isOpen(), 5000);
-            Rs2Bank.depositAll((x) -> x.name.toLowerCase().contains("uncut"));
-            Rs2Inventory.waitForInventoryChanges(5000);
-            Rs2Bank.closeBank();
+    private void depositNonEssentials(boolean close) {
+        if (!Rs2Bank.isOpen()) {
+            if (isUpperFloor()) {
+                ensureLowerFloor();
+            }
+            walkAndTrack(BankLocation.MOTHERLOAD.getWorldPoint());
+            if (Rs2Bank.useBank())
+                sleepUntil(Rs2Bank::isOpen);
         }
+        if (pickaxeName.isBlank())
+            pickaxeName = "pickaxe";
+        Rs2Bank.depositAllExcept("hammer", pickaxeName, "pay-dirt");
+        Rs2Inventory.waitForInventoryChanges(500);
+        if (close)
+            Rs2Bank.closeBank();
+        Rs2Antiban.actionCooldown();
+    }
+
+    private void withdrawEssentials() {
+        if (!Rs2Bank.isOpen()) {
+            if (isUpperFloor()) {
+                ensureLowerFloor();
+            }
+            walkAndTrack(BankLocation.MOTHERLOAD.getWorldPoint());
+            if (Rs2Bank.useBank())
+                sleepUntil(Rs2Bank::isOpen);
+        }
+        if (!Rs2Inventory.hasItem("hammer")) {
+            if (!Rs2Bank.hasBankItem("hammer")) {
+                Microbot.showMessage("No hammer found in the bank.");
+                shutdown();
+            }
+            Rs2Bank.withdrawOne("hammer", true);
+        }
+        getPickaxe(!this.config.pickAxeInInventory());
     }
 
     private void bankItems() {
-        LocalPoint localPoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), new WorldPoint(3759, 5664, 0));
-        Rs2Camera.turnTo(localPoint);
-        if (isUpperFloor())
-            ensureLowerFloor();
-        if (Rs2Bank.useBank()) {
-            sleepUntil(Rs2Bank::isOpen);
-            Rs2Bank.depositAllExcept("hammer", pickaxeName, "pay-dirt");
-            Rs2Inventory.waitForInventoryChanges(500);
-            if (!Rs2Inventory.hasItem("hammer")) {
-                if (!Rs2Bank.hasBankItem("hammer")) {
-                    Microbot.showMessage("No hammer found in the bank.");
-                    shutdown();
-                }
-                Rs2Bank.withdrawOne("hammer", true);
-            }
-
-            getPickaxe(!this.config.pickAxeInInventory());
-        }
+        depositNonEssentials(false);
+        withdrawEssentials();
         status = MLMStatus.IDLE;
     }
 
