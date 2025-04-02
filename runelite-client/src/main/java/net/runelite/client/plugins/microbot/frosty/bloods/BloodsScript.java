@@ -255,28 +255,21 @@ public class BloodsScript extends Script {
 
     private void handleWalking() {
         Microbot.log("Walking to ruins");
-        sleepGaussian(900, 200);
         WorldPoint currentLocation = Rs2Player.getWorldLocation();
         Microbot.log("Current location after waiting: " + currentLocation);
         if (currentLocation.equals(new WorldPoint(3447, 9824, 0))) {
             sleepGaussian(900, 200);
             Rs2GameObject.interact(16308, "Enter");
+            sleepUntil(() -> Rs2Player.getWorldLocation().equals(new WorldPoint(3460, 9813, 0)), 1200);
+            sleepGaussian(900, 200);
         }
-        if (currentLocation.equals(new WorldPoint(3460, 9813, 0))) {
-            Microbot.log("Going to second cave");
-            sleepGaussian(1100, 200);
-            Rs2GameObject.interact(5046, "Enter");
-        }
-        if (currentLocation.equals(new WorldPoint(3481, 9824, 0))) {
-            Microbot.log("Entering third cave");
-            Rs2GameObject.interact(12770, "Enter");
-        }
-        if (currentLocation.equals(new WorldPoint(3491, 9876, 0))) {
-            sleepGaussian(1100, 200);
-            Microbot.log("..Calling walker");
-            Rs2Walker.walkTo(3555, 9783, 0);
-            state = State.CRAFTING;
-        }
+
+        Microbot.log("Calling walker");
+        sleepGaussian(1100, 200);
+        Rs2Walker.walkTo(3555, 9783, 0);
+        sleepUntil(() -> Rs2Player.getWorldLocation().equals(new WorldPoint(3555, 9783, 0)), 1200);
+
+        state = State.CRAFTING;
     }
 
     private void handleCrafting() {
@@ -394,7 +387,7 @@ public class BloodsScript extends Script {
             if (Rs2Inventory.contains(itemId)) {
                 Microbot.log("Using " + homeTeleport.getName());
                 Rs2Inventory.interact(itemId, homeTeleport.getInteraction());
-                sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 7769 || !Rs2Player.isAnimating()) ;
+                sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 7769 || !Rs2Player.isAnimating());
                 sleepGaussian(1500, 200);
                 break;
             }
