@@ -22,7 +22,7 @@ public enum MLMPickaxes {
     CRYSTAL_PICKAXE("crystal pickaxe", ItemID.CRYSTAL_PICKAXE, 71, 70);
 
     private final String itemName;
-    private final int itemID;
+    private final int itemId;
     private final int miningLevel;
     private final int attackLevel;
 
