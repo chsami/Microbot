@@ -31,7 +31,10 @@ public abstract class Rs2Tile implements Tile {
 
     private static ScheduledExecutorService tileExecutor;
 
-
+    /**
+     * Initializes the tile executor
+     * This will handle the removal of dangerous tiles after a certain amount of time
+     */
     public static void init() {
         if (tileExecutor == null) {
             tileExecutor = Executors.newSingleThreadScheduledExecutor();
@@ -46,7 +49,11 @@ public abstract class Rs2Tile implements Tile {
         }
     }
 
-
+    /**
+     * Adds a dangerous tile to the list of dangerous tiles
+     * @param graphicsObject the graphics object
+     * @param time the time a tile is dangerous in milliseconds
+     */
     public static void addDangerousGraphicsObjectTile(GraphicsObject graphicsObject, int time) {
         WorldPoint worldPoint;
 
