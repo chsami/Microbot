@@ -265,7 +265,7 @@ public class TemporossScript extends Script {
     private void fetchMissingItems()
     {
         // 1) Harpoon
-        if (!hasHarpoon())
+        if (!hasHarpoon() && harpoonType != HarpoonType.BAREHAND)
         {
             harpoonType = HarpoonType.HARPOON;
             log("Missing selected harpoon, setting to default harpoon");
