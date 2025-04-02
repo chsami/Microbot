@@ -9,6 +9,7 @@ import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.awt.event.KeyEvent;
+import java.util.Arrays;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleep;
 
@@ -182,24 +183,16 @@ public class Rs2Tab {
     }
 
     private static int getLogoutWidgetId() {
-        /* Widget Ids - These may change during Runelite updates */
-        final int FIXED_CLASSIC_DISPLAY__FIXED_VIEWPORT_OPTIONS_TAB = 35913778;
-        final int RESIZABLE_CLASSIC_DISPLAY__RESIZABLE_VIEWPORT_LOGOUT_ICON = 10551342;
-
-        try {
-            if (Rs2Widget.getWidget(FIXED_CLASSIC_DISPLAY__FIXED_VIEWPORT_OPTIONS_TAB) != null) {
-                return FIXED_CLASSIC_DISPLAY__FIXED_VIEWPORT_OPTIONS_TAB;
-            } else if (Rs2Widget.getWidget(RESIZABLE_CLASSIC_DISPLAY__RESIZABLE_VIEWPORT_LOGOUT_ICON) != null) {
-                return RESIZABLE_CLASSIC_DISPLAY__RESIZABLE_VIEWPORT_LOGOUT_ICON;
-            } else {
-                Microbot.showMessage("Logout for modern layout is not supported!");
-            }
-        } catch (Exception ex) {
-            // Rs2Widget.getWidget returns null if the game isn't finished loading
-            ex.printStackTrace();
-        }
-
-        return 0;
+        return Arrays.stream(new int[]{
+                        35913778, // Fixed Classic Display
+                        10551342, // Resizable Classic Display
+                        10747938  // Resizable Modern Display
+                }).filter(id -> Rs2Widget.getWidget(id) != null)
+                .findFirst()
+                .orElseGet(() -> {
+                    Microbot.showMessage("Unable to find logout button widget!");
+                    return 0;
+                });
     }
 
     private static int getKeyBind(int value, InterfaceTab tab) {
