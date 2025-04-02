@@ -14,6 +14,7 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.player.Rs2Pvp;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
@@ -361,12 +362,11 @@ public class PathfinderConfig {
     }
 
     public static boolean isInWilderness(WorldPoint p) {
-        return WILDERNESS_ABOVE_GROUND.distanceTo(p) == 0 || WILDERNESS_UNDERGROUND.distanceTo(p) == 0;
+        return Rs2Pvp.getWildernessLevelFrom(p) > 0;
     }
 
     public boolean isInWilderness(int packedPoint) {
-        return WorldPointUtil.distanceToArea(packedPoint, WILDERNESS_ABOVE_GROUND) == 0
-                || WorldPointUtil.distanceToArea(packedPoint, WILDERNESS_UNDERGROUND) == 0;
+        return Rs2Pvp.getWildernessLevelFrom(WorldPointUtil.unpackWorldPoint(packedPoint)) > 0;
     }
 
     public boolean avoidWilderness(int packedPosition, int packedNeightborPosition, boolean targetInWilderness) {
@@ -375,14 +375,11 @@ public class PathfinderConfig {
     }
 
     public boolean isInLevel19Wilderness(int packedPoint) {
-        return WorldPointUtil.distanceToArea(packedPoint, WILDERNESS_ABOVE_GROUND_LEVEL_19) == 0
-                || WorldPointUtil.distanceToArea(packedPoint, WILDERNESS_UNDERGROUND_LEVEL_19) == 0;
+        return Rs2Pvp.getWildernessLevelFrom(WorldPointUtil.unpackWorldPoint(packedPoint)) >= 19;
     }
 
     public boolean isInLevel29Wilderness(int packedPoint){
-        return WorldPointUtil.distanceToArea(packedPoint, WILDERNESS_ABOVE_GROUND_LEVEL_29) == 0
-                || WorldPointUtil.distanceToArea(packedPoint, WILDERNESS_UNDERGROUND_LEVEL_29) == 0;
-
+        return Rs2Pvp.getWildernessLevelFrom(WorldPointUtil.unpackWorldPoint(packedPoint)) >= 29;
     }
 
     private boolean completedQuests(Transport transport) {

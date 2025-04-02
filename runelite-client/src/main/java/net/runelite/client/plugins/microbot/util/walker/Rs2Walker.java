@@ -1380,7 +1380,13 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
         }
         // Handle Brimhaven Dungeon Stepping Stones
         if (tileObject.getId() == ObjectID.STEPPING_STONE_21738 || tileObject.getId() == ObjectID.STEPPING_STONE_21739) {
-            Rs2Player.waitForAnimation(4200);
+            Rs2Player.waitForAnimation(600 * 7);
+            return true;
+        }
+        
+        // Handle Morte Myre Cave Agility Shortcut
+        if (tileObject.getId() == ObjectID.CAVE_ENTRANCE_16308) {
+            Rs2Player.waitForAnimation((600 * 4 ) + 300);
             return true;
         }
         return false;
