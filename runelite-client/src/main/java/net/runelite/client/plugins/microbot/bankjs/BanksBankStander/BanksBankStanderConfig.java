@@ -60,7 +60,7 @@ public interface BanksBankStanderConfig extends Config {
     )
 
     default String firstItemIdentifier() {
-        return "Knife";
+        return "946";
     }
 
     @ConfigItem(
@@ -88,7 +88,7 @@ public interface BanksBankStanderConfig extends Config {
     )
 
     default String secondItemIdentifier() {
-        return "Logs";
+        return "1511";
     }
 
     @ConfigItem(
