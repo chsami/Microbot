@@ -206,7 +206,12 @@ public class BloodsScript extends Script {
         }
 
         if (lumbyElite != 1) {
-            if (!Rs2Inventory.contains(772)) {
+            if (!Rs2Equipment.isWearing(9084)) {
+                Microbot.log("Looking for and withdrawing lunar staff");
+                Rs2Bank.withdrawAndEquip(9084);
+                sleepUntil(() -> Rs2Equipment.isWearing(9084));
+            }else if (!Rs2Equipment.isWearing(9084) && !Rs2Bank.hasItem(9084)) {
+                Microbot.log("No lunar staff found, withdrawing dramen staff");
                 Rs2Bank.withdrawAndEquip(772);
                 sleepUntil(() -> Rs2Equipment.isWearing(772));
             }
@@ -250,31 +255,28 @@ public class BloodsScript extends Script {
 
     private void handleWalking() {
         Microbot.log("Walking to ruins");
-        if (!Rs2GameObject.interact(16308, "Enter")) {
-            Microbot.log("Failed to find first cave");
-        } else {
-            Microbot.log("Entering first cave");
+        sleepGaussian(900, 200);
+        WorldPoint currentLocation = Rs2Player.getWorldLocation();
+        Microbot.log("Current location after waiting: " + currentLocation);
+        if (currentLocation.equals(new WorldPoint(3447, 9824, 0))) {
+            sleepGaussian(900, 200);
+            Rs2GameObject.interact(16308, "Enter");
         }
-        sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 13977 && !Rs2Player.isAnimating());
-        sleepGaussian(1500, 200);
-
-        //These caves are so strange, this is the way to prevent walker from starting in first loop
-
-        Rs2GameObject.interact(5046, "Enter");
-        Microbot.log("Entering second cave");
-        sleepGaussian(1700, 200);
-        sleepUntil(() -> !Rs2Player.isMoving() && !Rs2Player.isAnimating() && !Rs2Player.isInteracting());
-        sleepGaussian(1900, 200);
-
-        Rs2GameObject.interact(12770, "Enter");
-        Microbot.log("Entering third cave...");
-        sleepUntil(() -> !Rs2Player.isInteracting() && !Rs2Player.isMoving() && !Rs2Player.isAnimating(900)
-                && Rs2Player.getWorldLocation().getRegionID() == 13978);
-        sleepGaussian(1500, 200);
-
-        Microbot.log("..Calling walker");
-        Rs2Walker.walkTo(3555, 9783, 0);
-        state = State.CRAFTING;
+        if (currentLocation.equals(new WorldPoint(3460, 9813, 0))) {
+            Microbot.log("Going to second cave");
+            sleepGaussian(1100, 200);
+            Rs2GameObject.interact(5046, "Enter");
+        }
+        if (currentLocation.equals(new WorldPoint(3481, 9824, 0))) {
+            Microbot.log("Entering third cave");
+            Rs2GameObject.interact(12770, "Enter");
+        }
+        if (currentLocation.equals(new WorldPoint(3491, 9876, 0))) {
+            sleepGaussian(1100, 200);
+            Microbot.log("..Calling walker");
+            Rs2Walker.walkTo(3555, 9783, 0);
+            state = State.CRAFTING;
+        }
     }
 
     private void handleCrafting() {
@@ -392,7 +394,7 @@ public class BloodsScript extends Script {
             if (Rs2Inventory.contains(itemId)) {
                 Microbot.log("Using " + homeTeleport.getName());
                 Rs2Inventory.interact(itemId, homeTeleport.getInteraction());
-                sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 7769 && !Rs2Player.isAnimating());
+                sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 7769 || !Rs2Player.isAnimating()) ;
                 sleepGaussian(1500, 200);
                 break;
             }
@@ -407,6 +409,7 @@ public class BloodsScript extends Script {
                         sleepUntil(() -> !Rs2Player.isInteracting() && Rs2Player.getRunEnergy() > 90);
                     });
         }
+
         Microbot.log("Interacting with the fairies");
         Rs2GameObject.interact(27097, "Ring-last-destination (DLS)");
         sleepGaussian(1300, 200);
@@ -415,9 +418,9 @@ public class BloodsScript extends Script {
         sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving()
                 && Rs2Player.getWorldLocation() != null
                 && Rs2Player.getWorldLocation().getRegionID() == 13721, 1200);
+        sleepUntil(() -> Rs2Player.getWorldLocation().equals(new WorldPoint(3447, 9824, 0)), 1200);
         state = State.WALKING_TO;
     }
-
 }
 
 
