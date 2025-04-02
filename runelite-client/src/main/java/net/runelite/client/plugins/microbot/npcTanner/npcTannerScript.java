@@ -140,8 +140,13 @@ public class npcTannerScript extends Script {
                 while(!Rs2Inventory.contains(whattotan)||!Rs2Inventory.contains("Coins")){
                     // We always do coin first
                     if(Rs2Inventory.contains(product)){
-                        Rs2Bank.depositAll();
-                        sleep(500,1000);
+                        if(generateRandomNumber(0,100)<75){
+                            Rs2Bank.depositAll(product);
+                            sleep(500,1000);
+                        } else {
+                            Rs2Bank.depositAll();
+                            sleep(500,1000);
+                        }
                     }
                     if(!Rs2Inventory.contains("Coins")||Rs2Inventory.count("Coins")<=1000){
                         Rs2Bank.withdrawAll("Coins");
