@@ -49,6 +49,7 @@ public class DemonicGorillaScript extends Script {
     // Behind rope in the entrance of the cave
     private static final WorldPoint SAFE_LOCATION = new WorldPoint(2465, 3494, 0);
     public static final int FENCE_ID = 28807;
+    public static final int CAVE_ID = 28686;
     public static int killCount = 0;
     public static int currentTripKillCount = 0;
     public static Rs2PrayerEnum currentDefensivePrayer = null;
@@ -157,7 +158,7 @@ public class DemonicGorillaScript extends Script {
                     Microbot.status = "Walking to the cave entrance";
                     Rs2Walker.walkTo(caveLocation);
                     sleepUntil(() -> Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(caveLocation) <= 5);
-                    interacted = Rs2GameObject.interact(FENCE_ID, "Enter");
+                    interacted = Rs2GameObject.interact(CAVE_ID, "Enter");
                     if (interacted) {
                         Rs2Player.waitForAnimation();
                         sleepUntil(() -> !Rs2Player.isAnimating());
