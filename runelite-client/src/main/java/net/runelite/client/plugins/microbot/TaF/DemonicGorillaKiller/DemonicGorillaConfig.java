@@ -58,7 +58,7 @@ public interface DemonicGorillaConfig extends Config {
     @ConfigItem(
             keyName = "enableSpecialAttacks",
             name = "Enable Automatical special attacks",
-            description = "Toggle to enable or disable automatic special attacks during combat",
+            description = "Toggle to enable or disable automatic special attacks during combat - Assumes 50% special energy for weapon",
             section = demonicGorillaSection,
             position = 3
     )
@@ -96,7 +96,7 @@ public interface DemonicGorillaConfig extends Config {
             position = 0
     )
     default int minEatPercent() {
-        return 50;
+        return 65;
     }
 
     @ConfigItem(
@@ -118,7 +118,7 @@ public interface DemonicGorillaConfig extends Config {
             position = 2
     )
     default int healthThreshold() {
-        return 30;
+        return 70;
     }
 
     @ConfigItem(
@@ -155,7 +155,7 @@ public interface DemonicGorillaConfig extends Config {
             max = 100
     )
     default int boostedStatsThreshold() {
-        return 10;
+        return 5;
     }
 
     @ConfigItem(
@@ -177,7 +177,7 @@ public interface DemonicGorillaConfig extends Config {
             position = 1
     )
     default boolean useRangeStyle() {
-        return true;
+        return false;
     }
 
     @ConfigItem(
@@ -188,7 +188,7 @@ public interface DemonicGorillaConfig extends Config {
             position = 2
     )
     default String rangeGear() {
-        return "Toxic Blowpipe,Ava's Accumulator";
+        return "";
     }
 
     @ConfigItem(
@@ -210,7 +210,7 @@ public interface DemonicGorillaConfig extends Config {
             position = 4
     )
     default String magicGear() {
-        return " ";
+        return "";
     }
 
     @ConfigItem(
@@ -221,7 +221,7 @@ public interface DemonicGorillaConfig extends Config {
             position = 5
     )
     default boolean useMeleeStyle() {
-        return true;
+        return false;
     }
 
     @ConfigItem(
@@ -232,7 +232,7 @@ public interface DemonicGorillaConfig extends Config {
             position = 6
     )
     default String meleeGear() {
-        return "Osmumten's fang,Avernic defender,Fire cape";
+        return "";
     }
 
     @Getter
