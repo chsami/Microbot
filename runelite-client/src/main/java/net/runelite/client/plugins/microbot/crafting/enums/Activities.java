@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum Activities {
     NONE(" "),
-//    DEFAULT("Default Script"),
+    DEFAULT("Default Script"),
     GEM_CUTTING("Cutting Gems"),
     GLASSBLOWING("Glassblowing"),
     STAFF_MAKING("Staff Making"),

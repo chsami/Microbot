@@ -12,6 +12,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.crafting.enums.Activities;
 import net.runelite.client.plugins.microbot.crafting.scripts.*;
+import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.mouse.VirtualMouse;
 import net.runelite.client.ui.overlay.OverlayManager;
 
@@ -32,6 +33,7 @@ public class CraftingPlugin extends Plugin {
     private final GlassblowingScript glassblowingScript = new GlassblowingScript();
     private final StaffScript staffScript = new StaffScript();
     private final FlaxSpinScript flaxSpinScript = new FlaxSpinScript();
+
     @Inject
     private CraftingConfig config;
     @Inject
@@ -57,13 +59,14 @@ public class CraftingPlugin extends Plugin {
         Microbot.setClientThread(clientThread);
         Microbot.setNotifier(notifier);
         Microbot.setMouse(new VirtualMouse());
+        Rs2AntibanSettings.actionCooldownActive = true;
         if (overlayManager != null) {
             overlayManager.add(craftingOverlay);
         }
 
-//        if (config.activityType() == Activities.DEFAULT) {
-
-        if (config.activityType() == Activities.GEM_CUTTING) {
+        if (config.activityType() == Activities.DEFAULT) {
+            defaultScript.run(config);
+        } else if (config.activityType() == Activities.GEM_CUTTING) {
             gemsScript.run(config);
         } else if (config.activityType() == Activities.GLASSBLOWING) {
             glassblowingScript.run(config);
