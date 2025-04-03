@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.example;
+package net.runelite.client.plugins.microbot.bee.chaosaltar;
 
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
@@ -7,47 +7,45 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.plugins.microbot.MicrobotApi;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
 import java.awt.*;
 
 @PluginDescriptor(
-        name = PluginDescriptor.Default + "Example",
-        description = "Microbot example plugin",
-        tags = {"example", "microbot"},
+        name = PluginDescriptor.Bee + "Chaos Altar",
+        description = "Automates bone offering at the Chaos Altar",
+        tags = {"prayer", "bones", "altar"},
         enabledByDefault = false
 )
 @Slf4j
-public class ExamplePlugin extends Plugin {
+public class ChaosAltarPlugin extends Plugin {
     @Inject
-    private ExampleConfig config;
+    private ChaosAltarScript chaosAltarScript;
+    @Inject
+    private ChaosAltarConfig config;
     @Provides
-    ExampleConfig provideConfig(ConfigManager configManager) {
-        return configManager.getConfig(ExampleConfig.class);
+    ChaosAltarConfig provideConfig(ConfigManager configManager) {
+        return configManager.getConfig(ChaosAltarConfig.class);
     }
 
     @Inject
     private OverlayManager overlayManager;
     @Inject
-    private ExampleOverlay exampleOverlay;
-
-    @Inject
-    ExampleScript exampleScript;
+    ChaosAltarOverlay chaosAltarOverlay;
 
 
     @Override
     protected void startUp() throws AWTException {
         if (overlayManager != null) {
-            overlayManager.add(exampleOverlay);
+            overlayManager.add(chaosAltarOverlay);
         }
-        exampleScript.run(config);
+        chaosAltarScript.run(config);
     }
 
     protected void shutDown() {
-        exampleScript.shutdown();
-        overlayManager.remove(exampleOverlay);
+        chaosAltarScript.shutdown();
+        overlayManager.remove(chaosAltarOverlay);
     }
     int ticks = 10;
     @Subscribe
