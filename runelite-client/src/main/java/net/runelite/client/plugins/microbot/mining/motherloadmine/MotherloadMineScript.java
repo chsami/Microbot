@@ -322,14 +322,16 @@ public class MotherloadMineScript extends Script {
     }
 
     private void fixWaterwheel() {
-        ensureLowerFloor();
-        if (walkAndTrack(new WorldPoint(3741, 5666, 0))) {
-            Microbot.isGainingExp = false;
-            if (Rs2GameObject.interact(ObjectID.BROKEN_STRUT)) {
-                sleepUntil(
-                    () -> Microbot.isGainingExp ||
-                    Rs2GameObject.getGameObjects().stream().noneMatch(obj -> obj.getId() == ObjectID.BROKEN_STRUT),
-                5000);
+        if (shouldEmptySack) {
+            ensureLowerFloor();
+            if (walkAndTrack(new WorldPoint(3741, 5666, 0))) {
+                Microbot.isGainingExp = false;
+                if (Rs2GameObject.interact(ObjectID.BROKEN_STRUT)) {
+                    sleepUntil(
+                        () -> Microbot.isGainingExp ||
+                        Rs2GameObject.getGameObjects().stream().noneMatch(obj -> obj.getId() == ObjectID.BROKEN_STRUT),
+                    5000);
+                }
             }
         }
     }
