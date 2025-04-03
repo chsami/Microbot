@@ -2,7 +2,10 @@ package net.runelite.client.plugins.microbot.TaF.DemonicGorillaKiller;
 
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.*;
+import net.runelite.api.InventoryID;
+import net.runelite.api.Item;
+import net.runelite.api.ItemComposition;
+import net.runelite.api.Projectile;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ProjectileMoved;
@@ -12,7 +15,6 @@ import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.containers.FixedSizeQueue;
 import net.runelite.client.plugins.microbot.util.misc.TimeUtils;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -36,6 +38,7 @@ import java.util.concurrent.ScheduledExecutorService;
 public class DemonicGorillaPlugin extends Plugin {
 
     public static final int DEMONIC_GORILLA_ROCK = 856;
+    public static FixedSizeQueue<WorldPoint> lastLocation = new FixedSizeQueue<>(2);
     private ScheduledExecutorService scheduledExecutorService;
     @Inject
     private ConfigManager configManager;
@@ -43,13 +46,10 @@ public class DemonicGorillaPlugin extends Plugin {
     private DemonicGorillaConfig config;
     @Inject
     private OverlayManager overlayManager;
-
     @Inject
     private DemonicGorillaOverlay demonicGorillaOverlay;
-
     @Inject
     private DemonicGorillaScript demonicGorillaScript;
-
     private Instant scriptStartTime;
 
     @Provides
@@ -125,7 +125,6 @@ public class DemonicGorillaPlugin extends Plugin {
         }
     }
 
-    public static FixedSizeQueue<WorldPoint> lastLocation = new FixedSizeQueue<>(2);
     @Subscribe
     public void onGameTick(GameTick gameTick) {
         var currentLocation = Rs2Player.getWorldLocation();

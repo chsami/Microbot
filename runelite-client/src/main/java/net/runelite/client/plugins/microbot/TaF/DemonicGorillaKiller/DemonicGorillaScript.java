@@ -6,7 +6,6 @@ import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
-import net.runelite.client.plugins.microbot.TaF.TzhaarVenatorBow.TzHaarVenatorBowConfig;
 import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
@@ -18,8 +17,6 @@ import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.grounditem.LootingParameters;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
-import net.runelite.client.plugins.microbot.util.misc.Rs2Food;
 import net.runelite.client.plugins.microbot.util.models.RS2Item;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
@@ -29,7 +26,6 @@ import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
 import net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
-import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.time.Instant;
@@ -52,6 +48,7 @@ public class DemonicGorillaScript extends Script {
 
     // Behind rope in the entrance of the cave
     private static final WorldPoint SAFE_LOCATION = new WorldPoint(2465, 3494, 0);
+    public static final int FENCE_ID = 28807;
     public static int killCount = 0;
     public static int currentTripKillCount = 0;
     public static Rs2PrayerEnum currentDefensivePrayer = null;
@@ -65,21 +62,20 @@ public class DemonicGorillaScript extends Script {
     public static int lastAttackAnimation = 0;
     public static int gameTickCount = 0;
     public static boolean playerMoved;
+    public static ArmorEquiped currentGear = ArmorEquiped.MELEE;
+    public static int TotalLootValue;
     public LocalPoint demonicGorillaRockPosition = null;
     public int demonicGorillaRockLifeCycle = -1;
-    private boolean isRunning = false;
     private Rs2PrayerEnum currentOffensivePrayer = null;
     private HeadIcon currentOverheadIcon = null;
     private String lastChatMessage = "";
     private BankingStep bankingStep = BankingStep.BANK;
     private Instant outOfCombatTime = Instant.now();
-    private WorldPoint lastLocation = new WorldPoint(0, 0, 0);
     // In some cases, the player may be stuck out of combat with an invalid target
     private int failedCount = 0;
     private int lastGameTick = 0;
-    public static ArmorEquiped currentGear = ArmorEquiped.MELEE;
     private WorldPoint lastGorillaLocation;
-    public static int TotalLootValue;
+    private int failedAttacks = 0;
 
     {
         Microbot.enableAutoRunOn = false;
@@ -99,11 +95,15 @@ public class DemonicGorillaScript extends Script {
         Rs2Antiban.setActivityIntensity(EXTREME);
     }
 
+    private static void UpdateTotalLoot(RS2Item item) {
+        var gePrice = Rs2GrandExchange.getPrice(item.getItem().getId());
+        TotalLootValue += (gePrice == -1 ? item.getItem().getPrice() : gePrice) * item.getTileItem().getQuantity();
+    }
+
     public boolean run(DemonicGorillaConfig config) {
         bankingStep = BankingStep.BANK;
         travelStep = TravelStep.GNOME_STRONGHOLD;
         Microbot.enableAutoRunOn = false;
-        isRunning = true;
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!Microbot.isLoggedIn() || !super.run()) return;
@@ -150,21 +150,20 @@ public class DemonicGorillaScript extends Script {
                 break;
             case CRASH_SITE:
                 Microbot.status = "Passing through opening to Crash Site";
-                var interacted = Rs2GameObject.interact(28807, "Pass-through");
+                var interacted = Rs2GameObject.interact(FENCE_ID, "Pass-through");
                 if (interacted) {
                     Rs2Player.waitForAnimation();
                     sleepUntil(() -> !Rs2Player.isAnimating());
                     Microbot.status = "Walking to the cave entrance";
                     Rs2Walker.walkTo(caveLocation);
                     sleepUntil(() -> Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(caveLocation) <= 5);
-                    interacted = Rs2GameObject.interact(28686, "Enter");
+                    interacted = Rs2GameObject.interact(FENCE_ID, "Enter");
                     if (interacted) {
                         Rs2Player.waitForAnimation();
                         sleepUntil(() -> !Rs2Player.isAnimating());
                     }
                     travelStep = TravelStep.IN_CAVE;
-                }
-                else {
+                } else {
                     logOnceToChat("Error getting through crash site - Trying again");
                     travelStep = TravelStep.CRASH_SITE;
                 }
@@ -325,7 +324,6 @@ public class DemonicGorillaScript extends Script {
         }
     }
 
-    private int failedAttacks = 0;
     private void attackGorilla(DemonicGorillaConfig config) {
         if (currentTarget != null && !currentTarget.isDead()) {
             Rs2Player.eatAt(config.minEatPercent());
@@ -431,7 +429,6 @@ public class DemonicGorillaScript extends Script {
 
             if (currentAnimation != -1) {
                 lastAttackAnimation = currentAnimation;
-                lastLocation = location;
             }
             lastAnimation = currentAnimation;
         } else {
@@ -649,7 +646,7 @@ public class DemonicGorillaScript extends Script {
             case RANGED:
                 if (useMelee && useMagic) {
                     var randomizedChoice = Math.random() < 0.5;
-                    gearToEquip = randomizedChoice  ? parseGear(config.meleeGear()) : parseGear(config.magicGear());
+                    gearToEquip = randomizedChoice ? parseGear(config.meleeGear()) : parseGear(config.magicGear());
                     currentGear = randomizedChoice ? ArmorEquiped.MELEE : ArmorEquiped.MAGIC;
                 } else if (useMelee) {
                     gearToEquip = parseGear(config.meleeGear());
@@ -750,11 +747,6 @@ public class DemonicGorillaScript extends Script {
             sleepUntil(() -> Rs2Inventory.waitForInventoryChanges(600));
             CompletableFuture.runAsync(() -> UpdateTotalLoot(item));
         }
-    }
-
-    private static void UpdateTotalLoot(RS2Item item) {
-        var gePrice = Rs2GrandExchange.getPrice(item.getItem().getId());
-        TotalLootValue += (gePrice == -1 ? item.getItem().getPrice() : gePrice) * item.getTileItem().getQuantity();
     }
 
     private void lootAndScatterMalicious() {
@@ -858,7 +850,6 @@ public class DemonicGorillaScript extends Script {
     @Override
     public void shutdown() {
         super.shutdown();
-        isRunning = false;
         BOT_STATUS = State.BANKING;
         travelStep = TravelStep.GNOME_STRONGHOLD;
         bankingStep = BankingStep.BANK;
@@ -880,5 +871,6 @@ public class DemonicGorillaScript extends Script {
     public enum TravelStep {GNOME_STRONGHOLD, TRAVEL_TO_OPENING, CRASH_SITE, IN_CAVE, AT_GORILLAS}
 
     private enum BankingStep {BANK, LOAD_INVENTORY}
+
     public enum ArmorEquiped {MELEE, RANGED, MAGIC}
 }
