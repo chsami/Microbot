@@ -1884,6 +1884,8 @@
 2405 3420 0	2409 9812 0	Enter;Cave entrance;17209									
 2405 3419 0	2409 9812 0	Enter;Cave entrance;17209									
 2405 3418 0	2409 9812 0	Enter;Cave entrance;17209									
+2435 3519 0	1987 5568 0	Pass-through;Opening;28807									
+1987 5568 0	2435 3519 0	Pass-through;Opening;28807									
 											
 # Tolna's Rift											
 3309 3452 0	3297 9824 0	Enter;Rift;13968									
@@ -3492,6 +3494,8 @@
 3491 3231 0	3491 3230 0	Climb-over;Broken wall;12737								3	
 3490 3232 0	3490 9631 0	Climb-down;Trapdoor;12743								2	
 3490 9631 0	3490 3232 0	Climb-up;Ladder;12779								2	
+3582 3264 0	3582 3263 0	Climb-over;Broken fence;18411				In Aid of the Myreque					 
+3582 3263 0	3582 3264 0	Climb-over;Broken fence;18411				In Aid of the Myreque					 
 											
 # Haunted Mine											
 3446 3236 0	3444 3236 0	Climb-over;Mine cart;4918									
