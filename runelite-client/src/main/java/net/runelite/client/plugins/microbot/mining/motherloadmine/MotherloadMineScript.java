@@ -160,7 +160,7 @@ public class MotherloadMineScript extends Script
             resetMiningState();
             if (Rs2Inventory.hasItem(ItemID.PAYDIRT))
             {
-                if (Rs2GameObject.getGameObjects().stream().anyMatch(obj -> obj.getId() == ObjectID.BROKEN_STRUT) && Rs2Inventory.hasItem("hammer"))
+                if (Rs2GameObject.getGameObjects(ObjectID.BROKEN_STRUT).size() > 1 && Rs2Inventory.hasItem("hammer"))
                 {
                     status = MLMStatus.FIXING_WATERWHEEL;
                 }
@@ -246,12 +246,15 @@ public class MotherloadMineScript extends Script
         );
     }
 
-    private void fixWaterwheel() {
+    private void fixWaterwheel()
+    {
         ensureLowerFloor();
-        if (Rs2Walker.walkTo(new WorldPoint(3741, 5666, 0), 15)) {
+        if (Rs2Walker.walkTo(new WorldPoint(3741, 5666, 0), 15))
+        {
             Microbot.isGainingExp = false;
-            if (Rs2GameObject.interact(ObjectID.BROKEN_STRUT)) {
-                sleepUntil(() -> Microbot.isGainingExp || Rs2GameObject.getGameObjects().stream().noneMatch(obj -> obj.getId() == ObjectID.BROKEN_STRUT), 5000);
+            if (Rs2GameObject.interact(ObjectID.BROKEN_STRUT))
+            {
+                sleepUntil(() -> Microbot.isGainingExp);
             }
         }
     }
