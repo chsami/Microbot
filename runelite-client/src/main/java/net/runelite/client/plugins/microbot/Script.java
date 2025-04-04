@@ -83,28 +83,13 @@ public abstract class Script extends Global implements IScript  {
             return true;
 
         // Add a small delay to ensure the client has fully loaded
-        var isClientReady = Microbot.getLoginTime().toSeconds() > 5;
-        if (isClientReady) {
-            // Synchronizing on BlockingEventManager.class to ensure thread safety
-            // This prevents multiple threads from modifying the blocking event list simultaneously.
-            synchronized (BlockingEventManager.class) {
-                // Check if there are any blocking events registered in the BlockingEventManager
-                if (!Microbot.getBlockingEventManager().getBlockingEvents().isEmpty()) {
-                    // Iterate through each blocking event to check if any should be executed
-                    for (BlockingEvent blockingEvent : Microbot.getBlockingEventManager().getBlockingEvents()) {
-                        // If the event's validation condition is met, it means we need to execute it
-                        if (blockingEvent.validate()) {
-                            // Execute the blocking event to resolve the issue
-                            blockingEvent.execute();
-                            // Return false to indicate that an event was executed and further processing should stop
-                            return false;
-                        }
-                    }
-                }
+        if (Microbot.getLoginTime().toSeconds() > 5) {
+            if (Microbot.getBlockingEventManager().shouldBlockAndProcess()) {
+                // A blocking event was found & is executing
+                return false;
             }
         }
-
-
+        
         if (Microbot.isLoggedIn()) {
             boolean hasRunEnergy = Microbot.getClient().getEnergy() > Microbot.runEnergyThreshold;
             if (Microbot.enableAutoRunOn && hasRunEnergy)
