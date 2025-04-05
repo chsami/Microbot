@@ -11,6 +11,7 @@ import net.runelite.client.plugins.microbot.aiofighter.constants.Constants;
 import net.runelite.client.plugins.microbot.aiofighter.enums.State;
 import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Food;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -152,7 +153,10 @@ public class BankerScript extends Script {
     public boolean handleBanking() {
         AIOFighterPlugin.setState(State.BANKING);
         Rs2Prayer.disableAllPrayers();
-        if (Rs2Bank.walkToBankAndUseBank()) {
+        
+        BankLocation bankToUse = config.usePreferredBank() ? config.preferredBank() : Rs2Bank.getNearestBank();
+        
+        if (Rs2Bank.walkToBankAndUseBank(bankToUse)) {
             depositAllExcept(config);
             withdrawUpkeepItems(config);
             Rs2Bank.closeBank();
