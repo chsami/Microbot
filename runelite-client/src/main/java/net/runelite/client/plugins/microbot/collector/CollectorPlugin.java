@@ -2,12 +2,9 @@ package net.runelite.client.plugins.microbot.collector;
 
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.events.GameTick;
 import net.runelite.client.config.ConfigManager;
-import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.plugins.microbot.MicrobotApi;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -50,17 +47,6 @@ public class CollectorPlugin extends Plugin {
         collectorScript.shutdown();
         overlayManager.remove(collectorOverlay);
     }
-    int ticks = 10;
-    @Subscribe
-    public void onGameTick(GameTick tick)
-    {
-
-        if (ticks > 0) {
-            ticks--;
-        } else {
-            ticks = 10;
-        }
-
-    }
+   
 
 }

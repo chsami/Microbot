@@ -1,13 +1,11 @@
 package net.runelite.client.plugins.microbot.collector;
 
-import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
 import net.runelite.client.ui.overlay.components.TitleComponent;
 
 import javax.inject.Inject;
-import javax.inject.Named;
 import java.awt.*;
 
 public class CollectorOverlay extends OverlayPanel {
