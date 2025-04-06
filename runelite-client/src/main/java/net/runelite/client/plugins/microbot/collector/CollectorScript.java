@@ -14,6 +14,7 @@ import net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
+import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.api.GameObject;
 import net.runelite.api.TileObject;
 import net.runelite.api.Skill;
@@ -75,8 +76,6 @@ public class CollectorScript extends Script {
         String message = event.getMessage();
         if (message.contains("You've run out of prayer points")) {
             currentState = State.BANKING_MMF;
-        } else if (message.contains("Your ring of dueling crumbles to dust")) {
-            needsNewDuelingRing = true;
         }
     }
 
@@ -212,12 +211,11 @@ public class CollectorScript extends Script {
                         if (Rs2Walker.walkTo(CASTLE_WARS_BANK, 0)) {
                             if (Rs2Bank.useBank()) {
                                 Rs2Bank.depositAll("Superantipoison(1)");
-                                
+                                sleep((int) (Math.random() * 500) + 700);
                                 // Equip new dueling ring if needed
-                                if (needsNewDuelingRing) {
-                                    Rs2Bank.withdrawItem("Ring of dueling(8)");
-                                    Rs2Inventory.equip("Ring of dueling(8)");
-                                    needsNewDuelingRing = false;
+                                if (!Rs2Equipment.isWearing("Ring of dueling")) {
+                                    Rs2Bank.withdrawAndEquip(2552);
+                                    sleepUntil(() -> Rs2Equipment.isWearing("Ring of dueling"));
                                 }
                                 
                                 Rs2Bank.closeBank();
@@ -294,10 +292,9 @@ public class CollectorScript extends Script {
                             if (Rs2Bank.useBank()) {
                                 Rs2Bank.depositAll("Mort myre fungus");
                                 sleep((int) (Math.random() * 500) + 700);
-                                if (needsNewDuelingRing) {
-                                    Rs2Bank.withdrawItem("Ring of dueling(8)");
-                                    Rs2Inventory.equip("Ring of dueling(8)");
-                                    needsNewDuelingRing = false;
+                                if (!Rs2Equipment.isWearing("Ring of dueling")) {
+                                    Rs2Bank.withdrawAndEquip(2552);
+                                    sleepUntil(() -> Rs2Equipment.isWearing("Ring of dueling"));
                                 }
                                 
                                 Rs2Bank.closeBank();
