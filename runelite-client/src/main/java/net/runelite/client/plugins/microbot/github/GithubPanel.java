@@ -319,6 +319,7 @@ public class GithubPanel extends PluginPanel {
         for (FileInfo fileInfo : selectedFileInfoList) {
             GithubDownloader.downloadFile(fileInfo.getUrl());
         }
+        showMessageDialog(this, "Restart the client so the plugin(s) get shown", "Information", JOptionPane.INFORMATION_MESSAGE);
         fileList.repaint();
     }
 
