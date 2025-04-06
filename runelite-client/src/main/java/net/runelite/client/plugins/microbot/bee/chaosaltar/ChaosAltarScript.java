@@ -24,7 +24,7 @@ import static net.runelite.client.plugins.microbot.util.walker.Rs2Walker.walkTo;
 
 public class ChaosAltarScript extends Script {
 
-    public static final WorldArea CHAOS_ALTAR_AREA = new WorldArea(2947, 3819, 11, 3, 0);
+    public static final WorldArea CHAOS_ALTAR_AREA = new WorldArea(2947, 3818, 11, 6, 0);
     public static final WorldPoint CHAOS_ALTAR_POINT = new WorldPoint(2949, 3821,0);
 
     private ChaosAltarConfig config;
@@ -55,8 +55,13 @@ public class ChaosAltarScript extends Script {
                     case OFFER_BONES:
                         offerBones();
                         break;
+                    case WALK_TO_ALTAR:
+                        walkTo(CHAOS_ALTAR_POINT);
+                        offerBones();
+                        break;
                     case DIE_TO_NPC:
                         dieToNpc();
+                        handleBanking();
                         break;
                     default:
                         System.out.println("Unknown state. Resetting...");
@@ -87,6 +92,7 @@ public class ChaosAltarScript extends Script {
         // Wait until player dies
         sleepUntil(() -> Microbot.getClient().getBoostedSkillLevel(Skill.HITPOINTS) == 0, 15000);
         sleepUntil(() -> !Rs2Pvp.isInWilderness(), 5000);
+        sleep(1000,2000);
     }
 
 
@@ -108,7 +114,7 @@ public class ChaosAltarScript extends Script {
         System.out.println("Offering bones at altar");
 
         if (Rs2Inventory.contains(DRAGON_BONES) && isRunning()) {
-            Rs2Inventory.interact(DRAGON_BONES, "use");
+            Rs2Inventory.slotInteract(20, "use");
             Rs2Inventory.useItemOnObject(BIG_BONES, 411);
             sleep(300, 500);
 
@@ -139,6 +145,7 @@ public class ChaosAltarScript extends Script {
                 Rs2Inventory.waitForInventoryChanges(2000);
             }
 
+            Rs2Bank.closeBank();
         }
     }
 
@@ -152,7 +159,8 @@ public class ChaosAltarScript extends Script {
 
     private State determineState() {
         boolean inWilderness = Rs2Pvp.isInWilderness();
-        boolean hasBones = Rs2Inventory.contains(DRAGON_BONES);
+        boolean hasBones = Rs2Inventory.count(DRAGON_BONES) > 4;
+        boolean hasAnyBones = Rs2Inventory.contains(DRAGON_BONES);
         boolean atAltar = isAtChaosAltar();
 
         if (!inWilderness && !hasBones) {
@@ -161,13 +169,13 @@ public class ChaosAltarScript extends Script {
         if (!inWilderness && hasBones) {
             return State.TELEPORT_TO_WILDERNESS;
         }
-        if (inWilderness && hasBones && !atAltar) {
+        if (inWilderness && hasAnyBones && !atAltar) {
             return State.WALK_TO_ALTAR;
         }
-        if (inWilderness && hasBones && atAltar) {
+        if (inWilderness && hasAnyBones && atAltar) {
             return State.OFFER_BONES;
         }
-        if (inWilderness && !hasBones) {
+        if (inWilderness && !hasAnyBones) {
             return State.DIE_TO_NPC;
         }
 
