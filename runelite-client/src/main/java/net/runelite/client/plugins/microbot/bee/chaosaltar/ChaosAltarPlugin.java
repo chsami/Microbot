@@ -2,11 +2,13 @@ package net.runelite.client.plugins.microbot.bee.chaosaltar;
 
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.events.GameTick;
 import net.runelite.client.config.ConfigManager;
-import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.PluginInstantiationException;
+import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.accountselector.AutoLoginPlugin;
+import net.runelite.client.plugins.microbot.storm.plugins.PlayerMonitor.PlayerMonitorPlugin;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -28,6 +30,10 @@ public class ChaosAltarPlugin extends Plugin {
     ChaosAltarConfig provideConfig(ConfigManager configManager) {
         return configManager.getConfig(ChaosAltarConfig.class);
     }
+    @Inject
+    private PlayerMonitorPlugin playerMonitorPlugin;
+    @Inject
+    private AutoLoginPlugin autoLoginPlugin;
 
     @Inject
     private OverlayManager overlayManager;
@@ -36,10 +42,12 @@ public class ChaosAltarPlugin extends Plugin {
 
 
     @Override
-    protected void startUp() throws AWTException {
+    protected void startUp() throws AWTException, PluginInstantiationException {
         if (overlayManager != null) {
             overlayManager.add(chaosAltarOverlay);
         }
+            if (!Microbot.getPluginManager().isPluginEnabled(playerMonitorPlugin)) {Microbot.getPluginManager().startPlugin(playerMonitorPlugin);}
+            if (!Microbot.getPluginManager().isPluginEnabled(autoLoginPlugin)) {Microbot.getPluginManager().startPlugin(autoLoginPlugin);}
         chaosAltarScript.run(config);
     }
 
@@ -47,18 +55,6 @@ public class ChaosAltarPlugin extends Plugin {
         chaosAltarScript.shutdown();
         overlayManager.remove(chaosAltarOverlay);
     }
-    int ticks = 10;
-    @Subscribe
-    public void onGameTick(GameTick tick)
-    {
-        //System.out.println(getName().chars().mapToObj(i -> (char)(i + 3)).map(String::valueOf).collect(Collectors.joining()));
 
-        if (ticks > 0) {
-            ticks--;
-        } else {
-            ticks = 10;
-        }
-
-    }
 
 }
