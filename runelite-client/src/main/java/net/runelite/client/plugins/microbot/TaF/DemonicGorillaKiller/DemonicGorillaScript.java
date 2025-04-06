@@ -31,7 +31,6 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -49,6 +48,7 @@ public class DemonicGorillaScript extends Script {
 
     // Behind rope in the entrance of the cave
     private static final WorldPoint SAFE_LOCATION = new WorldPoint(2465, 3494, 0);
+    private static final WorldPoint GORILLA_LOCATION = new WorldPoint(2100, 5643, 0);
     public static final int FENCE_ID = 28807;
     public static final int CAVE_ID = 28686;
     public static int killCount = 0;
@@ -78,6 +78,7 @@ public class DemonicGorillaScript extends Script {
     private int lastGameTick = 0;
     private WorldPoint lastGorillaLocation;
     private int failedAttacks = 0;
+    private boolean isRunning = false;
 
     {
         Microbot.enableAutoRunOn = false;
@@ -105,7 +106,9 @@ public class DemonicGorillaScript extends Script {
     public boolean run(DemonicGorillaConfig config) {
         bankingStep = BankingStep.BANK;
         travelStep = TravelStep.GNOME_STRONGHOLD;
+        isRunning = true;
         Microbot.enableAutoRunOn = false;
+
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!Microbot.isLoggedIn() || !super.run()) return;
@@ -133,8 +136,6 @@ public class DemonicGorillaScript extends Script {
         WorldPoint gnomeStrongholdLocation = new WorldPoint(2465, 3494, 0);
         WorldPoint crashSiteLocation = new WorldPoint(2435, 3519, 0);
         WorldPoint caveLocation = new WorldPoint(2026, 5610, 0);
-        WorldPoint gorillaLocation = new WorldPoint(2100, 5643, 0);
-
         switch (travelStep) {
             case GNOME_STRONGHOLD:
                 Microbot.status = "Teleporting to The Grand Tree";
@@ -175,8 +176,8 @@ public class DemonicGorillaScript extends Script {
                 currentDefensivePrayer = Rs2PrayerEnum.PROTECT_MAGIC;
                 Rs2Prayer.toggle(currentDefensivePrayer, true);
                 Microbot.status = "Walking to the gorillas";
-                var reachedDest = Rs2Walker.walkTo(gorillaLocation);
-                sleepUntil(() -> Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(gorillaLocation) <= 10);
+                var reachedDest = Rs2Walker.walkTo(GORILLA_LOCATION);
+                sleepUntil(() -> Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(GORILLA_LOCATION) <= 10);
                 if (!reachedDest) {
                     travelStep = TravelStep.GNOME_STRONGHOLD;
                     break;
@@ -216,7 +217,7 @@ public class DemonicGorillaScript extends Script {
                         drankPrayerPot = Rs2Player.drinkPrayerPotionAt(config.minEatPercent());
                         ate = true;
                         sleep(1200);
-                        if (!isRunning()) {
+                        if (!isRunning) {
                             break;
                         }
                     }
@@ -261,6 +262,11 @@ public class DemonicGorillaScript extends Script {
                 currentTarget = getTarget(true);
                 if (currentTarget != null) {
                     Rs2Npc.attack(currentTarget);
+                }
+                else {
+                    logOnceToChat("Unable to force new target, walking to gorillas and trying again");
+                    Rs2Walker.walkTo(GORILLA_LOCATION);
+                    currentTarget = getTarget(true);
                 }
                 outOfCombatTime = null; // Reset after forcing new target
             }
@@ -525,7 +531,7 @@ public class DemonicGorillaScript extends Script {
         return getTarget(false);
     }
 
-    private void ensureCorrectArmorEquipped() {
+        private void ensureCorrectArmorEquipped() {
         boolean armorEquipped = true;
         List<String> gear = new ArrayList<>();
         if (currentGear == ArmorEquiped.MELEE) {
@@ -724,7 +730,7 @@ public class DemonicGorillaScript extends Script {
         int currentPrayer = Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER);
         boolean noFood = Rs2Inventory.getInventoryFood().isEmpty();
         boolean noPrayerPotions = Rs2Inventory.items().stream()
-                .noneMatch(item -> item != null && item.getName() != null && Rs2Potion.getPrayerPotionsVariants().contains(item.getName()));
+                .noneMatch(item -> item != null && item.getName() != null && !Rs2Potion.getPrayerPotionsVariants().contains(item.getName()));
 
         return (noFood && currentHealth <= config.healthThreshold()) || (noPrayerPotions && currentPrayer < 10);
     }
@@ -744,14 +750,34 @@ public class DemonicGorillaScript extends Script {
     }
 
     private void Loot(DemonicGorillaConfig config) {
-        var nearbyItems = Rs2GroundItem.getAll(10);
+        //var nearbyItems = Rs2GroundItem.getAll(10);
+        sleep(1200, 1600);
+        long startTime = System.currentTimeMillis();
         var itemsToLoot = parseGear(config.lootItems());
-        var itemsToPickup = Arrays.stream(nearbyItems).filter(item -> itemsToLoot.contains(item.getItem().getName())).collect(Collectors.toList());
-        for (var item : itemsToPickup) {
-            Rs2GroundItem.interact(item);
-            sleepUntil(() -> Rs2Inventory.waitForInventoryChanges(600));
-            CompletableFuture.runAsync(() -> UpdateTotalLoot(item));
+        for (var item : itemsToLoot) {
+            var lootedItem = lootItem(item);
         }
+        long endTime = System.currentTimeMillis();
+        long duration = endTime - startTime;
+        Microbot.log("Looting method took " + duration + " milliseconds");
+//        var itemsToPickup = Arrays.stream(nearbyItems).filter(item -> itemsToLoot.contains(item.getItem().getName())).collect(Collectors.toList());
+//        for (var item : itemsToPickup) {
+//            Rs2GroundItem.interact(item);
+//            sleepUntil(() -> Rs2Inventory.waitForInventoryChanges(600));
+//            CompletableFuture.runAsync(() -> UpdateTotalLoot(item));
+//        }
+    }
+
+    private boolean lootItem(String itemName) {
+        if (!Rs2Inventory.isEmpty()) {
+            LootingParameters params = new LootingParameters(10, 1, 1, 0, false, false, itemName);
+            boolean looted = Rs2GroundItem.lootItemsBasedOnNames(params);
+            if (looted) {
+                logOnceToChat("Looted: " + itemName);
+                return true;
+            }
+        }
+        return false;
     }
 
     private void lootAndScatterMalicious() {
@@ -805,6 +831,7 @@ public class DemonicGorillaScript extends Script {
     public void shutdown() {
         super.shutdown();
         BOT_STATUS = State.BANKING;
+        isRunning = false;
         travelStep = TravelStep.GNOME_STRONGHOLD;
         bankingStep = BankingStep.BANK;
         currentTarget = null;
