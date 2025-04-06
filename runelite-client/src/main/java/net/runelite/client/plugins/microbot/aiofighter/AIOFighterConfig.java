@@ -9,7 +9,6 @@ import net.runelite.client.plugins.microbot.aiofighter.enums.State;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 import net.runelite.client.plugins.microbot.util.magic.Rs2CombatSpells;
 import net.runelite.client.plugins.microbot.util.slayer.enums.SlayerMaster;
-import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 
 @ConfigGroup(AIOFighterConfig.GROUP)
 @ConfigInformation("1. Make sure to place the cannon first before starting the plugin. <br />" +
@@ -19,8 +18,7 @@ import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
         "5. You can turn auto attack NPC off if you have a cannon. <br />" +
         "6. PrayFlick in different styles. <br />" +
         "7. SafeSpot you can Shift Right-click the ground to select the tile. <br />" +
-        "8. Right-click NPCs to add them to the attack list. <br />" +
-        "9. Select bank if using preferred bank, or leave unchecked to use closest bank. <br />")
+        "8. Right-click NPCs to add them to the attack list. <br />")
         
 public interface AIOFighterConfig extends Config {
 

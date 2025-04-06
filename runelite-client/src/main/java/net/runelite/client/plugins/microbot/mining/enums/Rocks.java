@@ -13,7 +13,6 @@ public enum Rocks {
     CLAY("clay rocks", 1),
     IRON("iron rocks", 15),
     SILVER("silver rocks", 20),
-    ASH_PILE("ash pile", 22),
     COAL("coal rocks", 30),
     GOLD("gold rocks", 40),
     GEM("gem rocks", 40),
