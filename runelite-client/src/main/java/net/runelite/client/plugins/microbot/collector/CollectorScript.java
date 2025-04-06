@@ -42,8 +42,7 @@ public class CollectorScript extends Script {
         BANKING_MMF,
         RETURNING_MMF_AREA,
         //Seaweed
-        COLLECTING_SEAWEED,
-        ALCHING_SEAWEED
+        COLLECTING_SEAWEED
     }
 
     public static State currentState = State.IDLE;
@@ -347,15 +346,6 @@ public class CollectorScript extends Script {
                                 sleep((int) (1800 + Math.random() * 218)); 
                             }
                         }
-                        break;
-
-                    case ALCHING_SEAWEED:
-                        Rs2ItemModel alchItem = Rs2Inventory.get(config.alchItemName());
-                        if (alchItem != null) {
-                            Rs2Magic.alch(alchItem);
-                            sleep((int) (1800 + Math.random() * 319)); 
-                        }
-                        currentState = State.COLLECTING_SEAWEED;
                         break;
                 }
 
