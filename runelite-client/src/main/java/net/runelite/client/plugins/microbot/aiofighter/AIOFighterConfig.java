@@ -19,7 +19,6 @@ import net.runelite.client.plugins.microbot.util.slayer.enums.SlayerMaster;
         "6. PrayFlick in different styles. <br />" +
         "7. SafeSpot you can Shift Right-click the ground to select the tile. <br />" +
         "8. Right-click NPCs to add them to the attack list. <br />")
-        
 public interface AIOFighterConfig extends Config {
 
     String GROUP = "PlayerAssistant";
