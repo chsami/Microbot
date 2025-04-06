@@ -266,8 +266,8 @@ public class GithubPanel extends PluginPanel {
             protected void done() {
                 progressDialog.dispose();
                 fileList.repaint(); // update any downloaded indicators
-                JOptionPane.showConfirmDialog(parentWindow, "All files downloaded.", "Download Succesfull!",
-                        JOptionPane.DEFAULT_OPTION);
+                JOptionPane.showMessageDialog(parentWindow, "All files downloaded.", "Download Successful!",
+                        JOptionPane.INFORMATION_MESSAGE);
             }
         };
 
