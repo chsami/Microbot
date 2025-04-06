@@ -233,7 +233,7 @@ public class TemporossScript extends Script {
     private boolean areItemsMissing()
     {
         // Check for harpoon
-        if (!hasHarpoon())
+        if (!hasHarpoon() && harpoonType != HarpoonType.BAREHAND)
         {
             return true;
         }
@@ -265,10 +265,10 @@ public class TemporossScript extends Script {
     private void fetchMissingItems()
     {
         // 1) Harpoon
-        if (!hasHarpoon())
+        if (!hasHarpoon() && harpoonType != HarpoonType.BAREHAND)
         {
-            log("Missing selected harpoon, setting to default harpoon");
             harpoonType = HarpoonType.HARPOON;
+            log("Missing selected harpoon, setting to default harpoon");
             TemporossPlugin.setHarpoonType(harpoonType);
 
             // Before interacting, check for fires in the path
