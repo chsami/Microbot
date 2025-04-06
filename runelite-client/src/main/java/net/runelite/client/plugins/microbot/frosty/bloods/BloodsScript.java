@@ -72,7 +72,7 @@ public class BloodsScript extends Script {
                     return;
                 }
 
-                if (Rs2Inventory.anyPouchUnknown()) {
+                if (Rs2Inventory.anyPouchUnknown() || Rs2Inventory.hasDegradedPouch()) {
                     checkPouches();
                     return;
                 }
@@ -145,7 +145,12 @@ public class BloodsScript extends Script {
         if (!config.usePoh()) {
             handleFeroxRunEnergy();
         }
-        Rs2Bank.openBank();
+
+        while (!Rs2Bank.isOpen() && isRunning() && !Rs2Inventory.allPouchesFull()) {
+            Rs2Bank.openBank();
+            Microbot.log("Opening bank");
+            sleepGaussian(3500, 200);
+        }
         sleepUntil(Rs2Bank::isOpen);
         sleepGaussian(1100, 200);
 
@@ -282,9 +287,12 @@ public class BloodsScript extends Script {
 
         handleEmptyPouch();
 
-        if (Rs2Inventory.allPouchesEmpty() && !Rs2Inventory.contains("Pure essence")) {
-            handleBankTeleport();
-            sleepGaussian(500, 200);
+        while (Rs2Player.getWorldLocation().getRegionID() == 12875) {
+            if (Rs2Inventory.allPouchesEmpty() && !Rs2Inventory.contains("Pure essence")) {
+                Microbot.log("We are in altar region and out of p ess, banking...");
+                handleBankTeleport();
+                sleepGaussian(500, 200);
+            }
         }
         state = State.BANKING;
     }
@@ -356,7 +364,7 @@ public class BloodsScript extends Script {
     }
 
     private void handleArdyCloak() {
-        if (Rs2Equipment.isWearing("Ardougne Cloak")) {
+        if (Rs2Equipment.isWearing("Ardougne cloak")) {
             Rs2Equipment.interact("Ardougne cloak", "Kandarin Monastery");
         }
         sleepGaussian(900, 200);
@@ -387,8 +395,9 @@ public class BloodsScript extends Script {
             if (Rs2Inventory.contains(itemId)) {
                 Microbot.log("Using " + homeTeleport.getName());
                 Rs2Inventory.interact(itemId, homeTeleport.getInteraction());
-                sleepUntil(() -> Rs2Player.getWorldLocation().getRegionID() == 7769 || !Rs2Player.isAnimating());
-                sleepGaussian(1500, 200);
+                sleepUntil(() -> Rs2Player.getWorldLocation() != null && Rs2Player.getWorldLocation().getRegionID() == 7769 || Rs2Player.getWorldLocation().getRegionID() == 53739
+                        && !Rs2Player.isAnimating());
+                sleepGaussian(2500, 200);
                 break;
             }
         }
@@ -414,6 +423,10 @@ public class BloodsScript extends Script {
         sleepUntil(() -> Rs2Player.getWorldLocation().equals(new WorldPoint(3447, 9824, 0)), 1200);
         state = State.WALKING_TO;
     }
+
+
+    //Location regions caves -
+    
 }
 
 
