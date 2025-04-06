@@ -5,6 +5,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection;
 
 import java.util.concurrent.TimeUnit;
@@ -23,33 +24,29 @@ public class ExampleScript extends Script {
 
                 //CODE HERE
 
-                var chicken = Rs2Npc.getNpc("chicken");
-
-                System.out.println(chicken.getInteracting() != null ? chicken.getInteracting().getName() : "null");
-
-               /* Rs2NpcModel npc = (Rs2NpcModel) Rs2Player.getInteracting();
+                Rs2NpcModel npc = (Rs2NpcModel) Rs2Player.getInteracting();
 
 
-                System.out.println(npc.getName());*/
+                System.out.println(npc.getName());
 
-           //     var currentTarget = Rs2Npc.getNpc("guard");
+                //     var currentTarget = Rs2Npc.getNpc("guard");
 
-              //  var headIcon = Rs2Reflection.getHeadIcon(currentTarget);
+                //  var headIcon = Rs2Reflection.getHeadIcon(currentTarget);
 
-              //  Actor actor = currentTarget;
+                //  Actor actor = currentTarget;
 
 
 
-          //      Microbot.getClientThread().runOnClientThreadOptional(() ->  { System.out.println(Microbot.getClient().getLocalPlayer().getInteracting().getName()); return null;});
+                //      Microbot.getClientThread().runOnClientThread(() ->  { System.out.println(Microbot.getClient().getLocalPlayer().getInteracting().getName()); return null;});
 
                 //System.out.println(Microbot.getClient().getLocalPlayer().getInteracting().getName());
 //               System.out.println(Microbot.getClient().getLocalPlayer().getInteracting() == actor);
 
-         //       System.out.println(Microbot.getClient().getLocalPlayer().getInteracting() == currentTarget);
+                //       System.out.println(Microbot.getClient().getLocalPlayer().getInteracting() == currentTarget);
 
-           //     sleepUntil(() -> Microbot.getClient().getLocalPlayer().getInteracting() == currentTarget, 3000);
+                //     sleepUntil(() -> Microbot.getClient().getLocalPlayer().getInteracting() == currentTarget, 3000);
 
-               // System.out.println(headIcon.name());
+                // System.out.println(headIcon.name());
 
                 long endTime = System.currentTimeMillis();
                 long totalTime = endTime - startTime;
