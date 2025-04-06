@@ -13,8 +13,8 @@ import java.awt.*;
 
 @PluginDescriptor(
         name = PluginDescriptor.Vopori + "Collector",
-        description = "Collector V1",
-        tags = {"Collector", "microbot"},
+        description = "Collector plugin intended for ironmen.",
+        tags = {"Collector", "microbot", "ironmen"},
         enabledByDefault = false
 )
 @Slf4j

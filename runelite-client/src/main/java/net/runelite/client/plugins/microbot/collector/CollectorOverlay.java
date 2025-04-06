@@ -24,8 +24,8 @@ public class CollectorOverlay extends OverlayPanel {
         try {
             panelComponent.setPreferredSize(new Dimension(200, 300));
             panelComponent.getChildren().add(TitleComponent.builder()
-                    .text("Collector V0.0.1")
-                    .color(Color.GREEN)
+                    .text("Collector v1.0.0")
+                    .color(Color.YELLOW)
                     .build());
 
             panelComponent.getChildren().add(LineComponent.builder().build());
@@ -35,47 +35,66 @@ public class CollectorOverlay extends OverlayPanel {
                     .right(CollectorScript.currentState.toString())
                     .build());
 
-            if (config.collectSnapeGrass()) {
-                panelComponent.getChildren().add(LineComponent.builder()
-                        .left("Snape Grass Collected:")
-                        .right(String.valueOf(CollectorScript.totalSnapeGrassCollected))
-                        .build());
-                if (CollectorScript.startTimeSnapeGrass > 0) {
-                    long timeElapsed = (System.currentTimeMillis() - CollectorScript.startTimeSnapeGrass) / 1000;
-                    double hoursElapsed = timeElapsed / 3600.0;
-                    int perHour = (int) (CollectorScript.totalSnapeGrassCollected / hoursElapsed);
+            switch (config.collectionType()) {
+                case NONE:
+                    break;
+                case SNAPE_GRASS:
                     panelComponent.getChildren().add(LineComponent.builder()
-                            .left("Per Hour:")
-                            .right(String.valueOf(perHour))
+                            .left("Snape Grass Collected:")
+                            .right(String.valueOf(CollectorScript.totalSnapeGrassCollected))
                             .build());
-                }
+                    if (CollectorScript.startTimeSnapeGrass > 0) {
+                        long timeElapsed = (System.currentTimeMillis() - CollectorScript.startTimeSnapeGrass) / 1000;
+                        double hoursElapsed = timeElapsed / 3600.0;
+                        int perHour = (int) (CollectorScript.totalSnapeGrassCollected / hoursElapsed);
+                        panelComponent.getChildren().add(LineComponent.builder()
+                                .left("Per Hour:")
+                                .right(String.valueOf(perHour))
+                                .build());
+                    }
+                    break;
+
+                case SUPER_ANTI_POISON:
+                    panelComponent.getChildren().add(LineComponent.builder()
+                            .left("Super Antipoison Doses Collected:")
+                            .right(String.valueOf(CollectorScript.totalSAPCollected))
+                            .build());
+                    if (CollectorScript.startTimeSAP > 0) {
+                        long timeElapsed = (System.currentTimeMillis() - CollectorScript.startTimeSAP) / 1000;
+                        double hoursElapsed = timeElapsed / 3600.0;
+                        int perHour = (int) (CollectorScript.totalSAPCollected / hoursElapsed);
+                        panelComponent.getChildren().add(LineComponent.builder()
+                                .left("Per Hour:")
+                                .right(String.valueOf(perHour))
+                                .build());
+                    }
+                    break;
+
+                case MORT_MYRE_FUNGUS:
+                    panelComponent.getChildren().add(LineComponent.builder()
+                            .left("Mort Myre Fungus Collected:")
+                            .right(String.valueOf(CollectorScript.totalMMFCollected))
+                            .build());
+                    if (CollectorScript.startTimeMMF > 0) {
+                        long timeElapsed = (System.currentTimeMillis() - CollectorScript.startTimeMMF) / 1000;
+                        double hoursElapsed = timeElapsed / 3600.0;
+                        int perHour = (int) (CollectorScript.totalMMFCollected / hoursElapsed);
+                        panelComponent.getChildren().add(LineComponent.builder()
+                                .left("Per Hour:")
+                                .right(String.valueOf(perHour))
+                                .build());
+                    }
+                    break;
             }
-
-            if (config.collectSuperAntiPoison()) {
+            if (config.enableSeaweed()) {
                 panelComponent.getChildren().add(LineComponent.builder()
-                        .left("Super Anti-Poison Doses Collected:")
-                        .right(String.valueOf(CollectorScript.totalSAPCollected))
+                        .left("Seaweed Spores Collected:")
+                        .right(String.valueOf(CollectorScript.totalSporesCollected))
                         .build());
-                if (CollectorScript.startTimeSAP > 0) {
-                    long timeElapsed = (System.currentTimeMillis() - CollectorScript.startTimeSAP) / 1000;
+                if (CollectorScript.startTimeSeaweed > 0) {
+                    long timeElapsed = (System.currentTimeMillis() - CollectorScript.startTimeSeaweed) / 1000;
                     double hoursElapsed = timeElapsed / 3600.0;
-                    int perHour = (int) (CollectorScript.totalSAPCollected / hoursElapsed);
-                    panelComponent.getChildren().add(LineComponent.builder()
-                            .left("Per Hour:")
-                            .right(String.valueOf(perHour))
-                            .build());
-                }
-            }   
-
-            if (config.collectMortMyreFungus()) {
-                panelComponent.getChildren().add(LineComponent.builder()
-                        .left("Mort Myre Fungus Collected:")
-                        .right(String.valueOf(CollectorScript.totalMMFCollected))
-                        .build());
-                if (CollectorScript.startTimeMMF > 0) {
-                    long timeElapsed = (System.currentTimeMillis() - CollectorScript.startTimeMMF) / 1000;
-                    double hoursElapsed = timeElapsed / 3600.0;
-                    int perHour = (int) (CollectorScript.totalMMFCollected / hoursElapsed);
+                    int perHour = (int) (CollectorScript.totalSeaweedCollected / hoursElapsed);
                     panelComponent.getChildren().add(LineComponent.builder()
                             .left("Per Hour:")
                             .right(String.valueOf(perHour))

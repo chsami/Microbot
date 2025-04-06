@@ -6,6 +6,8 @@ import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
+import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.security.Login;
@@ -16,6 +18,7 @@ import net.runelite.api.Skill;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.ChatMessageType;
 import net.runelite.client.eventbus.Subscribe;
+import static net.runelite.client.plugins.microbot.Microbot.log;
 
 import java.util.concurrent.TimeUnit;
 
@@ -38,6 +41,9 @@ public class CollectorScript extends Script {
         COLLECTING_MMF,
         BANKING_MMF,
         RETURNING_MMF_AREA,
+        //Seaweed
+        COLLECTING_SEAWEED,
+        ALCHING_SEAWEED
     }
 
     public static State currentState = State.IDLE;
@@ -59,6 +65,11 @@ public class CollectorScript extends Script {
     private int previousMMFCount = 0;
     public static int totalMMFCollected = 0;
     public static long startTimeMMF = 0;
+    // Seaweed
+    private int previousSeaweedCount = 0;
+    public static int totalSeaweedCollected = 0;
+    public static long startTimeSeaweed = 0;
+    public static int totalSporesCollected = 0;
 
     public static boolean test = false;
 
@@ -74,8 +85,6 @@ public class CollectorScript extends Script {
         }
     }
 
-    private boolean needsNewDuelingRing = false;
-
     public boolean run(CollectorConfig config) {
         Microbot.enableAutoRunOn = false;
         
@@ -84,19 +93,27 @@ public class CollectorScript extends Script {
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
 
-                if (!config.collectSnapeGrass() && !config.collectSuperAntiPoison() && !config.collectMortMyreFungus()) {
-                    currentState = State.IDLE;
-                    return;
-                }
-
                 if (currentState == State.IDLE) {
-                    if (config.collectSnapeGrass()) {
-                        currentState = State.WALKING_TO_SG_AREA;
-                    } else if (config.collectSuperAntiPoison()) {
-                        currentState = State.WALKING_TO_SAP_AREA;
-                    } else if (config.collectMortMyreFungus()) {
-                        currentState = State.WALKING_TO_MMF_AREA;
+                    if (config.enableSeaweed()) {
+                        currentState = State.COLLECTING_SEAWEED;
+                    } else {
+                        switch (config.collectionType()) {
+                            case SNAPE_GRASS:
+                                currentState = State.WALKING_TO_SG_AREA;
+                                break;
+                            case SUPER_ANTI_POISON:
+                                currentState = State.WALKING_TO_SAP_AREA;
+                                break;
+                            case MORT_MYRE_FUNGUS:
+                                currentState = State.WALKING_TO_MMF_AREA;
+                                break;
+                            default:
+                                currentState = State.IDLE;
+                                break;
+                        }
                     }
+                } else if (currentState == State.COLLECTING_SEAWEED && !config.enableSeaweed()) {
+                    currentState = State.IDLE;
                 }
 
                 switch (currentState) {
@@ -233,17 +250,13 @@ public class CollectorScript extends Script {
                         break;
 
                     case COLLECTING_MMF:
-                        if (Rs2Inventory.isFull()) {
-                            currentState = State.BANKING_MMF;
-                            return;
-                        }
 
                         if (startTimeMMF == 0) {
                             startTimeMMF = System.currentTimeMillis();
                         }
 
-                        // Check if we're out of prayer points
-                        if (!Rs2Player.hasPrayerPoints()) {
+                        // Check if we're out of prayer points or if full inventory
+                        if (!Rs2Player.hasPrayerPoints() || Rs2Inventory.isFull()) {
                             currentState = State.BANKING_MMF;
                             return;
                         }
@@ -302,6 +315,47 @@ public class CollectorScript extends Script {
                         if (Rs2Walker.walkTo(COLLECTION_AREA_MMF, 0)) {
                             currentState = State.COLLECTING_MMF;
                         }
+                        break;
+
+                    // Seaweed
+                    case COLLECTING_SEAWEED:
+                        if (startTimeSeaweed == 0) {
+                            startTimeSeaweed = System.currentTimeMillis();
+                        }
+
+                        // First check for seaweed spores
+                        if (Rs2GroundItem.exists("Seaweed spore", 30)) {
+                            int initialSporeCount = Rs2Inventory.count("Seaweed spore");
+                            if (Rs2GroundItem.loot("Seaweed spore", 30)) {
+                                sleep(1000); // Give time for the item to be picked up
+                                int newSporeCount = Rs2Inventory.count("Seaweed spore");
+                                if (newSporeCount > initialSporeCount) {
+                                    totalSporesCollected += (newSporeCount - initialSporeCount);
+                                } else {
+                                    totalSporesCollected++; 
+                                }
+                                sleepUntil(() -> !Rs2GroundItem.exists("Seaweed spore", 30), 5000);
+                            }
+                            return;
+                        }
+
+                        // If no spores, proceed with alching if enabled
+                        if (config.enableSeaweedAlching() && !config.alchItemName().isEmpty()) {
+                            Rs2ItemModel alchItem = Rs2Inventory.get(config.alchItemName());
+                            if (alchItem != null) {
+                                Rs2Magic.alch(alchItem);
+                                sleep((int) (1800 + Math.random() * 218)); 
+                            }
+                        }
+                        break;
+
+                    case ALCHING_SEAWEED:
+                        Rs2ItemModel alchItem = Rs2Inventory.get(config.alchItemName());
+                        if (alchItem != null) {
+                            Rs2Magic.alch(alchItem);
+                            sleep((int) (1800 + Math.random() * 319)); 
+                        }
+                        currentState = State.COLLECTING_SEAWEED;
                         break;
                 }
 
