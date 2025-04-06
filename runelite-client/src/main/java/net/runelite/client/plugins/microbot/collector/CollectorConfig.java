@@ -12,10 +12,15 @@ import net.runelite.client.config.ConfigSection;
         "   - Ardy cloak, Dramen staff & Ring of Dueling equipped <br />" +
         "<b>Snape Grass Collection:</b> <br />" +
         "   - Collects from ground spawns in Hosidius <br />" +
+        "<b>Normal Planks:</b> <br />" +
+        "   - Collects from ground spawns in Barb Assault <br />" +
         "<b>Super Antipoison Collection:</b> <br />" +
         "   - Requires Rings of Dueling <br />" +
         "<b>Seaweed Spores:</b> <br />" +
-        "   - Equip fishbowl helm & diving apparatus <br />")
+        "   - Equip fishbowl helm & diving apparatus <br />" +
+        "<b>Blue Dragon Scales:</b> <br />" +
+        "   - Equip anti-dragonfire shield & have falador teleport runes <br />" +
+        "   - and Rings of Dueling to replenish health at ferox. <br />")
 public interface CollectorConfig extends Config {
     @ConfigSection(
             name = "Basic Collecting",
@@ -31,11 +36,21 @@ public interface CollectorConfig extends Config {
     )
     String seaweedSection = "seaweedSection";
 
+    @ConfigSection(
+            name = "Tower of Life (soon)",
+            description = "Tower of Life collection settings",
+            position = 2
+    )
+    String towerOfLifeSection = "towerOfLifeSection";
+
     enum CollectionType {
         NONE("None"),
         MORT_MYRE_FUNGUS("Mort Myre Fungus"),
         SNAPE_GRASS("Snape Grass"),
-        SUPER_ANTI_POISON("Super Antipoison");
+        SUPERANTIPOISON("Super Antipoison"),
+        BLUE_DRAGON_SCALES("Blue Dragon Scales"),
+        PLANKS("Normal Planks");
+
 
         private final String name;
 
@@ -91,5 +106,32 @@ public interface CollectorConfig extends Config {
     )
     default String alchItemName() {
         return "";
+    }
+
+    @ConfigItem(
+            keyName = "towerOfLifeSelection",
+            name = "Selection",
+            description = "Select what to collect in Tower of Life",
+            position = 0,
+            section = towerOfLifeSection
+    )
+    default TowerOfLifeSelection towerOfLifeSelection() {
+        return TowerOfLifeSelection.RED_SPIDER_EGGS;
+    }
+
+    enum TowerOfLifeSelection {
+        RED_SPIDER_EGGS("Red Spider Eggs"),
+        UNICORN_HORNS("Unicorn Horns");
+
+        private final String name;
+
+        TowerOfLifeSelection(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
     }
 }

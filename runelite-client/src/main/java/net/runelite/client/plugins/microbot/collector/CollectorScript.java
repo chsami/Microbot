@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.collector;
 
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
@@ -42,7 +43,18 @@ public class CollectorScript extends Script {
         BANKING_MMF,
         RETURNING_MMF_AREA,
         //Seaweed
-        COLLECTING_SEAWEED
+        COLLECTING_SW,
+        // Normal Planks
+        WALKING_TO_PL_AREA,
+        COLLECTING_PL,
+        BANKING_PL,
+        RETURNING_PL_AREA,
+        HOPPING_PL,
+        // Blue Dragon Scales
+        WALKING_TO_BDS_AREA,
+        COLLECTING_BDS,
+        BANKING_BDS,
+        RETURNING_BDS_AREA
     }
 
     public static State currentState = State.IDLE;
@@ -64,6 +76,17 @@ public class CollectorScript extends Script {
     private int previousMMFCount = 0;
     public static int totalMMFCollected = 0;
     public static long startTimeMMF = 0;
+    // Normal Planks
+    private static final WorldPoint COLLECTION_AREA_PL = new WorldPoint(2554, 3575, 0);
+    private static final WorldPoint BARB_ASSAULT_BANK = new WorldPoint(2536, 3573, 0);
+    private int previousPlankCount = 0;
+    public static int totalPlanksCollected = 0;
+    public static long startTimePlanks = 0;
+    // Blue Dragon Scales
+    private static final WorldPoint COLLECTION_AREA_BD = new WorldPoint(2918, 9794, 0);
+    private int previousBDSCount = 0;
+    public static int totalBDSCollected = 0;
+    public static long startTimeBDS = 0;
     // Seaweed
     private int previousSeaweedCount = 0;
     public static int totalSeaweedCollected = 0;
@@ -94,24 +117,30 @@ public class CollectorScript extends Script {
 
                 if (currentState == State.IDLE) {
                     if (config.enableSeaweed()) {
-                        currentState = State.COLLECTING_SEAWEED;
+                        currentState = State.COLLECTING_SW;
                     } else {
                         switch (config.collectionType()) {
                             case SNAPE_GRASS:
                                 currentState = State.WALKING_TO_SG_AREA;
                                 break;
-                            case SUPER_ANTI_POISON:
+                            case SUPERANTIPOISON:
                                 currentState = State.WALKING_TO_SAP_AREA;
                                 break;
                             case MORT_MYRE_FUNGUS:
                                 currentState = State.WALKING_TO_MMF_AREA;
+                                break;
+                            case PLANKS:
+                                currentState = State.WALKING_TO_PL_AREA;
+                                break;
+                            case BLUE_DRAGON_SCALES:
+                                currentState = State.WALKING_TO_BDS_AREA;
                                 break;
                             default:
                                 currentState = State.IDLE;
                                 break;
                         }
                     }
-                } else if (currentState == State.COLLECTING_SEAWEED && !config.enableSeaweed()) {
+                } else if (currentState == State.COLLECTING_SW && !config.enableSeaweed()) {
                     currentState = State.IDLE;
                 }
 
@@ -228,7 +257,7 @@ public class CollectorScript extends Script {
                                     Rs2Bank.withdrawAndEquip(2552);
                                     sleepUntil(() -> Rs2Equipment.isWearing("Ring of dueling"));
                                 }
-                                
+                                sleep((int) (Math.random() * 500) + 700);
                                 Rs2Bank.closeBank();
                                 currentState = State.RETURNING_SAP_AREA;
                             }
@@ -299,11 +328,12 @@ public class CollectorScript extends Script {
                             if (Rs2Bank.useBank()) {
                                 Rs2Bank.depositAll("Mort myre fungus");
                                 sleep((int) (Math.random() * 500) + 700);
+                                // Equip new dueling ring if needed
                                 if (!Rs2Equipment.isWearing("Ring of dueling")) {
                                     Rs2Bank.withdrawAndEquip(2552);
                                     sleepUntil(() -> Rs2Equipment.isWearing("Ring of dueling"));
                                 }
-                                
+                                sleep((int) (Math.random() * 500) + 700);
                                 Rs2Bank.closeBank();
                                 currentState = State.RETURNING_MMF_AREA;
                             }
@@ -317,7 +347,7 @@ public class CollectorScript extends Script {
                         break;
 
                     // Seaweed
-                    case COLLECTING_SEAWEED:
+                    case COLLECTING_SW:
                         if (startTimeSeaweed == 0) {
                             startTimeSeaweed = System.currentTimeMillis();
                         }
@@ -345,6 +375,114 @@ public class CollectorScript extends Script {
                                 Rs2Magic.alch(alchItem);
                                 sleep((int) (1800 + Math.random() * 218)); 
                             }
+                        }
+                        break;
+
+                    // Normal Planks
+                    case WALKING_TO_PL_AREA:
+                        if (Rs2Walker.walkTo(COLLECTION_AREA_PL, 0)) {
+                            currentState = State.COLLECTING_PL;
+                        }
+                        break;
+
+                    case COLLECTING_PL:
+                        if (Rs2Inventory.isFull()) {
+                            currentState = State.BANKING_PL;
+                            return;
+                        }
+
+                        if (startTimePlanks == 0) {
+                            startTimePlanks = System.currentTimeMillis();
+                        }
+
+                        // Check if there are planks on the ground
+                        if (!Rs2GroundItem.exists("Plank", 10)) {
+                            currentState = State.HOPPING_PL;
+                            return;
+                        }
+
+                        if (Rs2GroundItem.loot("Plank", 20)) {
+                            int currentCount = Rs2Inventory.count("Plank");
+                            sleepUntil(() -> Rs2Inventory.count("Plank") > currentCount, 5000);
+                            totalPlanksCollected += Rs2Inventory.count("Plank") - currentCount;
+                            previousPlankCount = currentCount;
+                        }
+                        break;
+
+                    case HOPPING_PL:
+                        int randomWorld2 = Login.getRandomWorld(true);
+                        Microbot.hopToWorld(randomWorld2);
+                        sleep((int) (Math.random() * 2000) + 3000); // Random sleep between 3-5 seconds
+                        currentState = State.COLLECTING_PL;
+                        break;
+
+                    case BANKING_PL:
+                        if (Rs2Walker.walkTo(BARB_ASSAULT_BANK, 0)) {
+                            if (Rs2Bank.useBank()) {
+                                Rs2Bank.depositAll("Plank");
+                                sleep((int) (Math.random() * 500) + 700);
+                                Rs2Bank.closeBank();
+                                currentState = State.RETURNING_PL_AREA;
+                            }
+                        }
+                        break;
+
+                    case RETURNING_PL_AREA:
+                        if (Rs2Walker.walkTo(COLLECTION_AREA_PL, 0)) {
+                            currentState = State.COLLECTING_PL;
+                        }
+                        break;
+
+                        // Blue Dragon Scales
+                    case WALKING_TO_BDS_AREA:
+                        if (Rs2Walker.walkTo(COLLECTION_AREA_BD, 0)) {
+                            currentState = State.COLLECTING_BDS;
+                        }
+                        break;
+                    case COLLECTING_BDS:
+                        if (Rs2Inventory.isFull()) {
+                            currentState = State.BANKING_BDS;
+                            return;
+                        }
+
+                        if (startTimeBDS == 0) {
+                            startTimeBDS = System.currentTimeMillis();
+                        }
+
+                        if (Rs2GroundItem.loot("Blue dragon scale", 35)) {
+                            int currentCount = Rs2Inventory.count("Blue dragon scale");
+                            sleepUntil(() -> Rs2Inventory.count("Blue dragon scale") > currentCount, 5000);
+                            totalBDSCollected += Rs2Inventory.count("Blue dragon scale") - currentCount;
+                            previousBDSCount = currentCount;
+                        }
+                        break;
+                    case BANKING_BDS:
+                        if (Rs2Walker.walkTo(FEROX_ENCLAVE_BANK, 0)) {
+                            // Use Pool of Refreshment to restore health
+                            TileObject pool = Rs2GameObject.findObjectById(39651);
+                            if (pool != null) {
+                                int currentPrayer = Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER);
+                                Rs2GameObject.interact(pool, "Drink");
+                                sleepUntil(() -> Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER) > currentPrayer, 5000);
+                            }
+                            sleep((int) (Math.random() * 1000) + 2000);
+                            if (Rs2Bank.useBank()) {
+                                Rs2Bank.depositAll("Blue dragon scale");
+                                sleep((int) (Math.random() * 500) + 700);
+                                 // Equip new dueling ring if needed
+                                 if (!Rs2Equipment.isWearing("Ring of dueling")) {
+                                    Rs2Bank.withdrawAndEquip(2552);
+                                    sleepUntil(() -> Rs2Equipment.isWearing("Ring of dueling"));
+                                }
+                                sleep((int) (Math.random() * 500) + 700);
+                                Rs2Bank.closeBank();
+                                currentState = State.RETURNING_BDS_AREA;
+                            }
+                        }
+                        break;
+                    case RETURNING_BDS_AREA:
+                        if (Rs2Walker.walkTo(COLLECTION_AREA_BD, 0)) {
+                            currentState = State.COLLECTING_BDS;
                         }
                         break;
                 }

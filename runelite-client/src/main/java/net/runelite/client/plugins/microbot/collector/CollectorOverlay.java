@@ -54,7 +54,7 @@ public class CollectorOverlay extends OverlayPanel {
                     }
                     break;
 
-                case SUPER_ANTI_POISON:
+                case SUPERANTIPOISON:
                     panelComponent.getChildren().add(LineComponent.builder()
                             .left("Super Antipoison Doses Collected:")
                             .right(String.valueOf(CollectorScript.totalSAPCollected))
@@ -79,6 +79,36 @@ public class CollectorOverlay extends OverlayPanel {
                         long timeElapsed = (System.currentTimeMillis() - CollectorScript.startTimeMMF) / 1000;
                         double hoursElapsed = timeElapsed / 3600.0;
                         int perHour = (int) (CollectorScript.totalMMFCollected / hoursElapsed);
+                        panelComponent.getChildren().add(LineComponent.builder()
+                                .left("Per Hour:")
+                                .right(String.valueOf(perHour))
+                                .build());
+                    }
+                    break;
+                case PLANKS:
+                    panelComponent.getChildren().add(LineComponent.builder()
+                            .left("Planks Collected:")
+                            .right(String.valueOf(CollectorScript.totalPlanksCollected))
+                            .build());
+                    if (CollectorScript.startTimePlanks > 0) {
+                        long timeElapsed = (System.currentTimeMillis() - CollectorScript.startTimePlanks) / 1000;
+                        double hoursElapsed = timeElapsed / 3600.0;
+                        int perHour = (int) (CollectorScript.totalPlanksCollected / hoursElapsed);
+                        panelComponent.getChildren().add(LineComponent.builder()
+                                .left("Per Hour:")
+                                .right(String.valueOf(perHour))
+                                .build());
+                    }
+                    break;
+                case BLUE_DRAGON_SCALES:
+                    panelComponent.getChildren().add(LineComponent.builder()
+                            .left("Blue Dragon Scales Collected:")
+                            .right(String.valueOf(CollectorScript.totalBDSCollected))
+                            .build());
+                    if (CollectorScript.startTimeBDS > 0) {
+                        long timeElapsed = (System.currentTimeMillis() - CollectorScript.startTimeBDS) / 1000;
+                        double hoursElapsed = timeElapsed / 3600.0;
+                        int perHour = (int) (CollectorScript.totalBDSCollected / hoursElapsed);
                         panelComponent.getChildren().add(LineComponent.builder()
                                 .left("Per Hour:")
                                 .right(String.valueOf(perHour))
