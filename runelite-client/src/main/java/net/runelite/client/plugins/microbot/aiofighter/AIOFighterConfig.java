@@ -859,28 +859,6 @@ public interface AIOFighterConfig extends Config {
         return true;
     }
 
-    @ConfigItem(
-            keyName = "preferredBank",
-            name = "Preferred Bank",
-            description = "Select which bank to use when banking",
-            position = 10,
-            section = banking
-    )
-    default BankLocation preferredBank() {
-        return BankLocation.EDGEVILLE;
-    }
-
-    @ConfigItem(
-            keyName = "usePreferredBank",
-            name = "Use Preferred Bank",
-            description = "If enabled, will use the selected preferred bank. If disabled, will use the closest bank.",
-            position = 11,
-            section = banking
-    )
-    default boolean usePreferredBank() {
-        return false;
-    }
-
     // Safety section
     @ConfigItem(
             keyName = "useSafety",
