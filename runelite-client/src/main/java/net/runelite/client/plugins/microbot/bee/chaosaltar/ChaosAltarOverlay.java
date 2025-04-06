@@ -5,18 +5,12 @@ import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.components.LineComponent;
 import net.runelite.client.ui.overlay.components.PanelComponent;
 
-import javax.inject.Inject;
 import java.awt.*;
 
 public class ChaosAltarOverlay extends OverlayPanel {
 
-    private final ChaosAltarScript script;
     private final PanelComponent panelComponent = new PanelComponent();
 
-    @Inject
-    public ChaosAltarOverlay(ChaosAltarScript script) {
-        this.script = script;
-    }
 
     @Override
     public Dimension render(Graphics2D graphics) {
