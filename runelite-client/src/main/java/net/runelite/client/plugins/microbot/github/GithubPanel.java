@@ -19,55 +19,36 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static javax.swing.JOptionPane.showMessageDialog;
 
 public class GithubPanel extends PluginPanel {
 
-    private JComboBox<String> repoDropdown = new JComboBox();
-    private JTextField folderField = new JTextField("", 10);
-    private JTextField tokenField = new JTextField("", 10);
+    private final JComboBox<String> repoDropdown = new JComboBox();
+    private final JTextField folderField = new JTextField("", 10);
+    private final JTextField tokenField = new JTextField("", 10);
 
-    private DefaultListModel<FileInfo> listModel = new DefaultListModel<FileInfo>();
-    private JList<FileInfo> fileList = new JList<>(listModel);
-    private JButton addRepoButton = new JButton("Add Repo Url");
-    private JButton deleteRepoButton = new JButton("Delete Repo Url");
-
-    private JButton fetchButton = new JButton("Fetch from GitHub");
-    private JButton downloadButton = new JButton("Download Selected");
-    private JButton downloadAllButton = new JButton("Download All");
-    private JButton openMicrobotSideLoadPluginFolder = new JButton("Open folder");
+    private final DefaultListModel<FileInfo> listModel = new DefaultListModel<FileInfo>();
+    private final JList<FileInfo> fileList = new JList<>(listModel);
 
     @Inject
     MicrobotPluginManager microbotPluginManager;
-
 
     @Inject
     ConfigManager configManager;
 
     GithubPlugin plugin;
 
-
     @Inject
     public GithubPanel(GithubPlugin plugin) {
-
-
         this.plugin = plugin;
-        //    setBorder(createCenteredTitledBorder("Download Plugins From Github Repository", "/net/runelite/client/plugins/microbot/shortestpath/Farming_patch_icon.png"));
 
         // Top panel for inputs
         // Keep BoxLayout
         JPanel inputPanel = new JPanel(new GridBagLayout());
-        /*inputPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        inputPanel.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE),
-                "Github Repository",
-                TitledBorder.LEFT,
-                TitledBorder.TOP,
-                new Font("Arial", Font.BOLD, 12),
-                Color.WHITE
-        ));*/
+
         GridBagConstraints gbc = new GridBagConstraints();
 
 
@@ -107,11 +88,17 @@ public class GithubPanel extends PluginPanel {
 
         // Button panel
         JPanel buttonPanel = new JPanel(new GridLayout(5, 1, 10, 10));
+        JButton addRepoButton = new JButton("Add Repo Url");
         addRepoButton.setBorder(BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE));
+        JButton deleteRepoButton = new JButton("Delete Repo Url");
         deleteRepoButton.setBorder(BorderFactory.createLineBorder(ColorScheme.PROGRESS_ERROR_COLOR));
+        JButton fetchButton = new JButton("Fetch from GitHub");
         fetchButton.setBorder(BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE));
+        JButton downloadButton = new JButton("Download Selected");
         downloadButton.setBorder(BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE));
+        JButton downloadAllButton = new JButton("Download All");
         downloadAllButton.setBorder(BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE));
+        JButton openMicrobotSideLoadPluginFolder = new JButton("Open folder");
         openMicrobotSideLoadPluginFolder.setBorder(BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE));
         buttonPanel.add(addRepoButton);
         buttonPanel.add(deleteRepoButton);
@@ -228,9 +215,9 @@ public class GithubPanel extends PluginPanel {
             return;
         }
 
-        if (folderField.getText().isEmpty() && GithubDownloader.isLargeRepo(repoDropdown.getSelectedItem().toString(), tokenField.getText())) {
+        if (folderField.getText().isEmpty() && GithubDownloader.isLargeRepo(Objects.requireNonNull(repoDropdown.getSelectedItem()).toString(), tokenField.getText())) {
             int choice = JOptionPane.showConfirmDialog(this,
-                    String.format("⚠ The repository is over 50MB.\nAre you sure you want to continue?"),
+                    "⚠ The repository is over 50MB.\nAre you sure you want to continue?",
                     "Large Repository",
                     JOptionPane.YES_NO_OPTION);
             if (choice != JOptionPane.YES_OPTION) {
@@ -238,9 +225,9 @@ public class GithubPanel extends PluginPanel {
             }
         }
         Window parentWindow = SwingUtilities.getWindowAncestor(this);
-        JDialog dialog = createLoadingDialog(parentWindow, "Scanning Repo...");
+        JDialog dialog = createLoadingDialog(parentWindow);
 
-        List<FileInfo> allFiles = GithubDownloader.getAllFilesRecursively(repoDropdown.getSelectedItem().toString(), folderField.getText(), tokenField.getText());
+        List<FileInfo> allFiles = GithubDownloader.getAllFilesRecursively(Objects.requireNonNull(repoDropdown.getSelectedItem()).toString(), folderField.getText(), tokenField.getText());
 
         dialog.setVisible(false);
         parentWindow.remove(dialog);
@@ -329,7 +316,7 @@ public class GithubPanel extends PluginPanel {
     private void fetchFiles() {
         if (!isRepoSelected()) return;
         try {
-            String json = GithubDownloader.fetchFiles(repoDropdown.getSelectedItem().toString(), folderField.getText(), tokenField.getText());
+            String json = GithubDownloader.fetchFiles(Objects.requireNonNull(repoDropdown.getSelectedItem()).toString(), folderField.getText(), tokenField.getText());
             JSONArray arr = new JSONArray(json);
 
             listModel.clear();
@@ -350,13 +337,19 @@ public class GithubPanel extends PluginPanel {
         }
     }
 
-    private JDialog createLoadingDialog(Window parent, String message) {
+    /**
+     * Creates a loading dialog with a progress bar.
+     *
+     * @param parent
+     * @return
+     */
+    private JDialog createLoadingDialog(Window parent) {
         JDialog dialog = new JDialog(parent, "Please wait...", Dialog.ModalityType.APPLICATION_MODAL);
         dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
         dialog.setSize(300, 100);
         dialog.setLayout(new BorderLayout());
 
-        JLabel label = new JLabel(message, SwingConstants.CENTER);
+        JLabel label = new JLabel("Scanning Repo...", SwingConstants.CENTER);
         JProgressBar progressBar = new JProgressBar();
         progressBar.setIndeterminate(true);
 
@@ -366,6 +359,11 @@ public class GithubPanel extends PluginPanel {
         return dialog;
     }
 
+    /**
+     * Gets the list of options from the configuration.
+     *
+     * @return
+     */
     private List<String> getOptionsList() {
         String raw = plugin.config.repoUrls();
         if (raw == null || raw.isEmpty()) {
