@@ -122,28 +122,6 @@ public interface DemonicGorillaConfig extends Config {
     }
 
     @ConfigItem(
-            keyName = "combatPotionType",
-            name = "Combat Potion Type",
-            description = "Select the type of combat potion to use",
-            section = bankingAndSuppliesSection,
-            position = 3
-    )
-    default CombatPotionType combatPotionType() {
-        return CombatPotionType.SUPER_COMBAT;
-    }
-
-    @ConfigItem(
-            keyName = "rangingPotionType",
-            name = "Ranging Potion Type",
-            description = "Select the type of ranging potion to use",
-            section = bankingAndSuppliesSection,
-            position = 4
-    )
-    default RangingPotionType rangingPotionType() {
-        return RangingPotionType.RANGING;
-    }
-
-    @ConfigItem(
             keyName = "boostedStatsThreshold",
             name = "% Boosted Stats Threshold",
             description = "The threshold for using a potion when the boosted stats are below the maximum.",
@@ -233,19 +211,6 @@ public interface DemonicGorillaConfig extends Config {
     )
     default String meleeGear() {
         return "";
-    }
-
-    @Getter
-    enum CombatPotionType {
-        SUPER_COMBAT,
-        DIVINE_SUPER_COMBAT
-    }
-
-    @Getter
-    enum RangingPotionType {
-        RANGING,
-        DIVINE_RANGING,
-        BASTION
     }
 }
 

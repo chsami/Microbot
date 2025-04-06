@@ -17,6 +17,7 @@ import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.grounditem.LootingParameters;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.misc.Rs2Potion;
 import net.runelite.client.plugins.microbot.util.models.RS2Item;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
@@ -215,6 +216,9 @@ public class DemonicGorillaScript extends Script {
                         drankPrayerPot = Rs2Player.drinkPrayerPotionAt(config.minEatPercent());
                         ate = true;
                         sleep(1200);
+                        if (!isRunning()) {
+                            break;
+                        }
                     }
                     if (ate) {
                         inventorySetup.loadInventory();
@@ -720,7 +724,7 @@ public class DemonicGorillaScript extends Script {
         int currentPrayer = Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER);
         boolean noFood = Rs2Inventory.getInventoryFood().isEmpty();
         boolean noPrayerPotions = Rs2Inventory.items().stream()
-                .noneMatch(item -> item != null && item.getName() != null && item.getName().toLowerCase().contains("prayer potion"));
+                .noneMatch(item -> item != null && item.getName() != null && Rs2Potion.getPrayerPotionsVariants().contains(item.getName()));
 
         return (noFood && currentHealth <= config.healthThreshold()) || (noPrayerPotions && currentPrayer < 10);
     }
@@ -766,79 +770,28 @@ public class DemonicGorillaScript extends Script {
     private void evaluateAndConsumePotions(DemonicGorillaConfig config) {
         int threshold = config.boostedStatsThreshold();
 
-        if (!isCombatPotionActive(config.combatPotionType(), threshold)) {
-            consumeCombatPotion(config.combatPotionType());
+        if (!isCombatPotionActive(threshold)) {
+            consumePotion(Rs2Potion.getCombatPotionsVariants());
         }
 
-        if (!isRangingPotionActive(config.rangingPotionType(), threshold)) {
-            consumeRangingPotion(config.rangingPotionType());
-        }
-    }
-
-    private boolean isCombatPotionActive(DemonicGorillaConfig.CombatPotionType combatPotionType, int threshold) {
-        switch (combatPotionType) {
-            case SUPER_COMBAT:
-                return Rs2Player.hasAttackActive(threshold) && Rs2Player.hasStrengthActive(threshold);
-            case DIVINE_SUPER_COMBAT:
-                return Rs2Player.hasDivineCombatActive();
-            default:
-                return true;
+        if (!isRangingPotionActive(threshold)) {
+            consumePotion(Rs2Potion.getRangePotionsVariants());
         }
     }
 
-    private boolean isRangingPotionActive(DemonicGorillaConfig.RangingPotionType rangingPotionType, int threshold) {
-        switch (rangingPotionType) {
-            case RANGING:
-                return Rs2Player.hasRangingPotionActive(threshold);
-            case DIVINE_RANGING:
-                return Rs2Player.hasDivineRangedActive();
-            case BASTION:
-                return Rs2Player.hasDivineBastionActive();
-            default:
-                return true;
-        }
+    private boolean isCombatPotionActive(int threshold) {
+        return Rs2Player.hasDivineCombatActive() || (Rs2Player.hasAttackActive(threshold) && Rs2Player.hasStrengthActive(threshold));
     }
 
-    private void consumeCombatPotion(DemonicGorillaConfig.CombatPotionType combatPotionType) {
-        String potion = null;
-        switch (combatPotionType) {
-            case SUPER_COMBAT:
-                potion = "super combat";
-                break;
-            case DIVINE_SUPER_COMBAT:
-                potion = "divine super combat";
-                break;
-            default:
-                return;
-        }
-        consumePotion(potion);
+    private boolean isRangingPotionActive(int threshold) {
+        return Rs2Player.hasRangingPotionActive(threshold) || Rs2Player.hasDivineBastionActive() || Rs2Player.hasDivineRangedActive();
     }
 
-    private void consumeRangingPotion(DemonicGorillaConfig.RangingPotionType rangingPotionType) {
-        String potion = null;
-        switch (rangingPotionType) {
-            case RANGING:
-                potion = "ranging potion";
-                break;
-            case DIVINE_RANGING:
-                potion = "divine ranging potion";
-                break;
-            case BASTION:
-                potion = "bastion potion";
-                break;
-            default:
-                return;
+    private void consumePotion(List<String> keyword) {
+        var potion = Rs2Inventory.get(keyword);
+        if (potion != null) {
+            Rs2Inventory.interact(potion, "Drink");
         }
-        consumePotion(potion);
-    }
-
-    private void consumePotion(String keyword) {
-        Rs2Inventory.getPotions().stream()
-                .filter(potion -> potion.getName().toLowerCase().contains(keyword))
-                .findFirst()
-                .ifPresent(potion -> {
-                    Rs2Inventory.interact(potion, "Drink");
-                });
     }
 
     void logOnceToChat(String message) {

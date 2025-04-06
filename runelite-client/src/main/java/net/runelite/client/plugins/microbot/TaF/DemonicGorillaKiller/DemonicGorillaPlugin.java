@@ -37,7 +37,7 @@ import java.util.concurrent.ScheduledExecutorService;
 @Slf4j
 public class DemonicGorillaPlugin extends Plugin {
 
-    public static final int DEMONIC_GORILLA_ROCK = 856;
+    private static final int DEMONIC_GORILLA_ROCK = 856;
     public static FixedSizeQueue<WorldPoint> lastLocation = new FixedSizeQueue<>(2);
     private ScheduledExecutorService scheduledExecutorService;
     @Inject
@@ -60,7 +60,6 @@ public class DemonicGorillaPlugin extends Plugin {
     @Override
     protected void startUp() throws AWTException {
         scriptStartTime = Instant.now();
-        scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
         if (overlayManager != null) {
             overlayManager.add(demonicGorillaOverlay);
         }
