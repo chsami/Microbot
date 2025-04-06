@@ -42,7 +42,6 @@ import net.runelite.client.discord.DiscordService;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.externalplugins.ExternalPluginManager;
 import net.runelite.client.plugins.PluginManager;
-import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.MicrobotClientLoader;
 import net.runelite.client.plugins.microbot.sideloading.MicrobotPluginManager;
 import net.runelite.client.ui.ClientUI;
@@ -153,12 +152,6 @@ public class RuneLiteDebug {
     private MicrobotPluginManager microbotPluginManager;
 
     public static void main(String[] args) throws Exception {
-/*
-
-        var githubDownloader = new GithubDownloader("chsami", "microbot", "docs");
-
-        githubDownloader.downloadFolder();*/
-
         Locale.setDefault(Locale.ENGLISH);
 
         final OptionParser parser = new OptionParser(false);
@@ -373,7 +366,6 @@ public class RuneLiteDebug {
         updater.update(); // will exit if an update is in progress
 
         microbotPluginManager.loadSideLoadPlugins();
-
         SplashScreen.stage(.70, null, "Finalizing configuration");
 
         // Plugins have provided their config, so set default config
