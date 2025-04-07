@@ -437,7 +437,7 @@ public class BanksBankStanderScript extends Script {
                 Microbot.log("Missing Alchemist's Amulet and Amulet of Chemistry. (disable button if not required to wear an amulet)");
                 shutdown();
             }
-//            Todo: Add a check if any neckalce slot item in inventory, bank them
+//            Todo: Add a check if any necklace slot item in inventory, bank them
 //            if (Rs2Bank.isOpen()) {
 //                for (Rs2ItemModel item : Rs2Inventory.items()) {
 //                    if (item != null && item.getSlot() == EquipmentInventorySlot.AMULET.getSlotIdx()) {
