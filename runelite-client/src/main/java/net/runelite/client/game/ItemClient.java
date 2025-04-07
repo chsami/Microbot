@@ -43,87 +43,67 @@ import okhttp3.Request;
 import okhttp3.Response;
 
 @Slf4j
-public class ItemClient
-{
-	private final OkHttpClient client;
-	private final HttpUrl apiBase, staticBase;
-	private final Gson gson;
+public class ItemClient {
+  private final OkHttpClient client;
+  private final HttpUrl apiBase, staticBase;
+  private final Gson gson;
 
-	@Inject
-	private ItemClient(OkHttpClient client,
-		@Named("runelite.api.base") HttpUrl apiBase,
-		@Named("runelite.static.base") HttpUrl staticBase,
-		Gson gson
-	)
-	{
-		this.client = client;
-		this.apiBase = apiBase;
-		this.staticBase = staticBase;
-		this.gson = gson;
-	}
+  @Inject
+  private ItemClient(
+      OkHttpClient client,
+      @Named("runelite.api.base") HttpUrl apiBase,
+      @Named("runelite.static.base") HttpUrl staticBase,
+      Gson gson) {
+    this.client = client;
+    this.apiBase = apiBase;
+    this.staticBase = staticBase;
+    this.gson = gson;
+  }
 
-	public ItemPrice[] getPrices() throws IOException
-	{
-		HttpUrl.Builder urlBuilder = apiBase.newBuilder()
-			.addPathSegment("item")
-			.addPathSegment("prices.js");
+  public ItemPrice[] getPrices() throws IOException {
+    HttpUrl.Builder urlBuilder =
+        apiBase.newBuilder().addPathSegment("item").addPathSegment("prices.js");
 
-		HttpUrl url = urlBuilder.build();
+    HttpUrl url = urlBuilder.build();
 
-		log.debug("Built URI: {}", url);
+    log.debug("Built URI: {}", url);
 
-		Request request = new Request.Builder()
-			.url(url)
-			.build();
+    Request request = new Request.Builder().url(url).build();
 
-		try (Response response = client.newCall(request).execute())
-		{
-			if (!response.isSuccessful())
-			{
-				log.warn("Error looking up prices: {}", response);
-				return null;
-			}
+    try (Response response = client.newCall(request).execute()) {
+      if (!response.isSuccessful()) {
+        log.warn("Error looking up prices: {}", response);
+        return null;
+      }
 
-			InputStream in = response.body().byteStream();
-			return gson.fromJson(new InputStreamReader(in, StandardCharsets.UTF_8), ItemPrice[].class);
-		}
-		catch (JsonParseException ex)
-		{
-			throw new IOException(ex);
-		}
-	}
+      InputStream in = response.body().byteStream();
+      return gson.fromJson(new InputStreamReader(in, StandardCharsets.UTF_8), ItemPrice[].class);
+    } catch (JsonParseException ex) {
+      throw new IOException(ex);
+    }
+  }
 
-	public Map<Integer, ItemStats> getStats() throws IOException
-	{
-		HttpUrl.Builder urlBuilder = staticBase.newBuilder()
-			.addPathSegment("item")
-			.addPathSegment("stats.ids.min.json");
+  public Map<Integer, ItemStats> getStats() throws IOException {
+    HttpUrl.Builder urlBuilder =
+        staticBase.newBuilder().addPathSegment("item").addPathSegment("stats.ids.min.json");
 
-		HttpUrl url = urlBuilder.build();
+    HttpUrl url = urlBuilder.build();
 
-		log.debug("Built URI: {}", url);
+    log.debug("Built URI: {}", url);
 
-		Request request = new Request.Builder()
-			.url(url)
-			.build();
+    Request request = new Request.Builder().url(url).build();
 
-		try (Response response = client.newCall(request).execute())
-		{
-			if (!response.isSuccessful())
-			{
-				log.warn("Error looking up item stats: {}", response);
-				return null;
-			}
+    try (Response response = client.newCall(request).execute()) {
+      if (!response.isSuccessful()) {
+        log.warn("Error looking up item stats: {}", response);
+        return null;
+      }
 
-			InputStream in = response.body().byteStream();
-			final Type typeToken = new TypeToken<Map<Integer, ItemStats>>()
-			{
-			}.getType();
-			return gson.fromJson(new InputStreamReader(in, StandardCharsets.UTF_8), typeToken);
-		}
-		catch (JsonParseException ex)
-		{
-			throw new IOException(ex);
-		}
-	}
+      InputStream in = response.body().byteStream();
+      final Type typeToken = new TypeToken<Map<Integer, ItemStats>>() {}.getType();
+      return gson.fromJson(new InputStreamReader(in, StandardCharsets.UTF_8), typeToken);
+    } catch (JsonParseException ex) {
+      throw new IOException(ex);
+    }
+  }
 }
