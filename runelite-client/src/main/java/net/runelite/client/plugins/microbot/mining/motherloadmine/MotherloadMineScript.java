@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import lombok.Getter;
+import lombok.Setter;
 import net.runelite.api.*;
 import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.WallObject;
@@ -39,6 +41,8 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 @Slf4j
 public class MotherloadMineScript extends Script {
+  private MotherloadMineConfig config;
+
   private static final Integer DWARF_MINE_REGION_ID = 12184;
   private static final WorldPoint DWARF_MINE_ENTRANCE = new WorldPoint(3061, 3377, 0);
 
@@ -51,12 +55,11 @@ public class MotherloadMineScript extends Script {
   private static final WorldPoint HOPPER_DEPOSIT_DOWN = new WorldPoint(3748, 5672, 0);
   private static final WorldPoint HOPPER_DEPOSIT_UP = new WorldPoint(3755, 5677, 0);
 
+  private static final int UPPER_FLOOR_HEIGHT = -490;
   private static final int SACK_ID = 26688;
 
-  public MLMStatus status = MLMStatus.IDLE;
   public static WallObject oreVein;
   public static MLMMiningSpot miningSpot = MLMMiningSpot.IDLE;
-  private MotherloadMineConfig config;
 
   private String pickaxeName = "";
 
@@ -64,7 +67,6 @@ public class MotherloadMineScript extends Script {
     this.config = config;
     Rs2Walker.disableTeleports = true;
     miningSpot = MLMMiningSpot.IDLE;
-    status = MLMStatus.SETUP;
 
     try {
       if (!super.run() || !Microbot.isLoggedIn() || !isMemberWorld())
@@ -109,9 +111,8 @@ public class MotherloadMineScript extends Script {
       Rs2Antiban.actionCooldown();
     }
 
-    switch (status) {
+    switch (MotherloadMinePlugin.getStatus()) {
       case IDLE:
-        break;
       case SETUP:
         if (!hasRequiredTools() || !checkInMlm())
           init();
@@ -152,11 +153,13 @@ public class MotherloadMineScript extends Script {
     // get our pickaxe and hammer as soon as possible
     if ((config.pickAxeInInventory() && !Rs2Inventory.hasItem("pickaxe", false))
         || (!config.pickAxeInInventory() && !Rs2Equipment.isWearing("pickaxe", false))) {
+      Rs2Walker.disableTeleports = true;
       if (Rs2Bank.walkToBankAndUseBank()) {
         Rs2Player.waitForWalking(18000);
+        if (!Rs2Inventory.contains("hammer"))
+          Rs2Bank.withdrawItem("hammer");
         getPickaxe(!config.pickAxeInInventory());
         Rs2Antiban.actionCooldown();
-        Rs2Antiban.takeMicroBreakByChance();
       }
     }
 
@@ -171,6 +174,7 @@ public class MotherloadMineScript extends Script {
       sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo2D(DWARF_MINE_ENTRANCE) <= 15);
       Rs2GameObject.interact("Staircase");
       sleepUntil(() -> Rs2Player.isInCave());
+      Rs2Walker.disableTeleports = true;
     }
 
     // in dwarf mine
@@ -201,7 +205,7 @@ public class MotherloadMineScript extends Script {
         depositHopper();
     }
 
-    status = MLMStatus.IDLE;
+    MotherloadMinePlugin.setStatus(MLMStatus.IDLE);
   }
 
   private void getPickaxe(boolean equip) {
@@ -260,19 +264,19 @@ public class MotherloadMineScript extends Script {
     if (sackCount + Rs2Inventory.count(ItemID.PAYDIRT) >= MotherloadMinePlugin.getMaxSackSize()
         || (MotherloadMinePlugin.getShouldEmptySack() && !Rs2Inventory.hasItem(ItemID.PAYDIRT))) {
       resetMiningState();
-      status = MLMStatus.EMPTY_SACK;
+      MotherloadMinePlugin.setStatus(MLMStatus.EMPTY_SACK);
     } else if (!Rs2Inventory.isFull())
-      status = MLMStatus.MINING;
+      MotherloadMinePlugin.setStatus(MLMStatus.MINING);
     else {
       resetMiningState();
       if (Rs2Inventory.hasItem(ItemID.PAYDIRT)) {
         if (Rs2GameObject.getGameObjects(ObjectID.BROKEN_STRUT).size() == 2
             && Rs2Inventory.hasItem("hammer"))
-          status = MLMStatus.FIXING_WATERWHEEL;
+          MotherloadMinePlugin.setStatus(MLMStatus.FIXING_WATERWHEEL);
         else
-          status = MLMStatus.DEPOSIT_HOPPER;
+          MotherloadMinePlugin.setStatus(MLMStatus.DEPOSIT_HOPPER);
       } else
-        status = MLMStatus.BANKING;
+        MotherloadMinePlugin.setStatus(MLMStatus.BANKING);
     }
   }
 
@@ -311,7 +315,7 @@ public class MotherloadMineScript extends Script {
         depositNonEssentials(true);
     }
     Rs2Antiban.takeMicroBreakByChance();
-    status = MLMStatus.IDLE;
+    MotherloadMinePlugin.setStatus(MLMStatus.IDLE);
   }
 
   private boolean hasGemInInventory() {
@@ -328,7 +332,7 @@ public class MotherloadMineScript extends Script {
   }
 
   private boolean hasOreInInventory() {
-    return Rs2Inventory.hasItem(MLM_ORE_TYPES.stream().mapToInt(i -> i).toArray());
+    return Rs2Inventory.hasItem(MotherloadMinePlugin.getMLM_ORE_TYPES().stream().mapToInt(i -> i).toArray());
   }
 
   private void fixWaterwheel() {
@@ -342,13 +346,12 @@ public class MotherloadMineScript extends Script {
   }
 
   private void depositHopper() {
+    if (!Rs2Inventory.contains(ItemID.PAYDIRT))
+      return;
     GameObject hopper = Rs2GameObject.getGameObject(HOPPER_DEPOSIT_DOWN);
     if (config.upstairsHopperUnlocked())
       if (isUpperFloor())
         hopper = Rs2GameObject.getGameObject(HOPPER_DEPOSIT_UP);
-    int sackDelta = Rs2Inventory.count(ItemID.PAYDIRT);
-    if (hopper == null)
-      hopper = Rs2GameObject.get("hopper", false);
     walkAndTrack(hopper.getWorldLocation());
     Rs2Player.waitForWalking(5000);
     if (Rs2GameObject.interact(hopper)) {
@@ -413,7 +416,7 @@ public class MotherloadMineScript extends Script {
   private void bankItems() {
     depositNonEssentials(false);
     withdrawEssentials();
-    status = MLMStatus.IDLE;
+    MotherloadMinePlugin.setStatus(MLMStatus.IDLE);
   }
 
   private boolean walkAndTrack(WorldPoint location) {
@@ -564,17 +567,16 @@ public class MotherloadMineScript extends Script {
 
   private void resetMiningState() {
     oreVein = null;
-    miningSpot = MLMMiningSpot.IDLE;
+    MotherloadMinePlugin.setStatus(MLMStatus.IDLE);
   }
 
   public boolean checkInMlm() {
     int currentMapRegionID = Rs2Player.getWorldLocation().getRegionID();
-    return MLM_REGIONS.contains(currentMapRegionID);
+    return MotherloadMinePlugin.getMLM_REGIONS().contains(currentMapRegionID);
   }
 
   @Override
   public void shutdown() {
-    status = MLMStatus.IDLE;
     oreVein = null;
     miningSpot = MLMMiningSpot.IDLE;
     pickaxeName = "";
