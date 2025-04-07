@@ -83,8 +83,10 @@ public class AirOrbScript extends Script {
                 switch (state) {
                     case BANKING:
                         if (!Rs2Bank.isOpen()) return;
+                        
+                        boolean hasAirStaffEquipped = Arrays.stream(airStaves).anyMatch(Rs2Equipment::isWearing);
 
-                        if (!Rs2Equipment.isWearing("air")) {
+                        if (!hasAirStaffEquipped) {
                             List<Rs2ItemModel> filteredAirStaves = Rs2Bank.bankItems().stream()
                                     .filter(item -> Arrays.stream(airStaves).anyMatch(id -> item.getId() == id))
                                     .collect(Collectors.toList());
@@ -169,7 +171,6 @@ public class AirOrbScript extends Script {
 
                                 if (energyRestoreItem == null) {
                                     Microbot.showMessage("Unable to find Energy Restore Potions");
-                                    System.out.println("break");
                                     shutdown();
                                     return;
                                 }
@@ -239,9 +240,7 @@ public class AirOrbScript extends Script {
                         sleepUntil(() -> Rs2Player.isAnimating(1200), 5000);
                         Rs2Tab.switchToInventoryTab();
 
-                        sleepUntil(() -> !Rs2Player.isAnimating(5000) || !Rs2Inventory.hasItem(ItemID.UNPOWERED_ORB) || shouldFlee, () -> {
-                            shouldFlee = !plugin.getDangerousPlayers().isEmpty();
-                        }, 96000, 1000);
+                        sleepUntil(() -> !Rs2Player.isAnimating(5000) || !Rs2Inventory.hasItem(ItemID.UNPOWERED_ORB) || shouldFlee, () -> shouldFlee = !plugin.getDangerousPlayers().isEmpty(), 96000, 1000);
                         break;
                     case DRINKING:
                         Rs2GameObject.interact(ObjectID.POOL_OF_REFRESHMENT);
@@ -263,11 +262,9 @@ public class AirOrbScript extends Script {
         return true;
     }
 
-    public boolean handleWalk() {
+    public void handleWalk() {
         scheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
-                if (!Microbot.isLoggedIn()) return;
-
                 if (shouldContinueWalking()) {
                     Rs2Walker.walkTo(airObelisk, 2);
                 } else if (shouldHandleBankingOrFleeing()) {
@@ -277,7 +274,6 @@ public class AirOrbScript extends Script {
                 System.out.println("Error in handleWalk: " + ex.getMessage());
             }
         }, 0, 1000, TimeUnit.MILLISECONDS);
-        return true;
     }
 
     @Override
@@ -449,11 +445,8 @@ public class AirOrbScript extends Script {
         Rs2Inventory.equip(teleportItem.getId());
         Rs2Inventory.waitForInventoryChanges(1200);
         if (plugin.getTeleport() == Teleport.AMULET_OF_GLORY) {
-            Rs2ItemModel equippedAmulet = Rs2Equipment.get(EquipmentInventorySlot.AMULET);
-            if (equippedAmulet != null && equippedAmulet.getId() == ItemID.AMULET_OF_GLORY) {
-                Rs2Bank.depositOne(equippedAmulet.getId());
-                Rs2Inventory.waitForInventoryChanges(1200);
-            }
+            Rs2Bank.depositOne(ItemID.AMULET_OF_GLORY);
+            Rs2Inventory.waitForInventoryChanges(1200);
         }
     }
 }
