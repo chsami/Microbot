@@ -1373,6 +1373,9 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
         
         // Handle Brimhaven Dungeon Entrance
         if (tileObject.getId() == 20877) {
+            if (Rs2Player.isMoving()) {
+                Rs2Player.waitForWalking();
+            }
             Rs2Dialogue.sleepUntilHasQuestion("Pay 875 coins to enter?");
             Rs2Dialogue.clickOption("Yes");
             sleepUntil(() -> Rs2Player.getWorldLocation().equals(transport.getDestination()));
@@ -1387,6 +1390,16 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
         // Handle Morte Myre Cave Agility Shortcut
         if (tileObject.getId() == ObjectID.CAVE_ENTRANCE_16308) {
             Rs2Player.waitForAnimation((600 * 4 ) + 300);
+            return true;
+        }
+        
+        // Handle Crash Site Cavern Gate
+        if (tileObject.getId() == 28807 && transport.getOrigin().equals(new WorldPoint(2435,3519, 0))) {
+            if (Rs2Player.isMoving()) {
+                Rs2Player.waitForWalking();
+            }
+            Rs2Dialogue.sleepUntilInDialogue();
+            Rs2Dialogue.clickOption("yes");
             return true;
         }
         return false;
