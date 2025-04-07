@@ -44,7 +44,6 @@ public class CollectorPlugin extends Plugin {
     }
 
     protected void shutDown() {
-        CollectorScript.currentState = CollectorScript.State.IDLE;
         collectorScript.shutdown();
         overlayManager.remove(collectorOverlay);
     }

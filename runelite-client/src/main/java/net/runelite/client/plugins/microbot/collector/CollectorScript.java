@@ -482,9 +482,25 @@ public class CollectorScript extends Script {
         }, 0L, 200L, TimeUnit.MILLISECONDS);
         return true;
     }
+    
+    public void resetScriptState() {
+        currentState = State.IDLE;
+        startTimeSnapeGrass = 0;
+        startTimeSAP = 0;
+        startTimeMMF = 0;    
+        startTimePlanks = 0;
+        startTimeBDS = 0;
+        startTimeSeaweed = 0;
+        totalSnapeGrassCollected = 0;
+        totalSAPCollected = 0;
+        totalMMFCollected = 0;
+        totalPlanksCollected = 0;
+        totalBDSCollected = 0;
+    }
 
     @Override
     public void shutdown() {
         super.shutdown();
+        resetScriptState();
     }
 }
