@@ -434,7 +434,7 @@ public class BanksBankStanderScript extends Script {
             } else if (Rs2Bank.isOpen() && Rs2Bank.hasItem(ItemID.AMULET_OF_CHEMISTRY)) {
                 Rs2Bank.withdrawAndEquip(ItemID.AMULET_OF_CHEMISTRY);
             } else {
-                Microbot.log("Missing Alchemist's Amulet and Amulet of Chemistry. (disable button if not require to wear amulet)");
+                Microbot.log("Missing Alchemist's Amulet and Amulet of Chemistry. (disable button if not required to wear an amulet)");
                 shutdown();
             }
 //            Todo: Add a check if any neckalce slot item in inventory, bank them
