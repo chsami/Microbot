@@ -89,6 +89,10 @@ public class CollectorScript extends Script {
     public static long startTimeSeaweed = 0;
     public static int totalSporesCollected = 0;
 
+    private static final int[] RING_OF_DUELING_IDS = {
+        2552, 2554, 2556, 2558, 2560, 2562, 2564, 2566
+    };
+
     public static boolean test = false;
 
     @Subscribe
@@ -248,8 +252,22 @@ public class CollectorScript extends Script {
                             sleep((int) (Math.random() * 500) + 700);
                             // Equip new dueling ring if needed
                             if (!Rs2Equipment.isWearing("Ring of dueling")) {
-                                Rs2Bank.withdrawAndEquip(2552);
-                                sleepUntil(() -> Rs2Equipment.isWearing("Ring of dueling"));
+                                log("Equipping new dueling ring");
+                                int ringToWithdraw = -1; 
+                                for (int ringId : RING_OF_DUELING_IDS) {
+                                    if (Rs2Bank.hasItem(ringId)) {
+                                        ringToWithdraw = ringId;
+                                        break;
+                                    }
+                                }
+                                if (ringToWithdraw != -1) {
+                                    Rs2Bank.withdrawAndEquip(ringToWithdraw);
+                                    sleepUntil(() -> Rs2Equipment.isWearing("Ring of dueling"), 5000);
+                                } else {
+                                    log("No Ring of Dueling found in the bank - stopping script.");
+                                    shutdown();
+                                    return; // Ensure the script stops execution
+                                }
                             }
                             sleep((int) (Math.random() * 500) + 700);
                             Rs2Bank.closeBank();
@@ -271,6 +289,8 @@ public class CollectorScript extends Script {
                         break;
 
                     case COLLECTING_MMF:
+
+                    
 
                         if (startTimeMMF == 0) {
                             startTimeMMF = System.currentTimeMillis();
@@ -312,11 +332,24 @@ public class CollectorScript extends Script {
                         if (Rs2Bank.walkToBankAndUseBank(BankLocation.FEROX_ENCLAVE)) {
                             sleep((int) (Math.random() * 250) + 350);
                             Rs2Bank.depositAll("Mort myre fungus");
-                            sleep((int) (Math.random() * 500) + 700);
                             // Equip new dueling ring if needed
                             if (!Rs2Equipment.isWearing("Ring of dueling")) {
-                                Rs2Bank.withdrawAndEquip(2552);
-                                sleepUntil(() -> Rs2Equipment.isWearing("Ring of dueling"));
+                                log("Equipping new dueling ring");
+                                int ringToWithdraw = -1; 
+                                for (int ringId : RING_OF_DUELING_IDS) {
+                                    if (Rs2Bank.hasItem(ringId)) {
+                                        ringToWithdraw = ringId;
+                                        break;
+                                    }
+                                }
+                                if (ringToWithdraw != -1) {
+                                    Rs2Bank.withdrawAndEquip(ringToWithdraw);
+                                    sleepUntil(() -> Rs2Equipment.isWearing("Ring of dueling"), 5000);
+                                } else {
+                                    log("No Ring of Dueling found in the bank - stopping script.");
+                                    shutdown();
+                                    return; 
+                                }
                             }
                             Rs2Bank.closeBank();
                             sleep((int) (Math.random() * 500) + 700);
@@ -450,11 +483,24 @@ public class CollectorScript extends Script {
                         if (Rs2Bank.walkToBankAndUseBank(BankLocation.FEROX_ENCLAVE)) {
                             sleep((int) (Math.random() * 250) + 350);
                             Rs2Bank.depositAll("Blue dragon scale");
-                            sleep((int) (Math.random() * 500) + 700);
                             // Equip new dueling ring if needed
                             if (!Rs2Equipment.isWearing("Ring of dueling")) {
-                                Rs2Bank.withdrawAndEquip(2552);
-                                sleepUntil(() -> Rs2Equipment.isWearing("Ring of dueling"));
+                                log("Equipping new dueling ring");
+                                int ringToWithdraw = -1; 
+                                for (int ringId : RING_OF_DUELING_IDS) {
+                                    if (Rs2Bank.hasItem(ringId)) {
+                                        ringToWithdraw = ringId;
+                                        break;
+                                    }
+                                }
+                                if (ringToWithdraw != -1) {
+                                    Rs2Bank.withdrawAndEquip(ringToWithdraw);
+                                    sleepUntil(() -> Rs2Equipment.isWearing("Ring of dueling"), 5000);
+                                } else {
+                                    log("No Ring of Dueling found in the bank - stopping script.");
+                                    shutdown();
+                                    return; 
+                                }
                             }
                             Rs2Bank.closeBank();
                             sleep((int) (Math.random() * 500) + 700);
