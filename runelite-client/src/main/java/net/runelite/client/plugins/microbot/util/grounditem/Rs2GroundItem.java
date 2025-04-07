@@ -411,6 +411,26 @@ public class Rs2GroundItem {
         return validateLoot(filter);
     }
 
+    /**
+     * Loots items based on their location and item ID.
+     * @param location
+     * @param itemId
+     * @return
+     */
+    public static boolean lootItemsBasedOnLocation(WorldPoint location, int itemId) {
+        final Predicate<GroundItem> filter = groundItem ->
+                groundItem.getLocation().equals(location) && groundItem.getItemId() == itemId;
+
+        List<GroundItem> groundItems = GroundItemsPlugin.getCollectedGroundItems().values().stream()
+                .filter(filter)
+                .collect(Collectors.toList());
+
+        for (GroundItem groundItem : groundItems) {
+            coreLoot(groundItem);
+        }
+        return validateLoot(filter);
+    }
+
     // Loot untradables
     public static boolean lootUntradables(LootingParameters params) {
         final Predicate<GroundItem> filter = groundItem ->
@@ -604,6 +624,7 @@ public class Rs2GroundItem {
      * @param itemId
      * @return
      */
+    @Deprecated(since = "1.7.9, use lootItemsBasedOnLocation(WorldPoint location, int itemId)", forRemoval = true)
     public static boolean loot(final WorldPoint worldPoint, final int itemId)
     {
         final Optional<RS2Item> item = Arrays.stream(Rs2GroundItem.getAllAt(worldPoint.getX(), worldPoint.getY()))

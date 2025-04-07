@@ -10,13 +10,13 @@ import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.kit.KitType;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetInfo;
+import net.runelite.client.plugins.grounditems.GroundItemsPlugin;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.VarbitValues;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
-import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
@@ -1344,7 +1344,7 @@ public class Rs2Player {
     public static boolean isStandingOnGameObject() {
         WorldPoint playerPoint = getWorldLocation();
         return Rs2GameObject.getGameObject(playerPoint) != null
-                && Rs2GroundItem.getAllAt(getWorldLocation().getX(), getWorldLocation().getY()) != null;
+                && isStandingOnGroundItem();
     }
 
     /**
@@ -1354,9 +1354,7 @@ public class Rs2Player {
      */
     public static boolean isStandingOnGroundItem() {
         WorldPoint playerPoint = getWorldLocation();
-        return Arrays.stream(Rs2GroundItem.getAllAt(playerPoint.getX(), playerPoint.getY()))
-                .findAny()
-                .isPresent();
+        return GroundItemsPlugin.getCollectedGroundItems().values().stream().anyMatch(x -> x.getLocation().equals(playerPoint));
     }
 
     /**
