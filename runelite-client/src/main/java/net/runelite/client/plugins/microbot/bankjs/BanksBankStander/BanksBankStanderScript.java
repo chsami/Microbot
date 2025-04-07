@@ -1,5 +1,7 @@
 package net.runelite.client.plugins.microbot.bankjs.BanksBankStander;
 
+import net.runelite.api.EquipmentInventorySlot;
+import net.runelite.api.Item;
 import net.runelite.api.ItemID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
@@ -143,14 +145,16 @@ public class BanksBankStanderScript extends Script {
                 sleepUntil(Rs2Bank::isOpen);
             }
 
+            if (config.amuletOfChemistry()){
+                checkForAmulet();
+            }
+
             depositUnwantedItems(firstItemId, config.firstItemQuantity());
             depositUnwantedItems(secondItemId, config.secondItemQuantity());
             depositUnwantedItems(thirdItemId, config.thirdItemQuantity());
             depositUnwantedItems(fourthItemId, config.fourthItemQuantity());
 
-            if (config.amuletOfChemistry()){
-                checkForAmulet();
-            }
+
 
             // Checking that we have enough items in the bank
             String missingItem = checkItemSums();
@@ -226,7 +230,7 @@ public class BanksBankStanderScript extends Script {
             isWaitingForPrompt = false; // Ensure prompt flag is reset
             if (secondItemId != null) {
                 if(config.amuletOfChemistry()){
-                    sleepUntil(() -> !Rs2Inventory.hasItem(secondItemId) || !Rs2Equipment.isWearing(ItemID.AMULET_OF_CHEMISTRY), 40000);
+                    sleepUntil(() -> !Rs2Inventory.hasItem(secondItemId) || (!Rs2Equipment.isWearing(ItemID.AMULET_OF_CHEMISTRY) && !Rs2Equipment.isWearing(ItemID.ALCHEMISTS_AMULET_29990)), 40000);
                     sleep(calculateSleepDuration(1));
                     checkForAmulet();
                     if(Rs2Bank.isOpen()) {
@@ -420,17 +424,27 @@ public class BanksBankStanderScript extends Script {
         }
     }
     private void checkForAmulet(){
-        if (!Rs2Equipment.isWearing(ItemID.AMULET_OF_CHEMISTRY)){
+        if (!Rs2Equipment.isWearing(ItemID.AMULET_OF_CHEMISTRY) && !Rs2Equipment.isWearing(ItemID.ALCHEMISTS_AMULET_29990)){
             if (!Rs2Bank.isOpen()) {
                 Rs2Bank.openBank();
                 sleepUntil(Rs2Bank::isOpen);
             }
-            if (Rs2Bank.isOpen() && Rs2Bank.hasItem(ItemID.AMULET_OF_CHEMISTRY)) {
+            if (Rs2Bank.isOpen() && Rs2Bank.hasItem(ItemID.ALCHEMISTS_AMULET_29990)){
+                Rs2Bank.withdrawAndEquip(ItemID.ALCHEMISTS_AMULET_29990);
+            } else if (Rs2Bank.isOpen() && Rs2Bank.hasItem(ItemID.AMULET_OF_CHEMISTRY)) {
                 Rs2Bank.withdrawAndEquip(ItemID.AMULET_OF_CHEMISTRY);
-            }else{
-                Microbot.log("Missing Amulet of Chemistry. (disable button if not require to wear amulet)");
+            } else {
+                Microbot.log("Missing Alchemist's Amulet and Amulet of Chemistry. (disable button if not require to wear amulet)");
                 shutdown();
             }
+//            Todo: Add a check if any neckalce slot item in inventory, bank them
+//            if (Rs2Bank.isOpen()) {
+//                for (Rs2ItemModel item : Rs2Inventory.items()) {
+//                    if (item != null && item.getSlot() == EquipmentInventorySlot.AMULET.getSlotIdx()) {
+//                        Rs2Bank.depositX(item.getId(), 0); // 0 = deposit all
+//                    }
+//                }
+//            }
 //            if(Rs2Equipment.isWearing(ItemID.AMULET_OF_CHEMISTRY)){
 //                Rs2Bank.closeBank();
 //                sleepUntil(() -> !Rs2Bank.isOpen());
