@@ -7,6 +7,8 @@ import net.runelite.api.Skill;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerPlugin;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -64,5 +66,9 @@ public class BloodsPlugin extends Plugin {
     public void updateXpGained() {
         int currentXp = client.getSkillExperience(Skill.RUNECRAFT);
         totalXpGained = currentXp - startXp;
+    }
+
+    public boolean isBreakHandlerEnabled() {
+        return Microbot.isPluginEnabled(BreakHandlerPlugin.class);
     }
 }
