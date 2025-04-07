@@ -2,7 +2,6 @@ package net.runelite.client.plugins.microbot.collector;
 
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
@@ -14,6 +13,7 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
+import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.api.TileObject;
 import net.runelite.api.Skill;
 import net.runelite.api.events.ChatMessage;
@@ -60,25 +60,21 @@ public class CollectorScript extends Script {
     public static State currentState = State.IDLE;
     // Snape Grass
     private static final WorldPoint COLLECTION_AREA_SG = new WorldPoint(1839, 3640, 0);
-    private static final WorldPoint VINERY_BANK = new WorldPoint(1807, 3566, 0);
     private int previousSnapeGrassCount = 0;
     public static int totalSnapeGrassCollected = 0;
     public static long startTimeSnapeGrass = 0;
     // Super Anti-Poison
     private static final WorldPoint COLLECTION_AREA_SAP = new WorldPoint(2467, 3176, 0); 
-    private static final WorldPoint CASTLE_WARS_BANK = new WorldPoint(2443, 3083, 0);
     private int previousSAPCount = 0;
     public static int totalSAPCollected = 0;
     public static long startTimeSAP = 0;
     // Mort Myre Fungus
     private static final WorldPoint COLLECTION_AREA_MMF = new WorldPoint(3474, 3419, 0);
-    private static final WorldPoint FEROX_ENCLAVE_BANK = new WorldPoint(3134, 3633, 0);
     private int previousMMFCount = 0;
     public static int totalMMFCollected = 0;
     public static long startTimeMMF = 0;
     // Normal Planks
     private static final WorldPoint COLLECTION_AREA_PL = new WorldPoint(2554, 3575, 0);
-    private static final WorldPoint BARB_ASSAULT_BANK = new WorldPoint(2536, 3573, 0);
     private int previousPlankCount = 0;
     public static int totalPlanksCollected = 0;
     public static long startTimePlanks = 0;
@@ -171,12 +167,11 @@ public class CollectorScript extends Script {
                         break;
 
                     case BANKING_SG:
-                        if (Rs2Walker.walkTo(VINERY_BANK, 0)) {
-                            if (Rs2Bank.useBank()) {
+                    
+                        if (Rs2Bank.walkToBankAndUseBank(BankLocation.VINERY_BANK)) {
                                 Rs2Bank.depositAll();
                                 Rs2Bank.closeBank();
                                 currentState = State.RETURNING_SG_AREA;
-                            }
                         }
                         break;
                         
@@ -248,19 +243,17 @@ public class CollectorScript extends Script {
                         break;
 
                     case BANKING_SAP:
-                        if (Rs2Walker.walkTo(CASTLE_WARS_BANK, 0)) {
-                            if (Rs2Bank.useBank()) {
-                                Rs2Bank.depositAll("Superantipoison(1)");
-                                sleep((int) (Math.random() * 500) + 700);
-                                // Equip new dueling ring if needed
-                                if (!Rs2Equipment.isWearing("Ring of dueling")) {
-                                    Rs2Bank.withdrawAndEquip(2552);
-                                    sleepUntil(() -> Rs2Equipment.isWearing("Ring of dueling"));
-                                }
-                                sleep((int) (Math.random() * 500) + 700);
-                                Rs2Bank.closeBank();
-                                currentState = State.RETURNING_SAP_AREA;
+                        if (Rs2Bank.walkToBankAndUseBank(BankLocation.CASTLE_WARS)) {
+                            Rs2Bank.depositAll("Superantipoison(1)");
+                            sleep((int) (Math.random() * 500) + 700);
+                            // Equip new dueling ring if needed
+                            if (!Rs2Equipment.isWearing("Ring of dueling")) {
+                                Rs2Bank.withdrawAndEquip(2552);
+                                sleepUntil(() -> Rs2Equipment.isWearing("Ring of dueling"));
                             }
+                            sleep((int) (Math.random() * 500) + 700);
+                            Rs2Bank.closeBank();
+                            currentState = State.RETURNING_SAP_AREA;
                         }
                         break;
                         
@@ -316,7 +309,17 @@ public class CollectorScript extends Script {
                         break;
 
                     case BANKING_MMF:
-                        if (Rs2Walker.walkTo(FEROX_ENCLAVE_BANK, 0)) {
+                        if (Rs2Bank.walkToBankAndUseBank(BankLocation.FEROX_ENCLAVE)) {
+                            sleep((int) (Math.random() * 250) + 350);
+                            Rs2Bank.depositAll("Mort myre fungus");
+                            sleep((int) (Math.random() * 500) + 700);
+                            // Equip new dueling ring if needed
+                            if (!Rs2Equipment.isWearing("Ring of dueling")) {
+                                Rs2Bank.withdrawAndEquip(2552);
+                                sleepUntil(() -> Rs2Equipment.isWearing("Ring of dueling"));
+                            }
+                            Rs2Bank.closeBank();
+                            sleep((int) (Math.random() * 500) + 700);
                             // Use Pool of Refreshment to restore prayer points
                             TileObject pool = Rs2GameObject.findObjectById(39651);
                             if (pool != null) {
@@ -324,19 +327,8 @@ public class CollectorScript extends Script {
                                 Rs2GameObject.interact(pool, "Drink");
                                 sleepUntil(() -> Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER) > currentPrayer, 5000);
                             }
-                            sleep((int) (Math.random() * 1000) + 2000);
-                            if (Rs2Bank.useBank()) {
-                                Rs2Bank.depositAll("Mort myre fungus");
-                                sleep((int) (Math.random() * 500) + 700);
-                                // Equip new dueling ring if needed
-                                if (!Rs2Equipment.isWearing("Ring of dueling")) {
-                                    Rs2Bank.withdrawAndEquip(2552);
-                                    sleepUntil(() -> Rs2Equipment.isWearing("Ring of dueling"));
-                                }
-                                sleep((int) (Math.random() * 500) + 700);
-                                Rs2Bank.closeBank();
-                                currentState = State.RETURNING_MMF_AREA;
-                            }
+                            sleep((int) (Math.random() * 250) + 350);
+                            currentState = State.RETURNING_MMF_AREA;
                         }
                         break;
                         
@@ -417,13 +409,11 @@ public class CollectorScript extends Script {
                         break;
 
                     case BANKING_PL:
-                        if (Rs2Walker.walkTo(BARB_ASSAULT_BANK, 0)) {
-                            if (Rs2Bank.useBank()) {
-                                Rs2Bank.depositAll("Plank");
-                                sleep((int) (Math.random() * 500) + 700);
-                                Rs2Bank.closeBank();
-                                currentState = State.RETURNING_PL_AREA;
-                            }
+                        if (Rs2Bank.walkToBankAndUseBank(BankLocation.BARBARIAN_OUTPOST)) {
+                            Rs2Bank.depositAll("Plank");
+                            sleep((int) (Math.random() * 500) + 700);
+                            Rs2Bank.closeBank();
+                            currentState = State.RETURNING_PL_AREA;
                         }
                         break;
 
@@ -457,27 +447,26 @@ public class CollectorScript extends Script {
                         }
                         break;
                     case BANKING_BDS:
-                        if (Rs2Walker.walkTo(FEROX_ENCLAVE_BANK, 0)) {
-                            // Use Pool of Refreshment to restore health
-                            TileObject pool = Rs2GameObject.findObjectById(39651);
-                            if (pool != null) {
-                                int currentPrayer = Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER);
-                                Rs2GameObject.interact(pool, "Drink");
-                                sleepUntil(() -> Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER) > currentPrayer, 5000);
+                        if (Rs2Bank.walkToBankAndUseBank(BankLocation.FEROX_ENCLAVE)) {
+                            sleep((int) (Math.random() * 250) + 350);
+                            Rs2Bank.depositAll("Blue dragon scale");
+                            sleep((int) (Math.random() * 500) + 700);
+                            // Equip new dueling ring if needed
+                            if (!Rs2Equipment.isWearing("Ring of dueling")) {
+                                Rs2Bank.withdrawAndEquip(2552);
+                                sleepUntil(() -> Rs2Equipment.isWearing("Ring of dueling"));
                             }
-                            sleep((int) (Math.random() * 1000) + 2000);
-                            if (Rs2Bank.useBank()) {
-                                Rs2Bank.depositAll("Blue dragon scale");
-                                sleep((int) (Math.random() * 500) + 700);
-                                 // Equip new dueling ring if needed
-                                 if (!Rs2Equipment.isWearing("Ring of dueling")) {
-                                    Rs2Bank.withdrawAndEquip(2552);
-                                    sleepUntil(() -> Rs2Equipment.isWearing("Ring of dueling"));
-                                }
-                                sleep((int) (Math.random() * 500) + 700);
-                                Rs2Bank.closeBank();
-                                currentState = State.RETURNING_BDS_AREA;
-                            }
+                            Rs2Bank.closeBank();
+                            sleep((int) (Math.random() * 500) + 700);
+                             // Use Pool of Refreshment to restore health
+                             TileObject pool = Rs2GameObject.findObjectById(39651);
+                             if (pool != null) {
+                                 int currentPrayer = Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER);
+                                 Rs2GameObject.interact(pool, "Drink");
+                                 sleepUntil(() -> Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER) > currentPrayer, 5000);
+                             }
+                             sleep((int) (Math.random() * 250) + 350);
+                            currentState = State.RETURNING_BDS_AREA;
                         }
                         break;
                     case RETURNING_BDS_AREA:
