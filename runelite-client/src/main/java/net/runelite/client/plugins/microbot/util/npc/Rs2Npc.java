@@ -1127,6 +1127,31 @@ public class Rs2Npc {
     }
 
     /**
+     * Retrieves the first valid action from the given list that the NPC supports.
+     *
+     * @param npc             The {@link Rs2NpcModel} to check available actions on.
+     * @param possibleActions A list of possible actions to match against the NPC's menu options.
+     * @return The first matching action as a {@link String}, or an empty string if no match is found.
+     */
+    public static String getAvailableAction(Rs2NpcModel npc, List<String> possibleActions) {
+        if (npc == null || possibleActions == null || possibleActions.isEmpty()) return "";
+
+        NPCComposition composition = Microbot.getClientThread().runOnClientThreadOptional(
+                        () -> Microbot.getClient().getNpcDefinition(npc.getId()))
+                .orElse(null);
+
+        if (composition == null || composition.getActions() == null) return "";
+
+        return Arrays.stream(composition.getActions())
+                .filter(Objects::nonNull)
+                .filter(npcAction ->
+                        possibleActions.stream()
+                                .anyMatch(action -> action.equalsIgnoreCase(npcAction)))
+                .findFirst()
+                .orElse("");
+    }
+
+    /**
      * Retrieves the first NPC that has a specified action available.
      *
      * <p>This method searches for NPCs that have the given action in their interaction menu.
