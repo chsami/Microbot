@@ -61,7 +61,7 @@ public class OuraniaScript extends Script {
                 
                 if (!Rs2Magic.isLunar()) {
                     Microbot.showMessage("Not currently on Lunar Spellbook");
-                    shutdown();
+                    Microbot.stopPlugin(plugin);
                     return;
                 }
                 
@@ -88,14 +88,14 @@ public class OuraniaScript extends Script {
 
                 if (state == null) {
                     Microbot.showMessage("Unable to evaluate state");
-                    shutdown();
+                    Microbot.stopPlugin(plugin);
                     return;
                 }
 
                 switch (state) {
                     case CRAFTING:
                         Rs2GameObject.interact(ObjectID.ALTAR_29631, "craft-rune");
-                        Rs2Player.waitForXpDrop(Skill.RUNECRAFT, false);
+                        Rs2Player.waitForAnimation();
                         if (Rs2Inventory.hasAnyPouch() && !Rs2Inventory.allPouchesEmpty()) {
                             Rs2Inventory.emptyPouches();
                             return;
@@ -120,7 +120,7 @@ public class OuraniaScript extends Script {
                     case BANKING:
                         if (plugin.isRanOutOfAutoPay()) {
                             Microbot.showMessage("You have ran out of auto-pay runes, check runepouch!");
-                            shutdown();
+                            Microbot.stopPlugin(plugin);
                             return;
                         }
                         
@@ -173,7 +173,7 @@ public class OuraniaScript extends Script {
 
                                 if (energyRestoreItem == null) {
                                     Microbot.showMessage("Unable to find Restore Energy Potion but hasItem?");
-                                    shutdown();
+                                    Microbot.stopPlugin(plugin);
                                     return;
                                 }
 
@@ -186,14 +186,14 @@ public class OuraniaScript extends Script {
 
                                 if (staminaPotionItem == null) {
                                     Microbot.showMessage("Unable to find Stamina Potion but hasItem?");
-                                    shutdown();
+                                    Microbot.stopPlugin(plugin);
                                     return;
                                 }
 
                                 withdrawAndDrink(staminaPotionItem.getName());
                             } else {
                                 Microbot.showMessage("Unable to find Stamina Potion OR Energy Restore Potions");
-                                shutdown();
+                                Microbot.stopPlugin(plugin);
                                 return;
                             }
                         }
@@ -202,7 +202,7 @@ public class OuraniaScript extends Script {
                             while (Rs2Player.getHealthPercentage() < 100 && isRunning()) {
                                 if (!Rs2Bank.hasItem(plugin.getRs2Food().getId())) {
                                     Microbot.showMessage("Missing Food in Bank!");
-                                    shutdown();
+                                    Microbot.stopPlugin(plugin);
                                     break;
                                 }
 
@@ -222,7 +222,7 @@ public class OuraniaScript extends Script {
                         
                         if (!Rs2Bank.hasBankItem(plugin.getEssence().getItemId(), requiredEssence)) {
                             Microbot.showMessage("Not enough essence to full run");
-                            shutdown();
+                            Microbot.stopPlugin(plugin);
                             return;
                         }
                         
