@@ -425,6 +425,7 @@ public class BanksBankStanderScript extends Script {
     }
     private void checkForAmulet(){
         if (!Rs2Equipment.isWearing(ItemID.AMULET_OF_CHEMISTRY) && !Rs2Equipment.isWearing(ItemID.ALCHEMISTS_AMULET_29990)){
+            Rs2ItemModel currentAmulet = Rs2Equipment.get(EquipmentInventorySlot.AMULET);
             if (!Rs2Bank.isOpen()) {
                 Rs2Bank.openBank();
                 sleepUntil(Rs2Bank::isOpen);
@@ -436,6 +437,9 @@ public class BanksBankStanderScript extends Script {
             } else {
                 Microbot.log("Missing Alchemist's Amulet and Amulet of Chemistry. (disable button if not required to wear an amulet)");
                 shutdown();
+            }
+            if (currentAmulet != null) {
+                Rs2Bank.depositOne(currentAmulet.getId());
             }
 //            Todo: Add a check if any necklace slot item in inventory, bank them
 //            if (Rs2Bank.isOpen()) {
