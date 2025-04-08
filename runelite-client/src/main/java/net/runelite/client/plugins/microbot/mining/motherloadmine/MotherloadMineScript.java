@@ -1,18 +1,27 @@
 package net.runelite.client.plugins.microbot.mining.motherloadmine;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.jar.Attributes.Name;
 import java.util.stream.Collectors;
+
+import com.sun.jna.platform.linux.XAttr.ssize_t;
+
 import lombok.extern.slf4j.Slf4j;
 import lombok.Getter;
 import lombok.Setter;
 import net.runelite.api.*;
 import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.WallObject;
+import net.runelite.api.annotations.Varp;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
@@ -113,6 +122,7 @@ public class MotherloadMineScript extends Script {
 
     switch (MotherloadMinePlugin.getStatus()) {
       case IDLE:
+        break;
       case SETUP:
         if (!hasRequiredTools() || !checkInMlm())
           init();
@@ -150,31 +160,13 @@ public class MotherloadMineScript extends Script {
     if (Rs2DepositBox.isOpen())
       Rs2DepositBox.closeDepositBox();
 
-    // get our pickaxe and hammer as soon as possible
-    if ((config.pickAxeInInventory() && !Rs2Inventory.hasItem("pickaxe", false))
-        || (!config.pickAxeInInventory() && !Rs2Equipment.isWearing("pickaxe", false))) {
-      Rs2Walker.disableTeleports = true;
-      if (Rs2Bank.walkToBankAndUseBank()) {
-        Rs2Player.waitForWalking(18000);
-        if (!Rs2Inventory.contains("hammer"))
-          Rs2Bank.withdrawItem("hammer");
-        getPickaxe(!config.pickAxeInInventory());
-        Rs2Antiban.actionCooldown();
-      }
-    }
-
     // anywhere on the 0Z plane
     if (!Rs2Player.isInCave() && !checkInMlm()) {
-      if (Rs2Player.getWorldLocation().distanceTo2D(DWARF_MINE_ENTRANCE) < 1000)
-        Rs2Walker.disableTeleports = false;
-      else
-        Rs2Walker.disableTeleports = true;
       walkAndTrack(DWARF_MINE_ENTRANCE);
       Rs2Player.waitForWalking(18000);
       sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo2D(DWARF_MINE_ENTRANCE) <= 15);
       Rs2GameObject.interact("Staircase");
       sleepUntil(() -> Rs2Player.isInCave());
-      Rs2Walker.disableTeleports = true;
     }
 
     // in dwarf mine
@@ -253,31 +245,25 @@ public class MotherloadMineScript extends Script {
   }
 
   private void determineStatusFromInventory() {
-    if (!hasRequiredTools()) {
-      withdrawEssentials();
+    if (!checkInMlm() || !hasRequiredTools()) {
+      MotherloadMinePlugin.setStatus(MLMStatus.SETUP);
       return;
     }
-
-    if (Rs2Inventory.isFull())
-      depositNonEssentials(true);
-    int sackCount = Microbot.getVarbitValue(Varbits.SACK_NUMBER);
-    if (sackCount + Rs2Inventory.count(ItemID.PAYDIRT) >= MotherloadMinePlugin.getMaxSackSize()
-        || (MotherloadMinePlugin.getShouldEmptySack() && !Rs2Inventory.hasItem(ItemID.PAYDIRT))) {
-      resetMiningState();
-      MotherloadMinePlugin.setStatus(MLMStatus.EMPTY_SACK);
-    } else if (!Rs2Inventory.isFull())
-      MotherloadMinePlugin.setStatus(MLMStatus.MINING);
-    else {
-      resetMiningState();
-      if (Rs2Inventory.hasItem(ItemID.PAYDIRT)) {
-        if (Rs2GameObject.getGameObjects(ObjectID.BROKEN_STRUT).size() == 2
-            && Rs2Inventory.hasItem("hammer"))
+    if (Rs2Inventory.isFull()) {
+      if (Rs2Inventory.contains(ItemID.PAYDIRT)) {
+        if (Rs2GameObject.getGameObjects(ObjectID.BROKEN_STRUT).size() == 2)
           MotherloadMinePlugin.setStatus(MLMStatus.FIXING_WATERWHEEL);
         else
           MotherloadMinePlugin.setStatus(MLMStatus.DEPOSIT_HOPPER);
-      } else
-        MotherloadMinePlugin.setStatus(MLMStatus.BANKING);
-    }
+      } else {
+        if (MotherloadMinePlugin.getShouldEmptySack()) {
+          MotherloadMinePlugin.setStatus(MLMStatus.EMPTY_SACK);
+        } else {
+          MotherloadMinePlugin.setStatus(MLMStatus.BANKING);
+        }
+      }
+    } else
+      MotherloadMinePlugin.setStatus(MLMStatus.MINING);
   }
 
   private boolean hasRequiredTools() {
@@ -389,16 +375,19 @@ public class MotherloadMineScript extends Script {
 
   private void withdrawEssentials() {
     if (!Rs2Bank.isOpen()) {
-      if (isUpperFloor()) {
+      if (checkInMlm() && isUpperFloor()) {
         ensureLowerFloor();
       }
-      BankLocation targetBank = checkInMlm() ? BankLocation.MOTHERLOAD : BankLocation.FALADOR_EAST;
+      BankLocation targetBank = checkInMlm() ? BankLocation.MOTHERLOAD : Rs2Bank.getNearestBank();
       LocalPoint locationPoint = LocalPoint.fromWorld(
           Microbot.getClient().getTopLevelWorldView(), targetBank.getWorldPoint());
       Rs2Camera.turnTo(locationPoint);
       if (locationPoint != null) {
         Microbot.getClient()
             .setCameraYawTarget(Rs2Camera.calculateCameraYaw(Rs2Camera.angleToTile(locationPoint)));
+      }
+      if (Rs2Player.distanceTo(targetBank.getWorldPoint()) < 15) {
+        walkAndTrack(targetBank.getWorldPoint());
       }
       if (Rs2Bank.useBank())
         sleepUntil(Rs2Bank::isOpen);
@@ -420,6 +409,8 @@ public class MotherloadMineScript extends Script {
   }
 
   private boolean walkAndTrack(WorldPoint location) {
+    Rs2Walker.disableTeleports = !(!checkTeleport(VarPlayer.LAST_HOME_TELEPORT)
+        || !checkTeleport(VarPlayer.LAST_MINIGAME_TELEPORT));
     LocalPoint locationPoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), location);
     if (locationPoint != null) {
       Rs2Camera.turnTo(locationPoint);
@@ -573,6 +564,28 @@ public class MotherloadMineScript extends Script {
   public boolean checkInMlm() {
     int currentMapRegionID = Rs2Player.getWorldLocation().getRegionID();
     return MotherloadMinePlugin.getMLM_REGIONS().contains(currentMapRegionID);
+  }
+
+  private boolean checkTeleport(@Varp int varPlayer) {
+    int lastTeleport = Microbot.getClient().getVarpValue(varPlayer);
+    int delta;
+    switch (varPlayer) {
+      case VarPlayer.LAST_HOME_TELEPORT:
+        delta = 30;
+      case VarPlayer.LAST_MINIGAME_TELEPORT:
+        delta = 20;
+        break;
+      default:
+        // Other var changes are not handled as teleports
+        return false;
+    }
+
+    long lastTeleportSeconds = (long) lastTeleport * 60;
+    Instant teleportExpireInstant = Instant.ofEpochSecond(lastTeleportSeconds)
+        .plus(Duration.ofMinutes(delta).getSeconds(), ChronoUnit.SECONDS);
+    Duration remainingTime = Duration.between(Instant.now(), teleportExpireInstant);
+
+    return remainingTime.getSeconds() > 0;
   }
 
   @Override

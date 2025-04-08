@@ -95,6 +95,7 @@ public class MotherloadMinePlugin extends Plugin {
     Rs2AntibanSettings.simulateMistakes = true;
     setStatus(MLMStatus.IDLE);
     scriptStartTime = Instant.now();
+    shouldEmptySack = false;
     overlayManager.add(motherloadMineOverlay);
     motherloadMineScript.run(config);
   }

@@ -66,7 +66,7 @@ public class MotherloadMineOverlay extends OverlayPanel {
                     .getChildren()
                     .add(LineComponent.builder()
                             .left("Status: ")
-                            .right(Microbot.status)
+                            .right(MotherloadMinePlugin.getStatus().name())
                             .build());
         } catch (Exception ex) {
             System.out.println(ex.getMessage());
