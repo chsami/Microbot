@@ -51,8 +51,10 @@ public class ChaosAltarPlugin extends Plugin {
         chaosAltarScript.run(config);
     }
 
-    protected void shutDown() {
+    protected void shutDown() throws PluginInstantiationException {
         chaosAltarScript.shutdown();
+        Microbot.getPluginManager().stopPlugin(playerMonitorPlugin);
+        Microbot.getPluginManager().stopPlugin(autoLoginPlugin);
         overlayManager.remove(chaosAltarOverlay);
     }
 
