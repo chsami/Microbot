@@ -1,13 +1,13 @@
 <component name="ProjectRunConfigurationManager">
-    <configuration default="false" name="Runelite" type="Application" factoryName="Application" singleton="false">
-        <option name="ALTERNATIVE_JRE_PATH" value="11"/>
-        <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true"/>
-        <option name="MAIN_CLASS_NAME" value="net.runelite.client.RuneLite"/>
-        <module name="client"/>
-        <option name="PROGRAM_PARAMETERS" value="-developer-mode -clean-jagex-launcher"/>
-        <option name="VM_PARAMETERS" value="-ea"/>
-        <method v="2">
-            <option name="Make" enabled="true"/>
-        </method>
-    </configuration>
+  <configuration default="false" name="Runelite" type="Application" factoryName="Application" singleton="false">
+    <option name="ALTERNATIVE_JRE_PATH" value="temurin-11" />
+    <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
+    <option name="MAIN_CLASS_NAME" value="net.runelite.client.RuneLite" />
+    <module name="client" />
+    <option name="PROGRAM_PARAMETERS" value="-developer-mode" />
+    <option name="VM_PARAMETERS" value="-ea" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
 </component>
