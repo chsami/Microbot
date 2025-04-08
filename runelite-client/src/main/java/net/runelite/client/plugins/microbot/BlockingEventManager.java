@@ -56,7 +56,7 @@ public class BlockingEventManager {
                         try {
                             event.execute();
                         } catch (Exception e) {
-                            Microbot.log("Error executing BlockingEvent: " + e.getMessage(), Level.ERROR);
+                            Microbot.log(Level.ERROR, "Error processing BlockingEvent (%s): %s", event.getName(), e.getMessage());
                         } finally {
                             isRunning.set(false);
                         }
@@ -65,7 +65,7 @@ public class BlockingEventManager {
                     return true;
                 }
             } catch (Exception e) {
-                Microbot.log("Error validating BlockingEvent: " + e.getMessage(), Level.ERROR);
+                Microbot.log(Level.ERROR, "Error validating BlockingEvent (%s): %s", event.getName(), e.getMessage());
             }
         }
 
