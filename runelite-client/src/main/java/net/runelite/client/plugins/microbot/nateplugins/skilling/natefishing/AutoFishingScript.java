@@ -44,7 +44,7 @@ public class AutoFishingScript extends Script {
         if (fish.equals(Fish.KARAMBWAN) || fish.equals(Fish.KARAMBWANJI)) {
             fishList.remove("raw karambwanji");
         }
-        
+        fishAction = "";
         state = State.FISHING;
         Rs2Antiban.resetAntibanSettings();
         Rs2Antiban.antibanSetupTemplates.applyFishingSetup();
