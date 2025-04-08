@@ -462,11 +462,18 @@ public class Microbot {
         log(message, Level.INFO);
     }
 
+    public static void log(String format, Object... args) {
+        log(String.format(format, args), Level.INFO);
+    }
+
+    public static void log(Level level, String format, Object... args) {
+        log(String.format(format, args), level);
+    }
+
     public static void log(String message, Level level) {
-        // Early return invalid values
         if (message == null || message.isEmpty()) return;
         if (level == null) return;
-        // Log using SLF4J
+
         switch (level) {
             case WARN:
                 log.warn(message);
@@ -481,10 +488,10 @@ public class Microbot {
                 log.info(message);
                 break;
         }
-        // Send Chat Message
+
         if (Microbot.isLoggedIn()) {
             if (level == Level.DEBUG && !isDebug()) return;
-            
+
             LocalTime currentTime = LocalTime.now();
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss");
             String formattedTime = currentTime.format(formatter);
