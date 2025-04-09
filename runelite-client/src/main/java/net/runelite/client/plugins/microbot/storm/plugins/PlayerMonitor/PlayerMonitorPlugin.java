@@ -121,6 +121,7 @@ import java.util.stream.Collectors;
      this.mouseManager.registerMouseListener((net.runelite.client.input.MouseListener) this.mouseListener);
      this.previousClickTime=System.currentTimeMillis();
      playerMonitorScript.run(config, overlayManager);}
+     if(config.liteMode()){playerMonitorScript.run(config, overlayManager);}
    }
 
    @Subscribe
@@ -212,7 +213,8 @@ import java.util.stream.Collectors;
        if (this.overlayOn) {
        this.overlayOn = false;
        playerMonitorScript.shutdown();
-     } 
+     }
+     playerMonitorScript.shutdown();
    }
    @Subscribe
    public void onGameStateChanged(GameStateChanged event) throws IOException {

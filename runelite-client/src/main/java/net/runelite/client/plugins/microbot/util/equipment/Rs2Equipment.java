@@ -35,7 +35,8 @@ public class Rs2Equipment {
                 Optional<EquipmentInventorySlot> equipmentSlot = Arrays.stream(EquipmentInventorySlot.values()).filter(x -> x.getSlotIdx() == finalI).findFirst();
                 if (equipmentSlot.isEmpty()) continue;
                 int slot = equipmentSlot.get().getSlotIdx();
-                ItemComposition itemComposition = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getItemDefinition(item.getId()));
+                ItemComposition itemComposition = Microbot.getClientThread().runOnClientThreadOptional(() ->
+                        Microbot.getClient().getItemDefinition(item.getId())).orElse(null);
                 _equipmentItems.add(new Rs2ItemModel(item, itemComposition, slot));
             }
             equipmentItems = _equipmentItems;
@@ -157,7 +158,7 @@ public class Rs2Equipment {
 
     @Deprecated(since = "Use isWearing", forRemoval = true)
     public static boolean hasEquipped(String itemName) {
-        return Microbot.getClientThread().runOnClientThread(() -> {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             for (EquipmentInventorySlot value : EquipmentInventorySlot.values()) {
                 Rs2ItemModel item = get(value);
                 if (item == null) continue;
@@ -166,11 +167,11 @@ public class Rs2Equipment {
                 }
             }
             return false;
-        });
+        }).orElse(false);
     }
 
     public static boolean hasEquippedContains(String itemName) {
-        return Microbot.getClientThread().runOnClientThread(() -> {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             for (EquipmentInventorySlot value : EquipmentInventorySlot.values()) {
                 Rs2ItemModel item = get(value);
                 if (item == null) continue;
@@ -179,12 +180,14 @@ public class Rs2Equipment {
                 }
             }
             return false;
-        });
+        }).orElse(false);
     }
 
     public static boolean hasEquipped(int id) {
-        return Microbot.getClientThread().runOnClientThread(() -> {
-            final ItemContainer container = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getItemContainer(InventoryID.EQUIPMENT));
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+
+            final ItemContainer container = Microbot.getClient().getItemContainer(InventoryID.EQUIPMENT);
+
             if (container == null) return false;
             for (EquipmentInventorySlot value : EquipmentInventorySlot.values()) {
                 Item itemSlot = container.getItem(value.getSlotIdx());
@@ -194,19 +197,20 @@ public class Rs2Equipment {
                 }
             }
             return false;
-        });
+        }).orElse(false);
     }
 
     public static boolean hasEquippedSlot(EquipmentInventorySlot slot) {
-        return Microbot.getClientThread().runOnClientThread(() -> {
-            final ItemContainer container = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getItemContainer(InventoryID.EQUIPMENT));
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+
+            final ItemContainer container =  Microbot.getClient().getItemContainer(InventoryID.EQUIPMENT);
 
             if (container == null) return false;
 
             Item itemSlot = container.getItem(slot.getSlotIdx());
 
             return itemSlot != null;
-        });
+        }).orElse(false);
     }
 
     public static boolean isEquipped(String name, EquipmentInventorySlot slot) {

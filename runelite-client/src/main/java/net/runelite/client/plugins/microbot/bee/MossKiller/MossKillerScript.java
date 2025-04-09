@@ -105,7 +105,6 @@ public class MossKillerScript extends Script {
         Rs2AntibanSettings.moveMouseOffScreenChance = 0.07;
         Rs2AntibanSettings.moveMouseRandomly = true;
         Rs2AntibanSettings.moveMouseRandomlyChance = 0.04;
-        Rs2AntibanSettings.actionCooldownChance = 0.06;
         Rs2Antiban.setActivityIntensity(LOW);
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
@@ -119,10 +118,10 @@ public class MossKillerScript extends Script {
 
                 Microbot.log(String.valueOf(state));
                 Microbot.log("BossMode: " + bossMode);
-                 if (bossMode) {
+                if (bossMode && Rs2AntibanSettings.actionCooldownActive) {
                     Rs2AntibanSettings.actionCooldownChance = 0.00;
                     Rs2AntibanSettings.actionCooldownActive = false;
-                } else {
+                } else if (!bossMode && !Rs2AntibanSettings.actionCooldownActive){
                     Rs2AntibanSettings.actionCooldownActive = true;
                     Rs2AntibanSettings.actionCooldownChance = 0.06;}
 
@@ -168,6 +167,7 @@ public class MossKillerScript extends Script {
     }
 
     public void moarShutDown() {
+        System.out.println("super shutdown triggered for reaching set level");
         varrockTeleport();
         //static sleep to wait till out of combat
         sleep(10000);
@@ -248,10 +248,10 @@ public class MossKillerScript extends Script {
 
         WorldPoint playerLocation = Rs2Player.getWorldLocation();
 
-        if (!Rs2Inventory.contains(FOOD) || BreakHandlerScript.breakIn <= 15){
-            Microbot.log("Inventory does not contains FOOD or break in less than 15");
+        if (!Rs2Inventory.contains(FOOD) || BreakHandlerScript.breakIn <= 30){
+            Microbot.log("Inventory does not contains FOOD or break in less than 30");
             if (Rs2Inventory.contains(FOOD)) {Microbot.log("We have food");}
-                if (BreakHandlerScript.breakIn <= 15) {Microbot.log("Break in less than 15");}
+                if (BreakHandlerScript.breakIn <= 30) {Microbot.log("Break in less than 15");}
             state = MossKillerState.TELEPORT;
             return;
         }
@@ -517,7 +517,7 @@ public class MossKillerScript extends Script {
                                     sleep(1900,2200);
                                     eatAt(80);
                                 }
-                                Microbot.log("Walking to outside boss gaet spot");
+                                Microbot.log("Walking to outside boss gate spot");
                                 if (Rs2Walker.getDistanceBetween(playerLocation, OUTSIDE_BOSS_GATE_SPOT) > 10) {
                                     Rs2Walker.walkTo(OUTSIDE_BOSS_GATE_SPOT, 10);
                                     sleepUntil(() -> Rs2Walker.getDistanceBetween(playerLocation, OUTSIDE_BOSS_GATE_SPOT) <= 10 && !Rs2Player.isMoving(), 600);}
@@ -708,6 +708,9 @@ public class MossKillerScript extends Script {
         }
         if(Rs2Inventory.containsAll(AIR_RUNE, FIRE_RUNE, LAW_RUNE)){
             Rs2Magic.cast(MagicAction.VARROCK_TELEPORT);
+            if (BreakHandlerScript.breakIn <= 30) {
+                sleep(10000,15000);
+            }
         } else {
             state = MossKillerState.WALK_TO_BANK;
         }
@@ -735,7 +738,7 @@ public class MossKillerScript extends Script {
         }
 
 
-        System.out.println("Must start near varrock square, bank, or moss giatn spot.");
+        System.out.println("Must start near varrock square, bank, or moss giant spot.");
         state = MossKillerState.EXIT_SCRIPT;
     }
 

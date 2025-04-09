@@ -233,7 +233,7 @@ public class TemporossScript extends Script {
     private boolean areItemsMissing()
     {
         // Check for harpoon
-        if (!hasHarpoon())
+        if (!hasHarpoon() && harpoonType != HarpoonType.BAREHAND)
         {
             return true;
         }
@@ -265,10 +265,10 @@ public class TemporossScript extends Script {
     private void fetchMissingItems()
     {
         // 1) Harpoon
-        if (!hasHarpoon())
+        if (!hasHarpoon() && harpoonType != HarpoonType.BAREHAND)
         {
-            log("Missing selected harpoon, setting to default harpoon");
             harpoonType = HarpoonType.HARPOON;
+            log("Missing selected harpoon, setting to default harpoon");
             TemporossPlugin.setHarpoonType(harpoonType);
 
             // Before interacting, check for fires in the path
@@ -726,7 +726,7 @@ public class TemporossScript extends Script {
                         return;
                     }
                     // get interacting name ran on clientThread
-                    // String iteractingName = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getLocalPlayer().getInteracting().getName());
+                    // String iteractingName = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getLocalPlayer().getInteracting().getName());
 
 
 //                        if (Objects.equals(Microbot.getClient().getLocalPlayer().getInteracting().getName(), ammoCrate.getName())) {

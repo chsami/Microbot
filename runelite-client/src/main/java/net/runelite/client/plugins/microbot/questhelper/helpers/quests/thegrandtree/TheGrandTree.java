@@ -309,7 +309,7 @@ public class TheGrandTree extends BasicQuestHelper {
         climbGrandTreeF0ToF1 = new ObjectStep(this, ObjectID.LADDER_16683, new WorldPoint(2466, 3495, 0), "");
         climbGrandTreeF1ToF2 = new ObjectStep(this, ObjectID.LADDER_16684, new WorldPoint(2466, 3495, 1), "");
         climbGrandTreeF1ToF2.addDialogStep("Climb Up.");
-        climbGrandTreeF2ToF3 = new ObjectStep(this, ObjectID.LADDER_2884, new WorldPoint(2466, 3495, 2), "");
+        climbGrandTreeF2ToF3 = new ObjectStep(this, ObjectID.LADDER_2872, new WorldPoint(2466, 3495, 2), ""); // used to be ladder 2884
         climbGrandTreeF2ToF3.addDialogStep("Climb Up.");
 
         climbToTopOfGrandTree = new ConditionalStep(this, climbGrandTreeF0ToF1);
@@ -317,7 +317,7 @@ public class TheGrandTree extends BasicQuestHelper {
         climbToTopOfGrandTree.addStep(isInGrandTreeF1, climbGrandTreeF1ToF2);
 
         climbGrandTreeF3ToF2 = new ObjectStep(this, ObjectID.LADDER_16679, new WorldPoint(2466, 3495, 3), "");
-        climbGrandTreeF2ToF1 = new ObjectStep(this, ObjectID.LADDER_2884, new WorldPoint(2466, 3495, 2), "");
+        climbGrandTreeF2ToF1 = new ObjectStep(this, ObjectID.LADDER_2872, new WorldPoint(2466, 3495, 2), "");  // used to be ladder 2884
         climbGrandTreeF2ToF1.addDialogStep("Climb Down.");
         climbGrandTreeF1ToF0 = new ObjectStep(this, ObjectID.LADDER_16684, new WorldPoint(2466, 3495, 1), "");
         climbGrandTreeF1ToF0.addDialogStep("Climb Down.");

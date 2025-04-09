@@ -98,7 +98,7 @@ public class AutoSmeltingScript extends Script {
         for (Map.Entry<Ores, Integer> requiredMaterials : config.SELECTED_BAR_TYPE().getRequiredMaterials().entrySet()) {
             Integer amount = requiredMaterials.getValue();
             String name = requiredMaterials.getKey().toString();
-            if (!Rs2Inventory.hasItemAmount(name, amount)) {
+            if (!Rs2Inventory.hasItemAmount(name, amount, false, true)) {
                 return false;
             }
         }
@@ -109,15 +109,15 @@ public class AutoSmeltingScript extends Script {
             Integer amountForOne = requiredMaterials.getValue();
             String name = requiredMaterials.getKey().toString();
             int totalAmount = config.SELECTED_BAR_TYPE().maxBarsForFullInventory() * amountForOne;
-            if (!Rs2Bank.hasBankItem(name, totalAmount)) {
+            if (!Rs2Bank.hasBankItem(name, totalAmount, true)) {
                 Microbot.showMessage(MessageFormat.format("Required Materials not in bank. You need {1} {0}.", name, totalAmount));
                 super.shutdown();
             }
-            Rs2Bank.withdrawX(name, totalAmount);
-            sleepUntil(() -> Rs2Inventory.hasItemAmount(name, totalAmount), 3500);
+            Rs2Bank.withdrawX(name, totalAmount, true);
+            sleepUntil(() -> Rs2Inventory.hasItemAmount(name, totalAmount, false, true), 3500);
 
             // Exit if we did not end up finding it.
-            if (!Rs2Inventory.hasItemAmount(name, totalAmount)) {
+            if (!Rs2Inventory.hasItemAmount(name, totalAmount, false, true)) {
                 Microbot.showMessage("Could not find item in bank.");
                 shutdown();
             }

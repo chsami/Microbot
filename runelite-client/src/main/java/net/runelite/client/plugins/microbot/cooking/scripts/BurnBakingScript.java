@@ -410,7 +410,7 @@ public class BurnBakingScript extends Script {
     }
 
     public boolean clickWidget(int id) {
-        Widget widget = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getWidget(id));
+        Widget widget = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getWidget(id)).orElse(null);
         if (widget == null) return false;
         Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
         sleep(100, 300);

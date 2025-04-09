@@ -418,6 +418,7 @@ public class MonkeyMadnessII extends BasicQuestHelper {
 
     public void setupSteps() {
         talkToNarnode = new NpcStep(this, NpcID.KING_NARNODE_SHAREEN, new WorldPoint(2465, 3496, 0), "Talk to King Narnode Shareen in the Tree Gnome Stronghold.");
+        talkToNarnode.addDialogStep("Yes.");
         talkToNarnode.addDialogStep("I'll help you look for Glough.");
 
         goUpToGloughHouse = new ObjectStep(this, ObjectID.LADDER_16683, new WorldPoint(2476, 3463, 0), "Climb up into Glough's house south of the Grand Tree.");

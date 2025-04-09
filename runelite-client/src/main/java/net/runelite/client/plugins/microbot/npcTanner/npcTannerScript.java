@@ -1,8 +1,5 @@
 package net.runelite.client.plugins.microbot.npcTanner;
 
-import net.runelite.api.GameObject;
-import net.runelite.api.MenuAction;
-import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -142,9 +139,14 @@ public class npcTannerScript extends Script {
                 tries=0;
                 while(!Rs2Inventory.contains(whattotan)||!Rs2Inventory.contains("Coins")){
                     // We always do coin first
-                    if(Rs2Inventory.isFull()&&!Rs2Inventory.contains(whattotan)&&!Rs2Inventory.contains("Coins")){
-                        Rs2Bank.depositAll();
-                        sleep(500,1000);
+                    if(Rs2Inventory.contains(product)){
+                        if(generateRandomNumber(0,100)<75){
+                            Rs2Bank.depositAll(product);
+                            sleep(500,1000);
+                        } else {
+                            Rs2Bank.depositAll();
+                            sleep(500,1000);
+                        }
                     }
                     if(!Rs2Inventory.contains("Coins")||Rs2Inventory.count("Coins")<=1000){
                         Rs2Bank.withdrawAll("Coins");

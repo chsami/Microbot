@@ -1,6 +1,5 @@
 package net.runelite.client.plugins.microbot;
 
-import com.google.common.base.Stopwatch;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.coords.WorldPoint;
@@ -18,18 +17,15 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.time.Duration;
 import java.time.LocalTime;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.function.BooleanSupplier;
+import java.util.concurrent.*;
+
 
 @Slf4j
-public abstract class Script implements IScript {
+public abstract class Script extends Global implements IScript  {
 
     protected ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(10);
     protected ScheduledFuture<?> scheduledFuture;
-    public ScheduledFuture<?> mainScheduledFuture;
+    protected ScheduledFuture<?> mainScheduledFuture;
     public static boolean hasLeveledUp = false;
     public static boolean useStaminaPotsIfNeeded = true;
 
@@ -45,107 +41,17 @@ public abstract class Script implements IScript {
     /**
      * Get the total runtime of the script
      *
-     * @return
+     * @return the total runtime of the script
      */
     public Duration getRunTime() {
         if (startTime == null) return Duration.ofSeconds(0);
 
         LocalTime currentTime = LocalTime.now();
 
-        Duration runtime = Duration.between(startTime, currentTime); // Calculate runtime
-
-        return runtime;
+        return Duration.between(startTime, currentTime);
     }
-
-    public void sleep(int time) {
-        Global.sleep(time);
-    }
-
-    public void sleep(int start, int end) {
-        Global.sleep(start, end);
-    }
-
-    public boolean sleepUntil(BooleanSupplier awaitedCondition) {
-        return Global.sleepUntil(awaitedCondition, 5000);
-    }
-
-    public boolean sleepUntil(BooleanSupplier awaitedCondition, int time) {
-        boolean done;
-        long startTime = System.currentTimeMillis();
-        do {
-            done = awaitedCondition.getAsBoolean();
-        } while (!done && System.currentTimeMillis() - startTime < time);
-        return done;
-    }
-
-    /**
-     * sleeps for a specified number of game ticks
-     *
-     * @param ticksToWait
-     * @return
-     */
-    public boolean sleepUntilTick(int ticksToWait) {
-        int startTick = Microbot.getClient().getTickCount();
-        return Global.sleepUntil(() -> Microbot.getClient().getTickCount() >= startTick + ticksToWait, ticksToWait * 600 + 2000);
-    }
-
-    /**
-     * Sleeps until a specified condition is met, running an action periodically, or until a timeout is reached.
-     *
-     * @param awaitedCondition The condition to wait for.
-     * @param action           The action to run periodically while waiting.
-     * @param timeoutMillis    The maximum time to wait in milliseconds.
-     * @param sleepMillis      The time to sleep between action executions in milliseconds.
-     * @return true if the condition was met within the timeout, false otherwise.
-     */
-    public boolean sleepUntil(BooleanSupplier awaitedCondition, Runnable action, long timeoutMillis, int sleepMillis) {
-        long startTime = System.nanoTime();
-        long timeoutNanos = TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
-        try {
-            while (System.nanoTime() - startTime < timeoutNanos) {
-                action.run();
-                if (awaitedCondition.getAsBoolean()) {
-                    return true;
-                }
-                sleep(sleepMillis);
-            }
-        } catch (Exception e) {
-            Thread.currentThread().interrupt(); // Restore the interrupt status
-        }
-        return false; // Timeout reached without satisfying the condition
-    }
-
-
-    public boolean sleepUntil(BooleanSupplier awaitedCondition, BooleanSupplier resetCondition, int timeout) {
-        final Stopwatch watch = Stopwatch.createStarted();
-        while (!awaitedCondition.getAsBoolean() && watch.elapsed(TimeUnit.MILLISECONDS) < timeout) {
-            sleep(100);
-            if (resetCondition.getAsBoolean() && Microbot.isLoggedIn()) {
-                watch.reset();
-                watch.start();
-            }
-        }
-        return awaitedCondition.getAsBoolean();
-    }
-
-    public void sleepUntilOnClientThread(BooleanSupplier awaitedCondition) {
-        sleepUntilOnClientThread(awaitedCondition, 5000);
-    }
-
-    public void sleepUntilOnClientThread(BooleanSupplier awaitedCondition, int time) {
-        boolean done;
-        long startTime = System.currentTimeMillis();
-        do {
-            Microbot.status = "[ConditionalSleep] for " + time / 1000 + " seconds";
-            done = Microbot.getClientThread().runOnClientThread(() -> awaitedCondition.getAsBoolean() || hasLeveledUp);
-        } while (!done && System.currentTimeMillis() - startTime < time);
-    }
-
 
     public void shutdown() {
-        if (scheduledFuture != null && !scheduledFuture.isDone()) {
-            scheduledFuture.cancel(true);
-        }
         if (mainScheduledFuture != null && !mainScheduledFuture.isDone()) {
             mainScheduledFuture.cancel(true);
             ShortestPathPlugin.exit();
@@ -156,6 +62,9 @@ public abstract class Script implements IScript {
             Rs2Walker.disableTeleports = false;
             Microbot.getSpecialAttackConfigs().reset();
             Rs2Walker.setTarget(null);
+        }
+        if (scheduledFuture != null && !scheduledFuture.isDone()) {
+            scheduledFuture.cancel(true);
         }
         startTime = null;
     }
@@ -173,24 +82,14 @@ public abstract class Script implements IScript {
         if (Microbot.isLoggedIn() && !Rs2Player.isInTutorialIsland())
             return true;
 
-        // Synchronizing on BlockingEventManager.class to ensure thread safety
-        // This prevents multiple threads from modifying the blocking event list simultaneously.
-        synchronized (BlockingEventManager.class) {
-            // Check if there are any blocking events registered in the BlockingEventManager
-            if (!Microbot.getBlockingEventManager().getBlockingEvents().isEmpty()) {
-                // Iterate through each blocking event to check if any should be executed
-                for (BlockingEvent blockingEvent : Microbot.getBlockingEventManager().getBlockingEvents()) {
-                    // If the event's validation condition is met, it means we need to execute it
-                    if (blockingEvent.validate()) {
-                        // Execute the blocking event to resolve the issue
-                        blockingEvent.execute();
-                        // Return false to indicate that an event was executed and further processing should stop
-                        return false;
-                    }
-                }
+        // Add a small delay to ensure the client has fully loaded
+        if (Microbot.getLoginTime().toSeconds() > 5) {
+            if (Microbot.getBlockingEventManager().shouldBlockAndProcess()) {
+                // A blocking event was found & is executing
+                return false;
             }
         }
-
+        
         if (Microbot.isLoggedIn()) {
             boolean hasRunEnergy = Microbot.getClient().getEnergy() > Microbot.runEnergyThreshold;
             if (Microbot.enableAutoRunOn && hasRunEnergy)

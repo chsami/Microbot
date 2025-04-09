@@ -7,7 +7,7 @@ import net.runelite.client.plugins.microbot.aiofighter.AIOFighterConfig;
 import net.runelite.client.plugins.microbot.nmz.NmzConfig;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
-import net.runelite.client.plugins.microbot.util.math.Random;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -18,12 +18,13 @@ public class PrayerPotionScript extends Script {
             try {
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
-                if ((Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER) * 100) /  Microbot.getClient().getRealSkillLevel(Skill.PRAYER) > Random.random(25, 30)) return;
-                List<Rs2ItemModel> potions = Microbot.getClientThread().runOnClientThread(Rs2Inventory::getPotions);
+                if ((Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER) * 100) / Microbot.getClient().getRealSkillLevel(Skill.PRAYER) > Rs2Random.between(25, 30))
+                    return;
+                List<Rs2ItemModel> potions = Microbot.getClientThread().runOnClientThreadOptional(Rs2Inventory::getPotions).orElse(null);
                 if (potions == null || potions.isEmpty()) {
                     return;
                 }
-                for (Rs2ItemModel potion: potions) {
+                for (Rs2ItemModel potion : potions) {
                     if (potion.name.toLowerCase().contains("prayer") || potion.name.toLowerCase().contains("super restore") || potion.name.toLowerCase().contains("moonlight potion")) {
                         Rs2Inventory.interact(potion, "drink");
                         sleep(1200, 2000);
@@ -31,7 +32,7 @@ public class PrayerPotionScript extends Script {
                         break;
                     }
                 }
-            } catch(Exception ex) {
+            } catch (Exception ex) {
                 System.out.println(ex.getMessage());
             }
         }, 0, 600, TimeUnit.MILLISECONDS);
@@ -43,12 +44,13 @@ public class PrayerPotionScript extends Script {
             try {
                 if (!super.run()) return;
                 if (!config.togglePrayerPotions()) return;
-                if ((Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER) * 100) /  Microbot.getClient().getRealSkillLevel(Skill.PRAYER) > Random.random(25, 30)) return;
-                List<Rs2ItemModel> potions = Microbot.getClientThread().runOnClientThread(Rs2Inventory::getPotions);
+                if ((Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER) * 100) / Microbot.getClient().getRealSkillLevel(Skill.PRAYER) > Rs2Random.between(25, 30))
+                    return;
+                List<Rs2ItemModel> potions = Microbot.getClientThread().runOnClientThreadOptional(Rs2Inventory::getPotions).orElse(null);
                 if (potions == null || potions.isEmpty()) {
                     return;
                 }
-                for (Rs2ItemModel potion: potions) {
+                for (Rs2ItemModel potion : potions) {
                     if (potion.name.toLowerCase().contains("prayer")) {
                         Rs2Inventory.interact(potion, "drink");
                         sleep(1200, 2000);
@@ -56,7 +58,7 @@ public class PrayerPotionScript extends Script {
                         break;
                     }
                 }
-            } catch(Exception ex) {
+            } catch (Exception ex) {
                 System.out.println(ex.getMessage());
             }
         }, 0, 600, TimeUnit.MILLISECONDS);

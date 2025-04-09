@@ -28,7 +28,7 @@
 
 	<groupId>net.runelite</groupId>
 	<artifactId>runelite-parent</artifactId>
-	<version>1.11.4-SNAPSHOT</version>
+	<version>1.11.6-SNAPSHOT</version>
 	<packaging>pom</packaging>
 
 	<name>RuneLite</name>
@@ -241,7 +241,7 @@
 			<!--				<configuration>-->
 			<!--					&lt;!&ndash; Javadoc the delombok sources &ndash;&gt;-->
 			<!--					<sourcepath>${project.build.directory}/delombok</sourcepath>-->
-			<!--					&lt;!&ndash;default bottom uses outputTimestamp for the year and generates 2014-1970--> 
+			<!--					&lt;!&ndash;default bottom uses outputTimestamp for the year and generates 2014-1970-->
 			<!--					<bottom>Copyright &#169; {inceptionYear}</bottom>-->
 			<!--				</configuration>-->
 			<!--				&lt;!&ndash; maven-release-plugin runs maven-javadoc-plugin:jar as one of its-->

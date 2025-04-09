@@ -30,7 +30,8 @@ public class Rs2MiniMap {
     @Nullable
     public static Point localToMinimap(LocalPoint localPoint) {
         if (localPoint == null) return null;
-        return Microbot.getClientThread().runOnClientThread(() -> Perspective.localToMinimap(Microbot.getClient(), localPoint));
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> Perspective.localToMinimap(Microbot.getClient(), localPoint))
+                .orElse(null);
     }
 
     /**
@@ -55,7 +56,8 @@ public class Rs2MiniMap {
         }
 
         final LocalPoint lp = localPoint;
-        return Microbot.getClientThread().runOnClientThread(() -> Perspective.localToMinimap(Microbot.getClient(), lp));
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> Perspective.localToMinimap(Microbot.getClient(), lp))
+                .orElse(null);
     }
 
     /**
@@ -100,9 +102,9 @@ public class Rs2MiniMap {
 
         boolean isResized = Microbot.getClient().isResized();
         
-        BufferedImage minimapSprite = Microbot.getClientThread().runOnClientThread(() ->
+        BufferedImage minimapSprite = Microbot.getClientThread().runOnClientThreadOptional(() ->
                 Microbot.getSpriteManager().getSprite(
-                        isResized ? SpriteID.RESIZEABLE_MODE_MINIMAP_ALPHA_MASK : SpriteID.FIXED_MODE_MINIMAP_ALPHA_MASK, 0));
+                        isResized ? SpriteID.RESIZEABLE_MODE_MINIMAP_ALPHA_MASK : SpriteID.FIXED_MODE_MINIMAP_ALPHA_MASK, 0)).orElse(null);
 
         if (minimapSprite == null) {
             return getMinimapClipAreaSimple();

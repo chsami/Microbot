@@ -32,7 +32,6 @@ import com.google.inject.Guice;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 import joptsimple.*;
-import joptsimple.util.EnumConverter;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
@@ -43,7 +42,6 @@ import net.runelite.client.discord.DiscordService;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.externalplugins.ExternalPluginManager;
 import net.runelite.client.plugins.PluginManager;
-import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.MicrobotClientLoader;
 import net.runelite.client.plugins.microbot.sideloading.MicrobotPluginManager;
 import net.runelite.client.ui.ClientUI;
@@ -207,10 +205,6 @@ public class RuneLiteDebug {
             logger.setLevel(Level.DEBUG);
         }
 
-        if (options.has("microbot-debug")) {
-            Microbot.debug = true;
-        }
-
         //More information about java proxies can be found here
         //https://docs.oracle.com/javase/8/docs/technotes/guides/net/proxies.html
         //usage: -proxy=IP:PORT:USER:PASS -proxytype=SOCKS
@@ -371,6 +365,7 @@ public class RuneLiteDebug {
         Updater updater = injector.getInstance(Updater.class);
         updater.update(); // will exit if an update is in progress
 
+        microbotPluginManager.loadSideLoadPlugins();
         SplashScreen.stage(.70, null, "Finalizing configuration");
 
         // Plugins have provided their config, so set default config

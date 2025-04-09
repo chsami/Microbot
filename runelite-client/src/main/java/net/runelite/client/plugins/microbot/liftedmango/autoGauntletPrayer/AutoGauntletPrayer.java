@@ -27,7 +27,7 @@ import static net.runelite.client.plugins.microbot.Microbot.log;
 @PluginDescriptor(
         name = PluginDescriptor.LiftedMango + "Auto Gauntlet Prayer",
         description = "Auto Gauntlet Prayer plugin",
-        tags = {"Gauntlet", "pvm", "prayer", "money making", "auto", "boss"},
+        tags = {"liftedmango", "Gauntlet", "pvm", "prayer", "money making", "auto", "boss"},
         enabledByDefault = false
 )
 
@@ -56,6 +56,11 @@ public class AutoGauntletPrayer extends Plugin {
             9021, 9022, 9023, 9024  // Crystalline Hunllef variants
     );
 
+    private static final Set<Integer> DANGEROUS_TILES = Set.of(
+            36047, 36048, // Corrupted tiles (Ground object)
+            36150, 36151 // Gauntlet tiles (Ground object)
+    );
+
     @Override
     protected void startUp() throws Exception {
         log("Auto gauntlet prayer plugin started!");
@@ -70,6 +75,7 @@ public class AutoGauntletPrayer extends Plugin {
     @Subscribe
     public void onGameTick(GameTick event) {
         System.out.println("Next prayer: " + nextPrayer);
+
         if (nextPrayer != null && !Rs2Prayer.isPrayerActive(nextPrayer)) {
             Rs2Prayer.toggle(nextPrayer, true);
         }
@@ -86,44 +92,26 @@ public class AutoGauntletPrayer extends Plugin {
 
         HeadIcon headIcon = Rs2Reflection.getHeadIcon(hunllef);
         System.out.println("Headicon: " + headIcon);
-        if (headIcon == HeadIcon.RANGED && !Rs2Inventory.contains("Halberd")) {
-            Rs2Inventory.equip("Crystal staff");
-            Rs2Inventory.equip("Corrupted staff");
-        } else if (headIcon == HeadIcon.MAGIC && !Rs2Inventory.contains("Halberd")) {
-            Rs2Inventory.equip(ItemID.CORRUPTED_BOW_ATTUNED);
-            Rs2Inventory.equip(ItemID.CRYSTAL_BOW_ATTUNED);
-            Rs2Inventory.equip(ItemID.CRYSTAL_BOW_PERFECTED);
-            Rs2Inventory.equip(ItemID.CORRUPTED_BOW_PERFECTED);
-            Rs2Inventory.equip("Corrupted bow");
-            Rs2Inventory.equip("Crystal bow");
-        } else if (headIcon == HeadIcon.MELEE && !Rs2Inventory.contains("bow")) {
-            Rs2Inventory.equip("Crystal staff");
-            Rs2Inventory.equip("Corrupted staff");
-        } else if (headIcon == HeadIcon.MAGIC && !Rs2Inventory.contains("bow")
-                ) {
-            System.out.println("Headicon: " + headIcon);
-            Rs2Inventory.equip(23896); //CRYSTAL_HALBERD_ATTUNED
-            Rs2Inventory.equip(23897); //CRYSTAL_HALBERD_PERFECTED
-            Rs2Inventory.equip(23850); //CORRUPTED_HALBERD_ATTUNED
-            Rs2Inventory.equip(23851); //CORRUPTED_HALBERD_PERFECTED
-        } else if (headIcon == HeadIcon.RANGED && !Rs2Inventory.contains("staff")) {
-            System.out.println("Headicon: " + headIcon);
-            Rs2Inventory.equip(23896); //CRYSTAL_HALBERD_ATTUNED
-            Rs2Inventory.equip(23897); //CRYSTAL_HALBERD_PERFECTED
-            Rs2Inventory.equip(23850); //CORRUPTED_HALBERD_ATTUNED
-            Rs2Inventory.equip(23851); //CORRUPTED_HALBERD_PERFECTED
-        } else if (headIcon == HeadIcon.MELEE && !Rs2Inventory.contains("staff")) {
-            System.out.println("Headicon: " + headIcon);
-            Rs2Inventory.equip(23856); //CORRUPTED_BOW_ATTUNED
-            Rs2Inventory.equip(23856); //CRYSTAL_BOW_ATTUNED
-            Rs2Inventory.equip(23903); //CRYSTAL_BOW_PERFECTED
-            Rs2Inventory.equip(23857); //CORRUPTED_BOW_PERFECTED
+
+        switch (headIcon) {
+            case RANGED:
+                handleRangedHeadIcon();
+                break;
+            case MAGIC:
+                handleMagicHeadIcon();
+                break;
+            case MELEE:
+                handleMeleeHeadIcon();
+                break;
+            default:
+                break;
         }
     }
 
     @Subscribe
     public void onProjectileMoved(ProjectileMoved event) {
         int projectileId = event.getProjectile().getId();
+
         switch (projectileId) {
             case MAGE_PROJECTILE:
             case CG_MAGE_PROJECTILE:
@@ -135,52 +123,12 @@ public class AutoGauntletPrayer extends Plugin {
             case RANGE_PROJECTILE_MINIBOSS:
                 Rs2Prayer.toggle(Rs2PrayerEnum.PROTECT_RANGE, true);
                 break;
+            default:
+                break;
         }
 
-        if (Rs2Equipment.hasEquipped(ItemID.CRYSTAL_BOW_PERFECTED) && !Rs2Prayer.isPrayerActive(Rs2PrayerEnum.RIGOUR)
-                || Rs2Equipment.hasEquipped(ItemID.CRYSTAL_BOW_ATTUNED) && !Rs2Prayer.isPrayerActive(Rs2PrayerEnum.RIGOUR)
-                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_BOW_PERFECTED) && !Rs2Prayer.isPrayerActive(Rs2PrayerEnum.RIGOUR)
-                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_BOW_ATTUNED) && !Rs2Prayer.isPrayerActive(Rs2PrayerEnum.RIGOUR)) {
-            if (!config.MysticMight()) {
-                Rs2Prayer.toggle(Rs2PrayerEnum.RIGOUR, true);
-            } else {
-                if (!Rs2Prayer.isPrayerActive(Rs2PrayerEnum.STEEL_SKIN)) {
-                    Rs2Prayer.toggle(Rs2PrayerEnum.STEEL_SKIN, true);
-                }
-                Rs2Prayer.toggle(Rs2PrayerEnum.EAGLE_EYE, true);
-            }
-        }
-        if (Rs2Equipment.hasEquipped(ItemID.CRYSTAL_STAFF_PERFECTED) && !Rs2Prayer.isPrayerActive(Rs2PrayerEnum.AUGURY)
-                || Rs2Equipment.hasEquipped(ItemID.CRYSTAL_STAFF_BASIC) && !Rs2Prayer.isPrayerActive(Rs2PrayerEnum.AUGURY)
-                || Rs2Equipment.hasEquipped(ItemID.CRYSTAL_STAFF_ATTUNED) && !Rs2Prayer.isPrayerActive(Rs2PrayerEnum.AUGURY)
-                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_STAFF_PERFECTED) && !Rs2Prayer.isPrayerActive(Rs2PrayerEnum.AUGURY)
-                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_STAFF_ATTUNED) && !Rs2Prayer.isPrayerActive(Rs2PrayerEnum.AUGURY)) {
-            if (!config.MysticMight()) {
-                Rs2Prayer.toggle(Rs2PrayerEnum.AUGURY, true);
-            } else {
-                if (!Rs2Prayer.isPrayerActive(Rs2PrayerEnum.STEEL_SKIN)) {
-                    Rs2Prayer.toggle(Rs2PrayerEnum.STEEL_SKIN, true);
-                }
-                Rs2Prayer.toggle(Rs2PrayerEnum.MYSTIC_MIGHT, true);
-            }
-        }
-        if (Rs2Equipment.hasEquipped(ItemID.CRYSTAL_HALBERD_PERFECTED) && !Rs2Prayer.isPrayerActive(Rs2PrayerEnum.PIETY)
-                || Rs2Equipment.hasEquipped(ItemID.CRYSTAL_HALBERD_BASIC) && !Rs2Prayer.isPrayerActive(Rs2PrayerEnum.PIETY)
-                || Rs2Equipment.hasEquipped(ItemID.CRYSTAL_HALBERD_ATTUNED) && !Rs2Prayer.isPrayerActive(Rs2PrayerEnum.PIETY)
-                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_HALBERD_PERFECTED) && !Rs2Prayer.isPrayerActive(Rs2PrayerEnum.PIETY)
-                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_HALBERD_ATTUNED) && !Rs2Prayer.isPrayerActive(Rs2PrayerEnum.PIETY)) {
-            if (!config.MysticMight()) {
-                Rs2Prayer.toggle(Rs2PrayerEnum.PIETY, true);
-            } else {
-                if (!Rs2Prayer.isPrayerActive(Rs2PrayerEnum.STEEL_SKIN)) {
-                    Rs2Prayer.toggle(Rs2PrayerEnum.STEEL_SKIN, true);
-                }
-                Rs2Prayer.toggle(Rs2PrayerEnum.ULTIMATE_STRENGTH, true);
-                Rs2Prayer.toggle(Rs2PrayerEnum.INCREDIBLE_REFLEXES, true);
-            }
-        }
+        checkAndTogglePrayers();
     }
-
 
     @Subscribe
     public void onAnimationChanged(AnimationChanged event) {
@@ -199,6 +147,169 @@ public class AutoGauntletPrayer extends Plugin {
                 nextPrayer = Rs2PrayerEnum.PROTECT_RANGE;
                 Rs2Prayer.toggle(nextPrayer, true);
                 break;
+            default:
+                break;
+        }
+    }
+
+    private void handleRangedHeadIcon()
+    {
+        if (hasStaffInInventory() && !isHalberdEquipped())
+        {
+            equipStaff();
+        }
+        else if (hasHalberdInInventory() && !isStaffEquipped())
+        {
+            equipHalberd();
+        }
+    }
+
+    private void handleMagicHeadIcon()
+    {
+        if (hasBowInInventory() && !isHalberdEquipped())
+        {
+            equipBow();
+        }
+        else if (hasHalberdInInventory() && !isBowEquipped())
+        {
+            equipHalberd();
+        }
+    }
+
+    private void handleMeleeHeadIcon()
+    {
+        if (hasStaffInInventory() && !isBowEquipped())
+        {
+            equipStaff();
+        }
+        else if (hasBowInInventory() && !isStaffEquipped())
+        {
+            equipBow();
+        }
+    }
+
+    private boolean hasBowInInventory() {
+        return Rs2Inventory.contains(ItemID.CRYSTAL_BOW_BASIC)
+                || Rs2Inventory.contains(ItemID.CRYSTAL_BOW_ATTUNED)
+                || Rs2Inventory.contains(ItemID.CRYSTAL_BOW_PERFECTED)
+                || Rs2Inventory.contains(ItemID.CORRUPTED_BOW_BASIC)
+                || Rs2Inventory.contains(ItemID.CORRUPTED_BOW_ATTUNED)
+                || Rs2Inventory.contains(ItemID.CORRUPTED_BOW_PERFECTED);
+    }
+
+    private boolean hasStaffInInventory() {
+        return Rs2Inventory.contains(ItemID.CRYSTAL_STAFF_BASIC)
+                || Rs2Inventory.contains(ItemID.CRYSTAL_STAFF_ATTUNED)
+                || Rs2Inventory.contains(ItemID.CRYSTAL_STAFF_PERFECTED)
+                || Rs2Inventory.contains(ItemID.CORRUPTED_STAFF_BASIC)
+                || Rs2Inventory.contains(ItemID.CORRUPTED_STAFF_ATTUNED)
+                || Rs2Inventory.contains(ItemID.CORRUPTED_STAFF_PERFECTED);
+    }
+
+    private boolean hasHalberdInInventory() {
+        return Rs2Inventory.contains(ItemID.CRYSTAL_HALBERD_BASIC)
+                || Rs2Inventory.contains(ItemID.CRYSTAL_HALBERD_ATTUNED)
+                || Rs2Inventory.contains(ItemID.CRYSTAL_HALBERD_PERFECTED)
+                || Rs2Inventory.contains(ItemID.CORRUPTED_HALBERD_BASIC)
+                || Rs2Inventory.contains(ItemID.CORRUPTED_HALBERD_ATTUNED)
+                || Rs2Inventory.contains(ItemID.CORRUPTED_HALBERD_PERFECTED);
+    }
+
+    private void equipBow() {
+        Rs2Inventory.equip(ItemID.CORRUPTED_BOW_ATTUNED);
+        Rs2Inventory.equip(ItemID.CRYSTAL_BOW_ATTUNED);
+        Rs2Inventory.equip(ItemID.CRYSTAL_BOW_PERFECTED);
+        Rs2Inventory.equip(ItemID.CORRUPTED_BOW_PERFECTED);
+    }
+
+    private void equipStaff() {
+        Rs2Inventory.equip(ItemID.CRYSTAL_STAFF_BASIC);
+        Rs2Inventory.equip(ItemID.CRYSTAL_STAFF_ATTUNED);
+        Rs2Inventory.equip(ItemID.CRYSTAL_STAFF_PERFECTED);
+        Rs2Inventory.equip(ItemID.CORRUPTED_STAFF_BASIC);
+        Rs2Inventory.equip(ItemID.CORRUPTED_STAFF_ATTUNED);
+        Rs2Inventory.equip(ItemID.CORRUPTED_STAFF_PERFECTED);
+    }
+
+    private void equipHalberd() {
+        Rs2Inventory.equip(ItemID.CRYSTAL_HALBERD_BASIC);
+        Rs2Inventory.equip(ItemID.CRYSTAL_HALBERD_ATTUNED);
+        Rs2Inventory.equip(ItemID.CRYSTAL_HALBERD_PERFECTED);
+        Rs2Inventory.equip(ItemID.CORRUPTED_HALBERD_BASIC);
+        Rs2Inventory.equip(ItemID.CORRUPTED_HALBERD_ATTUNED);
+        Rs2Inventory.equip(ItemID.CORRUPTED_HALBERD_PERFECTED);
+    }
+
+    private void checkAndTogglePrayers() {
+        if (isBowEquipped() && !Rs2Prayer.isPrayerActive(Rs2PrayerEnum.RIGOUR)) {
+            toggleRigourPrayer();
+        }
+        if (isStaffEquipped() && !Rs2Prayer.isPrayerActive(Rs2PrayerEnum.AUGURY)) {
+            toggleAuguryPrayer();
+        }
+        if (isHalberdEquipped() && !Rs2Prayer.isPrayerActive(Rs2PrayerEnum.PIETY)) {
+            togglePietyPrayer();
+        }
+    }
+
+    private boolean isBowEquipped() {
+        return Rs2Equipment.hasEquipped(ItemID.CRYSTAL_BOW_PERFECTED)
+                || Rs2Equipment.hasEquipped(ItemID.CRYSTAL_BOW_ATTUNED)
+                || Rs2Equipment.hasEquipped(ItemID.CRYSTAL_BOW_BASIC)
+                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_BOW_PERFECTED)
+                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_BOW_ATTUNED)
+                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_BOW_BASIC);
+    }
+
+    private boolean isStaffEquipped() {
+        return Rs2Equipment.hasEquipped(ItemID.CRYSTAL_STAFF_PERFECTED)
+                || Rs2Equipment.hasEquipped(ItemID.CRYSTAL_STAFF_BASIC)
+                || Rs2Equipment.hasEquipped(ItemID.CRYSTAL_STAFF_ATTUNED)
+                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_STAFF_PERFECTED)
+                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_STAFF_ATTUNED)
+                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_STAFF_BASIC);
+    }
+
+    private boolean isHalberdEquipped() {
+        return Rs2Equipment.hasEquipped(ItemID.CRYSTAL_HALBERD_PERFECTED)
+                || Rs2Equipment.hasEquipped(ItemID.CRYSTAL_HALBERD_BASIC)
+                || Rs2Equipment.hasEquipped(ItemID.CRYSTAL_HALBERD_ATTUNED)
+                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_HALBERD_PERFECTED)
+                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_HALBERD_ATTUNED)
+                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_HALBERD_BASIC);
+    }
+
+    private void toggleRigourPrayer() {
+        if (!config.MysticMight()) {
+            Rs2Prayer.toggle(Rs2PrayerEnum.RIGOUR, true);
+        } else {
+            if (!Rs2Prayer.isPrayerActive(Rs2PrayerEnum.STEEL_SKIN)) {
+                Rs2Prayer.toggle(Rs2PrayerEnum.STEEL_SKIN, true);
+            }
+            Rs2Prayer.toggle(Rs2PrayerEnum.EAGLE_EYE, true);
+        }
+    }
+
+    private void toggleAuguryPrayer() {
+        if (!config.MysticMight()) {
+            Rs2Prayer.toggle(Rs2PrayerEnum.AUGURY, true);
+        } else {
+            if (!Rs2Prayer.isPrayerActive(Rs2PrayerEnum.STEEL_SKIN)) {
+                Rs2Prayer.toggle(Rs2PrayerEnum.STEEL_SKIN, true);
+            }
+            Rs2Prayer.toggle(Rs2PrayerEnum.MYSTIC_MIGHT, true);
+        }
+    }
+
+    private void togglePietyPrayer() {
+        if (!config.MysticMight()) {
+            Rs2Prayer.toggle(Rs2PrayerEnum.PIETY, true);
+        } else {
+            if (!Rs2Prayer.isPrayerActive(Rs2PrayerEnum.STEEL_SKIN)) {
+                Rs2Prayer.toggle(Rs2PrayerEnum.STEEL_SKIN, true);
+            }
+            Rs2Prayer.toggle(Rs2PrayerEnum.ULTIMATE_STRENGTH, true);
+            Rs2Prayer.toggle(Rs2PrayerEnum.INCREDIBLE_REFLEXES, true);
         }
     }
 }

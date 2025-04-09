@@ -43,6 +43,7 @@ import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
 
 import javax.inject.Inject;
 import javax.swing.*;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
@@ -58,6 +59,7 @@ import static net.runelite.client.plugins.microbot.bee.MossKiller.Enums.CombatMo
 import static net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity.LOW;
 import static net.runelite.client.plugins.microbot.util.player.Rs2Player.*;
 import static net.runelite.client.plugins.microbot.util.player.Rs2Pvp.getWildernessLevelFrom;
+import static net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer.isPrayerActive;
 import static net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer.toggle;
 import static net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum.*;
 import static net.runelite.client.plugins.skillcalculator.skills.MagicAction.HIGH_LEVEL_ALCHEMY;
@@ -681,7 +683,7 @@ public class WildyKillerScript extends Script {
 
         if (target != null && target.getCombatLevel() > 87
                 && getWildernessLevelFrom(Rs2Player.getWorldLocation()) > 20) {
-            Microbot.log("Target is over level 90");
+            Microbot.log("Target is over level 87");
             eatingMethod(target);
             if (ShortestPathPlugin.getPathfinder() == null && !MossKillerPlugin.isPlayerSnared()) {
                 handleAsynchWalk("Twenty Wild");
@@ -725,15 +727,17 @@ public class WildyKillerScript extends Script {
         boolean useMelee = mossKillerPlugin.useMelee();
         boolean useRange = mossKillerPlugin.useRange();
 
+
         if (target != null
                 && target.getCombatLevel() < 88
                 && target.getOverheadIcon() == null
                 && !MossKillerPlugin.isPlayerSnared()) {
 
-            if (Rs2Prayer.isPrayerActive(PROTECT_MAGIC) || Rs2Prayer.isPrayerActive(PROTECT_MELEE)) {
+            if (!isInMulti()) {
+                if (Rs2Prayer.isPrayerActive(PROTECT_MAGIC) || Rs2Prayer.isPrayerActive(PROTECT_MELEE)) {
                 Rs2Prayer.toggle(PROTECT_MAGIC, false);
                 Rs2Prayer.toggle(PROTECT_RANGE, false);
-            }
+            }}
 
             if (hasPlayerEquippedItem(target, MAPLE_SHORTBOW)) {
                 if (Rs2Player.getRealSkillLevel(PRAYER) > 39 && Rs2Player.getBoostedSkillLevel(PRAYER) > 0) {
@@ -775,10 +779,13 @@ public class WildyKillerScript extends Script {
                 && target.getOverheadIcon() == null
                 && MossKillerPlugin.isPlayerSnared()) {
 
-            if (Rs2Prayer.isPrayerActive(PROTECT_RANGE) || Rs2Prayer.isPrayerActive(PROTECT_MAGIC) || Rs2Prayer.isPrayerActive(PROTECT_MELEE)) {
-                Rs2Prayer.toggle(PROTECT_RANGE, false);
-                Rs2Prayer.toggle(PROTECT_MAGIC, false);
-                Rs2Prayer.toggle(PROTECT_RANGE, false);
+            if (!isInMulti()) {
+                if (Rs2Prayer.isPrayerActive(PROTECT_RANGE) || Rs2Prayer.isPrayerActive(PROTECT_MAGIC) || Rs2Prayer.isPrayerActive(PROTECT_MELEE)) {
+                    if (Rs2Prayer.isPrayerActive(PROTECT_RANGE)) {Rs2Prayer.toggle(PROTECT_RANGE, false);}
+                    if (Rs2Prayer.isPrayerActive(PROTECT_MAGIC)) {Rs2Prayer.toggle(PROTECT_MAGIC, false);}
+                    if (Rs2Prayer.isPrayerActive(PROTECT_MELEE)) {Rs2Prayer.toggle(PROTECT_MELEE, false);}
+            }} if (isInMulti()) {
+                monitorAttacks();
             }
 
             if (!isTargetPlayerFar(target)) {
@@ -804,6 +811,7 @@ public class WildyKillerScript extends Script {
 
         if (target != null && target.getOverheadIcon() != null && target.getCombatLevel() < 88) {
 
+            //if player is a mage and praying, protect from mage
             if (Rs2Player.getRealSkillLevel(PRAYER) > 36) {
                 Rs2Prayer.toggle(PROTECT_MAGIC, hasPlayerEquippedItem(target, STAFF_OF_FIRE)
                         || hasPlayerEquippedItem(target, STAFF_OF_AIR)
@@ -813,11 +821,12 @@ public class WildyKillerScript extends Script {
                         || hasPlayerEquippedItem(target, BRYOPHYTAS_STAFF_UNCHARGED));
             }
 
+            //prot range if they have range gear
             if (Rs2Player.getRealSkillLevel(PRAYER) > 39) {
                 Rs2Prayer.toggle(PROTECT_RANGE, hasPlayerEquippedItem(target, MAPLE_SHORTBOW));
             }
 
-            // Target has an overhead prayer icon
+
             if (useMelee && weHaveEnoughEnergyToPersue()) {
                 if (!Rs2Equipment.hasEquipped(RUNE_SCIMITAR)) {
                     Rs2Inventory.interact(RUNE_SCIMITAR, "Wield");
@@ -998,6 +1007,184 @@ public class WildyKillerScript extends Script {
             return false;
         }
         return false;
+    }
+
+    public List<Rs2PlayerModel> getAttackers(List<Rs2PlayerModel> potentialTargets) {
+        List<Rs2PlayerModel> attackers = new ArrayList<>();
+        Rs2PlayerModel localPlayer = (Rs2PlayerModel) Microbot.getClient().getLocalPlayer();
+
+        if (localPlayer != null) {
+            for (Rs2PlayerModel player : potentialTargets) {
+                if (player != null && player.getInteracting() == localPlayer) {
+                    attackers.add(player);
+                }
+            }
+        }
+
+        return attackers;
+    }
+
+
+    public void monitorAttacks() {
+        List<Rs2PlayerModel> potentialTargets = getPotentialTargets();  // Existing method to get potential targets
+        List<Rs2PlayerModel> attackers = getAttackers(potentialTargets);  // Determine which targets are attacking the bot
+        int attackingPlayers = attackers.size();
+
+        System.out.println("Number of players attacking: " + attackingPlayers);
+
+        if (attackingPlayers >= 3) {
+            System.out.println("Under attack by multiple players, checking and eating.");
+            if (Microbot.getClient().getRealSkillLevel(Skill.PRAYER) >= 43) {
+                handleProtectionPrayers(attackers);}} // introduce spam eating here
+           if (attackingPlayers == 2) {
+            System.out.println("Under attack by exactly 2 players, eating at 90 HP.");
+            handleProtectionPrayers(attackers);
+            Rs2Player.eatAt(90);
+        }
+    }
+
+
+    public String getCombatStyle(Rs2PlayerModel player) {
+        int[] equipmentIds = player.getPlayerComposition().getEquipmentIds();
+
+        if (equipmentIds == null) {
+            return "UNKNOWN";
+        }
+
+        int MAPLE_SHORTBOW_ID = 2901;
+        int MAPLE_LONGBOW_ID = 2899;
+        int RUNE_SCIMITAR_ID = 3381;
+        int GILDED_SCIMITAR_ID = 14437;
+        int STAFF_OF_FIRE_ID = 3435;
+        int STAFF_OF_WATER_ID = 3431;
+        int STAFF_OF_EARTH_ID = 3433;
+        int STAFF_OF_AIR_ID = 3429;
+
+        // Check the weapon slot (usually index 3 in equipment array)
+        int weaponId = equipmentIds[3];
+
+        // Check for Ranged weapon (Maple Shortbow)
+        if (weaponId == MAPLE_SHORTBOW_ID || weaponId == MAPLE_LONGBOW_ID ) {
+            return "RANGE";
+        }
+
+        // Check for Melee weapons (Rune Scimitar, etc.)
+        if (weaponId == RUNE_SCIMITAR_ID || weaponId == GILDED_SCIMITAR_ID) {
+            return "MELEE";
+        }
+
+        // Check for Magic weapons (Staff of Fire, etc.)
+        if (weaponId == STAFF_OF_FIRE_ID || weaponId == STAFF_OF_WATER_ID || weaponId == STAFF_OF_EARTH_ID || weaponId == STAFF_OF_AIR_ID) {
+            return "MAGIC";
+        }
+
+        return "UNKNOWN";
+    }
+
+    private void handleProtectionPrayers(List<Rs2PlayerModel> attackers) {
+        int meleeAttackers = 0;
+        int rangedAttackers = 0;
+        int magicAttackers = 0;
+
+        int meleeCombatLevelSum = 0;
+        int rangedCombatLevelSum = 0;
+        int magicCombatLevelSum = 0;
+
+        for (Rs2PlayerModel attacker : attackers) {
+            String style = getCombatStyle(attacker);  // Now returns a String ("MELEE", "RANGE", "MAGIC")
+            int combatLevel = attacker.getCombatLevel();
+
+            switch (style) {
+                case "MELEE":
+                    meleeAttackers++;
+                    meleeCombatLevelSum += combatLevel;
+                    break;
+
+                case "RANGE":
+                    rangedAttackers++;
+                    rangedCombatLevelSum += combatLevel;
+                    break;
+
+                case "MAGIC":
+                    magicAttackers++;
+                    magicCombatLevelSum += combatLevel;
+                    break;
+
+                default:
+                    // Handle unknown combat style if necessary
+                    break;
+            }
+        }
+
+        // Determine the bot's own combat style and choose the correct prayer based on its weaknesses
+        Rs2PrayerEnum optimalPrayer = null;
+        switch (config.combatMode()) {
+            case MAIN_MELEE:
+                optimalPrayer = determineOptimalPrayerForMelee(meleeAttackers, rangedAttackers, magicAttackers,
+                        meleeCombatLevelSum, rangedCombatLevelSum, magicCombatLevelSum);
+                break;
+
+            case MAIN_RANGE:
+                optimalPrayer = determineOptimalPrayerForRange(meleeAttackers, rangedAttackers, magicAttackers,
+                        meleeCombatLevelSum, rangedCombatLevelSum, magicCombatLevelSum);
+                break;
+
+            case MAIN_MAGE:
+                optimalPrayer = determineOptimalPrayerForMage(meleeAttackers, rangedAttackers, magicAttackers,
+                        meleeCombatLevelSum, rangedCombatLevelSum, magicCombatLevelSum);
+                break;
+
+            default:
+                break;
+        }
+
+        // Only toggle prayer if the optimal prayer is different from the currently active one
+        if (optimalPrayer != null && !isPrayerActive(optimalPrayer)) {
+            toggle(optimalPrayer, true);  // Activate the optimal prayer
+            System.out.println("Activated " + optimalPrayer.name());
+        }
+    }
+
+    // Determine the optimal prayer for a Melee-based bot
+    private Rs2PrayerEnum determineOptimalPrayerForMelee(int meleeAttackers, int rangedAttackers, int magicAttackers,
+                                                         int meleeCombatLevelSum, int rangedCombatLevelSum, int magicCombatLevelSum) {
+        // Melee is weak to Magic, so prioritize Protect from Magic
+        if (magicAttackers >= 3 || (magicCombatLevelSum >= meleeCombatLevelSum && magicCombatLevelSum >= rangedCombatLevelSum)) {
+            return Rs2PrayerEnum.PROTECT_MAGIC;
+        }
+        // If Magic is not a significant threat, fallback to Protect from Melee or Ranged based on their presence
+        if (rangedAttackers >= 3 || rangedCombatLevelSum >= meleeCombatLevelSum) {
+            return Rs2PrayerEnum.PROTECT_RANGE;
+        }
+        return Rs2PrayerEnum.PROTECT_MELEE;
+    }
+
+    // Determine the optimal prayer for a Ranged-based bot
+    private Rs2PrayerEnum determineOptimalPrayerForRange(int meleeAttackers, int rangedAttackers, int magicAttackers,
+                                                         int meleeCombatLevelSum, int rangedCombatLevelSum, int magicCombatLevelSum) {
+        // Ranged is weak to Melee, so prioritize Protect from Melee
+        if (meleeAttackers >= 3 || (meleeCombatLevelSum >= rangedCombatLevelSum && meleeCombatLevelSum >= magicCombatLevelSum)) {
+            return Rs2PrayerEnum.PROTECT_MELEE;
+        }
+        // If Melee is not a significant threat, fallback to Protect from Magic or Ranged based on their presence
+        if (magicAttackers >= 3 || magicCombatLevelSum >= rangedCombatLevelSum) {
+            return Rs2PrayerEnum.PROTECT_MAGIC;
+        }
+        return Rs2PrayerEnum.PROTECT_RANGE;
+    }
+
+    // Determine the optimal prayer for a Mage-based bot
+    private Rs2PrayerEnum determineOptimalPrayerForMage(int meleeAttackers, int rangedAttackers, int magicAttackers,
+                                                        int meleeCombatLevelSum, int rangedCombatLevelSum, int magicCombatLevelSum) {
+        // Magic is weak to Ranged, so prioritize Protect from Missiles
+        if (rangedAttackers >= 3 || (rangedCombatLevelSum >= meleeCombatLevelSum && rangedCombatLevelSum >= magicCombatLevelSum)) {
+            return Rs2PrayerEnum.PROTECT_RANGE;
+        }
+        // If Ranged is not a significant threat, fallback to Protect from Melee or Magic based on their presence
+        if (meleeAttackers >= 3 || meleeCombatLevelSum >= magicCombatLevelSum) {
+            return Rs2PrayerEnum.PROTECT_MELEE;
+        }
+        return Rs2PrayerEnum.PROTECT_MAGIC;
     }
 
     public boolean weHaveEnoughEnergyToPersue() {
@@ -1551,6 +1738,10 @@ public class WildyKillerScript extends Script {
         if (Rs2Inventory.contains(MOSSY_KEY)) {
             state = MossKillerState.PKER;
         }
+    }
+
+    private List<Rs2PlayerModel> getPotentialTargets() {
+        return getNearbyPlayers(12);
     }
 
     public List<Rs2PlayerModel> getNearbyPlayers(int distance) {

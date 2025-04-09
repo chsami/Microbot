@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.nateplugins.skilling.natefishing;
 
 import net.runelite.api.ItemID;
+import net.runelite.api.NPCComposition;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.nateplugins.skilling.natefishing.enums.Fish;
@@ -33,6 +34,7 @@ public class AutoFishingScript extends Script {
 
     private static final List<String> rawFishNames = List.of("raw shrimps", "raw anchovies", "raw sardine", "raw herring", "raw mackerel", "raw cod", "raw bass", "raw trout", "raw salmon", "raw pike", "raw tuna", "raw swordfish", "raw cave eel", "raw slimy eel", "raw lobster", "raw monkfish", "raw karambwanji", "raw shark", "raw anglerfish", "raw karambwan");
     public static String version = "1.6.0";
+    private String fishAction = "";
     State state;
 
     public boolean run(AutoFishConfig config) {
@@ -42,6 +44,7 @@ public class AutoFishingScript extends Script {
         if (fish.equals(Fish.KARAMBWAN) || fish.equals(Fish.KARAMBWANJI)) {
             fishList.remove("raw karambwanji");
         }
+        fishAction = "";
         state = State.FISHING;
         Rs2Antiban.resetAntibanSettings();
         Rs2Antiban.antibanSetupTemplates.applyFishingSetup();
@@ -80,6 +83,14 @@ public class AutoFishingScript extends Script {
                             state = State.RESETTING;
                             return;
                         }
+                        
+                        if (fishAction.isEmpty()) {
+                            fishAction = Rs2Npc.getAvailableAction(fishingSpot, fish.getActions());
+                            if (fishAction.isEmpty()) {
+                                Microbot.showMessage("Unable to find action for fishing spot!");
+                                shutdown();
+                            }
+                        }
 
                         if (!Rs2Camera.isTileOnScreen(fishingSpot.getLocalLocation())) {
                             validateInteractable(fishingSpot);
@@ -90,8 +101,8 @@ public class AutoFishingScript extends Script {
                                 Rs2Inventory.waitForInventoryChanges(() -> Rs2Inventory.combineClosest(ItemID.RAW_KARAMBWANJI, ItemID.KARAMBWAN_VESSEL), 600, 5000);
                             }
                         }
-
-                        if (Rs2Npc.interact(fishingSpot, fish.getAction())) {
+                        
+                        if (Rs2Npc.interact(fishingSpot, fishAction)) {
                             Rs2Antiban.actionCooldown();
                             Rs2Antiban.takeMicroBreakByChance();
                         }
@@ -100,25 +111,37 @@ public class AutoFishingScript extends Script {
                         if (config.useBank()) {
                             if (Rs2Bank.walkToBankAndUseBank()) {
                                 Rs2Bank.depositAll(i -> fishList.stream().anyMatch(fl -> i.getName().equalsIgnoreCase(fl)));
+                                Rs2Inventory.waitForInventoryChanges(1800);
                                 if (config.shouldBankClueBottles()) {
                                     Rs2Bank.depositAll("clue bottle");
+                                    Rs2Inventory.waitForInventoryChanges(1800);
                                 }
                                 if (config.shouldBankCaskets()) {
                                     Rs2Bank.depositAll("casket");
+                                    Rs2Inventory.waitForInventoryChanges(1800);
                                 }
                                 Rs2Bank.emptyFishBarrel();
+                                
+                                Rs2Bank.closeBank();
+                                sleepUntil(() -> !Rs2Bank.isOpen());
 
                                 Rs2Walker.walkTo(initialPlayerLocation);
                             }
                         } else if (config.useDepositBox()) {
                             if (Rs2DepositBox.walkToAndUseDepositBox()) {
                                 Rs2DepositBox.depositAll(i -> fishList.stream().anyMatch(fl -> i.getName().equalsIgnoreCase(fl)));
+                                Rs2Inventory.waitForInventoryChanges(1800);
                                 if (config.shouldBankClueBottles()) {
                                     Rs2DepositBox.depositAll("clue bottle");
+                                    Rs2Inventory.waitForInventoryChanges(1800);
                                 }
                                 if (config.shouldBankCaskets()) {
                                     Rs2DepositBox.depositAll("casket");
+                                    Rs2Inventory.waitForInventoryChanges(1800);
                                 }
+                                
+                                Rs2DepositBox.closeDepositBox();
+                                sleepUntil(() -> !Rs2DepositBox.isOpen());
                                 
                                 Rs2Walker.walkTo(initialPlayerLocation);
                             }

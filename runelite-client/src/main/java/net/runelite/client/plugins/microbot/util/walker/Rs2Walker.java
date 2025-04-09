@@ -32,7 +32,6 @@ import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
-import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -245,8 +244,22 @@ public class Rs2Walker {
 
             // entering desert warning
             if (Rs2Widget.clickWidget(565, 20)) {
-                sleep(600);
+                sleepUntil(() -> {
+                    Widget checkBoxWidget = Rs2Widget.getWidget(565, 20);
+                    if (checkBoxWidget == null) return false;
+                    return checkBoxWidget.getSpriteId() != 941;
+                });
                 Rs2Widget.clickWidget(565, 17);
+            }
+            
+            // entering down ladder strong hold of security
+            if (Rs2Widget.clickWidget(579, 20)) {
+                sleepUntil(() -> {
+                    Widget checkBoxWidget = Rs2Widget.getWidget(579, 20);
+                    if (checkBoxWidget == null) return false;
+                    return checkBoxWidget.getSpriteId() != 941;
+                });
+                Rs2Widget.clickWidget(579, 17);
             }
 
 
@@ -279,6 +292,12 @@ public class Rs2Walker {
                 doorOrTransportResult = handleDoors(path, i);
                 if (doorOrTransportResult) {
                     System.out.println("break out of door");
+                    break;
+                }
+                
+                doorOrTransportResult = handleRockfall(path, i);
+                if (doorOrTransportResult) {
+                    System.out.println("break out of rockfall");
                     break;
                 }
 
@@ -731,6 +750,49 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
 
         return worldPoint.distanceTo(Microbot.getClient().getLocalPlayer().getWorldLocation());
     }
+    
+    private static boolean handleRockfall(List<WorldPoint> path, int index) {
+        if (ShortestPathPlugin.getPathfinder() == null) return false;
+
+        if (index == path.size() - 1) return false;
+        
+        // If we are in instance, ignore checking RegionID
+        if(Microbot.getClient().getTopLevelWorldView().isInstance()) return false;
+        
+        // If we are not inside of the Motherloade mine, ignore the following logic
+        if (Rs2Player.getWorldLocation().getRegionID() != 14936) return false;
+        
+        // We kill the path if no pickaxe is found to avoid walking around like an idiot
+        if (!Rs2Inventory.hasItem("pickaxe")) {
+            if (!Rs2Equipment.isWearing("pickaxe")) {
+                Microbot.log("Unable to find pickaxe to mine rockfall");
+                setTarget(null);
+                return false;
+            }
+        }
+        
+        // Check current index & next index for rockfall
+        for (int rockIndex = index; rockIndex < index + 2; rockIndex++) {
+            var point = path.get(rockIndex);
+
+            TileObject object = null;
+            var tile = Rs2GameObject.getTiles(3).stream()
+                    .filter(x -> x.getWorldLocation().equals(point))
+                    .findFirst().orElse(null);
+
+            if (tile != null)
+                object = Rs2GameObject.getGameObject(point);
+
+            if (object == null) continue;
+
+            if (object.getId() == ObjectID.ROCKFALL || object.getId() == ObjectID.ROCKFALL_26680) {
+                Rs2GameObject.interact(object, "mine");
+                return sleepUntil(() -> Rs2GameObject.getGameObject(point) == null);
+            }
+        }
+        
+        return false;
+    }
 
     private static boolean handleDoors(List<WorldPoint> path, int index) {
 
@@ -810,10 +872,68 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
 
 
             if (found) {
-                Rs2GameObject.interact(object, action);
-                Rs2Player.waitForWalking();
+                if (!handleDoorException(object, action)) {
+                    Rs2GameObject.interact(object, action);
+                    Rs2Player.waitForWalking();
+                }
                 return true;
             }
+        }
+
+        return false;
+    }
+
+    private static boolean handleDoorException(TileObject object, String action) {
+        if (isInStrongholdOfSecurity()) {
+            return handleStrongholdOfSecurityAnswer(object, action);
+        }
+        return false;
+    }
+
+    private static boolean isInStrongholdOfSecurity() {
+        List<Integer> mapRegionIds = List.of(7505, 7504, 7760, 7503, 7759, 7758, 7757, 8013, 7756, 8012, 8017, 8530, 9297);
+        return mapRegionIds.contains(Rs2Player.getWorldLocation().getRegionID());
+    }
+
+    private static boolean handleStrongholdOfSecurityAnswer(TileObject object, String action) {
+        Rs2GameObject.interact(object, action);
+        boolean isInDialogue = Rs2Dialogue.sleepUntilInDialogue();
+
+        // Not all the doors ask questions, so only if dialogue is shown we will attempt to get the answer
+        if (!isInDialogue) return true;
+
+        // Skip over first door dialogue & don't forget to set up two-factor warning
+        if (Rs2Dialogue.getDialogueText() != null) {
+            if (Rs2Dialogue.getDialogueText().contains("two-factor authentication options") || Rs2Dialogue.getDialogueText().contains("Hopefully you will learn<br>much from us.")) {
+                Rs2Dialogue.sleepUntilHasContinue();
+                sleepUntil(() -> !Rs2Dialogue.hasContinue() || Rs2Dialogue.getDialogueText().contains("To pass you must answer me"), Rs2Dialogue::clickContinue, 5000, Rs2Random.between(600, 800));
+                if (!Rs2Dialogue.isInDialogue()) return true;
+            }
+        }
+
+        String dialogueAnswer = null;
+        int attempts = 0;
+        final int maxAttempts = 5;
+
+        // We attempt to find the answer multiple times in-case there is dialogue that appears before the question
+        while (dialogueAnswer == null && attempts < maxAttempts) {
+            if (currentTarget == null) break;
+            dialogueAnswer = StrongholdAnswer.findAnswer(Rs2Dialogue.getDialogueText());
+            if (dialogueAnswer == null) {
+                Rs2Dialogue.clickContinue();
+                Rs2Random.waitEx(800, 100);
+            }
+            attempts++;
+        }
+
+        if (dialogueAnswer != null) {
+            Rs2Dialogue.clickContinue();
+            Rs2Dialogue.sleepUntilSelectAnOption();
+            Rs2Dialogue.clickOption(dialogueAnswer);
+            Rs2Dialogue.sleepUntilHasContinue();
+            sleepUntil(() -> !Rs2Dialogue.hasContinue(), Rs2Dialogue::clickContinue, 5000, Rs2Random.between(600, 800));
+            Rs2Player.waitForAnimation(1200);
+            return true;
         }
 
         return false;
@@ -1253,6 +1373,9 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
         
         // Handle Brimhaven Dungeon Entrance
         if (tileObject.getId() == 20877) {
+            if (Rs2Player.isMoving()) {
+                Rs2Player.waitForWalking();
+            }
             Rs2Dialogue.sleepUntilHasQuestion("Pay 875 coins to enter?");
             Rs2Dialogue.clickOption("Yes");
             sleepUntil(() -> Rs2Player.getWorldLocation().equals(transport.getDestination()));
@@ -1260,7 +1383,23 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
         }
         // Handle Brimhaven Dungeon Stepping Stones
         if (tileObject.getId() == ObjectID.STEPPING_STONE_21738 || tileObject.getId() == ObjectID.STEPPING_STONE_21739) {
-            Rs2Player.waitForAnimation(4200);
+            Rs2Player.waitForAnimation(600 * 7);
+            return true;
+        }
+        
+        // Handle Morte Myre Cave Agility Shortcut
+        if (tileObject.getId() == ObjectID.CAVE_ENTRANCE_16308) {
+            Rs2Player.waitForAnimation((600 * 4 ) + 300);
+            return true;
+        }
+        
+        // Handle Crash Site Cavern Gate
+        if (tileObject.getId() == 28807 && transport.getOrigin().equals(new WorldPoint(2435,3519, 0))) {
+            if (Rs2Player.isMoving()) {
+                Rs2Player.waitForWalking();
+            }
+            Rs2Dialogue.sleepUntilInDialogue();
+            Rs2Dialogue.clickOption("yes");
             return true;
         }
         return false;
@@ -1579,6 +1718,12 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
         @Component final int MINIGAME_LIST = 4980758; // 76.22
         @Component final int SELECTED_MINIGAME = 4980747; // 76.11
         @Component final int TELEPORT_BUTTON = 4980768; // 76.32
+
+        // Minigame teleports cant be used if a dialogue is open.
+        if (Rs2Dialogue.isInDialogue()) {
+            var playerLocation = Rs2Player.getLocalLocation();
+            walkFastLocal(playerLocation);
+        }
 
         if (Rs2Tab.getCurrentTab() != InterfaceTab.CHAT) {
             Rs2Tab.switchToGroupingTab();

@@ -16,6 +16,7 @@ import static net.runelite.client.plugins.microbot.util.Global.*;
 public class Rs2Settings {
 
     static final int DROP_SHIFT_SETTING = 11556;
+    static final int ESC_CLOSE_INTERFACE_SETTING = 4681;
     static final int SETTINGS_INTERFACE = 8781825;
     static final int SETTINGS_SEARCHBAR = 8781834;
     static final int ALL_SETTINGS_BUTTON = 7602208;
@@ -35,6 +36,10 @@ public class Rs2Settings {
 
     public static boolean isDropShiftSettingEnabled() {
         return Microbot.getVarbitValue(DROP_SHIFT_SETTING) == 1;
+    }
+    
+    public static boolean isEscCloseInterfaceSettingEnabled() {
+        return Microbot.getVarbitValue(ESC_CLOSE_INTERFACE_SETTING) == 1;
     }
 
     public static boolean enableDropShiftSetting(boolean closeInterface) {

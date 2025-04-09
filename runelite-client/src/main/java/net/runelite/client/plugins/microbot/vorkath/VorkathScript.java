@@ -224,11 +224,15 @@ public class VorkathScript extends Script {
                             Rs2Npc.interact(NpcID.VORKATH_8059, "Poke");
                             Rs2Player.waitForWalking();
                             Rs2Npc.interact(NpcID.VORKATH_8059, "Poke");
-                            Rs2Player.waitForAnimation(10000);
+                            Rs2Player.waitForAnimation(1000);
                             walkToCenter();
                             Rs2Player.waitForWalking();
                             handlePrayer();
                             sleepUntil(() -> Rs2Npc.getNpc(NpcID.VORKATH_8061) != null);
+                            if (doesProjectileExistById(redProjectileId)) {
+                                handleRedBall();
+                                sleep(300);
+                            }
                             state = State.FIGHT_VORKATH;
                         }
                         break;
@@ -299,7 +303,11 @@ public class VorkathScript extends Script {
                             Rs2Tab.switchToInventoryTab();
                             state = State.FIGHT_VORKATH;
                             sleepUntil(() -> Rs2Npc.getNpc("Zombified Spawn") == null);
-                            sleep(1000);
+                            if (doesProjectileExistById(redProjectileId)) {
+                                handleRedBall();
+                                sleep(300);
+                            }
+
                         }
                         break;
                     case ACID:
@@ -339,8 +347,6 @@ public class VorkathScript extends Script {
                             if (foodInventorySize < 3 || !hasVenom || !hasSuperAntifire || !hasRangePotion || (!hasPrayerPotion && !Rs2Player.hasPrayerPoints())) {
                                 leaveVorkath();
                             } else {
-                                walkToCenter();
-                                Rs2Player.waitForWalking();
                                 calculateState();
                             }
                         }
@@ -407,7 +413,7 @@ public class VorkathScript extends Script {
             } catch (Exception ex) {
                 System.out.println(ex.getMessage());
             }
-        }, 0, 100, TimeUnit.MILLISECONDS);
+        }, 0, 80, TimeUnit.MILLISECONDS);
         return true;
     }
 
@@ -476,13 +482,13 @@ public class VorkathScript extends Script {
         boolean drinkAntiVenom = !Rs2Player.hasAntiVenomActive();
 
         if (drinkRangePotion) {
-             Rs2Inventory.interact(Rs2Potion.getRangePotionsVariants(), "drink");
+            Rs2Inventory.interact(Rs2Potion.getRangePotionsVariants(), "drink");
         }
         if (drinkAntiFire) {
-             Rs2Inventory.interact("super antifire", "drink");
+            Rs2Inventory.interact("super antifire", "drink");
         }
         if (drinkAntiVenom) {
-             Rs2Inventory.interact("venom", "drink");
+            Rs2Inventory.interact("venom", "drink");
         }
 
         if (!Microbot.getClient().getLocalPlayer().isInteracting() && state == State.PREPARE_FIGHT && (drinkRangePotion || drinkAntiFire || drinkAntiVenom))
@@ -580,7 +586,7 @@ public class VorkathScript extends Script {
             if (playerLocation.equals(safeTile)) {
                 Rs2Npc.interact(vorkath, "attack");
             } else {
-                Rs2Player.eatAt(75);
+                Rs2Player.eatAt(60);
                 Rs2Walker.walkFastLocal(LocalPoint.fromWorld(Microbot.getClient(), safeTile));
             }
         }
@@ -595,7 +601,7 @@ public class VorkathScript extends Script {
             if (playerLocation.equals(safeTile)) {
                 Rs2Npc.interact(vorkath, "attack");
             } else {
-                Rs2Player.eatAt(75);
+                Rs2Player.eatAt(60);
                 Rs2Walker.walkFastLocal(LocalPoint.fromWorld(Microbot.getClient(), safeTile));
             }
         }

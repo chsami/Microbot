@@ -34,7 +34,9 @@ import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.api.events.ScriptPostFired;
-import net.runelite.api.widgets.ComponentID;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.InventoryID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.chat.ChatColorType;
 import net.runelite.client.chat.ChatMessageBuilder;
@@ -56,8 +58,6 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static net.runelite.api.ItemID.*;
-
 @PluginDescriptor(
 	name = "Run Energy",
 	description = "Show various information related to run energy",
@@ -71,13 +71,13 @@ public class RunEnergyPlugin extends Plugin
 	@Getter
 	private enum GracefulEquipmentSlot
 	{
-		HEAD(EquipmentInventorySlot.HEAD.getSlotIdx(), 3, GRACEFUL_HOOD),
-		BODY(EquipmentInventorySlot.BODY.getSlotIdx(), 4, GRACEFUL_TOP),
-		LEGS(EquipmentInventorySlot.LEGS.getSlotIdx(), 4, GRACEFUL_LEGS),
-		GLOVES(EquipmentInventorySlot.GLOVES.getSlotIdx(), 3, GRACEFUL_GLOVES),
-		BOOTS(EquipmentInventorySlot.BOOTS.getSlotIdx(), 3, GRACEFUL_BOOTS),
+		HEAD(EquipmentInventorySlot.HEAD.getSlotIdx(), 3, ItemID.GRACEFUL_HOOD),
+		BODY(EquipmentInventorySlot.BODY.getSlotIdx(), 4, ItemID.GRACEFUL_TOP),
+		LEGS(EquipmentInventorySlot.LEGS.getSlotIdx(), 4, ItemID.GRACEFUL_LEGS),
+		GLOVES(EquipmentInventorySlot.GLOVES.getSlotIdx(), 3, ItemID.GRACEFUL_GLOVES),
+		BOOTS(EquipmentInventorySlot.BOOTS.getSlotIdx(), 3, ItemID.GRACEFUL_BOOTS),
 		// Agility skill capes and the non-cosmetic Max capes also count for the Graceful set effect
-		CAPE(EquipmentInventorySlot.CAPE.getSlotIdx(), 3, GRACEFUL_CAPE, AGILITY_CAPE, MAX_CAPE_13342);
+		CAPE(EquipmentInventorySlot.CAPE.getSlotIdx(), 3, ItemID.GRACEFUL_CAPE, ItemID.SKILLCAPE_AGILITY, ItemID.SKILLCAPE_MAX_WORN);
 
 		private final int index;
 		private final int boost;
@@ -159,9 +159,10 @@ public class RunEnergyPlugin extends Plugin
 		configManager.setRSProfileConfiguration(RunEnergyConfig.GROUP_NAME, "ringOfEnduranceCharges", charges);
 	}
 
-	static boolean isRingOfEnduranceEquipped() {
-		final ItemContainer equipment = Microbot.getClient().getItemContainer(InventoryID.EQUIPMENT);
-		return equipment != null && equipment.count(RING_OF_ENDURANCE) == 1;
+	static boolean isRingOfEnduranceEquipped()
+	{
+		final ItemContainer equipment = Microbot.getClient().getItemContainer(InventoryID.WORN);
+		return equipment != null && equipment.count(ItemID.RING_OF_ENDURANCE) == 1;
 	}
 
 	@Subscribe
@@ -266,7 +267,7 @@ public class RunEnergyPlugin extends Plugin
 
 	private void setRunOrbText(String text)
 	{
-		Widget runOrbText = client.getWidget(ComponentID.MINIMAP_RUN_ORB_TEXT);
+		Widget runOrbText = client.getWidget(InterfaceID.Orbs.RUNENERGY_TEXT);
 
 		if (runOrbText != null)
 		{
@@ -303,9 +304,9 @@ public class RunEnergyPlugin extends Plugin
 		return formatTime(secondsLeft, inSeconds);
 	}
 
-	private static int getGracefulRecoveryBoost()
+	public static int getGracefulRecoveryBoost()
 	{
-		final ItemContainer equipment = Microbot.getClient().getItemContainer(InventoryID.EQUIPMENT);
+		final ItemContainer equipment = Microbot.getClient().getItemContainer(InventoryID.WORN);
 
 		if (equipment == null)
 		{
@@ -359,7 +360,7 @@ public class RunEnergyPlugin extends Plugin
 		}
 		lastCheckTick = currentTick;
 
-		final Widget widgetDestroyItemName = client.getWidget(ComponentID.DESTROY_ITEM_NAME);
+		final Widget widgetDestroyItemName = client.getWidget(InterfaceID.Confirmdestroy.NAME);
 		if (widgetDestroyItemName == null)
 		{
 			return;

@@ -61,7 +61,8 @@ public class Rs2GroundItem {
             MenuAction menuAction = MenuAction.CANCEL;
             ItemComposition item;
 
-            item = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getItemDefinition(groundItem.getId()));
+            item = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getItemDefinition(groundItem.getId())).orElse(null);
+            if (item == null) return false;
             identifier = groundItem.getId();
 
             LocalPoint localPoint = LocalPoint.fromWorld(Microbot.getClient(), groundItem.getLocation());
@@ -141,7 +142,7 @@ public class Rs2GroundItem {
      * @return An array of the ground items on the specified tile.
      */
     public static RS2Item[] getAllAt(int x, int y) {
-        return Microbot.getClientThread().runOnClientThread(() -> {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             if (!Microbot.isLoggedIn()) {
                 return null;
             }
@@ -161,7 +162,7 @@ public class Rs2GroundItem {
                 }
             }
             return list.toArray(new RS2Item[list.size()]);
-        });
+        }).orElse(new RS2Item[] {});
     }
 
     public static RS2Item[] getAll(int range) {
@@ -193,6 +194,50 @@ public class Rs2GroundItem {
         return temp.toArray(new RS2Item[temp.size()]);
     }
 
+    /**
+     * Retrieves all RS2Item objects within a specified range of a WorldPoint, sorted by distance.
+     * 
+     * @param range The radius in tiles to search around the given world point
+     * @param worldPoint The center WorldPoint to search around
+     * @return An array of RS2Item objects found within the specified range, sorted by proximity
+     *         to the center point (closest first). Returns an empty array if no items are found.
+     */
+    public static RS2Item[] getAllFromWorldPoint(int range, WorldPoint worldPoint) {
+        List<RS2Item> temp = new ArrayList<>();
+
+        // Convert WorldPoint to LocalPoint for sorting
+        LocalPoint safespotLocalPoint = LocalPoint.fromWorld(Microbot.getClient(), worldPoint);
+
+        int safespotX = safespotLocalPoint.getX();
+        int safespotY = safespotLocalPoint.getY();
+
+        int minX = safespotX - range, minY = safespotY - range;
+        int maxX = safespotX + range, maxY = safespotY + range;
+
+        for (int x = minX; x < maxX; x++) {
+            for (int y = minY; y < maxY; y++) {
+                RS2Item[] items = getAllAt(x, y);
+                if (items != null) {
+                    for (RS2Item item : items) {
+                        if (item == null) {
+                            continue;
+                        }
+                        temp.add(item);
+                    }
+                }
+            }
+        }
+
+        // Sort items based on distance from the safespot local point
+        temp = temp.stream()
+                .sorted(Comparator.comparingInt(value ->
+                        value.getTile().getLocalLocation().distanceTo(safespotLocalPoint)))
+                .collect(Collectors.toList());
+
+        return temp.toArray(new RS2Item[temp.size()]);
+    }
+
+
     public static boolean loot(String lootItem, int range) {
         return loot(lootItem, 1, range);
     }
@@ -207,9 +252,9 @@ public class Rs2GroundItem {
 
     public static boolean loot(String lootItem, int minQuantity, int range) {
         if (Rs2Inventory.isFull(lootItem)) return false;
-        RS2Item[] groundItems = Microbot.getClientThread().runOnClientThread(() ->
+        RS2Item[] groundItems = Microbot.getClientThread().runOnClientThreadOptional(() ->
                 Rs2GroundItem.getAll(range)
-        );
+        ).orElse(new RS2Item[] {});
         for (RS2Item rs2Item : groundItems) {
             if (rs2Item.getItem().getName().equalsIgnoreCase(lootItem) && rs2Item.getTileItem().getQuantity() >= minQuantity) {
                 interact(rs2Item);
@@ -220,14 +265,14 @@ public class Rs2GroundItem {
     }
 
     public static boolean lootItemBasedOnValue(int value, int range) {
-        RS2Item[] groundItems = Microbot.getClientThread().runOnClientThread(() ->
+        RS2Item[] groundItems = Microbot.getClientThread().runOnClientThreadOptional(() ->
                 Rs2GroundItem.getAll(range)
-        );
+        ).orElse(new RS2Item[] {});
         final int invSize = Rs2Inventory.size();
         for (RS2Item rs2Item : groundItems) {
             if (!hasLineOfSight(rs2Item.getTile())) continue;
-            long totalPrice = (long) Microbot.getClientThread().runOnClientThread(() ->
-                    Microbot.getItemManager().getItemPrice(rs2Item.getItem().getId()) * rs2Item.getTileItem().getQuantity());
+            long totalPrice = (long) Microbot.getClientThread().runOnClientThreadOptional(() ->
+                    Microbot.getItemManager().getItemPrice(rs2Item.getItem().getId()) * rs2Item.getTileItem().getQuantity()).orElse(0);
             if (totalPrice >= value) {
                 if (Rs2Inventory.isFull()) {
                     if (Rs2Player.eatAt(100)) {
@@ -366,6 +411,26 @@ public class Rs2GroundItem {
         return validateLoot(filter);
     }
 
+    /**
+     * Loots items based on their location and item ID.
+     * @param location
+     * @param itemId
+     * @return
+     */
+    public static boolean lootItemsBasedOnLocation(WorldPoint location, int itemId) {
+        final Predicate<GroundItem> filter = groundItem ->
+                groundItem.getLocation().equals(location) && groundItem.getItemId() == itemId;
+
+        List<GroundItem> groundItems = GroundItemsPlugin.getCollectedGroundItems().values().stream()
+                .filter(filter)
+                .collect(Collectors.toList());
+
+        for (GroundItem groundItem : groundItems) {
+            coreLoot(groundItem);
+        }
+        return validateLoot(filter);
+    }
+
     // Loot untradables
     public static boolean lootUntradables(LootingParameters params) {
         final Predicate<GroundItem> filter = groundItem ->
@@ -427,12 +492,12 @@ public class Rs2GroundItem {
     }
 
     public static boolean isItemBasedOnValueOnGround(int value, int range) {
-        RS2Item[] groundItems = Microbot.getClientThread().runOnClientThread(() ->
+        RS2Item[] groundItems = Microbot.getClientThread().runOnClientThreadOptional(() ->
                 Rs2GroundItem.getAll(range)
-        );
+        ).orElse(new RS2Item[] {});
         for (RS2Item rs2Item : groundItems) {
-            long totalPrice = (long) Microbot.getClientThread().runOnClientThread(() ->
-                    Microbot.getItemManager().getItemPrice(rs2Item.getItem().getId()) * rs2Item.getTileItem().getQuantity());
+            long totalPrice = (long) Microbot.getClientThread().runOnClientThreadOptional(() ->
+                    Microbot.getItemManager().getItemPrice(rs2Item.getItem().getId()) * rs2Item.getTileItem().getQuantity()).orElse(0);
             if (totalPrice >= value) {
                 return true;
             }
@@ -442,14 +507,14 @@ public class Rs2GroundItem {
 
     @Deprecated(since = "1.4.6, use lootItemsBasedOnNames(LootingParameters params)", forRemoval = true)
     public static boolean lootAllItemBasedOnValue(int value, int range) {
-        RS2Item[] groundItems = Microbot.getClientThread().runOnClientThread(() ->
+        RS2Item[] groundItems = Microbot.getClientThread().runOnClientThreadOptional(() ->
                 Rs2GroundItem.getAll(range)
-        );
+        ).orElse(new RS2Item[] {});
         Rs2Inventory.dropEmptyVials();
         for (RS2Item rs2Item : groundItems) {
             if (Rs2Inventory.isFull(rs2Item.getItem().getName())) continue;
-            long totalPrice = (long) Microbot.getClientThread().runOnClientThread(() ->
-                    Microbot.getItemManager().getItemPrice(rs2Item.getItem().getId()) * rs2Item.getTileItem().getQuantity());
+            long totalPrice = (long) Microbot.getClientThread().runOnClientThreadOptional(() ->
+                    Microbot.getItemManager().getItemPrice(rs2Item.getItem().getId()) * rs2Item.getTileItem().getQuantity()).orElse(0);
             if (totalPrice >= value) {
                 return interact(rs2Item);
             }
@@ -467,9 +532,9 @@ public class Rs2GroundItem {
     }
     public static boolean loot(int itemId, int range) {
         if (Rs2Inventory.isFull(itemId)) return false;
-        RS2Item[] groundItems = Microbot.getClientThread().runOnClientThread(() ->
+        RS2Item[] groundItems = Microbot.getClientThread().runOnClientThreadOptional(() ->
                 Rs2GroundItem.getAll(range)
-        );
+        ).orElse(new RS2Item[] {});
         for (RS2Item rs2Item : groundItems) {
             if (rs2Item.getItem().getId() == itemId) {
                 interact(rs2Item);
@@ -500,7 +565,8 @@ public class Rs2GroundItem {
     }
 
     public static boolean interact(String itemName, String action, int range) {
-        RS2Item[] groundItems = Microbot.getClientThread().runOnClientThread(() -> Rs2GroundItem.getAll(range));
+        RS2Item[] groundItems = Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2GroundItem.getAll(range))
+                .orElse(new RS2Item[] {});
         for (RS2Item rs2Item : groundItems) {
             if (rs2Item.getItem().getName().equalsIgnoreCase(itemName)) {
                 interact(rs2Item, action);
@@ -511,7 +577,8 @@ public class Rs2GroundItem {
     }
 
     public static boolean interact(int itemId, String action, int range) {
-        RS2Item[] groundItems = Microbot.getClientThread().runOnClientThread(() -> Rs2GroundItem.getAll(range));
+        RS2Item[] groundItems = Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2GroundItem.getAll(range))
+                .orElse(new RS2Item[] {});;
         for (RS2Item rs2Item : groundItems) {
             if (rs2Item.getItem().getId() == itemId) {
                 interact(rs2Item, action);
@@ -522,7 +589,8 @@ public class Rs2GroundItem {
     }
 
     public static boolean exists(int id, int range) {
-        RS2Item[] groundItems = Microbot.getClientThread().runOnClientThread(() -> Rs2GroundItem.getAll(range));
+        RS2Item[] groundItems = Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2GroundItem.getAll(range))
+                .orElse(new RS2Item[] {});
         for (RS2Item rs2Item : groundItems) {
             if (rs2Item.getItem().getId() == id) {
                 return true;
@@ -532,7 +600,7 @@ public class Rs2GroundItem {
     }
 
     public static boolean exists(String itemName, int range) {
-        RS2Item[] groundItems = Microbot.getClientThread().runOnClientThread(() -> Rs2GroundItem.getAll(range));
+        RS2Item[] groundItems = Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2GroundItem.getAll(range)).orElse(new RS2Item[] {});
         for (RS2Item rs2Item : groundItems) {
             if (rs2Item.getItem().getName().equalsIgnoreCase(itemName)) {
                 return true;
@@ -556,6 +624,7 @@ public class Rs2GroundItem {
      * @param itemId
      * @return
      */
+    @Deprecated(since = "1.7.9, use lootItemsBasedOnLocation(WorldPoint location, int itemId)", forRemoval = true)
     public static boolean loot(final WorldPoint worldPoint, final int itemId)
     {
         final Optional<RS2Item> item = Arrays.stream(Rs2GroundItem.getAllAt(worldPoint.getX(), worldPoint.getY()))

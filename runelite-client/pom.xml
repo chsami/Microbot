@@ -29,7 +29,7 @@
 	<parent>
 		<groupId>net.runelite</groupId>
 		<artifactId>runelite-parent</artifactId>
-		<version>1.11.4-SNAPSHOT</version>
+		<version>1.11.6-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>client</artifactId>
@@ -41,7 +41,7 @@
 		<git.commit.id.abbrev>nogit</git.commit.id.abbrev>
 		<git.dirty>false</git.dirty>
 		<shade.skip>false</shade.skip>
-		<microbot.version>1.7.9</microbot.version>
+		<microbot.version>1.8.3</microbot.version>
 	</properties>
 
 	<dependencies>
@@ -451,6 +451,35 @@
 									</excludes>
 								</filter>
 							</filters>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<version>3.2.0</version>
+				<executions>
+					<execution>
+						<id>build-plugin-jar</id>
+						<phase>package</phase>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+						<configuration>
+							<classesDirectory>${project.build.outputDirectory}</classesDirectory>
+							<includes>
+								<include>net/runelite/client/plugins/microbot/example/**</include>
+							</includes>
+							<finalName>example</finalName>
+							<archive>
+								<manifest>
+									<addClasspath>true</addClasspath>
+									<classpathPrefix>lib/</classpathPrefix>
+									<mainClass>net.runelite.client.RuneLite</mainClass>
+								</manifest>
+							</archive>
+							<classifier>plugin</classifier>
 						</configuration>
 					</execution>
 				</executions>

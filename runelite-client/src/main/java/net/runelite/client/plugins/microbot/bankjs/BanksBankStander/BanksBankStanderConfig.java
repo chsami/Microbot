@@ -194,13 +194,23 @@ public interface BanksBankStanderConfig extends Config {
         return true;
     }
     @ConfigItem(
-            keyName = "depositAll",
-            name = "deposit all",
+            keyName = "DepositAll",
+            name = "Deposit all",
             description = "force the bank to deposit all items each time.",
             position = 6,
             section = toggles
     )
     default boolean depositAll() {
+        return false;
+    }
+    @ConfigItem(
+            keyName = "AmuletofChemistry",
+            name = "Wear amulet of chemistry",
+            description = "wear amulet of chemsitry for potion mixing",
+            position = 7,
+            section = toggles
+    )
+    default boolean amuletOfChemistry() {
         return false;
     }
     @ConfigItem(

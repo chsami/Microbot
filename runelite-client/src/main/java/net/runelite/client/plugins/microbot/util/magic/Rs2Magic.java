@@ -15,6 +15,7 @@ import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.inventory.RunePouch;
+import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
@@ -29,12 +30,13 @@ import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
 import org.apache.commons.lang3.NotImplementedException;
 
 import java.awt.*;
+import java.awt.event.KeyEvent;
 import java.util.List;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static net.runelite.api.Varbits.SHADOW_VEIL;
+import static net.runelite.api.Varbits.*;
 import static net.runelite.client.plugins.microbot.Microbot.log;
 import static net.runelite.client.plugins.microbot.util.Global.*;
 
@@ -290,10 +292,10 @@ public class Rs2Magic {
     private static void alch(Widget alch, Rs2ItemModel item, int sleepMin, int sleepMax) {
         if (alch == null) return;
         Point point = new Point((int) alch.getBounds().getCenterX(), (int) alch.getBounds().getCenterY());
-        sleepUntil(() -> Microbot.getClientThread().runOnClientThread(() -> Rs2Tab.getCurrentTab() == InterfaceTab.MAGIC), 5000);
+        sleepUntil(() -> Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2Tab.getCurrentTab() == InterfaceTab.MAGIC).orElse(false), 5000);
         sleep(sleepMin, sleepMax);
         Microbot.getMouse().click(point);
-        sleepUntil(() -> Microbot.getClientThread().runOnClientThread(() -> Rs2Tab.getCurrentTab() == InterfaceTab.INVENTORY), 5000);
+        sleepUntil(() -> Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2Tab.getCurrentTab() == InterfaceTab.INVENTORY).orElse(false), 5000);
         sleep(sleepMin, sleepMax);
         if (item == null) {
             Microbot.status = "Alching x: " + point.getX() + " y: " + point.getY();
@@ -307,10 +309,10 @@ public class Rs2Magic {
     private static void superHeat(Widget superheat, Rs2ItemModel item, int sleepMin, int sleepMax) {
         if (superheat == null) return;
         Point point = new Point((int) superheat.getBounds().getCenterX(), (int) superheat.getBounds().getCenterY());
-        sleepUntil(() -> Microbot.getClientThread().runOnClientThread(() -> Rs2Tab.getCurrentTab() == InterfaceTab.MAGIC), 5000);
+        sleepUntil(() -> Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2Tab.getCurrentTab() == InterfaceTab.MAGIC).orElse(false), 5000);
         sleep(sleepMin, sleepMax);
         Microbot.getMouse().click(point);
-        sleepUntil(() -> Microbot.getClientThread().runOnClientThread(() -> Rs2Tab.getCurrentTab() == InterfaceTab.INVENTORY), 5000);
+        sleepUntil(() -> Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2Tab.getCurrentTab() == InterfaceTab.INVENTORY).orElse(false), 5000);
         sleep(sleepMin, sleepMax);
         if (item == null) {
             Microbot.status = "Superheating x: " + point.getX() + " y: " + point.getY();
@@ -366,14 +368,18 @@ public class Rs2Magic {
     public static boolean repairPouchesWithLunar() {
         log("Repairing pouches...");
         if (npcContact("dark mage")) {
-            sleep(Rs2Random.randomGaussian(900, 300));
+            sleep(Rs2Random.randomGaussian(1100, 200));
+            Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
             Rs2Dialogue.clickContinue();
-            sleep(Rs2Random.randomGaussian(900, 500));
+            sleep(Rs2Random.randomGaussian(1100, 200));
             Rs2Widget.sleepUntilHasWidget("Can you repair my pouches?");
             sleep(Rs2Random.randomGaussian(900, 300));
+            Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
             Rs2Widget.clickWidget("Can you repair my pouches?", Optional.of(162), 0, true);
-            sleep(Rs2Random.randomGaussian(900, 500));
-            Rs2Dialogue.clickContinue();
+            sleep(Rs2Random.randomGaussian(900, 200));
+            Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
+            sleepGaussian(700,200);
+            Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
             sleep(Rs2Random.randomGaussian(1500, 300));
             Rs2Tab.switchToInventoryTab();
         }
@@ -407,7 +413,9 @@ public class Rs2Magic {
     public static boolean isShadowVeilActive() {
         return Microbot.getVarbitValue(SHADOW_VEIL) == 1;
     }
-
+    public static boolean isThrallActive() {
+        return (Microbot.getVarbitValue(RESURRECT_THRALL) == 1||Microbot.getVarbitValue(RESURRECT_THRALL_COOLDOWN) == 1);
+    }
     /**
      * Gets the currently selected auto-cast spell based on varbit 276.
      *

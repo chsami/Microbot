@@ -20,6 +20,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class Rs2Npc {
@@ -80,6 +81,19 @@ public class Rs2Npc {
     public static NPC validateInteractable(NPC npc) {
         NPC vaildNPC = validateInteractable(new Rs2NpcModel(npc)).getRuneliteNpc();
         return vaildNPC;
+    }
+
+    /**
+     * Checks if the NPC is currently moving based on its pose animation.
+     * An NPC is considered moving if its pose animation is different from its idle pose animation.
+     *
+     * @param npc The NPC to check.
+     * @return {@code true} if the NPC is moving, {@code false} if it is idle.
+     */
+    public static boolean isMoving(NPC npc) {
+        return Microbot.getClientThread().runOnClientThreadOptional(() ->
+                npc.getPoseAnimation() != npc.getIdlePoseAnimation()
+        ).orElse(false);
     }
 
     /**
@@ -188,13 +202,13 @@ public class Rs2Npc {
      */
     @Deprecated(since = "1.7.2", forRemoval = true)
     public static Stream<NPC> getNpcs(boolean isDead) {
-        List<NPC> npcList = Microbot.getClientThread().runOnClientThread(() ->
+        List<NPC> npcList = Microbot.getClientThread().runOnClientThreadOptional(() ->
                 Microbot.getClient().getTopLevelWorldView().npcs().stream()
                         .filter(Objects::nonNull)
                         .filter(x -> x.getName() != null && isDead == x.isDead())
                         .sorted(Comparator.comparingInt(value -> value.getLocalLocation().distanceTo(Microbot.getClient().getLocalPlayer().getLocalLocation())))
                         .collect(Collectors.toList())
-        );
+        ).orElse(new ArrayList());
 
         return npcList.stream();
     }
@@ -209,13 +223,14 @@ public class Rs2Npc {
      * @return A sorted {@link Stream} of {@link Rs2NpcModel} objects that match the given predicate.
      */
     public static Stream<Rs2NpcModel> getNpcs(Predicate<Rs2NpcModel> predicate) {
-        List<Rs2NpcModel> npcList = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getTopLevelWorldView().npcs().stream()
+        List<Rs2NpcModel> npcList = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getTopLevelWorldView().npcs().stream()
                 .filter(Objects::nonNull)
                 .map(Rs2NpcModel::new)
                 .filter(predicate)
                 .filter(x -> x.getName() != null)
                 .sorted(Comparator.comparingInt(value -> value.getLocalLocation().distanceTo(Microbot.getClient().getLocalPlayer().getLocalLocation())))
-                .collect(Collectors.toList()));
+                .collect(Collectors.toList()))
+                .orElse(new ArrayList<>());
 
         return npcList.stream();
     }
@@ -505,8 +520,10 @@ public class Rs2Npc {
      * @return {@code true} if the NPC has the specified action, {@code false} otherwise.
      */
     public static boolean hasAction(int id, String action) {
-        NPCComposition npcComposition = Microbot.getClientThread().runOnClientThread(() ->
-                Microbot.getClient().getNpcDefinition(id));
+        NPCComposition npcComposition = Microbot.getClientThread().runOnClientThreadOptional(() ->
+                Microbot.getClient().getNpcDefinition(id)).orElse(null);
+
+        if (npcComposition == null) return false;
 
         return Arrays.stream(npcComposition.getActions())
                 .anyMatch(x -> x != null && x.equalsIgnoreCase(action));
@@ -544,12 +561,12 @@ public class Rs2Npc {
      * @param action The action to perform on the NPC (e.g., "Talk-to", "Attack", "Trade").
      * @return {@code true} if the interaction was successfully executed, {@code false} if the NPC was unreachable.
      */
+
     public static boolean interact(Rs2NpcModel npc, String action) {
         if (npc == null) return false;
+
         Microbot.status = action + " " + npc.getName();
         try {
-
-            // Handling unreachable NPC detection
             if (Microbot.isCantReachTargetDetectionEnabled && Microbot.cantReachTarget) {
                 if (!hasLineOfSight(npc)) {
                     if (Microbot.cantReachTargetRetries >= Rs2Random.between(3, 5)) {
@@ -569,33 +586,59 @@ public class Rs2Npc {
                 }
             }
 
-            // Fetch NPC composition
-            NPCComposition npcComposition = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getNpcDefinition(npc.getId()));
+            NPCComposition npcComposition = Microbot.getClientThread().runOnClientThreadOptional(
+                    () -> Microbot.getClient().getNpcDefinition(npc.getId())).orElse(null);
 
-            // Determine action index in NPC's menu
-            int index = 0;
-            for (int i = 0; i < npcComposition.getActions().length; i++) {
-                String npcAction = npcComposition.getActions()[i];
-                if (npcAction == null || !npcAction.equalsIgnoreCase(action)) continue;
-                index = i;
+            if (npcComposition == null || npcComposition.getActions() == null) {
+                Microbot.log("Error: Could not get NPC composition or actions for NPC: " + npc.getName());
+                return false;
             }
 
-            // Retrieve the corresponding menu action
+            int index = -1;
+            String[] actions = npcComposition.getActions();
+
+            if (action == null || action.isEmpty()) {
+                OptionalInt optionalIndex = IntStream.range(0, actions.length)
+                        .filter(i -> actions[i] != null && !actions[i].isEmpty())
+                        .findFirst();
+
+                if (optionalIndex.isPresent()) {
+                    index = optionalIndex.getAsInt();
+                    action = actions[index];
+                }
+            }
+            else {
+                String finalAction = action;
+                OptionalInt optionalIndex = IntStream.range(0, actions.length)
+                        .filter(i -> actions[i] != null && actions[i].equalsIgnoreCase(finalAction))
+                        .findFirst();
+
+                if (optionalIndex.isPresent()) {
+                    index = optionalIndex.getAsInt();
+                }
+            }
+
+            if (index == -1) {
+                Microbot.log("Error: Action '" + action + "' not found for NPC: " + npc.getName());
+                return false;
+            }
+
             MenuAction menuAction = getMenuAction(index);
-
-            // Execute the interaction
-            if (menuAction != null) {
-                Microbot.doInvoke(new NewMenuEntry(0, 0, menuAction.getId(), npc.getIndex(), -1, npc.getName(), npc), Rs2UiHelper.getActorClickbox(npc));
+            if (menuAction == null) {
+                Microbot.log("Error: Could not get menu action for action '" + action + "' on NPC: " + npc.getName());
+                return false;
             }
+
+            Microbot.doInvoke(new NewMenuEntry(0, 0, menuAction.getId(), npc.getIndex(), -1, npc.getName(), npc),
+                    Rs2UiHelper.getActorClickbox(npc));
+            return true;
 
         } catch (Exception ex) {
-            Microbot.log(ex.getMessage());
+            Microbot.log("Error interacting with NPC '" + npc.getName() + "' for action '" + action + "': " + ex.getMessage());
             ex.printStackTrace();
+            return false;
         }
-
-        return true;
     }
-
     /**
      * Retrieves the corresponding {@link MenuAction} for a given interaction index.
      *
@@ -1081,6 +1124,31 @@ public class Rs2Npc {
                         && Arrays.asList(value.getComposition().getActions()).contains(action))
                 .min(Comparator.comparingInt(value -> playerLocation.distanceToPath(isInstance ? Rs2WorldPoint.toLocalInstance(value.getWorldLocation()) : value.getWorldLocation())))
                 .orElse(null);
+    }
+
+    /**
+     * Retrieves the first valid action from the given list that the NPC supports.
+     *
+     * @param npc             The {@link Rs2NpcModel} to check available actions on.
+     * @param possibleActions A list of possible actions to match against the NPC's menu options.
+     * @return The first matching action as a {@link String}, or an empty string if no match is found.
+     */
+    public static String getAvailableAction(Rs2NpcModel npc, List<String> possibleActions) {
+        if (npc == null || possibleActions == null || possibleActions.isEmpty()) return "";
+
+        NPCComposition composition = Microbot.getClientThread().runOnClientThreadOptional(
+                        () -> Microbot.getClient().getNpcDefinition(npc.getId()))
+                .orElse(null);
+
+        if (composition == null || composition.getActions() == null) return "";
+
+        return Arrays.stream(composition.getActions())
+                .filter(Objects::nonNull)
+                .filter(npcAction ->
+                        possibleActions.stream()
+                                .anyMatch(action -> action.equalsIgnoreCase(npcAction)))
+                .findFirst()
+                .orElse("");
     }
 
     /**

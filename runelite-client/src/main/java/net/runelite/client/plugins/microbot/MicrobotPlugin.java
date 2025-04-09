@@ -9,6 +9,7 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.ProfileManager;
+import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.game.ItemManager;
@@ -43,6 +44,7 @@ import javax.inject.Inject;
 import javax.swing.*;
 import java.awt.*;
 import java.lang.reflect.InvocationTargetException;
+import java.time.Instant;
 
 @PluginDescriptor(
         name = PluginDescriptor.Default + "Microbot",
@@ -76,6 +78,8 @@ public class MicrobotPlugin extends Plugin {
     @Inject
     private ClientThread clientThread;
     @Inject
+    private EventBus eventBus;
+    @Inject
     private ClientToolbar clientToolbar;
     @Inject
     private MicrobotOverlay microbotOverlay;
@@ -103,6 +107,7 @@ public class MicrobotPlugin extends Plugin {
         Microbot.pauseAllScripts = false;
         Microbot.setClient(client);
         Microbot.setClientThread(clientThread);
+        Microbot.setEventBus(eventBus);
         Microbot.setNotifier(notifier);
         Microbot.setWorldService(worldService);
         Microbot.setProfileManager(profileManager);
@@ -157,6 +162,9 @@ public class MicrobotPlugin extends Plugin {
 
     @Subscribe
     public void onGameStateChanged(GameStateChanged gameStateChanged) {
+        if (gameStateChanged.getGameState() == GameState.LOGGED_IN) {
+            Microbot.setLoginTime(Instant.now());
+        }
         if (gameStateChanged.getGameState() == GameState.HOPPING || gameStateChanged.getGameState() == GameState.LOGIN_SCREEN || gameStateChanged.getGameState() == GameState.CONNECTION_LOST) {
             if (Rs2Bank.bankItems != null) {
                 Rs2Bank.bankItems.clear();

@@ -84,6 +84,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -171,7 +172,6 @@ public class RuneLite
         parser.accepts("clean-jagex-launcher", "Enable jagex launcher"); // will remove the credentials.properties file in .runelite folder
 		parser.accepts("developer-mode", "Enable developer tools");
 		parser.accepts("debug", "Show extra debugging output");
-        parser.accepts("microbot-debug", "Enables debug features for microbot");
 		parser.accepts("safe-mode", "Disables external plugins and the GPU plugin");
 		parser.accepts("insecure-skip-tls-verification", "Disables TLS verification");
 		parser.accepts("jav_config", "jav_config url")
@@ -218,10 +218,6 @@ public class RuneLite
 
         if (options.has("debug")) {
             logger.setLevel(Level.DEBUG);
-        }
-
-        if (options.has("microbot-debug")) {
-            Microbot.debug = true;
         }
 
 		if (options.has("clean-randomdat")) {
@@ -668,18 +664,24 @@ public class RuneLite
 
 	private void setupCompilerControl()
 	{
-		if (runtimeConfig == null || runtimeConfig.getCompilerControl() == null)
-		{
-			return;
-		}
-
 		try
 		{
-			var json = gson.toJson(runtimeConfig.getCompilerControl());
 			var file = Files.createTempFile("rl_compilercontrol", "");
 			try
 			{
-				Files.writeString(file, json, StandardCharsets.UTF_8);
+				if (runtimeConfig != null && runtimeConfig.getCompilerControl() != null)
+				{
+					var json = gson.toJson(runtimeConfig.getCompilerControl());
+					Files.writeString(file, json, StandardCharsets.UTF_8);
+				}
+				else
+				{
+					try (var in = RuneLite.class.getResourceAsStream("/compilercontrol.json"))
+					{
+						Files.copy(in, file, StandardCopyOption.REPLACE_EXISTING);
+					}
+				}
+
 				ManagementFactory.getPlatformMBeanServer().invoke(
 					new ObjectName("com.sun.management:type=DiagnosticCommand"),
 					"compilerDirectivesAdd",

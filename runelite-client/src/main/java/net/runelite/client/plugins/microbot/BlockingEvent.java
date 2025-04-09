@@ -30,4 +30,16 @@ public interface BlockingEvent {
      * @return the {@link BlockingEventPriority} of this event
      */
     BlockingEventPriority priority();
+
+    /**
+     * Retrieves the name of this blocking event.
+     * By default, it returns the simple name of the implementing class.
+     * This can be useful for logging, debugging, or displaying human-readable
+     * identifiers for different blocking events.
+     *
+     * @return the simple name of the implementing class
+     */
+    default String getName() {
+        return getClass().getSimpleName();
+    }
 }

@@ -45,67 +45,84 @@ public class PlayerMonitorScript extends Script {
         flashOverlay.setFlashColor(offColor);
         overlayManager.add(flashOverlay);
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
-            if (!super.run()) return;
             if (!Microbot.isLoggedIn()) return;
-            try { if (!config.liteMode()) {
-                if (Microbot.getClient().getGameCycle() % 20 >= 10) {
-                    if(!playAlarm) {
-                        if (plugin.isOverlayOn()) {
-                            if (config.playAlarmSound()) {
-                                Microbot.getClientThread().invokeLater(() -> Microbot.getClient().playSoundEffect(config.alarmSoundID().getId(), 127));
+            try {
+                if (!config.liteMode()) {
+                    if (Microbot.getClient().getGameCycle() % 20 >= 10) {
+                        if (!playAlarm) {
+                            if (plugin.isOverlayOn()) {
+                                if (config.playAlarmSound()) {
+                                    Microbot.getClientThread().invokeLater(() -> Microbot.getClient().playSoundEffect(config.alarmSoundID().getId(), 127));
+                                }
+                                playAlarm = true;
+                                if (config.useFlash()) {
+                                    flashOverlay.setFlashColor(config.flashColor());
+                                }
+                                if ((config.useFlash() || config.playAlarmSound()) && config.useEmergency() && !newPlayer && (config.onlyWilderness() && Microbot.getVarbitValue(Varbits.IN_WILDERNESS) == 1) || !config.onlyWilderness()) {
+                                    newPlayer = true;
+                                    otherPlayerLocation = Rs2Player.getWorldLocation();
+                                    otherPlayerWorld = Rs2Player.getWorld();
+                                    Microbot.getClientThread().runOnSeperateThread(() -> {
+                                        switch (config.emergencyAction()) {
+                                            case LOGOUT:
+                                                logoutPlayer();
+                                                break;
+                                            case HOP_WORLDS:
+                                                ClientUI.getClient().setEnabled(false);
+                                                if (this.isRunning()) {
+                                                    sleep(61, 93);
+                                                }
+                                                if (this.isRunning()) {
+                                                    Microbot.getClient().openWorldHopper();
+                                                }
+                                                if (this.isRunning()) {
+                                                    sleepUntil(() -> Rs2Widget.hasWidget("Current world - " + Rs2Player.getWorld()));
+                                                }
+                                                if (this.isRunning()) {
+                                                    sleep(61, 93);
+                                                }
+                                                if (this.isRunning()) {
+                                                    Microbot.hopToWorld(Login.getRandomWorld(Rs2Player.isMember()));
+                                                }
+                                                if (this.isRunning()) {
+                                                    sleep(61, 93);
+                                                }
+                                                ClientUI.getClient().setEnabled(true);
+                                                break;
+                                            case USE_ITEM:
+                                                ClientUI.getClient().setEnabled(false);
+                                                if (this.isRunning()) {
+                                                    sleep(61, 93);
+                                                }
+                                                if (Pattern.compile("[0-9]+").matcher(config.emergencyItem()).matches()) {
+                                                    Rs2Inventory.interact(Integer.parseInt(config.emergencyItem()), config.emergencyItemMenu());
+                                                } else {
+                                                    Rs2Inventory.interact(config.emergencyItem(), config.emergencyItemMenu());
+                                                }
+                                                if (this.isRunning()) {
+                                                    sleep(61, 93);
+                                                }
+                                                ClientUI.getClient().setEnabled(true);
+                                                break;
+                                        }
+                                        return true;
+                                    });
+                                }
                             }
-                            playAlarm = true;
-                            if (config.useFlash()) {
-                                flashOverlay.setFlashColor(config.flashColor());
-                            }
-                            if ((config.useFlash() || config.playAlarmSound()) && config.useEmergency() && !newPlayer && (config.onlyWilderness() && Microbot.getVarbitValue(Varbits.IN_WILDERNESS) == 1) || !config.onlyWilderness()) {
-                                newPlayer = true;
-                                otherPlayerLocation = Rs2Player.getWorldLocation();
-                                otherPlayerWorld = Rs2Player.getWorld();
-                                Microbot.getClientThread().runOnSeperateThread(() -> {
-                                    switch (config.emergencyAction()) {
-                                        case LOGOUT:
-                                            logoutPlayer();
-                                            break;
-                                        case HOP_WORLDS:
-                                            ClientUI.getClient().setEnabled(false);
-                                            if (this.isRunning()) { sleep(61, 93); }
-                                            if (this.isRunning()) { Microbot.getClient().openWorldHopper(); }
-                                            if (this.isRunning()) { sleepUntil(() -> Rs2Widget.hasWidget("Current world - " + Rs2Player.getWorld())); }
-                                            if (this.isRunning()) { sleep(61, 93); }
-                                            if (this.isRunning()) { Microbot.hopToWorld(Login.getRandomWorld(Rs2Player.isMember())); }
-                                            if (this.isRunning()) { sleep(61, 93); }
-                                            ClientUI.getClient().setEnabled(true);
-                                            break;
-                                        case USE_ITEM:
-                                            ClientUI.getClient().setEnabled(false);
-                                            if (this.isRunning()) { sleep(61, 93); }
-                                            if (Pattern.compile("[0-9]+").matcher(config.emergencyItem()).matches()) {
-                                                Rs2Inventory.interact(Integer.parseInt(config.emergencyItem()), config.emergencyItemMenu());
-                                            } else {
-                                                Rs2Inventory.interact(config.emergencyItem(), config.emergencyItemMenu());
-                                            }
-                                            if (this.isRunning()) { sleep(61, 93); }
-                                            ClientUI.getClient().setEnabled(true);
-                                            break;
-                                    }
-                                    return true;
-                                });
+                            if (PlayerMonitorPlugin.mouseAlarm && config.mouseAlarm()) {
+                                Microbot.getClientThread().invokeLater(() -> Microbot.getClient().playSoundEffect(config.mouseAlarmSound().getId(), 127));
                             }
                         }
-                        if (PlayerMonitorPlugin.mouseAlarm && config.mouseAlarm()) {
-                            Microbot.getClientThread().invokeLater(() -> Microbot.getClient().playSoundEffect(config.mouseAlarmSound().getId(), 127));
+                    } else {
+                        if (playAlarm) {
+                            playAlarm = false;
+                            flashOverlay.setFlashColor(offColor);
                         }
                     }
-                } else {
-                    if (playAlarm) {
-                        playAlarm = false;
-                        flashOverlay.setFlashColor(offColor);
+                    if (newPlayer && !plugin.isOverlayOn() && (Rs2Player.getWorldLocation().distanceTo(otherPlayerLocation) > 32 || otherPlayerWorld != Rs2Player.getWorld())) {
+                        newPlayer = false;
                     }
                 }
-                if (newPlayer && !plugin.isOverlayOn() && (Rs2Player.getWorldLocation().distanceTo(otherPlayerLocation) > 32 || otherPlayerWorld != Rs2Player.getWorld())){
-                    newPlayer = false;
-                } }
 
                 if (config.liteMode()) {
                     if (plugin.isPlayerDetected() && !logoutInitiated) {
@@ -113,11 +130,15 @@ public class PlayerMonitorScript extends Script {
                         Microbot.log("PlayerMonitorLite: Player detected - logging out");
                         logoutInitiated = true;
                         // Perform logout
-                        logoutPlayer();
+                        Microbot.getClientThread().runOnSeperateThread(() -> {
+                            logoutPlayer();
+                            return true;
+                        });
                     } else if (!plugin.isPlayerDetected() && logoutInitiated) {
                         logoutInitiated = false;
                     }
                 }
+
             } catch (Exception ex) {
                 Microbot.log(ex.getMessage());
             }

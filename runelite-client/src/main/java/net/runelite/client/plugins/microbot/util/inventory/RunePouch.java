@@ -40,7 +40,7 @@ public class RunePouch {
     }
 
     public static boolean contains(int itemId) {
-        return Microbot.getClientThread().runOnClientThread(() -> {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             load();
             for (int runeId : runeIds) {
                 Runes rune = Arrays.stream(Runes.values()).filter(x -> x.getId() == runeId).findFirst().orElse(null);
@@ -51,11 +51,11 @@ public class RunePouch {
                     return true;
             }
             return false;
-        });
+        }).orElse(false);
     }
 
     public static boolean contains(int itemId, int amt) {
-        return Microbot.getClientThread().runOnClientThread(() -> {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             load();
             for (int i = 0; i < runeIds.length; i++) {
                 final int _i = i;
@@ -67,11 +67,11 @@ public class RunePouch {
                     return true;
             }
             return false;
-        });
+        }).orElse(false);
     }
 
     public static int getItemAmount(int itemId) {
-        return Microbot.getClientThread().runOnClientThread(() -> {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             load();
             for (int i = 0; i < runeIds.length; i++) {
                 final int _i = i;
@@ -85,7 +85,7 @@ public class RunePouch {
                 }
             }
             return 0;
-        });
+        }).orElse(0);
     }
 
     /**
@@ -94,7 +94,7 @@ public class RunePouch {
      * @return A map where the key is the rune item ID and the value is the quantity.
      */
     public static Map<Integer, Integer> getRunes() {
-        return Microbot.getClientThread().runOnClientThread(() -> {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             load();
             Map<Integer, Integer> runes = new HashMap<>();
 
@@ -114,6 +114,6 @@ public class RunePouch {
             }
 
             return runes;
-        });
+        }).orElse(new HashMap<>());
     }
 }

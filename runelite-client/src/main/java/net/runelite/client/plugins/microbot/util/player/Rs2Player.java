@@ -10,12 +10,13 @@ import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.kit.KitType;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetInfo;
+import net.runelite.client.plugins.grounditems.GroundItemsPlugin;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.VarbitValues;
+import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
-import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
@@ -24,6 +25,7 @@ import net.runelite.client.plugins.microbot.util.misc.Rs2Potion;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.security.Login;
+import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.http.api.worlds.WorldResult;
@@ -331,10 +333,13 @@ public class Rs2Player {
      * @return {@code true} if the player is moving, {@code false} if they are idle.
      */
     public static boolean isMoving() {
-        return Microbot.getClientThread().runOnClientThread(() ->
-                Microbot.getClient().getLocalPlayer().getPoseAnimation()
-                        != Microbot.getClient().getLocalPlayer().getIdlePoseAnimation()
-        );
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            Player localPlayer = Microbot.getClient().getLocalPlayer();
+            if (localPlayer == null) {
+                return false;
+            }
+            return localPlayer.getPoseAnimation() != localPlayer.getIdlePoseAnimation();
+        }).orElse(false);
     }
 
     /**
@@ -343,7 +348,8 @@ public class Rs2Player {
      * @return {@code true} if the player is interacting with another entity, {@code false} otherwise.
      */
     public static boolean isInteracting() {
-        return Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getLocalPlayer().isInteracting());
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getLocalPlayer().isInteracting())
+                .orElse(false);
     }
 
     /**
@@ -352,9 +358,9 @@ public class Rs2Player {
      * @return {@code true} if the player is a member (has remaining membership days), {@code false} otherwise.
      */
     public static boolean isMember() {
-        return Microbot.getClientThread().runOnClientThread(() ->
+        return Microbot.getClientThread().runOnClientThreadOptional(() ->
                 Microbot.getClient().getVarpValue(VarPlayer.MEMBERSHIP_DAYS) > 0
-        );
+        ).orElse(false);
     }
 
     /**
@@ -416,14 +422,20 @@ public class Rs2Player {
      * Logs the player out of the game
      */
     public static void logout() {
-        if (Microbot.isLoggedIn()) {
-            //logout from main tab
-            Microbot.doInvoke(new NewMenuEntry(-1, 11927560, CC_OP.getId(), 1, -1, "Logout"), new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()));
-            //logout from world hopper
-            Microbot.doInvoke(new NewMenuEntry(-1, 4522009, CC_OP.getId(), 1, -1, "Logout"), new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()));
+        if (!Microbot.isLoggedIn()) return;
+        if (Rs2Tab.getCurrentTab() != InterfaceTab.LOGOUT) {
+            Rs2Tab.switchToLogout();
+            sleepUntil(() -> Rs2Tab.getCurrentTab() == InterfaceTab.LOGOUT);
         }
 
-        //Rs2Reflection.invokeMenu(-1, 11927560, CC_OP.getId(), 1, -1, "Logout", "", -1, -1);
+        Widget currentWorldWidget = Rs2Widget.getWidget(69, 3);
+        if (currentWorldWidget != null) {
+            // From World Switcher
+            Microbot.doInvoke(new NewMenuEntry(-1, 4522009, CC_OP.getId(), 1, -1, "Logout"), new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()));
+        } else {
+            // From red logout button
+            Microbot.doInvoke(new NewMenuEntry(-1, 11927560, CC_OP.getId(), 1, -1, "Logout"), new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()));
+        }
     }
 
     /**
@@ -624,7 +636,7 @@ public class Rs2Player {
      * @return A stream of Rs2PlayerModel objects representing nearby players.
      */
     public static Stream<Rs2PlayerModel> getPlayers(Predicate<Rs2PlayerModel> predicate) {
-        List<Rs2PlayerModel> players = Microbot.getClientThread().runOnClientThread(() ->
+        List<Rs2PlayerModel> players = Microbot.getClientThread().runOnClientThreadOptional(() ->
                 Microbot.getClient().getTopLevelWorldView().players()
                         .stream()
                         .filter(Objects::nonNull)
@@ -632,7 +644,7 @@ public class Rs2Player {
                         .filter(x -> x.getPlayer() != Microbot.getClient().getLocalPlayer())
                         .filter(predicate)
                         .collect(Collectors.toList())
-        );
+        ).orElse(new ArrayList<>());
 
         return players.stream();
     }
@@ -750,7 +762,7 @@ public class Rs2Player {
      * @return A {@code Map<KitType, String>} containing the equipment slot types as keys and the corresponding item names as values.
      */
     public static Map<KitType, String> getPlayerEquipmentNames(Rs2PlayerModel rs2Player) {
-        Map<KitType, String> equipmentMap = Microbot.getClientThread().runOnClientThread(() -> {
+        Map<KitType, String> equipmentMap = Microbot.getClientThread().runOnClientThreadOptional(() -> {
             Map<KitType, String> tempMap = new HashMap<>();
             for (KitType kitType : KitType.values()) {
                 String itemName = Microbot.getItemManager()
@@ -759,7 +771,7 @@ public class Rs2Player {
                 tempMap.put(kitType, itemName);
             }
             return tempMap;
-        });
+        }).orElse(new HashMap<>());
 
         return equipmentMap;
     }
@@ -898,16 +910,16 @@ public class Rs2Player {
      * @return The combat level of the local player.
      */
     public static int getCombatLevel() {
-        return Microbot.getClientThread().runOnClientThread(() ->
+        return Microbot.getClientThread().runOnClientThreadOptional(() ->
                 Microbot.getClient().getLocalPlayer().getCombatLevel()
-        );
+        ).orElse(0);
     }
 
     /**
      * Updates the last combat time when the player engages in or is hit during combat.
      */
     public static void updateCombatTime() {
-        Microbot.getClientThread().runOnClientThread(() -> {
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
             Player localPlayer = Microbot.getClient().getLocalPlayer();
             if (localPlayer != null) {
                 lastCombatTime = System.currentTimeMillis();
@@ -1332,7 +1344,7 @@ public class Rs2Player {
     public static boolean isStandingOnGameObject() {
         WorldPoint playerPoint = getWorldLocation();
         return Rs2GameObject.getGameObject(playerPoint) != null
-                && Rs2GroundItem.getAllAt(getWorldLocation().getX(), getWorldLocation().getY()) != null;
+                && isStandingOnGroundItem();
     }
 
     /**
@@ -1342,9 +1354,7 @@ public class Rs2Player {
      */
     public static boolean isStandingOnGroundItem() {
         WorldPoint playerPoint = getWorldLocation();
-        return Arrays.stream(Rs2GroundItem.getAllAt(playerPoint.getX(), playerPoint.getY()))
-                .findAny()
-                .isPresent();
+        return GroundItemsPlugin.getCollectedGroundItems().values().stream().anyMatch(x -> x.getLocation().equals(playerPoint));
     }
 
     /**
@@ -1374,7 +1384,7 @@ public class Rs2Player {
      */
     public static QuestState getQuestState(Quest quest) {
         Client client = Microbot.getClient();
-        return Microbot.getClientThread().runOnClientThread(() -> quest.getState(client));
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> quest.getState(client)).orElse(null);
     }
 
     /**

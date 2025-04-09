@@ -39,6 +39,18 @@ public interface ThievingConfig extends Config {
         return ThievingNpc.NONE;
     }
 
+    @ConfigItem(
+            keyName = "ardougneAreaCheck",
+            name = "Ardy Knights Bank Area Check?",
+            description = "Enforce Ardougne Knight to be in Ardougne Bank area",
+            position = 1,
+            section = generalSection
+    )
+    default boolean ardougneAreaCheck()
+    {
+        return false;
+    }
+
     @ConfigSection(
             name = "buffs",
             description = "general",

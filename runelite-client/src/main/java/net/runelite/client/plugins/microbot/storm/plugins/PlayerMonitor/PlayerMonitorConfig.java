@@ -79,5 +79,5 @@ import java.awt.*;
    @ConfigItem(position = 5, keyName = "MouseAlarmSound", name = "Alarm Sound", description = "Pick Sound ID to play", section = mouse)
    default SoundEffectID mouseAlarmSound() { return SoundEffectID.ATTACK_HIT; }
    @ConfigItem(keyName = "combatLevelRange", name = "LITE_MODE", description = "Logs out if someone in radius can attack you", position = 16, section = playerAlarm)
-   default boolean liteMode() { return true; }
+   default boolean liteMode() { return false;}
  }

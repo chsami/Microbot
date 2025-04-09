@@ -72,7 +72,7 @@ public class InformKingBolren {
         // Floor 0 to Floor 1
         var climbUpToGianneJnr = new ObjectStep(quest, ObjectID.LADDER_16683, new WorldPoint(2466, 3495, 0), "");
         var climbGrandTreeF3ToF2 = new ObjectStep(quest, ObjectID.LADDER_16679, new WorldPoint(2466, 3495, 3), "");
-        var climbGrandTreeF2ToF1 = new ObjectStep(quest, ObjectID.LADDER_2884, new WorldPoint(2466, 3495, 2), "");
+        var climbGrandTreeF2ToF1 = new ObjectStep(quest, ObjectID.LADDER, new WorldPoint(2466, 3495, 2), ""); //ladder used to be 2884
         climbGrandTreeF2ToF1.addDialogStep("Climb Down.");
         climbUpToGianneJnr.setText(talkToGianneJnr.getText());
         climbUpToGianneJnr.addTeleport(teleToStronghold);

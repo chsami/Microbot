@@ -497,7 +497,7 @@ public class MonkeyMadnessI extends BasicQuestHelper {
         goUpF0ToF1.addDialogStep("I've lost my copy of the Royal Seal...");
         goUpF1ToF2 = new ObjectStep(this, ObjectID.LADDER_16684, new WorldPoint(2466, 3495, 1), "Travel to the Shipyard on Karamja.", royalSeal);
         goUpF1ToF2.addDialogStep("Climb Up.");
-        goUpF2ToF3 = new ObjectStep(this, ObjectID.LADDER_2884, new WorldPoint(2466, 3495, 2), "Travel to the Shipyard on Karamja.", royalSeal);
+        goUpF2ToF3 = new ObjectStep(this, ObjectID.LADDER_16683, new WorldPoint(2466, 3495, 2), "Travel to the Shipyard on Karamja.", royalSeal); // ladder 2884 got deleted, so this has to be updated
         goUpF2ToF3.addDialogStep("Climb Up.");
         flyGandius = new NpcStep(this, NpcID.CAPTAIN_ERRDO_10471, new WorldPoint(2464, 3501, 3), "Fly with Captain Errdo to Gandius.");
         flyGandius.addWidgetHighlight(138, 16);

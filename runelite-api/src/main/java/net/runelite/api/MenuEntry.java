@@ -121,8 +121,7 @@ public interface MenuEntry
 	/**
 	 * Get the item id
 	 * @return
-	 * @see ItemID
-	 * @see NullItemID
+	 * @see net.runelite.api.gameval.ItemID
 	 */
 	int getItemId();
 

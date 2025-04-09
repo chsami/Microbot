@@ -37,7 +37,7 @@ public class AutoBuyerScript extends Script {
 
                 String listOfItemsToBuy;
                 if (getQuestHelperPlugin().getSelectedQuest() != null && config.buyQuest()) {
-                    final List<Integer> idsList = Microbot.getClientThread().runOnClientThread(getQuestHelperPlugin()::itemsToTag);
+                    final List<Integer> idsList = Microbot.getClientThread().runOnClientThreadOptional(getQuestHelperPlugin()::itemsToTag).orElse(new ArrayList<>());
 
                     final Set<Integer> ids = idsList.stream()
                             .distinct()
@@ -122,7 +122,7 @@ public class AutoBuyerScript extends Script {
                 long endTime = System.currentTimeMillis();
                 long totalTime = endTime - startTime;
                 System.out.println("Total time for loop " + totalTime);
-                Microbot.getClientThread().runOnClientThread(() -> {
+                Microbot.getClientThread().runOnClientThreadOptional(() -> {
                 Microbot.getClient().addChatMessage(ChatMessageType.ENGINE, "", "Made with love by Acun.", "Acun", false);
 
                 if (config.buyQuest()) {
@@ -198,16 +198,16 @@ public class AutoBuyerScript extends Script {
     }
 
     public String getItemName(int itemId) {
-        ItemComposition item = Microbot.getClientThread().runOnClientThread(() -> Microbot.getItemManager().getItemComposition(itemId));
+        ItemComposition item = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getItemManager().getItemComposition(itemId)).orElse(null);
         return item.getName();
     }
 
     public List<ItemRequirement> getItemRequirements() {
-        return Microbot.getClientThread().runOnClientThread(() -> getQuestHelperPlugin().getSelectedQuest().getItemRequirements());
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> getQuestHelperPlugin().getSelectedQuest().getItemRequirements()).orElse(null);
     }
 
     public boolean isTradeable(int itemId) {
-        ItemComposition item = Microbot.getClientThread().runOnClientThread(() -> Microbot.getItemManager().getItemComposition(itemId));
+        ItemComposition item = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getItemManager().getItemComposition(itemId)).orElse(null);
         return item.isTradeable();
     }
 

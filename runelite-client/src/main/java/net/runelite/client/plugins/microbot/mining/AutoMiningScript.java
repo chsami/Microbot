@@ -30,7 +30,7 @@ enum State {
 
 public class AutoMiningScript extends Script {
 
-    public static final String version = "1.4.3";
+    public static final String version = "1.4.4";
     private static final int GEM_MINE_UNDERGROUND = 11410;
     private static final int BASALT_MINE = 11425;
     State state = State.MINING;
@@ -86,7 +86,7 @@ public class AutoMiningScript extends Script {
                                     Rs2DepositBox.closeDepositBox();
                                 }
                             }
-                            if (config.ORE() == Rocks.BASALT && Rs2Player.getWorldLocation().getRegionID() == BASALT_MINE) {
+                            else if (Rocks.BASALT == config.ORE() && BASALT_MINE == Rs2Player.getWorldLocation().getRegionID()) {
                                 if (Rs2Walker.walkTo(2872,3935,0)){
                                     Rs2Inventory.useItemOnNpc(ItemID.BASALT, NpcID.SNOWFLAKE);
                                     Rs2Walker.walkTo(2841,10339,0);

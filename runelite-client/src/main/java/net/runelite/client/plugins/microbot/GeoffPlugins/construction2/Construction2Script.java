@@ -245,9 +245,9 @@ public class Construction2Script extends Script {
     private void butler(Construction2Config config, int actionDelay) {
         var butler = getButler();
         if (butler == null) return;
-        boolean butlerIsTooFar = Microbot.getClientThread().runOnClientThread(() ->
+        boolean butlerIsTooFar = Microbot.getClientThread().runOnClientThreadOptional(() ->
                 butler.getWorldLocation().distanceTo(Microbot.getClient().getLocalPlayer().getWorldLocation()) > 3
-        );
+        ).orElse(false);
         if (butlerIsTooFar) {
             Rs2Tab.switchToSettingsTab();
             sleep(300, 900);

@@ -6,7 +6,7 @@ import net.runelite.api.coords.WorldArea;
 import net.runelite.client.plugins.cannon.CannonPlugin;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.math.Random;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleep;
@@ -26,7 +26,7 @@ public class Rs2Cannon {
     }
 
     public static boolean refill() {
-        return refill(Random.random(10, 15));
+        return refill(Rs2Random.between(10, 15));
     }
 
     public static boolean refill(int cannonRefillAmount) {
@@ -35,7 +35,7 @@ public class Rs2Cannon {
             return false;
         }
 
-        int cannonBallsLeft = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getVarpValue(VarPlayer.CANNON_AMMO));
+        int cannonBallsLeft = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getVarpValue(VarPlayer.CANNON_AMMO)).orElse(0);
 
         if (cannonBallsLeft > cannonRefillAmount) return false;
 
@@ -51,7 +51,7 @@ public class Rs2Cannon {
         Rs2Player.waitForWalking();
         sleep(1200);
         Rs2GameObject.interact(cannon, "Fire");
-        sleepUntil(() -> Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getVarpValue(VarPlayer.CANNON_AMMO)) > Random.random(10, 15));
+        sleepUntil(() -> Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getVarpValue(VarPlayer.CANNON_AMMO)).orElse(0) > Rs2Random.between(10, 15));
         Microbot.pauseAllScripts = false;
         return true;
     }

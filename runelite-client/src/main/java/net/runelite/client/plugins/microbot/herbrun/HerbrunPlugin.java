@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.liftedmango.herbrun;
+package net.runelite.client.plugins.microbot.herbrun;
 
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
@@ -7,18 +7,21 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.ScheduledStopEvent;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
 import java.awt.*;
 
-@PluginDescriptor(
-        name = PluginDescriptor.LiftedMango + "Herb runner",
-        description = "LiftedMango's Herb runner",
-        tags = {"herb", "liftedmango", "farming", "money making", "skilling", "s1-duck"},
-        enabledByDefault = false
-)
 @Slf4j
+@PluginDescriptor(
+        name = PluginDescriptor.Mocrosoft + "Herb runner",
+        description = "Herb runner",
+        tags = {"herb", "farming", "money making", "skilling"},
+        enabledByDefault = false,
+        canBeScheduled = true
+)
 public class HerbrunPlugin extends Plugin {
     @Inject
     private HerbrunConfig config;
@@ -35,29 +38,27 @@ public class HerbrunPlugin extends Plugin {
     @Inject
     HerbrunScript herbrunScript;
 
+    static String status;
+
 
     @Override
     protected void startUp() throws AWTException {
         if (overlayManager != null) {
             overlayManager.add(HerbrunOverlay);
         }
-        herbrunScript.run(config);
+        herbrunScript.run();
     }
 
     protected void shutDown() {
         herbrunScript.shutdown();
         overlayManager.remove(HerbrunOverlay);
     }
-    int ticks = 10;
-    @Subscribe
-    public void onGameTick(GameTick tick)
-    {
-        if (ticks > 0) {
-            ticks--;
-        } else {
-            ticks = 10;
-        }
 
+    @Subscribe
+    public void onScheduledStopEvent(ScheduledStopEvent event) {
+        if (event.getPlugin() == this) {
+            Microbot.stopPlugin(this);
+        }
     }
 
 }

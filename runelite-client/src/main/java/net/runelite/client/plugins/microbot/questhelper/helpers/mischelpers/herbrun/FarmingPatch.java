@@ -31,8 +31,7 @@ import lombok.ToString;
 import net.runelite.api.annotations.Varbit;
 
 @Getter
-@ToString(onlyExplicitlyIncluded = true)
-class FarmingPatch {
+public class FarmingPatch {
     @ToString.Include
     private final String name;
     @Getter(onMethod_ = {@Varbit})

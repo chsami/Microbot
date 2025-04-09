@@ -28,24 +28,24 @@ public class ExampleScript extends Script {
 
                 System.out.println(npc.getName());
 
-           //     var currentTarget = Rs2Npc.getNpc("guard");
+                //     var currentTarget = Rs2Npc.getNpc("guard");
 
-              //  var headIcon = Rs2Reflection.getHeadIcon(currentTarget);
+                //  var headIcon = Rs2Reflection.getHeadIcon(currentTarget);
 
-              //  Actor actor = currentTarget;
+                //  Actor actor = currentTarget;
 
 
 
-          //      Microbot.getClientThread().runOnClientThread(() ->  { System.out.println(Microbot.getClient().getLocalPlayer().getInteracting().getName()); return null;});
+                //      Microbot.getClientThread().runOnClientThread(() ->  { System.out.println(Microbot.getClient().getLocalPlayer().getInteracting().getName()); return null;});
 
                 //System.out.println(Microbot.getClient().getLocalPlayer().getInteracting().getName());
 //               System.out.println(Microbot.getClient().getLocalPlayer().getInteracting() == actor);
 
-         //       System.out.println(Microbot.getClient().getLocalPlayer().getInteracting() == currentTarget);
+                //       System.out.println(Microbot.getClient().getLocalPlayer().getInteracting() == currentTarget);
 
-           //     sleepUntil(() -> Microbot.getClient().getLocalPlayer().getInteracting() == currentTarget, 3000);
+                //     sleepUntil(() -> Microbot.getClient().getLocalPlayer().getInteracting() == currentTarget, 3000);
 
-               // System.out.println(headIcon.name());
+                // System.out.println(headIcon.name());
 
                 long endTime = System.currentTimeMillis();
                 long totalTime = endTime - startTime;

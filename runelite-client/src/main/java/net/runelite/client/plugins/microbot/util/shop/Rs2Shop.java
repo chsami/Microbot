@@ -203,7 +203,8 @@ public class Rs2Shop {
         int param1;
         int identifier = 3;
         MenuAction menuAction = MenuAction.CC_OP;
-        ItemComposition itemComposition = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getItemDefinition(rs2Item.id));
+        ItemComposition itemComposition = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getItemDefinition(rs2Item.id))
+                .orElse(null);
         if (!action.isEmpty()) {
             String[] actions;
             actions = itemComposition.getInventoryActions();

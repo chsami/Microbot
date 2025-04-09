@@ -59,8 +59,11 @@ public class Rs2Inventory {
             for (int i = 0; i < e.getItemContainer().getItems().length; i++) {
                 Item item = inventory().getItems()[i];
                 if (item.getId() == -1) continue;
-                ItemComposition itemComposition = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getItemDefinition(item.getId()));
-                _inventoryItems.add(new Rs2ItemModel(item, itemComposition, i));
+                ItemComposition itemComposition = Microbot.getClientThread().runOnClientThreadOptional(() ->
+                        Microbot.getClient().getItemDefinition(item.getId())).orElse(null);
+                if (itemComposition != null) {
+                    _inventoryItems.add(new Rs2ItemModel(item, itemComposition, i));
+                }
             }
             inventoryItems = _inventoryItems;
         }
@@ -688,8 +691,8 @@ public class Rs2Inventory {
                 new ArrayList<>(items())) {
             if (item == null) continue;
             if (ignoreItems.stream().anyMatch(x -> x.equalsIgnoreCase(item.name))) continue;
-            long totalPrice = (long) Microbot.getClientThread().runOnClientThread(() ->
-                    Microbot.getItemManager().getItemPrice(item.id) * item.quantity);
+            long totalPrice = (long) Microbot.getClientThread().runOnClientThreadOptional(() ->
+                    Microbot.getItemManager().getItemPrice(item.id) * item.quantity).orElse(0);
             if (totalPrice >= gpValue) continue;
 
             invokeMenu(item, "Drop");
@@ -2129,8 +2132,8 @@ public class Rs2Inventory {
         MenuAction menuAction = MenuAction.CC_OP;
         Widget[] inventoryWidgets;
         param0 = rs2Item.slot;
-        boolean isDepositBoxOpen = !Microbot.getClientThread().runOnClientThread(() -> Rs2Widget.getWidget(ComponentID.DEPOSIT_BOX_INVENTORY_ITEM_CONTAINER) == null
-                || Rs2Widget.getWidget(ComponentID.DEPOSIT_BOX_INVENTORY_ITEM_CONTAINER).isHidden());
+        boolean isDepositBoxOpen = !Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2Widget.getWidget(ComponentID.DEPOSIT_BOX_INVENTORY_ITEM_CONTAINER) == null
+                || Rs2Widget.getWidget(ComponentID.DEPOSIT_BOX_INVENTORY_ITEM_CONTAINER).isHidden()).orElse(false);
         if (Rs2Bank.isOpen()) {
             param1 = ComponentID.BANK_INVENTORY_ITEM_CONTAINER;
             inventoryWidgets = Rs2Widget.getWidget(ComponentID.BANK_INVENTORY_ITEM_CONTAINER).getChildren();
@@ -2179,7 +2182,7 @@ public class Rs2Inventory {
     private static Widget getInventory() {
         final int BANK_PIN_INVENTORY_ITEM_CONTAINER = 17563648;
         final int SHOP_INVENTORY_ITEM_CONTAINER = 19726336;
-        return Microbot.getClientThread().runOnClientThread(() -> {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             Widget inventoryWidget = Microbot.getClient().getWidget(ComponentID.INVENTORY_CONTAINER);
             Widget bankInventoryWidget = Microbot.getClient().getWidget(ComponentID.BANK_INVENTORY_ITEM_CONTAINER);
             Widget bankPinInventoryWidget = Microbot.getClient().getWidget(BANK_PIN_INVENTORY_ITEM_CONTAINER);
@@ -2205,7 +2208,7 @@ public class Rs2Inventory {
                 return depositBoxWidget;
             }
             return null;
-        });
+        }).orElse(null);
     }
 
     /**

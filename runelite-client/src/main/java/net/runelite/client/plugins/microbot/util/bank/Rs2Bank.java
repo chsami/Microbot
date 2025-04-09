@@ -10,6 +10,9 @@ import net.runelite.client.plugins.bank.BankPlugin;
 import net.runelite.client.plugins.loottracker.LootTrackerItem;
 import net.runelite.client.plugins.loottracker.LootTrackerRecord;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
+import net.runelite.client.plugins.microbot.shortestpath.Transport;
+import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
@@ -28,11 +31,13 @@ import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.security.Encryption;
 import net.runelite.client.plugins.microbot.util.security.Login;
+import net.runelite.client.plugins.microbot.util.settings.Rs2Settings;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.awt.*;
+import java.awt.event.KeyEvent;
 import java.util.List;
 import java.util.*;
 import java.util.function.Predicate;
@@ -55,9 +60,17 @@ public class Rs2Bank {
     public static final int BANK_ITEMS_PER_ROW = 8;
     private static final int X_AMOUNT_VARBIT = 3960;
     private static final int SELECTED_OPTION_VARBIT = 6590;
-    private static final int HANDLE_X_SET = 5;
-    private static final int HANDLE_X_UNSET = 6;
-    private static final int HANDLE_ALL = 7;
+    
+    // BANK actions
+    private static final int BANK_HANDLE_X_SET = 4;
+    private static final int BANK_HANDLE_X_UNSET = 5;
+    private static final int BANK_HANDLE_ALL = 6;
+
+    // INVENTORY actions (e.g., for deposit)
+    private static final int INVENTORY_HANDLE_X_SET = 6;
+    private static final int INVENTORY_HANDLE_X_UNSET = 7;
+    private static final int INVENTORY_HANDLE_ALL = 8;
+    
     private static final int WITHDRAW_AS_NOTE_VARBIT = 3958;
     public static List<Rs2ItemModel> bankItems = new ArrayList<Rs2ItemModel>();
     // Used to synchronize calls
@@ -83,7 +96,6 @@ public class Rs2Bank {
         Rectangle itemBoundingBox = null;
 
         if (container == BANK_INVENTORY_ITEM_CONTAINER) {
-            identifier = identifier + 1;
             itemBoundingBox = Rs2Inventory.itemBounds(rs2Item);
         }
         if (container == BANK_ITEM_CONTAINER) {
@@ -146,10 +158,13 @@ public class Rs2Bank {
      */
     public static boolean closeBank() {
         if (!isOpen()) return false;
-        Rs2Widget.clickChildWidget(786434, 11);
-        sleepUntilOnClientThread(() -> !isOpen());
+        if (Rs2Settings.isEscCloseInterfaceSettingEnabled()) {
+            Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
+        } else {
+            Rs2Widget.clickChildWidget(786434, 11);
+        }
 
-        return true;
+        return sleepUntil(() -> !isOpen(), 5000);
     }
 
     /**
@@ -407,9 +422,9 @@ public class Rs2Bank {
         container = BANK_INVENTORY_ITEM_CONTAINER;
 
         if (Microbot.getVarbitValue(SELECTED_OPTION_VARBIT) == 0) {
-            invokeMenu(1, rs2Item);
-        } else {
             invokeMenu(2, rs2Item);
+        } else {
+            invokeMenu(3, rs2Item);
         }
     }
 
@@ -491,17 +506,28 @@ public class Rs2Bank {
      */
     private static boolean handleAmount(Rs2ItemModel rs2Item, int amount, boolean safe) {
         int inventorySize = Rs2Inventory.size();
+
+        boolean isInventory = container == BANK_INVENTORY_ITEM_CONTAINER;
+        int handleXSet = isInventory ? INVENTORY_HANDLE_X_SET : BANK_HANDLE_X_SET;
+        int handleXUnset = isInventory ? INVENTORY_HANDLE_X_UNSET : BANK_HANDLE_X_UNSET;
+        
         if (Microbot.getVarbitValue(X_AMOUNT_VARBIT) == amount) {
-            invokeMenu(HANDLE_X_SET, rs2Item);
+            invokeMenu(handleXSet, rs2Item);
 
             if (safe)
                 return sleepUntilTrue(() -> inventorySize != Rs2Inventory.size(), 100, 2500);
 
             return true;
         } else {
-            invokeMenu(HANDLE_X_UNSET, rs2Item);
+            invokeMenu(handleXUnset, rs2Item);
 
-            sleep(Rs2Random.randomGaussian(1100,200));
+            sleepUntil(() -> {
+                Widget widget = Rs2Widget.getWidget(162, 42);
+                if (widget == null) return false;
+                return widget.getText().equalsIgnoreCase("Enter amount:");
+            }, 5000);
+            
+            Rs2Random.waitEx(1200, 100);
             Rs2Keyboard.typeString(String.valueOf(amount));
             Rs2Keyboard.enter();
             sleepUntil(() -> Rs2Inventory.hasItem(rs2Item.id), 2500);
@@ -558,7 +584,11 @@ public class Rs2Bank {
         if (!Rs2Inventory.hasItem(rs2Item.id)) return false;
         container = BANK_INVENTORY_ITEM_CONTAINER;
 
-        invokeMenu(HANDLE_ALL, rs2Item);
+        if (Microbot.getVarbitValue(SELECTED_OPTION_VARBIT) == 4) {
+            invokeMenu(2, rs2Item);
+        } else {
+            invokeMenu(INVENTORY_HANDLE_ALL, rs2Item);
+        }
         return true;
     }
 
@@ -798,7 +828,7 @@ public class Rs2Bank {
         if (Rs2Inventory.isFull()) return;
         container = BANK_ITEM_CONTAINER;
         
-        invokeMenu(8, rs2Item);
+        invokeMenu(7, rs2Item);
     }
 
     /**
@@ -904,7 +934,7 @@ public class Rs2Bank {
      * @param amount amount to withdraw
      * @param exact  exact search based on equalsIgnoreCase
      */
-    private static boolean withdrawX(String name, int amount, boolean exact) {
+    public static boolean withdrawX(String name, int amount, boolean exact) {
         return withdrawXItem(findBankItem(name, exact), amount);
     }
 
@@ -931,7 +961,11 @@ public class Rs2Bank {
         if (Rs2Inventory.isFull()) return false;
         container = BANK_ITEM_CONTAINER;
 
-        invokeMenu(HANDLE_ALL, rs2Item);
+        if (Microbot.getVarbitValue(SELECTED_OPTION_VARBIT) == 4) {
+            invokeMenu(1, rs2Item);
+        } else {
+            invokeMenu(BANK_HANDLE_ALL, rs2Item);
+        }
         return true;
     }
 
@@ -991,7 +1025,7 @@ public class Rs2Bank {
         if (rs2Item == null) return;
         container = BANK_INVENTORY_ITEM_CONTAINER;
 
-        invokeMenu(8, rs2Item);
+        invokeMenu(9, rs2Item);
     }
 
     /**
@@ -1208,7 +1242,7 @@ public class Rs2Bank {
         if (rs2Item == null) return;
         container = BANK_INVENTORY_ITEM_CONTAINER;
 
-        invokeMenu(8, rs2Item);
+        invokeMenu(9, rs2Item);
     }
 
     /**
@@ -1306,49 +1340,126 @@ public class Rs2Bank {
     }
 
     /**
-     * Iterate over each candidate bank to find the nearest one relative to a target world point.
-     *
-     * For each bank in candidateBanks:
-     *   1. Calculate a heuristic distance (using quickDistance, a Chebyshev distance) between the bank's location and the target.
-     *   2. If the heuristic distance is greater than the current best path length (bestPathLength), break out of the loop.
-     *      - Since the banks are sorted by this heuristic, no later bank will have a shorter path.
-     *   3. Otherwise, compute the actual path length (using Rs2Walker.getTotalTiles) between the target and the bank.
-     *   4. If this actual path length is shorter than bestPathLength, update bestPathLength and mark this bank as the nearest.
-     *
-     * @return BankLocation
+     * Finds the nearest bank, prioritizing available transports first before pathfinding
+     * @param worldPoint The current location
+     * @return The nearest bank location, or null if no accessible bank was found
      */
     public static BankLocation getNearestBank(WorldPoint worldPoint) {
-        Microbot.log("Calculating nearest bank path...");
+        Microbot.log("Finding nearest bank...");
 
-        // Get candidate banks that meet requirements and sort them by a cheap distance metric.
-        List<BankLocation> candidateBanks = Arrays.stream(BankLocation.values())
+        // Get accessible banks sorted by straight-line distance
+        List<BankLocation> accessibleBanks = Arrays.stream(BankLocation.values())
                 .filter(BankLocation::hasRequirements)
                 .sorted(Comparator.comparingInt(bank -> Rs2WorldPoint.quickDistance(bank.getWorldPoint(), worldPoint)))
                 .collect(Collectors.toList());
 
-        BankLocation nearestbank = null;
-        int bestPathLength = Integer.MAX_VALUE;
+        if (accessibleBanks.isEmpty()) {
+            Microbot.log("No accessible banks found");
+            return null;
+        }
 
-        for (BankLocation bank : candidateBanks) {
-            int heuristicDistance = Rs2WorldPoint.quickDistance(bank.getWorldPoint(), worldPoint);
-            if (heuristicDistance > bestPathLength) {
-                // Since the candidates are sorted, no later bank can beat the best one.
-                break;
-            }
+        // Check if the closest bank is within walking distance (30 tiles)
+        BankLocation closestBank = accessibleBanks.get(0);
+        int closestDistance = Rs2WorldPoint.quickDistance(closestBank.getWorldPoint(), worldPoint);
 
-            int pathLength = Rs2Walker.getTotalTiles(worldPoint, bank.getWorldPoint());
-            if (pathLength < bestPathLength) {
-                bestPathLength = pathLength;
-                nearestbank = bank;
+        if (closestDistance < 30) {
+            Microbot.log("Found nearest bank: " + closestBank.name() + " (walkable)");
+            return closestBank;
+        }
+
+        // Try to find a bank accessible via teleport
+        BankLocation teleportBank = findBankViaTeleport(accessibleBanks);
+        if (teleportBank != null) {
+            Microbot.log("Found nearest bank: " + teleportBank.name() + " (via teleport)");
+            return teleportBank;
+        }
+
+        // Calculate paths to all banks and find the shortest
+        BankLocation shortestPathBank = findNearestBankByDistance(worldPoint, accessibleBanks);
+        if (shortestPathBank != null) {
+            Microbot.log("Found nearest bank: " + shortestPathBank.name() + " (shortest path)");
+            return shortestPathBank;
+        }
+
+        Microbot.log("Unable to find nearest bank");
+        return null;
+    }
+
+    /**
+     * Finds a bank that can be accessed via teleport
+     * @param banks List of banks to check
+     * @return The bank with the shortest teleport distance, or null if none found
+     */
+    private static BankLocation findBankViaTeleport(List<BankLocation> banks) {
+        Map<WorldPoint, Set<Transport>> allTransports = ShortestPathPlugin.getPathfinderConfig().getTransports();
+        Map<Transport, WorldPoint> teleports = collectUsableTeleports(allTransports);
+
+        if (teleports.isEmpty()) {
+            return null;
+        }
+
+        BankLocation bestBank = null;
+        int shortestDistance = Integer.MAX_VALUE;
+
+        for (BankLocation bank : banks) {
+            for (Map.Entry<Transport, WorldPoint> entry : teleports.entrySet()) {
+                Transport transport = entry.getKey();
+
+                if (transport.getDestination() != null) {
+                    int distanceToBank = transport.getDestination().distanceTo2D(bank.getWorldPoint());
+
+                    if (distanceToBank < shortestDistance) {
+                        shortestDistance = distanceToBank;
+                        bestBank = bank;
+                    }
+                }
             }
         }
 
-        if (nearestbank != null) {
-            Microbot.log("Found nearest bank: " + nearestbank.name());
-        } else {
-            Microbot.log("Unable to find nearest bank");
+        return bestBank;
+    }
+
+    /**
+     * Collects all usable teleport transports
+     * @param allTransports Map of all transports
+     * @return Map of teleport transports with their origin points
+     */
+    private static Map<Transport, WorldPoint> collectUsableTeleports(Map<WorldPoint, Set<Transport>> allTransports) {
+        Map<Transport, WorldPoint> usableTeleports = new HashMap<>();
+
+        for (Map.Entry<WorldPoint, Set<Transport>> entry : allTransports.entrySet()) {
+            WorldPoint originPoint = entry.getKey();
+            for (Transport transport : entry.getValue()) {
+                if (transport.getType() == TransportType.TELEPORTATION_ITEM ||
+                        transport.getType() == TransportType.TELEPORTATION_SPELL ||
+                        transport.getType() == TransportType.TELEPORTATION_MINIGAME) {
+                    usableTeleports.put(transport, originPoint);
+                }
+            }
         }
-        return nearestbank;
+
+        return usableTeleports;
+    }
+
+    /**
+     * Finds the bank with the shortest path from the current location
+     * @param worldPoint The current location
+     * @param banks List of banks to check
+     * @return The bank with the shortest path, or null if none found
+     */
+    private static BankLocation findNearestBankByDistance(WorldPoint worldPoint, List<BankLocation> banks) {
+        BankLocation bestBank = null;
+        int shortestPath = Integer.MAX_VALUE;
+
+        for (BankLocation bank : banks) {
+            int closestDistance = Rs2WorldPoint.quickDistance(bank.getWorldPoint(), worldPoint);
+            if (closestDistance < shortestPath) {
+                shortestPath = closestDistance;
+                bestBank = bank;
+            }
+        }
+
+        return bestBank;
     }
 
     /**
@@ -1716,7 +1827,9 @@ public class Rs2Bank {
                 if (itemsToNotSell.stream().anyMatch(x -> x.trim().equalsIgnoreCase(lootTrackerItem.getName())))
                     continue;
                 int itemId = lootTrackerItem.getId();
-                ItemComposition itemComposition = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getItemDefinition(lootTrackerItem.getId()));
+                ItemComposition itemComposition = Microbot.getClientThread().runOnClientThreadOptional(() ->
+                        Microbot.getClient().getItemDefinition(lootTrackerItem.getId())).orElse(null);
+                if (itemComposition == null) return false;
                 if (Arrays.stream(itemComposition.getInventoryActions()).anyMatch(x -> x != null && x.equalsIgnoreCase("eat")))
                     continue;
                 final boolean isNoted = itemComposition.getNote() == 799;
@@ -1724,7 +1837,11 @@ public class Rs2Bank {
 
                 if (isNoted) {
                     final int unnotedItemId = lootTrackerItem.getId() - 1; //get the unnoted id of the item
-                    itemComposition = Microbot.getClientThread().runOnClientThread(() -> Microbot.getClient().getItemDefinition(unnotedItemId));
+                    itemComposition = Microbot.getClientThread().runOnClientThreadOptional(() ->
+                            Microbot.getClient().getItemDefinition(unnotedItemId)).orElse(null);
+                    if (itemComposition == null) {
+                        return false;
+                    }
                     if (!itemComposition.isTradeable()) continue;
                     itemId = unnotedItemId;
                 }
@@ -1741,10 +1858,10 @@ public class Rs2Bank {
 
     private static Widget getBankSizeWidget() {
 
-        return Microbot.getClientThread().runOnClientThread(() -> {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             Widget bankContainerWidget = Microbot.getClient().getWidget(ComponentID.BANK_ITEM_COUNT_TOP);
             return bankContainerWidget;
-        });
+        }).orElse(null);
     }
 
     /**
@@ -1810,14 +1927,14 @@ public class Rs2Bank {
      * @return A list of bank tab widgets, or null if the bank tab container widget is not found.
      */
     public static List<Widget> getTabs() {
-        return Microbot.getClientThread().runOnClientThread(() -> {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             Widget bankContainerWidget = Microbot.getClient().getWidget(ComponentID.BANK_TAB_CONTAINER);
             if (bankContainerWidget != null) {
                 // get children and filter out the tabs that don't have the Action Collapse tab
                 return Arrays.asList(bankContainerWidget.getDynamicChildren());
             }
             return null;
-        });
+        }).orElse(new ArrayList<>());
     }
 
     /**
@@ -1830,14 +1947,14 @@ public class Rs2Bank {
      * @return A list of item widgets in the bank container, or null if the bank container widget is not found.
      */
     public static List<Widget> getItems() {
-        return Microbot.getClientThread().runOnClientThread(() -> {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             Widget bankContainerWidget = Microbot.getClient().getWidget(BANK_ITEM_CONTAINER);
             if (bankContainerWidget != null) {
                 // Get children and filter out the tabs that don't have the Action Collapse tab
                 return Arrays.asList(bankContainerWidget.getDynamicChildren());
             }
             return null;
-        });
+        }).orElse(new ArrayList<>());
     }
 
     /**

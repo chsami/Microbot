@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.thieving;
 import net.runelite.api.NPC;
 import net.runelite.api.Skill;
 import net.runelite.api.Varbits;
+import net.runelite.api.coords.WorldArea;
 import net.runelite.client.game.npcoverlay.HighlightedNpc;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
@@ -19,12 +20,10 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class ThievingScript extends Script {
 
@@ -140,17 +139,58 @@ public class ThievingScript extends Script {
     }
 
     private void pickpocket() {
+        WorldArea ardougneArea = new WorldArea(2649, 3280, 15, 15, 0);
+        Map<NPC, HighlightedNpc> highlightedNpcs = new HashMap<>();
+
+        try {
+            highlightedNpcs = net.runelite.client.plugins.npchighlight.NpcIndicatorsPlugin.getHighlightedNpcs();
+
+            if (config.ardougneAreaCheck() && !highlightedNpcs.isEmpty()) {
+                for (Map.Entry<NPC, HighlightedNpc> entry : highlightedNpcs.entrySet()) {
+                    NPC npc = entry.getKey();
+
+                    try {
+                        String npcCompositionName = npc.getTransformedComposition().getName();
+
+                        if (npcCompositionName != null && npcCompositionName.toLowerCase().contains("knight of ardougne")) {
+                            if (!ardougneArea.contains(npc.getWorldLocation())) {
+                                Microbot.log("Highlighted Knight is NOT in Ardougne area - shutting down");
+                                shutdown();
+                                return;
+                            }
+                        }
+                    } catch (Exception e) {
+                        Microbot.log("Error getting NPC composition: " + e.getMessage());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Microbot.log("Error getting highlighted NPCs: " + e.getMessage());
+        }
+
+        if (config.ardougneAreaCheck() && config.THIEVING_NPC() == ThievingNpc.ARDOUGNE_KNIGHT) {
+            NPC knight = Rs2Npc.getNpc("knight of ardougne");
+
+            if (knight != null && !ardougneArea.contains(knight.getWorldLocation())) {
+                Microbot.log(" Knight not in Ardougne area - shutting down");
+                shutdown();
+                return;
+            } else if (knight == null) {
+                Microbot.log("No regular Knight of Ardougne found - shutting down");
+                shutdown();
+                return;
+            }
+        }
+
         if (config.THIEVING_NPC() == ThievingNpc.WEALTHY_CITIZEN) {
             handleWealthyCitizen();
         } else if (config.THIEVING_NPC() == ThievingNpc.ELVES) {
             handleElves();
         } else {
-            Map<NPC, HighlightedNpc> highlightedNpcs =  net.runelite.client.plugins.npchighlight.NpcIndicatorsPlugin.getHighlightedNpcs();
             if (highlightedNpcs.isEmpty()) {
                 if (Rs2Npc.getNpc(config.THIEVING_NPC().getName()) == null) {
                     Rs2Walker.walkTo(initialPlayerLocation);
-                }
-                else if (Rs2Npc.pickpocket(config.THIEVING_NPC().getName())) {
+                } else if (Rs2Npc.pickpocket(config.THIEVING_NPC().getName())) {
                     Rs2Walker.setTarget(null);
                     sleep(50, 250);
                 }
@@ -162,20 +202,36 @@ public class ThievingScript extends Script {
         }
     }
 
-    private void handleWealthyCitizen() {
-        List<Rs2NpcModel> wealthyCitizenInteracting = Rs2Npc.getNpcs("Wealthy citizen", true)
-                .filter(x -> x.isInteracting()
-                        && x.getInteracting() != null)
-                .collect(Collectors.toList());
-        Optional<Rs2NpcModel> wealthyCitizenToPickpocket = wealthyCitizenInteracting.stream().findFirst();
-        if (wealthyCitizenToPickpocket.isPresent()) {
-            Rs2NpcModel pickpocketnpc = wealthyCitizenToPickpocket.get();
-            if (!Rs2Player.isAnimating(3000) && Rs2Npc.pickpocket(pickpocketnpc)) {
-                Microbot.status = "Pickpocketting " + pickpocketnpc.getName();
-                sleep(300, 600);
+        private void handleWealthyCitizen() {
+            try {
+                if (Rs2Player.isAnimating(3000)) {
+                    return;
+                }
+                List<Rs2NpcModel> wealthyCitizenInteracting = new ArrayList<>();
+                try {
+                    Stream<Rs2NpcModel> npcStream = Rs2Npc.getNpcs("Wealthy citizen", true);
+                    if (npcStream != null) {
+                        wealthyCitizenInteracting = npcStream
+                                .filter(x -> x != null && x.isInteracting() && x.getInteracting() != null)
+                                .collect(Collectors.toList());
+                    }
+                } catch (Exception ex) {
+                    Microbot.log("Error retrieving Wealthy citizens: " + ex.getMessage());
+                    return;
+                }
+
+                Optional<Rs2NpcModel> wealthyCitizenToPickpocket = wealthyCitizenInteracting.stream().findFirst();
+                if (wealthyCitizenToPickpocket.isPresent()) {
+                    Rs2NpcModel pickpocketnpc = wealthyCitizenToPickpocket.get();
+                    if (!Rs2Player.isAnimating(3000) && Rs2Npc.pickpocket(pickpocketnpc)) {
+                        Microbot.status = "Pickpocketting " + pickpocketnpc.getName();
+                        sleep(300, 600);
+                    }
+                }
+            } catch (Exception ex) {
+               Microbot.log("Error in handleWealthyCitizen: " + ex.getMessage());
             }
         }
-    }
 
     private void handleShadowVeil() {
         if (!Rs2Magic.isShadowVeilActive() && Rs2Magic.isArceeus() &&

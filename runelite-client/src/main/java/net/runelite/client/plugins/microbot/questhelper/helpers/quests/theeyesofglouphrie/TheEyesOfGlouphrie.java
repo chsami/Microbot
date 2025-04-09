@@ -261,7 +261,7 @@ public class TheEyesOfGlouphrie extends BasicQuestHelper {
 
         climbUpToF1Tree = new ObjectStep(this, ObjectID.LADDER_16683, new WorldPoint(2466, 3495, 0), "Kill the evil creature at the top of the Grand Tree.");
         climbUpToF2Tree = new ObjectStep(this, ObjectID.LADDER_16684, new WorldPoint(2466, 3495, 1), "Kill the evil creature at the top of the Grand Tree.");
-        climbUpToF3Tree = new ObjectStep(this, ObjectID.LADDER_2884, new WorldPoint(2466, 3495, 2), "Kill the evil creature at the top of the Grand Tree.");
+        climbUpToF3Tree = new ObjectStep(this, ObjectID.LADDER_2872, new WorldPoint(2466, 3495, 2), "Kill the evil creature at the top of the Grand Tree.");  // used to be ladder 2884
         killCreature3.addSubSteps(climbUpToF1Tree, climbUpToF2Tree, climbUpToF3Tree);
 
         talkToNarnode = new NpcStep(this, NpcID.KING_NARNODE_SHAREEN, new WorldPoint(2465, 3496, 0), "Talk to King Narnode to finish the quest.");

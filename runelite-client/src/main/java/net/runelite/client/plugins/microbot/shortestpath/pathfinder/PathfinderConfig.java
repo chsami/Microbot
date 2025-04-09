@@ -204,7 +204,7 @@ public class PathfinderConfig {
         transports.clear();
         transportsPacked.clear();
         usableTeleports.clear();
-         Microbot.getClientThread().runOnClientThread(() -> {
+         Microbot.getClientThread().runOnClientThreadOptional(() -> {
             for (Map.Entry<WorldPoint, Set<Transport>> entry : allTransports.entrySet()) {
                 for (Transport transport : entry.getValue()) {
                     for (Quest quest : transport.getQuests()) {

@@ -1884,6 +1884,8 @@
 2405 3420 0	2409 9812 0	Enter;Cave entrance;17209									
 2405 3419 0	2409 9812 0	Enter;Cave entrance;17209									
 2405 3418 0	2409 9812 0	Enter;Cave entrance;17209									
+2435 3519 0	1987 5568 0	Pass-through;Opening;28807									
+1987 5568 0	2435 3519 0	Pass-through;Opening;28807									
 											
 # Tolna's Rift											
 3309 3452 0	3297 9824 0	Enter;Rift;13968									
@@ -3492,6 +3494,8 @@
 3491 3231 0	3491 3230 0	Climb-over;Broken wall;12737								3	
 3490 3232 0	3490 9631 0	Climb-down;Trapdoor;12743								2	
 3490 9631 0	3490 3232 0	Climb-up;Ladder;12779								2	
+3582 3264 0	3582 3263 0	Climb-over;Broken fence;18411				In Aid of the Myreque					 
+3582 3263 0	3582 3264 0	Climb-over;Broken fence;18411				In Aid of the Myreque					 
 											
 # Haunted Mine											
 3446 3236 0	3444 3236 0	Climb-over;Mine cart;4918									
@@ -4825,6 +4829,17 @@
 # Port Phasmatys											
 3705 3503 1	3702 3503 0	Cross;Gangplank;17393									
 3702 3503 0	3705 3503 1	Cross;Gangplank;17392									
+3659 3509 0	3659 3507 0	Pay-toll(2-Ecto);Energy Barrier;16105				Ghosts Ahoy					
+3659 3507 0	3659 3509 0	Pay-toll(2-Ecto);Energy Barrier;16105				Ghosts Ahoy					
+3660 3509 0	3660 3507 0	Pay-toll(2-Ecto);Energy Barrier;16105				Ghosts Ahoy					
+3660 3507 0	3660 3509 0	Pay-toll(2-Ecto);Energy Barrier;16105				Ghosts Ahoy					
+3654 3485 0	3651 3485 0	Pay-toll(2-Ecto);Energy Barrier;16105				Ghosts Ahoy					
+3651 3485 0	3654 3485 0	Pay-toll(2-Ecto);Energy Barrier;16105				Ghosts Ahoy					
+3654 3486 0	3651 3486 0	Pay-toll(2-Ecto);Energy Barrier;16105				Ghosts Ahoy					
+3651 3486 0	3654 3486 0	Pay-toll(2-Ecto);Energy Barrier;16105				Ghosts Ahoy					
+3670 3454 0	3670 3452 0	Pay-toll(2-Ecto);Energy Barrier;16105				Ghosts Ahoy					
+3670 3452 0	3670 3454 0	Pay-toll(2-Ecto);Energy Barrier;16105				Ghosts Ahoy					
+3669 3454 0	3669 3452 0	Pay-toll(2-Ecto);Energy Barrier;16105				Ghosts Ahoy					
 											
 # Port Khazard											
 2674 3141 1	2674 3144 0	Cross;Gangplank;17403									
@@ -4941,7 +4956,8 @@
 2521 4834 0	3052 3440 0	Use;Portal;34753									
 2575 4850 0	3310 3252 0	Use;Portal;34752									
 2655 4830 0	3302 3477 0	Use;Portal;34751									
-# Moons of Peril
+											
+# Moons of Peril											
 1374 9667 0	1347 9590 0	Pass-Through;Entrance;51377									 
 1347 9590 0	1374 9667 0	Pass-Through;Entrance;51375									 
 1418 9632 0	1387 9591 0	Pass-Through;Entrance;51377									 
@@ -4966,3 +4982,29 @@
 1439 9599 1	1440 9615 1	Pass-Through;Entrance;51375									 
 1440 9509 1	1435 3128 0	Pass-Through;Entrance;51375									 
 1435 3128 0	1440 9509 1	Pass-Through;Entrance;51375									 
+											
+# Legends Guild											
+2732 3376 0	2732 3380 1	Climb-up;Staircase;15653									
+2733 3376 0	2733 3380 1	Climb-up;Staircase;15653									
+2732 3380 1	2732 3376 0	Climb-down;Staircase;15654									
+2733 3380 1	2733 3376 0	Climb-down;Staircase;15654									
+2732 3376 1	2732 3376 2	Climb-up;Ladder;16683									
+2732 3376 2	2732 3376 1	Climb-down;Ladder;16679									
+2733 3375 1	2733 3375 2	Climb-up;Ladder;16683									
+2733 3375 2	2733 3375 1	Climb-down;Ladder;16679									
+2732 3374 1	2732 3374 2	Climb-up;Ladder;16683									
+2732 3374 2	2732 3374 1	Climb-down;Ladder;16679									
+2731 3375 1	2731 3375 2	Climb-up;Ladder;16683									
+2731 3375 2	2731 3375 1	Climb-down;Ladder;16679									
+2725 3376 1	2725 3376 2	Climb-up;Ladder;16683									 
+2725 3376 2	2725 3376 1	Climb-down;Ladder;16679									 
+2726 3375 1	2726 3375 2	Climb-up;Ladder;16683									 
+2726 3375 2	2726 3375 1	Climb-down;Ladder;16679									 
+2725 3374 1	2725 3374 2	Climb-up;Ladder;16683									 
+2725 3374 2	2725 3374 1	Climb-down;Ladder;16679									 
+2724 3375 1	2724 3375 2	Climb-up;Ladder;16683									 
+2724 3375 2	2724 3375 1	Climb-down;Ladder;16679									 
+2723 3374 0	2727 9774 0	Climb-down;Staircase;16664									
+2723 3375 0	2727 9775 0	Climb-down;Staircase;16664									
+2727 9774 0	2723 3374 0	Climb-up;Staircase;16665									
+2727 9775 0	2723 3375 0	Climb-up;Staircase;16664									

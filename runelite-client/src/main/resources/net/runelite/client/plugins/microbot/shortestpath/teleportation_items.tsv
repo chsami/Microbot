@@ -246,8 +246,8 @@
 2556 2917 0		13280;13342			Y	F	19	4	Max cape: Feldip Hills
 3144 3772 0		13280;13342			Y	F	19	4	Max cape: Black chinchompa
 3144 3772 0		13280;13342			Y	F	19	4	Max cape: Black chinchompa
-#Quest point cape (instead of using the item name we use the action teleport, we use the itemids to verifiy the item)									
-3144 3772 0		9813;13068			Y	F	19	4	Quest point cape: Teleport
+# Quest point cape (instead of using the item name we use the action teleport, we use the itemids to verifiy the item)									
+2728 3347 0		9813;13068			Y	F	19	4	Quest point cape: Teleport
 2689 3547 0		13221;13222			Y	F	19	4	Music cape: Teleport
 2574 3323 0		13069;19476			Y	F	19	4	1. Achievement diary cape: Two-pints
 3302 3122 0		13069;19476			Y	F	19	4	2. Achievement diary cape: Jarr

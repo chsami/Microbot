@@ -29,7 +29,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 import net.runelite.api.annotations.Component;
-import net.runelite.api.widgets.ComponentID;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
@@ -38,10 +38,10 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 @ToString
 public enum Portal
 {
-	PURPLE(ComponentID.PEST_CONTROL_PURPLE_SHIELD, ComponentID.PEST_CONTROL_PURPLE_HEALTH, ComponentID.PEST_CONTROL_PURPLE_ICON, true, 8, 30),
-	BLUE(ComponentID.PEST_CONTROL_BLUE_SHIELD, ComponentID.PEST_CONTROL_BLUE_HEALTH, ComponentID.PEST_CONTROL_BLUE_ICON, true, 55, 29),
-	YELLOW(ComponentID.PEST_CONTROL_YELLOW_SHIELD, ComponentID.PEST_CONTROL_YELLOW_HEALTH, ComponentID.PEST_CONTROL_YELLOW_ICON, true, 48, 13),
-	RED(ComponentID.PEST_CONTROL_RED_SHIELD, ComponentID.PEST_CONTROL_RED_HEALTH, ComponentID.PEST_CONTROL_RED_ICON, true, 22, 12);
+    PURPLE(InterfaceID.PestStatusOverlay.PEST_STATUS_PORT1, InterfaceID.PestStatusOverlay.PEST_STATUS_PORTTXT1, InterfaceID.PestStatusOverlay.PEST_PORTAL_1_DONE, true, 8, 30),
+    BLUE(InterfaceID.PestStatusOverlay.PEST_STATUS_PORT2, InterfaceID.PestStatusOverlay.PEST_STATUS_PORTTXT2, InterfaceID.PestStatusOverlay.PEST_PORTAL_2_DONE, true, 55 , 29),
+    YELLOW(InterfaceID.PestStatusOverlay.PEST_STATUS_PORT3, InterfaceID.PestStatusOverlay.PEST_STATUS_PORTTXT3, InterfaceID.PestStatusOverlay.PEST_PORTAL_3_DONE, true, 48, 13),
+    RED(InterfaceID.PestStatusOverlay.PEST_STATUS_PORT4, InterfaceID.PestStatusOverlay.PEST_STATUS_PORTTXT4, InterfaceID.PestStatusOverlay.PEST_PORTAL_4_DONE, true, 22, 12);
 
 	@Component
 	private final int shield;

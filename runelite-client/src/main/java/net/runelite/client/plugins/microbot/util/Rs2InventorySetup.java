@@ -40,7 +40,7 @@ public class Rs2InventorySetup {
         inventorySetup = MInventorySetupsPlugin.getInventorySetups().stream().filter(Objects::nonNull).filter(x -> x.getName().equalsIgnoreCase(name)).findFirst().orElse(null);
         _mainScheduler = mainScheduler;
         if (inventorySetup == null) {
-            Microbot.showMessage("Inventory load with name " + name + " not found!");
+            Microbot.showMessage("Inventory load with name " + name + " not found!", 10);
             Microbot.pauseAllScripts = true;
         }
     }
@@ -56,7 +56,7 @@ public class Rs2InventorySetup {
         inventorySetup = setup;
         _mainScheduler = mainScheduler;
         if (inventorySetup == null) {
-            Microbot.showMessage("Inventory load error!");
+            Microbot.showMessage("Inventory load error!", 10);
             Microbot.pauseAllScripts = true;
         }
     }
@@ -104,7 +104,7 @@ public class Rs2InventorySetup {
 
             if (!Rs2Bank.hasBankItem(lowerCaseName, withdrawQuantity)) {
                 Microbot.pauseAllScripts = true;
-                Microbot.showMessage("Bank is missing the following item " + inventorySetupsItem.getName());
+                Microbot.showMessage("Bank is missing the following item " + inventorySetupsItem.getName(), 10);
                 break;
             }
 

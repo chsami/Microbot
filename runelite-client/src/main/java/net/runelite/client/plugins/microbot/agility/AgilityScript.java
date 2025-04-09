@@ -192,7 +192,7 @@ public class AgilityScript extends Script {
                 if (config.agilityCourse() == PRIFDDINAS_AGILITY_COURSE) {
                     TileObject portal = Rs2GameObject.findObject(PORTAL_OBSTACLE_IDS.stream().collect(Collectors.toList()));
 
-                    if (portal != null && Microbot.getClientThread().runOnClientThread(() -> portal.getClickbox()) != null) {
+                    if (portal != null && Microbot.getClientThread().runOnClientThreadOptional(() -> portal.getClickbox()) != null) {
                         if (Rs2GameObject.interact(portal, "travel")) {
                             sleep(2000, 3000);
                             return;
@@ -291,7 +291,8 @@ public class AgilityScript extends Script {
     }
 
     private boolean waitForAgilityObstabcleToFinish(final int agilityExp) {
-        sleepUntilOnClientThread(() -> agilityExp != Microbot.getClient().getSkillExperience(Skill.AGILITY), 15000);
+        double healthPlaceholder= Rs2Player.getHealthPercentage();
+        sleepUntilOnClientThread(() -> agilityExp != Microbot.getClient().getSkillExperience(Skill.AGILITY)||healthPlaceholder>Rs2Player.getHealthPercentage(), 15000);
 
 
         if (agilityExp != Microbot.getClient().getSkillExperience(Skill.AGILITY) || Microbot.getClient().getTopLevelWorldView().getPlane() == 0) {
