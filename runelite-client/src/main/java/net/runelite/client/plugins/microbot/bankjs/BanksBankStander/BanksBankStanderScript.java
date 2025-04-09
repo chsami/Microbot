@@ -439,20 +439,10 @@ public class BanksBankStanderScript extends Script {
                 shutdown();
             }
             if (currentAmulet != null) {
+                sleep(Rs2Random.between(750, 1250));
                 Rs2Bank.depositOne(currentAmulet.getId());
+                sleep(Rs2Random.between(750, 1250));
             }
-//            Todo: Add a check if any necklace slot item in inventory, bank them
-//            if (Rs2Bank.isOpen()) {
-//                for (Rs2ItemModel item : Rs2Inventory.items()) {
-//                    if (item != null && item.getSlot() == EquipmentInventorySlot.AMULET.getSlotIdx()) {
-//                        Rs2Bank.depositX(item.getId(), 0); // 0 = deposit all
-//                    }
-//                }
-//            }
-//            if(Rs2Equipment.isWearing(ItemID.AMULET_OF_CHEMISTRY)){
-//                Rs2Bank.closeBank();
-//                sleepUntil(() -> !Rs2Bank.isOpen());
-//            }
         }
     }
 }
