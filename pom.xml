@@ -315,7 +315,7 @@
 				<configuration>
 					<release>11</release>
 				</configuration>
-			</plugin>
+		    </plugin>
 		</plugins>
 		<pluginManagement>
 			<plugins>
