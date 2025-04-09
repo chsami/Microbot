@@ -41,6 +41,6 @@ run: bin_check
     ) -jar $(TARGET_JAR)
 
 test: check
-	$(MVN) $(MVN_FLAGS) -f $(MVN_FLAGS) test
+	$(MVN) $(MVN_FLAGS) -f $(MVN_FILE) test
 
 all: check reset clean compile bin_check test run
