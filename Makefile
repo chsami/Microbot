@@ -43,4 +43,10 @@ run: bin_check
 test: check
 	$(MVN) $(MVN_FLAGS) -f $(MVN_FILE) test
 
-all: check reset clean compile bin_check test run
+all:
+	@echo "Ensuring dependencies are present..." && $(MAKE) check > /dev/null 2>&1
+	@echo "Cleaning, packaging, compiling and installing project..." && $(MAKE) reset > /dev/null 2>&1
+	@echo "Running tests..." && $(MAKE) test > /dev/null 2>&1
+	@echo "Executing latest freshly built dev client..." && $(MAKE) run
+
+
