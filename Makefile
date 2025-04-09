@@ -12,7 +12,7 @@ TARGET_JAR=$(shell fd -t f -g "microbot-*.jar" $(CURDIR)/runelite-client/target/
 check:
 	@[ -x "$(MVN)" ] || { echo "Cannot find mvn executable in path"; exit 1; }
 	@[ -x "$(JAVA)" ] || { echo "Cannot find java executable in path"; exit 1; }
-	@[ -x "$(which fd)" ] || { echo "Cannot find fd executable in path"; exit 1; }
+	@[ -x $(which fd) ] || { echo "Cannot find fd executable in path"; exit 1; }
 	@[ -r "$(MVN_FILE)" ] || { echo "Unable to locate maven pom.xml file"; exit 1; }
 	@[ -d "./runelite-client/src/main/java/net/runelite/client/plugins/microbot" ] || { echo "Microbot plugin SDK not found"; exit 1; }
 
