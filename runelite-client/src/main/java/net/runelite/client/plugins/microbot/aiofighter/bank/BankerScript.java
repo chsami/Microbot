@@ -131,10 +131,28 @@ public class BankerScript extends Script {
     }
 
     public boolean depositAllExcept(AIOFighterConfig config) {
+        // Get default IDs from enabled upkeep items
         List<Integer> ids = Arrays.stream(ItemToKeep.values())
                 .filter(item -> item.isEnabled(config))
                 .flatMap(item -> item.getIds().stream())
                 .collect(Collectors.toList());
+
+        // Grab names from config (e.g. "Air rune, Chaos")
+        List<String> namesToKeep = Arrays.stream(config.itemsToKeep().split(","))
+                .map(String::trim)
+                .map(String::toLowerCase)
+                .filter(name -> !name.isEmpty())
+                .collect(Collectors.toList());
+
+        // Match any inventory items that contain these names
+        List<Integer> matchedIds = Rs2Inventory.items().stream()
+                .filter(item -> item != null && namesToKeep.stream().anyMatch(name -> item.name.toLowerCase().contains(name)))
+                .map(item -> item.id)
+                .collect(Collectors.toList());
+
+        // Combine both ID sources
+        ids.addAll(matchedIds);
+
         Rs2Bank.depositAllExcept(ids.toArray(new Integer[0]));
         return Rs2Bank.isOpen();
     }

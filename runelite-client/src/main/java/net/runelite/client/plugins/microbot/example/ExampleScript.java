@@ -23,7 +23,6 @@ public class ExampleScript extends Script {
                 long startTime = System.currentTimeMillis();
 
                 //CODE HERE
-
                 Rs2NpcModel npc = (Rs2NpcModel) Rs2Player.getInteracting();
 
 

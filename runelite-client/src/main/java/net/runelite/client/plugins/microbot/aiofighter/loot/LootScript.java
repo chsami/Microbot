@@ -65,7 +65,7 @@ public class LootScript extends Script {
             LootingParameters arrowParams = new LootingParameters(
                     config.attackRadius(),
                     1,
-                    10,
+                    3,
                     minFreeSlots,
                     config.toggleDelayedLooting(),
                     config.toggleOnlyLootMyItems(),
@@ -77,8 +77,12 @@ public class LootScript extends Script {
         }
     }
 
+
+
+
     private void lootBones(AIOFighterConfig config) {
-        if (config.toggleBuryBones()) {
+        config.toggleBuryBones();
+        /*if () {
             LootingParameters bonesParams = new LootingParameters(
                     config.attackRadius(),
                     1,
@@ -88,10 +92,13 @@ public class LootScript extends Script {
                     config.toggleOnlyLootMyItems(),
                     "bones"
             );
+
+
             if (Rs2GroundItem.lootItemsBasedOnNames(bonesParams)) {
                 Microbot.pauseAllScripts = false;
             }
-        }
+
+        }*/
     }
 
     private void lootAshes(AIOFighterConfig config) {

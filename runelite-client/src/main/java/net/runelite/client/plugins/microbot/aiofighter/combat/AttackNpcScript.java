@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.aiofighter.combat;
 
 import net.runelite.api.Actor;
+import net.runelite.api.GameState;
 import net.runelite.api.ItemID;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -14,12 +15,15 @@ import net.runelite.client.plugins.microbot.util.ActorModel;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcManager;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
+import net.runelite.client.plugins.microbot.util.security.Login;
+
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,10 +37,13 @@ public class AttackNpcScript extends Script {
     public static Actor currentNpc = null;
     public static List<Rs2NpcModel> attackableNpcs = new ArrayList<>();
     private boolean messageShown = false;
+    private long lastEnemySeen = System.currentTimeMillis();
+
 
     public static void skipNpc() {
         currentNpc = null;
     }
+
 
     public void run(AIOFighterConfig config) {
         try {
@@ -72,6 +79,26 @@ public class AttackNpcScript extends Script {
                 }
                 messageShown = false;
 
+                // Check player count in area before finding NPCs
+                int maxPlayers = config.maxPlayersInArea();
+                if (maxPlayers > 0) {
+                    long playersNearby = Microbot.getClient().getPlayers().stream()
+                            .filter(p -> p != null && p != Microbot.getClient().getLocalPlayer())
+                            .filter(p -> p.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) <= config.attackRadius())
+                            .count();
+
+                    if (playersNearby >= maxPlayers) {
+                        int world = Login.getRandomWorld(Rs2Player.isMember());
+                        Rs2Random.waitEx(3200, 800);
+                        boolean hopped = Microbot.hopToWorld(world);
+                        if (hopped) {
+                            Microbot.status = "Too many players nearby. Hopped to world: " + world;
+                            lastEnemySeen = System.currentTimeMillis();
+                            return;
+                        }
+                    }
+                }
+
                 attackableNpcs = Rs2Npc.getAttackableNpcs(config.attackReachableNpcs())
                         .filter(npc -> npc.getWorldLocation().distanceTo(config.centerLocation()) <= config.attackRadius() && npcsToAttack.contains(npc.getName().toLowerCase()))
                         .sorted(Comparator.comparingInt((Rs2NpcModel npc) -> npc.getInteracting() == Microbot.getClient().getLocalPlayer() ? 0 : 1)
@@ -85,6 +112,7 @@ public class AttackNpcScript extends Script {
                 }
 
                 if (!attackableNpcs.isEmpty()) {
+                    lastEnemySeen = System.currentTimeMillis(); // Reset on valid enemy found
                     Rs2NpcModel npc = attackableNpcs.stream().findFirst().orElse(null);
 
                     if (!Rs2Camera.isTileOnScreen(npc.getLocalLocation()))
@@ -119,13 +147,25 @@ public class AttackNpcScript extends Script {
 
 
                 } else {
-                    System.out.println("No attackable NPC found");
+                    // Check if idle time passed for hopping
+                    int idleSeconds = config.idleTimeout();
+                    if (idleSeconds > 0 && System.currentTimeMillis() - lastEnemySeen > idleSeconds * 1000L) {
+                        int world = Login.getRandomWorld(Rs2Player.isMember());
+                        Rs2Random.waitEx(3200, 800);
+                        boolean hopped = Microbot.hopToWorld(world);
+                        if (hopped) {
+                            Microbot.status = "Hopped to world: " + world;
+                            lastEnemySeen = System.currentTimeMillis(); // Reset timer after hop
+                        }
+                    }
+                    System.out.println("No attackable NPC found" + idleSeconds);
                 }
             } catch (Exception ex) {
                 System.out.println(ex.getMessage());
             }
         }, 0, 600, TimeUnit.MILLISECONDS);
     }
+
 
 
     /**

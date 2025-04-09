@@ -61,9 +61,9 @@ public class AIOFighterPlugin extends Plugin {
     @Getter
     @Setter
     public static int cooldown = 0;
+    private long lastEnemySeen = System.currentTimeMillis();
     private final CannonScript cannonScript = new CannonScript();
     private final AttackNpcScript attackNpc = new AttackNpcScript();
-
     private final FoodScript foodScript = new FoodScript();
     private final LootScript lootScript = new LootScript();
     private final SafeSpot safeSpotScript = new SafeSpot();
@@ -109,6 +109,7 @@ public class AIOFighterPlugin extends Plugin {
         lootScript.run(config);
         cannonScript.run(config);
         attackNpc.run(config);
+
         //combatPotion.run(config);
         foodScript.run(config);
         //prayerPotionScript.run(config);

@@ -115,10 +115,23 @@ public interface AIOFighterConfig extends Config {
     }
 
     @ConfigItem(
+            keyName = "idleTimeout",
+            name = "Hop world after (s)",
+            description = "Seconds to wait before hopping if no mobs are found 0=(disabled)",
+            position = 2,
+            section = combatSection
+    )
+    @Range(min = 0, max = 600)
+    default int idleTimeout() {
+        return 0; // Default: 0 (disabled)
+    }
+
+
+    @ConfigItem(
             keyName = "Attack Radius",
             name = "Attack Radius",
             description = "The max radius to attack npcs",
-            position = 2,
+            position = 3,
             section = combatSection
     )
     default int attackRadius() {
@@ -129,7 +142,7 @@ public interface AIOFighterConfig extends Config {
             keyName = "Use special attack",
             name = "Use special attack",
             description = "Use special attack",
-            position = 3,
+            position = 4,
             section = combatSection
     )
     default boolean useSpecialAttack() {
@@ -140,7 +153,7 @@ public interface AIOFighterConfig extends Config {
             keyName = "Cannon",
             name = "Auto reload cannon",
             description = "Automatically reloads cannon",
-            position = 4,
+            position = 5,
             section = combatSection
     )
     default boolean toggleCannon() {
@@ -152,7 +165,7 @@ public interface AIOFighterConfig extends Config {
             keyName = "Safe Spot",
             name = "Safe Spot",
             description = "Shift Right-click the ground to select the safe spot tile",
-            position = 5,
+            position = 6,
             section = combatSection
     )
     default boolean toggleSafeSpot() {
@@ -164,7 +177,7 @@ public interface AIOFighterConfig extends Config {
             keyName = "PlayStyle",
             name = "Play Style",
             description = "Play Style",
-            position = 6,
+            position = 7,
             section = combatSection
     )
     default PlayStyle playStyle() {
@@ -175,11 +188,23 @@ public interface AIOFighterConfig extends Config {
             keyName = "ReachableNpcs",
             name = "Only attack reachable npcs",
             description = "Only attack npcs that we can reach with melee",
-            position = 7,
+            position = 8,
             section = combatSection
     )
     default boolean attackReachableNpcs() {
         return true;
+    }
+
+    @ConfigItem(
+            keyName = "maxPlayersInArea",
+            name = "Max players in area",
+            description = "Max players allowed in attack radius before hopping worlds (0 = disabled)",
+            position = 9,
+            section = combatSection
+    )
+    @Range(min = 0, max = 100)
+    default int maxPlayersInArea() {
+        return 0; // 0 means disabled
     }
 
     @ConfigItem(
@@ -857,6 +882,18 @@ public interface AIOFighterConfig extends Config {
     )
     default boolean ignoreTeleport() {
         return true;
+    }
+
+    //Keep certain items and dont deposit into bank
+    @ConfigItem(
+            keyName = "itemsToKeep",
+            name = "Items to keep",
+            description = "Comma-separated list of item names to keep in inventory (e.g. Air rune,Chaos rune)",
+            position = 10,
+            section = banking
+    )
+    default String itemsToKeep() {
+        return "";
     }
 
     // Safety section
