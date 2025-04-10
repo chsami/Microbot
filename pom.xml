@@ -140,6 +140,12 @@
 	<dependencyManagement>
 		<dependencies>
 			<dependency>
+				<groupId>org.hotswap.agent.HotswapAgent</groupId>
+				<artifactId>HotswapAgent</artifactId>
+				<version>${project.version}</version>
+				<scope>provided</scope>
+			</dependency>
+			<dependency>
 				<groupId>com.google.guava</groupId>
 				<artifactId>guava</artifactId>
 				<version>23.2-jre</version>
@@ -241,7 +247,7 @@
 			<!--				<configuration>-->
 			<!--					&lt;!&ndash; Javadoc the delombok sources &ndash;&gt;-->
 			<!--					<sourcepath>${project.build.directory}/delombok</sourcepath>-->
-			<!--					&lt;!&ndash;default bottom uses outputTimestamp for the year and generates 2014-1970--> 
+			<!--					&lt;!&ndash;default bottom uses outputTimestamp for the year and generates 2014-1970-->
 			<!--					<bottom>Copyright &#169; {inceptionYear}</bottom>-->
 			<!--				</configuration>-->
 			<!--				&lt;!&ndash; maven-release-plugin runs maven-javadoc-plugin:jar as one of its-->
@@ -315,7 +321,7 @@
 				<configuration>
 					<release>11</release>
 				</configuration>
-			</plugin>
+		    </plugin>
 		</plugins>
 		<pluginManagement>
 			<plugins>
