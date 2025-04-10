@@ -5,10 +5,12 @@ MVN_FLAGS=-am -cpu
 JAVA=$(shell which java)
 JAVA_FLAGS=-Xmx2048m -XX:+IgnoreUnrecognizedVMOptions
 OSX_FULLSCREEN_FLAG=-ea --add-opens='java.desktop/com.apple.eawt=ALL-UNNAMED'
+
+FIND=$(shell which find)
 TARGET_JAR=$(shell $(FIND) $(CURDIR)/runelite-client/target -type f -name "microbot-*.jar" -print | sort -V | head -n1)
 
 HOTSWAP_JAR_PATH=$(JAVA_HOME)/lib/hotswap/hotswap-agent.jar
-HOTSWAP_FLAGS=-javapath:$(HOTSWAP_JAR_PATH)=autoHotswap=true -XX:+AllowEnhancedClassRedefinition -XX:HotswapAgent=fatjar -Xlog:redefine+class*=info
+HOTSWAP_FLAGS=-javapath:$(HOTSWAP_JAR_PATH)=autoHotswap=true -XX:+AllowEnhancedClassRedefinition -XX:HotswapAgent=core -XX:HotswapAgent=fatjar -Xlog:redefine+class*=info
 
 .PHONY: check bin_check hot_check reset clean package compile recompile-client all test run
 
