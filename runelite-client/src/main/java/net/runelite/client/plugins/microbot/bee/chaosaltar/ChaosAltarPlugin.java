@@ -27,10 +27,6 @@ public class ChaosAltarPlugin extends Plugin {
     ChaosAltarConfig provideConfig(ConfigManager configManager) {
         return configManager.getConfig(ChaosAltarConfig.class);
     }
-    @Inject
-    private PlayerMonitorPlugin playerMonitorPlugin;
-    @Inject
-    private AutoLoginPlugin autoLoginPlugin;
 
     @Inject
     private OverlayManager overlayManager;
