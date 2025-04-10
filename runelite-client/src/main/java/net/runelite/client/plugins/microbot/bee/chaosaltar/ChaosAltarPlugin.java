@@ -5,8 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.plugins.microbot.accountselector.AutoLoginPlugin;
-import net.runelite.client.plugins.microbot.storm.plugins.PlayerMonitor.PlayerMonitorPlugin;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -27,10 +25,6 @@ public class ChaosAltarPlugin extends Plugin {
     ChaosAltarConfig provideConfig(ConfigManager configManager) {
         return configManager.getConfig(ChaosAltarConfig.class);
     }
-    @Inject
-    private PlayerMonitorPlugin playerMonitorPlugin;
-    @Inject
-    private AutoLoginPlugin autoLoginPlugin;
 
     @Inject
     private OverlayManager overlayManager;
