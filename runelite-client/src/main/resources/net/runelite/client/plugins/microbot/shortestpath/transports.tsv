@@ -69,19 +69,19 @@
 3138 3078 1	3138 3078 0	Climb-down;Ladder;16679								2	
 											
 # Lumbridge											
-3205 3228 0	3206 3229 1	Climb-up;Staircase;16671								1	
+3205 3228 0	3206 3229 1	Climb-up;Staircase;56230								1	
 3206 3229 1	3205 3228 0	Climb-down;Staircase;16672								1	
-3206 3229 0	3206 3229 1	Climb-up;Staircase;16671								1	
+3206 3229 0	3206 3229 1	Climb-up;Staircase;56230								1	
 3205 3228 1	3205 3228 0	Climb-down;Staircase;16672								1	
 3206 3229 1	3206 3229 2	Climb-up;Staircase;16672								1	
-3206 3229 2	3205 3228 1	Climb-down;Staircase;16673								1	
+3206 3229 2	3205 3228 1	Climb-down;Staircase;56231								1	
 3205 3228 1	3206 3229 2	Climb-up;Staircase;16672								1	
 3205 3209 1	3206 3208 0	Climb-down;Staircase;16672								1	
-3206 3208 0	3205 3209 1	Climb-up;Staircase;16671								1	
+3206 3208 0	3205 3209 1	Climb-up;Staircase;56230								1	
 3206 3208 1	3206 3208 0	Climb-down;Staircase;16672								1	
-3205 3209 0	3205 3209 1	Climb-up;Staircase;16671								1	
+3205 3209 0	3205 3209 1	Climb-up;Staircase;56230								1	
 3205 3209 1	3205 3209 2	Climb-up;Staircase;16672								1	
-3205 3209 2	3206 3208 1	Climb-down;Staircase;16673								1	
+3205 3209 2	3206 3208 1	Climb-down;Staircase;56231								1	
 3206 3208 1	3205 3209 2	Climb-up;Staircase;16672								1	
 3210 3216 0	3210 9616 0	Climb-down;Trapdoor;14880									
 3210 9616 0	3210 3216 0	Climb-up;Ladder;17385								2	

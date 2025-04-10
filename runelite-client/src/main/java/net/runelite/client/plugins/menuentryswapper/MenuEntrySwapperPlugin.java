@@ -2024,8 +2024,7 @@ public class MenuEntrySwapperPlugin extends Plugin
 	private int getMungedId(int ident, int widgetId, int childIdx)
 	{
 		if (widgetId == InterfaceID.Bankmain.ITEMS
-			&& childIdx >= 0
-			&& client.getVarbitValue(VarbitID.BANK_BANKOPS_TOGGLE_ON) != 0)
+			&& childIdx >= 0)
 		{
 			int delta = ident;
 			int exclude = client.getVarbitValue(VarbitID.BANK_QUANTITY_TYPE);
