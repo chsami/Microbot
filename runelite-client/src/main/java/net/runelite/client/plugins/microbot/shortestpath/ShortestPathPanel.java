@@ -159,8 +159,16 @@ public class ShortestPathPanel extends PluginPanel {
         startButton.addActionListener(e -> startWalking(getSelectedBank().getWorldPoint()));
         stopButton.addActionListener(e -> stopWalking());
 
-        JPanel nearestBankPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        //JPanel nearestBankPanel = new JPanel(new FlowLayout(FlowLayout.CENTER)); Old layout without Ge Button
+        JPanel nearestBankPanel = new JPanel(new GridLayout(2, 1, 5, 5));
         JButton useNearestBankButton = new JButton("Go To Nearest Bank");
+
+        JButton goToGrandExchangeButton = new JButton("Go To Grand Exchange");
+        goToGrandExchangeButton.addActionListener(e -> {
+            // Grand Exchange WorldPoint
+            WorldPoint ge = new WorldPoint(3164, 3487, 0); // Varrock GE location
+            startWalking(ge);
+        });
 
         useNearestBankButton.addActionListener(e -> {
             CompletableFuture.supplyAsync(Rs2Bank::getNearestBank)
@@ -176,6 +184,7 @@ public class ShortestPathPanel extends PluginPanel {
         });
         
         nearestBankPanel.add(useNearestBankButton);
+        nearestBankPanel.add(goToGrandExchangeButton); // Go to GE button
 
         buttonPanel.add(startButton);
         buttonPanel.add(stopButton);
