@@ -243,7 +243,7 @@ public class MotherloadMineScript extends Script {
             } else
                 status = MLMStatus.BANKING;
         }
-        if (hasOreInInventory())
+        if (hasOreInInventory() && Rs2Inventory.isFull())
             status = MLMStatus.BANKING;
     }
 
@@ -373,6 +373,7 @@ public class MotherloadMineScript extends Script {
     private void getEquipment(boolean equip) {
         if (!Rs2Bank.isOpen())
             Rs2Bank.openBank();
+        Rs2Bank.depositAllExcept("hammer", pickaxeName, "pay-dirt");
         List<Integer> picks = new ArrayList<>();
         picks.addAll(
                 Rs2Bank.getItems().stream()
@@ -397,7 +398,6 @@ public class MotherloadMineScript extends Script {
             debugMessage("Best current pickaxe: " + bestPick.getItemName());
         pickaxeName = bestPick.getItemName();
         if (!Rs2Inventory.hasItem(bestPick.getItemId())) {
-            Rs2Bank.depositAllExcept("hammer", pickaxeName, "pay-dirt");
             if (equip)
                 Rs2Bank.withdrawAndEquip(bestPick.getItemId());
             else
