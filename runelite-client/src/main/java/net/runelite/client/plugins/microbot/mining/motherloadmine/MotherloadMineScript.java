@@ -1,8 +1,24 @@
 package net.runelite.client.plugins.microbot.mining.motherloadmine;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.*;
+import net.runelite.api.EquipmentInventorySlot;
+import net.runelite.api.GameObject;
+import net.runelite.api.GameState;
+import net.runelite.api.ItemID;
+import net.runelite.api.NullObjectID;
+import net.runelite.api.ObjectID;
+import net.runelite.api.Perspective;
+import net.runelite.api.Varbits;
+import net.runelite.api.WallObject;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
@@ -11,16 +27,14 @@ import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.mining.motherloadmine.enums.MLMMiningSpot;
 import net.runelite.client.plugins.microbot.mining.motherloadmine.enums.MLMPickaxes;
 import net.runelite.client.plugins.microbot.mining.motherloadmine.enums.MLMStatus;
-import net.runelite.client.plugins.microbot.util.antiban.AntibanPlugin;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
-import net.runelite.client.plugins.microbot.util.depositbox.DepositBoxLocation;
-import net.runelite.client.plugins.microbot.util.depositbox.Rs2DepositBox;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
+import net.runelite.client.plugins.microbot.util.depositbox.Rs2DepositBox;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
@@ -31,21 +45,11 @@ import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
-import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Collections;
-import java.util.stream.Collectors;
-import java.util.Comparator;
-import java.util.Optional;
-import java.util.concurrent.TimeUnit;
-
+// TODO: Replace ItemID, ObjectID, Varbits and other deprecated enums with their
+// newer idiomatic counterparts
 @Slf4j
 public class MotherloadMineScript extends Script {
-    public static final String VERSION = "1.9.0";
-
-    private static final List<Integer> MLM_REGIONS = Arrays.asList(14679, 14680, 14681, 14935, 14936, 14937, 15191,
-            15192, 15193);
+    public static final String VERSION = "1.9.1";
     private static final Integer DWARF_MINE_REGION_ID = 12184;
     private static final WorldPoint DWARF_MINE_ENTRANCE = new WorldPoint(3061, 3377, 0);
 
@@ -67,7 +71,7 @@ public class MotherloadMineScript extends Script {
     public static MLMMiningSpot miningSpot = MLMMiningSpot.IDLE;
     private MotherloadMineConfig config;
 
-    private String pickaxeName = "";
+    private String pickaxeName = "pickaxe";
     @Setter
     private static boolean shouldEmptySack = false;
 
@@ -95,6 +99,7 @@ public class MotherloadMineScript extends Script {
         MotherloadMinePlugin.setCurSackSize(
                 Microbot.getVarbitValue(Varbits.SACK_NUMBER));
 
+        Rs2Walker.disableTeleports = true;
         miningSpot = MLMMiningSpot.IDLE;
         status = MLMStatus.IDLE;
         shouldEmptySack = false;
@@ -149,7 +154,7 @@ public class MotherloadMineScript extends Script {
             Rs2Walker.walkTo(BankLocation.MOTHERLOAD.getWorldPoint());
             Rs2Player.waitForWalking(18000);
             ensureLowerFloor();
-            if (!hasRequiredTools() || hasGemInInventory())
+            if (!hasRequiredTools() || hasGemInInventory() || hasOreInInventory())
                 bankItems();
             if (Rs2Inventory.hasItem(ItemID.PAYDIRT))
                 depositHopper();
@@ -157,11 +162,11 @@ public class MotherloadMineScript extends Script {
     }
 
     private void executeTask() {
-        if (!super.run() || Microbot.pauseAllScripts) {
+        if (!super.run() || !Microbot.isLoggedIn()) {
             resetMiningState();
             return;
         }
-        if (!Microbot.isLoggedIn() || Microbot.getClient().getGameState().ordinal() <= GameState.LOADING.ordinal())
+        if (Microbot.pauseAllScripts || Microbot.getClient().getGameState().ordinal() <= GameState.LOADING.ordinal())
             return;
 
         if (Rs2AntibanSettings.actionCooldownActive)
@@ -169,8 +174,6 @@ public class MotherloadMineScript extends Script {
 
         if (Rs2Player.isAnimating() || Microbot.getClient().getLocalPlayer().isInteracting())
             return;
-
-        Rs2Walker.disableTeleports = true;
 
         handleDragonPickaxeSpec();
         determineStatusFromInventory();
@@ -269,7 +272,7 @@ public class MotherloadMineScript extends Script {
             if (Rs2Inventory.hasItem(ItemID.PAYDIRT)) {
                 if (MotherloadMinePlugin.getMaxSackSize() >= MotherloadMinePlugin.getCurSackSize() + Rs2Inventory
                         .count(ItemID.PAYDIRT)) {
-                    debugMessage("Depositing extra payddirt");
+                    debugMessage("Depositing extra paydirt");
                     Rs2GameObject.interact(HOPPER_DEPOSIT_DOWN);
                 }
             }
@@ -311,8 +314,8 @@ public class MotherloadMineScript extends Script {
 
     private void fixWaterwheel() {
         ensureLowerFloor();
+        debugMessage("Fixing broken water wheel");
         if (Rs2Walker.walkTo(new WorldPoint(3741, 5666, 0), 15)) {
-            debugMessage("Fixing broken water wheel");
             Microbot.isGainingExp = false;
             if (Rs2GameObject.interact(ObjectID.BROKEN_STRUT)) {
                 sleepUntil(() -> Microbot.isGainingExp);
@@ -376,12 +379,12 @@ public class MotherloadMineScript extends Script {
         List<Integer> picks = new ArrayList<>();
         picks.addAll(
                 Rs2Bank.getItems().stream()
-                        .filter((i) -> i.getName().contains("pickaxe"))
+                        .filter((i) -> i != null && i.getName().contains("pickaxe"))
                         .map((w) -> w.getItemId())
                         .collect(Collectors.toList()));
         picks.addAll(
                 Rs2Inventory.items().stream()
-                        .filter((i) -> i.name.contains("pickaxe"))
+                        .filter((i) -> i != null && i.name.contains("pickaxe"))
                         .map((w) -> w.id)
                         .collect(Collectors.toList()));
         if (Rs2Equipment.isWearing("pickaxe")) {
@@ -396,8 +399,6 @@ public class MotherloadMineScript extends Script {
         if (bestPick.getItemName() != pickaxeName)
             debugMessage("Best current pickaxe: " + bestPick.getItemName());
         pickaxeName = bestPick.getItemName();
-        if (!Rs2Inventory.hasItem("hammer"))
-            Rs2Bank.withdrawOne("hammer");
         if (!Rs2Inventory.hasItem(bestPick.getItemId())) {
             Rs2Bank.depositAllExcept("hammer", pickaxeName, "pay-dirt");
             if (equip)
@@ -405,14 +406,13 @@ public class MotherloadMineScript extends Script {
             else
                 Rs2Bank.withdrawOne(bestPick.getItemId());
         }
-        Rs2Inventory.waitForInventoryChanges(() -> Rs2Antiban.moveMouseRandomly());
     }
 
     private MLMPickaxes getBestPickaxe(List<Integer> items) {
         MLMPickaxes bestPickaxe = null;
         debugMessage("Determining best available pickaxe");
         for (MLMPickaxes pickaxe : MLMPickaxes.values()) {
-            if (items.stream().noneMatch(i -> i.equals(pickaxe.getItemId())))
+            if (items.stream().noneMatch(i -> i != null && i.equals(pickaxe.getItemId())))
                 continue;
             if (pickaxe.hasRequirements(config.pickAxeInInventory())) {
                 if (bestPickaxe == null || pickaxe.getMiningLevel() >= bestPickaxe.getMiningLevel()) {
@@ -542,7 +542,7 @@ public class MotherloadMineScript extends Script {
 
     private boolean checkInMlm() {
         int currentMapRegionID = Rs2Player.getWorldLocation().getRegionID();
-        return MLM_REGIONS.contains(currentMapRegionID);
+        return MotherloadMinePlugin.getMLM_REGIONS().contains(currentMapRegionID);
     }
 
     private void resetMiningState() {
@@ -559,11 +559,11 @@ public class MotherloadMineScript extends Script {
     @Override
     public void shutdown() {
         Rs2Antiban.resetAntibanSettings();
+        Rs2Walker.setTarget(null);
         resetMiningState();
         status = MLMStatus.IDLE;
         pickaxeName = "";
         shouldEmptySack = false;
-        Rs2Walker.setTarget(null);
         super.shutdown();
     }
 }

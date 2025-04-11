@@ -45,22 +45,18 @@ public class MotherloadMinePlugin extends Plugin {
     @Inject
     private MotherloadMineScript motherloadMineScript;
     @Inject
-    private Client client;
-    @Inject
-    private ClientThread clientThread;
-    @Inject
-    private Notifier notifier;
-    @Inject
     private OverlayManager overlayManager;
+    @Inject
+    private Client client;
 
     @Getter
     private static final List<Integer> MLM_REGIONS = Arrays.asList(14679, 14680, 14681, 14935, 14936, 14937, 15191,
-            15192,
-            15193);
+            15192, 15193);
 
     @Getter
     private static final List<Integer> MLM_ORE_TYPES = Arrays.asList(
             ItemID.RUNITE_ORE,
+
             ItemID.ADAMANTITE_ORE,
             ItemID.MITHRIL_ORE,
             ItemID.GOLD_ORE,
@@ -86,6 +82,7 @@ public class MotherloadMinePlugin extends Plugin {
 
     @Override
     protected void startUp() throws AWTException {
+        Microbot.setClient(client);
         scriptStartTime = Instant.now();
         overlayManager.add(motherloadMineOverlay);
         motherloadMineScript.run(config);
@@ -142,7 +139,6 @@ public class MotherloadMinePlugin extends Plugin {
                 .filter(item -> ItemID.PAYDIRT == item.getId())
                 .count();
         if (invPayloadCount + curSackSize >= maxSackSize && !MotherloadMineScript.getShouldEmptySack()) {
-            Microbot.log("Current pay-dirt will fill sack");
             MotherloadMineScript.setStatus(MLMStatus.DEPOSIT_HOPPER);
             MotherloadMineScript.setShouldEmptySack(true);
             motherloadMineScript.depositHopper();

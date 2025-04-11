@@ -12,13 +12,13 @@ public interface MotherloadMineConfig extends Config {
         return "1. Sit back and the bot will do the rest.";
     }
 
-    @ConfigItem(keyName = "PickAxeInInventory", name = "Pick Axe In Inventory?", description = "Pick Axe in inventory?", position = 1)
+    @ConfigItem(keyName = "PickAxeInInventory", name = "Only use Pickaxe In Inventory?", description = "Only use your Pickaxe in inventory?", position = 1)
     default boolean pickAxeInInventory() {
         return false;
     }
 
     // Mine upstairs
-    @ConfigItem(keyName = "MineUpstairs", name = "Mine Upstairs?", description = "Mine upstairs?", position = 2)
+    @ConfigItem(keyName = "MineUpstairs", name = "Mine Upstairs?", description = "Can you Mine upstairs?", position = 2)
     default boolean mineUpstairs() {
         return false;
     }
@@ -30,7 +30,7 @@ public interface MotherloadMineConfig extends Config {
     }
 
     // Print debug messages
-    @ConfigItem(keyName = "PrintDebugMessages", name = "Print debug and general log messages?", description = "Print script messages in chat?", position = 4)
+    @ConfigItem(keyName = "PrintDebugMessages", name = "Print debug log messages?", description = "Print script messages in chat?", position = 4)
     default boolean printDebugMessages() {
         return false;
     }
