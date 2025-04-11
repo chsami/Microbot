@@ -3,7 +3,7 @@ MVN_FILE=$(CURDIR)/pom.xml
 MVN_FLAGS=-am
 
 JAVA=$(shell which java)
-JAVA_FLAGS=-Xmx2048m -XX:+IgnoreUnrecognizedVMOptions
+JAVA_FLAGS=-Xmx1024m -XX:+IgnoreUnrecognizedVMOptions
 OSX_FULLSCREEN_FLAG=-ea --add-opens='java.desktop/com.apple.eawt=ALL-UNNAMED'
 
 FIND=$(shell which find)
