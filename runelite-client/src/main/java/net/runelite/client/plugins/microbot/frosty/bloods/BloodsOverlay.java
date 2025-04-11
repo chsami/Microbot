@@ -30,7 +30,7 @@ public class BloodsOverlay extends OverlayPanel {
             panelComponent.getChildren().clear();
             panelComponent.setPreferredSize(new Dimension(200, 275));
             panelComponent.getChildren().add(TitleComponent.builder()
-                    .text("True Blood Rc v1.0.0").color((Color.red)).build());
+                    .text("True Blood Rc v1.0.8").color((Color.red)).build());
             //panelComponent.getChildren().add(LineComponent.builder().build());
             panelComponent.getChildren().add(LineComponent.builder().left("Xp gained:")
                     .right(String.valueOf(plugin.getTotalXpGained())).build());

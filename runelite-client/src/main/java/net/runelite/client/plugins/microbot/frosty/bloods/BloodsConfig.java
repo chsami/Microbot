@@ -1,14 +1,14 @@
 package net.runelite.client.plugins.microbot.frosty.bloods;
 
 import net.runelite.client.config.*;
-import net.runelite.client.plugins.microbot.frosty.bloods.enums.HomeTeleports;
-import net.runelite.client.plugins.microbot.frosty.bloods.enums.Teleports;
+import net.runelite.client.plugins.microbot.frosty.bloods.enums.RuneType;
+
 
 @ConfigGroup("Frosty")
 @ConfigInformation(
         "• This plugin will craft runes at True Blood altar <br />" +
         "• IF using POH, ensure you have pool and fairy ring <br />" +
-        "• IF not using POH, have Ardougne cloak, house tabs and Ring of Duelings in bank <br />" +
+        "• IF not using POH, have Ardougne cloak, house tabs and Ring of Duelings(8) in bank <br />" +
         "• <b> Ensure your last destination is DLS on fairy ring </b> <br />" +
         "• Ensure you have a Colossal pouch <br />" +
         "• Ensure you have Tiara or a bound Hat of the Eye equipped <br />" +
@@ -28,10 +28,22 @@ public interface BloodsConfig extends Config {
             keyName = "Use POH",
             name = "Use POH",
             description = "Check if you have fairy ring and pool in POH",
-            position = 6,
+            position = 1,
             section = settingsSection
     )
     default boolean usePoh() {
         return false;
     }
+
+    @ConfigItem(
+            keyName = "runeType",
+            name = "Rune Type",
+            description = "Select the type of rune to craft",
+            position = 2,
+            section = settingsSection
+    )
+    default RuneType runeType() {
+        return RuneType.BLOOD_RUNE;
+    }
+
 }
