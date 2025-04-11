@@ -141,6 +141,7 @@ public class MotherloadMinePlugin extends Plugin {
                 .filter(item -> MLM_ORE_TYPES.contains(item.getId()))
                 .count() > 0) {
             MotherloadMineScript.setStatus(MLMStatus.BANKING);
+            motherloadMineScript.bankItems();
         }
         int invPayloadCount = (int) Arrays.stream(container.getItems())
                 .filter(item -> ItemID.PAYDIRT == item.getId())

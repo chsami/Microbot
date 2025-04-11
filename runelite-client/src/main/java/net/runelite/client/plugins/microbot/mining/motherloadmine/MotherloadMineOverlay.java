@@ -50,14 +50,20 @@ public class MotherloadMineOverlay extends OverlayPanel {
 
             panelComponent.getChildren().add(LineComponent.builder()
                     .left("Mining Location: ")
-                    .right(MotherloadMineScript.miningSpot.name())
+                    .right(
+                            MotherloadMineScript.miningSpot.name() != null
+                                    ? MotherloadMineScript.miningSpot.name()
+                                    : "NONE")
                     .build());
 
             addEmptyLine();
 
             panelComponent.getChildren().add(LineComponent.builder()
                     .left("Status: ")
-                    .right(MotherloadMineScript.status.name())
+                    .right(
+                            MotherloadMineScript.status.name() != null
+                                    ? MotherloadMineScript.status.name()
+                                    : "NONE")
                     .build());
         } catch (Exception ex) {
             System.out.println(ex.getMessage());
