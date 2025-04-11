@@ -140,12 +140,6 @@
 	<dependencyManagement>
 		<dependencies>
 			<dependency>
-				<groupId>org.hotswap.agent.HotswapAgent</groupId>
-				<artifactId>HotswapAgent</artifactId>
-				<version>${project.version}</version>
-				<scope>provided</scope>
-			</dependency>
-			<dependency>
 				<groupId>com.google.guava</groupId>
 				<artifactId>guava</artifactId>
 				<version>23.2-jre</version>
