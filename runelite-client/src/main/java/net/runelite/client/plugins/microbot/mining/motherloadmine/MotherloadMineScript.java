@@ -373,7 +373,6 @@ public class MotherloadMineScript extends Script {
     private void getPickaxe(boolean equip) {
         if (!Rs2Bank.isOpen())
             Rs2Bank.openBank();
-        sleepUntil(() -> Rs2Bank.isOpen(), 18000);
         List<Integer> picks = new ArrayList<>();
         picks.addAll(
                 Rs2Bank.getItems().stream()
