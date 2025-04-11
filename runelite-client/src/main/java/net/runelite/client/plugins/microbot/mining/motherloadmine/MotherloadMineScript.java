@@ -83,6 +83,8 @@ public class MotherloadMineScript extends Script {
     public boolean run(MotherloadMineConfig config) {
         this.config = config;
         initialize();
+        // Now close ensure no accidental teleports happen
+        Rs2Walker.disableTeleports = true;
         // Apply after init as it uses a generic template
         Rs2Antiban.antibanSetupTemplates.applyMiningSetup();
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(this::executeTask, 0, 600,
