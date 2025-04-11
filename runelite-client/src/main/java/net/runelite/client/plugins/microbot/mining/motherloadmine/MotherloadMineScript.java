@@ -78,6 +78,8 @@ public class MotherloadMineScript extends Script {
     public boolean run(MotherloadMineConfig config) {
         this.config = config;
         initialize();
+        // Apply after init as it uses a generic template
+        Rs2Antiban.antibanSetupTemplates.applyMiningSetup();
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(this::executeTask, 0, 600,
                 TimeUnit.MILLISECONDS);
         return true;
@@ -85,11 +87,6 @@ public class MotherloadMineScript extends Script {
 
     private void initialize() {
         debugMessage("Initialising script");
-
-        Rs2Antiban.antibanSetupTemplates.applyMiningSetup();
-        Rs2AntibanSettings.simulateMistakes = true;
-        Rs2AntibanSettings.simulateFatigue = true;
-        Rs2AntibanSettings.naturalMouse = true;
 
         MotherloadMinePlugin.setMaxSackSize(
                 Microbot.getVarbitValue(Varbits.SACK_UPGRADED) == 1
