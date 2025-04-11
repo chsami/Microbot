@@ -10,45 +10,56 @@ import net.runelite.client.ui.overlay.components.TitleComponent;
 import javax.inject.Inject;
 import java.awt.*;
 
-import static net.runelite.client.plugins.microbot.mining.motherloadmine.MotherloadMineScript.status;
-
-
 public class MotherloadMineOverlay extends OverlayPanel {
     @Inject
-    MotherloadMineOverlay(MotherloadMinePlugin plugin)
-    {
+    MotherloadMineOverlay(MotherloadMinePlugin plugin) {
         super(plugin);
-        setPosition(OverlayPosition.TOP_LEFT);
+        setPosition(OverlayPosition.BOTTOM_LEFT);
         setSnappable(true);
     }
+
     @Override
     public Dimension render(Graphics2D graphics) {
         try {
-
-            panelComponent.setPreferredSize(new Dimension(275, 900));
+            panelComponent.setPreferredSize(new Dimension(225, 750));
             panelComponent.getChildren().add(TitleComponent.builder()
-                    .text("\uD83E\uDD86 Motherlode Mine \uD83E\uDD86")
+                    .text("[ Motherlode Mine ]")
                     .color(Color.ORANGE)
                     .build());
 
+            addEmptyLine();
 
-            if(Rs2AntibanSettings.devDebug)
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Version: ")
+                    .right(MotherloadMineScript.VERSION)
+                    .build());
+
+            addEmptyLine();
+
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Running Time: ")
+                    .right(MotherloadMinePlugin.getTimeRunning())
+                    .build());
+
+            if (Rs2AntibanSettings.devDebug) {
+                addEmptyLine();
                 Rs2Antiban.renderAntibanOverlayComponents(panelComponent);
+            }
 
             addEmptyLine();
 
-
             panelComponent.getChildren().add(LineComponent.builder()
-                    .left("Mining Location: " + MotherloadMineScript.miningSpot.name())
+                    .left("Mining Location: ")
+                    .right(MotherloadMineScript.miningSpot.name())
                     .build());
 
             addEmptyLine();
 
             panelComponent.getChildren().add(LineComponent.builder()
-                    .left(status.toString())
-                    .right("Version: " + MotherloadMineScript.VERSION)
+                    .left("Status: ")
+                    .right(MotherloadMineScript.status.name())
                     .build());
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             System.out.println(ex.getMessage());
         }
         return super.render(graphics);
