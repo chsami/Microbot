@@ -9,7 +9,7 @@ public interface MotherloadMineConfig extends Config {
 
     @ConfigItem(keyName = "guide", name = "How to use", description = "How to use this plugin", position = 0)
     default String GUIDE() {
-        return "1. Start near the bank chest in motherload mine and the bot will do the rest.";
+        return "1. Sit back and the bot will do the rest.";
     }
 
     @ConfigItem(keyName = "PickAxeInInventory", name = "Pick Axe In Inventory?", description = "Pick Axe in inventory?", position = 1)
