@@ -48,6 +48,10 @@ public class MotherloadMinePlugin extends Plugin {
     private OverlayManager overlayManager;
     @Inject
     private Client client;
+    @Inject
+    private ClientThread clientThread;
+    @Inject
+    private Notifier notifier;
 
     @Getter
     private static final List<Integer> MLM_REGIONS = Arrays.asList(14679, 14680, 14681, 14935, 14936, 14937, 15191,
@@ -83,6 +87,8 @@ public class MotherloadMinePlugin extends Plugin {
     @Override
     protected void startUp() throws AWTException {
         Microbot.setClient(client);
+        Microbot.setClientThread(clientThread);
+        Microbot.setNotifier(notifier);
         scriptStartTime = Instant.now();
         overlayManager.add(motherloadMineOverlay);
         motherloadMineScript.run(config);

@@ -17,6 +17,7 @@ import net.runelite.api.ItemID;
 import net.runelite.api.NullObjectID;
 import net.runelite.api.ObjectID;
 import net.runelite.api.Perspective;
+import net.runelite.api.Skill;
 import net.runelite.api.Varbits;
 import net.runelite.api.WallObject;
 import net.runelite.api.coords.LocalPoint;
@@ -71,7 +72,7 @@ public class MotherloadMineScript extends Script {
     public static MLMMiningSpot miningSpot = MLMMiningSpot.IDLE;
     private MotherloadMineConfig config;
 
-    private String pickaxeName = "pickaxe";
+    private String pickaxeName = "";
     @Setter
     private static boolean shouldEmptySack = false;
 
@@ -99,7 +100,6 @@ public class MotherloadMineScript extends Script {
         MotherloadMinePlugin.setCurSackSize(
                 Microbot.getVarbitValue(Varbits.SACK_NUMBER));
 
-        Rs2Walker.disableTeleports = true;
         miningSpot = MLMMiningSpot.IDLE;
         status = MLMStatus.IDLE;
         shouldEmptySack = false;
@@ -112,8 +112,10 @@ public class MotherloadMineScript extends Script {
         if (!Microbot.isLoggedIn())
             return;
 
-        if (checkInMlm() && hasRequiredTools())
+        if (checkInMlm() && hasRequiredTools()) {
+            debugMessage("Player ready to mine");
             return;
+        }
 
         Rs2Antiban.antibanSetupTemplates.applyGeneralBasicSetup();
         if (Rs2Bank.isOpen())
@@ -123,23 +125,30 @@ public class MotherloadMineScript extends Script {
 
         // anywhere on the 0Z plane
         if (!Rs2Player.isInCave() && !checkInMlm()) {
+            debugMessage("Travelling towards the dwarven mines");
             while (Rs2Player.getWorldLocation().getRegionID() != DWARF_MINE_REGION_ID) {
                 Rs2Walker.walkTo(DWARF_MINE_ENTRANCE);
-                Rs2Player.waitForWalking(18000);
+                Rs2Player.waitForWalking(5000);
+                if (!Rs2Walker.disableTeleports)
+                    Rs2Walker.disableTeleports = true;
                 sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo2D(DWARF_MINE_ENTRANCE) <= 15);
                 Rs2GameObject.interact("Staircase");
                 sleepUntil(() -> Rs2Player.isInCave(), 600);
             }
         }
 
+        // Now close ensure no accidental teleports happen
+        Rs2Walker.disableTeleports = true;
         // in dwarf mine
         if (Rs2Player.getWorldLocation().getRegionID() == DWARF_MINE_REGION_ID) {
             if ((config.pickAxeInInventory() && !Rs2Inventory.hasItem("pickaxe", false))
                     || (!config.pickAxeInInventory() && !Rs2Equipment.isWearing("pickaxe", false))) {
+                debugMessage("Getting a pickaxe for rockfall in MLM");
                 Rs2GameObject.interact("Staircase");
-                sleepUntil(() -> !Rs2Player.isInCave());
+                sleepUntil(() -> !Rs2Player.isInCave(), 600);
                 Rs2Walker.walkTo(BankLocation.FALADOR_EAST.getWorldPoint());
-                getPickaxe(!config.pickAxeInInventory());
+                getEquipment(!config.pickAxeInInventory());
+                debugMessage("Returning to mines");
                 Rs2Walker.walkTo(DWARF_MINE_ENTRANCE);
                 Rs2Player.waitForWalking(5000);
                 Rs2GameObject.interact("Staircase");
@@ -151,6 +160,7 @@ public class MotherloadMineScript extends Script {
 
         // in mlm
         if (checkInMlm()) {
+            debugMessage("Arrived at MLM preparing to mine");
             Rs2Walker.walkTo(BankLocation.MOTHERLOAD.getWorldPoint());
             Rs2Player.waitForWalking(18000);
             ensureLowerFloor();
@@ -218,23 +228,20 @@ public class MotherloadMineScript extends Script {
                 || shouldEmptySack) {
             resetMiningState();
             status = MLMStatus.EMPTY_SACK;
-        } else if (!Rs2Inventory.isFull()) {
+        } else if (!Rs2Inventory.isFull() && !shouldEmptySack) {
             status = MLMStatus.MINING;
-        } else { // Inventory is full
+        } else if (Rs2Inventory.isFull()) { // inventory is full
             resetMiningState();
             if (Rs2Inventory.hasItem(ItemID.PAYDIRT)
                     && sackCount + Rs2Inventory.count(ItemID.PAYDIRT) <= MotherloadMinePlugin.getMaxSackSize()) {
-                if (Rs2GameObject.getGameObjects(ObjectID.BROKEN_STRUT).size() > 1 && Rs2Inventory.hasItem("hammer")) {
+                if (Rs2GameObject.getGameObjects(ObjectID.BROKEN_STRUT).size() > 1 && Rs2Inventory.hasItem("hammer"))
                     status = MLMStatus.FIXING_WATERWHEEL;
-                } else {
+                else
                     status = MLMStatus.DEPOSIT_HOPPER;
-                }
-            } else {
+            } else
                 status = MLMStatus.BANKING;
-            }
         }
-
-        if (hasOreInInventory() && Rs2Inventory.isFull())
+        if (hasOreInInventory())
             status = MLMStatus.BANKING;
     }
 
@@ -270,8 +277,8 @@ public class MotherloadMineScript extends Script {
         debugMessage("Emptying sack");
         while (MotherloadMinePlugin.getCurSackSize() > 0) {
             if (Rs2Inventory.hasItem(ItemID.PAYDIRT)) {
-                if (MotherloadMinePlugin.getMaxSackSize() >= MotherloadMinePlugin.getCurSackSize() + Rs2Inventory
-                        .count(ItemID.PAYDIRT)) {
+                if (MotherloadMinePlugin.getMaxSackSize() >= MotherloadMinePlugin.getCurSackSize()
+                        + Rs2Inventory.count(ItemID.PAYDIRT)) {
                     debugMessage("Depositing extra paydirt");
                     Rs2GameObject.interact(HOPPER_DEPOSIT_DOWN);
                 }
@@ -280,9 +287,8 @@ public class MotherloadMineScript extends Script {
                 Rs2GameObject.interact(SACK_ID);
                 sleepUntil(this::hasOreInInventory);
             }
-            if (hasOreInInventory()) {
+            if (hasOreInInventory())
                 bankItems();
-            }
         }
 
         shouldEmptySack = false;
@@ -316,9 +322,8 @@ public class MotherloadMineScript extends Script {
         ensureLowerFloor();
         debugMessage("Fixing broken water wheel");
         if (Rs2Walker.walkTo(new WorldPoint(3741, 5666, 0), 15)) {
-            Microbot.isGainingExp = false;
             if (Rs2GameObject.interact(ObjectID.BROKEN_STRUT)) {
-                sleepUntil(() -> Microbot.isGainingExp);
+                Rs2Player.waitForXpDrop(Skill.SMITHING, 1000);
             }
         }
     }
@@ -358,22 +363,12 @@ public class MotherloadMineScript extends Script {
         if (Rs2Bank.useBank()) {
             sleepUntil(Rs2Bank::isOpen);
             debugMessage("Banking non-essential items");
-            Rs2Bank.depositAllExcept("hammer", pickaxeName, "pay-dirt");
-            sleep(100, 300);
-            if (!Rs2Inventory.hasItem("hammer")) {
-                if (!Rs2Bank.hasItem("hammer")) {
-                    Microbot.showMessage("No hammer found in the bank.");
-                    shutdown();
-                }
-                debugMessage("Withdrawing hammer");
-                Rs2Bank.withdrawOne("hammer", true);
-            }
-            getPickaxe(!config.pickAxeInInventory());
+            getEquipment(!config.pickAxeInInventory());
             Rs2Inventory.waitForInventoryChanges(600);
         }
     }
 
-    private void getPickaxe(boolean equip) {
+    private void getEquipment(boolean equip) {
         if (!Rs2Bank.isOpen())
             Rs2Bank.openBank();
         List<Integer> picks = new ArrayList<>();
@@ -405,6 +400,14 @@ public class MotherloadMineScript extends Script {
                 Rs2Bank.withdrawAndEquip(bestPick.getItemId());
             else
                 Rs2Bank.withdrawOne(bestPick.getItemId());
+        }
+        if (!Rs2Inventory.hasItem("hammer")) {
+            if (!Rs2Bank.hasItem("hammer")) {
+                Microbot.showMessage("No hammer found in the bank.");
+                shutdown();
+            }
+            debugMessage("Withdrawing hammer");
+            Rs2Bank.withdrawOne("hammer", true);
         }
     }
 
