@@ -396,6 +396,8 @@ public class MotherloadMineScript extends Script {
         if (bestPick.getItemName() != pickaxeName)
             debugMessage("Best current pickaxe: " + bestPick.getItemName());
         pickaxeName = bestPick.getItemName();
+        if (!Rs2Inventory.hasItem("hammer"))
+            Rs2Bank.withdrawOne("hammer");
         if (!Rs2Inventory.hasItem(bestPick.getItemId())) {
             Rs2Bank.depositAllExcept("hammer", pickaxeName, "pay-dirt");
             if (equip)
@@ -403,6 +405,7 @@ public class MotherloadMineScript extends Script {
             else
                 Rs2Bank.withdrawOne(bestPick.getItemId());
         }
+        Rs2Inventory.waitForInventoryChanges(() -> Rs2Antiban.moveMouseRandomly());
     }
 
     private MLMPickaxes getBestPickaxe(List<Integer> items) {
