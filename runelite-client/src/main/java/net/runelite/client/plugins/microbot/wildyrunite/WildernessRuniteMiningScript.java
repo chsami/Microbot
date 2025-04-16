@@ -45,6 +45,9 @@ public class WildernessRuniteMiningScript extends Script {
     private static final WorldPoint LUMBRIDGE_BANK_TILE = new WorldPoint(3209, 3220, 2);
     private final WorldPoint RUNITE_ORE_TILE = new WorldPoint(3059, 3884, 0);
     private boolean isBanking = false;
+    private long scriptStartTime;
+    private boolean fleeingFromPlayer = false;
+
 
     private final AtomicBoolean scriptRunning = new AtomicBoolean(false);
     @Getter
@@ -154,27 +157,28 @@ public class WildernessRuniteMiningScript extends Script {
         combatThread = new Thread(() -> {
             while (!Thread.currentThread().isInterrupted() && scriptRunning.get()) {
                 if (Rs2Combat.inCombat()) {
-                    updateStatus("In combat!");
+                    Player local = Microbot.getClient().getLocalPlayer();
 
-                    // 🛑 Stop walking or any active task
-                    stopWalking();
+                    Microbot.getClient().getPlayers().stream()
+                            .filter(p -> p != null && !p.equals(local) && p.getInteracting() == local)
+                            .findFirst()
+                            .ifPresent(attacker -> {
+                                if (!fleeingFromPlayer) {
+                                    fleeingFromPlayer = true;
+                                    recentAttackers.add(attacker.getName());
+                                    updateStatus("⚠️ Under attack by player: " + attacker.getName());
 
-                    // 🛡️ Enable Protect Item prayer if low HP and not active
-                    if (Rs2Player.getHealthPercentage() <= 50 &&
-                            !Rs2Prayer.isPrayerActive(Rs2PrayerEnum.PROTECT_ITEM)) {
-                        Rs2Prayer.toggle(Rs2PrayerEnum.PROTECT_ITEM);
-                        updateStatus("Low HP detected. Protect Item prayer activated.");
-                    }
+                                    if (Rs2Player.getHealthPercentage() < 50 &&
+                                            !Rs2Prayer.isPrayerActive(Rs2PrayerEnum.PROTECT_ITEM)) {
+                                        Rs2Prayer.toggle(Rs2PrayerEnum.PROTECT_ITEM);
+                                        updateStatus("🛡️ Low HP → Protect Item activated.");
+                                    }
 
-                    // 🥊 Check for attacking players and retaliate
-                    Microbot.getClient().getPlayers().forEach(player -> {
-                        if (player != null && !player.equals(Microbot.getClient().getLocalPlayer())) {
-                            if (player.getInteracting() == Microbot.getClient().getLocalPlayer()) {
-                                recentAttackers.add(player.getName());
-                                updateStatus("Attacked by: " + player.getName());
-                            }
-                        }
-                    });
+                                    stopWalking();
+                                    updateStatus("🏃 Fleeing to Ferox Enclave...");
+                                    walkToFerox();
+                                }
+                            });
                 }
 
                 sleep(1000);
@@ -183,6 +187,13 @@ public class WildernessRuniteMiningScript extends Script {
         combatThread.start();
     }
 
+
+    public int calculateGpPerHour() {
+        long elapsedMillis = System.currentTimeMillis() - scriptStartTime;
+        double hours = elapsedMillis / (1000.0 * 60 * 60);
+        if (hours == 0) return 0;
+        return (int) ((totalMined * orePrice) / hours);
+    }
 
     private void setTopDownCameraView() {
         if (Microbot.getClient() == null) return;
@@ -213,6 +224,7 @@ public class WildernessRuniteMiningScript extends Script {
     public void run(WildernessRuniteMiningConfig config) {
         if (scriptRunning.get() || Microbot.getClient() == null) return;
         scriptRunning.set(true);
+        scriptStartTime = System.currentTimeMillis();
 
         updateStatus("Waiting for login...");
         while (!Microbot.isLoggedIn() && scriptRunning.get()) {
@@ -254,9 +266,22 @@ public class WildernessRuniteMiningScript extends Script {
                     continue;
                 }
 
+                if (fleeingFromPlayer) {
+                    updateStatus("⚠️ Fleeing from player → Pausing all actions.");
+                    // When arriving safely at Ferox, reset the state
+                    if (Rs2Player.getWorldLocation().distanceTo(FEROX_ENCLAVE_BANK) < 5) {
+                        updateStatus("✅ Safe at Ferox. Resuming script.");
+                        fleeingFromPlayer = false;
+                    } else {
+                        sleep(1000);
+                        continue;
+                    }
+                }
+
                 // Main banking logic
                 if (hasEnoughOre(config) || isBanking) {
-                    if (!isBanking) {
+                    // 🔁 Always walk if not banking or too far from bank
+                    if (!isBanking || Rs2Player.getWorldLocation().distanceTo(FEROX_ENCLAVE_BANK) >= 5) {
                         isBanking = true;
                         updateStatus("Inventory full. Banking runite ore...");
                         walkToFerox();
@@ -314,8 +339,6 @@ public class WildernessRuniteMiningScript extends Script {
 
                         if (oreAfter > oreBefore) {
                             updateStatus("Successfully mined ore.");
-                        } else {
-                            updateStatus("Mining animation finished, but no ore was gained.");
                         }
 
                         sleep(500);
@@ -441,10 +464,16 @@ public class WildernessRuniteMiningScript extends Script {
             updateStatus("Banking ores before withdrawing tools...");
             if (Rs2Bank.openBank()) {
                 sleepUntil(Rs2Bank::isOpen, 5000);
+
+                int oreCount = Rs2Inventory.count("Runite ore"); // count before deposit
                 Rs2Bank.depositAll("Runite ore");
+                totalMined += oreCount; // ✅ add to totalMined
+                updateStatus("Deposited " + oreCount + " ores from death recovery. Total mined: " + totalMined);
+
                 sleep(600);
             }
         }
+
 
         if (Rs2Bank.openBank()) {
             sleepUntil(Rs2Bank::isOpen, 5000);

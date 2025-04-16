@@ -54,6 +54,12 @@ public class WildernessRuniteMiningOverlay extends OverlayPanel {
                 ) + " gp")
                 .build());
 
+        panelComponent.getChildren().add(LineComponent.builder()
+                .left("GP/hr:")
+                .right(NumberFormat.getIntegerInstance().format(
+                        plugin.getScript().calculateGpPerHour()) + " gp")
+                .build());
+
 
         if (plugin.getScript().getRecentAttackers() != null && !plugin.getScript().getRecentAttackers().isEmpty()) {
             panelComponent.getChildren().add(LineComponent.builder()
