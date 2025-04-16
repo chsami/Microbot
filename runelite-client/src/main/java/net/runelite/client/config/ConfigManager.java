@@ -42,18 +42,7 @@ import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.WeakHashMap;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -88,6 +77,8 @@ import net.runelite.http.api.config.ConfigPatchResult;
 import net.runelite.http.api.config.Configuration;
 import net.runelite.http.api.config.Profile;
 
+import static net.runelite.client.plugins.microbot.util.walker.Rs2Walker.config;
+
 @Singleton
 @Slf4j
 public class ConfigManager
@@ -104,6 +95,9 @@ public class ConfigManager
 	private static final int KEY_SPLITTER_GROUP = 0;
 	private static final int KEY_SPLITTER_PROFILE = 1;
 	private static final int KEY_SPLITTER_KEY = 2;
+
+	private final Map<String, String> config = new HashMap<>();
+
 
 	@Nullable
 	@Getter
@@ -242,6 +236,28 @@ public class ConfigManager
 	public String getRSProfileKey()
 	{
 		return rsProfileKey;
+	}
+
+	public Properties getAllProfileProperties() {
+		Properties properties = new Properties();
+
+		for (Map.Entry<String, String> entry : configProfile.get().entrySet()) {
+			properties.setProperty(entry.getKey(), entry.getValue());
+		}
+
+		return properties;
+	}
+
+	public void loadProfileProperties(Properties properties) {
+		for (String key : properties.stringPropertyNames()) {
+			if (!key.startsWith("pluginState.")) {
+				String[] split = key.split("\\.", 2);
+				if (split.length == 2) {
+					setConfiguration(split[0], split[1], properties.getProperty(key));
+				}
+			}
+		}
+		sendConfig(); // Save changes after loading
 	}
 
 	@Subscribe
