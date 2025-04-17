@@ -1,6 +1,7 @@
-package net.runelite.client.plugins.microbot.frosty.bloods.enums;
+package net.runelite.client.plugins.microbot.frosty.frostyrc.enums;
 
 import lombok.Getter;
+import net.runelite.api.gameval.ItemID;
 
 @Getter
 public enum Teleports {
@@ -9,27 +10,29 @@ public enum Teleports {
     ARDOUGNE_CLOAK("Ardougne Cloak", new Integer[]{13121, 13122, 13123, 13124}, null, "Kandarin monastery"),
     CRAFTING_CAPE("Crafting Cape", new Integer[]{9780, 9781}, new Integer[]{11571}, "Teleport"),
     CONSTRUCTION_CAPE("Construction cape", new Integer[]{9789, 9790}, null, "Tele to POH"),
+    MYTH_CAPE("Mythical cape", new Integer[]{ItemID.MYTHICAL_CAPE}, new Integer[]{9772}, "Teleport"),
     FARMING_CAPE("Farming cape", new Integer[]{9810, 9811}, new Integer[]{4922}, "Teleport");
+
 
     @Getter
     private final String name;
     @Getter
     private final Integer[] itemIds;
-    private final Integer[] bankingRegionIds;
+    private final Integer[] RegionIds;
     @Getter
     private final String interaction;
 
-    Teleports(String name, Integer[] itemIds, Integer[] bankingRegionIds, String interaction) {
+    Teleports(String name, Integer[] itemIds, Integer[] RegionIds, String interaction) {
         this.name = name;
         this.itemIds = itemIds;
-        this.bankingRegionIds = bankingRegionIds;
+        this.RegionIds = RegionIds;
         this.interaction = interaction;
     }
 
 
     public boolean matchesRegion(int regionId) {
-        if (bankingRegionIds == null) return false;
-        for (int id : bankingRegionIds) {
+        if (RegionIds == null) return false;
+        for (int id : RegionIds) {
             if (id == regionId) return true;
         }
         return false;
