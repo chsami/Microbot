@@ -29,8 +29,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static net.runelite.client.plugins.microbot.util.Global.sleepGaussian;
-
 public class WintertodtScript extends Script {
     public static QoLConfig config;
     public static GameObject unlitBrazier;
@@ -98,7 +96,7 @@ public class WintertodtScript extends Script {
                 }
 
             } catch (Exception e) {
-                Microbot.log("Error in QoL Wintertodt script: " + e.getMessage());
+                Microbot.logStackTrace(this.getClass().getSimpleName(), e);
             }
         }, 0, 100, TimeUnit.MILLISECONDS);
         return true;
@@ -246,6 +244,11 @@ public class WintertodtScript extends Script {
     private boolean shouldEat() {
         if (getWarmthLevel() <= config.eatFoodPercentage()) {
                 List<Rs2ItemModel> rejuvenationPotions = Rs2Inventory.getPotions();
+
+                if (rejuvenationPotions.isEmpty()) {
+                    return false;
+                }
+
                 Rs2Inventory.interact(rejuvenationPotions.get(0), "Drink");
                 sleepGaussian(600, 150);
                 qolPlugin.updateWintertodtInterupted(true);

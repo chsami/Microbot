@@ -12,6 +12,7 @@ public class QuestRegistry {
     private static final Map<Integer, IQuest> QUEST_MAP = new HashMap<>();
 
     static {
+        QUEST_MAP.put(Quest.ROMEO__JULIET.getId(), new RomeoAndJulliet());
         QUEST_MAP.put(Quest.RUNE_MYSTERIES.getId(), new RuneMysteries());
     }
 

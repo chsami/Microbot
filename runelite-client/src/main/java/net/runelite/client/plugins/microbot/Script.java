@@ -17,11 +17,13 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.time.Duration;
 import java.time.LocalTime;
-import java.util.concurrent.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 
 
 @Slf4j
-public abstract class Script extends Global implements IScript  {
+public abstract class Script extends Global implements IScript {
 
     protected ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(10);
     protected ScheduledFuture<?> scheduledFuture;
@@ -78,6 +80,9 @@ public abstract class Script extends Global implements IScript  {
         if (Microbot.pauseAllScripts)
             return false;
 
+        if (Thread.currentThread().isInterrupted())
+            return false;
+
         //Avoid executing any blocking events if the player hasn't finished Tutorial Island
         if (Microbot.isLoggedIn() && !Rs2Player.isInTutorialIsland())
             return true;
@@ -89,7 +94,7 @@ public abstract class Script extends Global implements IScript  {
                 return false;
             }
         }
-        
+
         if (Microbot.isLoggedIn()) {
             boolean hasRunEnergy = Microbot.getClient().getEnergy() > Microbot.runEnergyThreshold;
             if (Microbot.enableAutoRunOn && hasRunEnergy)

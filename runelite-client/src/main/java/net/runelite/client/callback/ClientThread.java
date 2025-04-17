@@ -76,8 +76,9 @@ public class ClientThread
 			return task.get(10000, TimeUnit.MILLISECONDS);
 		} catch (InterruptedException | TimeoutException | ExecutionException e) {
 			if (e instanceof InterruptedException) {
-				Thread.currentThread().interrupt();
-			}
+                Thread.currentThread().interrupt();
+				return null;
+            }
 			if (!Microbot.isDebug()) {
 				Microbot.log("Exception during task execution: " + e.getClass().getSimpleName() + ": " + e.getMessage());
 			}

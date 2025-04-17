@@ -182,7 +182,7 @@ public class ShortestPathPanel extends PluginPanel {
                         return null;
                     });
         });
-        
+
         nearestBankPanel.add(useNearestBankButton);
         nearestBankPanel.add(goToGrandExchangeButton); // Go to GE button
 
@@ -353,14 +353,14 @@ public class ShortestPathPanel extends PluginPanel {
         huntingAreasComboBox.setAlignmentX(Component.CENTER_ALIGNMENT);
         huntingAreasComboBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, huntingAreasComboBox.getPreferredSize().height));
         ((JLabel) huntingAreasComboBox.getRenderer()).setHorizontalAlignment(SwingConstants.CENTER);
-        
+
         birdsComboBox = new JComboBox<>(Birds.values());
         chinchompasComboBox = new JComboBox<>(Chinchompas.values());
         insectsComboBox = new JComboBox<>(Insects.values());
         kebbitsJComboBox = new JComboBox<>(Kebbits.values());
         salamandersComboBox = new JComboBox<>(Salamanders.values());
         specialHuntingAreasJComboBox = new JComboBox<>(SpecialHuntingAreas.values());
-        
+
         JComboBox<?>[] subComboBoxes = {birdsComboBox, chinchompasComboBox, insectsComboBox, kebbitsJComboBox, salamandersComboBox, specialHuntingAreasJComboBox};
 
         for (JComboBox<?> comboBox : subComboBoxes) {
@@ -370,7 +370,7 @@ public class ShortestPathPanel extends PluginPanel {
             ((JLabel)comboBox.getRenderer()).setHorizontalAlignment(SwingConstants.CENTER);
             comboBox.setVisible(false);
         }
-        
+
         huntingAreasComboBox.addActionListener(e -> {
             HuntingAreas selectedHuntingArea = (HuntingAreas) huntingAreasComboBox.getSelectedItem();
             birdsComboBox.setVisible(selectedHuntingArea == HuntingAreas.BIRDS);
@@ -482,7 +482,7 @@ public class ShortestPathPanel extends PluginPanel {
                 return null;
         }
     }
-    
+
     private void startWalking(WorldPoint point) {
         Microbot.log("Web walking starting. Traveling to Custom Location (" + point.getX() + ", " + point.getY() + ", " + point.getPlane() + ").");
         plugin.getShortestPathScript().setTriggerWalker(point);

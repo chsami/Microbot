@@ -25,7 +25,7 @@ public class Rs2Reflection {
      * sequence maps to an actor animation
      * actor can be an npc/player
      */
-    static int animationMultiplier = 527657827; //can be found in actor.java (int sequence)
+    static int animationMultiplier = 666159709; //can be found in actor.java (int sequence)
     static final byte INDEX_GARBAGE = -28; // found in Varcs.java
     static final String INDEX_FIELD = "ab"; // Varcs.java
     static final String INDEX_CLASS = "es"; // login.java
@@ -86,7 +86,7 @@ public class Rs2Reflection {
         } catch(Exception ex) {
             Microbot.log("Failed to get animation : " + ex.getMessage());
         }
-        return -1;
+        return -1000;
     }
 
     @SneakyThrows

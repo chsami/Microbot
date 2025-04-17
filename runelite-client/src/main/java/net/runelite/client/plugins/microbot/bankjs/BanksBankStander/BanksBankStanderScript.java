@@ -233,10 +233,9 @@ public class BanksBankStanderScript extends Script {
                     sleepUntil(() -> !Rs2Inventory.hasItem(secondItemId) || (!Rs2Equipment.isWearing(ItemID.AMULET_OF_CHEMISTRY) && !Rs2Equipment.isWearing(ItemID.ALCHEMISTS_AMULET_29990)), 40000);
                     sleep(calculateSleepDuration(1));
                     checkForAmulet();
-                    if(Rs2Bank.isOpen()) {
-                        Rs2Bank.closeBank();
-                        sleepUntil(() -> !Rs2Bank.isOpen());
-                    }
+//                    if(Rs2Bank.isOpen()) {
+//                        Rs2Bank.closeBank();
+//                    }
                 }else{
                     sleepUntil(() -> !Rs2Inventory.hasItem(secondItemId), 40000);
                 }
@@ -439,9 +438,9 @@ public class BanksBankStanderScript extends Script {
                 shutdown();
             }
             if (currentAmulet != null) {
-                sleep(Rs2Random.between(750, 1250));
+                sleep(Rs2Random.between(1000, 1500));
                 Rs2Bank.depositOne(currentAmulet.getId());
-                sleep(Rs2Random.between(750, 1250));
+                sleep(Rs2Random.between(1000, 1500));
             }
         }
     }

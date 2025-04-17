@@ -49,10 +49,7 @@ import javax.inject.Inject;
 import javax.swing.Timer;
 import javax.swing.*;
 import java.awt.*;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.time.Instant;
@@ -456,6 +453,17 @@ public class Microbot {
                 .filter(x -> x.getTitle().equalsIgnoreCase(npcName))
                 .findFirst()
                 .orElse(null);
+    }
+
+    /**
+     * Logs the stack trace of an exception to the console and chat.
+     * @param scriptName
+     * @param e
+     */
+    public static void logStackTrace(String scriptName, Exception e) {
+        StringWriter sw = new StringWriter();
+        e.printStackTrace(new PrintWriter(sw));
+        log("Error in " + scriptName + " script:\n" + sw, Level.ERROR);
     }
 
     public static void log(String message) {
