@@ -8,7 +8,7 @@ import net.runelite.client.config.*;
 import net.runelite.client.plugins.microbot.blastoisefurnace.enums.Bars;
 
 @ConfigGroup("blastoisefurnace")
-@ConfigInformation("Must have Ice Gloves or smiths gloves (i) equiped<br /><br />If not doing gold bars coal bag is required. <br /><br /> Must have stamina and energy potions in bank<br /><br /> If doing gold bars you must have Goldsmiths Gauntlet and bank your coal bag<br /><br />Current version does not support foremen or coffer refill<br /><br />")
+@ConfigInformation("Must have Ice Gloves or smiths gloves (i) equiped<br /><br />If not doing gold bars coal bag is required. <br /><br /> Must have stamina and energy potions in bank<br /><br /> Handles Foreman for < 60 Smithing.<br /><br /> If doing gold bars you must have Goldsmiths Gauntlet and bank your coal bag<br /><br />Current version does not support  coffer refill<br /><br />")
 public interface BlastoiseFurnaceConfig extends Config {
     @ConfigSection(
             name = "Blast Furnace Settings",
@@ -49,6 +49,6 @@ public interface BlastoiseFurnaceConfig extends Config {
             section = "Credits"
     )
     default String Credits() {
-        return "Created by: Fishy \n\nUpdated by: Acun";
+        return "Created by: Fishy \n\nUpdated by: Acun, Wassuppzzz";
     }
 }
