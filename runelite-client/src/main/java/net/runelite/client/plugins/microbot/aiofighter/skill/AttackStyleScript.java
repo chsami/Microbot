@@ -62,75 +62,81 @@ public class AttackStyleScript extends Script {
     }
 
     private void scheduledTask(AIOFighterConfig config) {
-        // Early exit conditions
-        if (!Microbot.isLoggedIn() || !super.run() || !config.toggleEnableSkilling() || disableIfMaxed(config.toggleDisableOnMaxCombat()))
-            return;
+        try {
+            // Early exit conditions
+            if (!Microbot.isLoggedIn() || !super.run() || disableIfMaxed(config.toggleDisableOnMaxCombat()))
+                return;
 
-        // Initialize levels if not done yet
-        if (!initializedLevels) {
-            initializeLevels();
-        }
 
-        boolean leveledUp = false;
-
-        // Check if we've leveled up
-        if (hasLeveledUp()) {
-            resetLevels();
-            log.info("Leveled up, resetting levels and timer.");
-            leveledUp = true;
-        }
-
-        if(config.useMagic()){
-            if (Rs2Magic.getCurrentAutoCastSpell() != config.magicSpell()) {
-                Rs2Combat.setAutoCastSpell(config.magicSpell(), false);
+            // Initialize levels if not done yet
+            if (!initializedLevels) {
+                initializeLevels();
             }
-            return;
-        }
 
-        // Proceed if it's time to change the attack style or if we've just leveled up
-        if (!isTimeForAttackStyleChange() && !leveledUp) {
-            return;
-        }
+            boolean leveledUp = false;
 
-        // Update the last attack style change time
-        lastAttackStyleChangeTime = System.currentTimeMillis();
+            // Check if we've leveled up
+            if (hasLeveledUp()) {
+                resetLevels();
+                log.info("Leveled up, resetting levels and timer.");
+                leveledUp = true;
+            }
 
-        // Update attack style information
-        updateAttackStyleInfo();
-
-        if (attackStyle == AttackStyle.LONGRANGE || attackStyle == AttackStyle.RANGING) {
-            WeaponAttackType weaponAttackType = WeaponAttackType.getById(equippedWeaponTypeVarbit);
-            // check if any of the attack options is rapid
-            if (weaponAttackType != null && weaponAttackType.getAttackOptions().stream().anyMatch(attackOption -> attackOption.getStyle().equals("Rapid"))) {
-                // if rapid is available, switch to it
-                int attackStyleVarbit = Microbot.getVarbitPlayerValue(VarPlayer.ATTACK_STYLE);
-                if (attackStyleVarbit != 1) {
-                    changeAttackStyle(config, WidgetInfo.COMBAT_STYLE_TWO);
+            if(config.useMagic()){
+                if (Rs2Magic.getCurrentAutoCastSpell() != config.magicSpell()) {
+                    Rs2Combat.setAutoCastSpell(config.magicSpell(), false);
                 }
+                return;
             }
-            else {
-                // if rapid is not available, switch to first attack style
-                int attackStyleVarbit = Microbot.getVarbitPlayerValue(VarPlayer.ATTACK_STYLE);
-                if (attackStyleVarbit != 0) {
-                    changeAttackStyle(config, WidgetInfo.COMBAT_STYLE_ONE);
+
+            // Proceed if it's time to change the attack style or if we've just leveled up
+            if (!isTimeForAttackStyleChange() && !leveledUp) {
+                return;
+            }
+
+            // Update the last attack style change time
+            lastAttackStyleChangeTime = System.currentTimeMillis();
+
+            // Update attack style information
+            updateAttackStyleInfo();
+
+            System.out.println(attackStyle.getName());
+
+            if (attackStyle == AttackStyle.LONGRANGE || attackStyle == AttackStyle.RANGING) {
+                WeaponAttackType weaponAttackType = WeaponAttackType.getById(equippedWeaponTypeVarbit);
+                // check if any of the attack options is rapid
+                if (weaponAttackType != null && weaponAttackType.getAttackOptions().stream().anyMatch(attackOption -> attackOption.getStyle().equals("Rapid"))) {
+                    // if rapid is available, switch to it
+                    int attackStyleVarbit = Microbot.getVarbitPlayerValue(VarPlayer.ATTACK_STYLE);
+                    if (attackStyleVarbit != 1) {
+                        changeAttackStyle(config, WidgetInfo.COMBAT_STYLE_TWO);
+                    }
                 }
+                else {
+                    // if rapid is not available, switch to first attack style
+                    int attackStyleVarbit = Microbot.getVarbitPlayerValue(VarPlayer.ATTACK_STYLE);
+                    if (attackStyleVarbit != 0) {
+                        changeAttackStyle(config, WidgetInfo.COMBAT_STYLE_ONE);
+                    }
+                }
+                return;
             }
-            return;
+
+            // Select skills based on configuration
+            selectSkills(config);
+
+            // Get the component to display
+            WidgetInfo componentToDisplay = getComponentToDisplay(config);
+
+            Microbot.log("Current Attack Style: " + attackStyle.getName());
+            Microbot.log("Attack Style to Train: " + attackStyleToTrain.getName());
+            // Change attack style if needed
+            if (attackStyle != attackStyleToTrain) {
+                changeAttackStyle(config, componentToDisplay);
+            }
+        } catch(Exception ex) {
+            Microbot.logStackTrace("AttackStyleScript", ex);
         }
-
-        // Select skills based on configuration
-        selectSkills(config);
-
-        // Get the component to display
-        WidgetInfo componentToDisplay = getComponentToDisplay(config);
-
-        Microbot.log("Current Attack Style: " + attackStyle.getName());
-        Microbot.log("Attack Style to Train: " + attackStyleToTrain.getName());
-        // Change attack style if needed
-        if (attackStyle != attackStyleToTrain) {
-            changeAttackStyle(config, componentToDisplay);
-        }
-
 
     }
 
@@ -366,7 +372,7 @@ public class AttackStyleScript extends Script {
     }
 
     private boolean disableIfMaxed(boolean disable) {
-        return isMaxed() && disable;
+        return isMaxed() || (!isMaxed() && disable);
     }
 
     @Override

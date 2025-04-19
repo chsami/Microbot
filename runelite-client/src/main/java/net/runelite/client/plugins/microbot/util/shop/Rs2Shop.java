@@ -61,7 +61,7 @@ public class Rs2Shop {
             sleepUntil(Rs2Shop::isOpen, 5000);
             return true;
         } catch (Exception ex) {
-            System.out.println(ex.getMessage());
+            Microbot.logStackTrace("Rs2Shop", ex);
         }
         return false;
     }
@@ -88,7 +88,7 @@ public class Rs2Shop {
             }
 
         } catch (Exception ex) {
-            System.out.println(ex.getMessage());
+            Microbot.logStackTrace("Rs2Shop", ex);
         }
         return true;
     }

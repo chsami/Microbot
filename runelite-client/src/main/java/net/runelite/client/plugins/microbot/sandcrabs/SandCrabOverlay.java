@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.sandcrabs;
 
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
@@ -12,13 +13,13 @@ public class SandCrabOverlay extends OverlayPanel {
     private final SandCrabPlugin plugin;
 
     @Inject
-    SandCrabOverlay(SandCrabPlugin plugin)
-    {
+    SandCrabOverlay(SandCrabPlugin plugin) {
         super(plugin);
         this.plugin = plugin;
         setPosition(OverlayPosition.TOP_LEFT);
         setNaughty();
     }
+
     @Override
     public Dimension render(Graphics2D graphics) {
         try {
@@ -42,8 +43,8 @@ public class SandCrabOverlay extends OverlayPanel {
                     .left("Times Hopped: " + plugin.sandCrabScript.timesHopped)
                     .build());
 
-        } catch(Exception ex) {
-            System.out.println(ex.getMessage());
+        } catch (Exception ex) {
+            Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
         }
         return super.render(graphics);
     }

@@ -104,7 +104,7 @@ public class Rs2GrandExchange {
             sleepUntil(Rs2GrandExchange::isOpen, 5000);
             return false;
         } catch (Exception ex) {
-            System.out.println(ex.getMessage());
+            Microbot.logStackTrace("Rs2GrandExchange", ex);
         }
         return false;
     }
@@ -171,7 +171,7 @@ public class Rs2GrandExchange {
 
             return false;
         } catch (Exception ex) {
-            System.out.println(ex.getMessage());
+            Microbot.logStackTrace("Rs2GrandExchange", ex);
         }
         return false;
     }
@@ -274,7 +274,7 @@ public class Rs2GrandExchange {
             }
 
         } catch (Exception ex) {
-            System.out.println(ex.getMessage());
+            Microbot.logStackTrace("Rs2GrandExchange", ex);
         }
         return false;
     }

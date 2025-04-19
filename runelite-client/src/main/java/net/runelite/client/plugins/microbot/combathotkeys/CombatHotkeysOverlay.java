@@ -43,7 +43,7 @@ public class CombatHotkeysOverlay extends Overlay {
                 drawTile(graphics, config.tile2(), Color.GREEN, "Tile 2", new BasicStroke(2));
             }
         } catch(Exception ex) {
-            System.out.println(ex.getMessage());
+            Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
         }
         return null;
     }

@@ -461,9 +461,7 @@ public class Microbot {
      * @param e
      */
     public static void logStackTrace(String scriptName, Exception e) {
-        StringWriter sw = new StringWriter();
-        e.printStackTrace(new PrintWriter(sw));
-        log("Error in " + scriptName + " script:\n" + sw, Level.ERROR);
+        log(scriptName, Level.ERROR, e);
     }
 
     public static void log(String message) {
@@ -479,6 +477,10 @@ public class Microbot {
     }
 
     public static void log(String message, Level level) {
+        log(message, level, null);
+    }
+
+    public static void log(String message, Level level, Exception ex) {
         if (message == null || message.isEmpty()) return;
         if (level == null) return;
 
@@ -487,7 +489,11 @@ public class Microbot {
                 log.warn(message);
                 break;
             case ERROR:
-                log.error(message);
+                if (ex != null) {
+                    log.error(message, ex);
+                } else {
+                    log.error(message);
+                }
                 break;
             case DEBUG:
                 log.debug(message);
@@ -500,11 +506,13 @@ public class Microbot {
         if (Microbot.isLoggedIn()) {
             if (level == Level.DEBUG && !isDebug()) return;
 
+            final String _message = ex == null ? message : ex.getMessage();
+
             LocalTime currentTime = LocalTime.now();
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss");
             String formattedTime = currentTime.format(formatter);
             Microbot.getClientThread().runOnClientThreadOptional(() ->
-                    Microbot.getClient().addChatMessage(ChatMessageType.ENGINE, "", "[" + formattedTime + "]: " + message, "", false)
+                    Microbot.getClient().addChatMessage(ChatMessageType.ENGINE, "", "[" + formattedTime + "]: " +  _message, "", false)
             );
         }
     }

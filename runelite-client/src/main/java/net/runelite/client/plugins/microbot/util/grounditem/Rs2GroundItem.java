@@ -1,5 +1,7 @@
 package net.runelite.client.plugins.microbot.util.grounditem;
 
+import com.google.common.collect.ImmutableTable;
+import com.google.common.collect.Table;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
@@ -37,7 +39,7 @@ public class Rs2GroundItem {
         try {
             interact(new InteractModel(rs2Item.getTileItem().getId(), rs2Item.getTile().getWorldLocation(), rs2Item.getItem().getName()), action);
         } catch (Exception ex) {
-            System.out.println(ex.getMessage());
+            Microbot.logStackTrace("Rs2GroundItem", ex);
         }
         return true;
     }
@@ -308,10 +310,10 @@ public class Rs2GroundItem {
     public static boolean waitForGroundItemDespawn(Runnable actionWhileWaiting,GroundItem groundItem){
         sleepUntil(() ->  {
             actionWhileWaiting.run();
-            sleepUntil(() -> groundItem != GroundItemsPlugin.getCollectedGroundItems().get(groundItem.getLocation(), groundItem.getId()), Rs2Random.between(600, 2100));
-            return groundItem != GroundItemsPlugin.getCollectedGroundItems().get(groundItem.getLocation(), groundItem.getId());
+            sleepUntil(() -> groundItem != getGroundItems().get(groundItem.getLocation(), groundItem.getId()), Rs2Random.between(600, 2100));
+            return groundItem != getGroundItems().get(groundItem.getLocation(), groundItem.getId());
         });
-        return groundItem != GroundItemsPlugin.getCollectedGroundItems().get(groundItem.getLocation(), groundItem.getId());
+        return groundItem != getGroundItems().get(groundItem.getLocation(), groundItem.getId());
     }
 
     private static boolean coreLoot(GroundItem groundItem) {
@@ -366,7 +368,7 @@ public class Rs2GroundItem {
                 groundItem.getLocation().distanceTo(Microbot.getClient().getLocalPlayer().getWorldLocation()) < params.getRange() &&
                 (!params.isAntiLureProtection() || (params.isAntiLureProtection() && groundItem.getOwnership() == OWNERSHIP_SELF));
 
-        List<GroundItem> groundItems = GroundItemsPlugin.getCollectedGroundItems().values().stream()
+        List<GroundItem> groundItems = getGroundItems().values().stream()
                 .filter(filter)
                 .collect(Collectors.toList());
 
@@ -392,7 +394,7 @@ public class Rs2GroundItem {
                 groundItem.getLocation().distanceTo(Microbot.getClient().getLocalPlayer().getWorldLocation()) < params.getRange() &&
                         (!params.isAntiLureProtection() || (params.isAntiLureProtection() && groundItem.getOwnership() == OWNERSHIP_SELF)) &&
                         Arrays.stream(params.getNames()).anyMatch(name -> groundItem.getName().trim().toLowerCase().contains(name.trim().toLowerCase()));
-        List<GroundItem> groundItems = GroundItemsPlugin.getCollectedGroundItems().values().stream()
+        List<GroundItem> groundItems = getGroundItems().values().stream()
                 .filter(filter)
                 .collect(Collectors.toList());
         if (groundItems.size() < params.getMinItems()) return false;
@@ -421,7 +423,7 @@ public class Rs2GroundItem {
         final Predicate<GroundItem> filter = groundItem ->
                 groundItem.getLocation().equals(location) && groundItem.getItemId() == itemId;
 
-        List<GroundItem> groundItems = GroundItemsPlugin.getCollectedGroundItems().values().stream()
+        List<GroundItem> groundItems = getGroundItems().values().stream()
                 .filter(filter)
                 .collect(Collectors.toList());
 
@@ -438,7 +440,7 @@ public class Rs2GroundItem {
                         (!params.isAntiLureProtection() || (params.isAntiLureProtection() && groundItem.getOwnership() == OWNERSHIP_SELF)) &&
                         !groundItem.isTradeable() &&
                         groundItem.getId() != ItemID.COINS_995;
-        List<GroundItem> groundItems = GroundItemsPlugin.getCollectedGroundItems().values().stream()
+        List<GroundItem> groundItems = getGroundItems().values().stream()
                 .filter(filter)
                 .collect(Collectors.toList());
         if (groundItems.size() < params.getMinItems()) return false;
@@ -463,7 +465,7 @@ public class Rs2GroundItem {
                 groundItem.getLocation().distanceTo(Microbot.getClient().getLocalPlayer().getWorldLocation()) < params.getRange() &&
                         (!params.isAntiLureProtection() || (params.isAntiLureProtection() && groundItem.getOwnership() == OWNERSHIP_SELF)) &&
                         groundItem.getId() == ItemID.COINS_995;
-        List<GroundItem> groundItems = GroundItemsPlugin.getCollectedGroundItems().values().stream()
+        List<GroundItem> groundItems = getGroundItems().values().stream()
                 .filter(filter)
                 .collect(Collectors.toList());
         if (groundItems.size() < params.getMinItems()) return false;
@@ -484,7 +486,7 @@ public class Rs2GroundItem {
 
 
     private static boolean hasLootableItems(Predicate<GroundItem> filter) {
-        List<GroundItem> groundItems = GroundItemsPlugin.getCollectedGroundItems().values().stream()
+        List<GroundItem> groundItems = getGroundItems().values().stream()
                 .filter(filter)
                 .collect(Collectors.toList());
 
@@ -631,5 +633,13 @@ public class Rs2GroundItem {
                 .filter(i -> i.getItem().getId() == itemId)
                 .findFirst();
         return Rs2GroundItem.interact(item.orElse(null));
+    }
+
+    /**
+     * This is to avoid concurrency issues with the original list
+     * @return
+     */
+    public static Table<WorldPoint, Integer, GroundItem> getGroundItems() {
+        return ImmutableTable.copyOf(GroundItemsPlugin.getCollectedGroundItems());
     }
 }

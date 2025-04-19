@@ -145,7 +145,7 @@ public class BlastoiseFurnaceScript extends Script {
                 }
             } catch (Exception ex) {
 
-                System.out.println(ex.getMessage());
+                Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
             }
 
         }, 00, 200, TimeUnit.MILLISECONDS);

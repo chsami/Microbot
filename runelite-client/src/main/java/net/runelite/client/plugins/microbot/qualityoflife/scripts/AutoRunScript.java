@@ -28,7 +28,7 @@ public class AutoRunScript extends Script {
                     configManager.setConfiguration("QoL", "staminaThreshold", Microbot.runEnergyThreshold/100);
                 }
             } catch (Exception ex) {
-                System.out.println(ex.getMessage());
+                Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
             }
         }, 0, 1000, TimeUnit.MILLISECONDS);
         return true;

@@ -543,18 +543,6 @@ public interface AIOFighterConfig extends Config {
                 "Always On: Quick prayer is always on";
     }
 
-    // Enable skilling
-    @ConfigItem(
-            keyName = "enableSkilling",
-            name = "Enable Skilling",
-            description = "Enable Skilling",
-            position = 0,
-            section = skillingSection
-    )
-    default boolean toggleEnableSkilling() {
-        return false;
-    }
-
     // Use Magic
     @ConfigItem(
             keyName = "useMagic",

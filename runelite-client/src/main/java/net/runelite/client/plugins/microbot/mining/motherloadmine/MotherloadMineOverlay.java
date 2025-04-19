@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.mining.motherloadmine;
 
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.ui.overlay.OverlayPanel;
@@ -49,7 +50,7 @@ public class MotherloadMineOverlay extends OverlayPanel {
                     .right("Version: " + MotherloadMineScript.VERSION)
                     .build());
         } catch(Exception ex) {
-            System.out.println(ex.getMessage());
+            Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
         }
         return super.render(graphics);
     }

@@ -2134,25 +2134,35 @@ public class Rs2Inventory {
         param0 = rs2Item.slot;
         boolean isDepositBoxOpen = !Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2Widget.getWidget(ComponentID.DEPOSIT_BOX_INVENTORY_ITEM_CONTAINER) == null
                 || Rs2Widget.getWidget(ComponentID.DEPOSIT_BOX_INVENTORY_ITEM_CONTAINER).isHidden()).orElse(false);
+
+        Widget widget;
+
         if (Rs2Bank.isOpen()) {
             param1 = ComponentID.BANK_INVENTORY_ITEM_CONTAINER;
-            inventoryWidgets = Rs2Widget.getWidget(ComponentID.BANK_INVENTORY_ITEM_CONTAINER).getChildren();
+            widget = Rs2Widget.getWidget(param1);
         } else if (isDepositBoxOpen) {
             param1 = ComponentID.DEPOSIT_BOX_INVENTORY_ITEM_CONTAINER;
-            inventoryWidgets = Rs2Widget.getWidget(ComponentID.DEPOSIT_BOX_INVENTORY_ITEM_CONTAINER).getChildren();
+            widget = Rs2Widget.getWidget(param1);
         } else if (Rs2GrandExchange.isOpen()) {
             param1 = ComponentID.GRAND_EXCHANGE_INVENTORY_INVENTORY_ITEM_CONTAINER;
-            inventoryWidgets = Rs2Widget.getWidget(ComponentID.GRAND_EXCHANGE_INVENTORY_INVENTORY_ITEM_CONTAINER).getChildren();
+            widget = Rs2Widget.getWidget(param1);
         } else if (Rs2Shop.isOpen()) {
             param1 = 19726336;
-            inventoryWidgets = Rs2Widget.getWidget(19726336).getChildren();
+            widget = Rs2Widget.getWidget(param1);
         } else {
             param1 = ComponentID.INVENTORY_CONTAINER;
-            inventoryWidgets = Rs2Widget.getWidget(ComponentID.INVENTORY_CONTAINER).getChildren();
+            widget = Rs2Widget.getWidget(param1);
         }
 
+        if (widget != null && widget.getChildren() != null) {
+            inventoryWidgets = widget.getChildren();
+        } else {
+            inventoryWidgets = null;
+        }
+
+        if (inventoryWidgets == null) return;
+
         if (!action.isEmpty()) {
-            assert inventoryWidgets != null;
             var itemWidget = Arrays.stream(inventoryWidgets).filter(x -> x != null && x.getIndex() == rs2Item.slot).findFirst().orElseGet(null);
 
             String[] actions = itemWidget != null && itemWidget.getActions() != null ?
@@ -2236,7 +2246,7 @@ public class Rs2Inventory {
             invokeMenu(rs2Item, actionAndQuantity);
             return true;
         } catch (Exception ex) {
-            System.out.println(ex.getMessage());
+            Microbot.logStackTrace("Rs2Inventory", ex);
             return false;
         }
     }

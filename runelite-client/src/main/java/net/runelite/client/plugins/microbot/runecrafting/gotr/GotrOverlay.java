@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.runecrafting.gotr;
 
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
@@ -59,7 +60,7 @@ public class GotrOverlay extends OverlayPanel {
                     .build());
 
         } catch(Exception ex) {
-            System.out.println(ex.getMessage());
+            Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
         }
         return super.render(graphics);
     }

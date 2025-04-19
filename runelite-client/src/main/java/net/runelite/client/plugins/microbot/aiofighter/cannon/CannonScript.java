@@ -22,7 +22,7 @@ public class CannonScript extends Script {
                    return;
                Rs2Cannon.refill();
             } catch(Exception ex) {
-                System.out.println(ex.getMessage());
+                Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
             }
         }, 0, 2000, TimeUnit.MILLISECONDS);
         return true;

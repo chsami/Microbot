@@ -26,7 +26,7 @@ public class PrayerScript extends Script {
 
                 handlePrayer(config);
             } catch (Exception ex) {
-                System.err.println("Error: " + ex.getMessage());
+                Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
             }
         }, 0, 500, TimeUnit.MILLISECONDS);
         return true;

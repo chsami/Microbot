@@ -43,7 +43,7 @@ public class AIOFighterInfoOverlay extends OverlayPanel {
 
 
         } catch (Exception ex) {
-            System.out.println(ex.getMessage());
+            Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
         }
         return super.render(graphics);
     }

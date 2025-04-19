@@ -17,6 +17,7 @@ import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
+import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
@@ -1354,7 +1355,7 @@ public class Rs2Player {
      */
     public static boolean isStandingOnGroundItem() {
         WorldPoint playerPoint = getWorldLocation();
-        return GroundItemsPlugin.getCollectedGroundItems().values().stream().anyMatch(x -> x.getLocation().equals(playerPoint));
+        return Rs2GroundItem.getGroundItems().values().stream().anyMatch(x -> x.getLocation().equals(playerPoint));
     }
 
     /**

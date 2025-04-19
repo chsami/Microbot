@@ -51,7 +51,7 @@ public class HumidifierScript extends Script {
                     calculateItemsProcessedPerHour(config);
                 }
             } catch (Exception ex) {
-                System.out.println(ex.getMessage());
+                Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
             }
         }, 0, 500, TimeUnit.MILLISECONDS);
         return true;

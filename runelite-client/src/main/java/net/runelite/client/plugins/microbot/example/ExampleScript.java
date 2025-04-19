@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.example;
 
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.aiofighter.skill.AttackStyleScript;
 
 import java.util.concurrent.TimeUnit;
 
@@ -9,6 +10,8 @@ import java.util.concurrent.TimeUnit;
 public class ExampleScript extends Script {
 
     public static boolean test = false;
+
+    AttackStyleScript attackStyleSCript = new AttackStyleScript();
     public boolean run(ExampleConfig config) {
         Microbot.enableAutoRunOn = false;
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
@@ -18,7 +21,7 @@ public class ExampleScript extends Script {
                 long startTime = System.currentTimeMillis();
 
                 //CODE HERE
-                
+
 
                 long endTime = System.currentTimeMillis();
                 long totalTime = endTime - startTime;

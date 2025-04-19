@@ -258,7 +258,7 @@ public class OuraniaScript extends Script {
                 System.out.println("Total time for loop " + totalTime);
 
             } catch (Exception ex) {
-                System.out.println(ex.getMessage());
+                Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
                 Microbot.log("Error in Ourania Altar Script: " + ex.getMessage());
             }
         }, 0, 1000, TimeUnit.MILLISECONDS);

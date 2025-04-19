@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.scurrius;
 
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
@@ -10,12 +11,12 @@ import java.awt.*;
 
 public class ScurriusOverlay extends OverlayPanel {
     @Inject
-    ScurriusOverlay(ScurriusPlugin plugin)
-    {
+    ScurriusOverlay(ScurriusPlugin plugin) {
         super(plugin);
         setPosition(OverlayPosition.TOP_LEFT);
         setNaughty();
     }
+
     @Override
     public Dimension render(Graphics2D graphics) {
         try {
@@ -32,8 +33,8 @@ public class ScurriusOverlay extends OverlayPanel {
                     .build());
 
 
-        } catch(Exception ex) {
-            System.out.println(ex.getMessage());
+        } catch (Exception ex) {
+            Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
         }
         return super.render(graphics);
     }

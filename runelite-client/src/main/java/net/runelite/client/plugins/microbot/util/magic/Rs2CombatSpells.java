@@ -92,25 +92,25 @@ public enum Rs2CombatSpells
             Runes.AIR, 7,
             Runes.BLOOD, 1,
             Runes.DEATH, 1
-    ), Rs2Spellbook.MODERN),
+    ), Rs2Spellbook.MODERN, 48),
     WATER_SURGE(MagicAction.WATER_SURGE, Map.of(
             Runes.WATER, 10,
             Runes.AIR, 7,
             Runes.BLOOD, 1,
             Runes.DEATH, 1
-    ), Rs2Spellbook.MODERN),
+    ), Rs2Spellbook.MODERN, 49),
     EARTH_SURGE(MagicAction.EARTH_SURGE, Map.of(
             Runes.EARTH, 10,
             Runes.AIR, 7,
             Runes.BLOOD, 1,
             Runes.DEATH, 1
-    ), Rs2Spellbook.MODERN),
+    ), Rs2Spellbook.MODERN, 50),
     FIRE_SURGE(MagicAction.FIRE_SURGE, Map.of(
             Runes.FIRE, 10,
             Runes.AIR, 7,
             Runes.BLOOD, 1,
             Runes.DEATH, 1
-    ), Rs2Spellbook.MODERN),
+    ), Rs2Spellbook.MODERN, 51),
 
     // --- Ancient Magicks ---
     SMOKE_RUSH(MagicAction.SMOKE_RUSH, Map.of(
@@ -228,5 +228,15 @@ public enum Rs2CombatSpells
         this.name = magicAction.getName();
         this.requiredLevel = magicAction.getLevel();
         this.varbitValue = ordinal() + 1;
+    }
+
+    Rs2CombatSpells(MagicAction magicAction, Map<Runes, Integer> requiredRunes, Rs2Spellbook spellbook, int varbitValue)
+    {
+        this.magicAction = magicAction;
+        this.requiredRunes = requiredRunes;
+        this.spellbook = spellbook;
+        this.name = magicAction.getName();
+        this.requiredLevel = magicAction.getLevel();
+        this.varbitValue = varbitValue;
     }
 }

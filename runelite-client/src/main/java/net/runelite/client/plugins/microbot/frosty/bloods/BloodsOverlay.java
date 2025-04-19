@@ -53,7 +53,7 @@ public class BloodsOverlay extends OverlayPanel {
                     .left("Status:").right(Microbot.status).build());
         } catch (
                 Exception ex) {
-            System.out.println(ex.getMessage());
+            Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
         }
         return super.render(graphics);
     }

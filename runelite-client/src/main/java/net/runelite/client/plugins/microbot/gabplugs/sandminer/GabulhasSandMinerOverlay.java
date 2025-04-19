@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.gabplugs.sandminer;
 
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.TitleComponent;
@@ -26,7 +27,7 @@ public class GabulhasSandMinerOverlay extends OverlayPanel {
 
 
         } catch(Exception ex) {
-            System.out.println(ex.getMessage());
+            Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
         }
         return super.render(graphics);
     }

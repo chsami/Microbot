@@ -35,7 +35,7 @@ public class StallThievingScript extends Script {
                 System.out.println("Total time for loop " + totalTime);
 
             } catch (Exception ex) {
-                System.out.println(ex.getMessage());
+                Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
             }
         }, 0, 100, TimeUnit.MILLISECONDS);
         return true;

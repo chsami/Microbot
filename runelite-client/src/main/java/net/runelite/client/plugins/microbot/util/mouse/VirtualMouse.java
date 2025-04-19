@@ -40,7 +40,11 @@ public class VirtualMouse extends Mouse {
         lastMove = point;
         points.add(point);
         if (points.size() > MAX_POINTS) {
-            points.removeFirst();
+            try {
+                points.removeFirst();
+            } catch(Exception ex) {
+                points.clear();
+            }
         }
     }
 

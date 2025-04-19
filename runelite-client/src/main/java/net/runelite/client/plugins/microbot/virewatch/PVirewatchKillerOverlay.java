@@ -85,7 +85,7 @@ public class PVirewatchKillerOverlay extends Overlay {
                         modelOutlineRenderer.drawOutline(npc, 2, Color.ORANGE, 4);
                         graphics.draw(npc.getCanvasTilePoly());
                     } catch (Exception ex) {
-                        System.out.println(ex.getMessage());
+                        Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
                     }
                 }
             }

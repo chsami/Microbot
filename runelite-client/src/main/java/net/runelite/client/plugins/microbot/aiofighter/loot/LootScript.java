@@ -53,7 +53,6 @@ public class LootScript extends Script {
 
             } catch(Exception ex) {
                 Microbot.log("Looterscript: " + ex.getMessage());
-                ex.printStackTrace();
             }
 
         }, 0, 200, TimeUnit.MILLISECONDS);

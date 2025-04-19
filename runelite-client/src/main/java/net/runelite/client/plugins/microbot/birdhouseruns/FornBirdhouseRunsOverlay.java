@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.birdhouseruns;
 
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.TitleComponent;
@@ -27,7 +28,7 @@ public class FornBirdhouseRunsOverlay extends OverlayPanel {
 
 
         } catch(Exception ex) {
-            System.out.println(ex.getMessage());
+            Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
         }
         return super.render(graphics);
     }

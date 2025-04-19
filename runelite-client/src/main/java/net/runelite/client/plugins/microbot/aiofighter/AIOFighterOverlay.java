@@ -16,7 +16,7 @@ import net.runelite.client.ui.overlay.outline.ModelOutlineRenderer;
 import javax.inject.Inject;
 import java.awt.*;
 
-import static net.runelite.client.plugins.microbot.aiofighter.combat.AttackNpcScript.attackableNpcs;
+import static net.runelite.client.plugins.microbot.aiofighter.combat.AttackNpcScript.filteredAttackableNpcs;
 import static net.runelite.client.plugins.microbot.aiofighter.combat.FlickerScript.currentMonstersAttackingUs;
 import static net.runelite.client.ui.overlay.OverlayUtil.renderPolygon;
 
@@ -51,7 +51,7 @@ public class AIOFighterOverlay extends OverlayPanel {
 
     @Override
     public Dimension render(Graphics2D graphics) {
-        if (attackableNpcs == null) return null;
+        if (filteredAttackableNpcs == null) return null;
 
         LocalPoint lp =  LocalPoint.fromWorld(Microbot.getClient(), config.centerLocation());
         if (lp != null) {
@@ -72,14 +72,14 @@ public class AIOFighterOverlay extends OverlayPanel {
         }
 
         for (Rs2NpcModel npc :
-                attackableNpcs) {
+                filteredAttackableNpcs) {
             if (npc != null && npc.getCanvasTilePoly() != null) {
                 try {
                     graphics.setColor(Color.CYAN);
                     modelOutlineRenderer.drawOutline(npc, 2, Color.RED, 4);
                     graphics.draw(npc.getCanvasTilePoly());
                 } catch (Exception ex) {
-                    System.out.println(ex.getMessage());
+                    Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
                 }
             }
         }

@@ -33,7 +33,7 @@ public class ArrowScript extends Script {
                     checkAndUseItem(config.DragonTIP().getItem1(), config.DragonTIP().getItem2());
                 }
             } catch (Exception ex) {
-                System.out.println(ex.getMessage());
+                Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
             }
         }, 0, 600, TimeUnit.MILLISECONDS);
         return true;

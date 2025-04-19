@@ -58,7 +58,7 @@ public class PyreFoxStateManager extends Script
 				_handleDroppingItems();
 
 			} catch (Exception ex) {
-				System.err.println("Error: " + ex.getMessage());
+				Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
 			}
 		}, 0, 600, TimeUnit.MILLISECONDS);
 

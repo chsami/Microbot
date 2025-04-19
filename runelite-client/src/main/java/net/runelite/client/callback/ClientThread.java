@@ -111,6 +111,7 @@ public class ClientThread
 		} catch (InterruptedException | TimeoutException | ExecutionException e) {
 			if (e instanceof InterruptedException) {
 				Thread.currentThread().interrupt();
+				return Optional.empty();
 			}
 			if (!Microbot.isDebug()) {
 				Microbot.log("Exception during task execution: " + e.getClass().getSimpleName() + ": " + e.getMessage());

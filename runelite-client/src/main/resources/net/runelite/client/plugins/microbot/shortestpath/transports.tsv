@@ -5007,4 +5007,10 @@
 2723 3374 0	2727 9774 0	Climb-down;Staircase;16664									
 2723 3375 0	2727 9775 0	Climb-down;Staircase;16664									
 2727 9774 0	2723 3374 0	Climb-up;Staircase;16665									
-2727 9775 0	2723 3375 0	Climb-up;Staircase;16664									
+2727 9775 0	2723 3375 0	Climb-up;Staircase;16664
+
+# MYTH GUILD
+2457 2849 0	1936 9009 1	Enter;Mythic Statue;31626
+1936 9009 1	2457 2849 0	Climb-up;Ladder;32205
+1939 8968 1	2445 2818 0	Enter;Cave;31807
+2445 2818 0	1939 8968 1	Enter;Cave entrance;31606

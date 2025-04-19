@@ -83,7 +83,7 @@ public class FlickerScript extends Script {
 
 
             } catch (Exception ex) {
-                System.err.println("Error: " + ex.getMessage());
+                Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
             }
         }, 0, 200, TimeUnit.MILLISECONDS);
         return true;

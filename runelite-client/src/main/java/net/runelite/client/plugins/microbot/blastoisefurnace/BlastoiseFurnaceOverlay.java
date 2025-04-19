@@ -27,7 +27,7 @@ public class BlastoiseFurnaceOverlay extends OverlayPanel {
             this.panelComponent.getChildren().add(LineComponent.builder().left(Microbot.status).build());
         } catch (Exception var3) {
             Exception ex = var3;
-            System.out.println(ex.getMessage());
+            Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
         }
 
         return super.render(graphics);

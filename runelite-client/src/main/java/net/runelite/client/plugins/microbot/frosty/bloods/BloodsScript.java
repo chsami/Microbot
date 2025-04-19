@@ -39,7 +39,9 @@ public class BloodsScript extends Script {
     private final WorldPoint monasteryFairyRing = new WorldPoint(2656, 3230, 0);
     private final WorldPoint caveFairyRing = new WorldPoint(3447, 9824, 0);
     private final WorldPoint firstCaveExit = new WorldPoint(3460, 9813, 0);
-    private final WorldPoint outsideBloodRuins = new WorldPoint(3555, 9783, 0);
+    private final WorldPoint outsideBloodRuins74 = new WorldPoint(3555, 9783, 0);
+    private final WorldPoint outsideBloodRuins93 = new WorldPoint(3543, 9772, 0);
+    private final WorldPoint outsideBloodRuins73 = new WorldPoint(3558, 9779, 0);
 
     public static final int feroxPool = 39651;
     public static final int monasteryRegion = 10290;
@@ -93,6 +95,10 @@ public class BloodsScript extends Script {
                 }
 
                 if (Rs2Inventory.anyPouchUnknown()) {
+                    if (Rs2Bank.isOpen()){
+                        Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
+                        sleepUntil(() -> !Rs2Bank.isOpen(), 1200);
+                    }
                     checkPouches();
                     return;
                 }
@@ -121,7 +127,7 @@ public class BloodsScript extends Script {
                 System.out.println("Total time for loop " + totalTime);
 
             } catch (Exception ex) {
-                System.out.println(ex.getMessage());
+                Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
                 Microbot.log("Error in script" + ex.getMessage());
             }
         }, 0, 1000, TimeUnit.MILLISECONDS);
@@ -153,6 +159,10 @@ public class BloodsScript extends Script {
 
         Rs2Tab.switchToInventoryTab();
 
+        if (Rs2Inventory.anyPouchUnknown()) {
+            checkPouches();
+        }
+
         if (Rs2Inventory.hasDegradedPouch()) {
             Rs2Magic.repairPouchesWithLunar();
             sleepGaussian(900, 200);
@@ -180,11 +190,6 @@ public class BloodsScript extends Script {
             Rs2Bank.openBank();
             sleepUntil(Rs2Bank::isOpen, 2500);
             sleepGaussian(1100, 200);
-        }
-
-        if (!Rs2Inventory.hasAnyPouch()) {
-            Rs2Bank.withdrawItem(colossalPouch);
-            sleepGaussian(700, 200);
         }
 
         if (!Rs2Inventory.hasRunePouch()) {
@@ -257,7 +262,7 @@ public class BloodsScript extends Script {
 
         if (Rs2Bank.isOpen() && Rs2Inventory.allPouchesFull() && Rs2Inventory.isFull()) {
             Microbot.log("We are full, lets go");
-            Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
+            Rs2Bank.closeBank();
             sleepUntil(() -> !Rs2Bank.isOpen(), 1200);
             if (Rs2Inventory.contains(inactiveBloodEssence)) {
                 Rs2Inventory.interact(inactiveBloodEssence, "Activate");
@@ -399,50 +404,43 @@ public class BloodsScript extends Script {
     }
 
     private void handlePohFairyRing() {
-        List<TileObject> allGameObjects = Rs2GameObject.getAll().stream()
-                .filter(Objects::nonNull)
-                .filter(obj -> obj.getLocalLocation().distanceTo(Microbot.getClient().getLocalPlayer().getLocalLocation()) < 5000)
-                .collect(Collectors.toList());
 
-        TileObject pohTreeRing = allGameObjects.stream()
-                .filter(obj -> {
-                    ObjectComposition composition = Rs2GameObject.getObjectComposition(obj.getId());
-                    return composition != null && composition.getName().toLowerCase().contains("spirit");
-                })
-                .findFirst().orElse(null);
+        if (Rs2GameObject.findObjectById(ObjectID.POH_FAIRY_RING) != null) {
+            Rs2GameObject.interact(ObjectID.POH_FAIRY_RING, "Last-destination (DLS)");
+            Microbot.log("Using fairy ring");
+            Rs2Player.waitForAnimation(1200);
+            sleepUntil(() -> plugin.getMyWorldPoint().equals(caveFairyRing), 1200);
+        } else {
+            List<TileObject> allGameObjects = Rs2GameObject.getAll().stream()
+                    .filter(Objects::nonNull)
+                    .filter(obj -> obj.getLocalLocation().distanceTo(Microbot.getClient().getLocalPlayer().getLocalLocation()) < 5000)
+                    .collect(Collectors.toList());
 
-        TileObject pohFairyRing = allGameObjects.stream()
-                .filter(obj -> {
-                    ObjectComposition composition = Rs2GameObject.getObjectComposition(obj.getId());
-                    if (composition == null) return false;
-                    String name = composition.getName().toLowerCase();
-                    return name.contains("fairy") && !name.contains("spirit");
-                })
-                .findFirst().orElse(null);
-
-        if (pohTreeRing != null) {
-            Microbot.log("Found Spirit Tree Ring");
-            Rs2GameObject.interact(pohTreeRing, "Ring-last-destination (DLS)");
-            Rs2Player.waitForAnimation();
-            sleepUntil(() -> plugin.getMyWorldPoint().equals(caveFairyRing));
-        } else if (pohFairyRing != null) {
-            Microbot.log("Found pohFairyRing");
-            Rs2GameObject.interact(pohFairyRing, "Last-destination (DLS)");
-            Rs2Player.waitForAnimation();
-            sleepUntil(() -> plugin.getMyWorldPoint().equals(caveFairyRing));
-        }
-
-        if (pohTreeRing == null && pohFairyRing == null) {
-            Microbot.log("No fairy ring found, resetting to banking for a retry");
-            state = State.BANKING;
+            TileObject pohTreeRing = allGameObjects.stream()
+                    .filter(obj -> {
+                        ObjectComposition composition = Rs2GameObject.getObjectComposition(obj.getId());
+                        return composition != null && composition.getName().toLowerCase().contains("spirit");
+                    })
+                    .findFirst().orElse(null);
+            if (pohTreeRing != null) {
+                Rs2GameObject.interact(pohTreeRing, "Ring-last-destination (DLS)");
+                Microbot.log("Using fairy tree");
+                Rs2Player.waitForAnimation();
+                sleepUntil(() ->plugin.getMyWorldPoint().equals(caveFairyRing));
+            } else {
+                Microbot.log("Unable to find fairy ring, resetting to banking for a retry");
+                state = State.BANKING;
+            }
         }
 
         if (Rs2Player.getWorldLocation().equals(caveFairyRing)) {
             state = State.WALKING_TO;
         }
-    }
 
-    private void handleWalking() {
+        }
+
+
+        private void handleWalking() {
         if (plugin.isBreakHandlerEnabled()) {
             BreakHandlerScript.setLockState(true);
         }
@@ -455,17 +453,33 @@ public class BloodsScript extends Script {
             sleepGaussian(900, 200);
         }
 
-        if (plugin.getMyWorldPoint().equals(firstCaveExit)) {
-            Microbot.log("Walking to ruins: " + outsideBloodRuins);
-            Rs2Walker.walkTo(outsideBloodRuins);
-            sleepUntil(() -> plugin.getMyWorldPoint().equals(outsideBloodRuins), 1200);
+        if (plugin.getMyWorldPoint().equals(firstCaveExit) &&
+                Rs2Player.getRealSkillLevel(Skill.AGILITY) > 93) {
+            Microbot.log("Walking to blood ruins " +
+                     outsideBloodRuins93);
+            Rs2Walker.walkTo(outsideBloodRuins93);
+            sleepUntil(() -> Rs2Player.getWorldLocation().equals(outsideBloodRuins93), 1200);
         }
 
-        if (plugin.getMyWorldPoint().equals(outsideBloodRuins)) {
-            Microbot.log("Current location after walking: " + plugin.getMyWorldPoint());
-            if (plugin.getMyWorldPoint().equals(outsideBloodRuins)) {
-                state = State.CRAFTING;
-            }
+        if (plugin.getMyWorldPoint().equals(firstCaveExit) &&
+        Rs2Player.getRealSkillLevel(Skill.AGILITY) < 93 && Rs2Player.getRealSkillLevel(Skill.AGILITY) >74) {
+            Microbot.log("Walking to ruins: " + outsideBloodRuins74);
+            Rs2Walker.walkTo(outsideBloodRuins74);
+            sleepUntil(() -> plugin.getMyWorldPoint().equals(outsideBloodRuins74), 1200);
+        }
+
+        TileObject ruins = Rs2GameObject.findObjectById(bloodRuins);
+
+        if (plugin.getMyWorldPoint().equals(firstCaveExit) && Rs2Player.getRealSkillLevel(Skill.AGILITY) <74) {
+            Microbot.log("Walking to ruins: " + outsideBloodRuins73);
+            Rs2Walker.walkTo(outsideBloodRuins73);
+            sleepUntil(() -> Rs2Player.distanceTo(new WorldPoint(3560, 9780, 0 )) <5);
+        }
+
+        if (ruins != null && plugin.getMyWorldPoint().getRegionID() == 14232
+            && !Rs2Player.isMoving() && !Rs2Player.isAnimating() &&
+        Rs2Player.distanceTo(new WorldPoint(3560, 9780, 0 )) < 18) {
+            state = State.CRAFTING;
         }
     }
 
@@ -509,33 +523,25 @@ public class BloodsScript extends Script {
         Rs2Tab.switchToEquipmentTab();
         sleepGaussian(1300, 200);
 
-        if (config.usePoh()) {
-            List<Teleports> bankTeleport = Arrays.asList(
-                    Teleports.CRAFTING_CAPE,
-                    Teleports.FARMING_CAPE
-            );
-            boolean teleportUsed = false;
+        List<Teleports> bankTeleport = Arrays.asList(
+                Teleports.CRAFTING_CAPE,
+                Teleports.FARMING_CAPE,
+                Teleports.FEROX_ENCLAVE
+        );
+        boolean teleportUsed = false;
 
-            for (Teleports teleport : bankTeleport) {
-                for (Integer bankTeleportsId : teleport.getItemIds()) {
-                    if (Rs2Equipment.isWearing(bankTeleportsId)) {
-                        Microbot.log("Using: " + teleport.getName());
-                        Rs2Equipment.interact(bankTeleportsId, teleport.getInteraction());
-                        sleepUntil(() -> teleport.matchesRegion(plugin.getMyWorldPoint().getRegionID()));
-                        sleepGaussian(1100, 200);
-                        teleportUsed = true;
-                        break;
-                    }
+        for (Teleports teleport : bankTeleport) {
+            for (Integer bankTeleportsId : teleport.getItemIds()) {
+                if (Rs2Equipment.isWearing(bankTeleportsId)) {
+                    Microbot.log("Using: " + teleport.getName());
+                    Rs2Equipment.interact(bankTeleportsId, teleport.getInteraction());
+                    sleepUntil(() -> teleport.matchesRegion(plugin.getMyWorldPoint().getRegionID()));
+                    sleepGaussian(1100, 200);
+                    teleportUsed = true;
+                    break;
                 }
-                if (teleportUsed) break;
             }
-        } else {
-            Teleports feroxTeleport = Teleports.FEROX_ENCLAVE;
-            Optional<Integer> rodId = Arrays.stream(feroxTeleport.getItemIds())
-                    .filter(Rs2Equipment::isWearing)
-                    .findFirst();
-            rodId.ifPresent(id -> Rs2Equipment.interact(id, feroxTeleport.getInteraction()));
-            sleepUntil(() -> plugin.getMyWorldPoint().getRegionID() == feroxTeleport.getBankingRegionIds()[0]);
+            if (teleportUsed) break;
         }
     }
 }

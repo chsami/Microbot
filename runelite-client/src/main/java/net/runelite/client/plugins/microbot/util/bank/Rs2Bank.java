@@ -1182,7 +1182,7 @@ public class Rs2Bank {
             }
             return action;
         } catch (Exception ex) {
-            System.out.println(ex.getMessage());
+            Microbot.logStackTrace("Rs2Bank", ex);
         }
         return false;
     }
@@ -1205,7 +1205,7 @@ public class Rs2Bank {
             sleep(Rs2Random.randomGaussian(800,200));
             return true;
         } catch (Exception ex) {
-            System.out.println(ex.getMessage());
+            Microbot.logStackTrace("Rs2Bank", ex);
         }
         return false;
     }
@@ -1239,7 +1239,7 @@ public class Rs2Bank {
             sleep(Rs2Random.randomGaussian(800,200));
             return true;
         } catch (Exception ex) {
-            System.out.println(ex.getMessage());
+            Microbot.logStackTrace("Rs2Bank", ex);
         }
         return false;
     }
