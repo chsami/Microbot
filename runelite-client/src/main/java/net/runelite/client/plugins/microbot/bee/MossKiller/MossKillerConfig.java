@@ -40,7 +40,7 @@ public interface MossKillerConfig extends Config {
             name = "Equipment Details",
             description = "List of required equipment.",
             position = 2,
-            section = advancedGuideSection // Links this to the Advanced Guide section
+            section = advancedGuideSection
     )
     default String equipmentGuide() {
         return "1x Rune Chainbody\n"
@@ -72,7 +72,7 @@ public interface MossKillerConfig extends Config {
             name = "Instructions",
             description = "Advanced usage instructions for MossKiller.",
             position = 1,
-            section = advancedGuideSection // Links this to the Advanced Guide section
+            section = advancedGuideSection
     )
     default String instructionsGuide() {
         return  "Select Wildy Mode.\n"
@@ -96,7 +96,7 @@ public interface MossKillerConfig extends Config {
             name = "",
             description = "filler text to differentiate the config",
             position = 3,
-            section = saferSection // Links this to the Advanced Guide section
+            section = saferSection
     )
     default String fillerTest() {
         return  "         ↓↓↓ RANGED SETTINGS ↓↓↓";
@@ -107,7 +107,7 @@ public interface MossKillerConfig extends Config {
             name = "Instructions",
             description = "Safer Mode instructions for MossKiller.",
             position = 1,
-            section = saferSection // Links this to the Advanced Guide section
+            section = saferSection
     )
     default String instructionsGuideSafer() {
         return  "Select Wildy Safer Mode.\n"
@@ -138,7 +138,7 @@ public interface MossKillerConfig extends Config {
             name = "How to Use",
             description = "Basic usage instructions for MossKiller",
             position = 1,
-            section = basicGuideSection // Belongs to Basic Guide
+            section = basicGuideSection
     )
     default String GUIDE() {
         return "NORMAL: Have runes for teleport to Varrock, swordfish, and bronze axe in the bank. Start in Varrock East Bank. Turn off Teleportation spells in Web Walker configuration. Turn on Breakhandler.\n"
@@ -185,8 +185,9 @@ public interface MossKillerConfig extends Config {
             name = "Mithril Arrow Amount",
             description = "Number of mithril arrows to use per trip if using Ranged",
             position = 4,
-            section = saferSection // Assuming you want it in the same section
+            section = saferSection
     )
+    @Range(min = 1, max = 5000)  // This adds validation
     default int mithrilArrowAmount() {
         return 500;
     }
@@ -199,7 +200,7 @@ public interface MossKillerConfig extends Config {
             section = saferSection
     )
     default GearEnums.RangedAmulet rangedAmulet() {
-        return GearEnums.RangedAmulet.ACCURACY; // Default to amulet of power
+        return GearEnums.RangedAmulet.ACCURACY;
     }
 
     @ConfigItem(
@@ -210,7 +211,7 @@ public interface MossKillerConfig extends Config {
             section = saferSection
     )
     default GearEnums.RangedTorso rangedTorso() {
-        return GearEnums.RangedTorso.LEATHER; // Default to leather
+        return GearEnums.RangedTorso.LEATHER;
     }
 
     @ConfigItem(
@@ -221,7 +222,7 @@ public interface MossKillerConfig extends Config {
             section = saferSection
     )
     default GearEnums.RangedChaps rangedChaps() {
-        return GearEnums.RangedChaps.LEATHER; // Default to green d'hide
+        return GearEnums.RangedChaps.LEATHER;
     }
 
     @ConfigItem(
@@ -340,7 +341,7 @@ public interface MossKillerConfig extends Config {
             name = "Hop Worlds When Players Near",
             description = "Hop worlds when players are near you fighting Moss Giants.",
             position = 6,
-            section = basicGuideSection // Belongs to Basic Guide
+            section = basicGuideSection
     )
     default boolean hopWhenPlayerIsNear() {
         return true;
@@ -351,7 +352,7 @@ public interface MossKillerConfig extends Config {
             name = "Slash Weapon Equipped?",
             description = "Do you have a slash weapon equipped for spider's web? If False, have a knife in the bank.",
             position = 6,
-            section = basicGuideSection // Belongs to Basic Guide
+            section = basicGuideSection
     )
     default boolean isSlashWeaponEquipped() {
         return true;

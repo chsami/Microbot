@@ -206,12 +206,8 @@ public class Rs2GroundItem {
      */
     public static RS2Item[] getAllFromWorldPoint(int range, WorldPoint worldPoint) {
         List<RS2Item> temp = new ArrayList<>();
-
-        // Convert WorldPoint to LocalPoint for sorting
-        LocalPoint safespotLocalPoint = LocalPoint.fromWorld(Microbot.getClient(), worldPoint);
-
-        int safespotX = safespotLocalPoint.getX();
-        int safespotY = safespotLocalPoint.getY();
+        int safespotX = worldPoint.getX();
+        int safespotY = worldPoint.getY();
 
         int minX = safespotX - range, minY = safespotY - range;
         int maxX = safespotX + range, maxY = safespotY + range;
@@ -230,10 +226,10 @@ public class Rs2GroundItem {
             }
         }
 
-        // Sort items based on distance from the safespot local point
+        // Sort items based on distance from the safespot
         temp = temp.stream()
                 .sorted(Comparator.comparingInt(value ->
-                        value.getTile().getLocalLocation().distanceTo(safespotLocalPoint)))
+                        value.getTile().getLocalLocation().distanceTo(new LocalPoint(safespotX, safespotY))))
                 .collect(Collectors.toList());
 
         return temp.toArray(new RS2Item[temp.size()]);

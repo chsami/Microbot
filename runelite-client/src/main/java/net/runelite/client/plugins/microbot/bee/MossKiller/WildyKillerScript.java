@@ -105,9 +105,9 @@ public class WildyKillerScript extends Script {
     public static final WorldArea LUMBRIDGE_AREA = new WorldArea(3189, 3183, 63, 62, 0);
     public static final WorldArea CASTLE_WARS_AREA = new WorldArea(2433, 3076, 15, 25, 0);
     private static final WorldArea WILDERNESS_AREA = new WorldArea(2944, 3520, 448, 384, 0);
-    private static final int COMBAT_TAB_WIDGET_ID = 35913791;  // Combat tab
-    private static final int CHOOSE_SPELL_WIDGET_ID = 38862875; // Choose spell
-    private static final int CHOOSE_SPELL_DEFENSIVE_WIDGET_ID = 38862870; // Choose spell
+    public static final int COMBAT_TAB_WIDGET_ID = 35913791;  // Combat tab
+    public static final int CHOOSE_SPELL_WIDGET_ID = 38862875; // Choose spell
+    public static final int CHOOSE_SPELL_DEFENSIVE_WIDGET_ID = 38862870; // Choose spell
     public boolean hitsplatApplied = false;
     public boolean isTargetOutOfReach = false;
 
