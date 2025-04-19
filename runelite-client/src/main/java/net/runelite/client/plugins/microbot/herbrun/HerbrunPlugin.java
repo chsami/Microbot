@@ -8,7 +8,7 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.pluginscheduler.event.ScheduledStopEvent;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -55,7 +55,7 @@ public class HerbrunPlugin extends Plugin {
     }
 
     @Subscribe
-    public void onScheduledStopEvent(ScheduledStopEvent event) {
+    public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
         if (event.getPlugin() == this) {
             Microbot.stopPlugin(this);
         }
