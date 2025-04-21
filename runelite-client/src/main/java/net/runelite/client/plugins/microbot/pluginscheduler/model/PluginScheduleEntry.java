@@ -1,47 +1,52 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.model;
 
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.plugins.Plugin;
-import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.pluginscheduler.api.ConditionProvider;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.ConditionManager;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.OrCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.IntervalCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.SingleTriggerTimeCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeWindowCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
-
-import net.runelite.client.plugins.microbot.pluginscheduler.serialization.ScheduledSerializer;
-
-
-
-import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-
-
+import java.util.ArrayList;
 import java.util.List;
-
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.ConditionManager;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.OrCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.enums.UpdateOption;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.IntervalCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.SingleTriggerTimeCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeWindowCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
+import net.runelite.client.plugins.microbot.pluginscheduler.serialization.ScheduledSerializer;
 
 @Data
 @AllArgsConstructor
 @Getter
 @Slf4j
-public class PluginScheduleEntry {
+public class PluginScheduleEntry implements AutoCloseable {
+
+    // Remove the duplicate executor and use the shared one from ConditionManager
+    
+    // Store the scheduled futures so they can be cancelled later
+    private transient ScheduledFuture<?> startConditionWatchdogFuture;
+    private transient ScheduledFuture<?> stopConditionWatchdogFuture;
     private transient Plugin plugin;
     private String name;    
     private boolean enabled;
@@ -146,7 +151,8 @@ public class PluginScheduleEntry {
             this.priority = 0;
         }
         
-        registerPluginConditions();
+        //registerPluginConditions();
+        scheduleConditionWatchdogs(1000,UpdateOption.SYNC);
         if (enabled){
             startConditionManager.registerEvents();
         }
@@ -208,12 +214,12 @@ public class PluginScheduleEntry {
         }
 
         try {
-            registerPluginStoppingConditions();
+            //registerPluginStoppingConditions();
             // Log defined conditions when starting
             logStartCondtions();
             logStopConditions();                        
             // Reset stop conditions before starting
-            updateStopConditions();
+            resetStopConditions();
             this.setLastStopReason("");
             this.setLastRunSuccessful(false);
             this.setStopReasonType(PluginScheduleEntry.StopReason.NONE);
@@ -263,7 +269,7 @@ public class PluginScheduleEntry {
             // Start monitoring for successful stop
             startStopMonitoringThread(successfulRun);
             
-            if (getPlugin() instanceof ConditionProvider) {
+            if (getPlugin() instanceof SchedulablePlugin) {
                 log.info("Unregistering stopping conditions for plugin '{}'", name);
             }
             return;
@@ -333,7 +339,7 @@ public class PluginScheduleEntry {
                         
                         // Update lastRunTime and start conditions for next run
                         if (successfulRun) {
-                            updateStartConditions();
+                            resetStartConditions();
                             // Increment the run count since we completed a full run
                             incrementRunCount();
                         }
@@ -796,12 +802,12 @@ public class PluginScheduleEntry {
                             name, 
                             newTrigDateTime.get().format(DATE_TIME_FORMATTER));
                     // Update the start conditions
-                    updateStartConditions();
+                    resetStartConditions();
                 } else {
                     log.info("Start time for '{}' remains unchanged", name);
                 }
             }else if (!newTrigDateTime.isPresent() && currentTrigDateTime.isPresent()){                
-                updateStartConditions();// we have new condition ->  new start time ?
+                resetStartConditions();// we have new condition ->  new start time ?
                 
             }
         } else {
@@ -829,7 +835,7 @@ public class PluginScheduleEntry {
     /**
      * Update the lastRunTime to now and reset start conditions
      */
-    private void updateStartConditions() {
+    private void resetStartConditions() {
         // Update last run time
         lastRunTime = roundToMinutes(ZonedDateTime.now(ZoneId.systemDefault()));
         
@@ -870,7 +876,7 @@ public class PluginScheduleEntry {
     /**
      * Reset stop conditions
      */
-    private void updateStopConditions() {
+    private void resetStopConditions() {
         if (stopConditionManager != null) {
             stopConditionManager.reset();            
             // Log that stop conditions were reset
@@ -1071,9 +1077,9 @@ public class PluginScheduleEntry {
                 Duration timeSinceLastAttempt = Duration.between(lastStopAttemptTime, now);
                 
                 // Force hard stop if we've waited too long
-                if (timeSinceFirstAttempt.compareTo(hardStopTimeout) > 0 
-                    && (getPlugin() instanceof ConditionProvider)
-                    && ((ConditionProvider) getPlugin()).isHardStoppable()) {
+                if ( hardStopTimeout.compareTo(Duration.ZERO) > 0 && timeSinceFirstAttempt.compareTo(hardStopTimeout) > 0 
+                    && (getPlugin() instanceof SchedulablePlugin)
+                    && ((SchedulablePlugin) getPlugin()).isHardStoppable()) {
                     log.warn("Plugin {} failed to respond to soft stop after {} seconds - forcing hard stop", 
                              name, timeSinceFirstAttempt.toSeconds());
                     
@@ -1087,7 +1093,7 @@ public class PluginScheduleEntry {
                              name, timeSinceFirstAttempt.toSeconds());
                     lastStopAttemptTime = now;
                     this.softStop(true);
-                }else if (timeSinceLastAttempt.compareTo(hardStopTimeout) > 0) {                    
+                }else if (hardStopTimeout.compareTo(Duration.ZERO) > 0  && timeSinceLastAttempt.compareTo(hardStopTimeout.multipliedBy(2)) > 0) {                    
                     log.error("Forcibly shutting down the client due to unresponsive plugin: {}", name);
     
                     // Schedule client shutdown on the client thread to ensure it happens safely
@@ -1195,125 +1201,401 @@ public class PluginScheduleEntry {
 
 
 
+    
 
-    /**
-     * Updates or adds a condition at runtime.
-     * This can be used by plugins to dynamically update their stopping conditions.
-     * 
-     * @param condition The condition to add or update
-     * @return This ScheduledPlugin instance for method chaining
-     */
-    public PluginScheduleEntry updateStopCondition(Condition condition) {
-        // Check if we already have a condition of the same type
-        boolean found = false;
-        for (int i = 0; i < stopConditionManager.getConditions().size(); i++) {
-            Condition existing = stopConditionManager.getConditions().get(i);
-            if (existing.getClass().equals(condition.getClass())) {
-                // Replace the existing condition
-                stopConditionManager.getConditions().set(i, condition);
-                found = true;
-                break;
-            }
-        }
+    // /**
+    //  * Registers any custom stopping conditions provided by the plugin.
+    //  * These conditions are combined with existing conditions using AND logic
+    //  * to ensure plugin-defined conditions have the highest priority.
+    //  * 
+    //  * @param plugin    The plugin that might provide conditions
+    //  * @param scheduled The scheduled instance managing the plugin
+    //  */
+    // public void registerPluginStoppingConditions() {
+    //     if (this.plugin == null) {
+    //         this.plugin = getPlugin();
+    //     }
+    //     log.info("Registering stopping conditions for plugin '{}'", name);
+    //     if (this.plugin instanceof SchedulablePlugin) {
+    //         SchedulablePlugin provider = (SchedulablePlugin) plugin;
 
-        // If not found, add it
-        if (!found) {
-            stopConditionManager.addUserCondition(condition);
-        }
-
-        return this;
-    }
-
-    /**
-     * Registers any custom stopping conditions provided by the plugin.
-     * These conditions are combined with existing conditions using AND logic
-     * to ensure plugin-defined conditions have the highest priority.
-     * 
-     * @param plugin    The plugin that might provide conditions
-     * @param scheduled The scheduled instance managing the plugin
-     */
-    public void registerPluginStoppingConditions() {
-        if (this.plugin == null) {
-            this.plugin = getPlugin();
-        }
-        log.info("Registering stopping conditions for plugin '{}'", name);
-        if (this.plugin instanceof ConditionProvider) {
-            ConditionProvider provider = (ConditionProvider) plugin;
-
-            // Get conditions from the provider
+    //         // Get conditions from the provider
             
-            List<Condition> pluginConditions = provider.getStopCondition().getConditions();
-            if (pluginConditions != null && !pluginConditions.isEmpty()) {                
-                // Get or create plugin's logical structure
+    //         List<Condition> pluginConditions = provider.getStopCondition().getConditions();
+    //         if (pluginConditions != null && !pluginConditions.isEmpty()) {                
+    //             // Get or create plugin's logical structure
                 
-                LogicalCondition pluginLogic = provider.getStopCondition();                                
-                // Set the new root condition                
-                getStopConditionManager().setPluginCondition(pluginLogic);
+    //             LogicalCondition pluginLogic = provider.getStopCondition();                                
+    //             // Set the new root condition                
+    //             getStopConditionManager().setPluginCondition(pluginLogic);
                 
-                // Log with the consolidated method
-                logStopConditionsWithDetails();
-            } else {
-                log.info("Plugin '{}' implements StoppingConditionProvider but provided no conditions",
-                                        plugin.getName());
-            }
-        }
-    }
-    private void registerPluginStartingConditions(){
+    //             // Log with the consolidated method
+    //             logStopConditionsWithDetails();
+    //         } else {
+    //             log.info("Plugin '{}' implements StoppingConditionProvider but provided no conditions",
+    //                                     plugin.getName());
+    //         }
+    //     }
+    // }
+    // private boolean registerPluginStartingConditions(){
+    //     if (this.plugin == null) {
+    //         this.plugin = getPlugin();
+    //     }
+    //     log.info("Registering start conditions for plugin '{}'", name);
+    //     if (this.plugin instanceof SchedulablePlugin) {
+    //         SchedulablePlugin provider = (SchedulablePlugin) plugin;
+
+    //         // Get conditions from the provider
+    //         if (provider.getStartCondition() == null) {
+    //             log.warn("Plugin '{}' implements ConditionProvider but provided no start conditions", plugin.getName());
+    //             return false;
+    //         }
+    //         List<Condition> pluginConditions = provider.getStartCondition().getConditions();
+    //         if (pluginConditions != null && !pluginConditions.isEmpty()) {
+    //             // Create a new AND condition as the root
+
+                
+
+    //             // Get or create plugin's logical structure
+    //             LogicalCondition pluginLogic = provider.getStartCondition();
+
+    //             if (pluginLogic != null) {
+    //                 for (Condition condition : pluginConditions) {
+    //                     if(pluginLogic.contains(condition)){
+    //                         continue;
+    //                     }
+    //                 }
+                    
+    //             }else{
+    //                 throw new RuntimeException("Plugin '"+name+"' implements ConditionProvider but provided no conditions");
+    //             }
+                                
+    //             // Set the new root condition
+    //             getStartConditionManager().setPluginCondition(pluginLogic);
+                
+    //             // Log with the consolidated method
+    //             logStartConditionsWithDetails();
+    //         } else {
+    //             log.info("Plugin '{}' implements condition Provider but provided no explicit start conditions defined",
+    //                     plugin.getName());
+    //         }
+    //     }
+    //     return true;
+
+    // }
+   
+/**
+     * Registers conditions from the plugin in an efficient manner.
+     * This method uses the new updatePluginCondition approach to intelligently
+     * merge conditions while preserving state and reducing unnecessary reinitializations.
+     * 
+     * @param updateMode Controls how conditions are merged (default: ADD_ONLY)
+     */
+    public void registerPluginConditions(UpdateOption updateOption) {
         if (this.plugin == null) {
             this.plugin = getPlugin();
         }
-        log.info("Registering start conditions for plugin '{}'", name);
-        if (this.plugin instanceof ConditionProvider) {
-            ConditionProvider provider = (ConditionProvider) plugin;
-
-            // Get conditions from the provider
-            if (provider.getStartCondition() == null) {
-                log.warn("Plugin '{}' implements ConditionProvider but provided no start conditions", plugin.getName());
-                return;
+        
+        log.info("Registering plugin conditions for plugin '{}' with update mode: {}", name, updateOption);
+        
+       
+        // Register start conditions
+        boolean startConditionsUpdated = registerPluginStartingConditions(updateOption);
+        
+        // Register stop conditions
+        boolean stopConditionsUpdated = registerPluginStoppingConditions(updateOption);
+        
+        if (startConditionsUpdated || stopConditionsUpdated) {
+            log.info("Successfully updated plugin conditions for '{}'", name);
+            
+            // Optimize structure if changes were made
+            if (updateOption != UpdateOption.REMOVE_ONLY) {
+                optimizeConditionStructures();
             }
-            List<Condition> pluginConditions = provider.getStartCondition().getConditions();
-            if (pluginConditions != null && !pluginConditions.isEmpty()) {
-                // Create a new AND condition as the root
+        } else {
+            log.debug("No changes needed to plugin conditions for '{}'", name);
+        }
+    }
+    
+    /**
+     * Default version of registerPluginConditions that uses ADD_ONLY mode
+     */
+    public void registerPluginConditions() {
+        registerPluginConditions(UpdateOption.ADD_ONLY);
+    }
 
-                
+    /**
+     * Registers or updates starting conditions from the plugin.
+     * Uses the updatePluginCondition method to efficiently merge conditions.
+     * 
+     * @return true if conditions were updated, false if no changes were needed
+     */
+    private boolean registerPluginStartingConditions(UpdateOption updateOption) {
+        if (this.plugin == null) {
+            this.plugin = getPlugin();
+        }
+        
+        log.debug("Registering start conditions for plugin '{}'", name);
+        
+        if (!(this.plugin instanceof SchedulablePlugin)) {
+            log.debug("Plugin '{}' is not a SchedulablePlugin, skipping start condition registration", name);
+            return false;
+        }
+        
+        SchedulablePlugin provider = (SchedulablePlugin) plugin;
+        
+        // Get conditions from the provider
+        if (provider.getStartCondition() == null) {
+            log.warn("Plugin '{}' implements ConditionProvider but provided no start conditions", plugin.getName());
+            return false;
+        }
+        
+        List<Condition> pluginConditions = provider.getStartCondition().getConditions();
+        if (pluginConditions == null || pluginConditions.isEmpty()) {
+            log.debug("Plugin '{}' provided no explicit start conditions", plugin.getName());
+            return false;
+        }
+        
+        // Get or create plugin's logical structure
+        LogicalCondition pluginLogic = provider.getStartCondition();
+        
+        if (pluginLogic == null) {
+            log.warn("Plugin '{}' returned null start condition", name);
+            return false;
+        }
+        // Use the new update method with the specified option
+        boolean updated = getStartConditionManager().updatePluginCondition(pluginLogic, updateOption);
+    
+        // Log with a consolidated method if changes were made
+        if (updated) {
+            log.debug("Updated start conditions for plugin '{}'", name);
+            logStartConditionsWithDetails();
+            
+            // Validate the condition structure
+            validateStartConditions();
+        }
+           
+        
+        return updated;
+    }
 
-                // Get or create plugin's logical structure
-                LogicalCondition pluginLogic = provider.getStartCondition();
+    /**
+     * Registers or updates stopping conditions from the plugin.
+     * Uses the updatePluginCondition method to efficiently merge conditions.
+     * 
+     * @return true if conditions were updated, false if no changes were needed
+     */
+    private boolean registerPluginStoppingConditions(UpdateOption updateOption) {
+        if (this.plugin == null) {
+            this.plugin = getPlugin();
+        }
+        
+        log.debug("Registering stopping conditions for plugin '{}'", name);
+        
+        if (!(this.plugin instanceof SchedulablePlugin)) {
+            log.debug("Plugin '{}' is not a SchedulablePlugin, skipping stop condition registration", name);
+            return false;
+        }
+        
+        SchedulablePlugin provider = (SchedulablePlugin) plugin;
+        
+        // Get conditions from the provider
+        List<Condition> pluginConditions = provider.getStopCondition().getConditions();
+        if (pluginConditions == null || pluginConditions.isEmpty()) {
+            log.debug("Plugin '{}' provided no explicit stop conditions", plugin.getName());
+            return false;
+        }
+        
+        // Get plugin's logical structure
+        LogicalCondition pluginLogic = provider.getStopCondition();
+        
+        if (pluginLogic == null) {
+            log.warn("Plugin '{}' returned null stop condition", name);
+            return false;
+        }
+        
+        // Use the new update method with the specified option
+        boolean updated = getStopConditionManager().updatePluginCondition(pluginLogic, updateOption);
+    
+        // Log with the consolidated method if changes were made
+        if (updated) {
+            log.debug("Updated stop conditions for plugin '{}'", name);
+            logStopConditionsWithDetails();
+            
+            // Validate the condition structure
+            validateStopConditions();
+        }
+        
+        
+        return updated;
+    }
+    
+    /**
+     * Creates and schedules watchdogs to monitor for condition changes from the plugin.
+     * This allows plugins to dynamically update their conditions at runtime,
+     * and have those changes automatically detected and integrated.
+     * 
+     * Both start and stop condition watchdogs are scheduled using the shared thread pool
+     * from ConditionManager to avoid creating redundant resources.
+     *
+     * @param checkIntervalMillis How often to check for condition changes in milliseconds
+     * @param updateMode Controls how conditions are merged during updates
+     * @return true if at least one watchdog was successfully scheduled
+     */
+    public boolean scheduleConditionWatchdogs(long checkIntervalMillis, UpdateOption updateOption) {
+        if(this.plugin == null ){
+            this.plugin  = getPlugin();
+        }
+        if (!(this.plugin instanceof SchedulablePlugin)) {            
+            log.debug("Cannot schedule condition watchdogs for non-SchedulablePlugin");
+            return false;                                        
+        }
+        
+        // Cancel any existing watchdog tasks first
+        cancelConditionWatchdogs();
+        
+        SchedulablePlugin schedulablePlugin = (SchedulablePlugin) this.plugin;
+        boolean anyScheduled = false;
+        
+        try {
+            // Create suppliers that get the current plugin conditions
+            Supplier<LogicalCondition> startConditionSupplier = 
+                () -> schedulablePlugin.getStartCondition();
+            
+            Supplier<LogicalCondition> stopConditionSupplier = 
+                () -> schedulablePlugin.getStopCondition();
+            
+            
+            // Schedule the start condition watchdog
+            startConditionWatchdogFuture = getStartConditionManager().schedulePluginConditionWatchdog(
+                startConditionSupplier,
+                checkIntervalMillis,
+                updateOption
+            );
+            
+            // Schedule the stop condition watchdog
+            stopConditionWatchdogFuture = getStopConditionManager().schedulePluginConditionWatchdog(
+                stopConditionSupplier,
+                checkIntervalMillis,
+                updateOption
+            );
+            
+            anyScheduled = true;
+            log.info("Scheduled condition watchdogs for plugin '{}' with interval {}ms using update mode: {}", 
+                     name, checkIntervalMillis, updateOption);
+        } catch (Exception e) {
+            log.error("Failed to schedule condition watchdogs for '{}'", name, e);
+        }
+        
+        return anyScheduled;
+    }
 
-                if (pluginLogic != null) {
-                    for (Condition condition : pluginConditions) {
-                        if(pluginLogic.contains(condition)){
-                            continue;
-                        }
-                    }
-                    
-                }else{
-                    throw new RuntimeException("Plugin '"+name+"' implements ConditionProvider but provided no conditions");
+       /**
+     * Schedules condition watchdogs with the default ADD_ONLY update mode.
+     * 
+     * @param checkIntervalMillis How often to check for condition changes in milliseconds
+     * @return true if at least one watchdog was successfully scheduled
+     */
+    public boolean scheduleConditionWatchdogs(long checkIntervalMillis) {
+        return scheduleConditionWatchdogs(checkIntervalMillis, UpdateOption.ADD_ONLY);
+    }
+    
+    /**
+     * Validates the start conditions structure and logs any issues found.
+     * This helps identify potential problems with condition hierarchies.
+     */
+    private void validateStartConditions() {
+        LogicalCondition startLogical = getStartConditionManager().getFullLogicalCondition();
+        if (startLogical != null) {
+            List<String> issues = startLogical.validateStructure();
+            if (!issues.isEmpty()) {
+                log.warn("Validation issues found in start conditions for '{}':", name);
+                for (String issue : issues) {
+                    log.warn("  - {}", issue);
                 }
-                                
-                // Set the new root condition
-                getStartConditionManager().setPluginCondition(pluginLogic);
-                
-                // Log with the consolidated method
-                logStartConditionsWithDetails();
-            } else {
-                log.info("Plugin '{}' implements condition Provider but provided no explicit start conditions defined",
-                        plugin.getName());
             }
         }
-
     }
-    public void registerPluginConditions(){
-
-        log.info("Registering plugin conditions for plugin '{}'", name);
-        registerPluginStartingConditions();
-        registerPluginStoppingConditions();
-        log.info("registered plugin conditions for plugin '{}'", name);
+       /**
+     * Validates the stop conditions structure and logs any issues found.
+     * This helps identify potential problems with condition hierarchies.
+     */
+    private void validateStopConditions() {
+        LogicalCondition stopLogical = getStopConditionManager().getFullLogicalCondition();
+        if (stopLogical != null) {
+            List<String> issues = stopLogical.validateStructure();
+            if (!issues.isEmpty()) {
+                log.warn("Validation issues found in stop conditions for '{}':", name);
+                for (String issue : issues) {
+                    log.warn("  - {}", issue);
+                }
+            }
+        }
     }
-
-
-  
-
+      /**
+     * Optimizes both start and stop condition structures by flattening unnecessary nesting
+     * and removing empty logical conditions.
+     */
+    private void optimizeConditionStructures() {
+        // Optimize start conditions
+        LogicalCondition startLogical = getStartConditionManager().getFullLogicalCondition();
+        if (startLogical != null) {
+            boolean optimized = startLogical.optimizeStructure();
+            if (optimized) {
+                log.debug("Optimized start condition structure for '{}'", name);
+            }
+        }
+        
+        // Optimize stop conditions
+        LogicalCondition stopLogical = getStopConditionManager().getFullLogicalCondition();
+        if (stopLogical != null) {
+            boolean optimized = stopLogical.optimizeStructure();
+            if (optimized) {
+                log.debug("Optimized stop condition structure for '{}'", name);
+            }
+        }
+    }
+    /**
+     * Cancels any active condition watchdog tasks.
+     * This should be called when the plugin is stopped or when refreshing the watchdogs.
+     */
+    public void cancelConditionWatchdogs() {
+        if (startConditionWatchdogFuture != null) {
+            startConditionWatchdogFuture.cancel(false);
+            startConditionWatchdogFuture = null;
+        }
+        
+        if (stopConditionWatchdogFuture != null) {
+            stopConditionWatchdogFuture.cancel(false);
+            stopConditionWatchdogFuture = null;
+        }
+    }
+    
+    /**
+     * Checks if any condition watchdogs are currently active for this plugin.
+     * 
+     * @return true if at least one watchdog is active
+     */
+    public boolean hasActiveWatchdogs() {
+        return (startConditionWatchdogFuture != null && !startConditionWatchdogFuture.isDone()) || 
+               (stopConditionWatchdogFuture != null && !stopConditionWatchdogFuture.isDone());
+    }
+    
+    /**
+     * Properly clean up resources when this object is closed or disposed.
+     * This is more reliable than using finalize() which is deprecated.
+     */
+    @Override
+    public void close() {
+        // Clean up watchdogs and other resources
+        cancelConditionWatchdogs();
+        
+        // Stop any monitoring threads
+        stopMonitoringThread();
+        
+        log.debug("Resources cleaned up for plugin schedule entry: '{}'", name);
+    }
+    
     /**
      * Calculates overall progress percentage across all conditions.
      * This respects the logical structure of conditions.
@@ -1435,7 +1717,7 @@ public class PluginScheduleEntry {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (o == null || getClass() != getClass()) return false;
         
         PluginScheduleEntry that = (PluginScheduleEntry) o;
         
@@ -1636,5 +1918,175 @@ public class PluginScheduleEntry {
         } else {
             return String.format("%dd %dh %dm", seconds / 86400, (seconds % 86400) / 3600, (seconds % 3600) / 60);
         }
+    }
+
+    /**
+     * Checks whether this schedule entry contains only time-based conditions.
+     * This is useful to determine if the plugin schedule is purely time-based
+     * or if it has other types of conditions (e.g., resource, skill, etc.).
+     *
+     * @return true if the schedule only contains TimeCondition instances, false otherwise
+     */
+    public boolean hasOnlyTimeConditions() {
+        // Check if start conditions contain only time conditions
+        if (startConditionManager != null && !startConditionManager.hasOnlyTimeConditions()) {
+            return false;
+        }
+        
+        // Check if stop conditions contain only time conditions
+        if (stopConditionManager != null && !stopConditionManager.hasOnlyTimeConditions()) {
+            return false;
+        }
+        
+        // Both condition managers contain only time conditions (or are empty)
+        return true;
+    }
+    
+    /**
+     * Returns all non-time-based conditions from both start and stop conditions.
+     * This can help identify which non-time conditions are present in the schedule.
+     *
+     * @return A list of all non-TimeCondition instances in this schedule entry
+     */
+    public List<Condition> getNonTimeConditions() {
+        List<Condition> nonTimeConditions = new ArrayList<>();
+        
+        // Add non-time conditions from start conditions
+        if (startConditionManager != null) {
+            nonTimeConditions.addAll(startConditionManager.getNonTimeConditions());
+        }
+        
+        // Add non-time conditions from stop conditions
+        if (stopConditionManager != null) {
+            nonTimeConditions.addAll(stopConditionManager.getNonTimeConditions());
+        }
+        
+        return nonTimeConditions;
+    }
+
+    /**
+     * Checks if this plugin would be due to run based only on its time conditions,
+     * ignoring any non-time conditions that may be present in the schedule.
+     * This is useful to determine if a plugin is being blocked from running by
+     * time conditions or by other types of conditions.
+     * 
+     * @return true if the plugin would be scheduled to run based solely on time conditions
+     */
+    public boolean wouldRunBasedOnTimeConditionsOnly() {
+        // Check if we're already running
+        if (isRunning()) {
+            return false;
+        }
+        
+        // If no start conditions defined, plugin can't run automatically
+        if (!hasAnyStartConditions()) {
+            return false;
+        }
+        
+        // Check if time conditions alone would be satisfied
+        return startConditionManager.wouldBeTimeOnlySatisfied();
+    }
+    
+    /**
+     * Provides detailed diagnostic information about why a plugin is or isn't
+     * running based on its time conditions only.
+     * 
+     * @return A diagnostic string explaining the time condition status
+     */
+    public String diagnoseTimeConditionScheduling() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Time condition scheduling diagnosis for '").append(cleanName).append("':\n");
+        
+        // First check if plugin is already running
+        if (isRunning()) {
+            sb.append("Plugin is already running - will not be scheduled again until stopped.\n");
+            return sb.toString();
+        }
+        
+        // Check if there are any start conditions
+        if (!hasAnyStartConditions()) {
+            sb.append("No start conditions defined - plugin can't be automatically scheduled.\n");
+            return sb.toString();
+        }
+        
+        // Get time-only condition status
+        boolean wouldRunOnTimeOnly = startConditionManager.wouldBeTimeOnlySatisfied();
+        boolean allConditionsMet = startConditionManager.areConditionsMet();
+        
+        sb.append("Time conditions only: ").append(wouldRunOnTimeOnly ? "WOULD RUN" : "WOULD NOT RUN").append("\n");
+        sb.append("All conditions: ").append(allConditionsMet ? "SATISFIED" : "NOT SATISFIED").append("\n");
+        
+        // If time conditions would run but all conditions wouldn't, non-time conditions are blocking
+        if (wouldRunOnTimeOnly && !allConditionsMet) {
+            sb.append("Plugin is being blocked by non-time conditions.\n");
+            
+            // List the non-time conditions that are not satisfied
+            List<Condition> nonTimeConditions = startConditionManager.getNonTimeConditions();
+            sb.append("Non-time conditions blocking execution:\n");
+            
+            for (Condition condition : nonTimeConditions) {
+                if (!condition.isSatisfied()) {
+                    sb.append("  - ").append(condition.getDescription())
+                      .append(" (").append(condition.getType()).append(")\n");
+                }
+            }
+        } 
+        // If time conditions would not run, show time condition status
+        else if (!wouldRunOnTimeOnly) {
+            sb.append("Plugin is waiting for time conditions to be met.\n");
+            
+            // Show next trigger time if available
+            Optional<ZonedDateTime> nextTrigger = startConditionManager.getCurrentTriggerTime();
+            if (nextTrigger.isPresent()) {
+                ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault());
+                Duration until = Duration.between(now, nextTrigger.get());
+                
+                sb.append("Next time trigger at: ").append(nextTrigger.get())
+                  .append(" (").append(formatDuration(until)).append(" from now)\n");
+            } else {
+                sb.append("No future time trigger determined.\n");
+            }
+        }
+        
+        // Add detailed time condition diagnosis from condition manager
+        sb.append("\n").append(startConditionManager.diagnoseTimeConditionsSatisfaction());
+        
+        return sb.toString();
+    }
+    
+    /**
+     * Creates a modified version of this schedule entry that contains only time conditions.
+     * This is useful for evaluating how the plugin would be scheduled if only time 
+     * conditions were considered.
+     * 
+     * @return A new PluginScheduleEntry with the same configuration but only time conditions
+     */
+    public PluginScheduleEntry createTimeOnlySchedule() {
+        // Create a new schedule entry with the same basic properties
+        PluginScheduleEntry timeOnlyEntry = new PluginScheduleEntry(
+            name, 
+            mainTimeStartCondition != null ? mainTimeStartCondition : null, 
+            enabled,
+            allowRandomScheduling
+        );
+        
+        // Create time-only condition managers
+        if (startConditionManager != null) {
+            ConditionManager timeOnlyStartManager = startConditionManager.createTimeOnlyConditionManager();
+            timeOnlyEntry.startConditionManager.setUserLogicalCondition(
+                timeOnlyStartManager.getUserLogicalCondition());
+            timeOnlyEntry.startConditionManager.setPluginCondition(
+                timeOnlyStartManager.getPluginCondition());
+        }
+        
+        if (stopConditionManager != null) {
+            ConditionManager timeOnlyStopManager = stopConditionManager.createTimeOnlyConditionManager();
+            timeOnlyEntry.stopConditionManager.setUserLogicalCondition(
+                timeOnlyStopManager.getUserLogicalCondition());
+            timeOnlyEntry.stopConditionManager.setPluginCondition(
+                timeOnlyStopManager.getPluginCondition());
+        }
+        
+        return timeOnlyEntry;
     }
 }

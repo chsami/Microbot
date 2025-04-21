@@ -192,7 +192,7 @@ public class ConditionConfigPanel extends JPanel {
             "Skill",
             "Resource",
             "Location",
-            "NPC"
+            //"NPC" // TODO: add and test NPC conditions -> not fully implemented yet
         };
         
         conditionCategoryComboBox = new JComboBox<>(conditionCategories);

@@ -125,26 +125,10 @@ public class SchedulerInfoPanel extends JPanel {
         loginButton.setBackground(new Color(33, 150, 243)); // Blue
         loginButton.setForeground(Color.WHITE);
         loginButton.setFocusPainted(false);
-        loginButton.addActionListener(e -> {
-            // Store current state to restore after login
-            SchedulerState prevState = plugin.getCurrentState();
-            
+        loginButton.addActionListener(e -> {            
             // Attempt login
             SwingUtilities.invokeLater(() -> {
-                //plugin.login();
-                
-                // If we were in an active state before, restore that state
-                if (prevState.isSchedulerActive()) {
-                    // Wait briefly to ensure login process completes
-                    Timer restoreTimer = new Timer(2000, evt -> {
-                        ((Timer)evt.getSource()).stop();
-                        updateButtonStates();
-                    });
-                    restoreTimer.setRepeats(false);
-                    restoreTimer.start();
-                } else {
-                    updateButtonStates();
-                }
+                plugin.startLoginMonitoringThread();                                
             });
         });
         buttonPanel.add(loginButton);

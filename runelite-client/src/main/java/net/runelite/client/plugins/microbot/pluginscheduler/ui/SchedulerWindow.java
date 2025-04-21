@@ -56,6 +56,7 @@ public class SchedulerWindow extends JFrame {
     private final ScheduleTablePanel tablePanel;
     private final ScheduleFormPanel formPanel;
     private final ConditionConfigPanel stopConditionPanel;
+    private final ConditionConfigPanel startConditionPanel;
     private final SchedulerInfoPanel infoPanel;
     // Timer for refreshing the info panel
     private Timer refreshTimer;
@@ -72,7 +73,8 @@ public class SchedulerWindow extends JFrame {
         // Create main components
         tablePanel = new ScheduleTablePanel(plugin);
         formPanel = new ScheduleFormPanel(plugin);
-        stopConditionPanel = new ConditionConfigPanel( true);
+        stopConditionPanel = new ConditionConfigPanel(true);
+        startConditionPanel = new ConditionConfigPanel(false);
         infoPanel = new SchedulerInfoPanel(plugin);
 
         // Set up form panel actions
@@ -126,15 +128,27 @@ public class SchedulerWindow extends JFrame {
         
         // Add tab change listener to sync selection
         tabbedPane.addChangeListener(e -> {
-            // When switching to Conditions tab, ensure the condition panel shows the currently selected plugin
-            if (tabbedPane.getSelectedIndex() == 1) { // Stop Conditions tab
-                PluginScheduleEntry selected = tablePanel.getSelectedPlugin();     
+            PluginScheduleEntry selected = tablePanel.getSelectedPlugin();
+            int tabIndex = tabbedPane.getSelectedIndex();
+            
+            // When switching to either conditions tab, ensure the condition panel shows the currently selected plugin
+            if (tabIndex == 1 || tabIndex == 2) { // Start Conditions or Stop Conditions tab
                 if (selected == null) {
-                 
-                    log.info("No plugin selected for editing. {} but plugin");
-                    return;
-                }                           
-                stopConditionPanel.setSelectScheduledPlugin(selected);                                                
+                    PluginScheduleEntry nextPlugin = plugin.getNextScheduledPlugin(false,null).orElse(selected);
+                    if (nextPlugin == null) {
+                        log.warn("No plugin selected for editing conditions and no next scheduled plugin found.");                        
+                    }else{
+                        tablePanel.selectPlugin(nextPlugin);
+                        log.warn("No plugin selected for editing conditions, taking next scheduled plugin: " + nextPlugin.getCleanName());                    
+                    }
+                    selected = nextPlugin;
+                }
+                
+                if (tabIndex == 1) { // Start Conditions tab
+                    startConditionPanel.setSelectScheduledPlugin(selected);
+                } else if (tabIndex == 2) { // Stop Conditions tab
+                    stopConditionPanel.setSelectScheduledPlugin(selected);
+                }
             }
         });
         
@@ -223,19 +237,24 @@ public class SchedulerWindow extends JFrame {
         JSplitPane scheduleSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
         scheduleSplitPane.setTopComponent(tablePanel);
         scheduleSplitPane.setBottomComponent(formPanel);
-        scheduleSplitPane.setResizeWeight(0.7); // Give 50% space to the table on top
+        scheduleSplitPane.setResizeWeight(0.7); // Give 70% space to the table on top
         scheduleSplitPane.setDividerLocation(350); // Set initial divider position
         scheduleSplitPane.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         scheduleTab.add(scheduleSplitPane, BorderLayout.CENTER);
         
+        // Start Conditions tab
+        JPanel startConditionsTab = new JPanel(new BorderLayout());
+        startConditionsTab.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        startConditionsTab.add(startConditionPanel, BorderLayout.CENTER);
+        
         // Stop Conditions tab
         JPanel stopConditionsTab = new JPanel(new BorderLayout());
         stopConditionsTab.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-       
         stopConditionsTab.add(stopConditionPanel, BorderLayout.CENTER);
         
         // Add tabs to tabbed pane
         tabbedPane.addTab("Schedule", scheduleTab);
+        tabbedPane.addTab("Start Conditions", startConditionsTab);
         tabbedPane.addTab("Stop Conditions", stopConditionsTab);
         
         // Create a split pane for the tabs and info panel
@@ -264,6 +283,9 @@ public class SchedulerWindow extends JFrame {
         if (stopConditionPanel != null) {
             stopConditionPanel.refreshConditions();            
         }
+        if (startConditionPanel != null) {
+            startConditionPanel.refreshConditions();
+        }
         
         // Refresh info panel
         if (infoPanel != null) {
@@ -284,9 +306,9 @@ public class SchedulerWindow extends JFrame {
         PluginScheduleEntry selected = tablePanel.getSelectedPlugin();   
         if (selected == null) {            
             formPanel.setEditMode(false);
-            if (tabbedPane.getSelectedIndex() != 1) { // Stop Conditions tab
-                stopConditionPanel.setSelectScheduledPlugin(null);
-            }
+            // Update both condition panels when no plugin is selected
+            startConditionPanel.setSelectScheduledPlugin(null);
+            stopConditionPanel.setSelectScheduledPlugin(null);
             if (plugin == null) {                
                 return;
             }
@@ -295,8 +317,15 @@ public class SchedulerWindow extends JFrame {
         }
         if (selected != plugin && selected != null) {            
             formPanel.loadPlugin(plugin);
-            formPanel.setEditMode(true);                
-            stopConditionPanel.setSelectScheduledPlugin(selected);
+            formPanel.setEditMode(true);
+            
+            // Update both condition panels with the selected plugin
+            int currentTabIndex = tabbedPane.getSelectedIndex();
+            if (currentTabIndex == 1) { // Start Conditions tab
+                startConditionPanel.setSelectScheduledPlugin(selected);
+            } else if (currentTabIndex == 2) { // Stop Conditions tab
+                stopConditionPanel.setSelectScheduledPlugin(selected);
+            }
         }
         
         // Always update control button when selection changes
@@ -446,7 +475,7 @@ public class SchedulerWindow extends JFrame {
      */
     public void switchToStopConditionsTab() {
         if (tabbedPane != null) {
-            tabbedPane.setSelectedIndex(1); // Switch to stop conditions tab
+            tabbedPane.setSelectedIndex(2); // Switch to stop conditions tab (now at index 2)
         }
     }
 }

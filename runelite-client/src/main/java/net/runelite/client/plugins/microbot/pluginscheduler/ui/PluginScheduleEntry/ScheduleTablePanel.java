@@ -84,8 +84,7 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
                 return String.class;
             }
             @Override
-            public boolean isCellEditable(int row, int column) {
-                log.info("ScheduleTablePanel start isCellEditable");
+            public boolean isCellEditable(int row, int column) {                
                 // Default column is 6
                 if (column == 6) {
                     // Check if this is a default plugin

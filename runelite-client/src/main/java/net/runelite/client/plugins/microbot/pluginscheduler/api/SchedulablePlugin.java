@@ -19,8 +19,8 @@ import net.runelite.client.plugins.microbot.Microbot;
  * to have your plugin report when it has finished its tasks.
  */
 
-public interface ConditionProvider {
-    
+public interface SchedulablePlugin {
+
        
     default LogicalCondition getStartCondition() {
         return new AndCondition();

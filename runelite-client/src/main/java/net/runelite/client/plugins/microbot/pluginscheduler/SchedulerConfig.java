@@ -85,7 +85,7 @@ public interface SchedulerConfig extends Config {
         section = controlSection
     )
     default int hardStopTimeoutSeconds() {
-        return 600;
+        return 0;
     }
     default void setHardStopTimeoutSeconds(int seconds){
         Microbot.getConfigManager().setConfiguration(CONFIG_GROUP, "hardStopTimeoutSeconds", seconds);
@@ -134,7 +134,7 @@ public interface SchedulerConfig extends Config {
     @ConfigItem(
         keyName = "conditionConfigTimeoutSeconds",
         name = "Config Timeout (seconds)",
-        description = "Time in seconds to wait for a user to add conditions before canceling plugin start",
+        description = "Time in seconds to wait for a user to add time based stop conditions before canceling plugin start",
         position = 3,
         section = conditionsSection
     )
@@ -180,22 +180,13 @@ public interface SchedulerConfig extends Config {
         return true;
     }
     
-    @ConfigItem(
-        keyName = "enableAntibanAutomatically",
-        name = "Auto-enable Antiban",
-        description = "Automatically enable the Antiban plugin when starting a plugin",
-        position = 2,
-        section = breakSection
-    )
-    default boolean enableAntibanAutomatically() {
-        return true;
-    }
+ 
     
     @ConfigItem(
         keyName = "breakDuringWait",
         name = "Break During Wait",
         description = "Break when waiting for the next schedule",
-        position = 3,
+        position = 2,
         section = breakSection
     )
     default boolean breakDuringWait() {
@@ -205,7 +196,7 @@ public interface SchedulerConfig extends Config {
         keyName = "minTimeToNextScheduleForTakingABreak",
         name = "Min Break Time (minutes)",        
         description = "Minimum Time until next schedule to to take a break",
-        position = 4,
+        position = 3,
         section = breakSection
     )
     default int minTimeToNextScheduleForTakingABreak() {

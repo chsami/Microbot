@@ -12,31 +12,22 @@ The Plugin Scheduler system consists of several key components:
 2. **[PluginScheduleEntry](plugin-schedule-entry.md)**: Represents a scheduled plugin with start and stop conditions.
 3. **[ConditionManager](conditions/README.md)**: Manages logical conditions for plugin scheduling in a hierarchical structure.
 4. **[Condition](conditions/README.md)**: The base interface for all conditions that determine when plugins should run.
-5. **[ConditionProvider](condition-provider.md)**: Interface that plugins must implement to be schedulable by the Scheduler.
+5. **[SchedulablePlugin](schedulable-plugin.md)**: Interface that plugins must implement to be schedulable by the Scheduler.
 
 ## Making Your Plugin Schedulable
 
 To make your plugin schedulable by the Plugin Scheduler, follow these steps:
 
-1. **Add the `canBeScheduled` attribute in your `@PluginDescriptor`**:
-   ```java
-   @PluginDescriptor(
-       name = "My Plugin",
-       description = "Description of what it does",
-       tags = {"microbot", "tag1", "tag2"},
-       enabledByDefault = false,
-       canBeScheduled = true  // This marks the plugin as schedulable
-   )
-   ```
 
-2. **Implement the `ConditionProvider` interface**:
+
+1. **Implement the `SchedulablePlugin` interface**:
    ```java
-   public class MyPlugin extends Plugin implements ConditionProvider {
+   public class MyPlugin extends Plugin implements SchedulablePlugin {
        // Plugin implementation...
    }
    ```
 
-3. **Define stop conditions**:
+2. **Define stop conditions**:
    ```java
    @Override
    public LogicalCondition getStopCondition() {
@@ -56,7 +47,7 @@ To make your plugin schedulable by the Plugin Scheduler, follow these steps:
    }
    ```
 
-4. **Define optional start conditions**:
+3. **Define optional start conditions**:
    ```java
    @Override
    public LogicalCondition getStartCondition() {
@@ -65,7 +56,7 @@ To make your plugin schedulable by the Plugin Scheduler, follow these steps:
    }
    ```
 
-5. **Implement the soft stop event handler**:
+4. **Implement the soft stop event handler**:
    ```java
    @Override
    @Subscribe
@@ -77,7 +68,7 @@ To make your plugin schedulable by the Plugin Scheduler, follow these steps:
    }
    ```
 
-For complete details about implementing the ConditionProvider interface, see the [ConditionProvider documentation](condition-provider.md).
+For complete details about implementing the SchedulablePlugin interface, see the [SchedulablePlugin documentation](schedulable-plugin.md).
 
 ## Condition System
 
@@ -184,7 +175,7 @@ For more detailed information about each component, refer to the specific docume
 
 - [SchedulerPlugin](scheduler-plugin.md)
 - [PluginScheduleEntry](plugin-schedule-entry.md)
-- [ConditionProvider](condition-provider.md)
+- [SchedulablePlugin](api/schedulable-plugin.md)
 - [Plugin Schedule Entry Soft Stop Event](plugin-schedule-entry-soft-stop-event.md)
 - [Plugin Schedule Entry Finished Event](plugin-schedule-entry-finished-event.md)
 - [SchedulableExamplePlugin](schedulable-example-plugin.md)

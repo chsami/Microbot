@@ -20,7 +20,7 @@ import net.runelite.client.input.KeyManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.pluginscheduler.api.ConditionProvider;
+import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.location.AreaCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.location.LocationCondition;
@@ -44,11 +44,10 @@ import net.runelite.client.util.HotkeyListener;
         name = "Schedulable Example",
         description = "Designed for use with the scheduler and testing its features",
         tags = {"microbot", "woodcutting", "combat", "scheduler", "condition"},
-        enabledByDefault = false,
-        canBeScheduled = true
+        enabledByDefault = false
 )
 @Slf4j
-public class SchedulableExamplePlugin extends Plugin implements ConditionProvider, KeyListener {
+public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugin, KeyListener {
     
     @Inject
     private SchedulableExampleConfig config;

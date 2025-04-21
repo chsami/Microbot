@@ -11,6 +11,9 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.aiofighter.combat.PrayerPotionScript;
+import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.AndCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
@@ -24,11 +27,10 @@ import java.awt.*;
         name = PluginDescriptor.Mocrosoft + "Nmz",
         description = "Microbot NMZ",
         tags = {"nmz", "microbot"},
-        enabledByDefault = false,
-        canBeScheduled = true
+        enabledByDefault = false
 )
 @Slf4j
-public class NmzPlugin extends Plugin {
+public class NmzPlugin extends Plugin implements SchedulablePlugin{
     @Inject
     private NmzConfig config;
 
@@ -46,7 +48,7 @@ public class NmzPlugin extends Plugin {
     NmzScript nmzScript;
     @Inject
     PrayerPotionScript prayerPotionScript;
-
+    private LogicalCondition stopCondition = new AndCondition();
 
     @Override
     protected void startUp() throws AWTException {
@@ -101,4 +103,10 @@ public class NmzPlugin extends Plugin {
             }
         }
     }
+    @Override     
+    public LogicalCondition getStopCondition() {
+        // Create a new stop condition        
+        return this.stopCondition;
+    }
+
 }

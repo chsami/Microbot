@@ -1,13 +1,13 @@
-# ConditionProvider Interface
+# SchedulablePlugin Interface
 
 ## Overview
 
-The `ConditionProvider` interface is a crucial component that bridges plugins with the Plugin Scheduler system. By implementing this interface, plugins can define when they should start and stop, how they should respond to scheduling events, and provide advanced control over their lifecycle within the scheduler.
+The `SchedulablePlugin` interface is a crucial component that bridges plugins with the Plugin Scheduler system. By implementing this interface, plugins can define when they should start and stop, how they should respond to scheduling events, and provide advanced control over their lifecycle within the scheduler.
 
 ## Interface Definition
 
 ```java
-public interface ConditionProvider {
+public interface SchedulablePlugin {
     LogicalCondition getStartCondition();
     LogicalCondition getStopCondition();
     void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event);
@@ -144,7 +144,7 @@ public boolean isHardStoppable() {
 
 ## Lock Condition Support
 
-The ConditionProvider interface includes several methods to manage a special `LockCondition` that can prevent a plugin from being stopped during critical operations.
+The SchedulablePlugin interface includes several methods to manage a special `LockCondition` that can prevent a plugin from being stopped during critical operations.
 
 ### `LockCondition getLockCondition(Condition stopConditions)`
 
@@ -244,7 +244,7 @@ new InventoryItemCountCondition(
 
 ## Integration with Plugin Lifecycle
 
-The `ConditionProvider` interface integrates with the plugin's lifecycle through these events:
+The `SchedulablePlugin` interface integrates with the plugin's lifecycle through these events:
 
 1. **Start**: The scheduler checks `getStartCondition()` to determine if the plugin can be started.
 
@@ -258,7 +258,7 @@ The `ConditionProvider` interface integrates with the plugin's lifecycle through
 
 ## Example Implementation
 
-For a complete implementation example, see the [SchedulableExamplePlugin](schedulable-example-plugin.md) which demonstrates all aspects of the `ConditionProvider` interface.
+For a complete implementation example, see the [SchedulableExamplePlugin](../schedulable-example-plugin.md) which demonstrates all aspects of the `SchedulablePlugin` interface.
 
 ## Related Documentation
 

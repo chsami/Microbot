@@ -64,6 +64,11 @@ public enum SchedulerState {
                this == SchedulerState.STARTING_PLUGIN ||
                this == SchedulerState.WAITING_FOR_LOGIN);
     }
+    public boolean isRunningPlugin() {
+        return this == SchedulerState.RUNNING_PLUGIN ||
+               this == SchedulerState.STARTING_PLUGIN ||
+               this == SchedulerState.WAITING_FOR_LOGIN;
+    }
 
     /**
      * Determines if the scheduler is in a waiting state between scheduling a plugin
