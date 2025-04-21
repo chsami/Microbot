@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.util.gameobject;
 
+import net.runelite.api.ObjectID;
 import net.runelite.api.TileObject;
 import net.runelite.api.VarPlayer;
 import net.runelite.api.coords.WorldArea;
@@ -15,9 +16,12 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 public class Rs2Cannon {
 
     public static boolean repair() {
-        TileObject brokenCannon = Rs2GameObject.findObjectById(14916);
+        TileObject brokenCannon = Rs2GameObject.findObject(new Integer[]{ObjectID.BROKEN_MULTICANNON_14916, ObjectID.BROKEN_MULTICANNON_43028});
 
         if (brokenCannon == null) return false;
+
+        WorldArea cannonLocation = new WorldArea(brokenCannon.getWorldLocation().getX() - 1, brokenCannon.getWorldLocation().getY() - 1, 3, 3, brokenCannon.getWorldLocation().getPlane());
+        if (!cannonLocation.toWorldPoint().equals(CannonPlugin.getCannonPosition().toWorldPoint())) return false;
 
         Microbot.status = "Repairing Cannon";
 
@@ -41,7 +45,7 @@ public class Rs2Cannon {
 
         Microbot.status = "Refilling Cannon";
 
-        TileObject cannon = Rs2GameObject.findObjectById(6);
+        TileObject cannon = Rs2GameObject.findObject(new Integer[]{ObjectID.DWARF_MULTICANNON, ObjectID.DWARF_MULTICANNON_43027});
         if (cannon == null) return false;
 
         WorldArea cannonLocation = new WorldArea(cannon.getWorldLocation().getX() - 1, cannon.getWorldLocation().getY() - 1, 3, 3, cannon.getWorldLocation().getPlane());

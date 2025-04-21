@@ -764,7 +764,9 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
         if (!Rs2Inventory.hasItem("pickaxe")) {
             if (!Rs2Equipment.isWearing("pickaxe")) {
                 Microbot.log("Unable to find pickaxe to mine rockfall");
-                setTarget(null);
+                if (currentTarget.getRegionID() == 14936) {
+                    setTarget(null);
+                }
                 return false;
             }
         }
@@ -1508,30 +1510,39 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
 
         if (itemAction == null) return false;
 
-        if (Rs2Inventory.interact(itemId, itemAction)) {
-            if (itemAction.equalsIgnoreCase("rub") && (itemId == ItemID.XERICS_TALISMAN || transport.getDisplayInfo().toLowerCase().contains("skills necklace"))) {
-                return interactWithAdventureLog(transport);
-            }
-            
-            if (itemAction.equalsIgnoreCase("rub") && transport.getDisplayInfo().toLowerCase().contains("burning amulet")) {
-                Rs2Dialogue.sleepUntilInDialogue();
-                Rs2Dialogue.clickOption(destination);
-                Rs2Dialogue.sleepUntilHasDialogueOption("Okay, teleport to level");
-                Rs2Dialogue.clickOption("Okay, teleport to level");
-            }
-            
-            if (itemAction.equalsIgnoreCase("teleport") && transport.getDisplayInfo().toLowerCase().contains("slayer ring")) {
-                Rs2Dialogue.sleepUntilSelectAnOption();
-                Rs2Dialogue.clickOption(destination);
-            }
+        // Check the first character of the item name, if it is a number return true
+        boolean hasMenuOption = !transport.getDisplayInfo().isEmpty() && Character.isDigit(transport.getDisplayInfo().charAt(0));
 
-            if (itemAction.equalsIgnoreCase("rub") || itemAction.equalsIgnoreCase("reminisce")) {
-                Rs2Dialogue.sleepUntilSelectAnOption();
-                Rs2Dialogue.clickOption(destination);
-            }
+        if (!hasMenuOption) {
+            if (Rs2Inventory.interact(itemId, itemAction)) {
+                if (itemAction.equalsIgnoreCase("rub") && (itemId == ItemID.XERICS_TALISMAN || transport.getDisplayInfo().toLowerCase().contains("skills necklace"))) {
+                    return interactWithAdventureLog(transport);
+                }
 
-            Microbot.log("Traveling to " + transport.getDisplayInfo());
-            return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo2D(transport.getDestination()) < OFFSET, 100, 5000);
+                if (itemAction.equalsIgnoreCase("rub") && transport.getDisplayInfo().toLowerCase().contains("burning amulet")) {
+                    Rs2Dialogue.sleepUntilInDialogue();
+                    Rs2Dialogue.clickOption(destination);
+                    Rs2Dialogue.sleepUntilHasDialogueOption("Okay, teleport to level");
+                    Rs2Dialogue.clickOption("Okay, teleport to level");
+                }
+
+                if (itemAction.equalsIgnoreCase("teleport") && transport.getDisplayInfo().toLowerCase().contains("slayer ring")) {
+                    Rs2Dialogue.sleepUntilSelectAnOption();
+                    Rs2Dialogue.clickOption(destination);
+                }
+
+                if (itemAction.equalsIgnoreCase("rub") || itemAction.equalsIgnoreCase("reminisce")) {
+                    Rs2Dialogue.sleepUntilSelectAnOption();
+                    Rs2Dialogue.clickOption(destination);
+                }
+
+                Microbot.log("Traveling to " + transport.getDisplayInfo());
+                return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo2D(transport.getDestination()) < OFFSET, 100, 5000);
+            }
+        }
+        else {
+            return interactWithNewRuneliteMenu(transport,itemId);
+
         }
 
         return false;
@@ -1942,6 +1953,47 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
         Rs2Keyboard.keyPress(key);
         Microbot.log("Traveling to " + transport.getDisplayInfo());
         return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo2D(transport.getDestination()) < OFFSET, 100, 5000);
+    }
+
+    private static boolean interactWithNewRuneliteMenu(Transport transport,int itemId) {
+        if (transport.getDisplayInfo() == null || transport.getDisplayInfo().isEmpty()) return false;
+
+        int menuOption = transport.getDisplayInfo().charAt(0) - '0';
+        String[] values = transport.getDisplayInfo().split(":");
+        String destination = values[1].trim();
+        int identifier = NewMenuEntry.findIdentifier(menuOption, getIdentifierOffset(transport.getDisplayInfo()));
+        Rs2Inventory.interact(itemId, destination, identifier);
+        if (transport.getDisplayInfo().toLowerCase().contains("burning amulet")) {
+            Rs2Dialogue.sleepUntilHasDialogueOption("Okay, teleport to level");
+            Rs2Dialogue.clickOption("Okay, teleport to level");
+        }
+        Microbot.log("Traveling to " + transport.getDisplayInfo());
+        return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo2D(transport.getDestination()) < OFFSET, 100, 5000);
+    }
+
+    private static int getIdentifierOffset(String itemName) {
+        String lowerCaseItemName = itemName.toLowerCase();
+        if (lowerCaseItemName.contains("ring of dueling") ||
+                lowerCaseItemName.contains("games necklace") ||
+                lowerCaseItemName.contains("skills necklace") ||
+                lowerCaseItemName.contains("amulet of glory") ||
+                lowerCaseItemName.contains("ring of wealth") ||
+                lowerCaseItemName.contains("combat bracelet") ||
+                lowerCaseItemName.contains("digsite pendant") ||
+                lowerCaseItemName.contains("necklace of passage") ||
+                lowerCaseItemName.contains("camulet") ||
+                lowerCaseItemName.contains("burning amulet")) {
+            return 6;
+        } else if (lowerCaseItemName.contains("xeric's talisman") ||
+                lowerCaseItemName.contains("slayer ring")) {
+            return 4;
+        } else if (lowerCaseItemName.contains("kharedst's memoirs")) {
+            return 3;
+        } else if (lowerCaseItemName.contains("enchanted lyre")) {
+            return 2;
+        } else {
+            return 4; // Default offset if no match is found
+        }
     }
 
     public static boolean handleGlider(Transport transport) {

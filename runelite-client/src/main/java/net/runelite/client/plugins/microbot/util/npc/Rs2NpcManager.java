@@ -6,6 +6,7 @@ import com.google.gson.reflect.TypeToken;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import javax.annotation.Nullable;
@@ -292,6 +293,7 @@ public class Rs2NpcManager {
      */
     public static MonsterLocation getClosestLocation(String npcName, int minClustering, boolean avoidWilderness)
     {
+        ShortestPathPlugin.getPathfinderConfig().setUseBankItems(true);
         Microbot.log("Finding closest location for: " + npcName);
         var locs = getNpcLocations(npcName).stream().map(MonsterLocation::getLocationName).collect(Collectors.toList());
         if (locs.isEmpty())
@@ -306,7 +308,18 @@ public class Rs2NpcManager {
                 .min(Comparator.comparingDouble(loc -> Rs2Walker.getTotalTiles(loc.getClosestToCenter())))
                 .orElse(null);
 
-        Microbot.log("Closest location for " + npcName + ": " + closest == null ? "null" : Objects.requireNonNull(closest).getLocationName());
+        ShortestPathPlugin.getPathfinderConfig().setUseBankItems(false);
+
+        boolean isEmpty = closest == null || closest.getCoords().isEmpty();
+        if (isEmpty)
+        {
+            Microbot.log("No valid locations found for " + npcName);
+            return null;
+        }
+        else
+        {
+            Microbot.log("Closest location for " + npcName + ": " + closest.getLocationName());
+        }
 
         return closest;
     }

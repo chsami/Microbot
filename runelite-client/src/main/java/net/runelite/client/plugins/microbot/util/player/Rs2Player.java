@@ -1106,7 +1106,7 @@ public class Rs2Player {
         int threshold = maxPrayer - restoreAmount;
         int randomizedThreshold = Rs2Random.randomGaussian(threshold - 5, 3);
         randomizedThreshold = Math.min(randomizedThreshold, threshold);
-        System.out.println("Threshold: " + randomizedThreshold);
+        //System.out.println("Threshold: " + randomizedThreshold);
 
         return drinkPrayerPotionAt(randomizedThreshold);
     }

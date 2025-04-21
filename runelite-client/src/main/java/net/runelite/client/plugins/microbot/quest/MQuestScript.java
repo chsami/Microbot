@@ -55,7 +55,7 @@ public class MQuestScript extends Script {
     int unreachableTargetCheckDist = 1;
 
     private MQuestConfig config;
-    private static ArrayList<NPC> npcsHandled = new ArrayList<>();
+    private static ArrayList<Rs2NpcModel> npcsHandled = new ArrayList<>();
     private static ArrayList<TileObject> objectsHandeled = new ArrayList<>();
 
     QuestStep dialogueStartedStep = null;

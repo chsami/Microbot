@@ -16,6 +16,7 @@ import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.NPCManager;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.game.WorldService;
+import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginInstantiationException;
@@ -26,6 +27,7 @@ import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Gembag;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.item.Rs2ItemManager;
 import net.runelite.client.plugins.microbot.util.mouse.VirtualMouse;
 import net.runelite.client.plugins.microbot.util.mouse.naturalmouse.NaturalMouse;
 import net.runelite.client.plugins.microbot.util.overlay.GembagOverlay;
@@ -51,7 +53,8 @@ import java.time.Instant;
         description = "Microbot",
         tags = {"main", "microbot", "parent"},
         alwaysOn = true,
-        hidden = true
+        hidden = true,
+        priority = true
 )
 @Slf4j
 public class MicrobotPlugin extends Plugin {
@@ -101,6 +104,8 @@ public class MicrobotPlugin extends Plugin {
     private PouchScript pouchScript;
     @Inject
     private PouchOverlay pouchOverlay;
+    @Inject
+    private MouseManager mouseManager;
 
     @Override
     protected void startUp() throws AWTException {
@@ -108,6 +113,7 @@ public class MicrobotPlugin extends Plugin {
         Microbot.setClient(client);
         Microbot.setClientThread(clientThread);
         Microbot.setEventBus(eventBus);
+        Microbot.setMouseManager(mouseManager);
         Microbot.setNotifier(notifier);
         Microbot.setWorldService(worldService);
         Microbot.setProfileManager(profileManager);
@@ -131,6 +137,8 @@ public class MicrobotPlugin extends Plugin {
         Microbot.setPouchScript(pouchScript);
         pouchScript.startUp();
         overlayManager.add(pouchOverlay);
+        Microbot.setRs2ItemManager(new Rs2ItemManager());
+
 
 
         new InputSelector(clientToolbar);

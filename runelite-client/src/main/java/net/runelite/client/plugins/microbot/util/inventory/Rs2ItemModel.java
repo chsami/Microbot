@@ -57,7 +57,7 @@ public class Rs2ItemModel {
             Microbot.getClientThread().runOnClientThreadOptional(() ->
                     Microbot.getClient().getItemDefinition(this.id - 1)).ifPresent(itemDefinition -> this.isTradeable = itemDefinition.isTradeable());
         } else {
-            itemComposition.isTradeable();
+            this.isTradeable = itemComposition.isTradeable();
         }
         this.inventoryActions = itemComposition.getInventoryActions();
         this.itemComposition = itemComposition;

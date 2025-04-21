@@ -1,7 +1,8 @@
 package net.runelite.client.plugins.microbot.banksorter;
 
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.*;
+import net.runelite.api.Client;
+import net.runelite.api.Point;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
@@ -158,20 +159,24 @@ public class BankTabSorterScript extends Script {
             });
         }
 
-        // Step 3: Separate groups into teleport and non-teleport, then sort alphabetically
+        // Step 3: Separate groups into rune, teleport, and non-teleport
+        List<Map.Entry<String, List<BankItem>>> runeGroups = new ArrayList<>();
         List<Map.Entry<String, List<BankItem>>> teleportGroups = new ArrayList<>();
         List<Map.Entry<String, List<BankItem>>> nonTeleportGroups = new ArrayList<>();
 
         for (Map.Entry<String, List<BankItem>> entry : itemGroups.entrySet()) {
-            if (entry.getKey().toLowerCase().contains("teleport")) {
+            if (entry.getKey().toLowerCase().endsWith(" rune")) {
+                runeGroups.add(entry);
+            } else if (entry.getKey().toLowerCase().contains("teleport")) {
                 teleportGroups.add(entry);
             } else {
                 nonTeleportGroups.add(entry);
             }
         }
 
+        runeGroups.sort(Comparator.comparing(a -> a.getKey().toLowerCase()));
         teleportGroups.sort(Comparator.comparing(a -> a.getKey().toLowerCase()));
-        nonTeleportGroups.sort(Comparator.comparing(a -> a.getKey().toLowerCase()));
+        nonTeleportGroups = sortByNameSimilarity(nonTeleportGroups);
 
         // Step 4: Create final sorted list using a row-based approach
         List<BankItem> sortedItems = new ArrayList<>();
@@ -179,6 +184,9 @@ public class BankTabSorterScript extends Script {
 
         // Process non-teleport groups first
         processSameNameGroups(sortedItems, nonTeleportGroups, columns);
+
+        // Process rune groups
+        processSameNameGroups(sortedItems, runeGroups, columns);
 
         // Ensure teleport items start on a new row
         while (sortedItems.size() % columns != 0) {
@@ -193,6 +201,125 @@ public class BankTabSorterScript extends Script {
 
         return sortedItems;
     }
+
+    // Method to sort groups by name similarity using a greedy nearest-neighbor algorithm
+    private List<Map.Entry<String, List<BankItem>>> sortByNameSimilarity(
+            List<Map.Entry<String, List<BankItem>>> groups) {
+        // Copy the list to avoid modifying the original
+        List<Map.Entry<String, List<BankItem>>> unsorted = new ArrayList<>(groups);
+        List<Map.Entry<String, List<BankItem>>> sorted = new ArrayList<>();
+
+        if (unsorted.isEmpty()) {
+            return sorted;
+        }
+
+        // Start with the first group in the list
+        Map.Entry<String, List<BankItem>> current = unsorted.remove(0);
+        sorted.add(current);
+
+        // Greedily pick the next group with the highest Jaro-Winkler similarity
+        while (!unsorted.isEmpty()) {
+            Map.Entry<String, List<BankItem>> nearest = null;
+            double maxSimilarity = -1.0;
+
+            for (Map.Entry<String, List<BankItem>> candidate : unsorted) {
+                double similarity = jaroWinklerSimilarity(current.getKey().toLowerCase(),
+                        candidate.getKey().toLowerCase());
+                if (similarity > maxSimilarity) {
+                    maxSimilarity = similarity;
+                    nearest = candidate;
+                }
+            }
+
+            if (null != nearest) {
+                sorted.add(nearest);
+                unsorted.remove(nearest);
+                current = nearest;
+            } else {
+                break;
+            }
+        }
+
+        return sorted;
+    }
+
+    // Computes the Jaro-Winkler similarity between two strings.
+    private double jaroWinklerSimilarity(String s1, String s2) {
+        double jaroSim = jaroSimilarity(s1, s2);
+        // Compute the length of common prefix (up to 4 characters)
+        int prefixLength = 0;
+        for (int i = 0; i < Math.min(4, Math.min(s1.length(), s2.length())); i++) {
+            if (s1.charAt(i) == s2.charAt(i)) {
+                prefixLength++;
+            } else {
+                break;
+            }
+        }
+        return jaroSim + (prefixLength * 0.1 * (1 - jaroSim));
+    }
+
+    // Helper method to compute the Jaro similarity between two strings.
+    private double jaroSimilarity(String s1, String s2) {
+        if (s1.equals(s2)) {
+            return 1.0;
+        }
+
+        int len1 = s1.length();
+        int len2 = s2.length();
+
+        if (0 == len1 || 0 == len2) {
+            return 0.0;
+        }
+
+        // The matching window is half the length of the longer string minus one.
+        int matchDistance = Math.max(len1, len2) / 2 - 1;
+
+        boolean[] s1Matches = new boolean[len1];
+        boolean[] s2Matches = new boolean[len2];
+
+        int matches = 0;
+        for (int i = 0; i < len1; i++) {
+            int start = Math.max(0, i - matchDistance);
+            int end = Math.min(i + matchDistance + 1, len2);
+            for (int j = start; j < end; j++) {
+                if (s2Matches[j]) {
+                    continue;
+                }
+                if (s1.charAt(i) != s2.charAt(j)) {
+                    continue;
+                }
+                s1Matches[i] = true;
+                s2Matches[j] = true;
+                matches++;
+                break;
+            }
+        }
+
+        if (0 == matches) {
+            return 0.0;
+        }
+
+        double transpositions = 0;
+        int k = 0;
+        for (int i = 0; i < len1; i++) {
+            if (!s1Matches[i]) {
+                continue;
+            }
+            while (!s2Matches[k]) {
+                k++;
+            }
+            if (s1.charAt(i) != s2.charAt(k)) {
+                transpositions++;
+            }
+            k++;
+        }
+        transpositions /= 2.0;
+
+        return ((matches / (double) len1) +
+                (matches / (double) len2) +
+                ((matches - transpositions) / matches)) / 3.0;
+    }
+
 
     /**
      * Calculates the starting index for a given tab in the global bank container

@@ -36,6 +36,9 @@ public class TemporossOverlay extends Overlay {
     private static List<Rs2NpcModel> ammoList; // Add this field to store the list of NPCs
     @Setter
     private static List<Rs2NpcModel> leaveList; // Add this field to store the list of NPCs
+    @Setter
+    private static List<WorldPoint> lastWalkPath; // Add this field to store the walk path
+
 
     @Inject
     public TemporossOverlay(TemporossPlugin plugin) {
@@ -91,6 +94,13 @@ public class TemporossOverlay extends Overlay {
             renderWorldPoint(graphics, workArea.totemPoint, Color.GREEN, "Totem Point");
             renderWorldPoint(graphics, workArea.rangePoint, Color.MAGENTA, "Range Point");
             renderWorldPoint(graphics, workArea.spiritPoolPoint, Color.ORANGE, "Spirit Pool");
+
+            // draw each lastWalkPath WorldPoint
+            if (lastWalkPath != null) {
+                for (WorldPoint point : lastWalkPath) {
+                    renderWorldPoint(graphics, point, Color.GREEN, "");
+                }
+            }
         }
 
         return null;

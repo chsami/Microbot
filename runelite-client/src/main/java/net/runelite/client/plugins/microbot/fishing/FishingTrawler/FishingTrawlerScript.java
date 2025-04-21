@@ -63,12 +63,13 @@ public class FishingTrawlerScript extends Script {
                 if (config.stopat50()&&ContributionValue >= 50)return;
 
                 if (!Rs2Player.isInteracting() && !Rs2Player.isMoving() && Rs2Npc.getNpc("Enormous Tentacle") != null) {
-                    if(Rs2Npc.getNpc("Enormous Tentacle").getAnimation()==8910) {return;}
-                    if (Rs2Npc.interact("Enormous Tentacle", "Chop")) {
-                        tentacle = true;
-                        lootnet = true;
-//                    }
-                    }
+                    awaitExecutionUntil(() -> {
+                                Rs2Npc.interact("Enormous Tentacle", "Chop");
+                                tentacle = true;
+                                lootnet = true;
+                                Rs2Player.waitForAnimation();
+                            }
+                    ,() -> Rs2Npc.getNpc("Enormous Tentacle").getAnimation()==8953, 100);
                 }
 
                  if (!Rs2Player.isInteracting() && !Rs2Player.isMoving() && Rs2Npc.getNpc("Enormous Tentacle") == null && tentacle) {
@@ -95,7 +96,7 @@ public class FishingTrawlerScript extends Script {
             } catch (Exception ex) {
                 Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
             }
-        }, 0, 1000, TimeUnit.MILLISECONDS);
+        }, 0, 600, TimeUnit.MILLISECONDS);
         return true;
     }
 

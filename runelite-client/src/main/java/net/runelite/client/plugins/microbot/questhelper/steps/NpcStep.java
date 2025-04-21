@@ -54,7 +54,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
 
-import static net.runelite.client.plugins.microbot.questhelper.overlays.QuestHelperWorldOverlay.*;
+import static net.runelite.client.plugins.microbot.questhelper.overlays.QuestHelperWorldOverlay.IMAGE_Z_OFFSET;
 
 public class NpcStep extends DetailedQuestStep {
     public final int npcID;

@@ -14,6 +14,7 @@ import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Random;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.player.Rs2PlayerModel;
 import net.runelite.client.plugins.microbot.util.security.Login;
@@ -190,7 +191,7 @@ public class SandCrabScript extends Script {
      * @return true if npc is aggressive
      */
     private boolean isNpcAggressive() {
-        List<NPC> npcs = Rs2Npc.getNpcs("Sandy rocks", true).collect(Collectors.toList());
+        List<Rs2NpcModel> npcs = Rs2Npc.getNpcs("Sandy rocks", true).collect(Collectors.toList());
         if (npcs.isEmpty()) {
             return false;
         }

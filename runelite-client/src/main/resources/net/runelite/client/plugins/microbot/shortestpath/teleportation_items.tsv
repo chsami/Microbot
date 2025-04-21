@@ -32,24 +32,24 @@
 1311 3799 0		22947			Y	F	19	4	Rada's blessing: Mount Karuulm
 									
 # Games Necklace									
-2520 3571 0		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	Games necklace: Barbarian Outpost
-2898 3553 0		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	Games necklace: Burthorpe
-2965 4254 2		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	Games necklace: Corporeal Beast
-3245 9500 2		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	Games necklace: Tears of Guthix
-1631 3940 0		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	Games necklace: Wintertodt Camp
-									
-# Ring of Dueling (1-8)									
-3315 3235 0		2566;2564;2562;2560;2558;2556;2554;2552			Y	T	19	6	Ring of dueling: Emir's Arena
-2440 3090 0		2566;2564;2562;2560;2558;2556;2554;2552			Y	T	19	6	Ring of dueling: Castle Wars
-3151 3635 0		2566;2564;2562;2560;2558;2556;2554;2552			Y	T	19	6	Ring of dueling: Ferox Enclave
-									
-# Combat Bracelet (1-6) (uncharged is 11126)									
-2882 3547 0		11118;11120;11122;11124;11972;11974			Y	T	29	4	Combat bracelet: Warriors' Guild
-3192 3368 0		11118;11120;11122;11124;11972;11974			Y	T	29	4	Combat bracelet: Champions' Guild
-3052 3490 0		11118;11120;11122;11124;11972;11974			Y	T	29	4	Combat bracelet: Monastery
-2653 3439 0		11118;11120;11122;11124;11972;11974			Y	T	29	4	Combat bracelet: Ranging Guild
-									
-# Skills Necklace (1-6) (uncharged is 11113)									
+2520 3571 0		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	2. Games necklace: Barbarian Outpost
+2898 3553 0		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	1. Games necklace: Burthorpe
+2965 4254 2		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	3. Games necklace: Corporeal Beast
+3245 9500 2		3853;3855;3857;3859;3861;3863;3865;3867	Tears of Guthix		Y	T	19	4	4. Games necklace: Tears of Guthix
+1631 3940 0		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	5. Games necklace: Wintertodt Camp
+
+# Ring of Dueling (1-8)
+3315 3235 0		2566;2564;2562;2560;2558;2556;2554;2552			Y	T	19	6	1. Ring of dueling: Emir's Arena
+2440 3090 0		2566;2564;2562;2560;2558;2556;2554;2552			Y	T	19	6	2. Ring of dueling: Castle Wars
+3151 3635 0		2566;2564;2562;2560;2558;2556;2554;2552			Y	T	19	6	3. Ring of dueling: Ferox Enclave
+
+# Combat Bracelet (1-6) (uncharged is 11126)
+2882 3547 0		11118;11120;11122;11124;11972;11974			Y	T	29	4	1. Combat bracelet: Warriors' Guild
+3192 3368 0		11118;11120;11122;11124;11972;11974			Y	T	29	4	2. Combat bracelet: Champions' Guild
+3052 3490 0		11118;11120;11122;11124;11972;11974			Y	T	29	4	3. Combat bracelet: Monastery
+2653 3439 0		11118;11120;11122;11124;11972;11974			Y	T	29	4	4. Combat bracelet: Ranging Guild
+
+# Skills Necklace (1-6) (uncharged is 11113)
 2611 3390 0		11105;11107;11109;11111;11968;11970			Y	T	29	4	1. Skills necklace: Fishing Guild
 3049 9763 0		11105;11107;11109;11111;11968;11970			Y	T	29	4	2. Skills necklace: Mining Guild
 2933 3295 0		11105;11107;11109;11111;11968;11970			Y	T	29	4	3. Skills necklace: Crafting Guild
@@ -57,40 +57,40 @@
 1662 3505 0		11105;11107;11109;11111;11968;11970			Y	T	29	4	5. Skills necklace: Woodcutting Guild
 1248 3725 0	45 Farming	11105;11107;11109;11111;11968;11970			Y	T	29	4	6. Skills necklace: Farming Guild
 1248 3719 0		11105;11107;11109;11111;11968;11970			Y	T	29	4	6. Skills necklace: Farming Guild
-									
-# Amulet of Glory (1-6, 1t-6t, Eternal) (uncharged is 1704, trimmed 10362)									
-3087 3496 0		1706;1708;1710;1712;11976;11978;10360;10358;10356;10354;11966;11964;19707			Y	T	29	4	Amulet of glory: Edgeville
-2918 3176 0		1706;1708;1710;1712;11976;11978;10360;10358;10356;10354;11966;11964;19707			Y	T	29	4	Amulet of glory: Karamja
-3105 3251 0		1706;1708;1710;1712;11976;11978;10360;10358;10356;10354;11966;11964;19707			Y	T	29	4	Amulet of glory: Draynor Village
-3293 3163 0		1706;1708;1710;1712;11976;11978;10360;10358;10356;10354;11966;11964;19707			Y	T	29	4	Amulet of glory: Al Kharid
-									
-# Ring of Wealth (1-5, 1i-5i) (uncharged is 2572, trimmed 12785)									
-2534 3862 0		11988;11986;11984;11982;11980;20790;20789;20788;20787;20786	Throne of Miscellania		Y	T	29	4	Ring of wealth: Miscellania
-3163 3478 0		11988;11986;11984;11982;11980;20790;20789;20788;20787;20786			Y	T	29	4	Ring of wealth: Grand Exchange
-2995 3375 0		11988;11986;11984;11982;11980;20790;20789;20788;20787;20786			Y	T	29	4	Ring of wealth: Falador
-2824 10168 0		11988;11986;11984;11982;11980;20790;20789;20788;20787;20786	Between a Rock...		Y	T	29	4	Ring of wealth: Dondakan
-									
-# Slayer Ring (1-8, eternal)									
-2432 3423 0		11866;11867;11868;11869;11870;11871;11872;11873;21268			Y	T	29	4	Slayer ring: Stronghold Slayer Cave
-3421 3537 0		11866;11867;11868;11869;11870;11871;11872;11873;21268	Priest in Peril		Y	T	29	4	Slayer ring: Slayer Tower
-2802 10000 0		11866;11867;11868;11869;11870;11871;11872;11873;21268			Y	T	29	4	Slayer ring: Fremennik
-3185 4601 0		11866;11867;11868;11869;11870;11871;11872;11873;21268	Haunted Mine		Y	T	29	4	Slayer ring: Tarn's Lair
-2028 4636 0		11866;11867;11868;11869;11870;11871;11872;11873;21268	Mourning's End Part II		Y	T	29	4	Slayer ring: Dark Beasts
-									
-# Digsite Pendant (can't find a varbit for the other location's activation)									
-3341 3445 0		11190;11191;11192;11193;11194			Y	T	19	4	Digsite pendant: Digsite
-3763 3869 1		11190;11191;11192;11193;11194	Bone Voyage		Y	T	19	4	Digsite pendant: Fossil Island
-3549 10456 0		11190;11191;11192;11193;11194	Dragon Slayer II		Y	T	19	4	Digsite pendant: Lithkren
-									
-# Necklace of Passage (1-5)									
-3114 3179 0		21146;21149;21151;21153;21155			Y	T	19	4	Necklace of passage: Wizards' Tower
-2428 3350 0		21146;21149;21151;21153;21155			Y	T	19	4	Necklace of passage: The Outpost
-3405 3158 0		21146;21149;21151;21153;21155			Y	T	19	4	Necklace of passage: Eagle's Eyrie
+
+# Amulet of Glory (1-6, 1t-6t, Eternal) (uncharged is 1704, trimmed 10362)
+3087 3496 0		1706;1708;1710;1712;11976;11978;10360;10358;10356;10354;11966;11964;19707			Y	T	29	4	1. Amulet of glory: Edgeville
+2918 3176 0		1706;1708;1710;1712;11976;11978;10360;10358;10356;10354;11966;11964;19707			Y	T	29	4	2. Amulet of glory: Karamja
+3105 3251 0		1706;1708;1710;1712;11976;11978;10360;10358;10356;10354;11966;11964;19707			Y	T	29	4	3. Amulet of glory: Draynor Village
+3293 3163 0		1706;1708;1710;1712;11976;11978;10360;10358;10356;10354;11966;11964;19707			Y	T	29	4	4. Amulet of glory: Al Kharid
+
+# Ring of Wealth (1-5, 1i-5i) (uncharged is 2572, trimmed 12785)
+2534 3862 0		11988;11986;11984;11982;11980;20790;20789;20788;20787;20786	Throne of Miscellania		Y	T	29	4	1. Ring of wealth: Miscellania
+3163 3478 0		11988;11986;11984;11982;11980;20790;20789;20788;20787;20786			Y	T	29	4	2. Ring of wealth: Grand Exchange
+2995 3375 0		11988;11986;11984;11982;11980;20790;20789;20788;20787;20786			Y	T	29	4	3. Ring of wealth: Falador
+2824 10168 0		11988;11986;11984;11982;11980;20790;20789;20788;20787;20786	Between a Rock...		Y	T	29	4	4. Ring of wealth: Dondakan
+
+# Slayer Ring (1-8, eternal)
+2432 3423 0		11866;11867;11868;11869;11870;11871;11872;11873;21268			Y	T	29	4	1. Slayer ring: Stronghold Slayer Cave
+3421 3537 0		11866;11867;11868;11869;11870;11871;11872;11873;21268	Priest in Peril		Y	T	29	4	2. Slayer ring: Slayer Tower
+2802 10000 0		11866;11867;11868;11869;11870;11871;11872;11873;21268			Y	T	29	4	3. Slayer ring: Fremennik
+3185 4601 0		11866;11867;11868;11869;11870;11871;11872;11873;21268	Haunted Mine		Y	T	29	4	4. Slayer ring: Tarn's Lair
+2028 4636 0		11866;11867;11868;11869;11870;11871;11872;11873;21268	Mourning's End Part II		Y	T	29	4	5. Slayer ring: Dark Beasts
+
+# Digsite Pendant (can't find a varbit for the other location's activation)
+3341 3445 0		11190;11191;11192;11193;11194			Y	T	19	4	1. Digsite pendant: Digsite
+3763 3869 1		11190;11191;11192;11193;11194	Bone Voyage		Y	T	19	4	2. Digsite pendant: Fossil Island
+3549 10456 0		11190;11191;11192;11193;11194	Dragon Slayer II		Y	T	19	4	3. Digsite pendant: Lithkren
+
+# Necklace of Passage (1-5)
+3114 3179 0		21146;21149;21151;21153;21155			Y	T	19	4	1. Necklace of passage: Wizards' Tower
+2428 3350 0		21146;21149;21151;21153;21155			Y	T	19	4	2. Necklace of passage: The Outpost
+3405 3158 0		21146;21149;21151;21153;21155			Y	T	19	4	3. Necklace of passage: Eagle's Eyrie
 									
 # Burning Amulet									
-3234 3634 0		21166;21169;21171;21173;21175			Y	T	19	4	Burning amulet: Chaos Temple
-3038 3651 0		21166;21169;21171;21173;21175			Y	T	19	4	Burning amulet: Bandit Camp
-3028 3842 0		21166;21169;21171;21173;21175			Y	T	19	4	Burning amulet: Lava Maze
+3234 3634 0		21166;21169;21171;21173;21175			Y	T	19	4	1. Burning amulet: Chaos Temple
+3038 3651 0		21166;21169;21171;21173;21175			Y	T	19	4	2. Burning amulet: Bandit Camp
+3028 3842 0		21166;21169;21171;21173;21175			Y	T	19	4	3. Burning amulet: Lava Maze
 									
 # Teleport to House tablet - These depend on the current player's home location, determined by varbit 2187.									
 # 0 - None									
@@ -279,21 +279,21 @@
 2465 3495 0		19564			Y	F	29	4	Royal seed pod
 2465 3495 0		9469			Y	T	29	4	Grand seed pod
 # Enchanted lyre - 4493 is DIARY_FREMENNIK_HARD, 4494 is DIARY_FREMENNIK_ELITE									
-2662 3644 0		3691;6125;6126;6127;13079			Y	T	19	4	Enchanted lyre: Rellekka
-2551 3755 0		3691;6125;6126;6127;13079		4493=1	Y	T	19	4	Enchanted lyre: Waterbirth Island
-2409 3809 0		3691;6125;6126;6127;13079		4494=1	Y	T	19	4	Enchanted lyre: Jatizso
-2336 3802 0		3691;6125;6126;6127;13079		4494=1	Y	T	19	4	Enchanted lyre: Neitiznot
-2662 3644 0		23458			Y	F	19	4	Enchanted lyre(i): Rellekka
-2551 3755 0		23458		4493=1	Y	F	19	4	Enchanted lyre(i): Waterbirth Island
-2409 3809 0		23458		4494=1	Y	F	19	4	Enchanted lyre(i): Jatizso
-2336 3802 0		23458		4494=1	Y	F	19	4	Enchanted lyre(i): Neitiznot
-3105 9315 2		6707		1574>0	Y	F	19	4	Camulet: Enakhra's Temple
-3191 2924 0		6707		4485=1;1574>0	Y	F	19	4	Camulet: Bandit Camp Quarry
-1713 3612 0		21760;25818	The Depths of Despair	6028=1;6035>1	Y	T	19	4	Kharedst's memoirs: Lunch by the Lancalliums
-1802 3748 0		21760;25818	The Queen of Thieves	6038=1;6035>1	Y	T	19	4	Kharedst's memoirs: The Fisher's Flute
-1478 3576 0		21760;25818	Tale of the Righteous	6359=1;6035>1	Y	T	19	4	Kharedst's memoirs: History and Hearsay
-1544 3762 0		21760;25818	The Forsaken Tower	7801=1;6035>1	Y	T	19	4	Kharedst's memoirs: Jewellery of Jubilation
-1680 3746 0		21760;25818	The Ascent of Arceuus	7857=1;6035>1	Y	T	19	4	Kharedst's memoirs: A Dark Disposition
+2662 3644 0		3691;6125;6126;6127;13079			Y	T	19	4	1. Enchanted lyre: Rellekka
+2551 3755 0		3691;6125;6126;6127;13079		4493=1	Y	T	19	4	2. Enchanted lyre: Waterbirth Island
+2409 3809 0		3691;6125;6126;6127;13079		4494=1	Y	T	19	4	3. Enchanted lyre: Jatizso
+2336 3802 0		3691;6125;6126;6127;13079		4494=1	Y	T	19	4	4. Enchanted lyre: Neitiznot
+2662 3644 0		23458			Y	F	19	4	1. Enchanted lyre(i): Rellekka
+2551 3755 0		23458		4493=1	Y	F	19	4	2. Enchanted lyre(i): Waterbirth Island
+2409 3809 0		23458		4494=1	Y	F	19	4	3. Enchanted lyre(i): Jatizso
+2336 3802 0		23458		4494=1	Y	F	19	4	4. Enchanted lyre(i): Neitiznot
+3105 9315 2		6707		1574>0	Y	F	19	4	1. Camulet: Enakhra's Temple
+3191 2924 0		6707		4485=1;1574>0	Y	F	19	4	2. Camulet: Enakhra's Temple Entrance
+1713 3612 0		21760;25818	The Depths of Despair	6028=1;6035>1	Y	T	19	4	1. Kharedst's memoirs: Lunch by the Lancalliums
+1802 3748 0		21760;25818	The Queen of Thieves	6038=1;6035>1	Y	T	19	4	2. Kharedst's memoirs: The Fisher's Flute
+1478 3576 0		21760;25818	Tale of the Righteous	6359=1;6035>1	Y	T	19	4	3. Kharedst's memoirs: History and Hearsay
+1544 3762 0		21760;25818	The Forsaken Tower	7801=1;6035>1	Y	T	19	4	4. Kharedst's memoirs: Jewellery of Jubilation
+1680 3746 0		21760;25818	The Ascent of Arceuus	7857=1;6035>1	Y	T	19	4	5. Kharedst's memoirs: A Dark Disposition
 3649 3230 0		22400			Y	F	19	4	Drakan's medallion: Ver Sinhaza
 3592 3337 0		22400	Sins of the Father		Y	F	19	4	Drakan's medallion: Darkmeyer
 # todo: this only works if you've used a Slepey tablet on the medallion									
@@ -319,10 +319,10 @@
 1254 3560 0		13393			Y	T	19	4	5. Xeric's talisman: Xeric's Honour
 3200 3355 0		13660				T	19	4	Chronicle: Teleport
 3615 9461 0		26914			Y	F	19	4	Amulet of the eye
-2981 3276 0		26818			Y	T	19	4	Ring of the elements: Air Altar
-3170 3155 0		26818			Y	T	19	4	Ring of the elements: Water Altar
-3288 3468 0		26818			Y	T	19	4	Ring of the elements: Earth Altar
-3314 3279 0		26818			Y	T	19	4	Ring of the elements: Fire Altar
+2981 3276 0		26818			Y	T	19	4	1. Ring of the elements: Air Altar
+3170 3155 0		26818			Y	T	19	4	2. Ring of the elements: Water Altar
+3288 3468 0		26818			Y	T	19	4	3. Ring of the elements: Earth Altar
+3314 3279 0		26818			Y	T	19	4	4. Ring of the elements: Fire Altar
 2400 5982 0		24709			Y	T	19	4	Hallowed crystal shard
 3296 6436 0		28327			Y	T	19	4	Ring of shadows: Ancient Vault
 # todo: The remaining Ring of shadows teleports require using a tablet on it once									

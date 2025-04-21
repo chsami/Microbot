@@ -22,7 +22,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static net.runelite.client.plugins.microbot.shortestpath.TransportType.*;
+import static net.runelite.client.plugins.microbot.shortestpath.TransportType.TELEPORTATION_ITEM;
+import static net.runelite.client.plugins.microbot.shortestpath.TransportType.TELEPORTATION_SPELL;
 
 public class PathfinderConfig {
     private static final WorldArea WILDERNESS_ABOVE_GROUND = new WorldArea(2944, 3523, 448, 448, 0);
@@ -196,6 +197,7 @@ public class PathfinderConfig {
                 && (Rs2Inventory.contains(ItemID.DRAMEN_STAFF, ItemID.LUNAR_STAFF)
                 || Rs2Equipment.isWearing(ItemID.DRAMEN_STAFF)
                 || Rs2Equipment.isWearing(ItemID.LUNAR_STAFF)
+                || (ShortestPathPlugin.getPathfinderConfig().useBankItems && (Rs2Bank.hasItem(ItemID.DRAMEN_STAFF)|| Rs2Bank.hasItem(ItemID.LUNAR_STAFF)))
                 || Microbot.getVarbitValue(Varbits.DIARY_LUMBRIDGE_ELITE)  == 1);
         useGnomeGliders &= QuestState.FINISHED.equals(Rs2Player.getQuestState(Quest.THE_GRAND_TREE));
         useSpiritTrees &= QuestState.FINISHED.equals(Rs2Player.getQuestState(Quest.TREE_GNOME_VILLAGE));
@@ -432,7 +434,7 @@ public class PathfinderConfig {
         if (!varplayerChecks(transport)) return false;
         // If you don't have the required currency & amount for transport
         if (transport.getCurrencyAmount() > 0 && !Rs2Inventory.hasItemAmount(transport.getCurrencyName(), transport.getCurrencyAmount())) return false;
-        // Check if Teleports are globally disabled 
+        // Check if Teleports are globally disabled
         if (TransportType.isTeleport(transport.getType()) && Rs2Walker.disableTeleports) return false;
         // Check Teleport Item Settings
         if (transport.getType() == TELEPORTATION_ITEM) return isTeleportationItemUsable(transport);
@@ -554,10 +556,15 @@ public class PathfinderConfig {
     private boolean hasRequiredItems(Transport transport) {
         if (requiresChronicle(transport)) return hasChronicleCharges();
 
+//        return transport.getItemIdRequirements()
+//                .stream()
+//                .flatMap(Collection::stream)
+//                .anyMatch(itemId -> Rs2Equipment.isWearing(itemId) || Rs2Inventory.hasItem(itemId) || Rs2Bank.hasItem(itemId));
+
         return transport.getItemIdRequirements()
                 .stream()
                 .flatMap(Collection::stream)
-                .anyMatch(itemId -> Rs2Equipment.isWearing(itemId) || Rs2Inventory.hasItem(itemId) || (useBankItems && Rs2Bank.hasItem(itemId)));
+                .anyMatch(itemId -> Rs2Equipment.isWearing(itemId) || Rs2Inventory.hasItem(itemId) || (ShortestPathPlugin.getPathfinderConfig().useBankItems && Rs2Bank.hasItem(itemId)));
     }
 
     /** Checks if the player has any of the required equipment and inventory items for the restriction */

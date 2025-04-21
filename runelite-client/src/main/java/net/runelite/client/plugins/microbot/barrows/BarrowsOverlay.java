@@ -35,6 +35,21 @@ public class BarrowsOverlay extends OverlayPanel {
                     .left(Microbot.status)
                     .build());
 
+            // Add chests count
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Chests looted:")
+                    .right(Integer.toString(BarrowsScript.ChestsOpened))
+                    .build());
+
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Pieces found:")
+                    .build());
+
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left(BarrowsScript.barrowsPieces.toString())
+                    .build());
+
+
 
         } catch(Exception ex) {
             System.out.println(ex.getMessage());

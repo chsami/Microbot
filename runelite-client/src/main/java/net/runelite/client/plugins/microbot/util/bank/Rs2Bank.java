@@ -155,10 +155,10 @@ public class Rs2Bank {
     /**
      * Closes the bank interface if it is open.
      *
-     * @return true if the bank interface was open and successfully closed, false otherwise.
+     * @return true if the bank interface was open and successfully closed, true if already closed.
      */
     public static boolean closeBank() {
-        if (!isOpen()) return false;
+        if (!isOpen()) return true;
         if (Rs2Settings.isEscCloseInterfaceSettingEnabled()) {
             Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
         } else {
@@ -714,6 +714,24 @@ public class Rs2Bank {
     }
 
     /**
+     * Deposits all items in the player's inventory into the bank,
+     * except for the items in the given map.
+     * Each key is the item name, and the value indicates whether to fuzzy match it.
+     *
+     * @param itemsToExclude A map of item names to a boolean indicating fuzzy match.
+     * @return true if any items were deposited, false otherwise.
+     */
+    public static boolean depositAllExcept(Map<String, Boolean> itemsToExclude) {
+        return depositAll(item -> itemsToExclude.entrySet().stream().noneMatch(entry -> {
+            String excludedItemName = entry.getKey();
+            boolean isFuzzy = entry.getValue();
+            return isFuzzy
+                    ? item.getName().toLowerCase().contains(excludedItemName.toLowerCase())
+                    : item.getName().equalsIgnoreCase(excludedItemName);
+        }));
+    }
+
+    /**
      * Deposits all items in the player's inventory into the bank, except for the items with the specified names.
      * This method uses a lambda function to filter out the items with the specified names from the deposit operation.
      * It also allows for a delay between deposit operations.
@@ -947,7 +965,7 @@ public class Rs2Bank {
      * @param exact  exact search based on equalsIgnoreCase
      */
     public static boolean withdrawX(String name, int amount, boolean exact) {
-        return withdrawXItem(findBankItem(name, exact), amount);
+        return withdrawXItem(findBankItem(name, exact,amount), amount);
     }
 
     /**
@@ -957,7 +975,7 @@ public class Rs2Bank {
      * @param amount amount to withdraw
      */
     public static boolean withdrawX(String name, int amount) {
-        return withdrawXItem(findBankItem(name, false), amount);
+        return withdrawXItem(findBankItem(name, false,amount), amount);
     }
 
     /**
@@ -1142,6 +1160,55 @@ public class Rs2Bank {
     }
 
     /**
+     * Check if a bank (or equivalent) is close by without interacting.
+     * Prioritizes bank > bank booth > chest > banker NPC.
+     *
+     * @return True if a nearby bank candidate is found, otherwise false.
+     */
+    public static boolean isBankCloseby() {
+        Microbot.status = "Checking bank proximity";
+        try {
+            // If bank interface is already open, consider a bank available.
+            if (isOpen()) return true;
+
+            // Identify potential banking objects.
+            WallObject grandExchangeBooth = Rs2GameObject.getWallObjects()
+                    .stream()
+                    .filter(x -> x.getId() == 10060 || x.getId() == 30389)
+                    .filter(y -> Rs2Tile.isTileReachable(y.getWorldLocation()))
+                    .findFirst()
+                    .orElse(null);
+            GameObject bank = Rs2GameObject.findBank();
+            GameObject chest = Rs2GameObject.findChest();
+
+            // Determine if chest is closer than the bank.
+            boolean useChest = bank != null && chest != null &&
+                    bank.getWorldLocation().distanceTo2D(Rs2Player.getWorldLocation()) >
+                            chest.getWorldLocation().distanceTo2D(Rs2Player.getWorldLocation()) && Rs2Tile.isTileReachable(chest.getWorldLocation());
+
+            // Check for a nearby bank candidate based on prioritized order.
+            if (!useChest && bank != null &&
+                    (grandExchangeBooth == null ||
+                            bank.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) <=
+                                    grandExchangeBooth.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) && Rs2Tile.isTileReachable(bank.getWorldLocation())) ) {
+                return true;
+            } else if (grandExchangeBooth != null) {
+                return true;
+            } else if (chest != null) {
+                return true;
+            } else {
+                // Fallback: Check for a banker NPC.
+                Rs2NpcModel npc = Rs2Npc.getBankerNPC();
+                return (npc != null && Rs2Tile.isTileReachable(npc.getWorldLocation()));
+            }
+        } catch (Exception ex) {
+            System.out.println(ex.getMessage());
+        }
+        return false;
+    }
+
+
+    /**
      * Find closest available bank
      * finds closest npc then bank booth then chest
      * @return True if bank was successfully opened, otherwise false.
@@ -1307,20 +1374,16 @@ public class Rs2Bank {
      */
     @SuppressWarnings("UnnecessaryLocalVariable")
     private static Rs2ItemModel findBankItem(String name, boolean exact, int amount) {
-        if (bankItems == null) return null;
-        if (bankItems.stream().findAny().isEmpty()) return null;
-
-        final String lowerCaseName = name.toLowerCase();
-
-        Rs2ItemModel bankItem = bankItems.stream().filter(x -> exact
-                ? x.name.equalsIgnoreCase(lowerCaseName)
-                : x.name.toLowerCase().contains(lowerCaseName)).findFirst().orElse(null);
-
-        if (bankItem == null || bankItem.quantity < amount)
-            return null;
-
-        return bankItem;
+    if (bankItems == null || bankItems.isEmpty()) {
+        return null;
     }
+    final String lowerCaseName = name.toLowerCase();
+    return bankItems.stream()
+            .filter(x -> exact ? x.name.equalsIgnoreCase(lowerCaseName) : x.name.toLowerCase().contains(lowerCaseName))
+            .filter(x -> x.quantity >= amount)
+            .findAny()
+            .orElse(null);
+}
 
     /**
      * Finds an item in the bank based on a list of names.
@@ -1561,6 +1624,9 @@ public class Rs2Bank {
      * @return true if the bank interface is successfully opened.
      */
     public static boolean walkToBankAndUseBank() {
+        if(isBankCloseby()){
+            return openBank();
+        }
         return walkToBankAndUseBank(getNearestBank());
     }
 
@@ -1833,6 +1899,28 @@ public class Rs2Bank {
         Rs2ItemModel fishBarrel = Rs2Inventory.get(ItemID.FISH_BARREL,ItemID.OPEN_FISH_BARREL);
         if (fishBarrel == null) return false;
         return Rs2Inventory.interact(fishBarrel, "Empty");
+    }
+
+    /**
+     * Empty herb sack
+     *
+     * @return true if herb sack was emptied
+     */
+    public static boolean emptyHerbSack() {
+        Rs2ItemModel herbSack = Rs2Inventory.get(ItemID.HERB_SACK,ItemID.OPEN_HERB_SACK);
+        if (herbSack == null) return false;
+        return Rs2Inventory.interact(herbSack, "Empty");
+    }
+
+    /**
+     * Empty seed box
+     *
+     * @return true if seed box was emptied
+     */
+    public static boolean emptySeedBox() {
+        Rs2ItemModel seedBox = Rs2Inventory.get(ItemID.SEED_BOX,ItemID.OPEN_SEED_BOX);
+        if (seedBox == null) return false;
+        return Rs2Inventory.interact(seedBox, "Empty");
     }
 
 

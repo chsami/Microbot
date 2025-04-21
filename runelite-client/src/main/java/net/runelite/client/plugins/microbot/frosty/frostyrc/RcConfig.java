@@ -1,11 +1,14 @@
-package net.runelite.client.plugins.microbot.frosty.bloods;
+package net.runelite.client.plugins.microbot.frosty.frostyrc;
 
 import net.runelite.client.config.*;
+import net.runelite.client.plugins.microbot.frosty.frostyrc.enums.RuneType;
 
 
 @ConfigGroup("Frosty")
 @ConfigInformation(
-        "• This plugin will craft runes at True Blood altar <br />" +
+        "• This plugin will craft Blood and Wrath runes<br />" +
+        "• <b>IF using Farming Cape, it must be used with POH</b> />" +
+        "• IF making wrath runes, Myth cape must be in inventory, <b> not </b> equipped<br />" +
         "• IF using POH, ensure you have pool and fairy ring <br />" +
         "• IF not using POH, have Ardougne cloak, house tabs and Ring of Duelings(8) in bank <br />" +
         "• <b> Ensure your last destination is DLS on fairy ring </b> <br />" +
@@ -15,7 +18,7 @@ import net.runelite.client.config.*;
         "• Start at Crafting guild or Ferox Enclave lobby <br />"
 
 )
-public interface BloodsConfig extends Config {
+public interface RcConfig extends Config {
     @ConfigSection(
             name = "Settings",
             description = "Settings",
@@ -33,4 +36,15 @@ public interface BloodsConfig extends Config {
     default boolean usePoh() {
         return false;
     }
+
+    @ConfigItem(
+            keyName = "rune type",
+            name = "Rune type",
+            description = "Select which type of rune to craft",
+            position = 2,
+            section = settingsSection
+    )
+    default RuneType runeType() {return RuneType.BLOOD;}
+
+
 }

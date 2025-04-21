@@ -13,7 +13,9 @@ import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.shop.Rs2Shop;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
@@ -29,7 +31,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static net.runelite.client.plugins.microbot.blackjack.enums.State.*;
-import static net.runelite.client.plugins.microbot.util.math.Random.random;
 import static net.runelite.client.plugins.microbot.util.walker.Rs2Walker.getTile;
 
 public class BlackJackScript extends Script {
@@ -44,8 +45,8 @@ public class BlackJackScript extends Script {
     static boolean koPassed=false;
     static boolean isPlayerNearby = false;
     static boolean npcsCanSeeEachother = false;
-    NPC npc;
-    public static List<NPC> npcsInArea = new ArrayList();
+    Rs2NpcModel npc;
+    public static List<Rs2NpcModel> npcsInArea = new ArrayList();
     static int playerHit=0;
     int lureFailed=0;
     int previousHP;
@@ -148,7 +149,7 @@ public class BlackJackScript extends Script {
                                 state = WALK_TO_THUGS;
                             }
                         } else {
-                            int r = random(1,4);
+                            int r = Rs2Random.between(1,4);
                             if(r==4 && bjCycle==0 && firstPlayerOpenCurtain){
                                 sleep(400,600);
                                 Rs2GameObject.interact(config.THUGS().door, "Close");
@@ -163,7 +164,7 @@ public class BlackJackScript extends Script {
                                 int e=0;
                                 while (e < 3){
                                     //TODO :cries: sure hope this is right
-                                    npcsInArea = Microbot.getClient().getNpcs().stream().filter(x ->
+                                    npcsInArea = Rs2Npc.getNpcsForPlayer().filter(x ->
                                                     Objects.requireNonNull(x.getName()).contains(config.THUGS().displayName)).filter(x ->
                                                     x.getWorldLocation().getX() >= config.THUGS().thugArea.ax && x.getWorldLocation().getY() >= config.THUGS().thugArea.ay &&
                                                     x.getWorldLocation().getX() <= config.THUGS().thugArea.bx && x.getWorldLocation().getY() <= config.THUGS().thugArea.by &&
@@ -333,7 +334,7 @@ public class BlackJackScript extends Script {
                         break;
                     case WALK_TO_THUGS:
                         if (inArea(Rs2Player.getWorldLocation(), config.THUGS().thugArea)) {
-                            npcsInArea = Microbot.getClient().getNpcs().stream().filter(x ->
+                            npcsInArea = Rs2Npc.getNpcs().filter(x ->
                             Objects.requireNonNull(x.getName()).contains(config.THUGS().displayName)).filter(x ->
                             x.getWorldLocation().getX() >= config.THUGS().thugArea.ax && x.getWorldLocation().getY() >= config.THUGS().thugArea.ay &&
                             x.getWorldLocation().getX() <= config.THUGS().thugArea.bx && x.getWorldLocation().getY() <= config.THUGS().thugArea.by &&
@@ -348,7 +349,7 @@ public class BlackJackScript extends Script {
                                 }
                                 npcIsTrapped=false;
                                 state = TRAP_NPC;
-                                npc = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getNpcs().stream()
+                                npc = Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2Npc.getNpcs()
                                         .filter(x -> x != null && x.getName() != null && !x.isDead()
                                         && Objects.requireNonNull(x.getName()).contains(config.THUGS().displayName)
                                         && x.getCombatLevel()==config.THUGS().thugLevel)
@@ -452,7 +453,7 @@ public class BlackJackScript extends Script {
                             previousHP = Microbot.getClient().getBoostedSkillLevel(Skill.HITPOINTS);
                             xpdropstartTime = System.currentTimeMillis();
                             koXpDrop = Microbot.getClient().getSkillExperience(Skill.THIEVING);
-                            if(System.currentTimeMillis()>(previousAction+random(500,700)) || !knockout ) {
+                            if(System.currentTimeMillis()>(previousAction+Rs2Random.between(500,700)) || !knockout ) {
                                 Rs2Npc.interact(npc, "Knock-Out");
                             }
                             previousAction=System.currentTimeMillis();
@@ -469,7 +470,7 @@ public class BlackJackScript extends Script {
                             xpdropstartTime = System.currentTimeMillis();
                             // 360ms is good.370ms starts to miss.350ms decent. 350~365
                             if((previousAction+1140+pickpomin)>System.currentTimeMillis()) {
-                                sleep((int) ((previousAction + 840 + random(pickpomin, pickpomax)) - System.currentTimeMillis()));
+                                sleep((int) ((previousAction + 840 + Rs2Random.between(pickpomin, pickpomax)) - System.currentTimeMillis()));
                             }
                             if(npc.getAnimation()==838) {
                                 Rs2Npc.interact(npc, "Pickpocket");
@@ -505,7 +506,7 @@ public class BlackJackScript extends Script {
     public void handlePlayerHit(){
         if(playerHit>=1) {
             int j = 0;
-            int i = random(2, 3);
+            int i = Rs2Random.between(2, 3);
             int c = 120;
             if (playerHit == 1 && firstHit) {
                 if((hitReactStart+hitReactTime)>System.currentTimeMillis()) {
@@ -555,7 +556,7 @@ public class BlackJackScript extends Script {
         }
         return false;
     }
-    public boolean lure_NPC(NPC npc){
+    public boolean lure_NPC(Rs2NpcModel npc){
         sleep(200,260);
         Rs2Npc.interact(npc, "Lure");
         boolean lureStarted = sleepUntilTrue(() -> Rs2Widget.hasWidget("Psst. Come here, I want to show you something."), 300, 15000);

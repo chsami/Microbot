@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.frosty.bloods.enums;
+package net.runelite.client.plugins.microbot.frosty.frostyrc.enums;
 
 public enum State {
     BANKING,

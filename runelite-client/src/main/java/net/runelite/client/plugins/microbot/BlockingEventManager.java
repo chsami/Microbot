@@ -2,73 +2,170 @@ package net.runelite.client.plugins.microbot;
 
 import lombok.Getter;
 import net.runelite.client.plugins.microbot.util.events.*;
+import net.runelite.client.ui.SplashScreen;
 import org.slf4j.event.Level;
 
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.Set;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-
 @Getter
-public class BlockingEventManager {
+public class BlockingEventManager
+{
+    private static final int MAX_QUEUE_SIZE = 10;
     private final List<BlockingEvent> blockingEvents = new CopyOnWriteArrayList<>();
-    private final ExecutorService blockingExecutor = Executors.newSingleThreadExecutor();
+    // Track which events are already in the queue
+    private final Set<BlockingEvent> pendingEvents = ConcurrentHashMap.newKeySet();
+
+    // Change the queue to hold just the event references
+    private final BlockingQueue<BlockingEvent> eventQueue = new LinkedBlockingQueue<>(MAX_QUEUE_SIZE);
+    private final ScheduledExecutorService scheduler;
+    private final ExecutorService blockingExecutor;
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
-    public BlockingEventManager() {
+    @Getter
+    private final ThreadFactory threadFactory = runnable -> {
+        Thread t = new Thread(runnable, "Microbot-BlockingEvent");
+        t.setDaemon(true);
+        return t;
+    };
+
+    public BlockingEventManager()
+    {
+        // single-threaded executor for running event.execute()
+        this.blockingExecutor = Executors.newSingleThreadExecutor(threadFactory);
+
+        // scheduler for periodic validate() calls
+        this.scheduler = Executors.newSingleThreadScheduledExecutor(threadFactory);
+        this.scheduler.scheduleWithFixedDelay(
+                this::validateAndEnqueue,
+                0,
+                300,
+                TimeUnit.MILLISECONDS
+        );
+
+        // pre-register core events
         blockingEvents.add(new WelcomeScreenEvent());
         blockingEvents.add(new DisableLevelUpInterfaceEvent());
         blockingEvents.add(new BankTutorialEvent());
         blockingEvents.add(new DeathEvent());
         blockingEvents.add(new BankJagexPopupEvent());
-        sortBlockingEvents();
-    }
-    
-    public void remove(BlockingEvent blockingEvent) {
-        blockingEvents.remove(blockingEvent);
-    }
-    
-    public void add(BlockingEvent blockingEvent) {
-        blockingEvents.add(blockingEvent);
+
         sortBlockingEvents();
     }
 
-    private void sortBlockingEvents() {
-        blockingEvents.sort(Comparator.comparingInt(e -> -e.priority().getLevel()));
+    public void shutdown()
+    {
+        scheduler.shutdownNow();
+        blockingExecutor.shutdownNow();
+    }
+
+    public void add(BlockingEvent event)
+    {
+        blockingEvents.add(event);
+        sortBlockingEvents();
+    }
+
+    public void remove(BlockingEvent event)
+    {
+        blockingEvents.remove(event);
+    }
+
+    public List<BlockingEvent> getEvents()
+    {
+        return Collections.unmodifiableList(blockingEvents);
+    }
+
+    private void sortBlockingEvents()
+    {
+        blockingEvents.sort(
+                Comparator.comparingInt((BlockingEvent e) -> e.priority().getLevel())
+                        .reversed()
+        );
     }
 
     /**
-     * Checks and runs a blocking event if needed.
-     * @return true if an event was triggered and is now executing, false otherwise.
+     * Runs every 300ms on the scheduler thread: tries each event.validate()
+     * and, if true, offers it into the queue (drops if full).
      */
-    public boolean shouldBlockAndProcess() {
-        // Check if we are still running a blocking event
-        if (isRunning.get()) return true;
-
-        for (BlockingEvent event : blockingEvents) {
-            try {
-                if (event.validate()) {
-                    if (!isRunning.compareAndSet(false, true)) return true;
-
-                    blockingExecutor.submit(() -> {
-                        try {
-                            event.execute();
-                        } catch (Exception e) {
-                            Microbot.log(Level.ERROR, "Error processing BlockingEvent (%s): %s", event.getName(), e.getMessage());
-                        } finally {
-                            isRunning.set(false);
+    private void validateAndEnqueue()
+    {
+        if(SplashScreen.isOpen())
+        {
+            return;
+        }
+        for (BlockingEvent event : blockingEvents)
+        {
+            try
+            {
+                if (event.validate())
+                {
+                    // only enqueue if it wasn't already pending
+                    if (pendingEvents.add(event))
+                    {
+                        // offer; if the queue is full, drop and remove from pending
+                        if (!eventQueue.offer(event))
+                        {
+                            pendingEvents.remove(event);
                         }
-                    });
-
-                    return true;
+                    }
                 }
-            } catch (Exception e) {
-                Microbot.log(Level.ERROR, "Error validating BlockingEvent (%s): %s", event.getName(), e.getMessage());
+            }
+            catch (Exception ex)
+            {
+                Microbot.log(Level.ERROR,
+                        "Error validating BlockingEvent ({}):",
+                        event.getName(),
+                        ex);
             }
         }
+    }
 
-        return false;
+    /**
+     * If an event is already running, returns true immediately.
+     * Otherwise poll the queue; if we get an event, mark running and execute.
+     */
+    public boolean shouldBlockAndProcess()
+    {
+        if (isRunning.get())
+        {
+            return true;
+        }
+
+        BlockingEvent event = eventQueue.poll();
+        if (event == null)
+        {
+            return false;
+        }
+
+
+        if (!isRunning.compareAndSet(false, true))
+        {
+            // if somebody else started in the meantime, we consider it “busy”
+            return true;
+        }
+
+        blockingExecutor.execute(() -> {
+            try
+            {
+                event.execute();
+            }
+            catch (Exception ex)
+            {
+                Microbot.log(Level.ERROR,
+                        "Error executing BlockingEvent ({}):",
+                        event.getName(),
+                        ex);
+            }
+            finally
+            {
+                pendingEvents.remove(event);
+                isRunning.set(false);
+            }
+        });
+
+        return true;
     }
 }

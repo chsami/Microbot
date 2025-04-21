@@ -110,6 +110,7 @@ public class TemporossPlugin extends Plugin {
         TemporossScript.updateFishSpotData();
         TemporossScript.updateCloudData();
         TemporossScript.updateAmmoCrateData();
+        TemporossScript.updateLastWalkPath();
 
         Rs2NpcModel doubleFishingSpot = Rs2Npc.getNpc(NpcID.FISHING_SPOT_10569);
 

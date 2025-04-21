@@ -1601,7 +1601,11 @@
 2526 3172 1	2526 3172 0	Climb-down;Ladder;16679									
 2526 3172 0	2526 3172 1	Climb-up;Ladder;17026									
 2525 3171 1	2525 3171 0	Climb-down;Ladder;16679									
-											
+
+# Combat Training Camp
+2522 3375 0	2523 3375 0	Squeeze-through;Loose Railing;19171
+2523 3375 0	2522 3375 0	Squeeze-through;Loose Railing;19171
+
 # Tree Gnome Stronghold											
 2449 3463 0	2449 3463 1	Climb-up;Ladder;16683									
 2449 3463 1	2449 3463 0	Climb-down;Ladder;16679									
@@ -1840,22 +1844,22 @@
 2464 3493 0	2465 3491 0	Open;Tree Door;1967								10	
 2464 3491 0	2465 3493 0	Open;Tree Door;1967								10	
 2466 3494 0	2466 3494 1	Climb-up;Ladder;4458									
-2466 3494 1	2466 3494 0	Climb-down;Ladder;56223									
+2466 3494 1	2466 3494 0	Climb-down;Ladder;56233
 2465 3495 0	2465 3495 1	Climb-up;Ladder;4458									
-2465 3495 1	2465 3495 0	Climb-down;Ladder;56223									
+2465 3495 1	2465 3495 0	Climb-down;Ladder;56233
 2466 3496 0	2466 3496 1	Climb-up;Ladder;4458									
-2466 3496 1	2466 3496 0	Climb-down;Ladder;56223									
+2466 3496 1	2466 3496 0	Climb-down;Ladder;56233
 2467 3495 0	2467 3495 1	Climb-up;Ladder;4458									
-2467 3495 1	2467 3495 0	Climb-down;Ladder;56223									
-2467 3495 1	2467 3495 2	Climb-up;Ladder;56223									
+2467 3495 1	2467 3495 0	Climb-down;Ladder;56233
+2467 3495 1	2467 3495 2	Climb-up;Ladder;56233
 2467 3495 2	2467 3495 3	Climb-up;Ladder;56232									
 2467 3495 3	2467 3495 2	Climb-down;Ladder;56229									
 2467 3495 2	2467 3495 1	Climb-down;Ladder;56232									
-2466 3496 1	2466 3496 2	Climb-up;Ladder;56223									
+2466 3496 1	2466 3496 2	Climb-up;Ladder;56233
 2466 3496 2	2466 3496 1	Climb-down;Ladder;56232									
-2465 3495 1	2465 3495 2	Climb-up;Ladder;56223									
+2465 3495 1	2465 3495 2	Climb-up;Ladder;56233
 2465 3495 2	2465 3495 1	Climb-down;Ladder;56232									
-2466 3494 1	2466 3494 2	Climb-up;Ladder;56223									
+2466 3494 1	2466 3494 2	Climb-up;Ladder;56233
 2466 3494 2	2466 3494 1	Climb-down;Ladder;56232									
 2466 3494 2	2466 3494 3	Climb-up;Ladder;56232									
 2466 3494 3	2466 3494 2	Climb-down;Ladder;56229									

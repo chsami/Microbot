@@ -32,37 +32,8 @@ import com.google.common.graph.Graphs;
 import com.google.common.graph.MutableGraph;
 import com.google.common.reflect.ClassPath;
 import com.google.common.reflect.ClassPath.ClassInfo;
-import com.google.inject.Binder;
-import com.google.inject.CreationException;
-import com.google.inject.Injector;
-import com.google.inject.Key;
 import com.google.inject.Module;
-import java.io.File;
-import java.io.IOException;
-import java.lang.invoke.CallSite;
-import java.lang.invoke.LambdaMetafactory;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.BiConsumer;
-import java.util.stream.Collectors;
-import javax.inject.Inject;
-import javax.inject.Named;
-import javax.inject.Provider;
-import javax.inject.Singleton;
-import javax.swing.SwingUtilities;
-
+import com.google.inject.*;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLite;
@@ -80,6 +51,21 @@ import net.runelite.client.task.Scheduler;
 import net.runelite.client.ui.SplashScreen;
 import net.runelite.client.util.GameEventManager;
 import net.runelite.client.util.ReflectUtil;
+
+import javax.inject.Inject;
+import javax.inject.Named;
+import javax.inject.Provider;
+import javax.inject.Singleton;
+import javax.swing.*;
+import java.io.File;
+import java.io.IOException;
+import java.lang.invoke.*;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
 @Singleton
 @Slf4j
@@ -233,6 +219,15 @@ public class PluginManager
 	public void startPlugins()
 	{
 		List<Plugin> scannedPlugins = new ArrayList<>(plugins);
+		scannedPlugins.sort(Comparator.comparingInt(p ->
+		{
+			final PluginDescriptor pluginDescriptor = p.getClass().getAnnotation(PluginDescriptor.class);
+			if (pluginDescriptor == null)
+			{
+				return Integer.MAX_VALUE;
+			}
+			return pluginDescriptor.priority() ? 0 : 1;
+		}));
 		int loaded = 0;
 		for (Plugin plugin : scannedPlugins)
 		{

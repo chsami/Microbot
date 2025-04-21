@@ -27,13 +27,14 @@ package net.runelite.client.plugins.slayer;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
-import java.util.Map;
-import javax.annotation.Nullable;
 import lombok.Getter;
 import net.runelite.api.gameval.ItemID;
 
+import javax.annotation.Nullable;
+import java.util.Map;
+
 @Getter
-enum Task
+public enum Task
 {
 	//<editor-fold desc="Enums">
 	ABERRANT_SPECTRES("Aberrant spectres", ItemID.SLAYERGUIDE_ABERRANTSPECTER, "Spectre"),
@@ -126,7 +127,7 @@ enum Task
 	LESSER_DEMONS("Lesser demons", ItemID.LESSER_DEMON_MASK, "Zakl'n Gritch"),
 	LESSER_NAGUA("Lesser Nagua", ItemID.SLAYERGUIDE_LESSER_NAGUA, "Sulphur Nagua", "Frost Nagua", "Amoxliatl"),
 	LIZARDMEN("Lizardmen", ItemID.LIZARDMAN_FANG, "Lizardman"),
-	LIZARDS("Lizards", ItemID.SLAYERGUIDE_LIZARD),
+	LIZARDS("Lizards", ItemID.SLAYERGUIDE_LIZARD,4, ItemID.SLAYER_ICY_WATER),
 	MAGIC_AXES("Magic axes", ItemID.IRON_BATTLEAXE),
 	MAMMOTHS("Mammoths", ItemID.BARBASSAULT_ATT_HORN_01),
 	MINIONS_OF_SCABARAS("Minions of scabaras", ItemID.NTK_SCARAB_GOLD, "Scarab swarm", "Locust rider", "Scarab mage"),
@@ -228,7 +229,7 @@ enum Task
 	}
 
 	@Nullable
-	static Task getTask(String taskName)
+    public static Task getTask(String taskName)
 	{
 		return tasks.get(taskName.toLowerCase());
 	}

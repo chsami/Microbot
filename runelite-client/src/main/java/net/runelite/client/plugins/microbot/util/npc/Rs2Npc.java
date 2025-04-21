@@ -100,16 +100,15 @@ public class Rs2Npc {
      * Retrieves a list of NPCs currently interacting with the local player.
      *
      * @return A sorted list of {@link NPC} objects interacting with the local player.
-     * @deprecated Since 1.7.2, use {@link #getNpcsForPlayer(Predicate)} for better integration with {@link Rs2NpcModel}.
      */
-    @Deprecated(since = "1.7.2", forRemoval = true)
-    public static List<NPC> getNpcsForPlayer() {
-        return Microbot.getClient().getNpcs().stream()
-                .filter(x -> x.getInteracting() == Microbot.getClient().getLocalPlayer())
+    public static Stream<Rs2NpcModel> getNpcsForPlayer() {
+        List<Rs2NpcModel> npcs = getNpcs(x -> x.getInteracting() == Microbot.getClient().getLocalPlayer())
                 .sorted(Comparator.comparingInt(value ->
                         value.getLocalLocation().distanceTo(
                                 Microbot.getClient().getLocalPlayer().getLocalLocation())))
                 .collect(Collectors.toList());
+
+        return npcs.stream();
     }
 
     /**
@@ -189,28 +188,6 @@ public class Rs2Npc {
         int scale = npc.getHealthScale();
 
         return (double) ratio / (double) scale * 100;
-    }
-
-    /**
-     * Retrieves a stream of NPCs filtered by their death status.
-     *
-     * <p>This method filters NPCs based on whether they are dead or alive.</p>
-     *
-     * @param isDead {@code true} to retrieve only dead NPCs, {@code false} to retrieve only alive NPCs.
-     * @return A sorted {@link Stream} of {@link NPC} objects that match the specified death status.
-     * @deprecated Since 1.7.2 - Use {@link #getNpcs(Predicate)} for more flexible filtering.
-     */
-    @Deprecated(since = "1.7.2", forRemoval = true)
-    public static Stream<NPC> getNpcs(boolean isDead) {
-        List<NPC> npcList = Microbot.getClientThread().runOnClientThreadOptional(() ->
-                Microbot.getClient().getTopLevelWorldView().npcs().stream()
-                        .filter(Objects::nonNull)
-                        .filter(x -> x.getName() != null && isDead == x.isDead())
-                        .sorted(Comparator.comparingInt(value -> value.getLocalLocation().distanceTo(Microbot.getClient().getLocalPlayer().getLocalLocation())))
-                        .collect(Collectors.toList())
-        ).orElse(new ArrayList());
-
-        return npcList.stream();
     }
 
     /**
@@ -618,14 +595,14 @@ public class Rs2Npc {
                 }
             }
 
-            if (index == -1) {
-                Microbot.log("Error: Action '" + action + "' not found for NPC: " + npc.getName());
-                return false;
-            }
-
             MenuAction menuAction = getMenuAction(index);
+
             if (menuAction == null) {
-                Microbot.log("Error: Could not get menu action for action '" + action + "' on NPC: " + npc.getName());
+                if (index == -1 && !Microbot.getClient().isWidgetSelected()) {
+                    Microbot.log("Error: Action '" + action + "' not found for NPC: " + npc.getName());
+                } else {
+                    Microbot.log("Error: Could not get menu action for action '" + action + "' on NPC: " + npc.getName());
+                }
                 return false;
             }
 

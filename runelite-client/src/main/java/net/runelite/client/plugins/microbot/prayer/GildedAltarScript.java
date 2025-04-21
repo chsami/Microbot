@@ -129,9 +129,11 @@ public class GildedAltarScript extends Script {
 
 
         //If the house options button is not visible, player is on Display or Sound settings, need to click Controls.
-        if(!(Rs2Widget.isWidgetVisible(7602207))){
-            Rs2Widget.clickWidget(7602243);
-            sleep(600);
+        String[] actions = Rs2Widget.getWidget(7602235).getActions(); // 116.59
+        boolean isControlsInterfaceVisible = actions != null && actions.length == 0;
+        if (!isControlsInterfaceVisible) {
+            Rs2Widget.clickWidget(7602235);
+            sleepUntil(() -> Rs2Widget.isWidgetVisible(7602207));
         }
 
         // Click House Options

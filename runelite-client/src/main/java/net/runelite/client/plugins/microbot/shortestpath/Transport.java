@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.shortestpath;
 
 import lombok.Getter;
+import lombok.Setter;
 import net.runelite.api.Quest;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
@@ -58,6 +59,7 @@ public class Transport {
      * this transport is valid
      */
     @Getter
+    @Setter
     private Set<Set<Integer>> itemIdRequirements = new HashSet<>();
 
     /**
@@ -502,5 +504,30 @@ public class Transport {
         addTransports(transports, "magic_carpets.tsv", TransportType.MAGIC_CARPET);
         addTransports(transports, "npcs.tsv", TransportType.NPC);
         return transports;
+    }
+
+    // To string method for debugging
+    @Override
+    public String toString() {
+        return "Transport{" +
+                "action='" + action + '\'' +
+                ", objectId=" + objectId +
+                ", name='" + name + '\'' +
+                ", origin=" + origin +
+                ", destination=" + destination +
+                ", skillLevels=" + Arrays.toString(skillLevels) +
+                ", quests=" + quests +
+                ", itemIdRequirements=" + itemIdRequirements +
+                ", type=" + type +
+                ", duration=" + duration +
+                ", displayInfo='" + displayInfo + '\'' +
+                ", isConsumable=" + isConsumable +
+                ", maxWildernessLevel=" + maxWildernessLevel +
+                ", varbits=" + varbits +
+                ", varplayers=" + varplayers +
+                ", currencyName='" + currencyName + '\'' +
+                ", currencyAmount=" + currencyAmount +
+                ", isMembers=" + isMembers +
+                '}';
     }
 }

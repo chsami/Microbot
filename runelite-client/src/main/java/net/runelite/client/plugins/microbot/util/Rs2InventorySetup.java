@@ -102,7 +102,7 @@ public class Rs2InventorySetup {
                 inventorySetupsItem.setName(lowerCaseName.replaceAll("\\s+[1-9]\\d*$", ""));
             }
 
-            if (!Rs2Bank.hasBankItem(lowerCaseName, withdrawQuantity)) {
+            if (!Rs2Bank.hasBankItem(lowerCaseName, withdrawQuantity,false)) {
                 Microbot.pauseAllScripts = true;
                 Microbot.showMessage("Bank is missing the following item " + inventorySetupsItem.getName(), 10);
                 break;
@@ -214,6 +214,11 @@ public class Rs2InventorySetup {
                 if (Rs2Equipment.isWearing(inventorySetupsItem.getName()))
                     continue;
 
+                if (Rs2Inventory.hasItem(inventorySetupsItem.getName())) {
+                    Rs2Bank.wearItem(inventorySetupsItem.getName());
+                    continue;
+                }
+
                 if (inventorySetupsItem.getQuantity() > 1) {
                     Rs2Bank.withdrawAllAndEquip(inventorySetupsItem.getName());
                     sleep(100, 250);
@@ -222,7 +227,7 @@ public class Rs2InventorySetup {
                     sleep(100, 250);
                 }
             } else {
-                if (inventorySetupsItem.getId() == -1 || !Rs2Bank.hasItem(inventorySetupsItem.getName()))
+                if (inventorySetupsItem.getId() == -1 || (!Rs2Bank.hasItem(inventorySetupsItem.getName()) && !Rs2Inventory.hasItem(inventorySetupsItem.getName())))
                     continue;
                 if (Rs2Inventory.hasItem(inventorySetupsItem.getName())) {
                     Rs2Bank.wearItem(inventorySetupsItem.getName());
@@ -327,12 +332,21 @@ public class Rs2InventorySetup {
     }
 
     /**
+     * Retrieves the list of additional items from the setup, excluding any dummy items (ID == -1).
+     *
+     * @return A list of valid additional filtered items.
+     */
+    public List<InventorySetupsItem> getAdditionalItems() {
+        return inventorySetup.getAdditionalFilteredItems().values().stream().filter(x -> x.getId() != -1).collect(Collectors.toList());
+    }
+
+    /**
      * Creates a list of item names that should not be deposited into the bank.
      * Combines items from both the inventory setup and the equipment setup.
      *
      * @return A list of item names that should not be deposited.
      */
-    public List<String> itemsToNotDeposit() {
+    public Map<String, Boolean> itemsToNotDeposit() {
         List<InventorySetupsItem> inventorySetupItems = getInventoryItems();
         List<InventorySetupsItem> equipmentSetupItems = getEquipmentItems();
 
@@ -341,7 +355,12 @@ public class Rs2InventorySetup {
         combined.addAll(inventorySetupItems);
         combined.addAll(equipmentSetupItems);
 
-        return combined.stream().map(InventorySetupsItem::getName).collect(Collectors.toList());
+        return combined.stream()
+                .collect(Collectors.toMap(
+                        InventorySetupsItem::getName,
+                        InventorySetupsItem::isFuzzy,
+                        (existing, replacement) -> existing)
+                );
     }
 
     /**

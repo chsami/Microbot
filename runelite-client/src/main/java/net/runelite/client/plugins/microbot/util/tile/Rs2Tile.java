@@ -740,6 +740,221 @@ public abstract class Rs2Tile implements Tile {
     }
 
     /**
+     * This method finds a path from the source tile to the destination tile using BFS.
+     * Unlike the checkpoint method, this version returns every single tile along the path.
+     * It performs a breadth-first search with collision checking, and then backtracks from the
+     * destination (or closest reachable tile) to the source, adding each tile encountered.
+     *
+     * @param source The starting tile.
+     * @param other The destination tile.
+     * @return A list of tiles representing every step from the source to the destination,
+     *         or null if no path is found.
+     */
+    public static List<Tile> fullPathTo(Tile source, Tile other) {
+        int z = source.getPlane();
+        if (z != other.getPlane()) {
+            return null;
+        }
+
+        CollisionData[] collisionData = Microbot.getClient().getTopLevelWorldView().getCollisionMaps();
+        if (collisionData == null) {
+            return null;
+        }
+
+        int[][] directions = new int[128][128];
+        int[][] distances = new int[128][128];
+        int[] bufferX = new int[4096];
+        int[] bufferY = new int[4096];
+
+        // Initialize the directions and distances arrays
+        for (int i = 0; i < 128; ++i) {
+            for (int j = 0; j < 128; ++j) {
+                directions[i][j] = 0;
+                distances[i][j] = Integer.MAX_VALUE;
+            }
+        }
+
+        Point p1 = source.getSceneLocation();
+        Point p2 = other.getSceneLocation();
+
+        int middleX = p1.getX();
+        int middleY = p1.getY();
+        int currentX = middleX;
+        int currentY = middleY;
+        int offsetX = 64;
+        int offsetY = 64;
+
+        // Start position: mark as visited
+        directions[offsetX][offsetY] = 99;
+        distances[offsetX][offsetY] = 0;
+        int index1 = 0;
+        bufferX[0] = currentX;
+        int index2 = 1;
+        bufferY[0] = currentY;
+        int[][] collisionDataFlags = collisionData[z].getFlags();
+
+        boolean isReachable = false;
+
+        // BFS search for the destination tile
+        while (index1 != index2) {
+            currentX = bufferX[index1];
+            currentY = bufferY[index1];
+            index1 = (index1 + 1) & 4095;
+            int currentMapX = currentX - middleX + offsetX;
+            int currentMapY = currentY - middleY + offsetY;
+
+            if ((currentX == p2.getX()) && (currentY == p2.getY())) {
+                isReachable = true;
+                break;
+            }
+
+            int currentDistance = distances[currentMapX][currentMapY] + 1;
+
+            // Check all eight possible directions:
+            // West
+            if (currentMapX > 0 && directions[currentMapX - 1][currentMapY] == 0 &&
+                    (collisionDataFlags[currentX - 1][currentY] & 19136776) == 0) {
+                bufferX[index2] = currentX - 1;
+                bufferY[index2] = currentY;
+                index2 = (index2 + 1) & 4095;
+                directions[currentMapX - 1][currentMapY] = 2;
+                distances[currentMapX - 1][currentMapY] = currentDistance;
+            }
+            // East
+            if (currentMapX < 127 && directions[currentMapX + 1][currentMapY] == 0 &&
+                    (collisionDataFlags[currentX + 1][currentY] & 19136896) == 0) {
+                bufferX[index2] = currentX + 1;
+                bufferY[index2] = currentY;
+                index2 = (index2 + 1) & 4095;
+                directions[currentMapX + 1][currentMapY] = 8;
+                distances[currentMapX + 1][currentMapY] = currentDistance;
+            }
+            // South
+            if (currentMapY > 0 && directions[currentMapX][currentMapY - 1] == 0 &&
+                    (collisionDataFlags[currentX][currentY - 1] & 19136770) == 0) {
+                bufferX[index2] = currentX;
+                bufferY[index2] = currentY - 1;
+                index2 = (index2 + 1) & 4095;
+                directions[currentMapX][currentMapY - 1] = 1;
+                distances[currentMapX][currentMapY - 1] = currentDistance;
+            }
+            // North
+            if (currentMapY < 127 && directions[currentMapX][currentMapY + 1] == 0 &&
+                    (collisionDataFlags[currentX][currentY + 1] & 19136800) == 0) {
+                bufferX[index2] = currentX;
+                bufferY[index2] = currentY + 1;
+                index2 = (index2 + 1) & 4095;
+                directions[currentMapX][currentMapY + 1] = 4;
+                distances[currentMapX][currentMapY + 1] = currentDistance;
+            }
+            // South-West
+            if (currentMapX > 0 && currentMapY > 0 && directions[currentMapX - 1][currentMapY - 1] == 0 &&
+                    (collisionDataFlags[currentX - 1][currentY - 1] & 19136782) == 0 &&
+                    (collisionDataFlags[currentX - 1][currentY] & 19136776) == 0 &&
+                    (collisionDataFlags[currentX][currentY - 1] & 19136770) == 0) {
+                bufferX[index2] = currentX - 1;
+                bufferY[index2] = currentY - 1;
+                index2 = (index2 + 1) & 4095;
+                directions[currentMapX - 1][currentMapY - 1] = 3;
+                distances[currentMapX - 1][currentMapY - 1] = currentDistance;
+            }
+            // North-West
+            if (currentMapX > 0 && currentMapY < 127 && directions[currentMapX - 1][currentMapY + 1] == 0 &&
+                    (collisionDataFlags[currentX - 1][currentY + 1] & 19136824) == 0 &&
+                    (collisionDataFlags[currentX - 1][currentY] & 19136776) == 0 &&
+                    (collisionDataFlags[currentX][currentY + 1] & 19136800) == 0) {
+                bufferX[index2] = currentX - 1;
+                bufferY[index2] = currentY + 1;
+                index2 = (index2 + 1) & 4095;
+                directions[currentMapX - 1][currentMapY + 1] = 6;
+                distances[currentMapX - 1][currentMapY + 1] = currentDistance;
+            }
+            // South-East
+            if (currentMapX < 127 && currentMapY > 0 && directions[currentMapX + 1][currentMapY - 1] == 0 &&
+                    (collisionDataFlags[currentX + 1][currentY - 1] & 19136899) == 0 &&
+                    (collisionDataFlags[currentX + 1][currentY] & 19136896) == 0 &&
+                    (collisionDataFlags[currentX][currentY - 1] & 19136770) == 0) {
+                bufferX[index2] = currentX + 1;
+                bufferY[index2] = currentY - 1;
+                index2 = (index2 + 1) & 4095;
+                directions[currentMapX + 1][currentMapY - 1] = 9;
+                distances[currentMapX + 1][currentMapY - 1] = currentDistance;
+            }
+            // North-East
+            if (currentMapX < 127 && currentMapY < 127 && directions[currentMapX + 1][currentMapY + 1] == 0 &&
+                    (collisionDataFlags[currentX + 1][currentY + 1] & 19136992) == 0 &&
+                    (collisionDataFlags[currentX + 1][currentY] & 19136896) == 0 &&
+                    (collisionDataFlags[currentX][currentY + 1] & 19136800) == 0) {
+                bufferX[index2] = currentX + 1;
+                bufferY[index2] = currentY + 1;
+                index2 = (index2 + 1) & 4095;
+                directions[currentMapX + 1][currentMapY + 1] = 12;
+                distances[currentMapX + 1][currentMapY + 1] = currentDistance;
+            }
+        }
+
+        // If the destination wasn't directly reached, find the closest reachable tile within a 21x21 area.
+        if (!isReachable) {
+            int upperboundDistance = Integer.MAX_VALUE;
+            int pathLength = Integer.MAX_VALUE;
+            int checkRange = 10;
+            int approxDestinationX = p2.getX();
+            int approxDestinationY = p2.getY();
+            for (int i = approxDestinationX - checkRange; i <= approxDestinationX + checkRange; ++i) {
+                for (int j = approxDestinationY - checkRange; j <= approxDestinationY + checkRange; ++j) {
+                    int currentMapX = i - middleX + offsetX;
+                    int currentMapY = j - middleY + offsetY;
+                    if (currentMapX >= 0 && currentMapY >= 0 &&
+                            currentMapX < 128 && currentMapY < 128 && distances[currentMapX][currentMapY] < 100) {
+
+                        int deltaX = Math.abs(i - approxDestinationX);
+                        int deltaY = Math.abs(j - approxDestinationY);
+                        int distanceSquared = deltaX * deltaX + deltaY * deltaY;
+
+                        if (distanceSquared < upperboundDistance ||
+                                (distanceSquared == upperboundDistance && distances[currentMapX][currentMapY] < pathLength)) {
+                            upperboundDistance = distanceSquared;
+                            pathLength = distances[currentMapX][currentMapY];
+                            currentX = i;
+                            currentY = j;
+                        }
+                    }
+                }
+            }
+            if (upperboundDistance == Integer.MAX_VALUE) {
+                return null;
+            }
+        }
+
+        // Backtrack from the found destination (or closest tile) to the source,
+        // adding every tile along the path.
+        List<Tile> fullPath = new ArrayList<>();
+        Tile[][][] tiles = Microbot.getClient().getScene().getTiles();
+        fullPath.add(tiles[source.getPlane()][currentX][currentY]);
+
+        while (p1.getX() != currentX || p1.getY() != currentY) {
+            int direction = directions[currentX - middleX + offsetX][currentY - middleY + offsetY];
+            if ((direction & 2) != 0) {
+                ++currentX;
+            } else if ((direction & 8) != 0) {
+                --currentX;
+            }
+            if ((direction & 1) != 0) {
+                ++currentY;
+            } else if ((direction & 4) != 0) {
+                --currentY;
+            }
+            fullPath.add(tiles[source.getPlane()][currentX][currentY]);
+        }
+
+        // The backtracked path runs from the destination (or nearest tile) back to the source,
+        // so we reverse it to have the path go from source to destination.
+        Collections.reverse(fullPath);
+        return fullPath;
+    }
+
+
+    /**
      * This method attempts to find a path from the source tile to the destination tile
      * using a pathfinding algorithm. It employs a breadth-first search (BFS) approach
      * that considers the game's collision data and movement restrictions for each tile.

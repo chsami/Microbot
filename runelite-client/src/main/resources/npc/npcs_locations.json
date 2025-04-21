@@ -2103,7 +2103,7 @@
   ],
   "Ankou": [
     {
-      "location_name": "The Forgotten Cemetery",
+      "location_name": "The Forgotten Cemetery (Wilderness)",
       "coords": [
         [
           2960,
@@ -6380,66 +6380,18 @@
     {
       "location_name": "Taverley Dungeon",
       "coords": [
-        [
-          2774,
-          9620,
-          0
-        ],
-        [
-          2775,
-          9611,
-          0
-        ],
-        [
-          2775,
-          9642,
-          0
-        ],
-        [
-          2777,
-          9634,
-          0
-        ],
-        [
-          2783,
-          9646,
-          0
-        ],
-        [
-          2785,
-          9616,
-          0
-        ],
-        [
-          2785,
-          9631,
-          0
-        ],
-        [
-          2796,
-          9649,
-          0
-        ],
-        [
-          2798,
-          9617,
-          0
-        ],
-        [
-          2798,
-          9636,
-          0
-        ],
-        [
-          2799,
-          9626,
-          0
-        ],
-        [
-          2807,
-          9622,
-          0
-        ]
+        [2774, 9820, 1],
+        [2775, 9811, 1],
+        [2775, 9842, 1],
+        [2777, 9834, 1],
+        [2783, 9846, 1],
+        [2785, 9816, 1],
+        [2785, 9831, 1],
+        [2796, 9849, 1],
+        [2798, 9817, 1],
+        [2798, 9836, 1],
+        [2799, 9826, 1],
+        [2807, 9822, 1]
       ],
       "mapID": null
     },
@@ -9493,7 +9445,7 @@
       "mapID": null
     }
   ],
-  "Cave goblin (monster)": [
+  "Cave goblin": [
     {
       "location_name": "Lumbridge Swamp Caves",
       "coords": [
@@ -23255,7 +23207,7 @@
       "mapID": null
     },
     {
-      "location_name": "The Forgotten Cemetery",
+      "location_name": "The Forgotten Cemetery (Wilderness)",
       "coords": [
         [
           2962,
@@ -23374,7 +23326,7 @@
       "mapID": null
     },
     {
-      "location_name": "Ferox Enclave",
+      "location_name": "Ferox Enclave (Wilderness)",
       "coords": [
         [
           3088,
@@ -32334,7 +32286,7 @@
       "mapID": null
     },
     {
-      "location_name": "Ferox Enclave",
+      "location_name": "Ferox Enclave (Wilderness)",
       "coords": [
         [
           3125,
@@ -36691,7 +36643,7 @@
   ],
   "Ice giant": [
     {
-      "location_name": "Frozen Waste Plateau",
+      "location_name": "Frozen Waste Plateau (Wilderness)",
       "coords": [
         [
           2947,
@@ -37028,7 +36980,7 @@
   ],
   "Ice spider": [
     {
-      "location_name": "Frozen Waste Plateau",
+      "location_name": "Frozen Waste Plateau (Wilderness)",
       "coords": [
         [
           2959,
@@ -37929,7 +37881,7 @@
   ],
   "Ice warrior": [
     {
-      "location_name": "Frozen Waste Plateau",
+      "location_name": "Frozen Waste Plateau (Wilderness)",
       "coords": [
         [
           2945,
@@ -38000,7 +37952,7 @@
       "mapID": null
     },
     {
-      "location_name": "Frozen Waste Plateau",
+      "location_name": "Frozen Waste Plateau (Wilderness)",
       "coords": [
         [
           2947,
@@ -38770,34 +38722,6 @@
         [
           1705,
           9638,
-          0
-        ]
-      ],
-      "mapID": null
-    }
-  ],
-  "Icelord": [
-    {
-      "location_name": "Iceberg",
-      "coords": [
-        [
-          2641,
-          10426,
-          0
-        ],
-        [
-          2644,
-          10424,
-          0
-        ],
-        [
-          2647,
-          10425,
-          0
-        ],
-        [
-          2650,
-          10423,
           0
         ]
       ],
@@ -42175,169 +42099,25 @@
   ],
   "Kalphite Worker": [
     {
-      "location_name": "Kalphite Lair",
-      "coords": [
-        [
-          3220,
-          9525,
-          0
-        ],
-        [
-          3217,
-          9520,
-          0
-        ],
-        [
-          3215,
-          9527,
-          0
-        ],
-        [
-          3212,
-          9520,
-          0
-        ],
-        [
-          3211,
-          9511,
-          0
-        ],
-        [
-          3209,
-          9476,
-          0
-        ],
-        [
-          3207,
-          9501,
-          0
-        ],
-        [
-          3205,
-          9510,
-          0
-        ],
-        [
-          3200,
-          9490,
-          0
-        ],
-        [
-          3194,
-          9526,
-          0
-        ],
-        [
-          3191,
-          9478,
-          0
-        ],
-        [
-          3184,
-          9516,
-          0
-        ],
-        [
-          3177,
-          9502,
-          0
-        ]
-      ],
-      "mapID": null
-    },
-    {
       "location_name": "Kalphite Cave",
       "coords": [
-        [
-          3395,
-          9501,
-          0
-        ],
-        [
-          3391,
-          9500,
-          0
-        ],
-        [
-          3391,
-          9506,
-          0
-        ],
-        [
-          3388,
-          9510,
-          0
-        ],
-        [
-          3387,
-          9495,
-          0
-        ],
-        [
-          3386,
-          9502,
-          0
-        ],
-        [
-          3383,
-          9507,
-          0
-        ],
-        [
-          3382,
-          9496,
-          0
-        ],
-        [
-          3379,
-          9502,
-          0
-        ],
-        [
-          3348,
-          9524,
-          0
-        ],
-        [
-          3346,
-          9516,
-          0
-        ],
-        [
-          3345,
-          9521,
-          0
-        ],
-        [
-          3345,
-          9526,
-          0
-        ],
-        [
-          3342,
-          9517,
-          0
-        ],
-        [
-          3341,
-          9512,
-          0
-        ],
-        [
-          3341,
-          9522,
-          0
-        ],
-        [
-          3337,
-          9519,
-          0
-        ],
-        [
-          3336,
-          9514,
-          0
-        ]
+        [3272, 9514, 0],
+        [3273, 9519, 0],
+        [3277, 9512, 0],
+        [3277, 9522, 0],
+        [3278, 9517, 0],
+        [3281, 9521, 0],
+        [3281, 9526, 0],
+        [3282, 9516, 0],
+        [3284, 9524, 0],
+        [3315, 9502, 0],
+        [3318, 9496, 0],
+        [3319, 9507, 0],
+        [3322, 9502, 0],
+        [3323, 9495, 0],
+        [3324, 9510, 0],
+        [3327, 9500, 0],
+        [3327, 9506, 0]
       ],
       "mapID": null
     }
@@ -47216,7 +46996,7 @@
   ],
   "Mammoth": [
     {
-      "location_name": "Ferox Enclave",
+      "location_name": "Ferox Enclave (Wilderness)",
       "coords": [
         [
           3159,
@@ -47574,7 +47354,7 @@
       "mapID": null
     },
     {
-      "location_name": "The Forgotten Cemetery",
+      "location_name": "The Forgotten Cemetery (Wilderness)",
       "coords": [
         [
           2974,
@@ -51828,7 +51608,7 @@
       "mapID": null
     }
   ],
-  "Monkey (monster)": [
+  "Monkey": [
     {
       "location_name": "Mos Le'Harmless",
       "coords": [
@@ -57409,7 +57189,7 @@
       "mapID": null
     }
   ],
-  "Penguin (monster)": [
+  "Penguin": [
     {
       "location_name": "Ardougne Zoo",
       "coords": [
@@ -60735,7 +60515,7 @@
       "mapID": null
     },
     {
-      "location_name": "Ferox Enclave",
+      "location_name": "Ferox Enclave (Wilderness)",
       "coords": [
         [
           3136,
@@ -67822,7 +67602,7 @@
       "mapID": null
     }
   ],
-  "Scorpia's offspring (monster)": [
+  "Scorpia's offspring": [
     {
       "location_name": "Scorpia",
       "coords": [
@@ -71244,7 +71024,7 @@
       "mapID": null
     },
     {
-      "location_name": "The Forgotten Cemetery",
+      "location_name": "The Forgotten Cemetery (Wilderness)",
       "coords": [
         [
           2977,
@@ -71550,7 +71330,7 @@
       "mapID": null
     },
     {
-      "location_name": "Frozen Waste Plateau",
+      "location_name": "Frozen Waste Plateau (Wilderness)",
       "coords": [
         [
           2982,
@@ -80692,7 +80472,7 @@
       "mapID": null
     }
   ],
-  "TzHaar-Mej (monster)": [
+  "TzHaar-Mej": [
     {
       "location_name": "Mor Ul Rek",
       "coords": [
@@ -94891,124 +94671,6 @@
         [
           1440,
           9680,
-          0
-        ]
-      ],
-      "mapID": null
-    }
-  ],
-  "Buffalo (monster)": [
-    {
-      "location_name": "Ortus Farm",
-      "coords": [
-        [
-          1568,
-          3112,
-          0
-        ],
-        [
-          1568,
-          3112,
-          0
-        ],
-        [
-          1568,
-          3116,
-          0
-        ],
-        [
-          1570,
-          3113,
-          0
-        ],
-        [
-          1571,
-          3119,
-          0
-        ],
-        [
-          1572,
-          3116,
-          0
-        ],
-        [
-          1574,
-          3121,
-          0
-        ],
-        [
-          1576,
-          3116,
-          0
-        ],
-        [
-          1577,
-          3119,
-          0
-        ],
-        [
-          1581,
-          3115,
-          0
-        ],
-        [
-          1584,
-          3117,
-          0
-        ],
-        [
-          1584,
-          3115,
-          0
-        ],
-        [
-          1605,
-          3088,
-          0
-        ],
-        [
-          1606,
-          3087,
-          0
-        ],
-        [
-          1607,
-          3091,
-          0
-        ],
-        [
-          1609,
-          3098,
-          0
-        ],
-        [
-          1609,
-          3088,
-          0
-        ],
-        [
-          1610,
-          3094,
-          0
-        ],
-        [
-          1611,
-          3085,
-          0
-        ],
-        [
-          1612,
-          3091,
-          0
-        ],
-        [
-          1611,
-          3098,
-          0
-        ],
-        [
-          1613,
-          3095,
           0
         ]
       ],

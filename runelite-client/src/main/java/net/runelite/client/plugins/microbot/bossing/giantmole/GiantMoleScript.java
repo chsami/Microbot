@@ -11,7 +11,6 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.aiofighter.enums.DefaultLooterStyle;
 import net.runelite.client.plugins.microbot.bossing.giantmole.enums.State;
-import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 import net.runelite.client.plugins.microbot.qualityoflife.QoLPlugin;
 import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.util.Global;
@@ -43,9 +42,9 @@ import static net.runelite.client.plugins.microbot.util.player.Rs2Player.isMembe
 @Slf4j
 public class GiantMoleScript extends Script
 {
-    public static State state = State.BANKING;
+    public static State state = State.IDLE;
 
-    public static final String VERSION = "0.0.2";
+    public static final String VERSION = "0.0.3";
 
     // Region IDs
     public static final List<Integer> FAlADOR_REGIONS = List.of(11828, 12084);
@@ -153,7 +152,7 @@ public class GiantMoleScript extends Script
 
         return true;
     }
-
+    @Override
     public void shutdown()
     {
         super.shutdown();
@@ -383,7 +382,7 @@ public class GiantMoleScript extends Script
             return;
         }
 
-        boolean underAttack = !Rs2Npc.getNpcsForPlayer().isEmpty() || Rs2Combat.inCombat();
+        boolean underAttack = Rs2Npc.getNpcsForPlayer().findAny().isPresent() || Rs2Combat.inCombat();
         Rs2Prayer.toggleQuickPrayer(!isInFalador() && underAttack);
     }
 
@@ -452,35 +451,53 @@ public class GiantMoleScript extends Script
     /**
      * Returns true if the player needs to bank (e.g., missing potions, full inventory).
      */
-    public static boolean needBanking(GiantMoleConfig config)
+    public boolean needBanking(GiantMoleConfig config)
     {
-        InventorySetup inventorySetup = config.inventorySetup();
+        Rs2InventorySetup inventorySetup = new Rs2InventorySetup(
+                config.inventorySetup().getName(),
+                mainScheduledFuture
+        );
 
-        // If no setup is selected, assume no banking is needed
-        if (inventorySetup == null)
-        {
-            return false;
-        }
 
         // (1) If inventory is full, we need to bank
         if (Rs2Inventory.isFull())
         {
+            Microbot.log("Inventory is full, banking...");
             return true;
         }
 
         // (2) For each potion type, check if setup requires it and if we have it
-        if (needsPotion(inventorySetup, Rs2Potion.getPrayerPotionsVariants())) return true;
-        if (needsPotion(inventorySetup, Rs2Potion.getRangePotionsVariants())) return true;
-        if (needsPotion(inventorySetup, Rs2Potion.getCombatPotionsVariants())) return true;
-        if (needsPotion(inventorySetup, Rs2Potion.getMagicPotionsVariants())) return true;
-        if (needsPotion(inventorySetup, Collections.singletonList(Rs2Potion.getStaminaPotion()))) return true;
-        return needsPotion(inventorySetup, Rs2Potion.getRestoreEnergyPotionsVariants());
+        if (needsPotion(inventorySetup, Rs2Potion.getPrayerPotionsVariants())) {
+            Microbot.log("need banking: missing prayer potions");
+            return true;
+        }
+        if (needsPotion(inventorySetup, Rs2Potion.getRangePotionsVariants())) {
+            Microbot.log("need banking: missing range potions");
+            return true;
+        }
+        if (needsPotion(inventorySetup, Rs2Potion.getCombatPotionsVariants())) {
+            Microbot.log("need banking: missing combat potions");
+            return true;
+        }
+        if (needsPotion(inventorySetup, Rs2Potion.getMagicPotionsVariants())) {
+            Microbot.log("need banking: missing magic potions");
+            return true;
+        }
+        if (needsPotion(inventorySetup, Collections.singletonList(Rs2Potion.getStaminaPotion()))) {
+            Microbot.log("need banking: missing stamina potion");
+            return true;
+        }
+        boolean restoreNeeded = needsPotion(inventorySetup, Rs2Potion.getRestoreEnergyPotionsVariants());
+        if (restoreNeeded) {
+            Microbot.log("need banking: missing restore energy potions");
+        }
+        return restoreNeeded;
     }
 
     /**
      * Checks if the given setup requires any variant of a specific potion but the player does not have it.
      */
-    private static boolean needsPotion(InventorySetup setup, List<String> potionVariants)
+    private static boolean needsPotion(Rs2InventorySetup setup, List<String> potionVariants)
     {
         // If the setup doesn't contain any of these variants, no need to bank for them
         if (!setupHasPotion(setup, potionVariants))
@@ -494,9 +511,9 @@ public class GiantMoleScript extends Script
     /**
      * Checks if the given setup has any item matching any of the given potion variants.
      */
-    private static boolean setupHasPotion(InventorySetup setup, List<String> potionVariants)
+    private static boolean setupHasPotion(Rs2InventorySetup setup, List<String> potionVariants)
     {
-        return setup.getInventory().stream().anyMatch(item ->
+        return setup.getInventoryItems().stream().anyMatch(item ->
         {
             if (item.getName() == null)
             {
@@ -515,7 +532,7 @@ public class GiantMoleScript extends Script
     }
 
     // check if we need food
-    private static boolean needsFood(InventorySetup setup)
+    private static boolean needsFood(Rs2InventorySetup setup)
     {
         // if setup doesn't have any food, no need to bank for it
         if (!setupHasFood(setup))
@@ -527,9 +544,9 @@ public class GiantMoleScript extends Script
     }
 
     // check if setup has any food
-    private static boolean setupHasFood(InventorySetup setup)
+    private static boolean setupHasFood(Rs2InventorySetup setup)
     {
-        return setup.getInventory().stream().anyMatch(item ->
+        return setup.getInventoryItems().stream().anyMatch(item ->
         {
             if (item.getName() == null)
             {
@@ -538,7 +555,7 @@ public class GiantMoleScript extends Script
             // get id of the item
             int itemId = item.getId();
             return
-            Rs2Food.getIds().contains(itemId);
+                    Rs2Food.getIds().contains(itemId);
         });
     }
 

@@ -312,4 +312,30 @@ public class NewMenuEntry implements MenuEntry {
         String var10000 = this.getOption();
         return "NewMenuEntry(option=" + var10000 + ", target=" + this.getTarget() + ", identifier=" + this.getIdentifier() + ", type=" + this.getType() + ", param0=" + this.getParam0() + ", param1=" + this.getParam1() + ", forceLeftClick=" + this.isForceLeftClick() + ")";
     }
+
+    /**
+     * Calculates the identifier for a given menu option using a custom offset.
+     *
+     * The identifier is computed using the formula: (menuOption * 65536) + offset.
+     * For example:
+     *   - menuOption 1 with default offset (+6): (1 * 65536) + 6 = 65542
+     *
+     * @param menuOption the menu option number (starting at 1)
+     * @param offset the offset value to be added (can be positive or negative)
+     * @return the corresponding identifier
+     */
+    public static int findIdentifier(int menuOption, int offset) {
+        return menuOption * 65536 + offset;
+    }
+
+    /**
+     * Calculates the identifier for a given menu option using the default offset of +6.
+     *
+     * @param menuOption the menu option number (starting at 1)
+     * @return the corresponding identifier with the default offset
+     */
+    public static int findIdentifier(int menuOption) {
+        return findIdentifier(menuOption, 6);
+    }
+
 }

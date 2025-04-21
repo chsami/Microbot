@@ -27,55 +27,12 @@ package net.runelite.client.plugins.microbot.inventorysetups;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.google.inject.Provides;
-import net.runelite.client.plugins.microbot.inventorysetups.serialization.InventorySetupPortable;
-import net.runelite.client.plugins.microbot.inventorysetups.ui.InventorySetupsPluginPanel;
-import net.runelite.client.plugins.microbot.inventorysetups.ui.InventorySetupsSlot;
-import java.awt.Color;
-import java.awt.Toolkit;
-import java.awt.datatransfer.StringSelection;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.awt.image.BufferedImage;
-import java.io.InputStream;
-import java.lang.reflect.Type;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
-import javax.inject.Inject;
-import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Client;
-import net.runelite.api.GameState;
-import net.runelite.api.InventoryID;
-import net.runelite.api.Item;
-import net.runelite.api.ItemContainer;
-import net.runelite.api.KeyCode;
 import net.runelite.api.Menu;
-import net.runelite.api.MenuAction;
-import net.runelite.api.MenuEntry;
-import net.runelite.api.ScriptID;
-import net.runelite.api.VarClientInt;
-import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.events.GameTick;
-import net.runelite.api.events.ItemContainerChanged;
-import net.runelite.api.events.MenuEntryAdded;
-import net.runelite.api.events.PostMenuSort;
-import net.runelite.api.events.ScriptPreFired;
-import net.runelite.api.events.VarbitChanged;
-import net.runelite.api.events.WidgetClosed;
-import net.runelite.api.events.WidgetLoaded;
+import net.runelite.api.*;
+import net.runelite.api.events.*;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.InterfaceID;
 import net.runelite.api.widgets.Widget;
@@ -96,8 +53,14 @@ import net.runelite.client.plugins.PluginDependency;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.bank.BankSearch;
+import net.runelite.client.plugins.banktags.BankTagsPlugin;
+import net.runelite.client.plugins.banktags.BankTagsService;
 import net.runelite.client.plugins.banktags.TagManager;
+import net.runelite.client.plugins.banktags.tabs.Layout;
 import net.runelite.client.plugins.banktags.tabs.LayoutManager;
+import net.runelite.client.plugins.microbot.inventorysetups.serialization.InventorySetupPortable;
+import net.runelite.client.plugins.microbot.inventorysetups.ui.InventorySetupsPluginPanel;
+import net.runelite.client.plugins.microbot.inventorysetups.ui.InventorySetupsSlot;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.JagexColors;
 import net.runelite.client.ui.NavigationButton;
@@ -106,17 +69,26 @@ import net.runelite.client.ui.components.colorpicker.RuneliteColorPicker;
 import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.HotkeyListener;
 import net.runelite.client.util.ImageUtil;
-import net.runelite.client.plugins.banktags.BankTagsPlugin;
-import net.runelite.client.plugins.banktags.BankTagsService;
-import net.runelite.client.plugins.banktags.tabs.Layout;
 
-import javax.swing.JFileChooser;
-import javax.swing.JLabel;
-import javax.swing.SwingConstants;
+import javax.inject.Inject;
+import javax.swing.*;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import java.awt.*;
+import java.awt.datatransfer.StringSelection;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.lang.reflect.Type;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.*;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static net.runelite.client.plugins.microbot.inventorysetups.ui.InventorySetupsRunePouchPanel.RUNE_POUCH_AMOUNT_VARBITS;
@@ -1014,6 +986,60 @@ public class MInventorySetupsPlugin extends Plugin
 		});
 	}
 
+	public void addInventorySetup(String name) {
+		// Use the provided name instead of prompting via a dialog box
+		if (null == name || name.isEmpty()) {
+			return;
+		}
+
+		if (MAX_SETUP_NAME_LENGTH < name.length()) {
+			name = name.substring(0, MAX_SETUP_NAME_LENGTH);
+		}
+
+		if (cache.getInventorySetupNames().containsKey(name)) {
+			String finalName = name;
+			InventorySetup inventorySetup = MInventorySetupsPlugin.getInventorySetups().stream().filter(Objects::nonNull).filter(x -> x.getName().equalsIgnoreCase(finalName)).findFirst().orElse(null);
+			updateCurrentSetup(inventorySetup,false);
+			return;
+		}
+
+		final String newName = name;
+
+		clientThread.invokeLater(() ->
+		{
+			List<InventorySetupsItem> inv = getNormalizedContainer(InventoryID.INVENTORY);
+			List<InventorySetupsItem> eqp = getNormalizedContainer(InventoryID.EQUIPMENT);
+
+			List<InventorySetupsItem> runePouchData = ammoHandler.getRunePouchDataIfInContainer(inv);
+			List<InventorySetupsItem> boltPouchData = ammoHandler.getBoltPouchDataIfInContainer(inv);
+			List<InventorySetupsItem> quiverData = ammoHandler.getQuiverDataIfInSetup(inv, eqp);
+
+			int spellbook = getCurrentSpellbook();
+
+			final InventorySetup invSetup = new InventorySetup(inv, eqp, runePouchData, boltPouchData, quiverData,
+					new HashMap<>(),
+					newName,
+					"",
+					config.highlightColor(),
+					config.highlightDifference(),
+					config.enableDisplayColor() ? config.displayColor() : null,
+					config.bankFilter(),
+					config.highlightUnorderedDifference(),
+					spellbook, false, -1);
+
+			cache.addSetup(invSetup);
+			inventorySetups.add(invSetup);
+			dataManager.updateConfig(true, false);
+
+			Layout setupLayout = layoutUtilities.createSetupLayout(invSetup);
+			layoutManager.saveLayout(setupLayout);
+			tagManager.setHidden(setupLayout.getTag(), true);
+
+			SwingUtilities.invokeLater(() -> panel.redrawOverviewPanel(false));
+
+		});
+	}
+
 	public void addSection()
 	{
 		final String msg = "Enter the name of this section (max " + MAX_SETUP_NAME_LENGTH + " chars).";
@@ -1338,14 +1364,22 @@ public class MInventorySetupsPlugin extends Plugin
 
 	public void updateCurrentSetup(InventorySetup setup)
 	{
-		int confirm = JOptionPane.showConfirmDialog(panel,
-			"Are you sure you want update this inventory setup?",
-			"Warning", JOptionPane.OK_CANCEL_OPTION);
+		updateCurrentSetup(setup, true);
+	}
 
-		// cancel button was clicked
-		if (confirm != JOptionPane.YES_OPTION)
+	public void updateCurrentSetup(InventorySetup setup, boolean showConfirmDialog)
+	{
+		if (showConfirmDialog)
 		{
-			return;
+			int confirm = JOptionPane.showConfirmDialog(panel,
+					"Are you sure you want update this inventory setup?",
+					"Warning", JOptionPane.OK_CANCEL_OPTION);
+
+			// cancel button was clicked
+			if (JOptionPane.YES_OPTION != confirm)
+			{
+				return;
+			}
 		}
 
 		// must be on client thread to get names

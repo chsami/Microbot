@@ -2,9 +2,9 @@ package net.runelite.client.plugins.microbot.util.grandexchange;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import net.runelite.api.GrandExchangeOffer;
 import net.runelite.api.GrandExchangeOfferState;
 import net.runelite.api.MenuAction;
-import net.runelite.api.NPC;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetInfo;
@@ -25,7 +25,7 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import java.awt.*;
 import java.io.StringReader;
-import java.net.*;
+import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -761,10 +761,28 @@ public class Rs2GrandExchange {
     public static boolean hasBoughtOffer() {
         return Arrays.stream(Microbot.getClient().getGrandExchangeOffers()).anyMatch(x -> x.getState() == GrandExchangeOfferState.BOUGHT);
     }
+    // check if all buy offers are bought, no state can be buying and at least one offer must be bought
+    public static boolean hasFinishedBuyingOffers() {
+        GrandExchangeOffer[] offers = Microbot.getClient().getGrandExchangeOffers();
+        boolean hasBought = Arrays.stream(offers)
+                .anyMatch(offer -> offer.getState() == GrandExchangeOfferState.BOUGHT);
+        boolean isBuying = Arrays.stream(offers)
+                .anyMatch(offer -> offer.getState() == GrandExchangeOfferState.BUYING);
+        return hasBought && !isBuying;
+    }
 
     public static boolean hasSoldOffer() {
         return Arrays.stream(Microbot.getClient().getGrandExchangeOffers()).anyMatch(x -> x.getState() == GrandExchangeOfferState.SOLD);
     }
+    public static boolean hasFinishedSellingOffers() {
+        GrandExchangeOffer[] offers = Microbot.getClient().getGrandExchangeOffers();
+        boolean hasSold = Arrays.stream(offers)
+                .anyMatch(offer -> offer.getState() == GrandExchangeOfferState.SOLD);
+        boolean isSelling = Arrays.stream(offers)
+                .anyMatch(offer -> offer.getState() == GrandExchangeOfferState.SELLING);
+        return hasSold && !isSelling;
+    }
+
 
     private static int getMaxSlots() {
         return Rs2Player.isMember() ? 8 : 3;

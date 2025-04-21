@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.frosty.bloods;
+package net.runelite.client.plugins.microbot.frosty.frostyrc;
 
 import com.google.inject.Provides;
 import lombok.Getter;
@@ -23,27 +23,27 @@ import java.awt.*;
 import java.time.Instant;
 
 @PluginDescriptor(
-        name = PluginDescriptor.Frosty + "Bloods",
-        description = "A plugin to automate Blood Rune crafting",
-        tags = {"blood", "rc", "rune", "frosty"},
+        name = PluginDescriptor.Frosty + "Frosty Rc",
+        description = "A plugin to automate Rune crafting",
+        tags = {"blood", "rc", "rune", "frosty", "wrath"},
         enabledByDefault = false
 )
 
-public class BloodsPlugin extends Plugin {
+public class RcPlugin extends Plugin {
     @Inject
-    private BloodsConfig config;
+    private RcConfig config;
     @Inject
     private Client client;
     @Provides
-    BloodsConfig provideConfig(ConfigManager configManager) {
-        return configManager.getConfig(BloodsConfig.class);
+    RcConfig provideConfig(ConfigManager configManager) {
+        return configManager.getConfig(RcConfig.class);
     }
     @Inject
     private OverlayManager overlayManager;
     @Inject
-    private BloodsOverlay bloodsOverlay;
+    private RcOverlay rcOverlay;
     @Inject
-    private BloodsScript bloodsScript;
+    private RcScript rcScript;
     @Getter
     private GameObject pool;
     @Getter
@@ -57,7 +57,7 @@ public class BloodsPlugin extends Plugin {
     @Getter
     private WorldPoint myWorldPoint;
     @Getter
-    public static String version = "v1.0.9";
+    public static String version = "v1.1.0";
 
     @Subscribe
     public void onGameObjectSpawned(GameObjectSpawned event) {
@@ -100,16 +100,16 @@ public class BloodsPlugin extends Plugin {
     protected void startUp() throws AWTException {
         startTime = Instant.now();
         if (overlayManager != null) {
-            overlayManager.add(bloodsOverlay);
+            overlayManager.add(rcOverlay);
         }
         startXp = client.getSkillExperience(Skill.RUNECRAFT);
-        bloodsScript.run();
+        rcScript.run();
     }
 
     @Override
     protected void shutDown() throws Exception {
-        overlayManager.remove(bloodsOverlay);
-        bloodsScript.shutdown();
+        overlayManager.remove(rcOverlay);
+        rcScript.shutdown();
     }
 
     public void updateXpGained() {

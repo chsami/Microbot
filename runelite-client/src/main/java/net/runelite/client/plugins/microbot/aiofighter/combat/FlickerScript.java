@@ -12,6 +12,7 @@ import net.runelite.client.plugins.microbot.aiofighter.enums.PrayerStyle;
 import net.runelite.client.plugins.microbot.aiofighter.model.Monster;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcManager;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
@@ -20,6 +21,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * This class is responsible for handling the flicker script in the game.
@@ -36,7 +39,7 @@ public class FlickerScript extends Script {
     int lastPrayerTick;
     int currentTick;
     int tickToFlick;
-    List<NPC> npcs;
+    Stream<Rs2NpcModel> npcs;
 
     /**
      * This method is responsible for running the flicker script.
@@ -67,7 +70,7 @@ public class FlickerScript extends Script {
                 currentTick = Microbot.getClient().getTickCount();
                 // Keep track of which monsters still have aggro on the player
                 currentMonstersAttackingUs.forEach(monster -> {
-                    if (npcs.stream().noneMatch(npc -> npc.getIndex() == monster.npc.getIndex())) {
+                    if (npcs.noneMatch(npc -> npc.getIndex() == monster.npc.getIndex())) {
                         monster.delete = true;
                     }
                 });
@@ -175,7 +178,7 @@ public class FlickerScript extends Script {
      */
     public void resetLastAttack(boolean forceReset) {
 
-        for (NPC npc : npcs) {
+        for (NPC npc : npcs.collect(Collectors.toList())) {
             Monster currentMonster = currentMonstersAttackingUs.stream().filter(x -> x.npc.getIndex() == npc.getIndex()).findFirst().orElse(null);
             AttackStyle attackStyle = AttackStyleMapper.mapToAttackStyle(Rs2NpcManager.getAttackStyle(npc.getId()));
 

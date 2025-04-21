@@ -33,6 +33,8 @@ import net.runelite.api.NPC;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.questhelper.requirements.AbstractRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
+import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -121,7 +123,7 @@ public class NpcRequirement extends AbstractRequirement {
 
     @Override
     public boolean check(Client client) {
-        List<NPC> found = client.getNpcs().stream()
+        List<Rs2NpcModel> found = Rs2Npc.getNpcs()
                 .filter(npc -> npc.getId() == npcID)
                 .filter(npc -> npcName == null || (npc.getName() != null && npc.getName().equals(npcName)))
                 .collect(Collectors.toList());
