@@ -77,6 +77,7 @@ public class AutoMiningScript extends Script {
                                 // Count players within distanceToStray
                                 return p.getWorldLocation().distanceTo(localLocation) <= config.distanceToStray();
                             })
+                            .filter(p -> p.getAnimation() == 624 || p.getAnimation() == 625 || p.getAnimation() == 626) // Add more IDs if needed
                             .count();
 
                     if (nearbyPlayers >= maxPlayers) {
