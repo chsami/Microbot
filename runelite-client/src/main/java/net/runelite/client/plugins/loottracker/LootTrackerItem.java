@@ -42,12 +42,12 @@ public class LootTrackerItem
 	@Setter
 	private boolean ignored;
 
-	long getTotalGePrice()
+	public long getTotalGePrice()
 	{
 		return (long) gePrice * quantity;
 	}
 
-	long getTotalHaPrice()
+	public long getTotalHaPrice()
 	{
 		return (long) haPrice * quantity;
 	}

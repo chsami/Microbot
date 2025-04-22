@@ -27,6 +27,7 @@ import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.PluginManager;
+import net.runelite.client.plugins.loottracker.LootTrackerItem;
 import net.runelite.client.plugins.loottracker.LootTrackerPlugin;
 import net.runelite.client.plugins.loottracker.LootTrackerRecord;
 import net.runelite.client.plugins.microbot.configs.SpecialAttackConfigs;
@@ -464,6 +465,29 @@ public class Microbot {
                 .filter(x -> x.getTitle().equalsIgnoreCase(npcName))
                 .findFirst()
                 .orElse(null);
+    }
+
+    /**
+     * Calculates the total GE value of loot records for a specific NPC.
+     * This method uses reflection to access private methods and fields of the LootTrackerItem class.
+     * @param npcName name of the npc to get the loot records for
+     * @return total GE value of the loot records
+     */
+    public static long getAggregateLootRecordsTotalGevalue(String npcName) {
+        LootTrackerRecord record = getAggregateLootRecords(npcName);
+        if (record == null) return 0;
+
+        long totalGeValue = 0;
+        try {
+            LootTrackerItem[] items = record.getItems();
+            for (LootTrackerItem item : items) {;
+                totalGeValue += item.getTotalGePrice();
+            }
+        } catch (Exception e) {
+            log.error("Error calculating total GE value", e);
+        }
+
+        return totalGeValue;
     }
 
     /**

@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.TaF.DemonicGorillaKiller;
 
 
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
@@ -41,7 +42,7 @@ public class DemonicGorillaOverlay extends OverlayPanel {
                     .leftColor(Color.WHITE)
                     .build());
             panelComponent.getChildren().add(LineComponent.builder()
-                    .left("Kill Count: " + DemonicGorillaScript.killCount)
+                    .left("Kill Count: " + DemonicGorillaScript.killCount + " / " + Microbot.getAggregateLootRecords("Demonic Gorilla").getKills())
                     .leftColor(Color.WHITE)
                     .build());
             panelComponent.getChildren().add(LineComponent.builder()
@@ -49,7 +50,7 @@ public class DemonicGorillaOverlay extends OverlayPanel {
                     .leftColor(Color.WHITE)
                     .build());
             panelComponent.getChildren().add(LineComponent.builder()
-                    .left("Total loot: " + DemonicGorillaScript.TotalLootValue)
+                    .left("Total loot: " + Microbot.getAggregateLootRecordsTotalGevalue("Demonic Gorilla"))
                     .leftColor(Color.WHITE)
                     .build());
             panelComponent.getChildren().add(LineComponent.builder()
