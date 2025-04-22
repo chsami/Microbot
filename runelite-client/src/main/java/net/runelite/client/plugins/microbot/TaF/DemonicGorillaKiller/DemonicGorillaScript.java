@@ -11,11 +11,8 @@ import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
-import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
-import net.runelite.client.plugins.microbot.util.grounditem.LootingParameters;
-import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Potion;
 import net.runelite.client.plugins.microbot.util.models.RS2Item;
@@ -79,6 +76,9 @@ public class DemonicGorillaScript extends Script {
     private WorldPoint lastGorillaLocation;
     private int failedAttacks = 0;
     private boolean isRunning = false;
+    private Rs2InventorySetup rangeGear = null;
+    private Rs2InventorySetup magicGear = null;
+    private Rs2InventorySetup meleeGear = null;
 
     {
         Microbot.enableAutoRunOn = false;
@@ -102,7 +102,7 @@ public class DemonicGorillaScript extends Script {
         var gePrice = Rs2GrandExchange.getPrice(item.getItem().getId());
         TotalLootValue += (gePrice == -1 ? item.getItem().getPrice() : gePrice) * item.getTileItem().getQuantity();
     }
-
+    private int count = 0;
     public boolean run(DemonicGorillaConfig config) {
         bankingStep = BankingStep.BANK;
         travelStep = TravelStep.GNOME_STRONGHOLD;
@@ -112,6 +112,9 @@ public class DemonicGorillaScript extends Script {
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!Microbot.isLoggedIn() || !super.run()) return;
+                rangeGear = new Rs2InventorySetup(config.rangeGear(), mainScheduledFuture);
+                magicGear = new Rs2InventorySetup(config.magicGear(), mainScheduledFuture);
+                meleeGear = new Rs2InventorySetup(config.meleeGear(), mainScheduledFuture);
                 switch (BOT_STATUS) {
                     case BANKING:
                         handleBanking(config);
@@ -190,21 +193,23 @@ public class DemonicGorillaScript extends Script {
     }
 
     private void handleBanking(DemonicGorillaConfig config) {
+        Rs2InventorySetup inventorySetup = new Rs2InventorySetup(config.gearSetup(), mainScheduledFuture);
         switch (bankingStep) {
             case BANK:
+                if (inventorySetup.doesInventoryMatch() && inventorySetup.doesEquipmentMatch()) {
+                    bankingStep = BankingStep.BANK;
+                    BOT_STATUS = State.TRAVEL_TO_GORILLAS;
+                    return;
+                }
                 Rs2Bank.walkToBank();
-                sleepUntil(() -> Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(Rs2Bank.getNearestBank().getWorldPoint()) <= 5);
                 Microbot.status = "Opening bank...";
                 Rs2Bank.openBank();
-                sleepUntil(Rs2Bank::isOpen);
-                Rs2Bank.depositAll();
-
+                sleepUntil(Rs2Bank::isOpen, 5000);
                 bankingStep = BankingStep.LOAD_INVENTORY;
                 break;
 
             case LOAD_INVENTORY:
                 Microbot.status = "Loading inventory and equipment setup...";
-                Rs2InventorySetup inventorySetup = new Rs2InventorySetup("Demonic Gorilla", mainScheduledFuture);
                 boolean equipmentLoaded = inventorySetup.loadEquipment();
                 boolean inventoryLoaded = inventorySetup.loadInventory();
 
@@ -212,12 +217,13 @@ public class DemonicGorillaScript extends Script {
                     var ate = false;
                     boolean ateFood = false;
                     boolean drankPrayerPot = false;
+
                     while (Rs2Player.getHealthPercentage() < 70 || ateFood || drankPrayerPot) {
                         ateFood = Rs2Player.eatAt(80);
                         drankPrayerPot = Rs2Player.drinkPrayerPotionAt(config.minEatPercent());
                         ate = true;
                         sleep(1200);
-                        if (!isRunning) {
+                        if (!isRunning || !this.isRunning()) {
                             break;
                         }
                     }
@@ -238,14 +244,28 @@ public class DemonicGorillaScript extends Script {
         if (currentTarget == null || currentTarget.isDead()) {
             npcAnimationCount = 0;
             logOnceToChat("Target is null or dead");
-            handleNewTargetAndLootOld(config);
+            handleNewTarget(config);
         }
 
         if (shouldRetreat(config)) {
             retreatToSafety(config);
             return;
         }
+        handleTargetSelection();
+        attackGorilla(config);
+        if (currentTarget == null) return;
+        handleDemonicGorillaAttacks(config);
+        if (currentTarget == null) return;
+        handleGearSwitching(config);
+        if (currentTarget == null) return;
+        evaluateAndConsumePotions(config);
 
+        if (config.enableOffensivePrayer()) {
+            activateOffensivePrayer(config);
+        }
+    }
+
+    private void handleTargetSelection() {
         // Ensure currently selected target is also who we are attacking
         if (currentTarget != null) {
             var tempTarget = getTarget(true);
@@ -267,23 +287,15 @@ public class DemonicGorillaScript extends Script {
                     logOnceToChat("Unable to force new target, walking to gorillas and trying again");
                     Rs2Walker.walkTo(GORILLA_LOCATION);
                     currentTarget = getTarget(true);
+                    // Last attempt, just attack a gorilla
+                    if (currentTarget == null) {
+                        Rs2Npc.attack("Demonic gorilla");
+                    }
                 }
                 outOfCombatTime = null; // Reset after forcing new target
             }
         } else {
             outOfCombatTime = null;
-        }
-
-        attackGorilla(config);
-        if (currentTarget == null) return;
-        handleDemonicGorillaAttacks(config);
-        if (currentTarget == null) return;
-        handleGearSwitching(config);
-        if (currentTarget == null) return;
-        evaluateAndConsumePotions(config);
-
-        if (config.enableOffensivePrayer()) {
-            activateOffensivePrayer(config);
         }
     }
 
@@ -301,11 +313,10 @@ public class DemonicGorillaScript extends Script {
         switchGear(config, HeadIcon.RANGED);
     }
 
-    private void handleNewTargetAndLootOld(DemonicGorillaConfig config) {
+    private void handleNewTarget(DemonicGorillaConfig config) {
         if (!lootAttempted) {
             Rs2Player.eatAt(80);
             Rs2Player.drinkPrayerPotionAt(config.minEatPercent());
-            attemptLooting(config);
             lootAttempted = true;
             if (currentTarget != null && currentTarget.isDead()) {
                 killCount++;
@@ -403,7 +414,7 @@ public class DemonicGorillaScript extends Script {
             }
 
             // Switch defensive prayer if needed
-            if (newDefensivePrayer != null && newDefensivePrayer != currentDefensivePrayer) {
+            if (newDefensivePrayer != null && newDefensivePrayer != currentDefensivePrayer && !Rs2Prayer.isPrayerActive(newDefensivePrayer)) {
                 switchDefensivePrayer(newDefensivePrayer);
             }
 
@@ -459,10 +470,6 @@ public class DemonicGorillaScript extends Script {
             if (newOverheadIcon == null) return;
             if (newOverheadIcon != currentOverheadIcon) {
                 currentOverheadIcon = newOverheadIcon;
-                if (!Rs2Inventory.isOpen()) {
-                    Rs2Inventory.open();
-                    sleepUntil(Rs2Inventory::isOpen, 1000);
-                }
                 switchGear(config, currentOverheadIcon);
                 sleep(100);
                 failedCount = 0;
@@ -531,31 +538,15 @@ public class DemonicGorillaScript extends Script {
         return getTarget(false);
     }
 
-        private void ensureCorrectArmorEquipped() {
-        boolean armorEquipped = true;
-        List<String> gear = new ArrayList<>();
-        if (currentGear == ArmorEquiped.MELEE) {
-            gear = parseGear("Melee");
-            armorEquipped = isGearEquipped(gear);
-        } else if (currentGear == ArmorEquiped.RANGED) {
-            gear = parseGear("Ranged");
-            armorEquipped = isGearEquipped(gear);
-        } else if (currentGear == ArmorEquiped.MAGIC) {
-            gear = parseGear("Magic");
-            armorEquipped = isGearEquipped(gear);
-        }
-
-        if (!armorEquipped) {
-            if (Rs2Inventory.isFull()) {
-                Rs2Player.useFood();
-            }
-            equipGear(gear);
-        }
-    }
-
     public Rs2NpcModel getTarget(boolean force) {
         if (currentTarget != null && !currentTarget.isDead() && !force) {
             return currentTarget;
+        }
+        var interacting = Rs2Player.getInteracting();
+        if (interacting != null) {
+            if (interacting.getName().equals("Demonic gorilla")) {
+                return (Rs2NpcModel) interacting;
+            }
         }
         var playerLocation = Microbot.getClient().getLocalPlayer().getWorldLocation();
 
@@ -577,9 +568,9 @@ public class DemonicGorillaScript extends Script {
 
         for (Rs2NpcModel demonicGorilla : demonicGorillas) {
             if (demonicGorilla != null) {
-                var interacting = demonicGorilla.getInteracting();
-                String interactingName = interacting != null ? interacting.getName() : "None";
-                if (interacting != null && Objects.equals(interactingName, playerName)) {
+                var interactingTwo = demonicGorilla.getInteracting();
+                String interactingName = interactingTwo != null ? interactingTwo.getName() : "None";
+                if (interactingTwo != null && Objects.equals(interactingName, playerName)) {
                     return demonicGorilla;
                 }
             }
@@ -625,17 +616,17 @@ public class DemonicGorillaScript extends Script {
 
     private void activateOffensivePrayer(DemonicGorillaConfig config) {
         Rs2PrayerEnum newOffensivePrayer = null;
-        if (config.useMagicStyle() && isGearEquipped(parseGear(config.magicGear()))) {
+
+        if (config.useMagicStyle() && magicGear.doesEquipmentMatch()) {
             newOffensivePrayer = Rs2PrayerEnum.AUGURY;
-        } else if (config.useRangeStyle() && isGearEquipped(parseGear(config.rangeGear()))) {
+        } else if (config.useRangeStyle() && rangeGear.doesEquipmentMatch()) {
             newOffensivePrayer = Rs2PrayerEnum.RIGOUR;
-        } else if (config.useMeleeStyle() && isGearEquipped(parseGear(config.meleeGear()))) {
+        } else if (config.useMeleeStyle() && meleeGear.doesEquipmentMatch()) {
             newOffensivePrayer = Rs2PrayerEnum.PIETY;
         }
 
         if (newOffensivePrayer != null && newOffensivePrayer != currentOffensivePrayer) {
             switchOffensivePrayer(newOffensivePrayer);
-            sleep(100);
         }
     }
 
@@ -648,7 +639,6 @@ public class DemonicGorillaScript extends Script {
     }
 
     private void switchGear(DemonicGorillaConfig config, HeadIcon combatNpcHeadIcon) {
-        List<String> gearToEquip = new ArrayList<>();
         boolean useRange = config.useRangeStyle();
         boolean useMagic = config.useMagicStyle();
         boolean useMelee = config.useMeleeStyle();
@@ -657,13 +647,10 @@ public class DemonicGorillaScript extends Script {
             case RANGED:
                 if (useMelee && useMagic) {
                     var randomizedChoice = Math.random() < 0.5;
-                    gearToEquip = randomizedChoice ? parseGear(config.meleeGear()) : parseGear(config.magicGear());
                     currentGear = randomizedChoice ? ArmorEquiped.MELEE : ArmorEquiped.MAGIC;
                 } else if (useMelee) {
-                    gearToEquip = parseGear(config.meleeGear());
                     currentGear = ArmorEquiped.MELEE;
                 } else if (useMagic) {
-                    gearToEquip = parseGear(config.magicGear());
                     currentGear = ArmorEquiped.MAGIC;
                 }
                 break;
@@ -671,13 +658,10 @@ public class DemonicGorillaScript extends Script {
             case MAGIC:
                 if (useRange && useMelee) {
                     var randomizedChoice = Math.random() < 0.5;
-                    gearToEquip = randomizedChoice ? parseGear(config.rangeGear()) : parseGear(config.meleeGear());
                     currentGear = randomizedChoice ? ArmorEquiped.RANGED : ArmorEquiped.MELEE;
                 } else if (useRange) {
-                    gearToEquip = parseGear(config.rangeGear());
                     currentGear = ArmorEquiped.RANGED;
                 } else if (useMelee) {
-                    gearToEquip = parseGear(config.meleeGear());
                     currentGear = ArmorEquiped.MELEE;
                 }
                 break;
@@ -685,43 +669,30 @@ public class DemonicGorillaScript extends Script {
             case MELEE:
                 if (useRange && useMagic) {
                     var randomizedChoice = Math.random() < 0.5;
-                    gearToEquip = randomizedChoice ? parseGear(config.rangeGear()) : parseGear(config.magicGear());
                     currentGear = randomizedChoice ? ArmorEquiped.RANGED : ArmorEquiped.MAGIC;
                 } else if (useRange) {
-                    gearToEquip = parseGear(config.rangeGear());
                     currentGear = ArmorEquiped.RANGED;
                 } else if (useMagic) {
-                    gearToEquip = parseGear(config.magicGear());
                     currentGear = ArmorEquiped.MAGIC;
                 }
                 break;
         }
-
-        if (!isGearEquipped(gearToEquip)) {
-            equipGear(gearToEquip);
+        if (currentGear == ArmorEquiped.MELEE) {
+            equipGear(meleeGear);
+        } else if (currentGear == ArmorEquiped.MAGIC) {
+            equipGear(magicGear);
+        } else if (currentGear == ArmorEquiped.RANGED) {
+            equipGear(rangeGear);
         }
     }
 
-    private List<String> parseGear(String gearString) {
-        return Arrays.asList(gearString.split(","));
-    }
-
-    private boolean isGearEquipped(List<String> gear) {
-        return gear.stream().allMatch(Rs2Equipment::isWearing);
-    }
-
-    private void equipGear(List<String> gear) {
-        for (String item : gear) {
-            var success = Rs2Inventory.wield(item);
-            if (!success) {
-                if (Rs2Inventory.isFull()) {
-                    logOnceToChat("Inventory full - Eating to equip item");
-                    Rs2Player.useFood();
-                    Rs2Inventory.waitForInventoryChanges(1200);
-                    Rs2Inventory.wield(item);
-                }
-            }
-            sleep(50);
+    private void equipGear(Rs2InventorySetup gear) {
+        var success = gear.wearEquipment();
+        if (!success && Rs2Inventory.isFull()) {
+            logOnceToChat("Failed to equip gear - Inventory full");
+            Rs2Player.useFood();
+            Rs2Inventory.waitForInventoryChanges(1200);
+            gear.wearEquipment();
         }
     }
 
@@ -739,58 +710,6 @@ public class DemonicGorillaScript extends Script {
         Rs2Prayer.disableAllPrayers();
         currentDefensivePrayer = null;
         currentOffensivePrayer = null;
-    }
-
-    private void attemptLooting(DemonicGorillaConfig config) {
-        Microbot.log("Checking loot..");
-        Loot(config);
-        if (config.scatterAshes()) {
-            lootAndScatterMalicious();
-        }
-    }
-
-    private void Loot(DemonicGorillaConfig config) {
-        //var nearbyItems = Rs2GroundItem.getAll(10);
-        sleep(1200, 1600);
-        long startTime = System.currentTimeMillis();
-        var itemsToLoot = parseGear(config.lootItems());
-        for (var item : itemsToLoot) {
-            var lootedItem = lootItem(item);
-        }
-        long endTime = System.currentTimeMillis();
-        long duration = endTime - startTime;
-        Microbot.log("Looting method took " + duration + " milliseconds");
-//        var itemsToPickup = Arrays.stream(nearbyItems).filter(item -> itemsToLoot.contains(item.getItem().getName())).collect(Collectors.toList());
-//        for (var item : itemsToPickup) {
-//            Rs2GroundItem.interact(item);
-//            sleepUntil(() -> Rs2Inventory.waitForInventoryChanges(600));
-//            CompletableFuture.runAsync(() -> UpdateTotalLoot(item));
-//        }
-    }
-
-    private boolean lootItem(String itemName) {
-        if (!Rs2Inventory.isEmpty()) {
-            LootingParameters params = new LootingParameters(10, 1, 1, 0, false, false, itemName);
-            boolean looted = Rs2GroundItem.lootItemsBasedOnNames(params);
-            if (looted) {
-                logOnceToChat("Looted: " + itemName);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void lootAndScatterMalicious() {
-        String ashesName = "Malicious ashes";
-
-        if (!Rs2Inventory.isFull() && Rs2GroundItem.lootItemsBasedOnNames(new LootingParameters(10, 1, 1, 0, false, true, ashesName))) {
-            sleepUntil(() -> Rs2Inventory.contains(ashesName), 2000);
-
-            if (Rs2Inventory.contains(ashesName)) {
-                Rs2Inventory.interact(ashesName, "Scatter");
-                sleep(600); // Wait briefly for scattering action
-            }
-        }
     }
 
     private void evaluateAndConsumePotions(DemonicGorillaConfig config) {
@@ -840,6 +759,9 @@ public class DemonicGorillaScript extends Script {
         currentDefensivePrayer = null;
         currentOffensivePrayer = null;
         currentOverheadIcon = null;
+        rangeGear = null;
+        magicGear = null;
+        meleeGear = null;
         disableAllPrayers();
         if (mainScheduledFuture != null && !mainScheduledFuture.isCancelled()) {
             mainScheduledFuture.cancel(true);

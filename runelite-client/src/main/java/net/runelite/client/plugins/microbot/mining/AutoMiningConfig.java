@@ -64,6 +64,17 @@ public interface AutoMiningConfig extends Config {
     }
 
     @ConfigItem(
+            keyName = "maxPlayersInArea",
+            name = "Max players in area",
+            description = "If more players than this are nearby, hop worlds. 0 = disable",
+            position = 3,
+            section = generalSection
+    )
+    default int maxPlayersInArea() {
+        return 0;
+    }
+
+    @ConfigItem(
             keyName = "UseBank",
             name = "UseBank",
             description = "Use bank and walk back to original location",

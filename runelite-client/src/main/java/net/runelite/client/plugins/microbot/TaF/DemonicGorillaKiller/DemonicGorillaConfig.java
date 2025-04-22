@@ -2,6 +2,8 @@ package net.runelite.client.plugins.microbot.TaF.DemonicGorillaKiller;
 
 import lombok.Getter;
 import net.runelite.client.config.*;
+import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 
 @ConfigInformation("IMPORTANT!<br/>"
         + "This plugin kills Demonic Gorillas, including combat, prayer, banking, and restocking.<br/><br/>"
@@ -89,6 +91,17 @@ public interface DemonicGorillaConfig extends Config {
     }
 
     @ConfigItem(
+            keyName = "lootMyLootOnly",
+            name = "Only loot my loot",
+            description = "Only loot your own loot",
+            section = lootingSection,
+            position = 3
+    )
+    default boolean lootMyLootOnly() {
+        return false;
+    }
+
+    @ConfigItem(
             keyName = "minEatPercent",
             name = "Minimum Health Percent",
             description = "Percentage of health below which the bot will eat food",
@@ -137,14 +150,14 @@ public interface DemonicGorillaConfig extends Config {
     }
 
     @ConfigItem(
-            keyName = "copyGear",
-            name = "Copy Gear Setup",
-            description = "Specify a setup name to copy gear from your other configurations",
+            keyName = "gearSetup",
+            name = "Gear & Inventory setup",
+            description = "Gear and inventory setup that is used for banking",
             section = gearSettingsSection,
             position = 0
     )
-    default boolean copyGear() {
-        return false;
+    default InventorySetup gearSetup() {
+        return null;
     }
 
     @ConfigItem(
@@ -161,12 +174,12 @@ public interface DemonicGorillaConfig extends Config {
     @ConfigItem(
             keyName = "rangeGear",
             name = "Range Gear",
-            description = "List of items to equip for range attacks (comma separated)",
+            description = "Inventory setup to use when using ranged",
             section = gearSettingsSection,
             position = 2
     )
-    default String rangeGear() {
-        return "";
+    default InventorySetup rangeGear() {
+        return null;
     }
 
     @ConfigItem(
@@ -183,12 +196,12 @@ public interface DemonicGorillaConfig extends Config {
     @ConfigItem(
             keyName = "magicGear",
             name = "Magic Gear",
-            description = "List of items to equip for magic attacks (comma separated)",
+            description = "Inventory setup to use when using magic",
             section = gearSettingsSection,
             position = 4
     )
-    default String magicGear() {
-        return "";
+    default InventorySetup magicGear() {
+        return null;
     }
 
     @ConfigItem(
@@ -205,12 +218,12 @@ public interface DemonicGorillaConfig extends Config {
     @ConfigItem(
             keyName = "meleeGear",
             name = "Melee Gear",
-            description = "List of items to equip for melee attacks (comma separated)",
+            description = "Inventory setup to use when using melee",
             section = gearSettingsSection,
             position = 6
     )
-    default String meleeGear() {
-        return "";
+    default InventorySetup meleeGear() {
+        return null;
     }
 }
 
