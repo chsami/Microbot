@@ -77,8 +77,7 @@ public class PositionCondition extends LocationCondition {
         
         if (!canCheckLocation()) {
             return;
-        }
-        log.info("can check", targetPosition);
+        }        
         try {
             WorldPoint currentPosition = getCurrentLocation();  
             if (Microbot.isDebug()){

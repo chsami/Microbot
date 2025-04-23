@@ -20,16 +20,27 @@ public class SkillLevelCondition extends SkillCondition {
     private final int targetLevelMax;
     private transient int startLevel;
     private transient int[] startLevelsBySkill; // Used for total level tracking
+    @Getter
     private final boolean randomized;
+    @Getter
+    private final boolean relative; // Whether this is a relative or absolute level target
+
+    /**
+     * Creates an absolute level condition (must reach a specific level)
+     */
     public SkillLevelCondition(Skill skill, int targetLevel) {
         super(skill); // Call parent constructor with skill
         this.currentTargetLevel = targetLevel;
         this.targetLevelMin = targetLevel;
         this.targetLevelMax = targetLevel;
-        randomized =true;
+        this.randomized = false;
+        this.relative = false; // Absolute level target
         initializeLevelTracking();
     }
     
+    /**
+     * Creates a randomized absolute level condition (must reach a level within a range)
+     */
     public SkillLevelCondition(Skill skill, int targetMinLevel, int targetMaxLevel) {
         super(skill); // Call parent constructor with skill
         targetMinLevel = Math.max(1, targetMinLevel);
@@ -37,7 +48,36 @@ public class SkillLevelCondition extends SkillCondition {
         this.currentTargetLevel = Rs2Random.between(targetMinLevel, targetMaxLevel);
         this.targetLevelMin = targetMinLevel;
         this.targetLevelMax = targetMaxLevel;
-        randomized =false;
+        this.randomized = true;
+        this.relative = false; // Absolute level target
+        initializeLevelTracking();
+    }
+
+    /**
+     * Creates a relative level condition (must gain specific levels from current)
+     */
+    public SkillLevelCondition(Skill skill, int targetLevel, boolean relative) {
+        super(skill); // Call parent constructor with skill
+        this.currentTargetLevel = targetLevel;
+        this.targetLevelMin = targetLevel;
+        this.targetLevelMax = targetLevel;
+        this.randomized = false;
+        this.relative = relative;
+        initializeLevelTracking();
+    }
+    
+    /**
+     * Creates a randomized relative level condition (must gain a random number of levels from current)
+     */
+    public SkillLevelCondition(Skill skill, int targetMinLevel, int targetMaxLevel, boolean relative) {
+        super(skill); // Call parent constructor with skill
+        targetMinLevel = Math.max(1, targetMinLevel);
+        targetMaxLevel = Math.min(99, targetMaxLevel);
+        this.currentTargetLevel = Rs2Random.between(targetMinLevel, targetMaxLevel);
+        this.targetLevelMin = targetMinLevel;
+        this.targetLevelMax = targetMaxLevel;
+        this.randomized = true;
+        this.relative = relative;
         initializeLevelTracking();
     }
 
@@ -48,9 +88,7 @@ public class SkillLevelCondition extends SkillCondition {
         if (isTotal()) {
             Skill[] skills = getAllTrackableSkills();
             startLevelsBySkill = new int[skills.length];
-            int totalLevel = 0;
-            totalLevel =           
-            startLevel = totalLevel;
+            startLevel = getTotalLevel();
         } else {
             startLevel = getCurrentLevel();
         }
@@ -65,7 +103,7 @@ public class SkillLevelCondition extends SkillCondition {
     }
 
     /**
-     * Create a skill level condition with random target between min and max
+     * Create an absolute skill level condition with random target between min and max
      */
     public static SkillLevelCondition createRandomized(Skill skill, int minLevel, int maxLevel) {
         if (minLevel == maxLevel) {
@@ -74,10 +112,34 @@ public class SkillLevelCondition extends SkillCondition {
         
         return new SkillLevelCondition(skill, minLevel, maxLevel);
     }
+
+    /**
+     * Create a relative skill level condition (gain levels from current)
+     */
+    public static SkillLevelCondition createRelative(Skill skill, int targetLevel) {
+        return new SkillLevelCondition(skill, targetLevel, true);
+    }
+
+    /**
+     * Create a relative skill level condition with random target between min and max
+     */
+    public static SkillLevelCondition createRelativeRandomized(Skill skill, int minLevel, int maxLevel) {
+        if (minLevel == maxLevel) {
+            return new SkillLevelCondition(skill, minLevel, true);
+        }
+        
+        return new SkillLevelCondition(skill, minLevel, maxLevel, true);
+    }
     
     @Override
     public boolean isSatisfied() {
-        return getCurrentLevel() >= currentTargetLevel;
+        if (relative) {
+            // For relative mode, check if we've gained the target number of levels
+            return getLevelsGained() >= currentTargetLevel;
+        } else {
+            // For absolute mode, check if our current level is at or above the target
+            return getCurrentLevel() >= currentTargetLevel;
+        }
     }
     
     /**
@@ -91,34 +153,23 @@ public class SkillLevelCondition extends SkillCondition {
      * Gets the number of levels remaining to reach target
      */
     public int getLevelsRemaining() {
-        int currentLevel = getCurrentLevel();
-        return Math.max(0, currentTargetLevel - currentLevel);
+        if (relative) {
+            return Math.max(0, currentTargetLevel - getLevelsGained());
+        } else {
+            return Math.max(0, currentTargetLevel - getCurrentLevel());
+        }
     }
     
     /**
      * Gets the current skill level or total level if this is a total skill condition
+     * Uses the SkillCondition's cached data to avoid client thread calls
      */
     public int getCurrentLevel() {
+        // Use static cached data from SkillCondition class
         if (isTotal()) {
-            return getTotalLevel();
+            return SkillCondition.getTotalLevel();
         }
-        return Microbot.getClientThread().runOnClientThreadOptional(
-            () -> Microbot.getClient().getRealSkillLevel(skill)).orElse(0);
-    }
-    
-    /**
-     * Gets the total level across all skills
-     */
-    private int getTotalLevel() {
-        int total = 0;
-        Skill[] skills = getAllTrackableSkills();
-        for (Skill s : skills) {
-            if (s == null || s == Skill.OVERALL) continue;
-            total += Microbot.getClientThread().runOnClientThreadOptional(
-                () -> Microbot.getClient().getRealSkillLevel(s)).orElse(0);
-        }
-        return  Microbot.getClientThread().runOnClientThreadOptional(
-            () -> Microbot.getClient().getTotalLevel()).orElse(0); 
+        return SkillCondition.getSkillLevel(skill);
     }
     
     /**
@@ -127,24 +178,44 @@ public class SkillLevelCondition extends SkillCondition {
     public int getStartingLevel() {
         return startLevel;
     }
+
+    /**
+     * Gets the target skill level to reach (for absolute mode),
+     * or the target level gain (for relative mode)
+     */
+    public int getCurrentTargetLevel() {
+        return currentTargetLevel;
+    }
     
     @Override
     public String getDescription() {
-        int currentLevel = getCurrentLevel();
-        int levelsNeeded = Math.max(0, currentTargetLevel - currentLevel);
-        String randomRangeInfo = "";
         String skillName = isTotal() ? "Total" : skill.getName();
+        String randomRangeInfo = "";
         
         if (targetLevelMin != targetLevelMax) {
             randomRangeInfo = String.format(" (randomized from %d-%d)", targetLevelMin, targetLevelMax);
         }
-        
-        if (levelsNeeded <= 0) {
-            return String.format("%s level %d or higher%s (currently %d, goal reached)", 
-                    skillName, currentTargetLevel, randomRangeInfo, currentLevel);
+
+        if (relative) {
+            int levelsGained = getLevelsGained();
+            
+            return String.format("Gain %d %s levels%s (gained: %d - %.1f%%)", 
+                    currentTargetLevel, 
+                    skillName, 
+                    randomRangeInfo,
+                    levelsGained,
+                    getProgressPercentage());
         } else {
-            return String.format("%s level %d or higher%s (currently %d, need %d more)", 
-                    skillName, currentTargetLevel, randomRangeInfo, currentLevel, levelsNeeded);
+            int currentLevel = getCurrentLevel();
+            int levelsNeeded = Math.max(0, currentTargetLevel - currentLevel);
+            
+            if (levelsNeeded <= 0) {
+                return String.format("%s level %d or higher%s (currently %d, goal reached)", 
+                        skillName, currentTargetLevel, randomRangeInfo, currentLevel);
+            } else {
+                return String.format("%s level %d or higher%s (currently %d, need %d more)", 
+                        skillName, currentTargetLevel, randomRangeInfo, currentLevel, levelsNeeded);
+            }
         }
     }
     
@@ -156,8 +227,13 @@ public class SkillLevelCondition extends SkillCondition {
         String skillName = isTotal() ? "Total" : skill.getName();
         
         // Basic description
-        sb.append("Skill Level Condition: Reach ").append(currentTargetLevel)
-          .append(" ").append(skillName).append(" level\n");
+        if (relative) {
+            sb.append("Skill Level Condition: Gain ").append(currentTargetLevel)
+              .append(" ").append(skillName).append(" levels from starting level\n");
+        } else {
+            sb.append("Skill Level Condition: Reach ").append(currentTargetLevel)
+              .append(" ").append(skillName).append(" level\n");
+        }
         
         // Randomization info if applicable
         if (targetLevelMin != targetLevelMax) {
@@ -167,7 +243,7 @@ public class SkillLevelCondition extends SkillCondition {
         
         // Status information
         int currentLevel = getCurrentLevel();
-        boolean satisfied = currentLevel >= currentTargetLevel;
+        boolean satisfied = isSatisfied();
         sb.append("Status: ").append(satisfied ? "Satisfied" : "Not satisfied").append("\n");
         
         // Progress information
@@ -194,7 +270,14 @@ public class SkillLevelCondition extends SkillCondition {
         sb.append("SkillLevelCondition:\n");
         sb.append("  ┌─ Configuration ─────────────────────────────\n");
         sb.append("  │ Skill: ").append(skillName).append("\n");
-        sb.append("  │ Target Level: ").append(currentTargetLevel).append("\n");
+        
+        if (relative) {
+            sb.append("  │ Mode: Relative (gain from current)\n");
+            sb.append("  │ Target Level gain: ").append(currentTargetLevel).append("\n");
+        } else {
+            sb.append("  │ Mode: Absolute (reach total)\n");
+            sb.append("  │ Target Level: ").append(currentTargetLevel).append("\n");
+        }
         
         // Randomization
         boolean hasRandomization = targetLevelMin != targetLevelMax;
@@ -206,14 +289,22 @@ public class SkillLevelCondition extends SkillCondition {
         // Status information
         sb.append("  ├─ Status ──────────────────────────────────\n");
         int currentLevel = getCurrentLevel();
-        boolean satisfied = currentLevel >= currentTargetLevel;
+        boolean satisfied = isSatisfied();
         sb.append("  │ Satisfied: ").append(satisfied).append("\n");
         
-        int levelsGained = getLevelsGained();
-        sb.append("  │ Levels Gained: ").append(levelsGained).append("\n");
-        
-        if (!satisfied) {
-            sb.append("  │ Levels Remaining: ").append(getLevelsRemaining()).append("\n");
+        if (relative) {
+            sb.append("  │ Levels Gained: ").append(getLevelsGained()).append("\n");
+            
+            if (!satisfied) {
+                sb.append("  │ Levels Remaining: ").append(getLevelsRemaining()).append("\n");
+            }
+        } else {
+            if (currentLevel >= currentTargetLevel) {
+                sb.append("  │ Current Level: ").append(currentLevel).append(" (goal reached)\n");
+            } else {
+                sb.append("  │ Current Level: ").append(currentLevel).append("\n");
+                sb.append("  │ Levels Remaining: ").append(getLevelsRemaining()).append("\n");
+            }
         }
         
         sb.append("  │ Progress: ").append(String.format("%.1f%%", getProgressPercentage())).append("\n");
@@ -233,21 +324,62 @@ public class SkillLevelCondition extends SkillCondition {
 
     @Override
     public double getProgressPercentage() {
-        int currentLevel = getCurrentLevel();
-        int startingLevel = getStartingLevel();
-        int targetLevel = getCurrentTargetLevel();
-        
-        if (currentLevel >= targetLevel) {
-            return 100.0;
+        if (relative) {
+            int levelsGained = getLevelsGained();
+            
+            if (levelsGained >= currentTargetLevel) {
+                return 100.0;
+            }
+            
+            if (currentTargetLevel <= 0) {
+                return 100.0;
+            }
+            
+            return (100.0 * levelsGained) / currentTargetLevel;
+        } else {
+            int currentLevel = getCurrentLevel();
+            int startingLevel = getStartingLevel();
+            int targetLevel = getCurrentTargetLevel();
+            if (currentLevel==0 || startingLevel == 0 || targetLevel ==0){
+                return 0.0;
+            }
+            if (currentLevel >= targetLevel) {
+                return 100.0;
+            }
+            
+            if (currentLevel == startingLevel) {
+                // If we haven't gained any levels yet, estimate progress using XP
+                // This provides better feedback for the user
+                Skill skill = getSkill();
+                if (skill != null) {
+                    // Use cached XP data
+                    long currentXp = SkillCondition.getSkillXp(skill);
+                    
+                    long levelStartXp = net.runelite.api.Experience.getXpForLevel(currentLevel);
+                    long nextLevelXp = net.runelite.api.Experience.getXpForLevel(currentLevel + 1);
+                    long xpInLevel = currentXp - levelStartXp;
+                    long xpNeededForNextLevel = nextLevelXp - levelStartXp;
+                    
+                    // Progress within the current level (0-100%)
+                    double levelProgress = (100.0 * xpInLevel) / xpNeededForNextLevel;
+                    
+                    // Total levels needed and percentage of one level
+                    int levelsNeeded = targetLevel - currentLevel;
+                    double oneLevel = 100.0 / levelsNeeded;
+                    
+                    // Return progress for partially completed level
+                    return (levelProgress * oneLevel) / 100.0;
+                }
+            }
+            
+            int levelsGained = currentLevel - startingLevel;
+            int levelsNeeded = targetLevel - startingLevel;
+            
+            if (levelsNeeded <= 0) {
+                return 100.0;
+            }
+            
+            return (100.0 * levelsGained) / levelsNeeded;
         }
-        
-        int levelsGained = currentLevel - startingLevel;
-        int levelsNeeded = targetLevel - startingLevel;
-        
-        if (levelsNeeded <= 0) {
-            return 100.0;
-        }
-        
-        return (100.0 * levelsGained) / levelsNeeded;
     }
 }

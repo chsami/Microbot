@@ -1,39 +1,5 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.condition;
 
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.eventbus.EventBus;
-import net.runelite.client.eventbus.Subscribe;
-
-import net.runelite.api.events.StatChanged;
-import net.runelite.api.events.VarbitChanged;
-import net.runelite.api.events.GameTick;
-import net.runelite.api.events.ItemContainerChanged;
-import net.runelite.api.events.ItemDespawned;
-import net.runelite.api.events.ItemSpawned;
-import net.runelite.api.events.GroundObjectDespawned;
-import net.runelite.api.events.GroundObjectSpawned;
-import net.runelite.api.events.MenuOptionClicked;
-import net.runelite.api.events.NpcChanged;
-import net.runelite.api.events.NpcDespawned;
-import net.runelite.api.events.NpcSpawned;
-import net.runelite.api.TileItem;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.AnimationChanged;
-import net.runelite.api.events.ChatMessage;
-import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.events.HitsplatApplied;
-import net.runelite.api.events.InteractingChanged;
-import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.AndCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.NotCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.OrCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.resource.LootItemCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.resource.ResourceCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.SingleTriggerTimeCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeCondition;
-
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -41,12 +7,43 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.events.AnimationChanged;
+import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.GroundObjectDespawned;
+import net.runelite.api.events.GroundObjectSpawned;
+import net.runelite.api.events.HitsplatApplied;
+import net.runelite.api.events.InteractingChanged;
+import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.events.ItemDespawned;
+import net.runelite.api.events.ItemSpawned;
+import net.runelite.api.events.MenuOptionClicked;
+import net.runelite.api.events.NpcChanged;
+import net.runelite.api.events.NpcDespawned;
+import net.runelite.api.events.NpcSpawned;
+import net.runelite.api.events.StatChanged;
+import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.Skill;
+import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.AndCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.NotCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.OrCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.enums.UpdateOption;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.resource.ResourceCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.SingleTriggerTimeCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeCondition;
 
 /**
  * Manages logical conditions for plugin scheduling and user-defined triggers in a hierarchical structure.
@@ -1190,9 +1187,9 @@ public class ConditionManager implements AutoCloseable {
         }        
     }
 
-    @Subscribe(priority = -1)
-    public void onStatChanged(StatChanged event) {
-      
+@Subscribe(priority = -1)
+public void onStatChanged(StatChanged event) {
+             
         for (Condition condition : getConditions( )) {
             try {
                 condition.onStatChanged(event);
@@ -1202,6 +1199,7 @@ public class ConditionManager implements AutoCloseable {
             }
         }        
     }
+   
     
     @Subscribe(priority = -1)
     public void onItemContainerChanged(ItemContainerChanged event) {
@@ -1691,6 +1689,15 @@ public class ConditionManager implements AutoCloseable {
             log.debug("Initialized plugin condition from null");
             return true;
         }
+        if (!newPluginCondition.equals(pluginCondition)) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("New Plugin Condition Detected:\n");
+            sb.append("newPluginCondition: \n\n").append(newPluginCondition.getDescription()).append("\n\n");
+            sb.append("pluginCondition: \n\n").append(pluginCondition.getDescription()).append("\n\n");
+            sb.append("Differences: \n\t").append(pluginCondition.getStructureDifferences(newPluginCondition));
+            log.info(sb.toString());
+            
+        }
         
         // If the logical types don't match (AND vs OR), and we're not in REPLACE mode,
         // we need special handling
@@ -1708,9 +1715,9 @@ public class ConditionManager implements AutoCloseable {
                 return true;
             } else if (updateOption == UpdateOption.SYNC) {
                 // For SYNC with type mismatch, log a warning but try to merge anyway
-                log.warn("Attempting to synchronize plugin conditions with different logical types: {} -> {}", 
-                        pluginCondition.getClass().getSimpleName(),
-                        newPluginCondition.getClass().getSimpleName());
+                log.warn("Attempting to synchronize plugin conditions with different logical types: {} ({})-> {} ({})", 
+                        pluginCondition.getClass().getSimpleName(),pluginCondition.getConditions().size(),
+                        newPluginCondition.getClass().getSimpleName(),newPluginCondition.getConditions().size());
                 // Continue with sync by creating a new condition of the correct type
                 LogicalCondition newRootCondition;
                 if (newPluginCondition instanceof AndCondition) {
@@ -1741,13 +1748,22 @@ public class ConditionManager implements AutoCloseable {
         // Use the LogicalCondition's updateLogicalStructure method with the specified options
         boolean conditionsUpdated = pluginCondition.updateLogicalStructure(
             newPluginCondition, updateOption, preserveState);
-        
+        log.info("Plugin condition update option: {}", updateOption);
+        if (!newPluginCondition.equals(pluginCondition)) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("New Plugin Condition Detected:\n");
+            sb.append("newPluginCondition: \n\n").append(newPluginCondition.getDescription()).append("\n\n");
+            sb.append("pluginCondition: \n\n").append(pluginCondition.getDescription()).append("\n\n");
+            sb.append("Differences: \n\t").append(pluginCondition.getStructureDifferences(newPluginCondition));
+            log.info(sb.toString());
+            
+        }
         // Optimize the condition structure after update if needed
         if (conditionsUpdated && updateOption != UpdateOption.REMOVE_ONLY) {
             // Optimize only if we added or changed conditions
             boolean optimized = pluginCondition.optimizeStructure();
             if (optimized) {
-                log.debug("Optimized plugin condition structure after update");
+                log.info("Optimized plugin condition structure after update!!");
             }
             
             // Validate the structure
@@ -1796,7 +1812,7 @@ public class ConditionManager implements AutoCloseable {
      */
     public void cancelAllWatchdogs() {
         synchronized (watchdogFutures) {
-            for (java.util.concurrent.ScheduledFuture<?> future : watchdogFutures) {
+            for (ScheduledFuture<?> future : watchdogFutures) {
                 if (future != null && !future.isDone()) {
                     future.cancel(false);
                 }
@@ -1834,7 +1850,7 @@ public class ConditionManager implements AutoCloseable {
      * @param interval The interval in milliseconds between checks
      * @return A handle to the scheduled future task (can be used to cancel)
      */
-    public java.util.concurrent.ScheduledFuture<?> schedulePluginConditionWatchdog(
+    public ScheduledFuture<?> schedulePluginConditionWatchdog(
             java.util.function.Supplier<LogicalCondition> conditionSupplier,
             long interval) {
         
@@ -1850,14 +1866,17 @@ public class ConditionManager implements AutoCloseable {
      * @param updateOption The update option to use for condition changes
      * @return A handle to the scheduled future task (can be used to cancel)
      */
-    public java.util.concurrent.ScheduledFuture<?> schedulePluginConditionWatchdog(
+    public ScheduledFuture<?> schedulePluginConditionWatchdog(
             java.util.function.Supplier<LogicalCondition> conditionSupplier,
             long interval,
             UpdateOption updateOption) {
         
-        java.util.concurrent.ScheduledFuture<?> future = SHARED_WATCHDOG_EXECUTOR.scheduleAtFixedRate(() -> {
+        ScheduledFuture<?> future = SHARED_WATCHDOG_EXECUTOR.scheduleWithFixedDelay(() -> { //scheduleWithFixedRate
             try {
                 LogicalCondition currentDesiredCondition = conditionSupplier.get();
+                if ( currentDesiredCondition == null){
+                    currentDesiredCondition = new OrCondition();
+                }
                 if (currentDesiredCondition != null) {
                     boolean updated = updatePluginCondition(currentDesiredCondition, updateOption);
                     if (updated) {
@@ -1867,7 +1886,7 @@ public class ConditionManager implements AutoCloseable {
             } catch (Exception e) {
                 log.error("Error in plugin condition watchdog", e);
             }
-        }, interval, interval, java.util.concurrent.TimeUnit.MILLISECONDS);
+        }, interval, interval,TimeUnit.MILLISECONDS);
         
         // Track this future for proper cleanup
         synchronized (watchdogFutures) {
@@ -1876,4 +1895,5 @@ public class ConditionManager implements AutoCloseable {
         
         return future;
     }
+
 }

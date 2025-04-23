@@ -69,11 +69,40 @@ public class LogicalConditionAdapter implements JsonSerializer<LogicalCondition>
             if (jsonObject.has("conditions")) {                
                 JsonArray conditionsArray = jsonObject.getAsJsonArray("conditions");
                 for (JsonElement element : conditionsArray) {
-                    Condition condition = context.deserialize(element, Condition.class);
-                    if (condition != null) {
-                        logicalCondition.addCondition(condition);
-                    } else {
-                        log.warn("Failed to deserialize a condition in logical condition");
+                    try {
+                        // Check if this is a wrapped condition from ConditionTypeAdapter
+                        if (element.isJsonObject()) {
+                            JsonObject conditionObj = element.getAsJsonObject();
+                            
+                            // Handle the typed wrapper structure from ConditionTypeAdapter
+                            if (conditionObj.has("type") && conditionObj.has("data")) {
+                                // This is the format from ConditionTypeAdapter
+                                Condition condition = context.deserialize(conditionObj, Condition.class);
+                                if (condition != null) {
+                                    logicalCondition.addCondition(condition);
+                                }
+                            } else if (conditionObj.has("data")) {
+                                // Try to get the condition directly from the data field
+                                Condition condition = context.deserialize(conditionObj.get("data"), Condition.class);
+                                if (condition != null) {
+                                    logicalCondition.addCondition(condition);
+                                }
+                            } else {
+                                // Try to deserialize directly
+                                Condition condition = context.deserialize(element, Condition.class);
+                                if (condition != null) {
+                                    logicalCondition.addCondition(condition);
+                                }
+                            }
+                        } else {
+                            // Try to deserialize directly
+                            Condition condition = context.deserialize(element, Condition.class);
+                            if (condition != null) {
+                                logicalCondition.addCondition(condition);
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.warn("Failed to deserialize a condition in logical condition", e);
                     }
                 }
             }

@@ -152,7 +152,7 @@ public class PluginScheduleEntry implements AutoCloseable {
         }
         
         //registerPluginConditions();
-        scheduleConditionWatchdogs(1000,UpdateOption.SYNC);
+        scheduleConditionWatchdogs(10000,UpdateOption.SYNC);
         if (enabled){
             startConditionManager.registerEvents();
         }

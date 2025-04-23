@@ -57,7 +57,14 @@ public class ConditionTypeAdapter implements JsonSerializer<Condition>, JsonDese
         }
         else if (src instanceof SkillLevelCondition) {
             SkillLevelCondition skillLevel = (SkillLevelCondition) src;
-            data.addProperty("skill", skillLevel.getSkill().name());
+            Skill skill = skillLevel.getSkill();
+            if (skill == null || skill == Skill.OVERALL) {
+                data.addProperty("skill", "OVERALL");    
+                
+            }else {
+                data.addProperty("skill", skill.name());
+            }
+            
             data.addProperty("targetLevelMin", skillLevel.getTargetLevelMin());
             data.addProperty("targetLevelMax", skillLevel.getTargetLevelMax());
             data.addProperty("currentTargetLevel", skillLevel.getCurrentTargetLevel());
@@ -65,7 +72,13 @@ public class ConditionTypeAdapter implements JsonSerializer<Condition>, JsonDese
         }
         else if (src instanceof SkillXpCondition) {
             SkillXpCondition skillXp = (SkillXpCondition) src;
-            data.addProperty("skill", skillXp.getSkill().name());
+            Skill skill = skillXp.getSkill();
+            if (skill == null || skill == Skill.OVERALL) {
+                data.addProperty("skill", "OVERALL");    
+                
+            }else {
+                data.addProperty("skill", skill.name());
+            }            
             data.addProperty("targetXpMin", skillXp.getTargetXpMin());
             data.addProperty("targetXpMax", skillXp.getTargetXpMax());
             data.addProperty("currentTargetXp", skillXp.getCurrentTargetXp());
@@ -354,7 +367,12 @@ public class ConditionTypeAdapter implements JsonSerializer<Condition>, JsonDese
         if (data.has("data")){
             data = data.getAsJsonObject("data");
         }
-        Skill skill = Skill.valueOf(data.get("skill").getAsString());
+        Skill skill;
+        if (data.get("skill").getAsString() == "OVERALL") {
+            skill = Skill.OVERALL;
+        }else {
+            skill = Skill.valueOf(data.get("skill").getAsString());
+        }
         int targetLevelMin = data.get("targetLevelMin").getAsInt();
         int targetLevelMax = data.get("targetLevelMax").getAsInt();
         return new SkillLevelCondition(skill, targetLevelMin, targetLevelMax);
@@ -364,7 +382,13 @@ public class ConditionTypeAdapter implements JsonSerializer<Condition>, JsonDese
         if (data.has("data")){
             data = data.getAsJsonObject("data");
         }
-        Skill skill = Skill.valueOf(data.get("skill").getAsString());
+        Skill skill;
+        if (data.get("skill").getAsString() == "OVERALL") {
+            skill = Skill.OVERALL;
+        }else {
+            skill = Skill.valueOf(data.get("skill").getAsString());
+        }
+        
         int targetXpMin = data.get("targetXpMin").getAsInt();
         int targetXpMax = data.get("targetXpMax").getAsInt();
         return new SkillXpCondition(skill, targetXpMin, targetXpMax);

@@ -58,7 +58,7 @@ import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 
 import lombok.extern.slf4j.Slf4j;
-
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.ConditionManager;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.location.AreaCondition;
@@ -260,9 +260,11 @@ public class ConditionConfigPanel extends JPanel {
                     conditionTypeComboBox.addItem("Time Window");
                     conditionTypeComboBox.addItem("Not In Time Window");
                 } else {
+                    conditionTypeComboBox.addItem("Time Interval");
                     conditionTypeComboBox.addItem("Time Window");
                     conditionTypeComboBox.addItem("Outside Time Window");
                     conditionTypeComboBox.addItem("Day of Week");
+                    conditionTypeComboBox.addItem("Specific Time");
                 }
                 break;
             case "Skill":
@@ -626,8 +628,10 @@ public class ConditionConfigPanel extends JPanel {
         if (selectedPlugin == this.selectScheduledPlugin) {            
             return;
         }else{
-            log.info("setSelectScheduledPlugin: Changing selected plugin from {} to {} - reload list and tree", 
+            if (Microbot.isDebug()){
+                log.info("setSelectScheduledPlugin: Changing selected plugin from {} to {} - reload list and tree", 
                     this.selectScheduledPlugin==null ? "null": this.selectScheduledPlugin.getCleanName() , selectedPlugin==null ? "null" : selectedPlugin.getCleanName());  
+            }
         }
                     
         // Store the selected plugin
@@ -1029,6 +1033,9 @@ public class ConditionConfigPanel extends JPanel {
         } else {
             // This is for start conditions 
             switch (selectedType) {
+                case "Time Interval":
+                    TimeConditionPanelUtil.createIntervalConfigPanel(panel, gbc, panel);
+                    break;
                 case "Time Window":
                     TimeConditionPanelUtil.createEnhancedTimeWindowConfigPanel(panel, gbc, panel);
                     break;
@@ -1039,6 +1046,9 @@ public class ConditionConfigPanel extends JPanel {
                     break; 
                 case "Day of Week":
                     TimeConditionPanelUtil.createDayOfWeekConfigPanel(panel, gbc, panel);
+                    break;
+                case "Specific Time":
+                    TimeConditionPanelUtil.createSingleTriggerConfigPanel(panel, gbc, panel);
                     break;
                 case "Skill Level Required":
                     SkillConditionPanelUtil.createSkillLevelConfigPanel(panel, gbc, panel, false);
@@ -1590,11 +1600,20 @@ public class ConditionConfigPanel extends JPanel {
                
             } else {
                 switch (selectedType) {
+                    case "Time Interval":
+                        condition = TimeConditionPanelUtil.createIntervalCondition(localConfigPanel);
+                        break;
                     case "Time Window":
+                        condition = TimeConditionPanelUtil.createEnhancedTimeWindowCondition(localConfigPanel);
+                        break;
+                    case "Outside Time Window":
                         condition = TimeConditionPanelUtil.createEnhancedTimeWindowCondition(localConfigPanel);
                         break;
                     case "Day of Week":
                         condition = TimeConditionPanelUtil.createDayOfWeekCondition(localConfigPanel);
+                        break;
+                    case "Specific Time":
+                        condition = TimeConditionPanelUtil.createSingleTriggerCondition(localConfigPanel);
                         break;
                     case "Skill Level Required":
                         condition = SkillConditionPanelUtil.createSkillLevelCondition(localConfigPanel);
@@ -2271,20 +2290,17 @@ public class ConditionConfigPanel extends JPanel {
                 updateConditionTypes("Time");
                 
                 if (condition instanceof IntervalCondition) {
-                    conditionTypeComboBox.setSelectedItem("Time Duration");
+                    conditionTypeComboBox.setSelectedItem(stopConditionPanel ? "Time Duration" : "Time Interval");
                 } else if (condition instanceof TimeWindowCondition) {
                     TimeWindowCondition windowCondition = (TimeWindowCondition) condition;                 
                     conditionTypeComboBox.setSelectedItem("Time Window");                 
-                }else if( condition instanceof NotCondition && 
+                } else if (condition instanceof NotCondition && 
                         ((NotCondition) condition).getCondition() instanceof TimeWindowCondition) {
                     // This is a negated time window condition
                     conditionTypeComboBox.setSelectedItem(stopConditionPanel ? "Not In Time Window" : "Outside Time Window");
                 } else if (condition instanceof SingleTriggerTimeCondition) {
-                    conditionTypeComboBox.setSelectedItem("Single Trigger");
-                } else if (condition instanceof IntervalCondition) {
-                    conditionTypeComboBox.setSelectedItem("Interval");
-                
-                }else if (condition instanceof DayOfWeekCondition) {
+                    conditionTypeComboBox.setSelectedItem("Specific Time");
+                } else if (condition instanceof DayOfWeekCondition) {
                     conditionTypeComboBox.setSelectedItem("Day of Week");
                 }
                 
