@@ -37,6 +37,7 @@ import net.runelite.client.plugins.microbot.util.woodcutting.Rs2Woodcutting;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -47,7 +48,6 @@ public class BarrowsScript extends Script {
     public static boolean inTunnels = false;
     public String WhoisTun = "Unknown";
     private String neededRune = "unknown";
-    private volatile boolean shouldWalk = false;
     private boolean shouldBank = false;
     private int tunnelLoopCount = 0;
     private WorldPoint FirstLoopTile;
@@ -56,6 +56,8 @@ public class BarrowsScript extends Script {
     public static int ChestsOpened = 0;
     private int minRuneAmt;
     public static List<String> barrowsPieces = new ArrayList<>();
+    private ScheduledFuture<?> WalkToTheChestFuture;
+    private WorldPoint Chest = new WorldPoint(3552,9694,0);
 
     public boolean run(BarrowsConfig config) {
         Microbot.enableAutoRunOn = false;
@@ -463,21 +465,11 @@ public class BarrowsScript extends Script {
                     checkForBrother();
                     eatFood();
                     outOfSupplies();
-                    WorldPoint Chest = new WorldPoint(3552,9694,0);
 
                     //threaded walk because the brother could appear, the puzzle door could be there.
                     if(!Rs2Player.isMoving()) {
-                        if (Rs2Player.getWorldLocation().distanceTo(Chest) > 4) {
-                            shouldWalk = true;
-                            new Thread(() -> {
-                                if (shouldWalk) {
-                                    Rs2Walker.walkTo(Chest);
-                                }
-                            }).start();
-                        }
-                        sleepUntil(() -> Rs2Player.isMoving(), Rs2Random.between(1200, 3000));
+                        startWalkingToTheChest();
                     }
-                    shouldWalk = false;
                     //threaded walk because the brother could appear, the puzzle door could be there.
                     //Moved Rs2Walker.setTarget(null); inside the puzzle solver and bother check.
 
@@ -541,6 +533,7 @@ public class BarrowsScript extends Script {
                     if(!Rs2Bank.isOpen()){
                         //stop the walker
                         Rs2Walker.setTarget(null);
+                        WalkToTheChestFuture.cancel(true);
                         //tele out
                         outOfSupplies();
                         //walk to and open the bank
@@ -792,6 +785,7 @@ public class BarrowsScript extends Script {
                 if(currentTile.equals(FirstLoopTile)){
                     Microbot.log("We seem to be stuck. Resetting the walker");
                     Rs2Walker.setTarget(null);
+                    WalkToTheChestFuture.cancel(true);
                 }
             }
         }
@@ -910,8 +904,8 @@ public class BarrowsScript extends Script {
         Rs2NpcModel currentBrother = null;
         if (hintArrow != null) {
             currentBrother = new Rs2NpcModel(hintArrow);
-            shouldWalk = false;
             Rs2Walker.setTarget(null);
+            WalkToTheChestFuture.cancel(true);
             Rs2PrayerEnum neededprayer = Rs2PrayerEnum.PROTECT_MELEE;
             if (currentBrother != null && Rs2Npc.hasLineOfSight(currentBrother)) {
                 if(currentBrother.getName().contains("Ahrim")){
@@ -1001,6 +995,21 @@ public class BarrowsScript extends Script {
         }
     }
 
+    private void walkToChest(){
+        Rs2Walker.walkTo(Chest);
+    }
+
+    private void startWalkingToTheChest() {
+        if(WalkToTheChestFuture == null || WalkToTheChestFuture.isCancelled() || WalkToTheChestFuture.isDone()) {
+            WalkToTheChestFuture = scheduledExecutorService.scheduleWithFixedDelay(
+                    this::walkToChest,
+                    0,
+                    100,
+                    TimeUnit.MILLISECONDS
+            );
+        }
+    }
+
     public void drinkforgottonbrew() {
             if(Rs2Inventory.contains(it->it!=null&&it.getName().contains("Forgotten brew"))) {
                 if(Rs2Player.getBoostedSkillLevel(Skill.MAGIC) <= (Rs2Player.getRealSkillLevel(Skill.MAGIC) + Rs2Random.between(1,4))) {
@@ -1045,6 +1054,7 @@ public class BarrowsScript extends Script {
         //widget ids are 1638413, 1638415,1638417
         if(Rs2Widget.getWidget(1638413)!=null){
             Rs2Walker.setTarget(null);
+            WalkToTheChestFuture.cancel(true);
             if(Rs2Widget.getWidget(1638413).getModelId() == 6725 || Rs2Widget.getWidget(1638413).getModelId() == 6731
             ||Rs2Widget.getWidget(1638413).getModelId() == 6713||Rs2Widget.getWidget(1638413).getModelId() == 6719){
                 Microbot.log("Solution found");
@@ -1057,6 +1067,7 @@ public class BarrowsScript extends Script {
 
         if(Rs2Widget.getWidget(1638415)!=null){
             Rs2Walker.setTarget(null);
+            WalkToTheChestFuture.cancel(true);
             if(Rs2Widget.getWidget(1638415).getModelId() == 6725 || Rs2Widget.getWidget(1638415).getModelId() == 6731
                     ||Rs2Widget.getWidget(1638415).getModelId() == 6713||Rs2Widget.getWidget(1638415).getModelId() == 6719){
                 Microbot.log("Solution found");
@@ -1069,6 +1080,7 @@ public class BarrowsScript extends Script {
 
         if(Rs2Widget.getWidget(1638417)!=null){
             Rs2Walker.setTarget(null);
+            WalkToTheChestFuture.cancel(true);
             if(Rs2Widget.getWidget(1638417).getModelId() == 6725 || Rs2Widget.getWidget(1638417).getModelId() == 6731
                     ||Rs2Widget.getWidget(1638417).getModelId() == 6713||Rs2Widget.getWidget(1638417).getModelId() == 6719){
                 Microbot.log("Solution found");

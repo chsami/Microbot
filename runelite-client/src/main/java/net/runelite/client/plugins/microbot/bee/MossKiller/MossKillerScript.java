@@ -80,7 +80,7 @@ public class MossKillerScript extends Script {
     public static int DEATH_RUNE = 560;
     public static int CHAOS_RUNE = 562;
     // TODO: add stuff for boss too
-    public int[] LOOT_LIST = new int[]{MOSSY_KEY, LAW_RUNE, AIR_RUNE, FIRE_RUNE, DEATH_RUNE, CHAOS_RUNE, NATURE_RUNE};
+    public int[] LOOT_LIST = new int[]{MOSSY_KEY, LAW_RUNE, AIR_RUNE, FIRE_RUNE, COSMIC_RUNE, DEATH_RUNE, CHAOS_RUNE, NATURE_RUNE};
     public static final int[] LOOT_LIST1 = new int[]{2354, BIG_BONES, RUNE_PLATELEGS, RUNE_LONGSWORD, RUNE_MED_HELM, RUNE_SWORD, ADAMANT_KITESHIELD, RUNE_CHAINBODY, RUNITE_BAR, RUNE_PLATESKIRT, RUNE_SQ_SHIELD, RUNE_SWORD, RUNE_MED_HELM, 1124, ADAMANT_KITESHIELD, NATURE_RUNE, COSMIC_RUNE, LAW_RUNE, DEATH_RUNE, CHAOS_RUNE, ADAMANT_ARROW, RUNITE_BAR, 1620, ADAMANT_KITESHIELD, 1618, 2354, 995, 114, BRYOPHYTAS_ESSENCE, MOSSY_KEY};
     public int[] ALCHABLES = new int[]{STEEL_KITESHIELD, MITHRIL_SWORD, BLACK_SQ_SHIELD};
 
@@ -118,11 +118,9 @@ public class MossKillerScript extends Script {
 
                 Microbot.log(String.valueOf(state));
                 Microbot.log("BossMode: " + bossMode);
-                if (bossMode && Rs2AntibanSettings.actionCooldownActive) {
+                if (bossMode && Rs2AntibanSettings.actionCooldownChance > 0.05) {
                     Rs2AntibanSettings.actionCooldownChance = 0.00;
-                    Rs2AntibanSettings.actionCooldownActive = false;
-                } else if (!bossMode && !Rs2AntibanSettings.actionCooldownActive){
-                    Rs2AntibanSettings.actionCooldownActive = true;
+                } else if (!bossMode && Rs2AntibanSettings.actionCooldownChance < 0.06){
                     Rs2AntibanSettings.actionCooldownChance = 0.06;}
 
                 if (Rs2Player.getRealSkillLevel(Skill.DEFENCE) >= config.defenseLevel()) {
@@ -136,7 +134,7 @@ public class MossKillerScript extends Script {
                 if (Rs2Player.getRealSkillLevel(Skill.STRENGTH) >= config.strengthLevel()) {
                     moarShutDown();
                 }
-                // CODE HERE
+
                 switch(state){
                     case BANK: handleBanking(); break;
                     case TELEPORT: varrockTeleport(); break;
@@ -144,10 +142,8 @@ public class MossKillerScript extends Script {
                     case WALK_TO_MOSS_GIANTS: walkToMossGiants(); break;
                     case FIGHT_BOSS: handleBossFight(); break;
                     case FIGHT_MOSS_GIANTS: handleMossGiants(); break;
-                    case EXIT_SCRIPT: sleep(10000, 15000); init(); break;
+                    case EXIT_SCRIPT: sleep(10000, 15000); init(); moarShutDown(); break;
                 }
-
-                // switch statement to call functions based on state
 
 
                 long endTime = System.currentTimeMillis();
@@ -167,7 +163,7 @@ public class MossKillerScript extends Script {
     }
 
     public void moarShutDown() {
-        System.out.println("super shutdown triggered for reaching set level");
+        System.out.println("super shutdown triggered");
         varrockTeleport();
         //static sleep to wait till out of combat
         sleep(10000);
@@ -185,6 +181,7 @@ public class MossKillerScript extends Script {
         sleep(1000);
         shutdown();
     }
+
     private void checkAndDrinkStrengthPotion() {
         int currentStrengthLevel = Microbot.getClient().getRealSkillLevel(Skill.STRENGTH); // Unboosted strength level
         int boostedStrengthLevel = Microbot.getClient().getBoostedSkillLevel(Skill.STRENGTH); // Current boosted strength level
@@ -262,11 +259,17 @@ public class MossKillerScript extends Script {
         }
 
         int randomValue = (int) Rs2Random.truncatedGauss(35, 60, 4.0);
-        eatAt(randomValue);
+        if (Rs2Player.getCombatLevel() < 69) {
+            int randomValue1 = (int) Rs2Random.truncatedGauss(50, 75, 4.0);
+            eatAt(randomValue1);
+        } else eatAt(randomValue);
 
 
         // Check if loot is nearby and pick it up if it's in LOOT_LIST
         for (int lootItem : LOOT_LIST) {
+            if (Rs2GroundItem.exists(lootItem, 7)
+                    && Rs2Inventory.getEmptySlots() == 0) {
+                eatAt(100);}
             if(!Rs2Inventory.isFull() && Rs2GroundItem.interact(lootItem, "Take", 10)){
                 sleep(1000, 3000);
             }
@@ -274,7 +277,10 @@ public class MossKillerScript extends Script {
 
         // Check if loot is nearby and pick it up if it's in LOOT_LIST
         if (config.alchLoot()) {
-            for (int lootItem : LOOT_LIST) {
+            for (int lootItem : ALCHABLES) {
+                if (Rs2GroundItem.exists(lootItem, 7)
+                        && Rs2Inventory.getEmptySlots() == 0) {
+                    eatAt(100);}
                 if (Rs2GroundItem.exists(lootItem, 7) && Rs2Inventory.getEmptySlots() == 0) {
                     eatAt(100);
                     sleepUntil(() -> !Rs2Inventory.isFull());
@@ -403,7 +409,7 @@ public class MossKillerScript extends Script {
                     if (Rs2Inventory.use(BRONZE_AXE)) {
                         sleep(750, 1000);
                         Rs2Npc.interact(npc, "Use");
-                        sleep(750, 1250);
+                        sleep(450, 650);
                     }
                 }
 
@@ -450,13 +456,30 @@ public class MossKillerScript extends Script {
     public void lootWorldPoint(WorldPoint worldPoint) {
         for (int lootItem : LOOT_LIST1) {
             Microbot.log("Attempting to loot item ID: " + lootItem + " at tile: " + MossKillerPlugin.bryoTile);
-            Rs2GroundItem.loot(MossKillerPlugin.bryoTile, lootItem);
+            Rs2GroundItem.lootItemsBasedOnLocation(MossKillerPlugin.bryoTile, lootItem);
             sleep(300, 600);
         }
     }
 
 
     public void walkToMossGiants() {
+
+        if (BreakHandlerScript.breakIn <= 180) {
+            Microbot.log("you're gonna break soon, may as well idle at bank for a couple mins and restock food");
+            Rs2Bank.walkToBankAndUseBank();
+            if(Rs2Bank.isOpen()) {Rs2Bank.withdrawAll(FOOD);}
+            sleep(150000,180000);
+            return;
+        }
+
+        if (Rs2Walker.getDistanceBetween(Rs2Player.getWorldLocation(), VARROCK_SQUARE) < 10 && Rs2Player.getWorldLocation().getPlane() == 0) {
+            if (!Rs2Inventory.hasItemAmount(SWORDFISH, 15)) {
+                Microbot.log("you're at varrock square and could restock food, let's do that");
+                state = MossKillerState.BANK;
+                return;
+            }
+        }
+
 
         int currentPitch = Rs2Camera.getPitch(); // Assume Rs2Camera.getPitch() retrieves the current pitch value.
         int currentZoom = Rs2Camera.getZoom(); // Assume Rs2Camera.getZoom() retrieves the current zoom level.
@@ -645,6 +668,7 @@ public class MossKillerScript extends Script {
 
             // Randomize withdrawal order and add sleep between each to mimic human behavior
             withdrawItemWithRandomSleep(AIR_RUNE, FIRE_RUNE, LAW_RUNE, FOOD);
+            if(config.alchLoot()) {Rs2Bank.withdrawAll(NATURE_RUNE);}
             Rs2Bank.withdrawAll(FOOD);
             sleepUntil(() -> Rs2Inventory.contains(FOOD));
             sleep(500, 1000);
@@ -743,12 +767,6 @@ public class MossKillerScript extends Script {
     }
 
     public void init(){
-        //todo: set up food
-        //todo:  set up membs
-        //todo: set up loot filter
-        // check state
-
-
 
         getInitiailState();
 

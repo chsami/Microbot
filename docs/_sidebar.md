@@ -27,3 +27,15 @@
       * [Rs2Widget](api/apidocs/net/runelite/client/plugins/microbot/util/widget/Rs2Widget.html)
     - **Script Examples**
         * [Fighter Script](combat.md)
+    - **Plugin Scheduler**
+      * [Overview](scheduler/README.md)
+      * [PluginScheduleEntry](scheduler/plugin-schedule-entry.md)
+      * [SchedulerPlugin](scheduler/scheduler-plugin.md)
+      * [PluginScheduleEntryFinishedEvent](scheduler/event/plugin-schedule-entry-finished-event.md)
+      * [PluginScheduleEntrySoftStopEvent](scheduler/event/plugin-schedule-entry-soft-stop-event.md)
+      * [Time Conditions](scheduler/time-conditions.md)
+      * [Logical Conditions](scheduler/logical-conditions.md)
+      * [Resource Conditions](scheduler/resource-conditions.md)
+      * [Skill Conditions](scheduler/skill-conditions.md)
+      * [Location Conditions](scheduler/location-conditions.md)
+      * [NPC Conditions](scheduler/npc-conditions.md)

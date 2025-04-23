@@ -12,6 +12,7 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.bee.MossKiller.Enums.CombatMode;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
@@ -41,6 +42,7 @@ import static net.runelite.api.ItemID.RUNE_SCIMITAR;
 public class MossKillerPlugin extends Plugin {
     @Inject
     private MossKillerConfig config;
+
     @Provides
     MossKillerConfig provideConfig(ConfigManager configManager) {
         return configManager.getConfig(MossKillerConfig.class);
@@ -58,7 +60,6 @@ public class MossKillerPlugin extends Plugin {
     private WildySaferScript wildySaferScript;
     @Inject
     private MossKillerScript exampleScript;
-
     private boolean worldHopFlag = false;
     @Getter
     private int deathCounter = 0;
@@ -113,7 +114,7 @@ public class MossKillerPlugin extends Plugin {
 
 
     @Override
-    protected void startUp() throws AWTException {
+    protected void startUp() throws AWTException, PluginInstantiationException {
         if (overlayManager != null) {
             overlayManager.add(mossKillerOverlay);
         }
@@ -121,22 +122,27 @@ public class MossKillerPlugin extends Plugin {
         Microbot.enableAutoRunOn = false;
         hideOverlay = config.isHideOverlay();
         toggleOverlay(hideOverlay);
-        if(!config.wildy() && !config.wildySafer()) {
-        exampleScript.run(config);}
-        if(config.wildy() && !config.wildySafer()) {wildyKillerScript.run(config);
-        wildyKillerScript.handleAsynchWalk("Start-up");}
-        if(config.wildySafer() && !config.wildy()){wildySaferScript.run(config);
-            System.out.println("running wildy safer script");}
+        if (!config.wildy() && !config.wildySafer()) {
+            exampleScript.run(config);
+        }
+        if (config.wildy() && !config.wildySafer()) {
+            wildyKillerScript.run(config);
+            wildyKillerScript.handleAsynchWalk("Start-up");
+        }
+        if (config.wildySafer() && !config.wildy()) {
+            wildySaferScript.run(config);
+            System.out.println("running wildy safer script");
+        }
     }
 
     public Rs2PlayerModel getCurrentTarget() {
-        synchronized(targetLock) {
+        synchronized (targetLock) {
             return currentTarget;
         }
     }
 
     public void setCurrentTarget(Rs2PlayerModel target) {
-        synchronized(targetLock) {
+        synchronized (targetLock) {
             currentTarget = target;
             System.out.println("Target set to: " + (target != null ? target.getName() : "null"));
         }
@@ -158,10 +164,11 @@ public class MossKillerPlugin extends Plugin {
 
     @Subscribe
     public void onVarbitChanged(VarbitChanged event) {
-        if (config.wildy()) {if (event.getVarbitId() == Varbits.TELEBLOCK) {
-            int teleblockValue = event.getValue(); // Get the current value of the teleblock varbit
-            isTeleblocked = teleblockValue > 100;
-        }
+        if (config.wildy()) {
+            if (event.getVarbitId() == Varbits.TELEBLOCK) {
+                int teleblockValue = event.getValue(); // Get the current value of the teleblock varbit
+                isTeleblocked = teleblockValue > 100;
+            }
         }
     }
 
@@ -183,7 +190,7 @@ public class MossKillerPlugin extends Plugin {
             boolean hasOverlay = overlayManager.anyMatch(ov -> ov.getName().equalsIgnoreCase(MossKillerOverlay.class.getSimpleName()));
 
             if (hideOverlay) {
-                if(!hasOverlay) return;
+                if (!hasOverlay) return;
 
                 overlayManager.remove(mossKillerOverlay);
             } else {
@@ -195,7 +202,8 @@ public class MossKillerPlugin extends Plugin {
     }
 
     public void resetTarget() {
-        currentTarget = null;}
+        currentTarget = null;
+    }
 
     public boolean hasRuneScimitar() {
         return runeScimitar;
@@ -352,12 +360,14 @@ public class MossKillerPlugin extends Plugin {
             }
         }
 
-        if (!config.wildy()){NPC bryophyta = findBryophyta();
+        if (!config.wildy() && !config.wildySafer()) {
+            NPC bryophyta = findBryophyta();
 
-        // Check if Bryophyta's HP is 0
-        if (bryophyta != null && bryophyta.getHealthRatio() == 0) {
-            bryoTile = getBryophytaWorldLocation(bryophyta);
-        }}
+            // Check if Bryophyta's HP is 0
+            if (bryophyta != null && bryophyta.getHealthRatio() == 0) {
+                bryoTile = getBryophytaWorldLocation(bryophyta);
+            }
+        }
     }
 
     public NPC findBryophyta() {
@@ -381,7 +391,7 @@ public class MossKillerPlugin extends Plugin {
     }
 
     private void trackAttackers() {
-        Player localPlayer =Microbot.getClient().getLocalPlayer();
+        Player localPlayer = Microbot.getClient().getLocalPlayer();
 
         // Check if a Moss Giant is interacting with the player
         Actor interactingActor = localPlayer.getInteracting();
@@ -523,9 +533,9 @@ public class MossKillerPlugin extends Plugin {
 
         return player.getCombatLevel() > COMBAT_THRESHOLD;
     }
+
     /**
      * Determines if a player is performing a non-combat animation (walking/running).
-
      */
     private boolean isNonCombatAnimation(Player player) {
         int animationId = player.getAnimation();
@@ -585,73 +595,35 @@ public class MossKillerPlugin extends Plugin {
 
     @Subscribe
     public void onHitsplatApplied(HitsplatApplied event) {
-
         Actor target = event.getActor();
         Hitsplat hitsplat = event.getHitsplat();
 
-        // Only process if the hitsplat is on the player (not on an NPC)
-        if (!Objects.equals(target, Rs2Player.getLocalPlayer())) {
-            return;
-        }
-
-        if(config.wildySafer()) {
+        if (config.wildySafer()) {
             // SafeSpot logic
             if (wildySaferScript.isAtSafeSpot()) {
-                if (hitsplat.getHitsplatType() == HitsplatID.BLOCK_ME || hitsplat.getHitsplatType() == HitsplatID.DAMAGE_ME) {
+                if (target == client.getLocalPlayer()) {
                     long currentTime = System.currentTimeMillis();
 
                     // Debug to see what's happening
                     System.out.println("Hit registered at safespot, count: " + consecutiveHitsplatsMain);
-
-                    // Check if this hit is within the timeout period of the last hit
-                    if (currentTime - lastHitsplatTimeMain <= CONSECUTIVE_HITSPLAT_TIMEOUT) {
-                        consecutiveHitsplatsMain++;
-
-                        // Only set move=true after exactly 2 consecutive hits
-                        if (consecutiveHitsplatsMain == 2) {
                             System.out.println("*** SETTING MOVE TO TRUE ***");
                             wildySaferScript.move = true;
                             consecutiveHitsplatsMain = 0; // Reset counter
-                        }
-                    } else {
-                        // Too much time has passed, reset counter
-                        consecutiveHitsplatsMain = 1;
+
+                        // Update the last hitsplat time
+                        lastHitsplatTimeMain = currentTime;
                     }
 
-                    // Update the last hitsplat time
-                    lastHitsplatTimeMain = currentTime;
-                }
-            }
-
-
-            // SafeSpot1 logic - similar fix as above
-            if (wildySaferScript.isAtSafeSpot1()) {
-                if (hitsplat.getHitsplatType() == HitsplatID.BLOCK_ME || hitsplat.getHitsplatType() == HitsplatID.DAMAGE_ME) {
-                    long currentTime = System.currentTimeMillis();
-
-                    // Debug to see what's happening
-                    System.out.println("Hit registered at safespot1, count: " + consecutiveHitsplatsSafeSpot1);
-
-                    // Check if this hit is within the timeout period of the last hit
-                    if (currentTime - lastHitsplatTimeSafeSpot1 <= CONSECUTIVE_HITSPLAT_TIMEOUT) {
-                        consecutiveHitsplatsSafeSpot1++;
-
-                        // Only set safeSpot1Attack=true after exactly 2 consecutive hits
-                        if (consecutiveHitsplatsSafeSpot1 == 2) {
+                if (target == client.getLocalPlayer()){
+                    if (wildySaferScript.iveMoved && wildySaferScript.isAtSafeSpot1()) {
                             System.out.println("*** SETTING SAFESPOT1ATTACK TO TRUE ***");
                             wildySaferScript.safeSpot1Attack = true;
-                            consecutiveHitsplatsSafeSpot1 = 0; // Reset counter
+                        System.out.println("*** you've been hit while at safespot1 ***");
                         }
-                    } else {
-                        // Too much time has passed, reset counter
-                        consecutiveHitsplatsSafeSpot1 = 1;
                     }
 
-                    // Update the last hitsplat time
-                    lastHitsplatTimeSafeSpot1 = currentTime;
                 }
-            }
-        }
+                }
 
         if(config.wildy()) {
 

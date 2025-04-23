@@ -11,7 +11,7 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.aiofighter.combat.PrayerPotionScript;
-import net.runelite.client.plugins.microbot.pluginscheduler.event.ScheduledStopEvent;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -66,7 +66,7 @@ public class NmzPlugin extends Plugin {
     }
 
     @Subscribe
-    public void onScheduledStopEvent(ScheduledStopEvent event) {
+    public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
         if (event.getPlugin() == this) {
             nmzScript.shutdown();
             Microbot.getClientThread().runOnSeperateThread(() -> {

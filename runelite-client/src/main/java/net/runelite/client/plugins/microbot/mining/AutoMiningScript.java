@@ -78,7 +78,7 @@ public class AutoMiningScript extends Script {
                                 return p.getWorldLocation().distanceTo(localLocation) <= config.distanceToStray();
                             })
                             //filter if players are using mining animation
-                            .filter(p -> p.getAnimation() == 624 || p.getAnimation() == 625 || p.getAnimation() == 626) // Add more IDs if needed
+                            .filter(p -> p.getAnimation() != -1)
                             .count();
 
                     if (nearbyPlayers >= maxPlayers) {

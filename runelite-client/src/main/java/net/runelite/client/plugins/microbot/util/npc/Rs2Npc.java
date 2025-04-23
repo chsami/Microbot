@@ -810,6 +810,7 @@ public class Rs2Npc {
             if (Rs2Combat.inCombat()) continue;
             if (npc.isInteracting() && npc.getInteracting() != Microbot.getClient().getLocalPlayer() && !Rs2Player.isInMulti())
                 continue;
+            if (npc.getHealthScale() == 0) return false;
 
             return interact(npc, "attack");
         }

@@ -22,6 +22,7 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
+import net.runelite.client.plugins.microbot.util.misc.Rs2Food;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Potion;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
@@ -556,17 +557,60 @@ public class Rs2Player {
 
     /**
      * Consumes food when the player's health percentage falls below the specified threshold.
-     * The method searches the inventory for the first available food item.
+     * Uses default food consumption behavior.
      *
      * @param percentage The health percentage at which food should be consumed.
      * @return {@code true} if food was consumed, {@code false} if no action was taken.
      */
     public static boolean eatAt(int percentage) {
+        // Call the full method with a default value of false for fastFood
+        return eatAt(percentage, false);
+    }
+
+    /**
+     * Consumes food when the player's health percentage falls below the specified threshold.
+     * The method searches the inventory for the first available food item.
+     *
+     * @param percentage The health percentage at which food should be consumed.
+     * @param fastFood If true, prioritize faster food consumption behavior.
+     * @return {@code true} if food was consumed, {@code false} if no action was taken.
+     */
+    public static boolean eatAt(int percentage, boolean fastFood) {
         double threshold = getHealthPercentage();
         if (threshold <= percentage) {
-            return useFood();
+            if (fastFood && fastFoodPresent()) {
+                return useFastFood(); // hypothetical fast food consuming method
+            }
+            return useFood(); // default method
         }
         return false;
+    }
+
+    /**
+     * Consumes the first available high-priority food item from the player's inventory.
+     *
+     * <p>Only food items defined in {@link Rs2Food} with a priority of {@code 1} are considered fast food.</p>
+     * <p>This method ignores noted items and will not attempt to drink items like Jug of Wine.</p>
+     *
+     * @return {@code true} if a fast food item was consumed, {@code false} if none were found.
+     */
+    public static boolean useFastFood() {
+        List<Rs2ItemModel> foods = Rs2Inventory.getInventoryFood();
+        if (foods.isEmpty()) return false;
+
+        Optional<Rs2ItemModel> food = foods.stream()
+                .filter(rs2Item -> !rs2Item.isNoted())
+                .filter(rs2Item -> Rs2Food.getIds().contains(rs2Item.getId()))
+                .filter(rs2Item -> {
+                    for (Rs2Food f : Rs2Food.values()) {
+                        if (f.getId() == rs2Item.getId() && f.getTickdelay() == 1) return true;
+                    }
+                    return false;
+                })
+                .findFirst();
+
+        return food.filter(rs2ItemModel -> Rs2Inventory.interact(rs2ItemModel, "eat")).isPresent();
+
     }
 
     /**
@@ -1847,5 +1891,30 @@ public class Rs2Player {
      */
     public static boolean isInTutorialIsland() {
         return Microbot.getVarbitPlayerValue(281) >= 1000;
+    }
+
+    /**
+     * Checks if there is any fast food available in the player's inventory.
+     *
+     * <p>Fast food is defined as food with a {@code tickDelay} of 1 in {@link Rs2Food}.</p>
+     * <p>Noted items are ignored.</p>
+     *
+     * @return {@code true} if at least one fast food item is found, {@code false} otherwise.
+     */
+    public static boolean fastFoodPresent() {
+        List<Rs2ItemModel> foods = Rs2Inventory.getInventoryFood();
+        if (foods.isEmpty()) return false;
+
+        return foods.stream()
+                .filter(rs2Item -> !rs2Item.isNoted())
+                .filter(rs2Item -> Rs2Food.getIds().contains(rs2Item.getId()))
+                .anyMatch(rs2Item -> {
+                    for (Rs2Food food : Rs2Food.values()) {
+                        if (food.getId() == rs2Item.getId() && food.getTickdelay() == 1) {
+                            return true;
+                        }
+                    }
+                    return false;
+                });
     }
 }

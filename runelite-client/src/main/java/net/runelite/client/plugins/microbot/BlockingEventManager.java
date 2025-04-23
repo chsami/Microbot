@@ -52,6 +52,7 @@ public class BlockingEventManager
         blockingEvents.add(new BankTutorialEvent());
         blockingEvents.add(new DeathEvent());
         blockingEvents.add(new BankJagexPopupEvent());
+        blockingEvents.add(new ScriptPauseEvent()); // Add this line
 
         sortBlockingEvents();
     }
