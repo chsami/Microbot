@@ -143,6 +143,12 @@ public class MQuestScript extends Script {
                         return;
                     }
 
+                    if (getQuestHelperPlugin().getSelectedQuest() != null &&
+                            getQuestHelperPlugin().getSelectedQuest().getQuest().getId() == Quest.COOKS_ASSISTANT.getId() &&
+                            Rs2Dialogue.isInDialogue()) {
+                        dialogueStartedStep = questStep;  // Force this to be true for Cook's Assistant
+                    }
+
                     if (Rs2Dialogue.isInDialogue() && dialogueStartedStep == questStep) {
                         // Stop walker if in dialogue
                         Rs2Walker.setTarget(null);
@@ -193,6 +199,7 @@ public class MQuestScript extends Script {
                     sleepUntil(() -> Rs2Player.isInteracting() || Rs2Player.isMoving() || Rs2Player.isAnimating() || Rs2Dialogue.isInDialogue(), 500);
                     sleepUntil(() -> !Rs2Player.isInteracting() && !Rs2Player.isMoving() && !Rs2Player.isAnimating());
                 }
+
             } catch (Exception ex) {
                 System.out.println(ex.getMessage());
                 ex.printStackTrace(System.out);
