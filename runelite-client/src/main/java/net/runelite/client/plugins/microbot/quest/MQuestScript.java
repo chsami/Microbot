@@ -138,6 +138,12 @@ public class MQuestScript extends Script {
                         //if there is no quest option in the dialogue, just click player location to remove
                         // the dialogue to avoid getting stuck in an infinite loop of dialogues
                         if (!hasOption) {
+                            if (getQuestHelperPlugin().getSelectedQuest() != null &&
+                                    getQuestHelperPlugin().getSelectedQuest().getQuest().getId() == Quest.IMP_CATCHER.getId()
+                                    && Microbot.getClient().getTopLevelWorldView().getPlane() == 1) {
+                                Rs2Dialogue.keyPressForDialogueOption(1); // presses option 1
+                                sleep(1200,1800);
+                            }
                             Rs2Walker.walkFastCanvas(Rs2Player.getWorldLocation());
                         }
                         return;
@@ -398,9 +404,9 @@ public class MQuestScript extends Script {
                 Rs2GameObject.interact(object);
             }
 
-            sleepUntil(() -> Rs2Player.isWalking() || Rs2Player.isAnimating());
+            sleepUntil(() -> Rs2Player.isMoving() || Rs2Player.isAnimating());
             sleep(100);
-            sleepUntil(() -> !Rs2Player.isWalking() && !Rs2Player.isAnimating());
+            sleepUntil(() -> !Rs2Player.isMoving() && !Rs2Player.isAnimating());
             objectsHandeled.add(object);
         }
 
