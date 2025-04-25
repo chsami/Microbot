@@ -559,7 +559,7 @@ public class SchedulerInfoPanel extends JPanel {
         
         // Update login duration
         Duration loginDuration = Microbot.getLoginTime();
-        if (loginDuration.getSeconds() > 0) {
+        if (loginDuration.getSeconds() > 0 && Microbot.isLoggedIn()) {
             long hours = loginDuration.toHours();
             long minutes = (loginDuration.toMinutes() % 60);
             long seconds = (loginDuration.getSeconds() % 60);

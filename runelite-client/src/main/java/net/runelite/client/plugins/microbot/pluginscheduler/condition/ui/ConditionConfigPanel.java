@@ -13,7 +13,8 @@ import java.awt.Insets;
 
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -85,14 +86,17 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.Singl
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeWindowCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.ui.TimeConditionPanelUtil;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.ui.callback.ConditionUpdateCallback;
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
-import net.runelite.client.plugins.microbot.pluginscheduler.ui.SchedulerUIUtils;
+import net.runelite.client.plugins.microbot.pluginscheduler.ui.util.SchedulerUIUtils;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.ui.renderer.ConditionTreeCellRenderer;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 
 // Import the utility class
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.ui.util.ConditionConfigPanelUtil;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.varbit.VarbitCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.varbit.ui.VarbitConditionPanelUtil;
 
 @Slf4j
 public class ConditionConfigPanel extends JPanel {
@@ -113,14 +117,15 @@ public class ConditionConfigPanel extends JPanel {
     private DefaultListModel<String> conditionListModel;
     private JList<String> conditionList;
     
-    private Consumer<LogicalCondition> userConditionUpdateCallback;
-    private Consumer<Boolean> requireAllCallback;
+    
+    // callback system
+    private ConditionUpdateCallback conditionUpdateCallback;
+    
+    
         
     
     private PluginScheduleEntry selectScheduledPlugin;
     // UI Controls
-    private JButton saveButton;
-    private JButton loadButton;
     private JButton resetButton;
     
     private JButton editButton;
@@ -135,7 +140,8 @@ public class ConditionConfigPanel extends JPanel {
     private final boolean stopConditionPanel;
     private boolean[] updatingSelectionFlag = new boolean[1];
     List<Condition> lastRefreshConditions = new CopyOnWriteArrayList<>();
-    public ConditionConfigPanel( boolean stopConditionPanel) {        
+
+    public ConditionConfigPanel(boolean stopConditionPanel) {        
         this.stopConditionPanel = stopConditionPanel;
         setLayout(new BorderLayout());
         setBorder(BorderFactory.createTitledBorder(
@@ -161,21 +167,12 @@ public class ConditionConfigPanel extends JPanel {
         titleLabel.setFont(FontManager.getRunescapeBoldFont());
         titlePanel.add(titleLabel);
         
-        // Initialize buttons but hide them for now
-        initializeSaveButton();
-        initializeLoadButton();
+        // Initialize reset button
         initializeResetButton();
-        
-        // Disable buttons initially
-        saveButton.setEnabled(false);
-        loadButton.setEnabled(false);
-        resetButton.setEnabled(false);
         
         // Create a panel for the top buttons, aligned to the right
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         buttonPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        buttonPanel.add(loadButton);
-        buttonPanel.add(saveButton);
         buttonPanel.add(resetButton);
         
         // Add the title and buttons to the top panel
@@ -192,7 +189,7 @@ public class ConditionConfigPanel extends JPanel {
             "Skill",
             "Resource",
             "Location",
-            //"NPC" // TODO: add and test NPC conditions -> not fully implemented yet
+            "Varbit" // Added Varbit condition category
         };
         
         conditionCategoryComboBox = new JComboBox<>(conditionCategories);
@@ -253,46 +250,51 @@ public class ConditionConfigPanel extends JPanel {
     private void updateConditionTypes(String category) {
         conditionTypeComboBox.removeAllItems();
         
-        switch (category) {
-            case "Time":
-                if (stopConditionPanel) {
-                    conditionTypeComboBox.addItem("Time Duration");
-                    conditionTypeComboBox.addItem("Time Window");
-                    conditionTypeComboBox.addItem("Not In Time Window");
-                } else {
-                    conditionTypeComboBox.addItem("Time Interval");
-                    conditionTypeComboBox.addItem("Time Window");
-                    conditionTypeComboBox.addItem("Outside Time Window");
-                    conditionTypeComboBox.addItem("Day of Week");
-                    conditionTypeComboBox.addItem("Specific Time");
-                }
-                break;
-            case "Skill":
-                if (stopConditionPanel) {
-                    conditionTypeComboBox.addItem("Skill Level");
-                    conditionTypeComboBox.addItem("Skill XP Goal");
-                } else {
-                    conditionTypeComboBox.addItem("Skill Level Required");
-                }
-                break;
-            case "Resource":
-                if (stopConditionPanel) {                    
-                    conditionTypeComboBox.addItem("Item Collection");
-                    conditionTypeComboBox.addItem("Process Items");
-                    conditionTypeComboBox.addItem("Gather Resources");
-                } else {
-                    conditionTypeComboBox.addItem("Item Required");
-                }
-                break;
-            case "Location":
-                conditionTypeComboBox.addItem("Position");
-                conditionTypeComboBox.addItem("Area");
-                conditionTypeComboBox.addItem("Region");
-                break;
-            case "NPC":
-                conditionTypeComboBox.addItem("NPC In Range");
-                conditionTypeComboBox.addItem("NPC Dialog");
-                break;
+        if ("Time".equals(category)) {
+            if (stopConditionPanel) {
+                // Stop conditions
+                conditionTypeComboBox.addItem("Time Duration");
+                conditionTypeComboBox.addItem("Time Window");
+                conditionTypeComboBox.addItem("Not In Time Window");
+                conditionTypeComboBox.addItem("Day of Week");
+                conditionTypeComboBox.addItem("Specific Time");
+            } else {
+                // Start conditions
+                conditionTypeComboBox.addItem("Time Interval");
+                conditionTypeComboBox.addItem("Time Window");
+                conditionTypeComboBox.addItem("Outside Time Window");
+                conditionTypeComboBox.addItem("Day of Week");
+                conditionTypeComboBox.addItem("Specific Time");
+            }
+        } else if ("Skill".equals(category)) {
+            if (stopConditionPanel) {
+                // Stop conditions
+                conditionTypeComboBox.addItem("Skill Level");
+                conditionTypeComboBox.addItem("Skill XP Goal");
+            } else {
+                // Start conditions
+                conditionTypeComboBox.addItem("Skill Level Required");
+            }
+        } else if ("Resource".equals(category)) {
+            if (stopConditionPanel) {
+                // Stop conditions
+                conditionTypeComboBox.addItem("Item Collection");
+                conditionTypeComboBox.addItem("Process Items");
+                conditionTypeComboBox.addItem("Gather Resources");
+            } else {
+                // Start conditions
+                conditionTypeComboBox.addItem("Item Required");
+                conditionTypeComboBox.addItem("Inventory Item Count");
+            }
+        } else if ("Location".equals(category)) {
+            conditionTypeComboBox.addItem("Position");
+            conditionTypeComboBox.addItem("Area");
+            conditionTypeComboBox.addItem("Region");
+        } else if ("Varbit".equals(category)) {
+            // Varbit conditions with improved naming
+            conditionTypeComboBox.addItem("Collection Log - Bosses");
+            conditionTypeComboBox.addItem("Collection Log - Minigames");            
+            //conditionTypeComboBox.addItem("General Varbit Condition");      Not yet implemented
         }
     }
     /**
@@ -596,6 +598,9 @@ public class ConditionConfigPanel extends JPanel {
             updatingSelectionFlag[0] = false;
             log.debug("refreshDisplay: Resetting updatingSelectionFlag to allow events");
         }
+        if (this.conditionTreeCellRenderer != null ){
+            this.conditionTreeCellRenderer.setIsActive(selectScheduledPlugin.isRunning());
+        }
     }
 
     /**
@@ -640,8 +645,6 @@ public class ConditionConfigPanel extends JPanel {
         // Enable/disable controls based on whether a plugin is selected
         boolean hasPlugin = (selectedPlugin != null);
         
-        saveButton.setEnabled(hasPlugin);
-        loadButton.setEnabled(hasPlugin);
         resetButton.setEnabled(hasPlugin);
         editButton.setEnabled(hasPlugin);
         addButton.setEnabled(hasPlugin);
@@ -700,15 +703,86 @@ public class ConditionConfigPanel extends JPanel {
                 if (index >= 0 && index < currentConditions.size()) {
                     Condition condition = currentConditions.get(index);
                     
+                    boolean isConditionRelevant = false;
+                    
+                    // Check if this condition is relevant based on plugin state
+                    if (selectScheduledPlugin != null) {
+                        if (stopConditionPanel) {
+                            // Stop conditions are relevant when plugin is running
+                            isConditionRelevant = selectScheduledPlugin.isRunning();
+                        } else {
+                            // Start conditions are relevant when plugin is enabled but not started
+                            isConditionRelevant = selectScheduledPlugin.isEnabled() && !selectScheduledPlugin.isRunning();
+                        }
+                    }
+                    
+                    // Check if condition is satisfied
+                    boolean isConditionSatisfied = condition.isSatisfied();
+                    
+                    // Apply appropriate styling
+                    if (!isSelected) {
+                        // Plugin-defined conditions get blue color
                         if (selectScheduledPlugin != null && 
                             getConditionManger() != null &&
                             getConditionManger().isPluginDefinedCondition(condition)) {
                             
-                            if (!isSelected) {
-                                setForeground(new Color(0, 128, 255)); // Blue for plugin conditions
-                            }
+                            setForeground(new Color(0, 128, 255)); // Blue for plugin conditions
                             setFont(getFont().deriveFont(Font.ITALIC)); // Italic for plugin conditions
-                        }                    
+                        } else if (isConditionRelevant) {
+                            // Relevant conditions - color based on satisfied status
+                            if (isConditionSatisfied) {
+                                setForeground(new Color(0, 180, 0)); // Green for satisfied
+                            } else {
+                                setForeground(new Color(220, 60, 60)); // Red for unsatisfied
+                            }
+                        } else {
+                            // Non-relevant conditions shown in gray
+                            setForeground(new Color(150, 150, 150));
+                        }
+                    }
+                    
+                    // Add visual indicators for condition state
+                    String text = (String) value;
+                    String prefix = "";
+                    
+                    // Relevance indicator
+                    if (isConditionRelevant) {
+                        prefix += "⚡ ";
+                    }
+                    
+                    // Status indicator for relevant conditions
+                    if (isConditionRelevant) {
+                        if (isConditionSatisfied) {
+                            prefix += "✓ ";
+                        } else {
+                            prefix += "✗ ";
+                        }
+                    }
+                    
+                    setText(prefix + text);
+                    
+                    // Enhanced tooltip
+                    StringBuilder tooltip = new StringBuilder("<html><b>");
+                    tooltip.append(text).append("</b><br>");
+                    
+                    if (isConditionRelevant) {
+                        if (isConditionSatisfied) {
+                            tooltip.append("<font color='green'>Condition is satisfied</font>");
+                        } else {
+                            tooltip.append("<font color='red'>Condition is not satisfied</font>");
+                        }
+                    
+                        if (condition instanceof TimeCondition) {
+                            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                            ZonedDateTime triggerTime = ((TimeCondition)condition).getCurrentTriggerTime().orElse(null);
+                            if (triggerTime != null) {
+                                tooltip.append("<br>Trigger time: ").append(triggerTime.format(formatter));
+                            }                                                
+                        }
+                    }
+                    
+                    tooltip.append("</html>");
+                    setToolTipText(tooltip.toString());
                 }
                 
                 return c;
@@ -931,7 +1005,7 @@ public class ConditionConfigPanel extends JPanel {
         conditionTree = new JTree(treeModel);
         conditionTree.setRootVisible(false);
         conditionTree.setShowsRootHandles(true);
-        this.conditionTreeCellRenderer = new ConditionTreeCellRenderer(getConditionManger());
+        this.conditionTreeCellRenderer = new ConditionTreeCellRenderer(getConditionManger(),this.stopConditionPanel);
         conditionTree.setCellRenderer(this.conditionTreeCellRenderer);
         
         conditionTree.getSelectionModel().setSelectionMode(
@@ -994,8 +1068,18 @@ public class ConditionConfigPanel extends JPanel {
         // Create the appropriate config panel based on the selected category and type
         if ("Location".equals(selectedCategory)) {
             // Use LocationConditionUtil for location-based conditions
-            LocationConditionUtil.createLocationConditionPanel(panel, gbc, configPanel);
-        }else if (stopConditionPanel) {
+            LocationConditionUtil.createLocationConditionPanel(panel, gbc);
+        } else if ("Varbit".equals(selectedCategory)) {
+            // Use VarbitConditionPanelUtil for varbit-based conditions
+            switch (selectedType) {
+                case "Collection Log - Minigames":
+                    VarbitConditionPanelUtil.createMinigameVarbitPanel(panel, gbc);                    
+                    break;
+                case "Collection Log - Bosses":
+                    VarbitConditionPanelUtil.createBossVarbitPanel(panel, gbc);
+                    break;          
+            }
+        } else if (stopConditionPanel) {
             switch (selectedType) {
                 case "Time Duration":
                     TimeConditionPanelUtil.createIntervalConfigPanel(panel, gbc, panel);
@@ -1008,6 +1092,12 @@ public class ConditionConfigPanel extends JPanel {
                     // Store whether we want inside or outside the window
                     configPanel.putClientProperty("withInWindow", false);
                     break; 
+                case "Day of Week":
+                    TimeConditionPanelUtil.createDayOfWeekConfigPanel(panel, gbc, panel);
+                    break;
+                case "Specific Time":
+                    TimeConditionPanelUtil.createSingleTriggerConfigPanel(panel, gbc, panel);
+                    break;
                 case "Skill Level":
                     SkillConditionPanelUtil.createSkillLevelConfigPanel(panel, gbc, panel, true);
                     break;
@@ -1018,20 +1108,18 @@ public class ConditionConfigPanel extends JPanel {
                     ResourceConditionPanelUtil.createItemConfigPanel(panel, gbc, panel, true);
                     break;
                 case "Process Items":
-                    ResourceConditionPanelUtil.createProcessItemPanel(panel, gbc, configPanel);
+                    //ResourceConditionPanelUtil.createProcessItemConfigPanel(panel, gbc, panel);
                     break;
                 case "Gather Resources":
-                    ResourceConditionPanelUtil.createGatheredResourcePanel(panel, gbc, configPanel);
-                    break;               
-
+                    //ResourceConditionPanelUtil.createGatheredResourceConditionPanel(panel, gbc, panel);
+                    break;
                 default:
-                    JLabel notImplementedLabel = new JLabel("This Stop condition type is not yet implemented");
+                    JLabel notImplementedLabel = new JLabel("This condition type is not yet implemented: " + selectedType);
                     notImplementedLabel.setForeground(Color.RED);
                     panel.add(notImplementedLabel, gbc);
                     break;
             }
         } else {
-            // This is for start conditions 
             switch (selectedType) {
                 case "Time Interval":
                     TimeConditionPanelUtil.createIntervalConfigPanel(panel, gbc, panel);
@@ -1041,9 +1129,7 @@ public class ConditionConfigPanel extends JPanel {
                     break;
                 case "Outside Time Window":
                     TimeConditionPanelUtil.createEnhancedTimeWindowConfigPanel(panel, gbc, panel);
-                    // Store whether we want inside or outside the window
-                    panel.putClientProperty("withInWindow", false);
-                    break; 
+                    break;
                 case "Day of Week":
                     TimeConditionPanelUtil.createDayOfWeekConfigPanel(panel, gbc, panel);
                     break;
@@ -1077,20 +1163,94 @@ public class ConditionConfigPanel extends JPanel {
         configPanel.putClientProperty("localConditionPanel", panel);
     }
     
-    public void setUserConditionUpdateCallback(Consumer<LogicalCondition> callback) {
-        this.userConditionUpdateCallback = callback;
+    /**
+     * Sets the condition update callback interface
+     * This is the preferred way to handle condition updates
+     * 
+     * @param callback The callback interface to be called when conditions are updated
+     */
+    public void setConditionUpdateCallback(ConditionUpdateCallback callback) {
+        this.conditionUpdateCallback = callback;
     }
-        
+
+  
         
     
    
     private void editSelectedCondition() {
         int selectedIndex = conditionList.getSelectedIndex();
         if (selectedIndex < 0 || selectedIndex >= getCurrentConditions().size()) {
+            log.warn("editSelectedCondition: No condition selected or index out of bounds");
             return;
         }
-               
-        removeSelectedCondition();
+        
+        // Get the selected condition and its parent logical before removal
+        List<Condition> currentConditions = getCurrentConditions();
+        Condition oldCondition = currentConditions.get(selectedIndex);
+        
+        // Check if this is a plugin-defined condition
+        ConditionManager manager = getConditionManger();
+        if (manager != null && manager.isPluginDefinedCondition(oldCondition)) {
+            JOptionPane.showMessageDialog(this,
+                    "This condition is defined by the plugin and cannot be edited.",
+                    "Plugin Condition",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        // Find the logical condition that contains our target condition
+        LogicalCondition parentLogical = manager.findContainingLogical(oldCondition);
+        if (parentLogical == null) {
+            log.warn("editSelectedCondition: Could not find parent logical for condition: {}", oldCondition.getDescription());
+            parentLogical = manager.getUserLogicalCondition();
+        }
+        
+        log.info("editSelectedCondition: Editing condition: {} from parent: {}", 
+                oldCondition.getDescription(), parentLogical.getDescription());
+        
+        // Create the new condition from the current UI state
+                              
+        try {
+            Condition newCondition = getCurrentComboboxCondition();
+            
+            if (newCondition == null) {
+                log.warn("editSelectedCondition: Failed to create new condition");
+                return;
+            }
+            
+            log.info("editSelectedCondition: Created new condition: {}", newCondition.getDescription());
+            
+            // Remove the old condition
+            boolean removed = manager.removeFromLogicalStructure(parentLogical, oldCondition);
+            
+            if (!removed) {
+                log.warn("editSelectedCondition: Failed to remove old condition from parent");
+                return;
+            }
+            
+            // Add the new condition to the parent logical
+            manager.addConditionToLogical(newCondition, parentLogical);
+            
+            // Update UI
+            updateTreeFromConditions();
+            refreshDisplay();
+            
+            // Notify listeners
+            notifyConditionUpdate();
+            
+            // Select the newly edited condition
+            selectNodeForCondition(newCondition);
+            
+            // Save changes
+            saveConditionsToScheduledPlugin();
+            
+        } catch (Exception e) {
+            log.error("editSelectedCondition: Error editing condition", e);
+            JOptionPane.showMessageDialog(this, 
+                    "Error editing condition: " + e.getMessage(),
+                    "Edit Failed",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
        
     
@@ -1235,6 +1395,7 @@ public class ConditionConfigPanel extends JPanel {
         if (!pathsToSelect.isEmpty()) {
             conditionTree.setSelectionPaths(pathsToSelect.toArray(new TreePath[0]));
         }
+        this.conditionTreeCellRenderer.setIsActive(selectScheduledPlugin.isEnabled() && selectScheduledPlugin.isRunning());
     }
    
     private void buildConditionTree(DefaultMutableTreeNode parent, Condition condition) {
@@ -1471,27 +1632,30 @@ public class ConditionConfigPanel extends JPanel {
     }
     
   
-    private void initializeSaveButton() {
-        saveButton = ConditionConfigPanelUtil.createButton("Save Conditions", ColorScheme.PROGRESS_COMPLETE_COLOR);
-        saveButton.addActionListener(e -> saveConditionsToScheduledPlugin());
-        saveButton.setEnabled(selectScheduledPlugin != null);
-    }
-    private void initializeLoadButton() {
-        loadButton = ConditionConfigPanelUtil.createButton("Load Current Conditions", ColorScheme.PROGRESS_COMPLETE_COLOR);
-        loadButton.addActionListener(e -> setSelectScheduledPlugin(selectScheduledPlugin));
-        loadButton.setEnabled(selectScheduledPlugin != null);
-    }
     private void initializeResetButton() {
         resetButton = ConditionConfigPanelUtil.createButton("Reset Conditions", ColorScheme.PROGRESS_ERROR_COLOR);
 
         resetButton.addActionListener(e -> {
-                    loadConditions(new ArrayList<>(), true);
-                    saveConditionsToScheduledPlugin();  
+            if (selectScheduledPlugin == null) return;
+            
+            int option = JOptionPane.showConfirmDialog(this,
+                "Are you sure you want to reset all " + (stopConditionPanel ? "stop" : "start") + " conditions?",
+                "Reset Conditions",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+                
+            if (option == JOptionPane.YES_OPTION) {
+                // Clear user conditions from the condition manager
+                if (conditionUpdateCallback != null) {
+                    conditionUpdateCallback.onConditionsReset(selectScheduledPlugin, stopConditionPanel);
                 }
-            );
-        
+                
+                // Refresh the display
+                refreshDisplay();
+            }
+        });
     }
-    
+
     private void saveConditionsToScheduledPlugin() {
         if (selectScheduledPlugin == null) return;                     
         // Save to config                
@@ -1501,16 +1665,16 @@ public class ConditionConfigPanel extends JPanel {
      * Updates the title label with the selected plugin name using color for better visibility
     */
     private void setScheduledPluginNameLabel() {
-    if (selectScheduledPlugin != null) {
-        String pluginName = selectScheduledPlugin.getCleanName();
-        boolean isRunning = selectScheduledPlugin.isRunning();
-        boolean isEnabled = selectScheduledPlugin.isEnabled();
-        
-        titleLabel.setText(ConditionConfigPanelUtil.formatPluginTitle(isRunning, isEnabled, pluginName));
-    } else {
-        titleLabel.setText(ConditionConfigPanelUtil.formatPluginTitle(false, false, null));
+        if (selectScheduledPlugin != null) {
+            String pluginName = selectScheduledPlugin.getCleanName();
+            boolean isRunning = selectScheduledPlugin.isRunning();
+            boolean isEnabled = selectScheduledPlugin.isEnabled();
+            
+            titleLabel.setText(ConditionConfigPanelUtil.formatPluginTitle(isRunning, isEnabled, pluginName));
+        } else {
+            titleLabel.setText(ConditionConfigPanelUtil.formatPluginTitle(false, false, null));
+        }
     }
-}
 
     /**
      * Notifies any external components of condition changes
@@ -1520,10 +1684,20 @@ public class ConditionConfigPanel extends JPanel {
         if (selectScheduledPlugin == null) {
             return;
         }
-        // Call any registered callback (if implementing callback pattern)
-        if (userConditionUpdateCallback != null) {
-            userConditionUpdateCallback.accept( getConditionManger().getUserLogicalCondition());
-        }                
+        
+        // Get the logical condition structure
+        LogicalCondition logicalCondition = getConditionManger().getUserLogicalCondition();
+        
+        // Call the new callback if registered
+        if (conditionUpdateCallback != null) {
+            conditionUpdateCallback.onConditionsUpdated(
+                logicalCondition, 
+                selectScheduledPlugin, 
+                stopConditionPanel
+            );
+        }
+        
+      
     }
     /**
      * Refreshes the condition list and tree if conditions have changed in the selected plugin.
@@ -1539,25 +1713,19 @@ public class ConditionConfigPanel extends JPanel {
         refreshDisplay();
         return true;
     }
-   
-
-    private void addCurrentCondition() {
-        if (selectScheduledPlugin == null) {
-            JOptionPane.showMessageDialog(this, "No plugin selected", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        
+    private Condition getCurrentComboboxCondition( ) {
         JPanel localConfigPanel = (JPanel) configPanel.getClientProperty("localConditionPanel");
         if (localConfigPanel == null) {
             log.debug("No config panel found");
-            return;
+            return null;
         }
         
         String selectedCategory = (String) conditionCategoryComboBox.getSelectedItem();
         String selectedType = (String) conditionTypeComboBox.getSelectedItem();
         
         if (selectedCategory == null || selectedType == null) {
-            return;
+            log.debug("Selected category or type is null");
+            return null;
         }
         
         Condition condition = null;
@@ -1565,15 +1733,27 @@ public class ConditionConfigPanel extends JPanel {
             // Create appropriate condition based on the type
             if ("Location".equals(selectedCategory)) {
                 condition = LocationConditionUtil.createLocationCondition(localConfigPanel);
+            } else if ("Varbit".equals(selectedCategory)) {
+                
+                condition = VarbitConditionPanelUtil.createVarbitCondition(localConfigPanel);
             } else if (stopConditionPanel) {
                  // Stop conditions
                 switch (selectedType) {
                     case "Time Duration":
                         condition = TimeConditionPanelUtil.createIntervalCondition(localConfigPanel);
                         break;
+                    case "Time Window":
+                        condition = TimeConditionPanelUtil.createEnhancedTimeWindowCondition(localConfigPanel);
+                        break;
                     case "Not In Time Window":
                         condition = TimeConditionPanelUtil.createEnhancedTimeWindowCondition(localConfigPanel);
                         break; 
+                    case "Day of Week":
+                        condition = TimeConditionPanelUtil.createDayOfWeekCondition(localConfigPanel);
+                        break;
+                    case "Specific Time":
+                        condition = TimeConditionPanelUtil.createSingleTriggerCondition(localConfigPanel);
+                        break;
                     case "Skill Level":
                         condition = SkillConditionPanelUtil.createSkillLevelCondition(localConfigPanel);
                         break;
@@ -1595,7 +1775,7 @@ public class ConditionConfigPanel extends JPanel {
                         break;
                     default:
                         JOptionPane.showMessageDialog(this, "Condition type not implemented", "Error", JOptionPane.ERROR_MESSAGE);
-                        return;
+                        return null;
                 }
                
             } else {
@@ -1624,21 +1804,32 @@ public class ConditionConfigPanel extends JPanel {
                         break;     
                     default:
                         JOptionPane.showMessageDialog(this, "Condition type not implemented", "Error", JOptionPane.ERROR_MESSAGE);
-                        return;              
+                        return null;              
                 }
             }
-            if (condition != null) {
-                addConditionToPlugin(condition);
-                refreshDisplay();
-            } else {
-                JOptionPane.showMessageDialog(this,
-                        "Failed to create condition. Check your inputs.",
-                        "Error", JOptionPane.ERROR_MESSAGE);
-            }
-            
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Error creating condition: " + e.getMessage());
         }
+        return condition;
+    }
+
+    private void addCurrentCondition() {
+        if (selectScheduledPlugin == null) {
+            JOptionPane.showMessageDialog(this, "No plugin selected", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        Condition condition = getCurrentComboboxCondition();  
+    
+        if (condition != null) {
+            addConditionToPlugin(condition);
+            refreshDisplay();
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    "Failed to create condition. Check your inputs.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+            
+        
     }
     private ConditionManager getConditionManger(){
         if (selectScheduledPlugin == null) {
@@ -1746,11 +1937,13 @@ public class ConditionConfigPanel extends JPanel {
     private void removeSelectedCondition() {
         DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) conditionTree.getLastSelectedPathComponent();
         if (selectedNode == null || selectedNode == rootNode) {
+            log.warn("No condition selected for removal");
             return;
         }
         
         Object userObject = selectedNode.getUserObject();
         if (!(userObject instanceof Condition)) {
+            log.warn("Selected node is not a condition");
             return;
         }
         
@@ -1815,216 +2008,195 @@ public class ConditionConfigPanel extends JPanel {
      * Negates the selected condition
      */
     private void negateSelectedCondition() {
-    DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) conditionTree.getLastSelectedPathComponent();
-    if (selectedNode == null || !(selectedNode.getUserObject() instanceof Condition)) {
-        return;
-    }
-    
-    Condition selectedCondition = (Condition) selectedNode.getUserObject();
-    
-    // Use the utility method for negation
-    boolean success = ConditionConfigPanelUtil.negateCondition(
-        selectedCondition, 
-        getConditionManger(), 
-        this
-    );
-    
-    if (success) {
-        // Update UI
-        updateTreeFromConditions();
-        notifyConditionUpdate();
-    }
-}
-
-    /**
-     * Initializes the logical operations toolbar
-     */
-    private void initializeLogicalOperationsToolbar(JPanel configPanel) {
-     
-        JPanel logicalOpPanel = new JPanel();
-        logicalOpPanel.setLayout(new BoxLayout(logicalOpPanel, BoxLayout.X_AXIS));
-        logicalOpPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-        logicalOpPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        
-        // Group operations section
-        JButton createAndButton = ConditionConfigPanelUtil.createButton("Group as AND", ColorScheme.BRAND_ORANGE);
-        createAndButton.setToolTipText("Group selected conditions with AND logic");
-        createAndButton.addActionListener(e -> createLogicalGroup(true));
-        
-        JButton createOrButton = ConditionConfigPanelUtil.createButton("Group as OR", BRAND_BLUE);
-        createOrButton.setToolTipText("Group selected conditions with OR logic");
-        createOrButton.addActionListener(e -> createLogicalGroup(false));
-        
-        // Negation button
-        JButton negateButton = ConditionConfigPanelUtil.createButton("Negate", new Color(220, 50, 50));
-        negateButton.setToolTipText("Negate the selected condition (toggle NOT)");
-        negateButton.addActionListener(e -> negateSelectedCondition());
-        
-        // Convert operation buttons
-        JButton convertToAndButton = ConditionConfigPanelUtil.createButton("Convert to AND", ColorScheme.BRAND_ORANGE);
-        convertToAndButton.setToolTipText("Convert selected logical group to AND type");
-        convertToAndButton.addActionListener(e -> convertLogicalType(true));
-        
-        JButton convertToOrButton = ConditionConfigPanelUtil.createButton("Convert to OR", BRAND_BLUE);
-        convertToOrButton.setToolTipText("Convert selected logical group to OR type");
-        convertToOrButton.addActionListener(e -> convertLogicalType(false));
-        
-        // Ungroup button
-        JButton ungroupButton = ConditionConfigPanelUtil.createButton("Ungroup", ColorScheme.LIGHT_GRAY_COLOR);
-        ungroupButton.setToolTipText("Remove the logical group but keep its conditions");
-        ungroupButton.addActionListener(e -> ungroupSelectedLogical());
-        
-        // Add buttons to panel with separators
-        logicalOpPanel.add(createAndButton);
-        logicalOpPanel.add(Box.createHorizontalStrut(5));
-        logicalOpPanel.add(createOrButton);
-        logicalOpPanel.add(Box.createHorizontalStrut(10));
-        logicalOpPanel.add(new JSeparator(SwingConstants.VERTICAL));
-        logicalOpPanel.add(Box.createHorizontalStrut(10));
-        logicalOpPanel.add(negateButton);
-        logicalOpPanel.add(Box.createHorizontalStrut(10));
-        logicalOpPanel.add(new JSeparator(SwingConstants.VERTICAL));
-        logicalOpPanel.add(Box.createHorizontalStrut(10));
-        logicalOpPanel.add(convertToAndButton);
-        logicalOpPanel.add(Box.createHorizontalStrut(5));
-        logicalOpPanel.add(convertToOrButton);
-        logicalOpPanel.add(Box.createHorizontalStrut(10));
-        logicalOpPanel.add(new JSeparator(SwingConstants.VERTICAL));
-        logicalOpPanel.add(Box.createHorizontalStrut(10));
-        logicalOpPanel.add(ungroupButton);
-        
-        // Store references to buttons that need context-sensitive enabling
-        this.negateButton = negateButton;
-        this.convertToAndButton = convertToAndButton;
-        this.convertToOrButton = convertToOrButton;
-        this.ungroupButton = ungroupButton;
-        
-        // Add selection listener to enable/disable buttons based on context
-        conditionTree.addTreeSelectionListener(e -> updateLogicalButtonStates());
-        
-        // Initial state
-        updateLogicalButtonStates();
-        if (configPanel == null) {                    
-            add(logicalOpPanel, BorderLayout.NORTH);
-        }else {
-            configPanel.add(logicalOpPanel, BorderLayout.NORTH);
+        DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) conditionTree.getLastSelectedPathComponent();
+        if (selectedNode == null || !(selectedNode.getUserObject() instanceof Condition)) {
+            return;
         }
         
-
+        Condition selectedCondition = (Condition) selectedNode.getUserObject();
+        
+        // Use the utility method for negation
+        boolean success = ConditionConfigPanelUtil.negateCondition(
+            selectedCondition, 
+            getConditionManger(), 
+            this
+        );
+        
+        if (success) {
+            // Update UI
+            updateTreeFromConditions();
+            notifyConditionUpdate();
+        }
     }
+
+    
 
     /**
      * Updates button states based on current selection
      */
     private void updateLogicalButtonStates() {
-        DefaultMutableTreeNode[] selectedNodes = getSelectedConditionNodes();
-        DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) conditionTree.getLastSelectedPathComponent();
+        TreePath[] selectionPaths = conditionTree.getSelectionPaths();
         
-        // Disable all buttons by default
-        negateButton.setEnabled(false);
-        convertToAndButton.setEnabled(false);
-        convertToOrButton.setEnabled(false);
-        ungroupButton.setEnabled(false);
+        // Default state - all operations disabled
+        boolean canNegate = false;
+        boolean canConvertToAnd = false;
+        boolean canConvertToOr = false;
+        boolean canUngroup = false;
         
-        // If nothing selected, we're done
-        if (selectedNode == null) {
-            return;
+        // If we have a single selection
+        if (selectionPaths != null && selectionPaths.length == 1) {
+            DefaultMutableTreeNode node = (DefaultMutableTreeNode) selectionPaths[0].getLastPathComponent();
+            Object userObject = node.getUserObject();
+            
+            if (userObject instanceof Condition) {
+                Condition condition = (Condition) userObject;
+                
+                // Check if it's a plugin-defined condition (can't modify these)
+                boolean isPluginDefined = selectScheduledPlugin != null && 
+                    getConditionManger() != null &&
+                    getConditionManger().isPluginDefinedCondition(condition);
+                
+                // Can negate any condition that isn't plugin-defined
+                canNegate = !isPluginDefined;
+                
+                // Can convert logical conditions (AND, OR) if they're not plugin-defined
+                if (condition instanceof LogicalCondition && !isPluginDefined) {
+                    // Can convert AND to OR
+                    canConvertToOr = condition instanceof AndCondition;
+                    
+                    // Can convert OR to AND
+                    canConvertToAnd = condition instanceof OrCondition;
+                    
+                    // Can ungroup any logical that has a parent and isn't plugin-defined
+                    canUngroup = node.getParent() != null && node.getParent() != rootNode;
+                }
+            }
+        }
+        // If we have multiple selections, only enable group operations
+        else if (selectionPaths != null && selectionPaths.length > 1) {
+            // Group operations are handled separately - don't enable other operations
         }
         
-        // Special handling for logical groups
-        if (selectedNode.getUserObject() instanceof LogicalCondition) {
-            LogicalCondition logical = (LogicalCondition) selectedNode.getUserObject();
-            
-            // Enable convert buttons based on current type
-            boolean isAnd = logical instanceof AndCondition;
-            convertToAndButton.setEnabled(!isAnd);
-            convertToOrButton.setEnabled(isAnd);
-            
-            // Enable ungroup button if this isn't the root logical
-            ungroupButton.setEnabled(selectedNode.getParent() != rootNode);
-            
-            return;
-        }
-        
-        // Enable negate button for regular conditions (not logical groups)
-        if (selectedNode.getUserObject() instanceof Condition && 
-            !(selectedNode.getUserObject() instanceof LogicalCondition)) {
-            
-            // But not for plugin-defined conditions
-            Condition condition = (Condition) selectedNode.getUserObject();
-            boolean isPluginDefined = getConditionManger()
-                                      .isPluginDefinedCondition(condition);
-            
-            negateButton.setEnabled(!isPluginDefined);
-        }
+        // Update button states
+        if (negateButton != null) negateButton.setEnabled(canNegate);
+        if (convertToAndButton != null) convertToAndButton.setEnabled(canConvertToAnd);
+        if (convertToOrButton != null) convertToOrButton.setEnabled(canConvertToOr);
+        if (ungroupButton != null) ungroupButton.setEnabled(canUngroup);
     }
-    
 
     /**
-     * Creates a popup menu for the condition tree
+     * Creates a popup menu for the condition tree with improved visibility
      */
     private JPopupMenu createTreePopupMenu() {
         JPopupMenu menu = new JPopupMenu();
+        menu.setBackground(new Color(30, 30, 35));
+        menu.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(80, 80, 90), 1),
+            BorderFactory.createEmptyBorder(2, 2, 2, 2)
+        ));
         
         // Negate option
         JMenuItem negateItem = new JMenuItem("Negate");
+        negateItem.setIcon(ConditionConfigPanelUtil.getResourceIcon("not-equal.png", 16, 16));
         negateItem.addActionListener(e -> negateSelectedCondition());
+        styleMenuItem(negateItem, new Color(220, 50, 50));
         
-        // Group options
+        // Group options with icons and improved styling
         JMenuItem groupAndItem = new JMenuItem("Group as AND");
+        groupAndItem.setIcon(ConditionConfigPanelUtil.getResourceIcon("logic-gate-and.png", 16, 16));
         groupAndItem.addActionListener(e -> createLogicalGroup(true));
+        styleMenuItem(groupAndItem, ColorScheme.BRAND_ORANGE);
         
         JMenuItem groupOrItem = new JMenuItem("Group as OR");
+        groupOrItem.setIcon(ConditionConfigPanelUtil.getResourceIcon("logic-gate-or.png", 16, 16));
         groupOrItem.addActionListener(e -> createLogicalGroup(false));
+        styleMenuItem(groupOrItem, BRAND_BLUE);
         
-        // Convert options
+        // Convert options with visual distinction
         JMenuItem convertToAndItem = new JMenuItem("Convert to AND");
         convertToAndItem.addActionListener(e -> convertLogicalType(true));
+        styleMenuItem(convertToAndItem, ColorScheme.BRAND_ORANGE);
         
         JMenuItem convertToOrItem = new JMenuItem("Convert to OR");
         convertToOrItem.addActionListener(e -> convertLogicalType(false));
+        styleMenuItem(convertToOrItem, BRAND_BLUE);
         
         // Ungroup option
         JMenuItem ungroupItem = new JMenuItem("Ungroup");
+        ungroupItem.setIcon(ConditionConfigPanelUtil.getResourceIcon("ungroup.png", 16, 16));
         ungroupItem.addActionListener(e -> ungroupSelectedLogical());
+        styleMenuItem(ungroupItem, Color.LIGHT_GRAY);
         
-        // Remove option
+        // Remove option with warning color
         JMenuItem removeItem = new JMenuItem("Remove");
+        removeItem.setIcon(ConditionConfigPanelUtil.getResourceIcon("delete.png", 16, 16));
         removeItem.addActionListener(e -> removeSelectedCondition());
+        styleMenuItem(removeItem, new Color(220, 50, 50));
         
-        // Add all items
+        // Add all items with clear separators and sections
         menu.add(negateItem);
         menu.addSeparator();
+        
+        // Group operations section with header
+        JLabel groupHeader = new JLabel("Group Operations");
+        groupHeader.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.BOLD));
+        groupHeader.setBorder(BorderFactory.createEmptyBorder(3, 5, 3, 0));
+        groupHeader.setForeground(Color.LIGHT_GRAY);
+        menu.add(groupHeader);
         menu.add(groupAndItem);
         menu.add(groupOrItem);
+        
+        // Conversion operations section
         menu.addSeparator();
+        JLabel convertHeader = new JLabel("Convert Operations");
+        convertHeader.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.BOLD));
+        convertHeader.setBorder(BorderFactory.createEmptyBorder(3, 5, 3, 0));
+        convertHeader.setForeground(Color.LIGHT_GRAY);
+        menu.add(convertHeader);
         menu.add(convertToAndItem);
         menu.add(convertToOrItem);
         menu.add(ungroupItem);
+        
+        // Remove operation section
         menu.addSeparator();
         menu.add(removeItem);
         
-        // Add popup listener to control enabled state of menu items
+        // Use a custom PopupMenuListener to add visual cues for available operations
         menu.addPopupMenuListener(new PopupMenuListener() {
             @Override
             public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
                 DefaultMutableTreeNode[] selectedNodes = getSelectedConditionNodes();
                 DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) conditionTree.getLastSelectedPathComponent();
+                
+                if (selectedNode == null) {
+                    return;
+                }
+                
                 boolean isLogical = selectedNode != null && selectedNode.getUserObject() instanceof LogicalCondition;
                 boolean isAnd = isLogical && selectedNode.getUserObject() instanceof AndCondition;
                 boolean isPluginDefined = selectedNode != null && 
                                          selectedNode.getUserObject() instanceof Condition &&
+                                         getConditionManger() != null &&
                                          getConditionManger()
                                             .isPluginDefinedCondition((Condition)selectedNode.getUserObject());
                 
-                // Enable/disable items based on context
-                negateItem.setEnabled(selectedNode != null && !isLogical && !isPluginDefined);
-                groupAndItem.setEnabled(selectedNodes.length >= 2);
-                groupOrItem.setEnabled(selectedNodes.length >= 2);
-                convertToAndItem.setEnabled(isLogical && !isAnd);
-                convertToOrItem.setEnabled(isLogical && isAnd);
-                ungroupItem.setEnabled(isLogical && selectedNode.getParent() != rootNode);
-                removeItem.setEnabled(selectedNode != null && !isPluginDefined);
+                // Enable/disable with visual indicators for context awareness
+                configureMenuItem(negateItem, selectedNode != null && !isLogical && !isPluginDefined);
+                configureMenuItem(groupAndItem, selectedNodes.length >= 2 && !isPluginDefined);
+                configureMenuItem(groupOrItem, selectedNodes.length >= 2 && !isPluginDefined);
+                configureMenuItem(convertToAndItem, isLogical && !isAnd && !isPluginDefined);
+                configureMenuItem(convertToOrItem, isLogical && isAnd && !isPluginDefined);
+                configureMenuItem(ungroupItem, isLogical && selectedNode.getParent() != rootNode && !isPluginDefined);
+                configureMenuItem(removeItem, selectedNode != null && !isPluginDefined);
+                
+                // Set headers visible only if their sections have enabled items
+                boolean hasGroupOperations = groupAndItem.isEnabled() || groupOrItem.isEnabled();
+                groupHeader.setVisible(hasGroupOperations);
+                
+                boolean hasConvertOperations = convertToAndItem.isEnabled() || 
+                                                convertToOrItem.isEnabled() || 
+                                                ungroupItem.isEnabled();
+                convertHeader.setVisible(hasConvertOperations);
             }
             
             @Override
@@ -2035,6 +2207,47 @@ public class ConditionConfigPanel extends JPanel {
         });
         
         return menu;
+    }
+
+    /**
+     * Helper method to configure menu items with visual indicators
+     */
+    private void configureMenuItem(JMenuItem item, boolean enabled) {
+        // Get the accent color that was stored during styling
+        Color accentColor = (Color) item.getClientProperty("accentColor");
+        
+        // Set the enabled state
+        item.setEnabled(enabled);
+        
+        // Apply different visual styling based on availability
+        if (enabled) {
+            // For enabled items: dark background, accent-colored text and border
+            item.setBackground(new Color(45, 45, 45));
+            item.setForeground(accentColor != null ? accentColor : Color.WHITE);
+            item.setOpaque(true);
+            item.setBorderPainted(true);
+            
+            // Add a subtle left border to indicate availability
+            item.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 3, 0, 0, accentColor != null ? accentColor : Color.LIGHT_GRAY),
+                BorderFactory.createEmptyBorder(6, 8, 6, 8)
+            ));
+            
+            // Add bold font for available options
+            item.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.BOLD));
+        } else {
+            // For disabled items: transparent background, dimmed text
+            item.setBackground(new Color(35, 35, 35));
+            item.setForeground(new Color(150, 150, 150, 160));
+            item.setOpaque(true);
+            item.setBorderPainted(false);
+            
+            // Regular padding for disabled items
+            item.setBorder(BorderFactory.createEmptyBorder(6, 11, 6, 8));
+            
+            // Normal font for disabled options
+            item.setFont(FontManager.getRunescapeSmallFont());
+        }
     }
 
     /**
@@ -2247,7 +2460,18 @@ public class ConditionConfigPanel extends JPanel {
             updatingSelectionFlag[0] = true;
             
             // Determine condition type and setup appropriate UI
-            if (condition instanceof LocationCondition) {
+            if (condition instanceof VarbitCondition) {
+                conditionCategoryComboBox.setSelectedItem("Varbit");
+                updateConditionTypes("Varbit");
+                conditionTypeComboBox.setSelectedItem("Varbit Value");
+                
+                updateConfigPanel();
+                JPanel localConfigPanel = (JPanel) configPanel.getClientProperty("localConditionPanel");
+                if (localConfigPanel != null) {
+                    VarbitConditionPanelUtil.setupVarbitCondition(localConfigPanel, (VarbitCondition) condition);
+                }
+            }
+            else if (condition instanceof LocationCondition) {
                 conditionCategoryComboBox.setSelectedItem("Location");
                 updateConditionTypes("Location");
                 
@@ -2338,7 +2562,7 @@ public class ConditionConfigPanel extends JPanel {
                 } else if (baseResourceCondition instanceof GatheredResourceCondition) {
                     conditionTypeComboBox.setSelectedItem("Gather Resources");
                 } else if (baseResourceCondition instanceof LootItemCondition) {
-                    conditionTypeComboBox.setSelectedItem("Item Collection");
+                    conditionTypeComboBox.setSelectedItem("Loot Items");
                 }
                 
                 updateConfigPanel();
@@ -2353,5 +2577,67 @@ public class ConditionConfigPanel extends JPanel {
         } finally {
             updatingSelectionFlag[0] = false;
         }
+    }
+    /**
+     * Styles a menu item with consistent fonts, borders and hover effects
+     */
+    private void styleMenuItem(JMenuItem item, Color accentColor) {
+        item.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.BOLD));
+        item.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
+        item.setBackground(new Color(35, 35, 35));
+        
+        // Store the accent color as a client property for use in configureMenuItem
+        item.putClientProperty("accentColor", accentColor);
+        
+        // Add hover effect using MouseListener
+        item.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                if (item.isEnabled()) {
+                    // Highlight with slightly lighter background on hover
+                    item.setBackground(new Color(55, 55, 55));
+                    
+                    // Make text brighter on hover
+                    Color currentColor = item.getForeground();
+                    item.putClientProperty("originalForeground", currentColor);
+                    
+                    // Create a brighter version of the accent color
+                    int r = Math.min(255, (int)(currentColor.getRed() * 1.2));
+                    int g = Math.min(255, (int)(currentColor.getGreen() * 1.2));
+                    int b = Math.min(255, (int)(currentColor.getBlue() * 1.2));
+                    item.setForeground(new Color(r, g, b));
+                    
+                    // Add a stronger border on hover
+                    if (accentColor != null) {
+                        item.setBorder(BorderFactory.createCompoundBorder(
+                            BorderFactory.createMatteBorder(0, 4, 0, 0, accentColor),
+                            BorderFactory.createEmptyBorder(6, 7, 6, 8)
+                        ));
+                    }
+                }
+            }
+            
+            @Override
+            public void mouseExited(MouseEvent e) {
+                if (item.isEnabled()) {
+                    // Restore original background
+                    item.setBackground(new Color(45, 45, 45));
+                    
+                    // Restore original foreground
+                    Color originalColor = (Color)item.getClientProperty("originalForeground");
+                    if (originalColor != null) {
+                        item.setForeground(originalColor);
+                    }
+                    
+                    // Restore original border
+                    if (accentColor != null) {
+                        item.setBorder(BorderFactory.createCompoundBorder(
+                            BorderFactory.createMatteBorder(0, 3, 0, 0, accentColor),
+                            BorderFactory.createEmptyBorder(6, 8, 6, 8)
+                        ));
+                    }
+                }
+            }
+        });
     }
 }

@@ -4,11 +4,10 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.Range;
 import net.runelite.client.plugins.microbot.Microbot;
 
-import static net.runelite.client.plugins.microbot.pluginscheduler.SchedulerPlugin.configGroup;
-
-@ConfigGroup(configGroup)
+@ConfigGroup("PluginScheduler")
 public interface SchedulerConfig extends Config {
     final static String CONFIG_GROUP = "PluginScheduler";
     
@@ -55,7 +54,10 @@ public interface SchedulerConfig extends Config {
    
     void setScheduledPlugins(String json);
     /// Control settings
-
+    @Range(
+		min = 60,
+        max = 3600
+	)  
     @ConfigItem(
         keyName = "softStopRetrySeconds",
         name = "Soft Stop Retry (seconds)",
@@ -88,6 +90,9 @@ public interface SchedulerConfig extends Config {
         return 0;
     }
     default void setHardStopTimeoutSeconds(int seconds){
+        if  (Microbot.getConfigManager() == null){
+            return;
+        }
         Microbot.getConfigManager().setConfiguration(CONFIG_GROUP, "hardStopTimeoutSeconds", seconds);
     }
 
@@ -102,6 +107,9 @@ public interface SchedulerConfig extends Config {
         return 5;
     }
     default void setMinManualStartThresholdMinutes(int minutes){
+        if  (Microbot.getConfigManager() == null){
+            return;
+        }
         Microbot.getConfigManager().setConfiguration(CONFIG_GROUP, "minManualStartThresholdMinutes", minutes);
     }
   
@@ -163,6 +171,20 @@ public interface SchedulerConfig extends Config {
     )
     default int autoLogInWorld() {
         return 0;
+    }
+    @Range(
+        min = 0,
+        max = 2
+    )
+    @ConfigItem(
+        keyName = "WorldType",
+        name = "World Type",
+        description = "World type to log in to, 0 for F2P, 1 for P2P, 2 for any world",
+        position = 3,
+        section =  loginLogOutSection
+    )
+    default int worldType() {
+        return 2;
     }
   
    

@@ -10,6 +10,7 @@ import net.runelite.api.events.*;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.ConditionType;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.enums.UpdateOption;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeCondition;
 
 /**
  * Base class for logical combinations of conditions.
@@ -880,6 +881,76 @@ public abstract class LogicalCondition implements Condition {
         
         return anyRemoved;
     }
+
+    /**
+     * Identifies and removes conditions that can no longer trigger from a logical condition structure.
+     * This is useful for cleaning up one-time conditions that have already triggered and cannot trigger again.
+     * 
+     * @param logicalCondition The logical condition structure to clean up
+     * @return true if any conditions were removed, false otherwise
+     */
+    public static boolean removeNonTriggerableConditions(LogicalCondition logicalCondition) {
+        if (logicalCondition == null || logicalCondition.getConditions().isEmpty()) {
+            return false;
+        }
+        
+        boolean anyRemoved = false;
+        List<Condition> conditionsToRemove = new ArrayList<>();
+        
+        // First pass: identify conditions that can no longer trigger
+        for (Condition condition : logicalCondition.getConditions()) {
+            // Check direct non-triggerable conditions
+            if (condition instanceof TimeCondition && !((TimeCondition) condition).canTriggerAgain()) {
+                log.debug("Found non-triggerable time condition: {}", condition.getDescription());
+                conditionsToRemove.add(condition);
+                continue;
+            } 
+            
+            // Handle nested logical conditions
+            if (condition instanceof LogicalCondition) {
+                // Recursively clean up nested structure
+                if (removeNonTriggerableConditions((LogicalCondition) condition)) {
+                    anyRemoved = true;
+                }
+                
+                // If this leaves the nested logical empty, mark it for removal too
+                if (((LogicalCondition) condition).getConditions().isEmpty()) {
+                    conditionsToRemove.add(condition);
+                }
+            }
+            
+            // Handle NOT condition as a special case
+            if (condition instanceof NotCondition) {
+                NotCondition notCondition = (NotCondition) condition;
+                Condition wrappedCondition = notCondition.getCondition();
+                
+                // If wrapped condition is a time condition that can't trigger
+                if (wrappedCondition instanceof TimeCondition && 
+                    !((TimeCondition) wrappedCondition).canTriggerAgain()) {
+                    conditionsToRemove.add(condition);
+                }
+                // If wrapped condition is a logical, clean it up recursively
+                else if (wrappedCondition instanceof LogicalCondition) {
+                    if (removeNonTriggerableConditions((LogicalCondition) wrappedCondition)) {
+                        anyRemoved = true;
+                        // If cleaned condition is now empty, mark the NOT for removal
+                        if (((LogicalCondition) wrappedCondition).getConditions().isEmpty()) {
+                            conditionsToRemove.add(condition);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Second pass: remove identified conditions
+        for (Condition conditionToRemove : conditionsToRemove) {
+            logicalCondition.removeCondition(conditionToRemove);
+            log.debug("Removed non-triggerable condition: {}", conditionToRemove.getDescription());
+            anyRemoved = true;
+        }
+        
+        return anyRemoved;
+    }
     
     /**
      * Adds new conditions from the provided structure that don't already exist in this structure.
@@ -1047,14 +1118,22 @@ public abstract class LogicalCondition implements Condition {
                 if ((this instanceof AndCondition && nestedLogical instanceof AndCondition) ||
                     (this instanceof OrCondition && nestedLogical instanceof OrCondition)) {
                     
+                    // Get all conditions from nested logical before we remove it
+                    List<Condition> nestedConditions = new ArrayList<>(nestedLogical.getConditions());
+                    
                     // Move all conditions from nested logical to this logical
-                    for (Condition nestedCondition : nestedLogical.getConditions()) {
+                    // Need to iterate through a copy to avoid concurrent modification
+                    for (Condition nestedCondition : nestedConditions) {
+                        // Remove from nested logical first to avoid duplicates when we add to parent
+                        nestedLogical.getConditions().remove(nestedCondition);
+                        
+                        // Add to parent logical if not already present
                         if (!this.contains(nestedCondition)) {
                             this.addCondition(nestedCondition);
                         }
                     }
                     
-                    // Remove the now redundant nested logical
+                    // Remove the now empty nested logical
                     conditions.remove(i);
                     anyChanges = true;
                 }

@@ -1562,85 +1562,9 @@ public void onStatChanged(StatChanged event) {
         return sb.toString();
     }
     
-    /**
-     * Updates the plugin condition structure with new conditions from the given logical condition.
-     * This method intelligently merges the new conditions into the existing structure
-     * rather than replacing it completely, which preserves state and reduces unnecessary
-     * condition reinitializations.
-     * 
-     * @param newPluginCondition The new logical condition to merge into the existing plugin condition
-     * @return true if changes were made to the plugin condition, false otherwise
-     */
-    public boolean updatePluginConditionold(LogicalCondition newCondition) {
-        if (newCondition == null) {
-            return false;
-        }
-        
-        // If we don't have a plugin condition yet, just set it directly
-        if (pluginCondition == null) {
-            setPluginCondition(newCondition);
-            log.debug("Initialized plugin condition from null");
-            return true;
-        }
-        
-        // If the logical types don't match (AND vs OR), replace the condition
-        boolean typeMismatch = 
-            (pluginCondition instanceof AndCondition && !(newCondition instanceof AndCondition)) ||
-            (pluginCondition instanceof OrCondition && !(newCondition instanceof OrCondition));
-        
-        if (typeMismatch) {
-            log.debug("Replacing plugin condition due to logical type mismatch: {} -> {}", 
-                     pluginCondition.getClass().getSimpleName(),
-                     newCondition.getClass().getSimpleName());
-            setPluginCondition(newCondition);
-            return true;
-        }
-        if(newCondition.equals(pluginCondition)){
-            log.debug("Plugin condition is already up to date, no changes made");
-            return false;
-        }
-        // Use the LogicalCondition's updateLogicalStructure method to efficiently merge conditions
-        boolean conditionsUpdated = pluginCondition.updateLogicalStructure(newCondition);
-        
-        if (conditionsUpdated) {
-            log.debug("Updated plugin condition structure, changes were applied");
-        } else {
-            log.debug("No changes needed to plugin condition structure");
-        }
-        
-        return conditionsUpdated;
-    }
+  
     
-    /**
-     * Periodically checks the plugin condition structure against a new condition structure
-     * and updates if necessary. This creates a scheduled task that runs at the specified interval.
-     * 
-     * @param conditionSupplier A supplier that returns the current desired plugin condition
-     * @param interval The interval in milliseconds between checks
-     * @return A handle to the scheduled future task (can be used to cancel)
-     */
-    public ScheduledFuture<?> schedulePluginConditionWatchdogold(
-            Supplier<LogicalCondition> conditionSupplier,
-            long interval) {
-        
-        ScheduledExecutorService scheduler = 
-            Executors.newSingleThreadScheduledExecutor();
-            
-        return scheduler.scheduleAtFixedRate(() -> {
-            try {
-                LogicalCondition currentDesiredCondition = conditionSupplier.get();
-                if (currentDesiredCondition != null) {
-                    boolean updated = updatePluginCondition(currentDesiredCondition);
-                    if (updated) {
-                        log.debug("Watchdog updated plugin conditions");
-                    }
-                }
-            } catch (Exception e) {
-                log.error("Error in plugin condition watchdog", e);
-            }
-        }, interval, interval, TimeUnit.MILLISECONDS);
-    }
-    
+   
  
     /**
      * Updates the plugin condition structure with new conditions from the given logical condition.
@@ -1682,19 +1606,36 @@ public void onStatChanged(StatChanged event) {
             return false;
         }
          
-        
         // If we don't have a plugin condition yet, just set it directly
         if (pluginCondition == null) {
             setPluginCondition(newPluginCondition);
             log.debug("Initialized plugin condition from null");
             return true;
         }
-        if (!newPluginCondition.equals(pluginCondition)) {
+        
+        // Create a copy of the new condition and optimize it before comparison
+        // This ensures both structures are in optimized form when comparing
+        LogicalCondition optimizedNewCondition;
+        if (newPluginCondition instanceof AndCondition) {
+            optimizedNewCondition = new AndCondition();
+        } else {
+            optimizedNewCondition = new OrCondition();
+        }
+        
+        // Copy all conditions from the new structure to the optimized copy
+        for (Condition condition : newPluginCondition.getConditions()) {
+            optimizedNewCondition.addCondition(condition);
+        }
+        
+        // Optimize the new structure to match how the existing one is optimized
+        optimizedNewCondition.optimizeStructure();
+        
+        if (!optimizedNewCondition.equals(pluginCondition)) {
             StringBuilder sb = new StringBuilder();
             sb.append("New Plugin Condition Detected:\n");
-            sb.append("newPluginCondition: \n\n").append(newPluginCondition.getDescription()).append("\n\n");
+            sb.append("newPluginCondition: \n\n").append(optimizedNewCondition.getDescription()).append("\n\n");
             sb.append("pluginCondition: \n\n").append(pluginCondition.getDescription()).append("\n\n");
-            sb.append("Differences: \n\t").append(pluginCondition.getStructureDifferences(newPluginCondition));
+            sb.append("Differences: \n\t").append(pluginCondition.getStructureDifferences(optimizedNewCondition));
             log.info(sb.toString());
             
         }
@@ -1705,6 +1646,7 @@ public void onStatChanged(StatChanged event) {
             (pluginCondition instanceof AndCondition && !(newPluginCondition instanceof AndCondition)) ||
             (pluginCondition instanceof OrCondition && !(newPluginCondition instanceof OrCondition));
         
+        // Use the rest of the existing function logic
         if (typeMismatch) {
             if (updateOption == UpdateOption.REPLACE) {
                 // For REPLACE, just replace the entire condition
@@ -1748,16 +1690,17 @@ public void onStatChanged(StatChanged event) {
         // Use the LogicalCondition's updateLogicalStructure method with the specified options
         boolean conditionsUpdated = pluginCondition.updateLogicalStructure(
             newPluginCondition, updateOption, preserveState);
-        log.info("Plugin condition update option: {}", updateOption);
-        if (!newPluginCondition.equals(pluginCondition)) {
+        
+        if (!optimizedNewCondition.equals(pluginCondition)) {            
             StringBuilder sb = new StringBuilder();
+            sb.append("Plugin condition updated  with option ->  difference should not occur: \nObjection:\t").append(updateOption).append("\n");
             sb.append("New Plugin Condition Detected:\n");
-            sb.append("newPluginCondition: \n\n").append(newPluginCondition.getDescription()).append("\n\n");
+            sb.append("newPluginCondition: \n\n").append(optimizedNewCondition.getDescription()).append("\n\n");
             sb.append("pluginCondition: \n\n").append(pluginCondition.getDescription()).append("\n\n");
-            sb.append("Differences: \n\t").append(pluginCondition.getStructureDifferences(newPluginCondition));
-            log.info(sb.toString());
-            
+            sb.append("Differences: should not exist: \n\t").append(pluginCondition.getStructureDifferences(optimizedNewCondition));
+            log.warn(sb.toString());        
         }
+        
         // Optimize the condition structure after update if needed
         if (conditionsUpdated && updateOption != UpdateOption.REMOVE_ONLY) {
             // Optimize only if we added or changed conditions
@@ -1850,11 +1793,11 @@ public void onStatChanged(StatChanged event) {
      * @param interval The interval in milliseconds between checks
      * @return A handle to the scheduled future task (can be used to cancel)
      */
-    public ScheduledFuture<?> schedulePluginConditionWatchdog(
+    public ScheduledFuture<?> scheduleConditionWatchdog(
             java.util.function.Supplier<LogicalCondition> conditionSupplier,
             long interval) {
         
-        return schedulePluginConditionWatchdog(conditionSupplier, interval, UpdateOption.ADD_ONLY);
+        return scheduleConditionWatchdog(conditionSupplier, interval, UpdateOption.ADD_ONLY);
     }
     
     /**
@@ -1866,18 +1809,29 @@ public void onStatChanged(StatChanged event) {
      * @param updateOption The update option to use for condition changes
      * @return A handle to the scheduled future task (can be used to cancel)
      */
-    public ScheduledFuture<?> schedulePluginConditionWatchdog(
+    public ScheduledFuture<?> scheduleConditionWatchdog(
             java.util.function.Supplier<LogicalCondition> conditionSupplier,
             long interval,
             UpdateOption updateOption) {
         
         ScheduledFuture<?> future = SHARED_WATCHDOG_EXECUTOR.scheduleWithFixedDelay(() -> { //scheduleWithFixedRate
             try {
+                // First cleanup any non-triggerable conditions from existing structures
+                boolean cleanupDone = cleanupNonTriggerableConditions();
+                if (cleanupDone) {
+                    log.debug("Watchdog removed non-triggerable conditions from logical structures");
+                }
+                
+                // Then update with new conditions
                 LogicalCondition currentDesiredCondition = conditionSupplier.get();
-                if ( currentDesiredCondition == null){
+                if (currentDesiredCondition == null) {
                     currentDesiredCondition = new OrCondition();
                 }
+                
+                // Clean non-triggerable conditions from the new condition structure too
                 if (currentDesiredCondition != null) {
+                    LogicalCondition.removeNonTriggerableConditions(currentDesiredCondition);
+                    
                     boolean updated = updatePluginCondition(currentDesiredCondition, updateOption);
                     if (updated) {
                         log.debug("Watchdog updated plugin conditions using mode: {}", updateOption);
@@ -1886,7 +1840,7 @@ public void onStatChanged(StatChanged event) {
             } catch (Exception e) {
                 log.error("Error in plugin condition watchdog", e);
             }
-        }, interval, interval,TimeUnit.MILLISECONDS);
+        }, 0, interval, TimeUnit.MILLISECONDS);
         
         // Track this future for proper cleanup
         synchronized (watchdogFutures) {
@@ -1894,6 +1848,30 @@ public void onStatChanged(StatChanged event) {
         }
         
         return future;
+    }
+
+    
+
+    /**
+     * Cleans up non-triggerable conditions from both plugin and user logical structures.
+     * This is useful to call periodically to keep the condition structures streamlined.
+     * 
+     * @return true if any conditions were removed, false otherwise
+     */
+    public boolean cleanupNonTriggerableConditions() {
+        boolean anyRemoved = false;
+        
+        // Clean up plugin conditions
+        if (pluginCondition != null) {
+            anyRemoved = LogicalCondition.removeNonTriggerableConditions(pluginCondition) || anyRemoved;
+        }
+        
+        // Clean up user conditions
+        if (userLogicalCondition != null) {
+            anyRemoved = LogicalCondition.removeNonTriggerableConditions(userLogicalCondition) || anyRemoved;
+        }
+        
+        return anyRemoved;
     }
 
 }

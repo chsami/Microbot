@@ -12,6 +12,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.resource.*
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.skill.*;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.*;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.enums.RepeatCycle;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.varbit.VarbitCondition;
 
 import java.lang.reflect.Type;
 import java.time.DayOfWeek;
@@ -55,6 +56,10 @@ public class ConditionTypeAdapter implements JsonSerializer<Condition>, JsonDese
                                    
             data = (JsonObject) context.serialize(src, TimeWindowCondition.class);     
         }
+        else if (src instanceof VarbitCondition) {
+            // Use the specialized adapter for VarbitCondition
+            data = (JsonObject) context.serialize(src, VarbitCondition.class);
+        }
         else if (src instanceof SkillLevelCondition) {
             SkillLevelCondition skillLevel = (SkillLevelCondition) src;
             Skill skill = skillLevel.getSkill();
@@ -69,10 +74,15 @@ public class ConditionTypeAdapter implements JsonSerializer<Condition>, JsonDese
             data.addProperty("targetLevelMax", skillLevel.getTargetLevelMax());
             data.addProperty("currentTargetLevel", skillLevel.getCurrentTargetLevel());
             data.addProperty("startLevel", skillLevel.getStartLevel());
+            
         }
         else if (src instanceof SkillXpCondition) {
             SkillXpCondition skillXp = (SkillXpCondition) src;
             Skill skill = skillXp.getSkill();
+            log.info("skillXp: {}", skillXp.toString());
+            if (skill == null) {
+                log.info("skillXp: skill is null");
+            }
             if (skill == null || skill == Skill.OVERALL) {
                 data.addProperty("skill", "OVERALL");    
                 
@@ -201,6 +211,9 @@ public class ConditionTypeAdapter implements JsonSerializer<Condition>, JsonDese
             }
             else if (TimeWindowCondition.class.isAssignableFrom(clazz)) {                
                 return context.deserialize(data, TimeWindowCondition.class);
+            }
+            else if (VarbitCondition.class.isAssignableFrom(clazz)) {
+                return context.deserialize(data, VarbitCondition.class);
             }
             else if (SkillLevelCondition.class.isAssignableFrom(clazz)) {
                 return deserializeSkillLevelCondition(data);
@@ -375,23 +388,30 @@ public class ConditionTypeAdapter implements JsonSerializer<Condition>, JsonDese
         }
         int targetLevelMin = data.get("targetLevelMin").getAsInt();
         int targetLevelMax = data.get("targetLevelMax").getAsInt();
-        return new SkillLevelCondition(skill, targetLevelMin, targetLevelMax);
+        boolean relative = data.get("relative").getAsBoolean();
+        return new SkillLevelCondition(skill, targetLevelMin, targetLevelMax,relative);
     }
     
     private SkillXpCondition deserializeSkillXpCondition(JsonObject data) {
         if (data.has("data")){
             data = data.getAsJsonObject("data");
         }
-        Skill skill;
-        if (data.get("skill").getAsString() == "OVERALL") {
-            skill = Skill.OVERALL;
-        }else {
-            skill = Skill.valueOf(data.get("skill").getAsString());
+        Skill skill = null;
+        if (data.has("skill")){            
+            if (data.get("skill").getAsString() == "OVERALL") {
+                skill = Skill.OVERALL;
+            }else {
+                skill = Skill.valueOf(data.get("skill").getAsString());
+            }
         }
-        
+        boolean relative = false;
+        if (data.has("relative")) {
+            relative = data.get("relative").getAsBoolean();
+        }
         int targetXpMin = data.get("targetXpMin").getAsInt();
         int targetXpMax = data.get("targetXpMax").getAsInt();
-        return new SkillXpCondition(skill, targetXpMin, targetXpMax);
+        return new SkillXpCondition(skill, targetXpMin, targetXpMax, relative);
+        
     }
     
     private LootItemCondition deserializeLootItemCondition(JsonObject data) {

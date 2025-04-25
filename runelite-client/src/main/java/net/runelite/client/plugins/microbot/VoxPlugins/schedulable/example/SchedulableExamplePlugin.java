@@ -12,6 +12,7 @@ import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.config.ConfigDescriptor;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -85,11 +86,21 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
     };
     
     // HotkeyListener for testing PluginScheduleEntryFinishedEvent
-    private final HotkeyListener finishPluginHotkeyListener = new HotkeyListener(() -> config.finishPluginHotkey()) {
+    private final HotkeyListener finishPluginSuccessHotkeyListener = new HotkeyListener(() -> config.finishPluginSuccessfulHotkey()) {
         @Override
         public void hotkeyPressed() {
-            String reason = config.finishReason();
-            boolean success = config.reportSuccessful();
+            String reason = config.finishReason() + " (success)";
+            boolean success = true;
+            log.info("Manually triggering plugin finish: reason='{}', success={}", reason, success);
+            reportFinished(reason, success);
+        }
+    };
+     // HotkeyListener for testing PluginScheduleEntryFinishedEvent
+    private final HotkeyListener finishPluginNotSuccessHotkeyListener = new HotkeyListener(() -> config.finishPluginNotSuccessfulHotkey()) {
+        @Override
+        public void hotkeyPressed() {
+            String reason = config.finishReason()+ " (not success)";
+            boolean success = false;
             log.info("Manually triggering plugin finish: reason='{}', success={}", reason, success);
             reportFinished(reason, success);
         }
@@ -114,15 +125,17 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
         
         // Register the hotkey listeners
         keyManager.registerKeyListener(areaHotkeyListener);
-        keyManager.registerKeyListener(finishPluginHotkeyListener);
+        keyManager.registerKeyListener(finishPluginSuccessHotkeyListener);
+        keyManager.registerKeyListener(finishPluginNotSuccessHotkeyListener);
         keyManager.registerKeyListener(lockConditionHotkeyListener);
         
         // Create and add the overlay
         locationOverlay = new LocationStartNotificationOverlay(this, config);
         overlayManager.add(locationOverlay);
         
-        log.info("Schedulable Example plugin started - Press {} to test the PluginScheduleEntryFinishedEvent", 
-                config.finishPluginHotkey());
+        log.info("Schedulable Example plugin started - Press {} to test the PluginScheduleEntryFinishedEvent successfully\nand\n{} to test the PluginScheduleEntryFinishedEvent unsuccessfully",
+                config.finishPluginSuccessfulHotkey(),
+                config.finishPluginNotSuccessfulHotkey());                 
         log.info("Use {} to toggle the lock condition (prevents the plugin from being stopped)", 
                 config.lockConditionHotkey());
             
@@ -137,7 +150,8 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
         
         keyManager.unregisterKeyListener(this);
         keyManager.unregisterKeyListener(areaHotkeyListener);
-        keyManager.unregisterKeyListener(finishPluginHotkeyListener);
+        keyManager.unregisterKeyListener(finishPluginSuccessHotkeyListener);
+        keyManager.unregisterKeyListener(finishPluginNotSuccessHotkeyListener);
         keyManager.unregisterKeyListener(lockConditionHotkeyListener);
         
         // Remove the overlay
@@ -605,7 +619,14 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
         }
         return itemsList;
     }
-    
+    @Override
+    public ConfigDescriptor getConfigDescriptor() {
+        if (Microbot.getConfigManager() == null) {
+            return null;
+        }
+        SchedulableExampleConfig conf = Microbot.getConfigManager().getConfig(SchedulableExampleConfig.class);
+        return Microbot.getConfigManager().getConfigDescriptor(conf);
+    }
     @Override
     public void onStopConditionCheck() {
         // Update item count when condition is checked

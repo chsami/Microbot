@@ -21,6 +21,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.config.ConfigDescriptor;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
@@ -33,6 +34,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.Inter
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.SingleTriggerTimeCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeWindowCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.config.ScheduleEntryConfigManager;
 import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
 import net.runelite.client.plugins.microbot.pluginscheduler.serialization.ScheduledSerializer;
 
@@ -51,6 +53,7 @@ public class PluginScheduleEntry implements AutoCloseable {
     private String name;    
     private boolean enabled;
     private boolean hasStarted = false; // Flag to indicate if the plugin has started
+    private transient ScheduleEntryConfigManager configManager; // Added field for config management
 
     // New fields for tracking stop reason
     private String lastStopReason;
@@ -85,7 +88,7 @@ public class PluginScheduleEntry implements AutoCloseable {
     private ZonedDateTime stopInitiatedTime; // When the first stop was attempted
     private ZonedDateTime lastStopAttemptTime; // When the last stop attempt was made
     private Duration softStopRetryInterval = Duration.ofSeconds(30); // Default 30 seconds between retries
-    private Duration hardStopTimeout = Duration.ofMinutes(2); // Default 2 Minutes before hard stop
+    private Duration hardStopTimeout = Duration.ofMinutes(4); // Default 2 Minutes before hard stop
 
     
     private transient Thread stopMonitorThread;
@@ -204,6 +207,15 @@ public class PluginScheduleEntry implements AutoCloseable {
                     .filter(p -> Objects.equals(p.getName(), name))
                     .findFirst()
                     .orElse(null);
+            
+            // Initialize configManager when plugin is first retrieved
+            if (this.plugin instanceof SchedulablePlugin && configManager == null) {
+                SchedulablePlugin schedulablePlugin = (SchedulablePlugin) this.plugin;
+                ConfigDescriptor descriptor = schedulablePlugin.getConfigDescriptor();
+                if (descriptor != null) {
+                    configManager = new ScheduleEntryConfigManager(descriptor);
+                }
+            }
         }
         return plugin;
     }
@@ -214,7 +226,6 @@ public class PluginScheduleEntry implements AutoCloseable {
         }
 
         try {
-            //registerPluginStoppingConditions();
             // Log defined conditions when starting
             logStartCondtions();
             logStopConditions();                        
@@ -224,6 +235,13 @@ public class PluginScheduleEntry implements AutoCloseable {
             this.setLastRunSuccessful(false);
             this.setStopReasonType(PluginScheduleEntry.StopReason.NONE);
             this.finished = false; // Reset finished state when starting
+            
+            // Set scheduleMode to true in plugin config
+            if (configManager != null) {
+                configManager.setScheduleMode(true);
+                log.debug("Set scheduleMode=true for plugin '{}'", name);
+            }
+            
             Microbot.getClientThread().runOnSeperateThread(() -> {
                 Plugin plugin = getPlugin();
                 if (plugin == null) {
@@ -267,8 +285,8 @@ public class PluginScheduleEntry implements AutoCloseable {
             lastStopAttemptTime = ZonedDateTime.now();
             
             // Start monitoring for successful stop
-            startStopMonitoringThread(successfulRun);
-            
+            startStopMonitoringThread(successfulRun);            
+
             if (getPlugin() instanceof SchedulablePlugin) {
                 log.info("Unregistering stopping conditions for plugin '{}'", name);
             }
@@ -337,12 +355,21 @@ public class PluginScheduleEntry implements AutoCloseable {
                         
                         log.info("\nPlugin '{}' has successfully stopped - updating state - successfulRun {}", name, successfulRun);
                         
+                        // Set scheduleMode back to false when the plugin stops
+                        if (configManager != null) {
+                            configManager.setScheduleMode(false);
+                            log.debug("Set scheduleMode=false for plugin '{}'", name);
+                        }
+                        
                         // Update lastRunTime and start conditions for next run
                         if (successfulRun) {
                             resetStartConditions();
                             // Increment the run count since we completed a full run
                             incrementRunCount();
+                        }else{
+                            setEnabled(false);// disable the plugin if it was not successful?
                         }
+                        
                         
                         
                         
@@ -717,7 +744,7 @@ public class PluginScheduleEntry implements AutoCloseable {
         
         // For plugins with start conditions, check if those conditions are met
         if (!hasAnyStartConditions()) {
-            log.info("No start conditions defined for plugin '{}'", name);
+            //log.info("No start conditions defined for plugin '{}'", name);
             return false;
         }
         
@@ -798,17 +825,13 @@ public class PluginScheduleEntry implements AutoCloseable {
             if (currentTrigDateTime.isPresent() && newTrigDateTime.isPresent()) {
                 // Check if the new trigger time is different from the current one
                 if (!currentTrigDateTime.get().equals(newTrigDateTime.get())) {
-                    log.info("Updated start time for '{}' to {}", 
+                    log.info("Updated main start time for Plugin'{}'\nfrom {}\nto {}", 
                             name, 
-                            newTrigDateTime.get().format(DATE_TIME_FORMATTER));
-                    // Update the start conditions
-                    resetStartConditions();
+                            currentTrigDateTime.get().format(DATE_TIME_FORMATTER),
+                            newTrigDateTime.get().format(DATE_TIME_FORMATTER));                    
                 } else {
-                    log.info("Start time for '{}' remains unchanged", name);
+                    log.info("Start next time for Pugin '{}' remains unchanged", name);
                 }
-            }else if (!newTrigDateTime.isPresent() && currentTrigDateTime.isPresent()){                
-                resetStartConditions();// we have new condition ->  new start time ?
-                
             }
         } else {
             // No existing time condition found, just add the new one
@@ -824,11 +847,7 @@ public class PluginScheduleEntry implements AutoCloseable {
             }            
             this.mainTimeStartCondition = newTimeCondition;                 
             //updateStartConditions();// we have new condition ->  new start time ?
-        }
-        // Recalculate any internal state based on the new condition
-        //if  (!isRunning()){
-            
-        //}
+        }        
         return true;
     }
 
@@ -838,31 +857,19 @@ public class PluginScheduleEntry implements AutoCloseable {
     private void resetStartConditions() {
         // Update last run time
         lastRunTime = roundToMinutes(ZonedDateTime.now(ZoneId.systemDefault()));
-        
+        Optional<ZonedDateTime> nextTriggerTimeBeforeReset = getCurrentStartTriggerTime();
         // Handle time conditions
         if (startConditionManager != null) {
             log.info("\nUpdating start conditions for plugin '{}'", name);
             startConditionManager.reset();
-            
-            // Reset one-time conditions to prevent repeated triggering
-            for (TimeCondition condition : startConditionManager.getTimeConditions()) {
-                if (condition instanceof SingleTriggerTimeCondition) {
-                    // Mark as triggered so it won't trigger again
-                    if (condition.isSatisfied()){
-                        ((SingleTriggerTimeCondition) condition).reset();
-                        assert condition.isSatisfied() == false;
-                    }
-                }
-                // For interval conditions, no need to reset as they'll naturally calculate
-                // their next trigger time
-            }
-            
+            Optional<ZonedDateTime> triggerTimeAfterReset = getCurrentStartTriggerTime();                      
             // Update the nextRunTime for legacy compatibility if possible
-            Optional<ZonedDateTime> nextTriggerTime = getCurrentStartTriggerTime();
-            if (nextTriggerTime.isPresent()) {
-                ZonedDateTime nextRunTime = nextTriggerTime.get();
-                log.info("Updated next run time for '{}' to {}", 
+            
+            if (triggerTimeAfterReset.isPresent()) {
+                ZonedDateTime nextRunTime = triggerTimeAfterReset.get();
+                log.info("Updated run time for Plugin '{}'\nbefore\n next{}", 
                         name, 
+                        nextTriggerTimeBeforeReset.map(t -> t.format(DATE_TIME_FORMATTER)).orElse("N/A"),
                         nextRunTime.format(DATE_TIME_FORMATTER));
             } else {
                 // No future trigger time found
@@ -1467,14 +1474,14 @@ public class PluginScheduleEntry implements AutoCloseable {
             
             
             // Schedule the start condition watchdog
-            startConditionWatchdogFuture = getStartConditionManager().schedulePluginConditionWatchdog(
+            startConditionWatchdogFuture = getStartConditionManager().scheduleConditionWatchdog(
                 startConditionSupplier,
                 checkIntervalMillis,
                 updateOption
             );
             
             // Schedule the stop condition watchdog
-            stopConditionWatchdogFuture = getStopConditionManager().schedulePluginConditionWatchdog(
+            stopConditionWatchdogFuture = getStopConditionManager().scheduleConditionWatchdog(
                 stopConditionSupplier,
                 checkIntervalMillis,
                 updateOption

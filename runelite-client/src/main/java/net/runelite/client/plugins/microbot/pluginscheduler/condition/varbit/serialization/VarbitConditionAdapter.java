@@ -1,0 +1,99 @@
+package net.runelite.client.plugins.microbot.pluginscheduler.condition.varbit.serialization;
+
+import com.google.gson.*;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.varbit.VarbitCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.varbit.VarbitCondition.VarType;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.varbit.VarbitCondition.ComparisonOperator;
+
+import java.lang.reflect.Type;
+
+/**
+ * Serializes and deserializes VarbitCondition objects
+ */
+@Slf4j
+public class VarbitConditionAdapter implements JsonSerializer<VarbitCondition>, JsonDeserializer<VarbitCondition> {
+    
+    @Override
+    public JsonElement serialize(VarbitCondition src, Type typeOfSrc, JsonSerializationContext context) {
+        JsonObject json = new JsonObject();
+        
+        // Add type information
+        json.addProperty("type", VarbitCondition.class.getName());
+        
+        // Create data object
+        JsonObject data = new JsonObject();
+        
+        // Store basic properties
+        data.addProperty("name", src.getName());
+        data.addProperty("varType", src.getVarType().toString());
+        data.addProperty("varId", src.getVarId());
+        data.addProperty("operator", src.getOperator().toString());
+        
+        // Store target value information
+        data.addProperty("targetValue", src.getTargetValue());
+        data.addProperty("relative", src.isRelative());
+        data.addProperty("randomized", src.isRandomized());
+        
+        // Store randomization range if using randomization
+        if (src.isRandomized()) {
+            data.addProperty("targetValueMin", src.getTargetValueMin());
+            data.addProperty("targetValueMax", src.getTargetValueMax());
+        }
+        
+        // Add data to wrapper
+        json.add("data", data);
+        
+        return json;
+    }
+    
+    @Override
+    public VarbitCondition deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) 
+            throws JsonParseException {
+        try {
+            JsonObject jsonObject = json.getAsJsonObject();
+            
+            // Check if this is using the type/data wrapper format
+            if (jsonObject.has("type") && jsonObject.has("data")) {
+                jsonObject = jsonObject.getAsJsonObject("data");
+            }
+            
+            // Parse basic properties
+            String name = jsonObject.get("name").getAsString();
+            VarType varType = VarType.valueOf(jsonObject.get("varType").getAsString());
+            int varId = jsonObject.get("varId").getAsInt();
+            ComparisonOperator operator = ComparisonOperator.valueOf(jsonObject.get("operator").getAsString());
+            boolean relative = jsonObject.has("relative") && jsonObject.get("relative").getAsBoolean();
+            
+            // Check if this is using randomization
+            boolean randomized = jsonObject.has("randomized") && jsonObject.get("randomized").getAsBoolean();
+            
+            if (randomized) {
+                int targetValueMin = jsonObject.get("targetValueMin").getAsInt();
+                int targetValueMax = jsonObject.get("targetValueMax").getAsInt();
+                
+                // Create with randomization
+                if (relative) {
+                    return VarbitCondition.createRelativeRandomized(name, varType, varId, 
+                            targetValueMin, targetValueMax, operator);
+                } else {
+                    return VarbitCondition.createRandomized(name, varType, varId, 
+                            targetValueMin, targetValueMax, operator);
+                }
+            } else {
+                // Regular non-randomized condition
+                int targetValue = jsonObject.get("targetValue").getAsInt();
+                
+                if (relative) {
+                    return VarbitCondition.createRelative(name, varType, varId, targetValue, operator);
+                } else {
+                    return new VarbitCondition(name, varType, varId, targetValue, operator);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error deserializing VarbitCondition", e);
+            // Return a default condition on error (check varbit 0 equals 0)
+            return new VarbitCondition("Error Fallback", VarType.VARBIT, 0, 0, ComparisonOperator.EQUALS);
+        }
+    }
+}

@@ -262,7 +262,7 @@ public class SkillXpCondition extends SkillCondition {
     
     @Override
     public ConditionType getType() {
-        return ConditionType.SKILL_XP;
+        return ConditionType.SKILL;
     }
 
     /**

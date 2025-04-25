@@ -319,7 +319,7 @@ public class SkillLevelCondition extends SkillCondition {
     
     @Override
     public ConditionType getType() {
-        return ConditionType.SKILL_LEVEL;
+        return ConditionType.SKILL;
     }
 
     @Override

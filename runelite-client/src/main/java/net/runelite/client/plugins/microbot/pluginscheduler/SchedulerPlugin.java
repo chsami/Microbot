@@ -6,6 +6,7 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -58,6 +59,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginSchedule
 import net.runelite.client.plugins.microbot.pluginscheduler.ui.SchedulerPanel;
 import net.runelite.client.plugins.microbot.pluginscheduler.ui.SchedulerWindow;
 import net.runelite.client.plugins.microbot.pluginscheduler.ui.Antiban.AntibanDialogWindow;
+import net.runelite.client.plugins.microbot.pluginscheduler.ui.util.SchedulerUIUtils;
 import net.runelite.client.plugins.microbot.util.antiban.AntibanPlugin;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.enums.Activity;
@@ -172,12 +174,14 @@ public class SchedulerPlugin extends Plugin {
         if (!currentState.isInitializing()) {
             return;
         }
-
+        if (Microbot.getClientThread() == null || Microbot.getClient() == null) {
+            return;
+        }
         setState(SchedulerState.INITIALIZING);
 
         // Schedule repeated checks until initialized or max checks reached
-
-        SwingUtilities.invokeLater(() -> {
+        
+        Microbot.getClientThread().invokeLater(() -> {
             // Check if client is at login screen
             List<Plugin> conditionProviders = new ArrayList<>();
             if (Microbot.getPluginManager() == null || Microbot.getClient() == null) {
@@ -253,6 +257,7 @@ public class SchedulerPlugin extends Plugin {
 
     @Override
     protected void shutDown() {
+        saveScheduledPlugins();
         clientToolbar.removeNavigation(navButton);
         forceStopCurrentPluginScheduleEntry();
         if (this.loginMonitor != null && this.loginMonitor.isAlive()) {
@@ -399,8 +404,18 @@ public class SchedulerPlugin extends Plugin {
                 if (!currentState.isActivelyRunning()) {
                     scheduleNextPlugin();
                 } else {
-                    checkCurrentPlugin();
-                    log.info("Plugin is already running, waiting for it to finish");
+                    if(currentPlugin==null){
+                                                
+                        currentState = SchedulerState.WAITING_FOR_SCHEDULE;
+                        
+                    }else{
+                        if (!currentPlugin.isRunning()) {
+                            currentState = SchedulerState.WAITING_FOR_SCHEDULE;
+                        }
+                        checkCurrentPlugin();
+                        log.info("Plugin is already running, waiting for it to finish");
+                    }
+                    
 
                 }
             } else {
@@ -858,21 +873,51 @@ public class SchedulerPlugin extends Plugin {
         }
     }
 
+
     /**
-     * Adds conditions to a scheduled plugin
+     * Adds conditions to a scheduled plugin with support for saving to a specific file
+     * 
+     * @param plugin The plugin to add conditions to
+     * @param userStopConditions List of stop conditions
+     * @param userStartConditions List of start conditions
+     * @param requireAll Whether all conditions must be met
+     * @param stopOnConditionsMet Whether to stop the plugin when conditions are met
+     * @param saveFile Optional file to save the conditions to, or null to use default config
      */
-    private void saveConditionsToScheduledPlugin(PluginScheduleEntry plugin, List<Condition> userStopConditions,
-            List<Condition> userStartConditions,
-            boolean requireAll, boolean stopOnConditionsMet) {
+    public void saveUserConditionsToScheduledPlugin(PluginScheduleEntry plugin, List<Condition> userStopConditions,
+            List<Condition> userStartConditions, boolean requireAll, boolean stopOnConditionsMet, File saveFile) {
         if (plugin == null)
             return;
-
+        List<Condition> stopPluginConditions  = plugin.getStopConditionManager().getPluginCondition().getConditions();
+        
+        // Remove any existing stop conditions which are not user-defined
+        for (Condition condition : userStopConditions) {
+            if (stopPluginConditions.contains(condition)) {
+                userStopConditions.remove(condition);
+            }
+        }
         // Clear existing conditions
-        plugin.getStopConditionManager().getConditions().clear();
+        plugin.getStopConditionManager().getUserConditions().clear();
 
-        // Add new conditions
+        // Add new user conditions
         for (Condition condition : userStopConditions) {
             plugin.addStopCondition(condition);
+        }
+        
+        // Add start conditions if provided
+        if (userStartConditions != null && !userStartConditions.isEmpty()) {
+            List<Condition> startPluginConditions  = plugin.getStartConditionManager().getPluginCondition().getConditions();        
+            // Remove any existing start conditions which are not user-defined -> is a plugin condition, avoid duplication
+            for (Condition condition : userStartConditions) {
+                if (startPluginConditions.contains(condition)) {
+                    userStartConditions.remove(condition);
+                }
+            }
+            plugin.getStartConditionManager().getUserConditions().clear();
+
+            for (Condition condition : userStartConditions) {
+                plugin.addStartCondition(condition);
+            }
         }
 
         // Set condition manager properties
@@ -882,8 +927,126 @@ public class SchedulerPlugin extends Plugin {
             plugin.getStopConditionManager().setRequireAny();
         }
 
-        // Save to config
-        saveScheduledPlugins();
+        // Save to specified file if provided, otherwise to config
+        if (saveFile != null) {
+            saveScheduledPluginsToFile(saveFile);
+        } else {
+            // Save to config
+            saveScheduledPlugins();
+        }
+    }
+    
+    /**
+     * Saves scheduled plugins to a specific file
+     * 
+     * @param file The file to save to
+     * @return true if save was successful, false otherwise
+     */
+    public boolean saveScheduledPluginsToFile(File file) {
+        try {
+            // Convert to JSON
+            String json = PluginScheduleEntry.toJson(scheduledPlugins);
+            
+            // Write to file
+            java.nio.file.Files.writeString(file.toPath(), json);
+            log.info("Saved scheduled plugins to file: {}", file.getAbsolutePath());
+            return true;
+        } catch (Exception e) {
+            log.error("Error saving scheduled plugins to file", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Loads scheduled plugins from a specific file
+     * 
+     * @param file The file to load from
+     * @return true if load was successful, false otherwise
+     */
+    public boolean loadScheduledPluginsFromFile(File file) {
+        try {
+            // Read JSON from file
+            String json = java.nio.file.Files.readString(file.toPath());
+            log.info("Loading scheduled plugins from file: {}", file.getAbsolutePath());
+            
+            // Parse JSON
+            List<PluginScheduleEntry> loadedPlugins = PluginScheduleEntry.fromJson(json);
+            if (loadedPlugins == null) {
+                log.error("Failed to parse JSON from file");
+                return false;
+            }
+            
+            // Resolve plugin references
+            for (PluginScheduleEntry entry : loadedPlugins) {
+                resolvePluginReferences(entry);
+            }
+            
+            // Replace current plugins
+            scheduledPlugins = loadedPlugins;
+            
+            // Update UI
+            SwingUtilities.invokeLater(this::updatePanels);
+            return true;
+        } catch (Exception e) {
+            log.error("Error loading scheduled plugins from file", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Adds stop conditions to a scheduled plugin
+     */
+    public void saveUserStopConditionsToPlugin(PluginScheduleEntry plugin, List<Condition> conditions,
+            boolean requireAll, boolean stopOnConditionsMet) {
+        // Call the enhanced version with null file to use default config
+        saveUserConditionsToPlugin(plugin, conditions, null, requireAll, stopOnConditionsMet, null);
+    }
+    
+    /**
+     * Adds conditions to a scheduled plugin with support for saving to a specific file
+     * 
+     * @param plugin The plugin to add conditions to
+     * @param stopConditions List of stop conditions
+     * @param startConditions List of start conditions (optional, can be null)
+     * @param requireAll Whether all conditions must be met
+     * @param stopOnConditionsMet Whether to stop the plugin when conditions are met
+     * @param saveFile Optional file to save the conditions to, or null to use default config
+     */
+    public void saveUserConditionsToPlugin(PluginScheduleEntry plugin, List<Condition> stopConditions,
+            List<Condition> startConditions, boolean requireAll, boolean stopOnConditionsMet, File saveFile) {
+        if (plugin == null)
+            return;
+
+        // Clear existing stop conditions
+        plugin.getStopConditionManager().getUserConditions().clear();
+
+        // Add new stop conditions
+        for (Condition condition : stopConditions) {
+            plugin.addStopCondition(condition);
+        }
+        
+        // Add start conditions if provided
+        if (startConditions != null) {
+            plugin.getStartConditionManager().getUserConditions().clear();
+            for (Condition condition : startConditions) {
+                plugin.addStartCondition(condition);
+            }
+        }
+
+        // Set condition manager properties
+        if (requireAll) {
+            plugin.getStopConditionManager().setRequireAll();
+        } else {
+            plugin.getStopConditionManager().setRequireAny();
+        }
+
+        // Save to specified file if provided, otherwise to config
+        if (saveFile != null) {
+            saveScheduledPluginsToFile(saveFile);
+        } else {
+            // Save to config
+            saveScheduledPlugins();
+        }
     }
 
     /**
@@ -1211,20 +1374,37 @@ public class SchedulerPlugin extends Plugin {
                 .collect(Collectors.toList());
     }
 
+   
+
     /**
-     * Adds conditions to a scheduled plugin
+     * Adds conditions to a scheduled plugin with support for saving to a specific file
+     * 
+     * @param plugin The plugin to add conditions to
+     * @param userStopConditions List of stop conditions
+     * @param userStartConditions List of start conditions
+     * @param requireAll Whether all conditions must be met
+     * @param stopOnConditionsMet Whether to stop the plugin when conditions are met
+     * @param saveFile Optional file to save the conditions to, or null to use default config
      */
-    public void saveStopConditionsToPlugin(PluginScheduleEntry plugin, List<Condition> conditions,
-            boolean requireAll, boolean stopOnConditionsMet) {
+    public void saveConditionsToPlugin(PluginScheduleEntry plugin, List<Condition> stopConditions,
+            List<Condition> startConditions, boolean requireAll, boolean stopOnConditionsMet, File saveFile) {
         if (plugin == null)
             return;
 
-        // Clear existing conditions
+        // Clear existing stop conditions
         plugin.getStopConditionManager().getConditions().clear();
 
-        // Add new conditions
-        for (Condition condition : conditions) {
+        // Add new stop conditions
+        for (Condition condition : stopConditions) {
             plugin.addStopCondition(condition);
+        }
+        
+        // Add start conditions if provided
+        if (startConditions != null) {
+            plugin.getStartConditionManager().getConditions().clear();
+            for (Condition condition : startConditions) {
+                plugin.addStartCondition(condition);
+            }
         }
 
         // Set condition manager properties
@@ -1234,8 +1414,13 @@ public class SchedulerPlugin extends Plugin {
             plugin.getStopConditionManager().setRequireAny();
         }
 
-        // Save to config
-        saveScheduledPlugins();
+        // Save to specified file if provided, otherwise to config
+        if (saveFile != null) {
+            saveScheduledPluginsToFile(saveFile);
+        } else {
+            // Save to config
+            saveScheduledPlugins();
+        }
     }
 
     /**
@@ -1445,7 +1630,8 @@ public class SchedulerPlugin extends Plugin {
 
     public void startLoginMonitoringThread() {
         String  pluginName = "";
-        if (!currentState.isWaiting() || currentState.isRunningPlugin()) {
+        if (!currentState.isSchedulerActive() || (currentState == SchedulerState.SHORT_BREAK || currentState == SchedulerState.RUNNING_PLUGIN || currentState == SchedulerState.LOGIN ) ||(Microbot.isLoggedIn())) {
+            log.info("Login monitoring thread not started, current state: {} - {}", currentState,currentState.isWaiting() );
             return;
         }        
         if (currentPlugin != null) {
@@ -1506,6 +1692,11 @@ public class SchedulerPlugin extends Plugin {
                         currentPlugin.softStop(false);
                         setState(SchedulerState.SOFT_STOPPING_PLUGIN);
                     } else {
+                        if (currentPlugin != null) {
+                            currentPlugin.setEnabled(false);
+                        }
+                        currentPlugin = null;
+                        
                         setState(SchedulerState.SCHEDULING);
                     }
 
@@ -1560,22 +1751,38 @@ public class SchedulerPlugin extends Plugin {
             // TODO add these to "LOGIN" class ->
             // net.runelite.client.plugins.microbot.util.security
             int currentLoginIndex = Microbot.getClient().getLoginIndex();
-            boolean tryMemberWorld = currentLoginIndex != -1; // TODO get correct one
+            boolean tryMemberWorld =  config.worldType() == 2 || config.worldType() ==1 ; // TODO get correct one
             if (currentLoginIndex == 4 || currentLoginIndex == 3) { // we are in the auth screen and cannot login
                 // 3 mean wrong authtifaction
                 return false; // we are in auth
             }
             if (currentLoginIndex == 34) { // we are not a member and cannot login
-                if (isAutoLoginEnabled()) {
+                if (isAutoLoginEnabled() || config.autoLogInWorld() == 1) {                    
                     Microbot.getConfigManager().setConfiguration("AutoLoginConfig", "World",
-                            Login.getRandomWorld(tryMemberWorld));
+                            Login.getRandomWorld(false));
                 }
                 int loginScreenWidth = 804;
                 int startingWidth = (Microbot.getClient().getCanvasWidth() / 2) - (loginScreenWidth / 2);
                 Microbot.getMouse().click(365 + startingWidth, 308); // clicks a button "OK" when you've been
                                                                      // disconnected
                 sleep(600);
+                if (config.worldType() != 2){
+                    // Show dialog for free world selection using the SchedulerUIUtils class
+                    SchedulerUIUtils.showNonMemberWorldDialog(currentPlugin, config, (switchToFreeWorlds) -> {
+                        if (!switchToFreeWorlds) {
+                            // User chose not to switch to free worlds or dialog timed out
+                            if (currentPlugin != null) {
+                                currentPlugin.setEnabled(false);
+                                currentPlugin = null;
+                                setState(SchedulerState.SCHEDULING);
+                                log.info("Login to member world canceled, stopping current plugin");
+                            }
+                        }
+                    });
+                }
                 tryMemberWorld = false; // we are not a member
+
+                
             }
             if (currentLoginIndex == 2) {
                 // connected to the server
@@ -1583,6 +1790,11 @@ public class SchedulerPlugin extends Plugin {
 
             if (isAutoLoginEnabled()) {
                 log.info("AutoLogin plugin enabled for scheduled login");
+                ConfigManager configManager = Microbot.getConfigManager();
+                if (configManager != null) {
+                    configManager.setConfiguration("AutoLoginConfig", "World",
+                            Login.getRandomWorld(tryMemberWorld));                    
+                }
                 // Give it a moment to initialize
                 try {
                     Thread.sleep(500);
@@ -1598,7 +1810,11 @@ public class SchedulerPlugin extends Plugin {
         }).orElse(false);
         log.info("login successful: {}", successfulLogin);
         if (!successfulLogin) {
-            stopScheduler();
+            currentPlugin.setEnabled(false);
+            currentPlugin = null;
+            setState(SchedulerState.SCHEDULING);
+            log.error("Failed to login, stopping plugin: {}", currentPlugin.getName());
+            //stopScheduler();
         }
     }
 
@@ -1640,10 +1856,19 @@ public class SchedulerPlugin extends Plugin {
      * @return true if plugin was enabled successfully, false otherwise
      */
     private boolean enableAutoLogin() {
+        ConfigManager configManager = Microbot.getConfigManager();
+        if( configManager != null) {
+            if (config.autoLogInWorld() == 0) {            
+                configManager.setConfiguration("AutoLoginConfig", "RandomWorld", true);
+            
+            }
+            configManager.setConfiguration("AutoLoginConfig", "World", config.autoLogInWorld());
+        }
+        
         if (isAutoLoginEnabled()) {
             return true; // Already enabled
         }
-        Microbot.getConfigManager().setConfiguration("AutoLoginConfig", "World", config.autoLogInWorld());
+        
         Microbot.getClientThread().runOnSeperateThread(() -> {
             Plugin autoLoginPlugin = Microbot.getPlugin(AutoLoginPlugin.class.getName());
             if (autoLoginPlugin == null) {
@@ -1681,7 +1906,6 @@ public class SchedulerPlugin extends Plugin {
             SwingUtilities.invokeLater(() -> {
                 disableAutoLogin();
             });
-            log.error("Failed to disable AutoLoginPlugin");
             return false;
         }
         log.info("AutoLoginPlugin disabled");
@@ -1747,7 +1971,7 @@ public class SchedulerPlugin extends Plugin {
             SwingUtilities.invokeLater(() -> {
                 disableBreakHandler();
             });
-            log.error("Failed to disable BreakHandlerPlugin");
+
             return false;
         }
         log.info("BreakHandlerPlugin disabled");
@@ -1910,7 +2134,7 @@ public class SchedulerPlugin extends Plugin {
             }
 
             currentState = newState;
-            updatePanels();
+            SwingUtilities.invokeLater(this::updatePanels);
         }
     }
 
@@ -2109,7 +2333,7 @@ public class SchedulerPlugin extends Plugin {
                 log.info("Plugin '{}' started or restarted outside scheduler control", event.getPlugin().getName());
             }
 
-            updatePanels();
+            SwingUtilities.invokeLater(this::updatePanels);
         }
     }
 
@@ -2380,4 +2604,6 @@ public class SchedulerPlugin extends Plugin {
     public List<PluginScheduleEntry> sortPluginScheduleEntries() {
         return sortPluginScheduleEntries(scheduledPlugins, false);
     }
+
+   
 }

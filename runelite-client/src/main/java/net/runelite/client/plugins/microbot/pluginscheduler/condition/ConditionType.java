@@ -6,13 +6,13 @@ import net.runelite.api.NPC;
  * Defines the types of conditions available for script execution.
  */
 public enum ConditionType {
-    TIME("TIME"),
-    SKILL_LEVEL("SKILL_LEVEL"),
-    SKILL_XP("SKILL_XP"),
+    TIME("TIME"),    
+    SKILL("SKILL"),
     RESOURCE("RESOURCE"),    
     LOCATION("location"),
     LOGICAL("LOGICAL"),
-    NPC("NPC");
+    NPC("NPC"),
+    VARBIT("VARBIT");
     
     
     private final String identifier;

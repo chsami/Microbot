@@ -3,10 +3,6 @@ package net.runelite.client.plugins.microbot.pluginscheduler.ui.PluginScheduleEn
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.pluginscheduler.ui.SchedulerWindow;
-import net.runelite.client.plugins.microbot.pluginscheduler.ui.components.DateRangePanel;
-import net.runelite.client.plugins.microbot.pluginscheduler.ui.components.SingleDateTimePickerPanel;
-import net.runelite.client.plugins.microbot.pluginscheduler.ui.components.TimeRangePanel;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.ui.util.ConditionConfigPanelUtil;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.SchedulerConfig;
 import net.runelite.client.plugins.microbot.pluginscheduler.SchedulerPlugin;
@@ -15,7 +11,6 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.Inter
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.SingleTriggerTimeCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeWindowCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.enums.RepeatCycle;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.ui.TimeConditionPanelUtil;
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
 import net.runelite.client.ui.ColorScheme;
@@ -336,14 +331,30 @@ public class ScheduleFormPanel extends JPanel {
     }
 
     public void loadPlugin(PluginScheduleEntry entry) {
-        this.selectedPlugin = entry;
+        
+        if (entry == null ) {
+            if ( this.selectedPlugin != null){
+                clearForm();            
+            }   
+            this.selectedPlugin = null;  
+            
+            return;
+        }
+        if (entry.equals(selectedPlugin)){            
+            return; // No need to update if the same plugin is selected
+        }
+        this.selectedPlugin = entry;    
+        
+
+
+        
         
         // Block combobox events temporarily to avoid feedback loops
         ActionListener[] listeners = pluginComboBox.getActionListeners();
         for (ActionListener listener : listeners) {
             pluginComboBox.removeActionListener(listener);
         }
-        
+        log.info("Loading plugin: {}", entry.getName());
         // Update plugin selection
         pluginComboBox.setSelectedItem(entry.getName());
         
@@ -373,6 +384,11 @@ public class ScheduleFormPanel extends JPanel {
                 startCondition = timeConditions.get(0);
             }
         }
+        if (startCondition == null) {
+            log.warn("No start condition found for plugin: {}", entry.getName());
+            return;
+        }
+        
         TimeCondition mainStartCondition = entry.getMainTimeStartCondition();
         
         // Block combobox events again for condition type changes
@@ -428,9 +444,10 @@ public class ScheduleFormPanel extends JPanel {
     }
 
     public void clearForm() {
-        selectedPlugin = null;
-
+        
+        this.selectedPlugin = null;  
         if (pluginComboBox.getItemCount() > 0) {
+            
             pluginComboBox.setSelectedIndex(0);
         }
 
