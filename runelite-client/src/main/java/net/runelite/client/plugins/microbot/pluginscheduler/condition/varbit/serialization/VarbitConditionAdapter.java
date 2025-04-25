@@ -28,7 +28,7 @@ public class VarbitConditionAdapter implements JsonSerializer<VarbitCondition>, 
         data.addProperty("name", src.getName());
         data.addProperty("varType", src.getVarType().toString());
         data.addProperty("varId", src.getVarId());
-        data.addProperty("operator", src.getOperator().toString());
+        data.addProperty("operator", src.getOperator().name()); // Use name() instead of toString()
         
         // Store target value information
         data.addProperty("targetValue", src.getTargetValue());
@@ -62,7 +62,24 @@ public class VarbitConditionAdapter implements JsonSerializer<VarbitCondition>, 
             String name = jsonObject.get("name").getAsString();
             VarType varType = VarType.valueOf(jsonObject.get("varType").getAsString());
             int varId = jsonObject.get("varId").getAsInt();
-            ComparisonOperator operator = ComparisonOperator.valueOf(jsonObject.get("operator").getAsString());
+            
+            // Get operator - handle both name and display name formats for backward compatibility
+            String operatorStr = jsonObject.get("operator").getAsString();
+            ComparisonOperator operator;
+            
+            try {
+                // Try parsing as enum name first (new format)
+                operator = ComparisonOperator.valueOf(operatorStr);
+            } catch (IllegalArgumentException e) {
+                // If that fails, try matching by display name (old format)
+                operator = getOperatorByDisplayName(operatorStr);
+                if (operator == null) {
+                    // If all parsing fails, default to EQUALS
+                    log.warn("Unknown operator '{}', defaulting to EQUALS", operatorStr);
+                    operator = ComparisonOperator.EQUALS;
+                }
+            }
+            
             boolean relative = jsonObject.has("relative") && jsonObject.get("relative").getAsBoolean();
             
             // Check if this is using randomization
@@ -95,5 +112,18 @@ public class VarbitConditionAdapter implements JsonSerializer<VarbitCondition>, 
             // Return a default condition on error (check varbit 0 equals 0)
             return new VarbitCondition("Error Fallback", VarType.VARBIT, 0, 0, ComparisonOperator.EQUALS);
         }
+    }
+    
+    /**
+     * Helper method to get an operator by its display name
+     * Used for backward compatibility with old serialized data
+     */
+    private ComparisonOperator getOperatorByDisplayName(String displayName) {
+        for (ComparisonOperator op : ComparisonOperator.values()) {
+            if (op.getDisplayName().equalsIgnoreCase(displayName)) {
+                return op;
+            }
+        }
+        return null;
     }
 }

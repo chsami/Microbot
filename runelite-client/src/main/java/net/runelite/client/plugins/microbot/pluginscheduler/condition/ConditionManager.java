@@ -239,6 +239,9 @@ public class ConditionManager implements AutoCloseable {
             log.debug("Plugin conditions met: {}", pluginConditionsMet);
             return userConditionsMet && pluginConditionsMet;            
         }
+        if (userLogicalCondition.getConditions().isEmpty()  && pluginCondition.getConditions().isEmpty() ){
+            return false;
+        }
         return userConditionsMet;                                                
     }
    /**
@@ -1706,7 +1709,8 @@ public void onStatChanged(StatChanged event) {
             // Optimize only if we added or changed conditions
             boolean optimized = pluginCondition.optimizeStructure();
             if (optimized) {
-                log.info("Optimized plugin condition structure after update!!");
+                log.info("Optimized plugin condition structure after update!! \n new plugin condition: \n\n" + pluginCondition);
+                
             }
             
             // Validate the structure

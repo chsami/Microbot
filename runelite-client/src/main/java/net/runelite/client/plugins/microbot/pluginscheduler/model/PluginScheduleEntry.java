@@ -20,6 +20,7 @@ import java.util.function.Supplier;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.config.ConfigDescriptor;
 import net.runelite.client.plugins.Plugin;
@@ -53,6 +54,8 @@ public class PluginScheduleEntry implements AutoCloseable {
     private String name;    
     private boolean enabled;
     private boolean hasStarted = false; // Flag to indicate if the plugin has started
+    @Setter
+    private boolean needsStopCondition = false; // Flag to indicate if a time-based stop condition is needed
     private transient ScheduleEntryConfigManager configManager; // Added field for config management
 
     // New fields for tracking stop reason
@@ -211,6 +214,7 @@ public class PluginScheduleEntry implements AutoCloseable {
             // Initialize configManager when plugin is first retrieved
             if (this.plugin instanceof SchedulablePlugin && configManager == null) {
                 SchedulablePlugin schedulablePlugin = (SchedulablePlugin) this.plugin;
+                log.info("Plugin '{}' is a SchedulablePlugin", name);
                 ConfigDescriptor descriptor = schedulablePlugin.getConfigDescriptor();
                 if (descriptor != null) {
                     configManager = new ScheduleEntryConfigManager(descriptor);
@@ -220,15 +224,25 @@ public class PluginScheduleEntry implements AutoCloseable {
         return plugin;
     }
 
-    public boolean start() {
+    public boolean start(boolean logConditions) {
         if (getPlugin() == null) {
             return false;
         }
 
         try {
+            if (!this.isEnabled())
+            {
+                log.info("Plugin '{}' is disabled, not starting", name);
+                return false;
+            }
             // Log defined conditions when starting
-            logStartCondtions();
-            logStopConditions();                        
+            if (logConditions) {
+                log.info("Starting plugin '{}' with conditions:", name);
+                logStartConditionsWithDetails();
+                logStopConditionsWithDetails();
+            }
+            
+            
             // Reset stop conditions before starting
             resetStopConditions();
             this.setLastStopReason("");
@@ -247,7 +261,7 @@ public class PluginScheduleEntry implements AutoCloseable {
                 if (plugin == null) {
                     log.error("Plugin '{}' not found -> can't start plugin", name);
                     return false;
-                }
+                }                
                 Microbot.startPlugin(plugin);
                 return false;
             });
@@ -383,7 +397,7 @@ public class PluginScheduleEntry implements AutoCloseable {
                     }
                     
                     // Check every 500ms to be responsive but not wasteful
-                    Thread.sleep(500);
+                    Thread.sleep(300);
                 }
             } catch (InterruptedException e) {
                 // Thread was interrupted, just exit
@@ -891,7 +905,6 @@ public class PluginScheduleEntry implements AutoCloseable {
         }
     }
 
-   
     
     /**
      * Get a formatted display of the scheduling interval
@@ -1049,7 +1062,7 @@ public class PluginScheduleEntry implements AutoCloseable {
             }
         }
         // Check if conditions are met and we should stop when conditions are met
-        if (areStopConditionsMet()) {
+        if (areStopConditionsMet() ) {
             return true;
         }
 
@@ -1057,6 +1070,9 @@ public class PluginScheduleEntry implements AutoCloseable {
     }
 
     public boolean areStopConditionsMet() {
+        if (stopConditionManager.getConditions().isEmpty()) {
+            return false;
+        }
         return stopConditionManager.areConditionsMet();
     }
     public boolean areStartConditionsMet() {

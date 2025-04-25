@@ -1326,8 +1326,8 @@ public class ConditionConfigPanel extends JPanel {
         
         // Build the tree from the condition manager
         ConditionManager manager = getConditionManger();
-        log.info ("updateTreeFromConditions: Building tree for plugin {} with {} conditions", 
-                selectScheduledPlugin.getCleanName(), manager.getConditions().size());
+        if (Microbot.isDebug()){log.info ("updateTreeFromConditions: Building tree for plugin {} with {} conditions", 
+                selectScheduledPlugin.getCleanName(), manager.getConditions().size());}
         // If there is a plugin condition, show plugin and user sections separately
         if (manager.getPluginCondition() != null && !manager.getPluginCondition().getConditions().isEmpty()) {
             // Add plugin section

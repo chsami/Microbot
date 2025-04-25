@@ -12,7 +12,11 @@ import net.runelite.client.plugins.microbot.pluginscheduler.ui.PluginScheduleEnt
 import net.runelite.client.plugins.microbot.pluginscheduler.ui.PluginScheduleEntry.ScheduleTablePanel;
 import net.runelite.client.plugins.microbot.pluginscheduler.ui.util.SchedulerUIUtils;
 import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.ui.FontManager;
+
 import javax.swing.*;
+import javax.swing.border.CompoundBorder;
+import javax.swing.border.EmptyBorder;
 
 import java.awt.*;
 import java.awt.event.WindowAdapter;
@@ -192,7 +196,7 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
                 pluginEntry.getCleanName());
         
         try {
-            boolean requireAll = logicalCondition instanceof AndCondition;
+           
             // Update the plugin's condition manager with the new logical condition
             /*if (isStopCondition) {
                 // For stop conditions
@@ -224,7 +228,7 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
             PluginScheduleEntry selected = tablePanel.getSelectedPlugin();
             if (selected != null) {                                                             
                 // Check if we're waiting to start a plugin
-                if (plugin.getCurrentState() == SchedulerState.STARTING_PLUGIN && 
+                if ( isStopCondition && plugin.getCurrentState() == SchedulerState.WAITING_FOR_STOP_CONDITION && 
                     plugin.getCurrentPlugin() == selected &&
                     !selected.getStopConditionManager().getConditions().isEmpty()) {
                     
@@ -237,7 +241,7 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
                     );
                     
                     if (result == JOptionPane.YES_OPTION) {
-                        plugin.continueStartingPluginScheduleEntry(selected);
+                        plugin.continuePendingStart(selected);
                     } else {
                         // User decided not to start - reset state
                         plugin.resetPendingStart();
@@ -528,24 +532,79 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
         mainSplitPane.setDividerLocation(800);
         mainSplitPane.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         
-        mainContent.add(mainSplitPane, BorderLayout.CENTER);
+        // Add a top control panel for file operations with better visibility
+        JPanel controlPanel = new JPanel();
+        controlPanel.setLayout(new BorderLayout());
+        controlPanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
+        controlPanel.setBorder(new EmptyBorder(5, 8, 5, 8));
         
-        // Add file operations to the bottom panel
-        JPanel fileOperationsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        fileOperationsPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        // Create button panel with FlowLayout for better spacing
+        JPanel fileButtonsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        fileButtonsPanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
         
-        JButton saveButton = new JButton("Save Plan to File...");
-        saveButton.addActionListener(e -> saveSchedulerPlanToFile());
-        
-        JButton loadButton = new JButton("Load Plan from File...");
+        // Create load button with improved styling
+        JButton loadButton = createStyledButton("Load Plan from File...", Color.BLUE, "load.png");
+        loadButton.setToolTipText("Load a saved scheduler plan from a file");
         loadButton.addActionListener(e -> loadSchedulerPlanFromFile());
         
-        fileOperationsPanel.add(loadButton);
-        fileOperationsPanel.add(saveButton);
+        // Create save button with improved styling
+        JButton saveButton = createStyledButton("Save Plan to File...", ColorScheme.PROGRESS_COMPLETE_COLOR, "save.png");
+        saveButton.setToolTipText("Save current scheduler plan to a file");
+        saveButton.addActionListener(e -> saveSchedulerPlanToFile());
         
-        mainContent.add(fileOperationsPanel, BorderLayout.SOUTH);
+        // Add buttons to the panel
+        fileButtonsPanel.add(loadButton);
+        fileButtonsPanel.add(saveButton);
+        
+        // Add the buttons panel to the control panel
+        controlPanel.add(fileButtonsPanel, BorderLayout.WEST);
+        
+        // Add optional heading/title if desired
+        JLabel controlPanelTitle = new JLabel("Scheduler Controls");
+        controlPanelTitle.setForeground(Color.WHITE);
+        controlPanelTitle.setFont(FontManager.getRunescapeBoldFont().deriveFont(14f));
+        controlPanel.add(controlPanelTitle, BorderLayout.EAST);
+        
+        // Add control panel to the top
+        mainContent.add(controlPanel, BorderLayout.NORTH);
+        
+        // Add main split pane to the center
+        mainContent.add(mainSplitPane, BorderLayout.CENTER);
         
         return mainContent;
+    }
+    
+    /**
+     * Creates a consistently styled button with icon and hover effects
+     */
+    private JButton createStyledButton(String text, Color color, String iconName) {
+        JButton button = new JButton(text);
+        button.setFont(FontManager.getRunescapeSmallFont());
+        button.setForeground(Color.WHITE);
+        button.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        button.setFocusPainted(false);
+        button.setBorder(new CompoundBorder(
+                BorderFactory.createLineBorder(color.darker(), 1),
+                BorderFactory.createEmptyBorder(5, 10, 5, 10)));
+                
+        // Add hover effect
+        button.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                button.setBackground(ColorScheme.DARK_GRAY_COLOR);
+                button.setBorder(new CompoundBorder(
+                    BorderFactory.createLineBorder(color, 1),
+                    BorderFactory.createEmptyBorder(5, 10, 5, 10)));
+            }
+
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                button.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                button.setBorder(new CompoundBorder(
+                    BorderFactory.createLineBorder(color.darker(), 1),
+                    BorderFactory.createEmptyBorder(5, 10, 5, 10)));
+            }
+        });
+        
+        return button;
     }
 
     /**

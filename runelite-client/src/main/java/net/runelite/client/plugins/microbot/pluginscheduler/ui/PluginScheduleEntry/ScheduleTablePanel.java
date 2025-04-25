@@ -75,12 +75,12 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
 
         // Update the table model to allow editing of Priority column and proper column types
         tableModel = new DefaultTableModel(
-            new Object[]{"Plugin", "Schedule", "Next Run", "Start Conditions", "Stop Conditions", "Priority", "Default", "Enabled", "Random", "Runs"}, 0) {
+            new Object[]{"Plugin", "Schedule", "Next Run", "Start Conditions", "Stop Conditions", "Priority", "Default", "Enabled", "Random", "Time Stop", "Runs"}, 0) {
             @Override
             public Class<?> getColumnClass(int column) {
-                if (column == 6 || column == 7 || column == 8) return Boolean.class; // Boolean columns
+                if (column == 6 || column == 7 || column == 8 || column == 9) return Boolean.class; // Boolean columns
                 if (column == 5) return Integer.class; // Priority column as Integer
-                if (column == 9) return Integer.class; // Run count as Integer
+                if (column == 10) return Integer.class; // Run count as Integer
                 return String.class;
             }
             @Override
@@ -108,8 +108,8 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
                     }
                 }
                 
-                // Allow editing Priority column (5) in addition to Default, Enabled, and Random columns
-                return column == 5 || column == 6 || column == 7 || column == 8; 
+                // Allow editing Priority column (5) in addition to Default, Enabled, Random and Time Stop columns
+                return column == 5 || column == 6 || column == 7 || column == 8 || column == 9; 
             }
         };
         
@@ -118,7 +118,7 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
             if (updatingTable) {                
                 return; // Skip processing if we're already updating or it's not our columns
             }            
-            if (e.getColumn() == 5 || e.getColumn() == 6 || e.getColumn() == 7 || e.getColumn() == 8) {                
+            if (e.getColumn() == 5 || e.getColumn() == 6 || e.getColumn() == 7 || e.getColumn() == 8 || e.getColumn() == 9) {                
                 try {
                     updatingTable = true;
                     int firstRow = e.getFirstRow();
@@ -167,18 +167,22 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
                             else if (e.getColumn() == 7) { // Enabled column
                                 Boolean enabled = (Boolean) tableModel.getValueAt(row, 7);
                                 tableModel.setValueAt(enabled, row, 7);
-                                log.info("ScheduleTablePanel start setEnabled");
+                                
                                 Microbot.getClientThread().invokeLater(() -> {
                                     // Update the enabled status of the plugin
                                     scheduled.setEnabled(enabled);
                                 });
-                                
-                                log.info("ScheduleTablePanel done");
+                                                                
                             }
                             else if (e.getColumn() == 8) { // Random scheduling column
                                 Boolean allowRandom = (Boolean) tableModel.getValueAt(row, 8);
                                 tableModel.setValueAt(allowRandom, row, 8);
                                 scheduled.setAllowRandomScheduling(allowRandom);
+                            }
+                            else if (e.getColumn() == 9) { // Time-based stop condition column
+                                Boolean needsTimeStop = (Boolean) tableModel.getValueAt(row, 9);
+                                tableModel.setValueAt(needsTimeStop, row, 9);
+                                scheduled.setNeedsStopCondition(needsTimeStop);
                             }
                             
                         }
@@ -249,7 +253,8 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         scheduleTable.getColumnModel().getColumn(6).setPreferredWidth(60);  // Default
         scheduleTable.getColumnModel().getColumn(7).setPreferredWidth(60);  // Enabled
         scheduleTable.getColumnModel().getColumn(8).setPreferredWidth(60);  // Random
-        scheduleTable.getColumnModel().getColumn(9).setPreferredWidth(50);  // Run Count
+        scheduleTable.getColumnModel().getColumn(9).setPreferredWidth(60);  // Time Stop
+        scheduleTable.getColumnModel().getColumn(10).setPreferredWidth(50);  // Run Count
   
         
        
@@ -949,7 +954,8 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         rowData[6] = plugin.isDefault();
         rowData[7] = plugin.isEnabled();
         rowData[8] = plugin.isAllowRandomScheduling();
-        rowData[9] = plugin.getRunCount();
+        rowData[9] = plugin.isNeedsStopCondition();
+        rowData[10] = plugin.getRunCount();
     }
 
     /**
@@ -972,7 +978,8 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         tableModel.setValueAt(plugin.isDefault(), rowIndex, 6);
         tableModel.setValueAt(plugin.isEnabled(), rowIndex, 7);
         tableModel.setValueAt(plugin.isAllowRandomScheduling(), rowIndex, 8);
-        tableModel.setValueAt(plugin.getRunCount(), rowIndex, 9);
+        tableModel.setValueAt(plugin.isNeedsStopCondition(), rowIndex, 9);
+        tableModel.setValueAt(plugin.getRunCount(), rowIndex, 10);
     }
 
     /**
@@ -996,6 +1003,7 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
             plugin.isDefault(),
             plugin.isEnabled(),
             plugin.isAllowRandomScheduling(),
+            plugin.isNeedsStopCondition(),
             plugin.getRunCount()
         };
     }
@@ -1048,6 +1056,7 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
                 scheduled.isDefault(),
                 scheduled.isEnabled(),
                 scheduled.isAllowRandomScheduling(),
+                scheduled.isNeedsStopCondition(),
                 scheduled.getRunCount()
             });
         }
@@ -1310,7 +1319,16 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
     public PluginScheduleEntry getSelectedPlugin() {
         int selectedRow = scheduleTable.getSelectedRow();
         if (selectedRow >= 0 && selectedRow < schedulerPlugin.getScheduledPlugins().size()) {
-            return rowToPluginMap.get(selectedRow);
+            if (rowToPluginMap.size() > selectedRow) {
+                // Use the rowToPluginMap to get the plugin
+                return rowToPluginMap.get(selectedRow);
+            }else {
+                // Fallback to the original list if rowToPluginMap is not available
+                // This should not happen in normal operation                
+                rowToPluginMap = new ArrayList<>(schedulerPlugin.getScheduledPlugins());
+                return schedulerPlugin.getScheduledPlugins().get(selectedRow);
+            }
+            
             //return schedulerPlugin.getScheduledPlugins().get(selectedRow);
         }
         return null;
@@ -1346,6 +1364,7 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
             pluginEntry.isDefault(),
             pluginEntry.isEnabled(),
             pluginEntry.isAllowRandomScheduling(),
+            pluginEntry.isNeedsStopCondition(),
             pluginEntry.getRunCount()
         });
         scheduleTable.setRowSelectionInterval(getRowCount(), getRowCount());        
