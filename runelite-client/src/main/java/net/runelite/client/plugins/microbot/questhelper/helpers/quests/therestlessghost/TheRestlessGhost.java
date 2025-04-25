@@ -117,6 +117,7 @@ public class TheRestlessGhost extends BasicQuestHelper {
     public void setupSteps() {
         talkToAereck = new NpcStep(this, NpcID.FATHER_AERECK, new WorldPoint(3243, 3206, 0), "Talk to Father Aereck in the Lumbridge Church.");
         talkToAereck.addDialogStep("I'm looking for a quest!");
+        talkToAereck.addDialogStep("Yes.");
         talkToAereck.addDialogStep("Ok, let me help then.");
 
         talkToUrhney = new NpcStep(this, NpcID.FATHER_URHNEY, new WorldPoint(3147, 3175, 0), "Talk to Father Urhney in the south west of Lumbridge Swamp.");
