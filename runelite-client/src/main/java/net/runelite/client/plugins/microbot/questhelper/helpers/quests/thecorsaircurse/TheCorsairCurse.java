@@ -212,6 +212,7 @@ public class TheCorsairCurse extends BasicQuestHelper {
     public void setupSteps() {
         talkToTockFarm = new NpcStep(this, NpcID.CAPTAIN_TOCK, new WorldPoint(3030, 3273, 0), "Talk to Captain Tock north of Port Sarim.");
         talkToTockFarm.addDialogStep("What kind of help do you need?");
+        talkToTockFarm.addDialogStep("Yes.");
         talkToTockFarm.addDialogStep("Sure, I'll try to help with your curse.");
 
         talkToTockRimmington = new NpcStep(this, NpcID.CAPTAIN_TOCK, new WorldPoint(2910, 3226, 0), "Talk to Captain Tock west of Rimmington.");
