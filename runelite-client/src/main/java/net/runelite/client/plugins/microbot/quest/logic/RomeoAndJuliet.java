@@ -13,7 +13,7 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 /**
  * Romeo and Juliet quest custom logic
  */
-public class RomeoAndJulliet extends BaseQuest {
+public class RomeoAndJuliet extends BaseQuest {
     @Override
     public boolean executeCustomLogic() {
         QuestStep questStep = getQuestHelperPlugin().getSelectedQuest().getCurrentStep().getActiveStep();
