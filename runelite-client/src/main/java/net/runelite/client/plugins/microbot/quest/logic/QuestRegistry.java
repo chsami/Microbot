@@ -1,7 +1,6 @@
 package net.runelite.client.plugins.microbot.quest.logic;
 
 import net.runelite.api.Quest;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,8 +11,10 @@ public class QuestRegistry {
     private static final Map<Integer, IQuest> QUEST_MAP = new HashMap<>();
 
     static {
-        QUEST_MAP.put(Quest.ROMEO__JULIET.getId(), new RomeoAndJulliet());
+        QUEST_MAP.put(Quest.ROMEO__JULIET.getId(), new RomeoAndJuliet());
         QUEST_MAP.put(Quest.RUNE_MYSTERIES.getId(), new RuneMysteries());
+        QUEST_MAP.put(Quest.PIRATES_TREASURE.getId(), new PiratesTreasure());
+
     }
 
     /**
