@@ -681,6 +681,11 @@ public class MossKillerScript extends Script {
 
 
         }
+
+        if(!Rs2Bank.openBank()) {
+            Rs2Bank.walkToBank();
+            Rs2Bank.walkToBankAndUseBank();
+        }
     }
 
     private void withdrawItemWithRandomSleep(int... itemIds) {
