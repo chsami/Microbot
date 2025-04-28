@@ -301,8 +301,8 @@
 #mythical cape (instead of using the item name we use the action teleport, we use the itemids to verifiy the item)									
 2457 2850 0		21913;22114;24855			Y	F	19	4	Mythical cape: Teleport
 # Stony Basalt - 4493 is DIARY_FREMENNIK_HARD									
-2845 3694 0		22601			Y	T	19	4	Stony basalt
-2837 3695 0	73 Agility	22601		4493=1	Y	T	19	4	Stony basalt: Roof
+2845 3694 0		22601			Y	T	19	4	Stony basalt: Troll Stronghold
+2837 3695 0	73 Agility	22601		4493=1	Y	T	19	4	Stony basalt: Troll Stronghold
 2846 3938 0		22599			Y	T	19	4	Icy basalt
 									
 # Other									
