@@ -49,6 +49,11 @@ public class BarrowsScript extends Script {
 
     public boolean run(BarrowsConfig config) {
         Microbot.enableAutoRunOn = false;
+        if (Rs2Player.getQuestState(Quest.HIS_FAITHFUL_SERVANTS) != QuestState.FINISHED) {
+            Microbot.showMessage("Complete the 'His Faithful Servants' quest for the webwalker to function correctly");
+            shutdown();
+            return false;
+        }
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!Microbot.isLoggedIn()) return;
