@@ -738,7 +738,7 @@ public class revKillerScript extends Script {
             }
         }
 
-        if(value>=100000){
+        if(value>=config.leaveAtValue()){
             Microbot.log("We have enough loot");
             return true;
         }

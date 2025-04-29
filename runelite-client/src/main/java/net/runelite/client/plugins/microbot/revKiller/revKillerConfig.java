@@ -2,10 +2,7 @@ package net.runelite.client.plugins.microbot.revKiller;
 
 import net.runelite.api.ItemID;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.config.Config;
-import net.runelite.client.config.ConfigGroup;
-import net.runelite.client.config.ConfigInformation;
-import net.runelite.client.config.ConfigItem;
+import net.runelite.client.config.*;
 
 @ConfigGroup("Rev Killer")
 @ConfigInformation("1. Start fully equipped at the Enclave.<br /><br />Keep runtime low! Rev caves are HEAVILY monitored. <br /><br />Required items: Stamina potions, Ranging potions, Arrows, Sharks, Rings of Dueling, and Amulets of Glory.<br /><br />")
@@ -83,5 +80,16 @@ public interface revKillerConfig extends Config {
             return name;
         }
 
+    }
+
+    @ConfigItem(
+            keyName = "leaveAtValue",
+            name = "Leave Caves at: ",
+            description = "How much loot should we gain before banking? IE bank at 100,000 GP.",
+            position = 3
+    )
+    @Range(min = 100000, max = 5000000)
+    default int leaveAtValue() {
+        return 100000;
     }
 }
