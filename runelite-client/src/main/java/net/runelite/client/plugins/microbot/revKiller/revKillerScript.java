@@ -21,6 +21,7 @@ import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.JewelleryLocationEnum;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
+import net.runelite.client.plugins.microbot.util.grounditem.LootingParameters;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
@@ -85,7 +86,7 @@ public class revKillerScript extends Script {
                 selectedArrow = config.selectedArrow().getArrowID();
                 // set it to our script
                 revimp = selectedWP;
-                randomdelay = generateRandomNumber(400,600);
+                randomdelay = generateRandomNumber(400,900);
 
                 if(shouldFlee){
                     return;
@@ -485,19 +486,11 @@ public class revKillerScript extends Script {
 
     public void loot(){
         if(Rs2GroundItem.isItemBasedOnValueOnGround(500,10)){
-
             while(Rs2GroundItem.isItemBasedOnValueOnGround(500,10)){
                 if(!super.isRunning()){
                     break;
                 }
-                if(Rs2GroundItem.lootItemBasedOnValue(500, 10)){
-                    sleepUntil(()-> Rs2Player.isMoving(), Rs2Random.between(750,1500));
-                    if(Rs2Player.isMoving()){
-                        sleepUntil(()-> !Rs2Player.isMoving(), Rs2Random.between(3000,6000));
-                    }
-                }
-                //fail safe. There's strange interactions between blighted items and this current looter. The looter refuses to pick them up
-                if(Rs2GroundItem.lootAtGePrice(500)){
+                if(Rs2GroundItem.lootItemBasedOnValue(new LootingParameters(500,50000000, 10,1,1,false,false))){
                     sleepUntil(()-> Rs2Player.isMoving(), Rs2Random.between(750,1500));
                     if(Rs2Player.isMoving()){
                         sleepUntil(()-> !Rs2Player.isMoving(), Rs2Random.between(3000,6000));
