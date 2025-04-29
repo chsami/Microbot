@@ -1051,6 +1051,10 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
      * @param end
      */
     public static boolean restartPathfinding(WorldPoint start, WorldPoint end) {
+        return restartPathfinding(start, Set.of(end));
+    }
+
+    public static boolean restartPathfinding(WorldPoint start, Set<WorldPoint> ends) {
         if (Microbot.getClient().isClientThread()) return false;
 
         if (ShortestPathPlugin.getPathfinder() != null) {
@@ -1065,10 +1069,10 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
 
         ShortestPathPlugin.getPathfinderConfig().refresh();
         if (Rs2Player.isInCave()) {
-            Pathfinder pathfinder = new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), start, end);
+            Pathfinder pathfinder = new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), start, ends);
             pathfinder.run();
             ShortestPathPlugin.getPathfinderConfig().setIgnoreTeleportAndItems(true);
-            Pathfinder pathfinderWithoutTeleports = new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), start, end);
+            Pathfinder pathfinderWithoutTeleports = new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), start, ends);
             pathfinderWithoutTeleports.run();
             if (pathfinder.getPath().size() >= pathfinderWithoutTeleports.getPath().size()) {
                 ShortestPathPlugin.setPathfinder(pathfinderWithoutTeleports);
@@ -1077,7 +1081,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
             }
             ShortestPathPlugin.getPathfinderConfig().setIgnoreTeleportAndItems(false);
         } else {
-            ShortestPathPlugin.setPathfinder(new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), start, end));
+            ShortestPathPlugin.setPathfinder(new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), start, ends));
             ShortestPathPlugin.setPathfinderFuture(ShortestPathPlugin.getPathfindingExecutor().submit(ShortestPathPlugin.getPathfinder()));
         }
         return true;
@@ -1658,6 +1662,21 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
             stuckCount++;
         } else {
             stuckCount = 0;
+        }
+    }
+
+    /**
+     * @param start
+     */
+    public void setStart(WorldPoint start) {
+        if (ShortestPathPlugin.getPathfinder() == null) {
+            return;
+        }
+        ShortestPathPlugin.setStartPointSet(true);
+        if (Microbot.getClient().isClientThread()) {
+            Microbot.getClientThread().runOnSeperateThread(() -> restartPathfinding(start, ShortestPathPlugin.getPathfinder().getTargets()));
+        } else {
+            restartPathfinding(start, ShortestPathPlugin.getPathfinder().getTargets());
         }
     }
 
