@@ -14,9 +14,7 @@ public class Pathfinder implements Runnable {
     @Getter
     private final WorldPoint start;
     @Getter
-    private final WorldPoint target;
-
-    private final int targetPacked;
+    private final Set<WorldPoint> targets;
 
     private final PathfinderConfig config;
     private final CollisionMap map;
@@ -46,10 +44,20 @@ public class Pathfinder implements Runnable {
         this.config = config;
         this.map = config.getMap();
         this.start = start;
-        this.target = target;
+        this.targets = Set.of(target);
         visited = new VisitedTiles(map);
-        targetPacked = WorldPointUtil.packWorldPoint(target);
         targetInWilderness = PathfinderConfig.isInWilderness(target);
+        wildernessLevel = 31;
+    }
+
+    public Pathfinder(PathfinderConfig config, WorldPoint start, Set<WorldPoint> targets) {
+        stats = new PathfinderStats();
+        this.config = config;
+        this.map = config.getMap();
+        this.start = start;
+        this.targets = targets;
+        visited = new VisitedTiles(map);
+        targetInWilderness = PathfinderConfig.isInWilderness(targets);
         wildernessLevel = 31;
     }
 
@@ -85,7 +93,7 @@ public class Pathfinder implements Runnable {
     }
 
     private void addNeighbors(Node node) {
-        List<Node> nodes = map.getNeighbors(node, visited, config, target);
+        List<Node> nodes = map.getNeighbors(node, visited, config, targets);
         for (Node neighbor : nodes) {
             if (config.avoidWilderness(node.packedPosition, neighbor.packedPosition, targetInWilderness)) {
                 continue;
@@ -148,22 +156,24 @@ public class Pathfinder implements Runnable {
                 }
             }
 
-            if (node.packedPosition == targetPacked) {
+            if (targets.contains(WorldPointUtil.unpackWorldPoint(node.packedPosition))) {
                 bestLastNode = node;
                 pathNeedsUpdate = true;
                 break;
             }
 
-            int distance = WorldPointUtil.distanceBetween(node.packedPosition, targetPacked);
-            long heuristic = distance + (long) WorldPointUtil.distanceBetween(node.packedPosition, targetPacked, 2);
+            for (WorldPoint target : targets) {
+                int distance = WorldPointUtil.distanceBetween(node.packedPosition, WorldPointUtil.packWorldPoint(target));
+                long heuristic = distance + (long) WorldPointUtil.distanceBetween(node.packedPosition, WorldPointUtil.packWorldPoint(target), 2);
 
-            if (heuristic < bestHeuristic || (heuristic <= bestHeuristic && distance < bestDistance)) {
+                if (heuristic < bestHeuristic || (heuristic <= bestHeuristic && distance < bestDistance)) {
 
-                bestLastNode = node;
-                pathNeedsUpdate = true;
-                bestDistance = distance;
-                bestHeuristic = heuristic;
-                cutoffTimeMillis = System.currentTimeMillis() + cutoffDurationMillis;
+                    bestLastNode = node;
+                    pathNeedsUpdate = true;
+                    bestDistance = distance;
+                    bestHeuristic = heuristic;
+                    cutoffTimeMillis = System.currentTimeMillis() + cutoffDurationMillis;
+                }
             }
 
             if (System.currentTimeMillis() > cutoffTimeMillis) {

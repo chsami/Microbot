@@ -31,7 +31,6 @@ public enum BankLocation {
     CORSAIR_COVE(new WorldPoint(2570, 2864, 0), false),
     CRAFTING_GUILD(new WorldPoint(2936, 3281, 0), true),
     DARKMEYER(new WorldPoint(3604, 3366, 0), true),
-    DIHN_BANK(new WorldPoint(1640, 3944, 0), true),
     DORGESH_KAAN_BANK(new WorldPoint(2702, 5350, 0), true),
     DRAYNOR_VILLAGE(new WorldPoint(3093, 3245, 0), false),
     DUEL_ARENA(new WorldPoint(3381, 3268, 0), true),
@@ -106,8 +105,6 @@ public enum BankLocation {
     private final boolean members;
 
     public boolean hasRequirements() {
-        boolean hasLineOfSight = Microbot.getClient().getLocalPlayer().getWorldArea().hasLineOfSightTo(Microbot.getClient().getTopLevelWorldView(), worldPoint);
-        if (hasLineOfSight) return true;
         if (isMembers()) {
             if (!Rs2Player.isMember() || !Rs2Player.isInMemberWorld()) return false;
         }
@@ -206,7 +203,6 @@ public enum BankLocation {
             case HOSIDIUS:
             case PISCARILIUS:
             case ARCEUUS:
-            case DIHN_BANK:
             case WINTERTODT:
             case SULPHUR_MINE:
             case ZEAH_SAND_BANK:

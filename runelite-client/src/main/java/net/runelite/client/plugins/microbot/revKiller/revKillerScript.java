@@ -243,7 +243,7 @@ public class revKillerScript extends Script {
                     if (!super.isRunning()) {
                         break;
                     }
-                    Microbot.log("Teleing to bank");
+                    Microbot.log("Walking to below");
                     WorldPoint safe1 = (new WorldPoint(3199, 10071, 0));
                     WorldPoint safe2 = (new WorldPoint(3226, 10067, 0));
 
@@ -316,22 +316,9 @@ public class revKillerScript extends Script {
             }
             shouldFlee = false;
         } else {
-            Microbot.log("Running from the pker");
-            while(Rs2Player.getWorldLocation().distanceTo(BankLocation.FEROX_ENCLAVE.getWorldPoint()) > 10){
-                if (!super.isRunning()) {
-                    Rs2Walker.disableTeleports = false;
-                    break;
-                }
-                EatFood();
-                Rs2Walker.disableTeleports = true;
-                Rs2Walker.walkTo(BankLocation.FEROX_ENCLAVE.getWorldPoint());
-                Rs2Walker.disableTeleports = false;
-                if(Rs2Player.getWorldLocation().distanceTo(BankLocation.FEROX_ENCLAVE.getWorldPoint()) < 10){
-                    Rs2Walker.disableTeleports = false;
-                    break;
-                }
-            }
-
+            Microbot.log("We're teleblocked! Attempting to run to the bank");
+            Rs2Walker.walkTo(BankLocation.FEROX_ENCLAVE.getWorldPoint());
+            shouldFlee = false;
         }
     }
 

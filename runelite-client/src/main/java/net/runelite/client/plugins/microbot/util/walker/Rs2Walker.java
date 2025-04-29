@@ -1051,6 +1051,10 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
      * @param end
      */
     public static boolean restartPathfinding(WorldPoint start, WorldPoint end) {
+        return restartPathfinding(start, Set.of(end));
+    }
+
+    public static boolean restartPathfinding(WorldPoint start, Set<WorldPoint> ends) {
         if (Microbot.getClient().isClientThread()) return false;
 
         if (ShortestPathPlugin.getPathfinder() != null) {
@@ -1065,10 +1069,10 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
 
         ShortestPathPlugin.getPathfinderConfig().refresh();
         if (Rs2Player.isInCave()) {
-            Pathfinder pathfinder = new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), start, end);
+            Pathfinder pathfinder = new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), start, ends);
             pathfinder.run();
             ShortestPathPlugin.getPathfinderConfig().setIgnoreTeleportAndItems(true);
-            Pathfinder pathfinderWithoutTeleports = new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), start, end);
+            Pathfinder pathfinderWithoutTeleports = new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), start, ends);
             pathfinderWithoutTeleports.run();
             if (pathfinder.getPath().size() >= pathfinderWithoutTeleports.getPath().size()) {
                 ShortestPathPlugin.setPathfinder(pathfinderWithoutTeleports);
@@ -1077,7 +1081,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
             }
             ShortestPathPlugin.getPathfinderConfig().setIgnoreTeleportAndItems(false);
         } else {
-            ShortestPathPlugin.setPathfinder(new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), start, end));
+            ShortestPathPlugin.setPathfinder(new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), start, ends));
             ShortestPathPlugin.setPathfinderFuture(ShortestPathPlugin.getPathfindingExecutor().submit(ShortestPathPlugin.getPathfinder()));
         }
         return true;
@@ -1306,8 +1310,8 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
     private static void handleObject(Transport transport, TileObject tileObject) {
         System.out.println("tile object");
         Rs2GameObject.interact(tileObject, transport.getAction());
+        if (handleObjectExceptions(transport, tileObject)) return;
         if (transport.getDestination().getPlane() == Rs2Player.getWorldLocation().getPlane()) {
-            if (handleObjectExceptions(transport, tileObject)) return;
             if (transport.getType() == TransportType.AGILITY_SHORTCUT) {
                 Rs2Player.waitForAnimation();
                 sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) <= 2, 10000);
@@ -1406,6 +1410,21 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
         // Handle Cave Entrance inside of Asgarnia Ice Caves
         if (tileObject.getId() == ObjectID.TUNNEL_55988 || tileObject.getId() == ObjectID.TUNNEL_55989) {
             Rs2Player.waitForAnimation();
+        }
+
+        // Handle Rev Cave Dialogue
+        if (tileObject.getId() == ObjectID.CAVERN_31555) {
+            if (Rs2Player.isMoving()) {
+                Rs2Player.waitForWalking();
+            }
+            Widget dialogueSprite = Rs2Dialogue.getDialogueSprite();
+            if (dialogueSprite != null && dialogueSprite.getItemId() == 1004) {
+                Rs2Dialogue.clickContinue();
+                Rs2Dialogue.sleepUntilSelectAnOption();
+                Rs2Dialogue.clickOption("Yes, don't ask again");
+                Rs2Dialogue.sleepUntilNotInDialogue();
+            }
+            return true;
         }
         return false;
     }
@@ -1670,9 +1689,9 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
         }
         ShortestPathPlugin.setStartPointSet(true);
         if (Microbot.getClient().isClientThread()) {
-            Microbot.getClientThread().runOnSeperateThread(() -> restartPathfinding(start, ShortestPathPlugin.getPathfinder().getTarget()));
+            Microbot.getClientThread().runOnSeperateThread(() -> restartPathfinding(start, ShortestPathPlugin.getPathfinder().getTargets()));
         } else {
-            restartPathfinding(start, ShortestPathPlugin.getPathfinder().getTarget());
+            restartPathfinding(start, ShortestPathPlugin.getPathfinder().getTargets());
         }
     }
 
@@ -1693,31 +1712,16 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
         // Get Transport Information
         String displayInfo = transport.getDisplayInfo();
         int objectId = transport.getObjectId();
-
         if (displayInfo == null || displayInfo.isEmpty()) return false;
 
-        // Check if the widget is already visible
-        if (!Rs2Widget.isHidden(ComponentID.ADVENTURE_LOG_CONTAINER)) {
-            System.out.println("Widget is already visible. Skipping interaction.");
-            char key = displayInfo.charAt(0);
-            Rs2Keyboard.keyPress(key);
-            Microbot.log("Pressing: " + key);
-            return false;
+        if (!Rs2Widget.isWidgetVisible(ComponentID.ADVENTURE_LOG_CONTAINER)) {
+            TileObject spiritTree = Rs2GameObject.findObjectById(objectId);
+            if (!Rs2GameObject.interact(spiritTree, "Travel")) {
+                return false;
+            }
         }
 
-        // Find the spirit tree object
-        TileObject spiritTree = Rs2GameObject.findObjectById(objectId);
-        if (spiritTree == null) {
-            return false;
-        }
-
-        // Interact with the spirit tree
-        if (Rs2GameObject.interact(spiritTree, "travel")) {
-            return interactWithAdventureLog(transport);
-        }
-
-        return false;
-
+        return interactWithAdventureLog(transport);
     }
 
     private static boolean handleMinigameTeleport(Transport transport) {
@@ -1938,7 +1942,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
      *
      * @param transport
      */
-    private static boolean interactWithAdventureLog(Transport transport) {
+    private static boolean  interactWithAdventureLog(Transport transport) {
         if (transport.getDisplayInfo() == null || transport.getDisplayInfo().isEmpty()) return false;
 
         // Wait for the widget to become visible
@@ -1949,8 +1953,11 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
             return false;
         }
 
-        char key = transport.getDisplayInfo().charAt(0);
-        Rs2Keyboard.keyPress(key);
+        String destinationString = transport.getDisplayInfo().replaceAll("^\\d+:\\s*", "");
+        Widget destinationWidget = Rs2Widget.findWidget(destinationString, List.of(Rs2Widget.getWidget(187, 3)));
+        if (destinationWidget == null) return false;
+
+        Rs2Widget.clickWidget(destinationWidget);
         Microbot.log("Traveling to " + transport.getDisplayInfo());
         return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo2D(transport.getDestination()) < OFFSET, 100, 5000);
     }
