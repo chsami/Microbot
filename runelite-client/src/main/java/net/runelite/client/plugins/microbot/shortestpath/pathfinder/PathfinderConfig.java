@@ -32,6 +32,15 @@ public class PathfinderConfig {
     private static final WorldArea WILDERNESS_UNDERGROUND = new WorldArea(2944, 9918, 320, 442, 0);
     private static final WorldArea WILDERNESS_UNDERGROUND_LEVEL_19 = new WorldArea(2944, 10067, 320, 442, 0);
     private static final WorldArea WILDERNESS_UNDERGROUND_LEVEL_29 = new WorldArea(2944, 10147, 320, 442, 0);
+    private static final WorldArea FEROX_ENCLAVE_1 = new WorldArea(3123, 3622, 2, 10, 0);
+    private static final WorldArea FEROX_ENCLAVE_2 = new WorldArea(3125, 3617, 16, 23, 0);
+    private static final WorldArea FEROX_ENCLAVE_3 = new WorldArea(3138, 3636, 18, 10, 0);
+    private static final WorldArea FEROX_ENCLAVE_4 = new WorldArea(3141, 3625, 14, 11, 0);
+    private static final WorldArea FEROX_ENCLAVE_5 = new WorldArea(3141, 3619, 7, 6, 0);
+    private static final WorldArea NOT_WILDERNESS_1 = new WorldArea(2997, 3525, 34, 9, 0);
+    private static final WorldArea NOT_WILDERNESS_2 = new WorldArea(3005, 3534, 21, 10, 0);
+    private static final WorldArea NOT_WILDERNESS_3 = new WorldArea(3000, 3534, 5, 5, 0);
+    private static final WorldArea NOT_WILDERNESS_4 = new WorldArea(3031, 3525, 2, 2, 0);
 
     private final SplitFlagMap mapData;
     private final ThreadLocal<CollisionMap> map;
@@ -39,6 +48,7 @@ public class PathfinderConfig {
     private final Map<WorldPoint, Set<Transport>> allTransports;
     @Setter
     private Set<Transport> usableTeleports;
+    private final List<WorldPoint> filteredTargets = new ArrayList<>(4);
 
     @Getter
     private ConcurrentHashMap<WorldPoint, Set<Transport>> transports;
@@ -189,6 +199,26 @@ public class PathfinderConfig {
                 transports.put(key, usableWildyTeleports);
             }
             transportsPacked.put(packedLocation, usableWildyTeleports);
+        }
+    }
+
+    public void filterLocations(Set<WorldPoint> locations, boolean canReviveFiltered) {
+        if (avoidWilderness) {
+            locations.removeIf(location -> {
+                boolean inWilderness = PathfinderConfig.isInWilderness(location);
+                if (inWilderness) {
+                    filteredTargets.add(location);
+                }
+                return inWilderness;
+            });
+            // If we ended up with no valid locations we re-include the filtered locations
+            if (locations.isEmpty()) {
+                locations.addAll(filteredTargets);
+                filteredTargets.clear();
+            }
+        } else if (canReviveFiltered) { // Re-include previously filtered locations
+            locations.addAll(filteredTargets);
+            filteredTargets.clear();
         }
     }
 
@@ -363,12 +393,40 @@ public class PathfinderConfig {
     }
 
     public static boolean isInWilderness(WorldPoint p) {
-        return WILDERNESS_ABOVE_GROUND.distanceTo(p) == 0 || WILDERNESS_UNDERGROUND.distanceTo(p) == 0;
+        return WILDERNESS_ABOVE_GROUND.distanceTo(p) == 0
+                && FEROX_ENCLAVE_1.distanceTo(p) != 0
+                && FEROX_ENCLAVE_2.distanceTo(p) != 0
+                && FEROX_ENCLAVE_3.distanceTo(p) != 0
+                && FEROX_ENCLAVE_4.distanceTo(p) != 0
+                && FEROX_ENCLAVE_5.distanceTo(p) != 0
+                && NOT_WILDERNESS_1.distanceTo(p) != 0
+                && NOT_WILDERNESS_2.distanceTo(p) != 0
+                && NOT_WILDERNESS_3.distanceTo(p) != 0
+                && NOT_WILDERNESS_4.distanceTo(p) != 0
+                || WILDERNESS_UNDERGROUND.distanceTo(p) == 0;
     }
 
-    public boolean isInWilderness(int packedPoint) {
+    public static boolean isInWilderness(int packedPoint) {
         return WorldPointUtil.distanceToArea(packedPoint, WILDERNESS_ABOVE_GROUND) == 0
+                && WorldPointUtil.distanceToArea(packedPoint, FEROX_ENCLAVE_1) != 0
+                && WorldPointUtil.distanceToArea(packedPoint, FEROX_ENCLAVE_2) != 0
+                && WorldPointUtil.distanceToArea(packedPoint, FEROX_ENCLAVE_3) != 0
+                && WorldPointUtil.distanceToArea(packedPoint, FEROX_ENCLAVE_4) != 0
+                && WorldPointUtil.distanceToArea(packedPoint, FEROX_ENCLAVE_5) != 0
+                && WorldPointUtil.distanceToArea(packedPoint, NOT_WILDERNESS_1) != 0
+                && WorldPointUtil.distanceToArea(packedPoint, NOT_WILDERNESS_2) != 0
+                && WorldPointUtil.distanceToArea(packedPoint, NOT_WILDERNESS_3) != 0
+                && WorldPointUtil.distanceToArea(packedPoint, NOT_WILDERNESS_4) != 0
                 || WorldPointUtil.distanceToArea(packedPoint, WILDERNESS_UNDERGROUND) == 0;
+    }
+
+    public static boolean isInWilderness(Set<WorldPoint> worldPoints) {
+        for (WorldPoint worldPoint : worldPoints) {
+            if (isInWilderness(worldPoint)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean avoidWilderness(int packedPosition, int packedNeightborPosition, boolean targetInWilderness) {

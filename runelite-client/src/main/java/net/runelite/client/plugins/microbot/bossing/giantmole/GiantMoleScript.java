@@ -328,11 +328,13 @@ public class GiantMoleScript extends Script
 
             if (ShortestPathPlugin.getPathfinder() != null)
             {
-                if (ShortestPathPlugin.getPathfinder().getTarget().distanceTo2D(moleLocation) > 1)
-                {
-                    log.info("Current target: " + ShortestPathPlugin.getPathfinder().getTarget());
-                    log.info("New target: " + moleLocation);
-                    Rs2Walker.setTarget(moleLocation);
+                for (WorldPoint target : ShortestPathPlugin.getPathfinder().getTargets()) {
+                    if (!isRunning()) break;
+                    if (target.distanceTo2D(moleLocation) > 1) {
+                        log.info("Current target: " + target);
+                        log.info("New target: " + moleLocation);
+                        Rs2Walker.setTarget(moleLocation);
+                    }
                 }
             }
             else

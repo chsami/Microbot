@@ -1662,21 +1662,6 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
     }
 
     /**
-     * @param start
-     */
-    public void setStart(WorldPoint start) {
-        if (ShortestPathPlugin.getPathfinder() == null) {
-            return;
-        }
-        ShortestPathPlugin.setStartPointSet(true);
-        if (Microbot.getClient().isClientThread()) {
-            Microbot.getClientThread().runOnSeperateThread(() -> restartPathfinding(start, ShortestPathPlugin.getPathfinder().getTarget()));
-        } else {
-            restartPathfinding(start, ShortestPathPlugin.getPathfinder().getTarget());
-        }
-    }
-
-    /**
      * Checks the distance between startpoint and endpoint using ShortestPath
      *
      * @param startpoint
