@@ -227,4 +227,6 @@
 3539 9771 0	3543 9772 0	Enter;Cave;43762	93 Agility			6	
 3543 9772 0	3539 9771 0	Enter;Cave;43763	93 Agility			6	
 3548 3282 0	3544 3282 0	Jump-Across;Dry stone wall;53256	72 Agility			6	 
-3544 3282 0	3548 3282 0	Jump-Across;Dry stone wall;53256	72 Agility			6	 
+3544 3282 0	3548 3282 0	Jump-Across;Dry stone wall;53256	72 Agility			6
+2154 3072 0	2160 3072 0	Cross;Stepping stone;10663	76 Agility			6
+2160 3072 0	2154 3072 0	Cross;Stepping stone;10663	76 Agility			6

@@ -14,6 +14,7 @@ import net.runelite.client.plugins.grounditems.GroundItemsPlugin;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.VarbitValues;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
+import net.runelite.client.plugins.microbot.util.ActorModel;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
@@ -25,6 +26,7 @@ import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Food;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Potion;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
+import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
@@ -55,6 +57,7 @@ public class Rs2Player {
     private static int divineRangedTime = -1;
     private static int divineBastionTime = -1;
     private static int divineCombatTime = -1;
+    private static int divineMagicTime = -1;
     public static int antiVenomTime = -1;
     public static int staminaBuffTime = -1;
     public static int antiPoisonTime = -1;
@@ -94,6 +97,10 @@ public class Rs2Player {
         return divineCombatTime > 0;
     }
 
+    public static boolean hasDivineMagicActive() {
+        return divineMagicTime > 0;
+    }
+
     public static boolean hasGoadingActive() {
         return goadingTime > 0;
     }
@@ -110,6 +117,9 @@ public class Rs2Player {
         return Microbot.getClient().getBoostedSkillLevel(Skill.DEFENCE) - threshold > Microbot.getClient().getRealSkillLevel(Skill.DEFENCE);
     }
 
+    public static boolean hasMagicActive(int threshold) {
+        return Microbot.getClient().getBoostedSkillLevel(Skill.MAGIC) - threshold > Microbot.getClient().getRealSkillLevel(Skill.MAGIC);
+    }
 
     public static boolean hasAntiVenomActive() {
         if (Rs2Equipment.isWearing("serpentine helm")) {
@@ -152,6 +162,9 @@ public class Rs2Player {
         }
         if (event.getVarbitId() == Varbits.BUFF_GOADING_POTION) {
             goadingTime = event.getValue();
+        }
+        if (event.getVarbitId() == Varbits.DIVINE_MAGIC) {
+            divineMagicTime = event.getValue();
         }
         if (event.getVarpId() == VarPlayer.POISON) {
             if (event.getValue() >= VENOM_VALUE_CUTOFF) {
@@ -1379,6 +1392,18 @@ public class Rs2Player {
      */
     public static boolean hasPrayerPoints() {
         return Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER) > 0;
+    }
+
+    /**
+     * Calculates the player's current prayer level as a percentage of their base prayer level.
+     *
+     * @return a value between 0 and 100 representing the percentage of prayer remaining.
+     */
+    public static int getPrayerPercentage() {
+        int current = Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER);
+        int base = Microbot.getClient().getRealSkillLevel(Skill.PRAYER);
+
+        return (int) ((current / (double) base) * 100);
     }
 
     /**

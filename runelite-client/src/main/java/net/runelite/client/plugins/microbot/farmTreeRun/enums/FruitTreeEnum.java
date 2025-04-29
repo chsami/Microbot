@@ -9,7 +9,7 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 @Getter
 @RequiredArgsConstructor
 public enum FruitTreeEnum {
-    APPLE("Apple sapling", ItemID.APPLE_SAPLING, "Sweetcorn", ItemID.SWEETCORN_7088, 9, 27),
+    APPLE("Apple sapling", ItemID.APPLE_SAPLING, "Sweetcorn", ItemID.SWEETCORN, 9, 27),
     BANANA("Banana sapling", ItemID.BANANA_SAPLING, "Apples(5)", ItemID.APPLES5, 4, 33),
     ORANGE("Orange sapling", ItemID.ORANGE_SAPLING, "Strawberries(5)", ItemID.STRAWBERRIES5, 3, 39),
     CURRY("Curry sapling", ItemID.CURRY_SAPLING, "Bananas(5)", ItemID.BANANAS5, 5, 42),

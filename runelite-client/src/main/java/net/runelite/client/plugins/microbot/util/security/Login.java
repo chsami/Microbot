@@ -91,6 +91,9 @@ public class Login {
                         !x.getTypes().contains(WorldType.DEADMAN) &&
                         !x.getTypes().contains(WorldType.PVP_ARENA) &&
                         !x.getTypes().contains(WorldType.TOURNAMENT) &&
+                        !x.getTypes().contains(WorldType.NOSAVE_MODE) &&
+                        !x.getTypes().contains(WorldType.LEGACY_ONLY) &&
+                        !x.getTypes().contains(WorldType.EOC_ONLY) &&
                         !x.getTypes().contains(WorldType.FRESH_START_WORLD) &&
                         x.getPlayers() < MAX_PLAYER_COUNT &&
                         x.getPlayers() >= 0)
@@ -145,6 +148,9 @@ public class Login {
                         !x.getTypes().contains(WorldType.DEADMAN) &&
                         !x.getTypes().contains(WorldType.PVP_ARENA) &&
                         !x.getTypes().contains(WorldType.TOURNAMENT) &&
+                        !x.getTypes().contains(WorldType.NOSAVE_MODE) &&
+                        !x.getTypes().contains(WorldType.LEGACY_ONLY) &&
+                        !x.getTypes().contains(WorldType.EOC_ONLY) &&
                         !x.getTypes().contains(WorldType.FRESH_START_WORLD) &&
                         x.getPlayers() < MAX_PLAYER_COUNT &&
                         x.getPlayers() >= 0)

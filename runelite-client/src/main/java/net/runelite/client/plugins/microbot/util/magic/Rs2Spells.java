@@ -210,6 +210,11 @@ public enum Rs2Spells {
             Runes.COSMIC, 1,
             Runes.FIRE, 20
     ), Rs2Spellbook.MODERN),
+    ENCHANT_ZENYTE_JEWELLERY(MagicAction.ENCHANT_ZENYTE_JEWELLERY, Map.of(
+            Runes.COSMIC, 1,
+            Runes.SOUL, 20,
+            Runes.BLOOD, 20
+    ), Rs2Spellbook.MODERN),
     CHARGE_WATER_ORB(MagicAction.CHARGE_WATER_ORB, Map.of(
             Runes.WATER, 30,
             Runes.COSMIC, 3

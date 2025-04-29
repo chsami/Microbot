@@ -7,7 +7,7 @@ import net.runelite.client.plugins.microbot.util.gameobject.Rs2Cannon;
 
 import java.util.concurrent.TimeUnit;
 
-public class CannonScript extends Script {
+public class QolCannonScript extends Script {
     public boolean run(QoLConfig config) {
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {

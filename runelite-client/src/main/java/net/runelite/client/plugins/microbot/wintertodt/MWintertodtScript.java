@@ -507,13 +507,27 @@ public class MWintertodtScript extends Script {
     public int getWarmthLevel() {
         String warmthWidgetText = Rs2Widget.getChildWidgetText(396, 20);
 
-        Pattern pattern = Pattern.compile("\\d+");
+        if (warmthWidgetText == null || warmthWidgetText.isEmpty()) {
+            Microbot.log("No Warmth Level Found");
+            return 100; // Default value if text not found
+        }
+
+        // Pattern to match digits before the % character
+        Pattern pattern = Pattern.compile("(\\d+)%");
         Matcher matcher = pattern.matcher(warmthWidgetText);
 
         if (matcher.find()) {
-            int warmthLevel = Integer.parseInt(matcher.group());
-            return warmthLevel;
+            return Integer.parseInt(matcher.group(1));
         }
+
+        // Fallback pattern to match any digits if first pattern fails
+        Pattern fallbackPattern = Pattern.compile("\\d+");
+        Matcher fallbackMatcher = fallbackPattern.matcher(warmthWidgetText);
+
+        if (fallbackMatcher.find()) {
+            return Integer.parseInt(fallbackMatcher.group());
+        }
+        Microbot.log("No Warmth Level Found");
         return 100;
     }
 }

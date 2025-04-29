@@ -1,15 +1,27 @@
 package net.runelite.client.plugins.microbot.util.overlay;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import net.runelite.api.NPC;
 import net.runelite.api.Perspective;
 import net.runelite.api.Point;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.ui.overlay.outline.ModelOutlineRenderer;
 
 import java.awt.*;
 
+@Singleton
 public class OverlayHelper {
-    public static void drawTile(Graphics2D graphics, LocalPoint localPoint, Font font, String text, Color color) {
+
+    private final ModelOutlineRenderer modelOutlineRenderer;
+
+    @Inject
+    public OverlayHelper(ModelOutlineRenderer modelOutlineRenderer) {
+        this.modelOutlineRenderer = modelOutlineRenderer;
+    }
+
+    public void drawTile(Graphics2D graphics, LocalPoint localPoint, Font font, String text, Color color) {
         if (localPoint == null) return;
 
         Polygon poly = Perspective.getCanvasTilePoly(Microbot.getClient(), localPoint);
@@ -31,22 +43,19 @@ public class OverlayHelper {
         }
     }
 
-    public static void drawTile(Graphics2D graphics, LocalPoint localPoint, String text, Color color) {
+    public void drawTile(Graphics2D graphics, LocalPoint localPoint, String text, Color color) {
         Font font = new Font("Arial", Font.BOLD, 12);
         drawTile(graphics, localPoint, font, text, color);
     }
-    
-    public static void drawNPC(Graphics2D graphics, NPC npc, Color color) {
+
+    public void drawNPC(NPC npc, int width, Color color, int feather) {
         if (npc == null) return;
         if (npc.isDead()) return;
 
-        LocalPoint localPoint = npc.getLocalLocation();
-        if (localPoint != null) {
-            Shape shape = npc.getConvexHull();
-            if (shape != null) {
-                graphics.setColor(color);
-                graphics.draw(shape);
-            }
-        }
+        modelOutlineRenderer.drawOutline(npc, width, color, feather);
+    }
+
+    public void drawNPC(NPC npc, Color color) {
+        drawNPC(npc, 1, color, 1);
     }
 }

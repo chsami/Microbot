@@ -222,6 +222,19 @@ public class Rs2Potion
         );
     }
 
+    /**
+     * Returns a list of potions that cure venom and provide venom immunity.
+     *
+     * @return a List of anti-venom potion names
+     */
+    public static List<String> getAntiVenomVariants() {
+        return Arrays.asList(
+                "Anti-venom",            // Instantly cures venom
+                "Anti-venom+",           // Cures venom + 3 min immunity
+                "Extended anti-venom+"   // Cures venom + 6 min immunity
+        );
+    }
+
     /*
      * ======================================
      * Skilling-related potions

@@ -66,7 +66,7 @@ public class Rs2InventorySetup {
      *
      * @return true if the scheduler is cancelled, false otherwise.
      */
-    private boolean isMainSchedulerCancelled() {
+    public boolean isMainSchedulerCancelled() {
         return _mainScheduler != null && _mainScheduler.isCancelled();
     }
 

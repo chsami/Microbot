@@ -100,8 +100,6 @@ public class AttackStyleScript extends Script {
             // Update attack style information
             updateAttackStyleInfo();
 
-            System.out.println(attackStyle.getName());
-
             if (attackStyle == AttackStyle.LONGRANGE || attackStyle == AttackStyle.RANGING) {
                 WeaponAttackType weaponAttackType = WeaponAttackType.getById(equippedWeaponTypeVarbit);
                 // check if any of the attack options is rapid
@@ -372,7 +370,7 @@ public class AttackStyleScript extends Script {
     }
 
     private boolean disableIfMaxed(boolean disable) {
-        return isMaxed() || (!isMaxed() && disable);
+        return isMaxed() && disable;
     }
 
     @Override

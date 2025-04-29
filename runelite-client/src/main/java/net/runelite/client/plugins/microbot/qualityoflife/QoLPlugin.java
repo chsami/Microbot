@@ -116,7 +116,7 @@ public class QoLPlugin extends Plugin {
     @Inject
     private WintertodtOverlay wintertodtOverlay;
     @Inject
-    private CannonScript cannonScript;
+    private QolCannonScript cannonScript;
     @Inject
     @Getter
     private PvpScript pvpScript;

@@ -544,7 +544,7 @@ public class DemonicGorillaScript extends Script {
         }
         var interacting = Rs2Player.getInteracting();
         if (interacting != null) {
-            if (interacting.getName().equals("Demonic gorilla")) {
+            if (Objects.equals(interacting.getName(), "Demonic gorilla")) {
                 return (Rs2NpcModel) interacting;
             }
         }
