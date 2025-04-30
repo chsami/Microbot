@@ -170,6 +170,8 @@ public class BarrowsScript extends Script {
                                 }
 
                                 //antipattern turn on prayer early
+                                antiPatternEnableWrongPrayer();
+
                                 antiPatternActivatePrayer();
 
                                 antiPatternDropVials();
@@ -200,6 +202,8 @@ public class BarrowsScript extends Script {
                                 }
 
                                 //antipattern turn on prayer early
+                                antiPatternEnableWrongPrayer();
+
                                 antiPatternActivatePrayer();
                                 //antipattern
 
@@ -841,9 +845,29 @@ public class BarrowsScript extends Script {
             }
         }
     }
+    public void antiPatternEnableWrongPrayer(){
+        if(!Rs2Prayer.isPrayerActive(NeededPrayer)){
+            if(Rs2Random.between(0,100) <= Rs2Random.between(1,4)) {
+                Rs2PrayerEnum wrongPrayer = null;
+                int random = Rs2Random.between(0,100);
+                if(random <= 50){
+                    NeededPrayer = Rs2PrayerEnum.PROTECT_MELEE;
+                }
+                if(random > 50 && random < 75){
+                    NeededPrayer = Rs2PrayerEnum.PROTECT_RANGE;
+                }
+                if(random >= 75){
+                    NeededPrayer = Rs2PrayerEnum.PROTECT_MAGIC;
+                }
+                drinkPrayerPot();
+                Rs2Prayer.toggle(NeededPrayer);
+                sleep(0, 750);
+            }
+        }
+    }
     public void antiPatternActivatePrayer(){
         if(!Rs2Prayer.isPrayerActive(NeededPrayer)){
-            if(Rs2Random.between(0,100) <= Rs2Random.between(1,5)) {
+            if(Rs2Random.between(0,100) <= Rs2Random.between(1,8)) {
                 drinkPrayerPot();
                 Rs2Prayer.toggle(NeededPrayer);
                 sleep(0, 750);
