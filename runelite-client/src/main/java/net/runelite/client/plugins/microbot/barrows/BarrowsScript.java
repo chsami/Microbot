@@ -81,11 +81,6 @@ public class BarrowsScript extends Script {
                     inTunnels = false;
                 }
 
-                if (Rs2Player.getQuestState(Quest.HIS_FAITHFUL_SERVANTS) != QuestState.FINISHED) {
-                    Microbot.showMessage("Complete the 'His Faithful Servants' quest for the webwalker to function correctly");
-                    super.shutdown();
-                }
-
                 if(Rs2Magic.getCurrentAutoCastSpell() == null){
                     Microbot.log("Please select your wind spell in auto-cast then restart the script. stopping...");
                     super.shutdown();
