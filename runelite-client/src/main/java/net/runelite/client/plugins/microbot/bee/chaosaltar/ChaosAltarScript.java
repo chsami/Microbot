@@ -1,6 +1,9 @@
 package net.runelite.client.plugins.microbot.bee.chaosaltar;
 
-import net.runelite.api.*;
+import net.runelite.api.GameObject;
+import net.runelite.api.ItemID;
+import net.runelite.api.Skill;
+import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -8,7 +11,9 @@ import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.player.Rs2Pvp;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
@@ -24,8 +29,8 @@ import static net.runelite.client.plugins.microbot.util.walker.Rs2Walker.walkTo;
 public class ChaosAltarScript extends Script {
 
     public static final WorldArea CHAOS_ALTAR_AREA = new WorldArea(2947, 3818, 11, 6, 0);
-    public static final WorldPoint CHAOS_ALTAR_POINT = new WorldPoint(2949, 3821,0);
-    public static final WorldPoint CHAOS_ALTAR_POINT_SOUTH = new WorldPoint(2949, 3813,0);
+    public static final WorldPoint CHAOS_ALTAR_POINT = new WorldPoint(2949, 3820,0);
+    public static final WorldPoint CHAOS_ALTAR_POINT_SOUTH = new WorldPoint(2972, 3810,0);
 
     private ChaosAltarConfig config;
 
@@ -53,13 +58,10 @@ public class ChaosAltarScript extends Script {
                         teleportToWilderness();
                         break;
                     case OFFER_BONES:
-                        offerBones();
+                        if (config.giveBonesFast()) {offerBonesFast();} else offerBones();
                         break;
                     case WALK_TO_ALTAR:
                         walkTo(CHAOS_ALTAR_POINT_SOUTH);
-                        sleep(100,600);
-                        walkTo(CHAOS_ALTAR_POINT);
-                        sleep(300,600);
                         offerBones();
                         break;
                     case DIE_TO_NPC:
@@ -85,14 +87,21 @@ public class ChaosAltarScript extends Script {
     public boolean isAtChaosAltar() {
         for (TileObject obj : Rs2GameObject.getAll()) {
             if (obj.getId() == 411) {
-                Tile altarTile = obj.getWorldView().getSelectedSceneTile();
-                if (Rs2GameObject.isReachable((GameObject) altarTile)) {
-                    return true;
+                if (obj instanceof GameObject) {
+                    GameObject gameObject = (GameObject) obj;
+                    System.out.println("Found Chaos Altar GameObject at: " + gameObject.getWorldLocation());
+                    if (Rs2GameObject.isReachable(gameObject)) {
+                        System.out.println("Chaos Altar is reachable.");
+                        return true;
+                    } else {
+                        System.out.println("Chaos Altar found but not reachable.");
+                    }
                 }
             }
         }
         return false;
     }
+
 
     private void dieToNpc() {
         System.out.println("Walking to dangerous NPC to die");
@@ -123,27 +132,76 @@ public class ChaosAltarScript extends Script {
 
     private void offerBones() {
         System.out.println("Offering bones at altar");
+        if (Rs2Player.isInCombat()) {offerBonesFast(); return;}
+
+        if (Rs2Inventory.isFull()){
+            walkTo(CHAOS_ALTAR_POINT);
+        }
+
+        if (!CHAOS_ALTAR_AREA.contains(Rs2Player.getWorldLocation())) {
+            if (Rs2Player.getWorldLocation().getY() > 3650)
+            {walkTo(CHAOS_ALTAR_POINT);}
+        }
 
         if (Rs2Inventory.contains(DRAGON_BONES) && isRunning()) {
-            Rs2Inventory.slotInteract(20, "use");
-            Rs2Inventory.useItemOnObject(BIG_BONES, 411);
+            Rs2Inventory.slotInteract(2, "use");
+            sleep(300, 500);
+            Rs2GameObject.interact(411);
             sleep(300, 500);
 
-            Rs2Inventory.waitForInventoryChanges(5000);
+            int randomWait = Rs2Random.between(1000,5000);
+            Rs2Inventory.waitForInventoryChanges(randomWait);
 
             // Small random delay between offerings
             sleep(200, 400);
         }
     }
 
+    private void offerBonesFast() {
+        System.out.println("Offering bones at altar");
+
+        if (Rs2Inventory.isFull()){
+            walkTo(CHAOS_ALTAR_POINT);
+        }
+
+        if (!CHAOS_ALTAR_AREA.contains(Rs2Player.getWorldLocation())) {
+            if (Rs2Player.getWorldLocation().getY() > 3650)
+            {walkTo(CHAOS_ALTAR_POINT);}
+        }
+
+        if (Rs2Inventory.contains(DRAGON_BONES) && isRunning()) {
+            Rs2Inventory.slotInteract(2, "use");
+            sleep(100, 300);
+            Rs2GameObject.interact(411);
+            Rs2Player.waitForXpDrop(Skill.PRAYER);
+
+            // Small random delay between offerings
+            sleep(100, 200);
+        }
+    }
+
+
     private void handleBanking() {
         if (!Rs2Bank.isOpen()) {
             System.out.println("Opening bank");
+            Rs2Bank.walkToBank();
             Rs2Bank.walkToBankAndUseBank();
         } else {
             Rs2Bank.depositAll();
+
+            if(!Rs2Bank.hasItem(DRAGON_BONES)) {
+                Microbot.log("NO BONES, SHUTTING DOWN");
+                shutdown();
+            }
+
+            if(!Rs2Bank.hasItem(BURNING_AMULET5)) {
+                Microbot.log("NO FULL BURNING AMULET, SHUTTING DOWN");
+                shutdown();
+            }
+
             // If amulet not equipped or in inventory
             if (!hasBurningAmulet()) {
+                sleep(400);
                 System.out.println("Withdrawing burning amulet");
                 Rs2Bank.withdrawOne(BURNING_AMULET5);
                 Rs2Inventory.waitForInventoryChanges(2000);

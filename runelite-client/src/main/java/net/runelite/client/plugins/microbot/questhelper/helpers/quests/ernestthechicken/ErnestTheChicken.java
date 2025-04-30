@@ -189,6 +189,7 @@ public class ErnestTheChicken extends BasicQuestHelper {
 
     public void setupSteps() {
         talkToVeronica = new NpcStep(this, NpcID.VERONICA, new WorldPoint(3109, 3329, 0), "Talk to Veronica outside of Draynor Manor.");
+        talkToVeronica.addDialogStep("Yes.");
         talkToVeronica.addDialogStep("Aha, sounds like a quest. I'll help.");
         enterManor = new ObjectStep(this, ObjectID.LARGE_DOOR_134, new WorldPoint(3108, 3353, 0), "Enter Draynor Manor's ground floor.");
         goToFirstFloor = new ObjectStep(this, ObjectID.STAIRCASE_11498, new WorldPoint(3109, 3364, 0), "Go upstairs and pick up the fish food.");

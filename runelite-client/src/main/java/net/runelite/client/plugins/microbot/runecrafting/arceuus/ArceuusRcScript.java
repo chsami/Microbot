@@ -70,10 +70,6 @@ public class ArceuusRcScript extends Script {
     }
 
     public void goToBloodAltar() {
-        // disable use of agility shortcuts before walking to the blood altar as it tries to use the agility shortcut the wrong way
-        if(Rs2Walker.config.useAgilityShortcuts())
-            Microbot.getConfigManager().setConfiguration("shortestpath","useAgilityShortcuts",false);
-
         Rs2Walker.walkTo(ARCEUUS_BLOOD_ALTAR);
     }
 
@@ -85,8 +81,6 @@ public class ArceuusRcScript extends Script {
     }
 
     public void goToDarkAltar() {
-        if(!Rs2Walker.config.useAgilityShortcuts())
-            Microbot.getConfigManager().setConfiguration("shortestpath","useAgilityShortcuts",true);
         Rs2Walker.walkTo(ARCEUUS_DARK_ALTAR);
     }
 
@@ -99,8 +93,6 @@ public class ArceuusRcScript extends Script {
     }
 
     public void goToRunestone() {
-        if(!Rs2Walker.config.useAgilityShortcuts())
-            Microbot.getConfigManager().setConfiguration("shortestpath","useAgilityShortcuts",true);
         Rs2Walker.walkTo(DENSE_RUNESTONE);
     }
 

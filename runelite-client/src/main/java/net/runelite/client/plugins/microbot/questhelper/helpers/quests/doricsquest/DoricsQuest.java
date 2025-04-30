@@ -72,6 +72,7 @@ public class DoricsQuest extends BasicQuestHelper {
     public void setupSteps() {
         talkToDoric = new NpcStep(this, NpcID.DORIC, new WorldPoint(2951, 3451, 0), "Bring Doric north of Falador all the required items. You can mine them all in the Dwarven Mines, or buy them from the Grand Exchange.", clay, copper, iron);
         talkToDoric.addDialogStep("I wanted to use your anvils.");
+        talkToDoric.addDialogStep("Yes.");
         talkToDoric.addDialogStep("Yes, I will get you the materials.");
     }
 

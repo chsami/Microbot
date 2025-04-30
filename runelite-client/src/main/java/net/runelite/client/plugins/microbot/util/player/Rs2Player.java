@@ -1896,15 +1896,19 @@ public class Rs2Player {
      *         or if the local player is null, it returns null.
      */
     public static Actor getInteracting() {
-        if (Microbot.getClient().getLocalPlayer() == null) return null;
+        Optional<Actor> result = Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            if (Microbot.getClient().getLocalPlayer() == null) return null;
 
-        var interactingActor = Microbot.getClient().getLocalPlayer().getInteracting();
+            var interactingActor = Microbot.getClient().getLocalPlayer().getInteracting();
 
-        if (interactingActor instanceof net.runelite.api.NPC) {
-            return new Rs2NpcModel((NPC) interactingActor);
-        }
+            if (interactingActor instanceof net.runelite.api.NPC) {
+                return new Rs2NpcModel((NPC) interactingActor);
+            }
 
-        return interactingActor;
+            return interactingActor;
+        });
+
+        return result.orElse(null);
     }
     /**
      * Checks if the player has finished Tutorial Island.
