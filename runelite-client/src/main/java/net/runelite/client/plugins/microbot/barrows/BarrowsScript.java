@@ -851,16 +851,16 @@ public class BarrowsScript extends Script {
                 Rs2PrayerEnum wrongPrayer = null;
                 int random = Rs2Random.between(0,100);
                 if(random <= 50){
-                    NeededPrayer = Rs2PrayerEnum.PROTECT_MELEE;
+                    wrongPrayer = Rs2PrayerEnum.PROTECT_MELEE;
                 }
                 if(random > 50 && random < 75){
-                    NeededPrayer = Rs2PrayerEnum.PROTECT_RANGE;
+                    wrongPrayer = Rs2PrayerEnum.PROTECT_RANGE;
                 }
                 if(random >= 75){
-                    NeededPrayer = Rs2PrayerEnum.PROTECT_MAGIC;
+                    wrongPrayer = Rs2PrayerEnum.PROTECT_MAGIC;
                 }
                 drinkPrayerPot();
-                Rs2Prayer.toggle(NeededPrayer);
+                Rs2Prayer.toggle(wrongPrayer);
                 sleep(0, 750);
             }
         }
