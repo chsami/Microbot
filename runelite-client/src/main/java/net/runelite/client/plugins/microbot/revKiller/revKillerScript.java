@@ -553,7 +553,7 @@ public class revKillerScript extends Script {
                             Microbot.log("Fast Teleing");
                         } else {
                             sleep(500, 1000);
-                            sleepUntil(()-> !Rs2Player.isAnimating(), generateRandomNumber(4000,6000));
+                            sleepUntil(()-> !Rs2Player.isAnimating(), generateRandomNumber(6000,10000));
                             Microbot.log("Teleing");
                         }
                     }

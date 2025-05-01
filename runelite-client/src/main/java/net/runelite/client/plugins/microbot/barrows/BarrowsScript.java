@@ -531,8 +531,8 @@ public class BarrowsScript extends Script {
                             } else {
                                 shouldBank = false;
                                 Rs2Inventory.interact("Barrows teleport", "Break");
-                                sleepUntil(() -> Rs2Player.isAnimating(), Rs2Random.between(1000, 2000));
-                                sleepUntil(() -> !Rs2Player.isAnimating(), Rs2Random.between(3000, 5000));
+                                sleepUntil(() -> Rs2Player.isAnimating(), Rs2Random.between(2000, 4000));
+                                sleepUntil(() -> !Rs2Player.isAnimating(), Rs2Random.between(6000, 10000));
                                 ChestsOpened++;
                                 WhoisTun = "Unknown";
                             }
@@ -890,8 +890,8 @@ public class BarrowsScript extends Script {
                 if(inTunnels){
                     inTunnels=false;
                 }
-                sleepUntil(()-> Rs2Player.isAnimating(), Rs2Random.between(2000,4000));
-                sleepUntil(()-> !Rs2Player.isAnimating(), Rs2Random.between(4000,6000));
+                sleepUntil(() -> Rs2Player.isAnimating(), Rs2Random.between(2000, 4000));
+                sleepUntil(() -> !Rs2Player.isAnimating(), Rs2Random.between(6000, 10000));
             }
         }
     }
