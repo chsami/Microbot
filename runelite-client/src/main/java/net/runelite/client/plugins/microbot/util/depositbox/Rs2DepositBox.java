@@ -3,9 +3,13 @@ package net.runelite.client.plugins.microbot.util.depositbox;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.GameObject;
 import net.runelite.api.MenuAction;
+import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
+import net.runelite.client.plugins.microbot.util.gameobject.Rs2BankID;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
@@ -18,8 +22,7 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.awt.*;
-import java.util.Arrays;
-import java.util.Comparator;
+import java.util.*;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -390,44 +393,117 @@ public class Rs2DepositBox {
     }
 
     /**
-     * Get the nearest despoit box
+     * Returns the nearest accessible deposit box to the local player’s current location.
      *
-     * @return DepositBoxLocation
+     * @return the nearest {@link DepositBoxLocation}, or {@code null} if no accessible deposit box was found
      */
     public static DepositBoxLocation getNearestDepositBox() {
         return getNearestDepositBox(Microbot.getClient().getLocalPlayer().getWorldLocation());
     }
-    
+
     /**
-     * Get the nearest deposit box to world point
+     * Returns the nearest accessible deposit box to the specified world point,
+     * using a default search radius of 15 tiles.
      *
-     * @param worldPoint 
-     * @return DepositBoxLocation
+     * @param worldPoint the origin from which to search for deposit boxes
+     * @return the nearest {@link DepositBoxLocation}, or {@code null} if no accessible deposit box was found
      */
     public static DepositBoxLocation getNearestDepositBox(WorldPoint worldPoint) {
-        Microbot.log("Calculating nearest deposit box path...");
+        return getNearestDepositBox(worldPoint, 15);
+    }
 
-        DepositBoxLocation despoitBoxLocation = Arrays.stream(DepositBoxLocation.values())
-                .parallel()
+    /**
+     * Finds the nearest accessible deposit box from the given world point.
+     * <p>
+     * First, scans for in-world deposit box objects within
+     * {@code maxObjectSearchRadius} tiles of {@code worldPoint} whose
+     * {@link DepositBoxLocation#hasRequirements()} passes. If one or more
+     * are found, returns the closest. Otherwise, performs a full pathfinding
+     * search (including transports) to all accessible deposit box coordinates
+     * and returns the box at the end of the shortest path.
+     * </p>
+     *
+     * @param worldPoint            the starting location for the search
+     * @param maxObjectSearchRadius the tile radius to scan for deposit box objects
+     * @return the nearest {@link DepositBoxLocation}, or {@code null} if no accessible deposit box could be reached
+     */
+    public static DepositBoxLocation getNearestDepositBox(WorldPoint worldPoint, int maxObjectSearchRadius) {
+        Microbot.log("Finding nearest deposit box...");
+
+        Set<DepositBoxLocation> accessibleDepositBoxes = Arrays.stream(DepositBoxLocation.values())
                 .filter(DepositBoxLocation::hasRequirements)
-                .min(Comparator.comparingDouble(db ->
-                        Rs2Walker.getTotalTiles(worldPoint, db.getWorldPoint())))
-                .orElse(null);
+                .collect(Collectors.toSet());
 
-        if (despoitBoxLocation != null) {
-            Microbot.log("Found nearest deposit box: " + despoitBoxLocation.name());
-            return despoitBoxLocation;
-        } else {
-            Microbot.log("Unable to find nearest deposit box");
+        if (accessibleDepositBoxes.isEmpty()) {
+            Microbot.log("No accessible deposit boxes found");
             return null;
         }
+
+        if (Microbot.getClient().getLocalPlayer().getWorldLocation() == worldPoint) {
+            List<Integer> boothIds = Arrays.asList(Rs2BankID.bankIds);
+            List<TileObject> bankObjs = Rs2GameObject.getGameObjects().stream()
+                    .filter(obj -> obj.getWorldLocation().distanceTo(worldPoint) < maxObjectSearchRadius)
+                    .filter(obj -> boothIds.contains(obj.getId()))
+                    .collect(Collectors.toList());
+
+            Optional<DepositBoxLocation> fromObject = bankObjs.stream()
+                    .map(obj -> {
+                        DepositBoxLocation closest = accessibleDepositBoxes.stream()
+                                .min(Comparator.comparingInt(b -> obj.getWorldLocation().distanceTo(b.getWorldPoint())))
+                                .orElse(null);
+
+                        int dist = closest == null
+                                ? Integer.MAX_VALUE
+                                : obj.getWorldLocation().distanceTo(closest.getWorldPoint());
+
+                        return new AbstractMap.SimpleEntry<>(closest, dist);
+                    })
+                    .filter(e -> e.getKey() != null && e.getValue() <= maxObjectSearchRadius)
+                    .min(Comparator.comparingInt(Map.Entry::getValue))
+                    .map(Map.Entry::getKey);
+
+            if (fromObject.isPresent()) {
+                Microbot.log("Found nearest deposit box (object): " + fromObject.get());
+                return fromObject.get();
+            }
+        }
+
+        Set<WorldPoint> targets = accessibleDepositBoxes.stream()
+                .map(DepositBoxLocation::getWorldPoint)
+                .collect(Collectors.toSet());
+
+        if (ShortestPathPlugin.getPathfinderConfig().getTransports().isEmpty()) {
+            ShortestPathPlugin.getPathfinderConfig().refresh();
+        }
+
+        Pathfinder pf = new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), worldPoint, targets);
+        pf.run();
+
+        List<WorldPoint> path = pf.getPath();
+        if (path.isEmpty()) {
+            Microbot.log("Unable to find path to any deposit box");
+            return null;
+        }
+
+        WorldPoint nearestTile = path.get(path.size() - 1);
+        Optional<DepositBoxLocation> byPath = accessibleDepositBoxes.stream()
+                .filter(b -> b.getWorldPoint().equals(nearestTile))
+                .findFirst();
+
+        if (byPath.isPresent()) {
+            Microbot.log("Found nearest deposit box (shortest path): " + byPath.get());
+            return byPath.get();
+        }
+
+        Microbot.log("Nearest deposit box point " + nearestTile + " did not match any DepositBoxLocation");
+        return null;
     }
 
     /**
      * Walk to deposit box location
      *
      * @param depositBoxLocation
-     * @return true if player location is less than 4 tiles away from the bank location
+     * @return true if player location is less than 4 tiles away from the deposit box location
      */
     public static boolean walkToDepositBox(DepositBoxLocation depositBoxLocation) {
         if (isOpen()) return true;
@@ -440,7 +516,7 @@ public class Rs2DepositBox {
     /**
      * Walk to the nearest deposit box location
      *
-     * @return true if player location is less than 4 tiles away from the bank location
+     * @return true if player location is less than 4 tiles away from the deposit box location
      */
     public static boolean walkToDepositBox() {
         return walkToDepositBox(getNearestDepositBox());
@@ -449,17 +525,17 @@ public class Rs2DepositBox {
     /**
      * Walk to the nearest deposit box location
      *
-     * @return true if bank interface is open
+     * @return true if deposit box interface is open
      */
     public static boolean walkToAndUseDepositBox() {
         return walkToAndUseDepositBox(getNearestDepositBox());
     }
 
     /**
-     * Walk to deposit box location & use bank
+     * Walk to deposit box location & use deposit box
      *
      * @param depositBoxLocation
-     * @return true if bank interface is open
+     * @return true if deposit box interface is open
      */
     public static boolean walkToAndUseDepositBox(DepositBoxLocation depositBoxLocation) {
         if (isOpen()) return true;
