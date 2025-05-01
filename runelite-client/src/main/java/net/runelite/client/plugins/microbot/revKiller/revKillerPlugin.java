@@ -47,6 +47,7 @@ public class revKillerPlugin extends Plugin {
         }
         revKillerScript.run(config);
         revKillerScript.startPkerDetection();
+        revKillerScript.startHealthCheck();
     }
 
     protected void shutDown() {

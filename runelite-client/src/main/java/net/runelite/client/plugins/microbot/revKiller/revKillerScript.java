@@ -68,6 +68,7 @@ public class revKillerScript extends Script {
     List<World> filteredWorlds = new ArrayList<>();
     long randomdelay = generateRandomNumber(350,1000);
     protected ScheduledFuture<?> checkForPKerFuture;
+    protected ScheduledFuture<?> healthCheckFuture;
     private boolean weDied = false;
     private boolean shouldFlee = false;
 
@@ -108,15 +109,11 @@ public class revKillerScript extends Script {
 
                         loot();
 
-                        EatFood();
-
                         specialAttack();
 
                         fightrev();
 
                         specialAttack();
-
-                        EatFood();
 
                         loot();
 
@@ -364,6 +361,20 @@ public class revKillerScript extends Script {
                 hopToNewWorld();
             }
         }
+    }
+
+    public void startHealthCheck() {
+        Microbot.log("Health detection started");
+        healthCheckFuture = scheduledExecutorService.scheduleWithFixedDelay(
+                this::futureEatFood,
+                0,
+                1000,
+                TimeUnit.MILLISECONDS
+        );
+    }
+
+    public void futureEatFood(){
+        EatFood();
     }
 
     public void startPkerDetection() {
