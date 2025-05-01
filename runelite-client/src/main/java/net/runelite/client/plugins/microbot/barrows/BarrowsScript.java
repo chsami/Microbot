@@ -762,7 +762,7 @@ public class BarrowsScript extends Script {
                 return;
             }
             Rs2NpcModel skele = Rs2Npc.getNpc("Skeleton");
-            if(skele == null){
+            if(skele == null || skele.isDead()){
                 return;
             }
             if(Rs2Npc.hasLineOfSight(skele)){
