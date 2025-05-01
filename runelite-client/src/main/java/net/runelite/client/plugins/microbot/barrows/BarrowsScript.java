@@ -793,7 +793,7 @@ public class BarrowsScript extends Script {
                             break;
                         }
 
-                        if(RP>870){
+                        if(Microbot.getVarbitValue(Varbits.BARROWS_REWARD_POTENTIAL)>870){
                             Microbot.log("Breaking out we have enough RP.");
                             break;
                         }
