@@ -1043,7 +1043,7 @@ public class BarrowsScript extends Script {
                 WalkToTheChestFuture = scheduledExecutorService.scheduleWithFixedDelay(
                         this::walkToChest,
                         0,
-                        100,
+                        500,
                         TimeUnit.MILLISECONDS
                 );
             }
