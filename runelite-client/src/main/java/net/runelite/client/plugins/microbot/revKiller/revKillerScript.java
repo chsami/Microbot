@@ -4,6 +4,7 @@ import com.google.inject.Provides;
 import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.Item;
 import net.runelite.api.ItemID;
+import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ActorDeath;
 import net.runelite.api.kit.KitType;
@@ -32,6 +33,8 @@ import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.player.Rs2PlayerModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Pvp;
+import net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer;
+import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
@@ -314,12 +317,22 @@ public class revKillerScript extends Script {
             shouldFlee = false;
         } else {
             Microbot.log("We're teleblocked! Attempting to run to the bank");
+            enablePrayer();
             Rs2Walker.walkTo(BankLocation.FEROX_ENCLAVE.getWorldPoint());
+            Rs2Prayer.disableAllPrayers();
             shouldFlee = false;
         }
     }
 
-
+    public void enablePrayer(){
+        if(!Rs2Prayer.isPrayerActive(Rs2PrayerEnum.PROTECT_MAGIC)) {
+            if (Rs2Player.getRealSkillLevel(Skill.PRAYER) >= 37) {
+                if (Rs2Player.getBoostedSkillLevel(Skill.PRAYER) > 0) {
+                    Rs2Prayer.toggle(Rs2PrayerEnum.PROTECT_MAGIC);
+                }
+            }
+        }
+    }
 
     public void fightrev(){
         Rs2NpcModel Rev = (Rs2Npc.getNpc("Revenant", false));
