@@ -798,6 +798,11 @@ public class BarrowsScript extends Script {
                             break;
                         }
 
+                        if(Microbot.getClient().getHintArrowNpc()!=null) {
+                            Microbot.log("The brother is here.");
+                            break;
+                        }
+
                     }
                 }
             }
