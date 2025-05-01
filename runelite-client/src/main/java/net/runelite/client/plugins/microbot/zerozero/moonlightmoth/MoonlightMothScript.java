@@ -167,7 +167,7 @@ public class MoonlightMothScript extends Script {
             return;
         }
 
-        if (!Rs2Shop.openShop("Imia", false)) {
+        if (!Rs2Shop.openShop("Imia")) {
             logOnceToChat("Failed to open shop with Imia.", true);
             return;
         }
