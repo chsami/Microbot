@@ -199,7 +199,7 @@ public class ShadesKillerScript extends Script {
                     case FIGHT_SHADES:
                         boolean isLooting = Rs2GroundItem.lootAtGePrice(config.priceOfItemsToLoot());
                         if (isLooting) return;
-                        var npc = Rs2Npc.getNpcsForPlayer(config.SHADES().names.get(0)).stream().findFirst().orElse(null);
+                        var npc = Rs2Npc.getNpcsForPlayer(config.SHADES().names.get(0), false).stream().findFirst().orElse(null);
                         //if npc is attacking us, then attack back
                         if (npc != null && !Microbot.getClient().getLocalPlayer().isInteracting()) {
                             Rs2Npc.attack(npc);

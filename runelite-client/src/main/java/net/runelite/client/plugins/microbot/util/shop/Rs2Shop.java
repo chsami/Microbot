@@ -52,11 +52,11 @@ public class Rs2Shop {
      *
      * @return
      */
-    public static boolean openShop(String NPC) {
+    public static boolean openShop(String NPC, boolean useExactNaming) {
         Microbot.status = "Opening Shop";
         try {
             if (isOpen()) return true;
-            Rs2NpcModel npc = Rs2Npc.getNpc(NPC);
+            Rs2NpcModel npc = Rs2Npc.getNpc(NPC, useExactNaming);
             if (npc == null) return false;
             Rs2Npc.interact(npc, "Trade");
             sleepUntil(Rs2Shop::isOpen, 5000);

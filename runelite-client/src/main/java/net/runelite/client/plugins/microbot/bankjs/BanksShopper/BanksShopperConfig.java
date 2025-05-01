@@ -129,4 +129,15 @@ public interface BanksShopperConfig extends Config {
     default String npcName() {
         return "";
     }
+
+    @ConfigItem(
+            position = 1,
+            keyName = "useExactNaming",
+            name = "Use exact NPC naming",
+            description = "Use exact NPC naming - Useful for places like Shantay pass",
+            section = shopSection
+    )
+    default boolean useExactNaming() {
+        return true;
+    }
 }
