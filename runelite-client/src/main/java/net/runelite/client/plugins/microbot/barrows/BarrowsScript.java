@@ -799,8 +799,11 @@ public class BarrowsScript extends Script {
                         }
 
                         if(Microbot.getClient().getHintArrowNpc()!=null) {
-                            Microbot.log("The brother is here.");
-                            break;
+                            Rs2NpcModel barrowsbrother = new Rs2NpcModel(Microbot.getClient().getHintArrowNpc());
+                            if(Rs2Npc.hasLineOfSight(barrowsbrother)) {
+                                Microbot.log("The brother is here.");
+                                break;
+                            }
                         }
 
                     }
