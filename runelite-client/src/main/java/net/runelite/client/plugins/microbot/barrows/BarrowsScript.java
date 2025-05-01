@@ -40,6 +40,7 @@ public class BarrowsScript extends Script {
     public String WhoisTun = "Unknown";
     private String neededRune = "unknown";
     private boolean shouldBank = false;
+    private boolean shouldAttackSkeleton = false;
     private int tunnelLoopCount = 0;
     private WorldPoint FirstLoopTile;
     private Rs2PrayerEnum NeededPrayer;
@@ -89,6 +90,7 @@ public class BarrowsScript extends Script {
                 gettheRune();
                 minRuneAmt = config.minRuneAmount();
                 minForgottenBrews = config.minForgottenBrew();
+                shouldAttackSkeleton = config.shouldGainRP();
 
                 if(Rs2Inventory.getInventoryFood().isEmpty()){
                     Microbot.log("No food in inventory. Please get some food then restart the script. stopping...");
@@ -472,6 +474,7 @@ public class BarrowsScript extends Script {
                     checkForBrother();
                     eatFood();
                     outOfSupplies();
+                    gainRP();
 
                     //threaded walk because the brother could appear, the puzzle door could be there.
                     if(!Rs2Player.isMoving()) {
@@ -750,6 +753,55 @@ public class BarrowsScript extends Script {
             }
         }, 0, scriptDelay, TimeUnit.MILLISECONDS);
         return true;
+    }
+    public void gainRP(){
+        if(shouldAttackSkeleton){
+            int RP = Microbot.getVarbitValue(Varbits.BARROWS_REWARD_POTENTIAL);
+            if(RP>870){
+                Microbot.log("We have enough RP");
+                return;
+            }
+            Rs2NpcModel skele = Rs2Npc.getNpc("Skeleton");
+            if(skele == null){
+                return;
+            }
+            if(Rs2Npc.hasLineOfSight(skele)){
+                stopFutureWalker();
+                if(!Rs2Player.isInCombat()){
+                    if(Rs2Npc.attack(skele)){
+                        sleepUntil(()-> Rs2Player.isInCombat()&&!Rs2Player.isMoving(), Rs2Random.between(4000,8000));
+                    }
+                }
+                if(Rs2Player.isInCombat()){
+                    while(Rs2Player.isInCombat()){
+                        Microbot.log("Fighting the Skeleton.");
+                        if (!super.isRunning()) {
+                            break;
+                        }
+                        sleep(750,1500);
+                        eatFood();
+                        outOfSupplies();
+                        antiPatternDropVials();
+
+                        if(!Rs2Player.isInCombat()){
+                            Microbot.log("Breaking out we're no longer in combat.");
+                            break;
+                        }
+
+                        if(skele.isDead()){
+                            Microbot.log("Breaking out the skeleton is dead.");
+                            break;
+                        }
+
+                        if(RP>870){
+                            Microbot.log("Breaking out we have enough RP.");
+                            break;
+                        }
+
+                    }
+                }
+            }
+        }
     }
     public void stopFutureWalker(){
         if(WalkToTheChestFuture!=null) {

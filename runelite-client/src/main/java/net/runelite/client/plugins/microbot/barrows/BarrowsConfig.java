@@ -104,4 +104,14 @@ public interface BarrowsConfig extends Config {
         return 180;
     }
 
+    @ConfigItem(
+            keyName = "shouldGainRP",
+            name = "Aim for 86+% rewards potential",
+            description = "Should we gain additional RP other than the barrows brothers?",
+            position = 9
+    )
+    default boolean shouldGainRP() {
+        return false;
+    }
+
 }
