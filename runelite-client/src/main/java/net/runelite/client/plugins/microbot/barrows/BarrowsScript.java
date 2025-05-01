@@ -41,6 +41,7 @@ public class BarrowsScript extends Script {
     private String neededRune = "unknown";
     private boolean shouldBank = false;
     private boolean shouldAttackSkeleton = false;
+    private boolean varbitCheckEnabled = true;
     private int tunnelLoopCount = 0;
     private WorldPoint FirstLoopTile;
     private Rs2PrayerEnum NeededPrayer;
@@ -118,17 +119,25 @@ public class BarrowsScript extends Script {
 
                         Microbot.log("Checking mound for: " + brother.getName() + " at " + mound +"Using prayer: "+NeededPrayer);
 
-                        //resume progress from varbits
+                        if(everyBrotherWasKilled()){
+                            if(WhoisTun.equals("Unknown")){
+                                Microbot.log("We're not sure who tunnel is, and every brother is dead. Checking all mounds manually");
+                                varbitCheckEnabled = false;
+                            }
+                        }
 
+                        if(!WhoisTun.equals("Unknown")){
+                            if(!varbitCheckEnabled){
+                                varbitCheckEnabled = true;
+                            }
+                        }
+
+                        //resume progress from varbits
+                        if(varbitCheckEnabled) {
                             if (brother.name.contains("Dharok")) {
-                                if(Microbot.getVarbitValue(Varbits.BARROWS_KILLED_DHAROK) == 1&&Microbot.getVarbitValue(Varbits.BARROWS_KILLED_GUTHAN) == 1&&Microbot.getVarbitValue(Varbits.BARROWS_KILLED_KARIL) == 1&&
-                                        Microbot.getVarbitValue(Varbits.BARROWS_KILLED_TORAG) == 1&&Microbot.getVarbitValue(Varbits.BARROWS_KILLED_VERAC) == 1&&Microbot.getVarbitValue(Varbits.BARROWS_KILLED_AHRIM) == 1) {
-                                    Microbot.log("We must manually check DH to reset the varbits.");
-                                } else {
-                                    if (Microbot.getVarbitValue(Varbits.BARROWS_KILLED_DHAROK) == 1) {
-                                        Microbot.log("We all ready killed Dharok.");
-                                        continue;
-                                    }
+                                if (Microbot.getVarbitValue(Varbits.BARROWS_KILLED_DHAROK) == 1) {
+                                    Microbot.log("We all ready killed Dharok.");
+                                    continue;
                                 }
                             }
                             if (brother.name.contains("Guthan")) {
@@ -161,7 +170,7 @@ public class BarrowsScript extends Script {
                                     continue;
                                 }
                             }
-
+                        }
 
                         //Enter mound
                         if (Rs2Player.getWorldLocation().getPlane() != 3) {
@@ -468,6 +477,9 @@ public class BarrowsScript extends Script {
 
                 if(inTunnels && shouldBank == false) {
                     Microbot.log("In the tunnels");
+                    if(!varbitCheckEnabled){
+                        varbitCheckEnabled=true;
+                    }
                     stuckInTunsCheck();
                     tunnelLoopCount++;
                     solvePuzzle();
@@ -754,6 +766,15 @@ public class BarrowsScript extends Script {
         }, 0, scriptDelay, TimeUnit.MILLISECONDS);
         return true;
     }
+
+    public boolean everyBrotherWasKilled(){
+        if(Microbot.getVarbitValue(Varbits.BARROWS_KILLED_DHAROK) == 1&&Microbot.getVarbitValue(Varbits.BARROWS_KILLED_GUTHAN) == 1&&Microbot.getVarbitValue(Varbits.BARROWS_KILLED_KARIL) == 1&&
+                Microbot.getVarbitValue(Varbits.BARROWS_KILLED_TORAG) == 1&&Microbot.getVarbitValue(Varbits.BARROWS_KILLED_VERAC) == 1&&Microbot.getVarbitValue(Varbits.BARROWS_KILLED_AHRIM) == 1){
+            return true;
+        }
+        return false;
+    }
+
     public void gainRP(){
         if(shouldAttackSkeleton){
             int RP = Microbot.getVarbitValue(Varbits.BARROWS_REWARD_POTENTIAL);
