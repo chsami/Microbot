@@ -19,6 +19,7 @@ import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
 import java.awt.*;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -123,9 +124,11 @@ public class ExamplePlugin extends Plugin {
      */
     @Getter
     public static class DialogueResult {
+        private final List<String> dialogueTexts;
         private final List<String> options;
 
-        DialogueResult(List<String> options) {
+        DialogueResult(List<String> dialogueTexts, List<String> options) {
+            this.dialogueTexts = dialogueTexts != null ? dialogueTexts : Collections.emptyList();
             this.options = options != null ? options : Collections.emptyList();
         }
 
@@ -136,17 +139,25 @@ public class ExamplePlugin extends Plugin {
 
     /**
      * Handles the flow of dialogue by clicking "continue" until options are presented or the dialogue ends.
-     * Does not capture the dialogue text itself.
+     * Captures the text of each dialogue screen that is continued through.
      *
-     * @return A DialogueResult containing the list of options if presented, or an empty list otherwise. Returns null if not in dialogue.
+     * @return A DialogueResult containing the list of captured dialogue texts and the list of options if presented,
+     *         or an empty list for options if the dialogue ended without choices. Returns null if not in dialogue.
      */
     private DialogueResult handleDialogue() {
         if (!Rs2Dialogue.isInDialogue()) {
             return null; // Not in dialogue
         }
 
+        List<String> dialogueTexts = new ArrayList<>();
+
         // Keep clicking continue while available
         while (Rs2Dialogue.hasContinue()) {
+            String currentText = Rs2Dialogue.getDialogText(); // Get text before clicking
+            if (currentText != null && !currentText.trim().isEmpty()) {
+                dialogueTexts.add(currentText);
+            }
+
             Rs2Dialogue.clickContinue();
             // Wait until the continue button is gone or options appear
             Microbot.sleepUntil(() -> !Rs2Dialogue.hasContinue() || Rs2Dialogue.hasSelectAnOption());
@@ -156,10 +167,15 @@ public class ExamplePlugin extends Plugin {
         // Check if options are presented
         if (Rs2Dialogue.hasSelectAnOption()) {
             List<String> options = Rs2Dialogue.getDialogOptions();
-            return new DialogueResult(options);
+            return new DialogueResult(dialogueTexts, options);
         } else {
             // Dialogue ended without options
-            return new DialogueResult(Collections.emptyList());
+            // Check if there was one final dialogue screen (e.g., NPC text without continue)
+            String finalText = Rs2Dialogue.getDialogText();
+            if (finalText != null && !finalText.trim().isEmpty()) {
+                 dialogueTexts.add(finalText);
+            }
+            return new DialogueResult(dialogueTexts, Collections.emptyList());
         }
     }
 }
