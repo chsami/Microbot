@@ -106,15 +106,16 @@ public class ExamplePlugin extends Plugin {
     }
 
     /**
-     * Finds an NPC by name and interacts with the "Talk-to" option.
+     * Finds an NPC by name and interacts with the specified action.
      *
-     * @param name The name of the NPC to talk to.
+     * @param name The name of the NPC to interact with.
+     * @param action The action to perform (e.g., "Talk-to", "Trade", "Attack").
      * @return true if the interaction was successful, false otherwise.
      */
-    private boolean talkTo(String name) {
+    private boolean interactWith(String name, String action) {
         NPC npc = Rs2Npc.getNpc(name);
         if (npc != null) {
-            return Rs2Npc.interact(npc, "Talk-to");
+            return Rs2Npc.interact(npc, action);
         }
         return false;
     }
