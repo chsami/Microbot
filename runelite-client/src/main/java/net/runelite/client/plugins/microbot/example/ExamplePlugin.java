@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.example;
 
 import com.google.inject.Provides;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.NPC;
 import net.runelite.api.coords.WorldPoint;
@@ -9,7 +10,8 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.plugins.microbot.MicrobotApi;
+import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
@@ -17,6 +19,8 @@ import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
 import java.awt.*;
+import java.util.Collections;
+import java.util.List;
 
 @PluginDescriptor(
         name = PluginDescriptor.Default + "Example",
@@ -114,4 +118,48 @@ public class ExamplePlugin extends Plugin {
         return false;
     }
 
+    /**
+     * Helper class to store the result of handling a dialogue.
+     */
+    @Getter
+    public static class DialogueResult {
+        private final List<String> options;
+
+        DialogueResult(List<String> options) {
+            this.options = options != null ? options : Collections.emptyList();
+        }
+
+        public boolean hasOptions() {
+            return !options.isEmpty();
+        }
+    }
+
+    /**
+     * Handles the flow of dialogue by clicking "continue" until options are presented or the dialogue ends.
+     * Does not capture the dialogue text itself.
+     *
+     * @return A DialogueResult containing the list of options if presented, or an empty list otherwise. Returns null if not in dialogue.
+     */
+    private DialogueResult handleDialogue() {
+        if (!Rs2Dialogue.isInDialogue()) {
+            return null; // Not in dialogue
+        }
+
+        // Keep clicking continue while available
+        while (Rs2Dialogue.hasContinue()) {
+            Rs2Dialogue.clickContinue();
+            // Wait until the continue button is gone or options appear
+            Microbot.sleepUntil(() -> !Rs2Dialogue.hasContinue() || Rs2Dialogue.hasSelectAnOption());
+            Microbot.sleep(50, 100); // Small extra delay
+        }
+
+        // Check if options are presented
+        if (Rs2Dialogue.hasSelectAnOption()) {
+            List<String> options = Rs2Dialogue.getDialogOptions();
+            return new DialogueResult(options);
+        } else {
+            // Dialogue ended without options
+            return new DialogueResult(Collections.emptyList());
+        }
+    }
 }
