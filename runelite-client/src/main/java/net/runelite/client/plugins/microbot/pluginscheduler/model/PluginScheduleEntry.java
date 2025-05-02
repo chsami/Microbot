@@ -1423,6 +1423,10 @@ public class PluginScheduleEntry implements AutoCloseable {
         SchedulablePlugin provider = (SchedulablePlugin) plugin;
         
         // Get conditions from the provider
+        if (provider.getStopCondition()  == null) {
+            log.debug("Plugin '{}' provided no explicit stop conditions", plugin.getName());
+            return false;
+        }
         List<Condition> pluginConditions = provider.getStopCondition().getConditions();
         if (pluginConditions == null || pluginConditions.isEmpty()) {
             log.debug("Plugin '{}' provided no explicit stop conditions", plugin.getName());

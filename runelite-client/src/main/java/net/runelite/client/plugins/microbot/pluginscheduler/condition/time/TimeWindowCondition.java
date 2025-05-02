@@ -367,8 +367,7 @@ public class TimeWindowCondition extends TimeCondition {
         }
         // Check if window has passed - but don't auto-recalculate
         // Let the scheduler decide when to reset the condition
-        if (nowLocal.isAfter(currentEndDateTime)) {
-            log.info("Current window has passed, waiting for reset \n currentEndDateTime formated: {}\n currentStartDateTime formated:{}", currentEndDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME), currentStartDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));                          
+        if (nowLocal.isAfter(currentEndDateTime)) {            
             return false;
         }
         

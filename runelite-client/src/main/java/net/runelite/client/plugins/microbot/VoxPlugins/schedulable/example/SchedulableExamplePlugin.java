@@ -269,8 +269,8 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
          AndCondition andCondition = new AndCondition();
          andCondition.addCondition(orCondition);
          andCondition.addCondition(lockCondition);
-         this.currentCondition = andCondition;
-         log.info("\nCreated stop condition: \n{}", andCondition.getDescription());
+         this.currentCondition = andCondition;         
+         //log.info("\nCreated stop condition: \n{}", andCondition.getDescription());
          return andCondition;
        
     }
