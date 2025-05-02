@@ -18,6 +18,7 @@ import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
+import net.runelite.client.plugins.microbot.util.depositbox.DepositBoxLocation;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2BankID;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
@@ -1408,23 +1409,40 @@ public class Rs2Bank {
     }
 
     /**
-     * Get the nearest bank
+     * Returns the nearest accessible bank to the local player’s current location.
      *
-     * @return BankLocation
+     * @return the nearest {@link BankLocation}, or {@code null} if none was reachable
      */
     public static BankLocation getNearestBank() {
         return getNearestBank(Microbot.getClient().getLocalPlayer().getWorldLocation());
     }
 
     /**
-     * Finds the nearest bank, prioritizing available transports first before pathfinding
-     * @param worldPoint The current location
-     * @return The nearest bank location, or null if no accessible bank was found
+     * Returns the nearest accessible bank to the specified world point,
+     * using a default search radius of 15 tiles.
+     *
+     * @param worldPoint the starting location from which to search for banks
+     * @return the nearest {@link BankLocation}, or {@code null} if none was reachable
      */
     public static BankLocation getNearestBank(WorldPoint worldPoint) {
         return getNearestBank(worldPoint, 15);
     }
 
+    /**
+     * Finds the nearest accessible bank location from the given world point.
+     * <p>
+     * First, searches for bank booth {@link TileObject}s within
+     * {@code maxObjectSearchRadius} tiles of the player and picks the closest
+     * one whose underlying {@link BankLocation#hasRequirements()} passes. If no booth
+     * is found or none are within range, falls back to running a full pathfinding
+     * search (including configured transports) to all accessible bank coordinates,
+     * then returns the bank at the end of the shortest path.
+     * </p>
+     *
+     * @param worldPoint            the starting location for pathfinding
+     * @param maxObjectSearchRadius the maximum radius (in tiles) to scan for bank booth objects
+     * @return the nearest {@link BankLocation}, or {@code null} if no accessible bank could be reached
+     */
     public static BankLocation getNearestBank(WorldPoint worldPoint, int maxObjectSearchRadius) {
         Microbot.log("Finding nearest bank...");
 
@@ -1437,31 +1455,33 @@ public class Rs2Bank {
             return null;
         }
 
-        List<Integer> boothIds = Arrays.asList(Rs2BankID.bankIds);
-        List<TileObject> bankObjs = Rs2GameObject.getGameObjects().stream()
-                .filter(obj -> obj.getWorldLocation().distanceTo(Microbot.getClient().getLocalPlayer().getWorldLocation()) < maxObjectSearchRadius)
-                .filter(obj -> boothIds.contains(obj.getId()))
-                .collect(Collectors.toList());
+        if (Microbot.getClient().getLocalPlayer().getWorldLocation() == worldPoint) {
+            List<Integer> boothIds = Arrays.asList(Rs2BankID.bankIds);
+            List<TileObject> bankObjs = Rs2GameObject.getGameObjects().stream()
+                    .filter(obj -> obj.getWorldLocation().distanceTo(worldPoint) < maxObjectSearchRadius)
+                    .filter(obj -> boothIds.contains(obj.getId()))
+                    .collect(Collectors.toList());
 
-        Optional<BankLocation> fromObject = bankObjs.stream()
-                .map(obj -> {
-                    BankLocation closest = accessibleBanks.stream()
-                            .min(Comparator.comparingInt(b -> obj.getWorldLocation().distanceTo(b.getWorldPoint())))
-                            .orElse(null);
+            Optional<BankLocation> fromObject = bankObjs.stream()
+                    .map(obj -> {
+                        BankLocation closest = accessibleBanks.stream()
+                                .min(Comparator.comparingInt(b -> obj.getWorldLocation().distanceTo(b.getWorldPoint())))
+                                .orElse(null);
 
-                    int dist = closest == null
-                            ? Integer.MAX_VALUE
-                            : obj.getWorldLocation().distanceTo(closest.getWorldPoint());
+                        int dist = closest == null
+                                ? Integer.MAX_VALUE
+                                : obj.getWorldLocation().distanceTo(closest.getWorldPoint());
 
-                    return new AbstractMap.SimpleEntry<>(closest, dist);
-                })
-                .filter(e -> e.getKey() != null && e.getValue() <= maxObjectSearchRadius)
-                .min(Comparator.comparingInt(Map.Entry::getValue))
-                .map(Map.Entry::getKey);
+                        return new AbstractMap.SimpleEntry<>(closest, dist);
+                    })
+                    .filter(e -> e.getKey() != null && e.getValue() <= maxObjectSearchRadius)
+                    .min(Comparator.comparingInt(Map.Entry::getValue))
+                    .map(Map.Entry::getKey);
 
-        if (fromObject.isPresent()) {
-            Microbot.log("Found nearest bank (object): " + fromObject.get());
-            return fromObject.get();
+            if (fromObject.isPresent()) {
+                Microbot.log("Found nearest bank (object): " + fromObject.get());
+                return fromObject.get();
+            }
         }
 
         Set<WorldPoint> targets = accessibleBanks.stream()
