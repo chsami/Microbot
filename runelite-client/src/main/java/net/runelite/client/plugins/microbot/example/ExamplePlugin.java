@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.example;
 
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.NPC;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.config.ConfigManager;
@@ -9,6 +10,7 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.MicrobotApi;
+import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.ui.overlay.OverlayManager;
@@ -96,6 +98,20 @@ public class ExamplePlugin extends Plugin {
     private boolean followPlayerByName(String name){
         var player  = Rs2Player.getPlayer(name);
         return Rs2Player.follow(player);
+    }
+
+    /**
+     * Finds an NPC by name and interacts with the "Talk-to" option.
+     *
+     * @param name The name of the NPC to talk to.
+     * @return true if the interaction was successful, false otherwise.
+     */
+    private boolean talkTo(String name) {
+        NPC npc = Rs2Npc.getNpc(name);
+        if (npc != null) {
+            return Rs2Npc.interact(npc, "Talk-to");
+        }
+        return false;
     }
 
 }
