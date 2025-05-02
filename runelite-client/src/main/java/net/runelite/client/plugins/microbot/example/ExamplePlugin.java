@@ -73,23 +73,53 @@ public class ExamplePlugin extends Plugin {
 
     }
 
+    /**
+     * Walks to the specified world coordinates.
+     *
+     * @param x The x-coordinate.
+     * @param y The y-coordinate.
+     * @param z The plane (z-coordinate).
+     * @return true if the walk action was initiated, false otherwise.
+     */
     private boolean walkTo(int x, int y, int z){
         return Rs2Walker.walkTo(x, y, z);
     }
 
+    /**
+     * Placeholder method for navigating to a specific city.
+     * Currently does nothing.
+     *
+     * @param name The name of the city.
+     */
     private void goToCity(String name){
-
+        // Implementation needed
     }
 
+    /**
+     * Gets a WorldPoint representing a specific tile within a given region ID.
+     * Defaults to tile (1, 1) on plane 0 within that region.
+     *
+     * @param regionId The ID of the region.
+     * @return A WorldPoint within the specified region.
+     */
     private WorldPoint getPointFromRegionId(int regionId)
     {
         return WorldPoint.fromRegion(regionId,1 ,1,0);
     }
 
+    /**
+     * Finds the WorldPoint from an array that is closest to the player's current location.
+     *
+     * @param points An array of WorldPoints to check.
+     * @return The WorldPoint from the array closest to the player, or null if the input array is empty.
+     */
     private WorldPoint getClosestPointFromPlayer(WorldPoint[] points){
         WorldPoint playerPoint = Rs2Player.getLocalPlayer().getWorldLocation();
         WorldPoint closestPoint = null;
         int closestDistance = Integer.MAX_VALUE;
+        if (points == null || points.length == 0) {
+            return null;
+        }
         for (WorldPoint point : points) {
             int distance = playerPoint.distanceTo(point);
             if (distance < closestDistance) {
@@ -100,6 +130,12 @@ public class ExamplePlugin extends Plugin {
         return closestPoint;
     }
 
+    /**
+     * Attempts to follow another player specified by their in-game name.
+     *
+     * @param name The name of the player to follow.
+     * @return true if the follow action was initiated, false if the player was not found or couldn't be followed.
+     */
     private boolean followPlayerByName(String name){
         var player  = Rs2Player.getPlayer(name);
         return Rs2Player.follow(player);
