@@ -124,6 +124,10 @@ public class BarrowsScript extends Script {
                                 Microbot.log("We're not sure who tunnel is, and every brother is dead. Checking all mounds manually");
                                 varbitCheckEnabled = false;
                             }
+                        } else {
+                            if(!varbitCheckEnabled){
+                                varbitCheckEnabled = true;
+                            }
                         }
 
                         if(!WhoisTun.equals("Unknown")){
