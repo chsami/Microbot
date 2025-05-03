@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.rsagent.agent;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonSyntaxException;
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
 import com.openai.models.ChatModel;
 import com.openai.models.responses.*;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.coords.WorldPoint;
 
 import static java.util.stream.Collectors.toList;
 
@@ -57,13 +59,22 @@ public class Agent {
 
         ResponseCreateParams createParams = ResponseCreateParams.builder()
                 .inputOfResponse(inputItems)
-                .model(ChatModel.GPT_4_1_MINI)
+                .model(ChatModel.GPT_4_1_MINI) // Consider making model configurable
                 .build();
 
-        for (int step = 0; step < 8; step++) {
-            List<ResponseOutputMessage> messages = openAIClient.responses().create(createParams).output().stream()
-                    .flatMap(item -> item.message().stream())
-                    .collect(toList());
+        for (int step = 0; step < 15; step++) { // Increased max steps slightly
+            log.info("Agent Step {}/15", step + 1);
+            List<ResponseOutputMessage> messages;
+            try {
+                 messages = openAIClient.responses().create(createParams).output().stream()
+                        .flatMap(item -> item.message().stream())
+                        .collect(toList());
+            } catch (Exception e) {
+                log.error("Error calling OpenAI API: {}", e.getMessage(), e);
+                toolResult = "Error: Failed to get response from LLM.";
+                break; // Exit loop on API error
+            }
+
 
             String fullText = messages.stream()
                     .flatMap(message -> message.content().stream())
@@ -71,51 +82,166 @@ public class Agent {
                     .map(ResponseOutputText::text)
                     .collect(java.util.stream.Collectors.joining("\n"));
 
-            System.out.println("Agent step " + (step + 1) + " output:\n" + fullText);
+            log.debug("Agent step {} output:\n{}", step + 1, fullText);
+            System.out.println("Agent step " + (step + 1) + " output:\n" + fullText); // Keep console output for now
             System.out.println("\n-----------------------------------\n");
 
-            if (fullText.contains("\"action\": \"finish\"")) break;
+            // Add LLM's response to the conversation history *before* processing actions
+            messages.forEach(message -> inputItems.add(ResponseInputItem.ofResponseOutputMessage(message)));
+
+            String toolResult = "No action performed."; // Default result if parsing fails or no action taken
+
+            // Check for finish action before attempting tool execution
+            if (fullText.contains("\"action\": \"finish\"")) {
+                 log.info("Agent received finish action.");
+                 break; // Exit the loop
+            }
 
             // Tool execution
-            String toolResult;
             try {
-                var ob = gson.fromJson(fullText, JsonObject.class);
+                // Basic cleanup: Sometimes models wrap JSON in ```json ... ```
+                String cleanedJson = fullText.trim();
+                if (cleanedJson.startsWith("```json")) {
+                    cleanedJson = cleanedJson.substring(7);
+                }
+                if (cleanedJson.endsWith("```")) {
+                    cleanedJson = cleanedJson.substring(0, cleanedJson.length() - 3);
+                }
+                cleanedJson = cleanedJson.trim();
+
+                JsonObject ob = gson.fromJson(cleanedJson, JsonObject.class);
+                if (ob == null || !ob.has("action") || !ob.has("action_parameters")) {
+                     throw new JsonSyntaxException("Missing 'action' or 'action_parameters' in JSON response");
+                }
+
                 String action = ob.get("action").getAsString();
                 JsonObject parameters = ob.getAsJsonObject("action_parameters");
 
-                switch (action) {
-                    case "walkTo":
-                        toolResult =  RsAgentTools.walkTo(parameters.get("x").getAsInt(),
-                            parameters.get("y").getAsInt(),
-                            parameters.get("z").getAsInt()) ? "Walk successful" : "Walk failed";
+                log.info("Executing action: {} with parameters: {}", action, parameters);
 
-                    default: toolResult = "Unknown tool: " + action;
-                };
+                switch (action) {
+                    case "walkTo": {
+                        int x = parameters.get("x").getAsInt();
+                        int y = parameters.get("y").getAsInt();
+                        int z = parameters.get("z").getAsInt();
+                        boolean success = RsAgentTools.walkTo(x, y, z);
+                        toolResult = success ? "Successfully initiated walk to (" + x + ", " + y + ", " + z + ")." : "Failed to initiate walk to (" + x + ", " + y + ", " + z + ").";
+                        break;
+                    }
+                    case "goToCity": {
+                        String cityName = parameters.get("name").getAsString();
+                        RsAgentTools.goToCity(cityName); // Placeholder - no return value to check
+                        toolResult = "Attempted navigation to city: " + cityName + ". (Note: This tool is currently a placeholder).";
+                        break;
+                    }
+                    case "getPointFromRegionId": {
+                        int regionId = parameters.get("regionId").getAsInt();
+                        WorldPoint point = RsAgentTools.getPointFromRegionId(regionId);
+                        toolResult = "Point for region " + regionId + ": (" + point.getX() + ", " + point.getY() + ", " + point.getPlane() + ").";
+                        break;
+                    }
+                    case "followPlayerByName": {
+                        String playerName = parameters.get("name").getAsString();
+                        boolean success = RsAgentTools.followPlayerByName(playerName);
+                        toolResult = success ? "Successfully initiated follow for player: " + playerName + "." : "Failed to find or follow player: " + playerName + ".";
+                        break;
+                    }
+                    case "interactWith": {
+                        String targetName = parameters.get("name").getAsString();
+                        String interactionAction = parameters.get("action").getAsString();
+                        boolean success = RsAgentTools.interactWith(targetName, interactionAction);
+                        toolResult = success ? "Successfully interacted with '" + targetName + "' using action '" + interactionAction + "'." : "Failed to interact with '" + targetName + "' using action '" + interactionAction + "'. Target might not be present or interaction invalid.";
+                        break;
+                    }
+                    case "pickupGroundItem": {
+                        String itemName = parameters.get("name").getAsString();
+                        boolean success = RsAgentTools.pickupGroundItem(itemName);
+                        toolResult = success ? "Successfully attempted to pick up item: " + itemName + "." : "Failed to find or pick up item: " + itemName + ".";
+                        break;
+                    }
+                    case "chooseOptionAndContinueDialogue": {
+                        int optionIndex = parameters.get("option").getAsInt();
+                        RsAgentTools.DialogueResult result = RsAgentTools.chooseOptionAndContinueDialogue(optionIndex);
+                        if (result != null) {
+                            toolResult = "Chose dialogue option " + optionIndex + ". ";
+                            if (!result.dialogueTexts.isEmpty()) {
+                                toolResult += "Dialogue continued: [" + String.join(" | ", result.dialogueTexts) + "]. ";
+                            }
+                            if (result.hasOptions()) {
+                                toolResult += "New options: [" + String.join(" | ", result.options) + "]";
+                            } else {
+                                toolResult += "Dialogue ended or waiting for next step.";
+                            }
+                        } else {
+                            toolResult = "Failed to choose dialogue option " + optionIndex + " (maybe not in dialogue or invalid option).";
+                        }
+                        break;
+                    }
+                    case "handleDialogue": {
+                        RsAgentTools.DialogueResult result = RsAgentTools.handleDialogue();
+                        if (result != null) {
+                            toolResult = "Handling dialogue. ";
+                             if (!result.dialogueTexts.isEmpty()) {
+                                toolResult += "Dialogue text: [" + String.join(" | ", result.dialogueTexts) + "]. ";
+                            }
+                            if (result.hasOptions()) {
+                                toolResult += "Presented options: [" + String.join(" | ", result.options) + "]";
+                            } else {
+                                toolResult += "Dialogue ended or waiting for next step.";
+                            }
+                        } else {
+                            toolResult = "Not currently in dialogue.";
+                        }
+                        break;
+                    }
+                    case "finish": // Should be caught earlier, but handle defensively
+                        toolResult = "Finish action acknowledged.";
+                        log.info("Finish action processed in switch, loop should terminate.");
+                        break; // Exit switch
+                    default:
+                        toolResult = "Unknown tool requested: " + action;
+                        log.warn("Unknown tool requested: {}", action);
+                        break;
+                }
+            } catch (JsonSyntaxException e) {
+                toolResult = "Error: LLM response was not valid JSON or missing required fields. Response: " + fullText;
+                log.error("Error parsing agent JSON output: {}", e.getMessage());
             } catch (Exception e) {
-                toolResult = "Error parsing agent output: " + e.getMessage();
-                e.printStackTrace();
+                toolResult = "Error executing tool or parsing parameters: " + e.getMessage();
+                log.error("Error during tool execution/parameter parsing: {}", e.getMessage(), e);
             }
 
-            // Add LLM output to context
-            messages.forEach(message -> inputItems.add(ResponseInputItem.ofResponseOutputMessage(message)));
+            log.info("Tool Result: {}", toolResult);
 
-            // Feed back tool output
+            // Feed back tool output *after* processing the action
             inputItems.add(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
-                    .role(EasyInputMessage.Role.USER)
+                    .role(EasyInputMessage.Role.USER) // Using USER role to provide observation/result
                     .content("Tool result: " + toolResult)
                     .build()));
 
+            // Update createParams for the next iteration
             createParams = createParams.toBuilder().inputOfResponse(inputItems).build();
+
+             // Check again if the last action was finish, to ensure loop termination
+             if (toolResult.startsWith("Finish action acknowledged.")) {
+                 break;
+             }
         }
+        log.info("Agent run finished.");
     }
 
     private static String loadPrompt() {
+        // It's good practice to specify the resource path relative to the classpath root
+        String promptPath = "rsagent/SystemPrompt.txt";
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(
-                Agent.class.getClassLoader().getResourceAsStream("rsagent/SystemPrompt.txt"),
+                Agent.class.getClassLoader().getResourceAsStream(promptPath),
                 StandardCharsets.UTF_8))) {
+            if (reader == null) {
+                 throw new RuntimeException("Failed to load system prompt: Resource not found at " + promptPath);
+            }
             return reader.lines().collect(Collectors.joining("\n"));
         } catch (Exception e) {
-            throw new RuntimeException("Failed to load system prompt: " + "rsagent/SystemPrompt.txt", e);
+            throw new RuntimeException("Failed to load system prompt: " + promptPath, e);
         }
     }
 
