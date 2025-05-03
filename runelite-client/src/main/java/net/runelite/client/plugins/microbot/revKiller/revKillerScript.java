@@ -1,12 +1,10 @@
 package net.runelite.client.plugins.microbot.revKiller;
 
 import com.google.inject.Provides;
-import net.runelite.api.EquipmentInventorySlot;
-import net.runelite.api.Item;
-import net.runelite.api.ItemID;
-import net.runelite.api.Skill;
+import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ActorDeath;
+import net.runelite.api.events.ChatMessage;
 import net.runelite.api.kit.KitType;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -539,6 +537,25 @@ public class revKillerScript extends Script {
             if (!Rs2Bank.isOpen()) {
                 if(Rs2Inventory.open()){
                     sleepUntil(()-> Rs2Inventory.isOpen(), generateRandomNumber(500,1000));
+                }
+            }
+        }
+    }
+
+    @Subscribe
+    public void onChatMessage(ChatMessage event) {
+        if (event.getType() != ChatMessageType.GAMEMESSAGE) return;
+
+        if (event.getMessage().equalsIgnoreCase("I can't reach that!")) {
+            if(Rs2Equipment.get(EquipmentInventorySlot.RING)!=null){
+
+            } else {
+                Microbot.log("We're stuck outside of the enclave");
+                if(Rs2GameObject.get("Barrier", true) != null){
+                    if(Rs2GameObject.interact("Barrier", "Pass-Through", true)){
+                        sleepUntil(()-> Rs2Player.isMoving(), Rs2Random.between(2000,4000));
+                        sleepUntil(()-> !Rs2Player.isMoving(), Rs2Random.between(4000,8000));
+                    }
                 }
             }
         }
