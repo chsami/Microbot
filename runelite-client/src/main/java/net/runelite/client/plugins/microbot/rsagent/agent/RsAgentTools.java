@@ -2,9 +2,12 @@ package net.runelite.client.plugins.microbot.rsagent.agent;
 
 import lombok.Getter;
 import net.runelite.api.NPC;
+import net.runelite.api.TileItem;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.widgets.Widget;
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
+import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -98,6 +101,21 @@ public class RsAgentTools {
         NPC npc = Rs2Npc.getNpc(name);
         if (npc != null) {
             return Rs2Npc.interact(new Rs2NpcModel(npc), action);
+        }
+        return false;
+    }
+
+    /**
+     * Finds an item on the ground by name within a default radius and interacts with it using the "Take" action.
+     *
+     * @param name The name of the item to pick up.
+     * @return true if the item was found and the "Take" action was initiated, false otherwise.
+     */
+    static public boolean pickupGroundItem(String name) {
+        // Use a default radius or make it a parameter if needed
+        TileItem item = Rs2GroundItem.getGroundItem(name, Microbot.getClient().getLocalPlayer().getWorldLocation(), 15); // 15 tile radius
+        if (item != null) {
+            return Rs2GroundItem.interact(item, "Take");
         }
         return false;
     }
