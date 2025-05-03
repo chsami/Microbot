@@ -12,6 +12,7 @@ import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.config.ConfigDescriptor;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -20,7 +21,7 @@ import net.runelite.client.input.KeyManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.pluginscheduler.api.ConditionProvider;
+import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.location.AreaCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.location.LocationCondition;
@@ -44,11 +45,10 @@ import net.runelite.client.util.HotkeyListener;
         name = "Schedulable Example",
         description = "Designed for use with the scheduler and testing its features",
         tags = {"microbot", "woodcutting", "combat", "scheduler", "condition"},
-        enabledByDefault = false,
-        canBeScheduled = true
+        enabledByDefault = false
 )
 @Slf4j
-public class SchedulableExamplePlugin extends Plugin implements ConditionProvider, KeyListener {
+public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugin, KeyListener {
     
     @Inject
     private SchedulableExampleConfig config;
@@ -86,11 +86,21 @@ public class SchedulableExamplePlugin extends Plugin implements ConditionProvide
     };
     
     // HotkeyListener for testing PluginScheduleEntryFinishedEvent
-    private final HotkeyListener finishPluginHotkeyListener = new HotkeyListener(() -> config.finishPluginHotkey()) {
+    private final HotkeyListener finishPluginSuccessHotkeyListener = new HotkeyListener(() -> config.finishPluginSuccessfulHotkey()) {
         @Override
         public void hotkeyPressed() {
-            String reason = config.finishReason();
-            boolean success = config.reportSuccessful();
+            String reason = config.finishReason() + " (success)";
+            boolean success = true;
+            log.info("Manually triggering plugin finish: reason='{}', success={}", reason, success);
+            reportFinished(reason, success);
+        }
+    };
+     // HotkeyListener for testing PluginScheduleEntryFinishedEvent
+    private final HotkeyListener finishPluginNotSuccessHotkeyListener = new HotkeyListener(() -> config.finishPluginNotSuccessfulHotkey()) {
+        @Override
+        public void hotkeyPressed() {
+            String reason = config.finishReason()+ " (not success)";
+            boolean success = false;
             log.info("Manually triggering plugin finish: reason='{}', success={}", reason, success);
             reportFinished(reason, success);
         }
@@ -115,15 +125,17 @@ public class SchedulableExamplePlugin extends Plugin implements ConditionProvide
         
         // Register the hotkey listeners
         keyManager.registerKeyListener(areaHotkeyListener);
-        keyManager.registerKeyListener(finishPluginHotkeyListener);
+        keyManager.registerKeyListener(finishPluginSuccessHotkeyListener);
+        keyManager.registerKeyListener(finishPluginNotSuccessHotkeyListener);
         keyManager.registerKeyListener(lockConditionHotkeyListener);
         
         // Create and add the overlay
         locationOverlay = new LocationStartNotificationOverlay(this, config);
         overlayManager.add(locationOverlay);
         
-        log.info("Schedulable Example plugin started - Press {} to test the PluginScheduleEntryFinishedEvent", 
-                config.finishPluginHotkey());
+        log.info("Schedulable Example plugin started - Press {} to test the PluginScheduleEntryFinishedEvent successfully\nand\n{} to test the PluginScheduleEntryFinishedEvent unsuccessfully",
+                config.finishPluginSuccessfulHotkey(),
+                config.finishPluginNotSuccessfulHotkey());                 
         log.info("Use {} to toggle the lock condition (prevents the plugin from being stopped)", 
                 config.lockConditionHotkey());
             
@@ -138,7 +150,8 @@ public class SchedulableExamplePlugin extends Plugin implements ConditionProvide
         
         keyManager.unregisterKeyListener(this);
         keyManager.unregisterKeyListener(areaHotkeyListener);
-        keyManager.unregisterKeyListener(finishPluginHotkeyListener);
+        keyManager.unregisterKeyListener(finishPluginSuccessHotkeyListener);
+        keyManager.unregisterKeyListener(finishPluginNotSuccessHotkeyListener);
         keyManager.unregisterKeyListener(lockConditionHotkeyListener);
         
         // Remove the overlay
@@ -256,8 +269,8 @@ public class SchedulableExamplePlugin extends Plugin implements ConditionProvide
          AndCondition andCondition = new AndCondition();
          andCondition.addCondition(orCondition);
          andCondition.addCondition(lockCondition);
-         this.currentCondition = andCondition;
-         log.info("\nCreated stop condition: \n{}", andCondition.getDescription());
+         this.currentCondition = andCondition;         
+         //log.info("\nCreated stop condition: \n{}", andCondition.getDescription());
          return andCondition;
        
     }
@@ -606,7 +619,14 @@ public class SchedulableExamplePlugin extends Plugin implements ConditionProvide
         }
         return itemsList;
     }
-    
+    @Override
+    public ConfigDescriptor getConfigDescriptor() {
+        if (Microbot.getConfigManager() == null) {
+            return null;
+        }
+        SchedulableExampleConfig conf = Microbot.getConfigManager().getConfig(SchedulableExampleConfig.class);
+        return Microbot.getConfigManager().getConfigDescriptor(conf);
+    }
     @Override
     public void onStopConditionCheck() {
         // Update item count when condition is checked

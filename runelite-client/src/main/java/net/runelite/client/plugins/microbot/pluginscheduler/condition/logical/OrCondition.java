@@ -10,7 +10,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeC
 /**
  * Logical OR combination of conditions - any can be met.
  */
-@EqualsAndHashCode(callSuper = false)
+@EqualsAndHashCode(callSuper = true)
 public class OrCondition extends LogicalCondition {
     public OrCondition(Condition... conditions) {
         super(conditions);

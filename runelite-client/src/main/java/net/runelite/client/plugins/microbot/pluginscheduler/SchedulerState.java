@@ -22,6 +22,7 @@ public enum SchedulerState {
     ERROR("Error", "Scheduler encountered an error", new Color(255, 0, 0)),
     SHORT_BREAK("Short Break", "Taking a short break until next plugin", new Color(100, 149, 237)),
     WAITING_FOR_SCHEDULE("Next Schedule Soon", "Waiting for upcoming scheduled plugin", new Color(147, 112, 219)),
+    WAITING_FOR_STOP_CONDITION("Waiting For Stop Condition", "Waiting For Stop Condition", new Color(255, 140, 0)),
     LOGIN("Login", "Try To Login", new Color(255, 215, 0));
     private final String displayName;
     private final String description;
@@ -60,9 +61,12 @@ public enum SchedulerState {
      */
     public boolean isActivelyRunning() {
         return isSchedulerActive() && 
-               (this == SchedulerState.RUNNING_PLUGIN ||
-               this == SchedulerState.STARTING_PLUGIN ||
-               this == SchedulerState.WAITING_FOR_LOGIN);
+               (this == SchedulerState.RUNNING_PLUGIN
+               );
+    }
+    public boolean isAboutStarting() {
+        return this == SchedulerState.STARTING_PLUGIN || this== SchedulerState.WAITING_FOR_STOP_CONDITION ||
+               this == SchedulerState.WAITING_FOR_LOGIN;
     }
 
     /**

@@ -75,17 +75,16 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
 
         // Update the table model to allow editing of Priority column and proper column types
         tableModel = new DefaultTableModel(
-            new Object[]{"Plugin", "Schedule", "Next Run", "Start Conditions", "Stop Conditions", "Priority", "Default", "Enabled", "Random", "Runs"}, 0) {
+            new Object[]{"Plugin", "Schedule", "Next Run", "Start Conditions", "Stop Conditions", "Priority", "Default", "Enabled", "Random", "Time Stop", "Runs"}, 0) {
             @Override
             public Class<?> getColumnClass(int column) {
-                if (column == 6 || column == 7 || column == 8) return Boolean.class; // Boolean columns
+                if (column == 6 || column == 7 || column == 8 || column == 9) return Boolean.class; // Boolean columns
                 if (column == 5) return Integer.class; // Priority column as Integer
-                if (column == 9) return Integer.class; // Run count as Integer
+                if (column == 10) return Integer.class; // Run count as Integer
                 return String.class;
             }
             @Override
-            public boolean isCellEditable(int row, int column) {
-                log.info("ScheduleTablePanel start isCellEditable");
+            public boolean isCellEditable(int row, int column) {                
                 // Default column is 6
                 if (column == 6) {
                     // Check if this is a default plugin
@@ -109,8 +108,8 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
                     }
                 }
                 
-                // Allow editing Priority column (5) in addition to Default, Enabled, and Random columns
-                return column == 5 || column == 6 || column == 7 || column == 8; 
+                // Allow editing Priority column (5) in addition to Default, Enabled, Random and Time Stop columns
+                return column == 5 || column == 6 || column == 7 || column == 8 || column == 9; 
             }
         };
         
@@ -119,7 +118,7 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
             if (updatingTable) {                
                 return; // Skip processing if we're already updating or it's not our columns
             }            
-            if (e.getColumn() == 5 || e.getColumn() == 6 || e.getColumn() == 7 || e.getColumn() == 8) {                
+            if (e.getColumn() == 5 || e.getColumn() == 6 || e.getColumn() == 7 || e.getColumn() == 8 || e.getColumn() == 9) {                
                 try {
                     updatingTable = true;
                     int firstRow = e.getFirstRow();
@@ -168,18 +167,22 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
                             else if (e.getColumn() == 7) { // Enabled column
                                 Boolean enabled = (Boolean) tableModel.getValueAt(row, 7);
                                 tableModel.setValueAt(enabled, row, 7);
-                                log.info("ScheduleTablePanel start setEnabled");
+                                
                                 Microbot.getClientThread().invokeLater(() -> {
                                     // Update the enabled status of the plugin
                                     scheduled.setEnabled(enabled);
                                 });
-                                
-                                log.info("ScheduleTablePanel done");
+                                                                
                             }
                             else if (e.getColumn() == 8) { // Random scheduling column
                                 Boolean allowRandom = (Boolean) tableModel.getValueAt(row, 8);
                                 tableModel.setValueAt(allowRandom, row, 8);
                                 scheduled.setAllowRandomScheduling(allowRandom);
+                            }
+                            else if (e.getColumn() == 9) { // Time-based stop condition column
+                                Boolean needsTimeStop = (Boolean) tableModel.getValueAt(row, 9);
+                                tableModel.setValueAt(needsTimeStop, row, 9);
+                                scheduled.setNeedsStopCondition(needsTimeStop);
                             }
                             
                         }
@@ -250,7 +253,8 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         scheduleTable.getColumnModel().getColumn(6).setPreferredWidth(60);  // Default
         scheduleTable.getColumnModel().getColumn(7).setPreferredWidth(60);  // Enabled
         scheduleTable.getColumnModel().getColumn(8).setPreferredWidth(60);  // Random
-        scheduleTable.getColumnModel().getColumn(9).setPreferredWidth(50);  // Run Count
+        scheduleTable.getColumnModel().getColumn(9).setPreferredWidth(60);  // Time Stop
+        scheduleTable.getColumnModel().getColumn(10).setPreferredWidth(50);  // Run Count
   
         
        
@@ -434,160 +438,214 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
      * Creates a detailed tooltip for start conditions with improved condition type display
      */
     private String getStartConditionsTooltip(PluginScheduleEntry entry) {
+        if (!entry.hasStartConditions()) {
+            return "No start conditions defined";
+        }
+        
+        List<Condition> conditions = entry.getStartConditions();
+        
+        // Determine if start conditions are relevant - when plugin is enabled but not started
+        boolean conditionsAreRelevant = entry.isEnabled() && !entry.isRunning();
+        
         StringBuilder tooltip = new StringBuilder("<html><b>Start Conditions:</b><br>");
         
-        List<Condition> conditions = entry.getStartConditionManager().getConditions();
-        if (conditions.isEmpty()) {
-            tooltip.append("No start conditions defined");
+        // Group conditions by type
+        Map<ConditionType, List<Condition>> grouped = groupConditionsByType(conditions);
+        
+        // If there are many conditions, add a summary first
+        if (conditions.size() > 3) {
+            tooltip.append("<i>").append(entry.getDetailedStartConditionsStatus()).append("</i>");
+            tooltip.append("<br><br>");
+        }
+        
+        if (grouped.isEmpty()) {
+            tooltip.append("Will start as soon as enabled");
         } else {
-            // Add logic indicator with visual emphasis
-            boolean requiresAll = entry.getStartConditionManager().requiresAll();
-            tooltip.append("<b>Logic:</b> ")
-                  .append("<span style='color:")
-                  .append(requiresAll ? "#e67e22" : "#3498db")
-                  .append("'>")
-                  .append(requiresAll ? "ALL conditions must be met" : "ANY condition can trigger")
-                  .append("</span>");
-            
-            // Add progress summary if relevant
-            int condMet = (int) conditions.stream().filter(Condition::isSatisfied).count();
-            if (condMet > 0) {
-                tooltip.append("<br><b>Status:</b> ")
-                      .append(condMet)
-                      .append("/")
-                      .append(conditions.size())
-                      .append(" conditions met");
-            }
-            
-            tooltip.append("<br><br><b>Conditions:</b>");
-            
-            // Group similar conditions for cleaner display
-            Map<ConditionType, List<Condition>> groupedConditions = groupConditionsByType(conditions);
-            
-            // Display conditions by type for better organization
-            for (Map.Entry<ConditionType, List<Condition>> group : groupedConditions.entrySet()) {
+            tooltip.append("<table>");
+            for (Map.Entry<ConditionType, List<Condition>> group : grouped.entrySet()) {
                 ConditionType type = group.getKey();
                 List<Condition> typeConditions = group.getValue();
                 
-                // Add type header with appropriate icon
-                tooltip.append("<br><span style='color:#7f8c8d'><i>")
-                      .append(getConditionTypeIcon(type))
-                      .append(" ")
-                      .append(formatConditionTypeName(type))
-                      .append(" (")
-                      .append(typeConditions.size())
-                      .append(")</i></span>");
+                // Add a header for this type
+                tooltip.append("<tr><td colspan='2'><b>")
+                       .append(getConditionTypeIcon(type))
+                       .append(" ")
+                       .append(formatConditionTypeName(type))
+                       .append("</b></td></tr>");
                 
-                // List conditions of this type
+                // Add each condition
                 for (Condition condition : typeConditions) {
-                    tooltip.append("<br>")
-                          .append(getStatusSymbol(condition.isSatisfied()))
-                          .append(" ")
-                          .append(formatConditionDescription(condition));
+                    boolean isSatisfied = condition.isSatisfied();
+                    tooltip.append("<tr>");
                     
-                    // Add progress information if available
-                    double progress = condition.getProgressPercentage();
-                    if (progress > 0 && progress < 100) {
-                        tooltip.append(" <span style='color:#7f8c8d'>")
-                              .append(String.format("%.0f%%", progress))
-                              .append("</span>");
+                    // Status icon column
+                    tooltip.append("<td>");
+                    // Show either relevance icon or satisfaction status
+                    if (conditionsAreRelevant) {
+                        tooltip.append("<font color='gold'>⚡</font> ")
+                               .append(getStatusSymbol(isSatisfied));
+                    } else {
+                        tooltip.append("<font color='gray'>○</font>");
                     }
+                    tooltip.append("</td>");
+                    
+                    // Description column
+                    tooltip.append("<td>");
+                    String description = formatConditionDescription(condition);
+                    if (isSatisfied) {
+                        if (conditionsAreRelevant) {
+                            tooltip.append("<font color='green'>").append(description).append("</font>");
+                        } else {
+                            tooltip.append("<font color='gray'>").append(description).append("</font>");
+                        }
+                    } else {
+                        if (conditionsAreRelevant) {
+                            tooltip.append("<font color='red'>").append(description).append("</font>");
+                        } else {
+                            tooltip.append("<font color='gray'>").append(description).append("</font>");
+                        }
+                    }
+                    tooltip.append("</td>");
+                    tooltip.append("</tr>");
                 }
             }
-            
-            // Add information about one-time conditions
-            if (entry.hasAnyOneTimeStartConditions()) {
-                tooltip.append("<br><br><span style='color:#e74c3c'><i>⚠ One-time trigger conditions");
-                if (!entry.canStartTriggerAgain()) {
-                    tooltip.append(" (completed)");
-                }
-                tooltip.append("</i></span>");
-            }
+            tooltip.append("</table>");
         }
         
-        return tooltip.toString() + "</html>";
+        // Add overall status
+        if (conditionsAreRelevant) {
+            tooltip.append("<br><b>Status:</b> <font color='gold'>⚡ Currently relevant</font>");
+            if (entry.areStartConditionsMet()) {
+                tooltip.append("<br><font color='green'>All conditions met - plugin can start</font>");
+            } else {
+                tooltip.append("<br><font color='red'>Some conditions not met - waiting to start</font>");
+            }
+        } else {
+            tooltip.append("<br><b>Status:</b> <font color='gray'>Not currently relevant</font>");
+        }
+        
+        tooltip.append("</html>");
+        return tooltip.toString();
     }
 
     /**
      * Creates a detailed tooltip for stop conditions with improved condition type display
      */
     private String getStopConditionsTooltip(PluginScheduleEntry entry) {
+        if (!entry.hasStopConditions()) {
+            return "No stop conditions defined";
+        }
+        
+        List<Condition> conditions = entry.getStopConditions();
+        
+        // Determine if stop conditions are relevant - when plugin is currently running
+        boolean conditionsAreRelevant = entry.isRunning();
+        
         StringBuilder tooltip = new StringBuilder("<html><b>Stop Conditions:</b><br>");
         
-        List<Condition> conditions = entry.getStopConditionManager().getConditions();
-        if (conditions.isEmpty()) {
-            tooltip.append("No stop conditions defined");
-        } else {
-            // Add logic indicator with visual emphasis
-            boolean requiresAll = entry.getStopConditionManager().requiresAll();
-            tooltip.append("<b>Logic:</b> ")
-                  .append("<span style='color:")
-                  .append(requiresAll ? "#e67e22" : "#3498db")
-                  .append("'>")
-                  .append(requiresAll ? "ALL conditions must be met" : "ANY condition can trigger")
-                  .append("</span>");
-            
-            // Add overall progress if the plugin is running
-            if (entry.isRunning()) {
-                double progress = entry.getStopConditionProgress();
-                tooltip.append("<br><b>Overall Progress:</b> ")
-                      .append(String.format("%.1f%%", progress));
+        // Group conditions by type
+        Map<ConditionType, List<Condition>> grouped = groupConditionsByType(conditions);
+        
+        // If there are many conditions, add a summary first
+        if (conditions.size() > 3) {
+            tooltip.append("<i>").append(entry.getDetailedStopConditionsStatus()).append("</i>");
+            tooltip.append("<br><br>");
+        }
+        
+        // Show overall progress if relevant and available
+        if (conditionsAreRelevant) {
+            double progress = entry.getStopConditionProgress();
+            if (progress > 0) {
+                tooltip.append("<b>Overall Progress: </b>");
                 
-                int condMet = (int) conditions.stream().filter(Condition::isSatisfied).count();
-                tooltip.append(" (")
-                      .append(condMet)
-                      .append("/")
-                      .append(conditions.size())
-                      .append(" conditions met)");
+                String progressColor = progress > 80 ? "green" : 
+                                      progress > 50 ? "orange" : "blue";
+                
+                tooltip.append("<font color='")
+                       .append(progressColor)
+                       .append("'>")
+                       .append(String.format("%.1f%%", progress))
+                       .append("</font><br>");
             }
-            
-            tooltip.append("<br><br><b>Conditions:</b>");
-            
-            // Group similar conditions for cleaner display
-            Map<ConditionType, List<Condition>> groupedConditions = groupConditionsByType(conditions);
-            
-            // Display conditions by type for better organization
-            for (Map.Entry<ConditionType, List<Condition>> group : groupedConditions.entrySet()) {
+            tooltip.append("<br>");
+        }
+        
+        if (grouped.isEmpty()) {
+            tooltip.append("Will run until manually stopped");
+        } else {
+            tooltip.append("<table>");
+            for (Map.Entry<ConditionType, List<Condition>> group : grouped.entrySet()) {
                 ConditionType type = group.getKey();
                 List<Condition> typeConditions = group.getValue();
                 
-                // Add type header with appropriate icon
-                tooltip.append("<br><span style='color:#7f8c8d'><i>")
-                      .append(getConditionTypeIcon(type))
-                      .append(" ")
-                      .append(formatConditionTypeName(type))
-                      .append(" (")
-                      .append(typeConditions.size())
-                      .append(")</i></span>");
+                // Add a header for this type
+                tooltip.append("<tr><td colspan='2'><b>")
+                       .append(getConditionTypeIcon(type))
+                       .append(" ")
+                       .append(formatConditionTypeName(type))
+                       .append("</b></td></tr>");
                 
-                // List conditions of this type
+                // Add each condition
                 for (Condition condition : typeConditions) {
-                    tooltip.append("<br>")
-                          .append(getStatusSymbol(condition.isSatisfied()))
-                          .append(" ")
-                          .append(formatConditionDescription(condition));
+                    boolean isSatisfied = condition.isSatisfied();
+                    tooltip.append("<tr>");
                     
-                    // Add progress information if available
-                    double progress = condition.getProgressPercentage();
-                    if (progress > 0 && progress < 100) {
-                        tooltip.append(" <span style='color:#7f8c8d'>")
-                              .append(String.format("%.0f%%", progress))
-                              .append("</span>");
+                    // Status icon column
+                    tooltip.append("<td>");
+                    // Show either relevance icon or satisfaction status
+                    if (conditionsAreRelevant) {
+                        tooltip.append("<font color='gold'>⚡</font> ")
+                               .append(getStatusSymbol(isSatisfied));
+                    } else {
+                        tooltip.append("<font color='gray'>○</font>");
                     }
+                    tooltip.append("</td>");
+                    
+                    // Description column
+                    tooltip.append("<td>");
+                    String description = formatConditionDescription(condition);
+                    if (isSatisfied) {
+                        if (conditionsAreRelevant) {
+                            tooltip.append("<font color='green'>").append(description).append("</font>");
+                        } else {
+                            tooltip.append("<font color='gray'>").append(description).append("</font>");
+                        }
+                    } else {
+                        if (conditionsAreRelevant) {
+                            tooltip.append("<font color='red'>").append(description).append("</font>");
+                        } else {
+                            tooltip.append("<font color='gray'>").append(description).append("</font>");
+                        }
+                    }
+                    tooltip.append("</td>");
+                    tooltip.append("</tr>");
                 }
             }
-            
-            // Add information about one-time conditions
-            if (entry.hasAnyOneTimeStopConditions()) {
-                tooltip.append("<br><br><span style='color:#e74c3c'><i>⚠ One-time trigger conditions");
-                if (!entry.canStopTriggerAgain()) {
-                    tooltip.append(" (completed)");
-                }
-                tooltip.append("</i></span>");
-            }
+            tooltip.append("</table>");
         }
         
-        return tooltip.toString() + "</html>";
+        // Add overall status
+        if (conditionsAreRelevant) {
+            tooltip.append("<br><b>Status:</b> <font color='gold'>⚡ Currently relevant</font>");
+            if (entry.areStopConditionsMet()) {
+                tooltip.append("<br><font color='green'>Stop conditions met - plugin will stop</font>");
+            } else {
+                tooltip.append("<br><font color='blue'>Waiting for stop conditions</font>");
+                
+                // If there's timing info available, show it
+                String nextTrigger = entry.getNextStopTriggerTimeString();
+                if (!nextTrigger.contains("None") && !nextTrigger.isEmpty()) {
+                    tooltip.append("<br><font color='blue'>Next potential trigger: ")
+                           .append(nextTrigger)
+                           .append("</font>");
+                }
+            }
+        } else {
+            tooltip.append("<br><b>Status:</b> <font color='gray'>Not currently relevant</font>");
+        }
+        
+        tooltip.append("</html>");
+        return tooltip.toString();
     }
     
     /**
@@ -613,9 +671,9 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         switch (type) {
             case TIME:
                 return "&#9200;"; // Clock icon using HTML entity
-            case SKILL_LEVEL:
-                return "&#128202;"; // Chart icon using HTML entity
-            case SKILL_XP:
+            //case SKILL:
+              //  return "&#128202;"; // Chart icon using HTML entity
+            case SKILL:
                 return "&#128200;"; // Chart with upward trend using HTML entity
             case RESOURCE:
                 return "&#9635;"; // Square icon
@@ -636,8 +694,7 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
     private String formatConditionTypeName(ConditionType type) {
         switch (type) {
             case TIME: return "Time Conditions";
-            case SKILL_LEVEL: return "Skill Level Conditions";
-            case SKILL_XP: return "Experience Conditions";
+            case SKILL: return "Skill Conditions";            
             case RESOURCE: return "Resource Conditions";
             case LOCATION: return "Location Conditions";
             case LOGICAL: return "Logical Conditions";
@@ -721,6 +778,27 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         PluginScheduleEntry nextPlugin = schedulerPlugin.getNextScheduledPlugin();
         return nextPlugin != null && nextPlugin.equals(scheduledPlugin);
     }   
+    private void detectChangesInPluginlist(){
+        List<PluginScheduleEntry> sortedPlugins = schedulerPlugin.sortPluginScheduleEntries();
+        List<PluginScheduleEntry> currentRowToPluginMap = new ArrayList<>(sortedPlugins.size());
+        boolean foundAll = true;
+        for (int j = 0; j < rowToPluginMap.size(); j++) {
+            for (int i = 0; i < sortedPlugins.size(); i++) {
+            
+                if (sortedPlugins.get(i).equals(rowToPluginMap.get(j))){
+                    currentRowToPluginMap.add(sortedPlugins.get(i));
+                    break;
+                }
+            }
+           
+        }
+        if (currentRowToPluginMap.size() != rowToPluginMap.size()){
+            foundAll = false;
+            log.info("Plugin list changed, refreshing");
+            this.rowToPluginMap = new ArrayList<>(sortedPlugins);
+        }
+
+    }
     public void refreshTable() {       
         if (this.updatingTable) {
             return; // Skip if already updating
@@ -729,14 +807,14 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         this.updatingTable = true;
         
         try {
+            detectChangesInPluginlist();
             // Save current selection
             PluginScheduleEntry selectedPlugin = getSelectedPlugin();
             
             // Get current plugins and sort them by next run time
             List<PluginScheduleEntry> sortedPlugins = schedulerPlugin.sortPluginScheduleEntries();
             
-            // Save the current row map for comparison
-            List<PluginScheduleEntry> previousRowMap = new ArrayList<>(rowToPluginMap);
+            
             
             // Create a new row map with the correct size to match the sorted plugins
             List<PluginScheduleEntry> newRowMap = new ArrayList<>(sortedPlugins.size());
@@ -744,7 +822,10 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
             for (int i = 0; i < sortedPlugins.size(); i++) {
                 newRowMap.add(null);
             }
-            
+
+
+            // Save the current row map for comparison
+            List<PluginScheduleEntry> previousRowMap = new ArrayList<>(rowToPluginMap);
             // Track if we need to force repaint (visual changes that might not trigger repaint)
             boolean needsRepaint = false;
             
@@ -873,7 +954,8 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         rowData[6] = plugin.isDefault();
         rowData[7] = plugin.isEnabled();
         rowData[8] = plugin.isAllowRandomScheduling();
-        rowData[9] = plugin.getRunCount();
+        rowData[9] = plugin.isNeedsStopCondition();
+        rowData[10] = plugin.getRunCount();
     }
 
     /**
@@ -896,7 +978,8 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         tableModel.setValueAt(plugin.isDefault(), rowIndex, 6);
         tableModel.setValueAt(plugin.isEnabled(), rowIndex, 7);
         tableModel.setValueAt(plugin.isAllowRandomScheduling(), rowIndex, 8);
-        tableModel.setValueAt(plugin.getRunCount(), rowIndex, 9);
+        tableModel.setValueAt(plugin.isNeedsStopCondition(), rowIndex, 9);
+        tableModel.setValueAt(plugin.getRunCount(), rowIndex, 10);
     }
 
     /**
@@ -920,6 +1003,7 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
             plugin.isDefault(),
             plugin.isEnabled(),
             plugin.isAllowRandomScheduling(),
+            plugin.isNeedsStopCondition(),
             plugin.getRunCount()
         };
     }
@@ -972,6 +1056,7 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
                 scheduled.isDefault(),
                 scheduled.isEnabled(),
                 scheduled.isAllowRandomScheduling(),
+                scheduled.isNeedsStopCondition(),
                 scheduled.getRunCount()
             });
         }
@@ -1234,7 +1319,16 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
     public PluginScheduleEntry getSelectedPlugin() {
         int selectedRow = scheduleTable.getSelectedRow();
         if (selectedRow >= 0 && selectedRow < schedulerPlugin.getScheduledPlugins().size()) {
-            return rowToPluginMap.get(selectedRow);
+            if (rowToPluginMap.size() > selectedRow) {
+                // Use the rowToPluginMap to get the plugin
+                return rowToPluginMap.get(selectedRow);
+            }else {
+                // Fallback to the original list if rowToPluginMap is not available
+                // This should not happen in normal operation                
+                rowToPluginMap = new ArrayList<>(schedulerPlugin.getScheduledPlugins());
+                return schedulerPlugin.getScheduledPlugins().get(selectedRow);
+            }
+            
             //return schedulerPlugin.getScheduledPlugins().get(selectedRow);
         }
         return null;
@@ -1270,6 +1364,7 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
             pluginEntry.isDefault(),
             pluginEntry.isEnabled(),
             pluginEntry.isAllowRandomScheduling(),
+            pluginEntry.isNeedsStopCondition(),
             pluginEntry.getRunCount()
         });
         scheduleTable.setRowSelectionInterval(getRowCount(), getRowCount());        
@@ -1400,4 +1495,5 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         }
         return null;
     }
+
 }

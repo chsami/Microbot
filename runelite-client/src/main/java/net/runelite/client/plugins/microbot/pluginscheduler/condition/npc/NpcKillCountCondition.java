@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
  * Is satisfied when the player has killed a certain number of NPCs.
  */
 @Getter
-@EqualsAndHashCode(callSuper = false)
+@EqualsAndHashCode(callSuper = true)
 public class NpcKillCountCondition extends NpcCondition {
     private final String npcName;
     private final Pattern npcNamePattern;

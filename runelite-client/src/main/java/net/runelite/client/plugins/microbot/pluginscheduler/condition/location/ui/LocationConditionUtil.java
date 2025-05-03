@@ -28,7 +28,7 @@ public class LocationConditionUtil {
     /**
      * Creates a unified location condition panel with tab selection for different location condition types
      */
-    public static void createLocationConditionPanel(JPanel panel, GridBagConstraints gbc, JPanel configPanel) {
+    public static void createLocationConditionPanel(JPanel panel, GridBagConstraints gbc) {
         // Main label
         JLabel titleLabel = new JLabel("Location Condition:");
         titleLabel.setForeground(Color.WHITE);
@@ -67,15 +67,15 @@ public class LocationConditionUtil {
         tabGbc.fill = GridBagConstraints.HORIZONTAL;
         tabGbc.anchor = GridBagConstraints.NORTHWEST;
         
-        createPositionConditionPanel(positionPanel, tabGbc, configPanel);
-        createAreaConditionPanel(areaPanel, tabGbc, configPanel);
-        createRegionConditionPanel(regionPanel, tabGbc, configPanel);
+        createPositionConditionPanel(positionPanel, tabGbc);
+        createAreaConditionPanel(areaPanel, tabGbc);
+        createRegionConditionPanel(regionPanel, tabGbc);
         
         // Add the tabbed pane to the main panel
         panel.add(tabbedPane, gbc);
         
         // Store the tabbed pane for later access
-        configPanel.putClientProperty("locationTabbedPane", tabbedPane);
+        panel.putClientProperty("locationTabbedPane", tabbedPane);
     }
 
     /**
@@ -198,7 +198,7 @@ public class LocationConditionUtil {
         /**
      * Creates a panel for configuring PositionCondition
      */
-    private static void createPositionConditionPanel(JPanel panel, GridBagConstraints gbc, JPanel configPanel) {
+    private static void createPositionConditionPanel(JPanel panel, GridBagConstraints gbc) {
         // Section title
         JLabel titleLabel = new JLabel("Position Condition (Specific Location):");
         titleLabel.setForeground(Color.WHITE);
@@ -346,16 +346,16 @@ public class LocationConditionUtil {
         panel.add(namePanel, gbc);
         
         // Store components for later access
-        configPanel.putClientProperty("positionXSpinner", xSpinner);
-        configPanel.putClientProperty("positionYSpinner", ySpinner);
-        configPanel.putClientProperty("positionPlaneSpinner", planeSpinner);
-        configPanel.putClientProperty("positionDistanceSpinner", distanceSpinner);
-        configPanel.putClientProperty("positionNameField", nameField);
+        panel.putClientProperty("positionXSpinner", xSpinner);
+        panel.putClientProperty("positionYSpinner", ySpinner);
+        panel.putClientProperty("positionPlaneSpinner", planeSpinner);
+        panel.putClientProperty("positionDistanceSpinner", distanceSpinner);
+        panel.putClientProperty("positionNameField", nameField);
     }
         /**
      * Creates a panel for configuring AreaCondition
      */
-    private static void createAreaConditionPanel(JPanel panel, GridBagConstraints gbc, JPanel configPanel) {
+    private static void createAreaConditionPanel(JPanel panel, GridBagConstraints gbc) {
         // Section title
         JLabel titleLabel = new JLabel("Area Condition (Rectangular Area):");
         titleLabel.setForeground(Color.WHITE);
@@ -493,17 +493,17 @@ public class LocationConditionUtil {
         panel.add(namePanel, gbc);
         
         // Store components for later access
-        configPanel.putClientProperty("areaX1Spinner", x1Spinner);
-        configPanel.putClientProperty("areaY1Spinner", y1Spinner);
-        configPanel.putClientProperty("areaX2Spinner", x2Spinner);
-        configPanel.putClientProperty("areaY2Spinner", y2Spinner);
-        configPanel.putClientProperty("areaPlaneSpinner", planeSpinner);
-        configPanel.putClientProperty("areaNameField", nameField);
+        panel.putClientProperty("areaX1Spinner", x1Spinner);
+        panel.putClientProperty("areaY1Spinner", y1Spinner);
+        panel.putClientProperty("areaX2Spinner", x2Spinner);
+        panel.putClientProperty("areaY2Spinner", y2Spinner);
+        panel.putClientProperty("areaPlaneSpinner", planeSpinner);
+        panel.putClientProperty("areaNameField", nameField);
     }
         /**
      * Creates a panel for configuring RegionCondition
      */
-    private static void createRegionConditionPanel(JPanel panel, GridBagConstraints gbc, JPanel configPanel) {
+    private static void createRegionConditionPanel(JPanel panel, GridBagConstraints gbc) {
         // Section title
         JLabel titleLabel = new JLabel("Region Condition (Game Region):");
         titleLabel.setForeground(Color.WHITE);
@@ -606,8 +606,8 @@ public class LocationConditionUtil {
         panel.add(namePanel, gbc);
         
         // Store components for later access
-        configPanel.putClientProperty("regionIdsField", regionIdsField);
-        configPanel.putClientProperty("regionNameField", nameField);
+        panel.putClientProperty("regionIdsField", regionIdsField);
+        panel.putClientProperty("regionNameField", nameField);
     }
         /**
      * Creates a PositionCondition from the panel configuration

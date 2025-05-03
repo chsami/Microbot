@@ -4,6 +4,7 @@ import java.time.ZonedDateTime;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
@@ -15,6 +16,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.ConditionT
  * This can be used to prevent a plugin from being stopped during critical operations.
  */
 @Slf4j
+@EqualsAndHashCode(callSuper = false)
 public class LockCondition implements Condition {
     
     private final AtomicBoolean locked = new AtomicBoolean(false);

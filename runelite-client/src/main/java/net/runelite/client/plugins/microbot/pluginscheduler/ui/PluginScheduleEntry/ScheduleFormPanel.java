@@ -3,10 +3,6 @@ package net.runelite.client.plugins.microbot.pluginscheduler.ui.PluginScheduleEn
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.pluginscheduler.ui.SchedulerWindow;
-import net.runelite.client.plugins.microbot.pluginscheduler.ui.components.DateRangePanel;
-import net.runelite.client.plugins.microbot.pluginscheduler.ui.components.SingleDateTimePickerPanel;
-import net.runelite.client.plugins.microbot.pluginscheduler.ui.components.TimeRangePanel;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.ui.util.ConditionConfigPanelUtil;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.SchedulerConfig;
 import net.runelite.client.plugins.microbot.pluginscheduler.SchedulerPlugin;
@@ -15,7 +11,6 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.Inter
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.SingleTriggerTimeCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeWindowCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.enums.RepeatCycle;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.ui.TimeConditionPanelUtil;
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
 import net.runelite.client.ui.ColorScheme;
@@ -38,6 +33,7 @@ public class ScheduleFormPanel extends JPanel {
     private JComboBox<String> pluginComboBox;
     private JComboBox<String> timeConditionTypeComboBox;
     private JCheckBox randomSchedulingCheckbox;
+    private JCheckBox timeBasedStopConditionCheckbox;
     @Getter
     private JSpinner prioritySpinner;
     private JCheckBox defaultPluginCheckbox;
@@ -165,9 +161,22 @@ public class ScheduleFormPanel extends JPanel {
         randomSchedulingCheckbox.setForeground(Color.WHITE);
         randomSchedulingCheckbox.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         formPanel.add(randomSchedulingCheckbox, gbc);
-
+        
+        // Time-based stop condition checkbox
         gbc.gridx = 0;
         gbc.gridy = 4;
+        gbc.gridwidth = 4;
+        timeBasedStopConditionCheckbox = new JCheckBox("Requires time-based stop condition");
+        timeBasedStopConditionCheckbox.setSelected(false);
+        timeBasedStopConditionCheckbox.setToolTipText(
+            "<html>When enabled, the scheduler will prompt you to add a time-based stop condition for this plugin.<br>" +
+            "This helps prevent plugins from running indefinitely if other stop conditions don't trigger.</html>");
+        timeBasedStopConditionCheckbox.setForeground(Color.WHITE);
+        timeBasedStopConditionCheckbox.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        formPanel.add(timeBasedStopConditionCheckbox, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 5;
         gbc.gridwidth = 1;
         JLabel priorityLabel = new JLabel("Priority:");
         priorityLabel.setForeground(Color.WHITE);
@@ -336,14 +345,30 @@ public class ScheduleFormPanel extends JPanel {
     }
 
     public void loadPlugin(PluginScheduleEntry entry) {
-        this.selectedPlugin = entry;
+        
+        if (entry == null ) {
+            if ( this.selectedPlugin != null){
+                clearForm();            
+            }   
+            this.selectedPlugin = null;  
+            
+            return;
+        }
+        if (entry.equals(selectedPlugin)){            
+            return; // No need to update if the same plugin is selected
+        }
+        this.selectedPlugin = entry;    
+        
+
+
+        
         
         // Block combobox events temporarily to avoid feedback loops
         ActionListener[] listeners = pluginComboBox.getActionListeners();
         for (ActionListener listener : listeners) {
             pluginComboBox.removeActionListener(listener);
         }
-        
+        log.info("Loading plugin: {}", entry.getName());
         // Update plugin selection
         pluginComboBox.setSelectedItem(entry.getName());
         
@@ -354,6 +379,9 @@ public class ScheduleFormPanel extends JPanel {
         
         // Set random scheduling checkbox
         randomSchedulingCheckbox.setSelected(entry.isAllowRandomScheduling());
+        
+        // Set time-based stop condition checkbox
+        timeBasedStopConditionCheckbox.setSelected(entry.isNeedsStopCondition());
         
         // Set priority spinner
         prioritySpinner.setValue(entry.getPriority());
@@ -373,6 +401,11 @@ public class ScheduleFormPanel extends JPanel {
                 startCondition = timeConditions.get(0);
             }
         }
+        if (startCondition == null) {
+            log.warn("No start condition found for plugin: {}", entry.getName());
+            return;
+        }
+        
         TimeCondition mainStartCondition = entry.getMainTimeStartCondition();
         
         // Block combobox events again for condition type changes
@@ -428,9 +461,10 @@ public class ScheduleFormPanel extends JPanel {
     }
 
     public void clearForm() {
-        selectedPlugin = null;
-
+        
+        this.selectedPlugin = null;  
         if (pluginComboBox.getItemCount() > 0) {
+            
             pluginComboBox.setSelectedIndex(0);
         }
 
@@ -505,6 +539,9 @@ public class ScheduleFormPanel extends JPanel {
         
         // If it's default by schedule type, force default to true, otherwise use checkbox value
         entry.setDefault(isDefaultByScheduleType || defaultPluginCheckbox.isSelected());
+        
+        // Set the time-based stop condition flag
+        entry.setNeedsStopCondition(timeBasedStopConditionCheckbox.isSelected());
         
         return entry;
     }
@@ -603,7 +640,7 @@ public class ScheduleFormPanel extends JPanel {
             
             if (result == JOptionPane.YES_OPTION) {
                 // User confirmed - stop the plugin
-                plugin.forceStopCurrentPluginScheduleEntry();
+                plugin.forceStopCurrentPluginScheduleEntry(true);
                 
                 // Update UI after stopping
                 SwingUtilities.invokeLater(() -> {
@@ -635,10 +672,13 @@ public class ScheduleFormPanel extends JPanel {
                             window.switchToStopConditionsTab();
                         }
                     });
+                    selectedPlugin.setNeedsStopCondition(true);
                     return;
                 } else if (result == JOptionPane.CANCEL_OPTION) {
+                    selectedPlugin.setNeedsStopCondition(false);
                     return; // Don't start the plugin
                 }
+                selectedPlugin.setNeedsStopCondition(false);
                 // If NO, continue to start the plugin without stop conditions
             }
             
