@@ -354,7 +354,7 @@ public class revKillerScript extends Script {
             if(!Rev.isInteracting() && !Rs2Player.isInteracting() && !Rev.isDead()) {
                 Microbot.log("Attacking Rev");
                 if (Rs2Npc.interact(Rev, "Attack")) {
-                    sleepUntil(() -> Rev.isDead() || !Rs2Player.isInCombat() || Rs2GroundItem.isItemBasedOnValueOnGround(500,12) || isPkerAround() || Rs2Player.getHealthPercentage() <= generateRandomNumber(70, 80), generateRandomNumber(60000, 120000));
+                    sleepUntil(() -> Rev.isDead() || !Rs2Player.isInCombat() || Rs2GroundItem.isItemBasedOnValueOnGround(500,12) || isItTimeToGo() || Rs2Player.getHealthPercentage() <= generateRandomNumber(70, 80), generateRandomNumber(60000, 120000));
                     hoppedWorld=false;
                 }
             }
@@ -364,7 +364,7 @@ public class revKillerScript extends Script {
                     Microbot.log("Rev is attacking us attacking back.");
                     if (Rs2Npc.interact(Rev, "Attack")) {
                         hoppedWorld=false;
-                        sleepUntil(() -> Rev.isDead() || !Rs2Player.isInCombat() || Rs2GroundItem.isItemBasedOnValueOnGround(500, 12) || isPkerAround() || Rs2Player.getHealthPercentage() <= generateRandomNumber(70, 80), generateRandomNumber(60000, 120000));
+                        sleepUntil(() -> Rev.isDead() || !Rs2Player.isInCombat() || Rs2GroundItem.isItemBasedOnValueOnGround(500, 12) || isItTimeToGo() || Rs2Player.getHealthPercentage() <= generateRandomNumber(70, 80), generateRandomNumber(60000, 120000));
                     }
                 }
             }
