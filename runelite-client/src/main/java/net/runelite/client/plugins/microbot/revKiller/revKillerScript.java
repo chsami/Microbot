@@ -549,8 +549,8 @@ public class revKillerScript extends Script {
 
             } else {
                 Microbot.log("We're stuck outside of the enclave");
-                if(Rs2GameObject.get("Barrier", true) != null){
-                    if(Rs2GameObject.interact("Barrier", "Pass-Through", true)){
+                if(Rs2GameObject.exists(39653)){
+                    if(Rs2GameObject.interact(39653, "Pass-Through")){
                         sleepUntil(()-> Rs2Player.isMoving(), Rs2Random.between(2000,4000));
                         sleepUntil(()-> !Rs2Player.isMoving(), Rs2Random.between(4000,8000));
                     }
