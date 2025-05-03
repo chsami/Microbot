@@ -395,7 +395,7 @@ public class revKillerScript extends Script {
         checkForPKerFuture = scheduledExecutorService.scheduleWithFixedDelay(
                 this::futurePKCheck,
                 0,
-                500,
+                250,
                 TimeUnit.MILLISECONDS
         );
     }
