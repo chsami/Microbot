@@ -568,14 +568,9 @@ public class revKillerScript extends Script {
                 }
                 if(Rs2Pvp.getWildernessLevelFrom(Rs2Player.getWorldLocation()) <= 20) {
                     if (Rs2Equipment.useRingAction(JewelleryLocationEnum.FEROX_ENCLAVE)) {
-                        if(isPkerAround()) {
-                            sleep(1300, 1500);
-                            Microbot.log("Fast Teleing");
-                        } else {
-                            sleep(500, 1000);
-                            sleepUntil(()-> !Rs2Player.isAnimating(), generateRandomNumber(6000,10000));
-                            Microbot.log("Teleing");
-                        }
+                        sleepUntil(()-> Rs2Player.isAnimating(), generateRandomNumber(2000,4000));
+                        sleepUntil(()-> !Rs2Player.isAnimating(), generateRandomNumber(6000,10000));
+                        Microbot.log("Teleing");
                     }
                 }
             }
