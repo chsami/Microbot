@@ -501,6 +501,15 @@ public class revKillerScript extends Script {
                 if(!super.isRunning()){
                     break;
                 }
+                if(Rs2Inventory.isFull()){
+                    if(Rs2Inventory.contains("Shark")){
+                        if(Rs2Inventory.interact("Shark", "Eat")){
+                            sleepUntil(()-> !Rs2Player.isAnimating(),generateRandomNumber(2000,3500));
+                        }
+                    } else {
+                        break;
+                    }
+                }
                 if(Rs2GroundItem.lootItemBasedOnValue(new LootingParameters(500,50000000, 10,1,1,false,false))){
                     sleepUntil(()-> Rs2Player.isMoving(), Rs2Random.between(750,1500));
                     if(Rs2Player.isMoving()){
