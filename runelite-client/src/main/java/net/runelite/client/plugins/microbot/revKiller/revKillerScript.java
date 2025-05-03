@@ -542,11 +542,9 @@ public class revKillerScript extends Script {
         }
     }
 
-    @Subscribe
-    public void onChatMessage(ChatMessage event) {
-        if (event.getType() != ChatMessageType.GAMEMESSAGE) return;
-
-        if (event.getMessage().equalsIgnoreCase("I can't reach that!")) {
+    public void stuckAtEnclave(){
+        WorldPoint stuckSpot = new WorldPoint(3124,3636,0);
+        if(Rs2Player.getWorldLocation().equals(stuckSpot)){
             if(Rs2Equipment.get(EquipmentInventorySlot.RING)!=null){
 
             } else {
@@ -595,6 +593,7 @@ public class revKillerScript extends Script {
                 Microbot.log("Walking and using bank");
                 DidWeDie();
                 OpenTheInv();
+                stuckAtEnclave();
                 Rs2Bank.walkToBankAndUseBank(BankLocation.FEROX_ENCLAVE);
             }
         } else {
