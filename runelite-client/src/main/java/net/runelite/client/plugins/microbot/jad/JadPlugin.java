@@ -48,10 +48,4 @@ public class JadPlugin extends Plugin {
         jadScript.shutdown();
         overlayManager.remove(jadOverlay);
     }
-    int ticks = 10;
-    @Subscribe
-    public void onGameTick(GameTick tick)
-    {
-    }
-
 }

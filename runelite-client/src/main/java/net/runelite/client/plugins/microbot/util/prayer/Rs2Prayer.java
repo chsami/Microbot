@@ -129,50 +129,59 @@ public class Rs2Prayer {
         ).anyMatch(Rs2Prayer::isPrayerActive);
     }
 
+    public static boolean isMeleePrayerActive() {
+        return Stream.of(
+                Rs2PrayerEnum.PIETY,
+                Rs2PrayerEnum.CHIVALRY,
+                Rs2PrayerEnum.ULTIMATE_STRENGTH,
+                Rs2PrayerEnum.SUPERHUMAN_STRENGTH
+        ).anyMatch(Rs2Prayer::isPrayerActive);
+    }
 
     public static Rs2PrayerEnum getBestMagePrayer() {
-        int level = Microbot.getClient().getRealSkillLevel(Skill.PRAYER);
+        int prayerLevel = Microbot.getClient().getRealSkillLevel(Skill.PRAYER);
         boolean auguryUnlocked = Microbot.getVarbitValue(5452) == 1;
 
-        if (auguryUnlocked && level >= Rs2PrayerEnum.AUGURY.getLevel())
+        if (auguryUnlocked && prayerLevel >= Rs2PrayerEnum.AUGURY.getLevel())
             return Rs2PrayerEnum.AUGURY;
-        if (level >= Rs2PrayerEnum.MYSTIC_MIGHT.getLevel())
+        if (prayerLevel >= Rs2PrayerEnum.MYSTIC_MIGHT.getLevel())
             return Rs2PrayerEnum.MYSTIC_MIGHT;
-        if (level >= Rs2PrayerEnum.MYSTIC_LORE.getLevel())
+        if (prayerLevel >= Rs2PrayerEnum.MYSTIC_LORE.getLevel())
             return Rs2PrayerEnum.MYSTIC_LORE;
-        if (level >= Rs2PrayerEnum.MYSTIC_WILL.getLevel())
+        if (prayerLevel >= Rs2PrayerEnum.MYSTIC_WILL.getLevel())
             return Rs2PrayerEnum.MYSTIC_WILL;
 
         return null;
     }
 
     public static Rs2PrayerEnum getBestRangePrayer() {
-        int level = Microbot.getClient().getRealSkillLevel(Skill.PRAYER);
+        int prayerLevel = Microbot.getClient().getRealSkillLevel(Skill.PRAYER);
         boolean rigourUnlocked = Microbot.getVarbitValue(5451) == 1;
 
-        if (rigourUnlocked && level >= Rs2PrayerEnum.RIGOUR.getLevel())
+        if (rigourUnlocked && prayerLevel >= Rs2PrayerEnum.RIGOUR.getLevel())
             return Rs2PrayerEnum.RIGOUR;
-        if (level >= Rs2PrayerEnum.EAGLE_EYE.getLevel())
+        if (prayerLevel >= Rs2PrayerEnum.EAGLE_EYE.getLevel())
             return Rs2PrayerEnum.EAGLE_EYE;
-        if (level >= Rs2PrayerEnum.HAWK_EYE.getLevel())
+        if (prayerLevel >= Rs2PrayerEnum.HAWK_EYE.getLevel())
             return Rs2PrayerEnum.HAWK_EYE;
-        if (level >= Rs2PrayerEnum.SHARP_EYE.getLevel())
+        if (prayerLevel >= Rs2PrayerEnum.SHARP_EYE.getLevel())
             return Rs2PrayerEnum.SHARP_EYE;
 
         return null;
     }
 
     public static Rs2PrayerEnum getBestMeleePrayer() {
-        int level = Microbot.getClient().getRealSkillLevel(Skill.PRAYER);
-        boolean pietyUnlocked = Microbot.getVarbitValue(3909) == 8;
+        int prayerLevel = Microbot.getClient().getRealSkillLevel(Skill.PRAYER);
+        int defenceLevel = Microbot.getClient().getRealSkillLevel(Skill.DEFENCE);
+        boolean knightWaveTrainingGroundComplete = Microbot.getVarbitValue(3909) == 8;
 
-        if (pietyUnlocked && level >= Rs2PrayerEnum.PIETY.getLevel())
+        if (knightWaveTrainingGroundComplete && prayerLevel >= Rs2PrayerEnum.PIETY.getLevel() && defenceLevel >= 70)
             return Rs2PrayerEnum.PIETY;
-        if (level >= Rs2PrayerEnum.CHIVALRY.getLevel())
+        if (knightWaveTrainingGroundComplete && prayerLevel >= Rs2PrayerEnum.CHIVALRY.getLevel() && defenceLevel >= 65)
             return Rs2PrayerEnum.CHIVALRY;
-        if (level >= Rs2PrayerEnum.ULTIMATE_STRENGTH.getLevel())
+        if (prayerLevel >= Rs2PrayerEnum.ULTIMATE_STRENGTH.getLevel())
             return Rs2PrayerEnum.ULTIMATE_STRENGTH;
-        if (level >= Rs2PrayerEnum.SUPERHUMAN_STRENGTH.getLevel())
+        if (prayerLevel >= Rs2PrayerEnum.SUPERHUMAN_STRENGTH.getLevel())
             return Rs2PrayerEnum.SUPERHUMAN_STRENGTH;
 
         return null;

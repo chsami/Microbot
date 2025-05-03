@@ -51,6 +51,7 @@ public class revKillerPlugin extends Plugin {
     }
 
     protected void shutDown() {
+        revKillerScript.stopFutures();
         revKillerScript.shutdown();
         overlayManager.remove(revKillerOverlay);
     }

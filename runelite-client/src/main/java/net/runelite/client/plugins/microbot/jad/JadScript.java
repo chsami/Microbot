@@ -41,12 +41,9 @@ public class JadScript extends Script {
                     }
 
                     int npcAnimation = Rs2Reflection.getAnimation(jadNpc);
-
-                    if (npcAnimation == 7592 || npcAnimation == 2656) {
-                        handleHealerInteraction("hurkot", Rs2PrayerEnum.PROTECT_MAGIC);
-                        npcAttackCooldowns.put(npcIndex, currentTimeMillis);
-                    } else if (npcAnimation == 7593 || npcAnimation == 2652) {
-                        handleHealerInteraction("hurkot", Rs2PrayerEnum.PROTECT_RANGE);
+                    handleJadPrayer(npcAnimation);
+                    if (config.shouldAttackHealers()) {
+                        handleHealerInteraction();
                         npcAttackCooldowns.put(npcIndex, currentTimeMillis);
                     }
                 }
@@ -57,22 +54,19 @@ public class JadScript extends Script {
         return true;
     }
 
-    private void handleHealerInteraction(String healerName, Rs2PrayerEnum prayer) {
-        var healer = Rs2Npc.getNpcs(healerName, false)
+    private void handleHealerInteraction() {
+        var healer = Rs2Npc.getNpcs("hurkot", false)
                 .filter(npc -> npc != null && npc.getInteracting() != Microbot.getClient().getLocalPlayer())
                 .findFirst()
                 .orElse(null);
 
         if (healer != null) {
             Rs2Npc.interact(healer, "attack");
-            sleep(600);
-            Rs2Prayer.toggle(prayer, true);
         } else {
             var npc = Rs2Player.getInteracting();
-            if (npc == null || npc != null && npc.getName().contains(healerName)) {
+            if (npc == null || npc != null && npc.getName().contains("hurkot")) {
                 Rs2Npc.interact(Rs2Npc.getNpc("Jad", false), "attack");
             }
-            Rs2Prayer.toggle(prayer, true);
         }
 
     }
@@ -81,5 +75,13 @@ public class JadScript extends Script {
     public void shutdown() {
         super.shutdown();
         npcAttackCooldowns.clear();
+    }
+
+    private void handleJadPrayer(int animationId) {
+        if (animationId == 7592 || animationId == 2656) {
+            Rs2Prayer.toggle(Rs2PrayerEnum.PROTECT_MAGIC, true);
+        } else if (animationId == 7593 || animationId == 2652) {
+            Rs2Prayer.toggle(Rs2PrayerEnum.PROTECT_RANGE, true);
+        }
     }
 }

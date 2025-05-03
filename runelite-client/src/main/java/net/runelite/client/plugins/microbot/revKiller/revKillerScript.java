@@ -265,20 +265,21 @@ public class revKillerScript extends Script {
                     if (!super.isRunning()) {
                         break;
                     }
+                    if (Rs2Player.getWorldLocation().distanceTo(BankLocation.EDGEVILLE.getWorldPoint()) < 30 || Rs2Player.getWorldLocation().distanceTo(BankLocation.FEROX_ENCLAVE.getWorldPoint()) < 30) {
+                        if(Rs2Player.isInCombat()){
+                            sleepUntil(()-> !Rs2Player.isInCombat(), generateRandomNumber(10000,15000));
+                            sleep(0,1200);
+                        }
+                        hopToNewWorld();
+                        break;
+                    }
                     if (Rs2Equipment.useAmuletAction(JewelleryLocationEnum.EDGEVILLE)) {
+                        Microbot.log("Attempting to teleport");
                         sleepUntil(()-> TeleTimerIsThere() || Rs2Player.getAnimation() == 714,generateRandomNumber(250,500));
                         sleepUntil(()-> !TeleTimerIsThere() || Rs2Player.getAnimation() == 714,generateRandomNumber(1300,1500));
                         if(Rs2Player.getAnimation() == 714){
                             //we successfully teleported out
                             sleepUntil(()-> !Rs2Player.isAnimating() && Rs2Player.getWorldLocation().distanceTo(BankLocation.EDGEVILLE.getWorldPoint()) < 30,generateRandomNumber(4000,6000));
-                        }
-                        if (Rs2Player.getWorldLocation().distanceTo(BankLocation.EDGEVILLE.getWorldPoint()) < 30) {
-                            if(Rs2Player.isInCombat()){
-                                sleepUntil(()-> !Rs2Player.isInCombat(), generateRandomNumber(10000,15000));
-                                sleep(0,1200);
-                            }
-                            hopToNewWorld();
-                            break;
                         }
                     }
                     if (Rs2Player.isTeleBlocked()) {
@@ -293,20 +294,21 @@ public class revKillerScript extends Script {
                     if (!super.isRunning()) {
                         break;
                     }
+                    if (Rs2Player.getWorldLocation().distanceTo(BankLocation.EDGEVILLE.getWorldPoint()) < 30 || Rs2Player.getWorldLocation().distanceTo(BankLocation.FEROX_ENCLAVE.getWorldPoint()) < 30) {
+                        if(Rs2Player.isInCombat()){
+                            sleepUntil(()-> !Rs2Player.isInCombat(), generateRandomNumber(10000,15000));
+                            sleep(0,1200);
+                        }
+                        hopToNewWorld();
+                        break;
+                    }
                     if (Rs2Equipment.useRingAction(JewelleryLocationEnum.FEROX_ENCLAVE)) {
+                        Microbot.log("Attempting to teleport");
                         sleepUntil(()-> TeleTimerIsThere() || Rs2Player.getAnimation() == 714,generateRandomNumber(250,500));
                         sleepUntil(()-> !TeleTimerIsThere() || Rs2Player.getAnimation() == 714,generateRandomNumber(1300,1500));
                         if(Rs2Player.getAnimation() == 714){
                             //we successfully teleported out
                             sleepUntil(()-> !Rs2Player.isAnimating() && Rs2Player.getWorldLocation().distanceTo(BankLocation.FEROX_ENCLAVE.getWorldPoint()) < 30,generateRandomNumber(4000,6000));
-                        }
-                        if (Rs2Player.getWorldLocation().distanceTo(BankLocation.FEROX_ENCLAVE.getWorldPoint()) < 30) {
-                            if(Rs2Player.isInCombat()){
-                                sleepUntil(()-> !Rs2Player.isInCombat(), generateRandomNumber(10000,15000));
-                                sleep(0,1200);
-                            }
-                            hopToNewWorld();
-                            break;
                         }
                     }
                     if (Rs2Player.isTeleBlocked()) {
@@ -398,6 +400,15 @@ public class revKillerScript extends Script {
                 250,
                 TimeUnit.MILLISECONDS
         );
+    }
+
+    public void stopFutures() {
+        if(checkForPKerFuture!=null){
+            checkForPKerFuture.cancel(true);
+        }
+        if(healthCheckFuture!=null) {
+            healthCheckFuture.cancel(true);
+        }
     }
 
     public void futurePKCheck(){
