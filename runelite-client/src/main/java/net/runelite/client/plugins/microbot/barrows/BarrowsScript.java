@@ -340,23 +340,7 @@ public class BarrowsScript extends Script {
                                 }
                             }
 
-                            if(Rs2Player.getWorldLocation().getPlane() == 3){
-                                while(Rs2Player.getWorldLocation().getPlane() == 3) {
-                                    Microbot.log("Leaving the mound");
-                                    if (!super.isRunning()) {
-                                        break;
-                                    }
-                                    if (Rs2GameObject.interact("Staircase", "Climb-up")) {
-                                        sleepUntil(() -> Rs2Player.getWorldLocation().getPlane() != 3, Rs2Random.between(3000, 6000));
-                                    }
-                                    if(Rs2Player.getWorldLocation().getPlane() != 3){
-                                        //anti pattern turn off prayer
-                                        disablePrayer();
-                                        //anti pattern turn off prayer
-                                        break;
-                                    }
-                                }
-                            }
+                            leaveTheMound();
                         }
                     }
                 }
@@ -484,6 +468,7 @@ public class BarrowsScript extends Script {
                     if(!varbitCheckEnabled){
                         varbitCheckEnabled=true;
                     }
+                    leaveTheMound();
                     stuckInTunsCheck();
                     tunnelLoopCount++;
                     solvePuzzle();
@@ -777,6 +762,33 @@ public class BarrowsScript extends Script {
             return true;
         }
         return false;
+    }
+
+    public void leaveTheMound(){
+        if(Rs2GameObject.get("Staircase", true) != null) {
+            if (Rs2GameObject.hasLineOfSight(Rs2GameObject.get("Staircase", true))) {
+                if (Rs2Player.getWorldLocation().getPlane() == 3) {
+                    while (Rs2Player.getWorldLocation().getPlane() == 3) {
+                        Microbot.log("Leaving the mound");
+                        if (!super.isRunning()) {
+                            break;
+                        }
+                        if (Rs2GameObject.interact("Staircase", "Climb-up")) {
+                            sleepUntil(() -> Rs2Player.getWorldLocation().getPlane() != 3, Rs2Random.between(3000, 6000));
+                        }
+                        if (Rs2Player.getWorldLocation().getPlane() != 3) {
+                            //anti pattern turn off prayer
+                            disablePrayer();
+                            //anti pattern turn off prayer
+                            break;
+                        }
+                    }
+                }
+                if (inTunnels) {
+                    inTunnels = false;
+                }
+            }
+        }
     }
 
     public void gainRP(){
