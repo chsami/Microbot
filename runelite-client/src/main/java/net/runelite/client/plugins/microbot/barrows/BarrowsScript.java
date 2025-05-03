@@ -532,6 +532,7 @@ public class BarrowsScript extends Script {
                                 shouldBank = true;
                                 ChestsOpened++;
                                 WhoisTun = "Unknown";
+                                inTunnels = false;
                             } else {
                                 shouldBank = false;
                                 Rs2Inventory.interact("Barrows teleport", "Break");
@@ -539,6 +540,7 @@ public class BarrowsScript extends Script {
                                 sleepUntil(() -> !Rs2Player.isAnimating(), Rs2Random.between(6000, 10000));
                                 ChestsOpened++;
                                 WhoisTun = "Unknown";
+                                inTunnels = false;
                             }
                         }
                     }
