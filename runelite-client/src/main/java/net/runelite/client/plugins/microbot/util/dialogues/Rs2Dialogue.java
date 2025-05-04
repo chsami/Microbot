@@ -84,7 +84,7 @@ public class Rs2Dialogue {
      *
      * @return true if the "Continue" option is visible in either sprite-based dialogue, false otherwise.
      */
-    
+
     private static boolean hasSpriteContinue() {
         return Rs2Widget.isWidgetVisible(InterfaceID.DIALOG_SPRITE, 0) || Rs2Widget.isWidgetVisible(InterfaceID.DIALOG_SPRITE, 3) || Rs2Widget.isWidgetVisible(InterfaceID.DIALOG_DOUBLE_SPRITE, 4);
     }
@@ -129,10 +129,10 @@ public class Rs2Dialogue {
     public static boolean hasSelectAnOption() {
         boolean isWidgetVisible = Rs2Widget.isWidgetVisible(InterfaceID.DIALOG_OPTION, 1);
         if (!isWidgetVisible) return false;
-        
+
         Widget widget = Rs2Widget.getWidget(InterfaceID.DIALOG_OPTION, 1);
         if (widget == null) return false;
-        
+
         return widget.getDynamicChildren() != null;
     }
 
@@ -440,7 +440,7 @@ public class Rs2Dialogue {
     public static boolean sleepUntilHasQuestion(String text) {
         return sleepUntilHasQuestion(text, false);
     }
-    
+
     /**
      * Checks if the combination dialogue widget is currently visible.
      *
@@ -510,6 +510,26 @@ public class Rs2Dialogue {
             return Rs2UiHelper.stripColTags(Rs2Widget.getWidget(InterfaceID.DIALOG_PLAYER, 6).getText());
         }
 
+        return null;
+    }
+
+    /**
+     * Retrieves the name of the NPC currently in dialogue.
+     * Checks widget ID 231, child ID 5.
+     *
+     * @return the name of the NPC, or {@code null} if not in an NPC dialogue or the name widget is not visible.
+     */
+    public static String getNpcNameInDialogue() {
+        // Widget ID for NPC dialogue name is typically 231, 5
+        final int NPC_DIALOGUE_INTERFACE_ID = 231;
+        final int NPC_NAME_CHILD_ID = 5;
+
+        if (Rs2Widget.isWidgetVisible(NPC_DIALOGUE_INTERFACE_ID, NPC_NAME_CHILD_ID)) {
+            Widget nameWidget = Rs2Widget.getWidget(NPC_DIALOGUE_INTERFACE_ID, NPC_NAME_CHILD_ID);
+            if (nameWidget != null) {
+                return Rs2UiHelper.stripColTags(nameWidget.getText());
+            }
+        }
         return null;
     }
 
@@ -597,11 +617,11 @@ public class Rs2Dialogue {
         if (!hasCombinationDialogue()) return false;
 
         Widget option = getCombinationOption(text, exact);
-        
+
         if (option == null) return false;
-        
+
         return Rs2Widget.clickWidget(option);
-        
+
     }
 
     /**
@@ -627,7 +647,7 @@ public class Rs2Dialogue {
      * Pauses the current thread until a specific combination dialogue option becomes available.
      *
      * <p>This method continuously checks for a combination dialogue option that matches the specified
-     * text. If an exact match is required, it will search for an option that exactly matches the text; 
+     * text. If an exact match is required, it will search for an option that exactly matches the text;
      * otherwise, it will look for an option containing the text.
      *
      * @param text  the text to search for within the combination dialogue options.
@@ -649,7 +669,7 @@ public class Rs2Dialogue {
     public static boolean sleepUntilHasCombinationOption(String text) {
         return sleepUntilHasCombinationOption(text, false);
     }
-    
+
     /**
      * Determines whether the game is currently in a cutscene.
      * <p>
