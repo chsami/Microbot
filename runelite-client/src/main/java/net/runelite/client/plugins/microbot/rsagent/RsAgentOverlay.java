@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.example;
+package net.runelite.client.plugins.microbot.rsagent;
 
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.ui.overlay.OverlayPanel;
@@ -7,13 +7,12 @@ import net.runelite.client.ui.overlay.components.LineComponent;
 import net.runelite.client.ui.overlay.components.TitleComponent;
 
 import javax.inject.Inject;
-import javax.inject.Named;
 import java.awt.*;
 
-public class ExampleOverlay extends OverlayPanel {
+public class RsAgentOverlay extends OverlayPanel {
 
     @Inject
-    ExampleOverlay(ExamplePlugin plugin)
+    RsAgentOverlay(RsAgentPlugin plugin)
     {
         super(plugin);
         setPosition(OverlayPosition.TOP_LEFT);

@@ -495,6 +495,25 @@ public class Rs2Dialogue {
     }
 
     /**
+     * Retrieves the text content of the current player dialogue, if any.
+     *
+     * <p>This method checks if the player is currently in a dialogue state and retrieves the
+     * text from a specific widget associated with dialogue content. If no dialogue is active
+     * or the relevant widget is not visible, the method returns {@code null}.
+     *
+     * @return the text content of the dialogue, or {@code null} if no dialogue is active.
+     */
+    public static String getPlayerDialogueText() {
+        if (!isInDialogue()) return null;
+
+        if (Rs2Widget.isWidgetVisible(InterfaceID.DIALOG_PLAYER, 6)) {
+            return Rs2UiHelper.stripColTags(Rs2Widget.getWidget(InterfaceID.DIALOG_PLAYER, 6).getText());
+        }
+
+        return null;
+    }
+
+    /**
      * Checks if the current dialogue contains the specified text.
      *
      * @param text  the text to search for in the dialogue.
