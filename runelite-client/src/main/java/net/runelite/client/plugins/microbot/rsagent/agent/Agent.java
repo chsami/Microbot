@@ -45,7 +45,7 @@ public class Agent {
 
     public void run(String task){
         String systemInstruction = loadPrompt();
-
+        boolean done = false;
         List<ResponseInputItem> inputItems = new ArrayList<>();
         inputItems.add(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
                 .role(EasyInputMessage.Role.SYSTEM)
@@ -63,6 +63,9 @@ public class Agent {
                 .build();
 
         for (int step = 0; step < 15; step++) { // Increased max steps slightly
+            if (done){
+                break;
+            }
             log.info("Agent Step {}/15", step + 1);
             List<ResponseOutputMessage> messages;
             String toolResult = "No action performed."; // Default result if parsing fails or no action taken
@@ -92,11 +95,6 @@ public class Agent {
             messages.forEach(message -> inputItems.add(ResponseInputItem.ofResponseOutputMessage(message)));
 
 
-            // Check for finish action before attempting tool execution
-            if (fullText.contains("\"action\": \"finish\"")) {
-                 log.info("Agent received finish action.");
-                 break; // Exit the loop
-            }
 
             // Tool execution
             try {
@@ -195,9 +193,10 @@ public class Agent {
                         }
                         break;
                     }
-                    case "finish": // Should be caught earlier, but handle defensively
+                    case "finish":
                         toolResult = "Finish action acknowledged.";
                         log.info("Finish action processed in switch, loop should terminate.");
+                        done = true;
                         break; // Exit switch
                     default:
                         toolResult = "Unknown tool requested: " + action;
