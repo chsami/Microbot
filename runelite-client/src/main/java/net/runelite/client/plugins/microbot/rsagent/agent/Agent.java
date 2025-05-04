@@ -65,6 +65,8 @@ public class Agent {
         for (int step = 0; step < 15; step++) { // Increased max steps slightly
             log.info("Agent Step {}/15", step + 1);
             List<ResponseOutputMessage> messages;
+            String toolResult = "No action performed."; // Default result if parsing fails or no action taken
+
             try {
                  messages = openAIClient.responses().create(createParams).output().stream()
                         .flatMap(item -> item.message().stream())
@@ -89,7 +91,6 @@ public class Agent {
             // Add LLM's response to the conversation history *before* processing actions
             messages.forEach(message -> inputItems.add(ResponseInputItem.ofResponseOutputMessage(message)));
 
-            String toolResult = "No action performed."; // Default result if parsing fails or no action taken
 
             // Check for finish action before attempting tool execution
             if (fullText.contains("\"action\": \"finish\"")) {
@@ -126,24 +127,6 @@ public class Agent {
                         int z = parameters.get("z").getAsInt();
                         boolean success = RsAgentTools.walkTo(x, y, z);
                         toolResult = success ? "Successfully initiated walk to (" + x + ", " + y + ", " + z + ")." : "Failed to initiate walk to (" + x + ", " + y + ", " + z + ").";
-                        break;
-                    }
-                    case "goToCity": {
-                        String cityName = parameters.get("name").getAsString();
-                        RsAgentTools.goToCity(cityName); // Placeholder - no return value to check
-                        toolResult = "Attempted navigation to city: " + cityName + ". (Note: This tool is currently a placeholder).";
-                        break;
-                    }
-                    case "getPointFromRegionId": {
-                        int regionId = parameters.get("regionId").getAsInt();
-                        WorldPoint point = RsAgentTools.getPointFromRegionId(regionId);
-                        toolResult = "Point for region " + regionId + ": (" + point.getX() + ", " + point.getY() + ", " + point.getPlane() + ").";
-                        break;
-                    }
-                    case "followPlayerByName": {
-                        String playerName = parameters.get("name").getAsString();
-                        boolean success = RsAgentTools.followPlayerByName(playerName);
-                        toolResult = success ? "Successfully initiated follow for player: " + playerName + "." : "Failed to find or follow player: " + playerName + ".";
                         break;
                     }
                     case "interactWith": {

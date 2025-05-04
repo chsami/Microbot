@@ -94,7 +94,7 @@ public class RsAgentTools {
      * Finds an NPC by name and interacts with the specified action.
      *
      * @param name The name of the NPC to interact with.
-     * @param action The action to perform (e.g., "Talk-to", "Trade", "Attack").
+     * @param action The action to perform (e.g. "Trade", "Attack").
      * @return true if the interaction was successful, false otherwise.
      */
     static public boolean interactWith(String name, String action) {
@@ -112,12 +112,7 @@ public class RsAgentTools {
      * @return true if the item was found and the "Take" action was initiated, false otherwise.
      */
     static public boolean pickupGroundItem(String name) {
-        // Use a default radius or make it a parameter if needed
-        TileItem item = Rs2GroundItem.getGroundItem(name, Microbot.getClient().getLocalPlayer().getWorldLocation(), 15); // 15 tile radius
-        if (item != null) {
-            return Rs2GroundItem.interact(item, "Take");
-        }
-        return false;
+        return Rs2GroundItem.loot(name, 255); // 255 tile radius
     }
 
     /**
