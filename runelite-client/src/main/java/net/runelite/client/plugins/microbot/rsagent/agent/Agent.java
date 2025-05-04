@@ -193,6 +193,12 @@ public class Agent {
                         }
                         break;
                     }
+                    case "checkQuestStatus": {
+                        String questName = parameters.get("questName").getAsString();
+                        String status = RsAgentTools.checkQuestStatus(questName);
+                        toolResult = "Quest status for '" + questName + "': " + status;
+                        break;
+                    }
                     case "finish":
                         toolResult = "Finish action acknowledged.";
                         log.info("Finish action processed in switch, loop should terminate.");
