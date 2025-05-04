@@ -52,13 +52,13 @@ public class revKillerPlugin extends Plugin {
         revKillerScript.run(config);
         revKillerScript.startPkerDetection();
         revKillerScript.startHealthCheck();
-        eventBus.register(this);
+        eventBus.register(revKillerScript);
     }
 
     protected void shutDown() {
         revKillerScript.stopFutures();
         revKillerScript.shutdown();
-        eventBus.unregister(this);
+        eventBus.unregister(revKillerScript);
         overlayManager.remove(revKillerOverlay);
     }
     int ticks = 10;
