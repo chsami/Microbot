@@ -25,6 +25,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 @Slf4j
 public class ScheduleFormPanel extends JPanel {
     private final SchedulerPlugin plugin;
@@ -423,11 +424,21 @@ public class ScheduleFormPanel extends JPanel {
             setupTimeConditionPanel(startCondition);
         }
         else if (startCondition instanceof IntervalCondition) {
-            timeConditionTypeComboBox.setSelectedItem(CONDITION_INTERVAL);
+            
+            Optional<Duration> nextTriger = startCondition.getDurationUntilNextTrigger();
+            IntervalCondition interval = (IntervalCondition) startCondition;
+
+            if (interval.getInterval().getSeconds() <= 1) {                
+                timeConditionTypeComboBox.setSelectedItem(CONDITION_DEFAULT);
+            }else{
+                // Configure the panel with existing values
+                timeConditionTypeComboBox.setSelectedItem(CONDITION_INTERVAL);    
+            
+            }
             updateConditionPanel();
             
-            // Configure the panel with existing values
             setupTimeConditionPanel(startCondition);
+            
         }
         else if (startCondition instanceof TimeWindowCondition) {
             timeConditionTypeComboBox.setSelectedItem(CONDITION_TIME_WINDOW);
@@ -479,11 +490,11 @@ public class ScheduleFormPanel extends JPanel {
         updateControlButton();
     }
 
-    public PluginScheduleEntry getPluginFromForm() {
+    public PluginScheduleEntry getPluginFromForm(PluginScheduleEntry existingPlugin) {
         String pluginName = (String) pluginComboBox.getSelectedItem();
         if (pluginName == null || pluginName.isEmpty()) {
             JOptionPane.showMessageDialog(this,
-"Please select a plugin.",
+            "Please select a plugin.",
                     "Invalid Input",
                     JOptionPane.ERROR_MESSAGE);
             return null;
@@ -521,13 +532,27 @@ public class ScheduleFormPanel extends JPanel {
                     JOptionPane.ERROR_MESSAGE);
             return null;
         }
-        
-        // Create the plugin schedule entry with the time condition
-        PluginScheduleEntry entry = new PluginScheduleEntry(
+        PluginScheduleEntry entry = null;
+        if (existingPlugin == null) {
+            // Create a new plugin schedule entry
+            entry= new PluginScheduleEntry(
                 pluginName,
                 timeCondition,
                 true,  // enabled by default
                 randomSchedulingCheckbox.isSelected());
+        } else {
+            // Update the selected plugin's properties but keep its identity
+            //existingPlugin.setName(updatedConfig.getName());
+            //existingPlugin.setEnabled(updatedConfig.isEnabled());
+            //existingPlugin.setAllowRandomScheduling(updatedConfig.isAllowRandomScheduling());
+            //existingPlugin.setPriority(updatedConfig.getPriority());
+            //existingPlugin.setDefault(updatedConfig.isDefault());
+                  
+            existingPlugin.updatePrimaryTimeCondition((TimeCondition) timeCondition);     
+            entry = existingPlugin;  
+        }
+        // Create the plugin schedule entry with the time condition
+        
         
         // Set priority based on whether this is a default plugin
         if (isDefaultByScheduleType) {

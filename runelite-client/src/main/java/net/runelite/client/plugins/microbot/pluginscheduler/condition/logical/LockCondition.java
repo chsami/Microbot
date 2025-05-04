@@ -45,6 +45,17 @@ public class LockCondition implements Condition {
     public LockCondition(String reason) {
         this.reason = reason;
     }
+
+    /**
+     * Creates a new LockCondition with the specified reason and initial lock state.
+     *
+     * @param reason The reason or description for this lock condition
+     * @param defaultLock The initial state of the lock (true for locked, false for unlocked)
+     */
+    public LockCondition(String reason, boolean defaultLock) {
+        this.reason = reason;
+        this.locked.set(defaultLock);
+    }
     
     /**
      * Locks the condition, preventing the plugin from being stopped.

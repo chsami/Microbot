@@ -1263,14 +1263,14 @@ public abstract class LogicalCondition implements Condition {
         // Find conditions in this that aren't in otherLogical
         for (Condition thisCondition : this.conditions) {
             if (!otherLogical.contains(thisCondition)) {
-                differences.append("Only in this: ").append(thisCondition.getDescription()).append("\n");
+                differences.append("Only in this: \n\t\t").append(thisCondition.getDescription()).append("\n");
             }
         }
         
         // Find conditions in otherLogical that aren't in this
         for (Condition otherCondition : otherLogical.conditions) {
             if (!this.contains(otherCondition)) {
-                differences.append("Only in other: ").append(otherCondition.getDescription()).append("\n");
+                differences.append("Only in other: \n\t\t").append(otherCondition.getDescription()).append("\n");
             }
         }
         

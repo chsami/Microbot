@@ -677,7 +677,7 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
      * Checks for stop conditions and prompts user if none are configured.
      */
     private void onAddPlugin() {
-        PluginScheduleEntry scheduledPlugin = formPanel.getPluginFromForm();
+        PluginScheduleEntry scheduledPlugin = formPanel.getPluginFromForm(null);
         if (scheduledPlugin == null) return;
         
         LogicalCondition pluginCond= scheduledPlugin.getStopConditionManager().getPluginCondition();
@@ -737,25 +737,13 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
             return;
         }
         
-        try {
-            // Get the updated plugin configuration from the form
-            PluginScheduleEntry updatedConfig = formPanel.getPluginFromForm();
-            
-            // Update the selected plugin's properties but keep its identity
-            selectedPlugin.setName(updatedConfig.getName());
-            selectedPlugin.setEnabled(updatedConfig.isEnabled());
-            selectedPlugin.setAllowRandomScheduling(updatedConfig.isAllowRandomScheduling());
-            selectedPlugin.setPriority(updatedConfig.getPriority());
-            selectedPlugin.setDefault(updatedConfig.isDefault());
-              // Get the main time condition from the updated config
-            TimeCondition newTimeCondition = updatedConfig.getMainTimeStartCondition();
-            
-            selectedPlugin.updatePrimaryTimeCondition((TimeCondition) newTimeCondition);            
+        try {            
+            formPanel.getPluginFromForm(selectedPlugin);                            
             // Update the UI
             plugin.saveScheduledPlugins();
             tablePanel.refreshTable();
             formPanel.setEditMode(false);            
-            tablePanel.clearSelection();
+            tablePanel.clearSelection();            
             
         } catch (Exception e) {
             log.error("Error updating plugin: " + e.getMessage(), e);

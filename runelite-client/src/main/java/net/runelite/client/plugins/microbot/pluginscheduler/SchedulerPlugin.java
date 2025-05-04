@@ -148,10 +148,10 @@ public class SchedulerPlugin extends Plugin {
         // Load saved schedules from config
 
         // Check initialization status before fully enabling scheduler
-        checkInitialization();
+        //checkInitialization();
 
         // Run the main loop
-        updateTask = executorService.scheduleAtFixedRate(() -> {
+        updateTask = executorService.scheduleWithFixedDelay(() -> {
             SwingUtilities.invokeLater(() -> {
                 // Only run scheduling logic if fully initialized
                 if (currentState.isSchedulerActive()) {
@@ -177,8 +177,7 @@ public class SchedulerPlugin extends Plugin {
         if (Microbot.getClientThread() == null || Microbot.getClient() == null) {
             return;
         }
-        setState(SchedulerState.INITIALIZING);
-
+        setState(SchedulerState.INITIALIZING);       
         // Schedule repeated checks until initialized or max checks reached
         
         Microbot.getClientThread().invokeLater(() -> {
@@ -260,6 +259,9 @@ public class SchedulerPlugin extends Plugin {
         saveScheduledPlugins();
         clientToolbar.removeNavigation(navButton);
         forceStopCurrentPluginScheduleEntry(true);
+        for (PluginScheduleEntry entry : scheduledPlugins) {
+            entry.close();
+        }
         if (this.loginMonitor != null && this.loginMonitor.isAlive()) {
             this.loginMonitor.interrupt();
             this.loginMonitor = null;
@@ -393,7 +395,7 @@ public class SchedulerPlugin extends Plugin {
                 // If we're on a break, interrupt it
 
                 if (isOnBreak && (nextWithinFlag)) {
-                    log.info("Interrupting active break to start scheduled plugin: {}", nextPluginWith.getCleanName());
+                    log.info("\n\tInterrupting active break to start scheduled plugin: {}", nextPluginWith.getCleanName());
                     interruptBreak();
 
                 }
@@ -402,7 +404,7 @@ public class SchedulerPlugin extends Plugin {
                 }
 
                 if (!currentState.isActivelyRunning() && !currentState.isAboutStarting()) {
-                    log.info("Scheduling next plugin: {}, not activly running, current state {}", nextPluginWith.getCleanName(),this.currentState);
+                    log.info("\n\tScheduling next plugin: {}, not activly running, current state {}", nextPluginWith.getCleanName(),this.currentState);
                     scheduleNextPlugin();
                 } else {
                     if(currentPlugin==null){
@@ -1141,7 +1143,7 @@ public class SchedulerPlugin extends Plugin {
                     resolvePluginReferences(plugin);
 
                     StringBuilder logMessage = new StringBuilder();
-                    logMessage.append(String.format("Loaded scheduled plugin: %s with %d conditions:\n",
+                    logMessage.append(String.format("\nLoaded scheduled plugin: %s with %d conditions:\n",
                             plugin.getName(),
                             plugin.getStopConditionManager().getConditions().size()));
 

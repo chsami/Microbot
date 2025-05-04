@@ -243,7 +243,7 @@ public class ConditionTypeAdapter implements JsonSerializer<Condition>, JsonDese
                 return deserializeNpcKillCountCondition(data);
             }
             else if (SingleTriggerTimeCondition.class.isAssignableFrom(clazz)) {
-                return deserializeSingleTriggerTimeCondition(data);
+                return context.deserialize(data, SingleTriggerTimeCondition.class);                
             }
             else if (LockCondition.class.isAssignableFrom(clazz)) {
                 if (data.has("data")){

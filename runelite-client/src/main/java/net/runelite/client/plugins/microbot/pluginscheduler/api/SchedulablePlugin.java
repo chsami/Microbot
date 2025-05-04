@@ -53,7 +53,9 @@ public interface SchedulablePlugin {
      * 
      * @return A logical condition structure, or null to use simple AND logic
      */
-    LogicalCondition getStopCondition();
+    default LogicalCondition getStopCondition(){
+        return new AndCondition();
+    }
     
     
      /**
