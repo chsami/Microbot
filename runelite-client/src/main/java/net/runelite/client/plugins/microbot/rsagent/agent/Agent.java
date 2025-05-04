@@ -136,6 +136,24 @@ public class Agent {
                         toolResult = success ? "Successfully interacted with '" + targetName + "' using action '" + interactionAction + "'." : "Failed to interact with '" + targetName + "' using action '" + interactionAction + "'. Target might not be present or interaction invalid.";
                         break;
                     }
+                    case "talkToNpc": {
+                        String npcName = parameters.get("name").getAsString();
+                        RsAgentTools.DialogueResult result = RsAgentTools.talkToNpc(npcName);
+                        if (result != null) {
+                            toolResult = "Initiated conversation with '" + npcName + "'. ";
+                            if (!result.dialogueTexts.isEmpty()) {
+                                toolResult += "Initial dialogue: [" + String.join(" | ", result.dialogueTexts) + "]. ";
+                            }
+                            if (result.hasOptions()) {
+                                toolResult += "Presented options: [" + String.join(" | ", result.options) + "]";
+                            } else {
+                                toolResult += "Dialogue ended or waiting for next step.";
+                            }
+                        } else {
+                            toolResult = "Failed to talk to NPC '" + npcName + "' (NPC not found, interaction failed, or dialogue did not start).";
+                        }
+                        break;
+                    }
                     case "pickupGroundItem": {
                         String itemName = parameters.get("name").getAsString();
                         boolean success = RsAgentTools.pickupGroundItem(itemName);

@@ -106,6 +106,34 @@ public class RsAgentTools {
     }
 
     /**
+     * Finds an NPC by name, interacts with "Talk-to", and handles the initial dialogue.
+     *
+     * @param name The name of the NPC to talk to.
+     * @return A DialogueResult containing the initial conversation, or null if the NPC wasn't found or dialogue didn't start.
+     */
+    static public DialogueResult talkToNpc(String name) {
+        NPC npc = Rs2Npc.getNpc(name);
+        if (npc == null) {
+            return null; // NPC not found
+        }
+
+        boolean interacted = Rs2Npc.interact(npc, "Talk-to");
+        if (!interacted) {
+            return null; // Interaction failed
+        }
+
+        // Wait for dialogue to appear
+        boolean dialogueStarted = sleepUntil(Rs2Dialogue::isInDialogue, 5000); // Wait up to 5 seconds
+        if (!dialogueStarted) {
+            return null; // Dialogue didn't start
+        }
+
+        // Handle the dialogue that appears
+        return handleDialogue();
+    }
+
+
+    /**
      * Finds an item on the ground by name within a default radius and interacts with it using the "Take" action.
      *
      * @param name The name of the item to pick up.
