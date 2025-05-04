@@ -12,11 +12,15 @@ walkTo: Walks to the specified world coordinates.
       Takes inputs: x (int), y (int), z (int)
       Returns an output of type: boolean
 
-interactWith: Interacts with an NPC by name using the given action (e.g., "Talk-to", "Attack").
+interactWith: Interacts with an NPC by name using the given action (e.g., "Trade", "Attack"). Does not handle dialogue.
       Takes inputs: name (string), action (string)
       Returns an output of type: boolean
 
-pickupGroundItem: Finds and loots a ground item by name within a 15-tile radius.
+talkToNpc: Finds an NPC by name, interacts with "Talk-to", and handles the initial dialogue.
+      Takes inputs: name (string)
+      Returns an output of type: DialogueResult
+
+pickupGroundItem: Finds and loots a ground item by name within a 255-tile radius.
       Takes inputs: name (string)
       Returns an output of type: boolean
 
@@ -24,6 +28,10 @@ chooseOptionAndContinueDialogue: Chooses a dialogue option by index (1-n) and co
       Takes inputs: option (int)
       Returns an output of type: DialogueResult
 
-handleDialogue: Continues through dialogue screens and captures texts and options if present.
+handleDialogue: Continues through dialogue screens and captures texts and options if present. Use this if you are already in dialogue but don't have options.
       Takes inputs: none
       Returns an output of type: DialogueResult
+
+finish: Call this when the goal is achieved or you cannot proceed further.
+      Takes inputs: response (string) - A final summary message for the user.
+      Returns an output of type: none
