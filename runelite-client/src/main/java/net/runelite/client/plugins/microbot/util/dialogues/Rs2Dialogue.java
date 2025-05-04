@@ -522,7 +522,7 @@ public class Rs2Dialogue {
     public static String getNpcNameInDialogue() {
         // Widget ID for NPC dialogue name is typically 231, 5
         final int NPC_DIALOGUE_INTERFACE_ID = 231;
-        final int NPC_NAME_CHILD_ID = 5;
+        final int NPC_NAME_CHILD_ID = 4;
 
         if (Rs2Widget.isWidgetVisible(NPC_DIALOGUE_INTERFACE_ID, NPC_NAME_CHILD_ID)) {
             Widget nameWidget = Rs2Widget.getWidget(NPC_DIALOGUE_INTERFACE_ID, NPC_NAME_CHILD_ID);

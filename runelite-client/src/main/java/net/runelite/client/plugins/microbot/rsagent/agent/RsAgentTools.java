@@ -4,22 +4,26 @@ import lombok.Getter;
 import net.runelite.api.NPC;
 import net.runelite.api.TileItem;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
+import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
+import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import static net.runelite.client.plugins.microbot.util.Global.sleep;
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
+import static net.runelite.client.plugins.microbot.util.Global.*;
 
 public class RsAgentTools {
     /**
@@ -114,18 +118,21 @@ public class RsAgentTools {
     static public DialogueResult talkToNpc(String name) {
         NPC npc = Rs2Npc.getNpc(name);
         if (npc == null) {
-            return null; // NPC not found
+            throw new RuntimeException("NPC " + name + " not found");
         }
-
-        boolean interacted = Rs2Npc.interact(npc, "Talk-to");
+        boolean walkedTo = Rs2Npc.walkToNearestMonster(name);
+        if (!walkedTo) {
+            throw  new RuntimeException("Cannot walk to NPC " + name);
+        }
+        boolean interacted = Rs2Npc.interact(new Rs2NpcModel(npc), "Talk-to");
         if (!interacted) {
-            return null; // Interaction failed
+            throw new RuntimeException("Couldn't interact with NPC"); // Interaction failed
         }
 
         // Wait for dialogue to appear
         boolean dialogueStarted = sleepUntil(Rs2Dialogue::isInDialogue, 5000); // Wait up to 5 seconds
         if (!dialogueStarted) {
-            return null; // Dialogue didn't start
+            throw  new RuntimeException("Couldn't start dialogue");
         }
 
         // Handle the dialogue that appears
@@ -190,7 +197,7 @@ public class RsAgentTools {
             String npcName = Rs2Dialogue.getNpcNameInDialogue();
             String playerText = Rs2Dialogue.getPlayerDialogueText();
             String generalText = Rs2Dialogue.getDialogueText(); // Fallback or for other types
-            String speaker = "System"; // Default speaker if not identified
+            String speaker = "Game"; // Default speaker if not identified
             String currentText = null;
 
             if (npcName != null) {
@@ -231,7 +238,7 @@ public class RsAgentTools {
             String question = Rs2Dialogue.getQuestion();
             if (question != null && !question.trim().isEmpty()) {
                  // Assume question is asked by the last speaker or system if unknown
-                 String lastSpeaker = "System"; // Default if no prior text
+                 String lastSpeaker = "Game"; // Default if no prior text
                  if (!dialogueTexts.isEmpty()) {
                      String lastLine = dialogueTexts.get(dialogueTexts.size() - 1);
                      if (lastLine.contains(":")) {
@@ -274,5 +281,35 @@ public class RsAgentTools {
             }
             return new DialogueResult(dialogueTexts, Collections.emptyList());
         }
+    }
+
+    static public String checkQuestStatus(String questName){
+        Rs2Tab.switchToQuestTab();
+        var questBox = Rs2Widget.getWidget(ComponentID.QUEST_LIST_BOX);
+        var searchQuests = questBox.getChild(0);
+        Rs2Widget.clickWidget(searchQuests);
+        sleepUntilTrue(()->Rs2Widget.isWidgetVisible(ComponentID.CHATBOX_CONTAINER));
+        Rs2Keyboard.typeString(questName);
+        sleepUntilTrue(()->Rs2Widget.isWidgetVisible(399,7));
+
+        Rs2Widget.clickWidget(questName, Optional.of(399), 7, false);
+        sleepUntilTrue(()->Rs2Widget.isWidgetVisible(119,5));
+
+        var widget = Rs2Widget.getWidget(119,5);
+        List<Widget[]> childGroups = Stream.of(widget.getChildren(), widget.getNestedChildren(), widget.getDynamicChildren(), widget.getStaticChildren())
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        List<String> texts =  new ArrayList<>();
+        for (Widget[] childGroup : childGroups) {
+            if (childGroup != null) {
+                for (Widget nestedChild : Arrays.stream(childGroup).filter(w -> w != null && !w.isHidden()).collect(Collectors.toList())) {
+                    String clean = Rs2UiHelper.stripColTags(nestedChild.getText());
+                    if (!clean.isEmpty()){
+                        texts.add(clean);
+                    }
+                }
+            }
+        }
+        return String.join("", texts);
     }
 }

@@ -22,12 +22,8 @@ public class RsAgentScript extends Script {
                     return;
                 if (!super.run())
                     return;
-
-                System.out.println("Looping RsAgentScript");
-                var dialogue = RsAgentTools.handleDialogue();
-                System.out.println(dialogue.dialogueTexts);
-                System.out.println(dialogue.options);
-
+                var questStatus = RsAgentTools.checkQuestStatus("The Restless Ghost");
+                System.out.print(questStatus);
             } catch (Exception ex) {
                 System.out.println(ex.getMessage());
             }
