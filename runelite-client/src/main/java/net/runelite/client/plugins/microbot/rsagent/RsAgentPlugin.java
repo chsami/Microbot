@@ -21,7 +21,7 @@ import static net.runelite.client.plugins.microbot.util.Global.sleep;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
 @PluginDescriptor(
-        name = PluginDescriptor.Default + "Example",
+        name = PluginDescriptor.Default + "RSAgent",
         description = "Microbot example plugin",
         tags = {"example", "microbot"},
         enabledByDefault = false
@@ -55,10 +55,10 @@ public class RsAgentPlugin extends Plugin {
         }
         var r = RsAgentTools.handleDialogue();
 
-//        agent = new Agent(config.llmApiKey());
-//        agentThread = new Thread(()->
-//        agent.run("Complete the restless ghost quest"));
-//        agentThread.start();
+        agent = new Agent(config.llmApiKey());
+        agentThread = new Thread(()->
+        agent.run("Complete the restless ghost quest"));
+        agentThread.start();
         rsAgentScript.run(config);
     }
 
