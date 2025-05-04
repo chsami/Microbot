@@ -4,6 +4,7 @@ import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -39,6 +40,9 @@ public class revKillerPlugin extends Plugin {
     @Inject
     revKillerScript revKillerScript;
 
+    @Inject
+    private EventBus eventBus;
+
 
     @Override
     protected void startUp() throws AWTException {
@@ -48,11 +52,13 @@ public class revKillerPlugin extends Plugin {
         revKillerScript.run(config);
         revKillerScript.startPkerDetection();
         revKillerScript.startHealthCheck();
+        eventBus.register(this);
     }
 
     protected void shutDown() {
         revKillerScript.stopFutures();
         revKillerScript.shutdown();
+        eventBus.unregister(this);
         overlayManager.remove(revKillerOverlay);
     }
     int ticks = 10;
