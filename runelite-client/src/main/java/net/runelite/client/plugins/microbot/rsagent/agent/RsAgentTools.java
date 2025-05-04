@@ -173,9 +173,9 @@ public class RsAgentTools {
 
     /**
      * Handles the flow of dialogue by clicking "continue" until options are presented or the dialogue ends.
-     * Captures the text of each dialogue screen that is continued through.
+     * Captures the text of each dialogue screen that is continued through, prefixed by the speaker's name.
      *
-     * @return A DialogueResult containing the list of captured dialogue texts and the list of options if presented,
+     * @return A DialogueResult containing the list of captured dialogue texts (prefixed) and the list of options if presented,
      *         or an empty list for options if the dialogue ended without choices. Returns null if not in dialogue.
      */
     static public DialogueResult handleDialogue() {
@@ -187,16 +187,38 @@ public class RsAgentTools {
 
         // Keep clicking continue while available
         while (Rs2Dialogue.hasContinue()) {
-            String currentText = Rs2Dialogue.getDialogueText(); // Get text before clicking
-            if (currentText != null && !currentText.trim().isEmpty()) {
-                dialogueTexts.add(currentText);
+            String npcName = Rs2Dialogue.getNpcNameInDialogue();
+            String playerText = Rs2Dialogue.getPlayerDialogueText();
+            String generalText = Rs2Dialogue.getDialogueText(); // Fallback or for other types
+            String speaker = "System"; // Default speaker if not identified
+            String currentText = null;
+
+            if (npcName != null) {
+                speaker = npcName;
+                // Prefer general text if NPC name is present, assuming it's the NPC's line
+                currentText = generalText;
+            } else if (playerText != null) {
+                speaker = "Player";
+                currentText = playerText;
+            } else if (generalText != null) {
+                // Use general text if neither specific type was found
+                currentText = generalText;
+                // We might not know the speaker here, keep default or leave as is
             }
-            System.out.println(currentText);
+
+            if (currentText != null && !currentText.trim().isEmpty()) {
+                String prefixedText = speaker + ": " + currentText;
+                dialogueTexts.add(prefixedText);
+                System.out.println(prefixedText); // Log the prefixed text
+            } else {
+                 System.out.println("Could not capture dialogue text this iteration.");
+            }
+
 
             Rs2Dialogue.clickContinue();
             sleep(500, 1000); // Small extra delay
             // Wait until the continue button is gone, chat ended, or options appear
-            sleepUntil(() -> Rs2Dialogue.hasContinue() || Rs2Dialogue.hasSelectAnOption() || !Rs2Dialogue.isInDialogue());
+            sleepUntil(() -> !Rs2Dialogue.hasContinue() || Rs2Dialogue.hasSelectAnOption() || !Rs2Dialogue.isInDialogue(), 2000); // Added timeout
         }
 
         // Check if options are presented
@@ -205,13 +227,50 @@ public class RsAgentTools {
                     .map(Widget::getText)
                     .collect(Collectors.toList());
 
+            // Capture the question text if available and prefix it
+            String question = Rs2Dialogue.getQuestion();
+            if (question != null && !question.trim().isEmpty()) {
+                 // Assume question is asked by the last speaker or system if unknown
+                 String lastSpeaker = "System"; // Default if no prior text
+                 if (!dialogueTexts.isEmpty()) {
+                     String lastLine = dialogueTexts.get(dialogueTexts.size() - 1);
+                     if (lastLine.contains(":")) {
+                         lastSpeaker = lastLine.substring(0, lastLine.indexOf(':'));
+                     }
+                 } else {
+                     // If no prior text, check if NPC name is visible now
+                     String npcNameNow = Rs2Dialogue.getNpcNameInDialogue();
+                     if (npcNameNow != null) lastSpeaker = npcNameNow;
+                 }
+                 dialogueTexts.add(lastSpeaker + " (Question): " + question);
+                 System.out.println(lastSpeaker + " (Question): " + question);
+            }
+
+
             return new DialogueResult(dialogueTexts, options);
         } else {
             // Dialogue ended without options
             // Check if there was one final dialogue screen (e.g., NPC text without continue)
-            String finalText = Rs2Dialogue.getDialogueText();
+            String npcName = Rs2Dialogue.getNpcNameInDialogue();
+            String playerText = Rs2Dialogue.getPlayerDialogueText();
+            String generalText = Rs2Dialogue.getDialogueText();
+            String speaker = "System";
+            String finalText = null;
+
+             if (npcName != null) {
+                speaker = npcName;
+                finalText = generalText;
+            } else if (playerText != null) {
+                speaker = "Player";
+                finalText = playerText;
+            } else if (generalText != null) {
+                finalText = generalText;
+            }
+
             if (finalText != null && !finalText.trim().isEmpty()) {
-                dialogueTexts.add(finalText);
+                 String prefixedText = speaker + ": " + finalText;
+                 dialogueTexts.add(prefixedText);
+                 System.out.println(prefixedText);
             }
             return new DialogueResult(dialogueTexts, Collections.emptyList());
         }
