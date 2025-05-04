@@ -1224,12 +1224,12 @@ public class BarrowsScript extends Script {
 
 
     public enum BarrowsBrothers {
-        DHAROK ("Dharok the Wretched", new Rs2WorldArea(3574,3297,3,3,0), Rs2PrayerEnum.PROTECT_MELEE),
-        GUTHAN ("Guthan the Infested", new Rs2WorldArea(3576,3283,3,3,0), Rs2PrayerEnum.PROTECT_MELEE),
-        KARIL  ("Karil the Tainted", new Rs2WorldArea(3565,3276,3,3,0), Rs2PrayerEnum.PROTECT_RANGE),
-        TORAG  ("Torag the Corrupted", new Rs2WorldArea(3554,3283,2,2,0), Rs2PrayerEnum.PROTECT_MELEE),
-        VERAC  ("Verac the Defiled", new Rs2WorldArea(3557,3297,3,3,0), Rs2PrayerEnum.PROTECT_MELEE),
-        AHRIM  ("Ahrim the Blighted", new Rs2WorldArea(3564,3290,3,3,0), Rs2PrayerEnum.PROTECT_MAGIC);
+        DHAROK ("Dharok the Wretched", new Rs2WorldArea(3573,3296,3,3,0), Rs2PrayerEnum.PROTECT_MELEE),
+        GUTHAN ("Guthan the Infested", new Rs2WorldArea(3575,3280,3,3,0), Rs2PrayerEnum.PROTECT_MELEE),
+        KARIL  ("Karil the Tainted", new Rs2WorldArea(3564,3274,3,3,0), Rs2PrayerEnum.PROTECT_RANGE),
+        TORAG  ("Torag the Corrupted", new Rs2WorldArea(3552,3282,2,2,0), Rs2PrayerEnum.PROTECT_MELEE),
+        VERAC  ("Verac the Defiled", new Rs2WorldArea(3556,3297,3,3,0), Rs2PrayerEnum.PROTECT_MELEE),
+        AHRIM  ("Ahrim the Blighted", new Rs2WorldArea(3563,3288,3,3,0), Rs2PrayerEnum.PROTECT_MAGIC);
 
         private String name;
 
