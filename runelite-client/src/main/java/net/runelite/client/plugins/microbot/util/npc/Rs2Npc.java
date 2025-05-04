@@ -608,6 +608,10 @@ public class Rs2Npc {
                 return false;
             }
 
+            if (!Rs2Camera.isTileOnScreen(npc.getLocalLocation())) {
+                Rs2Camera.turnTo(npc);
+            }
+
             Microbot.doInvoke(new NewMenuEntry(0, 0, menuAction.getId(), npc.getIndex(), -1, npc.getName(), npc),
                     Rs2UiHelper.getActorClickbox(npc));
             return true;

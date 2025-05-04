@@ -1,10 +1,9 @@
 package net.runelite.client.plugins.microbot.util.camera;
 
-import net.runelite.api.Point;
 import net.runelite.api.*;
+import net.runelite.api.Point;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.RuneLite;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.plugins.camera.CameraPlugin;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -97,7 +96,6 @@ public class Rs2Camera {
      *
      * @param targetAngle     the angle to the target
      * @param desiredMaxAngle the maximum angle to the target (Should be a positive number)
-     *
      * @return true if the angle to the target is within the desired max angle
      */
     public static boolean isAngleGood(int targetAngle, int desiredMaxAngle) {
@@ -190,7 +188,6 @@ public class Rs2Camera {
      * Calculates the CameraYaw based on the given NPC or object angle.
      *
      * @param npcAngle the angle of the NPC or object relative to the player (0-359 degrees)
-     *
      * @return the calculated CameraYaw (0-2047)
      */
     public static int calculateCameraYaw(int npcAngle) {
@@ -264,21 +261,107 @@ public class Rs2Camera {
     }
 
     /**
- * Resets the camera pitch to 280 if it is currently less than 280.
- */
-public static void resetPitch() {
-    // Set the camera pitch to 280
-    if (getPitch() < 280)
-        setPitch(280);
-}
+     * Resets the camera pitch to 280 if it is currently less than 280.
+     */
+    public static void resetPitch() {
+        // Set the camera pitch to 280
+        if (getPitch() < 280)
+            setPitch(280);
+    }
 
-/**
- * Resets the camera zoom to 200 if it is currently greater than 200.
- */
-public static void resetZoom() {
-    // Set the camera zoom to 200
-    if (getZoom() > 200)
-        setZoom(200);
-}
+    /**
+     * Resets the camera zoom to 200 if it is currently greater than 200.
+     */
+    public static void resetZoom() {
+        // Set the camera zoom to 200
+        if (getZoom() > 200)
+            setZoom(200);
+    }
+
+    /**
+     * Determines whether the specified tile is centered on the screen within a given tolerance.
+     * <p>
+     * Projects the tile to screen space, computes its bounding rectangle, and then checks
+     * whether that rectangle lies entirely inside a centered “box” whose width and height
+     * are the given percentage of the viewport dimensions.
+     * </p>
+     *
+     * @param tile             the local tile coordinate to test (may not be null)
+     * @param marginPercentage the size of the centered tolerance box, expressed as a percentage
+     *                         of the viewport (e.g. 10.0 for 10%)
+     * @return {@code true} if the tile’s screen bounds lie entirely within the centered margin box;
+     * {@code false} if the tile cannot be projected or lies outside that box
+     */
+    public static boolean isTileCenteredOnScreen(LocalPoint tile, double marginPercentage) {
+        Polygon poly = Perspective.getCanvasTilePoly(Microbot.getClient(), tile);
+        if (poly == null) return false;
+
+        Rectangle tileBounds = poly.getBounds();
+        int viewportWidth = Microbot.getClient().getViewportWidth();
+        int viewportHeight = Microbot.getClient().getViewportHeight();
+        int centerX = viewportWidth / 2;
+        int centerY = viewportHeight / 2;
+
+        int marginX = (int) (viewportWidth * (marginPercentage / 100.0));
+        int marginY = (int) (viewportHeight * (marginPercentage / 100.0));
+
+        Rectangle centerBox = new Rectangle(
+                centerX - marginX / 2,
+                centerY - marginY / 2,
+                marginX,
+                marginY
+        );
+
+        return centerBox.contains(tileBounds);
+    }
+
+    /**
+     * Determines whether the specified tile is centered on the screen, using a default
+     * margin tolerance of 10%.
+     *
+     * @param tile the local tile coordinate to test (may not be null)
+     * @return {@code true} if the tile’s screen bounds lie entirely within the centered
+     * 10% margin box; {@code false} otherwise
+     * @see #isTileCenteredOnScreen(LocalPoint, double)
+     */
+    public static boolean isTileCenteredOnScreen(LocalPoint tile) {
+        return isTileCenteredOnScreen(tile, 10);
+    }
+
+    /**
+     * Rotates the camera to center on the specified tile, if it is not already within
+     * the given margin tolerance.
+     * <p>
+     * Computes the bearing from the camera to the tile, adjusts it into a [0–360) range,
+     * and then issues a small-angle camera turn if {@link #isTileCenteredOnScreen(LocalPoint, double)}
+     * returns {@code false}.
+     * </p>
+     *
+     * @param tile             the local tile coordinate to center on (may not be null)
+     * @param marginPercentage the size of the centered tolerance box, expressed as a percentage
+     *                         of the viewport (e.g. 10.0 for 10%)
+     * @see #angleToTile(LocalPoint)
+     * @see #setAngle(int, int)
+     */
+    public static void centerTileOnScreen(LocalPoint tile, double marginPercentage) {
+        // Calculate the desired camera angle for the tile
+        int rawAngle = angleToTile(tile) - 90;
+        int angle = rawAngle < 0 ? rawAngle + 360 : rawAngle;
+        // Center if not already within margin
+        if (!isTileCenteredOnScreen(tile, marginPercentage)) {
+            setAngle(angle, 5); // Use small max angle for precision
+        }
+    }
+
+    /**
+     * Rotates the camera to center on the specified tile, using a default
+     * margin tolerance of 10%.
+     *
+     * @param tile the local tile coordinate to center on (may not be null)
+     * @see #centerTileOnScreen(LocalPoint, double)
+     */
+    public static void centerTileOnScreen(LocalPoint tile) {
+        centerTileOnScreen(tile, 10.0);
+    }
 }
 

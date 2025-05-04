@@ -2,13 +2,11 @@ package net.runelite.client.plugins.microbot.barrows;
 
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.itemcharges.ItemChargeConfig;
-import net.runelite.client.plugins.itemcharges.ItemChargePlugin;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
-import net.runelite.client.plugins.microbot.questhelper.collections.ItemWithCharge;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
+import net.runelite.client.plugins.microbot.util.coords.Rs2WorldArea;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.JewelleryLocationEnum;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
@@ -30,7 +28,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 
 public class BarrowsScript extends Script {
@@ -107,7 +104,9 @@ public class BarrowsScript extends Script {
 
                 if(!inTunnels && shouldBank == false) {
                     for (BarrowsBrothers brother : BarrowsBrothers.values()) {
-                        WorldPoint mound = brother.getHumpWP();
+                        Rs2WorldArea mound = brother.getHumpWP();
+                        int totalTiles = mound.toWorldPointList().size();
+                        WorldPoint randomMoundTile = mound.toWorldPointList().get(Rs2Random.between(0,(totalTiles-1)));
                         NeededPrayer = brother.whatToPray;
                         suppliesCheck();
                         outOfSupplies();
@@ -117,7 +116,7 @@ public class BarrowsScript extends Script {
 
                         stopFutureWalker();
 
-                        Microbot.log("Checking mound for: " + brother.getName() + " at " + mound +"Using prayer: "+NeededPrayer);
+                        Microbot.log("Checking mound for: " + brother.getName() + " at " + randomMoundTile +"Using prayer: "+NeededPrayer);
 
                         if(everyBrotherWasKilled()){
                             if(WhoisTun.equals("Unknown")){
@@ -179,7 +178,7 @@ public class BarrowsScript extends Script {
                         //Enter mound
                         if (Rs2Player.getWorldLocation().getPlane() != 3) {
                             Microbot.log("Entering the mound");
-                            while (mound.distanceTo(Rs2Player.getWorldLocation()) > 1) {
+                            while (!mound.contains(Rs2Player.getWorldLocation())) {
                                 if (!super.isRunning()) {
                                     break;
                                 }
@@ -193,24 +192,21 @@ public class BarrowsScript extends Script {
                                 //antipattern
 
                                 // We're not in the mound yet.
-                                Rs2Walker.walkTo(mound);
+                                randomMoundTile = mound.toWorldPointList().get(Rs2Random.between(0,(totalTiles-1)));
+                                Rs2Walker.walkTo(randomMoundTile);
                                 sleep(300, 600);
-                                if (mound.distanceTo(Rs2Player.getWorldLocation()) <= 1) {
+                                if (mound.contains(Rs2Player.getWorldLocation())) {
                                     if(!Rs2Player.isMoving()) {
-                                        sleepUntil(()-> Rs2Player.isMoving(), Rs2Random.between(1000,2000));
-                                        if (!Rs2Player.isMoving() && mound.distanceTo(Rs2Player.getWorldLocation()) <= 1) {
-                                            // if we've stood still on the tile for 1 to 2 second break;
-                                            break;
-                                        }
+                                        break;
                                     }
                                 } else {
                                     Microbot.log("At the mound, but we can't dig yet.");
-                                    Rs2Walker.walkCanvas(mound);
+                                    Rs2Walker.walkCanvas(randomMoundTile);
                                     sleepUntil(()-> !Rs2Player.isMoving(), Rs2Random.between(2000,4000));
                                     sleep(300,600);
                                 }
                             }
-                            while (mound.distanceTo(Rs2Player.getWorldLocation()) <= 1 && Rs2Player.getWorldLocation().getPlane() != 3) {
+                            while (mound.contains(Rs2Player.getWorldLocation()) && Rs2Player.getWorldLocation().getPlane() != 3) {
 
                                 if (!super.isRunning()) {
                                     break;
@@ -222,11 +218,7 @@ public class BarrowsScript extends Script {
                                 antiPatternActivatePrayer();
                                 //antipattern
 
-                                if (Rs2Inventory.contains("Spade")) {
-                                    if (Rs2Inventory.interact("Spade", "Dig")) {
-                                        sleepUntil(() -> Rs2Player.getWorldLocation().getPlane() == 3, Rs2Random.between(3000, 5000));
-                                    }
-                                }
+                                digIntoTheMound();
 
                                 if (Rs2Player.getWorldLocation().getPlane() == 3) {
                                     //we made it in
@@ -351,48 +343,41 @@ public class BarrowsScript extends Script {
                     for (BarrowsBrothers brother : BarrowsBrothers.values()) {
                         if (brother.name.equals(WhoisTun)) {
                             // Found the tunnel brother's mound
-                            WorldPoint tunnelMound = brother.getHumpWP();
+                            Rs2WorldArea tunnelMound = brother.getHumpWP();
+                            int totalTiles = tunnelMound.toWorldPointList().size();
+                            WorldPoint randomMoundTile = tunnelMound.toWorldPointList().get(Rs2Random.between(0,(totalTiles-1)));
                             System.out.println("Navigating to tunnel mound: " + brother.name);
 
                             // Walk to the mound
-                            while (tunnelMound.distanceTo(Rs2Player.getWorldLocation()) > 1) {
+                            while (!tunnelMound.contains(Rs2Player.getWorldLocation())) {
                                 if (!super.isRunning()) {
                                     break;
                                 }
                                 //anti pattern
                                 antiPatternDropVials();
                                 //anti pattern
-                                Rs2Walker.walkTo(tunnelMound);
+                                randomMoundTile = tunnelMound.toWorldPointList().get(Rs2Random.between(0,(totalTiles-1)));
+                                Rs2Walker.walkTo(randomMoundTile);
                                 sleep(300, 600);
-                                if (tunnelMound.distanceTo(Rs2Player.getWorldLocation()) <= 1) {
+                                if (tunnelMound.contains(Rs2Player.getWorldLocation())) {
                                     if(!Rs2Player.isMoving()) {
-                                        sleepUntil(()-> Rs2Player.isMoving(), Rs2Random.between(1000,2000));
-                                        if (!Rs2Player.isMoving() && tunnelMound.distanceTo(Rs2Player.getWorldLocation()) <= 1) {
-                                            // if we've stood still on the tile for 1 to 2 second break;
-                                            break;
-                                        }
+                                        break;
                                     }
                                 } else {
                                     Microbot.log("At the mound, but we can't dig yet.");
-                                    Rs2Walker.walkCanvas(tunnelMound);
+                                    Rs2Walker.walkCanvas(randomMoundTile);
                                     sleepUntil(()-> !Rs2Player.isMoving(), Rs2Random.between(2000,4000));
                                     sleep(300,600);
                                 }
                             }
 
-                            while (tunnelMound.distanceTo(Rs2Player.getWorldLocation()) <= 1 && Rs2Player.getWorldLocation().getPlane() != 3) {
+                            while (tunnelMound.contains(Rs2Player.getWorldLocation()) && Rs2Player.getWorldLocation().getPlane() != 3) {
                                 if (!super.isRunning()) {
                                     break;
                                 }
-                                if (Rs2Inventory.contains("Spade")) {
-                                    if (Rs2Inventory.interact("Spade", "Dig")) {
-                                        sleepUntil(() -> Rs2Player.getWorldLocation().getPlane() == 3, Rs2Random.between(3000, 5000));
-                                    }
-                                }
-                                if(tunnelMound.distanceTo(Rs2Player.getWorldLocation()) > 1){
-                                    //we can't dig here
-                                    break;
-                                }
+
+                                digIntoTheMound();
+
                                 if (Rs2Player.getWorldLocation().getPlane() == 3) {
                                     //we made it in
                                     break;
@@ -764,6 +749,14 @@ public class BarrowsScript extends Script {
             return true;
         }
         return false;
+    }
+
+    public void digIntoTheMound(){
+        if (Rs2Inventory.contains("Spade")) {
+            if (Rs2Inventory.interact("Spade", "Dig")) {
+                sleepUntil(() -> Rs2Player.getWorldLocation().getPlane() == 3, Rs2Random.between(3000, 5000));
+            }
+        }
     }
 
     public void leaveTheMound(){
@@ -1231,28 +1224,28 @@ public class BarrowsScript extends Script {
 
 
     public enum BarrowsBrothers {
-        DHAROK ("Dharok the Wretched", new WorldPoint(3574, 3297, 0), Rs2PrayerEnum.PROTECT_MELEE),
-        GUTHAN ("Guthan the Infested", new WorldPoint(3576, 3283, 0), Rs2PrayerEnum.PROTECT_MELEE),
-        KARIL  ("Karil the Tainted", new WorldPoint(3565, 3276, 0), Rs2PrayerEnum.PROTECT_RANGE),
-        TORAG  ("Torag the Corrupted", new WorldPoint(3554, 3283, 0), Rs2PrayerEnum.PROTECT_MELEE),
-        VERAC  ("Verac the Defiled", new WorldPoint(3557, 3297, 0), Rs2PrayerEnum.PROTECT_MELEE),
-        AHRIM  ("Ahrim the Blighted", new WorldPoint(3564, 3290, 0), Rs2PrayerEnum.PROTECT_MAGIC);
+        DHAROK ("Dharok the Wretched", new Rs2WorldArea(3574,3297,3,3,0), Rs2PrayerEnum.PROTECT_MELEE),
+        GUTHAN ("Guthan the Infested", new Rs2WorldArea(3576,3283,3,3,0), Rs2PrayerEnum.PROTECT_MELEE),
+        KARIL  ("Karil the Tainted", new Rs2WorldArea(3565,3276,3,3,0), Rs2PrayerEnum.PROTECT_RANGE),
+        TORAG  ("Torag the Corrupted", new Rs2WorldArea(3554,3283,2,2,0), Rs2PrayerEnum.PROTECT_MELEE),
+        VERAC  ("Verac the Defiled", new Rs2WorldArea(3557,3297,3,3,0), Rs2PrayerEnum.PROTECT_MELEE),
+        AHRIM  ("Ahrim the Blighted", new Rs2WorldArea(3564,3290,3,3,0), Rs2PrayerEnum.PROTECT_MAGIC);
 
         private String name;
 
-        private WorldPoint humpWP;
+        private Rs2WorldArea humpWP;
 
         private Rs2PrayerEnum whatToPray;
 
 
-        BarrowsBrothers(String name, WorldPoint humpWP, Rs2PrayerEnum whatToPray) {
+        BarrowsBrothers(String name, Rs2WorldArea humpWP, Rs2PrayerEnum whatToPray) {
             this.name = name;
             this.humpWP = humpWP;
             this.whatToPray = whatToPray;
         }
 
         public String getName() { return name; }
-        public WorldPoint getHumpWP() { return humpWP; }
+        public Rs2WorldArea getHumpWP() { return humpWP; }
         public Rs2PrayerEnum getWhatToPray() { return whatToPray; }
 
     }
