@@ -201,6 +201,7 @@ public class BarrowsScript extends Script {
                                     }
                                 } else {
                                     Microbot.log("At the mound, but we can't dig yet.");
+                                    randomMoundTile = mound.toWorldPointList().get(Rs2Random.between(0,(totalTiles-1)));
                                     Rs2Walker.walkCanvas(randomMoundTile);
                                     sleepUntil(()-> !Rs2Player.isMoving(), Rs2Random.between(2000,4000));
                                     sleep(300,600);
@@ -365,6 +366,7 @@ public class BarrowsScript extends Script {
                                     }
                                 } else {
                                     Microbot.log("At the mound, but we can't dig yet.");
+                                    randomMoundTile = tunnelMound.toWorldPointList().get(Rs2Random.between(0,(totalTiles-1)));
                                     Rs2Walker.walkCanvas(randomMoundTile);
                                     sleepUntil(()-> !Rs2Player.isMoving(), Rs2Random.between(2000,4000));
                                     sleep(300,600);
