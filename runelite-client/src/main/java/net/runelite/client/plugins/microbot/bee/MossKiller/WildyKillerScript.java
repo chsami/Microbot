@@ -460,6 +460,24 @@ public class WildyKillerScript extends Script {
                 && getWildernessLevelFrom(Rs2Player.getWorldLocation()) > 20) {
             toggle(STEEL_SKIN, true);
             toggle(MYSTIC_LORE, true);
+            if (hasPlayerEquippedItem(mossKillerPlugin.currentTarget, RUNE_SCIMITAR)
+                    && Microbot.getClient().getRealSkillLevel(PRAYER) > 42
+                    && Microbot.getClient().getBoostedSkillLevel(PRAYER) > 0
+                    && !Rs2Prayer.isPrayerActive(PROTECT_MELEE)){
+                toggle(PROTECT_MELEE);
+            }
+            if (hasPlayerEquippedItem(mossKillerPlugin.currentTarget, MAPLE_SHORTBOW)
+                    && Microbot.getClient().getRealSkillLevel(PRAYER) > 39
+                    && Microbot.getClient().getBoostedSkillLevel(PRAYER) > 0
+                    && !Rs2Prayer.isPrayerActive(PROTECT_RANGE)){
+                toggle(PROTECT_RANGE);
+            }
+            if (hasPlayerEquippedItem(mossKillerPlugin.currentTarget, "Staff")
+                    && Microbot.getClient().getRealSkillLevel(PRAYER) > 36
+                    && Microbot.getClient().getBoostedSkillLevel(PRAYER) > 0
+                    && !Rs2Prayer.isPrayerActive(PROTECT_MAGIC)){
+                toggle(PROTECT_MAGIC);
+            }
             if (ShortestPathPlugin.getPathfinder() == null && !MossKillerPlugin.isPlayerSnared()) {
                 handleAsynchWalk("Twenty Wild");
             }
@@ -1669,7 +1687,7 @@ public class WildyKillerScript extends Script {
                 Rs2Inventory.interact(BIG_BONES, "Bury");
                 Rs2Player.waitForAnimation();
             }
-            if (!Rs2Inventory.isFull() && Rs2GroundItem.interact(BIG_BONES, "Take", 2)) {
+            if (!Rs2Inventory.isFull() && mossKillerPlugin.currentTarget == null && Rs2GroundItem.interact(BIG_BONES, "Take", 2)) {
                 toggleRunEnergyOn();
                 sleepUntil(() -> Rs2Inventory.contains(BIG_BONES));
                 if (Rs2Inventory.contains(BIG_BONES)) {
