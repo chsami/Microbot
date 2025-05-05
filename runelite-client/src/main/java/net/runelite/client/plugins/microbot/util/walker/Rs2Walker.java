@@ -1263,7 +1263,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                     }
                     
 
-                    GameObject gameObject = Rs2GameObject.getGameObjects(transport.getObjectId(), transport.getOrigin()).stream().findFirst().orElse(null);
+                    GameObject gameObject = Rs2GameObject.getGameObject(obj -> obj.getId() == transport.getObjectId(), transport.getOrigin());
                     //check game objects
                     if (gameObject != null && gameObject.getId() == transport.getObjectId()) {
                         if (!Rs2Tile.isTileReachable(transport.getOrigin())) {
@@ -1275,7 +1275,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                     }
 
                     //check tile objects
-                    List<TileObject> tileObjects = Rs2GameObject.getTileObjects(transport.getObjectId(), transport.getOrigin());
+                    List<TileObject> tileObjects = Rs2GameObject.getTileObjects(obj -> obj.getId() == transport.getObjectId(), transport.getOrigin());
                     TileObject tileObject = tileObjects.stream().findFirst().orElse(null);
                     if (tileObject instanceof GroundObject)
                         tileObject = tileObjects.stream()
@@ -1293,7 +1293,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                     }
                     
                     // check wall objects
-                    List<WallObject> wallObjects = Rs2GameObject.getWallObjects(transport.getObjectId(), transport.getOrigin());
+                    List<WallObject> wallObjects = Rs2GameObject.getWallObjects(obj -> obj.getId() == transport.getObjectId(), transport.getOrigin());
                     TileObject wallObject = wallObjects.stream().findFirst().orElse(null);
                     if (wallObject != null && wallObject.getId() == transport.getObjectId()) {
                         handleObject(transport, wallObject);
@@ -1429,13 +1429,11 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
     }
     
     private static boolean handleWildernessObelisk(Transport transport) {
-        GameObject obelisk = Rs2GameObject.getGameObjects(transport.getObjectId(), transport.getOrigin()).stream()
-                .findFirst()
-                .orElse(null);
+        GameObject obelisk = Rs2GameObject.getGameObject(obj -> obj.getId() == transport.getObjectId(), transport.getOrigin());
         
         if (obelisk != null) {
             Rs2GameObject.interact(obelisk, transport.getAction());
-            sleepUntil(() -> Rs2GameObject.getGameObjects(ObjectID.OBELISK_14825, transport.getOrigin()).stream().findFirst().orElse(null) != null);
+            sleepUntil(() -> Rs2GameObject.getGameObject(obj -> obj.getId() == transport.getObjectId(), transport.getOrigin()) != null);
             walkFastCanvas(transport.getOrigin());
             return sleepUntilTrue(() -> Rs2Player.getWorldLocation().distanceTo2D(transport.getDestination()) < OFFSET, 100, 10000);
         }
