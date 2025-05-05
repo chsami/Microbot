@@ -24,7 +24,6 @@ import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
@@ -166,7 +165,7 @@ public class WildyKillerScript extends Script {
 
                 Microbot.log("SoL " + state);
                 Rs2AntibanSettings.antibanEnabled = mossKillerPlugin.currentTarget == null; // Enable Anti-Ban when no target is found
-
+                Rs2AntibanSettings.naturalMouse = mossKillerPlugin.currentTarget == null;
                 if (isRunning() && BreakHandlerScript.breakIn <= 120 && Rs2Player.getWorldLocation().getY() < 3520) {
                     Microbot.log("On a break and not in wilderness");
                     if (isRunning()) {
@@ -549,12 +548,6 @@ public class WildyKillerScript extends Script {
     }
 
     private void fight() {
-
-        if(Rs2Player.getBoostedSkillLevel(HITPOINTS) == 0) {
-            Rs2Keyboard.typeString("gg");
-            Rs2Keyboard.enter();
-            sleep(1200,1800);
-        }
 
         WorldPoint playerLocation = Rs2Player.getWorldLocation();
 
@@ -2073,6 +2066,7 @@ public class WildyKillerScript extends Script {
             sleep(500, 1000);
         }
 
+        mossKillerPlugin.dead = false;
     }
 
     public void setAutocastFireStrike() {

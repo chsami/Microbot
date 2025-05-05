@@ -15,7 +15,11 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.bee.MossKiller.Enums.CombatMode;
+import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
+import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.player.Rs2PlayerModel;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
@@ -39,7 +43,7 @@ import static net.runelite.api.ItemID.RUNE_SCIMITAR;
         enabledByDefault = false
 )
 @Slf4j
-public class MossKillerPlugin extends Plugin {
+public class MossKillerPlugin extends Plugin implements SchedulablePlugin {
     @Inject
     private MossKillerConfig config;
 
@@ -96,7 +100,7 @@ public class MossKillerPlugin extends Plugin {
     public Rs2PlayerModel currentTarget = null;
 
     private boolean hideOverlay;
-
+    public boolean dead = false;
     @Getter
     private boolean defensive;
 
@@ -146,6 +150,19 @@ public class MossKillerPlugin extends Plugin {
             currentTarget = target;
             System.out.println("Target set to: " + (target != null ? target.getName() : "null"));
         }
+    }
+
+    @Subscribe
+    public void onActorDeath(ActorDeath actorDeath) {
+        if (actorDeath.getActor() == Microbot.getClient().getLocalPlayer()) {
+            if (!dead) type();
+        }
+    }
+
+    private void type() {
+        Rs2Keyboard.typeString("gg");
+        Rs2Keyboard.enter();
+        dead = true;
     }
 
     @Subscribe
@@ -713,6 +730,28 @@ public class MossKillerPlugin extends Plugin {
 
     public static boolean isPlayerSnared() {
         return isSnared;
+    }
+
+    @Override
+    public LogicalCondition getStopCondition() {
+        return null;
+    }
+
+    @Override
+    @Subscribe
+    public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
+
+        if (event.getPlugin() == this) {
+            // Schedule the stop operation on the client thread
+            Microbot.getClientThread().invokeLater(() -> {
+                try {
+                    Microbot.getPluginManager().setPluginEnabled(this, false);
+                    Microbot.stopPlugin(this);
+                } catch (Exception e) {
+                    log.error("Error stopping plugin", e);
+                }
+            });
+        }
     }
 
     protected void shutDown() {
