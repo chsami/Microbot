@@ -1,10 +1,16 @@
 package net.runelite.client.plugins.microbot.example;
 
+import net.runelite.api.GameObject;
+import net.runelite.api.TileObject;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.aiofighter.skill.AttackStyleScript;
+import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 
 public class ExampleScript extends Script {
@@ -20,8 +26,8 @@ public class ExampleScript extends Script {
                 if (!super.run()) return;
                 long startTime = System.currentTimeMillis();
 
-                //CODE HERE
-
+                List<GameObject> allGameObjects = Rs2GameObject.getGameObjects();
+                System.out.println("break");
 
                 long endTime = System.currentTimeMillis();
                 long totalTime = endTime - startTime;
