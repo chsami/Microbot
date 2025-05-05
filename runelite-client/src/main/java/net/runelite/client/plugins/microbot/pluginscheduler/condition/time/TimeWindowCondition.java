@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.pluginscheduler.condition.time;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.ConditionType;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.enums.RepeatCycle;
 
@@ -166,7 +167,9 @@ public class TimeWindowCondition extends TimeCondition {
         LocalDateTime nowLocal = now.toLocalDateTime();
         LocalDateTime referenceTime = lastValidResetTime != null ? lastValidResetTime : nowLocal;
         
-        log.info("Calculating next window: \n" +  this,Level.INFO);
+        LocalDateTime todayStartDateTime = LocalDateTime.of(nowLocal.toLocalDate(), startTime);
+        LocalDateTime todayEndDateTime = LocalDateTime.of(nowLocal.toLocalDate(), endTime);
+        if(Microbot.isDebug() ) log.info("Calculating next window - current: \n" +  this,Level.INFO);
         
         switch (repeatCycle) {
             case ONE_TIME:
@@ -186,7 +189,7 @@ public class TimeWindowCondition extends TimeCondition {
                 log.warn("Unsupported repeat cycle: {}", repeatCycle);
                 break;
         }
-        
+        if(Microbot.isDebug() ) log.info("After calculate new cycle window : \n" +  this,Level.INFO);
         // Apply randomization if enabled
         if (useRandomization && randomizeMinutes > 0 && currentStartDateTime != null && this.currentEndDateTime != null) {        
             currentStartDateTime = currentStartDateTime.plusMinutes(randomStartMinutes);
@@ -204,7 +207,7 @@ public class TimeWindowCondition extends TimeCondition {
                 this.currentEndDateTime = null;
             }
         }
-        log.info("Calculating of new window done: \n" +  this,Level.INFO);
+        if(Microbot.isDebug() ) log.info("Calculating done -  new time window: \n" +  this,Level.INFO);
     }
 
     /**
@@ -259,15 +262,15 @@ public class TimeWindowCondition extends TimeCondition {
 
         
                         
-        this.currentStartDateTime = calculateNextStartWindow(referenceTime);
-        log.info("Current start time calculation: {}", this);
+        this.currentStartDateTime = calculateNextStartWindow(referenceTime);        
+        if (Microbot.isDebug()) log.info("calculation of new cycle window after calculation of next start window:\n {}", this);
         
         
         // If next interval starts after the outer window end, it's not valid today      
         LocalDate startday = currentStartDateTime.toLocalDate();           
         this.currentEndDateTime = LocalDateTime.of(startday, endTime);        
         if (currentEndDateTime.isBefore(currentStartDateTime)) {
-            currentEndDateTime = currentEndDateTime.plusDays(1);
+            this.currentEndDateTime = currentEndDateTime.plusDays(1);
         }      
     }
     
@@ -277,6 +280,7 @@ public class TimeWindowCondition extends TimeCondition {
     private LocalDateTime calculateNextStartWindow( LocalDateTime referenceTime) {
         LocalDateTime nextStartTime;
         ZonedDateTime now = ZonedDateTime.now(getZoneId());        
+        LocalDateTime nowLocal = now.toLocalDateTime();
         LocalDate today = now.toLocalDate();
         LocalDateTime currentDayWindowStart = LocalDateTime.of(today, startTime);
         LocalDateTime currentDayWindowEnd = LocalDateTime.of(today, endTime);
@@ -303,7 +307,11 @@ public class TimeWindowCondition extends TimeCondition {
                     nextStartTime=  referenceTime;
             }
         }else {
-            nextStartTime = currentDayWindowStart;
+            if (nowLocal.isBefore(currentDayWindowEnd)) {                
+                nextStartTime = currentDayWindowStart;
+            } else {
+                nextStartTime = currentDayWindowStart.plusDays(1);
+            }
         }
         
         if (nextStartTime.isBefore(currentDayWindowStart)) {
@@ -337,18 +345,29 @@ public class TimeWindowCondition extends TimeCondition {
         ZonedDateTime now = ZonedDateTime.now(getZoneId());
         LocalDateTime nowLocal = now.toLocalDateTime();
         LocalDate today = now.toLocalDate();
-                              
+        LocalDate dayBefore = today.minusDays(1);
+        LocalDate nextDay = today.plusDays(1);
+        LocalDateTime currentDayWindowStart = LocalDateTime.of(today, startTime);
+        LocalDateTime currentDayWindowEnd = LocalDateTime.of(today, endTime); 
+        LocalDateTime beforeDayWindowStart = LocalDateTime.of( dayBefore,  startTime);            
+        LocalDateTime beforeDayWindowEnd = LocalDateTime.of(dayBefore, endTime);    
+
+        LocalDateTime nextDayWindowStart = LocalDateTime.of(nextDay, startTime);
+        LocalDateTime nextDayWindowEnd = LocalDateTime.of(nextDay, endTime);
         // For non-daily or interval > 1 day cycles, check against calculated next window
         if (currentStartDateTime == null || currentEndDateTime == null) {                
             
             return false; // No more windows in range
             
         }
-        
+        if ((currentStartDateTime.isAfter(beforeDayWindowStart) && currentEndDateTime.isBefore(beforeDayWindowEnd))) {
+            lastValidResetTime = currentDayWindowStart;
+            this.calculateNextWindow();
+            
+        }
         // Check if window has passed - but don't auto-recalculate
         // Let the scheduler decide when to reset the condition
-        if (nowLocal.isAfter(currentEndDateTime)) {
-            log.info("Current window has passed, waiting for reset");
+        if (nowLocal.isAfter(currentEndDateTime)) {            
             return false;
         }
         
@@ -415,23 +434,22 @@ public class TimeWindowCondition extends TimeCondition {
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
         String timeRangeStr = startTime.format(timeFormatter) + " to " + endTime.format(timeFormatter);
         description.append(timeRangeStr);
-        
-        // Add repeat information
-        if (repeatCycle == RepeatCycle.ONE_TIME) {
-            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-            description.append(" (One time from ")
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            description.append(" ( Between: ")
                       .append(startDate.format(dateFormatter))
                       .append(" to ")
                       .append(endDate.format(dateFormatter))
                       .append(")");
-        } else  {
+        // Add repeat information
+        if (repeatCycle != RepeatCycle.ONE_TIME) {
+            
             description.append(" (")
                       .append(repeatCycle.getDisplayName().replace("X", Integer.toString(repeatIntervalUnit)))
                       .append(")");
         }
         
         // Add timezone information for clarity
-        description.append(" [").append(getZoneId().getId()).append("]");
+        //description.append(" [").append(getZoneId().getId()).append("]");
         description.append("\n"+super.getDescription());
         return description.toString();
     }
@@ -566,6 +584,20 @@ public class TimeWindowCondition extends TimeCondition {
         }else{
             return Optional.of(currentStartDateTime.atZone(getZoneId()));    
         }                        
+    }
+    @Override
+    public boolean canTriggerAgain(){
+
+        boolean canTrigger = super.canTriggerAgain();
+        
+        LocalDateTime lastDateTime = LocalDateTime.of( endDate, endTime);
+        if (canTrigger ) {
+            ZonedDateTime now = ZonedDateTime.now(getZoneId());
+            LocalDateTime nowLocal = now.toLocalDateTime();
+            return nowLocal.isBefore(lastDateTime);
+        }
+        return canTrigger;
+
     }
 
     /**

@@ -3,7 +3,6 @@ package net.runelite.client.plugins.microbot.pluginscheduler.condition.skill;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import net.runelite.api.Skill;
-import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.ConditionType;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 
@@ -13,23 +12,33 @@ import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 @Getter 
 @EqualsAndHashCode(callSuper = true)
 public class SkillXpCondition extends SkillCondition {
-    private transient long currentTargetXp;
+    private transient long currentTargetXp;// relative and absolute mode difference
     private final long targetXpMin;
     private final long targetXpMax;
     private transient long startXp;
     private transient long[] startXpBySkill; // Used for total XP tracking
     private final boolean randomized;
+    @Getter
+    private final boolean relative; // Whether this is a relative or absolute XP target
+
+    /**
+     * Creates an absolute XP condition (must reach specific XP amount)
+     */
     public SkillXpCondition(Skill skill, long targetXp) {
-        super(skill); // Call parent constructor with skill
+        super(skill);
         this.currentTargetXp = targetXp;
         this.targetXpMin = targetXp;
         this.targetXpMax = targetXp;
         this.randomized = false;
+        this.relative = false; // Absolute XP target
         initializeXpTracking();
     }
     
+    /**
+     * Creates a randomized absolute XP condition (must reach specific XP amount within a range)
+     */
     public SkillXpCondition(Skill skill, long targetXpMin, long targetXpMax) {
-        super(skill); // Call parent constructor with skill
+        super(skill);
         targetXpMin = Math.max(0, targetXpMin);
         targetXpMax = Math.min(Long.MAX_VALUE, targetXpMax);
         
@@ -37,6 +46,36 @@ public class SkillXpCondition extends SkillCondition {
         this.targetXpMin = targetXpMin;
         this.targetXpMax = targetXpMax;
         this.randomized = true;
+        this.relative = false; // Absolute XP target
+        initializeXpTracking();
+    }
+
+    /**
+     * Creates a relative XP condition (must gain specific amount of XP from current)
+     */
+    public SkillXpCondition(Skill skill, long targetXp, boolean relative) {
+        super(skill);
+        this.currentTargetXp = targetXp;
+        this.targetXpMin = targetXp;
+        this.targetXpMax = targetXp;
+        this.randomized = false;
+        this.relative = relative;
+        initializeXpTracking();
+    }
+    
+    /**
+     * Creates a randomized relative XP condition (must gain a random amount of XP from current)
+     */
+    public SkillXpCondition(Skill skill, long targetXpMin, long targetXpMax, boolean relative) {
+        super(skill);
+        targetXpMin = Math.max(0, targetXpMin);
+        targetXpMax = Math.min(Long.MAX_VALUE, targetXpMax);
+        
+        this.currentTargetXp = Rs2Random.between((int)targetXpMin, (int)targetXpMax);
+        this.targetXpMin = targetXpMin;
+        this.targetXpMax = targetXpMax;
+        this.randomized = true;
+        this.relative = relative;
         initializeXpTracking();
     }
     
@@ -46,14 +85,11 @@ public class SkillXpCondition extends SkillCondition {
     private void initializeXpTracking() {
         if (isTotal()) {
             Skill[] skills = getAllTrackableSkills();
-            startXpBySkill = new long[skills.length];
-            long totalXp = 0;
-            totalXp = Microbot.getClientThread().runOnClientThreadOptional(  () -> {
-                return Microbot.getClient().getOverallExperience();                               
-            }).orElse(0L);
-            startXp = (long)totalXp;
+            this.startXpBySkill = new long[skills.length];
+            long totalXp = getTotalXp();
+            this.startXp = totalXp;
         } else {
-            startXp = getCurrentXp();
+            this.startXp = getCurrentXp();
         }
     }
     
@@ -66,7 +102,7 @@ public class SkillXpCondition extends SkillCondition {
     }
     
     /**
-     * Create a skill XP condition with random target between min and max
+     * Create an absolute skill XP condition with random target between min and max
      */
     public static SkillXpCondition createRandomized(Skill skill, long minXp, long maxXp) {
         if (minXp == maxXp) {
@@ -75,10 +111,34 @@ public class SkillXpCondition extends SkillCondition {
         
         return new SkillXpCondition(skill, minXp, maxXp);
     }
+
+    /**
+     * Create a relative skill XP condition (gain XP from current)
+     */
+    public static SkillXpCondition createRelative(Skill skill, long targetXp) {
+        return new SkillXpCondition(skill, targetXp, true);
+    }
+
+    /**
+     * Create a relative skill XP condition with random target between min and max
+     */
+    public static SkillXpCondition createRelativeRandomized(Skill skill, long minXp, long maxXp) {
+        if (minXp == maxXp) {
+            return new SkillXpCondition(skill, minXp, true);
+        }
+        
+        return new SkillXpCondition(skill, minXp, maxXp, true);
+    }
     
     @Override
     public boolean isSatisfied() {
-        return getXpGained() >= currentTargetXp;
+        if (relative) {
+            // For relative mode, we need to check if we've gained the target amount of XP
+            return getXpGained() >= currentTargetXp;
+        } else {
+            // For absolute mode, we need to check if our current XP is at or above the target
+            return getCurrentXp() >= currentTargetXp;
+        }
     }
     
     /**
@@ -88,42 +148,34 @@ public class SkillXpCondition extends SkillCondition {
         if (isTotal()) {
             return getTotalXp() - startXp;
         } else {
-            long currentXp = Microbot.getClient().getSkillExperience(skill);
-            return currentXp - startXp;
+            return getCurrentXp() - startXp;
         }
     }
     
-    /**
-     * Gets total XP across all skills
-     */
-    private long getTotalXp() {
-        if (!isTotal()) {
-            return getCurrentXp();
-        }
-        
-        long total = 0;
-        total = Microbot.getClientThread().runOnClientThreadOptional(  () -> {
-            return Microbot.getClient().getOverallExperience();                               
-        }).orElse(0L);
-        return total;
-    }
+  
     
     /**
      * Gets the amount of XP remaining to reach target
      */
     public long getXpRemaining() {
-        return Math.max(0, currentTargetXp - getXpGained());
+        if (relative) {
+            return Math.max(0, currentTargetXp - getXpGained());
+        } else {
+            return Math.max(0, currentTargetXp - getCurrentXp());
+        }
     }
     
     /**
      * Gets the current XP
+     * Uses static cached data from SkillCondition
      */
     public long getCurrentXp() {
         if (isTotal()) {
             return getTotalXp();
         }
-        return (long)Microbot.getClientThread().runOnClientThreadOptional(
-            () -> Microbot.getClient().getSkillExperience(skill)).orElse(0);
+        
+        // Use static cached data from SkillCondition class
+        return SkillCondition.getSkillXp(skill);
     }
     
     /**
@@ -138,34 +190,79 @@ public class SkillXpCondition extends SkillCondition {
      */
     @Override
     public double getProgressPercentage() {
-        long xpGained = getXpGained();
-        long targetXp = currentTargetXp;
-        
-        if (xpGained >= targetXp) {
-            return 100.0;
+        if (relative) {
+            long xpGained = getXpGained();
+            if (xpGained >= currentTargetXp) {
+                return 100.0;
+            }
+            
+            if (currentTargetXp <= 0) {
+                return 100.0;
+            }
+            
+            return (100.0 * xpGained) / currentTargetXp;
+        } else {
+            // For absolute targets, we need to calculate progress from 0 to target
+            long currentXp = getCurrentXp();
+            
+            if (currentXp >= currentTargetXp) {
+                return 100.0;
+            }
+            
+            if (currentTargetXp <= 0) {
+                return 100.0;
+            }
+            
+            return (100.0 * currentXp) / currentTargetXp;
         }
-        
-        if (targetXp <= 0) {
-            return 100.0;
-        }
-        
-        return (100.0 * xpGained) / targetXp;
     }
     
     @Override
     public String getDescription() {
         String skillName = isTotal() ? "Total" : skill.getName();
-        return String.format("Gain %d %s XP (Current: %d/%d - %.1f%%)", 
-            currentTargetXp, 
-            skillName,
-            getXpGained(),
-            currentTargetXp,
-            getProgressPercentage());
+        
+        if (relative) {
+            long xpGained = getXpGained();
+            String randomRangeInfo = "";
+            
+            if (targetXpMin != targetXpMax) {
+                randomRangeInfo = String.format(" (randomized from %d-%d)", targetXpMin, targetXpMax);
+            }
+            
+            return String.format("Gain %d %s XP%s (gained: %d - %.1f%%)", 
+                currentTargetXp, 
+                skillName,
+                randomRangeInfo,
+                xpGained,
+                getProgressPercentage());
+        } else {
+            long currentXp = getCurrentXp();
+            String randomRangeInfo = "";
+            
+            if (targetXpMin != targetXpMax) {
+                randomRangeInfo = String.format(" (randomized from %d-%d)", targetXpMin, targetXpMax);
+            }
+            
+            if (currentXp >= currentTargetXp) {
+                return String.format("Reach %d %s XP%s (currently: %d, goal reached)", 
+                        currentTargetXp, 
+                        skillName,
+                        randomRangeInfo,
+                        currentXp);
+            } else {
+                return String.format("Reach %d %s XP%s (currently: %d, need %d more)", 
+                        currentTargetXp, 
+                        skillName,
+                        randomRangeInfo,
+                        currentXp,
+                        getXpRemaining());
+            }
+        }
     }
     
     @Override
     public ConditionType getType() {
-        return ConditionType.SKILL_XP;
+        return ConditionType.SKILL;
     }
 
     /**
@@ -176,8 +273,13 @@ public class SkillXpCondition extends SkillCondition {
         String skillName = isTotal() ? "Total" : skill.getName();
         
         // Basic description
-        sb.append("Skill XP Condition: Gain ").append(currentTargetXp)
-          .append(" ").append(skillName).append(" XP\n");
+        if (relative) {
+            sb.append("Skill XP Condition: Gain ").append(currentTargetXp)
+              .append(" ").append(skillName).append(" XP from starting XP\n");
+        } else {
+            sb.append("Skill XP Condition: Reach ").append(currentTargetXp)
+              .append(" ").append(skillName).append(" XP total\n");
+        }
         
         // Randomization info if applicable
         if (targetXpMin != targetXpMax) {
@@ -213,7 +315,14 @@ public class SkillXpCondition extends SkillCondition {
         sb.append("SkillXpCondition:\n");
         sb.append("  ┌─ Configuration ─────────────────────────────\n");
         sb.append("  │ Skill: ").append(skillName).append("\n");
-        sb.append("  │ Target XP: ").append(currentTargetXp).append("\n");
+        
+        if (relative) {
+            sb.append("  │ Mode: Relative (gain from current)\n");
+            sb.append("  │ Target XP gain: ").append(currentTargetXp).append("\n");
+        } else {
+            sb.append("  │ Mode: Absolute (reach total)\n");
+            sb.append("  │ Target XP total: ").append(currentTargetXp).append("\n");
+        }
         
         // Randomization
         boolean hasRandomization = targetXpMin != targetXpMax;
@@ -226,10 +335,21 @@ public class SkillXpCondition extends SkillCondition {
         sb.append("  ├─ Status ──────────────────────────────────\n");
         boolean satisfied = isSatisfied();
         sb.append("  │ Satisfied: ").append(satisfied).append("\n");
-        sb.append("  │ XP Gained: ").append(getXpGained()).append("\n");
         
-        if (!satisfied) {
-            sb.append("  │ XP Remaining: ").append(getXpRemaining()).append("\n");
+        if (relative) {
+            sb.append("  │ XP Gained: ").append(getXpGained()).append("\n");
+            
+            if (!satisfied) {
+                sb.append("  │ XP Remaining: ").append(getXpRemaining()).append("\n");
+            }
+        } else {
+            long currentXp = getCurrentXp();
+            if (currentXp >= currentTargetXp) {
+                sb.append("  │ Current XP: ").append(currentXp).append(" (goal reached)\n");
+            } else {
+                sb.append("  │ Current XP: ").append(currentXp).append("\n");
+                sb.append("  │ XP Remaining: ").append(getXpRemaining()).append("\n");
+            }
         }
         
         sb.append("  │ Progress: ").append(String.format("%.1f%%", getProgressPercentage())).append("\n");

@@ -22,10 +22,14 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.Inter
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeWindowCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.ui.util.ConditionConfigPanelUtil;
+import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
 
 import java.awt.Component;
 import java.awt.Color;
 import java.awt.Font;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+
 import javax.swing.Icon;
 
 // Condition tree cell renderer
@@ -35,11 +39,19 @@ public class ConditionTreeCellRenderer extends DefaultTreeCellRenderer {
     private static final Color USER_CONDITION_COLOR = Color.WHITE; // White for user conditions
     private static final Color SATISFIED_COLOR = new Color(0, 180, 0); // Bright green for satisfied conditions
     private static final Color NOT_SATISFIED_COLOR = new Color(220, 60, 60); // Bright red for unsatisfied conditions
+    private static final Color RELEVANT_CONDITION_COLOR = new Color(255, 215, 0); // Gold for relevant conditions
+    private static final Color INACTIVE_CONDITION_COLOR = new Color(150, 150, 150); // Gray for inactive conditions
     
-    private ConditionManager conditionManager;
+    private final ConditionManager conditionManager;
+    private final boolean isStopConditionRenderer;
+    private boolean isActive = true;
    
-    public ConditionTreeCellRenderer(ConditionManager conditionManager) {
+    public ConditionTreeCellRenderer(ConditionManager conditionManager, boolean isStopConditionRenderer) {
         this.conditionManager = conditionManager;
+        this.isStopConditionRenderer = isStopConditionRenderer;
+    }
+    public void setIsActive(boolean isActive) {
+        this.isActive = isActive;
     }
    
     @Override
@@ -62,6 +74,14 @@ public class ConditionTreeCellRenderer extends DefaultTreeCellRenderer {
         // Default styling
         setFont(getFont().deriveFont(Font.PLAIN));
         
+       
+        
+        // Determine relevance:
+        // - For start conditions: relevant when plugin is enabled but not started
+        // - For stop conditions: relevant when plugin is running        
+        boolean conditionsAreRelevant = isStopConditionRenderer ? isActive : !isActive;
+        
+                
         if (userObject instanceof LogicalCondition) {
             LogicalCondition logicalCondition = (LogicalCondition) userObject;
             
@@ -81,15 +101,19 @@ public class ConditionTreeCellRenderer extends DefaultTreeCellRenderer {
             } else if (logicalCondition instanceof OrCondition) {
                 setIcon(getConditionTypeIcon(logicalCondition));                                
                 setFont(getFont().deriveFont(isPluginDefined ? Font.BOLD | Font.ITALIC : Font.BOLD));
-            }else{
+            } else {
                 // Use appropriate icon based on condition type
                 setIcon(getConditionTypeIcon(logicalCondition));
             }
-            // Color based on condition status - ALWAYS use these colors regardless of selection
-            if (logicalCondition.isSatisfied()) {
-                setForeground(SATISFIED_COLOR);  // Always green for satisfied conditions
+            
+            // Color based on condition status and relevance
+            if (!conditionsAreRelevant) {
+                // If conditions aren't relevant, show in gray
+                setForeground(INACTIVE_CONDITION_COLOR);
+            } else if (logicalCondition.isSatisfied()) {
+                setForeground(SATISFIED_COLOR);  // Green for satisfied conditions
             } else {
-                setForeground(NOT_SATISFIED_COLOR);  // Always red for unsatisfied conditions
+                setForeground(NOT_SATISFIED_COLOR);  // Red for unsatisfied conditions
             }
             
             // Show progress info with more detailed formatting
@@ -102,15 +126,31 @@ public class ConditionTreeCellRenderer extends DefaultTreeCellRenderer {
                 text = "📌 " + text;
             }
             
+            // Add a visual indicator for relevance
+            if (conditionsAreRelevant) {
+                text = "⚡ " + text;
+            }
+            
             setText(text);
             
             // For tooltips, use the new HTML formatting
             setToolTipText(logicalCondition.getHtmlDescription(200));
         } else if (userObject instanceof NotCondition) {
             NotCondition notCondition = (NotCondition) userObject;
-            setIcon(ConditionConfigPanelUtil.getResourceIcon("not_icon.png"));
-            setForeground(new Color(210, 40, 40));  // Red for NOT
-            setText(notCondition.getDescription());
+            setIcon(ConditionConfigPanelUtil.getResourceIcon("not-equal.png"));
+            
+            // Adjust color based on relevance
+            if (!conditionsAreRelevant) {
+                setForeground(INACTIVE_CONDITION_COLOR);
+            } else {
+                setForeground(new Color(210, 40, 40));  // Red for NOT
+            }
+            
+            String text = notCondition.getDescription();
+            if (conditionsAreRelevant) {
+                text = "⚡ " + text;
+            }
+            setText(text);
         } else if (userObject instanceof Condition) {
             Condition condition = (Condition) userObject;
             
@@ -125,21 +165,46 @@ public class ConditionTreeCellRenderer extends DefaultTreeCellRenderer {
             // Use appropriate icon based on condition type
             setIcon(getConditionTypeIcon(condition));
             
-            // Color based on condition status - ALWAYS use these colors regardless of selection
-            if (condition.isSatisfied()) {
-                setForeground(SATISFIED_COLOR);  // Always green for satisfied conditions
+            // Color based on condition status and relevance
+            if (!conditionsAreRelevant) {
+                // If conditions aren't relevant, show in gray
+                setForeground(INACTIVE_CONDITION_COLOR);
+            } else if (condition.isSatisfied()) {
+                setForeground(SATISFIED_COLOR);  // Green for satisfied conditions
             } else {
-                setForeground(NOT_SATISFIED_COLOR);  // Always red for unsatisfied conditions
+                setForeground(NOT_SATISFIED_COLOR);  // Red for unsatisfied conditions
+            }
+            
+            // Visual indicator for plugin-defined conditions            
+            if (conditionManager != null && conditionManager.isPluginDefinedCondition(condition)) {
+                setFont(getFont().deriveFont(Font.ITALIC));
+                text = "📌 " + text;
+            }
+            
+            // Add a visual indicator for relevance
+            if (conditionsAreRelevant) {
+                text = "⚡ " + text;
             }
             
             setText(text);
             
-            // Visual indicator for plugin-defined conditions            
-            if (conditionManager !=null && conditionManager.isPluginDefinedCondition(condition)) {
-                setFont(getFont().deriveFont(Font.ITALIC));
-                text = "📌 " + text;
-                setText(text);
+            // Enhanced tooltip with status information
+            StringBuilder tooltip = new StringBuilder();
+            tooltip.append("<html><b>").append(condition.getDescription()).append("</b><br>");
+            tooltip.append(condition.isSatisfied() ? 
+                "<font color='green'>Satisfied</font>" : 
+                "<font color='red'>Not satisfied</font>");
+                
+            if (condition instanceof TimeCondition) {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                ZonedDateTime triggerTime = ((TimeCondition)condition).getCurrentTriggerTime().orElse(null);
+                if (triggerTime != null) {
+                    tooltip.append("<br>Trigger time: ").append(triggerTime.format(formatter));
+                }                               
             }
+            
+            tooltip.append("</html>");
+            setToolTipText(tooltip.toString());
         } else if (userObject instanceof String) {
             // Section headers (Plugin/User Conditions)
             setFont(getFont().deriveFont(Font.BOLD));

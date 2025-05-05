@@ -239,7 +239,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         }
     }
 
-    public void restartPathfinding(WorldPoint start, WorldPoint end) {
+    public void restartPathfinding(WorldPoint start, Set<WorldPoint> ends, boolean canReviveFiltered) {
         synchronized (pathfinderMutex) {
             if (pathfinder != null) {
                 pathfinder.cancel();
@@ -254,11 +254,24 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 
         getClientThread().invokeLater(() -> {
             pathfinderConfig.refresh();
+            pathfinderConfig.filterLocations(ends, canReviveFiltered);
             synchronized (pathfinderMutex) {
-                pathfinder = new Pathfinder(pathfinderConfig, start, end);
-                pathfinderFuture = pathfindingExecutor.submit(pathfinder);
+                if (ends.isEmpty()) {
+                    setTarget(null);
+                } else {
+                    pathfinder = new Pathfinder(pathfinderConfig, start, ends);
+                    pathfinderFuture = pathfindingExecutor.submit(pathfinder);
+                }
             }
         });
+    }
+
+    public void restartPathfinding(WorldPoint start, Set<WorldPoint> ends) {
+        restartPathfinding(start, ends, true);
+    }
+
+    public void restartPathfinding(WorldPoint start, WorldPoint end) {
+        restartPathfinding(start, Set.of(end), true);
     }
 
     public boolean isNearPath(WorldPoint location) {
@@ -306,7 +319,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         // Transport option changed; rerun pathfinding
         if (TRANSPORT_OPTIONS_REGEX.matcher(event.getKey()).find()) {
             if (pathfinder != null) {
-                restartPathfinding(pathfinder.getStart(), pathfinder.getTarget());
+                restartPathfinding(pathfinder.getStart(), pathfinder.getTargets());
             }
         }
     }
@@ -350,11 +363,13 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 
         var path = pathfinder.getPath();
 
-        if (Rs2Player.getWorldLocation().distanceTo(pathfinder.getTarget()) < reachedDistance
-                && Rs2Tile.getReachableTilesFromTile(Rs2Player.getWorldLocation(), reachedDistance).containsKey(path.get(path.size() - 1))) {
-            setTarget(null);
-            if (Microbot.getClientThread().scheduledFuture != null) {
-                Microbot.getClientThread().scheduledFuture.cancel(true);
+        for (WorldPoint target : pathfinder.getTargets()) {
+            if (Rs2Player.getWorldLocation().distanceTo(target) < reachedDistance
+                    && Rs2Tile.getReachableTilesFromTile(Rs2Player.getWorldLocation(), reachedDistance).containsKey(path.get(path.size() - 1))) {
+                setTarget(null);
+                if (Microbot.getClientThread().scheduledFuture != null) {
+                    Microbot.getClientThread().scheduledFuture.cancel(true);
+                }
             }
         }
     }
@@ -365,8 +380,15 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
                 && event.getType() == MenuAction.WALK.getId()) {
             addMenuEntry(event, SET, TARGET, 1);
             if (pathfinder != null) {
-                if (pathfinder.getTarget() != null) {
-                    addMenuEntry(event, SET, START, 1);
+                if (!pathfinder.getTargets().isEmpty()) {
+                    addMenuEntry(event, SET, TARGET + ColorUtil.wrapWithColorTag(" " +
+                            (pathfinder.getTargets().size() + 1), JagexColors.MENU_TARGET), 1);
+                }
+                for (WorldPoint target : pathfinder.getTargets()) {
+                    if (target != null) {
+                        addMenuEntry(event, SET, START, 1);
+                        break;
+                    }
                 }
                 WorldPoint selectedTile = getSelectedWorldPoint();
                 if (pathfinder.getPath() != null) {
@@ -391,9 +413,15 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
                 addMenuEntry(event, SET, TEST, 0);
             }
             if (pathfinder != null) {
-                if (pathfinder.getTarget() != null) {
-                    addMenuEntry(event, SET, START, 0);
-                    addMenuEntry(event, CLEAR, PATH, 0);
+                if (pathfinder.getTargets().size() >= 1) {
+                    addMenuEntry(event, SET, TARGET + ColorUtil.wrapWithColorTag(" " +
+                            (pathfinder.getTargets().size() + 1), JagexColors.MENU_TARGET), 0);
+                }
+                for (WorldPoint target : pathfinder.getTargets()) {
+                    if (target != null) {
+                        addMenuEntry(event, SET, START, 0);
+                        addMenuEntry(event, CLEAR, PATH, 0);
+                    }
                 }
             }
         }
@@ -456,12 +484,19 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     }
 
     private void setTarget(WorldPoint target) {
-        Player localPlayer = client.getLocalPlayer();
-        if (!startPointSet && localPlayer == null) {
-            return;
-        }
+        setTarget(target, false);
+    }
 
-        if (target == null) {
+    private void setTarget(WorldPoint target, boolean append) {
+        Set<WorldPoint> targets = new HashSet<>();
+        if (target != null) {
+            targets.add(target);
+        }
+        setTargets(targets, append);
+    }
+
+    private void setTargets(Set<WorldPoint> targets, boolean append) {
+        if (targets == null || targets.isEmpty()) {
             synchronized (pathfinderMutex) {
                 if (pathfinder != null) {
                     pathfinder.cancel();
@@ -469,25 +504,33 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
                 pathfinder = null;
             }
 
-            worldMapPointManager.remove(marker);
+            worldMapPointManager.removeIf(x -> x == marker);
             marker = null;
             startPointSet = false;
         } else {
+            Player localPlayer = client.getLocalPlayer();
+            if (!startPointSet && localPlayer == null) {
+                return;
+            }
             worldMapPointManager.removeIf(x -> x == marker);
-            marker = new WorldMapPoint(target, MARKER_IMAGE);
-            marker.setName("Target");
-            marker.setTarget(marker.getWorldPoint());
-            marker.setJumpOnClick(true);
-            worldMapPointManager.add(marker);
+            if (targets.size() == 1) {
+                marker = new WorldMapPoint(targets.iterator().next(), MARKER_IMAGE);
+                marker.setName("Target");
+                marker.setTarget(marker.getWorldPoint());
+                marker.setJumpOnClick(true);
+                worldMapPointManager.add(marker);
+            }
 
-            WorldPoint start = client.isInInstancedRegion()
-                    ? WorldPoint.fromLocalInstance(client, localPlayer.getLocalLocation())
-                    : localPlayer.getWorldLocation();
+            WorldPoint start = WorldPoint.fromLocalInstance(client, localPlayer.getLocalLocation());
             lastLocation = start;
             if (startPointSet && pathfinder != null) {
                 start = pathfinder.getStart();
             }
-            restartPathfinding(start, target);
+            Set<WorldPoint> destinations = new HashSet<>(targets);
+            if (pathfinder != null && append) {
+                destinations.addAll(pathfinder.getTargets());
+            }
+            restartPathfinding(start, destinations, append);
         }
     }
 
@@ -496,7 +539,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
             return;
         }
         startPointSet = true;
-        restartPathfinding(start, pathfinder.getTarget());
+        restartPathfinding(start, pathfinder.getTargets());
     }
 
     public WorldPoint calculateMapPoint(Point point) {

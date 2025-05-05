@@ -227,4 +227,16 @@
 3539 9771 0	3543 9772 0	Enter;Cave;43762	93 Agility			6	
 3543 9772 0	3539 9771 0	Enter;Cave;43763	93 Agility			6	
 3548 3282 0	3544 3282 0	Jump-Across;Dry stone wall;53256	72 Agility			6	 
-3544 3282 0	3548 3282 0	Jump-Across;Dry stone wall;53256	72 Agility			6	 
+3544 3282 0	3548 3282 0	Jump-Across;Dry stone wall;53256	72 Agility			6
+2154 3072 0	2160 3072 0	Cross;Stepping stone;10663	76 Agility			6
+2160 3072 0	2154 3072 0	Cross;Stepping stone;10663	76 Agility			6
+3220 10084 0	3220 10088 0	Jump to;Pillar;31561	65 Agility			6
+3220 10088 0	3220 10084 0	Jump to;Pillar;31561	65 Agility			6
+3202 10136 0	3198 10136 0	Jump to;Pillar;31561	75 Agility			6
+3198 10136 0	3202 10136 0	Jump to;Pillar;31561	75 Agility			6
+3239 10145 0	3243 10145 0	Jump to;Pillar;31561	89 Agility			6
+3243 10145 0	3239 10145 0	Jump to;Pillar;31561	89 Agility			6
+3200 10196 0	3204 10196 0	Jump to;Pillar;31561	75 Agility			6
+3204 10196 0	3200 10196 0	Jump to;Pillar;31561	75 Agility			6
+3180 10211 0	3180 10207 0	Jump to;Pillar;31561	75 Agility			6
+3180 10207 0	3180 10211 0	Jump to;Pillar;31561	75 Agility			6

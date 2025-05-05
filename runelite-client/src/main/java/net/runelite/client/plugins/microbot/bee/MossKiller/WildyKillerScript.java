@@ -2093,7 +2093,7 @@ public class WildyKillerScript extends Script {
         }
         sleep(1500);
 
-        Rs2Widget.clickWidget("Fire Strike");
+        Rs2Widget.clickWidget("Fire Strike", true);
 
         sleep(1500);
 

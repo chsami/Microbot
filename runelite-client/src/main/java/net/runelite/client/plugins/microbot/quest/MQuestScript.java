@@ -8,6 +8,7 @@ import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.quest.logic.PiratesTreasure;
 import net.runelite.client.plugins.microbot.quest.logic.QuestRegistry;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
@@ -30,6 +31,7 @@ import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.shop.Rs2Shop;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
@@ -55,13 +57,18 @@ public class MQuestScript extends Script {
     int unreachableTargetCheckDist = 1;
 
     private MQuestConfig config;
+    private MQuestPlugin mQuestPlugin;
     private static ArrayList<Rs2NpcModel> npcsHandled = new ArrayList<>();
     private static ArrayList<TileObject> objectsHandeled = new ArrayList<>();
 
     QuestStep dialogueStartedStep = null;
 
-    public boolean run(MQuestConfig config) {
+
+
+    public boolean run(MQuestConfig config, MQuestPlugin mQuestPlugin) {
         this.config = config;
+        this.mQuestPlugin = mQuestPlugin;
+
 
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
@@ -115,6 +122,9 @@ public class MQuestScript extends Script {
                                 }
                             } else {
                                 Rs2Widget.clickWidget(widget.getId());
+                                if (Rs2Shop.isOpen() && getQuestHelperPlugin().getSelectedQuest().getQuest().getId() == Quest.PIRATES_TREASURE.getId()) {
+                                    Rs2Shop.buyItemOptimally("karamjan rum", 1);
+                                }
                                 return;
                             }
                         }
@@ -125,6 +135,9 @@ public class MQuestScript extends Script {
                  * Execute custom logic for the quest
                  */
                 var questLogic = QuestRegistry.getQuest(getQuestHelperPlugin().getSelectedQuest().getQuest().getId());
+                if (questLogic instanceof PiratesTreasure) {
+                    ((PiratesTreasure) questLogic).setMQuestPlugin(mQuestPlugin);
+                }
                 if (questLogic != null) {
                     if (!questLogic.executeCustomLogic()) {
                         return;
@@ -138,13 +151,30 @@ public class MQuestScript extends Script {
                         //if there is no quest option in the dialogue, just click player location to remove
                         // the dialogue to avoid getting stuck in an infinite loop of dialogues
                         if (!hasOption) {
+                            if (getQuestHelperPlugin().getSelectedQuest() != null &&
+                                    getQuestHelperPlugin().getSelectedQuest().getQuest().getId() == Quest.IMP_CATCHER.getId()
+                                    && Microbot.getClient().getTopLevelWorldView().getPlane() == 1) {
+                                Rs2Dialogue.keyPressForDialogueOption(1); // presses option 1
+                                sleep(1200,1800);
+                            }
                             Rs2Walker.walkFastCanvas(Rs2Player.getWorldLocation());
                         }
                         return;
                     }
 
+                    if (getQuestHelperPlugin().getSelectedQuest() != null &&
+                            getQuestHelperPlugin().getSelectedQuest().getQuest().getId() == Quest.COOKS_ASSISTANT.getId() &&
+                            Rs2Dialogue.isInDialogue()) {
+                        dialogueStartedStep = questStep;  // Force this to be true for Cook's Assistant
+                    }
+
+                    if (getQuestHelperPlugin().getSelectedQuest() != null &&
+                            getQuestHelperPlugin().getSelectedQuest().getQuest().getId() == Quest.PIRATES_TREASURE.getId() &&
+                            Rs2Dialogue.isInDialogue()) {
+                        dialogueStartedStep = questStep;
+                    }
+
                     if (Rs2Dialogue.isInDialogue() && dialogueStartedStep == questStep) {
-                        // Stop walker if in dialogue
                         Rs2Walker.setTarget(null);
                         Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
                         return;
@@ -193,6 +223,7 @@ public class MQuestScript extends Script {
                     sleepUntil(() -> Rs2Player.isInteracting() || Rs2Player.isMoving() || Rs2Player.isAnimating() || Rs2Dialogue.isInDialogue(), 500);
                     sleepUntil(() -> !Rs2Player.isInteracting() && !Rs2Player.isMoving() && !Rs2Player.isAnimating());
                 }
+
             } catch (Exception ex) {
                 System.out.println(ex.getMessage());
                 ex.printStackTrace(System.out);
@@ -391,9 +422,9 @@ public class MQuestScript extends Script {
                 Rs2GameObject.interact(object);
             }
 
-            sleepUntil(() -> Rs2Player.isWalking() || Rs2Player.isAnimating());
+            sleepUntil(() -> Rs2Player.isMoving() || Rs2Player.isAnimating());
             sleep(100);
-            sleepUntil(() -> !Rs2Player.isWalking() && !Rs2Player.isAnimating());
+            sleepUntil(() -> !Rs2Player.isMoving() && !Rs2Player.isAnimating());
             objectsHandeled.add(object);
         }
 

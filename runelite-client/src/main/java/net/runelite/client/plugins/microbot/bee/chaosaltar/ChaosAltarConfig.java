@@ -20,7 +20,7 @@ public interface ChaosAltarConfig extends Config {
                 + "- Keep Burning Amulets and dragon bones in the bank\n"
                 + "- ONLY WORKS WITH Dragon Bones\n"
                 + "- If you have an alt, consider teleporting to the Lava Maze spot first to distract PKers or bots who can auto-attack when you teleport\n"
-                + "- (Note: Microbot currently can't log out fast enough for when someone is waiting for you after teleport)";
+                + "(Note: Microbot currently can't log out fast enough for when someone is waiting for you after teleport)";
     }
 
     @ConfigItem(
@@ -38,6 +38,15 @@ public interface ChaosAltarConfig extends Config {
             description = "Collects bones from boneyard and uses them on chaos altar(WIP - non-functional)"
     )
     default boolean boneYardMode() {
+        return false;
+    }
+
+    @ConfigItem(
+            keyName = "Fast Bones Offering",
+            name = "Offer Bones Fast",
+            description = "Uses the bones on the altar quickly (more apm)"
+    )
+    default boolean giveBonesFast() {
         return false;
     }
 

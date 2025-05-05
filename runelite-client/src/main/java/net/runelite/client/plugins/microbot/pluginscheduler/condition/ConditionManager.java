@@ -1,39 +1,5 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.condition;
 
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.eventbus.EventBus;
-import net.runelite.client.eventbus.Subscribe;
-
-import net.runelite.api.events.StatChanged;
-import net.runelite.api.events.VarbitChanged;
-import net.runelite.api.events.GameTick;
-import net.runelite.api.events.ItemContainerChanged;
-import net.runelite.api.events.ItemDespawned;
-import net.runelite.api.events.ItemSpawned;
-import net.runelite.api.events.GroundObjectDespawned;
-import net.runelite.api.events.GroundObjectSpawned;
-import net.runelite.api.events.MenuOptionClicked;
-import net.runelite.api.events.NpcChanged;
-import net.runelite.api.events.NpcDespawned;
-import net.runelite.api.events.NpcSpawned;
-import net.runelite.api.TileItem;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.AnimationChanged;
-import net.runelite.api.events.ChatMessage;
-import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.events.HitsplatApplied;
-import net.runelite.api.events.InteractingChanged;
-import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.AndCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.NotCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.OrCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.resource.LootItemCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.resource.ResourceCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.SingleTriggerTimeCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeCondition;
-
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -41,7 +7,43 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.events.AnimationChanged;
+import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.GroundObjectDespawned;
+import net.runelite.api.events.GroundObjectSpawned;
+import net.runelite.api.events.HitsplatApplied;
+import net.runelite.api.events.InteractingChanged;
+import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.events.ItemDespawned;
+import net.runelite.api.events.ItemSpawned;
+import net.runelite.api.events.MenuOptionClicked;
+import net.runelite.api.events.NpcChanged;
+import net.runelite.api.events.NpcDespawned;
+import net.runelite.api.events.NpcSpawned;
+import net.runelite.api.events.StatChanged;
+import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.Skill;
+import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.AndCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.NotCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.OrCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.enums.UpdateOption;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.resource.ResourceCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.SingleTriggerTimeCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeCondition;
 
 /**
  * Manages logical conditions for plugin scheduling and user-defined triggers in a hierarchical structure.
@@ -76,8 +78,19 @@ import java.util.Optional;
  * </pre>
  */
 @Slf4j
-public class ConditionManager {
+public class ConditionManager implements AutoCloseable {
     
+    // Centralized watchdog executor service shared by all ConditionManager instances
+    private transient static final ScheduledExecutorService SHARED_WATCHDOG_EXECUTOR = 
+        Executors.newScheduledThreadPool(2, r -> {
+            Thread t = new Thread(r, "ConditionWatchdog");
+            t.setDaemon(true);
+            return t;
+        });
+    
+    // Track all futures from this manager to ensure proper cleanup
+    private transient final List<ScheduledFuture<?>> watchdogFutures = 
+        new ArrayList<>();
     
     private LogicalCondition pluginCondition = new OrCondition();
     @Getter
@@ -156,6 +169,40 @@ public class ConditionManager {
         //log.info("Total TimeConditions found in all logical structures: {}", timeConditions.size());
         return timeConditions;
     }
+
+    /**
+     * Retrieves all non-time-based conditions from both plugin and user condition structures.
+     * Uses the LogicalCondition.findNonTimeConditions method to recursively find all non-TimeCondition
+     * instances throughout the nested logical structure.
+     * 
+     * @return A list of all non-TimeCondition instances managed by this ConditionManager
+     */
+    public List<Condition> getNonTimeConditions() {
+        List<Condition> nonTimeConditions = new ArrayList<>();
+        
+        // Get non-time conditions from user logical structure
+        if (userLogicalCondition != null) {
+            List<Condition> userNonTimeConditions = userLogicalCondition.findNonTimeConditions();
+            nonTimeConditions.addAll(userNonTimeConditions);
+        }
+        
+        // Get non-time conditions from plugin logical structure
+        if (pluginCondition != null) {
+            List<Condition> pluginNonTimeConditions = pluginCondition.findNonTimeConditions();
+            nonTimeConditions.addAll(pluginNonTimeConditions);
+        }
+        
+        return nonTimeConditions;
+    }
+    
+    /**
+     * Checks if the condition manager contains only time-based conditions.
+     * 
+     * @return true if all conditions in the manager are TimeConditions, false otherwise
+     */
+    public boolean hasOnlyTimeConditions() {
+        return getNonTimeConditions().isEmpty();
+    }
     /**
      * Returns the user logical condition structure.
      * 
@@ -191,6 +238,9 @@ public class ConditionManager {
             boolean pluginConditionsMet = pluginCondition.isSatisfied();
             log.debug("Plugin conditions met: {}", pluginConditionsMet);
             return userConditionsMet && pluginConditionsMet;            
+        }
+        if (userLogicalCondition.getConditions().isEmpty()  && pluginCondition.getConditions().isEmpty() ){
+            return false;
         }
         return userConditionsMet;                                                
     }
@@ -398,9 +448,7 @@ public class ConditionManager {
                 // If not a direct child, recurse into the logical child
                 if (removeFromNestedCondition(logicalChild, target)) {
                     // If removing the condition leaves the logical condition empty, remove it too
-                    if (logicalChild.getConditions().isEmpty()) {
-                        parent.getConditions().remove(i);
-                    }
+                    parent.getConditions().remove(i);
                     return true;
                 }
             }
@@ -1142,9 +1190,9 @@ public class ConditionManager {
         }        
     }
 
-    @Subscribe(priority = -1)
-    public void onStatChanged(StatChanged event) {
-      
+@Subscribe(priority = -1)
+public void onStatChanged(StatChanged event) {
+             
         for (Condition condition : getConditions( )) {
             try {
                 condition.onStatChanged(event);
@@ -1154,6 +1202,7 @@ public class ConditionManager {
             }
         }        
     }
+   
     
     @Subscribe(priority = -1)
     public void onItemContainerChanged(ItemContainerChanged event) {
@@ -1389,4 +1438,444 @@ public class ConditionManager {
         
         return null;
     }
+
+    /**
+     * Creates a new ConditionManager that contains only the time conditions from this manager,
+     * preserving the logical structure hierarchy (AND/OR relationships).
+     * 
+     * @return A new ConditionManager with only time conditions, or null if no time conditions exist
+     */
+    public ConditionManager createTimeOnlyConditionManager() {
+        // Create a new condition manager
+        ConditionManager timeOnlyManager = new ConditionManager();
+        
+        // Process user logical condition
+        if (userLogicalCondition != null) {
+            LogicalCondition timeOnlyUserLogical = userLogicalCondition.createTimeOnlyLogicalStructure();
+            if (timeOnlyUserLogical != null) {
+                timeOnlyManager.setUserLogicalCondition(timeOnlyUserLogical);
+            }
+        }
+        
+        // Process plugin logical condition
+        if (pluginCondition != null) {
+            LogicalCondition timeOnlyPluginLogical = pluginCondition.createTimeOnlyLogicalStructure();
+            if (timeOnlyPluginLogical != null) {
+                timeOnlyManager.setPluginCondition(timeOnlyPluginLogical);
+            }
+        }
+        
+        return timeOnlyManager;
+    }
+    
+    /**
+     * Evaluates whether this condition manager would be satisfied if only time conditions
+     * were considered. This is useful to determine if a plugin schedule is blocked by 
+     * non-time conditions or by the time conditions themselves.
+     * 
+     * @return true if time conditions alone would satisfy this condition manager, false otherwise
+     */
+    public boolean wouldBeTimeOnlySatisfied() {
+        // If there are no time conditions at all, we can't satisfy with time only
+        List<TimeCondition> timeConditions = getTimeConditions();
+        if (timeConditions.isEmpty()) {
+            return false;
+        }
+        
+        boolean userConditionsSatisfied = false;
+        boolean pluginConditionsSatisfied = false;
+        
+        // Check user logical condition
+        if (userLogicalCondition != null) {
+            userConditionsSatisfied = userLogicalCondition.wouldBeTimeOnlySatisfied();
+        }
+        
+        // Check plugin logical condition
+        if (pluginCondition != null && !pluginCondition.getConditions().isEmpty()) {
+            pluginConditionsSatisfied = pluginCondition.wouldBeTimeOnlySatisfied();
+            
+            // Both user and plugin conditions must be satisfied (AND logic between them)
+            return userConditionsSatisfied && pluginConditionsSatisfied;
+        }
+        
+        // If no plugin conditions, just return user conditions result
+        return userConditionsSatisfied;
+    }
+    
+    /**
+     * Evaluates if only the time conditions in both user and plugin logical structures would be met.
+     * This method provides more detailed diagnostics than wouldBeTimeOnlySatisfied().
+     * 
+     * @return A string containing diagnostic information about time condition satisfaction
+     */
+    public String diagnoseTimeConditionsSatisfaction() {
+        StringBuilder sb = new StringBuilder("Time conditions diagnosis:\n");
+        
+        // Get all time conditions
+        List<TimeCondition> timeConditions = getTimeConditions();
+        
+        // Check if there are any time conditions
+        if (timeConditions.isEmpty()) {
+            sb.append("No time conditions defined - cannot be satisfied based on time only.\n");
+            return sb.toString();
+        }
+        
+        // Check user logical time conditions
+        if (userLogicalCondition != null) {
+            boolean userTimeOnlySatisfied = userLogicalCondition.wouldBeTimeOnlySatisfied();
+            sb.append("User time conditions: ").append(userTimeOnlySatisfied ? "SATISFIED" : "NOT SATISFIED").append("\n");
+            
+            // List each time condition in user logical
+            List<Condition> userTimeConditions = userLogicalCondition.findTimeConditions();
+            if (!userTimeConditions.isEmpty()) {
+                sb.append("  User time conditions (").append(userLogicalCondition instanceof AndCondition ? "ALL" : "ANY").append(" required):\n");
+                for (Condition condition : userTimeConditions) {
+                    boolean satisfied = condition.isSatisfied();
+                    sb.append("    - ").append(condition.getDescription())
+                      .append(": ").append(satisfied ? "SATISFIED" : "NOT SATISFIED")
+                      .append("\n");
+                }
+            }
+        }
+        
+        // Check plugin logical time conditions
+        if (pluginCondition != null && !pluginCondition.getConditions().isEmpty()) {
+            boolean pluginTimeOnlySatisfied = pluginCondition.wouldBeTimeOnlySatisfied();
+            sb.append("Plugin time conditions: ").append(pluginTimeOnlySatisfied ? "SATISFIED" : "NOT SATISFIED").append("\n");
+            
+            // List each time condition in plugin logical
+            List<Condition> pluginTimeConditions = pluginCondition.findTimeConditions();
+            if (!pluginTimeConditions.isEmpty()) {
+                sb.append("  Plugin time conditions (").append(pluginCondition instanceof AndCondition ? "ALL" : "ANY").append(" required):\n");
+                for (Condition condition : pluginTimeConditions) {
+                    boolean satisfied = condition.isSatisfied();
+                    sb.append("    - ").append(condition.getDescription())
+                      .append(": ").append(satisfied ? "SATISFIED" : "NOT SATISFIED")
+                      .append("\n");
+                }
+            }
+        }
+        
+        // Overall result
+        boolean overallTimeOnlySatisfied = wouldBeTimeOnlySatisfied();
+        sb.append("Overall result: ").append(overallTimeOnlySatisfied ? 
+                "Would be SATISFIED based on time conditions only" : 
+                "Would NOT be satisfied based on time conditions only");
+        
+        return sb.toString();
+    }
+    
+  
+    
+   
+ 
+    /**
+     * Updates the plugin condition structure with new conditions from the given logical condition.
+     * This method intelligently merges the new conditions into the existing structure
+     * rather than replacing it completely, which preserves state and reduces unnecessary
+     * condition reinitializations.
+     * 
+     * @param newPluginCondition The new logical condition to merge into the existing plugin condition
+     * @return true if changes were made to the plugin condition, false otherwise
+     */
+    public boolean updatePluginCondition(LogicalCondition newPluginCondition) {
+        // Use the default update option (ADD_ONLY)
+        return updatePluginCondition(newPluginCondition, UpdateOption.ADD_ONLY);
+    }
+    
+    /**
+     * Updates the plugin condition structure with new conditions from the given logical condition.
+     * This method provides fine-grained control over how conditions are merged.
+     * 
+     * @param newPluginCondition The new logical condition to merge into the existing plugin condition
+     * @param updateOption Controls how conditions are merged
+     * @return true if changes were made to the plugin condition, false otherwise
+     */
+    public boolean updatePluginCondition(LogicalCondition newPluginCondition, UpdateOption updateOption) {
+        return updatePluginCondition(newPluginCondition, updateOption, true);
+    }
+    
+    /**
+     * Updates the plugin condition structure with new conditions from the given logical condition.
+     * This method provides complete control over how conditions are merged.
+     * 
+     * @param newPluginCondition The new logical condition to merge into the existing plugin condition
+     * @param updateOption Controls how conditions are merged
+     * @param preserveState If true, existing condition state is preserved when possible
+     * @return true if changes were made to the plugin condition, false otherwise
+     */
+    public boolean updatePluginCondition(LogicalCondition newPluginCondition, UpdateOption updateOption, boolean preserveState) {
+        if (newPluginCondition == null) {
+            return false;
+        }
+         
+        // If we don't have a plugin condition yet, just set it directly
+        if (pluginCondition == null) {
+            setPluginCondition(newPluginCondition);
+            log.debug("Initialized plugin condition from null");
+            return true;
+        }
+        
+        // Create a copy of the new condition and optimize it before comparison
+        // This ensures both structures are in optimized form when comparing
+        LogicalCondition optimizedNewCondition;
+        if (newPluginCondition instanceof AndCondition) {
+            optimizedNewCondition = new AndCondition();
+        } else {
+            optimizedNewCondition = new OrCondition();
+        }
+        
+        // Copy all conditions from the new structure to the optimized copy
+        for (Condition condition : newPluginCondition.getConditions()) {
+            optimizedNewCondition.addCondition(condition);
+        }
+        
+        // Optimize the new structure to match how the existing one is optimized
+        optimizedNewCondition.optimizeStructure();
+        
+        if (!optimizedNewCondition.equals(pluginCondition)) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("New Plugin Condition Detected:\n");
+            sb.append("newPluginCondition: \n\n").append(optimizedNewCondition.getDescription()).append("\n\n");
+            sb.append("pluginCondition: \n\n").append(pluginCondition.getDescription()).append("\n\n");
+            sb.append("Differences: \n\t").append(pluginCondition.getStructureDifferences(optimizedNewCondition));
+            log.info(sb.toString());
+            
+        }
+        
+        // If the logical types don't match (AND vs OR), and we're not in REPLACE mode,
+        // we need special handling
+        boolean typeMismatch = 
+            (pluginCondition instanceof AndCondition && !(newPluginCondition instanceof AndCondition)) ||
+            (pluginCondition instanceof OrCondition && !(newPluginCondition instanceof OrCondition));
+        
+        // Use the rest of the existing function logic
+        if (typeMismatch) {
+            if (updateOption == UpdateOption.REPLACE) {
+                // For REPLACE, just replace the entire condition
+                log.debug("Replacing plugin condition due to logical type mismatch: {} -> {}", 
+                         pluginCondition.getClass().getSimpleName(),
+                         newPluginCondition.getClass().getSimpleName());
+                setPluginCondition(newPluginCondition);
+                return true;
+            } else if (updateOption == UpdateOption.SYNC) {
+                // For SYNC with type mismatch, log a warning but try to merge anyway
+                log.warn("Attempting to synchronize plugin conditions with different logical types: {} ({})-> {} ({})", 
+                        pluginCondition.getClass().getSimpleName(),pluginCondition.getConditions().size(),
+                        newPluginCondition.getClass().getSimpleName(),newPluginCondition.getConditions().size());
+                // Continue with sync by creating a new condition of the correct type
+                LogicalCondition newRootCondition;
+                if (newPluginCondition instanceof AndCondition) {
+                    newRootCondition = new AndCondition();
+                } else {
+                    newRootCondition = new OrCondition();
+                }
+                
+                // Copy all conditions from the old structure that also appear in the new one
+                for (Condition existingCond : pluginCondition.getConditions()) {
+                    if (newPluginCondition.contains(existingCond)) {
+                        newRootCondition.addCondition(existingCond);
+                    }
+                }
+                
+                // Add any new conditions from the new structure
+                for (Condition newCond : newPluginCondition.getConditions()) {
+                    if (!newRootCondition.contains(newCond)) {
+                        newRootCondition.addCondition(newCond);
+                    }
+                }
+                
+                setPluginCondition(newRootCondition);
+                return true;
+            }
+        }
+        
+        // Use the LogicalCondition's updateLogicalStructure method with the specified options
+        boolean conditionsUpdated = pluginCondition.updateLogicalStructure(
+            newPluginCondition, updateOption, preserveState);
+        
+        if (!optimizedNewCondition.equals(pluginCondition)) {            
+            StringBuilder sb = new StringBuilder();
+            sb.append("Plugin condition updated  with option ->  difference should not occur: \nObjection:\t").append(updateOption).append("\n");
+            sb.append("New Plugin Condition Detected:\n");
+            sb.append("newPluginCondition: \n\n").append(optimizedNewCondition.getDescription()).append("\n\n");
+            sb.append("pluginCondition: \n\n").append(pluginCondition.getDescription()).append("\n\n");
+            sb.append("Differences: should not exist: \n\t").append(pluginCondition.getStructureDifferences(optimizedNewCondition));
+            log.warn(sb.toString());        
+        }
+        
+        // Optimize the condition structure after update if needed
+        if (conditionsUpdated && updateOption != UpdateOption.REMOVE_ONLY) {
+            // Optimize only if we added or changed conditions
+            boolean optimized = pluginCondition.optimizeStructure();
+            if (optimized) {
+                log.info("Optimized plugin condition structure after update!! \n new plugin condition: \n\n" + pluginCondition);
+                
+            }
+            
+            // Validate the structure
+            List<String> issues = pluginCondition.validateStructure();
+            if (!issues.isEmpty()) {
+                log.warn("Validation issues found in plugin condition structure:");
+                for (String issue : issues) {
+                    log.warn("  - {}", issue);
+                }
+            }
+        }
+        
+        if (conditionsUpdated) {
+            log.debug("Updated plugin condition structure, changes were applied");
+            
+            if (log.isTraceEnabled()) {
+                String differences = pluginCondition.getStructureDifferences(newPluginCondition);
+                log.trace("Condition structure differences after update:\n{}", differences);
+            }
+        } else {
+            log.debug("No changes needed to plugin condition structure");
+        }
+        
+        return conditionsUpdated;
+    }
+    
+   
+    
+    /**
+     * Clean up resources when this condition manager is no longer needed.
+     * Implements the AutoCloseable interface for proper resource management.
+     */
+    @Override
+    public void close() {
+        // Unregister from events to prevent memory leaks
+        unregisterEvents();
+        
+        // Cancel all scheduled watchdog tasks
+        cancelAllWatchdogs();
+        
+        log.debug("ConditionManager resources cleaned up");
+    }
+    
+    /**
+     * Cancels all watchdog tasks scheduled by this condition manager.
+     */
+    public void cancelAllWatchdogs() {
+        synchronized (watchdogFutures) {
+            for (ScheduledFuture<?> future : watchdogFutures) {
+                if (future != null && !future.isDone()) {
+                    future.cancel(false);
+                }
+            }
+            watchdogFutures.clear();
+        }
+    }
+    
+   
+    
+    /**
+     * Shutdowns the shared watchdog executor service.
+     * This should only be called when the application is shutting down.
+     */
+    public static void shutdownSharedExecutor() {
+        if (!SHARED_WATCHDOG_EXECUTOR.isShutdown()) {
+            SHARED_WATCHDOG_EXECUTOR.shutdown();
+            try {
+                if (!SHARED_WATCHDOG_EXECUTOR.awaitTermination(1, TimeUnit.SECONDS)) {
+                    SHARED_WATCHDOG_EXECUTOR.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                SHARED_WATCHDOG_EXECUTOR.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+    
+    /**
+     * Periodically checks the plugin condition structure against a new condition structure
+     * and updates if necessary. This creates a scheduled task that runs at the specified interval.
+     * Uses the default ADD_ONLY update option.
+     * 
+     * @param conditionSupplier A supplier that returns the current desired plugin condition
+     * @param interval The interval in milliseconds between checks
+     * @return A handle to the scheduled future task (can be used to cancel)
+     */
+    public ScheduledFuture<?> scheduleConditionWatchdog(
+            java.util.function.Supplier<LogicalCondition> conditionSupplier,
+            long interval) {
+        
+        return scheduleConditionWatchdog(conditionSupplier, interval, UpdateOption.ADD_ONLY);
+    }
+    
+    /**
+     * Periodically checks the plugin condition structure against a new condition structure
+     * and updates if necessary. This creates a scheduled task that runs at the specified interval.
+     * 
+     * @param conditionSupplier A supplier that returns the current desired plugin condition
+     * @param interval The interval in milliseconds between checks
+     * @param updateOption The update option to use for condition changes
+     * @return A handle to the scheduled future task (can be used to cancel)
+     */
+    public ScheduledFuture<?> scheduleConditionWatchdog(
+            java.util.function.Supplier<LogicalCondition> conditionSupplier,
+            long interval,
+            UpdateOption updateOption) {
+        
+        ScheduledFuture<?> future = SHARED_WATCHDOG_EXECUTOR.scheduleWithFixedDelay(() -> { //scheduleWithFixedRate
+            try {
+                // First cleanup any non-triggerable conditions from existing structures
+                boolean cleanupDone = cleanupNonTriggerableConditions();
+                if (cleanupDone) {
+                    log.debug("Watchdog removed non-triggerable conditions from logical structures");
+                }
+                
+                // Then update with new conditions
+                LogicalCondition currentDesiredCondition = conditionSupplier.get();
+                if (currentDesiredCondition == null) {
+                    currentDesiredCondition = new OrCondition();
+                }
+                
+                // Clean non-triggerable conditions from the new condition structure too
+                if (currentDesiredCondition != null) {
+                    LogicalCondition.removeNonTriggerableConditions(currentDesiredCondition);
+                    
+                    boolean updated = updatePluginCondition(currentDesiredCondition, updateOption);
+                    if (updated) {
+                        log.debug("Watchdog updated plugin conditions using mode: {}", updateOption);
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Error in plugin condition watchdog", e);
+            }
+        }, 0, interval, TimeUnit.MILLISECONDS);
+        
+        // Track this future for proper cleanup
+        synchronized (watchdogFutures) {
+            watchdogFutures.add(future);
+        }
+        
+        return future;
+    }
+
+    
+
+    /**
+     * Cleans up non-triggerable conditions from both plugin and user logical structures.
+     * This is useful to call periodically to keep the condition structures streamlined.
+     * 
+     * @return true if any conditions were removed, false otherwise
+     */
+    public boolean cleanupNonTriggerableConditions() {
+        boolean anyRemoved = false;
+        
+        // Clean up plugin conditions
+        if (pluginCondition != null) {
+            anyRemoved = LogicalCondition.removeNonTriggerableConditions(pluginCondition) || anyRemoved;
+        }
+        
+        // Clean up user conditions
+        if (userLogicalCondition != null) {
+            anyRemoved = LogicalCondition.removeNonTriggerableConditions(userLogicalCondition) || anyRemoved;
+        }
+        
+        return anyRemoved;
+    }
+
 }

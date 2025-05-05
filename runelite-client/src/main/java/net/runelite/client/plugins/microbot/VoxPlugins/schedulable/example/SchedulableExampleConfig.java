@@ -8,8 +8,10 @@ import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 import net.runelite.client.config.Keybind;
 import net.runelite.client.config.Range;
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 
+import java.awt.event.KeyEvent;
 import java.util.Arrays;
 import java.util.List;
 
@@ -514,9 +516,15 @@ public interface SchedulableExampleConfig extends Config {
     )
     default WorldPoint lastLocation() {
         return null;
+    }    
+    default void setLastLocation(WorldPoint location){
+        if (location != null) {
+            if (Microbot.getConfigManager() != null) {
+                Microbot.getConfigManager().setConfiguration("SchedulableExample", "lastLocation", location);
+            }
+        }
+
     }
-    
-    void setLastLocation(WorldPoint location);
     
     // Enum for process tracking modes
     enum ProcessTrackingMode {
@@ -535,26 +543,27 @@ public interface SchedulableExampleConfig extends Config {
     String debugSection = "debugSection";
 
     @ConfigItem(
-        keyName = "finishPluginHotkey",
-        name = "Finish Plugin Hotkey",
-        description = "Press this hotkey to manually trigger the PluginScheduleEntryFinishedEvent for testing",
+        keyName = "finishPluginNotSuccessfulHotkey",
+        name = "Finish Plugin Not-Successful Hotkey",
+        description = "Press this hotkey to manually trigger the PluginScheduleEntryFinishedEvent for testing not successful completion",
         position = 0,
         section = debugSection
     )
-    default Keybind finishPluginHotkey() {
-        return Keybind.NOT_SET;
+    default Keybind finishPluginNotSuccessfulHotkey() {
+        return new Keybind(KeyEvent.VK_F2, 0);
     }
 
     @ConfigItem(
-        keyName = "reportSuccessful",
-        name = "Report as Successful",
-        description = "If checked, the plugin will report success when finished via hotkey",
-        position = 1,
+        keyName = "finishPluginSuccessfulHotkey",
+        name = "Finish Plugin Hotkey",
+        description = "Press this hotkey to manually trigger the PluginScheduleEntryFinishedEvent for testing successful completion",
+        position = 0,
         section = debugSection
     )
-    default boolean reportSuccessful() {
-        return true;
+    default Keybind finishPluginSuccessfulHotkey() {
+        return new Keybind(KeyEvent.VK_F3, 0);
     }
+
 
     @ConfigItem(
         keyName = "finishReason",

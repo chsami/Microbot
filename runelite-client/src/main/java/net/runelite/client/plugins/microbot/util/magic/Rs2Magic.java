@@ -166,7 +166,7 @@ public class Rs2Magic {
     public static void castOn(MagicAction magicSpell, Actor actor) {
         if (actor == null) return;
         cast(magicSpell);
-        sleep(150, 300);
+        Global.sleepUntil(() -> Microbot.getClient().isWidgetSelected());
         if (!Rs2Camera.isTileOnScreen(actor.getLocalLocation())) {
             Rs2Camera.turnTo(actor.getLocalLocation());
             return;

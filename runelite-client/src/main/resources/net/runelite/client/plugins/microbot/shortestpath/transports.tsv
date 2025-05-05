@@ -4933,26 +4933,26 @@
 1314 3665 0	1314 10063 0	Enter;Lizard dwelling;34403									
 1329 3670 0	1330 10069 0	Enter;Lizard dwelling;34403									
 1329 3669 0	1330 10069 0	Enter;Lizard dwelling;34403									
-1293 10091 0	1293 10093 0	Pass;Mystical barrier;34542									 
-1292 10091 0	1292 10093 0	Pass;Mystical barrier;34542									 
-1293 10093 0	1293 10091 0	Pass;Mystical barrier;34542									 
-1292 10093 0	1292 10091 0	Pass;Mystical barrier;34542									 
-1296 10096 0	1298 10096 0	Pass;Mystical barrier;34643									 
-1296 10097 0	1298 10097 0	Pass;Mystical barrier;34643									 
-1298 10096 0	1296 10096 0	Pass;Mystical barrier;34643									 
-1298 10097 0	1296 10097 0	Pass;Mystical barrier;34643									 
-1307 10097 0	1309 10097 0	Pass;Mystical barrier;34644									 
-1307 10096 0	1309 10096 0	Pass;Mystical barrier;34644									 
-1309 10097 0	1307 10097 0	Pass;Mystical barrier;34644									 
-1309 10096 0	1307 10096 0	Pass;Mystical barrier;34644									 
-1316 10097 0	1318 10097 0	Pass;Mystical barrier;34645									 
-1316 10096 0	1318 10096 0	Pass;Mystical barrier;34645									 
-1318 10097 0	1316 10097 0	Pass;Mystical barrier;34645									 
-1318 10096 0	1316 10096 0	Pass;Mystical barrier;34645									 
-1324 10097 0	1326 10097 0	Pass;Mystical barrier;34646									 
-1324 10096 0	1326 10096 0	Pass;Mystical barrier;34646									 
-1326 10097 0	1324 10097 0	Pass;Mystical barrier;34646									 
-1326 10096 0	1324 10096 0	Pass;Mystical barrier;34646									 
+1293 10091 0	1293 10093 0	Pass;Mystical barrier;34542
+1292 10091 0	1292 10093 0	Pass;Mystical barrier;34542
+1293 10093 0	1293 10091 0	Pass;Mystical barrier;34542
+1292 10093 0	1292 10091 0	Pass;Mystical barrier;34542
+1296 10096 0	1298 10096 0	Pass;Mystical barrier;34643
+1296 10097 0	1298 10097 0	Pass;Mystical barrier;34643
+1298 10096 0	1296 10096 0	Pass;Mystical barrier;34643
+1298 10097 0	1296 10097 0	Pass;Mystical barrier;34643
+1307 10097 0	1309 10097 0	Pass;Mystical barrier;34644
+1307 10096 0	1309 10096 0	Pass;Mystical barrier;34644
+1309 10097 0	1307 10097 0	Pass;Mystical barrier;34644
+1309 10096 0	1307 10096 0	Pass;Mystical barrier;34644
+1316 10097 0	1318 10097 0	Pass;Mystical barrier;34645
+1316 10096 0	1318 10096 0	Pass;Mystical barrier;34645
+1318 10097 0	1316 10097 0	Pass;Mystical barrier;34645
+1318 10096 0	1316 10096 0	Pass;Mystical barrier;34645
+1324 10097 0	1326 10097 0	Pass;Mystical barrier;34646
+1324 10096 0	1326 10096 0	Pass;Mystical barrier;34646
+1326 10097 0	1324 10097 0	Pass;Mystical barrier;34646
+1326 10096 0	1324 10096 0	Pass;Mystical barrier;34646
 											
 # f2p altars (earth, air, fire, body, water)											
 2793 4828 0	2980 3511 0	Use;Portal;34749									
@@ -4962,30 +4962,30 @@
 2655 4830 0	3302 3477 0	Use;Portal;34751									
 											
 # Moons of Peril											
-1374 9667 0	1347 9590 0	Pass-Through;Entrance;51377									 
-1347 9590 0	1374 9667 0	Pass-Through;Entrance;51375									 
-1418 9632 0	1387 9591 0	Pass-Through;Entrance;51377									 
-1387 9591 0	1418 9632 0	Pass-Through;Entrance;51375									 
-1513 9563 0	1355 9538 0	Pass-Through;Entrance;51377									 
-1355 9538 0	1513 9563 0	Pass-Through;Entrance;51375									 
-1526 9671 0	1513 9596 0	Pass-Through;Entrance;51377									 
-1513 9596 0	1526 9671 0	Pass-Through;Entrance;51377									 
-1522 9719 0	1390 9676 0	Pass-Through;Entrance;51378									 
-1390 9676 0	1522 9719 0	Pass-Through;Entrance;51378									 
-1403 9717 0	1422 9649 1	Pass-Through;Entrance;51375									 
-1422 9649 1	1403 9717 0	Pass-Through;Entrance;51376									 
-1388 9575 0	1423 9615 1	Pass-Through;Entrance;51375									 
-1423 9615 1	1388 9575 0	Pass-Through;Entrance;51376									 
-1480 9669 0	1457 9649 1	Pass-Through;Entrance;51375									 
-1457 9649 1	1480 9669 0	Pass-Through;Entrance;51376									 
-1510 9675 0	1461 9632 0	Pass-Through;Entrance;51375									 
-1461 9632 0	1510 9675 0	Pass-Through;Entrance;51377									 
-1440 9653 0	1403 9704 0	Pass-Through;Entrance;51377									 
-1403 9704 0	1440 9653 0	Pass-Through;Entrance;51377									 
-1440 9615 1	1439 9599 1	Pass-Through;Entrance;51377									 
-1439 9599 1	1440 9615 1	Pass-Through;Entrance;51375									 
-1440 9509 1	1435 3128 0	Pass-Through;Entrance;51375									 
-1435 3128 0	1440 9509 1	Pass-Through;Entrance;51375									 
+1374 9667 0	1347 9590 0	Pass-Through;Entrance;51377
+1347 9590 0	1374 9667 0	Pass-Through;Entrance;51375
+1418 9632 0	1387 9591 0	Pass-Through;Entrance;51377
+1387 9591 0	1418 9632 0	Pass-Through;Entrance;51375
+1513 9563 0	1355 9538 0	Pass-Through;Entrance;51377
+1355 9538 0	1513 9563 0	Pass-Through;Entrance;51375
+1526 9671 0	1513 9596 0	Pass-Through;Entrance;51377
+1513 9596 0	1526 9671 0	Pass-Through;Entrance;51377
+1522 9719 0	1390 9676 0	Pass-Through;Entrance;51378
+1390 9676 0	1522 9719 0	Pass-Through;Entrance;51378
+1403 9717 0	1422 9649 1	Pass-Through;Entrance;51375
+1422 9649 1	1403 9717 0	Pass-Through;Entrance;51376
+1388 9575 0	1423 9615 1	Pass-Through;Entrance;51375
+1423 9615 1	1388 9575 0	Pass-Through;Entrance;51376
+1480 9669 0	1457 9649 1	Pass-Through;Entrance;51375
+1457 9649 1	1480 9669 0	Pass-Through;Entrance;51376
+1510 9675 0	1461 9632 0	Pass-Through;Entrance;51375
+1461 9632 0	1510 9675 0	Pass-Through;Entrance;51377
+1440 9653 0	1403 9704 0	Pass-Through;Entrance;51377
+1403 9704 0	1440 9653 0	Pass-Through;Entrance;51377
+1440 9615 1	1439 9599 1	Pass-Through;Entrance;51377
+1439 9599 1	1440 9615 1	Pass-Through;Entrance;51375
+1440 9509 1	1435 3128 0	Pass-Through;Entrance;51375
+1435 3128 0	1440 9509 1	Pass-Through;Entrance;51375
 											
 # Legends Guild											
 2732 3376 0	2732 3380 1	Climb-up;Staircase;15653									
@@ -5000,14 +5000,14 @@
 2732 3374 2	2732 3374 1	Climb-down;Ladder;16679									
 2731 3375 1	2731 3375 2	Climb-up;Ladder;16683									
 2731 3375 2	2731 3375 1	Climb-down;Ladder;16679									
-2725 3376 1	2725 3376 2	Climb-up;Ladder;16683									 
-2725 3376 2	2725 3376 1	Climb-down;Ladder;16679									 
-2726 3375 1	2726 3375 2	Climb-up;Ladder;16683									 
-2726 3375 2	2726 3375 1	Climb-down;Ladder;16679									 
-2725 3374 1	2725 3374 2	Climb-up;Ladder;16683									 
-2725 3374 2	2725 3374 1	Climb-down;Ladder;16679									 
-2724 3375 1	2724 3375 2	Climb-up;Ladder;16683									 
-2724 3375 2	2724 3375 1	Climb-down;Ladder;16679									 
+2725 3376 1	2725 3376 2	Climb-up;Ladder;16683
+2725 3376 2	2725 3376 1	Climb-down;Ladder;16679
+2726 3375 1	2726 3375 2	Climb-up;Ladder;16683
+2726 3375 2	2726 3375 1	Climb-down;Ladder;16679
+2725 3374 1	2725 3374 2	Climb-up;Ladder;16683
+2725 3374 2	2725 3374 1	Climb-down;Ladder;16679
+2724 3375 1	2724 3375 2	Climb-up;Ladder;16683
+2724 3375 2	2724 3375 1	Climb-down;Ladder;16679
 2723 3374 0	2727 9774 0	Climb-down;Staircase;16664									
 2723 3375 0	2727 9775 0	Climb-down;Staircase;16664									
 2727 9774 0	2723 3374 0	Climb-up;Staircase;16665									
@@ -5018,3 +5018,29 @@
 1936 9009 1	2457 2849 0	Climb-up;Ladder;32205
 1939 8968 1	2445 2818 0	Enter;Cave;31807
 2445 2818 0	1939 8968 1	Enter;Cave entrance;31606
+
+# Rev Caves
+3073 3653 0	3197 10056 0	Enter;Cavern;31555
+3074 3653 0	3197 10056 0	Enter;Cavern;31555
+3075 3653 0	3197 10056 0	Enter;Cavern;31555
+3076 3653 0	3197 10056 0	Enter;Cavern;31555
+3217 10058 0	3102 3656 0	Climb-up;Staircase;31558
+3246 10215 0	3124 3806 0	Climb-up;Staircase;43868
+3126 3831 0	3241 10233 0	Enter;Cavern;31556
+3126 3832 0	3241 10233 0	Enter;Cavern;31556
+3126 3833 0	3241 10233 0	Enter;Cavern;31556
+3126 3834 0	3241 10233 0	Enter;Cavern;31556
+3069 3739 0	3187 10127 0	Jump-Down;Crevice;40386
+3069 3740 0	3187 10127 0	Jump-Down;Crevice;40386
+3069 3741 0	3187 10127 0	Jump-Down;Crevice;40386
+3069 3742 0	3187 10127 0	Jump-Down;Crevice;40386
+3069 3743 0	3187 10127 0	Jump-Down;Crevice;40386
+3069 3744 0	3187 10127 0	Jump-Down;Crevice;40386
+3068 3744 0	3187 10127 0	Jump-Down;Crevice;40386
+3067 3744 0	3187 10127 0	Jump-Down;Crevice;40386
+3066 3744 0	3187 10127 0	Jump-Down;Crevice;40386
+3066 3743 0	3187 10127 0	Jump-Down;Crevice;40386
+3066 3742 0	3187 10127 0	Jump-Down;Crevice;40386
+3066 3741 0	3187 10127 0	Jump-Down;Crevice;40386
+3066 3740 0	3187 10127 0	Jump-Down;Crevice;40386
+3066 3739 0	3187 10127 0	Jump-Down;Crevice;40386

@@ -11,6 +11,7 @@ import java.awt.Insets;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.net.URL;
 
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
@@ -246,8 +247,15 @@ public class ConditionConfigPanelUtil {
      */
     public static Icon getResourceIcon(String name, int width, int height) {
         try {
-            BufferedImage originalImage = ImageIO.read(ConditionConfigPanelUtil.class.getResource(
-                    "/net/runelite/client/plugins/microbot/pluginscheduler/" + name));
+            URL resourceUrl = ConditionConfigPanelUtil.class.getResource(
+                    "/net/runelite/client/plugins/microbot/pluginscheduler/" + name);
+            
+            if (resourceUrl == null) {
+                log.warn("Resource not found: /net/runelite/client/plugins/microbot/pluginscheduler/" + name);
+                return UIManager.getIcon("Tree.leafIcon");
+            }
+            
+            BufferedImage originalImage = ImageIO.read(resourceUrl);
             
             if (originalImage == null) {
                 log.warn("Could not load resource: " + name);
@@ -721,7 +729,7 @@ public class ConditionConfigPanelUtil {
             DefaultMutableTreeNode rootNode,
             DefaultTreeModel treeModel, 
             JTree conditionTree,
-            ConditionManager conditionManager) {
+            ConditionManager conditionManager,boolean isStopConditionRenderer) {
         
         // Create the panel with border
         JPanel panel = createTitledPanel("Condition Structure");
@@ -742,7 +750,7 @@ public class ConditionConfigPanelUtil {
             conditionTree.setShowsRootHandles(true);
             
             // Set up tree cell renderer
-            conditionTree.setCellRenderer(new ConditionTreeCellRenderer(conditionManager));
+            conditionTree.setCellRenderer(new ConditionTreeCellRenderer(conditionManager,isStopConditionRenderer));
             
             // Set up tree selection mode
             conditionTree.getSelectionModel().setSelectionMode(

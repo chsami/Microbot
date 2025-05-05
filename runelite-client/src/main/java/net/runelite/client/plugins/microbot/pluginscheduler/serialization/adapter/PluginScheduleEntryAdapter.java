@@ -25,7 +25,7 @@ public class PluginScheduleEntryAdapter implements JsonSerializer<PluginSchedule
         result.addProperty("name", src.getName());
         result.addProperty("enabled", src.isEnabled());
         result.addProperty("cleanName", src.getCleanName());
-        
+        result.addProperty("needsStopCondition", src.isNeedsStopCondition());
         // Serialize time fields
         if (src.getLastRunTime() != null) {
             result.addProperty("lastRunTime", src.getLastRunTime().toInstant().toEpochMilli());
@@ -163,7 +163,11 @@ public class PluginScheduleEntryAdapter implements JsonSerializer<PluginSchedule
         if (jsonObject.has("isDefault")) {
             entry.setDefault(jsonObject.get("isDefault").getAsBoolean());
         }
-        
+        if (jsonObject.has("needsStopCondition")) {
+            entry.setNeedsStopCondition(jsonObject.get("needsStopCondition").getAsBoolean());
+        }else{
+            entry.setNeedsStopCondition(false);
+        }
         //entry.registerPluginConditions();
         
         return entry;

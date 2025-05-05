@@ -35,22 +35,29 @@ public class MQuestPlugin extends Plugin {
     @Inject
     MQuestScript questScript;
 
+    public boolean fullCrate = false;
+
+
 
     @Override
     protected void startUp() throws AWTException {
         if (overlayManager != null) {
             overlayManager.add(exampleOverlay);
         }
-        questScript.run(config);
+        questScript.run(config, this);
+    }
+
+    @Subscribe
+    public void onChatMessage(ChatMessage event) {
+        if (event.getMessage().equals("The crate is full of bananas.")) {
+            fullCrate = true;
+        }
+        questScript.onChatMessage(event);
     }
 
     protected void shutDown() {
         questScript.shutdown();
         overlayManager.remove(exampleOverlay);
-    }
-
-    @Subscribe
-    public void onChatMessage(ChatMessage chatMessage) {
-        questScript.onChatMessage(chatMessage);
+        fullCrate = false;
     }
 }

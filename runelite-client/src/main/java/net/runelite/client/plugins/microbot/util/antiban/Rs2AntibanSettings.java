@@ -93,6 +93,8 @@ public class Rs2AntibanSettings {
     public static boolean dynamicIntensity = false;
     public static boolean dynamicActivity = false;
     public static boolean devDebug = false;
+    public static boolean overwriteScriptSettings = false;
+
     public static boolean takeMicroBreaks = false; // will take micro breaks lasting 3-15 minutes at random intervals by default.
     public static boolean playSchedule = false; //TODO: Implement this
     public static boolean universalAntiban = false; // Will attempt to use the same antiban settings for all plugins that has not yet implemented their own antiban settings.

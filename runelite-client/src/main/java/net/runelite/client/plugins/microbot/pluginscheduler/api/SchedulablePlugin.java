@@ -7,9 +7,11 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.Lo
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryFinishedEvent;
 import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
+import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
 
 import java.awt.List;
 
+import net.runelite.client.config.ConfigDescriptor;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.microbot.Microbot;
 
@@ -19,8 +21,8 @@ import net.runelite.client.plugins.microbot.Microbot;
  * to have your plugin report when it has finished its tasks.
  */
 
-public interface ConditionProvider {
-    
+public interface SchedulablePlugin {
+
        
     default LogicalCondition getStartCondition() {
         return new AndCondition();
@@ -224,4 +226,8 @@ public interface ConditionProvider {
         }
         return null;
     }
+    default public ConfigDescriptor getConfigDescriptor(){
+        return null;
+    }
+
 }

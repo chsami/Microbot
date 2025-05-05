@@ -20,6 +20,8 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.seria
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.serialization.SingleTriggerTimeConditionAdapter;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.serialization.TimeConditionAdapter;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.serialization.TimeWindowConditionAdapter;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.varbit.VarbitCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.varbit.serialization.VarbitConditionAdapter;
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
 import net.runelite.client.plugins.microbot.pluginscheduler.serialization.adapter.ConditionTypeAdapter;
 import net.runelite.client.plugins.microbot.pluginscheduler.serialization.adapter.ConditionManagerAdapter;
@@ -97,6 +99,9 @@ public class ScheduledSerializer {
         builder.registerTypeAdapter(LootItemCondition.class, new LootItemConditionAdapter());
         builder.registerTypeAdapter(GatheredResourceCondition.class, new GatheredResourceConditionAdapter());
         builder.registerTypeAdapter(ProcessItemCondition.class, new ProcessItemConditionAdapter());
+        
+        // Varbit condition adapter
+        builder.registerTypeAdapter(VarbitCondition.class, new VarbitConditionAdapter());
         
         // ConditionManager adapter
         builder.registerTypeAdapter(ConditionManager.class, new ConditionManagerAdapter());

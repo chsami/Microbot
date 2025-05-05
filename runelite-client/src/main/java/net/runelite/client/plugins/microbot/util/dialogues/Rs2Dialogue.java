@@ -718,4 +718,8 @@ public class Rs2Dialogue {
         sleepUntilTrue(() -> !Rs2Dialogue.isInCutScene(), time, timeout);
     }
 
+    public static Widget getDialogueSprite() {
+        if (!hasSpriteContinue()) return null;
+        return Rs2Widget.getWidget(InterfaceID.DIALOG_SPRITE, 1);
+    }
 }

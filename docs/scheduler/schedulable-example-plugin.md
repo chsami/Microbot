@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `SchedulableExamplePlugin` is a reference implementation demonstrating how to create plugins that work with the Plugin Scheduler system. It showcases various types of conditions for both starting and stopping a plugin, as well as proper implementation of the `ConditionProvider` interface.
+The `SchedulableExamplePlugin` is a reference implementation demonstrating how to create plugins that work with the Plugin Scheduler system. It showcases various types of conditions for both starting and stopping a plugin, as well as proper implementation of the `SchedulablePlugin` interface.
 
 ## Key Features
 
@@ -32,23 +32,22 @@ The `SchedulableExamplePlugin` is a reference implementation demonstrating how t
     name = "Schedulable Example",
     description = "Designed for use with the scheduler and testing its features",
     tags = {"microbot", "woodcutting", "combat", "scheduler", "condition"},
-    enabledByDefault = false,
-    canBeScheduled = true  // This is required for scheduler compatibility
+    enabledByDefault = false    
 )
 @Slf4j
-public class SchedulableExamplePlugin extends Plugin implements ConditionProvider {
+public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugin {
     // Plugin implementation...
 }
 ```
 
-The `canBeScheduled = true` property in the `@PluginDescriptor` annotation marks this plugin as compatible with the scheduler.
+A plugin becomes schedulable by implementing the `SchedulablePlugin` interface.
 
-### Step 2: Implement ConditionProvider
+### Step 2: Implement SchedulablePlugin
 
-The `ConditionProvider` interface requires implementation of key methods:
+The `SchedulablePlugin` interface requires implementation of key methods:
 
 ```java
-public interface ConditionProvider {
+public interface SchedulablePlugin {
     LogicalCondition getStartCondition();
     LogicalCondition getStopCondition();
     void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event);

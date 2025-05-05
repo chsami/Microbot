@@ -139,7 +139,7 @@ public class ThievingScript extends Script {
     }
 
     private void pickpocket() {
-        WorldArea ardougneArea = new WorldArea(2649, 3280, 15, 15, 0);
+        WorldArea ardougneArea = new WorldArea(2649, 3280, 7, 8, 0);
         Map<NPC, HighlightedNpc> highlightedNpcs = new HashMap<>();
 
         try {

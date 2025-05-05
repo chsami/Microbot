@@ -1,7 +1,7 @@
 # Origin	Destination	menuOption menuTarget objectID	Skills	Currency	Quests	isMembers	Duration	Display info
 # Port Sarim, Musa Point								
-3029 3217 0	2956 3146 0	Pay-fare;Captain Tobias;3644		30 Coins			10	
-2956 3146 0	3029 3217 0	Pay-Fare;Customs officer;3648		30 Coins			10	
+3029 3217 0	2956 3143 1	Pay-fare;Captain Tobias;3644		30 Coins			10	Musa Point
+2956 3146 0	3032 3217 1	Pay-Fare;Customs officer;3648		30 Coins			10	Port Sarim
 # Ardougne, Brimhaven, Rimmington								
 2683 3271 0	2775 3233 1	Brimhaven;Captain Barnaby;9250		30 Coins		Y	6	Brimhaven
 2683 3271 0	2915 3221 1	Rimmington;Captain Barnaby;9250		30 Coins		Y	6	Rimmington
@@ -9,7 +9,7 @@
 2772 3234 0	2915 3221 1	Rimmington;Captain Barnaby;8764		30 Coins		Y	6	Rimmington
 2915 3225 0	2683 3268 1	Ardougne;Captain Barnaby;8763		30 Coins		Y	6	Ardougne
 2915 3225 0	2775 3233 1	Brimhaven;Captain Barnaby;8763		30 Coins		Y	6	Brimhaven
-# NEEDS FIXING - Rimmington, Corsair Cove								
+# Rimmington, Corsair Cove
 2910 3226 0	2578 2837 1	Travel;Cabin Boy Colin;7967			The Corsair Curse		6	Corsair Cove
 2574 2837 1	2909 3230 1	Travel;Cabin Boy Colin;7967			The Corsair Curse		6	Rimmington
 # Digsite, Fossil Island								

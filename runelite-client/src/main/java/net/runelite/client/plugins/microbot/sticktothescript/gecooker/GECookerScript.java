@@ -38,6 +38,7 @@ public class GECookerScript extends Script {
     public State state = State.BANKING;
     public String debug = "";
     private boolean expectingXPDrop = false;
+    private WorldPoint lastFireLocation;
 
     private static List<WorldPoint> FireSpots = Arrays.asList(
             GEWorkLocation.NORTH_EAST.getWorldPoint(),
@@ -71,7 +72,6 @@ public class GECookerScript extends Script {
 
             if (Rs2AntibanSettings.actionCooldownActive) {
                 debug("Cooldown active");
-                Rs2Antiban.actionCooldown();
                 return;
             }
 
@@ -104,47 +104,38 @@ public class GECookerScript extends Script {
                     return;
                 }
 
-                WorldPoint activeFireLocation = Functions.isGameObjectOnTile(FireSpots, FireIDs);
-
-                if (activeFireLocation != null && Rs2Player.distanceTo(activeFireLocation) > 3) {
-                    debug("Walking to existing fire");
-                    Rs2Walker.walkTo(activeFireLocation);
-                    sleep(256, 789);
-                    return;
-                }
-
                 debug("Looking for fires to use");
+                TileObject fireObject = findFireObject();
 
-                boolean interacted = false;
-                for (WorldPoint FireSpot : FireSpots) {
-                    TileObject fireTile = Rs2GameObject.findGameObjectByLocation(FireSpot);
-                    if (fireTile != null && FireIDs.contains(fireTile.getId())) {
+                if (fireObject != null) {
+                    lastFireLocation = fireObject.getWorldLocation();
+                    if (Rs2Player.distanceTo(fireObject.getWorldLocation()) > Rs2Walker.config.reachedDistance()) {
+                        debug("Walking to existing fire");
+                        Rs2Walker.walkTo(fireObject.getWorldLocation());
+                        sleep(256, 789);
+                        return;
+                    } else {
                         debug("Using object on fire");
-                        Rs2Inventory.useItemOnObject(cookingItem.getRawItemID(), fireTile.getId());
-                        interacted = true;
-                        break;
+                        Rs2Inventory.useItemOnObject(cookingItem.getRawItemID(), fireObject.getId());
+                        sleepUntil(() -> !Rs2Player.isMoving() && Rs2Widget.findWidget("How many would you like to cook?", null, false) != null, 5000);
+                        sleep(180, 540);
+                        Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
+                        expectingXPDrop = true; // Subsequent iterations can be expecting an XP drop until the state changes
                     }
                 }
-
-                if (interacted) {
-                    sleepUntil(() -> !Rs2Player.isMoving() && Rs2Widget.findWidget("How many would you like to cook?", null, false) != null, 5000);
-                    sleep(180, 540);
-                    Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
-                    expectingXPDrop = true; // Subsequent iterations can be expecting an XP drop until the state changes
-                }
                 break;
-            
+
             case BANKING:
                 debug("Banking");
                 bank(cookingItem);
                 break;
-            
-               case BANKING_FOR_FIRE_SUPPLIES:
+
+            case BANKING_FOR_FIRE_SUPPLIES:
                 debug("Banking for fire supplies");
                 bankForFireSupplies(logType);
                 break;
-            
-               case BUILDING_FIRE:
+
+            case BUILDING_FIRE:
                 debug("Building fire");
 
                    if (Rs2Player.isInteracting()) {
@@ -179,25 +170,16 @@ public class GECookerScript extends Script {
     private void determineState(CookingItem cookingItem, LogType logType) {
         debug("Determine state");
         // Check each fire spot to see if any of them have a fire ID on them
-        for (WorldPoint fireSpot : FireSpots) {
-            TileObject fireTile = Rs2GameObject.findGameObjectByLocation(fireSpot);
-
-            // If the fire tile has no game object, we can skip this iteration
-            if (fireTile == null) {
-                continue;
+        if (findFireObject() != null) {
+            debug("Fire found");
+            if (Rs2Inventory.hasItem(cookingItem.getRawItemID())) {
+                debug("Cooking");
+                state = State.COOKING;
+            } else {
+                debug("Banking");
+                state = State.BANKING;
             }
-
-            if (FireIDs.contains(fireTile.getId())) {
-                debug("Fire found");
-                if (Rs2Inventory.hasItem(cookingItem.getRawItemID())) {
-                    debug("Cooking");
-                    state = State.COOKING;
-                } else {
-                    debug("Banking");
-                    state = State.BANKING;
-                }
-                return;
-            }
+            return;
         }
 
         if (!Rs2Inventory.hasItem("Tinderbox") || !Rs2Inventory.hasItem(logType.getLogName())) {
@@ -207,6 +189,34 @@ public class GECookerScript extends Script {
             debug("Building fire");
             state = State.BUILDING_FIRE;
         }
+    }
+
+    private TileObject findFireObject() {
+        if (lastFireLocation != null) {
+            TileObject fireObject = Rs2GameObject.findGameObjectByLocation(lastFireLocation);
+            if (fireObject != null && FireIDs.contains(fireObject.getId())) {
+                return fireObject;
+            }
+        }
+
+        // check for forester campfires around each worksite
+        for (WorldPoint fireSpot : FireSpots) {
+            TileObject fireObject = Rs2GameObject.findReachableObject("forester", false, 3, fireSpot);
+
+            if (fireObject != null) {
+                return fireObject;
+            }
+        }
+
+        // if no forester campfires, find regular fire
+        for (WorldPoint fireSpot : FireSpots) {
+            TileObject fireObject = Rs2GameObject.findGameObjectByLocation(fireSpot);
+            if (fireObject != null && FireIDs.contains(fireObject.getId())) {
+                return fireObject;
+            }
+        }
+
+        return null;
     }
 
     // Handle all banking actions

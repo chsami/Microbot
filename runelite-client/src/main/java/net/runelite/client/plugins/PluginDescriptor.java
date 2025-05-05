@@ -113,8 +113,6 @@ public @interface PluginDescriptor
 	boolean developerPlugin() default false;
 
 	boolean loadInSafeMode() default true;
-
-	boolean canBeScheduled() default false;
-
+	
 	boolean priority() default false;
 }

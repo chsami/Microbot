@@ -61,6 +61,8 @@ public class BanksShopperPlugin extends Plugin {
     private boolean useNextWorld;
     @Getter
     private boolean useLogout;
+    @Getter
+    private boolean useExactNaming;
 
     @Override
     protected void startUp() throws AWTException {
@@ -70,6 +72,7 @@ public class BanksShopperPlugin extends Plugin {
         selectedQuantity = config.quantity();
         useBank = config.useBank();
         useLogout = config.logout();
+        useExactNaming = config.useExactNaming();
         useNextWorld = config.useNextWorld();
         updateItemList(config.itemNames());
         
