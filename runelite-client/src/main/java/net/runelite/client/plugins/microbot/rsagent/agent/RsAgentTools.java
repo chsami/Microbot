@@ -18,7 +18,9 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
+import org.slf4j.event.Level;
 
+import java.awt.event.KeyEvent;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -285,31 +287,58 @@ public class RsAgentTools {
 
     static public String checkQuestStatus(String questName){
         Rs2Tab.switchToQuestTab();
+        sleep(100,200);
         var questBox = Rs2Widget.getWidget(ComponentID.QUEST_LIST_BOX);
         var searchQuests = questBox.getChild(0);
         Rs2Widget.clickWidget(searchQuests);
-        sleepUntilTrue(()->Rs2Widget.isWidgetVisible(ComponentID.CHATBOX_CONTAINER));
+        sleepUntilTrue(()->Rs2Widget.isWidgetVisible(ComponentID.CHATBOX_CONTAINER), 100, 1000);
         Rs2Keyboard.typeString(questName);
-        sleepUntilTrue(()->Rs2Widget.isWidgetVisible(399,7));
+        sleepUntilTrue(()->Rs2Widget.isWidgetVisible(399,7),100,1000);
 
         Rs2Widget.clickWidget(questName, Optional.of(399), 7, false);
-        sleepUntilTrue(()->Rs2Widget.isWidgetVisible(119,5));
+        sleepUntilTrue(()->Rs2Widget.isWidgetVisible(119,5),100,1000);
 
-        var widget = Rs2Widget.getWidget(119,5);
-        List<Widget[]> childGroups = Stream.of(widget.getChildren(), widget.getNestedChildren(), widget.getDynamicChildren(), widget.getStaticChildren())
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-        List<String> texts =  new ArrayList<>();
-        for (Widget[] childGroup : childGroups) {
-            if (childGroup != null) {
-                for (Widget nestedChild : Arrays.stream(childGroup).filter(w -> w != null && !w.isHidden()).collect(Collectors.toList())) {
-                    String clean = Rs2UiHelper.stripColTags(nestedChild.getText());
-                    if (!clean.isEmpty()){
-                        texts.add(clean);
-                    }
-                }
-            }
-        }
-        return String.join("", texts);
+//        var widget = Rs2Widget.getWidget(119,5);
+//        if (widget == null) {
+//            Microbot.log(Level.ERROR,
+//                    "Quest log not opened");
+//            throw new RuntimeException("Quest log not opened");
+//        }
+//        List<Widget[]> childGroups = Stream.of(widget.getChildren(), widget.getNestedChildren(), widget.getDynamicChildren(), widget.getStaticChildren())
+//                    .filter(Objects::nonNull)
+//                    .collect(Collectors.toList());
+
+//        System.out.println("Got child groups: " + childGroups);
+        Microbot.log(Level.INFO,
+                "Got child groups");
+
+//        List<String> texts =  new ArrayList<>();
+//        for (Widget[] childGroup : childGroups) {
+//            Microbot.log(Level.INFO,
+//                    "child"+childGroup);
+//
+//            if (childGroup != null) {
+//
+//                for (Widget nestedChild : Arrays.stream(childGroup).filter(w -> w != null && !w.isHidden()).collect(Collectors.toList())) {
+//                    System.out.println(" text " + nestedChild.getText());
+//                    String clean = Rs2UiHelper.stripColTags(nestedChild.getText());
+//                    Microbot.log(Level.INFO,
+//                            "Cleand text " + clean);
+//
+//                    if (!clean.isEmpty()){
+//                        texts.add(clean);
+//                    }
+//                }
+//            }
+//        }
+//        System.out.println("Got texts: " + texts);
+        sleep(1000,5000);
+
+        Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
+        sleep(1000,5000);
+        Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
+
+//        return String.join("", );
+        return "";
     }
 }

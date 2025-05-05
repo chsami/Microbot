@@ -37,7 +37,7 @@ handleDialogue: Continues through dialogue screens and captures texts and option
       Takes inputs: none
       Returns an output of type: DialogueResult
 
-checkQuestStatus: Checks the status of a given quest from the quest list interface.
+checkQuestStatus: Checks the status of a given quest from the quest list interface. Use this when you want to see if a quest is in progress and which step to take next.
       Takes inputs: questName (string)
       Returns an output of type: string (e.g., "Quest complete", "In progress", "Not started")
 

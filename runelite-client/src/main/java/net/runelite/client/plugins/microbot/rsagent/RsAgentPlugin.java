@@ -38,9 +38,8 @@ public class RsAgentPlugin extends Plugin {
     @Inject
     private RsAgentOverlay rsAgentOverlay;
 
-    // Removed RsAgentScript injection as it wasn't used in the provided snippet
-    // @Inject
-    // RsAgentScript rsAgentScript;
+     @Inject
+     RsAgentScript rsAgentScript;
 
     Thread agentThread;
 
@@ -68,11 +67,11 @@ public class RsAgentPlugin extends Plugin {
             log.warn("RSAgent enabled, but OpenAI API key is missing in config. Agent cannot start.");
         }
 
-        // Removed rsAgentScript.run(config); as the script wasn't used here
+        rsAgentScript.run(config);
     }
 
     protected void shutDown() {
-        // rsAgentScript.shutdown(); // Removed as script wasn't used
+         rsAgentScript.shutdown();
         overlayManager.remove(rsAgentOverlay);
         if (agentThread != null && agentThread.isAlive()) {
             agentThread.interrupt(); // Attempt to interrupt the agent thread
@@ -89,7 +88,6 @@ public class RsAgentPlugin extends Plugin {
             return;
         }
 
-        // Handle API key change
         if (event.getKey().equals(RsAgentConfig.llmApiKey)) {
             if (agent != null) {
                 log.info("API key changed, updating agent.");

@@ -4,6 +4,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.rsagent.agent.RsAgentTools;
 
@@ -18,14 +19,15 @@ public class RsAgentScript extends Script {
         Microbot.enableAutoRunOn = false;
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
+                System.out.print("Looping2");
                 if (!Microbot.isLoggedIn())
                     return;
                 if (!super.run())
                     return;
                 var questStatus = RsAgentTools.checkQuestStatus("The Restless Ghost");
-                System.out.print(questStatus);
+                System.out.println("Quest status: " + questStatus);
             } catch (Exception ex) {
-                System.out.println(ex.getMessage());
+                System.out.println("Loop error: "+ex.getMessage());
             }
         }, 0, 1000, TimeUnit.MILLISECONDS);
         return true;
