@@ -263,7 +263,7 @@ public class revKillerScript extends Script {
                     if (!super.isRunning()) {
                         break;
                     }
-                    if (Rs2Player.getWorldLocation().distanceTo(BankLocation.EDGEVILLE.getWorldPoint()) < 30 || Rs2Player.getWorldLocation().distanceTo(BankLocation.FEROX_ENCLAVE.getWorldPoint()) < 30) {
+                    if (!WeAreInTheCaves()) {
                         if(Rs2Player.isInCombat()){
                             sleepUntil(()-> !Rs2Player.isInCombat(), generateRandomNumber(10000,15000));
                             sleep(0,1200);
@@ -292,7 +292,7 @@ public class revKillerScript extends Script {
                     if (!super.isRunning()) {
                         break;
                     }
-                    if (Rs2Player.getWorldLocation().distanceTo(BankLocation.EDGEVILLE.getWorldPoint()) < 30 || Rs2Player.getWorldLocation().distanceTo(BankLocation.FEROX_ENCLAVE.getWorldPoint()) < 30) {
+                    if (!WeAreInTheCaves()) {
                         if(Rs2Player.isInCombat()){
                             sleepUntil(()-> !Rs2Player.isInCombat(), generateRandomNumber(10000,15000));
                             sleep(0,1200);

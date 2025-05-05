@@ -7,9 +7,11 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
+import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.magic.Rs2CombatSpells;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.models.RS2Item;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
@@ -134,8 +136,9 @@ public class WildySaferScript extends Script {
                 //if using magic make sure autocast is on
                 if (config.attackStyle() == MAGIC && Rs2Equipment.isWearing(STAFF_OF_FIRE)
                         && !mossKillerPlugin.getAttackStyle()) {
-                    wildyKillerScript.config = mossKillerConfig;
-                    wildyKillerScript.setAutocastFireStrike();
+                    if (!config.forceDefensive()){
+                        Rs2Combat.setAutoCastSpell(Rs2CombatSpells.FIRE_STRIKE, false);}
+                    else Rs2Combat.setAutoCastSpell(Rs2CombatSpells.FIRE_STRIKE, true);
                 }
 
                 //if using magic make sure staff is equipped
