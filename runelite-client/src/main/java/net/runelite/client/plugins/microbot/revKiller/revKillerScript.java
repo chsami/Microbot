@@ -4,7 +4,6 @@ import com.google.inject.Provides;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ActorDeath;
-import net.runelite.api.events.ChatMessage;
 import net.runelite.api.kit.KitType;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -25,7 +24,6 @@ import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
-import net.runelite.client.plugins.microbot.util.models.RS2Item;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -37,7 +35,6 @@ import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.http.api.worlds.World;
-import net.runelite.http.api.worlds.WorldType;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -71,7 +68,7 @@ public class revKillerScript extends Script {
     protected ScheduledFuture<?> checkForPKerFuture;
     protected ScheduledFuture<?> healthCheckFuture;
     private boolean weDied = false;
-    private boolean shouldFlee = false;
+    private volatile boolean shouldFlee = false;
 
 
     public boolean run(revKillerConfig config) {
@@ -232,8 +229,10 @@ public class revKillerScript extends Script {
 
         return false;
     }
+
     public void getAwayFromPker(){
         // code to run or teleport from pker
+        Microbot.log("Attemping to get away from the PKer.");
         if(!Rs2Player.isTeleBlocked()){
             Microbot.log("At least we're not teleblocked.");
             if(Rs2Pvp.getWildernessLevelFrom(Rs2Player.getWorldLocation()) > 30) {
@@ -260,6 +259,7 @@ public class revKillerScript extends Script {
             }
             if(Rs2Pvp.getWildernessLevelFrom(Rs2Player.getWorldLocation()) >= 20 && Rs2Pvp.getWildernessLevelFrom(Rs2Player.getWorldLocation()) <= 30) {
                 while (Rs2Pvp.getWildernessLevelFrom(Rs2Player.getWorldLocation()) >= 20 && Rs2Pvp.getWildernessLevelFrom(Rs2Player.getWorldLocation()) <= 30) {
+                    Microbot.log("Attempting to teleport via glory");
                     if (!super.isRunning()) {
                         break;
                     }
@@ -272,7 +272,6 @@ public class revKillerScript extends Script {
                         break;
                     }
                     if (Rs2Equipment.useAmuletAction(JewelleryLocationEnum.EDGEVILLE)) {
-                        Microbot.log("Attempting to teleport");
                         sleepUntil(()-> TeleTimerIsThere() || Rs2Player.getAnimation() == 714,generateRandomNumber(250,500));
                         sleepUntil(()-> !TeleTimerIsThere() || Rs2Player.getAnimation() == 714,generateRandomNumber(1300,1500));
                         if(Rs2Player.getAnimation() == 714){
@@ -289,6 +288,7 @@ public class revKillerScript extends Script {
             }
             if(Rs2Pvp.getWildernessLevelFrom(Rs2Player.getWorldLocation()) <= 20) {
                 while (Rs2Pvp.getWildernessLevelFrom(Rs2Player.getWorldLocation()) <= 20) {
+                    Microbot.log("Attempting to teleport via dueling");
                     if (!super.isRunning()) {
                         break;
                     }
@@ -301,7 +301,6 @@ public class revKillerScript extends Script {
                         break;
                     }
                     if (Rs2Equipment.useRingAction(JewelleryLocationEnum.FEROX_ENCLAVE)) {
-                        Microbot.log("Attempting to teleport");
                         sleepUntil(()-> TeleTimerIsThere() || Rs2Player.getAnimation() == 714,generateRandomNumber(250,500));
                         sleepUntil(()-> !TeleTimerIsThere() || Rs2Player.getAnimation() == 714,generateRandomNumber(1300,1500));
                         if(Rs2Player.getAnimation() == 714){
@@ -410,9 +409,14 @@ public class revKillerScript extends Script {
     }
 
     public void futurePKCheck(){
-        if(isPkerAround()){
-            shouldFlee = true;
-            getAwayFromPker();
+        try {
+            if(isPkerAround()){
+                shouldFlee = true;
+                getAwayFromPker();
+            }
+        } catch (Exception e) {
+            Microbot.log("Error during PK check: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
