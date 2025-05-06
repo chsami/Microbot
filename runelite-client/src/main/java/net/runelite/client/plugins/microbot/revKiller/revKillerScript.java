@@ -158,11 +158,17 @@ public class revKillerScript extends Script {
         return false;
     }
 
-    public void handleBreaks() {
-        int secondsUntilBreak = BreakHandlerScript.breakIn; // Time until the break
+    public boolean timeToBreak(){
 
-        //1200=20minutes
-        if (secondsUntilBreak <= 1200) {
+        if (BreakHandlerScript.breakIn <= 300) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public void handleBreaks() {
+        if (timeToBreak()) {
             if(Rs2Bank.isOpen()){
                 if(Rs2Bank.closeBank()){
                     sleepUntil(()-> !Rs2Bank.isOpen(), generateRandomNumber(2000,5000));
@@ -712,10 +718,10 @@ public class revKillerScript extends Script {
             //equip arrows
             if(howtobank <= 40){
                 Microbot.log("We have "+Rs2Equipment.get(EquipmentInventorySlot.AMMO).getQuantity()+" arrows left");
-                if(Rs2Equipment.get(EquipmentInventorySlot.AMMO).getQuantity() < 100){
+                if(Rs2Equipment.get(EquipmentInventorySlot.AMMO).getQuantity() < LowOnArrowsCount){
                     if(Rs2Bank.count(selectedArrow)>100){
                         if(!Rs2Inventory.contains(selectedArrow)||Rs2Inventory.get(selectedArrow).getQuantity() < LowOnArrowsCount){
-                            if(Rs2Bank.withdrawX(selectedArrow, (generateRandomNumber(120,200)-Rs2Equipment.get(EquipmentInventorySlot.AMMO).getQuantity()) )){
+                            if(Rs2Bank.withdrawX(selectedArrow, (generateRandomNumber(120,300)-Rs2Equipment.get(EquipmentInventorySlot.AMMO).getQuantity()) )){
                                 sleepUntil(()-> Rs2Inventory.contains(selectedArrow), generateRandomNumber(5000,15000));
                             }
                         }
@@ -805,6 +811,10 @@ public class revKillerScript extends Script {
             Microbot.log("We have enough loot");
             return true;
         }
+        if(timeToBreak()){
+            Microbot.log("It's time to break");
+            return true;
+        }
         Microbot.log("We have "+value+" worth of loot");
         return false;
     }
@@ -852,6 +862,10 @@ public class revKillerScript extends Script {
     }
 
     if (isItTimeToGo()) {
+        if(timeToBreak()){
+            Microbot.log("It's time to break");
+            return false;
+        }
         Microbot.log("We have too much loot! Banking");
         return false;
     }

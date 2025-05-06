@@ -4817,12 +4817,12 @@
 2386 3333 0	2386 3335 0	Enter;Huge Gate;3944									
 											
 # Wilderness Slayer Cave											
-3259 3663 0	3385 10052 0	Walk-down;Stairs;40388									
-3260 3663 0	3385 10052 0	Walk-down;Stairs;40388									
-3385 10052 0	3259 3663 0	Exit;Opening;40389									
-3294 3749 0	3406 10145 0	Walk-down;Stairs;40390									
-3293 3749 0	3406 10145 0	Walk-down;Stairs;40390									
-3406 10145 0	3293 3749 0	Exit;Opening;40391									
+3259 3663 0	3385 10052 0	Walk-down;Stairs;40388							Y
+3260 3663 0	3385 10052 0	Walk-down;Stairs;40388							Y
+3385 10052 0	3259 3663 0	Exit;Opening;40389							Y
+3294 3749 0	3406 10145 0	Walk-down;Stairs;40390							Y
+3293 3749 0	3406 10145 0	Walk-down;Stairs;40390							Y
+3406 10145 0	3293 3749 0	Exit;Opening;40391							Y
 3434 10090 0	3434 10095 0	Squeeze-through;Crevice;53259									
 3434 10090 0	3434 10095 0	Squeeze-through;Crevice;53259									
 											
