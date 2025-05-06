@@ -190,7 +190,7 @@ public class MossKillerScript extends Script {
     }
 
     public void moarShutDown() {
-        System.out.println("super shutdown triggered");
+        Microbot.log("super shutdown triggered");
         varrockTeleport();
         //static sleep to wait till out of combat
         sleep(10000);
@@ -808,7 +808,7 @@ public class MossKillerScript extends Script {
         }
 
 
-        System.out.println("Must start near varrock square, bank, or moss giant spot.");
+        Microbot.log("Must start near varrock square, bank, or moss giant spot.");
         state = MossKillerState.EXIT_SCRIPT;
     }
 
@@ -817,7 +817,7 @@ public class MossKillerScript extends Script {
         getInitiailState();
 
         if(!Rs2Combat.enableAutoRetialiate()){
-            System.out.println("Could not turn on auto retaliate.");
+            Microbot.log("Could not turn on auto retaliate.");
             state = MossKillerState.EXIT_SCRIPT;
         }
 
