@@ -449,7 +449,8 @@ public class WildySaferScript extends Script {
                 Rs2Bank.depositAll();}
 
             if (!Rs2Bank.isOpen()) {
-                Rs2Bank.useBank();
+                Rs2Bank.walkToBank();
+                Rs2Bank.walkToBankAndUseBank();
                 if (!Rs2Bank.isOpen()) {
                 Rs2Equipment.unEquip(AMMO);
                 Rs2Bank.walkToBankAndUseBank();
@@ -461,6 +462,7 @@ public class WildySaferScript extends Script {
 
         if (config.attackStyle() == MAGIC && !Rs2Bank.isOpen()) {
 
+            Rs2Bank.walkToBank();
             Rs2Bank.walkToBankAndUseBank();
             sleep(1000);
             return;
@@ -468,6 +470,7 @@ public class WildySaferScript extends Script {
 
 
         if (config.attackStyle() == RANGE && !Rs2Bank.isOpen()) {
+            Rs2Bank.walkToBank();
             Rs2Bank.walkToBankAndUseBank();
             sleep(800,1900);
             if (Rs2Bank.openBank()){
@@ -482,7 +485,8 @@ public class WildySaferScript extends Script {
         }
         }
         if (config.attackStyle() == MAGIC) {
-            Rs2Bank.openBank();
+            Rs2Bank.walkToBank();
+            Rs2Bank.walkToBankAndUseBank();
             sleepUntil(Rs2Bank::isOpen, 15000);
             if (!Rs2Bank.isOpen()) {Rs2Bank.openBank();
             System.out.println("called to open bank twice");
