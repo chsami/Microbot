@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Runelite with proxy" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="net.runelite.client.RuneLite" />
+    <module name="client" />
+    <option name="PROGRAM_PARAMETERS" value="-developer-mode -proxy=144.49.99.215:8080 -proxy-type=http"/>
+    <option name="VM_PARAMETERS" value="-ea" />
+    <option name="WORKING_DIRECTORY" value="$USER_HOME$/.runelite"/>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
