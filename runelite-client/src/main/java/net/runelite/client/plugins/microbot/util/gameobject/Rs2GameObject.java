@@ -574,6 +574,14 @@ public class Rs2GameObject {
         return getTileObject(o -> true, anchorLocal);
     }
 
+    public static TileObject getTileObject(WorldPoint anchor, int distance) {
+        return getTileObject(o -> true, anchor, distance);
+    }
+
+    public static TileObject getTileObject(LocalPoint anchorLocal, int distance) {
+        return getTileObject(o -> true, anchorLocal, distance);
+    }
+
     public static TileObject getTileObject(Predicate<TileObject> predicate, int distance) {
         Player player = Microbot.getClient().getLocalPlayer();
         if (player == null) {
@@ -762,6 +770,14 @@ public class Rs2GameObject {
         return getGameObject(o -> true, anchorLocal);
     }
 
+    public static GameObject getGameObject(WorldPoint anchor, int distance) {
+        return getGameObject(o -> true, anchor, distance);
+    }
+
+    public static GameObject getGameObject(LocalPoint anchorLocal, int distance) {
+        return getGameObject(o -> true, anchorLocal, distance);
+    }
+
     public static GameObject getGameObject(Predicate<GameObject> predicate, int distance) {
         Player player = Microbot.getClient().getLocalPlayer();
         if (player == null) {
@@ -942,6 +958,14 @@ public class Rs2GameObject {
 
     public static GroundObject getGroundObject(LocalPoint anchorLocal) {
         return getGroundObject(o -> true, anchorLocal);
+    }
+
+    public static GroundObject getGroundObject(WorldPoint anchor, int distance) {
+        return getGroundObject(o -> true, anchor, distance);
+    }
+
+    public static GroundObject getGroundObject(LocalPoint anchorLocal, int distance) {
+        return getGroundObject(o -> true, anchorLocal, distance);
     }
 
     public static GroundObject getGroundObject(Predicate<GroundObject> predicate, int distance) {
@@ -1126,6 +1150,14 @@ public class Rs2GameObject {
         return getWallObject(o -> true, anchorLocal);
     }
 
+    public static WallObject getWallObject(WorldPoint anchor, int distance) {
+        return getWallObject(o -> true, anchor, distance);
+    }
+
+    public static WallObject getWallObject(LocalPoint anchorLocal, int distance) {
+        return getWallObject(o -> true, anchorLocal, distance);
+    }
+
     public static WallObject getWallObject(Predicate<WallObject> predicate, int distance) {
         Player player = Microbot.getClient().getLocalPlayer();
         if (player == null) {
@@ -1306,6 +1338,14 @@ public class Rs2GameObject {
 
     public static DecorativeObject getDecorativeObject(LocalPoint anchorLocal) {
         return getDecorativeObject(o -> true, anchorLocal);
+    }
+
+    public static DecorativeObject getDecorativeObject(WorldPoint anchor, int distance) {
+        return getDecorativeObject(o -> true, anchor, distance);
+    }
+
+    public static DecorativeObject getDecorativeObject(LocalPoint anchorLocal, int distance) {
+        return getDecorativeObject(o -> true, anchorLocal, distance);
     }
 
     public static DecorativeObject getDecorativeObject(Predicate<DecorativeObject> predicate, int distance) {

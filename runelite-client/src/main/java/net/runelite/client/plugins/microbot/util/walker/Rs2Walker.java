@@ -817,7 +817,7 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                 object = tile.getWallObject();
 
             if (object == null)
-                object = Rs2GameObject.getGameObject(point);
+                object = Rs2GameObject.getGameObject(point, 3);
 
             if (object == null) continue;
 
