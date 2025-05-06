@@ -832,6 +832,14 @@ public class Rs2GameObject {
         return getTileObject(o -> idSet.contains(o.getId()), distance);
     }
 
+    public static TileObject getTileObject(String objectName, boolean exact) {
+        return getTileObject(nameMatches(objectName, exact));
+    }
+
+    public static TileObject getTileObject(String objectName) {
+        return getTileObject(objectName, false);
+    }
+
     public static TileObject getTileObject(String objectName, boolean exact, int distance) {
         return getTileObject(nameMatches(objectName, exact), distance);
     }
@@ -1004,6 +1012,14 @@ public class Rs2GameObject {
         return getGameObject(nameMatches(objectName, exact), distance);
     }
 
+    public static GameObject getGameObject(String objectName, boolean exact) {
+        return getGameObject(nameMatches(objectName, exact));
+    }
+
+    public static GameObject getGameObject(String objectName) {
+        return getGameObject(objectName, false);
+    }
+
     public static GameObject getGameObject(String objectName, int distance) {
         return getGameObject(objectName, false, distance);
     }
@@ -1164,6 +1180,14 @@ public class Rs2GameObject {
 
     public static GroundObject getGroundObject(String objectName, boolean exact, int distance) {
         return getGroundObject(nameMatches(objectName, exact), distance);
+    }
+
+    public static GroundObject getGroundObject(String objectName, boolean exact) {
+        return getGroundObject(nameMatches(objectName, exact));
+    }
+
+    public static GroundObject getGroundObject(String objectName) {
+        return getGroundObject(objectName, false);
     }
 
     public static GroundObject getGroundObject(String objectName, int distance) {
@@ -1328,6 +1352,14 @@ public class Rs2GameObject {
         return getWallObject(nameMatches(objectName, exact), distance);
     }
 
+    public static WallObject getWallObject(String objectName, boolean exact) {
+        return getWallObject(nameMatches(objectName, exact));
+    }
+
+    public static WallObject getWallObject(String objectName) {
+        return getWallObject(objectName, false);
+    }
+
     public static WallObject getWallObject(String objectName, int distance) {
         return getWallObject(objectName, false, distance);
     }
@@ -1488,6 +1520,14 @@ public class Rs2GameObject {
 
     public static DecorativeObject getDecorativeObject(String objectName, boolean exact, int distance) {
         return getDecorativeObject(nameMatches(objectName, exact), distance);
+    }
+
+    public static DecorativeObject getDecorativeObject(String objectName, boolean exact) {
+        return getDecorativeObject(nameMatches(objectName, exact));
+    }
+
+    public static DecorativeObject getDecorativeObject(String objectName) {
+        return getDecorativeObject(objectName, false);
     }
 
     public static DecorativeObject getDecorativeObject(String objectName, int distance) {
