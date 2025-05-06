@@ -485,7 +485,19 @@ public class Rs2GameObject {
     }
 
     public static TileObject getTileObject(int id, int distance) {
-        return getTileObject(o -> o.getId() == id, distance);
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        return getTileObject(id, player.getWorldLocation(), distance);
+    }
+
+    public static TileObject getTileObject(int id, WorldPoint anchor) {
+        return getGameObject(id, anchor, Constants.SCENE_SIZE);
+    }
+
+    public static TileObject getTileObject(int id, WorldPoint anchor, int distance) {
+        return getTileObject(o -> o.getId() == id, anchor, distance);
     }
 
     public static TileObject getTileObject(Integer[] ids) {
@@ -651,11 +663,23 @@ public class Rs2GameObject {
     }
 
     public static GameObject getGameObject(int id) {
-        return getGameObject(o -> o.getId() == id);
+        return getGameObject(id, Constants.SCENE_SIZE);
     }
 
     public static GameObject getGameObject(int id, int distance) {
-        return getGameObject(o -> o.getId() == id, distance);
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        return getGameObject(id, player.getWorldLocation(), distance);
+    }
+
+    public static GameObject getGameObject(int id, WorldPoint anchor) {
+        return getGameObject(id, anchor, Constants.SCENE_SIZE);
+    }
+
+    public static GameObject getGameObject(int id, WorldPoint anchor, int distance) {
+        return getGameObject(o -> o.getId() == id, anchor, distance);
     }
 
     public static GameObject getGameObject(Integer[] ids) {
@@ -827,11 +851,23 @@ public class Rs2GameObject {
     }
 
     public static GroundObject getGroundObject(int id) {
-        return getGroundObject(o -> o.getId() == id);
+        return getGroundObject(id, Constants.SCENE_SIZE);
     }
 
     public static GroundObject getGroundObject(int id, int distance) {
-        return getGroundObject(o -> o.getId() == id, distance);
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        return getGroundObject(id, player.getWorldLocation(), distance);
+    }
+
+    public static GroundObject getGroundObject(int id, WorldPoint anchor) {
+        return getGroundObject(id, anchor, Constants.SCENE_SIZE);
+    }
+
+    public static GroundObject getGroundObject(int id, WorldPoint anchor, int distance) {
+        return getGroundObject(o -> o.getId() == id, anchor, distance);
     }
 
     public static GroundObject getGroundObject(Integer[] ids) {
@@ -997,11 +1033,23 @@ public class Rs2GameObject {
     }
 
     public static WallObject getWallObject(int id) {
-        return getWallObject(o -> o.getId() == id);
+        return getWallObject(id, Constants.SCENE_SIZE);
     }
 
     public static WallObject getWallObject(int id, int distance) {
-        return getWallObject(o -> o.getId() == id, distance);
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        return getWallObject(id, player.getWorldLocation(), distance);
+    }
+
+    public static WallObject getWallObject(int id, WorldPoint anchor) {
+        return getWallObject(id, anchor, Constants.SCENE_SIZE);
+    }
+
+    public static WallObject getWallObject(int id, WorldPoint anchor, int distance) {
+        return getWallObject(o -> o.getId() == id, anchor, distance);
     }
 
     public static WallObject getWallObject(Integer[] ids) {
@@ -1167,11 +1215,23 @@ public class Rs2GameObject {
     }
 
     public static DecorativeObject getDecorativeObject(int id) {
-        return getDecorativeObject(o -> o.getId() == id);
+        return getDecorativeObject(id, Constants.SCENE_SIZE);
     }
 
     public static DecorativeObject getDecorativeObject(int id, int distance) {
-        return getDecorativeObject(o -> o.getId() == id, distance);
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        return getDecorativeObject(id, player.getWorldLocation(), distance);
+    }
+
+    public static DecorativeObject getDecorativeObject(int id, WorldPoint anchor) {
+        return getDecorativeObject(id, anchor, Constants.SCENE_SIZE);
+    }
+
+    public static DecorativeObject getDecorativeObject(int id, WorldPoint anchor, int distance) {
+        return getDecorativeObject(o -> o.getId() == id, anchor, distance);
     }
 
     public static DecorativeObject getDecorativeObject(Integer[] ids) {

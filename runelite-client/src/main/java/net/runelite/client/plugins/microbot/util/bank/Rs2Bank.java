@@ -1206,7 +1206,6 @@ public class Rs2Bank {
             }
 
             if (action) {
-                // wait up to 5s for the interface to open
                 sleepUntil(Rs2Bank::isOpen, 5000);
             }
             return action;
