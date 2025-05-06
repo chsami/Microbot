@@ -807,6 +807,11 @@ public class MossKillerScript extends Script {
             return;
         }
 
+        if(Rs2Walker.getDistanceBetween(playerLocation, VARROCK_SQUARE) > 10 || Rs2Walker.getDistanceBetween(playerLocation, VARROCK_WEST_BANK) > 10){
+            state = MossKillerState.WALK_TO_BANK;
+            return;
+        }
+
 
         Microbot.log("Must start near varrock square, bank, or moss giant spot.");
         state = MossKillerState.EXIT_SCRIPT;
