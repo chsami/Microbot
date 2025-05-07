@@ -50,6 +50,7 @@ public class Agent {
         ChatCompletionCreateParams.Builder paramsBuilder = ChatCompletionCreateParams.builder()
                 .model(ChatModel.GPT_4_1)
                 .maxCompletionTokens(512) // Increased token limit for potentially complex JSON outputs
+                .addStop("}}") // Add stop sequence for the JSON closing brackets
                 .addSystemMessage(systemInstruction)
                 .addUserMessage(task);
 
@@ -79,6 +80,20 @@ public class Agent {
 
             ChatCompletionMessage assistantResponse = chatCompletion.choices().get(0).message();
             String fullText = assistantResponse.content().orElse("").trim();
+
+            // If the model stopped due to the stop sequence, it might not include the sequence itself.
+            // We append it here to ensure the JSON is complete for parsing.
+            if (chatCompletion.choices().get(0).finishReason().equals(ChatCompletion.Choice.FinishReason.STOP) && !fullText.endsWith("}}")) {
+                if (fullText.endsWith("}") && !fullText.endsWith("}}")) {
+                    fullText += "}";
+                } else if (!fullText.endsWith("}")) {
+                    // This case is less likely if the model is trying to output JSON, but as a fallback.
+                    // It might indicate a more significant formatting issue.
+                    log.warn("LLM output did not end with '}' before stop sequence. Appending '}}'. Output: {}", fullText);
+                    fullText += "}}";
+                }
+            }
+
 
             log.debug("Agent step {} output:\n{}", step + 1, fullText);
             System.out.println("Agent step " + (step + 1) + " output:\n" + fullText);
