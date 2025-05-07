@@ -250,6 +250,12 @@ public class revKillerScript extends Script {
             long currentTime = System.currentTimeMillis();
             if (currentTime - startTime >= howLongUntilHop * 60 * 1000) {
                 Microbot.log("Hopping to a new world, it's been "+howLongUntilHop+" minutes");
+                if(Rs2Player.isInCombat()){
+                    sleepUntil(()-> isPkerAround() || !Rs2Player.isInCombat(), generateRandomNumber(10000,20000));
+                    if(isPkerAround()){
+                        return;
+                    }
+                }
                 hopToNewWorld();
                 startTime = currentTime;
                 howLongUntilHop = config.hopInMinutes();
@@ -400,6 +406,9 @@ public class revKillerScript extends Script {
             if(!Rev.isInteracting() && !Rs2Player.isInteracting() && !Rev.isDead()) {
                 if(useTimedWorldHopper){
                     hopWorldsBasedOnTimer();
+                }
+                if(Rev==null){
+                    //we hopped
                     return;
                 }
                 Microbot.log("Attacking Rev");
