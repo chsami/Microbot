@@ -265,13 +265,8 @@ public class Rs2GameObject {
 
     public static boolean hasAction(ObjectComposition objComp, String action, boolean exact) {
         if (objComp == null) return false;
-        Stream<String> normal = Arrays.stream(objComp.getActions());
-        ObjectComposition imposterObjComp = Microbot.getClientThread().runOnClientThreadOptional(objComp::getImpostor).orElse(null);
-        Stream<String> imposter = imposterObjComp != null
-                        ? Arrays.stream(imposterObjComp.getActions())
-                        : Stream.empty();
 
-        return Stream.concat(normal, imposter)
+        return Arrays.stream(objComp.getActions())
                 .filter(Objects::nonNull)
                 .anyMatch(a -> exact ? a.equalsIgnoreCase(action) : a.toLowerCase().contains(action.toLowerCase()));
     }
