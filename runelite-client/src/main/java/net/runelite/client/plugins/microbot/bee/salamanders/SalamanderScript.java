@@ -49,9 +49,8 @@ public class SalamanderScript extends Script {
 
 
                 // Get selected salamander type from config
-                SalamanderHunting salamanderType = config.salamanderHunting();
+                SalamanderHunting salamanderType = getSalamander(config);
                 if (salamanderType == null) {
-                    Microbot.log("Please select a salamander type in the config");
                     return;
                 }
 
@@ -81,6 +80,32 @@ public class SalamanderScript extends Script {
             }
         }, 0, 1000, TimeUnit.MILLISECONDS);
         return true;
+    }
+
+    private SalamanderHunting getSalamander(SalamanderConfig config) {
+        if (config.progressiveHunting()) {
+            return getBestSalamander();
+        }
+
+        return config.salamanderHunting();
+    }
+
+    private SalamanderHunting getBestSalamander() {
+        var skillLevel = Microbot.getClient().getRealSkillLevel(Skill.HUNTER);
+        if (skillLevel > 78) {
+            return SalamanderHunting.TECU;
+        } else if (skillLevel > 66) {
+            return SalamanderHunting.BLACK;
+        } else if (skillLevel > 58) {
+            return SalamanderHunting.RED;
+        } else if (skillLevel > 46) {
+            return SalamanderHunting.ORANGE;
+        } else if (skillLevel > 28) {
+            return SalamanderHunting.GREEN;
+        }
+        Microbot.log("Not high enough hunter level for any salamander");
+        shutdown();
+        return null;
     }
 
     private void applyAntiBanSettings() {

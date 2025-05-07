@@ -92,4 +92,25 @@ public interface revKillerConfig extends Config {
     default int leaveAtValue() {
         return 100000;
     }
+
+    @ConfigItem(
+            keyName = "shouldUseTimedWorldHopper",
+            name = "Hop worlds based on time?",
+            description = "Should we hop worlds every X minutes?",
+            position = 4
+    )
+    default boolean shouldUseTimedWorldHopper() {
+        return false;
+    }
+
+    @ConfigItem(
+            keyName = "hopInMinutes",
+            name = "Time (minutes): ",
+            description = "In minutes. How long should we stay on the same world? (will be slightly randomized after selection)",
+            position = 5
+    )
+    @Range(min = 8, max = 30)
+    default int hopInMinutes() {
+        return 15;
+    }
 }

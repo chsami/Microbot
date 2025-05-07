@@ -68,7 +68,10 @@ public class revKillerScript extends Script {
     protected ScheduledFuture<?> checkForPKerFuture;
     protected ScheduledFuture<?> healthCheckFuture;
     private boolean weDied = false;
+    private boolean useTimedWorldHopper = false;
+    private long howLongUntilHop = 0;
     private volatile boolean shouldFlee = false;
+    private long startTime = System.currentTimeMillis();
 
 
     public boolean run(revKillerConfig config) {
@@ -85,7 +88,13 @@ public class revKillerScript extends Script {
                 selectedArrow = config.selectedArrow().getArrowID();
                 // set it to our script
                 revimp = selectedWP;
+                useTimedWorldHopper = config.shouldUseTimedWorldHopper();
                 randomdelay = generateRandomNumber(400,900);
+                if(howLongUntilHop == 0){
+                    if(useTimedWorldHopper) {
+                        howLongUntilHop = config.hopInMinutes();
+                    }
+                }
 
                 if(shouldFlee){
                     return;
@@ -236,6 +245,40 @@ public class revKillerScript extends Script {
         return false;
     }
 
+    public void hopWorldsBasedOnTimer(){
+        if(useTimedWorldHopper) {
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - startTime >= howLongUntilHop * 60 * 1000) {
+                Microbot.log("Hopping to a new world, it's been "+howLongUntilHop+" minutes");
+                hopToNewWorld();
+                startTime = currentTime;
+                howLongUntilHop = config.hopInMinutes();
+                int mixUp = Rs2Random.between(5,10);
+                int io = 0;
+                while (io < mixUp){
+                    if(!super.isRunning()){
+                        break;
+                    }
+                    if(Rs2Random.between(0,100) < 50) {
+                        if (howLongUntilHop > 8 * 60 * 1000) {
+                            howLongUntilHop -= 2 * 60 * 1000;
+                        }
+                    }
+                    if(Rs2Random.between(0,100) < 50) {
+                        if (howLongUntilHop < 30 * 60 * 1000) {
+                            howLongUntilHop += 2 * 60 * 1000;
+                        }
+                    }
+                    if(howLongUntilHop < 8 || howLongUntilHop > 30){
+                        howLongUntilHop = config.hopInMinutes();
+                    }
+                    io++;
+                }
+                Microbot.log("We'll hop to a new world in "+howLongUntilHop+" minutes");
+            }
+        }
+    }
+
     public void getAwayFromPker(){
         // code to run or teleport from pker
         Microbot.log("Attemping to get away from the PKer.");
@@ -355,6 +398,10 @@ public class revKillerScript extends Script {
             }
 
             if(!Rev.isInteracting() && !Rs2Player.isInteracting() && !Rev.isDead()) {
+                if(useTimedWorldHopper){
+                    hopWorldsBasedOnTimer();
+                    return;
+                }
                 Microbot.log("Attacking Rev");
                 if (Rs2Npc.interact(Rev, "Attack")) {
                     sleepUntil(() -> Rev.isDead() || !Rs2Player.isInCombat() || Rs2GroundItem.isItemBasedOnValueOnGround(500,12) || isItTimeToGo() || Rs2Player.getHealthPercentage() <= generateRandomNumber(70, 80), generateRandomNumber(60000, 120000));
