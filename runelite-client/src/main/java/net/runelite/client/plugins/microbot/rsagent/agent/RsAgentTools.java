@@ -298,47 +298,42 @@ public class RsAgentTools {
         Rs2Widget.clickWidget(questName, Optional.of(399), 7, false);
         sleepUntilTrue(()->Rs2Widget.isWidgetVisible(119,5),100,1000);
 
-//        var widget = Rs2Widget.getWidget(119,5);
-//        if (widget == null) {
-//            Microbot.log(Level.ERROR,
-//                    "Quest log not opened");
-//            throw new RuntimeException("Quest log not opened");
-//        }
-//        List<Widget[]> childGroups = Stream.of(widget.getChildren(), widget.getNestedChildren(), widget.getDynamicChildren(), widget.getStaticChildren())
-//                    .filter(Objects::nonNull)
-//                    .collect(Collectors.toList());
+        var widget = Rs2Widget.getWidget(119,5);
+        if (widget == null) {
+            Microbot.log(Level.ERROR,
+                    "Quest log not opened");
+            throw new RuntimeException("Quest log not opened");
+        }
+        List<String> texts =  new ArrayList<>();
 
-//        System.out.println("Got child groups: " + childGroups);
-        Microbot.log(Level.INFO,
-                "Got child groups");
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            List<Widget[]> childGroups = Stream.of(widget.getChildren(), widget.getNestedChildren(), widget.getDynamicChildren(), widget.getStaticChildren())
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+            for (Widget[] childGroup : childGroups) {
+                if (childGroup != null) {
+                    for (Widget nestedChild : Arrays.stream(childGroup).filter(w -> w != null && !w.isHidden()).collect(Collectors.toList())) {
+                        System.out.println(" text " + nestedChild.getText());
+                        String clean = Rs2UiHelper.stripColTags(nestedChild.getText());
 
-//        List<String> texts =  new ArrayList<>();
-//        for (Widget[] childGroup : childGroups) {
-//            Microbot.log(Level.INFO,
-//                    "child"+childGroup);
-//
-//            if (childGroup != null) {
-//
-//                for (Widget nestedChild : Arrays.stream(childGroup).filter(w -> w != null && !w.isHidden()).collect(Collectors.toList())) {
-//                    System.out.println(" text " + nestedChild.getText());
-//                    String clean = Rs2UiHelper.stripColTags(nestedChild.getText());
-//                    Microbot.log(Level.INFO,
-//                            "Cleand text " + clean);
-//
-//                    if (!clean.isEmpty()){
-//                        texts.add(clean);
-//                    }
-//                }
-//            }
-//        }
-//        System.out.println("Got texts: " + texts);
-        sleep(1000,5000);
+                        if (!clean.isEmpty()){
+                            texts.add(clean);
+                        }
+                    }
+                }
+            }
+            return texts;
+        });
+
+
+
+
+        sleep(1000,2000);
 
         Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
-        sleep(1000,5000);
+        sleep(200,500);
         Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
 
-//        return String.join("", );
-        return "";
+        return String.join("",texts);
     }
 }
