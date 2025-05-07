@@ -211,7 +211,7 @@ public class MossKillerScript extends Script {
         });
         Rs2Player.logout();}
         sleep(1000);
-        schedulablePlugin.reportFinished("EXIT_SCRIPT triggered (lacking teleports or consumables)", false);
+        schedulablePlugin.reportFinished("lacking teleports or consumables or have reached desired combat skill level)", false);
         shutdown();
     }
 
