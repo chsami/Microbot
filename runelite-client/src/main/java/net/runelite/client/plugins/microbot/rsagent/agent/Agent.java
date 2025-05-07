@@ -14,11 +14,11 @@ import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 import com.openai.models.ChatModel;
-import com.openai.models.responses.*;
+import com.openai.models.chat.completions.ChatCompletion;
+import com.openai.models.chat.completions.ChatCompletionCreateParams;
+import com.openai.models.chat.completions.ChatCompletionMessage;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.coords.WorldPoint;
-
-import static java.util.stream.Collectors.toList;
 
 @Slf4j
 public class Agent {
@@ -46,61 +46,50 @@ public class Agent {
     public void run(String task){
         String systemInstruction = loadPrompt();
         boolean done = false;
-        List<ResponseInputItem> inputItems = new ArrayList<>();
-        inputItems.add(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
-                .role(EasyInputMessage.Role.SYSTEM)
-                .content(systemInstruction)
-                .build()));
 
-        inputItems.add(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
-                .role(EasyInputMessage.Role.USER)
-                .content(task)
-                .build()));
+        ChatCompletionCreateParams.Builder paramsBuilder = ChatCompletionCreateParams.builder()
+                .model(ChatModel.GPT_4_1)
+                .maxCompletionTokens(512) // Increased token limit for potentially complex JSON outputs
+                .addSystemMessage(systemInstruction)
+                .addUserMessage(task);
 
-        ResponseCreateParams createParams = ResponseCreateParams.builder()
-                .inputOfResponse(inputItems)
-                .maxOutputTokens(100)
-                .model(ChatModel.GPT_4_1) // Consider making model configurable
-                .build();
-
-        for (int step = 0; step < 15; step++) { // Increased max steps slightly
+        for (int step = 0; step < 15; step++) {
             if (done){
                 break;
             }
             log.info("Agent Step {}/15", step + 1);
-            List<ResponseOutputMessage> messages;
-            String toolResult = "No action performed."; // Default result if parsing fails or no action taken
+            String toolResult = "No action performed.";
 
+            ChatCompletion chatCompletion;
             try {
-                 messages = openAIClient.responses().create(createParams).output().stream()
-                        .flatMap(item -> item.message().stream())
-                        .collect(toList());
+                 chatCompletion = openAIClient.chat().completions().create(paramsBuilder.build());
             } catch (Exception e) {
                 log.error("Error calling OpenAI API: {}", e.getMessage(), e);
                 toolResult = "Error: Failed to get response from LLM.";
-                break; // Exit loop on API error
+                paramsBuilder.addUserMessage("Tool result: " + toolResult); // Add error to history
+                break;
             }
 
+            if (chatCompletion.choices().isEmpty()) {
+                log.error("No choices returned from OpenAI API.");
+                toolResult = "Error: No response from LLM (no choices).";
+                paramsBuilder.addUserMessage("Tool result: " + toolResult); // Add error to history
+                break;
+            }
 
-            String fullText = messages.stream()
-                    .flatMap(message -> message.content().stream())
-                    .flatMap(content -> content.outputText().stream())
-                    .map(ResponseOutputText::text)
-                    .collect(java.util.stream.Collectors.joining("\n"));
+            ChatCompletionMessage assistantResponse = chatCompletion.choices().get(0).message();
+            String fullText = assistantResponse.content().orElse("").trim();
 
             log.debug("Agent step {} output:\n{}", step + 1, fullText);
-            System.out.println("Agent step " + (step + 1) + " output:\n" + fullText); // Keep console output for now
+            System.out.println("Agent step " + (step + 1) + " output:\n" + fullText);
             System.out.println("\n-----------------------------------\n");
 
-            // Add LLM's response to the conversation history *before* processing actions
-            messages.forEach(message -> inputItems.add(ResponseInputItem.ofResponseOutputMessage(message)));
-
-
+            // Add LLM's response to the conversation history
+            paramsBuilder.addMessage(assistantResponse);
 
             // Tool execution
             try {
-                // Basic cleanup: Sometimes models wrap JSON in ```json ... ```
-                String cleanedJson = fullText.trim();
+                String cleanedJson = fullText;
                 if (cleanedJson.startsWith("```json")) {
                     cleanedJson = cleanedJson.substring(7);
                 }
@@ -111,7 +100,7 @@ public class Agent {
 
                 JsonObject ob = gson.fromJson(cleanedJson, JsonObject.class);
                 if (ob == null || !ob.has("action") || !ob.has("action_parameters")) {
-                     throw new JsonSyntaxException("Missing 'action' or 'action_parameters' in JSON response");
+                     throw new JsonSyntaxException("Missing 'action' or 'action_parameters' in JSON response. LLM Output: " + fullText);
                 }
 
                 String action = ob.get("action").getAsString();
@@ -210,24 +199,28 @@ public class Agent {
                                 toolResult = "No spawn location found for NPC '" + npcName + "' or NPC not in data.";
                             }
                         } catch (RuntimeException e) {
-                            // Catching RuntimeException specifically for the data loading failure case
                             toolResult = "Error processing NPC spawn location for '" + npcName + "': " + e.getMessage();
                             log.error("Error in getClosestNpcSpawn tool: {}", e.getMessage());
                         }
                         break;
                     }
-                    case "finish":
-                        toolResult = "Finish action acknowledged.";
-                        log.info("Finish action processed in switch, loop should terminate.");
+                    case "finish": {
+                        String finishResponse = "Task finished."; // Default
+                        if (parameters.has("response") && parameters.get("response").isJsonPrimitive() && parameters.get("response").getAsJsonPrimitive().isString()) {
+                            finishResponse = parameters.get("response").getAsString();
+                        }
+                        toolResult = "Finish action acknowledged by agent: " + finishResponse;
+                        log.info("Finish action processed: {}", finishResponse);
                         done = true;
-                        break; // Exit switch
+                        break;
+                    }
                     default:
                         toolResult = "Unknown tool requested: " + action;
                         log.warn("Unknown tool requested: {}", action);
                         break;
                 }
             } catch (JsonSyntaxException e) {
-                toolResult = "Error: LLM response was not valid JSON or missing required fields.";
+                toolResult = "Error: LLM response was not valid JSON or missing required fields. Response: " + fullText;
                 log.error("Error parsing agent JSON output: {}", e.getMessage());
             } catch (Exception e) {
                 toolResult = "Error executing tool or parsing parameters: " + e.getMessage();
@@ -236,25 +229,16 @@ public class Agent {
 
             log.info("Tool Result: {}", toolResult);
 
-            // Feed back tool output *after* processing the action
-            inputItems.add(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
-                    .role(EasyInputMessage.Role.USER) // Using USER role to provide observation/result
-                    .content("Tool result: " + toolResult)
-                    .build()));
+            paramsBuilder.addUserMessage("Tool result: " + toolResult);
 
-            // Update createParams for the next iteration
-            createParams = createParams.toBuilder().inputOfResponse(inputItems).build();
-
-             // Check again if the last action was finish, to ensure loop termination
-             if (toolResult.startsWith("Finish action acknowledged.")) {
+            if (done) {
                  break;
-             }
+            }
         }
         log.info("Agent run finished.");
     }
 
     private static String loadPrompt() {
-        // It's good practice to specify the resource path relative to the classpath root
         String promptPath = "rsagent/SystemPrompt.txt";
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(
                 Agent.class.getClassLoader().getResourceAsStream(promptPath),
