@@ -144,7 +144,7 @@ public class GiantsFoundryScript extends Script {
     public boolean canPour() {
         ObjectComposition objectComposition = Rs2GameObject.findObjectComposition(CRUCIBLE);
         if (objectComposition == null) return false;
-        return objectComposition.getImpostor().getName().toLowerCase().contains("(full)");
+        return objectComposition.getName().toLowerCase().contains("(full)");
     }
 
     public void fillCrucible() {
@@ -208,7 +208,7 @@ public class GiantsFoundryScript extends Script {
         if (canPour()) return false;
         ObjectComposition objectComposition = Rs2GameObject.findObjectComposition(MOULD_JIG);
         if (objectComposition == null) return false;
-        return objectComposition.getImpostor().getName().toLowerCase().contains("poured metal");
+        return objectComposition.getName().toLowerCase().contains("poured metal");
     }
 
     public void pickupMould() {

@@ -1415,7 +1415,7 @@ public class Rs2Bank {
 
         if (Microbot.getClient().getLocalPlayer().getWorldLocation().equals(worldPoint)) {
             List<TileObject> bankObjs = Stream.concat(
-                            Rs2GameObject.getGameObjects(o -> Arrays.stream(Rs2BankID.bankIds).anyMatch(id -> o.getId() == id), worldPoint, maxObjectSearchRadius).stream(),
+                            Stream.of(Rs2GameObject.findBank(maxObjectSearchRadius)),
                             Stream.of(Rs2GameObject.findGrandExchangeBooth(maxObjectSearchRadius))
                     )
                     .filter(Objects::nonNull)
@@ -1529,7 +1529,7 @@ public class Rs2Bank {
      * @return true if player location is less than distance away from the bank location
      */
     public static boolean isNearBank(BankLocation bankLocation, int distance) {
-        int distanceToBank = Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(bankLocation.getWorldPoint());
+        int distanceToBank = Rs2Walker.getDistanceBetween(Microbot.getClient().getLocalPlayer().getWorldLocation(), bankLocation.getWorldPoint());
         return distanceToBank <= distance;
     }
 
@@ -1566,7 +1566,7 @@ public class Rs2Bank {
         if (Rs2Bank.isOpen()) return true;
         Rs2Player.toggleRunEnergy(toggleRun);
         Microbot.status = "Walking to nearest bank " + bankLocation.toString();
-        boolean result = bankLocation.getWorldPoint().distanceTo(Microbot.getClient().getLocalPlayer().getWorldLocation()) <= 8;
+        boolean result = Rs2Walker.getDistanceBetween(Microbot.getClient().getLocalPlayer().getWorldLocation(), bankLocation.getWorldPoint()) <= 8;
         if (result) {
             return Rs2Bank.useBank();
         } else {

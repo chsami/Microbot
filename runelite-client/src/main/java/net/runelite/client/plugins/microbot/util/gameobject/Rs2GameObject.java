@@ -493,7 +493,7 @@ public class Rs2GameObject {
     }
 
     public static TileObject getTileObject(int id, WorldPoint anchor) {
-        return getGameObject(id, anchor, Constants.SCENE_SIZE);
+        return getTileObject(id, anchor, Constants.SCENE_SIZE);
     }
 
     public static TileObject getTileObject(int id, WorldPoint anchor, int distance) {
@@ -1486,13 +1486,15 @@ public class Rs2GameObject {
                 Collection<? extends T> objs = extractor.apply(tile);
                 if (objs != null) {
                     for (T obj : objs) {
+                        if (obj == null) continue;
+
                         if (obj instanceof GameObject) {
                             GameObject gameObject = (GameObject) obj;
                             if (gameObject.getSceneMinLocation().equals(tile.getSceneLocation())) {
                                 result.add(obj);
                             }
                         } else {
-                            if (obj != null && obj.getLocalLocation().equals(tile.getLocalLocation())) {
+                            if (obj.getLocalLocation().equals(tile.getLocalLocation())) {
                                 result.add(obj);
                             }
                         }
@@ -1554,10 +1556,19 @@ public class Rs2GameObject {
     }
 
     private static <T extends TileObject> Predicate<T> nameMatches(String objectName, boolean exact) {
+        String normalizedForIds = objectName.toLowerCase().replace(" ", "_");
+        Set<Integer> ids = new HashSet<>(getObjectIdsByName(normalizedForIds));
+
         String lower = objectName.toLowerCase();
-        return obj -> getCompositionName(obj)
-                .map(n -> exact ? n.equalsIgnoreCase(objectName) : n.toLowerCase().contains(lower))
-                .orElse(false);
+
+        return obj -> {
+            if (!ids.isEmpty()) {
+                return ids.contains(obj.getId());
+            }
+            return getCompositionName(obj)
+                    .map(compName -> exact ? compName.equalsIgnoreCase(objectName) : compName.toLowerCase().contains(lower))
+                    .orElse(false);
+        };
     }
 
     @SuppressWarnings("unchecked")
