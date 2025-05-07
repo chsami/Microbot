@@ -8,6 +8,7 @@ import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.bee.MossKiller.Enums.MossKillerState;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerPlugin;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
+import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -30,6 +31,7 @@ import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
 
+import javax.inject.Inject;
 import java.awt.event.KeyEvent;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -52,6 +54,8 @@ public class MossKillerScript extends Script {
     public int playerCounter = 0;
     public boolean bossMode = false;
 
+    @Inject
+    SchedulablePlugin schedulablePlugin;
 
     public final WorldPoint SEWER_ENTRANCE = new WorldPoint(3237, 3459, 0);
     public final WorldPoint SEWER_LADDER = new WorldPoint(3237, 9859, 0);
@@ -195,7 +199,8 @@ public class MossKillerScript extends Script {
         //static sleep to wait till out of combat
         sleep(10000);
         //turn off breakhandler
-        stopBreakHandlerPlugin();
+        if (!Microbot.isPluginEnabled(schedulablePlugin.getClass()))
+        {stopBreakHandlerPlugin();
         //turn off autologin and all other scripts in 5 seconds
         Microbot.getClientThread().runOnSeperateThread(() -> {
             if (!Microbot.pauseAllScripts) {
@@ -204,8 +209,9 @@ public class MossKillerScript extends Script {
             }
             return null;
         });
-        Rs2Player.logout();
+        Rs2Player.logout();}
         sleep(1000);
+        schedulablePlugin.reportFinished("EXIT_SCRIPT triggered (lacking teleports or consumables)", false);
         shutdown();
     }
 
@@ -260,6 +266,7 @@ public class MossKillerScript extends Script {
         try {
             // Stop the BreakHandlerPlugin
             Microbot.getPluginManager().stopPlugin(breakHandlerPlugin);
+            Microbot.getPluginManager().setPluginEnabled(breakHandlerPlugin, false);
             System.out.println("BreakHandlerPlugin successfully stopped.");
             return true;
         } catch (PluginInstantiationException e) {
