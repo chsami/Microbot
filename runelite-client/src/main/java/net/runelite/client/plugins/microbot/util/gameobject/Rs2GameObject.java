@@ -194,49 +194,14 @@ public class Rs2GameObject {
         return convertToObjectComposition(id);
     }
 
+    @Deprecated
     public static GameObject get(String name) {
         return get(name, false);
     }
 
+    @Deprecated
     public static GameObject get(String name, boolean exact) {
-        name = name.toLowerCase();
-        // add underscore because the OBJECTID static list contains _ instead of spaces
-        List<Integer> ids = getObjectIdsByName(name.replace(" ", "_"));
-        List<GameObject> gameObjects = getGameObjects();
-
-        if (gameObjects == null) {
-            return null;
-        }
-
-        GameObject gameObject = gameObjects.stream()
-                .filter(x -> ids.stream().anyMatch(id -> id == x.getId()))
-                .min(Comparator.comparingInt(tile -> tile.getWorldLocation().distanceTo(Rs2Player.getWorldLocation())))
-                .orElse(null);
-
-        if (gameObject == null) return null;
-
-        ObjectComposition objComp = convertToObjectComposition(gameObject.getId());
-
-        if (objComp == null) {
-            return null;
-        }
-        String compName = null;
-
-        try {
-            compName = !objComp.getName().equals("null") ? objComp.getName() : (objComp.getImpostor() != null ? objComp.getImpostor().getName() : null);
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-        }
-
-        if (compName != null) {
-            if (!exact && compName.toLowerCase().contains(name)) {
-                return gameObject;
-            } else if (exact && compName.equalsIgnoreCase(name)) {
-                return gameObject;
-            }
-        }
-
-        return null;
+       return getGameObject(name, exact);
     }
 
     @Deprecated
