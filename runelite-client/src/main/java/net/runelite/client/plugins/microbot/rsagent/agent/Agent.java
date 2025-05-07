@@ -59,7 +59,8 @@ public class Agent {
 
         ResponseCreateParams createParams = ResponseCreateParams.builder()
                 .inputOfResponse(inputItems)
-                .model(ChatModel.GPT_4_1_MINI) // Consider making model configurable
+                .maxOutputTokens(100)
+                .model(ChatModel.GPT_4_1) // Consider making model configurable
                 .build();
 
         for (int step = 0; step < 15; step++) { // Increased max steps slightly
@@ -226,7 +227,7 @@ public class Agent {
                         break;
                 }
             } catch (JsonSyntaxException e) {
-                toolResult = "Error: LLM response was not valid JSON or missing required fields. Response: " + fullText;
+                toolResult = "Error: LLM response was not valid JSON or missing required fields.";
                 log.error("Error parsing agent JSON output: {}", e.getMessage());
             } catch (Exception e) {
                 toolResult = "Error executing tool or parsing parameters: " + e.getMessage();
