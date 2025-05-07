@@ -135,60 +135,9 @@ public class DemonicGorillaScript extends Script {
         return true;
     }
 
-    private void handleTravel(DemonicGorillaConfig config) {
-        WorldPoint gnomeStrongholdLocation = new WorldPoint(2465, 3494, 0);
-        WorldPoint crashSiteLocation = new WorldPoint(2435, 3519, 0);
-        WorldPoint caveLocation = new WorldPoint(2026, 5610, 0);
-        switch (travelStep) {
-            case GNOME_STRONGHOLD:
-                Microbot.status = "Teleporting to The Grand Tree";
-                if (Rs2Inventory.interact("Royal seed pod", "Commune")) {
-                    Rs2Player.waitForAnimation();
-                    sleepUntil(() -> !Rs2Player.isAnimating());
-                    sleepUntil(() -> Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(gnomeStrongholdLocation) <= 5);
-                    travelStep = TravelStep.TRAVEL_TO_OPENING;
-                }
-                break;
-            case TRAVEL_TO_OPENING:
-                Rs2Walker.walkTo(crashSiteLocation);
-                sleepUntil(() -> Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(crashSiteLocation) <= 5);
-                travelStep = TravelStep.CRASH_SITE;
-                break;
-            case CRASH_SITE:
-                Microbot.status = "Passing through opening to Crash Site";
-                var interacted = Rs2GameObject.interact(FENCE_ID, "Pass-through");
-                if (interacted) {
-                    Rs2Player.waitForAnimation();
-                    sleepUntil(() -> !Rs2Player.isAnimating());
-                    Microbot.status = "Walking to the cave entrance";
-                    Rs2Walker.walkTo(caveLocation);
-                    sleepUntil(() -> Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(caveLocation) <= 5);
-                    interacted = Rs2GameObject.interact(CAVE_ID, "Enter");
-                    if (interacted) {
-                        Rs2Player.waitForAnimation();
-                        sleepUntil(() -> !Rs2Player.isAnimating());
-                    }
-                    travelStep = TravelStep.IN_CAVE;
-                } else {
-                    logOnceToChat("Error getting through crash site - Trying again");
-                    travelStep = TravelStep.CRASH_SITE;
-                }
-                break;
-
-            case IN_CAVE:
-                currentDefensivePrayer = Rs2PrayerEnum.PROTECT_MAGIC;
-                Rs2Prayer.toggle(currentDefensivePrayer, true);
-                Microbot.status = "Walking to the gorillas";
-                var reachedDest = Rs2Walker.walkTo(GORILLA_LOCATION);
-                sleepUntil(() -> Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(GORILLA_LOCATION) <= 10);
-                if (!reachedDest) {
-                    travelStep = TravelStep.GNOME_STRONGHOLD;
-                    break;
-                }
-                Microbot.status = "Arrived at Gorillas";
-                BOT_STATUS = State.FIGHTING;
-                travelStep = TravelStep.GNOME_STRONGHOLD;
-                break;
+private void handleTravel(DemonicGorillaConfig config) {
+        if (Rs2Walker.walkTo(GORILLA_LOCATION)) {
+            BOT_STATUS = State.FIGHTING;
         }
     }
 
