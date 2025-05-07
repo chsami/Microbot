@@ -795,38 +795,42 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
     }
 
     private static boolean handleDoors(List<WorldPoint> path, int index) {
+        if (ShortestPathPlugin.getPathfinder() == null || index >= path.size() - 1) {
+            return false;
+        }
 
-        if (ShortestPathPlugin.getPathfinder() == null) return false;
+        List<String> doorActions = List.of("pay-toll", "pick-lock", "walk-through", "go-through", "open");
+        boolean isInstance = Microbot.getClient()
+                .getTopLevelWorldView()
+                .getScene()
+                .isInstance();
 
-        if (index == path.size() - 1) return false;
+        for (int offset = 0; offset <= 1; offset++) {
+            int doorIdx = index + offset;
+            if (doorIdx < 0 || doorIdx >= path.size()) {
+                continue;
+            }
 
-        var doorActions = Arrays.asList("pay-toll", "pick-lock", "walk-through", "go-through", "open");
+            WorldPoint wp;
+            if (isInstance) {
+                wp = Rs2WorldPoint.convertInstancedWorldPoint(path.get(doorIdx));
+            } else {
+                wp = path.get(doorIdx);
+            }
 
-        boolean isInstance = Microbot.getClient().getTopLevelWorldView().getScene().isInstance();
+            WallObject wall = Rs2GameObject.getWallObject(o -> o.getWorldLocation().equals(wp), wp, 3);
 
-        // Check this and the next tile for door objects
-        for (int doorIndex = index; doorIndex < index + 2; doorIndex++) {
-            var point = path.get(doorIndex);
-
-            // Handle wall and game objects
-            TileObject object = null;
-            var tile = Rs2GameObject.getTiles(3).stream()
-                    .filter(x -> isInstance ? x.getWorldLocation().equals(Rs2WorldPoint.convertInstancedWorldPoint(point)) : x.getWorldLocation().equals(point))
-                    .findFirst().orElse(null);
-            if (tile != null)
-                object = tile.getWallObject();
-
-            if (object == null)
-                object = Rs2GameObject.getGameObject(point, 3);
+            TileObject object = (wall != null)
+                    ? wall
+                    : Rs2GameObject.getGameObject(o -> o.getWorldLocation().equals(wp), wp, 3);
 
             if (object == null) continue;
 
-            var objectComp = Rs2GameObject.getObjectComposition(object.getId());
-            if (objectComp == null) continue;
+            ObjectComposition comp = Rs2GameObject.convertToObjectComposition(object);
+            if (comp == null) continue;
 
-            // Match action
-            var action = Arrays.stream(objectComp.getActions())
-                    .filter(x -> x != null && doorActions.stream().anyMatch(doorAction -> x.toLowerCase().startsWith(doorAction)))
+            String action = doorActions.stream()
+                    .filter(a -> Rs2GameObject.hasAction(comp, a, false))
                     .min(Comparator.comparing(x -> doorActions.indexOf(
                             doorActions.stream().filter(doorAction -> x.toLowerCase().startsWith(doorAction)).findFirst().orElse(""))))
                     .orElse(null);
@@ -835,41 +839,29 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
 
             boolean found = false;
             if (object instanceof WallObject) {
-                // Match wall objects by orientation
-                var orientation = ((WallObject) object).getOrientationA();
+                WallObject w = (WallObject) object;
+                int orientation = w.getOrientationA();
 
-                if (doorIndex == index) {
-                    // Forward
-                    var neighborPoint = path.get(doorIndex + 1);
-                    found = searchNeighborPoint(orientation, point, neighborPoint);
-                    System.out.println(doorIndex + " wallobject ");
-                } else if (doorIndex == index + 1) {
-                    // Backward
-                    var neighborPoint = path.get(doorIndex - 1);
-                    found = searchNeighborPoint(orientation, point, neighborPoint);
-                    System.out.println(doorIndex + " else  wallobject ");
-                    // Diagonal objects with any orientation
-                    if (index + 2 < path.size() && (orientation == 16 || orientation == 32 || orientation == 64 || orientation == 128)) {
-                        var prevPoint = path.get(doorIndex - 1);
-                        var nextPoint = path.get(doorIndex + 1);
+                WorldPoint neighborWp = path.get(doorIdx + (offset == 0 ? 1 : -1));
+                if (isInstance) {
+                    neighborWp = Rs2WorldPoint.convertInstancedWorldPoint(neighborWp);
+                }
 
-                        if (Math.abs(prevPoint.getX() - nextPoint.getX()) > 0 && Math.abs(prevPoint.getY() - nextPoint.getY()) > 0) {
-                            System.out.println("math abs found door");
-                            found = true;
-                        }
+                found = searchNeighborPoint(orientation, wp, neighborWp);
+
+                if (!found && offset == 1 && List.of(16, 32, 64, 128).contains(orientation)) {
+                    WorldPoint prev = path.get(doorIdx - 1);
+                    WorldPoint next = path.get(doorIdx + 1);
+                    if (Math.abs(prev.getX() - next.getX()) > 0 && Math.abs(prev.getY() - next.getY()) > 0) {
+                        found = true;
                     }
                 }
             } else if (object instanceof GameObject) {
-                // Match game objects by name
-                // Orientation does not work as game objects are not strictly oriented like walls
-                var objectNames = List.of("door");
-
-                if (objectNames.contains(objectComp.getName().toLowerCase())) {
-                    System.out.println("found door " + objectComp.getName());
+                String name = comp.getName();
+                if (name != null && name.toLowerCase().contains("door")) {
                     found = true;
                 }
             }
-
 
             if (found) {
                 if (!handleDoorException(object, action)) {
@@ -939,12 +931,41 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
         return false;
     }
 
-    private static boolean searchNeighborPoint(int orientation, WorldPoint point, WorldPoint neighborPoint) {
-        return orientation == 1 && point.dx(-1).getX() == neighborPoint.getX()
-                || orientation == 4 && point.dx(+1).getX() == neighborPoint.getX()
-                || orientation == 2 && point.dy(1).getY() == neighborPoint.getY()
-                || orientation == 8 && point.dy(-1).getY() == neighborPoint.getY();
+    /**
+     * Given a wall‐orientation (1=west, 4=east, 2=north, 8=south),
+     * returns true if `neighbor` is exactly one tile over in that direction.
+     */
+    private static boolean searchNeighborPoint(int orientation, WorldPoint point, WorldPoint neighbor) {
+        // Determine how a wall with this orientation should shift the point
+        final int dx;
+        final int dy;
+        switch (orientation) {
+            case 1:  // west
+                dx = -1; dy =  0;
+                break;
+            case 4:  // east
+                dx = +1; dy =  0;
+                break;
+            case 2:  // north
+                dx =  0; dy = +1;
+                break;
+            case 8:  // south
+                dx =  0; dy = -1;
+                break;
+            default:
+                // any other orientation we don’t handle here
+                return false;
+        }
+
+        // Build the expected neighbor point and compare by value
+        WorldPoint expected = new WorldPoint(
+                point.getX() + dx,
+                point.getY() + dy,
+                point.getPlane()
+        );
+        return neighbor.equals(expected);
     }
+
 
     /**
      * @param path list of worldpoints

@@ -1486,8 +1486,15 @@ public class Rs2GameObject {
                 Collection<? extends T> objs = extractor.apply(tile);
                 if (objs != null) {
                     for (T obj : objs) {
-                        if (obj != null && obj.getLocalLocation().equals(tile.getLocalLocation())) {
-                            result.add(obj);
+                        if (obj instanceof GameObject) {
+                            GameObject gameObject = (GameObject) obj;
+                            if (gameObject.getSceneMinLocation().equals(tile.getSceneLocation())) {
+                                result.add(obj);
+                            }
+                        } else {
+                            if (obj != null && obj.getLocalLocation().equals(tile.getLocalLocation())) {
+                                result.add(obj);
+                            }
                         }
                     }
                 }
