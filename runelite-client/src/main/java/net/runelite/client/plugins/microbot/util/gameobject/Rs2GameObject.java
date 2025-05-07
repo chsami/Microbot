@@ -1547,11 +1547,6 @@ public class Rs2GameObject {
             return Optional.of(name);
         }
 
-        ObjectComposition impostor = Microbot.getClientThread().runOnClientThreadOptional(comp::getImpostor).orElse(null);
-        if (impostor != null && impostor.getName() != null) {
-            return Optional.of(impostor.getName());
-        }
-
         return Optional.empty();
     }
 
