@@ -323,7 +323,7 @@ public class revKillerScript extends Script {
                         sleepUntil(()-> !TeleTimerIsThere() || Rs2Player.getAnimation() == 714,generateRandomNumber(1300,1500));
                         if(Rs2Player.getAnimation() == 714){
                             //we successfully teleported out
-                            sleepUntil(()-> !Rs2Player.isAnimating() && Rs2Player.getWorldLocation().distanceTo(BankLocation.EDGEVILLE.getWorldPoint()) < 30,generateRandomNumber(4000,6000));
+                            sleepUntil(()-> !Rs2Player.isAnimating() && !WeAreInTheCaves(),generateRandomNumber(4000,6000));
                         }
                     }
                     if (!WeAreInTheCaves()) {
@@ -352,7 +352,7 @@ public class revKillerScript extends Script {
                         sleepUntil(()-> !TeleTimerIsThere() || Rs2Player.getAnimation() == 714,generateRandomNumber(1300,1500));
                         if(Rs2Player.getAnimation() == 714){
                             //we successfully teleported out
-                            sleepUntil(()-> !Rs2Player.isAnimating() && Rs2Player.getWorldLocation().distanceTo(BankLocation.FEROX_ENCLAVE.getWorldPoint()) < 30,generateRandomNumber(4000,6000));
+                            sleepUntil(()-> !Rs2Player.isAnimating() && !WeAreInTheCaves(),generateRandomNumber(4000,6000));
                         }
                     }
                     if (!WeAreInTheCaves()) {
