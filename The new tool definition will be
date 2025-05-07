@@ -1,0 +1,3 @@
+getClosestNpcSpawn: Finds the closest spawn location for a given NPC name from a predefined list of known spawn points.
+      Takes inputs: npcName (string)
+      Returns an output of type: string (e.g. "Closest spawn for 'NPC Name' is at (x, y, z)." or "No spawn location found for NPC 'NPC Name'.")
