@@ -932,11 +932,22 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
     }
 
     /**
-     * Given a wall‐orientation (1=west, 4=east, 2=north, 8=south),
-     * returns true if `neighbor` is exactly one tile over in that direction.
+     * Determines whether a given neighbor tile lies immediately adjacent to a reference tile,
+     * in the direction specified by a wall orientation code.
+     *
+     * @param orientation the wall orientation code:
+     *                    <ul>
+     *                      <li>1 = west</li>
+     *                      <li>4 = east</li>
+     *                      <li>2 = north</li>
+     *                      <li>8 = south</li>
+     *                    </ul>
+     * @param point       the reference {@link WorldPoint} representing the tile at the wall’s base
+     * @param neighbor    the {@link WorldPoint} to test for adjacency
+     * @return {@code true} if {@code neighbor} is exactly one tile away from {@code point}
+     *         in the direction indicated by {@code orientation}, {@code false} otherwise
      */
     private static boolean searchNeighborPoint(int orientation, WorldPoint point, WorldPoint neighbor) {
-        // Determine how a wall with this orientation should shift the point
         final int dx;
         final int dy;
         switch (orientation) {
@@ -953,7 +964,6 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                 dx =  0; dy = -1;
                 break;
             default:
-                // any other orientation we don’t handle here
                 return false;
         }
 
