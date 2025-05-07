@@ -216,8 +216,19 @@ public class Agent {
                                 toolResult = "No spawn location found for NPC '" + npcName + "' or NPC not in data.";
                             }
                         } catch (RuntimeException e) {
+                            // Catching RuntimeException specifically for the data loading failure case
                             toolResult = "Error processing NPC spawn location for '" + npcName + "': " + e.getMessage();
                             log.error("Error in getClosestNpcSpawn tool: {}", e.getMessage());
+                        }
+                        break;
+                    }
+                    case "getPlayerInventory": {
+                        List<String> inventoryList = RsAgentTools.getPlayerInventory();
+                        if (inventoryList.isEmpty() || (inventoryList.size() == 1 && inventoryList.get(0).startsWith("Could not access"))) {
+                            toolResult = "Error: Could not retrieve inventory contents.";
+                            log.warn("getPlayerInventory tool failed: {}", inventoryList.isEmpty() ? "Empty list" : inventoryList.get(0));
+                        } else {
+                            toolResult = "Inventory contents:\n" + String.join("\n", inventoryList);
                         }
                         break;
                     }

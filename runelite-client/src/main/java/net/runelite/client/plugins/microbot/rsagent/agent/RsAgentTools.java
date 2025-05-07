@@ -31,6 +31,12 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+// Added imports for inventory
+import net.runelite.api.Item;
+import net.runelite.api.ItemContainer;
+import net.runelite.api.InventoryID;
+
+
 import static net.runelite.client.plugins.microbot.util.Global.*;
 
 public class RsAgentTools {
@@ -434,5 +440,54 @@ public class RsAgentTools {
         Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
 
         return String.join("",texts);
+    }
+
+    /**
+     * Retrieves the player's inventory contents.
+     *
+     * @return A list of strings, where each string represents an inventory slot
+     *         (e.g., "Slot 0: Item Name: Quantity" or "Slot 0: Empty slot").
+     *         Returns a list with an error message if inventory cannot be accessed.
+     */
+    static public List<String> getPlayerInventory() {
+        List<String> inventoryContents = new ArrayList<>();
+        if (Microbot.getClient() == null || Microbot.getItemManager() == null) {
+            inventoryContents.add("Could not access client or item manager.");
+            Microbot.log(Level.ERROR, "getPlayerInventory: Client or ItemManager is null.");
+            return inventoryContents;
+        }
+
+        ItemContainer inventory = Microbot.getClient().getItemContainer(InventoryID.INVENTORY);
+        if (inventory == null) {
+            inventoryContents.add("Could not access inventory container.");
+            Microbot.log(Level.WARN, "getPlayerInventory: Inventory container is null.");
+            return inventoryContents;
+        }
+
+        Item[] items = inventory.getItems();
+        // Standard inventory has 28 slots. Iterate through all of them.
+        for (int i = 0; i < 28; i++) {
+            if (i < items.length && items[i] != null && items[i].getId() != -1 && items[i].getQuantity() > 0) {
+                Item item = items[i];
+                String itemName = "Unknown Item";
+                try {
+                    itemName = Microbot.getItemManager().getItemComposition(item.getId()).getName();
+                    if (itemName == null || itemName.equalsIgnoreCase("null")) { // Handle cases where name might be "null" string
+                        itemName = "Item ID " + item.getId();
+                    }
+                } catch (Exception e) {
+                    Microbot.log(Level.WARN, "getPlayerInventory: Could not get item name for ID " + item.getId(), e);
+                    itemName = "Item ID " + item.getId() + " (Error)";
+                }
+                inventoryContents.add("Slot " + i + ": " + itemName + ": " + item.getQuantity());
+            } else {
+                inventoryContents.add("Slot " + i + ": Empty slot");
+            }
+        }
+
+        if (inventoryContents.isEmpty() && 28 > 0) { // Should only happen if loop for 28 slots didn't add anything
+            inventoryContents.add("Inventory appears to be completely empty or inaccessible.");
+        }
+        return inventoryContents;
     }
 }

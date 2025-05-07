@@ -43,6 +43,10 @@ getClosestNpcSpawn: Finds the closest spawn location for a given NPC name from a
       Takes inputs: npcName (string)
       Returns an output of type: string (e.g. "Closest spawn for 'NPC Name' is at (x, y, z)." or "No spawn location found for NPC 'NPC Name'.")
 
+getPlayerInventory: Checks the player's inventory and returns a list of items with their quantities, slot by slot.
+      Takes inputs: none
+      Returns an output of type: string (e.g. "Inventory contents:\nSlot 0: Coins: 1000\nSlot 1: Bronze sword: 1\nSlot 2: Empty slot...")
+
 finish: Call this when the goal is achieved or you cannot proceed further.
       Takes inputs: response (string) - A final summary message for the user.
       Returns an output of type: none
