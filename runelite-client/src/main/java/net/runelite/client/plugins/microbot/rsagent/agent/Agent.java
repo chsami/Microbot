@@ -232,6 +232,12 @@ public class Agent {
                         }
                         break;
                     }
+                    case "equipItem": {
+                        String itemName = parameters.get("itemName").getAsString();
+                        boolean success = RsAgentTools.equipItem(itemName);
+                        toolResult = success ? "Successfully equipped '" + itemName + "'." : "Failed to equip '" + itemName + "'. Item might not be in inventory or is not equippable.";
+                        break;
+                    }
                     case "finish": {
                         String finishResponse = "Task finished."; // Default
                         if (parameters.has("response") && parameters.get("response").isJsonPrimitive() && parameters.get("response").getAsJsonPrimitive().isString()) {

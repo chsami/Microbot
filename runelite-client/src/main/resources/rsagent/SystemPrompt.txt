@@ -47,6 +47,10 @@ getPlayerInventory: Checks the player's inventory and returns a list of items wi
       Takes inputs: none
       Returns an output of type: string (e.g. "Inventory contents:\nSlot 0: Coins: 1000\nSlot 1: Bronze sword: 1\nSlot 2: Empty slot...")
 
+equipItem: Equips an item from the player's inventory by its name.
+      Takes inputs: itemName (string)
+      Returns an output of type: string (e.g. "Successfully equipped 'Bronze sword'." or "Failed to equip 'Bronze sword'.")
+
 finish: Call this when the goal is achieved or you cannot proceed further.
       Takes inputs: response (string) - A final summary message for the user.
       Returns an output of type: none

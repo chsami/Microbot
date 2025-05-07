@@ -12,6 +12,7 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory; // Added import for Rs2Inventory
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
@@ -489,5 +490,19 @@ public class RsAgentTools {
             inventoryContents.add("Inventory appears to be completely empty or inaccessible.");
         }
         return inventoryContents;
+    }
+
+    /**
+     * Equips an item from the player's inventory by its name.
+     *
+     * @param itemName The name of the item to equip.
+     * @return true if the equip action was successfully initiated, false otherwise.
+     */
+    static public boolean equipItem(String itemName) {
+        if (itemName == null || itemName.trim().isEmpty()) {
+            Microbot.log(Level.WARN, "equipItem: Item name is null or empty.");
+            return false;
+        }
+        return Rs2Inventory.wear(itemName);
     }
 }
