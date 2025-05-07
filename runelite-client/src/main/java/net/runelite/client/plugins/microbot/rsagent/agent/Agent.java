@@ -9,6 +9,7 @@ import com.openai.client.okhttp.OpenAIOkHttpClient;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
@@ -50,7 +51,8 @@ public class Agent {
         ChatCompletionCreateParams.Builder paramsBuilder = ChatCompletionCreateParams.builder()
                 .model(ChatModel.GPT_4_1)
                 .maxCompletionTokens(512) // Increased token limit for potentially complex JSON outputs
-                .addStop("}}") // Add stop sequence for the JSON closing brackets
+                .stopOfStrings(Arrays.asList("}}", "}\n}")) // Add stop sequence for the JSON closing brackets
+                .temperature(0)
                 .addSystemMessage(systemInstruction)
                 .addUserMessage(task);
 

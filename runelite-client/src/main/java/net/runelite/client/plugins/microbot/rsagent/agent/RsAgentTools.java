@@ -221,7 +221,7 @@ public class RsAgentTools {
         if (npc == null) {
             throw new RuntimeException("NPC " + name + " not found");
         }
-        boolean walkedTo = Rs2Npc.walkToNearestMonster(name);
+        boolean walkedTo = Rs2Walker.walkTo(npc.getWorldLocation(), 1);
         if (!walkedTo) {
             throw  new RuntimeException("Cannot walk to NPC " + name);
         }
@@ -276,6 +276,7 @@ public class RsAgentTools {
      */
     static public DialogueResult chooseOptionAndContinueDialogue(int option){
         Rs2Dialogue.keyPressForDialogueOption(option);
+        sleep(800,1200);
         return handleDialogue();
     }
 
@@ -350,8 +351,8 @@ public class RsAgentTools {
                      String npcNameNow = Rs2Dialogue.getNpcNameInDialogue();
                      if (npcNameNow != null) lastSpeaker = npcNameNow;
                  }
-                 dialogueTexts.add(lastSpeaker + " (Question): " + question);
-                 System.out.println(lastSpeaker + " (Question): " + question);
+//                 dialogueTexts.add(lastSpeaker + " (Question): " + question);
+//                 System.out.println(lastSpeaker + " (Question): " + question);
             }
 
 
@@ -412,7 +413,6 @@ public class RsAgentTools {
             for (Widget[] childGroup : childGroups) {
                 if (childGroup != null) {
                     for (Widget nestedChild : Arrays.stream(childGroup).filter(w -> w != null && !w.isHidden()).collect(Collectors.toList())) {
-                        System.out.println(" text " + nestedChild.getText());
                         String clean = Rs2UiHelper.stripColTags(nestedChild.getText());
 
                         if (!clean.isEmpty()){
