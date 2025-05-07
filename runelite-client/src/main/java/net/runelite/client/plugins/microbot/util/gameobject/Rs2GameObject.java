@@ -1557,9 +1557,10 @@ public class Rs2GameObject {
         String lower = objectName.toLowerCase();
 
         return obj -> {
-            if (!ids.isEmpty()) {
-                return ids.contains(obj.getId());
+            if (!ids.isEmpty() && !ids.contains(obj.getId())) {
+                return false;
             }
+
             return getCompositionName(obj)
                     .map(compName -> exact ? compName.equalsIgnoreCase(objectName) : compName.toLowerCase().contains(lower))
                     .orElse(false);
