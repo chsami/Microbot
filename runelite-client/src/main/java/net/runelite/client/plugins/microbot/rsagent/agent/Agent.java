@@ -199,6 +199,22 @@ public class Agent {
                         toolResult = "Quest status for '" + questName + "': " + status;
                         break;
                     }
+                    case "getClosestNpcSpawn": {
+                        String npcName = parameters.get("npcName").getAsString();
+                        try {
+                            WorldPoint closestSpawn = RsAgentTools.getClosestNpcSpawnLocation(npcName);
+                            if (closestSpawn != null) {
+                                toolResult = "Closest spawn for '" + npcName + "' is at (" + closestSpawn.getX() + ", " + closestSpawn.getY() + ", " + closestSpawn.getPlane() + ").";
+                            } else {
+                                toolResult = "No spawn location found for NPC '" + npcName + "' or NPC not in data.";
+                            }
+                        } catch (RuntimeException e) {
+                            // Catching RuntimeException specifically for the data loading failure case
+                            toolResult = "Error processing NPC spawn location for '" + npcName + "': " + e.getMessage();
+                            log.error("Error in getClosestNpcSpawn tool: {}", e.getMessage());
+                        }
+                        break;
+                    }
                     case "finish":
                         toolResult = "Finish action acknowledged.";
                         log.info("Finish action processed in switch, loop should terminate.");

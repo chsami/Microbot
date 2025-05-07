@@ -1,5 +1,7 @@
 package net.runelite.client.plugins.microbot.rsagent.agent;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import lombok.Getter;
 import net.runelite.api.NPC;
 import net.runelite.api.TileItem;
@@ -21,6 +23,10 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import org.slf4j.event.Level;
 
 import java.awt.event.KeyEvent;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -28,6 +34,99 @@ import java.util.stream.Stream;
 import static net.runelite.client.plugins.microbot.util.Global.*;
 
 public class RsAgentTools {
+
+    private static Map<String, List<SimpleCoord>> npcSpawnData;
+    private static final Gson gson = new Gson();
+    private static boolean npcSpawnDataLoaded = false;
+    private static String npcSpawnDataError = null;
+
+    // Helper class for JSON deserialization
+    private static class SimpleCoord {
+        int x;
+        int y;
+        int z;
+
+        public WorldPoint toWorldPoint() {
+            return new WorldPoint(x, y, z);
+        }
+    }
+
+    private static synchronized void loadNpcSpawnData() {
+        if (npcSpawnDataLoaded) {
+            return;
+        }
+
+        String path = "rsagent/npc_locations.json";
+        try (InputStream inputStream = RsAgentTools.class.getClassLoader().getResourceAsStream(path)) {
+            if (inputStream == null) {
+                npcSpawnDataError = "NPC spawn data file not found: " + path;
+                Microbot.log(Level.ERROR, npcSpawnDataError);
+                npcSpawnDataLoaded = true; // Mark as "loaded" to prevent retries, even though it failed
+                return;
+            }
+            InputStreamReader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
+            Type type = new TypeToken<Map<String, List<SimpleCoord>>>() {}.getType();
+            npcSpawnData = gson.fromJson(reader, type);
+            if (npcSpawnData == null) {
+                npcSpawnData = new HashMap<>(); // Ensure it's not null if file is empty JSON object
+                npcSpawnDataError = "NPC spawn data file was empty or malformed: " + path;
+                Microbot.log(Level.WARN, npcSpawnDataError);
+            }
+        } catch (Exception e) {
+            npcSpawnDataError = "Error loading NPC spawn data from " + path + ": " + e.getMessage();
+            Microbot.log(Level.ERROR, npcSpawnDataError, e);
+            npcSpawnData = new HashMap<>(); // Ensure it's not null on error
+        } finally {
+            npcSpawnDataLoaded = true;
+        }
+    }
+
+    /**
+     * Finds the closest spawn location for a given NPC name from the npc_locations.json file.
+     *
+     * @param npcName The name of the NPC.
+     * @return The WorldPoint of the closest spawn, or null if not found or an error occurred.
+     * @throws RuntimeException if there was an error loading the spawn data initially.
+     */
+    static public WorldPoint getClosestNpcSpawnLocation(String npcName) {
+        loadNpcSpawnData();
+
+        if (npcSpawnDataError != null && (npcSpawnData == null || npcSpawnData.isEmpty())) {
+            // If there was a critical error loading the data and the map is effectively unusable
+            throw new RuntimeException("Failed to load NPC spawn data: " + npcSpawnDataError);
+        }
+        if (npcSpawnData == null || !npcSpawnData.containsKey(npcName)) {
+            Microbot.log(Level.INFO,"NPC name '" + npcName + "' not found in spawn data.");
+            return null; // NPC name not in our data
+        }
+
+        List<SimpleCoord> spawns = npcSpawnData.get(npcName);
+        if (spawns == null || spawns.isEmpty()) {
+            Microbot.log(Level.INFO,"No spawn locations listed for NPC '" + npcName + "'.");
+            return null; // NPC has no listed spawns
+        }
+
+        WorldPoint playerLocation = Rs2Player.getLocalPlayer().getWorldLocation();
+        if (playerLocation == null) {
+            Microbot.log(Level.WARN,"Player location is null, cannot determine closest NPC spawn.");
+            return null; // Should not happen if player is logged in
+        }
+
+        WorldPoint closestPoint = null;
+        int minDistance = Integer.MAX_VALUE;
+
+        for (SimpleCoord coord : spawns) {
+            WorldPoint spawnPoint = coord.toWorldPoint();
+            int distance = playerLocation.distanceTo(spawnPoint);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestPoint = spawnPoint;
+            }
+        }
+        return closestPoint;
+    }
+
+
     /**
      * Walks to the specified world coordinates.
      *
