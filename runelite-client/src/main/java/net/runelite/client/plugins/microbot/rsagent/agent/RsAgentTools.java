@@ -4,15 +4,14 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import lombok.Getter;
 import net.runelite.api.NPC;
-// Removed unused import: net.runelite.api.TileItem;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory; // Added import for Rs2Inventory
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
@@ -33,7 +32,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 // Removed unused imports: net.runelite.api.Item, net.runelite.api.ItemContainer, net.runelite.api.InventoryID
-import net.runelite.api.widgets.ItemWidget; // Added import for ItemWidget
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment; // Added import for Rs2Equipment
 import net.runelite.api.EquipmentInventorySlot; // Added import for EquipmentInventorySlot
 
@@ -452,7 +450,7 @@ public class RsAgentTools {
      */
     static public List<String> getPlayerInventory() {
         List<String> inventoryContents = new ArrayList<>();
-        List<ItemWidget> items = Rs2Inventory.items(); // Get list of items (occupied slots)
+        List<Rs2ItemModel> items = Rs2Inventory.items(); // Get list of items (occupied slots)
 
         if (items == null) {
             inventoryContents.add("Could not access inventory items via Rs2Inventory.");
@@ -460,33 +458,18 @@ public class RsAgentTools {
             return inventoryContents;
         }
 
-        // Create a map of slot index to ItemWidget for quick lookup
-        Map<Integer, ItemWidget> itemMap = new HashMap<>();
-        for (ItemWidget item : items) {
-            if (item != null) {
-                itemMap.put(item.getIndex(), item);
-            }
-        }
-
         // Iterate through all 28 inventory slots
         for (int i = 0; i < 28; i++) {
-            if (itemMap.containsKey(i)) {
-                ItemWidget itemWidget = itemMap.get(i);
-                String itemName = itemWidget.getName();
-                int quantity = itemWidget.getQuantity();
 
-                // Handle potential null or "null" names (though less likely with ItemWidget)
-                if (itemName == null || itemName.equalsIgnoreCase("null") || itemName.trim().isEmpty()) {
-                    itemName = "Item ID " + itemWidget.getItemId();
-                }
+                Rs2ItemModel itemModel = Rs2Inventory.getItemInSlot(i);
+                if  (itemModel == null) continue;
+                String itemName = itemModel.getName();
+                int quantity = itemModel.getQuantity();
 
                 inventoryContents.add("Slot " + i + ": " + itemName + ": " + quantity);
-            } else {
-                inventoryContents.add("Slot " + i + ": Empty slot");
-            }
         }
 
-        if (inventoryContents.isEmpty() && 28 > 0) { // Should only happen if loop for 28 slots didn't add anything
+        if (inventoryContents.isEmpty()) { // Should only happen if loop for 28 slots didn't add anything
             inventoryContents.add("Inventory appears to be completely empty or inaccessible.");
         }
 
@@ -523,13 +506,13 @@ public class RsAgentTools {
         }
 
         for (EquipmentInventorySlot slot : EquipmentInventorySlot.values()) {
-            ItemWidget itemWidget = Rs2Equipment.getItemInSlot(slot.getSlotIdx());
+            Rs2ItemModel itemModel = Rs2Equipment.get(slot);
             String slotName = slot.name();
 
-            if (itemWidget != null) {
-                String itemName = itemWidget.getName();
+            if (itemModel != null) {
+                String itemName = itemModel.getName();
                 if (itemName == null || itemName.equalsIgnoreCase("null") || itemName.trim().isEmpty()) {
-                    itemName = "Item ID " + itemWidget.getItemId();
+                    itemName = "Item ID " + itemModel.getId();
                 }
                 equippedItems.add(slotName + ": " + itemName);
             } else {
@@ -537,7 +520,7 @@ public class RsAgentTools {
             }
         }
 
-        if (equippedItems.isEmpty() && EquipmentInventorySlot.values().length > 0) {
+        if (equippedItems.isEmpty()) {
             equippedItems.add("Equipment appears to be completely empty or inaccessible.");
         }
 

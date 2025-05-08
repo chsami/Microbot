@@ -91,7 +91,7 @@ public class Agent {
                 } else if (!fullText.endsWith("}")) {
                     // This case is less likely if the model is trying to output JSON, but as a fallback.
                     // It might indicate a more significant formatting issue.
-                    log.warn("LLM output did not end with '}' before stop sequence. Appending '}}'. Output: {}", fullText);
+                    log.warn("LLM output did not end with '}' before stop sequence. Appending '}}'.");
                     fullText += "}}";
                 }
             }
