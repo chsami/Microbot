@@ -10,11 +10,9 @@ import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.kit.KitType;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetInfo;
-import net.runelite.client.plugins.grounditems.GroundItemsPlugin;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.VarbitValues;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
-import net.runelite.client.plugins.microbot.util.ActorModel;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
@@ -26,7 +24,6 @@ import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Food;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Potion;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
-import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
@@ -355,6 +352,21 @@ public class Rs2Player {
             }
             return localPlayer.getPoseAnimation() != localPlayer.getIdlePoseAnimation();
         }).orElse(false);
+    }
+
+    /**
+     * Checks if the specified Rs2PlayerModel is currently moving based on its pose animation.
+     * The model is considered moving if its pose animation is different from its idle pose animation.
+     *
+     * @param playerModel The Rs2PlayerModel to check.
+     * @return {@code true} if the model is moving, {@code false} if it is idle.
+     */
+    public static boolean isMoving(Rs2PlayerModel playerModel) {
+        if (playerModel == null) {
+            return false;
+        }
+
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> playerModel.getPoseAnimation() != playerModel.getIdlePoseAnimation()).orElse(false);
     }
 
     /**
