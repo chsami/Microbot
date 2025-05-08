@@ -34,6 +34,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 // Removed unused imports: net.runelite.api.Item, net.runelite.api.ItemContainer, net.runelite.api.InventoryID
+import net.runelite.api.widgets.ItemWidget; // Added import for ItemWidget
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment; // Added import for Rs2Equipment
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject; // Added import for Rs2GameObject
 
@@ -203,18 +204,37 @@ public class RsAgentTools {
     }
 
     /**
-     * Finds an NPC by name and interacts with the specified action.
+     * Finds an NPC or Object by name and interacts with the specified action.
+     * This method attempts to interact with an NPC first, and if not found,
+     * attempts to interact with a GameObject.
      *
-     * @param name The name of the NPC to interact with.
-     * @param action The action to perform (e.g. "Trade", "Attack").
-     * @return true if the interaction was successful, false otherwise.
+     * @param name The name of the NPC or Object to interact with.
+     * @param action The action to perform (e.g., "Talk-to", "Trade", "Attack", "Chop down", "Open").
+     * @return true if the interaction was successful with either an NPC or Object, false otherwise.
      */
     static public boolean interactWith(String name, String action) {
+        // Try interacting with NPC first
         NPC npc = Rs2Npc.getNpc(name);
         if (npc != null) {
-            return Rs2Npc.interact(new Rs2NpcModel(npc), action);
+            boolean interacted = Rs2Npc.interact(new Rs2NpcModel(npc), action);
+            if (interacted) {
+                Microbot.log(Level.INFO, "Interacted with NPC: " + name + " using action: " + action);
+                return true;
+            } else {
+                Microbot.log(Level.WARN, "Failed to interact with NPC: " + name + " using action: " + action);
+                // Continue to try interacting with an object if NPC interaction failed
+            }
         }
-        return false;
+
+        // If NPC not found or interaction failed, try interacting with GameObject
+        boolean objectInteracted = Rs2GameObject.interact(name, action);
+        if (objectInteracted) {
+            Microbot.log(Level.INFO, "Interacted with GameObject: " + name + " using action: " + action);
+            return true;
+        } else {
+            Microbot.log(Level.WARN, "Failed to interact with GameObject: " + name + " using action: " + action + ". Neither NPC nor GameObject found/interacted with.");
+            return false;
+        }
     }
 
     /**
@@ -566,5 +586,19 @@ public class RsAgentTools {
         }
 
         return objectDescriptions;
+    }
+
+    /**
+     * Interacts with the nearest game object matching the given name using its default action.
+     *
+     * @param name The name of the game object to interact with.
+     * @return true if the interaction was successfully initiated, false otherwise.
+     */
+    static public boolean interactWithObject(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            Microbot.log(Level.WARN, "interactWithObject: Object name is null or empty.");
+            return false;
+        }
+        return Rs2GameObject.interact(name);
     }
 }

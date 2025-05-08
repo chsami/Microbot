@@ -258,6 +258,12 @@ public class Agent {
                         }
                         break;
                     }
+                    case "interactWithObject": {
+                        String objectName = parameters.get("name").getAsString();
+                        boolean success = RsAgentTools.interactWithObject(objectName);
+                        toolResult = success ? "Successfully interacted with object: " + objectName + "." : "Failed to interact with object: " + objectName + ". Object might not be nearby or interactable.";
+                        break;
+                    }
                     case "finish": {
                         String finishResponse = "Task finished."; // Default
                         if (parameters.has("response") && parameters.get("response").isJsonPrimitive() && parameters.get("response").getAsJsonPrimitive().isString()) {
