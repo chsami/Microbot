@@ -7,6 +7,7 @@ import net.runelite.client.Notifier;
 import net.runelite.client.config.Notification;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.birdhouseruns.FornBirdhouseRunsInfo.states;
 import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
@@ -55,7 +56,8 @@ public class FornBirdhouseRunsScript extends Script {
                         Rs2Walker.walkTo(Rs2Bank.getNearestBank().getWorldPoint(), 20);
                         if (!inventorySetup.loadEquipment() || !inventorySetup.loadInventory()) {
                             Microbot.log("Failed to load inventory setup");
-                            Microbot.stopPlugin(plugin);
+                            plugin.reportFinished("Birdhouse run failed to load inventory setup",false);                                                        
+                            this.shutdown();
                             return;
                         }
                         if (Rs2Bank.isOpen()) Rs2Bank.closeBank();
@@ -129,7 +131,8 @@ public class FornBirdhouseRunsScript extends Script {
 
                         botStatus = states.FINISHED;
                         notifier.notify(Notification.ON, "Birdhouse run is finished.");
-                        Microbot.stopPlugin(plugin);
+                        plugin.reportFinished("Birdhouse run finished",true);
+                        this.shutdown();
                         break;
                     case FINISHED:
 

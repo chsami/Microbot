@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.util;
 
+import com.google.common.util.concurrent.Uninterruptibles;
 import lombok.SneakyThrows;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
@@ -24,9 +25,11 @@ public class Global {
 
     public static void sleep(int start) {
         if (Microbot.getClient().isClientThread()) return;
-        long startTime = System.currentTimeMillis();
-        do {
-        } while (System.currentTimeMillis() - startTime < start);
+        try {
+            Thread.sleep(start);
+        } catch (InterruptedException ignored) {
+            // ignore interrupted
+        }
     }
 
     public static void sleep(int start, int end) {
@@ -61,22 +64,31 @@ public class Global {
         if (Microbot.getClient().isClientThread()) return false;
         boolean done = false;
         long startTime = System.currentTimeMillis();
-        do {
-            done = awaitedCondition.getAsBoolean();
-            sleep(100);
-        } while (!done && System.currentTimeMillis() - startTime < time);
+        try {
+            do {
+                done = awaitedCondition.getAsBoolean();
+                sleep(100);
+            } while (!done && System.currentTimeMillis() - startTime < time);
+        } catch (Exception e) {
+            Microbot.logStackTrace("Global Sleep: ", e);
+        }
         return done;
     }
 
     public static boolean sleepUntil(BooleanSupplier awaitedCondition, Runnable action, long timeoutMillis, int sleepMillis) {
+        if (Microbot.getClient().isClientThread()) return false;
         long startTime = System.nanoTime();
         long timeoutNanos = TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
-        while (System.nanoTime() - startTime < timeoutNanos) {
-            action.run();
-            if (awaitedCondition.getAsBoolean()) {
-                return true;
+        try {
+            while (System.nanoTime() - startTime < timeoutNanos) {
+                action.run();
+                if (awaitedCondition.getAsBoolean()) {
+                    return true;
+                }
+                sleep(sleepMillis);
             }
-            sleep(sleepMillis);
+        } catch (Exception e) {
+            Microbot.logStackTrace("Global Sleep: ", e);
         }
         return false;
     }
@@ -84,39 +96,51 @@ public class Global {
     public static boolean sleepUntilTrue(BooleanSupplier awaitedCondition) {
         if (Microbot.getClient().isClientThread()) return false;
         long startTime = System.currentTimeMillis();
-        do {
-            if (awaitedCondition.getAsBoolean()) {
-                return true;
-            }
-            sleep(100);
-        } while (System.currentTimeMillis() - startTime < 5000);
+        try {
+            do {
+                if (awaitedCondition.getAsBoolean()) {
+                    return true;
+                }
+                sleep(100);
+            } while (System.currentTimeMillis() - startTime < 5000);
+        } catch (Exception e) {
+            Microbot.logStackTrace("Global Sleep: ", e);
+        }
         return false;
     }
 
     public static boolean sleepUntilTrue(BooleanSupplier awaitedCondition, int time, int timeout) {
         if (Microbot.getClient().isClientThread()) return false;
         long startTime = System.currentTimeMillis();
-        do {
-            if (awaitedCondition.getAsBoolean()) {
-                return true;
-            }
-            sleep(time);
-        } while (System.currentTimeMillis() - startTime < timeout);
+        try {
+            do {
+                if (awaitedCondition.getAsBoolean()) {
+                    return true;
+                }
+                sleep(time);
+            } while (System.currentTimeMillis() - startTime < timeout);
+        } catch (Exception e) {
+            Microbot.logStackTrace("Global Sleep: ", e);
+        }
         return false;
     }
 
     public static boolean sleepUntilTrue(BooleanSupplier awaitedCondition, BooleanSupplier resetCondition, int time, int timeout) {
         if (Microbot.getClient().isClientThread()) return false;
         long startTime = System.currentTimeMillis();
-        do {
-            if (resetCondition.getAsBoolean()) {
-                startTime = System.currentTimeMillis();
-            }
-            if (awaitedCondition.getAsBoolean()) {
-                return true;
-            }
-            sleep(time);
-        } while (System.currentTimeMillis() - startTime < timeout);
+        try {
+            do {
+                if (resetCondition.getAsBoolean()) {
+                    startTime = System.currentTimeMillis();
+                }
+                if (awaitedCondition.getAsBoolean()) {
+                    return true;
+                }
+                sleep(time);
+            } while (System.currentTimeMillis() - startTime < timeout);
+        } catch (Exception e) {
+            Microbot.logStackTrace("Global Sleep: ", e);
+        }
         return false;
     }
 
@@ -128,15 +152,17 @@ public class Global {
         if (Microbot.getClient().isClientThread()) return;
         boolean done;
         long startTime = System.currentTimeMillis();
-        do {
-            done = Microbot.getClientThread().runOnClientThreadOptional(awaitedCondition::getAsBoolean)
-                    .orElse(false);
-        } while (!done && System.currentTimeMillis() - startTime < time);
+        try {
+            do {
+                done = Microbot.getClientThread().runOnClientThreadOptional(awaitedCondition::getAsBoolean).orElse(false);
+            } while (!done && System.currentTimeMillis() - startTime < time);
+        } catch (Exception e) {
+            Microbot.logStackTrace("Global Sleep: ", e);
+        }
     }
 
     public boolean sleepUntilTick(int ticksToWait) {
         int startTick = Microbot.getClient().getTickCount();
         return Global.sleepUntil(() -> Microbot.getClient().getTickCount() >= startTick + ticksToWait, ticksToWait * 600 + 2000);
     }
-
 }

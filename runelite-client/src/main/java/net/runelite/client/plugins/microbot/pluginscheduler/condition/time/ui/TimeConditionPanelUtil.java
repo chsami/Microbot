@@ -35,17 +35,16 @@ import javax.swing.JComboBox;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 
-
-
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.DayOfWeekCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.IntervalCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeWindowCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.enums.RepeatCycle;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.SingleTriggerTimeCondition;
-
+@Slf4j
 public class TimeConditionPanelUtil {
-    public static void createIntervalConfigPanel(JPanel panel, GridBagConstraints gbc, JPanel configPanel) {
+    public static void createIntervalConfigPanel(JPanel panel, GridBagConstraints gbc) {
         // Title and initial setup
         JLabel titleLabel = new JLabel("Time Interval Configuration:");
         titleLabel.setForeground(Color.WHITE);
@@ -75,7 +74,7 @@ public class TimeConditionPanelUtil {
         panel.add(randomInfoLabel, gbc);
         
         // Store component for later access
-        configPanel.putClientProperty("intervalPicker", intervalPicker);
+        panel.putClientProperty("intervalPicker", intervalPicker);
     }
     
     /**
@@ -124,7 +123,7 @@ public class TimeConditionPanelUtil {
         return intervalPicker.createIntervalCondition();
     }
     
-    public static void createEnhancedTimeWindowConfigPanel(JPanel panel, GridBagConstraints gbc, JPanel configPanel) {
+    public static void createTimeWindowConfigPanel(JPanel panel, GridBagConstraints gbc) {
         // Section Title
         JLabel titleLabel = new JLabel("Time Window Configuration:");
         titleLabel.setForeground(Color.WHITE);
@@ -238,15 +237,15 @@ public class TimeConditionPanelUtil {
         panel.add(timezonePanel, gbc);
         
         // Store components for later access
-        configPanel.putClientProperty("dateRangePanel", dateRangePanel); 
-        configPanel.putClientProperty("timeRangePanel", timeRangePanel);
-        configPanel.putClientProperty("repeatComboBox", repeatComboBox);
-        configPanel.putClientProperty("intervalSpinner", intervalSpinner);
-        configPanel.putClientProperty("randomizeCheckBox", randomizeCheckBox);
-        configPanel.putClientProperty("randomizeSpinner", randomizeSpinner);
+        panel.putClientProperty("dateRangePanel", dateRangePanel); 
+        panel.putClientProperty("timeRangePanel", timeRangePanel);
+        panel.putClientProperty("repeatComboBox", repeatComboBox);
+        panel.putClientProperty("intervalSpinner", intervalSpinner);
+        panel.putClientProperty("randomizeCheckBox", randomizeCheckBox);
+        panel.putClientProperty("randomizeSpinner", randomizeSpinner);
     }
 
-    public static TimeWindowCondition createEnhancedTimeWindowCondition(JPanel configPanel) {
+    public static TimeWindowCondition createTimeWindowCondition(JPanel configPanel) {
         DateRangePanel dateRangePanel = (DateRangePanel) configPanel.getClientProperty("dateRangePanel");
         TimeRangePanel timeRangePanel = (TimeRangePanel) configPanel.getClientProperty("timeRangePanel");
         JComboBox<String> repeatComboBox = (JComboBox<String>) configPanel.getClientProperty("repeatComboBox");
@@ -324,7 +323,7 @@ public class TimeConditionPanelUtil {
      * Creates a panel for configuring SingleTriggerTimeCondition
      * Uses the enhanced SingleDateTimePickerPanel component
      */
-    public static void createSingleTriggerConfigPanel(JPanel panel, GridBagConstraints gbc, JPanel configPanel) {
+    public static void createSingleTriggerConfigPanel(JPanel panel, GridBagConstraints gbc) {
         // Section title
         JLabel titleLabel = new JLabel("One-Time Trigger Configuration:");
         titleLabel.setForeground(Color.WHITE);
@@ -352,7 +351,7 @@ public class TimeConditionPanelUtil {
         panel.add(timezoneLabel, gbc);
         
         // Store components for later access
-        configPanel.putClientProperty("dateTimePicker", dateTimePicker);        
+        panel.putClientProperty("dateTimePicker", dateTimePicker);        
         
     }
     /**
@@ -361,10 +360,10 @@ public class TimeConditionPanelUtil {
      */
     public static SingleTriggerTimeCondition createSingleTriggerCondition(JPanel configPanel) {
         SingleDateTimePickerPanel dateTimePicker = (SingleDateTimePickerPanel) configPanel.getClientProperty("dateTimePicker");        
-        JRadioButton removeAfterRadio = (JRadioButton) configPanel.getClientProperty("singleTriggerRemoveAfterRadio");
         
         if (dateTimePicker == null) {
-            throw new IllegalStateException("Date/time picker not found. Please check the panel configuration.");
+            log.error("Date time picker component not found in panel");
+            return null;
         }
         
         // Get the selected date and time as LocalDateTime
@@ -373,184 +372,180 @@ public class TimeConditionPanelUtil {
         // Convert to ZonedDateTime using the system default timezone
         ZonedDateTime triggerTime = selectedDateTime.atZone(ZoneId.systemDefault());
         
-        
-        // Get post-trigger behavior (whether to remove the condition after triggering)
-        boolean removeAfterTrigger = removeAfterRadio == null || removeAfterRadio.isSelected();
-        
-        // Create the condition with the appropriate settings
+        // Create and return the condition
         return new SingleTriggerTimeCondition(triggerTime);
     }
-    public static void createDayOfWeekConfigPanel(JPanel panel, GridBagConstraints gbc, JPanel configPanel) {
-    // Title and initial setup
-    JLabel titleLabel = new JLabel("Day of Week Configuration:");
-    titleLabel.setForeground(Color.WHITE);
-    titleLabel.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.BOLD));
-    panel.add(titleLabel, gbc);
+    public static void createDayOfWeekConfigPanel(JPanel panel, GridBagConstraints gbc) {
+        // Title and initial setup
+        JLabel titleLabel = new JLabel("Day of Week Configuration:");
+        titleLabel.setForeground(Color.WHITE);
+        titleLabel.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.BOLD));
+        panel.add(titleLabel, gbc);
 
-    // Preset options
-    gbc.gridy++;
-    JPanel presetPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    presetPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-    
-    JButton weekdaysButton = new JButton("Weekdays");
-    weekdaysButton.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-    weekdaysButton.setForeground(Color.WHITE);
-    
-    JButton weekendsButton = new JButton("Weekends");
-    weekendsButton.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-    weekendsButton.setForeground(Color.WHITE);
-    
-    JButton allDaysButton = new JButton("All Days");
-    allDaysButton.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-    allDaysButton.setForeground(Color.WHITE);
-    
-    presetPanel.add(weekdaysButton);
-    presetPanel.add(weekendsButton);
-    presetPanel.add(allDaysButton);
-    
-    panel.add(presetPanel, gbc);
-    
-    // Day checkboxes
-    gbc.gridy++;
-    JPanel daysPanel = new JPanel(new GridLayout(0, 3));
-    daysPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-    
-    String[] dayNames = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
-    JCheckBox[] dayCheckboxes = new JCheckBox[7];
-    
-    for (int i = 0; i < dayNames.length; i++) {
-        dayCheckboxes[i] = new JCheckBox(dayNames[i]);
-        dayCheckboxes[i].setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        dayCheckboxes[i].setForeground(Color.WHITE);
-        daysPanel.add(dayCheckboxes[i]);
-    }
-    
-    // Set up weekdays button
-    weekdaysButton.addActionListener(e -> {
-        for (int i = 0; i < 5; i++) {
-            dayCheckboxes[i].setSelected(true);
+        // Preset options
+        gbc.gridy++;
+        JPanel presetPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        presetPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        
+        JButton weekdaysButton = new JButton("Weekdays");
+        weekdaysButton.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        weekdaysButton.setForeground(Color.WHITE);
+        
+        JButton weekendsButton = new JButton("Weekends");
+        weekendsButton.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        weekendsButton.setForeground(Color.WHITE);
+        
+        JButton allDaysButton = new JButton("All Days");
+        allDaysButton.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        allDaysButton.setForeground(Color.WHITE);
+        
+        presetPanel.add(weekdaysButton);
+        presetPanel.add(weekendsButton);
+        presetPanel.add(allDaysButton);
+        
+        panel.add(presetPanel, gbc);
+        
+        // Day checkboxes
+        gbc.gridy++;
+        JPanel daysPanel = new JPanel(new GridLayout(0, 3));
+        daysPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        
+        String[] dayNames = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
+        JCheckBox[] dayCheckboxes = new JCheckBox[7];
+        
+        for (int i = 0; i < dayNames.length; i++) {
+            dayCheckboxes[i] = new JCheckBox(dayNames[i]);
+            dayCheckboxes[i].setBackground(ColorScheme.DARKER_GRAY_COLOR);
+            dayCheckboxes[i].setForeground(Color.WHITE);
+            daysPanel.add(dayCheckboxes[i]);
         }
-        dayCheckboxes[5].setSelected(false);
-        dayCheckboxes[6].setSelected(false);
-    });
-    
-    // Set up weekends button
-    weekendsButton.addActionListener(e -> {
-        for (int i = 0; i < 5; i++) {
-            dayCheckboxes[i].setSelected(false);
-        }
-        dayCheckboxes[5].setSelected(true);
-        dayCheckboxes[6].setSelected(true);
-    });
-    
-    // Set up all days button
-    allDaysButton.addActionListener(e -> {
-        for (JCheckBox checkbox : dayCheckboxes) {
-            checkbox.setSelected(true);
-        }
-    });
-    
-    panel.add(daysPanel, gbc);
-    
-    // Add usage limits panel
-    gbc.gridy++;
-    JPanel usageLimitsPanel = new JPanel();
-    usageLimitsPanel.setLayout(new BoxLayout(usageLimitsPanel, BoxLayout.Y_AXIS));
-    usageLimitsPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-    
-    // Daily limit panel
-    JPanel dailyLimitPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    dailyLimitPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-    
-    JLabel dailyLimitLabel = new JLabel("Max repeats per day:");
-    dailyLimitLabel.setForeground(Color.WHITE);
-    dailyLimitPanel.add(dailyLimitLabel);
-    
-    SpinnerNumberModel dailyLimitModel = new SpinnerNumberModel(0, 0, 100, 1);
-    JSpinner dailyLimitSpinner = new JSpinner(dailyLimitModel);
-    dailyLimitSpinner.setPreferredSize(new Dimension(70, dailyLimitSpinner.getPreferredSize().height));
-    dailyLimitPanel.add(dailyLimitSpinner);
-    
-    JLabel dailyUnlimitedLabel = new JLabel("(0 = unlimited)");
-    dailyUnlimitedLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-    dailyUnlimitedLabel.setFont(FontManager.getRunescapeSmallFont());
-    dailyLimitPanel.add(dailyUnlimitedLabel);
-    
-    usageLimitsPanel.add(dailyLimitPanel);
-    
-    // Weekly limit panel
-    JPanel weeklyLimitPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    weeklyLimitPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-    
-    JLabel weeklyLimitLabel = new JLabel("Max repeats per week:");
-    weeklyLimitLabel.setForeground(Color.WHITE);
-    weeklyLimitPanel.add(weeklyLimitLabel);
-    
-    SpinnerNumberModel weeklyLimitModel = new SpinnerNumberModel(0, 0, 100, 1);
-    JSpinner weeklyLimitSpinner = new JSpinner(weeklyLimitModel);
-    weeklyLimitSpinner.setPreferredSize(new Dimension(70, weeklyLimitSpinner.getPreferredSize().height));
-    weeklyLimitPanel.add(weeklyLimitSpinner);
-    
-    JLabel weeklyUnlimitedLabel = new JLabel("(0 = unlimited)");
-    weeklyUnlimitedLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-    weeklyUnlimitedLabel.setFont(FontManager.getRunescapeSmallFont());
-    weeklyLimitPanel.add(weeklyUnlimitedLabel);
-    
-    usageLimitsPanel.add(weeklyLimitPanel);
-    
-    panel.add(usageLimitsPanel, gbc);
-    
-    // Add interval configuration using the reusable IntervalPickerPanel
-    gbc.gridy++;
-    JPanel intervalOptionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    intervalOptionPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-    
-    JCheckBox useIntervalCheckBox = new JCheckBox("Use interval between triggers");
-    useIntervalCheckBox.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-    useIntervalCheckBox.setForeground(Color.WHITE);
-    intervalOptionPanel.add(useIntervalCheckBox);
-    
-    panel.add(intervalOptionPanel, gbc);
-    
-    // Add the interval picker panel (initially disabled)
-    gbc.gridy++;
-    IntervalPickerPanel intervalPicker = new IntervalPickerPanel(false); // No presets needed
-    intervalPicker.setEnabled(false);
-    panel.add(intervalPicker, gbc);
-    
-    // Toggle interval picker based on checkbox
-    useIntervalCheckBox.addActionListener(e -> {
-        boolean useInterval = useIntervalCheckBox.isSelected();
-        intervalPicker.setEnabled(useInterval);
-    });
-    
-    // Description
-    gbc.gridy++;
-    JLabel descriptionLabel = new JLabel("Plugin will only run on selected days of the week");
-    descriptionLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-    descriptionLabel.setFont(FontManager.getRunescapeSmallFont());
-    panel.add(descriptionLabel, gbc);
-    
-    // Add limits description
-    gbc.gridy++;
-    JLabel limitsLabel = new JLabel("Daily/weekly limits prevent excessive usage");
-    limitsLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-    limitsLabel.setFont(FontManager.getRunescapeSmallFont());
-    panel.add(limitsLabel, gbc);
-    
-    // Add interval description
-    gbc.gridy++;
-    JLabel intervalDescLabel = new JLabel("Intervals control time between triggers on the same day");
-    intervalDescLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-    intervalDescLabel.setFont(FontManager.getRunescapeSmallFont());
-    panel.add(intervalDescLabel, gbc);
-    
-    // Store components for later access
-    configPanel.putClientProperty("dayCheckboxes", dayCheckboxes);
-    configPanel.putClientProperty("dailyLimitSpinner", dailyLimitSpinner);
-    configPanel.putClientProperty("weeklyLimitSpinner", weeklyLimitSpinner);
-    configPanel.putClientProperty("useIntervalCheckBox", useIntervalCheckBox);
-    configPanel.putClientProperty("intervalPicker", intervalPicker);
+        
+        // Set up weekdays button
+        weekdaysButton.addActionListener(e -> {
+            for (int i = 0; i < 5; i++) {
+                dayCheckboxes[i].setSelected(true);
+            }
+            dayCheckboxes[5].setSelected(false);
+            dayCheckboxes[6].setSelected(false);
+        });
+        
+        // Set up weekends button
+        weekendsButton.addActionListener(e -> {
+            for (int i = 0; i < 5; i++) {
+                dayCheckboxes[i].setSelected(false);
+            }
+            dayCheckboxes[5].setSelected(true);
+            dayCheckboxes[6].setSelected(true);
+        });
+        
+        // Set up all days button
+        allDaysButton.addActionListener(e -> {
+            for (JCheckBox checkbox : dayCheckboxes) {
+                checkbox.setSelected(true);
+            }
+        });
+        
+        panel.add(daysPanel, gbc);
+        
+        // Add usage limits panel
+        gbc.gridy++;
+        JPanel usageLimitsPanel = new JPanel();
+        usageLimitsPanel.setLayout(new BoxLayout(usageLimitsPanel, BoxLayout.Y_AXIS));
+        usageLimitsPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        
+        // Daily limit panel
+        JPanel dailyLimitPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        dailyLimitPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        
+        JLabel dailyLimitLabel = new JLabel("Max repeats per day:");
+        dailyLimitLabel.setForeground(Color.WHITE);
+        dailyLimitPanel.add(dailyLimitLabel);
+        
+        SpinnerNumberModel dailyLimitModel = new SpinnerNumberModel(0, 0, 100, 1);
+        JSpinner dailyLimitSpinner = new JSpinner(dailyLimitModel);
+        dailyLimitSpinner.setPreferredSize(new Dimension(70, dailyLimitSpinner.getPreferredSize().height));
+        dailyLimitPanel.add(dailyLimitSpinner);
+        
+        JLabel dailyUnlimitedLabel = new JLabel("(0 = unlimited)");
+        dailyUnlimitedLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        dailyUnlimitedLabel.setFont(FontManager.getRunescapeSmallFont());
+        dailyLimitPanel.add(dailyUnlimitedLabel);
+        
+        usageLimitsPanel.add(dailyLimitPanel);
+        
+        // Weekly limit panel
+        JPanel weeklyLimitPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        weeklyLimitPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        
+        JLabel weeklyLimitLabel = new JLabel("Max repeats per week:");
+        weeklyLimitLabel.setForeground(Color.WHITE);
+        weeklyLimitPanel.add(weeklyLimitLabel);
+        
+        SpinnerNumberModel weeklyLimitModel = new SpinnerNumberModel(0, 0, 100, 1);
+        JSpinner weeklyLimitSpinner = new JSpinner(weeklyLimitModel);
+        weeklyLimitSpinner.setPreferredSize(new Dimension(70, weeklyLimitSpinner.getPreferredSize().height));
+        weeklyLimitPanel.add(weeklyLimitSpinner);
+        
+        JLabel weeklyUnlimitedLabel = new JLabel("(0 = unlimited)");
+        weeklyUnlimitedLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        weeklyUnlimitedLabel.setFont(FontManager.getRunescapeSmallFont());
+        weeklyLimitPanel.add(weeklyUnlimitedLabel);
+        
+        usageLimitsPanel.add(weeklyLimitPanel);
+        
+        panel.add(usageLimitsPanel, gbc);
+        
+        // Add interval configuration using the reusable IntervalPickerPanel
+        gbc.gridy++;
+        JPanel intervalOptionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        intervalOptionPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        
+        JCheckBox useIntervalCheckBox = new JCheckBox("Use interval between triggers");
+        useIntervalCheckBox.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        useIntervalCheckBox.setForeground(Color.WHITE);
+        intervalOptionPanel.add(useIntervalCheckBox);
+        
+        panel.add(intervalOptionPanel, gbc);
+        
+        // Add the interval picker panel (initially disabled)
+        gbc.gridy++;
+        IntervalPickerPanel intervalPicker = new IntervalPickerPanel(false); // No presets needed
+        intervalPicker.setEnabled(false);
+        panel.add(intervalPicker, gbc);
+        
+        // Toggle interval picker based on checkbox
+        useIntervalCheckBox.addActionListener(e -> {
+            boolean useInterval = useIntervalCheckBox.isSelected();
+            intervalPicker.setEnabled(useInterval);
+        });
+        
+        // Description
+        gbc.gridy++;
+        JLabel descriptionLabel = new JLabel("Plugin will only run on selected days of the week");
+        descriptionLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        descriptionLabel.setFont(FontManager.getRunescapeSmallFont());
+        panel.add(descriptionLabel, gbc);
+        
+        // Add limits description
+        gbc.gridy++;
+        JLabel limitsLabel = new JLabel("Daily/weekly limits prevent excessive usage");
+        limitsLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        limitsLabel.setFont(FontManager.getRunescapeSmallFont());
+        panel.add(limitsLabel, gbc);
+        
+        // Add interval description
+        gbc.gridy++;
+        JLabel intervalDescLabel = new JLabel("Intervals control time between triggers on the same day");
+        intervalDescLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        intervalDescLabel.setFont(FontManager.getRunescapeSmallFont());
+        panel.add(intervalDescLabel, gbc);
+        
+        // Store components for later access
+        panel.putClientProperty("dayCheckboxes", dayCheckboxes);
+        panel.putClientProperty("dailyLimitSpinner", dailyLimitSpinner);
+        panel.putClientProperty("weeklyLimitSpinner", weeklyLimitSpinner);
+        panel.putClientProperty("useIntervalCheckBox", useIntervalCheckBox);
+        panel.putClientProperty("intervalPicker", intervalPicker);
 }
 public static DayOfWeekCondition createDayOfWeekCondition(JPanel configPanel) {
     JCheckBox[] dayCheckboxes = (JCheckBox[]) configPanel.getClientProperty("dayCheckboxes");
@@ -628,76 +623,16 @@ public static DayOfWeekCondition createDayOfWeekCondition(JPanel configPanel) {
      * Sets up the interval condition panel with values from an existing condition
      */
     private static void setupIntervalCondition(JPanel panel, IntervalCondition condition) {
-        JRadioButton fixedRadioButton = (JRadioButton) panel.getClientProperty("fixedRadioButton");
-        JSpinner hoursSpinner = (JSpinner) panel.getClientProperty("hoursSpinner");
-        JSpinner minutesSpinner = (JSpinner) panel.getClientProperty("minutesSpinner");
-        JSpinner minHoursSpinner = (JSpinner) panel.getClientProperty("minHoursSpinner");
-        JSpinner minMinutesSpinner = (JSpinner) panel.getClientProperty("minMinutesSpinner");
-        JSpinner maxHoursSpinner = (JSpinner) panel.getClientProperty("maxHoursSpinner");
-        JSpinner maxMinutesSpinner = (JSpinner) panel.getClientProperty("maxMinutesSpinner");
+        // Get the IntervalPickerPanel component which encapsulates all the interval UI controls
+        IntervalPickerPanel intervalPicker = (IntervalPickerPanel) panel.getClientProperty("intervalPicker");
         
-        if (fixedRadioButton == null || hoursSpinner == null || minutesSpinner == null ||
-            minHoursSpinner == null || minMinutesSpinner == null || 
-            maxHoursSpinner == null || maxMinutesSpinner == null) {
+        if (intervalPicker == null) {
+            log.error("IntervalPickerPanel component not found for interval condition setup");
             return; // Missing UI components
         }
         
-        // Check if this is a randomized min-max interval or a fixed/factor interval
-        if (condition.isRandomized()) {
-            // Use randomized mode
-            fixedRadioButton.setSelected(false);
-            
-            // Get duration values for min interval
-            long minTotalMinutes = condition.getMinInterval().toMinutes();
-            long minHours = minTotalMinutes / 60;
-            long minMinutes = minTotalMinutes % 60;
-            
-            // Get duration values for max interval
-            long maxTotalMinutes = condition.getMaxInterval().toMinutes();
-            long maxHours = maxTotalMinutes / 60;
-            long maxMinutes = maxTotalMinutes % 60;
-            
-            // Set values on spinners
-            minHoursSpinner.setValue((int)minHours);
-            minMinutesSpinner.setValue((int)minMinutes);
-            maxHoursSpinner.setValue((int)maxHours);
-            maxMinutesSpinner.setValue((int)maxMinutes);
-            
-            // Also update the fixed spinner with the average value
-            long avgTotalMinutes = (minTotalMinutes + maxTotalMinutes) / 2;
-            hoursSpinner.setValue((int)(avgTotalMinutes / 60));
-            minutesSpinner.setValue((int)(avgTotalMinutes % 60));
-        } else {
-            // Use fixed mode
-            fixedRadioButton.setSelected(true);
-            
-            // Get duration values from the base interval
-            long totalMinutes = condition.getInterval().toMinutes();
-            long hours = totalMinutes / 60;
-            long minutes = totalMinutes % 60;
-            
-            // Set values on fixed spinners
-            hoursSpinner.setValue((int)hours);
-            minutesSpinner.setValue((int)minutes);
-            
-            // Calculate min/max values based on randomization factor
-            if (condition.isRandomize() && condition.getRandomFactor() > 0) {
-                double factor = condition.getRandomFactor();
-                long minTotalMinutes = Math.max(1, (long)(totalMinutes * (1 - factor)));
-                long maxTotalMinutes = (long)(totalMinutes * (1 + factor));
-                
-                minHoursSpinner.setValue((int)(minTotalMinutes / 60));
-                minMinutesSpinner.setValue((int)(minTotalMinutes % 60));
-                maxHoursSpinner.setValue((int)(maxTotalMinutes / 60));
-                maxMinutesSpinner.setValue((int)(maxTotalMinutes % 60));
-            } else {
-                // No randomization - set min/max to same as fixed
-                minHoursSpinner.setValue((int)hours);
-                minMinutesSpinner.setValue((int)minutes);
-                maxHoursSpinner.setValue((int)hours);
-                maxMinutesSpinner.setValue((int)minutes);
-            }
-        }
+        // Use the IntervalPickerPanel's built-in method to configure itself from the condition
+        intervalPicker.setIntervalCondition(condition);                
     }
 
     /**

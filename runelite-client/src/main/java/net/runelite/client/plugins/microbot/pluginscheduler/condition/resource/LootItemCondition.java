@@ -49,15 +49,19 @@ import static net.runelite.api.TileItem.OWNERSHIP_NONE;
 @Getter
 @Slf4j
 public class LootItemCondition extends ResourceCondition {    
+    
+    public static String getVersion() {
+        return "0.0.1";
+    }
     private final int targetAmountMin;
     private final int targetAmountMax;
     private final boolean includeNoted;
     private final boolean includeNoneOwner;
     private final boolean ignorePlayerDropped;
     
-    private int currentTargetAmount;
-    private int currentTrackedCount;
-    private int lastInventoryCount;
+    private transient int currentTargetAmount;
+    private transient int currentTrackedCount;
+    private transient int lastInventoryCount;
     
 
     private final Map<WorldPoint, Integer> trackedItemQuantities = new HashMap<>();

@@ -46,41 +46,27 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.Singl
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeCondition;
 
 /**
- * Manages logical conditions for plugin scheduling and user-defined triggers in a hierarchical structure.
+ * Manages a hierarchical structure of logical conditions for plugin scheduling.
  * <p>
- * The ConditionManager provides a framework for organizing, evaluating, and monitoring complex
- * condition structures using logical operators (AND/OR) to determine when plugin execution
- * should occur. It maintains separate logical trees for plugin-defined and user-defined conditions,
- * which are combined at evaluation time with appropriate logical operators.
- * <p>
- * Key features:
+ * The ConditionManager maintains two primary logical condition structures:
  * <ul>
- *   <li>Separate management of plugin-defined and user-defined conditions</li>
- *   <li>Support for complex nested logical structures (AND/OR)</li>
- *   <li>Event propagation to registered conditions</li>
- *   <li>Time-based trigger calculation and progress tracking</li>
- *   <li>Condition tree manipulation (adding, removing, finding conditions)</li>
+ *   <li>Plugin conditions: Defined and managed by the plugin itself</li>
+ *   <li>User conditions: Defined and managed by the user of the plugin</li>
  * </ul>
  * <p>
- * The class implements event handlers for various RuneLite events, passing them to all registered
- * conditions so they can update their state accordingly. It also provides methods to calculate
- * when conditions will be satisfied next and track progress toward these triggers.
+ * These structures can contain nested AND/OR logical conditions with various condition types
+ * including time-based conditions, resource conditions, game event conditions, etc.
  * <p>
- * Usage example:
- * <pre>
- * ConditionManager manager = new ConditionManager();
- * manager.setRequireAll(); // Use AND logic for user conditions
- * manager.addUserCondition(new InventoryItemCondition(ItemID.COINS, 1000));
- * manager.addUserCondition(new SkillLevelCondition(Skill.ATTACK, 60));
- * 
- * // Check if conditions are met
- * boolean ready = manager.areConditionsMet();
- * </pre>
+ * The manager processes RuneLite events and updates condition states accordingly,
+ * allowing plugins to execute based on complex condition combinations.
  */
 @Slf4j
 public class ConditionManager implements AutoCloseable {
     
-    // Centralized watchdog executor service shared by all ConditionManager instances
+    /**
+     * Shared thread pool for condition watchdog tasks across all ConditionManager instances.
+     * Uses daemon threads to prevent blocking application shutdown.
+     */
     private transient static final ScheduledExecutorService SHARED_WATCHDOG_EXECUTOR = 
         Executors.newScheduledThreadPool(2, r -> {
             Thread t = new Thread(r, "ConditionWatchdog");
@@ -88,26 +74,90 @@ public class ConditionManager implements AutoCloseable {
             return t;
         });
     
-    // Track all futures from this manager to ensure proper cleanup
+    /**
+     * Keeps track of all scheduled futures created by this manager's watchdog system.
+     * Used to ensure all scheduled tasks are properly canceled when the manager is closed.
+     */
     private transient final List<ScheduledFuture<?>> watchdogFutures = 
         new ArrayList<>();
     
+    /**
+     * Plugin-defined logical condition structure. Contains conditions defined by the plugin itself.
+     * This is combined with user conditions using AND logic when evaluating the full condition set.
+     */
     private LogicalCondition pluginCondition = new OrCondition();
+    
+    /**
+     * User-defined logical condition structure. Contains conditions defined by the user.
+     * This is combined with plugin conditions using AND logic when evaluating the full condition set.
+     */
     @Getter
     private LogicalCondition userLogicalCondition;
+    
+    /**
+     * Reference to the event bus for registering condition event listeners.
+     */
     private final EventBus eventBus;
+    
+    /**
+     * Tracks whether this manager has registered its event listeners with the event bus.
+     */
     private boolean eventsRegistered = false;
+    
+    /**
+     * Indicates whether condition watchdog tasks are currently active.
+     */
+    private boolean watchdogsRunning = false;
+    
+    /**
+     * Stores the current update strategy for watchdog condition updates.
+     * Controls how new conditions are merged with existing ones during watchdog checks.
+     */
+    private UpdateOption currentWatchdogUpdateOption = UpdateOption.SYNC;
+    
+    /**
+     * The current interval in milliseconds between watchdog condition checks.
+     */
+    private long currentWatchdogInterval = 10000; // Default interval
+    
+    /**
+     * The current supplier function that provides updated conditions for watchdog checks.
+     */
+    private Supplier<LogicalCondition> currentWatchdogSupplier = null;
+
+    /**
+     * Creates a new condition manager with default settings.
+     * Initializes the user logical condition as an AND condition (all conditions must be met).
+     */
     public ConditionManager() {
         this.eventBus = Microbot.getEventBus();
         userLogicalCondition = new AndCondition();
-
     }
+
+    /**
+     * Sets the plugin-defined logical condition structure.
+     * 
+     * @param condition The logical condition to set as the plugin structure
+     */
     public void setPluginCondition(LogicalCondition condition) {
         pluginCondition = condition;
     }
+    
+    /**
+     * Gets the plugin-defined logical condition structure.
+     * 
+     * @return The current plugin logical condition, or a default OrCondition if none was set
+     */
     public LogicalCondition getPluginCondition() {
         return pluginCondition;
-    }    
+    }
+    
+    /**
+     * Returns a combined list of all conditions from both plugin and user condition structures.
+     * Plugin conditions are listed first, followed by user conditions.
+     * 
+     * @return A list containing all conditions managed by this ConditionManager
+     */
     public List<Condition> getConditions() {
         List<Condition> conditions = new ArrayList<>();
         if (pluginCondition != null) {
@@ -603,7 +653,13 @@ public class ConditionManager implements AutoCloseable {
             log.warn("Attempted to remove a plugin-defined condition");
             return false;
         }
-        
+        if (condition instanceof LogicalCondition) {
+            // If the condition is a logical condition, check if it's part of the user logical structure
+            if (userLogicalCondition.equals(condition)) {
+                log.warn("Attempted to remove the user logical condition itself");
+                userLogicalCondition =  new AndCondition(); 
+            }
+        }
         // Remove from user logical structure
         if (userLogicalCondition.removeCondition(condition)) {
             return true;
@@ -1580,7 +1636,7 @@ public void onStatChanged(StatChanged event) {
      */
     public boolean updatePluginCondition(LogicalCondition newPluginCondition) {
         // Use the default update option (ADD_ONLY)
-        return updatePluginCondition(newPluginCondition, UpdateOption.ADD_ONLY);
+        return updatePluginCondition(newPluginCondition, UpdateOption.SYNC);
     }
     
     /**
@@ -1604,7 +1660,7 @@ public void onStatChanged(StatChanged event) {
      * @param preserveState If true, existing condition state is preserved when possible
      * @return true if changes were made to the plugin condition, false otherwise
      */
-    public boolean updatePluginCondition(LogicalCondition newPluginCondition, UpdateOption updateOption, boolean preserveState) {
+    public boolean updatePluginCondition(LogicalCondition newPluginCondition, UpdateOption updateOption, boolean preserveState) {        
         if (newPluginCondition == null) {
             return false;
         }
@@ -1635,9 +1691,9 @@ public void onStatChanged(StatChanged event) {
         
         if (!optimizedNewCondition.equals(pluginCondition)) {
             StringBuilder sb = new StringBuilder();
-            sb.append("New Plugin Condition Detected:\n");
-            sb.append("newPluginCondition: \n\n").append(optimizedNewCondition.getDescription()).append("\n\n");
-            sb.append("pluginCondition: \n\n").append(pluginCondition.getDescription()).append("\n\n");
+            sb.append("\nNew Plugin Condition Detected:\n");
+            sb.append("newPluginCondition: \n\n\t").append(optimizedNewCondition.getDescription()).append("\n\n");
+            sb.append("pluginCondition: \n\n\t").append(pluginCondition.getDescription()).append("\n\n");
             sb.append("Differences: \n\t").append(pluginCondition.getStructureDifferences(optimizedNewCondition));
             log.info(sb.toString());
             
@@ -1660,7 +1716,7 @@ public void onStatChanged(StatChanged event) {
                 return true;
             } else if (updateOption == UpdateOption.SYNC) {
                 // For SYNC with type mismatch, log a warning but try to merge anyway
-                log.warn("Attempting to synchronize plugin conditions with different logical types: {} ({})-> {} ({})", 
+                log.warn("\nAttempting to synchronize plugin conditions with different logical types: {} ({})-> {} ({})", 
                         pluginCondition.getClass().getSimpleName(),pluginCondition.getConditions().size(),
                         newPluginCondition.getClass().getSimpleName(),newPluginCondition.getConditions().size());
                 // Continue with sync by creating a new condition of the correct type
@@ -1692,7 +1748,9 @@ public void onStatChanged(StatChanged event) {
         
         // Use the LogicalCondition's updateLogicalStructure method with the specified options
         boolean conditionsUpdated = pluginCondition.updateLogicalStructure(
-            newPluginCondition, updateOption, preserveState);
+            newPluginCondition, 
+            updateOption, 
+            preserveState);
         
         if (!optimizedNewCondition.equals(pluginCondition)) {            
             StringBuilder sb = new StringBuilder();
@@ -1766,9 +1824,8 @@ public void onStatChanged(StatChanged event) {
             }
             watchdogFutures.clear();
         }
+        watchdogsRunning = false;
     }
-    
-   
     
     /**
      * Shutdowns the shared watchdog executor service.
@@ -1801,7 +1858,7 @@ public void onStatChanged(StatChanged event) {
             java.util.function.Supplier<LogicalCondition> conditionSupplier,
             long interval) {
         
-        return scheduleConditionWatchdog(conditionSupplier, interval, UpdateOption.ADD_ONLY);
+        return scheduleConditionWatchdog(conditionSupplier, interval, UpdateOption.SYNC);
     }
     
     /**
@@ -1817,6 +1874,18 @@ public void onStatChanged(StatChanged event) {
             java.util.function.Supplier<LogicalCondition> conditionSupplier,
             long interval,
             UpdateOption updateOption) {
+        if(areWatchdogsRunning() ) {
+            
+            log.debug("Watchdogs were already running, cancelling all before starting new ones");            
+        }
+        if (!watchdogFutures.isEmpty()) {
+            watchdogFutures.clear();
+        }
+        
+        // Store the configuration for possible later resume
+        currentWatchdogSupplier = conditionSupplier;
+        currentWatchdogInterval = interval;
+        currentWatchdogUpdateOption = updateOption;
         
         ScheduledFuture<?> future = SHARED_WATCHDOG_EXECUTOR.scheduleWithFixedDelay(() -> { //scheduleWithFixedRate
             try {
@@ -1851,10 +1920,122 @@ public void onStatChanged(StatChanged event) {
             watchdogFutures.add(future);
         }
         
+        watchdogsRunning = true;
         return future;
     }
 
+    /**
+     * Checks if watchdogs are currently running for this condition manager.
+     * 
+     * @return true if at least one watchdog is active
+     */
+    public boolean areWatchdogsRunning() {
+        if (!watchdogsRunning) {
+            return false;
+        }
+        
+        // Double-check by examining futures
+        synchronized (watchdogFutures) {
+            if (watchdogFutures.isEmpty()) {
+                watchdogsRunning = false;
+                return false;
+            }
+            
+            // Check if at least one watchdog is active
+            for (ScheduledFuture<?> future : watchdogFutures) {
+                if (future != null && !future.isDone() && !future.isCancelled()) {
+                    return true;
+                }
+            }
+            
+            // No active watchdogs found
+            watchdogsRunning = false;
+            return false;
+        }
+    }
     
+    /**
+     * Pauses all watchdog tasks without removing them completely.
+     * This allows them to be resumed later with the same settings.
+     * 
+     * @return true if watchdogs were successfully paused
+     */
+    public boolean pauseWatchdogs() {
+        if (!watchdogsRunning) {
+            return false; // Nothing to pause
+        }
+        
+        cancelAllWatchdogs();
+        watchdogsRunning = false;
+        log.debug("Watchdogs paused");
+        return true;
+    }
+    
+    /**
+     * Resumes watchdogs that were previously paused with the same configuration.
+     * If no watchdog was previously configured, this does nothing.
+     * 
+     * @return true if watchdogs were successfully resumed
+     */
+    public boolean resumeWatchdogs() {
+        if (watchdogsRunning || currentWatchdogSupplier == null) {
+            return false; // Already running or never configured
+        }
+        
+        scheduleConditionWatchdog(
+            currentWatchdogSupplier,
+            currentWatchdogInterval,
+            currentWatchdogUpdateOption
+        );
+        
+        watchdogsRunning = true;
+        log.debug("Watchdogs resumed with interval {}ms and update option {}", 
+                  currentWatchdogInterval, currentWatchdogUpdateOption);
+        return true;
+    }
+    
+    /**
+     * Registers events and starts watchdogs in one call.
+     * If watchdogs are already configured but paused, this will resume them.
+     * 
+     * @param conditionSupplier The supplier for conditions
+     * @param intervalMillis The interval for watchdog checks
+     * @param updateOption How to update conditions
+     * @return true if successfully started
+     */
+    public boolean registerEventsAndStartWatchdogs(
+            Supplier<LogicalCondition> conditionSupplier,
+            long intervalMillis,
+            UpdateOption updateOption) {
+        
+        // Register for events first
+        registerEvents();
+        
+        // Then setup watchdogs
+        if (watchdogsRunning) {
+            // If already running with different settings, restart
+            pauseWatchdogs();
+        }
+        
+        // Store current configuration
+        currentWatchdogSupplier = conditionSupplier;
+        currentWatchdogInterval = intervalMillis;
+        currentWatchdogUpdateOption = updateOption;
+        
+        // Start the watchdogs
+        scheduleConditionWatchdog(conditionSupplier, intervalMillis, updateOption);
+        watchdogsRunning = true;
+        
+        return true;
+    }
+    
+    /**
+     * Unregisters events and pauses watchdogs in one call.
+     */
+    public void unregisterEventsAndPauseWatchdogs() {
+        unregisterEvents();
+        pauseWatchdogs();
+    }
 
     /**
      * Cleans up non-triggerable conditions from both plugin and user logical structures.

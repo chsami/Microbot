@@ -30,7 +30,7 @@ public class SkillConditionPanelUtil {
     /**
      * Creates the skill level condition configuration panel
      */
-    public static void createSkillLevelConfigPanel(JPanel panel, GridBagConstraints gbc, JPanel configPanel, boolean stopConditionPanel) {
+    public static void createSkillLevelConfigPanel(JPanel panel, GridBagConstraints gbc, boolean stopConditionPanel) {
         // --- Add skill selection section ---
         JComboBox<String> skillComboBox = createSkillSelector();
         addSkillSelectionSection(panel, gbc, skillComboBox);
@@ -88,7 +88,7 @@ public class SkillConditionPanelUtil {
         addDescriptionLabel(panel, gbc, stopConditionPanel);
         
         // Store components in configPanel client properties for later access
-        storeConfigComponents(configPanel, skillComboBox, levelSpinner, minSpinner, maxSpinner, 
+        storeConfigComponents(panel, skillComboBox, levelSpinner, minSpinner, maxSpinner, 
                              randomizeCheckBox, relativeButton, absoluteButton, targetLevelLabel);
     }
 

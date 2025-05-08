@@ -21,7 +21,10 @@ import java.util.Optional;
 @Slf4j
 @EqualsAndHashCode(callSuper = false, exclude = {})
 public class SingleTriggerTimeCondition extends TimeCondition {
-    
+
+    public static String getVersion() {
+        return "0.0.1";
+    }
     @Getter
     private final ZonedDateTime targetTime;
     

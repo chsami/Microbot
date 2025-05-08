@@ -1,8 +1,13 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.condition.skill;
 
+
+
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.GameState;
 import net.runelite.api.Skill;
+import net.runelite.api.events.GameStateChanged;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.ConditionType;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 
@@ -11,7 +16,13 @@ import net.runelite.client.plugins.microbot.util.math.Rs2Random;
  */
 @Getter 
 @EqualsAndHashCode(callSuper = true)
+@Slf4j
 public class SkillXpCondition extends SkillCondition {
+    
+
+    public static String getVersion() {
+        return "0.0.1";
+    }
     private transient long currentTargetXp;// relative and absolute mode difference
     private final long targetXpMin;
     private final long targetXpMax;
@@ -223,18 +234,19 @@ public class SkillXpCondition extends SkillCondition {
         
         if (relative) {
             long xpGained = getXpGained();
+            long currentXp = getCurrentXp();                       
             String randomRangeInfo = "";
             
             if (targetXpMin != targetXpMax) {
                 randomRangeInfo = String.format(" (randomized from %d-%d)", targetXpMin, targetXpMax);
             }
             
-            return String.format("Gain %d %s XP%s (gained: %d - %.1f%%)", 
+            return String.format("Gain Relative %d %s XP%s (gained: %d - %.1f%%, current total: %d)", 
                 currentTargetXp, 
                 skillName,
-                randomRangeInfo,
+                randomRangeInfo,                
                 xpGained,
-                getProgressPercentage());
+                getProgressPercentage(),currentXp);
         } else {
             long currentXp = getCurrentXp();
             String randomRangeInfo = "";
@@ -244,18 +256,20 @@ public class SkillXpCondition extends SkillCondition {
             }
             
             if (currentXp >= currentTargetXp) {
-                return String.format("Reach %d %s XP%s (currently: %d, goal reached)", 
+                return String.format("Reach Total %d %s XP%s (currently: %d, goal reached)", 
                         currentTargetXp, 
                         skillName,
                         randomRangeInfo,
                         currentXp);
             } else {
-                return String.format("Reach %d %s XP%s (currently: %d, need %d more)", 
+                return String.format("Reach Total %d %s XP%s (currently: %d, need %d more ( %.1f%%))", 
                         currentTargetXp, 
                         skillName,
                         randomRangeInfo,
                         currentXp,
-                        getXpRemaining());
+                        getXpRemaining(),
+                        getProgressPercentage()
+                        );
             }
         }
     }
@@ -312,7 +326,7 @@ public class SkillXpCondition extends SkillCondition {
         String skillName = isTotal() ? "Total" : skill.getName();
         
         // Basic information
-        sb.append("SkillXpCondition:\n");
+        sb.append("\nSkillXpCondition:\n");
         sb.append("  ┌─ Configuration ─────────────────────────────\n");
         sb.append("  │ Skill: ").append(skillName).append("\n");
         
@@ -360,5 +374,14 @@ public class SkillXpCondition extends SkillCondition {
         sb.append("    Current XP: ").append(getCurrentXp());
         
         return sb.toString();
+    }
+    @Override
+    public void onGameStateChanged(GameStateChanged gameStateChanged) {
+        if (gameStateChanged.getGameState() == GameState.LOGGED_IN) {
+            super.onGameStateChanged(gameStateChanged);
+            initializeXpTracking();
+        }else{
+            
+        }
     }
 }

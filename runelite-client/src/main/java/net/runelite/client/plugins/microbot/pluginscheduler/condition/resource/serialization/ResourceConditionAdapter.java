@@ -8,8 +8,7 @@ import java.lang.reflect.Type;
 import java.util.regex.Pattern;
 
 /**
- * Base adapter for handling serialization and deserialization of ResourceCondition objects.
- * This adapter provides common functionality for all resource condition adapters.
+ * Adapter for handling serialization and deserialization of ResourceCondition objects.
  */
 @Slf4j
 public class ResourceConditionAdapter implements JsonSerializer<ResourceCondition>, JsonDeserializer<ResourceCondition> {
@@ -18,13 +17,26 @@ public class ResourceConditionAdapter implements JsonSerializer<ResourceConditio
     public JsonElement serialize(ResourceCondition src, Type typeOfSrc, JsonSerializationContext context) {
         JsonObject result = new JsonObject();
         
-        // Store the exact condition type (full class name)
-        result.addProperty("conditionType", src.getClass().getName());
+        // Add type information
+        result.addProperty("type", src.getClass().getName());
         
-        // Add common properties for all resource conditions
-        if (src.getItemPattern() != null) {
-            result.addProperty("itemPattern", src.getItemPattern().pattern());
+        // Create data object
+        JsonObject data = new JsonObject();
+        
+        // Add version information - use specific version if available, or default
+        try {
+            String version = (String) src.getClass().getMethod("getVersion").invoke(null);
+            data.addProperty("version", version);
+        } catch (Exception e) {
+            data.addProperty("version", "0.0.1");
+            log.debug("Could not get version for {}, using default", src.getClass().getName());
         }
+        
+        // Add itemName pattern - a common property for all resource conditions
+        data.addProperty("itemName", src.getItemName());
+        
+        // Add data to wrapper
+        result.add("data", data);
         
         return result;
     }
@@ -32,10 +44,9 @@ public class ResourceConditionAdapter implements JsonSerializer<ResourceConditio
     @Override
     public ResourceCondition deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) 
             throws JsonParseException {
-        // The base ResourceCondition adapter doesn't directly instantiate objects
-        // This will be handled by the specific condition type adapters that extend this class
-        log.debug("ResourceConditionAdapter deserialize called, but ResourceCondition is abstract");
-        return null;
+        // This base adapter doesn't handle deserialization directly
+        // It's expected that specific subclass adapters will handle their own types
+        throw new JsonParseException("Cannot deserialize abstract ResourceCondition directly");
     }
     
     /**

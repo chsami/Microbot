@@ -1082,24 +1082,24 @@ public class ConditionConfigPanel extends JPanel {
         } else if (stopConditionPanel) {
             switch (selectedType) {
                 case "Time Duration":
-                    TimeConditionPanelUtil.createIntervalConfigPanel(panel, gbc, panel);
+                    TimeConditionPanelUtil.createIntervalConfigPanel(panel, gbc);
                     break;
                 case "Time Window":
-                    TimeConditionPanelUtil.createEnhancedTimeWindowConfigPanel(panel, gbc, panel);
+                    TimeConditionPanelUtil.createTimeWindowConfigPanel(panel, gbc);
                     break;
                 case "Not In Time Window":
-                    TimeConditionPanelUtil.createEnhancedTimeWindowConfigPanel(panel, gbc, panel);
+                    TimeConditionPanelUtil.createTimeWindowConfigPanel(panel, gbc);
                     // Store whether we want inside or outside the window
                     configPanel.putClientProperty("withInWindow", false);
                     break; 
                 case "Day of Week":
-                    TimeConditionPanelUtil.createDayOfWeekConfigPanel(panel, gbc, panel);
+                    TimeConditionPanelUtil.createDayOfWeekConfigPanel(panel, gbc);
                     break;
                 case "Specific Time":
-                    TimeConditionPanelUtil.createSingleTriggerConfigPanel(panel, gbc, panel);
+                    TimeConditionPanelUtil.createSingleTriggerConfigPanel(panel, gbc);
                     break;
                 case "Skill Level":
-                    SkillConditionPanelUtil.createSkillLevelConfigPanel(panel, gbc, panel, true);
+                    SkillConditionPanelUtil.createSkillLevelConfigPanel(panel, gbc, true);
                     break;
                 case "Skill XP Goal":
                     SkillConditionPanelUtil.createSkillXpConfigPanel(panel, gbc, panel);
@@ -1122,25 +1122,25 @@ public class ConditionConfigPanel extends JPanel {
         } else {
             switch (selectedType) {
                 case "Time Interval":
-                    TimeConditionPanelUtil.createIntervalConfigPanel(panel, gbc, panel);
+                    TimeConditionPanelUtil.createIntervalConfigPanel(panel, gbc);
                     break;
                 case "Time Window":
-                    TimeConditionPanelUtil.createEnhancedTimeWindowConfigPanel(panel, gbc, panel);
+                    TimeConditionPanelUtil.createTimeWindowConfigPanel(panel, gbc);
                     break;
                 case "Outside Time Window":
-                    TimeConditionPanelUtil.createEnhancedTimeWindowConfigPanel(panel, gbc, panel);
+                    TimeConditionPanelUtil.createTimeWindowConfigPanel(panel, gbc);
                     break;
                 case "Day of Week":
-                    TimeConditionPanelUtil.createDayOfWeekConfigPanel(panel, gbc, panel);
+                    TimeConditionPanelUtil.createDayOfWeekConfigPanel(panel, gbc);
                     break;
                 case "Specific Time":
-                    TimeConditionPanelUtil.createSingleTriggerConfigPanel(panel, gbc, panel);
+                    TimeConditionPanelUtil.createSingleTriggerConfigPanel(panel, gbc);
                     break;
                 case "Skill Level Required":
-                    SkillConditionPanelUtil.createSkillLevelConfigPanel(panel, gbc, panel, false);
+                    SkillConditionPanelUtil.createSkillLevelConfigPanel(panel, gbc, false);
                     break;
                 case "Item Required":
-                    ResourceConditionPanelUtil.createInventoryItemCountPanel(panel, gbc, panel);
+                    ResourceConditionPanelUtil.createInventoryItemCountPanel(panel, gbc);
                     break;
                 default:
                     JLabel notImplementedLabel = new JLabel("This Start condition type is not yet implemented");
@@ -1743,10 +1743,10 @@ public class ConditionConfigPanel extends JPanel {
                         condition = TimeConditionPanelUtil.createIntervalCondition(localConfigPanel);
                         break;
                     case "Time Window":
-                        condition = TimeConditionPanelUtil.createEnhancedTimeWindowCondition(localConfigPanel);
+                        condition = TimeConditionPanelUtil.createTimeWindowCondition(localConfigPanel);
                         break;
                     case "Not In Time Window":
-                        condition = TimeConditionPanelUtil.createEnhancedTimeWindowCondition(localConfigPanel);
+                        condition = TimeConditionPanelUtil.createTimeWindowCondition(localConfigPanel);
                         break; 
                     case "Day of Week":
                         condition = TimeConditionPanelUtil.createDayOfWeekCondition(localConfigPanel);
@@ -1784,10 +1784,10 @@ public class ConditionConfigPanel extends JPanel {
                         condition = TimeConditionPanelUtil.createIntervalCondition(localConfigPanel);
                         break;
                     case "Time Window":
-                        condition = TimeConditionPanelUtil.createEnhancedTimeWindowCondition(localConfigPanel);
+                        condition = TimeConditionPanelUtil.createTimeWindowCondition(localConfigPanel);
                         break;
                     case "Outside Time Window":
-                        condition = TimeConditionPanelUtil.createEnhancedTimeWindowCondition(localConfigPanel);
+                        condition = TimeConditionPanelUtil.createTimeWindowCondition(localConfigPanel);
                         break;
                     case "Day of Week":
                         condition = TimeConditionPanelUtil.createDayOfWeekCondition(localConfigPanel);

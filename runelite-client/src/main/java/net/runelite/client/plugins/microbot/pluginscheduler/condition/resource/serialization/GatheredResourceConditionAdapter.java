@@ -19,20 +19,30 @@ public class GatheredResourceConditionAdapter implements JsonSerializer<Gathered
     public JsonElement serialize(GatheredResourceCondition src, Type typeOfSrc, JsonSerializationContext context) {
         JsonObject result = new JsonObject();
         
+        // Add type information
+        result.addProperty("type", GatheredResourceCondition.class.getName());
+        
+        // Create data object
+        JsonObject data = new JsonObject();
+        
+        // Add version information
+        data.addProperty("version", GatheredResourceCondition.getVersion());
+        
         // Add specific properties for GatheredResourceCondition
-        result.addProperty("itemName", src.getItemName());
-        result.addProperty("targetCountMin", src.getTargetCountMin());
-        result.addProperty("targetCountMax", src.getTargetCountMax());
-        result.addProperty("currentTargetCount", src.getCurrentTargetCount());
-        result.addProperty("currentGatheredCount", src.getCurrentGatheredCount());
-        result.addProperty("includeNoted", src.isIncludeNoted());
+        data.addProperty("itemName", src.getItemName());
+        data.addProperty("targetCountMin", src.getTargetCountMin());
+        data.addProperty("targetCountMax", src.getTargetCountMax());                
+        data.addProperty("includeNoted", src.isIncludeNoted());
         
         // Add relevant skills array
         JsonArray skillsArray = new JsonArray();
         for (Skill skill : src.getRelevantSkills()) {
             skillsArray.add(skill.name());
         }
-        result.add("relevantSkills", skillsArray);
+        data.add("relevantSkills", skillsArray);
+        
+        // Add data to wrapper
+        result.add("data", data);
         
         return result;
     }
@@ -40,18 +50,39 @@ public class GatheredResourceConditionAdapter implements JsonSerializer<Gathered
     @Override
     public GatheredResourceCondition deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) 
             throws JsonParseException {
+        
         JsonObject jsonObject = json.getAsJsonObject();
         
+        // Check if this is a typed format or direct format
+        JsonObject dataObj;
+        if (jsonObject.has("type") && jsonObject.has("data")) {
+            dataObj = jsonObject.getAsJsonObject("data");
+        } else {
+            // Legacy format - use the object directly
+            dataObj = jsonObject;
+        }
+        
+        // Version check
+        if (dataObj.has("version")) {
+            String version = dataObj.get("version").getAsString();
+            if (!version.equals(GatheredResourceCondition.getVersion())) {
+                log.warn("Version mismatch in GatheredResourceCondition: expected {}, got {}", 
+                        GatheredResourceCondition.getVersion(), version);
+                throw new JsonParseException("Version mismatch in GatheredResourceCondition: expected " +
+                        GatheredResourceCondition.getVersion() + ", got " + version);
+            }
+        }
+        
         // Extract basic properties
-        String itemName = jsonObject.has("itemName") ? jsonObject.get("itemName").getAsString() : "";
-        int targetCountMin = jsonObject.has("targetCountMin") ? jsonObject.get("targetCountMin").getAsInt() : 1;
-        int targetCountMax = jsonObject.has("targetCountMax") ? jsonObject.get("targetCountMax").getAsInt() : targetCountMin;
-        boolean includeNoted = jsonObject.has("includeNoted") && jsonObject.get("includeNoted").getAsBoolean();
+        String itemName = dataObj.has("itemName") ? dataObj.get("itemName").getAsString() : "";
+        int targetCountMin = dataObj.has("targetCountMin") ? dataObj.get("targetCountMin").getAsInt() : 1;
+        int targetCountMax = dataObj.has("targetCountMax") ? dataObj.get("targetCountMax").getAsInt() : targetCountMin;
+        boolean includeNoted = dataObj.has("includeNoted") && dataObj.get("includeNoted").getAsBoolean();
         
         // Extract relevant skills if present
         List<Skill> relevantSkills = new ArrayList<>();
-        if (jsonObject.has("relevantSkills")) {
-            JsonArray skillsArray = jsonObject.getAsJsonArray("relevantSkills");
+        if (dataObj.has("relevantSkills")) {
+            JsonArray skillsArray = dataObj.getAsJsonArray("relevantSkills");
             for (JsonElement skillElement : skillsArray) {
                 try {
                     Skill skill = Skill.valueOf(skillElement.getAsString());
@@ -70,5 +101,6 @@ public class GatheredResourceConditionAdapter implements JsonSerializer<Gathered
                 .includeNoted(includeNoted)
                 .relevantSkills(relevantSkills.isEmpty() ? null : relevantSkills)
                 .build();
+      
     }
 }

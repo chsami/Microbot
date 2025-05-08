@@ -16,13 +16,21 @@ public class BankItemCountConditionAdapter implements JsonSerializer<BankItemCou
     public JsonElement serialize(BankItemCountCondition src, Type typeOfSrc, JsonSerializationContext context) {
         JsonObject result = new JsonObject();
         
+        // Add type information
+        result.addProperty("type", BankItemCountCondition.class.getName());
+        
+        // Create data object
+        JsonObject data = new JsonObject();
+        
+        // Add version information
+        data.addProperty("version", BankItemCountCondition.getVersion());
+        
         // Add specific properties for BankItemCountCondition
-        result.addProperty("itemName", src.getItemName());
-        result.addProperty("targetCountMin", src.getTargetCountMin());
-        result.addProperty("targetCountMax", src.getTargetCountMax());
-        result.addProperty("currentTargetCount", src.getCurrentTargetCount());
-        result.addProperty("currentItemCount", src.getCurrentItemCount());
-        result.addProperty("satisfied", src.isSatisfied());
+        data.addProperty("itemName", src.getItemName());
+        data.addProperty("targetCountMin", src.getTargetCountMin());
+        data.addProperty("targetCountMax", src.getTargetCountMax());                    
+        // Add data to wrapper
+        result.add("data", data);
         
         return result;
     }
@@ -30,12 +38,32 @@ public class BankItemCountConditionAdapter implements JsonSerializer<BankItemCou
     @Override
     public BankItemCountCondition deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) 
             throws JsonParseException {
+        
         JsonObject jsonObject = json.getAsJsonObject();
         
+        // Check if this is a typed format or direct format
+        JsonObject dataObj;
+        if (jsonObject.has("type") && jsonObject.has("data")) {
+            dataObj = jsonObject.getAsJsonObject("data");
+        } else {
+            // Legacy format - use the object directly
+            dataObj = jsonObject;
+        }
+        
+        // Version check
+        if (dataObj.has("version")) {
+            String version = dataObj.get("version").getAsString();
+            if (!version.equals(BankItemCountCondition.getVersion())) {
+
+                throw new JsonParseException("Version mismatch in BankItemCountCondition: expected " +
+                        BankItemCountCondition.getVersion() + ", got " + version);
+            }
+        }
+        
         // Extract basic properties
-        String itemName = jsonObject.has("itemName") ? jsonObject.get("itemName").getAsString() : "";
-        int targetCountMin = jsonObject.has("targetCountMin") ? jsonObject.get("targetCountMin").getAsInt() : 1;
-        int targetCountMax = jsonObject.has("targetCountMax") ? jsonObject.get("targetCountMax").getAsInt() : targetCountMin;
+        String itemName = dataObj.has("itemName") ? dataObj.get("itemName").getAsString() : "";
+        int targetCountMin = dataObj.has("targetCountMin") ? dataObj.get("targetCountMin").getAsInt() : 1;
+        int targetCountMax = dataObj.has("targetCountMax") ? dataObj.get("targetCountMax").getAsInt() : targetCountMin;
         
         // Create the condition
         return BankItemCountCondition.builder()
@@ -43,5 +71,6 @@ public class BankItemCountConditionAdapter implements JsonSerializer<BankItemCou
                 .targetCountMin(targetCountMin)
                 .targetCountMax(targetCountMax)
                 .build();
+   
     }
 }

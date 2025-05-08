@@ -11,6 +11,9 @@ import net.runelite.client.plugins.microbot.Microbot;
 @Slf4j
 @EqualsAndHashCode(callSuper = false)
 public class PositionCondition extends LocationCondition {
+    public static String getVersion() {
+        return "0.0.1";
+    }
     @Getter
     private final WorldPoint targetPosition;
     @Getter

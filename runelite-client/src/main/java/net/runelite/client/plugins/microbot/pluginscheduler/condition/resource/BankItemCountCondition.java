@@ -3,14 +3,11 @@ package net.runelite.client.plugins.microbot.pluginscheduler.condition.resource;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
 import lombok.Builder;
 import lombok.Getter;
 import net.runelite.api.InventoryID;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.AndCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.OrCondition;
@@ -26,6 +23,10 @@ import net.runelite.client.plugins.microbot.util.math.Rs2Random;
  */
 @Getter
 public class BankItemCountCondition extends ResourceCondition {
+    
+    public static String getVersion() {
+        return "0.0.1";
+    }
     private final String itemName;
     private final int targetCountMin;
     private final int targetCountMax;

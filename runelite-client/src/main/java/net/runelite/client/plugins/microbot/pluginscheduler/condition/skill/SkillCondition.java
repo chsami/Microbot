@@ -2,8 +2,12 @@ package net.runelite.client.plugins.microbot.pluginscheduler.condition.skill;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.GameState;
 import net.runelite.api.Skill;
+import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.StatChanged;
+import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
@@ -20,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Getter 
 @EqualsAndHashCode(callSuper = false)
+@Slf4j
 public abstract class SkillCondition implements Condition {
     // Static icon cache to prevent repeated loading of the same icons
     private static final ConcurrentHashMap<Skill, Icon> ICON_CACHE = new ConcurrentHashMap<>();
@@ -28,10 +33,10 @@ public abstract class SkillCondition implements Condition {
     // Static skill data caching for performance improvements
     private static final ConcurrentHashMap<Skill, Integer> SKILL_LEVELS = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<Skill, Long> SKILL_XP = new ConcurrentHashMap<>();
-    private static int TOTAL_LEVEL = 0;
-    private static long TOTAL_XP = 0;
-    private static boolean SKILL_DATA_INITIALIZED = false;
-    private static long LAST_UPDATE_TIME = 0;
+    private static transient int TOTAL_LEVEL = 0;
+    private static transient long TOTAL_XP = 0;
+    private static transient boolean SKILL_DATA_INITIALIZED = false;
+    private static transient long LAST_UPDATE_TIME = 0;
     private static final long UPDATE_THROTTLE_MS = 600; // Update at most once every 600ms
     
     private static final int ICON_SIZE = 24; // Standard size for all skill icons
@@ -152,12 +157,16 @@ public abstract class SkillCondition implements Condition {
     /**
      * Initializes skill data tracking for better performance
      */
-    private static void initializeSkillData() {
+    private static void initializeSkillData() {    
+        if (!Microbot.isLoggedIn()){
+            SKILL_DATA_INITIALIZED = false;
+            return;
+        }
         if (SKILL_DATA_INITIALIZED) {
             return;
         }
-        
-        Microbot.getClientThread().invokeLater(() -> {
+        log.info("Initializing skill data");
+        Microbot.getClientThread().invoke(() -> {
             try {
                 // Initialize skill level and XP caches
                 for (Skill skill : Skill.values()) {
@@ -235,27 +244,15 @@ public abstract class SkillCondition implements Condition {
         if (currentTime - LAST_UPDATE_TIME < UPDATE_THROTTLE_MS) {
             return;
         }
-        
-        Microbot.getClientThread().invokeLater(() -> {
-            try {
-                // Update all skill levels and XP
-                for (Skill skill : Skill.values()) {
-                    SKILL_LEVELS.put(skill, Microbot.getClient().getRealSkillLevel(skill));
-                    SKILL_XP.put(skill, (long) Microbot.getClient().getSkillExperience(skill));
-                }
-                TOTAL_LEVEL = Microbot.getClient().getTotalLevel();
-                TOTAL_XP = Microbot.getClient().getOverallExperience();
-                SKILL_DATA_INITIALIZED = true;
-                LAST_UPDATE_TIME = currentTime;
-            } catch (Exception e) {
-                // Ignore errors during update
-            }
-        });
+        SKILL_DATA_INITIALIZED = false;
+        initializeSkillData();
+       
     }
     
     /**
      * Updates skill data when stats change
      */
+    @Override
     public void onStatChanged(StatChanged event) {
         if (!SKILL_DATA_INITIALIZED) {
             initializeSkillData();
@@ -289,5 +286,14 @@ public abstract class SkillCondition implements Condition {
             }
             
         });
+    }
+    @Override
+    public void onGameStateChanged(GameStateChanged gameStateChanged) {
+        if (gameStateChanged.getGameState() == GameState.LOGGED_IN) {
+            SKILL_DATA_INITIALIZED = false;
+            initializeSkillData();
+        }else{
+            SKILL_DATA_INITIALIZED = false;
+        }
     }
 }

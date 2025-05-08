@@ -16,14 +16,24 @@ public class LootItemConditionAdapter implements JsonSerializer<LootItemConditio
     public JsonElement serialize(LootItemCondition src, Type typeOfSrc, JsonSerializationContext context) {
         JsonObject result = new JsonObject();
         
+        // Add type information
+        result.addProperty("type", LootItemCondition.class.getName());
+        
+        // Create data object
+        JsonObject data = new JsonObject();
+        
+        // Add version information
+        data.addProperty("version", LootItemCondition.getVersion());
+        
         // Add specific properties for LootItemCondition
-        result.addProperty("itemName", src.getItemName());
-        result.addProperty("targetAmountMin", src.getTargetAmountMin());
-        result.addProperty("targetAmountMax", src.getTargetAmountMax());
-        result.addProperty("currentTargetAmount", src.getCurrentTargetAmount());
-        result.addProperty("currentTrackedCount", src.getCurrentTrackedCount());
-        result.addProperty("includeNoted", src.isIncludeNoted());
-        result.addProperty("includeNoneOwner", src.isIncludeNoneOwner());
+        data.addProperty("itemName", src.getItemName());
+        data.addProperty("targetAmountMin", src.getTargetAmountMin());
+        data.addProperty("targetAmountMax", src.getTargetAmountMax());
+        data.addProperty("includeNoneOwner", src.isIncludeNoneOwner());
+        data.addProperty("includeNoted", src.isIncludeNoted());
+        
+        // Add data to wrapper
+        result.add("data", data);
         
         return result;
     }
@@ -31,14 +41,35 @@ public class LootItemConditionAdapter implements JsonSerializer<LootItemConditio
     @Override
     public LootItemCondition deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) 
             throws JsonParseException {
+        
         JsonObject jsonObject = json.getAsJsonObject();
         
+        // Check if this is a typed format or direct format
+        JsonObject dataObj;
+        if (jsonObject.has("type") && jsonObject.has("data")) {
+            dataObj = jsonObject.getAsJsonObject("data");
+        } else {
+            // Legacy format - use the object directly
+            dataObj = jsonObject;
+        }
+        
+        // Version check
+        if (dataObj.has("version")) {
+            String version = dataObj.get("version").getAsString();
+            if (!version.equals(LootItemCondition.getVersion())) {
+                log.warn("Version mismatch in LootItemCondition: expected {}, got {}", 
+                        LootItemCondition.getVersion(), version);
+                throw new JsonParseException("Version mismatch in LootItemCondition: expected " +
+                        LootItemCondition.getVersion() + ", got " + version);
+            }
+        }
+        
         // Extract basic properties
-        String itemName = jsonObject.has("itemName") ? jsonObject.get("itemName").getAsString() : "";
-        int targetAmountMin = jsonObject.has("targetAmountMin") ? jsonObject.get("targetAmountMin").getAsInt() : 1;
-        int targetAmountMax = jsonObject.has("targetAmountMax") ? jsonObject.get("targetAmountMax").getAsInt() : targetAmountMin;
-        boolean includeNoted = jsonObject.has("includeNoted") && jsonObject.get("includeNoted").getAsBoolean();
-        boolean includeNoneOwner = jsonObject.has("includeNoneOwner") && jsonObject.get("includeNoneOwner").getAsBoolean();
+        String itemName = dataObj.has("itemName") ? dataObj.get("itemName").getAsString() : "";
+        int targetAmountMin = dataObj.has("targetAmountMin") ? dataObj.get("targetAmountMin").getAsInt() : 1;
+        int targetAmountMax = dataObj.has("targetAmountMax") ? dataObj.get("targetAmountMax").getAsInt() : targetAmountMin;
+        boolean includeNoted = dataObj.has("includeNoted") && dataObj.get("includeNoted").getAsBoolean();
+        boolean includeNoneOwner = dataObj.has("includeNoneOwner") && dataObj.get("includeNoneOwner").getAsBoolean();
         
         // Create the condition
         return LootItemCondition.builder()
@@ -48,5 +79,6 @@ public class LootItemConditionAdapter implements JsonSerializer<LootItemConditio
                 .includeNoted(includeNoted)
                 .includeNoneOwner(includeNoneOwner)
                 .build();
+       
     }
 }

@@ -13,6 +13,13 @@ import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 @Getter 
 @EqualsAndHashCode(callSuper = true)
 public class SkillLevelCondition extends SkillCondition {
+    /**
+     * Version of the condition class.
+     * Used for serialization and deserialization.
+     */
+    public static String getVersion() {
+        return "0.0.1";
+    }
     private transient int currentTargetLevel;
     @Getter
     private final int targetLevelMin;

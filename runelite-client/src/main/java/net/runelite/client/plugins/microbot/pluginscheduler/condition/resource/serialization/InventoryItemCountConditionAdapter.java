@@ -16,14 +16,25 @@ public class InventoryItemCountConditionAdapter implements JsonSerializer<Invent
     public JsonElement serialize(InventoryItemCountCondition src, Type typeOfSrc, JsonSerializationContext context) {
         JsonObject result = new JsonObject();
         
+        // Add type information
+        result.addProperty("type", InventoryItemCountCondition.class.getName());
+        
+        // Create data object
+        JsonObject data = new JsonObject();
+        
+        // Add version information
+        data.addProperty("version", InventoryItemCountCondition.getVersion());
+        
         // Add specific properties for InventoryItemCountCondition
-        result.addProperty("itemName", src.getItemName());
-        result.addProperty("targetCountMin", src.getTargetCountMin());
-        result.addProperty("targetCountMax", src.getTargetCountMax());
-        result.addProperty("currentTargetCount", src.getCurrentTargetCount());
-        result.addProperty("currentItemCount", src.getCurrentItemCount());
-        result.addProperty("includeNoted", src.isIncludeNoted());
-        result.addProperty("satisfied", src.isSatisfied());
+        data.addProperty("itemName", src.getItemName());
+        data.addProperty("targetCountMin", src.getTargetCountMin());
+        data.addProperty("targetCountMax", src.getTargetCountMax());
+        data.addProperty("includeNoted", src.isIncludeNoted());
+        data.addProperty("currentTargetCount", src.getCurrentTargetCount());
+        data.addProperty("currentItemCount", src.getCurrentItemCount());
+        
+        // Add data to wrapper
+        result.add("data", data);
         
         return result;
     }
@@ -31,20 +42,49 @@ public class InventoryItemCountConditionAdapter implements JsonSerializer<Invent
     @Override
     public InventoryItemCountCondition deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) 
             throws JsonParseException {
-        JsonObject jsonObject = json.getAsJsonObject();
-        
-        // Extract basic properties
-        String itemName = jsonObject.has("itemName") ? jsonObject.get("itemName").getAsString() : "";
-        int targetCountMin = jsonObject.has("targetCountMin") ? jsonObject.get("targetCountMin").getAsInt() : 1;
-        int targetCountMax = jsonObject.has("targetCountMax") ? jsonObject.get("targetCountMax").getAsInt() : targetCountMin;
-        boolean includeNoted = jsonObject.has("includeNoted") && jsonObject.get("includeNoted").getAsBoolean();
-        
-        // Create the condition
-        return InventoryItemCountCondition.builder()
-                .itemName(itemName)
-                .targetCountMin(targetCountMin)
-                .targetCountMax(targetCountMax)
-                .includeNoted(includeNoted)
-                .build();
+        try {
+            JsonObject jsonObject = json.getAsJsonObject();
+            
+            // Check if this is a typed format or direct format
+            JsonObject dataObj;
+            if (jsonObject.has("type") && jsonObject.has("data")) {
+                dataObj = jsonObject.getAsJsonObject("data");
+            } else {
+                // Legacy format - use the object directly
+                dataObj = jsonObject;
+            }
+            
+            // Version check
+            if (dataObj.has("version")) {
+                String version = dataObj.get("version").getAsString();
+                if (!version.equals(InventoryItemCountCondition.getVersion())) {
+                    log.warn("Version mismatch in InventoryItemCountCondition: expected {}, got {}", 
+                            InventoryItemCountCondition.getVersion(), version);
+                }
+            }
+            
+            // Extract basic properties
+            String itemName = dataObj.has("itemName") ? dataObj.get("itemName").getAsString() : "";
+            int targetCountMin = dataObj.has("targetCountMin") ? dataObj.get("targetCountMin").getAsInt() : 1;
+            int targetCountMax = dataObj.has("targetCountMax") ? dataObj.get("targetCountMax").getAsInt() : targetCountMin;
+            boolean includeNoted = dataObj.has("includeNoted") && dataObj.get("includeNoted").getAsBoolean();
+            
+            // Create the condition
+            return InventoryItemCountCondition.builder()
+                    .itemName(itemName)
+                    .targetCountMin(targetCountMin)
+                    .targetCountMax(targetCountMax)
+                    .includeNoted(includeNoted)
+                    .build();
+        } catch (Exception e) {
+            log.error("Error deserializing InventoryItemCountCondition", e);
+            // Return a default condition on error
+            return InventoryItemCountCondition.builder()
+                    .itemName("Unknown")
+                    .targetCountMin(1)
+                    .targetCountMax(1)
+                    .includeNoted(false)
+                    .build();
+        }
     }
 }
