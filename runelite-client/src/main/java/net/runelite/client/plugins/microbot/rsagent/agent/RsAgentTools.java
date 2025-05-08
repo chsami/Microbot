@@ -4,7 +4,9 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import lombok.Getter;
 import net.runelite.api.NPC;
+// Removed unused import: net.runelite.api.TileItem;
 import net.runelite.api.coords.WorldPoint;
+// Removed unused import: net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -32,8 +34,11 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 // Removed unused imports: net.runelite.api.Item, net.runelite.api.ItemContainer, net.runelite.api.InventoryID
+import net.runelite.api.widgets.ItemWidget; // Added import for ItemWidget
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment; // Added import for Rs2Equipment
 import net.runelite.api.EquipmentInventorySlot; // Added import for EquipmentInventorySlot
+import net.runelite.api.GameObject; // Added import for GameObject
+import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject; // Added import for Rs2GameObject
 
 
 import static net.runelite.client.plugins.microbot.util.Global.*;
@@ -525,5 +530,61 @@ public class RsAgentTools {
         }
 
         return equippedItems;
+    }
+
+    /**
+     * Retrieves a list of nearby game objects (e.g., trees, rocks, doors).
+     *
+     * @return A list of strings, each describing a nearby object and its location.
+     *         Returns a list with an error message if objects cannot be accessed.
+     */
+    static public List<String> getNearbyObjects() {
+        List<String> objectDescriptions = new ArrayList<>();
+        if (Microbot.getClient() == null || Microbot.getObjectManager() == null) {
+            objectDescriptions.add("Could not access client or object manager.");
+            Microbot.log(Level.ERROR, "getNearbyObjects: Client or ObjectManager is null.");
+            return objectDescriptions;
+        }
+
+        List<GameObject> gameObjects = Rs2GameObject.getGameObjects();
+        if (gameObjects == null || gameObjects.isEmpty()) {
+            objectDescriptions.add("No game objects found nearby.");
+            return objectDescriptions;
+        }
+
+        WorldPoint playerLocation = Rs2Player.getLocalPlayer().getWorldLocation();
+        if (playerLocation == null) {
+             objectDescriptions.add("Could not get player location.");
+             Microbot.log(Level.WARN, "getNearbyObjects: Player location is null.");
+             return objectDescriptions;
+        }
+
+        for (GameObject gameObject : gameObjects) {
+            if (gameObject == null) continue;
+
+            String objectName = "Unknown Object";
+            try {
+                objectName = Microbot.getObjectManager().getObjectComposition(gameObject.getId()).getName();
+                if (objectName == null || objectName.equalsIgnoreCase("null") || objectName.trim().isEmpty()) {
+                    objectName = "Object ID " + gameObject.getId(); // Fallback to ID if name is invalid
+                }
+            } catch (Exception e) {
+                Microbot.log(Level.WARN, "getNearbyObjects: Could not get object name for ID " + gameObject.getId(), e);
+                objectName = "Object ID " + gameObject.getId() + " (Error)";
+            }
+
+            WorldPoint objectLocation = gameObject.getWorldLocation();
+            int distance = playerLocation.distanceTo(objectLocation);
+            objectDescriptions.add(objectName + " at (" + objectLocation.getX() + ", " + objectLocation.getY() + ", " + objectLocation.getPlane() + "), distance: " + distance);
+        }
+
+        if (objectDescriptions.isEmpty()) {
+            objectDescriptions.add("No valid game objects found nearby.");
+        }
+
+        // Optional: Sort by distance?
+        // Collections.sort(objectDescriptions, Comparator.comparingInt(s -> Integer.parseInt(s.substring(s.lastIndexOf(": ") + 2))));
+
+        return objectDescriptions;
     }
 }

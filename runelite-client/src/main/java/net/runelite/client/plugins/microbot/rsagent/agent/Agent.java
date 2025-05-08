@@ -248,6 +248,16 @@ public class Agent {
                         }
                         break;
                     }
+                    case "getNearbyObjects": {
+                        List<String> objectList = RsAgentTools.getNearbyObjects();
+                         if (objectList.isEmpty() || (objectList.size() == 1 && objectList.get(0).startsWith("Could not access"))) {
+                            toolResult = "Error: Could not retrieve nearby objects.";
+                            log.warn("getNearbyObjects tool failed: {}", objectList.isEmpty() ? "Empty list" : objectList.get(0));
+                        } else {
+                            toolResult = "Nearby objects:\n" + String.join("\n", objectList);
+                        }
+                        break;
+                    }
                     case "finish": {
                         String finishResponse = "Task finished."; // Default
                         if (parameters.has("response") && parameters.get("response").isJsonPrimitive() && parameters.get("response").getAsJsonPrimitive().isString()) {

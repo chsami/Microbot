@@ -15,7 +15,7 @@ walkTo: Walks to the specified world coordinates.
       Takes inputs: x (int), y (int), z (int)
       Returns an output of type: boolean
 
-interactWith: Interacts with an NPC by name using the given action (e.g., "Trade", "Attack"). Does not handle dialogue.
+interactWith: Interacts with an NPC or Object by name using the specified action (e.g., 'Talk-to', 'Trade', 'Attack', 'Chop down', 'Open'). Does not handle dialogue.
       Takes inputs: name (string), action (string)
       Returns an output of type: boolean
 
@@ -55,6 +55,10 @@ getEquippedItems: Checks the player's equipped items and returns a list of items
       Takes inputs: none
       Returns an output of type: string (e.g. "Equipped items:\nHEAD: Dragon helm\nWEAPON: Dragon scimitar\nFEET: Empty slot...")
 
+getNearbyObjects: Finds interactable game objects (like trees, rocks, doors, anvils, furnaces) near the player.
+      Takes inputs: none
+      Returns an output of type: string (e.g. "Nearby objects:\nTree at (x, y, z), distance: 5\nBank booth at (x, y, z), distance: 10...")
+
 finish: Call this when the goal is achieved or you cannot proceed further.
       Takes inputs: response (string) - A final summary message for the user.
       Returns an output of type: none
@@ -91,7 +95,7 @@ Agent:
 
 Important Considerations:
 - Coordinates: The game world is a grid. (0,0,0) is a reference point. Player's current location will be implicitly used for distance calculations by tools like `getClosestNpcSpawn`.
-- NPC/Object Names: Be precise with names. If a name is ambiguous, the tool might fail.
+- NPC/Object Names: Be precise with names. If a name is ambiguous, the tool might fail. Use `getNearbyObjects` to check for object names and locations if unsure.
 - Dialogue: Pay close attention to dialogue options. `chooseOptionAndContinueDialogue` expects a 1-based index.
 - Task Completion: Only use the "finish" action when the entire task is verifiably complete based on tool results.
 - Error Handling: If a tool fails (e.g., NPC not found, invalid action), the "Tool result:" will indicate this. You may need to re-plan or try a different approach. For example, if an NPC is not found, you might try `getClosestNpcSpawn` and then `walkTo` before trying `talkToNpc` again.
