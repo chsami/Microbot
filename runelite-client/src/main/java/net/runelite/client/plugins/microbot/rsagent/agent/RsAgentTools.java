@@ -4,7 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import lombok.Getter;
 import net.runelite.api.NPC;
-import net.runelite.api.TileItem;
+// Removed unused import: net.runelite.api.TileItem;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.ComponentID;
@@ -32,10 +32,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-// Added imports for inventory
-import net.runelite.api.Item;
-import net.runelite.api.ItemContainer;
-import net.runelite.api.InventoryID;
+// Removed unused imports: net.runelite.api.Item, net.runelite.api.ItemContainer, net.runelite.api.InventoryID
+import net.runelite.api.widgets.ItemWidget; // Added import for ItemWidget
 
 
 import static net.runelite.client.plugins.microbot.util.Global.*;
@@ -444,7 +442,7 @@ public class RsAgentTools {
     }
 
     /**
-     * Retrieves the player's inventory contents.
+     * Retrieves the player's inventory contents using Rs2Inventory helper.
      *
      * @return A list of strings, where each string represents an inventory slot
      *         (e.g., "Slot 0: Item Name: Quantity" or "Slot 0: Empty slot").
@@ -452,35 +450,35 @@ public class RsAgentTools {
      */
     static public List<String> getPlayerInventory() {
         List<String> inventoryContents = new ArrayList<>();
-        if (Microbot.getClient() == null || Microbot.getItemManager() == null) {
-            inventoryContents.add("Could not access client or item manager.");
-            Microbot.log(Level.ERROR, "getPlayerInventory: Client or ItemManager is null.");
+        List<ItemWidget> items = Rs2Inventory.items(); // Get list of items (occupied slots)
+
+        if (items == null) {
+            inventoryContents.add("Could not access inventory items via Rs2Inventory.");
+            Microbot.log(Level.WARN, "getPlayerInventory: Rs2Inventory.items() returned null.");
             return inventoryContents;
         }
 
-        ItemContainer inventory = Microbot.getClient().getItemContainer(InventoryID.INVENTORY);
-        if (inventory == null) {
-            inventoryContents.add("Could not access inventory container.");
-            Microbot.log(Level.WARN, "getPlayerInventory: Inventory container is null.");
-            return inventoryContents;
+        // Create a map of slot index to ItemWidget for quick lookup
+        Map<Integer, ItemWidget> itemMap = new HashMap<>();
+        for (ItemWidget item : items) {
+            if (item != null) {
+                itemMap.put(item.getIndex(), item);
+            }
         }
 
-        Item[] items = inventory.getItems();
-        // Standard inventory has 28 slots. Iterate through all of them.
+        // Iterate through all 28 inventory slots
         for (int i = 0; i < 28; i++) {
-            if (i < items.length && items[i] != null && items[i].getId() != -1 && items[i].getQuantity() > 0) {
-                Item item = items[i];
-                String itemName = "Unknown Item";
-                try {
-                    itemName = Microbot.getItemManager().getItemComposition(item.getId()).getName();
-                    if (itemName == null || itemName.equalsIgnoreCase("null")) { // Handle cases where name might be "null" string
-                        itemName = "Item ID " + item.getId();
-                    }
-                } catch (Exception e) {
-                    Microbot.log(Level.WARN, "getPlayerInventory: Could not get item name for ID " + item.getId(), e);
-                    itemName = "Item ID " + item.getId() + " (Error)";
+            if (itemMap.containsKey(i)) {
+                ItemWidget itemWidget = itemMap.get(i);
+                String itemName = itemWidget.getName();
+                int quantity = itemWidget.getQuantity();
+
+                // Handle potential null or "null" names (though less likely with ItemWidget)
+                if (itemName == null || itemName.equalsIgnoreCase("null") || itemName.trim().isEmpty()) {
+                    itemName = "Item ID " + itemWidget.getItemId();
                 }
-                inventoryContents.add("Slot " + i + ": " + itemName + ": " + item.getQuantity());
+
+                inventoryContents.add("Slot " + i + ": " + itemName + ": " + quantity);
             } else {
                 inventoryContents.add("Slot " + i + ": Empty slot");
             }
@@ -489,6 +487,7 @@ public class RsAgentTools {
         if (inventoryContents.isEmpty() && 28 > 0) { // Should only happen if loop for 28 slots didn't add anything
             inventoryContents.add("Inventory appears to be completely empty or inaccessible.");
         }
+
         return inventoryContents;
     }
 
