@@ -23,22 +23,22 @@ public class CombatHotkeysScript extends Script {
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
 
-                if (dance) {
-                    if(Rs2Player.getWorldLocation().equals(config.tile1())){
-                        Rs2Walker.walkFastCanvas(config.tile2());
-                        Global.sleepUntil(() -> Rs2Player.getWorldLocation().equals(config.tile2()), 1000);
-                    }
-                    else if(Rs2Player.getWorldLocation().equals(config.tile2())){
-                        Rs2Walker.walkFastCanvas(config.tile1());
-                        Global.sleepUntil(() -> Rs2Player.getWorldLocation().equals(config.tile1()), 1000);
-                    }
-                    else{
-                        Rs2Walker.walkFastCanvas(config.tile1());
-                        Global.sleepUntil(() -> Rs2Player.getWorldLocation().equals(config.tile1()), 1000);
-                    }
-                }
+//                if (dance) {
+//                    if(Rs2Player.getWorldLocation().equals(config.tile1())){
+//                        Rs2Walker.walkFastCanvas(config.tile2());
+//                        Global.sleepUntil(() -> Rs2Player.getWorldLocation().equals(config.tile2()), 1000);
+//                    }
+//                    else if(Rs2Player.getWorldLocation().equals(config.tile2())){
+//                        Rs2Walker.walkFastCanvas(config.tile1());
+//                        Global.sleepUntil(() -> Rs2Player.getWorldLocation().equals(config.tile1()), 1000);
+//                    }
+//                    else{
+//                        Rs2Walker.walkFastCanvas(config.tile1());
+//                        Global.sleepUntil(() -> Rs2Player.getWorldLocation().equals(config.tile1()), 1000);
+//                    }
+//                }
             } catch (Exception ex) {
-                System.out.println(ex.getMessage());
+                System.out.println("Exception message: " + ex.getMessage());
             }
         }, 0, 100, TimeUnit.MILLISECONDS);
         return true;

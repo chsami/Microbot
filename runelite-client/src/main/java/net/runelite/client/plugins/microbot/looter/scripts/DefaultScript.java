@@ -130,7 +130,7 @@ public class DefaultScript extends Script {
             } catch (Exception ex) {
                 Microbot.log("Error in DefaultScript: " + ex.getMessage());
             }
-        }, 0, 200, TimeUnit.MILLISECONDS);
+        }, 0, 10, TimeUnit.MILLISECONDS);
         return true;
     }
 

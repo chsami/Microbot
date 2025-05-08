@@ -202,26 +202,16 @@ public interface CombatHotkeysConfig extends Config {
         return "";
     }
 
-    @ConfigItem(
-            keyName = "dance boolean",
-            name = "dance",
-            description = "Select this if you want to setup dance",
-            position = 8
-    )
-    default boolean yesDance() {
-        return false;
-    }
-
-    // config item for a keybind to enable the dance feature
-    @ConfigItem(
-            keyName = "dance",
-            name = "Dance",
-            description = "Dance",
-            position = 7
-    )
-    default Keybind dance() {
-        return Keybind.NOT_SET;
-    }
+//    // config item for a keybind to enable the dance feature
+//    @ConfigItem(
+//            keyName = "dance",
+//            name = "Dance",
+//            description = "Dance",
+//            position = 7
+//    )
+//    default Keybind dance() {
+//        return Keybind.NOT_SET;
+//    }
 
     // hidden config for worldpoint called tile1
     @ConfigItem(

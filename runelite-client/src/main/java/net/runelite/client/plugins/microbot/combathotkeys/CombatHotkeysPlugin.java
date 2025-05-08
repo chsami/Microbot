@@ -75,10 +75,10 @@ public class CombatHotkeysPlugin extends Plugin implements KeyListener {
             return;
         }
 
-        if(config.dance().matches(e)){
-            e.consume();
-            script.dance = !script.dance;
-        }
+//        if(config.dance().matches(e)){
+//            e.consume();
+//            script.dance = !script.dance;
+//        }
 
         if (config.protectFromMagic().matches(e)) {
             e.consume();
@@ -150,43 +150,43 @@ public class CombatHotkeysPlugin extends Plugin implements KeyListener {
     public void keyReleased(KeyEvent e) {}
 
     @Subscribe
-    public void onMenuEntryAdded(MenuEntryAdded event)
-    {
-        if (event.getOption().equals("Walk here"))
-        {
-            Microbot.getClient().getMenu().createMenuEntry(-1)
-                    .setOption("Dancing -> mark tile 2")
-                    .setTarget(event.getTarget())
-                    .setType(MenuAction.RUNELITE)
-                    .onClick(e -> {
-                        final var target = Microbot.getClient().getTopLevelWorldView().getSelectedSceneTile();
-                        if (target != null)
-                        {
-                            final var location = target.getWorldLocation();
-                            Microbot.getConfigManager().setConfiguration(
-                                    "combathotkeys",
-                                    "tile2",
-                                    location
-                            );
-                        }
-                    });
-
-            Microbot.getClient().getMenu().createMenuEntry(-1)
-                    .setOption("Dancing -> mark tile 1")
-                    .setTarget(event.getTarget())
-                    .setType(MenuAction.RUNELITE)
-                    .onClick(e -> {
-                        final var target = Microbot.getClient().getTopLevelWorldView().getSelectedSceneTile();
-                        if (target != null)
-                        {
-                            final var location = target.getWorldLocation();
-                            Microbot.getConfigManager().setConfiguration(
-                                    "combathotkeys",
-                                    "tile1",
-                                    location
-                            );
-                        }
-                    });
-        }
-    }
+    public void onMenuEntryAdded(MenuEntryAdded event){}
+//    {
+//        if (event.getOption().equals("Walk here"))
+//        {
+//            Microbot.getClient().getMenu().createMenuEntry(-1)
+//                    .setOption("Dancing -> mark tile 2")
+//                    .setTarget(event.getTarget())
+//                    .setType(MenuAction.RUNELITE)
+//                    .onClick(e -> {
+//                        final var target = Microbot.getClient().getTopLevelWorldView().getSelectedSceneTile();
+//                        if (target != null)
+//                        {
+//                            final var location = target.getWorldLocation();
+//                            Microbot.getConfigManager().setConfiguration(
+//                                    "combathotkeys",
+//                                    "tile2",
+//                                    location
+//                            );
+//                        }
+//                    });
+//
+//            Microbot.getClient().getMenu().createMenuEntry(-1)
+//                    .setOption("Dancing -> mark tile 1")
+//                    .setTarget(event.getTarget())
+//                    .setType(MenuAction.RUNELITE)
+//                    .onClick(e -> {
+//                        final var target = Microbot.getClient().getTopLevelWorldView().getSelectedSceneTile();
+//                        if (target != null)
+//                        {
+//                            final var location = target.getWorldLocation();
+//                            Microbot.getConfigManager().setConfiguration(
+//                                    "combathotkeys",
+//                                    "tile1",
+//                                    location
+//                            );
+//                        }
+//                    });
+//        }
+//    }
 }

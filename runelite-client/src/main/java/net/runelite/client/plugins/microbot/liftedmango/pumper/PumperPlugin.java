@@ -15,7 +15,7 @@ import java.awt.*;
 @PluginDescriptor(
         name = PluginDescriptor.LiftedMango + "Pumper",
         description = "LiftedMango's Pumper",
-        tags = {"pure", "strength", "str", "pump", "blast furnace"},
+        tags = {"liftedmango", "pure", "strength", "str", "pump", "blast furnace"},
         enabledByDefault = false
 )
 @Slf4j

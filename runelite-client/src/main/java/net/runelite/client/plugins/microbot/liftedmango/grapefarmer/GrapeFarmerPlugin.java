@@ -15,7 +15,7 @@ import java.awt.*;
 @PluginDescriptor(
         name = PluginDescriptor.LiftedMango + "Grape farmer",
         description = "Grape farmer",
-        tags = {"skilling", "farming", "money making"},
+        tags = {"liftedmango", "skilling", "farming", "money making"},
         enabledByDefault = false
 )
 @Slf4j

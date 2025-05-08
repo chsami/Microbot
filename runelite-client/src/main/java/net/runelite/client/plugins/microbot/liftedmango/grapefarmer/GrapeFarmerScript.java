@@ -192,14 +192,16 @@ public class GrapeFarmerScript extends Script {
 
     private void pickGrapes(int gameObjectId) {
         Rs2NpcModel leprechaun = Rs2Npc.getNpc(0);
+        Rs2ItemModel zamoraksGrapes = Rs2Inventory.get(ItemID.ZAMORAKS_GRAPES);
+        Rs2ItemModel grapes = Rs2Inventory.get(ItemID.GRAPES);
         if (leprechaun != null) {
             if (Rs2Inventory.isFull()) {
-                Rs2Inventory.use(ItemID.ZAMORAKS_GRAPES);
+                Rs2Inventory.use(zamoraksGrapes);
                 Rs2Npc.interact(leprechaun);
                 sleepUntil(() -> !Rs2Inventory.contains(ItemID.ZAMORAKS_GRAPES), 5000);
                 sleep(100,600);
                 if (Rs2Inventory.contains(ItemID.GRAPES)) {
-                    Rs2Inventory.use(ItemID.GRAPES);
+                    Rs2Inventory.use(grapes);
                     Rs2Npc.interact(leprechaun);
                     sleepUntil(() -> !Rs2Inventory.contains(ItemID.GRAPES), 5000);
                     sleep(50, 500);

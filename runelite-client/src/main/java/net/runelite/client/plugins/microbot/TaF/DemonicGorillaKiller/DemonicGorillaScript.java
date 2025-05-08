@@ -405,7 +405,7 @@ private void handleTravel(DemonicGorillaConfig config) {
         } else {
             logOnceToChat("CurrentTarget is null or dead - HandleGorillaAttacks");
         }
-        lastGorillaLocation = currentTarget.getWorldLocation();
+        lastGorillaLocation = (currentTarget != null && currentTarget.getWorldLocation() != null) ? currentTarget.getWorldLocation() : null;
         lastGameTick = gameTickCount;
     }
 

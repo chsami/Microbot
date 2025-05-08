@@ -102,6 +102,13 @@ public class AutoMiningScript extends Script {
                             return;
                         }
 
+                        if (config.ORE().getName() == "barronite rocks") {
+                            if (Rs2GameObject.interact(41547)) {
+                                Rs2Player.waitForXpDrop(Skill.MINING, true);
+                                Rs2Antiban.actionCooldown();
+                                Rs2Antiban.takeMicroBreakByChance();
+                            }
+                        } else {
                         GameObject rock = Rs2GameObject.findReachableObject(config.ORE().getName(), true, config.distanceToStray(), initialPlayerLocation);
 
                         if (rock != null) {
@@ -110,7 +117,7 @@ public class AutoMiningScript extends Script {
                                 Rs2Antiban.actionCooldown();
                                 Rs2Antiban.takeMicroBreakByChance();
                             }
-                        }
+                        }}
                         break;
                     case RESETTING:
                         List<String> itemNames = Arrays.stream(config.itemsToBank().split(",")).map(String::toLowerCase).collect(Collectors.toList());

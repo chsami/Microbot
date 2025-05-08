@@ -38,10 +38,10 @@ public class CombatHotkeysOverlay extends Overlay {
 //                    .color(Color.GREEN)
 //                    .build());
 
-            if(config.yesDance()) {
-                drawTile(graphics, config.tile1(), Color.GREEN, "Tile 1", new BasicStroke(2));
-                drawTile(graphics, config.tile2(), Color.GREEN, "Tile 2", new BasicStroke(2));
-            }
+
+//            drawTile(graphics, config.tile1(), Color.GREEN, "Tile 1", new BasicStroke(2));
+//            drawTile(graphics, config.tile2(), Color.GREEN, "Tile 2", new BasicStroke(2));
+
         } catch(Exception ex) {
             Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
         }

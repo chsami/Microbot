@@ -16,13 +16,16 @@ import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldArea;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
+import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -382,7 +385,12 @@ public class TemporossScript extends Script {
 
     private void handleEnterMinigame() {
         // Reset state variables
+        WorldPoint LADDER_LOCATION = new WorldPoint(3137, 2840, 0);
         reset();
+
+        if(Rs2Dialogue.hasContinue()) {
+            Rs2Walker.walkWithState(LADDER_LOCATION, 2);
+        }
 
         if (Rs2Player.isMoving() || Rs2Player.isAnimating()) {
             return;
@@ -393,9 +401,35 @@ public class TemporossScript extends Script {
             return;
         }
         int emptyBucketCount = Rs2Inventory.count(ItemID.BUCKET);
-        // If we are east of the ladder, interact with it to get on the boat
+
+        int playersReady = 0;
+
+        if (!temporossConfig.solo()) {
+            Widget playersReadyWidget = Rs2Widget.findWidget("Players Ready");
+            if (playersReadyWidget != null) {
+                String rawText = playersReadyWidget.getText();
+                String cleanText = Rs2UiHelper.stripColTags(rawText);
+                Matcher matcher = Pattern.compile("\\d+").matcher(cleanText);
+                if (matcher.find()) {
+                    try {
+                        playersReady = Integer.parseInt(matcher.group());
+                        log("Players ready: " + playersReady);
+                    } catch (NumberFormatException e) {
+                        log("Failed to parse player count");
+                    }
+                }
+            }
+            if (playersReady < temporossConfig.minPlayers()) {
+                log("Waiting for more players. Current: " + playersReady + ", Required: " + temporossConfig.minPlayers());
+                return;
+            }
+        }
+
         if (!isOnStartingBoat()) {
-            if (Rs2GameObject.interact(startingLadder, ((emptyBucketCount > 0 && temporossConfig.solo()) || !temporossConfig.solo()) ? "Climb" : "Solo-start")) {
+            String action = temporossConfig.solo() ? "Solo-start" : "Climb";
+            log("Using action: " + action + " for ladder");
+
+            if (Rs2GameObject.interact(startingLadder, action)) {
                 BreakHandlerScript.setLockState(true);
                 sleepUntil(() -> (isOnStartingBoat() || isInMinigame()), 15000);
                 return;
@@ -738,7 +772,9 @@ public class TemporossScript extends Script {
                 }
 
                 if (Rs2Player.isInteracting()) {
-                    if (Objects.equals(Objects.requireNonNull(Rs2Player.getInteracting()).getName(), ammoCrate.getName())) {
+                    Actor interacting = Rs2Player.getInteracting();
+                    if (interacting != null && interacting.getName() != null &&
+                            interacting.getName().equals(ammoCrate.getName())) {
                         if(Rs2AntibanSettings.devDebug)
                             log("Interacting with: " + ammoCrate.getName());
                         return;

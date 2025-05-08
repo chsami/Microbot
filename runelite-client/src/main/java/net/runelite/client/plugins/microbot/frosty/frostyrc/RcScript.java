@@ -278,7 +278,17 @@ public class RcScript extends Script {
 
         if (!Rs2Equipment.isWearing("Ring of dueling") && Rs2Bank.hasItem("Ring of dueling")) {
             Microbot.log("Withdrawing ring of dueling");
-            Rs2Bank.withdrawAndEquip(2552);
+            String[] duelingRings = {
+                    "Ring of dueling(8)", "Ring of dueling(7)", "Ring of dueling(6)",
+                    "Ring of dueling(5)", "Ring of dueling(4)", "Ring of dueling(3)",
+                    "Ring of dueling(2)", "Ring of dueling(1)"
+            };
+            for (String ring : duelingRings) {
+                if (Rs2Bank.hasItem(ring)) {
+                    Rs2Bank.withdrawAndEquip(ring);
+                    break;
+                }
+            }
             sleepUntil(() -> Rs2Equipment.isWearing("Ring of dueling"));
         }
 

@@ -1,26 +1,36 @@
 package net.runelite.client.plugins.microbot.liftedmango.autoGauntletPrayer;
 
 import com.google.inject.Provides;
-import net.runelite.api.HeadIcon;
-import net.runelite.api.ItemID;
-import net.runelite.api.NPC;
+import net.runelite.api.*;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.AnimationChanged;
+import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ProjectileMoved;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
+import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
+import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.models.RS2Item;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
 import net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection;
+import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import javax.inject.Inject;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static net.runelite.client.plugins.microbot.Microbot.log;
 
@@ -73,8 +83,41 @@ public class AutoGauntletPrayer extends Plugin {
     }
 
     @Subscribe
+    public void onClientTick(ClientTick client) {
+////        RS2Item[] groundItemsForPlayer = Rs2GroundItem.getAllAt(Rs2Player.getWorldLocation().getX(), Rs2Player.getWorldLocation().getY());
+////        System.out.println(groundItemsForPlayer[0].getTileItem().getId());
+//        Rs2GameObject.getGroundObjects();
+//        WorldPoint playerLocation = Rs2Player.getWorldLocation();
+//
+//        // Get all ground objects
+//        List<GroundObject> groundObjects = Rs2GameObject.getGroundObjects();
+//
+//        // Check if standing on 36150 or 36151
+//        boolean standingOnBadTile = groundObjects.stream()
+//                .anyMatch(obj -> obj.getWorldLocation().equals(playerLocation) && (obj.getId() == 36150 || obj.getId() == 36151));
+//
+//        if (standingOnBadTile) {
+//            // Find all 36149 objects
+//            List<GroundObject> targetTiles = groundObjects.stream()
+//                    .filter(obj -> obj.getId() == 36149)
+//                    .collect(Collectors.toList());
+//
+//            if (!targetTiles.isEmpty()) {
+//                // Find the closest one
+//                GroundObject closestTarget = targetTiles.stream()
+//                        .min(Comparator.comparingInt(obj -> obj.getWorldLocation().distanceTo(playerLocation)))
+//                        .orElse(null);
+//
+//                if (closestTarget != null) {
+//                    Rs2Walker.walkTo(closestTarget.getWorldLocation());
+//                }
+//            }
+//        }
+    }
+
+    @Subscribe
     public void onGameTick(GameTick event) {
-        System.out.println("Next prayer: " + nextPrayer);
+//        System.out.println("Next prayer: " + nextPrayer);
 
         if (nextPrayer != null && !Rs2Prayer.isPrayerActive(nextPrayer)) {
             Rs2Prayer.toggle(nextPrayer, true);
@@ -91,7 +134,7 @@ public class AutoGauntletPrayer extends Plugin {
         }
 
         HeadIcon headIcon = Rs2Reflection.getHeadIcon(hunllef);
-        System.out.println("Headicon: " + headIcon);
+//        System.out.println("Headicon: " + headIcon);
 
         switch (headIcon) {
             case RANGED:

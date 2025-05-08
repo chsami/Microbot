@@ -16,37 +16,37 @@ public interface TemporossConfig extends Config {
     // Tools
 
     @ConfigSection(
-        name = "General",
-        description = "General settings",
-        position = 1,
-        closedByDefault = true
+            name = "General",
+            description = "General settings",
+            position = 1,
+            closedByDefault = true
     )
     String generalSection = "General";
 
     @ConfigSection(
-        name = "Equipment",
-        description = "Equipment settings",
-        position = 2,
-        closedByDefault = true
+            name = "Equipment",
+            description = "Equipment settings",
+            position = 2,
+            closedByDefault = true
     )
     String equipmentSection = "Equipment";
 
     @ConfigSection(
-        name = "Harpoon",
-        description = "Harpoon settings",
-        position = 3,
-        closedByDefault = true
+            name = "Harpoon",
+            description = "Harpoon settings",
+            position = 3,
+            closedByDefault = true
     )
     String harpoonSection = "Harpoon";
 
     // General settings
     // number of buckets to bring (default 6)
     @ConfigItem(
-        keyName = "buckets",
-        name = "Buckets",
-        description = "Number of buckets to bring",
-        position = 1,
-        section = generalSection
+            keyName = "buckets",
+            name = "Buckets",
+            description = "Number of buckets to bring",
+            position = 1,
+            section = generalSection
     )
     default int buckets() {
         return 6;
@@ -55,11 +55,11 @@ public interface TemporossConfig extends Config {
 
     // boolean to bring a hammer
     @ConfigItem(
-        keyName = "hammer",
-        name = "Hammer",
-        description = "Bring a hammer",
-        position = 2,
-        section = generalSection
+            keyName = "hammer",
+            name = "Hammer",
+            description = "Bring a hammer",
+            position = 2,
+            section = generalSection
     )
     default boolean hammer() {
         return true;
@@ -68,37 +68,37 @@ public interface TemporossConfig extends Config {
 
     // boolean to bring a rope
     @ConfigItem(
-        keyName = "rope",
-        name = "Rope",
-        description = "Bring a rope",
-        position = 3,
-        section = generalSection
+            keyName = "rope",
+            name = "Rope",
+            description = "Bring a rope",
+            position = 3,
+            section = generalSection
     )
     default boolean rope() {
         return true;
     }
+
     // boolean to play solo
     @ConfigItem(
-        keyName = "solo",
-        name = "Solo",
-        description = "Play solo",
-        position = 4,
-        section = generalSection
+            keyName = "solo",
+            name = "Solo",
+            description = "Play solo",
+            position = 4,
+            section = generalSection
     )
     default boolean solo() {
         return false;
     }
 
 
-
     // Equipment settings
     // boolean if we have Spirit Angler's outfit
     @ConfigItem(
-        keyName = "spiritAnglers",
-        name = "Spirit Angler's",
-        description = "Spirit Angler's outfit",
-        position = 1,
-        section = equipmentSection
+            keyName = "spiritAnglers",
+            name = "Spirit Angler's",
+            description = "Spirit Angler's outfit",
+            position = 1,
+            section = equipmentSection
     )
     default boolean spiritAnglers() {
         return false;
@@ -107,14 +107,28 @@ public interface TemporossConfig extends Config {
     // Harpoon settings
     // Harpoon type to use
     @ConfigItem(
-        keyName = "harpoonType",
-        name = "Harpoon",
-        description = "Harpoon type to use",
-        position = 1,
-        section = harpoonSection
+            keyName = "harpoonType",
+            name = "Harpoon",
+            description = "Harpoon type to use",
+            position = 1,
+            section = harpoonSection
     )
     default HarpoonType harpoonType() {
         return HarpoonType.INFERNAL_HARPOON;
     }
 
+    @ConfigItem(
+            keyName = "minPlayers",
+            name = "Minimum Players",
+            description = "Minimum players required to start (1-24)",
+            position = 5,
+            section = generalSection
+    )
+    @Range(
+            min = 5,
+            max = 35
+    )
+    default int minPlayers() {
+        return 7;
+    }
 }
