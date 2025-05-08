@@ -34,6 +34,8 @@ import java.util.stream.Stream;
 
 // Removed unused imports: net.runelite.api.Item, net.runelite.api.ItemContainer, net.runelite.api.InventoryID
 import net.runelite.api.widgets.ItemWidget; // Added import for ItemWidget
+import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment; // Added import for Rs2Equipment
+import net.runelite.api.EquipmentInventorySlot; // Added import for EquipmentInventorySlot
 
 
 import static net.runelite.client.plugins.microbot.util.Global.*;
@@ -503,5 +505,42 @@ public class RsAgentTools {
             return false;
         }
         return Rs2Inventory.wear(itemName);
+    }
+
+    /**
+     * Retrieves the items currently equipped by the player.
+     *
+     * @return A list of strings, where each string represents an equipment slot
+     *         (e.g., "HEAD: Dragon helm" or "WEAPON: Empty slot").
+     *         Returns a list with an error message if equipment cannot be accessed.
+     */
+    static public List<String> getEquippedItems() {
+        List<String> equippedItems = new ArrayList<>();
+        if (Microbot.getClient() == null || Microbot.getItemManager() == null) {
+            equippedItems.add("Could not access client or item manager.");
+            Microbot.log(Level.ERROR, "getEquippedItems: Client or ItemManager is null.");
+            return equippedItems;
+        }
+
+        for (EquipmentInventorySlot slot : EquipmentInventorySlot.values()) {
+            ItemWidget itemWidget = Rs2Equipment.getItemInSlot(slot.getSlotIdx());
+            String slotName = slot.name();
+
+            if (itemWidget != null) {
+                String itemName = itemWidget.getName();
+                if (itemName == null || itemName.equalsIgnoreCase("null") || itemName.trim().isEmpty()) {
+                    itemName = "Item ID " + itemWidget.getItemId();
+                }
+                equippedItems.add(slotName + ": " + itemName);
+            } else {
+                equippedItems.add(slotName + ": Empty slot");
+            }
+        }
+
+        if (equippedItems.isEmpty() && EquipmentInventorySlot.values().length > 0) {
+            equippedItems.add("Equipment appears to be completely empty or inaccessible.");
+        }
+
+        return equippedItems;
     }
 }

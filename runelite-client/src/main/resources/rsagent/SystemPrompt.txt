@@ -51,6 +51,10 @@ equipItem: Equips an item from the player's inventory by its name.
       Takes inputs: itemName (string)
       Returns an output of type: string (e.g. "Successfully equipped 'Bronze sword'." or "Failed to equip 'Bronze sword'.")
 
+getEquippedItems: Checks the player's equipped items and returns a list of items in each slot.
+      Takes inputs: none
+      Returns an output of type: string (e.g. "Equipped items:\nHEAD: Dragon helm\nWEAPON: Dragon scimitar\nFEET: Empty slot...")
+
 finish: Call this when the goal is achieved or you cannot proceed further.
       Takes inputs: response (string) - A final summary message for the user.
       Returns an output of type: none

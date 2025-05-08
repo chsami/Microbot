@@ -238,6 +238,16 @@ public class Agent {
                         toolResult = success ? "Successfully equipped '" + itemName + "'." : "Failed to equip '" + itemName + "'. Item might not be in inventory or is not equippable.";
                         break;
                     }
+                    case "getEquippedItems": {
+                        List<String> equippedList = RsAgentTools.getEquippedItems();
+                        if (equippedList.isEmpty() || (equippedList.size() == 1 && equippedList.get(0).startsWith("Could not access"))) {
+                            toolResult = "Error: Could not retrieve equipped items.";
+                            log.warn("getEquippedItems tool failed: {}", equippedList.isEmpty() ? "Empty list" : equippedList.get(0));
+                        } else {
+                            toolResult = "Equipped items:\n" + String.join("\n", equippedList);
+                        }
+                        break;
+                    }
                     case "finish": {
                         String finishResponse = "Task finished."; // Default
                         if (parameters.has("response") && parameters.get("response").isJsonPrimitive() && parameters.get("response").getAsJsonPrimitive().isString()) {
