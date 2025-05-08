@@ -204,16 +204,14 @@ public class RsAgentTools {
     }
 
     /**
-     * Finds an NPC or Object by name and interacts with the specified action.
-     * This method attempts to interact with an NPC first, and if not found,
-     * attempts to interact with a GameObject.
+     * Finds an NPC by name and interacts with the specified action.
+     * Does not handle dialogue.
      *
-     * @param name The name of the NPC or Object to interact with.
-     * @param action The action to perform (e.g., "Talk-to", "Trade", "Attack", "Chop down", "Open").
-     * @return true if the interaction was successful with either an NPC or Object, false otherwise.
+     * @param name The name of the NPC to interact with.
+     * @param action The action to perform (e.g., "Trade", "Attack").
+     * @return true if the interaction was successful, false otherwise.
      */
-    static public boolean interactWith(String name, String action) {
-        // Try interacting with NPC first
+    static public boolean interactWithNpc(String name, String action) {
         NPC npc = Rs2Npc.getNpc(name);
         if (npc != null) {
             boolean interacted = Rs2Npc.interact(new Rs2NpcModel(npc), action);
@@ -222,18 +220,11 @@ public class RsAgentTools {
                 return true;
             } else {
                 Microbot.log(Level.WARN, "Failed to interact with NPC: " + name + " using action: " + action);
-                // Continue to try interacting with an object if NPC interaction failed
+                return false;
             }
-        }
-
-        // If NPC not found or interaction failed, try interacting with GameObject
-        boolean objectInteracted = Rs2GameObject.interact(name, action);
-        if (objectInteracted) {
-            Microbot.log(Level.INFO, "Interacted with GameObject: " + name + " using action: " + action);
-            return true;
         } else {
-            Microbot.log(Level.WARN, "Failed to interact with GameObject: " + name + " using action: " + action + ". Neither NPC nor GameObject found/interacted with.");
-            return false;
+             Microbot.log(Level.WARN, "NPC not found: " + name);
+             return false;
         }
     }
 

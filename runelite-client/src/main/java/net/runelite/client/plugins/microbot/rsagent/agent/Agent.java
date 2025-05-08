@@ -134,11 +134,11 @@ public class Agent {
                         toolResult = success ? "Successfully initiated walk to (" + x + ", " + y + ", " + z + ")." : "Failed to initiate walk to (" + x + ", " + y + ", " + z + ").";
                         break;
                     }
-                    case "interactWith": {
+                    case "interactWithNpc": { // Renamed from interactWith
                         String targetName = parameters.get("name").getAsString();
                         String interactionAction = parameters.get("action").getAsString();
-                        boolean success = RsAgentTools.interactWith(targetName, interactionAction);
-                        toolResult = success ? "Successfully interacted with '" + targetName + "' using action '" + interactionAction + "'." : "Failed to interact with '" + targetName + "' using action '" + interactionAction + "'. Target might not be present or interaction invalid.";
+                        boolean success = RsAgentTools.interactWithNpc(targetName, interactionAction); // Renamed method call
+                        toolResult = success ? "Successfully interacted with NPC '" + targetName + "' using action '" + interactionAction + "'." : "Failed to interact with NPC '" + targetName + "' using action '" + interactionAction + "'. NPC might not be present or interaction invalid.";
                         break;
                     }
                     case "talkToNpc": {
@@ -258,7 +258,7 @@ public class Agent {
                         }
                         break;
                     }
-                    case "interactWithObject": {
+                    case "interactWithObject": { // Added new case
                         String objectName = parameters.get("name").getAsString();
                         boolean success = RsAgentTools.interactWithObject(objectName);
                         toolResult = success ? "Successfully interacted with object: " + objectName + "." : "Failed to interact with object: " + objectName + ". Object might not be nearby or interactable.";
