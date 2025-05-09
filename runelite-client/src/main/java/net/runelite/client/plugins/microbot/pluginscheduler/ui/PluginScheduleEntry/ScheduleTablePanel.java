@@ -1433,6 +1433,17 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
             selectionListener.accept(null);
         }
     }
+    
+    /**
+     * Clears the table selection without triggering the selection callback.
+     * This is useful when we want to clear selection programmatically without
+     * triggering a cascade of UI updates.
+     */
+    public void clearSelectionWithoutCallback() {
+        scheduleTable.clearSelection();
+        // Unlike clearSelection(), this method does not call selectionListener
+    }
+
     public void addAndSelect(PluginScheduleEntry pluginEntry) {
         if (pluginEntry == null) return;
         

@@ -99,12 +99,16 @@ public interface SchedulerConfig extends Config {
     @ConfigItem(
         keyName = "minManualStartThresholdMinutes",
         name = "Manual Start Threshold (minutes)",
-        description = "Minimum time (in minutes) before a scheduled plugin can be manually started",
+        description = "Minimum time (in minutes) to next scheduled plugin, needed so a plugin can be started manually",
         position = 4,
         section = controlSection
     )
+    @Range(
+        min = 1,
+        max = 60
+    )
     default int minManualStartThresholdMinutes() {
-        return 5;
+        return 1;
     }
     default void setMinManualStartThresholdMinutes(int minutes){
         if  (Microbot.getConfigManager() == null){

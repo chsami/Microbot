@@ -70,7 +70,7 @@ public class revKillerScript extends Script {
     private boolean weDied = false;
     private boolean useTimedWorldHopper = false;
     private long howLongUntilHop = 0;
-    private volatile boolean shouldFlee = false;
+    public volatile boolean shouldFlee = false;
     private long startTime = System.currentTimeMillis();
 
 
@@ -168,6 +168,11 @@ public class revKillerScript extends Script {
     }
 
     public boolean timeToBreak(){
+
+        if (BreakHandlerScript.breakIn <= 0) {
+            //break handler not enabled?
+            return false;
+        }
 
         if (BreakHandlerScript.breakIn <= 300) {
             return true;
