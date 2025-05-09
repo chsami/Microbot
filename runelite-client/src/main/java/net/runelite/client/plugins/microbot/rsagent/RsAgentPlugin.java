@@ -67,11 +67,11 @@ public class RsAgentPlugin extends Plugin {
             log.warn("RSAgent enabled, but OpenAI API key is missing in config. Agent cannot start.");
         }
 
-        rsAgentScript.run(config);
+//        rsAgentScript.run(config);
     }
 
     protected void shutDown() {
-         rsAgentScript.shutdown();
+//         rsAgentScript.shutdown();
         overlayManager.remove(rsAgentOverlay);
         if (agentThread != null && agentThread.isAlive()) {
             agentThread.interrupt(); // Attempt to interrupt the agent thread

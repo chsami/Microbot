@@ -34,7 +34,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 // Removed unused imports: net.runelite.api.Item, net.runelite.api.ItemContainer, net.runelite.api.InventoryID
-import net.runelite.api.widgets.ItemWidget; // Added import for ItemWidget
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment; // Added import for Rs2Equipment
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject; // Added import for Rs2GameObject
 
@@ -214,6 +213,7 @@ public class RsAgentTools {
     static public boolean interactWithNpc(String name, String action) {
         NPC npc = Rs2Npc.getNpc(name);
         if (npc != null) {
+            Rs2Walker.walkTo(npc.getWorldLocation(),1);
             boolean interacted = Rs2Npc.interact(new Rs2NpcModel(npc), action);
             if (interacted) {
                 Microbot.log(Level.INFO, "Interacted with NPC: " + name + " using action: " + action);
@@ -548,6 +548,10 @@ public class RsAgentTools {
      */
     static public List<String> getNearbyObjects() {
         List<String> objectDescriptions = new ArrayList<>();
+        List<TileObject> tileObjects = new ArrayList<>();
+
+        tileObjects.addAll(Rs2GameObject.getGameObjectsWithinDistance(50));
+        tileObjects.addAll(Rs2GameObject.getGroundObjects(50));
 
         List<TileObject> gameObjects = Rs2GameObject.getAll();
         if ( gameObjects.isEmpty()) {
@@ -555,18 +559,22 @@ public class RsAgentTools {
             return objectDescriptions;
         }
 
-        for (TileObject gameObject : gameObjects) {
+        for (TileObject gameObject : tileObjects) {
             if (gameObject == null) continue;
 
-            String objectName = "Unknown Object";
+            String objectName;
             try {
-                objectName = Rs2GameObject.convertGameObjectToObjectComposition(gameObject.getId()).getName();
-                if (objectName == null || objectName.equalsIgnoreCase("null") || objectName.trim().isEmpty()) {
-                    objectName = "Object ID " + gameObject.getId(); // Fallback to ID if name is invalid
+                ObjectComposition obj = Rs2GameObject.convertGameObjectToObjectComposition(gameObject.getId());
+                if (obj == null) {
+                    continue;
                 }
+                objectName = obj.getName();
+                if (objectName == null ||  objectName.equalsIgnoreCase("null")) {
+                    continue;
+                }
+                objectName = objectName + " at coords: " + gameObject.getWorldLocation();
             } catch (Exception e) {
-                Microbot.log(Level.WARN, "getNearbyObjects: Could not get object name for ID " + gameObject.getId(), e);
-                objectName = "Object ID " + gameObject.getId() + " (Error)";
+                continue;
             }
 
             objectDescriptions.add(objectName);
@@ -586,10 +594,8 @@ public class RsAgentTools {
      * @return true if the interaction was successfully initiated, false otherwise.
      */
     static public boolean interactWithObject(String name) {
-        if (name == null || name.trim().isEmpty()) {
-            Microbot.log(Level.WARN, "interactWithObject: Object name is null or empty.");
-            return false;
-        }
-        return Rs2GameObject.interact(name);
+        GameObject object = Rs2GameObject.get(name);
+        Rs2Walker.walkTo(object.getWorldLocation(),1);
+        return Rs2GameObject.interact(object);
     }
 }

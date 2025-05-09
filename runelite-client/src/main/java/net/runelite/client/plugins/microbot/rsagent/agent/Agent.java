@@ -254,7 +254,7 @@ public class Agent {
                             toolResult = "Error: Could not retrieve nearby objects.";
                             log.warn("getNearbyObjects tool failed: {}", objectList.isEmpty() ? "Empty list" : objectList.get(0));
                         } else {
-                            toolResult = "Nearby objects:\n" + String.join("\n", objectList);
+                            toolResult = "Nearby objects:\n" + String.join(",", objectList);
                         }
                         break;
                     }
