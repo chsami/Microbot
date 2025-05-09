@@ -61,8 +61,8 @@ public class WintertodtScript extends Script {
                 } else {
                     wintertodtHp = -1;
                 }
-                brokenBrazier = Rs2GameObject.getGameObjects(ObjectID.BRAZIER_29313).stream().filter(gameObject -> gameObject.getWorldLocation().distanceTo2D(Rs2Player.getWorldLocation()) < 5).findFirst().orElse(null);
-                unlitBrazier = Rs2GameObject.getGameObjects(ObjectID.BRAZIER_29312).stream().filter(gameObject -> gameObject.getWorldLocation().distanceTo2D(Rs2Player.getWorldLocation()) < 5).findFirst().orElse(null);
+                brokenBrazier = Rs2GameObject.getGameObject(obj -> obj.getId() == ObjectID.BRAZIER_29313, 5);
+                unlitBrazier = Rs2GameObject.getGameObject(obj -> obj.getId() == ObjectID.BRAZIER_29312, 5);
 
                 shouldEat();
 
@@ -71,7 +71,7 @@ public class WintertodtScript extends Script {
 
                 NewMenuEntry actionToResume = config.wintertodtActions().getMenuEntry();
                 if (config.wintertodtActions().equals(WintertodtActions.FEED)) {
-                    GameObject fireBrazier = Rs2GameObject.getGameObjects(ObjectID.BURNING_BRAZIER_29314).stream().findFirst().orElse(null);
+                    GameObject fireBrazier = Rs2GameObject.getGameObject(ObjectID.BURNING_BRAZIER_29314);
                     if (fireBrazier != null && fireBrazier.getWorldLocation().distanceTo2D(Rs2Player.getWorldLocation()) < 5) {
                         if (!Rs2Inventory.contains(ItemID.BRUMA_ROOT) && !Rs2Inventory.contains(ItemID.BRUMA_KINDLING)) {
                             qolPlugin.updateLastWinthertodtAction(WintertodtActions.NONE);
