@@ -52,12 +52,12 @@ public class revKillerPlugin extends Plugin {
         revKillerScript.run(config);
         revKillerScript.startPkerDetection();
         revKillerScript.startHealthCheck();
-        revKillerScript.shouldFlee = false;
+        revKillerScript.weDied = false;
         eventBus.register(revKillerScript);
     }
 
     protected void shutDown() {
-        revKillerScript.shouldFlee = false;
+        revKillerScript.weDied = false;
         revKillerScript.stopFutures();
         revKillerScript.shutdown();
         eventBus.unregister(revKillerScript);

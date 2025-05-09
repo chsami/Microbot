@@ -67,10 +67,10 @@ public class revKillerScript extends Script {
     long randomdelay = generateRandomNumber(350,1000);
     protected ScheduledFuture<?> checkForPKerFuture;
     protected ScheduledFuture<?> healthCheckFuture;
-    private boolean weDied = false;
+    public boolean weDied = false;
     private boolean useTimedWorldHopper = false;
     private long howLongUntilHop = 0;
-    public volatile boolean shouldFlee = false;
+    private volatile boolean shouldFlee = false;
     private long startTime = System.currentTimeMillis();
 
 
