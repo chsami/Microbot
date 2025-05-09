@@ -548,37 +548,15 @@ public class RsAgentTools {
      */
     static public List<String> getNearbyObjects() {
         List<String> objectDescriptions = new ArrayList<>();
-        List<TileObject> tileObjects = new ArrayList<>();
 
-        tileObjects.addAll(Rs2GameObject.getGameObjectsWithinDistance(50));
-        tileObjects.addAll(Rs2GameObject.getGroundObjects(50));
-
-        List<TileObject> gameObjects = Rs2GameObject.getAll();
+        List<TileObject> gameObjects = Rs2GameObject.getAll(o->true, 20);
         if ( gameObjects.isEmpty()) {
             objectDescriptions.add("No game objects found nearby.");
             return objectDescriptions;
         }
+        var names = gameObjects.stream().map(Rs2GameObject::convertToObjectComposition).filter(Objects::nonNull).map(ObjectComposition::getName).filter(s->!s.equals("null")).collect(Collectors.toList());
 
-        for (TileObject gameObject : tileObjects) {
-            if (gameObject == null) continue;
-
-            String objectName;
-            try {
-                ObjectComposition obj = Rs2GameObject.convertGameObjectToObjectComposition(gameObject.getId());
-                if (obj == null) {
-                    continue;
-                }
-                objectName = obj.getName();
-                if (objectName == null ||  objectName.equalsIgnoreCase("null")) {
-                    continue;
-                }
-                objectName = objectName + " at coords: " + gameObject.getWorldLocation();
-            } catch (Exception e) {
-                continue;
-            }
-
-            objectDescriptions.add(objectName);
-        }
+        objectDescriptions.addAll(names);
 
         if (objectDescriptions.isEmpty()) {
             objectDescriptions.add("No valid game objects found nearby.");
@@ -594,7 +572,12 @@ public class RsAgentTools {
      * @return true if the interaction was successfully initiated, false otherwise.
      */
     static public boolean interactWithObject(String name) {
-        GameObject object = Rs2GameObject.get(name);
+        GameObject object = Rs2GameObject.getGameObject(obj -> {
+        var compName = Rs2GameObject.convertToObjectComposition(obj).getName();
+        if (compName == null) return false;
+        return compName.equalsIgnoreCase(name);
+        }, 20);
+        assert object != null;
         Rs2Walker.walkTo(object.getWorldLocation(),1);
         return Rs2GameObject.interact(object);
     }
