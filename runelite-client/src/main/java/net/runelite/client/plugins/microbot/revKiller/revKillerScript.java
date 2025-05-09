@@ -616,15 +616,11 @@ public class revKillerScript extends Script {
     public void stuckAtEnclave(){
         WorldPoint stuckSpot = new WorldPoint(3124,3636,0);
         if(Rs2Player.getWorldLocation().equals(stuckSpot)){
-            if(Rs2Equipment.get(EquipmentInventorySlot.RING)!=null){
-
-            } else {
-                Microbot.log("We're stuck outside of the enclave");
-                if(Rs2GameObject.exists(39653)){
-                    if(Rs2GameObject.interact(39653, "Pass-Through")){
-                        sleepUntil(()-> Rs2Player.isMoving(), Rs2Random.between(2000,4000));
-                        sleepUntil(()-> !Rs2Player.isMoving(), Rs2Random.between(4000,8000));
-                    }
+            Microbot.log("We're stuck outside of the enclave");
+            if(Rs2GameObject.exists(39653)){
+                if(Rs2GameObject.interact(39653, "Pass-Through")){
+                    sleepUntil(()-> Rs2Player.isMoving(), Rs2Random.between(2000,4000));
+                    sleepUntil(()-> !Rs2Player.isMoving(), Rs2Random.between(4000,8000));
                 }
             }
         }
