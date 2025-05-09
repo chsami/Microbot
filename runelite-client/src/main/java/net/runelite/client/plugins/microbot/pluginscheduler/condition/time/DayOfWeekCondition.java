@@ -32,6 +32,10 @@ import java.util.stream.Collectors;
 @Slf4j
 @EqualsAndHashCode(callSuper = true)
 public class DayOfWeekCondition extends TimeCondition {
+    
+    public static String getVersion() {
+        return "0.0.1";
+    }
     private final Set<DayOfWeek> activeDays;
     private final long maxRepeatsPerDay;
     private final long maxRepeatsPerWeek;

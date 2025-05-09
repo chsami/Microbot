@@ -1,26 +1,31 @@
 package net.runelite.client.plugins.microbot.bee.salamanders;
 
 import net.runelite.api.Client;
-import net.runelite.client.ui.overlay.Overlay;
-import net.runelite.client.ui.overlay.OverlayLayer;
+import net.runelite.api.Skill;
+import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
-import net.runelite.client.ui.overlay.components.PanelComponent;
+import net.runelite.client.ui.overlay.components.TitleComponent;
 
 import javax.inject.Inject;
 import java.awt.*;
 
-public class SalamanderOverlay extends Overlay {
+public class SalamanderOverlay extends OverlayPanel {
     private final Client client;
     private final SalamanderConfig config;
-    private final PanelComponent panelComponent = new PanelComponent();
+    private final SalamanderPlugin plugin;
+    private final SalamanderScript script;
+    private int startingLevel = 0;
 
     @Inject
-    public SalamanderOverlay(Client client, SalamanderConfig config) {
+    public SalamanderOverlay(Client client, SalamanderConfig config, SalamanderPlugin plugin, SalamanderScript script) {
+        super(plugin);
         this.client = client;
         this.config = config;
+        this.plugin = plugin;
+        this.script = script;
         setPosition(OverlayPosition.TOP_LEFT);
-        setLayer(OverlayLayer.ABOVE_WIDGETS);
+        setNaughty();
     }
 
     @Override
@@ -29,19 +34,64 @@ public class SalamanderOverlay extends Overlay {
             return null;
         }
 
+        if (startingLevel == 0) {
+            startingLevel = client.getRealSkillLevel(Skill.HUNTER);
+        }
+
         panelComponent.getChildren().clear();
-        panelComponent.setPreferredSize(new Dimension(200, 0));
-        panelComponent.getChildren().add(LineComponent.builder()
-                .left("Salamander Script")
-                .right("Running")
+        panelComponent.setPreferredSize(new Dimension(200, 300));
+
+        // Title with version
+        panelComponent.getChildren().add(TitleComponent.builder()
+                .text("Salamander Hunter by Bee & TaF")
+                .color(Color.GREEN)
                 .build());
 
-        // Example additions: You can add trap count, caught count, etc.
+        panelComponent.getChildren().add(LineComponent.builder().build());
+
+        // Basic information
         panelComponent.getChildren().add(LineComponent.builder()
-                .left("Hunter Level")
-                .right(String.valueOf(client.getRealSkillLevel(net.runelite.api.Skill.HUNTER)))
+                .left("Running: ")
+                .right(plugin.getTimeRunning())
+                .leftColor(Color.WHITE)
+                .rightColor(Color.WHITE)
                 .build());
 
-        return panelComponent.render(graphics);
+        panelComponent.getChildren().add(LineComponent.builder()
+                .left("Hunter Level:")
+                .right(startingLevel + "/" + client.getRealSkillLevel(Skill.HUNTER))
+                .leftColor(Color.WHITE)
+                .rightColor(Color.ORANGE)
+                .build());
+
+        // Salamander type
+        if (config.salamanderHunting() != null) {
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Hunting:")
+                    .right(config.salamanderHunting().getName())
+                    .leftColor(Color.WHITE)
+                    .rightColor(Color.YELLOW)
+                    .build());
+        }
+
+        // Traps information
+        int maxTraps = script.getMaxTrapsForHunterLevel(config);
+        int currentTraps = plugin.getTraps().size();
+        panelComponent.getChildren().add(LineComponent.builder()
+                .left("Traps:")
+                .right(currentTraps + "/" + maxTraps)
+                .leftColor(Color.WHITE)
+                .rightColor(currentTraps == maxTraps ? Color.GREEN : Color.CYAN)
+                .build());
+
+        // Statistics
+        panelComponent.getChildren().add(LineComponent.builder()
+                .left("Salamanders Caught:")
+                .right(String.valueOf(SalamanderScript.SalamandersCaught))
+                .leftColor(Color.WHITE)
+                .rightColor(Color.GREEN)
+                .build());
+
+        return super.render(graphics);
     }
 }

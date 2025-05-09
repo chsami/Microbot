@@ -9,6 +9,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.resource.P
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * Adapter for handling serialization and deserialization of ProcessItemCondition objects.
@@ -20,35 +21,46 @@ public class ProcessItemConditionAdapter implements JsonSerializer<ProcessItemCo
     public JsonElement serialize(ProcessItemCondition src, Type typeOfSrc, JsonSerializationContext context) {
         JsonObject result = new JsonObject();
         
-        // Store tracking mode
-        result.addProperty("trackingMode", src.getTrackingMode().name());
+        // Add type information
+        result.addProperty("type", ProcessItemCondition.class.getName());
         
-        // Store count targets
-        result.addProperty("targetCountMin", src.getTargetCountMin());
-        result.addProperty("targetCountMax", src.getTargetCountMax());
-        result.addProperty("currentTargetCount", src.getCurrentTargetCount());
-        result.addProperty("processedCount", src.getProcessedCount());
-        result.addProperty("satisfied", src.isSatisfied());
+        // Create data object
+        JsonObject data = new JsonObject();
         
-        // Serialize source items
-        JsonArray sourceItems = new JsonArray();
-        for (ItemTracker tracker : src.getSourceItems()) {
-            JsonObject item = new JsonObject();
-            item.addProperty("itemName", tracker.getItemName());
-            item.addProperty("quantityPerProcess", tracker.getQuantityPerProcess());
-            sourceItems.add(item);
+        // Add version information
+        data.addProperty("version", ProcessItemCondition.getVersion());
+        
+        // Add specific properties for ProcessItemCondition
+        data.addProperty("targetCountMin", src.getTargetCountMin());
+        data.addProperty("targetCountMax", src.getTargetCountMax());        
+        data.addProperty("trackingMode", src.getTrackingMode().name());
+        
+        // Serialize sourceItems
+        if (src.getSourceItems() != null && !src.getSourceItems().isEmpty()) {
+            JsonArray sourceItemsArray = new JsonArray();
+            for (ItemTracker item : src.getSourceItems()) {
+                JsonObject itemObj = new JsonObject();
+                itemObj.addProperty("patternString", item.getItemPattern().pattern());
+                itemObj.addProperty("quantityPerProcess", item.getQuantityPerProcess());
+                sourceItemsArray.add(itemObj);
+            }
+            data.add("sourceItems", sourceItemsArray);
         }
-        result.add("sourceItems", sourceItems);
         
-        // Serialize target items
-        JsonArray targetItems = new JsonArray();
-        for (ItemTracker tracker : src.getTargetItems()) {
-            JsonObject item = new JsonObject();
-            item.addProperty("itemName", tracker.getItemName());
-            item.addProperty("quantityPerProcess", tracker.getQuantityPerProcess());
-            targetItems.add(item);
+        // Serialize targetItems
+        if (src.getTargetItems() != null && !src.getTargetItems().isEmpty()) {
+            JsonArray targetItemsArray = new JsonArray();
+            for (ItemTracker item : src.getTargetItems()) {
+                JsonObject itemObj = new JsonObject();
+                itemObj.addProperty("patternString", item.getItemPattern().pattern());
+                itemObj.addProperty("quantityPerProcess", item.getQuantityPerProcess());
+                targetItemsArray.add(itemObj);
+            }
+            data.add("targetItems", targetItemsArray);
         }
-        result.add("targetItems", targetItems);
+        
+        // Add data to wrapper
+        result.add("data", data);
         
         return result;
     }
@@ -56,51 +68,72 @@ public class ProcessItemConditionAdapter implements JsonSerializer<ProcessItemCo
     @Override
     public ProcessItemCondition deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) 
             throws JsonParseException {
+    
         JsonObject jsonObject = json.getAsJsonObject();
         
-        // Parse tracking mode
-        TrackingMode trackingMode = TrackingMode.EITHER; // Default
-        if (jsonObject.has("trackingMode")) {
-            try {
-                trackingMode = TrackingMode.valueOf(jsonObject.get("trackingMode").getAsString());
-            } catch (IllegalArgumentException e) {
-                log.warn("Unknown tracking mode: {}", jsonObject.get("trackingMode").getAsString());
+        // Check if this is a typed format or direct format
+        JsonObject dataObj;
+        if (jsonObject.has("type") && jsonObject.has("data")) {
+            dataObj = jsonObject.getAsJsonObject("data");
+        } else {
+            // Legacy format - use the object directly
+            dataObj = jsonObject;
+        }
+        
+        // Version check
+        if (dataObj.has("version")) {
+            String version = dataObj.get("version").getAsString();
+            if (!version.equals(ProcessItemCondition.getVersion())) {                
+                throw new JsonParseException("Version mismatch in ProcessItemCondition: expected " +
+                        ProcessItemCondition.getVersion() + ", got " + version);
             }
         }
         
-        // Parse target counts
-        int targetCountMin = jsonObject.has("targetCountMin") ? jsonObject.get("targetCountMin").getAsInt() : 1;
-        int targetCountMax = jsonObject.has("targetCountMax") ? jsonObject.get("targetCountMax").getAsInt() : targetCountMin;
+        // Extract basic properties
+        int targetCountMin = dataObj.has("targetCountMin") ? dataObj.get("targetCountMin").getAsInt() : 1;
+        int targetCountMax = dataObj.has("targetCountMax") ? dataObj.get("targetCountMax").getAsInt() : targetCountMin;
         
-        // Parse source items
+        // Deserialize tracking mode
+        TrackingMode trackingMode = TrackingMode.EITHER; // Default
+        if (dataObj.has("trackingMode")) {
+            try {
+                trackingMode = TrackingMode.valueOf(dataObj.get("trackingMode").getAsString());
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid tracking mode: {}", dataObj.get("trackingMode").getAsString());
+            }
+        }
+        
+        // Deserialize sourceItems
         List<ItemTracker> sourceItems = new ArrayList<>();
-        if (jsonObject.has("sourceItems")) {
-            JsonArray sourceItemsArray = jsonObject.getAsJsonArray("sourceItems");
+        if (dataObj.has("sourceItems")) {
+            JsonArray sourceItemsArray = dataObj.getAsJsonArray("sourceItems");
             for (JsonElement element : sourceItemsArray) {
                 JsonObject itemObj = element.getAsJsonObject();
-                String itemName = itemObj.get("itemName").getAsString();
-                int quantity = itemObj.has("quantityPerProcess") ? 
-                        itemObj.get("quantityPerProcess").getAsInt() : 1;
+                String patternString = itemObj.get("patternString").getAsString();
+                int quantity = itemObj.get("quantityPerProcess").getAsInt();
                 
-                sourceItems.add(new ItemTracker(itemName, quantity));
+                // Create ItemTracker directly since its constructor needs pattern
+                ItemTracker tracker = new ItemTracker(patternString, quantity);
+                sourceItems.add(tracker);
             }
         }
         
-        // Parse target items
+        // Deserialize targetItems
         List<ItemTracker> targetItems = new ArrayList<>();
-        if (jsonObject.has("targetItems")) {
-            JsonArray targetItemsArray = jsonObject.getAsJsonArray("targetItems");
+        if (dataObj.has("targetItems")) {
+            JsonArray targetItemsArray = dataObj.getAsJsonArray("targetItems");
             for (JsonElement element : targetItemsArray) {
                 JsonObject itemObj = element.getAsJsonObject();
-                String itemName = itemObj.get("itemName").getAsString();
-                int quantity = itemObj.has("quantityPerProcess") ? 
-                        itemObj.get("quantityPerProcess").getAsInt() : 1;
+                String patternString = itemObj.get("patternString").getAsString();
+                int quantity = itemObj.get("quantityPerProcess").getAsInt();
                 
-                targetItems.add(new ItemTracker(itemName, quantity));
+                // Create ItemTracker directly since its constructor needs pattern
+                ItemTracker tracker = new ItemTracker(patternString, quantity);
+                targetItems.add(tracker);
             }
         }
         
-        // Create the condition using builder
+        // Create the condition
         return ProcessItemCondition.builder()
                 .sourceItems(sourceItems)
                 .targetItems(targetItems)
@@ -108,5 +141,7 @@ public class ProcessItemConditionAdapter implements JsonSerializer<ProcessItemCo
                 .targetCountMin(targetCountMin)
                 .targetCountMax(targetCountMax)
                 .build();
+                    
+       
     }
 }

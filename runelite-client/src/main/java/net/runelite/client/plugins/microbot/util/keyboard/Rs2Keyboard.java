@@ -26,7 +26,10 @@ public class Rs2Keyboard {
 
             KeyEvent keyEvent = new KeyEvent(getCanvas(), KeyEvent.KEY_TYPED, System.currentTimeMillis() + randomizer, 0, KeyEvent.VK_UNDEFINED, word.charAt(i));
 
-            getCanvas().dispatchEvent(keyEvent);
+            Microbot.getClientThread().runOnClientThreadOptional(() -> {
+                getCanvas().dispatchEvent(keyEvent);
+                return true;
+            });
 
             Global.sleep(100, 200);
         }
@@ -47,7 +50,10 @@ public class Rs2Keyboard {
 
         KeyEvent keyEvent = new KeyEvent(getCanvas(), KeyEvent.KEY_TYPED, System.currentTimeMillis() + randomizer, 0, KeyEvent.VK_UNDEFINED, key);
 
-        getCanvas().dispatchEvent(keyEvent);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            getCanvas().dispatchEvent(keyEvent);
+            return true;
+        });
 
         if (!originalFocusValue) {
             Microbot.getClient().getCanvas().setFocusable(originalFocusValue);
@@ -65,7 +71,10 @@ public class Rs2Keyboard {
 
         KeyEvent keyEvent = new KeyEvent(getCanvas(), KeyEvent.KEY_PRESSED, System.currentTimeMillis() + randomizer, 0, KeyEvent.VK_SHIFT, CHAR_UNDEFINED);
 
-        getCanvas().dispatchEvent(keyEvent);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            getCanvas().dispatchEvent(keyEvent);
+            return true;
+        });
 
         if (!originalFocusValue) {
             Microbot.getClient().getCanvas().setFocusable(originalFocusValue);
@@ -83,7 +92,10 @@ public class Rs2Keyboard {
 
         KeyEvent keyEvent = new KeyEvent(getCanvas(), KeyEvent.KEY_RELEASED, System.currentTimeMillis() + randomizer, 0, KeyEvent.VK_SHIFT);
 
-        getCanvas().dispatchEvent(keyEvent);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            getCanvas().dispatchEvent(keyEvent);
+            return true;
+        });
 
         if (!originalFocusValue) {
             Microbot.getClient().getCanvas().setFocusable(originalFocusValue);
@@ -99,7 +111,10 @@ public class Rs2Keyboard {
 
         KeyEvent keyEvent = new KeyEvent(getCanvas(), KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, key);
 
-        getCanvas().dispatchEvent(keyEvent);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            getCanvas().dispatchEvent(keyEvent);
+            return true;
+        });
 
         if (!originalFocusValue) {
             Microbot.getClient().getCanvas().setFocusable(originalFocusValue);
@@ -117,7 +132,10 @@ public class Rs2Keyboard {
 
         KeyEvent keyEvent = new KeyEvent(getCanvas(), KeyEvent.KEY_RELEASED, System.currentTimeMillis() + randomizer, 0, key);
 
-        getCanvas().dispatchEvent(keyEvent);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            getCanvas().dispatchEvent(keyEvent);
+            return true;
+        });
 
         if (!originalFocusValue) {
             Microbot.getClient().getCanvas().setFocusable(originalFocusValue);
@@ -136,6 +154,9 @@ public class Rs2Keyboard {
         //FIX: this is to avoid automatically login with jagex account when you are on the login screen
         KeyEvent keyEvent = new KeyEvent(getCanvas(), KeyEvent.KEY_TYPED, System.currentTimeMillis() , 0, KeyEvent.VK_UNDEFINED, '\n');
 
-        getCanvas().dispatchEvent(keyEvent);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            getCanvas().dispatchEvent(keyEvent);
+            return true;
+        });
     }
 }

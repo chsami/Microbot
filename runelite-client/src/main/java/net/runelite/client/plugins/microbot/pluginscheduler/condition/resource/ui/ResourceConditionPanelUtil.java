@@ -50,7 +50,7 @@ public class ResourceConditionPanelUtil {
     /**
      * Creates a panel for configuring Inventory Item Count conditions
      */
-    public static void createInventoryItemCountPanel(JPanel panel, GridBagConstraints gbc, JPanel configPanel) {
+    public static void createInventoryItemCountPanel(JPanel panel, GridBagConstraints gbc) {
         // Title
         JLabel titleLabel = new JLabel("Inventory Item Count:");
         titleLabel.setForeground(Color.WHITE);
@@ -145,10 +145,10 @@ public class ResourceConditionPanelUtil {
         panel.add(regexLabel, gbc);
         
         // Store the components for later access
-        configPanel.putClientProperty("itemNameField", itemNameField);
-        configPanel.putClientProperty("minCountSpinner", minCountSpinner);
-        configPanel.putClientProperty("maxCountSpinner", maxCountSpinner);
-        configPanel.putClientProperty("includeNotedCheckbox", includeNotedCheckbox);        
+        panel.putClientProperty("itemNameField", itemNameField);
+        panel.putClientProperty("minCountSpinner", minCountSpinner);
+        panel.putClientProperty("maxCountSpinner", maxCountSpinner);
+        panel.putClientProperty("includeNotedCheckbox", includeNotedCheckbox);        
     }
     public static InventoryItemCountCondition createInventoryItemCountCondition(JPanel configPanel) {
         JTextField itemNameField = (JTextField) configPanel.getClientProperty("itemNameField");

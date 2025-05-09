@@ -22,15 +22,18 @@ import net.runelite.client.plugins.microbot.util.math.Rs2Random;
  */
 @Getter
 public class InventoryItemCountCondition extends ResourceCondition {
-    private final boolean includeNoted;
     
+    public static String getVersion() {
+        return "0.0.1";
+    }
+    private final boolean includeNoted;    
     private final int targetCountMin;
     private final int targetCountMax;
     
-    private int currentTargetCount;
-    private int currentItemCount;
-    private boolean satisfied = false;
-    private boolean initialInventoryLoaded = false;
+    private transient int currentTargetCount;
+    private transient int currentItemCount;
+    private transient boolean satisfied = false;
+    private transient boolean initialInventoryLoaded = false;
     public InventoryItemCountCondition(String itemName, int targetCount, boolean includeNoted) {
         super(itemName);
         this.includeNoted = includeNoted;

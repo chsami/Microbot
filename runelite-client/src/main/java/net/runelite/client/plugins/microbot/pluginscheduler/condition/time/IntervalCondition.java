@@ -19,6 +19,12 @@ import java.util.concurrent.ThreadLocalRandom;
 @Slf4j
 @EqualsAndHashCode(callSuper = false , exclude = {"nextTriggerTime"})
 public class IntervalCondition extends TimeCondition {
+    /**
+     * Version of the IntervalCondition class
+     */
+    public static String getVersion() {
+        return "0.0.1";
+    }
     @Getter
     private final Duration interval;
     private transient ZonedDateTime nextTriggerTime;

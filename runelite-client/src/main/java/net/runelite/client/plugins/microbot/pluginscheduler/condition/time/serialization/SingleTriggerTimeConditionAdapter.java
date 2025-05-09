@@ -38,7 +38,7 @@ public class SingleTriggerTimeConditionAdapter implements JsonSerializer<SingleT
         
         // Convert start time to UTC        
         ZonedDateTime targetUtc = src.getTargetTime().withZoneSameInstant(ZoneId.of("UTC"));
-                
+        data.addProperty("version", src.getVersion());
         data.addProperty("targetTime", targetUtc.toLocalTime().format(TIME_FORMAT));
         data.addProperty("targetDate", targetUtc.toLocalDate().format(DATE_FORMAT));
         
@@ -56,35 +56,37 @@ public class SingleTriggerTimeConditionAdapter implements JsonSerializer<SingleT
     @Override
     public SingleTriggerTimeCondition deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) 
             throws JsonParseException {
-        try {
-            JsonObject jsonObject = json.getAsJsonObject();
-            
-            // Check if this is a typed format or direct format
-            JsonObject dataObj;
-            if (jsonObject.has("type") && jsonObject.has("data")) {
-                dataObj = jsonObject.getAsJsonObject("data");
-            } else {
-                // Legacy format - use the object directly
-                dataObj = jsonObject;
-            }
-            
-            // Get timezone (fallback to system default)
-            ZoneId zoneId = ZoneId.systemDefault();
-            
-            // Parse time values
-            LocalTime serializedStartTime = LocalTime.parse(dataObj.get("targetTime").getAsString(), TIME_FORMAT);
-            // Parse date values
-            LocalDate serializedStartDate = LocalDate.parse(dataObj.get("targetDate").getAsString(), DATE_FORMAT);
-            // Convert to ZonedDateTime
-            ZonedDateTime targetZoned = ZonedDateTime.of(serializedStartDate, serializedStartTime, zoneId);
-            // Create condition
-            SingleTriggerTimeCondition condition = new SingleTriggerTimeCondition(targetZoned);
-            
-            return condition;
-        } catch (Exception e) {
-            log.error("Error deserializing SingleTriggerTimeCondition", e);
-            // Return a default condition that triggers after 24 hours
-            return SingleTriggerTimeCondition.afterDelay(24 * 60 * 60);
+      
+        JsonObject jsonObject = json.getAsJsonObject();
+        
+        // Check if this is a typed format or direct format
+        JsonObject dataObj;
+        if (jsonObject.has("type") && jsonObject.has("data")) {
+            dataObj = jsonObject.getAsJsonObject("data");
+        } else {
+            // Legacy format - use the object directly
+            dataObj = jsonObject;
         }
+        
+        // Get timezone (fallback to system default)
+        ZoneId zoneId = ZoneId.systemDefault();
+        if (dataObj.has("version")) {
+            if (!dataObj.get("version").getAsString().equals(SingleTriggerTimeCondition.getVersion())) {
+                throw new JsonParseException("Version mismatch: expected " + SingleTriggerTimeCondition.getVersion() + 
+                        ", got " + dataObj.get("version").getAsString());
+            }
+        }
+    
+        // Parse time values
+        LocalTime serializedStartTime = LocalTime.parse(dataObj.get("targetTime").getAsString(), TIME_FORMAT);
+        // Parse date values
+        LocalDate serializedStartDate = LocalDate.parse(dataObj.get("targetDate").getAsString(), DATE_FORMAT);
+        // Convert to ZonedDateTime
+        ZonedDateTime targetZoned = ZonedDateTime.of(serializedStartDate, serializedStartTime, zoneId);
+        // Create condition
+        SingleTriggerTimeCondition condition = new SingleTriggerTimeCondition(targetZoned);
+        
+        return condition;
+        
     }
 }

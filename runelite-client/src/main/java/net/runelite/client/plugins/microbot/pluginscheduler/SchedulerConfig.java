@@ -112,6 +112,38 @@ public interface SchedulerConfig extends Config {
         }
         Microbot.getConfigManager().setConfiguration(CONFIG_GROUP, "minManualStartThresholdMinutes", minutes);
     }
+    @ConfigItem(
+        keyName = "prioritizeNonDefaultPlugins",
+        name = "Prioritize Non-Default Plugins",
+        description = "Stop automatically running default plugins when a non-default plugin is due within the grace period", 
+        position = 5,
+        section = controlSection
+    )
+    default boolean prioritizeNonDefaultPlugins() {
+        return true;
+    }
+    void setPrioritizeNonDefaultPlugins(boolean prioritizeNonDefaultPlugins);
+
+    @ConfigItem(
+        keyName = "nonDefaultPluginLookAheadMinutes",
+        name = "Non-Default Plugin Look-Ahead (minutes)",
+        description = "Time window in minutes to look ahead for non-default plugins when deciding to stop a default plugin",
+        position = 6,
+        section = controlSection
+    )
+    default int nonDefaultPluginLookAheadMinutes() {
+        return 1;
+    }
+    @ConfigItem(
+        keyName ="notifcationsOn",
+        name = "Notifications On",
+        description = "Enable notifications for plugin scheduler events",
+        position = 7,
+        section = controlSection
+    )
+    default boolean notificationsOn() {
+        return false;
+    }
   
 
 
@@ -186,10 +218,18 @@ public interface SchedulerConfig extends Config {
     default int worldType() {
         return 2;
     }
-  
+    @ConfigItem(
+        keyName = "autoLogOutOnStop",
+        name = "Auto Log Out on Stop",
+        description = "Automatically log out when stopping the scheduler",
+        position = 3,
+        section =  loginLogOutSection
+    )
+    default boolean autoLogOutOnStop() {
+        return false;
+    }
+    
    
-
-
     // Break settings
     @ConfigItem(
         keyName = "enableBreakHandlerAutomatically",
@@ -214,15 +254,43 @@ public interface SchedulerConfig extends Config {
     default boolean breakDuringWait() {
         return true;
     }
+    @Range(
+        min = 2,
+        max = 60
+    )
     @ConfigItem(
         keyName = "minTimeToNextScheduleForTakingABreak",
         name = "Min Break Time (minutes)",        
-        description = "Minimum Time until next schedule to to take a break",
+        description = "The Minimum Time until to the next scheduled plugin is due to run for taking a break",
         position = 3,
         section = breakSection
     )
     default int minTimeToNextScheduleForTakingABreak() {
         return 2;
+    }
+    @Range(
+        min = 2,
+        max = 60
+    )
+    @ConfigItem(
+        keyName = "maxBreakDuratation",
+        name = "Max Break Duration (minutes)",        
+        description = "When taking a break, the maximum duration of the break",
+        position = 4,
+        section = breakSection
+    )
+    default int maxBreakDuratation() {
+        return 2;
+    }
+    @ConfigItem(
+        keyName = "autoLogOutOnBreak",
+        name = "Auto Log Out on Break",        
+        description = "Automatically log out when taking a break",
+        position = 5,
+        section =  breakSection
+    )
+    default boolean autoLogOutOnBreak() {
+        return false;
     }
 
    

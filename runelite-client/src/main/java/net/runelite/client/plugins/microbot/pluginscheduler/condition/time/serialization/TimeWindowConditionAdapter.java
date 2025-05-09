@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.pluginscheduler.condition.time.seri
 
 import com.google.gson.*;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.SingleTriggerTimeCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeWindowCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.enums.RepeatCycle;
 
@@ -29,7 +30,7 @@ public class TimeWindowConditionAdapter implements JsonSerializer<TimeWindowCond
         
         // Get source timezone
         ZoneId sourceZone = src.getZoneId() != null ? src.getZoneId() : ZoneId.systemDefault();
-        
+        data.addProperty("version", src.getVersion());
         // Store the timezone ID for deserialization
         data.addProperty("zoneId", sourceZone.getId());
         
@@ -78,97 +79,101 @@ public class TimeWindowConditionAdapter implements JsonSerializer<TimeWindowCond
     @Override
     public TimeWindowCondition deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) 
             throws JsonParseException {
-        try {
-            JsonObject jsonObject = json.getAsJsonObject();
-            
-            // Check if this is a typed format or direct format
-            JsonObject dataObj;
-            if (jsonObject.has("type") && jsonObject.has("data")) {
-                dataObj = jsonObject.getAsJsonObject("data");
-            } else {
-                // Legacy format - use the object directly
-                dataObj = jsonObject;
-            }
-            
-            // Get the target timezone for conversion (default to system)
-            ZoneId targetZone = ZoneId.systemDefault();
-            if (dataObj.has("zoneId")) {
-                try {
-                    targetZone = ZoneId.of(dataObj.get("zoneId").getAsString());
-                } catch (Exception e) {
-                    log.warn("Invalid zoneId in serialized TimeWindowCondition", e);
-                }
-            }
-            
-            // Check if times are stored in UTC format
-            boolean isUtcFormat = dataObj.has("timeFormat") && 
-                                  "UTC".equals(dataObj.get("timeFormat").getAsString());
-            
-            // Parse time values
-            LocalTime serializedStartTime = LocalTime.parse(dataObj.get("startTime").getAsString(), TIME_FORMAT);
-            LocalTime serializedEndTime = LocalTime.parse(dataObj.get("endTime").getAsString(), TIME_FORMAT);
-            
-            // Parse date values
-            LocalDate serializedStartDate = LocalDate.parse(dataObj.get("startDate").getAsString(), DATE_FORMAT);
-            LocalDate serializedEndDate = LocalDate.parse(dataObj.get("endDate").getAsString(), DATE_FORMAT);
-            
-            LocalTime startTime;
-            LocalTime endTime;
-            LocalDate startDate;
-            LocalDate endDate;
-            
-            if (isUtcFormat) {
-                // If stored in UTC format, convert back to target timezone
-                LocalDate today = LocalDate.now();
-                
-                // Convert start time from UTC to target zone
-                ZonedDateTime startUtc = ZonedDateTime.of(today, serializedStartTime, ZoneId.of("UTC"));
-                ZonedDateTime startTargetZone = startUtc.withZoneSameInstant(targetZone);
-                startTime = startTargetZone.toLocalTime();
-                
-                // Convert end time from UTC to target zone
-                ZonedDateTime endUtc = ZonedDateTime.of(today, serializedEndTime, ZoneId.of("UTC"));
-                ZonedDateTime endTargetZone = endUtc.withZoneSameInstant(targetZone);
-                endTime = endTargetZone.toLocalTime();
-                
-                // Convert dates from UTC to target zone
-                ZonedDateTime startDateUtc = ZonedDateTime.of(serializedStartDate, LocalTime.NOON, ZoneId.of("UTC"));
-                ZonedDateTime startDateTarget = startDateUtc.withZoneSameInstant(targetZone);
-                startDate = startDateTarget.toLocalDate();
-                
-                ZonedDateTime endDateUtc = ZonedDateTime.of(serializedEndDate, LocalTime.NOON, ZoneId.of("UTC"));
-                ZonedDateTime endDateTarget = endDateUtc.withZoneSameInstant(targetZone);
-                endDate = endDateTarget.toLocalDate();
-            } else {
-                // Legacy format - use times as-is
-                startTime = serializedStartTime;
-                endTime = serializedEndTime;
-                startDate = serializedStartDate;
-                endDate = serializedEndDate;
-            }
-            
-            // Parse repeat cycle
-            RepeatCycle repeatCycle = RepeatCycle.valueOf(
-                    dataObj.get("repeatCycle").getAsString());
-            int repeatInterval = dataObj.get("repeatInterval").getAsInt();
-            long maximumNumberOfRepeats = dataObj.get("maximumNumberOfRepeats").getAsLong();
-            // Create the condition with the parsed values
-            TimeWindowCondition condition = new TimeWindowCondition(
-                    startTime, endTime, startDate, endDate, repeatCycle, repeatInterval, maximumNumberOfRepeats);
-            
-            // Set timezone
-            condition.setZoneId(targetZone);
-            
-            // Set randomization if present
-            if (dataObj.has("useRandomization") && dataObj.has("randomizeMinutes")) {
-                boolean useRandomization = dataObj.get("useRandomization").getAsBoolean();
-                int randomizeMinutes = dataObj.get("randomizeMinutes").getAsInt();
-                condition.setRandomization(useRandomization, randomizeMinutes);
-            }                        
-            return condition;
-        } catch (Exception e) {
-            log.error("Error deserializing TimeWindowCondition", e);            
-            throw new JsonParseException("Failed to deserialize TimeWindowCondition", e);
+       
+        JsonObject jsonObject = json.getAsJsonObject();
+        
+        // Check if this is a typed format or direct format
+        JsonObject dataObj;
+        
+
+        if (jsonObject.has("type") && jsonObject.has("data")) {
+            dataObj = jsonObject.getAsJsonObject("data");
+        } else {
+            // Legacy format - use the object directly
+            dataObj = jsonObject;
         }
+        if (dataObj.has("version")) {
+            if (!dataObj.get("version").getAsString().equals(TimeWindowCondition.getVersion())) {
+                throw new JsonParseException("Version mismatch: expected " + TimeWindowCondition.getVersion() + 
+                        ", got " + dataObj.get("version").getAsString());
+            }
+        }
+        // Get the target timezone for conversion (default to system)
+        ZoneId targetZone = ZoneId.systemDefault();
+        if (dataObj.has("zoneId")) {
+            try {
+                targetZone = ZoneId.of(dataObj.get("zoneId").getAsString());
+            } catch (Exception e) {
+                log.warn("Invalid zoneId in serialized TimeWindowCondition", e);
+            }
+        }
+        
+        // Check if times are stored in UTC format
+        boolean isUtcFormat = dataObj.has("timeFormat") && 
+                                "UTC".equals(dataObj.get("timeFormat").getAsString());
+        
+        // Parse time values
+        LocalTime serializedStartTime = LocalTime.parse(dataObj.get("startTime").getAsString(), TIME_FORMAT);
+        LocalTime serializedEndTime = LocalTime.parse(dataObj.get("endTime").getAsString(), TIME_FORMAT);
+        
+        // Parse date values
+        LocalDate serializedStartDate = LocalDate.parse(dataObj.get("startDate").getAsString(), DATE_FORMAT);
+        LocalDate serializedEndDate = LocalDate.parse(dataObj.get("endDate").getAsString(), DATE_FORMAT);
+        
+        LocalTime startTime;
+        LocalTime endTime;
+        LocalDate startDate;
+        LocalDate endDate;
+        
+        if (isUtcFormat) {
+            // If stored in UTC format, convert back to target timezone
+            LocalDate today = LocalDate.now();
+            
+            // Convert start time from UTC to target zone
+            ZonedDateTime startUtc = ZonedDateTime.of(today, serializedStartTime, ZoneId.of("UTC"));
+            ZonedDateTime startTargetZone = startUtc.withZoneSameInstant(targetZone);
+            startTime = startTargetZone.toLocalTime();
+            
+            // Convert end time from UTC to target zone
+            ZonedDateTime endUtc = ZonedDateTime.of(today, serializedEndTime, ZoneId.of("UTC"));
+            ZonedDateTime endTargetZone = endUtc.withZoneSameInstant(targetZone);
+            endTime = endTargetZone.toLocalTime();
+            
+            // Convert dates from UTC to target zone
+            ZonedDateTime startDateUtc = ZonedDateTime.of(serializedStartDate, LocalTime.NOON, ZoneId.of("UTC"));
+            ZonedDateTime startDateTarget = startDateUtc.withZoneSameInstant(targetZone);
+            startDate = startDateTarget.toLocalDate();
+            
+            ZonedDateTime endDateUtc = ZonedDateTime.of(serializedEndDate, LocalTime.NOON, ZoneId.of("UTC"));
+            ZonedDateTime endDateTarget = endDateUtc.withZoneSameInstant(targetZone);
+            endDate = endDateTarget.toLocalDate();
+        } else {
+            // Legacy format - use times as-is
+            startTime = serializedStartTime;
+            endTime = serializedEndTime;
+            startDate = serializedStartDate;
+            endDate = serializedEndDate;
+        }
+        
+        // Parse repeat cycle
+        RepeatCycle repeatCycle = RepeatCycle.valueOf(
+                dataObj.get("repeatCycle").getAsString());
+        int repeatInterval = dataObj.get("repeatInterval").getAsInt();
+        long maximumNumberOfRepeats = dataObj.get("maximumNumberOfRepeats").getAsLong();
+        // Create the condition with the parsed values
+        TimeWindowCondition condition = new TimeWindowCondition(
+                startTime, endTime, startDate, endDate, repeatCycle, repeatInterval, maximumNumberOfRepeats);
+        
+        // Set timezone
+        condition.setZoneId(targetZone);
+        
+        // Set randomization if present
+        if (dataObj.has("useRandomization") && dataObj.has("randomizeMinutes")) {
+            boolean useRandomization = dataObj.get("useRandomization").getAsBoolean();
+            int randomizeMinutes = dataObj.get("randomizeMinutes").getAsInt();
+            condition.setRandomization(useRandomization, randomizeMinutes);
+        }                        
+        return condition;
+       
     }
 }

@@ -21,7 +21,10 @@ import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 @Slf4j
 @EqualsAndHashCode(callSuper = false)
 public class VarbitCondition implements Condition {
-
+    
+    public static String getVersion() {
+        return "0.0.1";
+    }
     /**
      * Defines the different types of variables that can be tracked
      */

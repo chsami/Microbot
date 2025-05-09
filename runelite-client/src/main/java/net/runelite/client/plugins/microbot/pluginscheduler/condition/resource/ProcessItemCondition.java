@@ -31,7 +31,10 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Getter
-public class ProcessItemCondition extends ResourceCondition {
+public class ProcessItemCondition extends ResourceCondition {    
+    public static String getVersion() {
+        return "0.0.1";
+    }
     // Tracking options
     private final List<ItemTracker> sourceItems; // Items being consumed
     private final List<ItemTracker> targetItems; // Items being produced
@@ -40,15 +43,15 @@ public class ProcessItemCondition extends ResourceCondition {
     // Target count configuration
     private final int targetCountMin;
     private final int targetCountMax;
-    private int currentTargetCount;
+    private transient int currentTargetCount;
     
     // State tracking
-    private Map<String, Integer> previousInventoryCounts = new HashMap<>();
-    private int processedCount = 0;
-    private boolean satisfied = false;
-    private Instant lastInventoryChange = Instant.now();
-    private boolean isProcessingActive = false;
-    private boolean initialInventoryLoaded = false;
+    private transient Map<String, Integer> previousInventoryCounts = new HashMap<>();
+    private transient int processedCount = 0;
+    private transient boolean satisfied = false;
+    private transient Instant lastInventoryChange = Instant.now();
+    private transient boolean isProcessingActive = false;
+    private transient boolean initialInventoryLoaded = false;
     public  List<Pattern>getInputItemPatterns() {
         return sourceItems.stream().map(ItemTracker::getItemPattern).collect(Collectors.toList());
     }

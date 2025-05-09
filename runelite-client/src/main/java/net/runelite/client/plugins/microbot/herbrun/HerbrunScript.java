@@ -90,7 +90,9 @@ public class HerbrunScript extends Script {
                     Rs2Bank.depositAll();
                 }
                 HerbrunPlugin.status = "Finished";
-                Microbot.stopPlugin(plugin);
+                plugin.reportFinished("Herb run finished",true);
+                this.shutdown();
+                
             }
 
             if (!currentPatch.isInRange(10)) {

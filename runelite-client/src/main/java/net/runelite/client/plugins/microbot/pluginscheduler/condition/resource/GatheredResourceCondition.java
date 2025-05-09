@@ -40,6 +40,10 @@ import java.util.stream.Collectors;
 @Slf4j
 @Getter
 public class GatheredResourceCondition extends ResourceCondition {
+
+    public static String getVersion() {
+        return "0.0.1";
+    }
     private final boolean includeNoted;
     private final String itemName;
     private final int targetCountMin;
@@ -48,13 +52,13 @@ public class GatheredResourceCondition extends ResourceCondition {
     private final List<Skill> relevantSkills;
     
     // Gathering state tracking
-    private boolean isCurrentlyGathering = false;
-    private Instant lastGatheringActivity = Instant.now();
-    private Map<String, Integer> previousItemCounts = new HashMap<>();
-    private Map<String, Integer> gatheredItemCounts = new HashMap<>();
-    private int currentTargetCount;
-    private int currentGatheredCount;
-    private boolean satisfied = false;
+    private transient boolean isCurrentlyGathering = false;
+    private transient Instant lastGatheringActivity = Instant.now();
+    private transient Map<String, Integer> previousItemCounts = new HashMap<>();
+    private transient Map<String, Integer> gatheredItemCounts = new HashMap<>();
+    private transient int currentTargetCount;
+    private transient int currentGatheredCount;
+    private transient boolean satisfied = false;
     
     // Animation tracking for gathering activities
     private static final int[] GATHERING_ANIMATIONS = {

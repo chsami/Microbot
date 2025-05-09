@@ -13,6 +13,9 @@ import java.util.Set;
  */
 @Slf4j
 public class RegionCondition extends LocationCondition {
+    public static String getVersion() {
+        return "0.0.1";
+    }
     @Getter
     private final Set<Integer> targetRegions;
 

@@ -140,10 +140,7 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
         // Modify the existing table selection listener to update ComboBox
         tablePanel.addSelectionListener(pluginEntry -> {
             onPluginSelected(pluginEntry);
-            // Synchronize form panel ComboBox with table selection
-            if (plugin != null) {                
-                formPanel.syncWithTableSelection(pluginEntry);
-            }
+            // Synchronize form panel ComboBox with table selection        
         });
         // Create refresh timer to update info panel
         refreshTimer = new Timer(1000, e -> infoPanel.refresh());
@@ -174,7 +171,9 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
      * Called when conditions are updated in the UI and need to be saved.
      */
     @Override
-    public void onConditionsUpdated(LogicalCondition logicalCondition, PluginScheduleEntry plugin, boolean isStopCondition) {
+    public void onConditionsUpdated(    LogicalCondition logicalCondition, 
+                                        PluginScheduleEntry plugin, 
+                                        boolean isStopCondition) {
         // Save to default configuration
         onConditionsUpdated(logicalCondition, plugin, isStopCondition, null);
     }
@@ -191,9 +190,7 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
             return;
         }
         
-        log.info("Saving {} conditions for plugin: {}", 
-                isStopCondition ? "stop" : "start", 
-                pluginEntry.getCleanName());
+       
         
         try {
            
@@ -504,8 +501,28 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
         JSplitPane scheduleSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
         scheduleSplitPane.setTopComponent(tablePanel);
         scheduleSplitPane.setBottomComponent(formPanel);
+        
+        // Calculate the preferred size for showing 3 rows in the table
+        // Row height (30px) * 3 rows + header height (~25px) + legend panel (~30px) + borders/margins (~15px)
+        int preferredTableHeight = (30 * 3) + 25 + 30 + 15; // ~160px for 3 rows
+        
+        // Calculate the maximum size for showing 8 rows in the table
+        int maxTableHeight = (30 * 8) + 25 + 30 + 15; // ~310px for 8 rows
+        
+        // Set minimum size for the form panel to ensure it doesn't get too small
+        formPanel.setMinimumSize(new Dimension(0, 140));
+        
+        // Set minimum size for the table panel to ensure at least 3 rows are visible
+        tablePanel.setMinimumSize(new Dimension(0, preferredTableHeight));
+        
+        // Set preferred size for the table panel
+        tablePanel.setPreferredSize(new Dimension(0, preferredTableHeight));
+        
+        // Set maximum size for the table panel to prevent expanding beyond 8 rows
+        tablePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, maxTableHeight));
+        
         scheduleSplitPane.setResizeWeight(0.7); // Give 70% space to the table on top
-        scheduleSplitPane.setDividerLocation(350); // Set initial divider position
+        scheduleSplitPane.setDividerLocation(preferredTableHeight); // Set initial divider position
         scheduleSplitPane.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         scheduleTab.add(scheduleSplitPane, BorderLayout.CENTER);
         
@@ -573,7 +590,7 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
         
         return mainContent;
     }
-    
+
     /**
      * Creates a consistently styled button with icon and hover effects
      */
@@ -639,10 +656,11 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
             log.info("No plugins in table.");
             return;
         }
+        
         PluginScheduleEntry selected = tablePanel.getSelectedPlugin();   
         
         if (selected == null) {            
-            formPanel.loadPlugin(selected);
+            formPanel.clearForm();
             formPanel.setEditMode(false);
             // Update both condition panels when no plugin is selected
             startConditionPanel.setSelectScheduledPlugin(null);
@@ -651,21 +669,30 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
             if (plugin == null) {                
                 return;
             }
-            log.info("No plugin selected for editing. {} but plugin", plugin.getCleanName());
-            return;
-        }
-        formPanel.loadPlugin(selected);
-        
-        if (!selected.equals(plugin) && selected != null) {                                    
-            formPanel.setEditMode(true);
             
-            // Update both condition panels with the selected plugin
-            int currentTabIndex = tabbedPane.getSelectedIndex();
-            if (currentTabIndex == 1) { // Start Conditions tab
-                startConditionPanel.setSelectScheduledPlugin(selected);
-            } else if (currentTabIndex == 2) { // Stop Conditions tab
-                stopConditionPanel.setSelectScheduledPlugin(selected);
+            // Handle case where we have a plugin reference but nothing is selected
+            log.info("No plugin selected for editing. Plugin: {}", plugin.getCleanName());
+            // Find if this is the next scheduled plugin
+            PluginScheduleEntry nextPlugin = this.plugin.getNextScheduledPlugin(false,null).orElse(selected);
+            if (nextPlugin == null) {
+                log.warn("No plugin selected for editing conditions and no next scheduled plugin found.");                        
+            } else {
+                tablePanel.selectPlugin(nextPlugin);
+                log.info("No plugin selected for editing conditions, selecting next scheduled plugin: {}", nextPlugin.getCleanName());                    
             }
+            selected = nextPlugin;
+        }
+        
+        // Update form panel with selection
+        formPanel.loadPlugin(selected);
+        formPanel.setEditMode(true);
+        
+        // Update condition panels based on the current tab
+        int currentTabIndex = tabbedPane.getSelectedIndex();
+        if (currentTabIndex == 1) { // Start Conditions tab
+            startConditionPanel.setSelectScheduledPlugin(selected);
+        } else if (currentTabIndex == 2) { // Stop Conditions tab
+            stopConditionPanel.setSelectScheduledPlugin(selected);
         }
         
         // Always update control button when selection changes
@@ -677,54 +704,59 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
      * Checks for stop conditions and prompts user if none are configured.
      */
     private void onAddPlugin() {
-        PluginScheduleEntry scheduledPlugin = formPanel.getPluginFromForm();
+        PluginScheduleEntry scheduledPlugin = formPanel.getPluginFromForm(null);
         if (scheduledPlugin == null) return;
-        
-        LogicalCondition pluginCond= scheduledPlugin.getStopConditionManager().getPluginCondition();
-        if (pluginCond != null) {
-            log.info("Plugin condition: " + pluginCond.getDescription());
-        }else {
-            log.info("No plugin condition set.");
-        }
-
-        scheduledPlugin.logConditionInfo(scheduledPlugin.getStopConditions(),
-                            "onAddPlugin Stop Conditions: " + scheduledPlugin.getName(), 
-                            true);
 
         // Check if the plugin has stop conditions
         if (scheduledPlugin.getStopConditionManager().getConditions().isEmpty()) {
-            // No stop conditions set, show warning and switch to conditions tab
-            int result = JOptionPane.showConfirmDialog(this,
-                    "No stop conditions are set. The plugin will run until manually stopped.\n" +
-                    "Would you like to configure stop conditions now?",
-                    "No Stop Conditions",
-                    JOptionPane.YES_NO_CANCEL_OPTION);
-                    
-            if (result == JOptionPane.YES_OPTION) {
-                // Add the plugin first so we can set conditions on it
-                scheduledPlugin.setEnabled(false); // Set to disabled by default
-                plugin.addScheduledPlugin(scheduledPlugin);
-                plugin.saveScheduledPlugins();
-                refresh();
-                log.info("Plugin added without conditions: row count" + tablePanel.getRowCount());
-                // Select the newly added plugin
-                tablePanel.selectPlugin(scheduledPlugin);
-                
-                // Switch to conditions tab
-                tabbedPane.setSelectedIndex(2); // Switch to stop conditions tab ->index 2 currently
-                return;
-            } else if (result == JOptionPane.CANCEL_OPTION) {
-                scheduledPlugin.setEnabled(false); // Set to disabled by default
-                return; // Cancel the operation
+            // Check if this plugin needs time-based stop conditions (from checkbox)
+            if (scheduledPlugin.isNeedsStopCondition()) {
+                int result = JOptionPane.showConfirmDialog(this,
+                        "No stop conditions are set. The plugin will run until manually stopped.\n" +
+                        "Would you like to configure stop conditions now?",
+                        "No Stop Conditions",
+                        JOptionPane.YES_NO_CANCEL_OPTION);
+                        
+                if (result == JOptionPane.YES_OPTION) {
+                    // Add the plugin first (disabled by default) so we can set conditions on it
+                    scheduledPlugin.setEnabled(false);
+                    plugin.addScheduledPlugin(scheduledPlugin);
+                    plugin.saveScheduledPlugins();
+                    refresh();
+                    log.info("Plugin added without conditions: row count" + tablePanel.getRowCount());                    
+                    // Select the newly added plugin
+                    tablePanel.selectPlugin(scheduledPlugin);
+                    // Switch to stop conditions tab
+                    tabbedPane.setSelectedIndex(2);
+                    return;
+                } else if (result == JOptionPane.CANCEL_OPTION) {
+                    scheduledPlugin.setEnabled(false); // Set to disabled by default
+                    return; // Cancel the operation
+                }
+                // If NO, continue with adding plugin without conditions
             }
-            // If NO, continue with adding plugin without conditions
         }
         
-        scheduledPlugin.setEnabled(false); // Set to disabled by default
+        // Add the plugin (disabled by default for safety)
+        scheduledPlugin.setEnabled(false);
         plugin.addScheduledPlugin(scheduledPlugin);
         plugin.saveScheduledPlugins();
-        
         refresh();
+        
+        // Select the newly added plugin
+        tablePanel.selectPlugin(scheduledPlugin);
+        
+        // Show a hint about enabling the plugin
+        JOptionPane.showMessageDialog(this,
+                "Plugin added successfully (currently disabled).\n" +
+                "Enable it in the Properties tab when you're ready to schedule it.",
+                "Plugin Added",
+                JOptionPane.INFORMATION_MESSAGE);
+        
+        // Switch to the Properties tab in the form panel
+        if (formPanel.getComponent(0) instanceof JTabbedPane) {
+            ((JTabbedPane)formPanel.getComponent(0)).setSelectedIndex(1);
+        }
     }
 
     /**
@@ -737,54 +769,74 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
             return;
         }
         
-        try {
-            // Get the updated plugin configuration from the form
-            PluginScheduleEntry updatedConfig = formPanel.getPluginFromForm();
+        try {            
+            // Apply form values to the selected plugin
+            formPanel.getPluginFromForm(selectedPlugin);
             
-            // Update the selected plugin's properties but keep its identity
-            selectedPlugin.setName(updatedConfig.getName());
-            selectedPlugin.setEnabled(updatedConfig.isEnabled());
-            selectedPlugin.setAllowRandomScheduling(updatedConfig.isAllowRandomScheduling());
-            selectedPlugin.setPriority(updatedConfig.getPriority());
-            selectedPlugin.setDefault(updatedConfig.isDefault());
-              // Get the main time condition from the updated config
-            TimeCondition newTimeCondition = updatedConfig.getMainTimeStartCondition();
-            
-            selectedPlugin.updatePrimaryTimeCondition((TimeCondition) newTimeCondition);            
             // Update the UI
             plugin.saveScheduledPlugins();
             tablePanel.refreshTable();
-            formPanel.setEditMode(false);            
+            
+            // Clear edit mode and selection to encourage users to review the changes
+            formPanel.setEditMode(false);
             tablePanel.clearSelection();
             
+            JOptionPane.showMessageDialog(this,
+                "Plugin schedule updated successfully!",
+                "Update Success",
+                JOptionPane.INFORMATION_MESSAGE);
+            
         } catch (Exception e) {
-            log.error("Error updating plugin: " + e.getMessage(), e);
-            // This correctly logs the stack trace with SLF4J
-            log.error("Stack trace: ", e);
+            log.error("Error updating plugin: {}", e.getMessage(), e);
             JOptionPane.showMessageDialog(
                 this,
                 "Error updating plugin: " + e.getMessage(),
                 "Update Error",
                 JOptionPane.ERROR_MESSAGE
             );
-                        
-            
         }
     }
+
     /**
      * Removes the currently selected plugin from the schedule.
      */
     private void onRemovePlugin() {
-        PluginScheduleEntry _plugin = tablePanel.getSelectedPlugin();
-        if (_plugin != null) {
-            plugin.removeScheduledPlugin(_plugin);
-            tablePanel.refreshTable();            
-            
-            log.info("onRemovePlugin: " + _plugin.getName());
-            stopConditionPanel.setSelectScheduledPlugin(null);
+        PluginScheduleEntry selectedPlugin = tablePanel.getSelectedPlugin();
+        if (selectedPlugin == null) {
+            return;
         }
+        
+        // Confirm deletion
+        int result = JOptionPane.showConfirmDialog(this,
+                "Are you sure you want to remove '" + selectedPlugin.getCleanName() + "' from the schedule?",
+                "Confirm Removal",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+                
+        if (result != JOptionPane.YES_OPTION) {
+            return;
+        }
+        
+        // Stop the plugin if it's running
+        if (plugin.getCurrentPlugin()!=null && plugin.getCurrentPlugin().equals(selectedPlugin) && selectedPlugin.isRunning()) {
 
+            plugin.forceStopCurrentPluginScheduleEntry(false);
+        }
+        
+        // Remove from schedule
+        plugin.removeScheduledPlugin(selectedPlugin);
         plugin.saveScheduledPlugins();
+        
+        // Update UI
+        tablePanel.refreshTable();
+        formPanel.clearForm();
+        startConditionPanel.setSelectScheduledPlugin(null);
+        stopConditionPanel.setSelectScheduledPlugin(null);
+        
+        JOptionPane.showMessageDialog(this,
+            "Plugin removed from schedule.",
+            "Plugin Removed",
+            JOptionPane.INFORMATION_MESSAGE);
     }    
     /**
      * Cleans up resources when window is closed.

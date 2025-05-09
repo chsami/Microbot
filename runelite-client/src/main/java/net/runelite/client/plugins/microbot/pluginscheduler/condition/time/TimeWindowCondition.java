@@ -23,6 +23,10 @@ import java.util.logging.Level;
 })
 @Slf4j
 public class TimeWindowCondition extends TimeCondition {
+    
+    public static String getVersion() {
+        return "0.0.1";
+    }
     // Time window bounds (daily start/end times)
     private final LocalTime startTime;
     private final LocalTime endTime;

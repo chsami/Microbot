@@ -9,20 +9,13 @@ import com.google.common.primitives.Ints;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.config.*;
-import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.events.ExternalPluginsChanged;
-import net.runelite.client.events.PluginChanged;
-import net.runelite.client.events.ProfileChanged;
-import net.runelite.client.externalplugins.ExternalPluginManager;
-import net.runelite.client.plugins.Plugin;
-import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.pluginscheduler.config.ScheduleEntryConfigManager;
+
 import net.runelite.client.plugins.microbot.ui.MicrobotConfigPlugin;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.FontManager;
-import net.runelite.client.ui.PluginPanel;
+
 import net.runelite.client.ui.UnitFormatterFactory;
 import net.runelite.client.ui.components.ColorJButton;
 import net.runelite.client.ui.components.TitleCaseListCellRenderer;
@@ -35,7 +28,7 @@ import net.runelite.client.util.Text;
 import org.apache.commons.lang3.ArrayUtils;
 
 import javax.inject.Inject;
-import javax.inject.Provider;
+
 import javax.swing.*;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
@@ -50,7 +43,6 @@ import java.lang.reflect.ParameterizedType;
 import java.util.List;
 import java.util.*;
 
-import javax.swing.border.Border;
 
 @Slf4j
 public class ScheduleEntryConfigManagerPanel extends JPanel {
@@ -59,8 +51,7 @@ public class ScheduleEntryConfigManagerPanel extends JPanel {
     private static final int SPINNER_FIELD_WIDTH = 6;
     private final JPanel mainPanel;
     @Getter
-    private final ConfigDescriptor configDescriptor;
-    private final String configGroup;
+    private final ConfigDescriptor configDescriptor;    
 	private final ConfigManager configManager;
     private static final Map<ConfigSectionDescriptor, Boolean> sectionExpandStates = new HashMap<>();
     private static final ImageIcon SECTION_EXPAND_ICON;
@@ -93,9 +84,7 @@ public class ScheduleEntryConfigManagerPanel extends JPanel {
      */
     public ScheduleEntryConfigManagerPanel(ConfigManager configManager, ConfigDescriptor configDescriptor) {
 		this.configManager = configManager;
-        this.configDescriptor = configDescriptor;
-        this.configGroup = configDescriptor != null ? configDescriptor.getGroup().value() : null;
-        
+        this.configDescriptor = configDescriptor;                
 		mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
         rebuild();

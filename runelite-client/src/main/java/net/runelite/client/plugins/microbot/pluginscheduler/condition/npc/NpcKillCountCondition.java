@@ -27,14 +27,18 @@ import java.util.regex.Pattern;
 @Getter
 @EqualsAndHashCode(callSuper = true)
 public class NpcKillCountCondition extends NpcCondition {
+    
+    public static String getVersion() {
+        return "0.0.1";
+    }
     private final String npcName;
     private final Pattern npcNamePattern;
     private final int targetCountMin;
     private final int targetCountMax;
-    private int currentTargetCount;
-    private int currentKillCount;
-    private boolean satisfied = false;
-    private boolean registered = false;
+    private transient int currentTargetCount;
+    private transient int currentKillCount;
+    private transient boolean satisfied = false;
+    private transient boolean registered = false;
     
     // Set to track NPCs we're currently interacting with
     private final Set<Integer> interactingNpcIndices = new HashSet<>();

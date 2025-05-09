@@ -17,7 +17,7 @@ public class IntervalConditionAdapter implements JsonSerializer<IntervalConditio
     @Override
     public JsonElement serialize(IntervalCondition src, Type typeOfSrc, JsonSerializationContext context) {
         JsonObject json = new JsonObject();
-        
+        json.addProperty("version", IntervalCondition.getVersion());
         // Add type information
         json.addProperty("type", IntervalCondition.class.getName());
         
@@ -54,41 +54,45 @@ public class IntervalConditionAdapter implements JsonSerializer<IntervalConditio
     @Override
     public IntervalCondition deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) 
             throws JsonParseException {
-        try {
-            JsonObject jsonObject = json.getAsJsonObject();
-            
-            // Check if this is using the type/data wrapper format
-            if (jsonObject.has("type") && jsonObject.has("data")) {
-                jsonObject = jsonObject.getAsJsonObject("data");
-            }
-            
-            // Parse interval
-            long intervalSeconds = jsonObject.get("intervalSeconds").getAsLong();
-            Duration interval = Duration.ofSeconds(intervalSeconds);
-            
-            // Check if this is using min/max randomization
-            if (jsonObject.has("isMinMaxRandomized") && jsonObject.get("isMinMaxRandomized").getAsBoolean()) {
-                long minIntervalSeconds = jsonObject.get("minIntervalSeconds").getAsLong();
-                long maxIntervalSeconds = jsonObject.get("maxIntervalSeconds").getAsLong();
-                Duration minInterval = Duration.ofSeconds(minIntervalSeconds);
-                Duration maxInterval = Duration.ofSeconds(maxIntervalSeconds);
-                
-                return IntervalCondition.createRandomized(minInterval, maxInterval);
-            }
-            
-            // Parse randomization settings for the traditional approach
-            boolean randomize = jsonObject.has("randomize") && jsonObject.get("randomize").getAsBoolean();
-            double randomFactor = randomize && jsonObject.has("randomFactor") ? 
-                                jsonObject.get("randomFactor").getAsDouble() : 0.0;
-            long maximumNumberOfRepeats = jsonObject.has("maximumNumberOfRepeats") ? 
-                                jsonObject.get("maximumNumberOfRepeats").getAsLong() : 0;
-                                
-            // Create the condition and return it
-            return new IntervalCondition(interval, randomize, randomFactor, maximumNumberOfRepeats);
-        } catch (Exception e) {
-            log.error("Error deserializing IntervalCondition", e);
-            // Return a default condition on error (5 minute interval)
-            return new IntervalCondition(Duration.ofMinutes(5));
+        
+        JsonObject jsonObject = json.getAsJsonObject();
+        
+
+        // Check if this is using the type/data wrapper format
+        if (jsonObject.has("type") && jsonObject.has("data")) {
+            jsonObject = jsonObject.getAsJsonObject("data");
         }
+        
+        if (jsonObject.has("version")) {
+            String version = jsonObject.get("version").getAsString();
+            if (!IntervalCondition.getVersion().equals(version)) {
+                log.warn("Version mismatch: expected {}, got {}", IntervalCondition.getVersion(), version);
+                throw new JsonParseException("Version mismatch");
+            }
+        }
+        // Parse interval
+        long intervalSeconds = jsonObject.get("intervalSeconds").getAsLong();
+        Duration interval = Duration.ofSeconds(intervalSeconds);
+        
+        // Check if this is using min/max randomization
+        if (jsonObject.has("isMinMaxRandomized") && jsonObject.get("isMinMaxRandomized").getAsBoolean()) {
+            long minIntervalSeconds = jsonObject.get("minIntervalSeconds").getAsLong();
+            long maxIntervalSeconds = jsonObject.get("maxIntervalSeconds").getAsLong();
+            Duration minInterval = Duration.ofSeconds(minIntervalSeconds);
+            Duration maxInterval = Duration.ofSeconds(maxIntervalSeconds);
+            
+            return IntervalCondition.createRandomized(minInterval, maxInterval);
+        }
+        
+        // Parse randomization settings for the traditional approach
+        boolean randomize = jsonObject.has("randomize") && jsonObject.get("randomize").getAsBoolean();
+        double randomFactor = randomize && jsonObject.has("randomFactor") ? 
+                            jsonObject.get("randomFactor").getAsDouble() : 0.0;
+        long maximumNumberOfRepeats = jsonObject.has("maximumNumberOfRepeats") ? 
+                            jsonObject.get("maximumNumberOfRepeats").getAsLong() : 0;
+                            
+        // Create the condition and return it
+        return new IntervalCondition(interval, randomize, randomFactor, maximumNumberOfRepeats);
+       
     }
 }

@@ -148,6 +148,40 @@ public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent 
 }
 ```
 
+The `onPluginScheduleEntrySoftStopEvent` method is triggered when the Plugin Scheduler determines that a plugin's stop conditions have been met and requests the plugin to gracefully shut down. This implementation follows best practices for safely stopping a plugin:
+
+1. **State Preservation**: First saves the current player location to configuration for later use.
+2. **Thread Safety**: Uses `Microbot.getClientThread().invokeLater()` to ensure the plugin is stopped on the client thread, avoiding concurrency issues.
+3. **Clean Shutdown**: Disables the plugin and then properly stops it using `Microbot.getPluginManager().stopPlugin(this)`.
+
+#### Alternative Stopping Methods
+
+You can also directly stop a plugin using:
+
+```java
+// Direct method to stop a plugin
+Microbot.stopPlugin(this);
+```
+
+This is useful in situations where you need an immediate shutdown response, but be careful to ensure you've performed any necessary cleanup operations first.
+
+### Understanding the Plugin Shutdown Process
+
+The scheduler-managed shutdown process follows this sequence:
+
+1. **Trigger**: Stop conditions are met or manual stop requested
+2. **Soft Stop Request**: The scheduler sends `PluginScheduleEntrySoftStopEvent` to the plugin
+3. **Plugin Cleanup**: The plugin performs necessary cleanup operations 
+4. **Graceful Termination**: The plugin stops itself using one of the following methods:
+   - `Microbot.getPluginManager().stopPlugin(this)`
+   - `Microbot.stopPlugin(this)`
+5. **Completion Reporting**: Optionally, the plugin can report detailed completion status using:
+   ```java
+   reportFinished("Task completed successfully", true);
+   ```
+
+This approach ensures that plugins can safely save their state and perform cleanup operations before being terminated, preserving data integrity and preventing issues that could arise from abrupt termination.
+
 ## Understanding SchedulableExampleConfig
 
 The `SchedulableExampleConfig` interface provides a comprehensive configuration system for the example plugin, demonstrating how to create configurable conditions:

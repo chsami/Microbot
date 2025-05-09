@@ -21,7 +21,7 @@ public enum Fish {
     KARAMBWANJI("karambwanji", FishingSpot.KARAMBWANJI.getIds(), List.of("net")),
     LAVA_EEL("lava eel", FishingSpot.LAVA_EEL.getIds(), List.of("lure")),
     SHARK("shark", FishingSpot.SHARK.getIds(),List.of("harpoon")),
-    ANGLERFISH("anglerfish", FishingSpot.ANGLERFISH.getIds(), List.of("sandworms")),
+    ANGLERFISH("anglerfish", FishingSpot.ANGLERFISH.getIds(), List.of("sandworms", "bait")),
     KARAMBWAN("karambwan", FishingSpot.KARAMBWAN.getIds(), List.of("fish"));
 
     private final String name;

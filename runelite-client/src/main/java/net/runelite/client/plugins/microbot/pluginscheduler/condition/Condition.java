@@ -28,6 +28,9 @@ import net.runelite.api.events.VarbitChanged;
  */
 public interface Condition {
     
+    public static String getVersion(){
+        return getVersion();
+    }
     /**
      * Checks if the condition is currently met
      * @return true if condition is satisfied, false otherwise

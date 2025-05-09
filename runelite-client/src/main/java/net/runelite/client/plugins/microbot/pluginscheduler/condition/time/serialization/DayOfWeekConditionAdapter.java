@@ -33,6 +33,7 @@ public class DayOfWeekConditionAdapter implements JsonSerializer<DayOfWeekCondit
             daysArray.add(day.getValue()); // getValue() returns 1-7 for MON-SUN
         }
         data.add("activeDays", daysArray);
+        data.addProperty("version", src.getVersion());
         data.addProperty("maximumNumberOfRepeats", src.getMaximumNumberOfRepeats());
         data.addProperty("maxRepeatsPerDay", src.getMaxRepeatsPerDay());
         data.addProperty("maxRepeatsPerWeek", src.getMaxRepeatsPerWeek());
@@ -54,63 +55,68 @@ public class DayOfWeekConditionAdapter implements JsonSerializer<DayOfWeekCondit
     @Override
     public DayOfWeekCondition deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) 
             throws JsonParseException {
-        try {
-            JsonObject jsonObject = json.getAsJsonObject();
-            
-            // Check if this is a typed format or direct format
-            JsonObject dataObj;
-            if (jsonObject.has("type") && jsonObject.has("data")) {
-                dataObj = jsonObject.getAsJsonObject("data");
-            } else {
-                // Legacy format - use the object directly
-                dataObj = jsonObject;
-            }
-            
-            Set<DayOfWeek> activeDays = EnumSet.noneOf(DayOfWeek.class);
-            
-            // Parse active days
-            if (dataObj.has("activeDays")) {
-                JsonArray daysArray = dataObj.getAsJsonArray("activeDays");
-                for (JsonElement element : daysArray) {
-                    int dayValue = element.getAsInt();
-                    // DayOfWeek.of expects 1-7 for MON-SUN
-                    activeDays.add(DayOfWeek.of(dayValue));
-                }
-            }
-            
-            // Get maximum number of repeats
-            long maximumNumberOfRepeats = 0;
-            if (dataObj.has("maximumNumberOfRepeats")) {
-                maximumNumberOfRepeats = dataObj.get("maximumNumberOfRepeats").getAsLong();
-            }
-            
-            // Get maximum number of repeats per day
-            long maxRepeatsPerDay = 0;
-            if (dataObj.has("maxRepeatsPerDay")) {
-                maxRepeatsPerDay = dataObj.get("maxRepeatsPerDay").getAsLong();
-            }
-            
-            // Get maximum number of repeats per week (new field)
-            long maxRepeatsPerWeek = 0;
-            if (dataObj.has("maxRepeatsPerWeek")) {
-                maxRepeatsPerWeek = dataObj.get("maxRepeatsPerWeek").getAsLong();
-            }
-            
-            // Create the day of week condition with all limits
-            DayOfWeekCondition condition = new DayOfWeekCondition(maximumNumberOfRepeats, maxRepeatsPerDay, maxRepeatsPerWeek, activeDays);
-            
-            // If there's an interval condition, deserialize and add it
-            if (dataObj.has("intervalCondition")) {
-                JsonElement intervalJson = dataObj.get("intervalCondition");
-                IntervalCondition intervalCondition = context.deserialize(intervalJson, IntervalCondition.class);
-                condition.setIntervalCondition(intervalCondition);
-            }
-            
-            return condition;
-        } catch (Exception e) {
-            log.error("Error deserializing DayOfWeekCondition", e);
-            // Return a default condition (all days) on error
-            return DayOfWeekCondition.weekdays(); // Default to weekdays
+    
+        JsonObject jsonObject = json.getAsJsonObject();
+        
+        // Check if this is a typed format or direct format
+        JsonObject dataObj;
+        
+        if (jsonObject.has("type") && jsonObject.has("data")) {
+            dataObj = jsonObject.getAsJsonObject("data");
+        } else {
+            // Legacy format - use the object directly
+            dataObj = jsonObject;
         }
+        
+        Set<DayOfWeek> activeDays = EnumSet.noneOf(DayOfWeek.class);
+        
+
+        if (dataObj.has("version")) {
+            String version = dataObj.get("version").getAsString();
+            if (!version.equals(DayOfWeekCondition.getVersion())) {
+                throw new JsonParseException("Version mismatch: expected " + DayOfWeekCondition.getVersion() + 
+                        ", got " + version);                                        
+            }
+        }
+        // Parse active days
+        if (dataObj.has("activeDays")) {
+            JsonArray daysArray = dataObj.getAsJsonArray("activeDays");
+            for (JsonElement element : daysArray) {
+                int dayValue = element.getAsInt();
+                // DayOfWeek.of expects 1-7 for MON-SUN
+                activeDays.add(DayOfWeek.of(dayValue));
+            }
+        }
+        
+        // Get maximum number of repeats
+        long maximumNumberOfRepeats = 0;
+        if (dataObj.has("maximumNumberOfRepeats")) {
+            maximumNumberOfRepeats = dataObj.get("maximumNumberOfRepeats").getAsLong();
+        }
+        
+        // Get maximum number of repeats per day
+        long maxRepeatsPerDay = 0;
+        if (dataObj.has("maxRepeatsPerDay")) {
+            maxRepeatsPerDay = dataObj.get("maxRepeatsPerDay").getAsLong();
+        }
+        
+        // Get maximum number of repeats per week (new field)
+        long maxRepeatsPerWeek = 0;
+        if (dataObj.has("maxRepeatsPerWeek")) {
+            maxRepeatsPerWeek = dataObj.get("maxRepeatsPerWeek").getAsLong();
+        }
+        
+        // Create the day of week condition with all limits
+        DayOfWeekCondition condition = new DayOfWeekCondition(maximumNumberOfRepeats, maxRepeatsPerDay, maxRepeatsPerWeek, activeDays);
+        
+        // If there's an interval condition, deserialize and add it
+        if (dataObj.has("intervalCondition")) {
+            JsonElement intervalJson = dataObj.get("intervalCondition");
+            IntervalCondition intervalCondition = context.deserialize(intervalJson, IntervalCondition.class);
+            condition.setIntervalCondition(intervalCondition);
+        }
+        
+        return condition;
+       
     }
 }

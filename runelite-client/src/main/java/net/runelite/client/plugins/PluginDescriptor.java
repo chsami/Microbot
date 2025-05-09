@@ -65,6 +65,7 @@ public @interface PluginDescriptor
     String Gage = "<html>[<font color=#00008B>Gage</font>] ";
 	String Bradley = "<html>[<font color=#E32636>BR</font>] ";
 	String Frosty = "<html>[<font color=#00FFFF>\u2744</font>] ";
+	String Maxxin = "<html>[<font color='#8B0000'>MX</font>] ";
 
 
 
@@ -113,6 +114,6 @@ public @interface PluginDescriptor
 	boolean developerPlugin() default false;
 
 	boolean loadInSafeMode() default true;
-	
+
 	boolean priority() default false;
 }

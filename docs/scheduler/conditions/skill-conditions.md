@@ -10,22 +10,36 @@ Skill conditions monitor the player's progress in various skills, allowing plugi
 
 ### SkillLevelCondition
 
-The `SkillLevelCondition` monitors the player's actual or effective level in a specific skill.
+The `SkillLevelCondition` monitors the player's actual level in a specific skill.
 
 **Usage:**
 ```java
 // Satisfied when player has at least level 70 Mining
 SkillLevelCondition condition = new SkillLevelCondition(
     Skill.MINING,       // The skill to monitor
-    70,                 // Target level
-      // Comparison operator
+     70                 // Target level
+);
+
+// Satisfied when player gains 5 levels in Attack (relative)
+SkillLevelCondition relativeCondition = SkillLevelCondition.createRelative(
+    Skill.ATTACK,       // The skill to monitor
+    5                   // Target level gain
+);
+
+// Satisfied when player reaches a random level between 70-80 in Mining
+SkillLevelCondition randomizedCondition = SkillLevelCondition.createRandomized(
+    Skill.MINING,       // The skill to monitor
+    70,                 // Minimum target level
+    80                  // Maximum target level
 );
 ```
 
 **Key features:**
 - Monitors any skill in the game
-- Can track actual or effective/boosted level
-- Supports various comparison types (equals, greater than, less than, etc.)
+- Can track total level using `Skill.OVERALL`
+- Supports absolute level targets (reach a specific level)
+- Supports relative level targets (gain X levels from current)
+- Can use randomization within a min/max range
 - Updates dynamically as skill levels change
 - Provides progress tracking toward target levels
 
@@ -35,11 +49,31 @@ The `SkillXpCondition` monitors the player's experience points in a specific ski
 
 **Usage:**
 ```java
-// Satisfied when player has at least 1,000,000 XP in Woodcutting
+// Absolute XP goal: Satisfied when player has at least 1,000,000 XP in Woodcutting
 SkillXpCondition condition = new SkillXpCondition(
     Skill.WOODCUTTING,  // The skill to monitor
-    1_000_000,          // Target XP
-      // Comparison operator
+    1_000_000           // Target XP (absolute)
+);
+
+// Relative XP goal: Satisfied when player gains 50,000 XP from the starting point
+SkillXpCondition relativeCondition = SkillXpCondition.createRelative(
+    Skill.WOODCUTTING,  // The skill to monitor
+    50_000              // Target XP gain
+);
+
+// Randomized XP goal: Satisfied when player reaches a random XP between 1M-1.5M
+SkillXpCondition randomizedCondition = SkillXpCondition.createRandomized(
+    Skill.WOODCUTTING,  // The skill to monitor
+    1_000_000,          // Minimum target XP
+    1_500_000           // Maximum target XP
+);
+
+// Randomized relative XP goal: Satisfied when player gains a random amount of XP 
+// between 50K-100K from starting point
+SkillXpCondition relativeRandomCondition = SkillXpCondition.createRelativeRandomized(
+    Skill.WOODCUTTING,  // The skill to monitor
+    50_000,             // Minimum XP gain
+    100_000             // Maximum XP gain
 );
 ```
 
@@ -48,6 +82,9 @@ SkillXpCondition condition = new SkillXpCondition(
 - Useful for tracking progress between levels
 - Can be used to set specific XP goals
 - Provides accurate progress percentage toward XP targets
+- Supports both absolute XP targets (reach a specific XP amount)
+- Supports relative XP targets (gain X XP from current)
+- Can use randomization within a min/max range for both absolute and relative targets
 
 ## Common Features of Skill Conditions
 
@@ -68,8 +105,7 @@ PluginScheduleEntry entry = new PluginScheduleEntry("MyPlugin", true);
 // Start the plugin when the player reaches level 70 in Mining
 entry.addStartCondition(new SkillLevelCondition(
     Skill.MINING,
-    70,
-    
+     70
 ));
 ```
 
@@ -81,28 +117,31 @@ Skill conditions can be used as stop conditions to end a plugin's execution when
 // Stop when the player reaches level 80 in Mining
 entry.addStopCondition(new SkillLevelCondition(
     Skill.MINING,
-    80,
-    
+     80
 ));
 
 // OR stop when the player gains 100,000 XP in Mining
-entry.addStopCondition(new SkillXpCondition(
+entry.addStopCondition(SkillXpCondition.createRelative(
     Skill.MINING,
-    100_000,
-    ComparisonType.RELATIVE_CHANGE_GREATER_THAN_OR_EQUAL
+    100_000
 ));
 ```
 
 ## Tracking Relative Changes
 
-`SkillXpCondition` supports tracking relative changes in XP, which is useful for setting goals based on XP gained rather than absolute values:
+Both `SkillXpCondition` and `SkillLevelCondition` support tracking relative changes, which is useful for setting goals based on progress from the current state rather than absolute values:
 
 ```java
-// Satisfied when the player gains 50,000 XP in any skill from when the condition was created
-SkillXpCondition condition = new SkillXpCondition(
-    Skill.OVERALL,
-    50_000,
-    ComparisonType.RELATIVE_CHANGE_GREATER_THAN_OR_EQUAL
+// Satisfied when the player gains 50,000 XP in total from when the condition was created
+SkillXpCondition condition = SkillXpCondition.createRelative(
+    Skill.OVERALL,  // Track total XP across all skills
+    50_000          // Target XP gain
+);
+
+// Satisfied when the player gains 5 levels in Mining from when the condition was created
+SkillLevelCondition levelCondition = SkillLevelCondition.createRelative(
+    Skill.MINING,   // The skill to monitor
+    5               // Target level gain
 );
 ```
 
@@ -117,15 +156,13 @@ AndCondition skillGoals = new AndCondition();
 // Require level 70 in Mining
 skillGoals.addCondition(new SkillLevelCondition(
     Skill.MINING,
-    70,
-    
+     70
 ));
 
 // AND level 70 in Smithing
 skillGoals.addCondition(new SkillLevelCondition(
     Skill.SMITHING,
-    70,
-    
+     70
 ));
 
 // Add these combined requirements as a start condition
@@ -143,22 +180,19 @@ OrCondition trainingGoals = new OrCondition();
 // Path 1: Mining to level 80
 trainingGoals.addCondition(new SkillLevelCondition(
     Skill.MINING,
-    80,
-    
+     80
 ));
 
 // Path 2: Fishing to level 80
 trainingGoals.addCondition(new SkillLevelCondition(
     Skill.FISHING,
-    80,
-    
+     80
 ));
 
 // Path 3: Woodcutting to level 80
 trainingGoals.addCondition(new SkillLevelCondition(
     Skill.WOODCUTTING,
-    80,
-    
+     80
 ));
 
 // Add these alternative goals as a stop condition
@@ -171,3 +205,26 @@ Skill conditions integrate with the RuneLite event system to track changes in re
 
 - `StatChanged`: Updates skill levels and XP values when they change
 - `GameTick`: Periodically validates condition state
+
+## Performance Optimizations
+
+The `SkillCondition` base class includes several optimizations for improved performance:
+
+- **Static Caching**: Skill levels and XP values are cached in static maps to minimize client thread calls
+- **Throttled Updates**: Updates are throttled to prevent excessive client thread operations
+- **Icon Caching**: Skill icons are cached to improve UI rendering performance
+- **Single Source of Truth**: All skill-related conditions use the same cached skill data
+- **Efficient Event Handling**: Only relevant skill updates trigger condition recalculation
+
+Example using the cached data:
+
+```java
+// Get cached skill data without requiring client thread call
+int currentLevel = SkillCondition.getSkillLevel(Skill.MINING);
+long currentXp = SkillCondition.getSkillXp(Skill.MINING);
+int totalLevel = SkillCondition.getTotalLevel();
+long totalXp = SkillCondition.getTotalXp();
+
+// Force an update of all skill data (throttled to prevent performance issues)
+SkillCondition.forceUpdate();
+```

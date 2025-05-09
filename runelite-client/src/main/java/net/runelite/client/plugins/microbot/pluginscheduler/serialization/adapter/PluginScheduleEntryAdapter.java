@@ -2,17 +2,24 @@ package net.runelite.client.plugins.microbot.pluginscheduler.serialization.adapt
 
 import com.google.gson.*;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.config.ConfigDescriptor;
+
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.ConditionManager;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeCondition;
+
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
+
 
 import java.lang.reflect.Type;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 
+
+
 /**
  * Custom adapter for PluginScheduleEntry that correctly handles mainTimeStartCondition
+ * and serializes/deserializes ConfigDescriptor
  */
 @Slf4j
 public class PluginScheduleEntryAdapter implements JsonSerializer<PluginScheduleEntry>, JsonDeserializer<PluginScheduleEntry> {
@@ -60,7 +67,13 @@ public class PluginScheduleEntryAdapter implements JsonSerializer<PluginSchedule
         // Serialize priority and default flag
         result.addProperty("priority", src.getPriority());
         result.addProperty("isDefault", src.isDefault());
-        
+        ConfigDescriptor configDescriptor = src.getConfigScheduleEntryDescriptor() != null ? src.getConfigScheduleEntryDescriptor(): null;
+        if (configDescriptor != null) {
+            result.add("configDescriptor", context.serialize(configDescriptor));
+        }else {            
+            result.add("configDescriptor", new JsonObject());
+        }
+            
         return result;
     }
 
@@ -99,6 +112,7 @@ public class PluginScheduleEntryAdapter implements JsonSerializer<PluginSchedule
                 ZonedDateTime prvLastRunTime  = (ZonedDateTime.ofInstant(
                     java.time.Instant.ofEpochMilli(timestamp), 
                     java.time.ZoneId.systemDefault()));
+                entry.setLastRunTime(prvLastRunTime);
             } catch (Exception e) {
                 log.error("Failed to parse lastRunTime", e);
             }
@@ -110,12 +124,12 @@ public class PluginScheduleEntryAdapter implements JsonSerializer<PluginSchedule
                 jsonObject.get("stopConditionManager"), ConditionManager.class);           
             if (!entry.getStopConditionManager().getUserConditions().isEmpty()) {
                 throw new Error("StopConditionManager should be empty");
-            }else{
+            } else {
                 for (Condition condition : stopManager.getUserConditions()) {    
                     if(entry.getStopConditionManager().containsCondition(condition)){
                         throw new Error("Condition already exists in startConditionManager");
                     }                               
-                    entry.addStopCondition( condition);                
+                    entry.addStopCondition(condition);                
                 }                    
             }
         }        
@@ -125,10 +139,11 @@ public class PluginScheduleEntryAdapter implements JsonSerializer<PluginSchedule
 
             for (Condition condition : startManager.getUserConditions()) {                
                 if(!entry.getStartConditionManager().containsCondition(condition)){
-                    entry.addStartCondition( condition);                                            
+                    entry.addStartCondition(condition);                                            
                 }                
             }
         }                        
+        
         // Deserialize other properties
         if (jsonObject.has("stopInitiated")) {
             entry.setStopInitiated(jsonObject.get("stopInitiated").getAsBoolean());
@@ -169,6 +184,17 @@ public class PluginScheduleEntryAdapter implements JsonSerializer<PluginSchedule
             entry.setNeedsStopCondition(false);
         }
         //entry.registerPluginConditions();
+        
+        // Deserialize ConfigDescriptor if available
+        // This will be applied when the plugin instance is retrieved via getPlugin()
+        if (jsonObject.has("configDescriptor")) {
+            // We'll need to load the plugin first to get its descriptor schema
+            // The deserialized config will be applied when the plugin is loaded
+            JsonObject configDescriptorObj = jsonObject.getAsJsonObject("configDescriptor");
+            ConfigDescriptor configDescriptor = context.deserialize(configDescriptorObj, ConfigDescriptor.class);
+            // Store this object for later use when the plugin is loaded
+            entry.setSerializedConfigDescriptor(configDescriptor);
+        }
         
         return entry;
     }
