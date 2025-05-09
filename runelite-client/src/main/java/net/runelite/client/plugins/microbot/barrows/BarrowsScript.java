@@ -765,8 +765,14 @@ public class BarrowsScript extends Script {
                         }
                         sleep(750,1500);
                         eatFood();
+                        suppliesCheck();
                         outOfSupplies();
                         antiPatternDropVials();
+
+                        if(shouldBank){
+                            Microbot.log("Breaking out we're out of supplies.");
+                            break;
+                        }
 
                         if(!Rs2Player.isInCombat()){
                             Microbot.log("Breaking out we're no longer in combat.");
