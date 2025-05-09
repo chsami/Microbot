@@ -63,6 +63,26 @@ interactWithObject: Interacts with the nearest game object matching the given na
       Takes inputs: name (string)
       Returns an output of type: boolean
 
+getNearestBank: Finds the nearest accessible bank and returns its location and name.
+      Takes inputs: none
+      Returns an output of type: string (e.g. "Nearest bank found: Bank Name at (x, y, z)." or "No accessible bank location found nearby.")
+
+openBank: Opens the bank interface. Will attempt to find and interact with the nearest bank object or NPC.
+      Takes inputs: none
+      Returns an output of type: string (e.g. "Bank opened successfully." or "Failed to open bank.")
+
+closeBank: Closes the bank interface if it is open.
+      Takes inputs: none
+      Returns an output of type: string (e.g. "Bank closed successfully." or "Bank is already closed.")
+
+depositXItems: Deposits a specified quantity of an item from the inventory into the bank. Bank must be open.
+      Takes inputs: itemName (string), quantity (int)
+      Returns an output of type: string (e.g. "Attempted to deposit 5 of 'Logs'." or "Failed to deposit: Bank is not open.")
+
+withdrawXItems: Withdraws a specified quantity of an item from the bank into the inventory. Bank must be open.
+      Takes inputs: itemName (string), quantity (int)
+      Returns an output of type: string (e.g. "Successfully withdrew 5 of 'Coins'." or "Failed to withdraw: Item not found in bank.")
+
 finish: Call this when the goal is achieved or you cannot proceed further.
       Takes inputs: response (string) - A final summary message for the user.
       Returns an output of type: none

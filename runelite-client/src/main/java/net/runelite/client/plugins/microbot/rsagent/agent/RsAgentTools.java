@@ -10,6 +10,8 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory; // Added import for Rs2Inventory
@@ -580,5 +582,125 @@ public class RsAgentTools {
         assert object != null;
         Rs2Walker.walkTo(object.getWorldLocation(),1);
         return Rs2GameObject.interact(object);
+    }
+
+    /**
+     * Finds the nearest accessible bank and returns its location and name.
+     *
+     * @return A string describing the nearest bank, or an error/not found message.
+     */
+    static public String getNearestBank() {
+        if (Microbot.getClient() == null || Microbot.getClient().getLocalPlayer() == null) {
+            return "Error: Client or player not available to determine current location.";
+        }
+        BankLocation nearestBank = Rs2Bank.getNearestBank();
+        if (nearestBank != null) {
+            WorldPoint bankPoint = nearestBank.getWorldPoint();
+            String bankName = nearestBank.getName() != null ? nearestBank.getName() : nearestBank.toString();
+            return "Nearest bank found: " + bankName + " at (" + bankPoint.getX() + ", " + bankPoint.getY() + ", " + bankPoint.getPlane() + ").";
+        } else {
+            return "No accessible bank location found nearby.";
+        }
+    }
+
+    /**
+     * Opens the bank interface.
+     *
+     * @return A string indicating whether the bank was opened successfully.
+     */
+    static public String openBank() {
+        if (Rs2Bank.isOpen()) {
+            return "Bank is already open.";
+        }
+        boolean success = Rs2Bank.openBank();
+        if (success) {
+            boolean isOpen = sleepUntil(Rs2Bank::isOpen, 5000);
+            return isOpen ? "Bank opened successfully." : "Failed to confirm bank opening after action.";
+        } else {
+            return "Failed to initiate bank opening (e.g., no bank nearby or interaction failed).";
+        }
+    }
+
+    /**
+     * Closes the bank interface.
+     *
+     * @return A string indicating whether the bank was closed successfully.
+     */
+    static public String closeBank() {
+        if (!Rs2Bank.isOpen()) {
+            return "Bank is already closed.";
+        }
+        boolean success = Rs2Bank.closeBank();
+        return success ? "Bank closed successfully." : "Failed to close bank (or was not open).";
+    }
+
+    /**
+     * Deposits a specific quantity of an item from the inventory into the bank.
+     *
+     * @param itemName The name of the item to deposit.
+     * @param quantity The amount of the item to deposit.
+     * @return A string indicating the result of the deposit attempt.
+     */
+    static public String depositXItems(String itemName, int quantity) {
+        if (!Rs2Bank.isOpen()) {
+            return "Failed to deposit: Bank is not open.";
+        }
+        if (itemName == null || itemName.trim().isEmpty()) {
+            return "Failed to deposit: Item name is invalid.";
+        }
+        if (quantity <= 0) {
+            return "Failed to deposit: Quantity must be positive.";
+        }
+        if (!Rs2Inventory.hasItem(itemName)) {
+            return "Failed to deposit: Item '" + itemName + "' not found in inventory.";
+        }
+
+        // Rs2Bank.depositX is void, so we can't directly check its return.
+        // We'll assume the action is attempted. For more robust feedback,
+        // one might check inventory count before and after.
+        Rs2Bank.depositX(itemName, quantity);
+        // Give some time for the action to process
+        sleep(600, 1000);
+        // Basic check: if item is still in inventory with same or more quantity (if not stackable and depositing less than all)
+        // This is a simplified check. A full check would be more complex.
+        if (Rs2Inventory.hasItem(itemName) && Rs2Inventory.get(itemName).getQuantity() >= quantity && !Rs2Inventory.get(itemName).isStackable()) {
+             //This condition might be true if not all items were deposited or if it's not stackable and some remain.
+             //For simplicity, we'll just report the attempt.
+        }
+        return "Attempted to deposit " + quantity + " of '" + itemName + "'.";
+    }
+
+    /**
+     * Withdraws a specific quantity of an item from the bank into the inventory.
+     *
+     * @param itemName The name of the item to withdraw.
+     * @param quantity The amount of the item to withdraw.
+     * @return A string indicating the result of the withdrawal attempt.
+     */
+    static public String withdrawXItems(String itemName, int quantity) {
+        if (!Rs2Bank.isOpen()) {
+            return "Failed to withdraw: Bank is not open.";
+        }
+        if (itemName == null || itemName.trim().isEmpty()) {
+            return "Failed to withdraw: Item name is invalid.";
+        }
+        if (quantity <= 0) {
+            return "Failed to withdraw: Quantity must be positive.";
+        }
+        if (!Rs2Bank.hasItem(itemName, false, quantity)) {
+             return "Failed to withdraw: Bank does not have " + quantity + " of '" + itemName + "'.";
+        }
+        if (Rs2Inventory.isFull() && !Rs2Bank.getBankItem(itemName).isStackable() && !Rs2Inventory.hasItem(itemName)) {
+            return "Failed to withdraw: Inventory is full and item is not stackable/already in inventory.";
+        }
+
+        boolean success = Rs2Bank.withdrawX(itemName, quantity);
+        if (success) {
+            // Wait for item to appear in inventory
+            boolean itemReceived = sleepUntil(() -> Rs2Inventory.hasItem(itemName, quantity) || Rs2Inventory.hasItemAmount(itemName, quantity, false), 5000);
+            return itemReceived ? "Successfully withdrew " + quantity + " of '" + itemName + "'." : "Withdrawal action sent, but item not confirmed in inventory with specified quantity.";
+        } else {
+            return "Failed to withdraw " + quantity + " of '" + itemName + "' (e.g., item not found in bank, inventory full, or other issue).";
+        }
     }
 }

@@ -120,6 +120,7 @@ public class Agent {
                 } else if (!fullText.endsWith("}")) {
                     // This case is less likely if the model is trying to output JSON, but as a fallback.
                     // It might indicate a more significant formatting issue.
+                    log.warn("LLM output did not end with '}' before stop sequence. Appending '}}'.");
                     fullText += "}}";
                 }
             }
@@ -286,10 +287,34 @@ public class Agent {
                         }
                         break;
                     }
-                    case "interactWithObject": { // Added new case
+                    case "interactWithObject": {
                         String objectName = parameters.get("name").getAsString();
                         boolean success = RsAgentTools.interactWithObject(objectName);
                         toolResult = success ? "Successfully interacted with object: " + objectName + "." : "Failed to interact with object: " + objectName + ". Object might not be nearby or interactable.";
+                        break;
+                    }
+                    case "getNearestBank": {
+                        toolResult = RsAgentTools.getNearestBank();
+                        break;
+                    }
+                    case "openBank": {
+                        toolResult = RsAgentTools.openBank();
+                        break;
+                    }
+                    case "closeBank": {
+                        toolResult = RsAgentTools.closeBank();
+                        break;
+                    }
+                    case "depositXItems": {
+                        String itemName = parameters.get("itemName").getAsString();
+                        int quantity = parameters.get("quantity").getAsInt();
+                        toolResult = RsAgentTools.depositXItems(itemName, quantity);
+                        break;
+                    }
+                    case "withdrawXItems": {
+                        String itemName = parameters.get("itemName").getAsString();
+                        int quantity = parameters.get("quantity").getAsInt();
+                        toolResult = RsAgentTools.withdrawXItems(itemName, quantity);
                         break;
                     }
                     case "finish": {
