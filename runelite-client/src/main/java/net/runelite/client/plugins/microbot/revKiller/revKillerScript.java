@@ -672,8 +672,7 @@ public class revKillerScript extends Script {
             Microbot.log("Random number: " + howtobank);
             //equipring
             if(howtobank <= 80){
-                if(isItTimeToGo()||Rs2Inventory.contains(it->it!=null&&it.getName().contains("sack")||it.getName().contains("Blighted")||it.getName().contains("rune"))){
-                    //If we have more than 200k loot or the Inventory is full
+                if(isItTimeToGo() || weHaveLoot()){
                     Microbot.log("We have loot, depositing all");
                     Rs2Bank.depositAll();
                     sleepUntil(()-> Rs2Inventory.isEmpty(), generateRandomNumber(5000,15000));
@@ -848,6 +847,46 @@ public class revKillerScript extends Script {
     }
     public int generateRandomNumber(int min, int max) {
         return Rs2Random.nextInt(min, max, 1000, true);
+    }
+    private boolean weHaveLoot(){
+
+        if(Rs2Inventory.contains(it->it!=null&&it.getName().contains("Blighted"))){
+            return true;
+        }
+
+        if(Rs2Inventory.contains(it->it!=null&&it.getName().toLowerCase().contains("rune"))){
+            return true;
+        }
+
+        if(Rs2Inventory.contains(it->it!=null&&it.getName().toLowerCase().contains("seed"))){
+            return true;
+        }
+
+        if(Rs2Inventory.contains(it->it!=null&&it.getName().toLowerCase().contains("dragon"))){
+            return true;
+        }
+
+        if(Rs2Inventory.contains(it->it!=null&&it.getName().toLowerCase().contains("logs"))){
+            return true;
+        }
+
+        if(Rs2Inventory.contains(it->it!=null&&it.getName().toLowerCase().contains("bar"))){
+            return true;
+        }
+
+        if(Rs2Inventory.contains(it->it!=null&&it.getName().toLowerCase().contains("runite"))){
+            return true;
+        }
+
+        if(Rs2Inventory.contains(it->it!=null&&it.getName().toLowerCase().contains("bolt tips"))){
+            return true;
+        }
+
+        if(Rs2Inventory.contains(it->it!=null&&it.getName().toLowerCase().contains("battlestaff"))){
+            return true;
+        }
+
+        return false;
     }
     public boolean isItTimeToGo(){
         int value = 0; //set to 0 so list doesn't compound with each run
