@@ -45,7 +45,36 @@ public class Agent {
     }
 
     public void run(String task){
-        String systemInstruction = loadPrompt();
+        String baseSystemInstruction = loadPrompt();
+        StringBuilder augmentedSystemInstruction = new StringBuilder(baseSystemInstruction);
+
+        // Get player inventory
+        List<String> inventoryList = RsAgentTools.getPlayerInventory();
+        String inventoryInfo;
+        if (inventoryList.isEmpty() || (inventoryList.size() == 1 && inventoryList.get(0).startsWith("Could not access"))) {
+            inventoryInfo = "Could not retrieve inventory contents at the start of the task.";
+            log.warn("Initial getPlayerInventory tool failed: {}", inventoryList.isEmpty() ? "Empty list" : inventoryList.get(0));
+        } else {
+            inventoryInfo = "Current Inventory contents:\n" + String.join("\n", inventoryList);
+        }
+
+        // Get equipped items
+        List<String> equippedList = RsAgentTools.getEquippedItems();
+        String equippedInfo;
+        if (equippedList.isEmpty() || (equippedList.size() == 1 && equippedList.get(0).startsWith("Could not access"))) {
+            equippedInfo = "Could not retrieve equipped items at the start of the task.";
+            log.warn("Initial getEquippedItems tool failed: {}", equippedList.isEmpty() ? "Empty list" : equippedList.get(0));
+        } else {
+            equippedInfo = "Current Equipped items:\n" + String.join("\n", equippedList);
+        }
+
+        augmentedSystemInstruction.append("\n\nInitial Player Status (provided at the beginning of the task):\n");
+        augmentedSystemInstruction.append(inventoryInfo).append("\n");
+        augmentedSystemInstruction.append(equippedInfo);
+
+        String finalSystemInstruction = augmentedSystemInstruction.toString();
+        log.debug("Augmented System Prompt:\n{}", finalSystemInstruction);
+
         boolean done = false;
 
         ChatCompletionCreateParams.Builder paramsBuilder = ChatCompletionCreateParams.builder()
@@ -53,7 +82,7 @@ public class Agent {
                 .maxCompletionTokens(512) // Increased token limit for potentially complex JSON outputs
                 .stopOfStrings(Arrays.asList("}}", "}\n}")) // Add stop sequence for the JSON closing brackets
                 .temperature(0)
-                .addSystemMessage(systemInstruction)
+                .addSystemMessage(finalSystemInstruction) // Use the augmented prompt
                 .addUserMessage(task);
 
         for (int step = 0; step < 15; step++) {
@@ -223,12 +252,12 @@ public class Agent {
                         break;
                     }
                     case "getPlayerInventory": {
-                        List<String> inventoryList = RsAgentTools.getPlayerInventory();
-                        if (inventoryList.isEmpty() || (inventoryList.size() == 1 && inventoryList.get(0).startsWith("Could not access"))) {
+                        List<String> inventoryListResult = RsAgentTools.getPlayerInventory();
+                        if (inventoryListResult.isEmpty() || (inventoryListResult.size() == 1 && inventoryListResult.get(0).startsWith("Could not access"))) {
                             toolResult = "Error: Could not retrieve inventory contents.";
-                            log.warn("getPlayerInventory tool failed: {}", inventoryList.isEmpty() ? "Empty list" : inventoryList.get(0));
+                            log.warn("getPlayerInventory tool failed: {}", inventoryListResult.isEmpty() ? "Empty list" : inventoryListResult.get(0));
                         } else {
-                            toolResult = "Inventory contents:\n" + String.join("\n", inventoryList);
+                            toolResult = "Inventory contents:\n" + String.join("\n", inventoryListResult);
                         }
                         break;
                     }
@@ -239,12 +268,12 @@ public class Agent {
                         break;
                     }
                     case "getEquippedItems": {
-                        List<String> equippedList = RsAgentTools.getEquippedItems();
-                        if (equippedList.isEmpty() || (equippedList.size() == 1 && equippedList.get(0).startsWith("Could not access"))) {
+                        List<String> equippedListResult = RsAgentTools.getEquippedItems();
+                        if (equippedListResult.isEmpty() || (equippedListResult.size() == 1 && equippedListResult.get(0).startsWith("Could not access"))) {
                             toolResult = "Error: Could not retrieve equipped items.";
-                            log.warn("getEquippedItems tool failed: {}", equippedList.isEmpty() ? "Empty list" : equippedList.get(0));
+                            log.warn("getEquippedItems tool failed: {}", equippedListResult.isEmpty() ? "Empty list" : equippedListResult.get(0));
                         } else {
-                            toolResult = "Equipped items:\n" + String.join("\n", equippedList);
+                            toolResult = "Equipped items:\n" + String.join("\n", equippedListResult);
                         }
                         break;
                     }
