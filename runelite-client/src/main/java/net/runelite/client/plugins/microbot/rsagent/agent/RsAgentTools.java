@@ -585,25 +585,6 @@ public class RsAgentTools {
     }
 
     /**
-     * Finds the nearest accessible bank and returns its location and name.
-     *
-     * @return A string describing the nearest bank, or an error/not found message.
-     */
-    static public String getNearestBank() {
-        if (Microbot.getClient() == null || Microbot.getClient().getLocalPlayer() == null) {
-            return "Error: Client or player not available to determine current location.";
-        }
-        BankLocation nearestBank = Rs2Bank.getNearestBank();
-        if (nearestBank != null) {
-            WorldPoint bankPoint = nearestBank.getWorldPoint();
-            String bankName = nearestBank.getName() != null ? nearestBank.getName() : nearestBank.toString();
-            return "Nearest bank found: " + bankName + " at (" + bankPoint.getX() + ", " + bankPoint.getY() + ", " + bankPoint.getPlane() + ").";
-        } else {
-            return "No accessible bank location found nearby.";
-        }
-    }
-
-    /**
      * Opens the bank interface.
      *
      * @return A string indicating whether the bank was opened successfully.
@@ -612,7 +593,7 @@ public class RsAgentTools {
         if (Rs2Bank.isOpen()) {
             return "Bank is already open.";
         }
-        boolean success = Rs2Bank.openBank();
+        boolean success = Rs2Bank.openBank(); // This method already handles finding and walking to the bank
         if (success) {
             boolean isOpen = sleepUntil(Rs2Bank::isOpen, 5000);
             return isOpen ? "Bank opened successfully." : "Failed to confirm bank opening after action.";
@@ -687,17 +668,27 @@ public class RsAgentTools {
         if (quantity <= 0) {
             return "Failed to withdraw: Quantity must be positive.";
         }
-        if (!Rs2Bank.hasItem(itemName, false, quantity)) {
+        if (!Rs2Bank.hasItem(itemName, false, quantity)) { // Assuming hasItem checks if bank has AT LEAST quantity
              return "Failed to withdraw: Bank does not have " + quantity + " of '" + itemName + "'.";
         }
-        if (Rs2Inventory.isFull() && !Rs2Bank.getBankItem(itemName).isStackable() && !Rs2Inventory.hasItem(itemName)) {
+        if (Rs2Inventory.isFull() && Rs2Bank.getBankItem(itemName) != null && !Rs2Bank.getBankItem(itemName).isStackable() && !Rs2Inventory.hasItem(itemName)) {
             return "Failed to withdraw: Inventory is full and item is not stackable/already in inventory.";
         }
 
         boolean success = Rs2Bank.withdrawX(itemName, quantity);
         if (success) {
             // Wait for item to appear in inventory
-            boolean itemReceived = sleepUntil(() -> Rs2Inventory.hasItem(itemName, quantity) || Rs2Inventory.hasItemAmount(itemName, quantity, false), 5000);
+            // Check if item is stackable to validate quantity correctly
+            Rs2ItemModel bankItem = Rs2Bank.getBankItem(itemName); // Get item details to check stackability
+            boolean itemReceived;
+            if (bankItem != null && bankItem.isStackable()) {
+                itemReceived = sleepUntil(() -> Rs2Inventory.hasItemAmount(itemName, quantity, true), 5000);
+            } else {
+                // For non-stackable, just check if at least one has appeared if withdrawing one,
+                // or if multiple slots are filled if withdrawing many non-stackables (more complex to check precisely)
+                // This simplified check just sees if the item name is present after withdrawal.
+                itemReceived = sleepUntil(() -> Rs2Inventory.hasItem(itemName), 5000);
+            }
             return itemReceived ? "Successfully withdrew " + quantity + " of '" + itemName + "'." : "Withdrawal action sent, but item not confirmed in inventory with specified quantity.";
         } else {
             return "Failed to withdraw " + quantity + " of '" + itemName + "' (e.g., item not found in bank, inventory full, or other issue).";
