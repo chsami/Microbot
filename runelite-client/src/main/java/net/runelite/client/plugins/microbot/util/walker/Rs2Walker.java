@@ -1317,6 +1317,9 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
             } else if (transport.getType() == TransportType.MINECART) {
                 if (interactWithAdventureLog(transport)) {
                     sleep(600 * 2); // wait extra 2 game ticks before moving
+                } else {
+                    sleepUntil(() -> Rs2Player.getPoseAnimation() == 2148, 5000);
+                    sleepUntil(() -> Rs2Player.getPoseAnimation() != 2148, 10000);
                 }
             } else if (transport.getType() == TransportType.TELEPORTATION_PORTAL) {
                     sleep(600 * 2); // wait extra 2 game ticks before moving

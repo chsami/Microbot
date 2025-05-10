@@ -54,6 +54,10 @@ public class revKillerPlugin extends Plugin {
         revKillerScript.startHealthCheck();
         revKillerScript.weDied = false;
         eventBus.register(revKillerScript);
+
+        revKillerScript.selectedWP = config.selectedRev().getWorldPoint();
+        revKillerScript.selectedArrow = config.selectedArrow().getArrowID();
+        revKillerScript.selectedRev = config.selectedRev().getName();
     }
 
     protected void shutDown() {
