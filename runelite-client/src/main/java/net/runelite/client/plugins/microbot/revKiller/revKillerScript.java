@@ -207,7 +207,7 @@ public class revKillerScript extends Script {
         if(!WeAreInTheCaves()){
             //we must walk to the cave entrence
             if(Rs2Player.getWorldLocation().distanceTo(cave) > 6){
-                if(Rs2Walker.walkTo(cave, Rs2Player.getWorldLocation().distanceTo(cave) - (generateRandomNumber(2,5)))){
+                if(Rs2Walker.walkTo(cave)){
                     Microbot.log("Walking to cave. with new method.");
                 }
             } else {
@@ -234,7 +234,7 @@ public class revKillerScript extends Script {
             }
         } else {
             if(WeAreInTheCaves()){
-                if(Rs2Walker.walkTo(revimp, Rs2Player.getWorldLocation().distanceTo(revimp) - (generateRandomNumber(2,5)))){
+                if(Rs2Walker.walkTo(revimp)){
                     Microbot.log("Walking to Revs. with new method.");
                 }
             }
@@ -293,6 +293,9 @@ public class revKillerScript extends Script {
     public void getAwayFromPker(){
         // code to run or teleport from pker
         Microbot.log("Attemping to get away from the PKer.");
+        //kill the walker incase we were walking.
+        Rs2Walker.setTarget(null);
+
         if(!Rs2Player.isTeleBlocked()){
             Microbot.log("At least we're not teleblocked.");
             if(Rs2Pvp.getWildernessLevelFrom(Rs2Player.getWorldLocation()) > 30) {
@@ -332,9 +335,8 @@ public class revKillerScript extends Script {
                         }
                     }
                     if (!WeAreInTheCaves()) {
-                        if(Rs2Player.isInCombat()){
-                            sleepUntil(()-> !Rs2Player.isInCombat(), generateRandomNumber(10000,15000));
-                            sleep(0,1200);
+                        if(Rs2Player.isInCombat() || Rs2Player.isAnimating()){
+                            sleepUntil(()-> !Rs2Player.isInCombat() && !Rs2Player.isAnimating(), generateRandomNumber(10000,15000));
                         }
                         hopToNewWorld();
                         break;
@@ -361,9 +363,8 @@ public class revKillerScript extends Script {
                         }
                     }
                     if (!WeAreInTheCaves()) {
-                        if(Rs2Player.isInCombat()){
-                            sleepUntil(()-> !Rs2Player.isInCombat(), generateRandomNumber(10000,15000));
-                            sleep(0,1200);
+                        if(Rs2Player.isInCombat() || Rs2Player.isAnimating()){
+                            sleepUntil(()-> !Rs2Player.isInCombat() && !Rs2Player.isAnimating(), generateRandomNumber(10000,15000));
                         }
                         hopToNewWorld();
                         break;
