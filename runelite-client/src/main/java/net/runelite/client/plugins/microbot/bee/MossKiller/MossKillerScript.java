@@ -1,10 +1,11 @@
 package net.runelite.client.plugins.microbot.bee.MossKiller;
 
+import com.google.inject.Inject;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.accountselector.AutoLoginPlugin;
 import net.runelite.client.plugins.microbot.bee.MossKiller.Enums.MossKillerState;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerPlugin;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
@@ -52,6 +53,13 @@ public class MossKillerScript extends Script {
     public int playerCounter = 0;
     public boolean bossMode = false;
 
+
+    private final MossKillerPlugin plugin;
+
+    @Inject
+    public MossKillerScript (MossKillerPlugin plugin) {
+        this.plugin = plugin;
+    }
 
     public final WorldPoint SEWER_ENTRANCE = new WorldPoint(3237, 3459, 0);
     public final WorldPoint SEWER_LADDER = new WorldPoint(3237, 9859, 0);
@@ -190,22 +198,16 @@ public class MossKillerScript extends Script {
     }
 
     public void moarShutDown() {
-        System.out.println("super shutdown triggered");
-        varrockTeleport();
+        Microbot.log("super shutdown triggered");
+        if(Rs2Inventory.containsAll(AIR_RUNE, FIRE_RUNE, LAW_RUNE)){
+            Rs2Magic.cast(MagicAction.VARROCK_TELEPORT);}
         //static sleep to wait till out of combat
-        sleep(10000);
-        //turn off breakhandler
+        sleepUntil(() -> !Rs2Player.isInCombat(), 10000);
         stopBreakHandlerPlugin();
-        //turn off autologin and all other scripts in 5 seconds
-        Microbot.getClientThread().runOnSeperateThread(() -> {
-            if (!Microbot.pauseAllScripts) {
-                sleep(5000);
-                Microbot.pauseAllScripts = true;
-            }
-            return null;
-        });
-        Rs2Player.logout();
+        stopAutologin();
         sleep(1000);
+        plugin.reportFinished("lacking teleports or consumables or have reached desired combat skill level)", false);
+        Microbot.log("calling script shutdown");
         shutdown();
     }
 
@@ -257,16 +259,46 @@ public class MossKillerScript extends Script {
             return false;
         }
 
-        try {
-            // Stop the BreakHandlerPlugin
-            Microbot.getPluginManager().stopPlugin(breakHandlerPlugin);
-            System.out.println("BreakHandlerPlugin successfully stopped.");
-            return true;
-        } catch (PluginInstantiationException e) {
-            System.err.println("Failed to stop BreakHandlerPlugin: " + e.getMessage());
-            throw new RuntimeException("An error occurred while stopping BreakHandlerPlugin", e);
-        }
+        Microbot.getClientThread().invokeLater(() -> {
+            try {
+                Microbot.getPluginManager().setPluginEnabled(breakHandlerPlugin, false);
+                Microbot.stopPlugin(breakHandlerPlugin);
+            } catch (Exception e) {
+                Microbot.log("Error stopping plugin", e);
+            }
+        });
+        return true;
     }
+
+    /**
+     * Stops the BreakHandlerPlugin if it's currently active.
+     *
+     * @return true if the plugin was successfully stopped, false if it was not found or not active.
+     */
+    public static boolean stopAutologin() {
+        // Attempt to retrieve the autologin from the active plugin list
+        AutoLoginPlugin autoLoginPlugin = (AutoLoginPlugin) Microbot.getPluginManager().getPlugins().stream()
+                .filter(plugin -> plugin.getClass().getName().equals(AutoLoginPlugin.class.getName()))
+                .findFirst()
+                .orElse(null);
+
+        // Check if the plugin was found
+        if (autoLoginPlugin == null) {
+            System.out.println("autologin not found or not running.");
+            return false;
+        }
+
+        Microbot.getClientThread().invokeLater(() -> {
+            try {
+                Microbot.getPluginManager().setPluginEnabled(autoLoginPlugin, false);
+                Microbot.stopPlugin(autoLoginPlugin);
+            } catch (Exception e) {
+                Microbot.log("Error stopping plugin", e);
+            }
+        });
+        return true;
+    }
+
 
     public void handleMossGiants() {
 
@@ -807,8 +839,13 @@ public class MossKillerScript extends Script {
             return;
         }
 
+        if(Rs2Walker.getDistanceBetween(playerLocation, VARROCK_SQUARE) > 10 || Rs2Walker.getDistanceBetween(playerLocation, VARROCK_WEST_BANK) > 10){
+            state = MossKillerState.WALK_TO_BANK;
+            return;
+        }
 
-        System.out.println("Must start near varrock square, bank, or moss giant spot.");
+
+        Microbot.log("Must start near varrock square, bank, or moss giant spot.");
         state = MossKillerState.EXIT_SCRIPT;
     }
 
@@ -817,7 +854,7 @@ public class MossKillerScript extends Script {
         getInitiailState();
 
         if(!Rs2Combat.enableAutoRetialiate()){
-            System.out.println("Could not turn on auto retaliate.");
+            Microbot.log("Could not turn on auto retaliate.");
             state = MossKillerState.EXIT_SCRIPT;
         }
 

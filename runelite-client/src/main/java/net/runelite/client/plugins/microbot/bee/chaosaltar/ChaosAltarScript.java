@@ -202,8 +202,8 @@ public class ChaosAltarScript extends Script {
             // If amulet not equipped or in inventory
             if (!hasBurningAmulet()) {
                 sleep(400);
-                System.out.println("Withdrawing burning amulet");
-                Rs2Bank.withdrawOne(BURNING_AMULET5);
+                Microbot.log("Withdrawing burning amulet");
+                Rs2Bank.withdrawOne("burning amulet");
                 Rs2Inventory.waitForInventoryChanges(2000);
             }
 

@@ -118,7 +118,7 @@ public interface MossKillerConfig extends Config {
                 "2x Leather Boots \n" +
                 "2x Leather vambraces \n" +
                 "2x cape\n" +
-                "\n"
+                "REQUIRED FOOD/CONSUMABLE ARE ***APPLE PIE***\n"
                 + "Minimum required skill levels for magic is level 13 Magic.\n"
                 + "Min Equipment for Magic mode:\n"
                 + "- 2x amulet of magic \n"
