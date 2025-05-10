@@ -16,8 +16,7 @@ public class CollectSnow {
     public static void onGameTick(GameTick event) {
         if (Rs2Player.checkIdleLogout(randomDelay)) {
             randomDelay = Rs2Random.between(1000,3000);
-            if (Rs2GameObject.getGameObjects(19035) != null
-                    && nearTheSnow()) {
+            if (Rs2GameObject.getGameObjects(obj -> obj.getId() == 19035) != null && nearTheSnow()) {
                 Rs2GameObject.interact(19035, "Take");
                 Microbot.log("Done tooken snow cus about to log");
             } else {

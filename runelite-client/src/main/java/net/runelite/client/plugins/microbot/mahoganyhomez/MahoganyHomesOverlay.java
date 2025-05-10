@@ -144,6 +144,6 @@ class MahoganyHomesOverlay extends OverlayPanel
 
     private void addObjectLine(final GameObject left)
     {
-        panelComponent.getChildren().add(LineComponent.builder().left(Rs2GameObject.convertGameObjectToObjectComposition(left).getImpostor().getName()).right(": "+Objects.requireNonNull(Hotspot.getByObjectId(left.getId())).getRequiredAction()).build());
+        panelComponent.getChildren().add(LineComponent.builder().left(Rs2GameObject.convertGameObjectToObjectComposition(left).getName()).right(": "+Objects.requireNonNull(Hotspot.getByObjectId(left.getId())).getRequiredAction()).build());
     }
 }

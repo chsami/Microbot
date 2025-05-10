@@ -136,7 +136,7 @@ public class ChompyScript extends Script {
 
     public void cant_reach() {
         // There are unreachable swamp bubbles, just try another
-        List<GameObject> bubbles=Rs2GameObject.getGameObjects(ID_BUBBLES);
+        List<GameObject> bubbles=Rs2GameObject.getGameObjects(obj -> obj.getId() == ID_BUBBLES);
         Random rand = new Random();
         GameObject bubble=bubbles.get(rand.nextInt(bubbles.size()));
 

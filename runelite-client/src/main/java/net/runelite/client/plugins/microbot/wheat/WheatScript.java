@@ -74,7 +74,7 @@ public class WheatScript extends Script {
         if (wheatArea.contains(currentPlayerWorldLocation)) {
             int WHEAT_GAMEOBJECT = 15506;
             int startCountInventory = Rs2Inventory.count(1947);
-            if (Rs2GameObject.getGameObjects(WHEAT_GAMEOBJECT).stream().filter(g -> wheatArea.contains(g.getWorldLocation())).findFirst().get().getWorldLocation().distanceTo(Microbot.getClient().getLocalPlayer().getWorldLocation()) == 0) {
+            if (Rs2GameObject.getGameObjects(obj -> obj.getId() == WHEAT_GAMEOBJECT).stream().filter(g -> wheatArea.contains(g.getWorldLocation())).findFirst().get().getWorldLocation().distanceTo(Microbot.getClient().getLocalPlayer().getWorldLocation()) == 0) {
                 Microbot.getMouse().click(Microbot.getClient().getLocalPlayer().getCanvasTilePoly().getBounds());
             } else {
                 Rs2GameObject.interact(WHEAT_GAMEOBJECT, "Pick");

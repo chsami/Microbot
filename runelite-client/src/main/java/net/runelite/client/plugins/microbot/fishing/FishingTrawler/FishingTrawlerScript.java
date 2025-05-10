@@ -75,7 +75,7 @@ public class FishingTrawlerScript extends Script {
                  if (!Rs2Player.isInteracting() && !Rs2Player.isMoving() && Rs2Npc.getNpc("Enormous Tentacle") == null && tentacle) {
 //                    if(Rs2Npc.getNpc("Enormous Tentacle").getAnimation()==8953) {
                     WorldPoint currentLocation = Rs2Player.getWorldLocation();
-                    WorldPoint ladder = Rs2GameObject.getGameObjects(4139).stream().findFirst().get().getWorldLocation();
+                    WorldPoint ladder = Rs2GameObject.getGameObject(4139).getWorldLocation();
 //                  Microbot.log(""+ladder.dx(1).getX());
                     if (Rs2Player.getWorldLocation().getY() == 4823) {
                         Rs2Walker.walkFastCanvas(new WorldPoint(ladder.dx(1).getX(), currentLocation.dy(4).getY(), Rs2Player.getWorldLocation().getPlane()));

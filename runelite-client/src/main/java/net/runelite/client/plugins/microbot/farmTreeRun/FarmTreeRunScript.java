@@ -460,7 +460,7 @@ public class FarmTreeRunScript extends Script {
 
         // Gagex named actions differently, sometimes it's Pick-fruit and sometimes Pick-banana.
         // Also seen "Chop down" and "Chop-down".
-        List<String> exactTreeActions = Arrays.stream(Rs2GameObject.findObjectComposition(treePatch.getId()).getImpostor().getActions()).collect(Collectors.toList());
+        List<String> exactTreeActions = Arrays.stream(Rs2GameObject.findObjectComposition(treePatch.getId()).getActions()).collect(Collectors.toList());
         for (String action : exactTreeActions) {
             if (action == null)
                 continue;

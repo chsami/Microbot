@@ -422,7 +422,7 @@ public class MWintertodtScript extends Script {
                     && WorldPoint.fromLocalInstance(Microbot.getClient(),
                     graphicsObject.getLocation()).distanceTo(Rs2Player.getWorldLocation()) == 1) {
                 //walk south
-                List<GameObject> gameObjects = new ArrayList<>(Rs2GameObject.getGameObjectsWithinDistance(5));
+                List<GameObject> gameObjects = new ArrayList<>(Rs2GameObject.getGameObjects(5));
                 // we only need to dodge if there are 2 or more snow fall objects
                 if (gameObjects.size() > 2) {
                     Rs2Walker.walkFastCanvas(new WorldPoint(Rs2Player.getWorldLocation().getX(), Rs2Player.getWorldLocation().getY() - 1, Rs2Player.getWorldLocation().getPlane()));

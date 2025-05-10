@@ -566,7 +566,7 @@ public class VorkathScript extends Script {
     }
 
     private void handleAcidWalk() {
-        if (!doesProjectileExistById(acidProjectileId) && !doesProjectileExistById(acidRedProjectileId) && Rs2GameObject.getGameObjects(ObjectID.ACID_POOL_32000).isEmpty()) {
+        if (!doesProjectileExistById(acidProjectileId) && !doesProjectileExistById(acidRedProjectileId) && Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.ACID_POOL_32000).isEmpty()) {
             Rs2Npc.interact(vorkath, "attack");
             state = State.FIGHT_VORKATH;
             acidPools.clear();
@@ -574,9 +574,9 @@ public class VorkathScript extends Script {
         }
 
         if (acidPools.isEmpty()) {
-            Rs2GameObject.getGameObjects(ObjectID.ACID_POOL_32000).forEach(tileObject -> acidPools.add(tileObject.getWorldLocation()));
-            Rs2GameObject.getGameObjects(ObjectID.ACID_POOL).forEach(tileObject -> acidPools.add(tileObject.getWorldLocation()));
-            Rs2GameObject.getGameObjects(ObjectID.ACID_POOL_37991).forEach(tileObject -> acidPools.add(tileObject.getWorldLocation()));
+            Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.ACID_POOL_32000).forEach(tileObject -> acidPools.add(tileObject.getWorldLocation()));
+            Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.ACID_POOL).forEach(tileObject -> acidPools.add(tileObject.getWorldLocation()));
+            Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.ACID_POOL_37991).forEach(tileObject -> acidPools.add(tileObject.getWorldLocation()));
         }
 
         WorldPoint safeTile = findSafeTile();
