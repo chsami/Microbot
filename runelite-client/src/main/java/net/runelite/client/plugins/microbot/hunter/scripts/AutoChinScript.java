@@ -165,7 +165,7 @@ public class AutoChinScript extends Script {
             // We're going on break in 1 minute or less.
             // Save Trap locations
             for (int trapId : trapIds) {
-                List<GameObject> gameObjects = Rs2GameObject.getGameObjects(trapId);
+                List<GameObject> gameObjects = Rs2GameObject.getGameObjects(obj -> obj.getId() == trapId);
                     if (gameObjects != null) {
                         for (GameObject gameObject : gameObjects) {
                             if (gameObject != null) {

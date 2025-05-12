@@ -9,6 +9,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
+import net.runelite.client.plugins.microbot.util.coords.Rs2LocalPoint;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldArea;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
@@ -20,7 +21,10 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import javax.annotation.Nullable;
 import java.lang.reflect.Field;
 import java.util.*;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static net.runelite.api.NullObjectID.NULL_34810;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
@@ -29,6 +33,19 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
  * TODO: This class should be cleaned up, less methods by passing filters instead of multiple parameters
  */
 public class Rs2GameObject {
+    private static final Function<Tile, Collection<? extends GameObject>> GAMEOBJECT_EXTRACTOR = tile -> Arrays.asList(tile.getGameObjects());
+    private static final Function<Tile, Collection<? extends GroundObject>> GROUNDOBJECT_EXTRACTOR = tile ->
+            Collections.singletonList(tile.getGroundObject());
+    private static final Function<Tile, Collection<? extends DecorativeObject>> DECORATIVEOBJECT_EXTRACTOR = tile ->
+            Collections.singletonList(tile.getDecorativeObject());
+    private static final Function<Tile, Collection<? extends WallObject>> WALLOBJECT_EXTRACTOR = tile ->
+            Collections.singletonList(tile.getWallObject());
+    private static final Function<Tile, Collection<? extends TileObject>> TILEOBJECT_EXTRACTOR = tile -> Arrays.asList(
+            tile.getDecorativeObject(),
+            tile.getGroundObject(),
+            tile.getWallObject()
+    );
+
     public static boolean interact(WorldPoint worldPoint) {
         return interact(worldPoint, "");
     }
@@ -78,7 +95,6 @@ public class Rs2GameObject {
         return false;
     }
 
-
     public static boolean interact(TileObject tileObject, boolean checkCanReach) {
         return interact(tileObject, "", checkCanReach);
     }
@@ -87,7 +103,6 @@ public class Rs2GameObject {
         TileObject object = findObjectById(id);
         return interact(object, checkCanReach);
     }
-
 
     public static boolean interact(int id, String action) {
         TileObject object = findObjectById(id);
@@ -126,603 +141,189 @@ public class Rs2GameObject {
         return clickObject(object, action);
     }
 
-    @Deprecated(since = "Use findObjectById", forRemoval = true)
-    public static ObjectComposition findObject(int id) {
-        return Microbot.getClientThread().runOnClientThreadOptional(() ->
-                Microbot.getClient().getObjectDefinition(id)).orElse(null);
-    }
-
     public static boolean exists(int id) {
         return findObjectById(id) != null;
     }
 
-    public static TileObject findObjectByName(String name) {
-        Scene scene = Microbot.getClient().getScene();
-        Tile[][][] tiles = scene.getTiles();
-
-        for (int z = 0; z < Constants.MAX_Z; z++) {
-            for (int x = 0; x < Constants.SCENE_SIZE; x++) {
-                for (int y = 0; y < Constants.SCENE_SIZE; y++) {
-                    Tile tile = tiles[z][x][y];
-                    if (tile == null) {
-                        continue;
-                    }
-
-                    for (TileObject object : tile.getGameObjects()) {
-                        if (object == null) {
-                            continue;
-                        }
-
-                        ObjectComposition objComp = getObjectComposition(object);
-                        if (objComp != null && objComp.getName().equalsIgnoreCase(name)) {
-                            return object;
-                        }
-                    }
-
-                    WallObject wallObject = tile.getWallObject();
-                    if (wallObject != null) {
-                        ObjectComposition objComp = getObjectComposition(wallObject);
-                        if (objComp != null && objComp.getName().equalsIgnoreCase(name)) {
-                            return wallObject;
-                        }
-                    }
-
-                    DecorativeObject decorativeObject = tile.getDecorativeObject();
-                    if (decorativeObject != null) {
-                        ObjectComposition objComp = getObjectComposition(decorativeObject);
-                        if (objComp != null && objComp.getName().equalsIgnoreCase(name)) {
-                            return decorativeObject;
-                        }
-                    }
-
-                    GroundObject groundObject = tile.getGroundObject();
-                    if (groundObject != null) {
-                        ObjectComposition objComp = getObjectComposition(groundObject);
-                        if (objComp != null && objComp.getName().equalsIgnoreCase(name)) {
-                            return groundObject;
-                        }
-                    }
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private static ObjectComposition getObjectComposition(TileObject object) {
-        int id = object.getId();
-        return Microbot.getClient().getObjectDefinition(id);
-    }
-
+    @Deprecated
     public static TileObject findObjectById(int id) {
-
-        List<GameObject> gameObjects = getGameObjects();
-
-        if (gameObjects == null) return null;
-
-        for (net.runelite.api.GameObject gameObject : gameObjects) {
-            if (gameObject.getId() == id)
-                return gameObject;
-        }
-
-        List<GroundObject> groundObjects = getGroundObjects();
-
-        for (GroundObject groundObject : groundObjects) {
-            if (groundObject.getId() == id)
-                return groundObject;
-        }
-
-        List<WallObject> wallObjects = getWallObjects();
-
-
-        for (WallObject wallObject : wallObjects) {
-            if (wallObject.getId() == id)
-                return wallObject;
-        }
-
-        List<DecorativeObject> decorationObjects = getDecorationObjects();
-
-
-        for (DecorativeObject decorativeObject : decorationObjects) {
-            if (decorativeObject.getId() == id)
-                return decorativeObject;
-        }
-
-        return null;
+        return getAll(o -> o.getId() == id).stream().findFirst().orElse(null);
     }
 
+    @Deprecated
     public static TileObject findObjectByLocation(WorldPoint worldPoint) {
-
-        List<GameObject> gameObjects = getGameObjects();
-
-        if (gameObjects == null) return null;
-
-        for (net.runelite.api.GameObject gameObject : gameObjects) {
-            if (gameObject.getWorldLocation().equals(worldPoint))
-                return gameObject;
-        }
-
-        List<GroundObject> groundObjects = getGroundObjects();
-
-        for (GroundObject groundObject : groundObjects) {
-            if (groundObject.getWorldLocation().equals(worldPoint))
-                return groundObject;
-        }
-
-        List<WallObject> wallObjects = getWallObjects();
-
-
-        for (WallObject wallObject : wallObjects) {
-            if (wallObject.getWorldLocation().equals(worldPoint))
-                return wallObject;
-        }
-
-        List<DecorativeObject> decorationObjects = getDecorationObjects();
-
-
-        for (DecorativeObject decorativeObject : decorationObjects) {
-            if (decorativeObject.getWorldLocation().equals(worldPoint))
-                return decorativeObject;
-        }
-
-        return null;
+        return getAll(o -> o.getWorldLocation().equals(worldPoint)).stream().findFirst().orElse(null);
     }
 
+    @Deprecated
     public static TileObject findGameObjectByLocation(WorldPoint worldPoint) {
-
-        List<GameObject> gameObjects = getGameObjects();
-
-        if (gameObjects == null) return null;
-
-        for (net.runelite.api.GameObject gameObject : gameObjects) {
-            if (gameObject.getWorldLocation().equals(worldPoint))
-                return gameObject;
-        }
-
-        return null;
+        return getGameObject(o -> o.getWorldLocation().equals(worldPoint));
     }
 
     /**
      * find ground object by location
+     *
      * @param worldPoint
      * @return groundobject
      */
+    @Deprecated
     public static TileObject findGroundObjectByLocation(WorldPoint worldPoint) {
-
-        List<GroundObject> groundObjects = getGroundObjects();
-
-        if (groundObjects == null) return null;
-
-        for (net.runelite.api.GroundObject groundObject : groundObjects) {
-            if (groundObject.getWorldLocation().equals(worldPoint))
-                return groundObject;
-        }
-
-        return null;
+        return getGroundObject(worldPoint);
     }
 
+    @Deprecated
     public static TileObject findObjectByIdAndDistance(int id, int distance) {
-
-        List<GameObject> gameObjects = getGameObjectsWithinDistance(distance);
-
-        for (net.runelite.api.GameObject gameObject : gameObjects) {
-            if (gameObject.getId() == id)
-                return gameObject;
-        }
-
-        List<GroundObject> groundObjects = getGroundObjects();
-
-        groundObjects = groundObjects.stream().filter(x -> Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(x.getWorldLocation()) < distance).collect(Collectors.toList());
-
-
-        for (GroundObject groundObject : groundObjects) {
-            if (groundObject.getId() == id)
-                return groundObject;
-        }
-
-        List<WallObject> wallObjects = getWallObjects();
-
-        wallObjects = wallObjects.stream().filter(x -> Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(x.getWorldLocation()) < distance).collect(Collectors.toList());
-
-
-        for (WallObject wallObject : wallObjects) {
-            if (wallObject.getId() == id)
-                return wallObject;
-        }
-
-        List<DecorativeObject> decorationObjects = getDecorationObjects();
-
-        decorationObjects = decorationObjects.stream().filter(x -> Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(x.getWorldLocation()) < distance).collect(Collectors.toList());
-
-        for (DecorativeObject decorativeObject : decorationObjects) {
-            if (decorativeObject.getId() == id)
-                return decorativeObject;
-        }
-
-        return null;
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) return null;
+        LocalPoint anchor = player.getLocalLocation();
+        return getAll(o -> o.getId() == id).stream().filter(withinTilesPredicate(Rs2LocalPoint.worldToLocalDistance(distance), anchor)).findFirst().orElse(null);
     }
 
-    public static List<DecorativeObject> getDecorationObjects() {
-        Scene scene = Microbot.getClient().getScene();
-        Tile[][][] tiles = scene.getTiles();
-
-        if (tiles == null) return new ArrayList<>();
-
-        int z = Microbot.getClient().getPlane();
-        List<DecorativeObject> tileObjects = new ArrayList<>();
-        for (int x = 0; x < Constants.SCENE_SIZE; ++x) {
-            for (int y = 0; y < Constants.SCENE_SIZE; ++y) {
-                Tile tile = tiles[z][x][y];
-
-                if (tile == null) {
-                    continue;
-                }
-
-                tileObjects.add(tile.getDecorativeObject());
-            }
-        }
-
-
-        return Arrays.stream(tileObjects.toArray(new DecorativeObject[0]))
-                .filter(Objects::nonNull)
-                .sorted(Comparator.comparingInt(value -> value.getLocalLocation().distanceTo(Microbot.getClient().getLocalPlayer().getLocalLocation())))
-                .collect(Collectors.toList());
-    }
-
+    @Deprecated
     public static GameObject findObjectById(int id, int x) {
-
-        List<GameObject> gameObjects = getGameObjects();
-
-        if (gameObjects == null) return null;
-
-        for (net.runelite.api.GameObject gameObject : gameObjects) {
-            if (gameObject.getId() == id && gameObject.getWorldLocation().getX() == x)
-                return gameObject;
-        }
-
-        return null;
+        return getGameObject(o -> o.getId() == id && o.getWorldLocation().getX() == x);
     }
 
+    @Deprecated
     public static GameObject findObject(int id, WorldPoint worldPoint) {
-
-        List<GameObject> gameObjects = getGameObjects();
-
-        if (gameObjects == null) return null;
-
-        for (net.runelite.api.GameObject gameObject : gameObjects) {
-            if (gameObject.getId() == id && gameObject.getWorldLocation().equals(worldPoint))
-                return gameObject;
-        }
-
-        return null;
+        return getGameObject(o -> o.getId() == id && o.getWorldLocation().equals(worldPoint));
     }
-
+    
+    @Deprecated
     public static ObjectComposition findObjectComposition(int id) {
-
-        List<GameObject> gameObjects = getGameObjects();
-
-        if (gameObjects == null) return null;
-
-        for (net.runelite.api.GameObject gameObject : gameObjects) {
-            if (gameObject.getId() == id) {
-                return convertGameObjectToObjectComposition(gameObject);
-            }
-        }
-        return null;
+        return convertToObjectComposition(id);
     }
 
+    @Deprecated
     public static GameObject get(String name) {
         return get(name, false);
     }
 
+    @Deprecated
     public static GameObject get(String name, boolean exact) {
-        name = name.toLowerCase();
-        // add underscore because the OBJECTID static list contains _ instead of spaces
-        List<Integer> ids = getObjectIdsByName(name.replace(" ", "_"));
-        List<GameObject> gameObjects = getGameObjects();
-
-        if (gameObjects == null) {
-            return null;
-        }
-
-        GameObject gameObject = gameObjects.stream()
-                .filter(x -> ids.stream().anyMatch(id -> id == x.getId()))
-                .min(Comparator.comparingInt(tile -> tile.getWorldLocation().distanceTo(Rs2Player.getWorldLocation())))
-                .orElse(null);
-
-        if (gameObject == null) return null;
-
-        ObjectComposition objComp = convertGameObjectToObjectComposition(gameObject.getId());
-
-        if (objComp == null) {
-            return null;
-        }
-        String compName = null;
-
-        try {
-            compName = !objComp.getName().equals("null") ? objComp.getName() : (objComp.getImpostor() != null ? objComp.getImpostor().getName() : null);
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-        }
-
-        if (compName != null) {
-            if (!exact && compName.toLowerCase().contains(name)) {
-                return gameObject;
-            } else if (exact && compName.equalsIgnoreCase(name)) {
-                return gameObject;
-            }
-        }
-
-        return null;
+       return getGameObject(name, exact);
     }
 
+    @Deprecated
     public static GameObject findObject(String objectName, boolean exact, int distance, boolean checkLineOfSight, WorldPoint anchorPoint) {
-        List<GameObject> gameObjects = getGameObjectsWithinDistance(distance, anchorPoint);
-
-        if (gameObjects == null) {
-            return null;
-        }
-
-        for (GameObject gameObject : gameObjects) {
-            if (!Rs2Tile.areSurroundingTilesWalkable(gameObject.getWorldLocation(), gameObject.sizeX(), gameObject.sizeY()))
-                continue;
-
-            if (checkLineOfSight && !hasLineOfSight(gameObject))
-                continue;
-
-            ObjectComposition objComp = convertGameObjectToObjectComposition(gameObject);
-
-            if (objComp == null) {
-                continue;
-            }
-            String compName;
-
-            try {
-                compName = objComp.getName() != null && !objComp.getName().equals("null") ? objComp.getName() : (objComp.getImpostor() != null ? objComp.getImpostor().getName() : null);
-            } catch (Exception e) {
-                continue;
-            }
-
-            if (compName != null) {
-                if (!exact && compName.toLowerCase().contains(objectName.toLowerCase())) {
-                    return gameObject;
-                } else if (exact && compName.equalsIgnoreCase(objectName)) {
-                    return gameObject;
-                }
-            }
-        }
-
-        return null;
+        return getGameObjects(nameMatches(objectName, exact), anchorPoint, distance).stream().filter(o -> !checkLineOfSight || Rs2GameObject.hasLineOfSight(o)).findFirst().orElse(null);
     }
 
     /**
- * Finds a reachable game object by name within a specified distance from an anchor point, optionally checking for a specific action.
- *
- * @param objectName The name of the game object to find.
- * @param exact Whether to match the name exactly or partially.
- * @param distance The maximum distance from the anchor point to search for the game object.
- * @param anchorPoint The point from which to measure the distance.
- * @param checkAction Whether to check for a specific action on the game object.
- * @param action The action to check for if checkAction is true.
- * @return The nearest reachable game object that matches the criteria, or null if none is found.
- */
-public static GameObject findReachableObject(String objectName, boolean exact, int distance, WorldPoint anchorPoint, boolean checkAction, String action) {
-    List<GameObject> gameObjects = getGameObjectsWithinDistance(distance, anchorPoint);
-    if (gameObjects == null) {
-        return null;
+     * Finds a reachable game object by name within a specified distance from an anchor point, optionally checking for a specific action.
+     *
+     * @param objectName  The name of the game object to find.
+     * @param exact       Whether to match the name exactly or partially.
+     * @param distance    The maximum distance from the anchor point to search for the game object.
+     * @param anchorPoint The point from which to measure the distance.
+     * @param checkAction Whether to check for a specific action on the game object.
+     * @param action      The action to check for if checkAction is true.
+     * @return The nearest reachable game object that matches the criteria, or null if none is found.
+     */
+    @Deprecated
+    public static GameObject findReachableObject(String objectName, boolean exact, int distance, WorldPoint anchorPoint, boolean checkAction, String action) {
+        Predicate<TileObject> namePred = nameMatches(objectName, exact);
+
+        Predicate<GameObject> filter = o -> {
+            if (!Rs2GameObject.isReachable(o)) {
+                return false;
+            }
+
+            if (!namePred.test(o)) {
+                return false;
+            }
+
+            if (checkAction) {
+                ObjectComposition comp = convertToObjectComposition(o);
+                return hasAction(comp, action);
+            }
+
+            return true;
+        };
+
+        return getGameObjects(filter, anchorPoint, distance)
+                .stream()
+                .min(Comparator.comparingInt(o ->
+                        Rs2Player.getRs2WorldPoint()
+                                .distanceToPath(o.getWorldLocation())))
+                .orElse(null);
     }
 
-    return gameObjects.stream()
-            .filter(Rs2GameObject::isReachable)
-            .filter(gameObject -> {
-                try {
-                    ObjectComposition objComp = convertGameObjectToObjectComposition(gameObject);
-                    if (objComp == null) return false;
-
-                    String compName = objComp.getName();
-                    if (compName == null || "null".equals(compName)) {
-                        if (objComp.getImpostor() != null) {
-                            compName = objComp.getImpostor().getName();
-                        } else {
-                            return false;
-                        }
-                    }
-
-                    if (compName == null) return false;
-
-                    if (checkAction) {
-                        if (!hasAction(objComp, action)) return false;
-                    }
-
-                    if (exact) {
-                        return compName.equalsIgnoreCase(objectName);
-                    } else {
-                        return compName.toLowerCase().contains(objectName.toLowerCase());
-                    }
-
-                } catch (Exception e) {
-                    return false;
-                }
-            }).min(Comparator.comparingInt(o -> Rs2Player.getRs2WorldPoint().distanceToPath(o.getWorldLocation())))
-            .orElse(null);
-}
-
-/**
- * Finds a reachable game object by name within a specified distance from an anchor point.
- *
- * @param objectName The name of the game object to find.
- * @param exact Whether to match the name exactly or partially.
- * @param distance The maximum distance from the anchor point to search for the game object.
- * @param anchorPoint The point from which to measure the distance.
- * @return The nearest reachable game object that matches the criteria, or null if none is found.
- */
-public static GameObject findReachableObject(String objectName, boolean exact, int distance, WorldPoint anchorPoint) {
-    List<GameObject> gameObjects = getGameObjectsWithinDistance(distance, anchorPoint);
-    if (gameObjects == null) {
-        return null;
+    /**
+     * Finds a reachable game object by name within a specified distance from an anchor point.
+     *
+     * @param objectName  The name of the game object to find.
+     * @param exact       Whether to match the name exactly or partially.
+     * @param distance    The maximum distance from the anchor point to search for the game object.
+     * @param anchorPoint The point from which to measure the distance.
+     * @return The nearest reachable game object that matches the criteria, or null if none is found.
+     */
+    @Deprecated
+    public static GameObject findReachableObject(String objectName, boolean exact, int distance, WorldPoint anchorPoint) {
+        return findReachableObject(objectName, exact, distance, anchorPoint, false, "");
     }
 
-    return gameObjects.stream()
-            .filter(Rs2GameObject::isReachable)
-            .sorted(Comparator.comparingInt(o -> Rs2Player.getRs2WorldPoint().distanceToPath(o.getWorldLocation())))
-            .filter(gameObject -> {
-                try {
-                    ObjectComposition objComp = convertGameObjectToObjectComposition(gameObject);
-                    if (objComp == null) return false;
-
-                    String compName = objComp.getName();
-                    if (compName == null || "null".equals(compName)) {
-                        if (objComp.getImpostor() != null) {
-                            compName = objComp.getImpostor().getName();
-                        } else {
-                            return false;
-                        }
-                    }
-
-                    if (compName == null) return false;
-
-                    if (exact) {
-                        return compName.equalsIgnoreCase(objectName);
-                    } else {
-                        return compName.toLowerCase().contains(objectName.toLowerCase());
-                    }
-                } catch (Exception e) {
-                    return false;
-                }
-            })
-            .findFirst()
-            .orElse(null);
-}
-
-
-    public static boolean hasAction(ObjectComposition objComp, String action) {
-        boolean result;
-
+    public static boolean hasAction(ObjectComposition objComp, String action, boolean exact) {
         if (objComp == null) return false;
 
-        result = Arrays.stream(objComp.getActions()).anyMatch(x -> x != null && x.equalsIgnoreCase(action.toLowerCase()));
-        if (!result) {
-            try {
-                result = Arrays.stream(objComp.getImpostor().getActions()).anyMatch(x -> x != null && x.equalsIgnoreCase(action.toLowerCase()));
-            } catch (Exception ex) {
-                //do nothing
-            }
-        }
-        return result;
+        return Arrays.stream(objComp.getActions())
+                .filter(Objects::nonNull)
+                .anyMatch(a -> exact ? a.equalsIgnoreCase(action) : a.toLowerCase().contains(action.toLowerCase()));
+    }
+
+    public static boolean hasAction(ObjectComposition objComp, String action) {
+        return hasAction(objComp, action, true);
     }
 
     /**
      * Imposter objects are objects that have their menu action changed but still remain the same object.
      * for example: farming patches
      */
+    @Deprecated
     public static GameObject findObjectByImposter(int id, String action) {
         return findObjectByImposter(id, action, true);
     }
 
+    @Deprecated
     public static GameObject findObjectByImposter(int id, String optionName, boolean exact) {
-        List<GameObject> gameObjects = getGameObjects();
-
-        if (gameObjects == null) return null;
-
-        for (net.runelite.api.GameObject gameObject : gameObjects) {
-
-            if (gameObject.getId() != id) continue;
-
-            ObjectComposition objComp = convertGameObjectToObjectComposition(gameObject);
-
-            if (objComp == null) continue;
-
-            try {
-                if (objComp.getImpostor() == null) continue;
-                if (exact) {
-                    if (Arrays.stream(objComp.getImpostor().getActions()).filter(Objects::nonNull)
-                            .anyMatch((action) -> action.equalsIgnoreCase(optionName))) {
-                        return gameObject;
-                    }
-                } else {
-                    if (Arrays.stream(objComp.getImpostor().getActions()).filter(Objects::nonNull)
-                            .anyMatch((action) -> action.toLowerCase().contains(optionName.toLowerCase()))) {
-                        return gameObject;
-                    }
-                }
-            } catch (Exception ex) {
-                // do nothing
-            }
-        }
-
-        return null;
+        return getGameObjects(o -> o.getId() == id)
+                .stream()
+                .filter(o -> {
+                    ObjectComposition comp = convertToObjectComposition(o);
+                    return hasAction(comp, optionName, exact);
+                })
+                .findFirst()
+                .orElse(null);
     }
 
-
-    public static GameObject findBank() {
-        List<GameObject> gameObjects = getGameObjects();
-
-        List<Integer> possibleBankIds = Arrays.stream(Rs2BankID.bankIds).collect(Collectors.toList());
-
-        possibleBankIds.add(NULL_34810);
-
-        for (GameObject gameObject : gameObjects) {
-            if (possibleBankIds.stream().noneMatch(x -> x == gameObject.getId())) continue;
+    public static GameObject findBank(int maxSearchRadius) {
+        Predicate<GameObject> bankableFilter = gameObject -> {
+            WorldPoint loc = gameObject.getWorldLocation();
 
             //cooks guild (exception)
-            if (gameObject.getWorldLocation().equals(new WorldPoint(3147, 3449, 0)) || gameObject.getWorldLocation().equals(new WorldPoint(3148, 3449, 0))) {
-                if (!BankLocation.COOKS_GUILD.hasRequirements()) continue;
+            if ((loc.equals(new WorldPoint(3147, 3449, 0)) || loc.equals(new WorldPoint(3148, 3449, 0))) && !BankLocation.COOKS_GUILD.hasRequirements()) {
+                return false;
             }
+
             //farming guild (exception)
             //At the farming guild there’s 2 banks, one in the southern half of the guild and one northern part of the guild which requires a certain higher farming level to enter
-            if (gameObject.getWorldLocation().equals(new WorldPoint(1248, 3759, 0)) || gameObject.getWorldLocation().equals(new WorldPoint(1249, 3759, 0))) {
-                if (!Rs2Player.getSkillRequirement(Skill.FARMING, 85, true)) continue;
+            if ((loc.equals(new WorldPoint(1248, 3759, 0)) || loc.equals(new WorldPoint(1249, 3759, 0))) && !Rs2Player.getSkillRequirement(Skill.FARMING, 85, true)) {
+                return false;
             }
 
-            ObjectComposition objectComposition = convertGameObjectToObjectComposition(gameObject);
+            ObjectComposition comp = convertToObjectComposition(gameObject);
+            if (comp == null) return false;
+            return hasAction(comp, "Bank", false) || hasAction(comp, "Collect", false);
+        };
 
-            if (objectComposition == null) continue;
-
-            if (Arrays.stream(objectComposition.getActions())
-                    .noneMatch(action ->
-                            action != null && (
-                                    action.toLowerCase().contains("bank") ||
-                                            action.toLowerCase().contains("collect"))))
-                continue;
-
-            return gameObject;
-        }
-
-        return null;
+        return getGameObjects(o -> Arrays.stream(Rs2BankID.bankIds).anyMatch(bid -> o.getId() == bid), maxSearchRadius).stream()
+                .filter(bankableFilter)
+                .findFirst()
+                .orElse(null);
     }
 
-    public static GameObject findChest() {
-        List<GameObject> gameObjects = getGameObjects();
-
-        List<Integer> possibleBankIds = Arrays.stream(Rs2BankID.bankIds).collect(Collectors.toList());
-
-        possibleBankIds.add(12308); // RFD chest lumbridge basement
-        possibleBankIds.add(31427); // Fossil island chest
-
-        for (GameObject gameObject : gameObjects) {
-            if (possibleBankIds.stream().noneMatch(x -> x == gameObject.getId())) continue;
-
-            ObjectComposition objectComposition = convertGameObjectToObjectComposition(gameObject);
-
-            if (objectComposition == null) continue;
-
-            if (objectComposition.getImpostorIds() != null && objectComposition.getImpostorIds().length > 0) {
-                if (Arrays.stream(objectComposition.getImpostor().getActions())
-                        .anyMatch(action -> action != null && (
-                                action.toLowerCase().contains("bank") ||
-                                        action.toLowerCase().contains("collect"))))
-                    return gameObject;
-            }
-
-            if (Arrays.stream(objectComposition.getActions())
-                    .anyMatch(action -> action != null && (
-                            action.toLowerCase().contains("bank") ||
-                                    action.toLowerCase().contains("collect"))))
-                return gameObject;
-
-        }
-
-        return null;
+    public static GameObject findBank() {
+        return findBank(20);
     }
 
     /**
@@ -731,38 +332,33 @@ public static GameObject findReachableObject(String objectName, boolean exact, i
      * @return GameObject
      */
     public static GameObject findDepositBox() {
-        List<GameObject> gameObjects = getGameObjects();
-
-        List<Integer> possibleBankIds = Arrays.stream(Rs2BankID.bankIds).collect(Collectors.toList());
-//        possibleBankIds.add(ObjectID.BANK_DEPOSIT_BOX);
-//        possibleBankIds.add(ObjectID.BANK_DEPOSIT_CHEST);
-
-
-        for (GameObject gameObject : gameObjects) {
-            if (possibleBankIds.stream().noneMatch(x -> x == gameObject.getId())) continue;
-
-            ObjectComposition objectComposition = convertGameObjectToObjectComposition(gameObject);
-
-            if (objectComposition == null) continue;
-
-            if (objectComposition.getImpostorIds() != null && objectComposition.getImpostorIds().length > 0) {
-                if (Arrays.stream(objectComposition.getImpostor().getActions())
-                        .anyMatch(action -> action != null && (
-                                action.toLowerCase().contains("deposit"))))
-                    return gameObject;
-            }
-
-            if (Arrays.stream(objectComposition.getActions())
-                    .anyMatch(action -> action != null && (
-                            action.toLowerCase().contains("deposit"))))
-                return gameObject;
-
-        }
-
-        return null;
+        return findDepositBox(20);
     }
 
-    @Deprecated(since="1.5.7 - use signature with Integer[] ids", forRemoval = true)
+    public static GameObject findDepositBox(int maxSearchRadius) {
+        Predicate<GameObject> depositableFilter = gameObject -> {
+            ObjectComposition comp = convertToObjectComposition(gameObject);
+            if (comp == null) return false;
+            return hasAction(comp, "Deposit", false);
+        };
+        return getGameObjects(o -> Arrays.stream(Rs2BankID.bankIds).anyMatch(bid -> o.getId() == bid), maxSearchRadius).stream()
+                .filter(depositableFilter)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public static WallObject findGrandExchangeBooth(int maxSearchRadius) {
+        Integer[] grandExchangeBoothIds = new Integer[]{10060, 30389};
+        return getWallObjects(o -> Arrays.stream(grandExchangeBoothIds).anyMatch(gid -> o.getId() == gid) && Rs2Tile.isTileReachable(o.getWorldLocation()), maxSearchRadius).stream()
+                .findFirst()
+                .orElse(null);
+    }
+
+    public static WallObject findGrandExchangeBooth() {
+        return findGrandExchangeBooth(20);
+    }
+
+    @Deprecated(since = "1.5.7 - use signature with Integer[] ids", forRemoval = true)
     public static TileObject findObject(List<Integer> ids) {
         for (int id : ids) {
             TileObject object = findObjectById(id);
@@ -788,62 +384,14 @@ public static GameObject findReachableObject(String objectName, boolean exact, i
         return null;
     }
 
-    /**
-     * Finds the closest matching object id
-     * The reason we take the closest matching is to avoid interacting with an object that is to far away
-     * @param ids
-     * @return
-     */
-    public static TileObject findObject(Integer[] ids) {
-        List<GameObject> gameObjects = getGameObjects();
-        if (gameObjects == null) return null;
-
-        TileObject closestObject = null;
-        double closestDistance = Double.MAX_VALUE;
-
-        for (net.runelite.api.GameObject gameObject : gameObjects) {
-            for (int id : ids) {
-                if (gameObject.getId() == id) {
-                    double distance = gameObject.getWorldLocation().distanceTo(Rs2Player.getWorldLocation());
-                    if (distance < closestDistance) {
-                        closestDistance = distance;
-                        closestObject = gameObject;
-                    }
-                }
-            }
-        }
-        return closestObject;
-    }
-
+    @Deprecated
     public static ObjectComposition convertGameObjectToObjectComposition(TileObject tileObject) {
-        return Microbot.getClientThread().runOnClientThreadOptional(() ->
-                Microbot.getClient().getObjectDefinition(tileObject.getId()))
-                .orElse(null);
+        return convertToObjectComposition(tileObject);
     }
 
+    @Deprecated
     public static ObjectComposition convertGameObjectToObjectComposition(int objectId) {
-        return Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getObjectDefinition(objectId))
-                .orElse(null);
-    }
-
-    public static WallObject findDoor(int id) {
-        Scene scene = Microbot.getClient().getScene();
-        Tile[][][] tiles = scene.getTiles();
-
-        int z = Microbot.getClient().getPlane();
-        for (int x = 0; x < Constants.SCENE_SIZE; ++x) {
-            for (int y = 0; y < Constants.SCENE_SIZE; ++y) {
-                Tile tile = tiles[z][x][y];
-
-                if (tile == null) {
-                    continue;
-                }
-                WallObject wall = tile.getWallObject();
-                if (wall != null && wall.getId() == id)
-                    return wall;
-            }
-        }
-        return null;
+        return convertToObjectComposition(objectId);
     }
 
     public static List<Tile> getTiles(int maxTileDistance) {
@@ -877,212 +425,1037 @@ public static GameObject findReachableObject(String objectName, boolean exact, i
         return getTiles(2400);
     }
 
-    public static GameObject getGameObject(WorldPoint worldPoint) {
-        LocalPoint localPoint = LocalPoint.fromWorld(Microbot.getClient(), worldPoint);
-        Scene scene = Microbot.getClient().getScene();
-        Tile[][][] tiles = scene.getTiles();
-
-        int z = Microbot.getClient().getPlane();
-        Tile tile = null;
-        if (localPoint != null) {
-            tile = tiles[z][localPoint.getSceneX()][localPoint.getSceneY()];
-        }
-
-        if (tile != null) {
-            return Arrays.stream(tile.getGameObjects()).filter(Objects::nonNull).findFirst().orElse(null);
-        }
-        return null;
+    public static List<TileObject> getAll() {
+        return getAll(o -> true);
     }
 
-    public static GameObject getGameObject(LocalPoint localPoint) {
-        Scene scene = Microbot.getClient().getScene();
-        Tile[][][] tiles = scene.getTiles();
-
-        int z = Microbot.getClient().getPlane();
-        Tile tile = tiles[z][localPoint.getSceneX()][localPoint.getSceneY()];
-
-        return Arrays.stream(tile.getGameObjects()).filter(Objects::nonNull).findFirst().orElse(null);
+    public static <T extends TileObject> List<TileObject> getAll(Predicate<? super T> predicate) {
+        return getAll(predicate, Constants.SCENE_SIZE);
     }
 
-    public static List<GroundObject> getGroundObjects(int id, WorldPoint anchorPoint) {
-        Scene scene = Microbot.getClient().getScene();
-        Tile[][][] tiles = scene.getTiles();
-
-        if (tiles == null) return new ArrayList<>();
-
-        int z = Microbot.getClient().getPlane();
-        List<GroundObject> tileObjects = new ArrayList<>();
-        for (int x = 0; x < Constants.SCENE_SIZE; ++x) {
-            for (int y = 0; y < Constants.SCENE_SIZE; ++y) {
-                Tile tile = tiles[z][x][y];
-
-                if (tile == null || tile.getGroundObject() == null) {
-                    continue;
-                }
-                if (tile.getGroundObject().getId() == id) {
-                    tileObjects.add(tile.getGroundObject());
-                }
-            }
-        }
-
-        return tileObjects.stream()
-                .filter(Objects::nonNull)
-                .sorted(Comparator.comparingInt(tile -> tile.getWorldLocation().distanceTo(anchorPoint)))
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * TODO remove this method, maybe use find or get(int id)
-     *
-     * @param id
-     * @return
-     */
-    public static List<GameObject> getGameObjects(int id) {
-        return getGameObjects(id, Rs2Player.getWorldLocation());
-    }
-
-    public static List<GameObject> getGameObjects(int id, WorldPoint anchorPoint) {
-        Scene scene = Microbot.getClient().getScene();
-        Tile[][][] tiles = scene.getTiles();
-
-        if (tiles == null) return new ArrayList<>();
-
-        int z = Microbot.getClient().getPlane();
-        List<GameObject> tileObjects = new ArrayList<>();
-        for (int x = 0; x < Constants.SCENE_SIZE; ++x) {
-            for (int y = 0; y < Constants.SCENE_SIZE; ++y) {
-                Tile tile = tiles[z][x][y];
-
-                if (tile == null) {
-                    continue;
-                }
-                for (GameObject tileObject : tile.getGameObjects()) {
-                    if (tileObject != null
-                            && tileObject.getSceneMinLocation().equals(tile.getSceneLocation()) && tileObject.getId() == id)
-                        tileObjects.add(tileObject);
-                }
-            }
-        }
-
-        return tileObjects.stream()
-                .filter(Objects::nonNull)
-                .sorted(Comparator.comparingInt(tile -> tile.getWorldLocation().distanceTo(anchorPoint)))
-                .collect(Collectors.toList());
+    public static <T extends TileObject> List<TileObject> getAll(Predicate<? super T> predicate, int distance) {
+        List<TileObject> all = new ArrayList<>();
+        all.addAll(fetchGameObjects(predicate, distance));
+        all.addAll(fetchTileObjects(predicate, distance));
+        return all;
     }
 
     public static TileObject getTileObject(int id) {
-        return getTileObjects(id, Rs2Player.getWorldLocation()).stream().findFirst().orElse(null);
+        return getTileObject(o -> o.getId() == id);
     }
 
-    public static List<TileObject> getTileObjects(int id) {
-        return getTileObjects(id, Rs2Player.getWorldLocation());
+    public static TileObject getTileObject(int id, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        return getTileObject(id, player.getWorldLocation(), distance);
     }
 
-    public static List<TileObject> getTileObjects(int id, WorldPoint anchorPoint) {
-        return getTileObjects().stream()
-                .filter(x -> Objects.nonNull(x) && x.getId() == id)
-                .sorted(Comparator.comparingInt(tile -> tile.getWorldLocation().distanceTo(anchorPoint)))
-                .collect(Collectors.toList());
+    public static TileObject getTileObject(int id, WorldPoint anchor) {
+        return getTileObject(id, anchor, Constants.SCENE_SIZE);
+    }
+
+    public static TileObject getTileObject(int id, WorldPoint anchor, int distance) {
+        return getTileObject(o -> o.getId() == id, anchor, distance);
+    }
+
+    public static TileObject getTileObject(Integer[] ids) {
+        Set<Integer> idSet = Stream.of(ids).collect(Collectors.toSet());
+        return getTileObject(o -> idSet.contains(o.getId()));
+    }
+
+    public static TileObject getTileObject(Integer[] ids, int distance) {
+        Set<Integer> idSet = Stream.of(ids).collect(Collectors.toSet());
+        return getTileObject(o -> idSet.contains(o.getId()), distance);
+    }
+
+    public static TileObject getTileObject(String objectName, boolean exact) {
+        return getTileObject(nameMatches(objectName, exact));
+    }
+
+    public static TileObject getTileObject(String objectName) {
+        return getTileObject(objectName, false);
+    }
+
+    public static TileObject getTileObject(String objectName, boolean exact, int distance) {
+        return getTileObject(nameMatches(objectName, exact), distance);
+    }
+
+    public static TileObject getTileObject(String objectName, int distance) {
+        return getTileObject(objectName, false, distance);
+    }
+
+    public static TileObject getTileObject(String objectName, boolean exact, WorldPoint anchor) {
+        return getTileObject(nameMatches(objectName, exact), anchor);
+    }
+
+    public static TileObject getTileObject(String objectName, WorldPoint anchor) {
+        return getTileObject(objectName, false, anchor);
+    }
+
+    public static TileObject getTileObject(String objectName, boolean exact, LocalPoint anchorLocal) {
+        return getTileObject(nameMatches(objectName, exact), anchorLocal);
+    }
+
+    public static TileObject getTileObject(String objectName, LocalPoint anchorLocal) {
+        return getTileObject(objectName, false, anchorLocal);
+    }
+
+    public static TileObject getTileObject(String objectName, boolean exact, WorldPoint anchor, int distance) {
+        return getTileObject(nameMatches(objectName, exact), anchor, distance);
+    }
+
+    public static TileObject getTileObject(String objectName, WorldPoint anchor, int distance) {
+        return getTileObject(objectName, false, anchor, distance);
+    }
+
+    public static TileObject getTileObject(String objectName, boolean exact, LocalPoint anchorLocal, int distance) {
+        return getTileObject(nameMatches(objectName, exact), anchorLocal, distance);
+    }
+
+    public static TileObject getTileObject(String objectName, LocalPoint anchorLocal, int distance) {
+        return getTileObject(nameMatches(objectName, false), anchorLocal, distance);
+    }
+
+    public static TileObject getTileObject(Predicate<TileObject> predicate) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        return getTileObject(predicate, player.getWorldLocation());
+    }
+
+    public static TileObject getTileObject(WorldPoint anchor) {
+        return getTileObject(o -> true, anchor);
+    }
+
+    public static TileObject getTileObject(LocalPoint anchorLocal) {
+        return getTileObject(o -> true, anchorLocal);
+    }
+
+    public static TileObject getTileObject(WorldPoint anchor, int distance) {
+        return getTileObject(o -> true, anchor, distance);
+    }
+
+    public static TileObject getTileObject(LocalPoint anchorLocal, int distance) {
+        return getTileObject(o -> true, anchorLocal, distance);
+    }
+
+    public static TileObject getTileObject(Predicate<TileObject> predicate, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        return getTileObject(predicate, player.getWorldLocation(), distance);
+    }
+
+    public static TileObject getTileObject(Predicate<TileObject> predicate, WorldPoint anchor) {
+        return getTileObject(predicate, anchor, Constants.SCENE_SIZE);
+    }
+
+    public static TileObject getTileObject(Predicate<TileObject> predicate, LocalPoint anchorLocal) {
+        return getTileObject(predicate, anchorLocal, Constants.SCENE_SIZE * Perspective.LOCAL_TILE_SIZE);
+    }
+
+    public static TileObject getTileObject(Predicate<TileObject> predicate, WorldPoint anchor, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        LocalPoint anchorLocal = LocalPoint.fromWorld(player.getWorldView(), anchor);
+        if (anchorLocal == null) {
+            return null;
+        }
+        return getTileObject(predicate, anchorLocal, Rs2LocalPoint.worldToLocalDistance(distance));
+    }
+
+    public static TileObject getTileObject(Predicate<TileObject> predicate, LocalPoint anchorLocal, int distance) {
+        return getSceneObject(TILEOBJECT_EXTRACTOR, predicate, anchorLocal, distance);
     }
 
     public static List<TileObject> getTileObjects() {
-        Scene scene = Microbot.getClient().getScene();
-        Tile[][][] tiles = scene.getTiles();
+        return getTileObjects(o -> true);
+    }
 
-        if (tiles == null) return new ArrayList<>();
+    public static List<TileObject> getTileObjects(int distance) {
+        return getTileObjects(o -> true, distance);
+    }
 
-        int z = Microbot.getClient().getPlane();
-        List<TileObject> tileObjects = new ArrayList<>();
-        for (int x = 0; x < Constants.SCENE_SIZE; ++x) {
-            for (int y = 0; y < Constants.SCENE_SIZE; ++y) {
-                Tile tile = tiles[z][x][y];
-
-                if (tile == null) {
-                    continue;
-                }
-
-                if (tile.getDecorativeObject() != null
-                        && tile.getDecorativeObject().getWorldLocation().equals(tile.getWorldLocation()))
-                    tileObjects.add(tile.getDecorativeObject());
-
-                if (tile.getGroundObject() != null
-                        && tile.getGroundObject().getWorldLocation().equals(tile.getWorldLocation()))
-                    tileObjects.add(tile.getGroundObject());
-
-                if (tile.getWallObject() != null
-                        && tile.getWallObject().getWorldLocation().equals(tile.getWorldLocation()))
-                    tileObjects.add(tile.getWallObject());
-            }
+    public static List<TileObject> getTileObjects(Predicate<TileObject> predicate, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return Collections.emptyList();
         }
+        return getTileObjects(predicate, player.getWorldLocation(), distance);
+    }
 
-        return tileObjects.stream()
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+    public static List<TileObject> getTileObjects(WorldPoint anchor) {
+        return getTileObjects(o -> true, anchor);
+    }
+
+    public static List<TileObject> getTileObjects(LocalPoint anchorLocal) {
+        return getTileObjects(o -> true, anchorLocal);
+    }
+
+    public static List<TileObject> getTileObjects(Predicate<TileObject> predicate) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return Collections.emptyList();
+        }
+        return getTileObjects(predicate, player.getWorldLocation());
+    }
+
+    public static List<TileObject> getTileObjects(Predicate<TileObject> predicate, WorldPoint anchor) {
+        return getTileObjects(predicate, anchor, Constants.SCENE_SIZE);
+    }
+
+    public static List<TileObject> getTileObjects(Predicate<TileObject> predicate, LocalPoint anchorLocal) {
+        return getTileObjects(predicate, anchorLocal, Constants.SCENE_SIZE * Perspective.LOCAL_TILE_SIZE);
+    }
+
+    public static List<TileObject> getTileObjects(Predicate<TileObject> predicate, WorldPoint anchor, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return Collections.emptyList();
+        }
+        LocalPoint anchorLocal = LocalPoint.fromWorld(player.getWorldView(), anchor);
+        if (anchorLocal == null) {
+            return Collections.emptyList();
+        }
+        return getTileObjects(predicate, anchorLocal, Rs2LocalPoint.worldToLocalDistance(distance));
+    }
+
+    public static List<TileObject> getTileObjects(Predicate<TileObject> predicate, LocalPoint anchorLocal, int distance) {
+        return getSceneObjects(TILEOBJECT_EXTRACTOR, predicate, anchorLocal, distance);
+    }
+
+    public static GameObject getGameObject(int id) {
+        return getGameObject(id, Constants.SCENE_SIZE);
+    }
+
+    public static GameObject getGameObject(int id, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        return getGameObject(id, player.getWorldLocation(), distance);
+    }
+
+    public static GameObject getGameObject(int id, WorldPoint anchor) {
+        return getGameObject(id, anchor, Constants.SCENE_SIZE);
+    }
+
+    public static GameObject getGameObject(int id, WorldPoint anchor, int distance) {
+        return getGameObject(o -> o.getId() == id, anchor, distance);
+    }
+
+    public static GameObject getGameObject(Integer[] ids) {
+        Set<Integer> idSet = Stream.of(ids).collect(Collectors.toSet());
+        return getGameObject(o -> idSet.contains(o.getId()));
+    }
+
+    @Deprecated
+    public static GameObject findObject(Integer[] ids) {
+        Set<Integer> idSet = Stream.of(ids).collect(Collectors.toSet());
+        return getGameObject(o -> idSet.contains(o.getId()));
+    }
+
+    public static GameObject getGameObject(Integer[] ids, int distance) {
+        Set<Integer> idSet = Stream.of(ids).collect(Collectors.toSet());
+        return getGameObject(o -> idSet.contains(o.getId()), distance);
+    }
+
+    public static GameObject getGameObject(String objectName, boolean exact, int distance) {
+        return getGameObject(nameMatches(objectName, exact), distance);
+    }
+
+    public static GameObject getGameObject(String objectName, boolean exact) {
+        return getGameObject(nameMatches(objectName, exact));
+    }
+
+    public static GameObject getGameObject(String objectName) {
+        return getGameObject(objectName, false);
+    }
+
+    public static GameObject getGameObject(String objectName, int distance) {
+        return getGameObject(objectName, false, distance);
+    }
+
+    public static GameObject getGameObject(String objectName, boolean exact, WorldPoint anchor) {
+        return getGameObject(nameMatches(objectName, exact), anchor);
+    }
+
+    public static GameObject getGameObject(String objectName, WorldPoint anchor) {
+        return getGameObject(objectName, false, anchor);
+    }
+
+    public static GameObject getGameObject(String objectName, boolean exact, LocalPoint anchorLocal) {
+        return getGameObject(nameMatches(objectName, exact), anchorLocal);
+    }
+
+    public static GameObject getGameObject(String objectName, LocalPoint anchorLocal) {
+        return getGameObject(objectName, false, anchorLocal);
+    }
+
+    public static GameObject getGameObject(String objectName, boolean exact, WorldPoint anchor, int distance) {
+        return getGameObject(nameMatches(objectName, exact), anchor, distance);
+    }
+
+    public static GameObject getGameObject(String objectName, WorldPoint anchor, int distance) {
+        return getGameObject(objectName, false, anchor, distance);
+    }
+
+    public static GameObject getGameObject(String objectName, boolean exact, LocalPoint anchorLocal, int distance) {
+        return getGameObject(nameMatches(objectName, exact), anchorLocal, distance);
+    }
+
+    public static GameObject getGameObject(String objectName, LocalPoint anchorLocal, int distance) {
+        return getGameObject(objectName, false, anchorLocal, distance);
+    }
+
+    public static GameObject getGameObject(Predicate<GameObject> predicate) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        return getGameObject(predicate, player.getWorldLocation());
+    }
+
+    public static GameObject getGameObject(WorldPoint anchor) {
+        return getGameObject(o -> true, anchor);
+    }
+
+    public static GameObject getGameObject(LocalPoint anchorLocal) {
+        return getGameObject(o -> true, anchorLocal);
+    }
+
+    public static GameObject getGameObject(WorldPoint anchor, int distance) {
+        return getGameObject(o -> true, anchor, distance);
+    }
+
+    public static GameObject getGameObject(LocalPoint anchorLocal, int distance) {
+        return getGameObject(o -> true, anchorLocal, distance);
+    }
+
+    public static GameObject getGameObject(Predicate<GameObject> predicate, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        return getGameObject(predicate, player.getWorldLocation(), distance);
+    }
+
+    public static GameObject getGameObject(Predicate<GameObject> predicate, WorldPoint anchor) {
+        return getGameObject(predicate, anchor, Constants.SCENE_SIZE);
+    }
+
+    public static GameObject getGameObject(Predicate<GameObject> predicate, LocalPoint anchorLocal) {
+        return getGameObject(predicate, anchorLocal, Constants.SCENE_SIZE * Perspective.LOCAL_TILE_SIZE);
+    }
+
+    public static GameObject getGameObject(Predicate<GameObject> predicate, WorldPoint anchor, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        LocalPoint anchorLocal = LocalPoint.fromWorld(player.getWorldView(), anchor);
+        if (anchorLocal == null) {
+            return null;
+        }
+        return getGameObject(predicate, anchorLocal, Rs2LocalPoint.worldToLocalDistance(distance));
+    }
+
+    public static GameObject getGameObject(Predicate<GameObject> predicate, LocalPoint anchorLocal, int distance) {
+        return getSceneObject(GAMEOBJECT_EXTRACTOR, predicate, anchorLocal, distance);
     }
 
     public static List<GameObject> getGameObjects() {
-        Scene scene = Microbot.getClient().getTopLevelWorldView().getScene();
-        Tile[][][] tiles = scene.getTiles();
+        return getGameObjects(o -> true);
+    }
 
-        int z = Microbot.getClient().getPlane();
-        List<GameObject> tileObjects = new ArrayList<>();
-        for (int x = 0; x < Constants.SCENE_SIZE; ++x) {
-            for (int y = 0; y < Constants.SCENE_SIZE; ++y) {
-                Tile tile = tiles[z][x][y];
+    public static List<GameObject> getGameObjects(int distance) {
+        return getGameObjects(o -> true, distance);
+    }
 
-                if (tile == null) {
-                    continue;
-                }
-                for (GameObject tileObject : tile.getGameObjects()) {
-                    if (tileObject != null
-                            && tileObject.getSceneMinLocation().equals(tile.getSceneLocation()))
-                        tileObjects.add(tileObject);
-                }
-            }
+    public static List<GameObject> getGameObjects(Predicate<GameObject> predicate, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return Collections.emptyList();
         }
+        return getGameObjects(predicate, player.getWorldLocation(), distance);
+    }
 
-        return tileObjects.stream()
+    public static List<GameObject> getGameObjects(WorldPoint anchor) {
+        return getGameObjects(o -> true, anchor);
+    }
+
+    public static List<GameObject> getGameObjects(LocalPoint anchorLocal) {
+        return getGameObjects(o -> true, anchorLocal);
+    }
+
+    public static List<GameObject> getGameObjects(Predicate<GameObject> predicate) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return Collections.emptyList();
+        }
+        return getGameObjects(predicate, player.getWorldLocation());
+    }
+
+    public static List<GameObject> getGameObjects(Predicate<GameObject> predicate, WorldPoint anchor) {
+        return getGameObjects(predicate, anchor, Constants.SCENE_SIZE);
+    }
+
+    public static List<GameObject> getGameObjects(Predicate<GameObject> predicate, LocalPoint anchorLocal) {
+        return getGameObjects(predicate, anchorLocal, Constants.SCENE_SIZE * Perspective.LOCAL_TILE_SIZE);
+    }
+
+    public static List<GameObject> getGameObjects(Predicate<GameObject> predicate, WorldPoint anchor, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return Collections.emptyList();
+        }
+        LocalPoint anchorLocal = LocalPoint.fromWorld(player.getWorldView(), anchor);
+        if (anchorLocal == null) {
+            return Collections.emptyList();
+        }
+        return getGameObjects(predicate, anchorLocal, Rs2LocalPoint.worldToLocalDistance(distance));
+    }
+
+    public static List<GameObject> getGameObjects(Predicate<GameObject> predicate, LocalPoint anchorLocal, int distance) {
+        return getSceneObjects(GAMEOBJECT_EXTRACTOR, predicate, anchorLocal, distance);
+    }
+
+    public static GroundObject getGroundObject(int id) {
+        return getGroundObject(id, Constants.SCENE_SIZE);
+    }
+
+    public static GroundObject getGroundObject(int id, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        return getGroundObject(id, player.getWorldLocation(), distance);
+    }
+
+    public static GroundObject getGroundObject(int id, WorldPoint anchor) {
+        return getGroundObject(id, anchor, Constants.SCENE_SIZE);
+    }
+
+    public static GroundObject getGroundObject(int id, WorldPoint anchor, int distance) {
+        return getGroundObject(o -> o.getId() == id, anchor, distance);
+    }
+
+    public static GroundObject getGroundObject(Integer[] ids) {
+        Set<Integer> idSet = Stream.of(ids).collect(Collectors.toSet());
+        return getGroundObject(o -> idSet.contains(o.getId()));
+    }
+
+    public static GroundObject getGroundObject(Integer[] ids, int distance) {
+        Set<Integer> idSet = Stream.of(ids).collect(Collectors.toSet());
+        return getGroundObject(o -> idSet.contains(o.getId()), distance);
+    }
+
+    public static GroundObject getGroundObject(String objectName, boolean exact, int distance) {
+        return getGroundObject(nameMatches(objectName, exact), distance);
+    }
+
+    public static GroundObject getGroundObject(String objectName, boolean exact) {
+        return getGroundObject(nameMatches(objectName, exact));
+    }
+
+    public static GroundObject getGroundObject(String objectName) {
+        return getGroundObject(objectName, false);
+    }
+
+    public static GroundObject getGroundObject(String objectName, int distance) {
+        return getGroundObject(objectName, false, distance);
+    }
+
+    public static GroundObject getGroundObject(String objectName, boolean exact, WorldPoint anchor) {
+        return getGroundObject(nameMatches(objectName, exact), anchor);
+    }
+
+    public static GroundObject getGroundObject(String objectName, WorldPoint anchor) {
+        return getGroundObject(objectName, false, anchor);
+    }
+
+    public static GroundObject getGroundObject(String objectName, boolean exact, LocalPoint anchorLocal) {
+        return getGroundObject(nameMatches(objectName, exact), anchorLocal);
+    }
+
+    public static GroundObject getGroundObject(String objectName, LocalPoint anchorLocal) {
+        return getGroundObject(objectName, false, anchorLocal);
+    }
+
+    public static GroundObject getGroundObject(String objectName, boolean exact, WorldPoint anchor, int distance) {
+        return getGroundObject(nameMatches(objectName, exact), anchor, distance);
+    }
+
+    public static GroundObject getGroundObject(String objectName, WorldPoint anchor, int distance) {
+        return getGroundObject(objectName, false, anchor, distance);
+    }
+
+    public static GroundObject getGroundObject(String objectName, boolean exact, LocalPoint anchorLocal, int distance) {
+        return getGroundObject(nameMatches(objectName, exact), anchorLocal, distance);
+    }
+
+    public static GroundObject getGroundObject(String objectName, LocalPoint anchorLocal, int distance) {
+        return getGroundObject(objectName, false, anchorLocal, distance);
+    }
+
+    public static GroundObject getGroundObject(Predicate<GroundObject> predicate) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        return getGroundObject(predicate, player.getWorldLocation());
+    }
+
+    public static GroundObject getGroundObject(WorldPoint anchor) {
+        return getGroundObject(o -> true, anchor);
+    }
+
+    public static GroundObject getGroundObject(LocalPoint anchorLocal) {
+        return getGroundObject(o -> true, anchorLocal);
+    }
+
+    public static GroundObject getGroundObject(WorldPoint anchor, int distance) {
+        return getGroundObject(o -> true, anchor, distance);
+    }
+
+    public static GroundObject getGroundObject(LocalPoint anchorLocal, int distance) {
+        return getGroundObject(o -> true, anchorLocal, distance);
+    }
+
+    public static GroundObject getGroundObject(Predicate<GroundObject> predicate, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        return getGroundObject(predicate, player.getWorldLocation(), distance);
+    }
+
+    public static GroundObject getGroundObject(Predicate<GroundObject> predicate, WorldPoint anchor) {
+        return getGroundObject(predicate, anchor, Constants.SCENE_SIZE);
+    }
+
+    public static GroundObject getGroundObject(Predicate<GroundObject> predicate, LocalPoint anchorLocal) {
+        return getGroundObject(predicate, anchorLocal, Constants.SCENE_SIZE * Perspective.LOCAL_TILE_SIZE);
+    }
+
+    public static GroundObject getGroundObject(Predicate<GroundObject> predicate, WorldPoint anchor, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        LocalPoint anchorLocal = LocalPoint.fromWorld(player.getWorldView(), anchor);
+        if (anchorLocal == null) {
+            return null;
+        }
+        return getGroundObject(predicate, anchorLocal, Rs2LocalPoint.worldToLocalDistance(distance));
+    }
+
+    public static GroundObject getGroundObject(Predicate<GroundObject> predicate, LocalPoint anchorLocal, int distance) {
+        return getSceneObject(GROUNDOBJECT_EXTRACTOR, predicate, anchorLocal, distance);
+    }
+
+    public static List<GroundObject> getGroundObjects() {
+        return getGroundObjects(o -> true);
+    }
+
+    public static List<GroundObject> getGroundObjects(int distance) {
+        return getGroundObjects(o -> true, distance);
+    }
+
+    public static List<GroundObject> getGroundObjects(Predicate<GroundObject> predicate, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return Collections.emptyList();
+        }
+        return getGroundObjects(predicate, player.getWorldLocation(), distance);
+    }
+
+    public static List<GroundObject> getGroundObjects(WorldPoint anchor) {
+        return getGroundObjects(o -> true, anchor);
+    }
+
+    public static List<GroundObject> getGroundObjects(LocalPoint anchorLocal) {
+        return getGroundObjects(o -> true, anchorLocal);
+    }
+
+    public static List<GroundObject> getGroundObjects(Predicate<GroundObject> predicate) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return Collections.emptyList();
+        }
+        return getGroundObjects(predicate, player.getWorldLocation());
+    }
+
+    public static List<GroundObject> getGroundObjects(Predicate<GroundObject> predicate, WorldPoint anchor) {
+        return getGroundObjects(predicate, anchor, Constants.SCENE_SIZE);
+    }
+
+    public static List<GroundObject> getGroundObjects(Predicate<GroundObject> predicate, LocalPoint anchorLocal) {
+        return getGroundObjects(predicate, anchorLocal, Constants.SCENE_SIZE * Perspective.LOCAL_TILE_SIZE);
+    }
+
+    public static List<GroundObject> getGroundObjects(Predicate<GroundObject> predicate, WorldPoint anchor, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return Collections.emptyList();
+        }
+        LocalPoint anchorLocal = LocalPoint.fromWorld(player.getWorldView(), anchor);
+        if (anchorLocal == null) {
+            return Collections.emptyList();
+        }
+        return getGroundObjects(predicate, anchorLocal, Rs2LocalPoint.worldToLocalDistance(distance));
+    }
+
+    public static List<GroundObject> getGroundObjects(Predicate<GroundObject> predicate, LocalPoint anchorLocal, int distance) {
+        return getSceneObjects(GROUNDOBJECT_EXTRACTOR, predicate, anchorLocal, distance);
+    }
+
+    public static WallObject getWallObject(int id) {
+        return getWallObject(id, Constants.SCENE_SIZE);
+    }
+
+    public static WallObject getWallObject(int id, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        return getWallObject(id, player.getWorldLocation(), distance);
+    }
+
+    public static WallObject getWallObject(int id, WorldPoint anchor) {
+        return getWallObject(id, anchor, Constants.SCENE_SIZE);
+    }
+
+    public static WallObject getWallObject(int id, WorldPoint anchor, int distance) {
+        return getWallObject(o -> o.getId() == id, anchor, distance);
+    }
+
+    public static WallObject getWallObject(Integer[] ids) {
+        Set<Integer> idSet = Stream.of(ids).collect(Collectors.toSet());
+        return getWallObject(o -> idSet.contains(o.getId()));
+    }
+
+    public static WallObject getWallObject(Integer[] ids, int distance) {
+        Set<Integer> idSet = Stream.of(ids).collect(Collectors.toSet());
+        return getWallObject(o -> idSet.contains(o.getId()), distance);
+    }
+
+    public static WallObject getWallObject(String objectName, boolean exact, int distance) {
+        return getWallObject(nameMatches(objectName, exact), distance);
+    }
+
+    public static WallObject getWallObject(String objectName, boolean exact) {
+        return getWallObject(nameMatches(objectName, exact));
+    }
+
+    public static WallObject getWallObject(String objectName) {
+        return getWallObject(objectName, false);
+    }
+
+    public static WallObject getWallObject(String objectName, int distance) {
+        return getWallObject(objectName, false, distance);
+    }
+
+    public static WallObject getWallObject(String objectName, boolean exact, WorldPoint anchor) {
+        return getWallObject(nameMatches(objectName, exact), anchor);
+    }
+
+    public static WallObject getWallObject(String objectName, WorldPoint anchor) {
+        return getWallObject(objectName, false, anchor);
+    }
+
+    public static WallObject getWallObject(String objectName, boolean exact, LocalPoint anchorLocal) {
+        return getWallObject(nameMatches(objectName, exact), anchorLocal);
+    }
+
+    public static WallObject getWallObject(String objectName, LocalPoint anchorLocal) {
+        return getWallObject(objectName, false, anchorLocal);
+    }
+
+    public static WallObject getWallObject(String objectName, boolean exact, WorldPoint anchor, int distance) {
+        return getWallObject(nameMatches(objectName, exact), anchor, distance);
+    }
+
+    public static WallObject getWallObject(String objectName, WorldPoint anchor, int distance) {
+        return getWallObject(objectName, false, anchor, distance);
+    }
+
+    public static WallObject getWallObject(String objectName, boolean exact, LocalPoint anchorLocal, int distance) {
+        return getWallObject(nameMatches(objectName, exact), anchorLocal, distance);
+    }
+
+    public static WallObject getWallObject(String objectName, LocalPoint anchorLocal, int distance) {
+        return getWallObject(objectName, false, anchorLocal, distance);
+    }
+
+    public static WallObject getWallObject(Predicate<WallObject> predicate) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        return getWallObject(predicate, player.getWorldLocation());
+    }
+
+    public static WallObject getWallObject(WorldPoint anchor) {
+        return getWallObject(o -> true, anchor);
+    }
+
+    public static WallObject getWallObject(LocalPoint anchorLocal) {
+        return getWallObject(o -> true, anchorLocal);
+    }
+
+    public static WallObject getWallObject(WorldPoint anchor, int distance) {
+        return getWallObject(o -> true, anchor, distance);
+    }
+
+    public static WallObject getWallObject(LocalPoint anchorLocal, int distance) {
+        return getWallObject(o -> true, anchorLocal, distance);
+    }
+
+    public static WallObject getWallObject(Predicate<WallObject> predicate, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        return getWallObject(predicate, player.getWorldLocation(), distance);
+    }
+
+    public static WallObject getWallObject(Predicate<WallObject> predicate, WorldPoint anchor) {
+        return getWallObject(predicate, anchor, Constants.SCENE_SIZE);
+    }
+
+    public static WallObject getWallObject(Predicate<WallObject> predicate, LocalPoint anchorLocal) {
+        return getWallObject(predicate, anchorLocal, Constants.SCENE_SIZE * Perspective.LOCAL_TILE_SIZE);
+    }
+
+    public static WallObject getWallObject(Predicate<WallObject> predicate, WorldPoint anchor, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        LocalPoint anchorLocal = LocalPoint.fromWorld(player.getWorldView(), anchor);
+        if (anchorLocal == null) {
+            return null;
+        }
+        return getWallObject(predicate, anchorLocal, Rs2LocalPoint.worldToLocalDistance(distance));
+    }
+
+    public static WallObject getWallObject(Predicate<WallObject> predicate, LocalPoint anchorLocal, int distance) {
+        return getSceneObject(WALLOBJECT_EXTRACTOR, predicate, anchorLocal, distance);
+    }
+
+    public static List<WallObject> getWallObjects() {
+        return getWallObjects(o -> true);
+    }
+
+    public static List<WallObject> getWallObjects(int distance) {
+        return getWallObjects(o -> true, distance);
+    }
+
+    public static List<WallObject> getWallObjects(Predicate<WallObject> predicate, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return Collections.emptyList();
+        }
+        return getWallObjects(predicate, player.getWorldLocation(), distance);
+    }
+
+    public static List<WallObject> getWallObjects(WorldPoint anchor) {
+        return getWallObjects(o -> true, anchor);
+    }
+
+    public static List<WallObject> getWallObjects(LocalPoint anchorLocal) {
+        return getWallObjects(o -> true, anchorLocal);
+    }
+
+    public static List<WallObject> getWallObjects(Predicate<WallObject> predicate) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return Collections.emptyList();
+        }
+        return getWallObjects(predicate, player.getWorldLocation());
+    }
+
+    public static List<WallObject> getWallObjects(Predicate<WallObject> predicate, WorldPoint anchor) {
+        return getWallObjects(predicate, anchor, Constants.SCENE_SIZE);
+    }
+
+    public static List<WallObject> getWallObjects(Predicate<WallObject> predicate, LocalPoint anchorLocal) {
+        return getWallObjects(predicate, anchorLocal, Constants.SCENE_SIZE * Perspective.LOCAL_TILE_SIZE);
+    }
+
+    public static List<WallObject> getWallObjects(Predicate<WallObject> predicate, WorldPoint anchor, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return Collections.emptyList();
+        }
+        LocalPoint anchorLocal = LocalPoint.fromWorld(player.getWorldView(), anchor);
+        if (anchorLocal == null) {
+            return Collections.emptyList();
+        }
+        return getWallObjects(predicate, anchorLocal, Rs2LocalPoint.worldToLocalDistance(distance));
+    }
+
+    public static List<WallObject> getWallObjects(Predicate<WallObject> predicate, LocalPoint anchorLocal, int distance) {
+        return getSceneObjects(WALLOBJECT_EXTRACTOR, predicate, anchorLocal, distance);
+    }
+
+    public static DecorativeObject getDecorativeObject(int id) {
+        return getDecorativeObject(id, Constants.SCENE_SIZE);
+    }
+
+    public static DecorativeObject getDecorativeObject(int id, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        return getDecorativeObject(id, player.getWorldLocation(), distance);
+    }
+
+    public static DecorativeObject getDecorativeObject(int id, WorldPoint anchor) {
+        return getDecorativeObject(id, anchor, Constants.SCENE_SIZE);
+    }
+
+    public static DecorativeObject getDecorativeObject(int id, WorldPoint anchor, int distance) {
+        return getDecorativeObject(o -> o.getId() == id, anchor, distance);
+    }
+
+    public static DecorativeObject getDecorativeObject(Integer[] ids) {
+        Set<Integer> idSet = Stream.of(ids).collect(Collectors.toSet());
+        return getDecorativeObject(o -> idSet.contains(o.getId()));
+    }
+
+    public static DecorativeObject getDecorativeObject(Integer[] ids, int distance) {
+        Set<Integer> idSet = Stream.of(ids).collect(Collectors.toSet());
+        return getDecorativeObject(o -> idSet.contains(o.getId()), distance);
+    }
+
+    public static DecorativeObject getDecorativeObject(String objectName, boolean exact, int distance) {
+        return getDecorativeObject(nameMatches(objectName, exact), distance);
+    }
+
+    public static DecorativeObject getDecorativeObject(String objectName, boolean exact) {
+        return getDecorativeObject(nameMatches(objectName, exact));
+    }
+
+    public static DecorativeObject getDecorativeObject(String objectName) {
+        return getDecorativeObject(objectName, false);
+    }
+
+    public static DecorativeObject getDecorativeObject(String objectName, int distance) {
+        return getDecorativeObject(objectName, false, distance);
+    }
+
+    public static DecorativeObject getDecorativeObject(String objectName, boolean exact, WorldPoint anchor) {
+        return getDecorativeObject(nameMatches(objectName, exact), anchor);
+    }
+
+    public static DecorativeObject getDecorativeObject(String objectName, WorldPoint anchor) {
+        return getDecorativeObject(objectName, false, anchor);
+    }
+
+    public static DecorativeObject getDecorativeObject(String objectName, boolean exact, LocalPoint anchorLocal) {
+        return getDecorativeObject(nameMatches(objectName, exact), anchorLocal);
+    }
+
+    public static DecorativeObject getDecorativeObject(String objectName, LocalPoint anchorLocal) {
+        return getDecorativeObject(objectName, false, anchorLocal);
+    }
+
+    public static DecorativeObject getDecorativeObject(String objectName, boolean exact, WorldPoint anchor, int distance) {
+        return getDecorativeObject(nameMatches(objectName, exact), anchor, distance);
+    }
+
+    public static DecorativeObject getDecorativeObject(String objectName, WorldPoint anchor, int distance) {
+        return getDecorativeObject(objectName, false, anchor, distance);
+    }
+
+    public static DecorativeObject getDecorativeObject(String objectName, boolean exact, LocalPoint anchorLocal, int distance) {
+        return getDecorativeObject(nameMatches(objectName, exact), anchorLocal, distance);
+    }
+
+    public static DecorativeObject getDecorativeObject(String objectName, LocalPoint anchorLocal, int distance) {
+        return getDecorativeObject(objectName, false, anchorLocal, distance);
+    }
+
+    public static DecorativeObject getDecorativeObject(Predicate<DecorativeObject> predicate) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        return getDecorativeObject(predicate, player.getWorldLocation());
+    }
+
+    public static DecorativeObject getDecorativeObject(WorldPoint anchor) {
+        return getDecorativeObject(o -> true, anchor);
+    }
+
+    public static DecorativeObject getDecorativeObject(LocalPoint anchorLocal) {
+        return getDecorativeObject(o -> true, anchorLocal);
+    }
+
+    public static DecorativeObject getDecorativeObject(WorldPoint anchor, int distance) {
+        return getDecorativeObject(o -> true, anchor, distance);
+    }
+
+    public static DecorativeObject getDecorativeObject(LocalPoint anchorLocal, int distance) {
+        return getDecorativeObject(o -> true, anchorLocal, distance);
+    }
+
+    public static DecorativeObject getDecorativeObject(Predicate<DecorativeObject> predicate, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        return getDecorativeObject(predicate, player.getWorldLocation(), distance);
+    }
+
+    public static DecorativeObject getDecorativeObject(Predicate<DecorativeObject> predicate, WorldPoint anchor) {
+        return getDecorativeObject(predicate, anchor, Constants.SCENE_SIZE);
+    }
+
+    public static DecorativeObject getDecorativeObject(Predicate<DecorativeObject> predicate, LocalPoint anchorLocal) {
+        return getDecorativeObject(predicate, anchorLocal, Constants.SCENE_SIZE * Perspective.LOCAL_TILE_SIZE);
+    }
+
+    public static DecorativeObject getDecorativeObject(Predicate<DecorativeObject> predicate, WorldPoint anchor, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return null;
+        }
+        LocalPoint anchorLocal = LocalPoint.fromWorld(player.getWorldView(), anchor);
+        if (anchorLocal == null) {
+            return null;
+        }
+        return getDecorativeObject(predicate, anchorLocal, Rs2LocalPoint.worldToLocalDistance(distance));
+    }
+
+    public static DecorativeObject getDecorativeObject(Predicate<DecorativeObject> predicate, LocalPoint anchorLocal, int distance) {
+        return getSceneObject(DECORATIVEOBJECT_EXTRACTOR, predicate, anchorLocal, distance);
+    }
+
+    public static List<DecorativeObject> getDecorativeObjects() {
+        return getDecorativeObjects(o -> true);
+    }
+
+    public static List<DecorativeObject> getDecorativeObjects(int distance) {
+        return getDecorativeObjects(o -> true, distance);
+    }
+
+    public static List<DecorativeObject> getDecorativeObjects(Predicate<DecorativeObject> predicate, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return Collections.emptyList();
+        }
+        return getDecorativeObjects(predicate, player.getWorldLocation(), distance);
+    }
+
+    public static List<DecorativeObject> getDecorativeObjects(WorldPoint anchor) {
+        return getDecorativeObjects(o -> true, anchor);
+    }
+
+    public static List<DecorativeObject> getDecorativeObjects(LocalPoint anchorLocal) {
+        return getDecorativeObjects(o -> true, anchorLocal);
+    }
+
+    public static List<DecorativeObject> getDecorativeObjects(Predicate<DecorativeObject> predicate) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return Collections.emptyList();
+        }
+        return getDecorativeObjects(predicate, player.getWorldLocation());
+    }
+
+    public static List<DecorativeObject> getDecorativeObjects(Predicate<DecorativeObject> predicate, WorldPoint anchor) {
+        return getDecorativeObjects(predicate, anchor, Constants.SCENE_SIZE);
+    }
+
+    public static List<DecorativeObject> getDecorativeObjects(Predicate<DecorativeObject> predicate, LocalPoint anchorLocal) {
+        return getDecorativeObjects(predicate, anchorLocal, Constants.SCENE_SIZE * Perspective.LOCAL_TILE_SIZE);
+    }
+
+    public static List<DecorativeObject> getDecorativeObjects(Predicate<DecorativeObject> predicate, WorldPoint anchor, int distance) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            return Collections.emptyList();
+        }
+        LocalPoint anchorLocal = LocalPoint.fromWorld(player.getWorldView(), anchor);
+        if (anchorLocal == null) {
+            return Collections.emptyList();
+        }
+        return getDecorativeObjects(predicate, anchorLocal, Rs2LocalPoint.worldToLocalDistance(distance));
+    }
+
+    public static List<DecorativeObject> getDecorativeObjects(Predicate<DecorativeObject> predicate, LocalPoint anchorLocal, int distance) {
+        return getSceneObjects(DECORATIVEOBJECT_EXTRACTOR, predicate, anchorLocal, distance);
+    }
+
+    @Nullable
+    public static <T extends TileObject> ObjectComposition convertToObjectComposition(T object) {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+                    ObjectComposition comp = Microbot.getClient().getObjectDefinition(object.getId());
+                    if (comp == null) return null;
+                    return comp.getImpostorIds() == null
+                            ? comp
+                            : comp.getImpostor();
+                })
+                .orElse(null);
+    }
+
+    @Nullable
+    public static ObjectComposition convertToObjectComposition(int objectId) {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+                    ObjectComposition comp = Microbot.getClient().getObjectDefinition(objectId);
+                    if (comp == null) return null;
+                    return comp.getImpostorIds() == null
+                            ? comp
+                            : comp.getImpostor();
+                })
+                .orElse(null);
+    }
+
+    public static <T> Optional<T> pickClosest(Collection<T> candidates, Function<T, WorldPoint> locFn, WorldPoint anchor) {
+        return candidates.stream()
                 .filter(Objects::nonNull)
-                .sorted(Comparator.comparingInt(tile -> tile.getWorldLocation().distanceTo(Microbot.getClient().getLocalPlayer().getWorldLocation())))
-                .collect(Collectors.toList());
+                .min(Comparator.comparingInt(c -> locFn.apply(c).distanceTo(anchor)));
     }
 
-    public static List<GameObject> getGameObjectsWithinDistance(int distance) {
-        return getGameObjectsWithinDistance(distance, Rs2Player.getWorldLocation());
-    }
+    // private methods
+    private static <T extends TileObject> Stream<T> getSceneObjects(Function<Tile, Collection<? extends T>> extractor) {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) return Stream.empty();
 
-    public static List<GameObject> getGameObjectsWithinDistance(int distance, WorldPoint anchorPoint) {
-        Scene scene = Microbot.getClient().getScene();
+        Scene scene = player.getWorldView().getScene();
         Tile[][][] tiles = scene.getTiles();
+        if (tiles == null) return Stream.empty();
 
-        int z = Microbot.getClient().getPlane();
-        List<GameObject> tileObjects = new ArrayList<>();
+        List<T> result = new ArrayList<>();
+        int z = player.getWorldView().getPlane();
 
-        for (int x = 0; x < Constants.SCENE_SIZE; ++x) {
-            for (int y = 0; y < Constants.SCENE_SIZE; ++y) {
+        for (int x = 0; x < Constants.SCENE_SIZE; x++) {
+            for (int y = 0; y < Constants.SCENE_SIZE; y++) {
                 Tile tile = tiles[z][x][y];
+                if (tile == null) continue;
 
-                if (tile == null) {
-                    continue;
-                }
+                Collection<? extends T> objs = extractor.apply(tile);
+                if (objs != null) {
+                    for (T obj : objs) {
+                        if (obj == null) continue;
 
-                for (GameObject tileObject : tile.getGameObjects()) {
-                    if (tileObject != null
-                            && tileObject.getSceneMinLocation().equals(tile.getSceneLocation())) {
-
-                        int distanceToAnchor = anchorPoint.distanceTo(tileObject.getWorldLocation());
-
-                        if (distance == 0) {
-                            // Check in a cross pattern if distance is 0
-                            WorldPoint objectLocation = tileObject.getWorldLocation();
-                            if ((Math.abs(anchorPoint.getX() - objectLocation.getX()) == 1 && anchorPoint.getY() == objectLocation.getY())
-                                    || (Math.abs(anchorPoint.getY() - objectLocation.getY()) == 1 && anchorPoint.getX() == objectLocation.getX())) {
-                                tileObjects.add(tileObject);
+                        if (obj instanceof GameObject) {
+                            GameObject gameObject = (GameObject) obj;
+                            if (gameObject.getSceneMinLocation().equals(tile.getSceneLocation())) {
+                                result.add(obj);
                             }
                         } else {
-                            // Default behavior for distances greater than 0
-                            if (distanceToAnchor <= distance) {
-                                tileObjects.add(tileObject);
+                            if (obj.getLocalLocation().equals(tile.getLocalLocation())) {
+                                result.add(obj);
                             }
                         }
                     }
@@ -1090,116 +1463,90 @@ public static GameObject findReachableObject(String objectName, boolean exact, i
             }
         }
 
-        return tileObjects.stream()
-                .filter(Objects::nonNull)
-                .sorted(Comparator.comparingInt(tile -> tile.getWorldLocation().distanceTo(Microbot.getClient().getLocalPlayer().getWorldLocation())))
+        return result.stream();
+    }
+
+    private static <T extends TileObject> List<T> getSceneObjects(Function<Tile, Collection<? extends T>> extractor, Predicate<T> predicate, LocalPoint anchorLocal, int distance) {
+        return getSceneObjects(extractor)
+                .filter(withinTilesPredicate(distance, anchorLocal))
+                .filter(predicate)
+                .sorted(Comparator.comparingInt(o -> o.getLocalLocation().distanceTo(anchorLocal)))
                 .collect(Collectors.toList());
     }
 
-    public static List<TileObject> getAll() {
-        List<TileObject> tileObjects = new ArrayList<>();
-
-        tileObjects.addAll(getGameObjects());
-        tileObjects.addAll(getGroundObjects());
-        tileObjects.addAll(getWallObjects());
-
-        return tileObjects;
+    private static <T extends TileObject> T getSceneObject(Function<Tile, Collection<? extends T>> extractor, Predicate<T> predicate, LocalPoint anchorLocal, int distance) {
+        return getSceneObjects(extractor, predicate, anchorLocal, distance)
+                .stream()
+                .findFirst()
+                .orElse(null);
     }
 
+    private static boolean isWithinTiles(LocalPoint anchor, LocalPoint objLoc, int distance) {
+        int dx = Math.abs(anchor.getX() - objLoc.getX());
+        int dy = Math.abs(anchor.getY() - objLoc.getY());
 
-    public static List<GroundObject> getGroundObjects() {
-        return getGroundObjects(Constants.SCENE_SIZE);
+        if (distance == 0) {
+            // exactly one tile away, no diagonals
+            return (dx == Perspective.LOCAL_TILE_SIZE && dy == 0)
+                    || (dy == Perspective.LOCAL_TILE_SIZE && dx == 0);
+        } else {
+            return objLoc.distanceTo(anchor) <= distance;
+        }
     }
 
-    public static List<GroundObject> getGroundObjects(int distance) {
-        Scene scene = Microbot.getClient().getScene();
-        Tile[][][] tiles = scene.getTiles();
+    private static <T extends TileObject> Predicate<T> withinTilesPredicate(int distance, LocalPoint anchor) {
+        return to -> isWithinTiles(anchor, to.getLocalLocation(), distance);
+    }
 
-        if (tiles == null) return new ArrayList<>();
+    private static Optional<String> getCompositionName(TileObject obj) {
+        ObjectComposition comp = convertToObjectComposition(obj);
+        if (comp == null) return Optional.empty();
 
-        int z = Microbot.getClient().getPlane();
-        List<GroundObject> tileObjects = new ArrayList<>();
-        for (int x = 0; x < Constants.SCENE_SIZE; ++x) {
-            for (int y = 0; y < Constants.SCENE_SIZE; ++y) {
-                Tile tile = tiles[z][x][y];
-
-                if (tile == null) {
-                    continue;
-                }
-
-                if (tile.getWorldLocation().distanceTo(Microbot.getClient().getLocalPlayer().getWorldLocation()) > distance)
-                    continue;
-
-
-                tileObjects.add(tile.getGroundObject());
-            }
+        String name = comp.getName();
+        if (name != null && !"null".equals(name)) {
+            return Optional.of(name);
         }
 
-        return tileObjects.stream()
-                .filter(Objects::nonNull)
-                .sorted(Comparator.comparingInt(tile -> tile.getWorldLocation().distanceTo(Microbot.getClient().getLocalPlayer().getWorldLocation())))
-                .collect(Collectors.toList());
+        return Optional.empty();
     }
 
-    public static List<WallObject> getWallObjects() {
-        return getWallObjects(Constants.SCENE_SIZE);
-    }
+    private static <T extends TileObject> Predicate<T> nameMatches(String objectName, boolean exact) {
+        String normalizedForIds = objectName.toLowerCase().replace(" ", "_");
+        Set<Integer> ids = new HashSet<>(getObjectIdsByName(normalizedForIds));
 
-    public static List<WallObject> getWallObjects(int distance) {
-        Scene scene = Microbot.getClient().getScene();
-        Tile[][][] tiles = scene.getTiles();
+        String lower = objectName.toLowerCase();
 
-        if (tiles == null) return new ArrayList<>();
-
-        int z = Microbot.getClient().getPlane();
-        List<WallObject> tileObjects = new ArrayList<>();
-        for (int x = 0; x < distance; ++x) {
-            for (int y = 0; y < distance; ++y) {
-                Tile tile = tiles[z][x][y];
-
-                if (tile == null) {
-                    continue;
-                }
-
-                tileObjects.add(tile.getWallObject());
+        return obj -> {
+            if (!ids.isEmpty() && !ids.contains(obj.getId())) {
+                return false;
             }
-        }
 
-
-        return tileObjects.stream()
-                .filter(Objects::nonNull)
-                .sorted(Comparator.comparingInt(tile -> tile.getWorldLocation().distanceTo(Microbot.getClient().getLocalPlayer().getWorldLocation())))
-                .collect(Collectors.toList());
+            return getCompositionName(obj)
+                    .map(compName -> exact ? compName.equalsIgnoreCase(objectName) : compName.toLowerCase().contains(lower))
+                    .orElse(false);
+        };
     }
 
-    public static List<WallObject> getWallObjects(int id, WorldPoint anchorPoint) {
-        Scene scene = Microbot.getClient().getScene();
-        Tile[][][] tiles = scene.getTiles();
-
-        if (tiles == null) return new ArrayList<>();
-
-        int z = Microbot.getClient().getPlane();
-        List<WallObject> tileObjects = new ArrayList<>();
-        for (int x = 0; x < Constants.SCENE_SIZE; ++x) {
-            for (int y = 0; y < Constants.SCENE_SIZE; ++y) {
-                Tile tile = tiles[z][x][y];
-
-                if (tile == null) {
-                    continue;
-                }
-                if (tile.getWallObject() != null
-                        && tile.getWallObject().getId() == id)
-                    tileObjects.add(tile.getWallObject());
-            }
-        }
-
-        return tileObjects.stream()
-                .filter(Objects::nonNull)
-                .sorted(Comparator.comparingInt(tile -> tile.getWorldLocation().distanceTo(anchorPoint)))
-                .collect(Collectors.toList());
+    @SuppressWarnings("unchecked")
+    private static <T extends TileObject> List<T> fetchTileObjects(Predicate<? super T> predicate, int distance) {
+        return (List<T>) getTileObjects((Predicate<TileObject>) predicate, distance);
     }
 
-    // private methods
+    @SuppressWarnings("unchecked")
+    private static <T extends TileObject> List<T> fetchGameObjects(Predicate<? super T> predicate, int distance) {
+        return (List<T>) getGameObjects((Predicate<GameObject>) predicate, distance);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends TileObject> List<T> fetchTileObjects(Predicate<? super T> predicate) {
+        return fetchTileObjects(predicate, Constants.SCENE_SIZE);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends TileObject> List<T> fetchGameObjects(Predicate<? super T> predicate) {
+        return fetchGameObjects(predicate, Constants.SCENE_SIZE);
+    }
+
     private static boolean clickObject(TileObject object) {
         return clickObject(object, "");
     }
@@ -1218,7 +1565,7 @@ public static GameObject findReachableObject(String objectName, boolean exact, i
             int param1;
             MenuAction menuAction = MenuAction.WALK;
 
-            ObjectComposition objComp = convertGameObjectToObjectComposition(object);
+            ObjectComposition objComp = convertToObjectComposition(object);
             if (objComp == null) return false;
 
             Microbot.status = action + " " + objComp.getName();
@@ -1332,26 +1679,28 @@ public static GameObject findReachableObject(String objectName, boolean exact, i
     @SneakyThrows
     public static List<Integer> getObjectIdsByName(String name) {
         List<Integer> ids = new ArrayList<>();
-        ObjectID objectID = new ObjectID();
-        Class<?> objectIDClass = ObjectID.class;
+        String lowerName = name.toLowerCase();
 
-        // Loop through all declared fields of the class
-        for (Field field : objectIDClass.getDeclaredFields()) {
+        Class<?>[] classesToScan = {
+                net.runelite.api.ObjectID.class,
+                net.runelite.api.gameval.ObjectID.class
+        };
 
-            // Get the name of the current field
-            String fieldName = field.getName();
+        for (Class<?> clazz : classesToScan) {
+            for (Field f : clazz.getFields()) {
+                if (f.getType() != int.class) continue;
 
-            // Check if the current field's name matches the desired property name
-            if (fieldName.toLowerCase().contains(name)) {
-                field.setAccessible(true);
-                int propertyValue = (int) field.get(objectID);
-                ids.add(propertyValue);
+                if (f.getName().toLowerCase().contains(lowerName)) {
+                    f.setAccessible(true);
+                    ids.add(f.getInt(null));
+                }
             }
         }
         return ids;
     }
 
     @Nullable
+    @Deprecated
     public static ObjectComposition getObjectComposition(int id) {
         ObjectComposition objectComposition = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getObjectDefinition(id))
                 .orElse(null);
@@ -1394,6 +1743,7 @@ public static GameObject findReachableObject(String objectName, boolean exact, i
 
     /**
      * Returns the object is reachable from the player
+     *
      * @param tileObject
      * @return boolean
      */
@@ -1414,10 +1764,8 @@ public static GameObject findReachableObject(String objectName, boolean exact, i
         return walkableInteractPoint != null;
     }
 
-    public static WorldArea getWorldArea(GameObject gameObject)
-    {
-        if (!gameObject.getLocalLocation().isInScene())
-        {
+    public static WorldArea getWorldArea(GameObject gameObject) {
+        if (!gameObject.getLocalLocation().isInScene()) {
             return null;
         }
 
@@ -1430,7 +1778,6 @@ public static GameObject findReachableObject(String objectName, boolean exact, i
                 gameObject.getLocalLocation().getX() + (gameObject.sizeX() - 1) * Perspective.LOCAL_TILE_SIZE / 2,
                 gameObject.getLocalLocation().getY() + (gameObject.sizeY() - 1) * Perspective.LOCAL_TILE_SIZE / 2
         );
-
 
 
         return new Rs2WorldArea(
@@ -1447,7 +1794,7 @@ public static GameObject findReachableObject(String objectName, boolean exact, i
      */
     public static boolean hoverOverObject(TileObject object) {
         if (!Rs2AntibanSettings.naturalMouse) {
-            if(Rs2AntibanSettings.devDebug)
+            if (Rs2AntibanSettings.devDebug)
                 Microbot.log("Natural mouse is not enabled, can't hover");
             return false;
         }

@@ -38,11 +38,11 @@ public class PVirewatchScript extends Script {
 
                 if(Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER) <= config.prayAt()) {
                     plugin.rechargingPrayer = true;
-                    var statue = Rs2GameObject.getGameObjects(39234);
-                    if(statue != null && statue.get(0) != null) {
-                        Rs2Walker.walkTo(statue.get(0).getWorldLocation(), 1);
-                        sleepUntil(() -> Rs2GameObject.hasLineOfSight(statue.get(0)));
-                        if(Rs2GameObject.hasLineOfSight(statue.get(0))) {
+                    var statue = Rs2GameObject.getGameObject(39234);
+                    if(statue != null) {
+                        Rs2Walker.walkTo(statue.getWorldLocation(), 1);
+                        sleepUntil(() -> Rs2GameObject.hasLineOfSight(statue));
+                        if(Rs2GameObject.hasLineOfSight(statue)) {
                             Microbot.status = "RECHARGING PRAYER";
                             Rs2GameObject.interact(39234);
                             sleep(100);
