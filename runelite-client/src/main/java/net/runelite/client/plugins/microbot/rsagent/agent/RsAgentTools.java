@@ -17,6 +17,7 @@ import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory; // Added import for Rs2Inventory
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
@@ -217,6 +218,7 @@ public class RsAgentTools {
         if (npc != null) {
             Rs2Walker.walkTo(npc.getWorldLocation(),1);
             boolean interacted = Rs2Npc.interact(new Rs2NpcModel(npc), action);
+            sleep(500,1000);
             if (interacted) {
                 Microbot.log(Level.INFO, "Interacted with NPC: " + name + " using action: " + action);
                 return true;
@@ -581,7 +583,9 @@ public class RsAgentTools {
         }, 20);
         assert object != null;
         Rs2Walker.walkTo(object.getWorldLocation(),1);
-        return Rs2GameObject.interact(object);
+        var success = Rs2GameObject.interact(object);
+        Rs2Player.waitForAnimation();
+        return success;
     }
 
     /**
@@ -624,7 +628,7 @@ public class RsAgentTools {
      */
     static public String depositXItems(String itemName, int quantity) {
         if (!Rs2Bank.isOpen()) {
-            return "Failed to deposit: Bank is not open.";
+            Rs2Bank.openBank();
         }
         if (itemName == null || itemName.trim().isEmpty()) {
             return "Failed to deposit: Item name is invalid.";
@@ -668,7 +672,7 @@ public class RsAgentTools {
         if (quantity <= 0) {
             return "Failed to withdraw: Quantity must be positive.";
         }
-        if (!Rs2Bank.hasItem(itemName, false, quantity)) { // Assuming hasItem checks if bank has AT LEAST quantity
+        if (!Rs2Bank.hasItem(itemName)) { // Assuming hasItem checks if bank has AT LEAST quantity
              return "Failed to withdraw: Bank does not have " + quantity + " of '" + itemName + "'.";
         }
         if (Rs2Inventory.isFull() && Rs2Bank.getBankItem(itemName) != null && !Rs2Bank.getBankItem(itemName).isStackable() && !Rs2Inventory.hasItem(itemName)) {

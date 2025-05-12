@@ -78,7 +78,7 @@ public class Agent {
         boolean done = false;
 
         ChatCompletionCreateParams.Builder paramsBuilder = ChatCompletionCreateParams.builder()
-                .model(ChatModel.GPT_4_1)
+                .model(ChatModel.GPT_4_1_MINI)
                 .maxCompletionTokens(512) // Increased token limit for potentially complex JSON outputs
                 .stopOfStrings(Arrays.asList("}}", "}\n}")) // Add stop sequence for the JSON closing brackets
                 .temperature(0)
