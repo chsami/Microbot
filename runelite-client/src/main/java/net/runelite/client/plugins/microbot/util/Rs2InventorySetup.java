@@ -102,7 +102,9 @@ public class Rs2InventorySetup {
                 inventorySetupsItem.setName(lowerCaseName.replaceAll("\\s+[1-9]\\d*$", ""));
             }
 
-            if (!Rs2Bank.hasBankItem(lowerCaseName, withdrawQuantity,false)) {
+            boolean exact = !inventorySetupsItem.isFuzzy();
+
+            if (!Rs2Bank.hasBankItem(lowerCaseName, withdrawQuantity, exact)) {
                 Microbot.pauseAllScripts = true;
                 Microbot.showMessage("Bank is missing the following item " + inventorySetupsItem.getName(), 10);
                 break;
