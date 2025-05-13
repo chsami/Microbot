@@ -439,14 +439,10 @@ public class Rs2DepositBox {
             return null;
         }
 
-        if (Microbot.getClient().getLocalPlayer().getWorldLocation() == worldPoint) {
-            List<Integer> boothIds = Arrays.asList(Rs2BankID.bankIds);
-            List<TileObject> bankObjs = Rs2GameObject.getGameObjects().stream()
-                    .filter(obj -> obj.getWorldLocation().distanceTo(worldPoint) < maxObjectSearchRadius)
-                    .filter(obj -> boothIds.contains(obj.getId()))
-                    .collect(Collectors.toList());
+        if (Objects.equals(Microbot.getClient().getLocalPlayer().getWorldLocation(), worldPoint)) {
+            List<TileObject> bankObjs = List.of(Rs2GameObject.findDepositBox(maxObjectSearchRadius));
 
-            Optional<DepositBoxLocation> fromObject = bankObjs.stream()
+            Optional<DepositBoxLocation> byObject = bankObjs.stream()
                     .map(obj -> {
                         DepositBoxLocation closest = accessibleDepositBoxes.stream()
                                 .min(Comparator.comparingInt(b -> obj.getWorldLocation().distanceTo(b.getWorldPoint())))
@@ -462,9 +458,9 @@ public class Rs2DepositBox {
                     .min(Comparator.comparingInt(Map.Entry::getValue))
                     .map(Map.Entry::getKey);
 
-            if (fromObject.isPresent()) {
-                Microbot.log("Found nearest deposit box (object): " + fromObject.get());
-                return fromObject.get();
+            if (byObject.isPresent()) {
+                Microbot.log("Found nearest deposit box (object): " + byObject.get());
+                return byObject.get();
             }
         }
 

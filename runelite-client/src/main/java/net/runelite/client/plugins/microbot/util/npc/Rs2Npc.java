@@ -484,6 +484,11 @@ public class Rs2Npc {
             List<String> baseActions = baseComposition != null ? Arrays.asList(baseComposition.getActions()) : Collections.emptyList();
             List<String> transformedActions = transformedComposition != null ? Arrays.asList(transformedComposition.getActions()) : Collections.emptyList();
 
+            // Exception, hunters guild npc requires 46 hunter in-order to access
+            if (Objects.equals(npc.getWorldLocation(), new WorldPoint(1542, 3041, 0))) {
+                return Rs2Player.getSkillRequirement(Skill.HUNTER, 46, false);
+            }
+
             return baseActions.contains("Bank") || transformedActions.contains("Bank");
         }).findFirst().orElse(null);
     }

@@ -1413,7 +1413,7 @@ public class Rs2Bank {
             return null;
         }
 
-        if (Microbot.getClient().getLocalPlayer().getWorldLocation().equals(worldPoint)) {
+        if (Objects.equals(Microbot.getClient().getLocalPlayer().getWorldLocation(), worldPoint)) {
             List<TileObject> bankObjs = Stream.concat(
                             Stream.of(Rs2GameObject.findBank(maxObjectSearchRadius)),
                             Stream.of(Rs2GameObject.findGrandExchangeBooth(maxObjectSearchRadius))

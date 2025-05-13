@@ -60,7 +60,7 @@ public class revKillerScript extends Script {
 
     public static boolean test = false;
     public WorldPoint selectedWP;
-    public String selectedRev;
+    public volatile String selectedRev;
     public int selectedArrow;
     int LowOnArrowsCount = generateRandomNumber(30,60);
     long randomdelay = generateRandomNumber(350,1000);
@@ -69,7 +69,7 @@ public class revKillerScript extends Script {
     public boolean weDied = false;
     private boolean useTimedWorldHopper = false;
     private long howLongUntilHop = 0;
-    private volatile boolean shouldFlee = false;
+    public volatile boolean shouldFlee = false;
     private long startTime = System.currentTimeMillis();
 
 
@@ -98,7 +98,7 @@ public class revKillerScript extends Script {
 
                 if(areWeEquipped()){
 
-                    if(Rs2Player.getWorldLocation().distanceTo(selectedWP)>10){
+                    if(Rs2Player.getWorldLocation().distanceTo(selectedWP)>12){
 
                         WalkToRevs();
 
@@ -112,7 +112,11 @@ public class revKillerScript extends Script {
 
                         specialAttack();
 
-                        fightrev();
+                        if(selectedRev.contains("Knight")){
+                            kiteTheKnight();
+                        } else {
+                            fightrev();
+                        }
 
                         specialAttack();
 
@@ -150,6 +154,139 @@ public class revKillerScript extends Script {
                 }
             }
         }
+    }
+
+    public void playerCheck(){
+        List<Rs2PlayerModel> playerlist = new ArrayList<Rs2PlayerModel>();
+        playerlist.addAll(Rs2Player.getPlayers(it->it!=null&&it.getWorldLocation().distanceTo(Rs2Player.getWorldLocation())<= 8&&!it.equals(Rs2Player.getLocalPlayer())).collect(Collectors.toList()));
+
+        if(!playerlist.isEmpty()){
+            if(!Rs2Player.isInCombat()) {
+                Microbot.log("There's another player here hopping.");
+                hopToNewWorld();
+            }
+        }
+    }
+
+    public boolean weAreInCombat(){
+
+        if(Rs2Player.isAnimating()){
+            return true;
+        }
+
+        if(!Rs2Player.isAnimating()){
+            Microbot.log("Checking if we're in combat");
+            sleepUntil(()-> Rs2Player.isAnimating()||isPkerAround(), generateRandomNumber(2000,2300));
+            if(Rs2Player.isAnimating()){
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public void kiteTheKnight(){
+        WorldPoint startTile = new WorldPoint(3237,10225,0);
+        WorldPoint secondTile = new WorldPoint(3244,10225,0);
+        WorldPoint thirdTile = new WorldPoint(3242,10225,0);
+        WorldPoint fourthTile = new WorldPoint(3244,10222,0);
+        WorldPoint fifthTile = new WorldPoint(3248,10225,0);
+
+
+            if(Rs2Player.getWorldLocation().equals(fifthTile)){
+                if(weAreInCombat()) {
+                    Microbot.log("We've all ready jammed the knight");
+                    return;
+                } else {
+                    Microbot.log("We need to click the rev.");
+                    if(Rs2Npc.getNpc("Revenant knight")!=null && Rs2Npc.getNpc("Revenant knight").getWorldLocation().distanceTo(Rs2Player.getWorldLocation())<=7) {
+                        if (Rs2Npc.interact(Rs2Npc.getNpc("Revenant knight"), "Attack")) {
+                            Microbot.log("We attacked the knight");
+                            return;
+                        }
+                    } else {
+                        Microbot.log("We need to re-jam the knight");
+                    }
+                }
+            }
+
+
+        playerCheck();
+
+        if(!Rs2Player.getWorldLocation().equals(startTile)){
+            while(!Rs2Player.getWorldLocation().equals(startTile)){
+                if(!super.isRunning()){break;}
+                if(isPkerAround()){break;}
+                Rs2Walker.walkCanvas(startTile);
+                sleepUntil(()-> Rs2Player.isMoving(), Rs2Random.between(1000,3000));
+                sleepUntil(()-> !Rs2Player.isMoving()||Rs2Player.getWorldLocation().equals(startTile), Rs2Random.between(3000,6000));
+            }
+        }
+
+        if(Rs2Player.getWorldLocation().equals(startTile)){
+            if(Rs2Npc.attack("Revenant knight")){
+                Microbot.log("We attacked the knight");
+                sleepUntil(()-> Rs2Player.isMoving(), Rs2Random.between(1000,3000));
+                sleepUntil(()-> !Rs2Player.isMoving(), Rs2Random.between(2000,3000));
+            }
+        }
+
+        if(!Rs2Player.getWorldLocation().equals(secondTile)){
+            while(!Rs2Player.getWorldLocation().equals(secondTile)){
+                if(!super.isRunning()){break;}
+                if(isPkerAround()){break;}
+                Rs2Walker.walkCanvas(secondTile);
+                sleepUntil(()-> Rs2Player.isMoving(), Rs2Random.between(1000,3000));
+                sleepUntil(()-> !Rs2Player.isMoving()||Rs2Player.getWorldLocation().equals(secondTile), Rs2Random.between(3000,6000));
+            }
+        }
+
+        if(Rs2Player.getWorldLocation().equals(secondTile)){
+            if(Rs2Npc.getNpc("Revenant knight")!=null){
+                if(!Rs2Npc.getNpc("Revenant knight").getWorldLocation().equals(thirdTile)){
+                    int io = 0;
+                    int tries = Rs2Random.between(40,80);
+                    while(!Rs2Npc.getNpc("Revenant knight").getWorldLocation().equals(thirdTile)){
+                        if(!super.isRunning()){break;}
+                        if(isPkerAround()){break;}
+                        if(io > tries){break;}
+                        if(Rs2Npc.getNpc("Revenant knight").getWorldLocation().distanceTo(Rs2Player.getWorldLocation())<=1 && !Rs2Npc.getNpc("Revenant knight").getWorldLocation().equals(thirdTile)){
+                            Microbot.log("Rev is on a bad tile breaking loop");
+                            return;
+                        }
+                        if(!Rs2Player.getWorldLocation().equals(secondTile)){
+                            Rs2Walker.walkCanvas(secondTile);
+                            sleepUntil(()-> Rs2Player.getWorldLocation().equals(secondTile), Rs2Random.between(3000,6000));
+                        }
+                        sleepUntil(()-> Rs2Npc.getNpc("Revenant knight").getWorldLocation().equals(thirdTile), Rs2Random.between(250,500));
+                        io++;
+                    }
+                }
+            }
+        }
+
+        if(Rs2Npc.getNpc("Revenant knight").getWorldLocation().equals(thirdTile)){
+            Rs2Walker.walkCanvas(fourthTile);
+            sleepUntil(()-> Rs2Player.isMoving(), Rs2Random.between(1000,3000));
+            sleepUntil(()-> !Rs2Player.isMoving(), Rs2Random.between(2000,3000));
+            if(!Rs2Player.getWorldLocation().equals(fifthTile)){
+                while(!Rs2Player.getWorldLocation().equals(fifthTile)) {
+                    if(!super.isRunning()){break;}
+                    if(isPkerAround()){break;}
+                    Rs2Walker.walkCanvas(fifthTile);
+                    sleepUntil(() -> Rs2Player.isMoving(), Rs2Random.between(1000, 3000));
+                    sleepUntil(() -> !Rs2Player.isMoving(), Rs2Random.between(2000, 3000));
+                }
+            }
+        }
+
+        if(Rs2Player.getWorldLocation().equals(fifthTile)) {
+            if (Rs2Npc.attack("Revenant knight")) {
+                Microbot.log("We attacked the knight");
+                Microbot.log("Rev should be locked");
+            }
+        }
+
     }
 
     public boolean WeAreInTheCaves(){
@@ -283,7 +420,30 @@ public class revKillerScript extends Script {
             }
         }
     }
-
+    public void getAwayFromPkerKnight(){
+        Rs2Walker.setTarget(null);
+        if(Microbot.isLoggedIn()){
+            while(Microbot.isLoggedIn()){
+                if(!super.isRunning()){break;}
+                if(!Microbot.isLoggedIn()){break;}
+                Rs2Player.logout();
+                sleepUntil(()-> !Microbot.isLoggedIn(), Rs2Random.between(250,500));
+                sleep(1000,3000);
+            }
+        }
+        if(!Microbot.isLoggedIn()){
+            while(!Microbot.isLoggedIn()){
+                if(!super.isRunning()){break;}
+                if(Microbot.isLoggedIn()){break;}
+                sleep(1000,3000);
+                if(!Microbot.isLoggedIn()) {
+                    new Login(Login.getRandomWorld(Login.activeProfile.isMember()));
+                    sleepUntil(() -> Microbot.isLoggedIn(), Rs2Random.between(10000, 20000));
+                }
+            }
+        }
+        shouldFlee = false;
+    }
     public void getAwayFromPker(){
         // code to run or teleport from pker
         Microbot.log("Attemping to get away from the PKer.");
@@ -484,9 +644,16 @@ public class revKillerScript extends Script {
 
     public void futurePKCheck(){
         try {
-            if(isPkerAround()){
-                shouldFlee = true;
-                getAwayFromPker();
+            if(!selectedRev.contains("Knight")) {
+                if (isPkerAround()) {
+                    shouldFlee = true;
+                    getAwayFromPker();
+                }
+            } else {
+                if (isPkerAround()) {
+                    shouldFlee = true;
+                    getAwayFromPkerKnight();
+                }
             }
         } catch (Exception e) {
             Microbot.log("Error during PK check: " + e.getMessage());

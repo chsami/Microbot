@@ -53,6 +53,7 @@ public class revKillerPlugin extends Plugin {
         revKillerScript.startPkerDetection();
         revKillerScript.startHealthCheck();
         revKillerScript.weDied = false;
+        revKillerScript.shouldFlee = false;
         eventBus.register(revKillerScript);
 
         revKillerScript.selectedWP = config.selectedRev().getWorldPoint();
@@ -62,6 +63,7 @@ public class revKillerPlugin extends Plugin {
 
     protected void shutDown() {
         revKillerScript.weDied = false;
+        revKillerScript.shouldFlee = false;
         revKillerScript.stopFutures();
         revKillerScript.shutdown();
         eventBus.unregister(revKillerScript);

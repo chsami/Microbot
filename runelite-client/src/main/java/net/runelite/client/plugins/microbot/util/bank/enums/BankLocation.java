@@ -138,8 +138,6 @@ public enum BankLocation {
                 return inRegion && Rs2Player.getSkillRequirement(Skill.MINING, 60, true);
             case FISHING_GUILD:
                 return Rs2Player.getSkillRequirement(Skill.FISHING, 68, true);
-            case HUNTERS_GUILD:
-                return Rs2Player.getSkillRequirement(Skill.HUNTER, 46, false);
             case LEGENDS_GUILD:
                 return Rs2Player.getQuestState(Quest.LEGENDS_QUEST) == QuestState.FINISHED;
             case MAGE_TRAINING_ARENA:
