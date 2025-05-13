@@ -118,7 +118,11 @@ public class AutoMiningScript extends Script {
                         if (config.useBank()) {
                             if (config.ORE() == Rocks.GEM && Rs2Player.getWorldLocation().getRegionID() == GEM_MINE_UNDERGROUND) {
                                 if (Rs2DepositBox.openDepositBox()) {
-                                    Rs2DepositBox.depositAll();
+                                    if (Rs2Inventory.contains("Open gem bag")) {
+                                        Rs2Inventory.interact("Open gem bag", "Empty");
+                                    } else {
+                                        Rs2DepositBox.depositAll();
+                                    }
                                     Rs2DepositBox.closeDepositBox();
                                 }
                             }
