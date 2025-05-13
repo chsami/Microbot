@@ -30,7 +30,7 @@ public interface MossKillerConfig extends Config {
     @ConfigSection(
             name = "Wildy Safing",
             description = "Options specific to the safespot mode in wildy",
-            position = 3,
+            position = 4,
             closedByDefault = true
     )
     String saferSection = "saferSection";
@@ -118,7 +118,7 @@ public interface MossKillerConfig extends Config {
                 "2x Leather Boots \n" +
                 "2x Leather vambraces \n" +
                 "2x cape\n" +
-                "\n"
+                "REQUIRED FOOD/CONSUMABLE ARE ***APPLE PIE***\n"
                 + "Minimum required skill levels for magic is level 13 Magic.\n"
                 + "Min Equipment for Magic mode:\n"
                 + "- 2x amulet of magic \n"
@@ -200,7 +200,7 @@ public interface MossKillerConfig extends Config {
             section = saferSection
     )
     default GearEnums.RangedAmulet rangedAmulet() {
-        return GearEnums.RangedAmulet.ACCURACY;
+        return GearEnums.RangedAmulet.POWER;
     }
 
     @ConfigItem(
@@ -211,7 +211,7 @@ public interface MossKillerConfig extends Config {
             section = saferSection
     )
     default GearEnums.RangedTorso rangedTorso() {
-        return GearEnums.RangedTorso.LEATHER;
+        return GearEnums.RangedTorso.STUDDED;
     }
 
     @ConfigItem(
@@ -222,7 +222,7 @@ public interface MossKillerConfig extends Config {
             section = saferSection
     )
     default GearEnums.RangedChaps rangedChaps() {
-        return GearEnums.RangedChaps.LEATHER;
+        return GearEnums.RangedChaps.STUDDED;
     }
 
     @ConfigItem(
@@ -357,5 +357,59 @@ public interface MossKillerConfig extends Config {
     default boolean isSlashWeaponEquipped() {
         return true;
     }
+
+    @ConfigSection(
+            name = "Scheduler Configurations",
+            description = "Configuration options for scheduled behavior",
+            position = 3, // Ensure this is below all existing positions
+            closedByDefault = true
+    )
+    String schedulerSection = "schedulerSection";
+
+    @ConfigItem(
+            keyName = "selectedOutfit",
+            name = "Selected Outfit",
+            description = "Choose the default outfit type.",
+            position = 1,
+            section = schedulerSection
+    )
+    default OutfitHelper.OutfitType selectedOutfit() {
+        return OutfitHelper.OutfitType.FULL_RUNE_CHAIN;
+    }
+
+    @ConfigItem(
+            keyName = "customWeapon",
+            name = "Custom Weapon",
+            description = "Optional weapon override (leave empty for default).",
+            position = 2,
+            section = schedulerSection
+    )
+    default String customWeapon() {
+        return "Rune scimitar";
+    }
+
+    @ConfigItem(
+            keyName = "includeHelmet",
+            name = "Include Helmet?",
+            description = "Toggle whether a helmet should be worn.",
+            position = 3,
+            section = schedulerSection
+    )
+    default boolean includeHelmet() {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "capePreference",
+            name = "Cape Preference",
+            description = "Select the cape you want your character to wear",
+            position = 4,
+            section = schedulerSection
+    )
+    default GearEnums.Cape capePreference() {
+        return GearEnums.Cape.TEAM_CAPE_50; // default
+    }
+
+
 
 }

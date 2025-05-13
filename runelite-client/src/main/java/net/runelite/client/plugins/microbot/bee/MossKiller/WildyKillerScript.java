@@ -24,7 +24,6 @@ import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
@@ -76,6 +75,9 @@ public class WildyKillerScript extends Script {
 
     @Inject
     private MossKillerPlugin mossKillerPlugin;
+
+    @Inject
+    private MossKillerScript mossKillerScript;
 
     @Inject
     private MossKillerConfig mossKillerConfig;
@@ -165,8 +167,12 @@ public class WildyKillerScript extends Script {
                 long startTime = System.currentTimeMillis();
 
                 Microbot.log("SoL " + state);
+                if (mossKillerPlugin.startedFromScheduler) {prepareSchedulerStart();
+                    mossKillerPlugin.startedFromScheduler = false;}
+                if (mossKillerPlugin.preparingForShutdown) {
+                    MossKillerScript.prepareSoftStop();}
                 Rs2AntibanSettings.antibanEnabled = mossKillerPlugin.currentTarget == null; // Enable Anti-Ban when no target is found
-
+                Rs2AntibanSettings.naturalMouse = mossKillerPlugin.currentTarget == null;
                 if (isRunning() && BreakHandlerScript.breakIn <= 120 && Rs2Player.getWorldLocation().getY() < 3520) {
                     Microbot.log("On a break and not in wilderness");
                     if (isRunning()) {
@@ -271,7 +277,7 @@ public class WildyKillerScript extends Script {
         scheduledFuture = scheduledExecutorService.schedule(() -> {
             try {
                 Microbot.log("Entered Asynch Walking Thread");
-                WorldPoint playerLocation = client.getLocalPlayer().getWorldLocation();
+                WorldPoint playerLocation = Rs2Player.getLocalPlayer().getWorldLocation();
 
                 if (playerLocation.getY() > 3520) {
                     // Check and reset the appropriate flag
@@ -455,19 +461,54 @@ public class WildyKillerScript extends Script {
 
         }
 
+        if (!scheduledFuture.isDone()) {
+            if (!Rs2Equipment.hasEquipped(STAFF_OF_FIRE)) {
+                Rs2Inventory.equip(STAFF_OF_FIRE);
+            }
+        }
+
         if (mossKillerPlugin.currentTarget != null
                 && mossKillerPlugin.currentTarget.getCombatLevel() > 87
                 && getWildernessLevelFrom(Rs2Player.getWorldLocation()) > 20) {
             toggle(STEEL_SKIN, true);
             toggle(MYSTIC_LORE, true);
+            if (hasPlayerEquippedItem(mossKillerPlugin.currentTarget, RUNE_SCIMITAR)
+                    && Microbot.getClient().getRealSkillLevel(PRAYER) > 42
+                    && Microbot.getClient().getBoostedSkillLevel(PRAYER) > 0
+                    && !Rs2Prayer.isPrayerActive(PROTECT_MELEE)){
+                toggle(PROTECT_MELEE);
+            }
+            if (hasPlayerEquippedItem(mossKillerPlugin.currentTarget, MAPLE_SHORTBOW)
+                    && Microbot.getClient().getRealSkillLevel(PRAYER) > 39
+                    && Microbot.getClient().getBoostedSkillLevel(PRAYER) > 0
+                    && !Rs2Prayer.isPrayerActive(PROTECT_RANGE)){
+                toggle(PROTECT_RANGE);
+            }
+            if (Microbot.getClient().getBoostedSkillLevel(PRAYER) > 0
+                    && !Rs2Prayer.isPrayerActive(PROTECT_MAGIC)){
+                if (Rs2Player.getRealSkillLevel(PRAYER) > 36) {
+                    Rs2Prayer.toggle(PROTECT_MAGIC, hasPlayerEquippedItem(mossKillerPlugin.currentTarget, STAFF_OF_FIRE)
+                            || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, STAFF_OF_AIR)
+                            || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, STAFF_OF_WATER)
+                            || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, STAFF_OF_EARTH)
+                            || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, BRYOPHYTAS_STAFF)
+                            || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, BRYOPHYTAS_STAFF_UNCHARGED));
+                }
+            }
             if (ShortestPathPlugin.getPathfinder() == null && !MossKillerPlugin.isPlayerSnared()) {
                 handleAsynchWalk("Twenty Wild");
             }
         }
 
         if (mossKillerConfig.combatMode() != LURE) {
-            if (Rs2Player.isInMulti()
-                    && scheduledFuture.isDone()
+            if (Rs2Player.isInMulti()) {
+                Microbot.log("In multi");
+                Microbot.log("scheduledFuture" + scheduledFuture.isDone());
+                if(ShortestPathPlugin.getPathfinder() == null) {Microbot.log("shortestpath is null");}
+                if(ShortestPathPlugin.getPathfinder() != null) {
+                        Microbot.log("shortest path is not null");}
+            }
+                    if (scheduledFuture.isDone()
                     && ShortestPathPlugin.getPathfinder() == null) {
 
                 handleAsynchWalk("Moss Giants");
@@ -531,12 +572,6 @@ public class WildyKillerScript extends Script {
     }
 
     private void fight() {
-
-        if(Rs2Player.getBoostedSkillLevel(HITPOINTS) == 0) {
-            Rs2Keyboard.typeString("gg");
-            Rs2Keyboard.enter();
-            sleep(1200,1800);
-        }
 
         WorldPoint playerLocation = Rs2Player.getWorldLocation();
 
@@ -1669,7 +1704,7 @@ public class WildyKillerScript extends Script {
                 Rs2Inventory.interact(BIG_BONES, "Bury");
                 Rs2Player.waitForAnimation();
             }
-            if (!Rs2Inventory.isFull() && Rs2GroundItem.interact(BIG_BONES, "Take", 2)) {
+            if (!Rs2Inventory.isFull() && mossKillerPlugin.currentTarget == null && Rs2GroundItem.interact(BIG_BONES, "Take", 2)) {
                 toggleRunEnergyOn();
                 sleepUntil(() -> Rs2Inventory.contains(BIG_BONES));
                 if (Rs2Inventory.contains(BIG_BONES)) {
@@ -2003,7 +2038,7 @@ public class WildyKillerScript extends Script {
 
 
                 if (!Rs2Equipment.hasEquipped(RUNE_CHAINBODY)) {
-                    OutfitHelper.equipOutfit(OutfitHelper.OutfitType.MAGE);
+                    OutfitHelper.equipOutfit(OutfitHelper.OutfitType.MOSS_MAGE);
                     //equipItems();
 
                     CombatMode mode = mossKillerConfig.combatMode();
@@ -2055,6 +2090,7 @@ public class WildyKillerScript extends Script {
             sleep(500, 1000);
         }
 
+        mossKillerPlugin.dead = false;
     }
 
     public void setAutocastFireStrike() {
@@ -2394,13 +2430,14 @@ public class WildyKillerScript extends Script {
             if (scheduledFuture.isDone() && !Rs2Inventory.hasItemAmount(FOOD, 17)) { // Only initiate if not already walking to Twenty Wild
                 handleAsynchWalk("Twenty Wild");
             }
+            if (Rs2Walker.getDistanceBetween(playerLocation, TWENTY_WILD) < 5) {
+                teleportAndStopWalking();
             if (Rs2Inventory.hasItemAmount(FOOD, 17)) {
                 state = MossKillerState.WALK_TO_MOSS_GIANTS;
             }
             Microbot.log("Hitting Return");
             return;
-        } else if (Rs2Walker.getDistanceBetween(playerLocation, TWENTY_WILD) < 5) {
-            teleportAndStopWalking();
+        }
         }
 
         // Check if the player has teleported (Y-coordinate condition)
@@ -2449,6 +2486,30 @@ public class WildyKillerScript extends Script {
         if (!Rs2Player.isRunEnabled() && Rs2Player.getRunEnergy() > 0) {
             Rs2Player.toggleRunEnergy(true);
         }
+    }
+
+    private void prepareSchedulerStart() {
+        if (isWearingOutfit(OutfitHelper.OutfitType.MOSS_MAGE)) {
+            Microbot.log("Already wearing MOSS_MAGE outfit. Skipping outfit pre-prep.");
+            return;
+        }
+        Rs2Bank.walkToBank();
+        Rs2Bank.openBank();
+        sleepUntil(Rs2Bank::isOpen);
+        Rs2Bank.depositAll();
+        Rs2Bank.depositEquipment();
+        Rs2Bank.closeBank();
+        Rs2Bank.walkToBank(BankLocation.FEROX_ENCLAVE);
+    }
+
+    public static boolean isWearingOutfit(OutfitHelper.OutfitType outfitType) {
+        String[] items = outfitType.getOutfitItems();
+        for (String item : items) {
+            if (!Rs2Equipment.isWearing(item)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public void toggleRunEnergyOff() {
