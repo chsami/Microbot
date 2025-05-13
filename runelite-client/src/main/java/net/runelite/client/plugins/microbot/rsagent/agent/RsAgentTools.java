@@ -116,7 +116,12 @@ public class RsAgentTools {
             return null; // NPC has no listed spawns
         }
 
-        WorldPoint playerLocation = Rs2Player.getLocalPlayer().getWorldLocation();
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) {
+            Microbot.log(Level.WARN,"Player is null, cannot determine closest NPC spawn.");
+            return null;
+        }
+        WorldPoint playerLocation = player.getWorldLocation();
         if (playerLocation == null) {
             Microbot.log(Level.WARN,"Player location is null, cannot determine closest NPC spawn.");
             return null; // Should not happen if player is logged in
@@ -178,7 +183,9 @@ public class RsAgentTools {
      * @return The WorldPoint from the array closest to the player, or null if the input array is empty.
      */
     static public WorldPoint getClosestPointFromPlayer(WorldPoint[] points){
-        WorldPoint playerPoint = Rs2Player.getLocalPlayer().getWorldLocation();
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) return null;
+        WorldPoint playerPoint = player.getWorldLocation();
         WorldPoint closestPoint = null;
         int closestDistance = Integer.MAX_VALUE;
         if (points == null || points.length == 0) {
@@ -586,6 +593,26 @@ public class RsAgentTools {
         var success = Rs2GameObject.interact(object);
         Rs2Player.waitForAnimation();
         return success;
+    }
+
+    /**
+     * Finds the nearest accessible bank within a 500-tile radius and returns its location and name.
+     *
+     * @return A string describing the nearest bank, or an error/not found message.
+     */
+    static public String getNearestBank() {
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (Microbot.getClient() == null || player == null || player.getWorldLocation() == null) {
+            return "Error: Client or player not available to determine current location.";
+        }
+        BankLocation nearestBank = Rs2Bank.getNearestBank(player.getWorldLocation(), 500);
+        if (nearestBank != null) {
+            WorldPoint bankPoint = nearestBank.getWorldPoint();
+            String bankName = nearestBank.getName() != null ? nearestBank.getName() : nearestBank.toString();
+            return "Nearest bank found: " + bankName + " at (" + bankPoint.getX() + ", " + bankPoint.getY() + ", " + bankPoint.getPlane() + ").";
+        } else {
+            return "No accessible bank location found nearby within 500 tiles.";
+        }
     }
 
     /**

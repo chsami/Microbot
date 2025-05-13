@@ -293,6 +293,10 @@ public class Agent {
                         toolResult = success ? "Successfully interacted with object: " + objectName + "." : "Failed to interact with object: " + objectName + ". Object might not be nearby or interactable.";
                         break;
                     }
+                    case "getNearestBank": {
+                        toolResult = RsAgentTools.getNearestBank();
+                        break;
+                    }
                     case "openBank": {
                         toolResult = RsAgentTools.openBank();
                         break;
