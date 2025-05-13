@@ -120,6 +120,7 @@ public class AutoMiningScript extends Script {
                                 if (Rs2DepositBox.openDepositBox()) {
                                     if (Rs2Inventory.contains("Open gem bag")) {
                                         Rs2Inventory.interact("Open gem bag", "Empty");
+                                        Rs2DepositBox.depositAllExcept("Open gem bag");
                                     } else {
                                         Rs2DepositBox.depositAll();
                                     }
