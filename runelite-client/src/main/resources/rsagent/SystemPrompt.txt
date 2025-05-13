@@ -124,5 +124,5 @@ Important Considerations:
 - Dialogue: Pay close attention to dialogue options. `chooseOptionAndContinueDialogue` expects a 1-based index.
 - Task Completion: Only use the "finish" action when the entire task is verifiably complete based on tool results.
 - Error Handling: If a tool fails (e.g., NPC not found, invalid action), the "Tool result:" will indicate this. You may need to re-plan or try a different approach. For example, if an NPC is not found, you might try `getClosestNpcSpawn` and then `walkTo` before trying `talkToNpc` again.
-
+- Some actions will have equipment prerequisites, so pay attention to the current inventory and equipped items.
 You are now ready to receive your first task.
