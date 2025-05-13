@@ -8,6 +8,7 @@ import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.bee.MossKiller.MossKillerScript;
+import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity;
@@ -15,7 +16,6 @@ import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.player.Rs2PlayerModel;
-import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import javax.inject.Inject;
 import javax.swing.*;
@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static net.runelite.api.Skill.DEFENCE;
+import static net.runelite.client.plugins.microbot.util.walker.Rs2Walker.walkTo;
 
 public class MonkKillerScript extends Script {
 
@@ -75,6 +76,12 @@ public class MonkKillerScript extends Script {
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
 
+                if (BreakHandlerScript.breakIn <= 60) {
+                    Microbot.log("Break in less than 60 seconds, walking outside of monk's sanctuary");
+                walkTo(3051,3470,0);
+                Microbot.log("Turn on breakhandler if this is not the desired behaviour");}
+
+
                 if (firstSetting && Rs2Player.getRealSkillLevel(DEFENCE) < 15) {
                     Rs2AntibanSettings.takeMicroBreaks = false;
                     firstSetting = false;
@@ -95,8 +102,8 @@ public class MonkKillerScript extends Script {
                 Rs2NpcModel monk = findAvailableMonk();
                 if (isInMonkArea() && !underAttack()) {
                     if (monk != null) {
-                            if (attackMonk(monk)) {
-                                Microbot.log("monk is not null, and tried to attack, if it failed, just wait a bit longer for a successful attack");
+                            if (!attackMonk(monk)) {
+                                Microbot.log("monk is not null, tried to attack the monk, it failed, just wait a bit longer for a successful attack");
                             }
                     } else {
                         Microbot.log("monk is null, sleeping a bit then if not under attack, logging out");
@@ -132,7 +139,7 @@ public class MonkKillerScript extends Script {
     }
 
     private void walkToMonkArea() {
-        Rs2Walker.walkTo(monkPoint);  // Walk to a specific point in the monk area
+        walkTo(monkPoint);  // Walk to a specific point in the monk area
     }
 
     private Rs2NpcModel findAvailableMonk1() {
