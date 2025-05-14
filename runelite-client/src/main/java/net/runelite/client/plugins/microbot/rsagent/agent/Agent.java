@@ -161,11 +161,11 @@ public class Agent {
                         toolResult = success ? "Successfully initiated walk to (" + x + ", " + y + ", " + z + ")." : "Failed to initiate walk to (" + x + ", " + y + ", " + z + ").";
                         break;
                     }
-                    case "interactWithNpc": { // Renamed from interactWith
+                    case "interactWith": {
                         String targetName = parameters.get("name").getAsString();
                         String interactionAction = parameters.get("action").getAsString();
                         boolean success = RsAgentTools.interactWith(targetName, interactionAction); // Renamed method call
-                        toolResult = success ? "Successfully interacted with NPC '" + targetName + "' using action '" + interactionAction + "'." : "Failed to interact with NPC '" + targetName + "' using action '" + interactionAction + "'. NPC might not be present or interaction invalid.";
+                        toolResult = success ? "Successfully interacted with '" + targetName + "' using action '" + interactionAction + "'." : "Failed to interact with '" + targetName + "' using action '" + interactionAction + "'. Might not be present or interaction is invalid.";
                         break;
                     }
                     case "talkToNpc": {
@@ -283,12 +283,6 @@ public class Agent {
                         } else {
                             toolResult = "Nearby objects:\n" + String.join(",", objectList);
                         }
-                        break;
-                    }
-                    case "interactWithObject": {
-                        String objectName = parameters.get("name").getAsString();
-                        boolean success = RsAgentTools.interactWithObject(objectName);
-                        toolResult = success ? "Successfully interacted with object: " + objectName + "." : "Failed to interact with object: " + objectName + ". Object might not be nearby or interactable.";
                         break;
                     }
                     case "getNearestBank": {
