@@ -50,7 +50,7 @@ public class ActorModel implements Actor {
         });
 
         return result.orElse(null);
-    } 
+    }
 
     @Override
     public int getHealthRatio() {
