@@ -96,6 +96,7 @@
     { "name": "Dwarven Mine Dungeon", "coords": [3024, 9791, 0], "size": "default" },
     { "name": "Eagles' Peak", "coords": [2332, 3486, 0], "size": "medium" },
     { "name": "East Ardougne", "coords": [2598, 3295, 0], "size": "medium" },
+    { "name": "Ardougne", "coords": [2598, 3295, 0], "size": "medium" },
     { "name": "Eastern Graveyard", "coords": [2251, 2924, 0], "size": "default" },
     { "name": "Ectofuntus", "coords": [3659, 3519, 0], "size": "default" },
     { "name": "Edgeville Dungeon", "coords": [3114, 9917, 0], "size": "default" },

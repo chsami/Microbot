@@ -314,6 +314,14 @@ public class Agent {
                         toolResult = RsAgentTools.getLocationCoords(locationName);
                         break;
                     }
+                    case "buyInGrandExchange": {
+                        toolResult = RsAgentTools.buyInGrandExchange(parameters.get("itemName").getAsString(), parameters.get("quantity").getAsInt());
+                        break;
+                    }
+                    case "combine": {
+                        toolResult= RsAgentTools.combine(parameters.get("item1").getAsString(), parameters.get("item2").getAsString());
+                        break;
+                    }
                     case "finish": {
                         String finishResponse = "Task finished.";
                         if (parameters.has("response") && parameters.get("response").isJsonPrimitive() && parameters.get("response").getAsJsonPrimitive().isString()) {

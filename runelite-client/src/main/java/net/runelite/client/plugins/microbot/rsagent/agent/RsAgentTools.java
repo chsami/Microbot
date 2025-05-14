@@ -14,6 +14,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
+import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory; // Added import for Rs2Inventory
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
@@ -919,5 +920,18 @@ public class RsAgentTools {
         } else {
             return "Failed to withdraw " + quantity + " of '" + itemName + "' (e.g., item not found in bank, inventory full, or other issue).";
         }
+    }
+
+    static public String buyInGrandExchange(String itemName, int quantity) {
+        Rs2GrandExchange.walkToGrandExchange();
+        Rs2GrandExchange.buyItemAbove5Percent(itemName, quantity);
+        sleepUntil(Rs2GrandExchange::hasBoughtOffer);
+        Rs2GrandExchange.collectToInventory();
+        return "Bought" + quantity + " of " + itemName;
+    }
+
+    static public String combine(String item1, String item2) {
+        boolean ok = Rs2Inventory.combine(item1, item2);
+        return ok ? "Combined items" : "Failed to combine items";
     }
 }

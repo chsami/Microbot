@@ -87,7 +87,15 @@ getLocationCoords: Gets the world coordinates for a named location from a predef
       Takes inputs: locationName (string)
       Returns an output of type: string (e.g. "Location 'Abandoned Mine' found at (3441, 3236, 0)." or "Location 'SomePlace' not found or error loading data.")
 
-finish: Call this when the goal is achieved or you cannot proceed further.
+buyInGrandExchange: Buys the specified quantity of an item in the Grand Exchange. Useful for obtaining items required for quests or skilling equipment.
+    Takes inputs: item (string), quantity (int)
+    Returns an output of type: string (e.g. Purchased 5 of Feather)
+
+combine: Combines 2 inventory items to craft a new item
+    Takes inputs: item1 (string), item2 (string)
+    Returns an output of type: string (e.g. Success or Fail)
+
+finish: Call this when the goal is achieved, or you cannot proceed further.
       Takes inputs: response (string) - A final summary message for the user.
       Returns an output of type: none
 
@@ -130,4 +138,5 @@ Important Considerations:
 - Task Completion: Only use the "finish" action when the entire task is verifiably complete based on tool results.
 - Error Handling: If a tool fails (e.g., NPC not found, invalid action), the "Tool result:" will indicate this. You may need to re-plan or try a different approach. For example, if an NPC is not found, you might try `getClosestNpcSpawn` and then `walkTo` before trying `talkToNpc` again.
 - Some actions will have equipment prerequisites, so pay attention to the current inventory and equipped items.
+- Questing: Always check quest status when starting a questing task. If you need any items, buy them from the grand exchange.
 You are now ready to receive your first task.
