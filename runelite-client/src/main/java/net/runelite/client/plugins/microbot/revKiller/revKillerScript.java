@@ -339,6 +339,14 @@ public class revKillerScript extends Script {
         }
     }
 
+    public void openBankCheck(){
+        if(Rs2Bank.isOpen()){
+            if(Rs2Bank.closeBank()){
+                sleepUntil(()-> Rs2Bank.isOpen(), Rs2Random.between(2000,4000));
+            }
+        }
+    }
+
     public void WalkToRevs(){
         drinkStamPotion();
         if(!WeAreInTheCaves()){
@@ -346,8 +354,9 @@ public class revKillerScript extends Script {
             if(Rs2Player.getWorldLocation().distanceTo(cave) > 6){
                 stopTeleSpam();
                 if(selectedRev.contains("Knight")){
+                    openBankCheck();
                     if(Rs2Walker.walkTo(selectedWP)){
-                        Microbot.log("Walking to Revs. with new method.");
+                        Microbot.log("Teleporting to level 40 rev cave.");
                     }
                 } else {
                     if(Rs2Walker.walkTo(cave)){
