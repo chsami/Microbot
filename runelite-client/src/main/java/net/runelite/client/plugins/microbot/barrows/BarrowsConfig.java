@@ -66,7 +66,7 @@ public interface BarrowsConfig extends Config {
             description = "Minimum amount of forgotten brews to withdraw from the bank.",
             position = 5
     )
-    @Range(min = 1, max = 5)
+    @Range(min = 0, max = 5)
     default int minForgottenBrew() {
         return 1;
     }

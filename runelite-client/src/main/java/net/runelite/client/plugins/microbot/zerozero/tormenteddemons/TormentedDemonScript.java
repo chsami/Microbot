@@ -14,13 +14,16 @@ import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.grounditem.LootingParameters;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
 import net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection;
+import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.microbot.zerozero.tormenteddemons.TormentedDemonConfig.CombatPotionType;
 import net.runelite.client.plugins.microbot.zerozero.tormenteddemons.TormentedDemonConfig.MODE;
 import net.runelite.client.plugins.microbot.zerozero.tormenteddemons.TormentedDemonConfig.RangingPotionType;
@@ -38,25 +41,23 @@ public class TormentedDemonScript extends Script {
     private Rs2PrayerEnum currentDefensivePrayer = null;
     private Rs2PrayerEnum currentOffensivePrayer = null;
     private HeadIcon currentOverheadIcon = null;
-    private Rs2NpcModel currentTarget;
+    public Rs2NpcModel currentTarget;
     private boolean lootAttempted = false;
     private String lastChatMessage = "";
     private boolean isRestocking = false;
 
-
-    private static final int MAGIC_ATTACK_ANIMATION = 11388;
-    private static final int RANGE_ATTACK_ANIMATION = 11389;
-    private static final int MELEE_ATTACK_ANIMATION = 11392;
-
     private static final WorldPoint SAFE_LOCATION = new WorldPoint(3150, 3634, 0);
 
-    private enum State { BANKING, TRAVEL_TO_TORMENTED, FIGHTING }
+    private enum State {BANKING, TRAVEL_TO_TORMENTED, FIGHTING}
+
     public static State BOT_STATUS = State.BANKING;
 
-    private enum TravelStep { LOCATION_ONE, CLIMB_FIRST_STAIRS, CLIMB_SECOND_STAIRS, CLIMB_THROUGH, LOCATION_THREE }
+    private enum TravelStep {LOCATION_ONE, CLIMB_FIRST_STAIRS, CLIMB_SECOND_STAIRS, CLIMB_THROUGH, LOCATION_THREE}
+
     private TravelStep travelStep = TravelStep.LOCATION_ONE;
 
-    private enum BankingStep { DRINK, BANK, LOAD_INVENTORY }
+    private enum BankingStep {DRINK, BANK, LOAD_INVENTORY}
+
     private BankingStep bankingStep = BankingStep.DRINK;
 
     public boolean run(TormentedDemonConfig config) {
@@ -95,6 +96,9 @@ public class TormentedDemonScript extends Script {
 
 
     private void handleTravel(TormentedDemonConfig config) {
+        if (Rs2Bank.isOpen()) {
+            Rs2Bank.closeBank();
+        }
         WorldPoint targetLocationOne = new WorldPoint(4062, 4558, 0);
         WorldPoint targetFinalLocation = new WorldPoint(4073, 4432, 0);
         WorldPoint playerLocation = Microbot.getClient().getLocalPlayer().getWorldLocation();
@@ -203,6 +207,7 @@ public class TormentedDemonScript extends Script {
                 break;
         }
     }
+
     private void handleFighting(TormentedDemonConfig config) {
         if (currentTarget == null || currentTarget.isDead()) {
             disableAllPrayers();
@@ -217,6 +222,9 @@ public class TormentedDemonScript extends Script {
             }
 
             currentTarget = findNewTarget(config);
+            if (currentTarget.getInteracting() != Microbot.getClient().getLocalPlayer()) {
+                currentTarget = findNewTarget(config);
+            }
             if (currentTarget != null) {
                 currentOverheadIcon = Rs2Reflection.getHeadIcon(currentTarget);
                 if (currentOverheadIcon == null) {
@@ -245,6 +253,7 @@ public class TormentedDemonScript extends Script {
         }
 
         if (currentTarget != null && !currentTarget.isDead()) {
+
             Rs2Player.eatAt(config.minEatPercent());
             Rs2Player.drinkPrayerPotionAt(config.minPrayerPercent());
 
@@ -257,7 +266,7 @@ public class TormentedDemonScript extends Script {
 
                 if (attackSuccessful) {
                     Rs2Player.waitForAnimation();
-                    sleepUntil(() ->  Rs2Player.getInteracting() != null && ((Rs2NpcModel) Rs2Player.getInteracting()).getIndex() == currentTarget.getIndex(), 3000);
+                    sleepUntil(() -> Rs2Player.getInteracting() != null && ((Rs2NpcModel) Rs2Player.getInteracting()).getIndex() == currentTarget.getIndex(), 3000);
                 } else {
                     logOnceToChat("Attack failed for target: " + (currentTarget != null ? currentTarget.getName() : "null"));
                     currentTarget = null;
@@ -279,23 +288,6 @@ public class TormentedDemonScript extends Script {
 
         if (currentTarget == null) return;
 
-        int npcAnimation = currentTarget.getAnimation();
-        if (config.enableDefensivePrayer()) {
-            System.out.println(npcAnimation);
-            Rs2PrayerEnum newDefensivePrayer = null;
-            if (npcAnimation == MAGIC_ATTACK_ANIMATION) {
-                newDefensivePrayer = Rs2PrayerEnum.PROTECT_MAGIC;
-            } else if (npcAnimation == RANGE_ATTACK_ANIMATION) {
-                newDefensivePrayer = Rs2PrayerEnum.PROTECT_RANGE;
-            } else if (npcAnimation == MELEE_ATTACK_ANIMATION) {
-                newDefensivePrayer = Rs2PrayerEnum.PROTECT_MELEE;
-            }
-            if (newDefensivePrayer != null && newDefensivePrayer != currentDefensivePrayer) {
-                logOnceToChat("Changing defensive prayer to " + newDefensivePrayer);
-                switchDefensivePrayer(newDefensivePrayer);
-            }
-        }
-
         if (config.enableOffensivePrayer()) {
             activateOffensivePrayer(config);
         }
@@ -312,14 +304,19 @@ public class TormentedDemonScript extends Script {
 
     private void activateOffensivePrayer(TormentedDemonConfig config) {
         Rs2PrayerEnum newOffensivePrayer = null;
-        if (config.useMagicStyle() && isGearEquipped(parseGear(config.magicGear()))) {
+        if (config.useMagicStyle() && isGearEquipped(parseGear(config.magicGear())) && Rs2Player.getBoostedSkillLevel(Skill.PRAYER) >= 77) {
             newOffensivePrayer = Rs2PrayerEnum.AUGURY;
-        } else if (config.useRangeStyle() && isGearEquipped(parseGear(config.rangeGear()))) {
-            newOffensivePrayer = Rs2PrayerEnum.RIGOUR;
-        } else if (config.useMeleeStyle() && isGearEquipped(parseGear(config.meleeGear()))) {
+        } else if (config.useMagicStyle() && isGearEquipped(parseGear(config.magicGear()))) {
+            newOffensivePrayer = Rs2PrayerEnum.MYSTIC_LORE;
+        } else if (config.useMeleeStyle() && isGearEquipped(parseGear(config.meleeGear())) && Rs2Player.getBoostedSkillLevel(Skill.PRAYER) >= 70) {
             newOffensivePrayer = Rs2PrayerEnum.PIETY;
+        } else if (config.useMeleeStyle() && isGearEquipped(parseGear(config.meleeGear()))) {
+            newOffensivePrayer = Rs2PrayerEnum.ULTIMATE_STRENGTH;
+        } else if (config.useRangeStyle() && isGearEquipped(parseGear(config.rangeGear())) && Rs2Player.getBoostedSkillLevel(Skill.PRAYER) >= 70) {
+            newOffensivePrayer = Rs2PrayerEnum.RIGOUR;
+        } else if (config.useRangeStyle() && isGearEquipped(parseGear(config.rangeGear()))) {
+            newOffensivePrayer = Rs2PrayerEnum.HAWK_EYE;
         }
-
         if (newOffensivePrayer != null && newOffensivePrayer != currentOffensivePrayer) {
             logOnceToChat("Changing offensive prayer to " + newOffensivePrayer);
             switchOffensivePrayer(newOffensivePrayer);
@@ -421,7 +418,7 @@ public class TormentedDemonScript extends Script {
         boolean noPrayerPotions = Rs2Inventory.items().stream()
                 .noneMatch(item -> item != null && item.getName() != null && item.getName().toLowerCase().contains("prayer potion"));
 
-        return (noFood && currentHealth <= config.healthThreshold()) || (noPrayerPotions && currentPrayer < 10);
+        return (noFood || currentHealth <= config.healthThreshold()) || (noPrayerPotions && currentPrayer < 10);
     }
 
     public void disableAllPrayers() {
@@ -589,7 +586,4 @@ public class TormentedDemonScript extends Script {
         }
         logOnceToChat("Shutting down Tormented Demon script");
     }
-
-
-
 }

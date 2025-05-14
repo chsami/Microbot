@@ -271,7 +271,7 @@ public class MixologyScript extends Script {
                                 quickActionProcessPotion(nonFulfilledPotion);
                                 alembicQuickActionTicks = 0;
                             }
-                            if (nonFulfilledPotion.potionModifier().alchemyObject() == AlchemyObject.RETORT && config.useQuickActionOnRetort()) {
+                            if (nonFulfilledPotion.potionModifier().alchemyObject() == AlchemyObject.RETORT && config.useQuickActionOnRetort()&&Microbot.getVarbitValue(11327)<15&&Microbot.getVarbitValue(11327)!=0) {
                                 quickActionProcessPotion(nonFulfilledPotion);
                                 sleep(350, 400);
                             }

@@ -52,10 +52,18 @@ public class revKillerPlugin extends Plugin {
         revKillerScript.run(config);
         revKillerScript.startPkerDetection();
         revKillerScript.startHealthCheck();
+        revKillerScript.weDied = false;
+        revKillerScript.shouldFlee = false;
         eventBus.register(revKillerScript);
+
+        revKillerScript.selectedWP = config.selectedRev().getWorldPoint();
+        revKillerScript.selectedArrow = config.selectedArrow().getArrowID();
+        revKillerScript.selectedRev = config.selectedRev().getName();
     }
 
     protected void shutDown() {
+        revKillerScript.weDied = false;
+        revKillerScript.shouldFlee = false;
         revKillerScript.stopFutures();
         revKillerScript.shutdown();
         eventBus.unregister(revKillerScript);

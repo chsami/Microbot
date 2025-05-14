@@ -11,6 +11,8 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
@@ -23,6 +25,7 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.pestcontrol.Portal;
 import org.apache.commons.lang3.tuple.Pair;
 
+import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -33,8 +36,17 @@ import static net.runelite.client.plugins.pestcontrol.Portal.*;
 public class PestControlScript extends Script {
     public static double version = 2.2;
 
+    boolean initialise = true;
     boolean walkToCenter = false;
     PestControlConfig config;
+    private final PestControlPlugin plugin;
+
+    @Inject
+    public PestControlScript(PestControlPlugin plugin, PestControlPlugin config) {
+        this.plugin = plugin;
+        //this.config = config;
+    }
+
 
     private static final Set<Integer> SPINNER_IDS = ImmutableSet.of(
             NpcID.SPINNER,
@@ -69,9 +81,56 @@ public class PestControlScript extends Script {
             try {
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
-                final boolean isInPestControl = Microbot.getClient().getWidget(WidgetInfo.PEST_CONTROL_BLUE_SHIELD) != null;
-                final boolean isInBoat = Microbot.getClient().getWidget(WidgetInfo.PEST_CONTROL_BOAT_INFO) != null;
+
+                final boolean isInPestControl = isInPestControl();
+                final boolean isInBoat = isInBoat();
+                System.out.println("Initialise: " + initialise);
+                System.out.println("Is in Pest Control: " + isInPestControl);
+                System.out.println("Is in Boat: " + isInBoat);
+
+
+                if (initialise && !isInPestControl && !isInBoat) {
+                    Microbot.log("Initialising");
+                    if (Rs2Player.getWorld() != config.world()) {
+                        Microbot.hopToWorld(config.world());
+                        sleep(1000, 3000);
+                        Microbot.hopToWorld(config.world());
+                        sleepUntil(() -> Rs2Player.getWorld() == config.world(), 7000);
+                    }
+                    if (Rs2Player.getWorldLocation().getRegionID() == 10537 && Rs2Player.getWorld() == config.world()) {
+                        if (!Rs2Bank.isOpen()) {
+                            Microbot.log("Opening bank");
+                            Rs2Bank.openBank();
+                            sleepUntil(Rs2Bank::isOpen, 3000);
+                        }
+                        var inventorySetup = new Rs2InventorySetup(config.inventorySetup(), mainScheduledFuture);
+                        Microbot.log("Starting Inv Setup");
+                        try {
+                            if (!inventorySetup.doesInventoryMatch() || !inventorySetup.doesEquipmentMatch()) {
+                                if (!inventorySetup.loadEquipment() || !inventorySetup.loadInventory()) {
+                                    plugin.reportFinished("Failed to load inventory setup", false);
+                                    return;
+                                }
+                            } else {
+                                Microbot.log("Inv Setup Finished");
+                                Rs2Bank.closeBank();
+                                sleepUntil(() -> !Rs2Bank.isOpen(), 2000);
+                                initialise = false;
+                            }
+
+                        } catch (NullPointerException e) {
+                            throw new RuntimeException("Void thinks you should relect the Inventory setup again");
+                        }
+
+
+                    } else {
+                        Microbot.log("Traveling to Pest Island");
+                        Rs2Walker.walkTo(new WorldPoint(2667, 2653, 0));
+                    }
+                }
                 if (isInPestControl) {
+                    plugin.lockCondition.lock();
+                    initialise = false;
                     if (!isQuickPrayerEnabled() && Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER) != 0 && config.quickPrayer()) {
                         final Widget prayerOrb = Rs2Widget.getWidget(ComponentID.MINIMAP_QUICK_PRAYER_ORB);
                         if (prayerOrb != null) {
@@ -108,7 +167,6 @@ public class PestControlScript extends Script {
                         return;
 
 
-
                     if (handleAttack(PestControlNpc.BRAWLER, 1)
                             || handleAttack(PestControlNpc.PORTAL, 1)
                             || handleAttack(PestControlNpc.SPINNER, 1)) {
@@ -133,16 +191,17 @@ public class PestControlScript extends Script {
                     } else {
                         if (!Microbot.getClient().getLocalPlayer().isInteracting()) {
                             Optional<Rs2NpcModel> attackableNpc = Rs2Npc.getAttackableNpcs().findFirst();
-                            attackableNpc.ifPresent(rs2NpcModel -> Rs2Npc.interact(rs2NpcModel.getId(),"attack"));
+                            attackableNpc.ifPresent(rs2NpcModel -> Rs2Npc.interact(rs2NpcModel.getId(), "attack"));
                         }
                     }
 
                 } else {
+                    plugin.lockCondition.unlock();
                     Rs2Walker.setTarget(null);
                     resetPortals();
                     walkToCenter = false;
                     sleep(Rs2Random.between(1600, 1800));
-                    if (!isInBoat) {
+                    if (!isInBoat && !initialise) {
                         if (Microbot.getClient().getLocalPlayer().getCombatLevel() >= 100) {
                             Rs2GameObject.interact(ObjectID.GANGPLANK_25632);
                         } else if (Microbot.getClient().getLocalPlayer().getCombatLevel() >= 70) {
@@ -165,8 +224,29 @@ public class PestControlScript extends Script {
         return true;
     }
 
-    public void shutDown() {
-        super.shutdown();
+
+    public boolean isOutside() {
+        return Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(new WorldPoint(2644, 2644, 0)) < 20;
+    }
+
+    public boolean isInBoat() {
+        return Microbot.getClient().getWidget(WidgetInfo.PEST_CONTROL_BOAT_INFO) != null;
+    }
+
+    public boolean isInPestControl() {
+        return Microbot.getClient().getWidget(WidgetInfo.PEST_CONTROL_BLUE_SHIELD) != null;
+    }
+
+    public void exitBoat() {
+        if (Microbot.getClient().getLocalPlayer().getCombatLevel() >= 100) {
+            Rs2GameObject.interact(ObjectID.LADDER_25630);
+        } else if (Microbot.getClient().getLocalPlayer().getCombatLevel() >= 70) {
+            Rs2GameObject.interact(ObjectID.LADDER_25629);
+        } else {
+            Rs2GameObject.interact(ObjectID.LADDER_14314);
+        }
+        sleepUntil(() -> Microbot.getClient().getWidget(WidgetInfo.PEST_CONTROL_BOAT_INFO) == null, 3000);
+
     }
 
     private boolean handleAttack(PestControlNpc npcType, int priority) {
@@ -273,5 +353,13 @@ public class PestControlScript extends Script {
             }
         }
         return false;
+    }
+
+    @Override
+    public void shutdown() {
+        Microbot.log("Pest control about to shutdown");
+        initialise = true;
+        walkToCenter = false;
+        super.shutdown();
     }
 }

@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static net.runelite.api.Varbits.*;
 import static net.runelite.api.widgets.ComponentID.BANK_INVENTORY_ITEM_CONTAINER;
@@ -1163,88 +1164,45 @@ public class Rs2Bank {
     }
 
     /**
-     * Check if a bank (or equivalent) is close by without interacting.
-     * Prioritizes bank > bank booth > chest > banker NPC.
-     *
-     * @return True if a nearby bank candidate is found, otherwise false.
-     */
-    public static boolean isBankCloseby() {
-        Microbot.status = "Checking bank proximity";
-        try {
-            // If bank interface is already open, consider a bank available.
-            if (isOpen()) return true;
-
-            // Identify potential banking objects.
-            WallObject grandExchangeBooth = Rs2GameObject.getWallObjects()
-                    .stream()
-                    .filter(x -> x.getId() == 10060 || x.getId() == 30389)
-                    .filter(y -> Rs2Tile.isTileReachable(y.getWorldLocation()))
-                    .findFirst()
-                    .orElse(null);
-            GameObject bank = Rs2GameObject.findBank();
-            GameObject chest = Rs2GameObject.findChest();
-
-            // Determine if chest is closer than the bank.
-            boolean useChest = bank != null && chest != null &&
-                    bank.getWorldLocation().distanceTo2D(Rs2Player.getWorldLocation()) >
-                            chest.getWorldLocation().distanceTo2D(Rs2Player.getWorldLocation()) && Rs2Tile.isTileReachable(chest.getWorldLocation());
-
-            // Check for a nearby bank candidate based on prioritized order.
-            if (!useChest && bank != null &&
-                    (grandExchangeBooth == null ||
-                            bank.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) <=
-                                    grandExchangeBooth.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) && Rs2Tile.isTileReachable(bank.getWorldLocation())) ) {
-                return true;
-            } else if (grandExchangeBooth != null) {
-                return true;
-            } else if (chest != null) {
-                return true;
-            } else {
-                // Fallback: Check for a banker NPC.
-                Rs2NpcModel npc = Rs2Npc.getBankerNPC();
-                return (npc != null && Rs2Tile.isTileReachable(npc.getWorldLocation()));
-            }
-        } catch (Exception ex) {
-            System.out.println(ex.getMessage());
-        }
-        return false;
-    }
-
-
-    /**
      * Find closest available bank
      * finds closest npc then bank booth then chest
      * @return True if bank was successfully opened, otherwise false.
      */
     public static boolean openBank() {
         Microbot.status = "Opening bank";
+
         try {
-            if (Microbot.getClient().isWidgetSelected())
+            if (Microbot.getClient().isWidgetSelected()) {
                 Microbot.getMouse().click();
+            }
+
             if (isOpen()) return true;
-            boolean action;
-            WallObject grandExchangeBooth = Rs2GameObject.getWallObjects()
-                    .stream()
-                    .filter(x -> x.getId() == 10060 || x.getId() == 30389)
-                    .findFirst()
-                    .orElse(null);
-            GameObject bank = Rs2GameObject.findBank();
-            GameObject chest = Rs2GameObject.findChest();
 
-            // Determine if bank should be skipped in favor of chest
-            boolean useChest = bank != null && chest != null && bank.getWorldLocation().distanceTo2D(Rs2Player.getWorldLocation()) > chest.getWorldLocation().distanceTo2D(Rs2Player.getWorldLocation());
+            Player player = Microbot.getClient().getLocalPlayer();
+            if (player == null) return false;
+            WorldPoint anchor = player.getWorldLocation();
 
-            if (!useChest && bank != null && (grandExchangeBooth == null ||
-                    bank.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) <= grandExchangeBooth.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()))) {
-                action = Rs2GameObject.interact(bank, "bank");
-            } else if (grandExchangeBooth != null) {
-                action = Rs2GameObject.interact(grandExchangeBooth, "bank");
-            } else if (chest != null) {
-                action = Rs2GameObject.interact(chest, "use");
+            List<TileObject> candidates = Stream.of(
+                            Rs2GameObject.findBank(),
+                            Rs2GameObject.findGrandExchangeBooth()
+                    )
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
+            Optional<TileObject> nearestObj = Rs2GameObject.pickClosest(
+                    candidates,
+                    TileObject::getWorldLocation,
+                    anchor
+            );
+
+            boolean action = false;
+            if (nearestObj.isPresent()) {
+                action = Rs2GameObject.interact(nearestObj.get(), "Bank");
             } else {
-                Rs2NpcModel npc = Rs2Npc.getBankerNPC();
-                if (npc == null) return false;
-                action = Rs2Npc.interact(npc, "bank");
+                Rs2NpcModel banker = Rs2Npc.getBankerNPC();
+                if (banker != null) {
+                    action = Rs2Npc.interact(banker, "Bank");
+                }
             }
 
             if (action) {
@@ -1253,8 +1211,8 @@ public class Rs2Bank {
             return action;
         } catch (Exception ex) {
             Microbot.logStackTrace("Rs2Bank", ex);
+            return false;
         }
-        return false;
     }
 
     public static boolean openBank(Rs2NpcModel npc) {
@@ -1425,7 +1383,7 @@ public class Rs2Bank {
      * @return the nearest {@link BankLocation}, or {@code null} if none was reachable
      */
     public static BankLocation getNearestBank(WorldPoint worldPoint) {
-        return getNearestBank(worldPoint, 15);
+        return getNearestBank(worldPoint, 20);
     }
 
     /**
@@ -1455,32 +1413,33 @@ public class Rs2Bank {
             return null;
         }
 
-        if (Microbot.getClient().getLocalPlayer().getWorldLocation() == worldPoint) {
-            List<Integer> boothIds = Arrays.asList(Rs2BankID.bankIds);
-            List<TileObject> bankObjs = Rs2GameObject.getGameObjects().stream()
-                    .filter(obj -> obj.getWorldLocation().distanceTo(worldPoint) < maxObjectSearchRadius)
-                    .filter(obj -> boothIds.contains(obj.getId()))
+        if (Objects.equals(Microbot.getClient().getLocalPlayer().getWorldLocation(), worldPoint)) {
+            List<TileObject> bankObjs = Stream.concat(
+                            Stream.of(Rs2GameObject.findBank(maxObjectSearchRadius)),
+                            Stream.of(Rs2GameObject.findGrandExchangeBooth(maxObjectSearchRadius))
+                    )
+                    .filter(Objects::nonNull)
                     .collect(Collectors.toList());
 
-            Optional<BankLocation> fromObject = bankObjs.stream()
+            Optional<BankLocation> byObject = bankObjs.stream()
                     .map(obj -> {
-                        BankLocation closest = accessibleBanks.stream()
+                        BankLocation closestBank = accessibleBanks.stream()
                                 .min(Comparator.comparingInt(b -> obj.getWorldLocation().distanceTo(b.getWorldPoint())))
                                 .orElse(null);
 
-                        int dist = closest == null
+                        int dist = closestBank == null
                                 ? Integer.MAX_VALUE
-                                : obj.getWorldLocation().distanceTo(closest.getWorldPoint());
+                                : obj.getWorldLocation().distanceTo(closestBank.getWorldPoint());
 
-                        return new AbstractMap.SimpleEntry<>(closest, dist);
+                        return new AbstractMap.SimpleEntry<>(closestBank, dist);
                     })
                     .filter(e -> e.getKey() != null && e.getValue() <= maxObjectSearchRadius)
                     .min(Comparator.comparingInt(Map.Entry::getValue))
                     .map(Map.Entry::getKey);
 
-            if (fromObject.isPresent()) {
-                Microbot.log("Found nearest bank (object): " + fromObject.get());
-                return fromObject.get();
+            if (byObject.isPresent()) {
+                Microbot.log("Found nearest bank (object): " + byObject.get());
+                return byObject.get();
             }
         }
 
@@ -1570,7 +1529,7 @@ public class Rs2Bank {
      * @return true if player location is less than distance away from the bank location
      */
     public static boolean isNearBank(BankLocation bankLocation, int distance) {
-        int distanceToBank = Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(bankLocation.getWorldPoint());
+        int distanceToBank = Rs2Walker.getDistanceBetween(Microbot.getClient().getLocalPlayer().getWorldLocation(), bankLocation.getWorldPoint());
         return distanceToBank <= distance;
     }
 
@@ -1581,9 +1540,6 @@ public class Rs2Bank {
      * @return true if the bank interface is successfully opened.
      */
     public static boolean walkToBankAndUseBank() {
-        if(isBankCloseby()){
-            return openBank();
-        }
         return walkToBankAndUseBank(getNearestBank());
     }
 
@@ -1610,7 +1566,7 @@ public class Rs2Bank {
         if (Rs2Bank.isOpen()) return true;
         Rs2Player.toggleRunEnergy(toggleRun);
         Microbot.status = "Walking to nearest bank " + bankLocation.toString();
-        boolean result = bankLocation.getWorldPoint().distanceTo(Microbot.getClient().getLocalPlayer().getWorldLocation()) <= 8;
+        boolean result = Rs2Walker.getDistanceBetween(Microbot.getClient().getLocalPlayer().getWorldLocation(), bankLocation.getWorldPoint()) <= 8;
         if (result) {
             return Rs2Bank.useBank();
         } else {
@@ -2340,9 +2296,9 @@ public class Rs2Bank {
                 return hoverOverObject(bank);
             }
 
-            GameObject chest = Rs2GameObject.findChest();
-            if (chest != null) {
-                return hoverOverObject(chest);
+            WallObject grandExchangeBooth = Rs2GameObject.findGrandExchangeBooth();
+            if (grandExchangeBooth != null) {
+                return hoverOverObject(grandExchangeBooth);
             }
 
             Rs2NpcModel npc = Rs2Npc.getBankerNPC();

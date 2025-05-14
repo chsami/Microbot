@@ -123,24 +123,24 @@ public class BirdHunterScript extends Script {
 
     private void handleTraps(BirdHunterConfig config) {
         List<GameObject> successfulTraps = new ArrayList<>();
-        successfulTraps.addAll(Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE_9349));
-        successfulTraps.addAll(Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE_9347));
-        successfulTraps.addAll(Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE_9377));
-        successfulTraps.addAll(Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE_9379));
-        successfulTraps.addAll(Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE_9375));
-        successfulTraps.addAll(Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE_9373));
-        successfulTraps.addAll(Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE_9348));
+        successfulTraps.addAll(Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.BIRD_SNARE_9349));
+        successfulTraps.addAll(Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.BIRD_SNARE_9347));
+        successfulTraps.addAll(Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.BIRD_SNARE_9377));
+        successfulTraps.addAll(Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.BIRD_SNARE_9379));
+        successfulTraps.addAll(Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.BIRD_SNARE_9375));
+        successfulTraps.addAll(Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.BIRD_SNARE_9373));
+        successfulTraps.addAll(Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.BIRD_SNARE_9348));
 
         List<GameObject> catchingTraps = new ArrayList<>();
-        catchingTraps.addAll(Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE_9348));
-        catchingTraps.addAll(Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE_9376));
-        catchingTraps.addAll(Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE_9378));
-        catchingTraps.addAll(Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE_9374));
-        catchingTraps.addAll(Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE_9373));
+        catchingTraps.addAll(Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.BIRD_SNARE_9348));
+        catchingTraps.addAll(Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.BIRD_SNARE_9376));
+        catchingTraps.addAll(Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.BIRD_SNARE_9378));
+        catchingTraps.addAll(Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.BIRD_SNARE_9374));
+        catchingTraps.addAll(Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.BIRD_SNARE_9373));
 
-        List<GameObject> failedTraps = Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE);
-        List<GameObject> idleTraps = Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE_9345);
-        idleTraps.addAll(Rs2GameObject.getGameObjects(ObjectID.BIRD_SNARE_9346));
+        List<GameObject> failedTraps = Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.BIRD_SNARE);
+        List<GameObject> idleTraps = Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.BIRD_SNARE_9345);
+        idleTraps.addAll(Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.BIRD_SNARE_9346));
 
         int availableTraps = getAvailableTraps(Rs2Player.getRealSkillLevel(Skill.HUNTER));
         int totalTraps = successfulTraps.size() + failedTraps.size() + idleTraps.size() + catchingTraps.size();

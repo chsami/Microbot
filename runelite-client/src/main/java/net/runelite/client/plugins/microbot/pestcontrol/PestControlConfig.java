@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.pestcontrol;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
+import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 
 @ConfigGroup("pestcontrol")
 public interface PestControlConfig extends Config {
@@ -82,5 +83,25 @@ public interface PestControlConfig extends Config {
     )
     default int specialAttackPercentage() {
         return 100;
+    }
+
+    @ConfigItem(
+            keyName = "inventorySetup",
+            name = "Inventory Setup",
+            description = "Inventory setup to use",
+            position = 9
+    )
+    default InventorySetup inventorySetup() {
+        return null;
+    }
+    @ConfigItem(
+            keyName = "World",
+            name = "World",
+            description = "Pest Control world",
+            position = 10
+    )
+
+    default int world() {
+        return 344;
     }
 }

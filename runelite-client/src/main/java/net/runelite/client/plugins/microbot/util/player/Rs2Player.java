@@ -695,7 +695,6 @@ public class Rs2Player {
                 .players()
                 .stream()
                 .filter(Objects::nonNull)
-                .filter(x -> x != Microbot.getClient().getLocalPlayer())
                 .collect(Collectors.toList());
     }
 
@@ -706,12 +705,23 @@ public class Rs2Player {
      * @return A stream of Rs2PlayerModel objects representing nearby players.
      */
     public static Stream<Rs2PlayerModel> getPlayers(Predicate<Rs2PlayerModel> predicate) {
+        return getPlayers(predicate, false);
+    }
+
+    /**
+     * Get a stream of players around you, optionally filtered by a predicate.
+     *
+     * @param predicate A condition to filter players (optional).
+     * @param includeLocalPlayer a flag on whether to include the local player within the stream
+     * @return A stream of Rs2PlayerModel objects representing nearby players.
+     */
+    public static Stream<Rs2PlayerModel> getPlayers(Predicate<Rs2PlayerModel> predicate, boolean includeLocalPlayer) {
         List<Rs2PlayerModel> players = Microbot.getClientThread().runOnClientThreadOptional(() ->
                 Microbot.getClient().getTopLevelWorldView().players()
                         .stream()
                         .filter(Objects::nonNull)
                         .map(Rs2PlayerModel::new)
-                        .filter(x -> x.getPlayer() != Microbot.getClient().getLocalPlayer())
+                        .filter(x -> includeLocalPlayer || x.getPlayer() != Microbot.getClient().getLocalPlayer())
                         .filter(predicate)
                         .collect(Collectors.toList())
         ).orElse(new ArrayList<>());
@@ -1003,7 +1013,7 @@ public class Rs2Player {
      * @return The local player wrapped in an {@link Rs2PlayerModel}.
      */
     public static Rs2PlayerModel getLocalPlayer() {
-        return new Rs2PlayerModel(Microbot.getClient().getLocalPlayer());
+        return getPlayers(player -> player.getId() == Microbot.getClient().getLocalPlayer().getId(), true).findFirst().orElse(null);
     }
 
     /**
@@ -1092,11 +1102,10 @@ public class Rs2Player {
      */
     public static WorldPoint getWorldLocation() {
         if (Microbot.getClient().getTopLevelWorldView().getScene().isInstance()) {
-            LocalPoint l = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), getLocalPlayer().getWorldLocation());
-            WorldPoint playerInstancedWorldLocation = WorldPoint.fromLocalInstance(Microbot.getClient(), l);
-            return playerInstancedWorldLocation;
+            LocalPoint l = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), Microbot.getClient().getLocalPlayer().getWorldLocation());
+            return WorldPoint.fromLocalInstance(Microbot.getClient(), l);
         } else {
-            return getLocalPlayer().getWorldLocation();
+            return Microbot.getClient().getLocalPlayer().getWorldLocation();
         }
     }
 

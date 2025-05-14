@@ -677,7 +677,7 @@ public abstract class Rs2Tile implements Tile {
     public static boolean isBankBooth(WorldPoint source) {
         GameObject gameObject = Rs2GameObject.getGameObjects().stream().filter(x -> x.getWorldLocation().equals(source)).findFirst().orElse(null);
         if (gameObject != null) {
-            ObjectComposition objectComposition = Rs2GameObject.convertGameObjectToObjectComposition(gameObject);
+            ObjectComposition objectComposition = Rs2GameObject.convertToObjectComposition(gameObject);
             return objectComposition != null && objectComposition.getName().equalsIgnoreCase("bank booth");
         }
         return false;

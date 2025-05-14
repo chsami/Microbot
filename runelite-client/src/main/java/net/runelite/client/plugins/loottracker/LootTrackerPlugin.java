@@ -43,7 +43,6 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
@@ -58,36 +57,12 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Actor;
-import net.runelite.api.ChatMessageType;
-import net.runelite.api.Client;
-import net.runelite.api.Constants;
-import net.runelite.api.GameState;
-import net.runelite.api.ItemComposition;
-import net.runelite.api.ItemContainer;
-import net.runelite.api.MenuAction;
-import net.runelite.api.MessageNode;
-import net.runelite.api.NPC;
-import net.runelite.api.NPCComposition;
-import net.runelite.api.Player;
-import net.runelite.api.Skill;
-import net.runelite.api.SpriteID;
-import net.runelite.api.Tile;
-import net.runelite.api.WorldType;
+import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.AnimationChanged;
-import net.runelite.api.events.ChatMessage;
-import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.events.ItemContainerChanged;
-import net.runelite.api.events.MenuOptionClicked;
-import net.runelite.api.events.NpcDespawned;
-import net.runelite.api.events.PostClientTick;
-import net.runelite.api.events.WidgetLoaded;
-import net.runelite.api.gameval.AnimationID;
+import net.runelite.api.events.*;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.ItemID;
-import net.runelite.api.gameval.NpcID;
 import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.account.AccountSession;
@@ -158,7 +133,7 @@ public class LootTrackerPlugin extends Plugin
 	// Used by Stone Chest, Isle of Souls chest, Dark Chest
 	private static final String OTHER_CHEST_LOOTED_MESSAGE = "You steal some loot from the chest.";
 	private static final String DORGESH_KAAN_CHEST_LOOTED_MESSAGE = "You find treasure inside!";
-	private static final String GRUBBY_CHEST_LOOTED_MESSAGE = "You have opened the Grubby Chest";
+	private static final Pattern GRUBBY_CHEST_LOOTED_MESSAGE = Pattern.compile("You find treasure(?: and supplies|, supplies, and a weirdly coloured egg sac) within the chest.");
 	private static final String ANCIENT_CHEST_LOOTED_MESSAGE = "You open the chest and find";
 	private static final Pattern HAM_CHEST_LOOTED_PATTERN = Pattern.compile("Your (?<key>[a-z]+) key breaks in the lock.*");
 	private static final int HAM_STOREROOM_REGION = 10321;
@@ -669,51 +644,6 @@ public class LootTrackerPlugin extends Plugin
 	}
 
 	@Subscribe
-	public void onNpcDespawned(NpcDespawned npcDespawned)
-	{
-		var npc = npcDespawned.getNpc();
-		if (npc.getId() == NpcID.WHISPERER || npc.getId() == NpcID.WHISPERER_QUEST)
-		{
-			// Whisperer death:
-			//   loot spawn at z=0, which you can't see since you are in the shadow realm on z=3
-			//   npc despawn on z=3
-			//   player teleport from z=3 to z=0
-			//   server sends zone clear packet
-			//   server spawns in the loot, along with any other items already on the ground
-			//
-			// We take advantage of that the items left on z=0 when you move into the shadow realm are not
-			// cleared until the zoneclear packet. So if you record them at the time the whisperer despawns,
-			// you can subtract it from the spawned items at the end of the tick.
-
-			// collect all items on z=0
-			Multiset<Integer> ground = HashMultiset.create();
-			var scene = client.getScene();
-			Tile[][] p0 = scene.getTiles()[0];
-			Arrays.stream(p0)
-				.flatMap(Arrays::stream)
-				.filter(Objects::nonNull)
-				.map(Tile::getGroundItems)
-				.filter(Objects::nonNull)
-				.flatMap(Collection::stream)
-				.forEach(item -> ground.add(item.getId(), item.getQuantity()));
-
-			groundSnapshotName = npc.getName();
-			groundSnapshotCombatLevel = npc.getCombatLevel();
-			// the entire arena is in an instance, which appears to be never region aligned,
-			// however the template is, so use the region id from it.
-			// the player location can't be used because on death the player might have already been teleported.
-			groundSnapshotRegion = WorldPoint.fromLocalInstance(client, npc.getLocalLocation()).getRegionID();
-			groundSnapshot = ground;
-			// the loot spawns next tick, which is typically in 30 cycles, but
-			// network latency can cause it to happen a little later instead.
-			// use 59 to be safe.
-			groundSnapshotCycleDelay = 59;
-
-			log.debug("Ground snapshot: Recorded ground items {} on cycle {} region {}", ground, client.getGameCycle(), groundSnapshotRegion);
-		}
-	}
-
-	@Subscribe
 	public void onPostClientTick(PostClientTick postClientTick)
 	{
 		if (inventoryTimeout > 0)
@@ -724,62 +654,9 @@ public class LootTrackerPlugin extends Plugin
 				resetEvent();
 			}
 		}
-
-		if (groundSnapshotCycleDelay > 0)
-		{
-			groundSnapshotCycleDelay--;
-
-			if (groundSnapshotCycleDelay == 0)
-			{
-				log.debug("Ground snapshot: Loot timeout");
-				groundSnapshotName = null;
-				groundSnapshotCombatLevel = 0;
-				groundSnapshot = null;
-				return;
-			}
-
-			var region = WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID();
-			if (region != groundSnapshotRegion)
-			{
-				log.debug("Ground snapshot: In wrong region {} != {}", region, groundSnapshotRegion);
-				return;
-			}
-
-			Multiset<Integer> ground = HashMultiset.create();
-			var scene = client.getScene();
-			Tile[][] p0 = scene.getTiles()[0];
-			Arrays.stream(p0)
-				.flatMap(Arrays::stream)
-				.filter(Objects::nonNull)
-				.map(Tile::getGroundItems)
-				.filter(Objects::nonNull)
-				.flatMap(Collection::stream)
-				.forEach(item -> ground.add(item.getId(), item.getQuantity()));
-
-			var diff = Multisets.difference(ground, groundSnapshot);
-			if (diff.isEmpty())
-			{
-				// loot is not spawned yet
-				log.debug("Ground snapshot: No loot yet");
-				return;
-			}
-
-			log.debug("Ground snapshot: Loot received {} on cycle {}", diff, client.getGameCycle());
-
-			// convert to item stack
-			var items = diff.entrySet().stream()
-				.map(e -> new ItemStack(e.getElement(), e.getCount()))
-				.collect(Collectors.toList());
-			addLoot(groundSnapshotName, groundSnapshotCombatLevel, LootRecordType.NPC, null, items);
-
-			groundSnapshotName = null;
-			groundSnapshotCombatLevel = 0;
-			groundSnapshot = null;
-			groundSnapshotCycleDelay = 0;
-		}
 	}
 
-	private Object buildNpcMetadata(NPC npc)
+	private Object buildNpcMetadata(NPCComposition npc)
 	{
 		if (client.getWorldType().contains(WorldType.SEASONAL))
 		{
@@ -802,10 +679,10 @@ public class LootTrackerPlugin extends Plugin
 	}
 
 	@Subscribe
-	public void onNpcLootReceived(final NpcLootReceived npcLootReceived)
+	public void onServerNpcLoot(final ServerNpcLoot event)
 	{
-		final NPC npc = npcLootReceived.getNpc();
-		final Collection<ItemStack> items = npcLootReceived.getItems();
+		final NPCComposition npc = event.getComposition();
+		final Collection<ItemStack> items = event.getItems();
 		final String name = npc.getName();
 		final int combat = npc.getCombatLevel();
 
@@ -1000,7 +877,7 @@ public class LootTrackerPlugin extends Plugin
 		final String message = event.getMessage();
 
 		if (message.equals(CHEST_LOOTED_MESSAGE) || message.equals(OTHER_CHEST_LOOTED_MESSAGE)
-			|| message.equals(DORGESH_KAAN_CHEST_LOOTED_MESSAGE) || message.startsWith(GRUBBY_CHEST_LOOTED_MESSAGE)
+			|| message.equals(DORGESH_KAAN_CHEST_LOOTED_MESSAGE) || GRUBBY_CHEST_LOOTED_MESSAGE.matcher(message).matches()
 			|| message.startsWith(ANCIENT_CHEST_LOOTED_MESSAGE)
 			|| LARRAN_LOOTED_PATTERN.matcher(message).matches() || ROGUES_CHEST_PATTERN.matcher(message).matches())
 		{
@@ -1229,10 +1106,6 @@ public class LootTrackerPlugin extends Plugin
 			{
 				lastPickpocketTarget = Text.removeTags(event.getMenuTarget());
 			}
-
-			NPC npc = event.getMenuEntry().getNpc();
-			lastMenuOption = event.getMenuOption();
-			lastNpcTypeTarget = npc != null ? npc.getId() : -1;
 		}
 		else if (isObjectOp(event.getMenuAction()) && event.getMenuOption().equals("Open") && SHADE_CHEST_OBJECTS.containsKey(event.getId()))
 		{
@@ -1293,6 +1166,7 @@ public class LootTrackerPlugin extends Plugin
 					case ItemID.MM_POTION_PACK_MED:
 					case ItemID.MM_POTION_PACK_HIGH:
 					case ItemID.CASTLEWARS_CRATE:
+					case ItemID.FORGOTTEN_LOCKBOX:
 						onInvChange(collectInvAndGroundItems(LootRecordType.EVENT, itemManager.getItemComposition(event.getItemId()).getName()));
 						break;
 					case ItemID.CONSTRUCTION_SUPPLY_CRATE:
@@ -1342,33 +1216,6 @@ public class LootTrackerPlugin extends Plugin
 					}
 				}));
 			}
-		}
-	}
-
-	@Subscribe
-	public void onAnimationChanged(AnimationChanged animationChanged)
-	{
-		Actor actor = animationChanged.getActor();
-		if (actor != client.getLocalPlayer() || actor.getAnimation() != AnimationID.PICKING_LOW)
-		{
-			return;
-		}
-
-		int region = WorldPoint.fromLocalInstance(client, actor.getLocalLocation()).getRegionID();
-		if (region == ARAXXOR_LAIR && lastNpcTypeTarget == NpcID.ARAXXOR_DEAD
-			|| region == ROYAL_TITANS_REGION && (lastNpcTypeTarget == NpcID.RT_FIRE_QUEEN_INACTIVE || lastNpcTypeTarget == NpcID.RT_ICE_KING_INACTIVE))
-		{
-			Object metadata = null;
-			if (region == ROYAL_TITANS_REGION)
-			{
-				metadata = Map.<String, Object>of(
-					"PLAYERS", client.getPlayers().size(),
-					"OPTION", lastMenuOption
-				);
-			}
-			NPCComposition type = client.getNpcDefinition(lastNpcTypeTarget);
-			onInvChange(InventoryID.INV, collectInvAndGroundItems(LootRecordType.NPC, type.getName(), metadata), 4);
-			log.debug("Harvesting {}", type.getName());
 		}
 	}
 

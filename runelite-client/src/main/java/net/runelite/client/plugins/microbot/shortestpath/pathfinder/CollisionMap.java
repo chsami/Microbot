@@ -172,7 +172,7 @@ public class CollisionMap {
                 if (targets.stream().noneMatch(tgts -> Objects.equals(tgts, new WorldPoint(lx, ly, lz)))) {
                     WorldPoint globalWorldPoint = Rs2WorldPoint.convertInstancedWorldPoint(new WorldPoint(lx, ly, lz));
                     if (globalWorldPoint != null) {
-                        TileObject go = Rs2GameObject.findGroundObjectByLocation(globalWorldPoint);
+                        TileObject go = Rs2GameObject.getGroundObject(globalWorldPoint);
                         if (go != null && go.getId() == 45340) {
                             continue;
                         }

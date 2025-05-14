@@ -105,8 +105,6 @@ public class BarrowsScript extends Script {
                 if(!inTunnels && shouldBank == false) {
                     for (BarrowsBrothers brother : BarrowsBrothers.values()) {
                         Rs2WorldArea mound = brother.getHumpWP();
-                        int totalTiles = mound.toWorldPointList().size();
-                        WorldPoint randomMoundTile = mound.toWorldPointList().get(Rs2Random.between(0,(totalTiles-1)));
                         NeededPrayer = brother.whatToPray;
                         suppliesCheck();
                         outOfSupplies();
@@ -116,7 +114,7 @@ public class BarrowsScript extends Script {
 
                         stopFutureWalker();
 
-                        Microbot.log("Checking mound for: " + brother.getName() + " at " + randomMoundTile +"Using prayer: "+NeededPrayer);
+                        Microbot.log("Checking mound for: " + brother.getName());
 
                         if(everyBrotherWasKilled()){
                             if(WhoisTun.equals("Unknown")){
@@ -178,54 +176,11 @@ public class BarrowsScript extends Script {
                         //Enter mound
                         if (Rs2Player.getWorldLocation().getPlane() != 3) {
                             Microbot.log("Entering the mound");
-                            while (!mound.contains(Rs2Player.getWorldLocation())) {
-                                if (!super.isRunning()) {
-                                    break;
-                                }
 
-                                //antipattern turn on prayer early
-                                antiPatternEnableWrongPrayer();
+                            goToTheMound(mound);
 
-                                antiPatternActivatePrayer();
+                            digIntoTheMound(mound);
 
-                                antiPatternDropVials();
-                                //antipattern
-
-                                // We're not in the mound yet.
-                                randomMoundTile = mound.toWorldPointList().get(Rs2Random.between(0,(totalTiles-1)));
-                                Rs2Walker.walkTo(randomMoundTile);
-                                sleep(300, 600);
-                                if (mound.contains(Rs2Player.getWorldLocation())) {
-                                    if(!Rs2Player.isMoving()) {
-                                        break;
-                                    }
-                                } else {
-                                    Microbot.log("At the mound, but we can't dig yet.");
-                                    randomMoundTile = mound.toWorldPointList().get(Rs2Random.between(0,(totalTiles-1)));
-                                    Rs2Walker.walkCanvas(randomMoundTile);
-                                    sleepUntil(()-> !Rs2Player.isMoving(), Rs2Random.between(2000,4000));
-                                    sleep(300,600);
-                                }
-                            }
-                            while (mound.contains(Rs2Player.getWorldLocation()) && Rs2Player.getWorldLocation().getPlane() != 3) {
-
-                                if (!super.isRunning()) {
-                                    break;
-                                }
-
-                                //antipattern turn on prayer early
-                                antiPatternEnableWrongPrayer();
-
-                                antiPatternActivatePrayer();
-                                //antipattern
-
-                                digIntoTheMound();
-
-                                if (Rs2Player.getWorldLocation().getPlane() == 3) {
-                                    //we made it in
-                                    break;
-                                }
-                            }
                         }
                         if (Rs2Player.getWorldLocation().getPlane() == 3) {
                             Microbot.log("We're in the mound");
@@ -280,22 +235,22 @@ public class BarrowsScript extends Script {
                             if(Rs2Player.isInCombat()){
                                 Microbot.log("Fighting the brother.");
                                 while(!currentBrother.isDead()){
-
                                     if (!super.isRunning()) {
                                         break;
                                     }
 
                                     activatePrayer();
-
                                     sleep(500,1500);
                                     eatFood();
                                     outOfSupplies();
                                     antiPatternDropVials();
                                     drinkforgottonbrew();
                                     drinkPrayerPot();
+
                                     if(Microbot.getClient().getHintArrowNpc() == null){
                                         break;
                                     }
+
                                     if(currentBrother.isDead()){
                                         //anti pattern
                                         disablePrayer();
@@ -308,27 +263,7 @@ public class BarrowsScript extends Script {
                             // We could be in ahrims mound while ahrim is tunnel. We need to stop the bot from leaving the mound and going back in.
                             if(brother.name.equals(WhoisTun) && brother.name.contains("Ahrim")) {
                                 if (Rs2Dialogue.isInDialogue()) {
-                                    while (Rs2Dialogue.isInDialogue()) {
-                                        if (!super.isRunning()) {
-                                            break;
-                                        }
-                                        if (Rs2Dialogue.hasContinue()) {
-                                            Rs2Dialogue.clickContinue();
-                                            sleep(300, 600);
-                                        }
-                                        if (Rs2Dialogue.hasDialogueOption("Yeah I'm fearless!")) {
-                                            if (Rs2Dialogue.clickOption("Yeah I'm fearless!")) {
-                                                sleep(300, 600);
-                                                inTunnels = true;
-                                            }
-                                        }
-                                        if (!Rs2Dialogue.isInDialogue()) {
-                                            break;
-                                        }
-                                        if (inTunnels) {
-                                            break;
-                                        }
-                                    }
+                                    dialogueEnterTunnels();
                                     return;
                                 }
                             }
@@ -345,53 +280,19 @@ public class BarrowsScript extends Script {
                         if (brother.name.equals(WhoisTun)) {
                             // Found the tunnel brother's mound
                             Rs2WorldArea tunnelMound = brother.getHumpWP();
-                            int totalTiles = tunnelMound.toWorldPointList().size();
-                            WorldPoint randomMoundTile = tunnelMound.toWorldPointList().get(Rs2Random.between(0,(totalTiles-1)));
-                            System.out.println("Navigating to tunnel mound: " + brother.name);
 
                             // Walk to the mound
-                            while (!tunnelMound.contains(Rs2Player.getWorldLocation())) {
-                                if (!super.isRunning()) {
-                                    break;
-                                }
-                                //anti pattern
-                                antiPatternDropVials();
-                                //anti pattern
-                                randomMoundTile = tunnelMound.toWorldPointList().get(Rs2Random.between(0,(totalTiles-1)));
-                                Rs2Walker.walkTo(randomMoundTile);
-                                sleep(300, 600);
-                                if (tunnelMound.contains(Rs2Player.getWorldLocation())) {
-                                    if(!Rs2Player.isMoving()) {
-                                        break;
-                                    }
-                                } else {
-                                    Microbot.log("At the mound, but we can't dig yet.");
-                                    randomMoundTile = tunnelMound.toWorldPointList().get(Rs2Random.between(0,(totalTiles-1)));
-                                    Rs2Walker.walkCanvas(randomMoundTile);
-                                    sleepUntil(()-> !Rs2Player.isMoving(), Rs2Random.between(2000,4000));
-                                    sleep(300,600);
-                                }
-                            }
+                            goToTheMound(tunnelMound);
 
-                            while (tunnelMound.contains(Rs2Player.getWorldLocation()) && Rs2Player.getWorldLocation().getPlane() != 3) {
-                                if (!super.isRunning()) {
-                                    break;
-                                }
-
-                                digIntoTheMound();
-
-                                if (Rs2Player.getWorldLocation().getPlane() == 3) {
-                                    //we made it in
-                                    break;
-                                }
-                            }
-
-                            GameObject sarc = Rs2GameObject.get("Sarcophagus");
+                            digIntoTheMound(tunnelMound);
 
                             while(!Rs2Dialogue.isInDialogue()) {
+                                GameObject sarc = Rs2GameObject.get("Sarcophagus");
+
                                 if (!super.isRunning()) {
                                     break;
                                 }
+
                                 if (Rs2GameObject.interact(sarc, "Search")) {
                                     sleepUntil(() -> Rs2Player.isMoving(), Rs2Random.between(1000, 3000));
                                     sleepUntil(() -> !Rs2Player.isMoving() || Rs2Player.isInCombat(), Rs2Random.between(3000, 6000));
@@ -413,38 +314,9 @@ public class BarrowsScript extends Script {
 
                             }
 
+                            dialogueEnterTunnels();
 
-                            while(Rs2Dialogue.isInDialogue()) {
-                                if (!super.isRunning()) {
-                                    break;
-                                }
-                                if (Rs2Dialogue.hasContinue()) {
-                                    Rs2Dialogue.clickContinue();
-                                    sleepUntil(() -> Rs2Dialogue.hasDialogueOption("Yeah I'm fearless!"), Rs2Random.between(2000, 5000));
-                                    sleep(300, 600);
-                                }
-                                if (Rs2Dialogue.hasDialogueOption("Yeah I'm fearless!")) {
-                                    if (Rs2Dialogue.clickOption("Yeah I'm fearless!")) {
-                                        sleepUntil(() -> Rs2Player.getWorldLocation().getY() > 9600 && Rs2Player.getWorldLocation().getY() < 9730, Rs2Random.between(2500, 6000));
-                                        //allow some time for the tunnel to load.
-                                        sleep(1000, 2000);
-                                        inTunnels = true;
-                                    }
-                                }
-                                if (!Rs2Dialogue.isInDialogue()) {
-                                    break;
-                                }
-                                if (inTunnels) {
-                                    break;
-                                }
-                                if (Rs2Player.getWorldLocation().getPlane() != 3) {
-                                    //we're not in the mound
-                                    break;
-                                }
-                            }
-
-
-                            break; // done
+                            break;
                         }
                     }
                 }
@@ -457,7 +329,6 @@ public class BarrowsScript extends Script {
                     }
                     leaveTheMound();
                     stuckInTunsCheck();
-                    tunnelLoopCount++;
                     solvePuzzle();
                     checkForBrother();
                     eatFood();
@@ -531,6 +402,7 @@ public class BarrowsScript extends Script {
                             }
                         }
                     }
+                    tunnelLoopCount++;
                 }
 
                 if(shouldBank){
@@ -542,12 +414,6 @@ public class BarrowsScript extends Script {
                         //walk to and open the bank
                         Rs2Bank.walkToBankAndUseBank(BankLocation.FEROX_ENCLAVE);
                     } else {
-
-                        Microbot.log("Our rune is "+neededRune+" We'll need at least "+config.minRuneAmount());
-                        Microbot.log("Our min food is "+config.minFood()+" Our max food is "+config.targetFoodAmount());
-                        Microbot.log("Our min prayer pot amt is "+config.minPrayerPots()+" Our max prayer pot amt is "+config.targetPrayerPots());
-                        Microbot.log("Our min forgotten brew amt is "+config.minForgottenBrew()+" Our max forgotten brew amt is "+config.targetForgottenBrew());
-                        Microbot.log("Our min barrows teleport amt is "+config.minBarrowsTeleports()+" Our max barrows teleport amt is "+config.targetBarrowsTeleports());
 
                         if(Rs2Inventory.isFull() || Rs2Inventory.contains(it->it!=null&&it.getName().contains("'s") || it.getName().contains("Coins"))){
                             List<Rs2ItemModel> ourfood = Rs2Inventory.getInventoryFood();
@@ -753,10 +619,95 @@ public class BarrowsScript extends Script {
         return false;
     }
 
-    public void digIntoTheMound(){
-        if (Rs2Inventory.contains("Spade")) {
-            if (Rs2Inventory.interact("Spade", "Dig")) {
-                sleepUntil(() -> Rs2Player.getWorldLocation().getPlane() == 3, Rs2Random.between(3000, 5000));
+    public void dialogueEnterTunnels(){
+        if (Rs2Dialogue.isInDialogue()) {
+            while(Rs2Dialogue.isInDialogue()) {
+                if (!super.isRunning()) {
+                    break;
+                }
+                if (Rs2Dialogue.hasContinue()) {
+                    Rs2Dialogue.clickContinue();
+                    sleepUntil(() -> Rs2Dialogue.hasDialogueOption("Yeah I'm fearless!"), Rs2Random.between(2000, 5000));
+                    sleep(300, 600);
+                }
+                if (Rs2Dialogue.hasDialogueOption("Yeah I'm fearless!")) {
+                    if (Rs2Dialogue.clickOption("Yeah I'm fearless!")) {
+                        sleepUntil(() -> Rs2Player.getWorldLocation().getY() > 9600 && Rs2Player.getWorldLocation().getY() < 9730, Rs2Random.between(2500, 6000));
+                        //allow some time for the tunnel to load.
+                        sleep(1000, 2000);
+                        inTunnels = true;
+                    }
+                }
+                if (!Rs2Dialogue.isInDialogue()) {
+                    break;
+                }
+                if (inTunnels) {
+                    break;
+                }
+                if (Rs2Player.getWorldLocation().getPlane() != 3) {
+                    //we're not in the mound
+                    break;
+                }
+            }
+        }
+    }
+
+    public void digIntoTheMound(Rs2WorldArea moundArea){
+        while (moundArea.contains(Rs2Player.getWorldLocation()) && Rs2Player.getWorldLocation().getPlane() != 3) {
+
+            if (!super.isRunning()) {
+                break;
+            }
+
+            //antipattern turn on prayer early
+            antiPatternEnableWrongPrayer();
+
+            antiPatternActivatePrayer();
+            //antipattern
+
+            if (Rs2Inventory.contains("Spade")) {
+                if (Rs2Inventory.interact("Spade", "Dig")) {
+                    sleepUntil(() -> Rs2Player.getWorldLocation().getPlane() == 3, Rs2Random.between(3000, 5000));
+                }
+            }
+
+            if (Rs2Player.getWorldLocation().getPlane() == 3) {
+                //we made it in
+                break;
+            }
+        }
+    }
+
+    public void goToTheMound(Rs2WorldArea moundArea){
+        while (!moundArea.contains(Rs2Player.getWorldLocation())) {
+            int totalTiles = moundArea.toWorldPointList().size();
+            WorldPoint randomMoundTile;
+            if (!super.isRunning()) {
+                break;
+            }
+
+            //antipattern turn on prayer early
+            antiPatternEnableWrongPrayer();
+
+            antiPatternActivatePrayer();
+
+            antiPatternDropVials();
+            //antipattern
+
+            // We're not in the mound yet.
+            randomMoundTile = moundArea.toWorldPointList().get(Rs2Random.between(0,(totalTiles-1)));
+            if(Rs2Walker.walkTo(randomMoundTile)){
+                sleepUntil(()-> !Rs2Player.isMoving(), Rs2Random.between(2000,4000));
+            }
+            if (moundArea.contains(Rs2Player.getWorldLocation())) {
+                if(!Rs2Player.isMoving()) {
+                    break;
+                }
+            } else {
+                Microbot.log("At the mound, but we can't dig yet.");
+                randomMoundTile = moundArea.toWorldPointList().get(Rs2Random.between(0,(totalTiles-1)));
+                Rs2Walker.walkCanvas(randomMoundTile);
+                sleepUntil(()-> !Rs2Player.isMoving(), Rs2Random.between(2000,4000));
             }
         }
     }
@@ -814,8 +765,14 @@ public class BarrowsScript extends Script {
                         }
                         sleep(750,1500);
                         eatFood();
+                        suppliesCheck();
                         outOfSupplies();
                         antiPatternDropVials();
+
+                        if(shouldBank){
+                            Microbot.log("Breaking out we're out of supplies.");
+                            break;
+                        }
 
                         if(!Rs2Player.isInCombat()){
                             Microbot.log("Breaking out we're no longer in combat.");
@@ -932,7 +889,6 @@ public class BarrowsScript extends Script {
                 Rs2Prayer.toggle(NeededPrayer);
                 sleep(0,750);
                 if (Rs2Prayer.isPrayerActive(NeededPrayer)) {
-                    //we made it in
                     Microbot.log("Praying");
                     break;
                 }
@@ -970,10 +926,11 @@ public class BarrowsScript extends Script {
     }
     public void antiPatternDropVials(){
         if(Rs2Random.between(0,100) <= Rs2Random.between(1,25)) {
-                if (Rs2Inventory.contains("Vial")) {
-                    Rs2Inventory.drop("Vial");
+            if (Rs2Inventory.contains("Vial")) {
+                if(Rs2Inventory.drop("Vial")){
                     sleep(0, 750);
                 }
+            }
         }
     }
     public void outOfSupplies(){

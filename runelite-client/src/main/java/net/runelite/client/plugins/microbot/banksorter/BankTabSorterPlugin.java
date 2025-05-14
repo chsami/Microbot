@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
 
 @PluginDescriptor(
         name = PluginDescriptor.Default + "Bank Tab Sorter",
-        description = "Sorts the current bank tab alphabetically by item name",
+        description = "Sorts the current bank tab  using an advanced heuristic algorithm",
         tags = {"bank", "sort", "microbot", "tab"},
         enabledByDefault = false
 )
