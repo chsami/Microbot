@@ -758,6 +758,20 @@ public class BarrowsScript extends Script {
             } else {
                 Microbot.log("At the mound, but we can't dig yet.");
                 randomMoundTile = moundArea.toWorldPointList().get(Rs2Random.between(0,(totalTiles-1)));
+
+                //strange old man body blocking us
+                if(Rs2Npc.getNpc("Strange Old Man")!=null){
+                    if(Rs2Npc.getNpc("Strange Old Man").getWorldLocation() != null){
+                        if(Rs2Npc.getNpc("Strange Old Man").getWorldLocation() == randomMoundTile){
+                            while(Rs2Npc.getNpc("Strange Old Man").getWorldLocation() == randomMoundTile){
+                                if(!super.isRunning()){break;}
+                                randomMoundTile = moundArea.toWorldPointList().get(Rs2Random.between(0,(totalTiles-1)));
+                                sleep(250,500);
+                            }
+                        }
+                    }
+                }
+
                 Rs2Walker.walkCanvas(randomMoundTile);
                 sleepUntil(()-> !Rs2Player.isMoving(), Rs2Random.between(2000,4000));
             }
