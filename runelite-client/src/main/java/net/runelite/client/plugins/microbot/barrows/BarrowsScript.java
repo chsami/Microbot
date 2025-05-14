@@ -86,8 +86,9 @@ public class BarrowsScript extends Script {
                 //powered staffs
                 if(Rs2Equipment.get(EquipmentInventorySlot.WEAPON).getName().contains("Trident of the") ||
                         Rs2Equipment.get(EquipmentInventorySlot.WEAPON).getName().contains("Tumeken's") ||
-                            Rs2Equipment.get(EquipmentInventorySlot.WEAPON).getName().contains("Dawnbringer") ||
-                                Rs2Equipment.get(EquipmentInventorySlot.WEAPON).getName().contains("Sanguinesti")) {
+                            Rs2Equipment.get(EquipmentInventorySlot.WEAPON).getName().contains("sceptre") ||
+                                Rs2Equipment.get(EquipmentInventorySlot.WEAPON).getName().contains("Sanguinesti") ||
+                                    Rs2Equipment.get(EquipmentInventorySlot.WEAPON).getName().contains("Crystal staff")) {
                     usingPoweredStaffs = true;
                 } else {
                     usingPoweredStaffs = false;
