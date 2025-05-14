@@ -3,6 +3,8 @@ package net.runelite.client.plugins.microbot.rsagent;
 import com.google.inject.Provides;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.ChatMessageType;
+import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -15,6 +17,8 @@ import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @PluginDescriptor(
         name = PluginDescriptor.Default + "RSAgent",
@@ -42,6 +46,8 @@ public class RsAgentPlugin extends Plugin {
      RsAgentScript rsAgentScript;
 
     Thread agentThread;
+
+    static List<String> gameMessages = new ArrayList();
 
 
     @Override
@@ -127,6 +133,28 @@ public class RsAgentPlugin extends Plugin {
         }
     }
 
+
+    @Subscribe
+    public void onChatMessage(ChatMessage event) {
+        if (event.getType() == ChatMessageType.GAMEMESSAGE) {
+            log.debug("Game Message Captured: {}", event.getMessage());
+            gameMessages.add(event.getMessage());
+        }
+    }
+
+    /**
+     * Retrieves all captured game messages and clears the list.
+     *
+     * @return A formatted string of game messages, or an empty string if no messages were captured.
+     */
+    public static String getAndClearGameMessages() {
+        if (gameMessages.isEmpty()) {
+            return "";
+        }
+        String combinedMessages = "Game Messages:\n" + String.join("\n", gameMessages);
+        gameMessages.clear();
+        return combinedMessages;
+    }
     // Removed unused GameTick handler
     // int ticks = 10;
     // @Subscribe
