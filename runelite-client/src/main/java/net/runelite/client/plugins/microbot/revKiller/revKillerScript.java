@@ -333,11 +333,18 @@ public class revKillerScript extends Script {
         }
     }
 
+    public void stopTeleSpam(){
+        if(BankLocation.EDGEVILLE.getWorldPoint().distanceTo(Rs2Player.getWorldLocation()) < 30){
+            teleToFerox();
+        }
+    }
+
     public void WalkToRevs(){
         drinkStamPotion();
         if(!WeAreInTheCaves()){
             //we must walk to the cave entrence
             if(Rs2Player.getWorldLocation().distanceTo(cave) > 6){
+                stopTeleSpam();
                 if(Rs2Walker.walkTo(cave)){
                     Microbot.log("Walking to cave. with new method.");
                 }
@@ -808,6 +815,14 @@ public class revKillerScript extends Script {
         }
     }
 
+    private void teleToFerox(){
+        if (Rs2Equipment.useRingAction(JewelleryLocationEnum.FEROX_ENCLAVE)) {
+            sleepUntil(()-> Rs2Player.isAnimating(), generateRandomNumber(2000,4000));
+            sleepUntil(()-> !Rs2Player.isAnimating(), generateRandomNumber(6000,10000));
+            Microbot.log("Teleing");
+        }
+    }
+
     public void Bankfortrip(){
         if(!Rs2Bank.isOpen()){
             if(WeAreInTheCaves()){
@@ -823,11 +838,7 @@ public class revKillerScript extends Script {
                     }
                 }
                 if(Rs2Pvp.getWildernessLevelFrom(Rs2Player.getWorldLocation()) <= 20) {
-                    if (Rs2Equipment.useRingAction(JewelleryLocationEnum.FEROX_ENCLAVE)) {
-                        sleepUntil(()-> Rs2Player.isAnimating(), generateRandomNumber(2000,4000));
-                        sleepUntil(()-> !Rs2Player.isAnimating(), generateRandomNumber(6000,10000));
-                        Microbot.log("Teleing");
-                    }
+                    teleToFerox();
                 }
             }
             if(!WeAreInTheCaves()) {
