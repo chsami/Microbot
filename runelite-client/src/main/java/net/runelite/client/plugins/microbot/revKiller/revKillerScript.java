@@ -345,8 +345,14 @@ public class revKillerScript extends Script {
             //we must walk to the cave entrence
             if(Rs2Player.getWorldLocation().distanceTo(cave) > 6){
                 stopTeleSpam();
-                if(Rs2Walker.walkTo(cave)){
-                    Microbot.log("Walking to cave. with new method.");
+                if(selectedRev.contains("Knight")){
+                    if(Rs2Walker.walkTo(selectedWP)){
+                        Microbot.log("Walking to Revs. with new method.");
+                    }
+                } else {
+                    if(Rs2Walker.walkTo(cave)){
+                        Microbot.log("Walking to cave. with new method.");
+                    }
                 }
             } else {
                 if(!Rs2Dialogue.isInDialogue()){
@@ -360,8 +366,8 @@ public class revKillerScript extends Script {
                         Rs2Dialogue.clickContinue();
                         sleep(500,1000);
                     }
-                    if(Rs2Dialogue.getDialogueOption("Yes", false)!=null){
-                        Rs2Dialogue.clickOption("Yes", false);
+                    if(Rs2Dialogue.getDialogueOption("Yes, don't", false)!=null){
+                        Rs2Dialogue.clickOption("Yes, don't", false);
                         sleep(500,1000);
                     }
                     if(Rs2Dialogue.getDialogueOption("Accept", false)!=null){
@@ -977,6 +983,25 @@ public class revKillerScript extends Script {
                     }
                 }
             }
+
+            howtobank = generateRandomNumber(0,100);
+            //equip arrows
+            if(selectedRev.contains("Knight")) {
+                if (howtobank <= 80) {
+                    Microbot.log("Grabbing rev cave teles");
+                    if (!Rs2Inventory.contains("Revenant cave teleport")) {
+                        if (Rs2Bank.count("Revenant cave teleport") > 5) {
+                            if (Rs2Bank.withdrawX("Revenant cave teleport", Rs2Random.between(2,5))) {
+                                sleepUntil(() -> Rs2Inventory.contains("Revenant cave teleport"), generateRandomNumber(5000, 15000));
+                            }
+                        } else {
+                            Microbot.log("Rev cave teleports, need at least 5");
+                            super.shutdown();
+                        }
+                    }
+                }
+            }
+
             howtobank = generateRandomNumber(0,100);
             //get stamina pot
             if(howtobank <= 40){
