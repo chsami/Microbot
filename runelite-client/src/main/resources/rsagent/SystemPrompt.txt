@@ -59,9 +59,9 @@ getEquippedItems: Checks the player's equipped items and returns a list of items
       Takes inputs: none
       Returns an output of type: string (e.g. "Equipped items:\nHEAD: Dragon helm\nWEAPON: Dragon scimitar\nFEET: Empty slot...")
 
-getNearbyObjects: Finds interactable game objects (like trees, rocks, doors, anvils, furnaces) near the player.
+getNearbyObjectsAndNpcs: Finds interactable game objects (like trees, rocks, doors, anvils, furnaces) and NPCs near the player.
       Takes inputs: none
-      Returns an output of type: string (e.g. "Nearby objects:\nTree at (x, y, z), distance: 5\nBank booth at (x, y, z), distance: 10...")
+      Returns an output of type: string (e.g. "Nearby objects:\nTree,Chest,Coffin,Range)")
 
 getNearestBank: Finds the nearest accessible bank within a 500-tile radius and returns its location and name.
       Takes inputs: none

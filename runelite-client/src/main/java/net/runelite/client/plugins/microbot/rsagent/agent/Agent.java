@@ -34,6 +34,8 @@ public class Agent {
                 .apiKey(apiKey)
                 .build();
     }
+    public int currentStep = 0;
+    public String currentAction;
 
     /*
     Sets new api key and rebuild openAI client to use it
@@ -86,7 +88,8 @@ public class Agent {
                 .addSystemMessage(finalSystemInstruction) // Use the augmented prompt
                 .addUserMessage(task);
 
-        for (int step = 0; step < 15; step++) {
+        for (int step = 0; step < 100; step++) {
+            currentStep = step;
             if (done){
                 break;
             }
@@ -150,8 +153,8 @@ public class Agent {
                 String action = ob.get("action").getAsString();
                 JsonObject parameters = ob.getAsJsonObject("action_parameters");
 
-                log.info("Executing action: {} with parameters: {}", action, parameters);
-
+                currentAction = "Executing action " + action + " with parameters: " + parameters;
+                log.info(currentAction);
                 switch (action) {
                     case "walkTo": {
                         int x = parameters.get("x").getAsInt();
@@ -280,14 +283,8 @@ public class Agent {
                         }
                         break;
                     }
-                    case "getNearbyObjects": {
-                        List<String> objectList = RsAgentTools.getNearbyObjects();
-                         if (objectList.isEmpty() || (objectList.size() == 1 && objectList.get(0).startsWith("Could not access"))) {
-                            toolResult = "Error: Could not retrieve nearby objects.";
-                            log.warn("getNearbyObjects tool failed: {}", objectList.isEmpty() ? "Empty list" : objectList.get(0));
-                        } else {
-                            toolResult = "Nearby objects:\n" + String.join(",", objectList);
-                        }
+                    case "getNearbyObjectsAndNpcs": {
+                        toolResult = RsAgentTools.getNearbyObjectsAndNpcs();
                         break;
                     }
                     case "getNearestBank": {
@@ -338,6 +335,7 @@ public class Agent {
             }
 
             String capturedGameMessages = RsAgentPlugin.getAndClearGameMessages();
+            System.out.println(capturedGameMessages);
             if (capturedGameMessages != null && !capturedGameMessages.isEmpty()) {
                 toolResult += "\n" + capturedGameMessages;
             }

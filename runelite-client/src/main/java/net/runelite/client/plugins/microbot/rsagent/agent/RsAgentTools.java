@@ -225,6 +225,7 @@ public class RsAgentTools {
         if (npc != null) {
             Rs2Walker.walkTo(npc.getWorldLocation(),1);
             boolean interacted = Rs2Npc.interact(new Rs2NpcModel(npc), action);
+            Rs2Player.waitForAnimation();
             sleep(500,1000);
             if (interacted) {
                 Microbot.log(Level.INFO, "Interacted with NPC: " + name + " using action: " + action);
@@ -233,6 +234,7 @@ public class RsAgentTools {
                 Microbot.log(Level.WARN, "Failed to interact with NPC: " + name + " using action: " + action);
                 return false;
             }
+
         }
 
         GameObject object = Rs2GameObject.getGameObject(obj -> {
@@ -244,6 +246,8 @@ public class RsAgentTools {
         Rs2Walker.walkTo(object.getWorldLocation(),1);
         var success = Rs2GameObject.interact(object, action);
         Rs2Player.waitForAnimation();
+        sleep(500,1000);
+
         return success;
     }
 
@@ -259,12 +263,12 @@ public class RsAgentTools {
         var npc = Rs2Npc.getNpc(name);
         List<String> actions = new ArrayList<>();
         if (npc != null){
-            actions = List.of(npc.getComposition().getActions());
+            actions = Arrays.stream(npc.getComposition().getActions()).filter(Objects::nonNull).collect(Collectors.toList());
         }else{
             var object = Rs2GameObject.getGameObject(name);
             if (object != null){
                 try{
-                actions = List.of(Rs2GameObject.convertToObjectComposition(object).getActions());
+                    actions = Arrays.stream(Rs2GameObject.convertToObjectComposition(object).getActions()).filter(Objects::nonNull).collect(Collectors.toList());
                 }catch (Exception e){
                     Microbot.log(Level.WARN, "Failed to convert object to composition: " + name);
                 }
@@ -591,28 +595,32 @@ public class RsAgentTools {
     }
 
     /**
-     * Retrieves a list of nearby game objects (e.g., trees, rocks, doors).
+     * Retrieves a list of nearby game objects (e.g., trees, rocks, doors) and NPCs (e.g. Man, Guard, Goblin).
      *
      * @return A list of strings, each describing a nearby object and its location.
      *         Returns a list with an error message if objects cannot be accessed.
      */
-    static public List<String> getNearbyObjects() {
+    static public String getNearbyObjectsAndNpcs() {
         List<String> objectDescriptions = new ArrayList<>();
+        List<String> npcDescriptions = new ArrayList<>();
 
         List<TileObject> gameObjects = Rs2GameObject.getAll(o->true, 20);
-        if ( gameObjects.isEmpty()) {
-            objectDescriptions.add("No game objects found nearby.");
-            return objectDescriptions;
-        }
-        var names = gameObjects.stream().map(Rs2GameObject::convertToObjectComposition).filter(Objects::nonNull).map(ObjectComposition::getName).filter(s->!s.equals("null")).collect(Collectors.toList());
+        var npcs = Rs2Npc.getNpcs();
 
-        objectDescriptions.addAll(names);
+        var objectNames = gameObjects.stream().map(Rs2GameObject::convertToObjectComposition).filter(Objects::nonNull).map(ObjectComposition::getName).filter(s->!s.equals("null")).collect(Collectors.toList());
+        objectDescriptions.addAll(objectNames);
+
+        var npcNames = npcs.map(Rs2NpcModel::getName).collect(Collectors.toList());
+
 
         if (objectDescriptions.isEmpty()) {
             objectDescriptions.add("No valid game objects found nearby.");
         }
-
-        return objectDescriptions;
+        if  (npcDescriptions.isEmpty()) {
+            npcDescriptions.add("No valid NPCs found nearby.");
+        }
+        String result = "Objects: " +  String.join(", ", objectDescriptions) + "\n NPCs: " + String.join(", ", npcNames);
+        return result;
     }
 
 
