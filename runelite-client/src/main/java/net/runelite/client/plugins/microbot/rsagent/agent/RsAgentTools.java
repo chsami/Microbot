@@ -213,14 +213,14 @@ public class RsAgentTools {
     }
 
     /**
-     * Finds an NPC by name and interacts with the specified action.
+     * Finds an NPC or Object by name and interacts with the specified action.
      * Does not handle dialogue.
      *
-     * @param name The name of the NPC to interact with.
+     * @param name The name of the NPC or Object to interact with.
      * @param action The action to perform (e.g., "Trade", "Attack").
      * @return true if the interaction was successful, false otherwise.
      */
-    static public boolean interactWithNpc(String name, String action) {
+    static public boolean interactWith(String name, String action) {
         NPC npc = Rs2Npc.getNpc(name);
         if (npc != null) {
             Rs2Walker.walkTo(npc.getWorldLocation(),1);
@@ -233,10 +233,42 @@ public class RsAgentTools {
                 Microbot.log(Level.WARN, "Failed to interact with NPC: " + name + " using action: " + action);
                 return false;
             }
-        } else {
-             Microbot.log(Level.WARN, "NPC not found: " + name);
-             return false;
         }
+
+        GameObject object = Rs2GameObject.getGameObject(obj -> {
+            var compName = Rs2GameObject.convertToObjectComposition(obj).getName();
+            if (compName == null) return false;
+            return compName.equalsIgnoreCase(name);
+        }, 20);
+        assert object != null;
+        Rs2Walker.walkTo(object.getWorldLocation(),1);
+        var success = Rs2GameObject.interact(object, action);
+        Rs2Player.waitForAnimation();
+        return success;
+    }
+
+    // TODO: Add docstring and integrate with agent
+    static public String getInteractActions(String name){
+        var npc = Rs2Npc.getNpc(name);
+        List<String> actions = new ArrayList<>();
+        if (npc != null){
+            actions = List.of(npc.getComposition().getActions());
+        }else{
+            var object = Rs2GameObject.getGameObject(name);
+            if (object != null){
+                try{
+                actions = List.of(Rs2GameObject.convertToObjectComposition(object).getActions());
+                }catch (Exception e){
+                    Microbot.log(Level.WARN, "Failed to convert object to composition: " + name);
+                }
+            }
+        }
+
+        if (actions.isEmpty()){
+            return "No actions available";
+        }
+
+        return actions.stream().filter(Objects::nonNull).collect(Collectors.joining(","));
     }
 
     /**
@@ -494,7 +526,7 @@ public class RsAgentTools {
         }
 
         if (inventoryContents.isEmpty()) { // Should only happen if loop for 28 slots didn't add anything
-            inventoryContents.add("Inventory appears to be completely empty or inaccessible.");
+            inventoryContents.add("Inventory appears to be completely empty.");
         }
 
         return inventoryContents;
@@ -576,24 +608,7 @@ public class RsAgentTools {
         return objectDescriptions;
     }
 
-    /**
-     * Interacts with the nearest game object matching the given name using its default action.
-     *
-     * @param name The name of the game object to interact with.
-     * @return true if the interaction was successfully initiated, false otherwise.
-     */
-    static public boolean interactWithObject(String name) {
-        GameObject object = Rs2GameObject.getGameObject(obj -> {
-        var compName = Rs2GameObject.convertToObjectComposition(obj).getName();
-        if (compName == null) return false;
-        return compName.equalsIgnoreCase(name);
-        }, 20);
-        assert object != null;
-        Rs2Walker.walkTo(object.getWorldLocation(),1);
-        var success = Rs2GameObject.interact(object);
-        Rs2Player.waitForAnimation();
-        return success;
-    }
+
 
     /**
      * Finds the nearest accessible bank within a 500-tile radius and returns its location and name.
@@ -608,8 +623,7 @@ public class RsAgentTools {
         BankLocation nearestBank = Rs2Bank.getNearestBank(player.getWorldLocation(), 500);
         if (nearestBank != null) {
             WorldPoint bankPoint = nearestBank.getWorldPoint();
-            String bankName = nearestBank.getName() != null ? nearestBank.getName() : nearestBank.toString();
-            return "Nearest bank found: " + bankName + " at (" + bankPoint.getX() + ", " + bankPoint.getY() + ", " + bankPoint.getPlane() + ").";
+            return "Nearest bank found at (" + bankPoint.getX() + ", " + bankPoint.getY() + ", " + bankPoint.getPlane() + ").";
         } else {
             return "No accessible bank location found nearby within 500 tiles.";
         }
@@ -627,7 +641,18 @@ public class RsAgentTools {
         boolean success = Rs2Bank.openBank(); // This method already handles finding and walking to the bank
         if (success) {
             boolean isOpen = sleepUntil(Rs2Bank::isOpen, 5000);
-            return isOpen ? "Bank opened successfully." : "Failed to confirm bank opening after action.";
+            if (!isOpen) {
+                return "Failed to open bank";
+            }
+            var bankItems = Rs2Bank.bankItems();
+            StringBuilder bankContents = new StringBuilder();
+            if (bankItems.isEmpty()) {
+                return "Bank opened succesfully, bank is empty";
+            }
+            for (Rs2ItemModel item : bankItems) {
+                bankContents.append(item.getName()).append("- qty: ").append(item.getQuantity()).append("\n");
+            }
+            return  "Bank opened successfully. \n Bank contents:\n" + bankContents;
         } else {
             return "Failed to initiate bank opening (e.g., no bank nearby or interaction failed).";
         }

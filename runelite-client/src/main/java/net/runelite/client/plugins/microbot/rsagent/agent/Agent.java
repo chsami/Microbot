@@ -20,6 +20,7 @@ import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import com.openai.models.chat.completions.ChatCompletionMessage;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.rsagent.RsAgentPlugin;
 
 @Slf4j
 public class Agent {
@@ -115,12 +116,9 @@ public class Agent {
             // If the model stopped due to the stop sequence, it might not include the sequence itself.
             // We append it here to ensure the JSON is complete for parsing.
             if (chatCompletion.choices().get(0).finishReason().equals(ChatCompletion.Choice.FinishReason.STOP) && !fullText.endsWith("}}")) {
-                if (fullText.endsWith("}") && !fullText.endsWith("}}")) {
+                if (fullText.endsWith("}")) {
                     fullText += "}";
-                } else if (!fullText.endsWith("}")) {
-                    // This case is less likely if the model is trying to output JSON, but as a fallback.
-                    // It might indicate a more significant formatting issue.
-                    log.warn("LLM output did not end with '}' before stop sequence. Appending '}}'.");
+                } else  {
                     fullText += "}}";
                 }
             }
@@ -166,7 +164,7 @@ public class Agent {
                     case "interactWithNpc": { // Renamed from interactWith
                         String targetName = parameters.get("name").getAsString();
                         String interactionAction = parameters.get("action").getAsString();
-                        boolean success = RsAgentTools.interactWithNpc(targetName, interactionAction); // Renamed method call
+                        boolean success = RsAgentTools.interactWith(targetName, interactionAction); // Renamed method call
                         toolResult = success ? "Successfully interacted with NPC '" + targetName + "' using action '" + interactionAction + "'." : "Failed to interact with NPC '" + targetName + "' using action '" + interactionAction + "'. NPC might not be present or interaction invalid.";
                         break;
                     }
@@ -343,6 +341,7 @@ public class Agent {
             log.info("Tool Result: {}", toolResult);
 
             paramsBuilder.addUserMessage("Tool result: " + toolResult);
+            paramsBuilder.addUserMessage("Game messages" + RsAgentPlugin.getAndClearGameMessages());
 
             if (done) {
                  break;
