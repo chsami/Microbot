@@ -352,6 +352,7 @@ public class revKillerScript extends Script {
         if(!WeAreInTheCaves()){
             //we must walk to the cave entrence
             if(Rs2Player.getWorldLocation().distanceTo(cave) > 6){
+                reJfount();
                 stopTeleSpam();
                 if(selectedRev.contains("Knight")){
                     openBankCheck();
@@ -487,6 +488,7 @@ public class revKillerScript extends Script {
 
         if(!Rs2Player.isTeleBlocked()){
             Microbot.log("At least we're not teleblocked.");
+            enablePrayer();
             if(Rs2Pvp.getWildernessLevelFrom(Rs2Player.getWorldLocation()) > 30) {
                 while (Rs2Pvp.getWildernessLevelFrom(Rs2Player.getWorldLocation()) > 30) {
                     if (!super.isRunning()) {
@@ -534,6 +536,7 @@ public class revKillerScript extends Script {
                         break;
                     }
                 }
+                Rs2Prayer.disableAllPrayers();
                 shouldFlee = false;
                 return;
             }
@@ -563,6 +566,7 @@ public class revKillerScript extends Script {
                     }
                 }
             }
+            Rs2Prayer.disableAllPrayers();
             shouldFlee = false;
         } else {
             Microbot.log("We're teleblocked! Attempting to run to the bank");
@@ -693,6 +697,37 @@ public class revKillerScript extends Script {
         } catch (Exception e) {
             Microbot.log("Error during PK check: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    public void reJfount(){
+        int rejat = Rs2Random.between(10,30);
+        int runener = Rs2Random.between(50,65);
+        while(Rs2Player.getBoostedSkillLevel(Skill.PRAYER) < rejat || Rs2Player.getRunEnergy() <= runener){
+            if (!super.isRunning()) {
+                break;
+            }
+            if(Rs2Bank.isOpen()){
+                if(Rs2Bank.closeBank()){
+                    sleepUntil(()-> !Rs2Bank.isOpen(), Rs2Random.between(2000,4000));
+                }
+            } else {
+                GameObject rej = Rs2GameObject.get("Pool of Refreshment", true);
+                if(rej == null){
+                    return;
+                }
+                Microbot.log("Drinking");
+                if(Rs2GameObject.interact(rej, "Drink")){
+                    sleepUntil(()-> Rs2Player.isMoving(), Rs2Random.between(1000,3000));
+                    sleepUntil(()-> !Rs2Player.isMoving(), Rs2Random.between(5000,10000));
+                    sleepUntil(()-> Rs2Player.isAnimating(), Rs2Random.between(1000,4000));
+                    sleepUntil(()-> !Rs2Player.isAnimating(), Rs2Random.between(1000,4000));
+                }
+            }
+            if(Rs2Player.getBoostedSkillLevel(Skill.PRAYER) >= rejat && Rs2Player.getRunEnergy() >= runener){
+                break;
+            }
+
         }
     }
 
