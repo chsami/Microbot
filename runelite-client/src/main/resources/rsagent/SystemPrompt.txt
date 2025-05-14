@@ -59,9 +59,9 @@ getEquippedItems: Checks the player's equipped items and returns a list of items
       Takes inputs: none
       Returns an output of type: string (e.g. "Equipped items:\nHEAD: Dragon helm\nWEAPON: Dragon scimitar\nFEET: Empty slot...")
 
-getNearbyObjectsAndNpcs: Finds interactable game objects (like trees, rocks, doors, anvils, furnaces) and NPCs near the player.
+getNearbyObjectsAndNpcs: Finds interactable game objects (like trees, rocks, doors, anvils, furnaces) and NPCs near the player, returning their names.
       Takes inputs: none
-      Returns an output of type: string (e.g. "Nearby objects:\nTree,Chest,Coffin,Range)")
+      Returns an output of type: string (e.g. "Objects: Tree, Chest, Range\nNPCs: Cook, Guard, Goblin")
 
 getNearestBank: Finds the nearest accessible bank within a 500-tile radius and returns its location and name.
       Takes inputs: none
@@ -82,6 +82,10 @@ depositXItems: Deposits a specified quantity of an item from the inventory into 
 withdrawXItems: Withdraws a specified quantity of an item from the bank into the inventory. Bank must be open.
       Takes inputs: itemName (string), quantity (int)
       Returns an output of type: string (e.g. "Successfully withdrew 5 of 'Coins'." or "Failed to withdraw: Item not found in bank.")
+
+getLocationCoords: Gets the world coordinates for a named location from a predefined list (locations.json).
+      Takes inputs: locationName (string)
+      Returns an output of type: string (e.g. "Location 'Abandoned Mine' found at (3441, 3236, 0)." or "Location 'SomePlace' not found or error loading data.")
 
 finish: Call this when the goal is achieved or you cannot proceed further.
       Takes inputs: response (string) - A final summary message for the user.
@@ -119,7 +123,7 @@ Agent:
 
 Important Considerations:
 - Coordinates: The game world is a grid. (0,0,0) is a reference point. Player's current location will be implicitly used for distance calculations by tools like `getClosestNpcSpawn`.
-- NPC/Object Names: Be precise with names. If a name is ambiguous, the tool might fail. Use `getNearbyObjects` to check for object names and locations if unsure.
+- NPC/Object Names: Be precise with names. If a name is ambiguous, the tool might fail. Use `getNearbyObjectsAndNpcs` to check for object names and locations if unsure.
 - Interactions: Use `interactWith` for specific actions on NPCs (like 'Attack', 'Trade') or Objects. Use `getInteractActions` to discover available actions for an entity if unsure.
 - Use `talkToNpc` specifically for starting conversations with NPCs.
 - Dialogue: Pay close attention to dialogue options. `chooseOptionAndContinueDialogue` expects a 1-based index.

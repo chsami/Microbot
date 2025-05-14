@@ -116,8 +116,6 @@ public class Agent {
             ChatCompletionMessage assistantResponse = chatCompletion.choices().get(0).message();
             String fullText = assistantResponse.content().orElse("").trim();
 
-            // If the model stopped due to the stop sequence, it might not include the sequence itself.
-            // We append it here to ensure the JSON is complete for parsing.
             if (chatCompletion.choices().get(0).finishReason().equals(ChatCompletion.Choice.FinishReason.STOP) && !fullText.endsWith("}}")) {
                 if (fullText.endsWith("}")) {
                     fullText += "}";
@@ -131,10 +129,8 @@ public class Agent {
             System.out.println("Agent step " + (step + 1) + " output:\n" + fullText);
             System.out.println("\n-----------------------------------\n");
 
-            // Add LLM's response to the conversation history
             paramsBuilder.addMessage(assistantResponse);
 
-            // Tool execution
             try {
                 String cleanedJson = fullText;
                 if (cleanedJson.startsWith("```json")) {
@@ -167,7 +163,7 @@ public class Agent {
                     case "interactWith": {
                         String targetName = parameters.get("name").getAsString();
                         String interactionAction = parameters.get("action").getAsString();
-                        boolean success = RsAgentTools.interactWith(targetName, interactionAction); // Renamed method call
+                        boolean success = RsAgentTools.interactWith(targetName, interactionAction);
                         toolResult = success ? "Successfully interacted with '" + targetName + "' using action '" + interactionAction + "'." : "Failed to interact with '" + targetName + "' using action '" + interactionAction + "'. Might not be present or interaction is invalid.";
                         break;
                     }
@@ -251,7 +247,6 @@ public class Agent {
                                 toolResult = "No spawn location found for NPC '" + npcName + "' or NPC not in data.";
                             }
                         } catch (RuntimeException e) {
-                            // Catching RuntimeException specifically for the data loading failure case
                             toolResult = "Error processing NPC spawn location for '" + npcName + "': " + e.getMessage();
                             log.error("Error in getClosestNpcSpawn tool: {}", e.getMessage());
                         }
@@ -311,8 +306,18 @@ public class Agent {
                         toolResult = RsAgentTools.withdrawXItems(itemName, quantity);
                         break;
                     }
+                    case "getLocationCoords": {
+                        String locationName = parameters.get("locationName").getAsString();
+                        WorldPoint coords = RsAgentTools.getLocationCoords(locationName);
+                        if (coords != null) {
+                            toolResult = "Location '" + locationName + "' found at (" + coords.getX() + ", " + coords.getY() + ", " + coords.getPlane() + ").";
+                        } else {
+                            toolResult = "Location '" + locationName + "' not found in location data or an error occurred while loading the data.";
+                        }
+                        break;
+                    }
                     case "finish": {
-                        String finishResponse = "Task finished."; // Default
+                        String finishResponse = "Task finished.";
                         if (parameters.has("response") && parameters.get("response").isJsonPrimitive() && parameters.get("response").getAsJsonPrimitive().isString()) {
                             finishResponse = parameters.get("response").getAsString();
                         }

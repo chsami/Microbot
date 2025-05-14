@@ -46,11 +46,16 @@ import static net.runelite.client.plugins.microbot.util.Global.*;
 public class RsAgentTools {
 
     private static Map<String, List<SimpleCoord>> npcSpawnData;
-    private static final Gson gson = new Gson();
     private static boolean npcSpawnDataLoaded = false;
     private static String npcSpawnDataError = null;
 
-    // Helper class for JSON deserialization
+    private static Map<String, WorldPoint> locationCoordsData;
+    private static boolean locationDataLoaded = false;
+    private static String locationDataError = null;
+
+    private static final Gson gson = new Gson();
+
+    // Helper class for NPC JSON deserialization
     private static class SimpleCoord {
         int x;
         int y;
@@ -60,6 +65,24 @@ public class RsAgentTools {
             return new WorldPoint(x, y, z);
         }
     }
+
+    // Helper classes for Location JSON deserialization
+    private static class LocationDef {
+        String name;
+        List<Integer> coords;
+
+        public WorldPoint toWorldPoint() {
+            if (coords != null && coords.size() == 3) {
+                return new WorldPoint(coords.get(0), coords.get(1), coords.get(2));
+            }
+            return null;
+        }
+    }
+
+    private static class LocationsRoot {
+        List<LocationDef> locations;
+    }
+
 
     private static synchronized void loadNpcSpawnData() {
         if (npcSpawnDataLoaded) {
@@ -71,25 +94,92 @@ public class RsAgentTools {
             if (inputStream == null) {
                 npcSpawnDataError = "NPC spawn data file not found: " + path;
                 Microbot.log(Level.ERROR, npcSpawnDataError);
-                npcSpawnDataLoaded = true; // Mark as "loaded" to prevent retries, even though it failed
+                npcSpawnDataLoaded = true;
+                npcSpawnData = new HashMap<>(); // Ensure not null
                 return;
             }
             InputStreamReader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
             Type type = new TypeToken<Map<String, List<SimpleCoord>>>() {}.getType();
             npcSpawnData = gson.fromJson(reader, type);
             if (npcSpawnData == null) {
-                npcSpawnData = new HashMap<>(); // Ensure it's not null if file is empty JSON object
+                npcSpawnData = new HashMap<>();
                 npcSpawnDataError = "NPC spawn data file was empty or malformed: " + path;
                 Microbot.log(Level.WARN, npcSpawnDataError);
             }
         } catch (Exception e) {
             npcSpawnDataError = "Error loading NPC spawn data from " + path + ": " + e.getMessage();
             Microbot.log(Level.ERROR, npcSpawnDataError, e);
-            npcSpawnData = new HashMap<>(); // Ensure it's not null on error
+            npcSpawnData = new HashMap<>();
         } finally {
             npcSpawnDataLoaded = true;
         }
     }
+
+    private static synchronized void loadLocationData() {
+        if (locationDataLoaded) {
+            return;
+        }
+        locationCoordsData = new HashMap<>();
+        String path = "rsagent/locations.json";
+        try (InputStream inputStream = RsAgentTools.class.getClassLoader().getResourceAsStream(path)) {
+            if (inputStream == null) {
+                locationDataError = "Location data file not found: " + path;
+                Microbot.log(Level.ERROR, locationDataError);
+                locationDataLoaded = true;
+                return;
+            }
+            InputStreamReader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
+            LocationsRoot locationsRoot = gson.fromJson(reader, LocationsRoot.class);
+
+            if (locationsRoot != null && locationsRoot.locations != null) {
+                for (LocationDef locDef : locationsRoot.locations) {
+                    if (locDef.name != null && !locDef.name.trim().isEmpty() && locDef.toWorldPoint() != null) {
+                        locationCoordsData.put(locDef.name.toLowerCase(), locDef.toWorldPoint());
+                    } else {
+                        Microbot.log(Level.WARN, "Invalid location entry in " + path + ": " + (locDef.name == null ? "null name" : locDef.name));
+                    }
+                }
+            } else {
+                locationDataError = "Location data file was empty or malformed: " + path;
+                Microbot.log(Level.WARN, locationDataError);
+            }
+        } catch (Exception e) {
+            locationDataError = "Error loading location data from " + path + ": " + e.getMessage();
+            Microbot.log(Level.ERROR, locationDataError, e);
+        } finally {
+            locationDataLoaded = true;
+        }
+    }
+
+    /**
+     * Retrieves the WorldPoint for a named location from the 'locations.json' file.
+     *
+     * @param locationName The name of the location.
+     * @return The WorldPoint of the location, or null if not found or an error occurred.
+     * @throws RuntimeException if there was a critical error loading the location data initially.
+     */
+    static public WorldPoint getLocationCoords(String locationName) {
+        loadLocationData();
+
+        if (locationDataError != null && (locationCoordsData == null || locationCoordsData.isEmpty())) {
+            Microbot.log(Level.ERROR, "Failed to load location data, cannot serve request for: " + locationName + ". Error: " + locationDataError);
+            // Optionally throw an exception if data loading is critical
+            // throw new RuntimeException("Failed to load location data: " + locationDataError);
+            return null; // Or handle as per desired behavior on critical load failure
+        }
+
+        if (locationCoordsData == null || locationName == null) {
+            Microbot.log(Level.WARN, "Location data map is null or locationName is null.");
+            return null;
+        }
+
+        WorldPoint point = locationCoordsData.get(locationName.toLowerCase());
+        if (point == null) {
+            Microbot.log(Level.INFO, "Location name '" + locationName + "' not found in location data.");
+        }
+        return point;
+    }
+
 
     /**
      * Finds the closest spawn location for a given NPC name from the npc_locations.json file.
@@ -102,18 +192,17 @@ public class RsAgentTools {
         loadNpcSpawnData();
 
         if (npcSpawnDataError != null && (npcSpawnData == null || npcSpawnData.isEmpty())) {
-            // If there was a critical error loading the data and the map is effectively unusable
             throw new RuntimeException("Failed to load NPC spawn data: " + npcSpawnDataError);
         }
-        if (npcSpawnData == null || !npcSpawnData.containsKey(npcName)) {
-            Microbot.log(Level.INFO,"NPC name '" + npcName + "' not found in spawn data.");
-            return null; // NPC name not in our data
+        if (npcSpawnData == null || npcName == null || !npcSpawnData.containsKey(npcName)) {
+            Microbot.log(Level.INFO,"NPC name '" + npcName + "' not found in spawn data or NPC name is null.");
+            return null;
         }
 
         List<SimpleCoord> spawns = npcSpawnData.get(npcName);
         if (spawns == null || spawns.isEmpty()) {
             Microbot.log(Level.INFO,"No spawn locations listed for NPC '" + npcName + "'.");
-            return null; // NPC has no listed spawns
+            return null;
         }
 
         Player player = Microbot.getClient().getLocalPlayer();
@@ -124,7 +213,7 @@ public class RsAgentTools {
         WorldPoint playerLocation = player.getWorldLocation();
         if (playerLocation == null) {
             Microbot.log(Level.WARN,"Player location is null, cannot determine closest NPC spawn.");
-            return null; // Should not happen if player is logged in
+            return null;
         }
 
         WorldPoint closestPoint = null;
@@ -376,62 +465,34 @@ public class RsAgentTools {
 
             if (npcName != null) {
                 speaker = npcName;
-                // Prefer general text if NPC name is present, assuming it's the NPC's line
                 currentText = generalText;
             } else if (playerText != null) {
                 speaker = "Player";
                 currentText = playerText;
             } else if (generalText != null) {
-                // Use general text if neither specific type was found
                 currentText = generalText;
-                // We might not know the speaker here, keep default or leave as is
             }
 
             if (currentText != null && !currentText.trim().isEmpty()) {
                 String prefixedText = speaker + ": " + currentText;
                 dialogueTexts.add(prefixedText);
-                System.out.println(prefixedText); // Log the prefixed text
+                System.out.println(prefixedText);
             } else {
                  System.out.println("Could not capture dialogue text this iteration.");
             }
 
 
             Rs2Dialogue.clickContinue();
-            sleep(500, 1000); // Small extra delay
-            // Wait until the continue button is gone, chat ended, or options appear
-            sleepUntil(() -> !Rs2Dialogue.hasContinue() || Rs2Dialogue.hasSelectAnOption() || !Rs2Dialogue.isInDialogue(), 2000); // Added timeout
+            sleep(500, 1000);
+            sleepUntil(() -> !Rs2Dialogue.hasContinue() || Rs2Dialogue.hasSelectAnOption() || !Rs2Dialogue.isInDialogue(), 2000);
         }
 
-        // Check if options are presented
         if (Rs2Dialogue.hasSelectAnOption()) {
             List<String> options = Rs2Dialogue.getDialogueOptions().stream()
                     .map(Widget::getText)
                     .collect(Collectors.toList());
-
-            // Capture the question text if available and prefix it
-            String question = Rs2Dialogue.getQuestion();
-            if (question != null && !question.trim().isEmpty()) {
-                 // Assume question is asked by the last speaker or system if unknown
-                 String lastSpeaker = "Game"; // Default if no prior text
-                 if (!dialogueTexts.isEmpty()) {
-                     String lastLine = dialogueTexts.get(dialogueTexts.size() - 1);
-                     if (lastLine.contains(":")) {
-                         lastSpeaker = lastLine.substring(0, lastLine.indexOf(':'));
-                     }
-                 } else {
-                     // If no prior text, check if NPC name is visible now
-                     String npcNameNow = Rs2Dialogue.getNpcNameInDialogue();
-                     if (npcNameNow != null) lastSpeaker = npcNameNow;
-                 }
-//                 dialogueTexts.add(lastSpeaker + " (Question): " + question);
-//                 System.out.println(lastSpeaker + " (Question): " + question);
-            }
-
-
             return new DialogueResult(dialogueTexts, options);
         } else {
-            // Dialogue ended without options
-            // Check if there was one final dialogue screen (e.g., NPC text without continue)
             String npcName = Rs2Dialogue.getNpcNameInDialogue();
             String playerText = Rs2Dialogue.getPlayerDialogueText();
             String generalText = Rs2Dialogue.getDialogueText();
@@ -517,7 +578,7 @@ public class RsAgentTools {
      */
     static public List<String> getPlayerInventory() {
         List<String> inventoryContents = new ArrayList<>();
-        List<Rs2ItemModel> items = Rs2Inventory.items(); // Get list of items (occupied slots)
+        List<Rs2ItemModel> items = Rs2Inventory.items();
 
         if (items == null) {
             inventoryContents.add("Could not access inventory items via Rs2Inventory.");
@@ -525,18 +586,15 @@ public class RsAgentTools {
             return inventoryContents;
         }
 
-        // Iterate through all 28 inventory slots
         for (int i = 0; i < 28; i++) {
-
                 Rs2ItemModel itemModel = Rs2Inventory.getItemInSlot(i);
                 if  (itemModel == null) continue;
                 String itemName = itemModel.getName();
                 int quantity = itemModel.getQuantity();
-
                 inventoryContents.add("Slot " + i + ": " + itemName + ": " + quantity);
         }
 
-        if (inventoryContents.isEmpty()) { // Should only happen if loop for 28 slots didn't add anything
+        if (inventoryContents.isEmpty()) {
             inventoryContents.add("Inventory appears to be completely empty.");
         }
 
@@ -597,30 +655,41 @@ public class RsAgentTools {
     /**
      * Retrieves a list of nearby game objects (e.g., trees, rocks, doors) and NPCs (e.g. Man, Guard, Goblin).
      *
-     * @return A list of strings, each describing a nearby object and its location.
-     *         Returns a list with an error message if objects cannot be accessed.
+     * @return A string describing nearby objects and NPCs, with their names.
+     *         Example: "Objects: Tree, Rock\nNPCs: Man, Guard"
      */
     static public String getNearbyObjectsAndNpcs() {
-        List<String> objectDescriptions = new ArrayList<>();
-        List<String> npcDescriptions = new ArrayList<>();
+        List<String> collectedObjectNames = Rs2GameObject.getAll(o -> true, 20)
+                .stream()
+                .map(obj -> {
+                    ObjectComposition comp = Rs2GameObject.convertToObjectComposition(obj);
+                    return comp != null ? comp.getName() : null;
+                })
+                .filter(name -> name != null && !name.equalsIgnoreCase("null") && !name.trim().isEmpty())
+                .distinct()
+                .collect(Collectors.toList());
 
-        List<TileObject> gameObjects = Rs2GameObject.getAll(o->true, 20);
-        var npcs = Rs2Npc.getNpcs();
+        List<String> collectedNpcNames = Rs2Npc.getNpcs() // Stream<Rs2NpcModel>
+                .map(Rs2NpcModel::getName)
+                .filter(name -> name != null && !name.trim().isEmpty())
+                .distinct()
+                .collect(Collectors.toList());
 
-        var objectNames = gameObjects.stream().map(Rs2GameObject::convertToObjectComposition).filter(Objects::nonNull).map(ObjectComposition::getName).filter(s->!s.equals("null")).collect(Collectors.toList());
-        objectDescriptions.addAll(objectNames);
-
-        var npcNames = npcs.map(Rs2NpcModel::getName).collect(Collectors.toList());
-
-
-        if (objectDescriptions.isEmpty()) {
-            objectDescriptions.add("No valid game objects found nearby.");
+        String objectsOutput;
+        if (collectedObjectNames.isEmpty()) {
+            objectsOutput = "No valid game objects found nearby.";
+        } else {
+            objectsOutput = String.join(", ", collectedObjectNames);
         }
-        if  (npcDescriptions.isEmpty()) {
-            npcDescriptions.add("No valid NPCs found nearby.");
+
+        String npcsOutput;
+        if (collectedNpcNames.isEmpty()) {
+            npcsOutput = "No valid NPCs found nearby.";
+        } else {
+            npcsOutput = String.join(", ", collectedNpcNames);
         }
-        String result = "Objects: " +  String.join(", ", objectDescriptions) + "\n NPCs: " + String.join(", ", npcNames);
-        return result;
+
+        return "Objects: " + objectsOutput + "\nNPCs: " + npcsOutput;
     }
 
 
@@ -653,7 +722,7 @@ public class RsAgentTools {
         if (Rs2Bank.isOpen()) {
             return "Bank is already open.";
         }
-        boolean success = Rs2Bank.openBank(); // This method already handles finding and walking to the bank
+        boolean success = Rs2Bank.openBank();
         if (success) {
             boolean isOpen = sleepUntil(Rs2Bank::isOpen, 5000);
             if (!isOpen) {
@@ -707,18 +776,8 @@ public class RsAgentTools {
             return "Failed to deposit: Item '" + itemName + "' not found in inventory.";
         }
 
-        // Rs2Bank.depositX is void, so we can't directly check its return.
-        // We'll assume the action is attempted. For more robust feedback,
-        // one might check inventory count before and after.
         Rs2Bank.depositX(itemName, quantity);
-        // Give some time for the action to process
         sleep(600, 1000);
-        // Basic check: if item is still in inventory with same or more quantity (if not stackable and depositing less than all)
-        // This is a simplified check. A full check would be more complex.
-        if (Rs2Inventory.hasItem(itemName) && Rs2Inventory.get(itemName).getQuantity() >= quantity && !Rs2Inventory.get(itemName).isStackable()) {
-             //This condition might be true if not all items were deposited or if it's not stackable and some remain.
-             //For simplicity, we'll just report the attempt.
-        }
         return "Attempted to deposit " + quantity + " of '" + itemName + "'.";
     }
 
@@ -739,7 +798,7 @@ public class RsAgentTools {
         if (quantity <= 0) {
             return "Failed to withdraw: Quantity must be positive.";
         }
-        if (!Rs2Bank.hasItem(itemName)) { // Assuming hasItem checks if bank has AT LEAST quantity
+        if (!Rs2Bank.hasItem(itemName)) {
              return "Failed to withdraw: Bank does not have " + quantity + " of '" + itemName + "'.";
         }
         if (Rs2Inventory.isFull() && Rs2Bank.getBankItem(itemName) != null && !Rs2Bank.getBankItem(itemName).isStackable() && !Rs2Inventory.hasItem(itemName)) {
@@ -748,16 +807,11 @@ public class RsAgentTools {
 
         boolean success = Rs2Bank.withdrawX(itemName, quantity);
         if (success) {
-            // Wait for item to appear in inventory
-            // Check if item is stackable to validate quantity correctly
-            Rs2ItemModel bankItem = Rs2Bank.getBankItem(itemName); // Get item details to check stackability
+            Rs2ItemModel bankItem = Rs2Bank.getBankItem(itemName);
             boolean itemReceived;
             if (bankItem != null && bankItem.isStackable()) {
                 itemReceived = sleepUntil(() -> Rs2Inventory.hasItemAmount(itemName, quantity, true), 5000);
             } else {
-                // For non-stackable, just check if at least one has appeared if withdrawing one,
-                // or if multiple slots are filled if withdrawing many non-stackables (more complex to check precisely)
-                // This simplified check just sees if the item name is present after withdrawal.
                 itemReceived = sleepUntil(() -> Rs2Inventory.hasItem(itemName), 5000);
             }
             return itemReceived ? "Successfully withdrew " + quantity + " of '" + itemName + "'." : "Withdrawal action sent, but item not confirmed in inventory with specified quantity.";
