@@ -435,25 +435,38 @@ public class revKillerScript extends Script {
     }
     public void getAwayFromPkerKnight(){
         Rs2Walker.setTarget(null);
-        if(Microbot.isLoggedIn()){
-            while(Microbot.isLoggedIn()){
-                if(!super.isRunning()){break;}
-                if(!Microbot.isLoggedIn()){break;}
-                Rs2Player.logout();
-                sleepUntil(()-> !Microbot.isLoggedIn(), Rs2Random.between(250,500));
-                sleep(1000,3000);
-            }
-        }
-        if(!Microbot.isLoggedIn()){
-            while(!Microbot.isLoggedIn()){
-                if(!super.isRunning()){break;}
-                if(Microbot.isLoggedIn()){break;}
-                sleep(1000,3000);
-                if(!Microbot.isLoggedIn()) {
-                    new Login(Login.getRandomWorld(Login.activeProfile.isMember()));
-                    sleepUntil(() -> Microbot.isLoggedIn(), Rs2Random.between(10000, 20000));
+        if(!Rs2Combat.inCombat()) {
+            if (Microbot.isLoggedIn()) {
+                while (Microbot.isLoggedIn()) {
+                    if (!super.isRunning()) {
+                        break;
+                    }
+                    if (!Microbot.isLoggedIn()) {
+                        break;
+                    }
+                    Rs2Player.logout();
+                    sleepUntil(() -> !Microbot.isLoggedIn(), Rs2Random.between(250, 500));
+                    sleep(1000, 3000);
                 }
             }
+            if (!Microbot.isLoggedIn()) {
+                while (!Microbot.isLoggedIn()) {
+                    if (!super.isRunning()) {
+                        break;
+                    }
+                    if (Microbot.isLoggedIn()) {
+                        break;
+                    }
+                    sleep(1000, 3000);
+                    if (!Microbot.isLoggedIn()) {
+                        new Login(Login.getRandomWorld(Login.activeProfile.isMember()));
+                        sleepUntil(() -> Microbot.isLoggedIn(), Rs2Random.between(10000, 20000));
+                    }
+                }
+            }
+        }
+        if(Rs2Combat.inCombat()) {
+            getAwayFromPker();
         }
         shouldFlee = false;
     }
