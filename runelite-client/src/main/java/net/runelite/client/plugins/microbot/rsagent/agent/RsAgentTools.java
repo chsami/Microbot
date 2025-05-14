@@ -247,7 +247,14 @@ public class RsAgentTools {
         return success;
     }
 
-    // TODO: Add docstring and integrate with agent
+    /**
+     * Gets the available interaction options for a given NPC or Object by its name.
+     * This method checks for NPCs first, then for GameObjects.
+     *
+     * @param name The name of the NPC or Object.
+     * @return A comma-separated string of available actions (e.g., "Talk-to,Attack,Trade" or "Open,Examine").
+     *         Returns "No actions available" if the entity is not found or has no actions.
+     */
     static public String getInteractActions(String name){
         var npc = Rs2Npc.getNpc(name);
         List<String> actions = new ArrayList<>();

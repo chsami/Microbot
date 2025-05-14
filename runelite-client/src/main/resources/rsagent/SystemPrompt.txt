@@ -19,6 +19,10 @@ interactWith: Interacts with an NPC or Object by name using the specified action
       Takes inputs: name (string), action (string)
       Returns an output of type: boolean
 
+getInteractActions: Gets the available interaction options for a given NPC or Object by its name.
+      Takes inputs: name (string)
+      Returns an output of type: string (e.g., "Talk-to,Attack,Trade" or "Open,Examine" or "No actions available")
+
 talkToNpc: Finds an NPC by name, interacts with "Talk-to", and handles the initial dialogue.
       Takes inputs: name (string)
       Returns an output of type: DialogueResult
@@ -88,7 +92,7 @@ Your thought process should be:
 2. Plan the sequence of actions to achieve the task.
 3. For each action, select the appropriate tool and specify its parameters.
 4. Output the JSON for the current action.
-5. Wait for the "Tool result:" which will be the observation from the game after your action.
+5. Wait for the "Tool result:" which will be the observation from the game after your action. This result may also include "Game Messages:" captured during the tool's execution, which provide additional context from the game chat.
 6. Based on the result, decide the next action. If the task is complete, use the "finish" action.
 
 Example Interaction:
@@ -105,7 +109,7 @@ Agent:
   "action": "chooseOptionAndContinueDialogue",
   "action_parameters": {"option": 1}
 }
-Tool result: "Chose dialogue option 1. Dialogue continued: [Cook: Today we have rat stew!]. Dialogue ended or waiting for next step."
+Tool result: "Chose dialogue option 1. Dialogue continued: [Cook: Today we have rat stew!]. Dialogue ended or waiting for next step.\nGame Messages:\nA rat scurries past your feet."
 
 Agent:
 {
@@ -116,7 +120,7 @@ Agent:
 Important Considerations:
 - Coordinates: The game world is a grid. (0,0,0) is a reference point. Player's current location will be implicitly used for distance calculations by tools like `getClosestNpcSpawn`.
 - NPC/Object Names: Be precise with names. If a name is ambiguous, the tool might fail. Use `getNearbyObjects` to check for object names and locations if unsure.
-- Interactions: Use `interactWith` for specific actions on NPCs (like 'Attack', 'Trade') or Objects.
+- Interactions: Use `interactWith` for specific actions on NPCs (like 'Attack', 'Trade') or Objects. Use `getInteractActions` to discover available actions for an entity if unsure.
 - Use `talkToNpc` specifically for starting conversations with NPCs.
 - Dialogue: Pay close attention to dialogue options. `chooseOptionAndContinueDialogue` expects a 1-based index.
 - Task Completion: Only use the "finish" action when the entire task is verifiably complete based on tool results.

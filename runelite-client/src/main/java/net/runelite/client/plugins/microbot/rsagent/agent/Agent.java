@@ -168,6 +168,11 @@ public class Agent {
                         toolResult = success ? "Successfully interacted with '" + targetName + "' using action '" + interactionAction + "'." : "Failed to interact with '" + targetName + "' using action '" + interactionAction + "'. Might not be present or interaction is invalid.";
                         break;
                     }
+                    case "getInteractActions": {
+                        String targetName = parameters.get("name").getAsString();
+                        toolResult = RsAgentTools.getInteractActions(targetName);
+                        break;
+                    }
                     case "talkToNpc": {
                         String npcName = parameters.get("name").getAsString();
                         RsAgentTools.DialogueResult result = RsAgentTools.talkToNpc(npcName);
@@ -332,10 +337,13 @@ public class Agent {
                 log.error("Error during tool execution/parameter parsing: {}", e.getMessage(), e);
             }
 
+            String capturedGameMessages = RsAgentPlugin.getAndClearGameMessages();
+            if (capturedGameMessages != null && !capturedGameMessages.isEmpty()) {
+                toolResult += "\n" + capturedGameMessages;
+            }
+            
             log.info("Tool Result: {}", toolResult);
-
             paramsBuilder.addUserMessage("Tool result: " + toolResult);
-            paramsBuilder.addUserMessage("Game messages" + RsAgentPlugin.getAndClearGameMessages());
 
             if (done) {
                  break;
