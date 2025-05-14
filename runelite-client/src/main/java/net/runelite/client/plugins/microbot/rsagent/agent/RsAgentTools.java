@@ -54,6 +54,7 @@ public class RsAgentTools {
     private static String locationDataError = null;
 
     private static final Gson gson = new Gson();
+    private static final int LEVENSHTEIN_THRESHOLD = 3; // Threshold for "Did you mean?" suggestion
 
     // Helper class for NPC JSON deserialization
     private static class SimpleCoord {
@@ -152,32 +153,128 @@ public class RsAgentTools {
     }
 
     /**
+     * Calculates the Levenshtein distance between two strings.
+     *
+     * @param s1 The first string.
+     * @param s2 The second string.
+     * @return The Levenshtein distance.
+     */
+    private static int calculateLevenshteinDistance(String s1, String s2) {
+        if (s1 == null) s1 = "";
+        if (s2 == null) s2 = "";
+
+        int[][] dp = new int[s1.length() + 1][s2.length() + 1];
+
+        for (int i = 0; i <= s1.length(); i++) {
+            dp[i][0] = i;
+        }
+
+        for (int j = 0; j <= s2.length(); j++) {
+            dp[0][j] = j;
+        }
+
+        for (int i = 1; i <= s1.length(); i++) {
+            for (int j = 1; j <= s2.length(); j++) {
+                int cost = (s1.charAt(i - 1) == s2.charAt(j - 1)) ? 0 : 1;
+                dp[i][j] = Math.min(Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1), dp[i - 1][j - 1] + cost);
+            }
+        }
+        return dp[s1.length()][s2.length()];
+    }
+
+    /**
      * Retrieves the WorldPoint for a named location from the 'locations.json' file.
+     * If an exact match is not found, it suggests the closest match using Levenshtein distance.
      *
      * @param locationName The name of the location.
-     * @return The WorldPoint of the location, or null if not found or an error occurred.
-     * @throws RuntimeException if there was a critical error loading the location data initially.
+     * @return A string indicating the location's coordinates, a suggestion, or an error/not found message.
      */
-    static public WorldPoint getLocationCoords(String locationName) {
+    static public String getLocationCoords(String locationName) {
         loadLocationData();
 
         if (locationDataError != null && (locationCoordsData == null || locationCoordsData.isEmpty())) {
             Microbot.log(Level.ERROR, "Failed to load location data, cannot serve request for: " + locationName + ". Error: " + locationDataError);
-            // Optionally throw an exception if data loading is critical
-            // throw new RuntimeException("Failed to load location data: " + locationDataError);
-            return null; // Or handle as per desired behavior on critical load failure
+            return "Error: Failed to load location data. Cannot find '" + locationName + "'.";
         }
 
-        if (locationCoordsData == null || locationName == null) {
-            Microbot.log(Level.WARN, "Location data map is null or locationName is null.");
-            return null;
+        if (locationCoordsData == null) {
+            Microbot.log(Level.WARN, "Location data map is null.");
+            return "Error: Location data is not available. Cannot find '" + locationName + "'.";
         }
 
-        WorldPoint point = locationCoordsData.get(locationName.toLowerCase());
-        if (point == null) {
-            Microbot.log(Level.INFO, "Location name '" + locationName + "' not found in location data.");
+        if (locationName == null || locationName.trim().isEmpty()) {
+            Microbot.log(Level.WARN, "Location name is null or empty.");
+            return "Error: Location name not provided.";
         }
-        return point;
+
+        String normalizedLocationName = locationName.toLowerCase();
+        WorldPoint point = locationCoordsData.get(normalizedLocationName);
+
+        if (point != null) {
+            return "Location '" + locationName + "' found at (" + point.getX() + ", " + point.getY() + ", " + point.getPlane() + ").";
+        } else {
+            if (locationCoordsData.isEmpty()) {
+                Microbot.log(Level.INFO, "No locations loaded. Cannot find '" + locationName + "'.");
+                return "Location '" + locationName + "' not found. No location data available.";
+            }
+
+            String closestMatch = null;
+            int minDistance = Integer.MAX_VALUE;
+
+            // Find the original casing of keys for user-friendly suggestions
+            Map<String, String> originalCaseMap = new HashMap<>();
+            // Re-load or iterate through original names if needed for proper casing,
+            // for now, we'll use the lowercase keys for matching and suggestion.
+            // A better approach would be to store original names alongside lowercase ones if casing matters for output.
+            // For simplicity, we'll suggest the lowercase key if we don't have original casing easily.
+            // To improve: when loading, store a map of lowercaseName -> originalName.
+            // For now, we'll iterate through the keys of locationCoordsData which are already lowercase.
+
+            for (Map.Entry<String, WorldPoint> entry : locationCoordsData.entrySet()) {
+                // The keys in locationCoordsData are already lowercase due to loadLocationData()
+                String knownLocationKey = entry.getKey();
+                int distance = calculateLevenshteinDistance(normalizedLocationName, knownLocationKey);
+
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestMatch = knownLocationKey; // This will be lowercase
+                }
+            }
+
+            // Attempt to find original casing for the closest match if possible.
+            // This part is tricky without storing original names. We'll find an entry that matches the lowercase closestMatch.
+            // This is a placeholder. Ideally, you'd have a map from lowercase to original case.
+            // For now, we find the first key that, when lowercased, matches `closestMatch`.
+            // This is inefficient and assumes `closestMatch` itself is a key.
+            // A better way: iterate original `LocationDef` list if accessible, or store original names.
+            // Given current structure, `closestMatch` IS the key from `locationCoordsData`.
+            // We need to find the original name that produced this lowercase key.
+            // This requires changing how data is stored or re-parsing.
+            // For now, we'll capitalize the first letter of the lowercase key as a simple heuristic.
+            String bestSuggestionDisplay = closestMatch; // Default to lowercase
+            if (closestMatch != null) {
+                 // This is a placeholder. Ideally, you'd have a map from lowercase to original case.
+                 // For now, we find the first key that, when lowercased, matches `closestMatch`.
+                 // This is inefficient and assumes `closestMatch` itself is a key.
+                 // A better way: iterate original `LocationDef` list if accessible, or store original names.
+                 // Given current structure, `closestMatch` IS the key from `locationCoordsData`.
+                 // We need to find the original name that produced this lowercase key.
+                 // This requires changing how data is stored or re-parsing.
+                 // For now, we'll capitalize the first letter of the lowercase key as a simple heuristic.
+                if (bestSuggestionDisplay != null && !bestSuggestionDisplay.isEmpty()) {
+                    bestSuggestionDisplay = Character.toUpperCase(bestSuggestionDisplay.charAt(0)) + bestSuggestionDisplay.substring(1);
+                }
+            }
+
+
+            if (closestMatch != null && minDistance > 0 && minDistance <= LEVENSHTEIN_THRESHOLD) {
+                Microbot.log(Level.INFO, "Location name '" + locationName + "' not found. Closest match: '" + bestSuggestionDisplay + "' with distance " + minDistance + ".");
+                return "Location '" + locationName + "' not found. Did you mean '" + bestSuggestionDisplay + "'?";
+            } else {
+                Microbot.log(Level.INFO, "Location name '" + locationName + "' not found in location data. No close match found or data empty.");
+                return "Location '" + locationName + "' not found in location data.";
+            }
+        }
     }
 
 

@@ -308,12 +308,10 @@ public class Agent {
                     }
                     case "getLocationCoords": {
                         String locationName = parameters.get("locationName").getAsString();
-                        WorldPoint coords = RsAgentTools.getLocationCoords(locationName);
-                        if (coords != null) {
-                            toolResult = "Location '" + locationName + "' found at (" + coords.getX() + ", " + coords.getY() + ", " + coords.getPlane() + ").";
-                        } else {
-                            toolResult = "Location '" + locationName + "' not found in location data or an error occurred while loading the data.";
-                        }
+                        // RsAgentTools.getLocationCoords is now expected to return a String.
+                        // This string will either be the coordinates, a "Did you mean?" suggestion,
+                        // or a "not found" message, all pre-formatted by RsAgentTools.getLocationCoords.
+                        toolResult = RsAgentTools.getLocationCoords(locationName);
                         break;
                     }
                     case "finish": {
