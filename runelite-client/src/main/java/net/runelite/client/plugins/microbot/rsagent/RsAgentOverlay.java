@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.rsagent;
 
+import net.runelite.client.plugins.fishing.FishingPlugin;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -10,6 +11,7 @@ import javax.inject.Inject;
 import java.awt.*;
 
 public class RsAgentOverlay extends OverlayPanel {
+    private final RsAgentPlugin plugin;
 
     @Inject
     RsAgentOverlay(RsAgentPlugin plugin)
@@ -17,13 +19,15 @@ public class RsAgentOverlay extends OverlayPanel {
         super(plugin);
         setPosition(OverlayPosition.TOP_LEFT);
         setNaughty();
+        this.plugin = plugin;
+
     }
     @Override
     public Dimension render(Graphics2D graphics) {
         try {
             panelComponent.setPreferredSize(new Dimension(200, 300));
             panelComponent.getChildren().add(TitleComponent.builder()
-                    .text("Micro Example V1.0.0")
+                    .text("RSAgent v0.1.0")
                     .color(Color.GREEN)
                     .build());
 
@@ -32,6 +36,17 @@ public class RsAgentOverlay extends OverlayPanel {
             panelComponent.getChildren().add(LineComponent.builder()
                     .left(Microbot.status)
                     .build());
+
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Step: " + plugin.getAgent().currentStep)
+                    .build());
+
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Current action: " + plugin.getAgent().currentAction)
+                    .build());
+
+
+
 
 
         } catch(Exception ex) {
