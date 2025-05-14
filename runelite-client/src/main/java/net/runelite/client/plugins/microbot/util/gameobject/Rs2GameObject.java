@@ -1398,26 +1398,22 @@ public class Rs2GameObject {
 
     @Nullable
     public static <T extends TileObject> ObjectComposition convertToObjectComposition(T object) {
-        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
-                    ObjectComposition comp = Microbot.getClient().getObjectDefinition(object.getId());
-                    if (comp == null) return null;
-                    return comp.getImpostorIds() == null
-                            ? comp
-                            : comp.getImpostor();
-                })
-                .orElse(null);
+        return convertToObjectComposition(object.getId(), false);
     }
 
     @Nullable
     public static ObjectComposition convertToObjectComposition(int objectId) {
-        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
-                    ObjectComposition comp = Microbot.getClient().getObjectDefinition(objectId);
-                    if (comp == null) return null;
-                    return comp.getImpostorIds() == null
-                            ? comp
-                            : comp.getImpostor();
-                })
-                .orElse(null);
+        return convertToObjectCompositionInternal(objectId, false);
+    }
+
+    @Nullable
+    public static <T extends TileObject> ObjectComposition convertToObjectComposition(T object, boolean ignoreImpostor) {
+        return convertToObjectCompositionInternal(object.getId(), ignoreImpostor);
+    }
+
+    @Nullable
+    public static ObjectComposition convertToObjectComposition(int objectId, boolean ignoreImpostor) {
+        return convertToObjectCompositionInternal(objectId, ignoreImpostor);
     }
 
     public static <T> Optional<T> pickClosest(Collection<T> candidates, Function<T, WorldPoint> locFn, WorldPoint anchor) {
@@ -1545,6 +1541,15 @@ public class Rs2GameObject {
     @SuppressWarnings("unchecked")
     private static <T extends TileObject> List<T> fetchGameObjects(Predicate<? super T> predicate) {
         return fetchGameObjects(predicate, Constants.SCENE_SIZE);
+    }
+
+    @Nullable
+    private static ObjectComposition convertToObjectCompositionInternal(int objectId, boolean ignoreImpostor) {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            ObjectComposition comp = Microbot.getClient().getObjectDefinition(objectId);
+            if (comp == null) return null;
+            return (ignoreImpostor || comp.getImpostorIds() == null) ? comp : comp.getImpostor();
+        }).orElse(null);
     }
 
     private static boolean clickObject(TileObject object) {

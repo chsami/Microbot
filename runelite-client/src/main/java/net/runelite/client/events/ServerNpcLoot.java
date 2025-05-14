@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Adam <Adam@sigterm.info>
+ * Copyright (c) 2025, Adam <Adam@sigterm.info>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,23 +22,19 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.util;
+package net.runelite.client.events;
 
-import static net.runelite.client.util.WildcardMatcher.matches;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import org.junit.Test;
+import java.util.Collection;
+import lombok.Value;
+import net.runelite.api.NPCComposition;
+import net.runelite.client.game.ItemStack;
 
-public class WildcardMatcherTest
+/**
+ * NPC loot received from the in-game loot tracker.
+ */
+@Value
+public class ServerNpcLoot
 {
-	@Test
-	public void testMatches()
-	{
-		assertTrue(matches("rune*", "rune pouch"));
-		assertTrue(matches("rune*", "Rune pouch"));
-		assertFalse(matches("Abyssal whip", "Adamant dagger"));
-		assertTrue(matches("rune*", "Runeite Ore"));
-		assertTrue(matches("Abyssal whip", "Abyssal whip"));
-		assertTrue(matches("string $ with special character", "string $ with special character"));
-	}
+	NPCComposition composition;
+	Collection<ItemStack> items;
 }
