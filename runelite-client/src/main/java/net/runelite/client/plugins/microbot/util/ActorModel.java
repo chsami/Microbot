@@ -47,7 +47,7 @@ public class ActorModel implements Actor {
         Optional<Actor> result = Microbot.getClientThread().runOnClientThreadOptional(() -> {
             final Actor interactingActor = actor.getInteracting();
             return interactingActor instanceof net.runelite.api.NPC ? new Rs2NpcModel((NPC) interactingActor) : interactingActor;
-        });
+        }); 
 
         return result.orElse(null);
     }
