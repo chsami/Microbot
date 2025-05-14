@@ -6,19 +6,26 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.events.WidgetLoaded;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.rsagent.agent.Agent;
 import net.runelite.client.plugins.microbot.rsagent.agent.RsAgentTools;
+import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
 
 @PluginDescriptor(
         name = PluginDescriptor.Default + "RSAgent",
@@ -140,6 +147,18 @@ public class RsAgentPlugin extends Plugin {
             log.debug("Game Message Captured: {}", event.getMessage());
             gameMessages.add(event.getMessage());
         }
+    }
+
+    @Subscribe
+    public void onWidgetLoaded(WidgetLoaded widgetLoaded) {
+        if (widgetLoaded.getGroupId() != InterfaceID.MESSAGEBOX) {
+            return;
+        }
+        Microbot.getClientThread().runOnSeperateThread(()->{
+            sleepUntil(Rs2Dialogue::isInDialogue, 300);
+            gameMessages.add(Rs2Dialogue.getDialogueText());
+            return null;
+        });
     }
 
     /**
