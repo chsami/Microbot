@@ -7,6 +7,7 @@ import net.runelite.api.*;
 // Removed unused import: net.runelite.api.TileItem;
 import net.runelite.api.coords.WorldPoint;
 // Removed unused import: net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -628,16 +629,19 @@ public class RsAgentTools {
         Rs2Widget.clickWidget(questName, Optional.of(399), 7, false);
         sleepUntilTrue(()->Rs2Widget.isWidgetVisible(119,5),100,1000);
 
-        var widget = Rs2Widget.getWidget(119,5);
-        if (widget == null) {
+        var questJournal = Rs2Widget.getWidget(InterfaceID.QUESTJOURNAL,5);
+        if (questJournal == null) {
+            questJournal = Rs2Widget.getWidget(InterfaceID.QUESTJOURNAL_OVERVIEW, 6);
+            if (questJournal == null) {
             Microbot.log(Level.ERROR,
                     "Quest log not opened");
             throw new RuntimeException("Quest log not opened");
-        }
+        }}
         List<String> texts =  new ArrayList<>();
 
+        Widget finalQuestJournal = questJournal;
         Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            List<Widget[]> childGroups = Stream.of(widget.getChildren(), widget.getNestedChildren(), widget.getDynamicChildren(), widget.getStaticChildren())
+            List<Widget[]> childGroups = Stream.of(finalQuestJournal.getChildren(), finalQuestJournal.getNestedChildren(), finalQuestJournal.getDynamicChildren(), finalQuestJournal.getStaticChildren())
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
             for (Widget[] childGroup : childGroups) {
