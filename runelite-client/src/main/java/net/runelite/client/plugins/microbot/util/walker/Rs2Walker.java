@@ -1575,6 +1575,11 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                     Rs2Dialogue.clickOption("Okay, teleport to level");
                 }
 
+                if (itemAction.equalsIgnoreCase("teleport") && transport.getDisplayInfo().toLowerCase().contains("revenant cave teleport")) {
+                    Rs2Dialogue.sleepUntilHasDialogueOption("Yes, teleport me now");
+                    Rs2Dialogue.clickOption("Yes, teleport me now");
+                }
+
                 if (itemAction.equalsIgnoreCase("teleport") && transport.getDisplayInfo().toLowerCase().contains("slayer ring")) {
                     Rs2Dialogue.sleepUntilSelectAnOption();
                     Rs2Dialogue.clickOption(destination);
