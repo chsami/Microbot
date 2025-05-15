@@ -1146,6 +1146,7 @@ public class BarrowsScript extends Script {
                         eatFood();
                         outOfSupplies();
                         antiPatternDropVials();
+                        drinkforgottonbrew();
 
                         if(!Rs2Prayer.isPrayerActive(neededprayer)){
                             Microbot.log("Turning on Prayer.");
