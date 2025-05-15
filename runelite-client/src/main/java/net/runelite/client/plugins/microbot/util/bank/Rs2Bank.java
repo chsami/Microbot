@@ -12,15 +12,10 @@ import net.runelite.client.plugins.loottracker.LootTrackerItem;
 import net.runelite.client.plugins.loottracker.LootTrackerRecord;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
-import net.runelite.client.plugins.microbot.shortestpath.Transport;
-import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
-import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
-import net.runelite.client.plugins.microbot.util.depositbox.DepositBoxLocation;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
-import net.runelite.client.plugins.microbot.util.gameobject.Rs2BankID;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
@@ -65,17 +60,7 @@ public class Rs2Bank {
     public static final int BANK_ITEMS_PER_ROW = 8;
     private static final int X_AMOUNT_VARBIT = VarbitID.BANK_REQUESTEDQUANTITY;
     private static final int SELECTED_OPTION_VARBIT = VarbitID.BANK_QUANTITY_TYPE;
-    
-    // BANK actions
-    private static final int BANK_HANDLE_X_SET = 4;
-    private static final int BANK_HANDLE_X_UNSET = 5;
-    private static final int BANK_HANDLE_ALL = 6;
 
-    // INVENTORY actions (e.g., for deposit)
-    private static final int INVENTORY_HANDLE_X_SET = 6;
-    private static final int INVENTORY_HANDLE_X_UNSET = 7;
-    private static final int INVENTORY_HANDLE_ALL = 8;
-    
     private static final int WITHDRAW_AS_NOTE_VARBIT = 3958;
     public static List<Rs2ItemModel> bankItems = new ArrayList<Rs2ItemModel>();
     // Used to synchronize calls
@@ -214,7 +199,7 @@ public class Rs2Bank {
     public static boolean hasItem(String name, boolean exact) {
         return findBankItem(name, exact) != null;
     }
-    
+
     /**
      * Checks if the bank contains any of the specified item names.
      *
@@ -246,7 +231,7 @@ public class Rs2Bank {
     public static boolean hasItem(List<String> names, int amount) {
         return hasItem(names, false, amount);
     }
-    
+
     /**
      * Checks if the bank contains all items from a list of names with a minimum quantity.
      *
@@ -261,7 +246,7 @@ public class Rs2Bank {
             return item != null;
         });
     }
-    
+
     /**
      * Checks if the bank contains any items from a list of names with a minimum quantity.
      *
@@ -510,45 +495,67 @@ public class Rs2Bank {
      * @param safe    will wait for item to appear in inventory before continuing if set to true
      */
     private static boolean handleAmount(Rs2ItemModel rs2Item, int amount, boolean safe) {
-        int inventorySize = Rs2Inventory.size();
+        int selected = Microbot.getVarbitValue(SELECTED_OPTION_VARBIT);
+        int configuredX = Microbot.getVarbitValue(X_AMOUNT_VARBIT);
+        boolean hasX = configuredX > 0;
 
-        boolean isInventory = container == BANK_INVENTORY_ITEM_CONTAINER;
-        int handleXSet = isInventory ? INVENTORY_HANDLE_X_SET : BANK_HANDLE_X_SET;
-        int handleXUnset = isInventory ? INVENTORY_HANDLE_X_UNSET : BANK_HANDLE_X_UNSET;
-        
-        if (!isInventory && Microbot.getVarbitValue(SELECTED_OPTION_VARBIT) == 4) {
-            handleXSet++;
-            handleXUnset++;
-        }
-        
-        if (Microbot.getVarbitValue(SELECTED_OPTION_VARBIT) == 3) {
-            handleXSet = isInventory ? 2 : 1;
-        }
-        
-        if (Microbot.getVarbitValue(X_AMOUNT_VARBIT) == amount) {
-            invokeMenu(handleXSet, rs2Item);
+        boolean isInventory = (container == BANK_INVENTORY_ITEM_CONTAINER);
 
-            if (safe)
-                return sleepUntilTrue(() -> inventorySize != Rs2Inventory.size(), 100, 2500);
+        int xSetOffset = -1;
+        int xPromptOffset = -1;
 
-            return true;
+        if (hasX) {
+            switch (selected) {
+                case 0:
+                case 1:
+                case 2:
+                    xSetOffset = isInventory ? 6 : 4;
+                    xPromptOffset = isInventory ? 7 : 5;
+                    break;
+                case 3:
+                    xSetOffset = isInventory ? 2 : 1;
+                    xPromptOffset = isInventory ? 7 : 5;
+                    break;
+                case 4:
+                    xSetOffset = isInventory ? 6 : 5;
+                    xPromptOffset = isInventory ? 7 : 6;
+                    break;
+                default:
+                    throw new IllegalStateException("Unknown BANK_QUANTITY_TYPE: " + selected);
+            }
         } else {
-            invokeMenu(handleXUnset, rs2Item);
+            switch (selected) {
+                case 0:
+                case 1:
+                case 2:
+                    xPromptOffset = isInventory ? 7 : 4;
+                    break;
+                default:
+                    xPromptOffset = isInventory ? 7 : 5;
+            }
+        }
 
-             boolean foundEnterAmount = sleepUntil(() -> {
-                Widget widget = Rs2Widget.getWidget(162, 42);
-                if (widget == null) return false;
-                return widget.getText().equalsIgnoreCase("Enter amount:");
-            }, 5000);
-            
-            if (!foundEnterAmount) return false;
-            
-            Rs2Random.waitEx(1200, 100);
-            Rs2Keyboard.typeString(String.valueOf(amount));
-            Rs2Keyboard.enter();
-            sleepUntil(() -> Rs2Inventory.hasItem(rs2Item.id), 2500);
+        if (hasX && configuredX == amount) {
+            int before = Rs2Inventory.size();
+            invokeMenu(xSetOffset, rs2Item);
+            if (safe) return sleepUntilTrue(() -> Rs2Inventory.size() != before, 100, 2500);
             return true;
         }
+
+        invokeMenu(xPromptOffset, rs2Item);
+        boolean foundEnterAmount = sleepUntil(() -> {
+            Widget widget = Rs2Widget.getWidget(162, 42);
+            return widget != null && widget.getText().equalsIgnoreCase("Enter amount:");
+        }, 5000);
+        if (!foundEnterAmount) return false;
+
+        Rs2Random.waitEx(1200, 100);
+        Rs2Keyboard.typeString(String.valueOf(amount));
+        Rs2Keyboard.enter();
+
+        if (safe) return sleepUntilTrue(() -> isInventory != Rs2Inventory.hasItem(rs2Item.getId()), 100, 2500);
+
+        return true;
     }
 
     /**
@@ -603,7 +610,7 @@ public class Rs2Bank {
         if (Microbot.getVarbitValue(SELECTED_OPTION_VARBIT) == 4) {
             invokeMenu(2, rs2Item);
         } else {
-            invokeMenu(INVENTORY_HANDLE_ALL, rs2Item);
+            invokeMenu(8, rs2Item);
         }
         return true;
     }
@@ -676,7 +683,7 @@ public class Rs2Bank {
 
         Widget widget = Rs2Widget.findWidget(SpriteID.BANK_DEPOSIT_INVENTORY, null);
         if (widget == null) return;
-        
+
         Rs2Widget.clickWidget(widget);
         Rs2Inventory.waitForInventoryChanges(10000);
     }
@@ -861,7 +868,7 @@ public class Rs2Bank {
         if (rs2Item == null) return;
         if (Rs2Inventory.isFull()) return;
         container = BANK_ITEM_CONTAINER;
-        
+
         invokeMenu(7, rs2Item);
     }
 
@@ -998,7 +1005,7 @@ public class Rs2Bank {
         if (Microbot.getVarbitValue(SELECTED_OPTION_VARBIT) == 4) {
             invokeMenu(1, rs2Item);
         } else {
-            invokeMenu(BANK_HANDLE_ALL, rs2Item);
+            invokeMenu(6, rs2Item);
         }
         return true;
     }
@@ -1237,7 +1244,7 @@ public class Rs2Bank {
         }
         return false;
     }
-    
+
     public static boolean openBank(NPC npc) {
         return openBank(new Rs2NpcModel(npc));
     }
@@ -1513,8 +1520,8 @@ public class Rs2Bank {
 
     /**
      * Distance from the nearest bank location
-     * 
-     * @param distance 
+     *
+     * @param distance
      * @return true if player location is less than distance away from the bank location
      */
     public static boolean isNearBank(int distance) {
@@ -1523,9 +1530,9 @@ public class Rs2Bank {
 
     /**
      * Distance from bank location
-     * 
-     * @param bankLocation 
-     * @param distance 
+     *
+     * @param bankLocation
+     * @param distance
      * @return true if player location is less than distance away from the bank location
      */
     public static boolean isNearBank(BankLocation bankLocation, int distance) {
@@ -1600,7 +1607,7 @@ public class Rs2Bank {
             Microbot.log("Unable to enter bankpin with value " + pin);
             return false;
         }
-        
+
         String[] digitInstructions = {
                 "FIRST digit", "SECOND digit", "THIRD digit", "FOURTH digit"
         };
@@ -1629,7 +1636,7 @@ public class Rs2Bank {
         }
         return false;
     }
-    
+
     public static boolean isBankPinWidgetVisible() {
         return Rs2Widget.isWidgetVisible(ComponentID.BANK_PIN_CONTAINER);
     }
@@ -2317,7 +2324,7 @@ public class Rs2Bank {
     private static boolean isBankPluginEnabled() {
         return Microbot.isPluginEnabled(BankPlugin.class);
     }
-    
+
     private static boolean hasKeyboardBankPinEnabled() {
         return Microbot.getConfigManager().getConfiguration("bank","bankPinKeyboard").equalsIgnoreCase("true");
     }
