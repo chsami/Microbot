@@ -69,7 +69,7 @@ public class BarrowsPlugin extends Plugin {
 
     @Subscribe
     public void onChatMessage(ChatMessage chatMessage) {
-        if (chatMessage.getType() != ChatMessageType.SPAM && chatMessage.getType() != ChatMessageType.GAMEMESSAGE) {
+        if (chatMessage.getType() != ChatMessageType.GAMEMESSAGE) {
             return;
         }
 
