@@ -45,7 +45,7 @@ public class MonkKillerScript extends Script {
     private boolean firstSetting = true;
 
 
-    private final WorldArea monkArea = new WorldArea(3040, 3475, 23, 36, 0); // pseudo
+    private final WorldArea monkArea = new WorldArea(3045, 3485, 14, 12, 0);
     private final WorldPoint monkPoint = new WorldPoint(3052, 3491, 0); // Psuedo
     private Rs2PlayerModel localPlayer;
 
