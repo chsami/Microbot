@@ -123,13 +123,12 @@ public class BarrowsScript extends Script {
                     super.shutdown();
                 }
 
-                suppliesCheck();
+                outOfSupplies();
 
                 if(!inTunnels && shouldBank == false) {
                     for (BarrowsBrothers brother : BarrowsBrothers.values()) {
                         Rs2WorldArea mound = brother.getHumpWP();
                         NeededPrayer = brother.whatToPray;
-                        suppliesCheck();
                         outOfSupplies();
                         if(shouldBank){
                             return;
@@ -265,7 +264,6 @@ public class BarrowsScript extends Script {
                                     activatePrayer();
                                     sleep(500,1500);
                                     eatFood();
-                                    suppliesCheck();
                                     outOfSupplies();
                                     antiPatternDropVials();
                                     drinkforgottonbrew();
@@ -418,7 +416,7 @@ public class BarrowsScript extends Script {
                             } else {
                                 shouldBank = false;
                                 Rs2Inventory.interact("Barrows teleport", "Break");
-                                sleepUntil(() -> Rs2Player.isAnimating(), Rs2Random.between(2000, 4000));
+                                sleepUntil(() -> Rs2Player.getAnimation() == 4069, Rs2Random.between(2000, 4000));
                                 sleepUntil(() -> !Rs2Player.isAnimating(), Rs2Random.between(6000, 10000));
                                 ChestsOpened++;
                                 WhoisTun = "Unknown";
@@ -833,7 +831,6 @@ public class BarrowsScript extends Script {
                         }
                         sleep(750,1500);
                         eatFood();
-                        suppliesCheck();
                         outOfSupplies();
                         antiPatternDropVials();
 
@@ -1039,6 +1036,7 @@ public class BarrowsScript extends Script {
         }
     }
     public void outOfSupplies(){
+        suppliesCheck();
         // Needed because the walker won't teleport to the enclave while in the tunnels or in a barrow
         if(shouldBank && (inTunnels || Rs2Player.getWorldLocation().getPlane() == 3)){
             if(Rs2Equipment.useRingAction(JewelleryLocationEnum.FEROX_ENCLAVE)){
@@ -1145,7 +1143,6 @@ public class BarrowsScript extends Script {
                         sleep(750,1500);
                         drinkPrayerPot();
                         eatFood();
-                        suppliesCheck();
                         outOfSupplies();
                         antiPatternDropVials();
                         drinkforgottonbrew();
@@ -1230,7 +1227,6 @@ public class BarrowsScript extends Script {
                     if(Rs2Inventory.contains("Forgotten brew(4)")) {
                         Rs2Inventory.interact("Forgotten brew(4)", "Drink");
                         sleep(300,1000);
-                        return;
                     }
                 }
             }
@@ -1314,23 +1310,6 @@ public class BarrowsScript extends Script {
         public Rs2WorldArea getHumpWP() { return humpWP; }
         public Rs2PrayerEnum getWhatToPray() { return whatToPray; }
 
-    }
-
-    public enum PoweredStaffs {
-        TRIDENT_OF_THE_SEAS_E ("Trident of the seas (e)", 10);
-
-        private String name;
-
-        private int ChargesLeft;
-
-        PoweredStaffs(String name, int chargesLeft){
-            this.name = name;
-            this.ChargesLeft = chargesLeft;
-        }
-
-        public String getName() { return name; }
-
-        public int getChargesLeft() { return ChargesLeft; }
     }
 
     @Override
