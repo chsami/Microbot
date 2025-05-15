@@ -35,7 +35,7 @@ public class BarrowsScript extends Script {
 
     public static boolean test = false;
     public static boolean inTunnels = false;
-    public String WhoisTun = "Unknown";
+    public static String WhoisTun = "Unknown";
     private String neededRune = "unknown";
     private boolean shouldBank = false;
     private boolean shouldAttackSkeleton = false;
