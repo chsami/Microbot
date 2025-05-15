@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.bee.salamanders;
+package net.runelite.client.plugins.microbot.TaF.salamanders;
 
 import net.runelite.client.config.*;
 

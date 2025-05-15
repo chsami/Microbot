@@ -30,7 +30,7 @@ public interface MossKillerConfig extends Config {
     @ConfigSection(
             name = "Wildy Safing",
             description = "Options specific to the safespot mode in wildy",
-            position = 4,
+            position = 3,
             closedByDefault = true
     )
     String saferSection = "saferSection";
@@ -361,7 +361,7 @@ public interface MossKillerConfig extends Config {
     @ConfigSection(
             name = "Scheduler Configurations",
             description = "Configuration options for scheduled behavior",
-            position = 3, // Ensure this is below all existing positions
+            position = 4, // Ensure this is below all existing positions
             closedByDefault = true
     )
     String schedulerSection = "schedulerSection";

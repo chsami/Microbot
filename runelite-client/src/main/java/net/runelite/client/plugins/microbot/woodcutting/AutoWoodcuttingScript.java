@@ -26,7 +26,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static net.runelite.api.ItemID.*;
+import static net.runelite.api.gameval.ItemID.*;
 
 enum State {
     FIREMAKING,
@@ -190,7 +190,7 @@ public class AutoWoodcuttingScript extends Script {
 
     private void burnLog(AutoWoodcuttingConfig config) {
         WorldPoint fireSpot;
-        if (Rs2Player.isStandingOnGameObject() || cannotLightFire) {
+        if ((Rs2Player.isStandingOnGameObject() || cannotLightFire) && !Rs2Player.isAnimating()) {
             fireSpot = fireSpot(1);
             Rs2Walker.walkFastCanvas(fireSpot);
             cannotLightFire = false;
