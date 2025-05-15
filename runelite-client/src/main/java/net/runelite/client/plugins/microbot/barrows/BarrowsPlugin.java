@@ -77,7 +77,11 @@ public class BarrowsPlugin extends Plugin {
 
         //need to add the chat message we get when we try to attack an NPC with an empty staff.
 
-        if (msg.contains("has run out of charges.")) {
+        if (msg.contains("out of charges")) {
+            BarrowsScript.outOfPoweredStaffCharges = true;
+        }
+
+        if (msg.contains("no charges")) {
             BarrowsScript.outOfPoweredStaffCharges = true;
         }
 
