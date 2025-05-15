@@ -74,7 +74,6 @@ public class BarrowsPlugin extends Plugin {
         }
 
         String msg = chatMessage.getMessage();
-
         //need to add the chat message we get when we try to attack an NPC with an empty staff.
 
         if (msg.contains("out of charges")) {
