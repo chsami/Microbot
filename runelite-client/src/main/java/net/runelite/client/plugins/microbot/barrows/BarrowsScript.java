@@ -265,6 +265,7 @@ public class BarrowsScript extends Script {
                                     activatePrayer();
                                     sleep(500,1500);
                                     eatFood();
+                                    suppliesCheck();
                                     outOfSupplies();
                                     antiPatternDropVials();
                                     drinkforgottonbrew();
@@ -1144,6 +1145,7 @@ public class BarrowsScript extends Script {
                         sleep(750,1500);
                         drinkPrayerPot();
                         eatFood();
+                        suppliesCheck();
                         outOfSupplies();
                         antiPatternDropVials();
                         drinkforgottonbrew();
