@@ -290,7 +290,8 @@ public class WildyKillerScript extends Script {
                                 Rs2Walker.walkTo(TWENTY_WILD);
                             }
                             // If the player has reached the target location (TWENTY_WILD)
-                            if (Rs2Walker.getDistanceBetween(Rs2Player.getWorldLocation(), TWENTY_WILD) <= 5) {
+                            if (Rs2Walker.getDistanceBetween(Rs2Player.getWorldLocation(), TWENTY_WILD) <= 10
+                                    && Rs2Player.getWorldLocation().getY() <= 3679) {
                                 Microbot.log("Reached TWENTY_WILD.");
                                 sleep(1000);
                                 if (isTeleBlocked()) {
@@ -298,7 +299,7 @@ public class WildyKillerScript extends Script {
                                     handleAsynchWalk("Zero Wild");
                                 }
                                 teleportAndStopWalking();
-                            }
+                            } else {Rs2Walker.walkFastCanvas(TWENTY_WILD);}
                             break;
                         case "Zero Wild":
                             if (isTeleBlocked()) {
@@ -762,25 +763,45 @@ public class WildyKillerScript extends Script {
         boolean useMelee = mossKillerPlugin.useMelee();
         boolean useRange = mossKillerPlugin.useRange();
 
+        if (!isInMulti()) {
+            if (Rs2Player.getRealSkillLevel(PRAYER) > 39) {
+                Rs2Prayer.toggle(PROTECT_RANGE, hasPlayerEquippedItem(target, MAPLE_SHORTBOW)
+                        || hasPlayerEquippedItem(target, WILLOW_SHORTBOW)
+                        || hasPlayerEquippedItem(target, OAK_SHORTBOW)
+                        || hasPlayerEquippedItem(target, MAPLE_LONGBOW)
+                        || hasPlayerEquippedItem(target, WILLOW_LONGBOW)
+                        || hasPlayerEquippedItem(target, LONGBOW)
+                        || hasPlayerEquippedItem(target, SHORTBOW)
+                        || hasPlayerEquippedItem(target, OAK_LONGBOW));
+            }
+
+            if (Rs2Player.getRealSkillLevel(PRAYER) > 36) {
+                Rs2Prayer.toggle(PROTECT_MAGIC, hasPlayerEquippedItem(target, STAFF_OF_FIRE)
+                        || hasPlayerEquippedItem(target, STAFF_OF_AIR)
+                        || hasPlayerEquippedItem(target, STAFF_OF_WATER)
+                        || hasPlayerEquippedItem(target, STAFF_OF_EARTH)
+                        || hasPlayerEquippedItem(target, BRYOPHYTAS_STAFF)
+                        || hasPlayerEquippedItem(target, BRYOPHYTAS_STAFF_UNCHARGED));
+            }
+
+            if (Rs2Player.getRealSkillLevel(PRAYER) > 42) {
+                Rs2Prayer.toggle(PROTECT_MELEE, hasPlayerEquippedItem(target, RUNE_SCIMITAR)
+                        || hasPlayerEquippedItem(target, RUNE_WARHAMMER)
+                        || hasPlayerEquippedItem(target, RUNE_2H_SWORD)
+                        || hasPlayerEquippedItem(target, RUNE_BATTLEAXE)
+                        || hasPlayerEquippedItem(target, RUNE_SWORD)
+                        || hasPlayerEquippedItem(target, BARRONITE_MACE)
+                        || hasPlayerEquippedItem(target, RUNE_MACE));
+            }
+        } else if (isInMulti()) {
+            monitorAttacks();
+        }
+
 
         if (target != null
                 && target.getCombatLevel() < 88
                 && target.getOverheadIcon() == null
                 && !MossKillerPlugin.isPlayerSnared()) {
-
-            if (!isInMulti()) {
-                if (Rs2Prayer.isPrayerActive(PROTECT_MAGIC) || Rs2Prayer.isPrayerActive(PROTECT_MELEE)) {
-                Rs2Prayer.toggle(PROTECT_MAGIC, false);
-                Rs2Prayer.toggle(PROTECT_RANGE, false);
-            }}
-
-            if (hasPlayerEquippedItem(target, MAPLE_SHORTBOW)) {
-                if (Rs2Player.getRealSkillLevel(PRAYER) > 39 && Rs2Player.getBoostedSkillLevel(PRAYER) > 0) {
-                    toggle(PROTECT_RANGE, true);
-                }
-            } else if (Rs2Prayer.isPrayerActive(PROTECT_RANGE)) {
-                toggle(PROTECT_RANGE, false);
-            }
 
             if (hasPlayerEquippedItem(target, RUNE_PLATEBODY) && Rs2Inventory.contains(DEATH_RUNE)) {
                 castWindBlast(target);
@@ -814,15 +835,6 @@ public class WildyKillerScript extends Script {
                 && target.getOverheadIcon() == null
                 && MossKillerPlugin.isPlayerSnared()) {
 
-            if (!isInMulti()) {
-                if (Rs2Prayer.isPrayerActive(PROTECT_RANGE) || Rs2Prayer.isPrayerActive(PROTECT_MAGIC) || Rs2Prayer.isPrayerActive(PROTECT_MELEE)) {
-                    if (Rs2Prayer.isPrayerActive(PROTECT_RANGE)) {Rs2Prayer.toggle(PROTECT_RANGE, false);}
-                    if (Rs2Prayer.isPrayerActive(PROTECT_MAGIC)) {Rs2Prayer.toggle(PROTECT_MAGIC, false);}
-                    if (Rs2Prayer.isPrayerActive(PROTECT_MELEE)) {Rs2Prayer.toggle(PROTECT_MELEE, false);}
-            }} if (isInMulti()) {
-                monitorAttacks();
-            }
-
             if (!isTargetPlayerFar(target)) {
                 if (Rs2Inventory.contains(RUNE_SCIMITAR)) {
                     Rs2Inventory.interact(RUNE_SCIMITAR, "Wield");
@@ -845,22 +857,6 @@ public class WildyKillerScript extends Script {
         }
 
         if (target != null && target.getOverheadIcon() != null && target.getCombatLevel() < 88) {
-
-            //if player is a mage and praying, protect from mage
-            if (Rs2Player.getRealSkillLevel(PRAYER) > 36) {
-                Rs2Prayer.toggle(PROTECT_MAGIC, hasPlayerEquippedItem(target, STAFF_OF_FIRE)
-                        || hasPlayerEquippedItem(target, STAFF_OF_AIR)
-                        || hasPlayerEquippedItem(target, STAFF_OF_WATER)
-                        || hasPlayerEquippedItem(target, STAFF_OF_EARTH)
-                        || hasPlayerEquippedItem(target, BRYOPHYTAS_STAFF)
-                        || hasPlayerEquippedItem(target, BRYOPHYTAS_STAFF_UNCHARGED));
-            }
-
-            //prot range if they have range gear
-            if (Rs2Player.getRealSkillLevel(PRAYER) > 39) {
-                Rs2Prayer.toggle(PROTECT_RANGE, hasPlayerEquippedItem(target, MAPLE_SHORTBOW));
-            }
-
 
             if (useMelee && weHaveEnoughEnergyToPersue()) {
                 if (!Rs2Equipment.hasEquipped(RUNE_SCIMITAR)) {
@@ -912,7 +908,7 @@ public class WildyKillerScript extends Script {
                 }
             }
 
-            if (!castWindBlastOverhead(target) && useRange && Rs2Equipment.hasEquipped(ADAMANT_ARROW)) {
+            if (useRange && Rs2Equipment.hasEquipped(ADAMANT_ARROW)) {
                 if (!Rs2Equipment.hasEquipped(MAPLE_SHORTBOW) && Rs2Equipment.hasEquipped(ADAMANT_ARROW)) {
                     Rs2Inventory.interact(MAPLE_SHORTBOW, "Wield");
                     eatingMethod(target);
@@ -933,7 +929,7 @@ public class WildyKillerScript extends Script {
                     sleepUntil(() -> hitsplatApplied || MossKillerPlugin.isPlayerSnared() || healthIsLow());
                     eatingMethod(target);
                 }
-            }
+            } else if (useRange && !Rs2Equipment.hasEquipped(ADAMANT_ARROW)) {castWindBlast(target);}
 
             if (useMage && MossKillerPlugin.isPlayerSnared()) {
                 if (doWeFocusCamera(target)) {
