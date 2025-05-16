@@ -20,6 +20,7 @@ import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import com.openai.models.chat.completions.ChatCompletionMessage;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.rsagent.RsAgentPlugin;
 import net.runelite.client.plugins.microbot.rsagent.util.WikiScraper;
 
@@ -98,6 +99,9 @@ public class Agent {
 
         for (int step = 0; step < 100; step++) {
             currentStep = step;
+            if (!Microbot.isLoggedIn())
+                return;
+
             if (done) {
                 break;
             }

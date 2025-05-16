@@ -144,9 +144,9 @@ public class WikiScraper {
                 .replace("&apos;", "'")
                 .replace("&#160;", " "); // Non-breaking space
 
-        if (textOnly.length() > 4000) { // Limit length to avoid excessive output
-            textOnly = textOnly.substring(0, 3997) + "...";
-            Microbot.log(Level.INFO, "Wiki content for '" + pageTitle + "' was truncated to 4000 characters.");
+        if (textOnly.length() > 10000) { // Limit length to avoid excessive output
+            textOnly = textOnly.substring(0, 10000) + "...";
+            Microbot.log(Level.INFO, "Wiki content for '" + pageTitle + "' was truncated to 10000 characters.");
         }
 
         if (textOnly.trim().isEmpty()) {
