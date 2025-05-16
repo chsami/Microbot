@@ -619,6 +619,17 @@ public class BarrowsScript extends Script {
                             if(!Rs2Bank.isOpen()){
                                 reJfount();
                             }
+                        } else {
+                            if(Rs2Player.getRunEnergy() <= 35){
+                                if(Rs2Bank.isOpen()){
+                                    if(Rs2Bank.closeBank()){
+                                        sleepUntil(()-> Rs2Bank.isOpen(), Rs2Random.between(2000,4000));
+                                    }
+                                }
+                                if(!Rs2Bank.isOpen()){
+                                    reJfount();
+                                }
+                            }
                         }
 
                     }
@@ -853,7 +864,7 @@ public class BarrowsScript extends Script {
                     Rs2Inventory.count(Rs2Inventory.getInventoryFood().get(0).getName()) < 2 || (Rs2Inventory.get("Barrows teleport") != null && Rs2Inventory.get("Barrows teleport").getQuantity() < 1)
                     || Rs2Inventory.count(it->it!=null&&it.getName().contains("Forgotten brew(")) < minForgottenBrews ||
                     Rs2Inventory.count("Prayer potion(4)") + Rs2Inventory.count("Prayer potion(3)") < 1 ||
-                    Rs2Inventory.get(neededRune).getQuantity() <= minRuneAmt) {
+                    Rs2Inventory.get(neededRune).getQuantity() <= minRuneAmt || Rs2Player.getRunEnergy() <= 35) {
                 Microbot.log("We need to bank.");
                 if (Rs2Equipment.get(EquipmentInventorySlot.RING) == null) {
                     Microbot.log("We don't have a ring of dueling equipped.");
@@ -876,6 +887,9 @@ public class BarrowsScript extends Script {
                 if (Rs2Inventory.get(neededRune).getQuantity() <= minRuneAmt) {
                     Microbot.log("We have less than 180 " + neededRune);
                 }
+                if(Rs2Player.getRunEnergy() <= 35){
+                    Microbot.log("We need more run energy ");
+                }
                 shouldBank = true;
             } else {
                 shouldBank = false;
@@ -885,7 +899,8 @@ public class BarrowsScript extends Script {
             if(Rs2Equipment.get(EquipmentInventorySlot.RING)==null || !Rs2Inventory.contains("Spade") ||
                     Rs2Inventory.count(Rs2Inventory.getInventoryFood().get(0).getName())<2 || (Rs2Inventory.get("Barrows teleport") !=null && Rs2Inventory.get("Barrows teleport").getQuantity() < 1)
                     || Rs2Inventory.count(it->it!=null&&it.getName().contains("Forgotten brew(")) < minForgottenBrews ||
-                    Rs2Inventory.count("Prayer potion(4)") + Rs2Inventory.count("Prayer potion(3)") < 1 || outOfPoweredStaffCharges){
+                    Rs2Inventory.count("Prayer potion(4)") + Rs2Inventory.count("Prayer potion(3)") < 1 || outOfPoweredStaffCharges
+                    || Rs2Player.getRunEnergy() <= 35){
                 Microbot.log("We need to bank.");
                 if(Rs2Equipment.get(EquipmentInventorySlot.RING)==null){
                     Microbot.log("We don't have a ring of dueling equipped.");
@@ -907,6 +922,9 @@ public class BarrowsScript extends Script {
                 }
                 if(outOfPoweredStaffCharges){
                     Microbot.log("We're out of staff charges.");
+                }
+                if(Rs2Player.getRunEnergy() <= 35){
+                    Microbot.log("We need more run energy ");
                 }
                 shouldBank = true;
             } else {
