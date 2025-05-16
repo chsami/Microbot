@@ -611,7 +611,14 @@ public class BarrowsScript extends Script {
                         suppliesCheck();
 
                         if(!shouldBank){
-                            reJfount();
+                            if(Rs2Bank.isOpen()){
+                                if(Rs2Bank.closeBank()){
+                                    sleepUntil(()-> Rs2Bank.isOpen(), Rs2Random.between(2000,4000));
+                                }
+                            }
+                            if(!Rs2Bank.isOpen()){
+                                reJfount();
+                            }
                         }
 
                     }
@@ -918,6 +925,7 @@ public class BarrowsScript extends Script {
                 if(currentTile.equals(FirstLoopTile)){
                     Microbot.log("We seem to be stuck. Resetting the walker");
                     stopFutureWalker();
+                    tunnelLoopCount = 0;
                 }
             }
         }
