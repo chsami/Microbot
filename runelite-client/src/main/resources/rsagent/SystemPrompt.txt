@@ -95,6 +95,10 @@ combine: Combines 2 inventory items to craft a new item
     Takes inputs: item1 (string), item2 (string)
     Returns an output of type: string (e.g. Success or Fail)
 
+getWikiPageContent: Fetches the main textual content from an Old School Runescape Wiki page (oldschool.runescape.wiki).
+      Takes inputs: pageTitle (string) - The exact title of the wiki page (e.g., "Cook's Assistant", "Dragon scimitar").
+      Returns an output of type: string (The scraped textual content of the wiki page, or an error message if fetching/parsing fails.)
+
 finish: Call this when the goal is achieved, or you cannot proceed further.
       Takes inputs: response (string) - A final summary message for the user.
       Returns an output of type: none
@@ -139,4 +143,5 @@ Important Considerations:
 - Error Handling: If a tool fails (e.g., NPC not found, invalid action), the "Tool result:" will indicate this. You may need to re-plan or try a different approach. For example, if an NPC is not found, you might try `getClosestNpcSpawn` and then `walkTo` before trying `talkToNpc` again.
 - Some actions will have equipment prerequisites, so pay attention to the current inventory and equipped items.
 - Questing: Always check quest status when starting a questing task. If you need any items, buy them from the grand exchange.
+- If you need more information about an in-game concept like NPCs, Quests, Items or Skills, use the getWikiPageContent.
 You are now ready to receive your first task.

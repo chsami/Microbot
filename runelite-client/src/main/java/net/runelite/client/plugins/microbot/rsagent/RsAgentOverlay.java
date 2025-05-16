@@ -14,14 +14,14 @@ public class RsAgentOverlay extends OverlayPanel {
     private final RsAgentPlugin plugin;
 
     @Inject
-    RsAgentOverlay(RsAgentPlugin plugin)
-    {
+    RsAgentOverlay(RsAgentPlugin plugin) {
         super(plugin);
         setPosition(OverlayPosition.TOP_LEFT);
         setNaughty();
         this.plugin = plugin;
 
     }
+
     @Override
     public Dimension render(Graphics2D graphics) {
         try {
@@ -45,11 +45,12 @@ public class RsAgentOverlay extends OverlayPanel {
                     .left("Current action: " + plugin.getAgent().currentAction)
                     .build());
 
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Thought: "
+                            + (plugin.getAgent().currentThought != null ? plugin.getAgent().currentThought : ""))
+                    .build());
 
-
-
-
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             System.out.println(ex.getMessage());
         }
         return super.render(graphics);

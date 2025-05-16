@@ -21,6 +21,7 @@ import com.openai.models.chat.completions.ChatCompletionMessage;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.rsagent.RsAgentPlugin;
+import net.runelite.client.plugins.microbot.rsagent.util.WikiScraper;
 
 @Slf4j
 public class Agent {
@@ -28,17 +29,19 @@ public class Agent {
 
     private OpenAIClient openAIClient;
     private String apiKey;
+    public int currentStep = 0;
+    public String currentAction;
+    public String currentThought;
+
     public Agent(String apiKey) {
         this.apiKey = apiKey;
         this.openAIClient = OpenAIOkHttpClient.builder()
                 .apiKey(apiKey)
                 .build();
     }
-    public int currentStep = 0;
-    public String currentAction;
 
     /*
-    Sets new api key and rebuild openAI client to use it
+     * Sets new api key and rebuild openAI client to use it
      */
     public void setApiKey(String apiKey) {
         this.apiKey = apiKey;
@@ -47,16 +50,19 @@ public class Agent {
                 .build();
     }
 
-    public void run(String task){
+    public void run(String task) {
         String baseSystemInstruction = loadPrompt();
         StringBuilder augmentedSystemInstruction = new StringBuilder(baseSystemInstruction);
+        this.currentThought = "Initializing and gathering initial player status...";
 
         // Get player inventory
         List<String> inventoryList = RsAgentTools.getPlayerInventory();
         String inventoryInfo;
-        if (inventoryList.isEmpty() || (inventoryList.size() == 1 && inventoryList.get(0).startsWith("Could not access"))) {
+        if (inventoryList.isEmpty()
+                || (inventoryList.size() == 1 && inventoryList.get(0).startsWith("Could not access"))) {
             inventoryInfo = "Could not retrieve inventory contents at the start of the task.";
-            log.warn("Initial getPlayerInventory tool failed: {}", inventoryList.isEmpty() ? "Empty list" : inventoryList.get(0));
+            log.warn("Initial getPlayerInventory tool failed: {}",
+                    inventoryList.isEmpty() ? "Empty list" : inventoryList.get(0));
         } else {
             inventoryInfo = "Current Inventory contents:\n" + String.join("\n", inventoryList);
         }
@@ -64,9 +70,11 @@ public class Agent {
         // Get equipped items
         List<String> equippedList = RsAgentTools.getEquippedItems();
         String equippedInfo;
-        if (equippedList.isEmpty() || (equippedList.size() == 1 && equippedList.get(0).startsWith("Could not access"))) {
+        if (equippedList.isEmpty()
+                || (equippedList.size() == 1 && equippedList.get(0).startsWith("Could not access"))) {
             equippedInfo = "Could not retrieve equipped items at the start of the task.";
-            log.warn("Initial getEquippedItems tool failed: {}", equippedList.isEmpty() ? "Empty list" : equippedList.get(0));
+            log.warn("Initial getEquippedItems tool failed: {}",
+                    equippedList.isEmpty() ? "Empty list" : equippedList.get(0));
         } else {
             equippedInfo = "Current Equipped items:\n" + String.join("\n", equippedList);
         }
@@ -90,15 +98,16 @@ public class Agent {
 
         for (int step = 0; step < 100; step++) {
             currentStep = step;
-            if (done){
+            if (done) {
                 break;
             }
             log.info("Agent Step {}/15", step + 1);
             String toolResult = "No action performed.";
+            this.currentThought = "Thinking about the next action...";
 
             ChatCompletion chatCompletion;
             try {
-                 chatCompletion = openAIClient.chat().completions().create(paramsBuilder.build());
+                chatCompletion = openAIClient.chat().completions().create(paramsBuilder.build());
             } catch (Exception e) {
                 log.error("Error calling OpenAI API: {}", e.getMessage(), e);
                 toolResult = "Error: Failed to get response from LLM.";
@@ -116,14 +125,14 @@ public class Agent {
             ChatCompletionMessage assistantResponse = chatCompletion.choices().get(0).message();
             String fullText = assistantResponse.content().orElse("").trim();
 
-            if (chatCompletion.choices().get(0).finishReason().equals(ChatCompletion.Choice.FinishReason.STOP) && !fullText.endsWith("}}")) {
+            if (chatCompletion.choices().get(0).finishReason().equals(ChatCompletion.Choice.FinishReason.STOP)
+                    && !fullText.endsWith("}}")) {
                 if (fullText.endsWith("}")) {
                     fullText += "}";
-                } else  {
+                } else {
                     fullText += "}}";
                 }
             }
-
 
             log.debug("Agent step {} output:\n{}", step + 1, fullText);
             System.out.println("Agent step " + (step + 1) + " output:\n" + fullText);
@@ -143,13 +152,20 @@ public class Agent {
 
                 JsonObject ob = gson.fromJson(cleanedJson, JsonObject.class);
                 if (ob == null || !ob.has("action") || !ob.has("action_parameters")) {
-                     throw new JsonSyntaxException("Missing 'action' or 'action_parameters' in JSON response. LLM Output: " + fullText);
+                    throw new JsonSyntaxException(
+                            "Missing 'action' or 'action_parameters' in JSON response. LLM Output: " + fullText);
                 }
 
                 String action = ob.get("action").getAsString();
                 JsonObject parameters = ob.getAsJsonObject("action_parameters");
 
                 currentAction = "Executing action " + action + " with parameters: " + parameters;
+                if (ob.has("thought") && ob.get("thought").isJsonPrimitive()
+                        && ob.get("thought").getAsJsonPrimitive().isString()) {
+                    this.currentThought = ob.get("thought").getAsString();
+                } else {
+                    this.currentThought = "Preparing to execute: " + action;
+                }
                 log.info(currentAction);
                 switch (action) {
                     case "walkTo": {
@@ -157,14 +173,19 @@ public class Agent {
                         int y = parameters.get("y").getAsInt();
                         int z = parameters.get("z").getAsInt();
                         boolean success = RsAgentTools.walkTo(x, y, z);
-                        toolResult = success ? "Successfully initiated walk to (" + x + ", " + y + ", " + z + ")." : "Failed to initiate walk to (" + x + ", " + y + ", " + z + ").";
+                        toolResult = success ? "Successfully initiated walk to (" + x + ", " + y + ", " + z + ")."
+                                : "Failed to initiate walk to (" + x + ", " + y + ", " + z + ").";
                         break;
                     }
                     case "interactWith": {
                         String targetName = parameters.get("name").getAsString();
                         String interactionAction = parameters.get("action").getAsString();
                         boolean success = RsAgentTools.interactWith(targetName, interactionAction);
-                        toolResult = success ? "Successfully interacted with '" + targetName + "' using action '" + interactionAction + "'." : "Failed to interact with '" + targetName + "' using action '" + interactionAction + "'. Might not be present or interaction is invalid.";
+                        toolResult = success
+                                ? "Successfully interacted with '" + targetName + "' using action '" + interactionAction
+                                        + "'."
+                                : "Failed to interact with '" + targetName + "' using action '" + interactionAction
+                                        + "'. Might not be present or interaction is invalid.";
                         break;
                     }
                     case "getInteractActions": {
@@ -186,14 +207,16 @@ public class Agent {
                                 toolResult += "Dialogue ended or waiting for next step.";
                             }
                         } else {
-                            toolResult = "Failed to talk to NPC '" + npcName + "' (NPC not found, interaction failed, or dialogue did not start).";
+                            toolResult = "Failed to talk to NPC '" + npcName
+                                    + "' (NPC not found, interaction failed, or dialogue did not start).";
                         }
                         break;
                     }
                     case "pickupGroundItem": {
                         String itemName = parameters.get("name").getAsString();
                         boolean success = RsAgentTools.pickupGroundItem(itemName);
-                        toolResult = success ? "Successfully attempted to pick up item: " + itemName + "." : "Failed to find or pick up item: " + itemName + ".";
+                        toolResult = success ? "Successfully attempted to pick up item: " + itemName + "."
+                                : "Failed to find or pick up item: " + itemName + ".";
                         break;
                     }
                     case "chooseOptionAndContinueDialogue": {
@@ -202,7 +225,8 @@ public class Agent {
                         if (result != null) {
                             toolResult = "Chose dialogue option " + optionIndex + ". ";
                             if (!result.dialogueTexts.isEmpty()) {
-                                toolResult += "Dialogue continued: [" + String.join(" | ", result.dialogueTexts) + "]. ";
+                                toolResult += "Dialogue continued: [" + String.join(" | ", result.dialogueTexts)
+                                        + "]. ";
                             }
                             if (result.hasOptions()) {
                                 toolResult += "New options: [" + String.join(" | ", result.options) + "]";
@@ -210,7 +234,8 @@ public class Agent {
                                 toolResult += "Dialogue ended or waiting for next step.";
                             }
                         } else {
-                            toolResult = "Failed to choose dialogue option " + optionIndex + " (maybe not in dialogue or invalid option).";
+                            toolResult = "Failed to choose dialogue option " + optionIndex
+                                    + " (maybe not in dialogue or invalid option).";
                         }
                         break;
                     }
@@ -218,7 +243,7 @@ public class Agent {
                         RsAgentTools.DialogueResult result = RsAgentTools.handleDialogue();
                         if (result != null) {
                             toolResult = "Handling dialogue. ";
-                             if (!result.dialogueTexts.isEmpty()) {
+                            if (!result.dialogueTexts.isEmpty()) {
                                 toolResult += "Dialogue text: [" + String.join(" | ", result.dialogueTexts) + "]. ";
                             }
                             if (result.hasOptions()) {
@@ -242,7 +267,8 @@ public class Agent {
                         try {
                             WorldPoint closestSpawn = RsAgentTools.getClosestNpcSpawnLocation(npcName);
                             if (closestSpawn != null) {
-                                toolResult = "Closest spawn for '" + npcName + "' is at (" + closestSpawn.getX() + ", " + closestSpawn.getY() + ", " + closestSpawn.getPlane() + ").";
+                                toolResult = "Closest spawn for '" + npcName + "' is at (" + closestSpawn.getX() + ", "
+                                        + closestSpawn.getY() + ", " + closestSpawn.getPlane() + ").";
                             } else {
                                 toolResult = "No spawn location found for NPC '" + npcName + "' or NPC not in data.";
                             }
@@ -254,9 +280,11 @@ public class Agent {
                     }
                     case "getPlayerInventory": {
                         List<String> inventoryListResult = RsAgentTools.getPlayerInventory();
-                        if (inventoryListResult.isEmpty() || (inventoryListResult.size() == 1 && inventoryListResult.get(0).startsWith("Could not access"))) {
+                        if (inventoryListResult.isEmpty() || (inventoryListResult.size() == 1
+                                && inventoryListResult.get(0).startsWith("Could not access"))) {
                             toolResult = "Error: Could not retrieve inventory contents.";
-                            log.warn("getPlayerInventory tool failed: {}", inventoryListResult.isEmpty() ? "Empty list" : inventoryListResult.get(0));
+                            log.warn("getPlayerInventory tool failed: {}",
+                                    inventoryListResult.isEmpty() ? "Empty list" : inventoryListResult.get(0));
                         } else {
                             toolResult = "Inventory contents:\n" + String.join("\n", inventoryListResult);
                         }
@@ -265,14 +293,18 @@ public class Agent {
                     case "equipItem": {
                         String itemName = parameters.get("itemName").getAsString();
                         boolean success = RsAgentTools.equipItem(itemName);
-                        toolResult = success ? "Successfully equipped '" + itemName + "'." : "Failed to equip '" + itemName + "'. Item might not be in inventory or is not equippable.";
+                        toolResult = success ? "Successfully equipped '" + itemName + "'."
+                                : "Failed to equip '" + itemName
+                                        + "'. Item might not be in inventory or is not equippable.";
                         break;
                     }
                     case "getEquippedItems": {
                         List<String> equippedListResult = RsAgentTools.getEquippedItems();
-                        if (equippedListResult.isEmpty() || (equippedListResult.size() == 1 && equippedListResult.get(0).startsWith("Could not access"))) {
+                        if (equippedListResult.isEmpty() || (equippedListResult.size() == 1
+                                && equippedListResult.get(0).startsWith("Could not access"))) {
                             toolResult = "Error: Could not retrieve equipped items.";
-                            log.warn("getEquippedItems tool failed: {}", equippedListResult.isEmpty() ? "Empty list" : equippedListResult.get(0));
+                            log.warn("getEquippedItems tool failed: {}",
+                                    equippedListResult.isEmpty() ? "Empty list" : equippedListResult.get(0));
                         } else {
                             toolResult = "Equipped items:\n" + String.join("\n", equippedListResult);
                         }
@@ -310,24 +342,34 @@ public class Agent {
                         String locationName = parameters.get("locationName").getAsString();
                         // RsAgentTools.getLocationCoords is now expected to return a String.
                         // This string will either be the coordinates, a "Did you mean?" suggestion,
-                        // or a "not found" message, all pre-formatted by RsAgentTools.getLocationCoords.
+                        // or a "not found" message, all pre-formatted by
+                        // RsAgentTools.getLocationCoords.
                         toolResult = RsAgentTools.getLocationCoords(locationName);
                         break;
                     }
                     case "buyInGrandExchange": {
-                        toolResult = RsAgentTools.buyInGrandExchange(parameters.get("itemName").getAsString(), parameters.get("quantity").getAsInt());
+                        toolResult = RsAgentTools.buyInGrandExchange(parameters.get("itemName").getAsString(),
+                                parameters.get("quantity").getAsInt());
                         break;
                     }
                     case "combine": {
-                        toolResult= RsAgentTools.combine(parameters.get("item1").getAsString(), parameters.get("item2").getAsString());
+                        toolResult = RsAgentTools.combine(parameters.get("item1").getAsString(),
+                                parameters.get("item2").getAsString());
+                        break;
+                    }
+                    case "getWikiPageContent": {
+                        String pageTitle = parameters.get("pageTitle").getAsString();
+                        toolResult = WikiScraper.fetchWikiPageContent(pageTitle);
                         break;
                     }
                     case "finish": {
                         String finishResponse = "Task finished.";
-                        if (parameters.has("response") && parameters.get("response").isJsonPrimitive() && parameters.get("response").getAsJsonPrimitive().isString()) {
+                        if (parameters.has("response") && parameters.get("response").isJsonPrimitive()
+                                && parameters.get("response").getAsJsonPrimitive().isString()) {
                             finishResponse = parameters.get("response").getAsString();
                         }
                         toolResult = "Finish action acknowledged by agent: " + finishResponse;
+                        this.currentThought = "Task finished: " + finishResponse;
                         log.info("Finish action processed: {}", finishResponse);
                         done = true;
                         break;
@@ -350,14 +392,15 @@ public class Agent {
             if (capturedGameMessages != null && !capturedGameMessages.isEmpty()) {
                 toolResult += "\n" + capturedGameMessages;
             }
-            
+
             log.info("Tool Result: {}", toolResult);
             paramsBuilder.addUserMessage("Tool result: " + toolResult);
 
             if (done) {
-                 break;
+                break;
             }
         }
+        this.currentThought = "Agent run finished.";
         log.info("Agent run finished.");
     }
 
@@ -367,7 +410,7 @@ public class Agent {
                 Agent.class.getClassLoader().getResourceAsStream(promptPath),
                 StandardCharsets.UTF_8))) {
             if (reader == null) {
-                 throw new RuntimeException("Failed to load system prompt: Resource not found at " + promptPath);
+                throw new RuntimeException("Failed to load system prompt: Resource not found at " + promptPath);
             }
             return reader.lines().collect(Collectors.joining("\n"));
         } catch (Exception e) {

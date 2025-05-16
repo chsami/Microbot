@@ -42,7 +42,6 @@ import java.util.stream.Stream;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment; // Added import for Rs2Equipment
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject; // Added import for Rs2GameObject
 
-
 import static net.runelite.client.plugins.microbot.util.Global.*;
 
 public class RsAgentTools {
@@ -86,7 +85,6 @@ public class RsAgentTools {
         List<LocationDef> locations;
     }
 
-
     private static synchronized void loadNpcSpawnData() {
         if (npcSpawnDataLoaded) {
             return;
@@ -102,7 +100,8 @@ public class RsAgentTools {
                 return;
             }
             InputStreamReader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
-            Type type = new TypeToken<Map<String, List<SimpleCoord>>>() {}.getType();
+            Type type = new TypeToken<Map<String, List<SimpleCoord>>>() {
+            }.getType();
             npcSpawnData = gson.fromJson(reader, type);
             if (npcSpawnData == null) {
                 npcSpawnData = new HashMap<>();
@@ -139,7 +138,8 @@ public class RsAgentTools {
                     if (locDef.name != null && !locDef.name.trim().isEmpty() && locDef.toWorldPoint() != null) {
                         locationCoordsData.put(locDef.name.toLowerCase(), locDef.toWorldPoint());
                     } else {
-                        Microbot.log(Level.WARN, "Invalid location entry in " + path + ": " + (locDef.name == null ? "null name" : locDef.name));
+                        Microbot.log(Level.WARN, "Invalid location entry in " + path + ": "
+                                + (locDef.name == null ? "null name" : locDef.name));
                     }
                 }
             } else {
@@ -162,8 +162,10 @@ public class RsAgentTools {
      * @return The Levenshtein distance.
      */
     private static int calculateLevenshteinDistance(String s1, String s2) {
-        if (s1 == null) s1 = "";
-        if (s2 == null) s2 = "";
+        if (s1 == null)
+            s1 = "";
+        if (s2 == null)
+            s2 = "";
 
         int[][] dp = new int[s1.length() + 1][s2.length() + 1];
 
@@ -186,16 +188,19 @@ public class RsAgentTools {
 
     /**
      * Retrieves the WorldPoint for a named location from the 'locations.json' file.
-     * If an exact match is not found, it suggests the closest match using Levenshtein distance.
+     * If an exact match is not found, it suggests the closest match using
+     * Levenshtein distance.
      *
      * @param locationName The name of the location.
-     * @return A string indicating the location's coordinates, a suggestion, or an error/not found message.
+     * @return A string indicating the location's coordinates, a suggestion, or an
+     *         error/not found message.
      */
     static public String getLocationCoords(String locationName) {
         loadLocationData();
 
         if (locationDataError != null && (locationCoordsData == null || locationCoordsData.isEmpty())) {
-            Microbot.log(Level.ERROR, "Failed to load location data, cannot serve request for: " + locationName + ". Error: " + locationDataError);
+            Microbot.log(Level.ERROR, "Failed to load location data, cannot serve request for: " + locationName
+                    + ". Error: " + locationDataError);
             return "Error: Failed to load location data. Cannot find '" + locationName + "'.";
         }
 
@@ -213,7 +218,8 @@ public class RsAgentTools {
         WorldPoint point = locationCoordsData.get(normalizedLocationName);
 
         if (point != null) {
-            return "Location '" + locationName + "' found at (" + point.getX() + ", " + point.getY() + ", " + point.getPlane() + ").";
+            return "Location '" + locationName + "' found at (" + point.getX() + ", " + point.getY() + ", "
+                    + point.getPlane() + ").";
         } else {
             if (locationCoordsData.isEmpty()) {
                 Microbot.log(Level.INFO, "No locations loaded. Cannot find '" + locationName + "'.");
@@ -227,13 +233,17 @@ public class RsAgentTools {
             Map<String, String> originalCaseMap = new HashMap<>();
             // Re-load or iterate through original names if needed for proper casing,
             // for now, we'll use the lowercase keys for matching and suggestion.
-            // A better approach would be to store original names alongside lowercase ones if casing matters for output.
-            // For simplicity, we'll suggest the lowercase key if we don't have original casing easily.
+            // A better approach would be to store original names alongside lowercase ones
+            // if casing matters for output.
+            // For simplicity, we'll suggest the lowercase key if we don't have original
+            // casing easily.
             // To improve: when loading, store a map of lowercaseName -> originalName.
-            // For now, we'll iterate through the keys of locationCoordsData which are already lowercase.
+            // For now, we'll iterate through the keys of locationCoordsData which are
+            // already lowercase.
 
             for (Map.Entry<String, WorldPoint> entry : locationCoordsData.entrySet()) {
-                // The keys in locationCoordsData are already lowercase due to loadLocationData()
+                // The keys in locationCoordsData are already lowercase due to
+                // loadLocationData()
                 String knownLocationKey = entry.getKey();
                 int distance = calculateLevenshteinDistance(normalizedLocationName, knownLocationKey);
 
@@ -244,48 +254,59 @@ public class RsAgentTools {
             }
 
             // Attempt to find original casing for the closest match if possible.
-            // This part is tricky without storing original names. We'll find an entry that matches the lowercase closestMatch.
-            // This is a placeholder. Ideally, you'd have a map from lowercase to original case.
+            // This part is tricky without storing original names. We'll find an entry that
+            // matches the lowercase closestMatch.
+            // This is a placeholder. Ideally, you'd have a map from lowercase to original
+            // case.
             // For now, we find the first key that, when lowercased, matches `closestMatch`.
             // This is inefficient and assumes `closestMatch` itself is a key.
-            // A better way: iterate original `LocationDef` list if accessible, or store original names.
+            // A better way: iterate original `LocationDef` list if accessible, or store
+            // original names.
             // Given current structure, `closestMatch` IS the key from `locationCoordsData`.
             // We need to find the original name that produced this lowercase key.
             // This requires changing how data is stored or re-parsing.
-            // For now, we'll capitalize the first letter of the lowercase key as a simple heuristic.
+            // For now, we'll capitalize the first letter of the lowercase key as a simple
+            // heuristic.
             String bestSuggestionDisplay = closestMatch; // Default to lowercase
             if (closestMatch != null) {
-                 // This is a placeholder. Ideally, you'd have a map from lowercase to original case.
-                 // For now, we find the first key that, when lowercased, matches `closestMatch`.
-                 // This is inefficient and assumes `closestMatch` itself is a key.
-                 // A better way: iterate original `LocationDef` list if accessible, or store original names.
-                 // Given current structure, `closestMatch` IS the key from `locationCoordsData`.
-                 // We need to find the original name that produced this lowercase key.
-                 // This requires changing how data is stored or re-parsing.
-                 // For now, we'll capitalize the first letter of the lowercase key as a simple heuristic.
+                // This is a placeholder. Ideally, you'd have a map from lowercase to original
+                // case.
+                // For now, we find the first key that, when lowercased, matches `closestMatch`.
+                // This is inefficient and assumes `closestMatch` itself is a key.
+                // A better way: iterate original `LocationDef` list if accessible, or store
+                // original names.
+                // Given current structure, `closestMatch` IS the key from `locationCoordsData`.
+                // We need to find the original name that produced this lowercase key.
+                // This requires changing how data is stored or re-parsing.
+                // For now, we'll capitalize the first letter of the lowercase key as a simple
+                // heuristic.
                 if (bestSuggestionDisplay != null && !bestSuggestionDisplay.isEmpty()) {
-                    bestSuggestionDisplay = Character.toUpperCase(bestSuggestionDisplay.charAt(0)) + bestSuggestionDisplay.substring(1);
+                    bestSuggestionDisplay = Character.toUpperCase(bestSuggestionDisplay.charAt(0))
+                            + bestSuggestionDisplay.substring(1);
                 }
             }
 
-
             if (closestMatch != null && minDistance > 0 && minDistance <= LEVENSHTEIN_THRESHOLD) {
-                Microbot.log(Level.INFO, "Location name '" + locationName + "' not found. Closest match: '" + bestSuggestionDisplay + "' with distance " + minDistance + ".");
+                Microbot.log(Level.INFO, "Location name '" + locationName + "' not found. Closest match: '"
+                        + bestSuggestionDisplay + "' with distance " + minDistance + ".");
                 return "Location '" + locationName + "' not found. Did you mean '" + bestSuggestionDisplay + "'?";
             } else {
-                Microbot.log(Level.INFO, "Location name '" + locationName + "' not found in location data. No close match found or data empty.");
+                Microbot.log(Level.INFO, "Location name '" + locationName
+                        + "' not found in location data. No close match found or data empty.");
                 return "Location '" + locationName + "' not found in location data.";
             }
         }
     }
 
-
     /**
-     * Finds the closest spawn location for a given NPC name from the npc_locations.json file.
+     * Finds the closest spawn location for a given NPC name from the
+     * npc_locations.json file.
      *
      * @param npcName The name of the NPC.
-     * @return The WorldPoint of the closest spawn, or null if not found or an error occurred.
-     * @throws RuntimeException if there was an error loading the spawn data initially.
+     * @return The WorldPoint of the closest spawn, or null if not found or an error
+     *         occurred.
+     * @throws RuntimeException if there was an error loading the spawn data
+     *                          initially.
      */
     static public WorldPoint getClosestNpcSpawnLocation(String npcName) {
         loadNpcSpawnData();
@@ -294,24 +315,24 @@ public class RsAgentTools {
             throw new RuntimeException("Failed to load NPC spawn data: " + npcSpawnDataError);
         }
         if (npcSpawnData == null || npcName == null || !npcSpawnData.containsKey(npcName)) {
-            Microbot.log(Level.INFO,"NPC name '" + npcName + "' not found in spawn data or NPC name is null.");
+            Microbot.log(Level.INFO, "NPC name '" + npcName + "' not found in spawn data or NPC name is null.");
             return null;
         }
 
         List<SimpleCoord> spawns = npcSpawnData.get(npcName);
         if (spawns == null || spawns.isEmpty()) {
-            Microbot.log(Level.INFO,"No spawn locations listed for NPC '" + npcName + "'.");
+            Microbot.log(Level.INFO, "No spawn locations listed for NPC '" + npcName + "'.");
             return null;
         }
 
         Player player = Microbot.getClient().getLocalPlayer();
         if (player == null) {
-            Microbot.log(Level.WARN,"Player is null, cannot determine closest NPC spawn.");
+            Microbot.log(Level.WARN, "Player is null, cannot determine closest NPC spawn.");
             return null;
         }
         WorldPoint playerLocation = player.getWorldLocation();
         if (playerLocation == null) {
-            Microbot.log(Level.WARN,"Player location is null, cannot determine closest NPC spawn.");
+            Microbot.log(Level.WARN, "Player location is null, cannot determine closest NPC spawn.");
             return null;
         }
 
@@ -329,7 +350,6 @@ public class RsAgentTools {
         return closestPoint;
     }
 
-
     /**
      * Walks to the specified world coordinates.
      *
@@ -338,7 +358,7 @@ public class RsAgentTools {
      * @param z The plane (z-coordinate).
      * @return true if the walk action was initiated, false otherwise.
      */
-    static public boolean walkTo(int x, int y, int z){
+    static public boolean walkTo(int x, int y, int z) {
         return Rs2Walker.walkTo(x, y, z);
     }
 
@@ -348,7 +368,7 @@ public class RsAgentTools {
      *
      * @param name The name of the city.
      */
-    static public void goToCity(String name){
+    static public void goToCity(String name) {
         // Implementation needed
     }
 
@@ -359,20 +379,22 @@ public class RsAgentTools {
      * @param regionId The ID of the region.
      * @return A WorldPoint within the specified region.
      */
-    static public WorldPoint getPointFromRegionId(int regionId)
-    {
-        return WorldPoint.fromRegion(regionId,1 ,1,0);
+    static public WorldPoint getPointFromRegionId(int regionId) {
+        return WorldPoint.fromRegion(regionId, 1, 1, 0);
     }
 
     /**
-     * Finds the WorldPoint from an array that is closest to the player's current location.
+     * Finds the WorldPoint from an array that is closest to the player's current
+     * location.
      *
      * @param points An array of WorldPoints to check.
-     * @return The WorldPoint from the array closest to the player, or null if the input array is empty.
+     * @return The WorldPoint from the array closest to the player, or null if the
+     *         input array is empty.
      */
-    static public WorldPoint getClosestPointFromPlayer(WorldPoint[] points){
+    static public WorldPoint getClosestPointFromPlayer(WorldPoint[] points) {
         Player player = Microbot.getClient().getLocalPlayer();
-        if (player == null) return null;
+        if (player == null)
+            return null;
         WorldPoint playerPoint = player.getWorldLocation();
         WorldPoint closestPoint = null;
         int closestDistance = Integer.MAX_VALUE;
@@ -393,10 +415,11 @@ public class RsAgentTools {
      * Attempts to follow another player specified by their in-game name.
      *
      * @param name The name of the player to follow.
-     * @return true if the follow action was initiated, false if the player was not found or couldn't be followed.
+     * @return true if the follow action was initiated, false if the player was not
+     *         found or couldn't be followed.
      */
-    static public boolean followPlayerByName(String name){
-        var player  = Rs2Player.getPlayer(name);
+    static public boolean followPlayerByName(String name) {
+        var player = Rs2Player.getPlayer(name);
         return Rs2Player.follow(player);
     }
 
@@ -404,17 +427,17 @@ public class RsAgentTools {
      * Finds an NPC or Object by name and interacts with the specified action.
      * Does not handle dialogue.
      *
-     * @param name The name of the NPC or Object to interact with.
+     * @param name   The name of the NPC or Object to interact with.
      * @param action The action to perform (e.g., "Trade", "Attack").
      * @return true if the interaction was successful, false otherwise.
      */
     static public boolean interactWith(String name, String action) {
         NPC npc = Rs2Npc.getNpc(name);
         if (npc != null) {
-            Rs2Walker.walkTo(npc.getWorldLocation(),1);
+            Rs2Walker.walkTo(npc.getWorldLocation(), 1);
             boolean interacted = Rs2Npc.interact(new Rs2NpcModel(npc), action);
             Rs2Player.waitForAnimation();
-            sleep(500,1000);
+            sleep(500, 1000);
             if (interacted) {
                 Microbot.log(Level.INFO, "Interacted with NPC: " + name + " using action: " + action);
                 return true;
@@ -427,14 +450,15 @@ public class RsAgentTools {
 
         GameObject object = Rs2GameObject.getGameObject(obj -> {
             var compName = Rs2GameObject.convertToObjectComposition(obj).getName();
-            if (compName == null) return false;
+            if (compName == null)
+                return false;
             return compName.equalsIgnoreCase(name);
         }, 20);
         assert object != null;
-        Rs2Walker.walkTo(object.getWorldLocation(),1);
+        Rs2Walker.walkTo(object.getWorldLocation(), 1);
         var success = Rs2GameObject.interact(object, action);
         Rs2Player.waitForAnimation();
-        sleep(500,1000);
+        sleep(500, 1000);
 
         return success;
     }
@@ -444,26 +468,30 @@ public class RsAgentTools {
      * This method checks for NPCs first, then for GameObjects.
      *
      * @param name The name of the NPC or Object.
-     * @return A comma-separated string of available actions (e.g., "Talk-to,Attack,Trade" or "Open,Examine").
-     *         Returns "No actions available" if the entity is not found or has no actions.
+     * @return A comma-separated string of available actions (e.g.,
+     *         "Talk-to,Attack,Trade" or "Open,Examine").
+     *         Returns "No actions available" if the entity is not found or has no
+     *         actions.
      */
-    static public String getInteractActions(String name){
+    static public String getInteractActions(String name) {
         var npc = Rs2Npc.getNpc(name);
         List<String> actions = new ArrayList<>();
-        if (npc != null){
-            actions = Arrays.stream(npc.getComposition().getActions()).filter(Objects::nonNull).collect(Collectors.toList());
-        }else{
+        if (npc != null) {
+            actions = Arrays.stream(npc.getComposition().getActions()).filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+        } else {
             var object = Rs2GameObject.getGameObject(name);
-            if (object != null){
-                try{
-                    actions = Arrays.stream(Rs2GameObject.convertToObjectComposition(object).getActions()).filter(Objects::nonNull).collect(Collectors.toList());
-                }catch (Exception e){
+            if (object != null) {
+                try {
+                    actions = Arrays.stream(Rs2GameObject.convertToObjectComposition(object).getActions())
+                            .filter(Objects::nonNull).collect(Collectors.toList());
+                } catch (Exception e) {
                     Microbot.log(Level.WARN, "Failed to convert object to composition: " + name);
                 }
             }
         }
 
-        if (actions.isEmpty()){
+        if (actions.isEmpty()) {
             return "No actions available";
         }
 
@@ -471,10 +499,12 @@ public class RsAgentTools {
     }
 
     /**
-     * Finds an NPC by name, interacts with "Talk-to", and handles the initial dialogue.
+     * Finds an NPC by name, interacts with "Talk-to", and handles the initial
+     * dialogue.
      *
      * @param name The name of the NPC to talk to.
-     * @return A DialogueResult containing the initial conversation, or null if the NPC wasn't found or dialogue didn't start.
+     * @return A DialogueResult containing the initial conversation, or null if the
+     *         NPC wasn't found or dialogue didn't start.
      */
     static public DialogueResult talkToNpc(String name) {
         NPC npc = Rs2Npc.getNpc(name);
@@ -483,7 +513,7 @@ public class RsAgentTools {
         }
         boolean walkedTo = Rs2Walker.walkTo(npc.getWorldLocation(), 1);
         if (!walkedTo) {
-            throw  new RuntimeException("Cannot walk to NPC " + name);
+            throw new RuntimeException("Cannot walk to NPC " + name);
         }
         boolean interacted = Rs2Npc.interact(new Rs2NpcModel(npc), "Talk-to");
         if (!interacted) {
@@ -493,19 +523,20 @@ public class RsAgentTools {
         // Wait for dialogue to appear
         boolean dialogueStarted = sleepUntil(Rs2Dialogue::isInDialogue, 5000); // Wait up to 5 seconds
         if (!dialogueStarted) {
-            throw  new RuntimeException("Couldn't start dialogue");
+            throw new RuntimeException("Couldn't start dialogue");
         }
 
         // Handle the dialogue that appears
         return handleDialogue();
     }
 
-
     /**
-     * Finds an item on the ground by name within a default radius and interacts with it using the "Take" action.
+     * Finds an item on the ground by name within a default radius and interacts
+     * with it using the "Take" action.
      *
      * @param name The name of the item to pick up.
-     * @return true if the item was found and the "Take" action was initiated, false otherwise.
+     * @return true if the item was found and the "Take" action was initiated, false
+     *         otherwise.
      */
     static public boolean pickupGroundItem(String name) {
         return Rs2GroundItem.loot(name, 255); // 255 tile radius
@@ -531,21 +562,26 @@ public class RsAgentTools {
 
     /**
      * Chooses the option passed in by index 1-n and then continues dialogue
+     * 
      * @param option Index of option to choose
      * @return A DialogueResult containing conversation
      */
-    static public DialogueResult chooseOptionAndContinueDialogue(int option){
+    static public DialogueResult chooseOptionAndContinueDialogue(int option) {
         Rs2Dialogue.keyPressForDialogueOption(option);
-        sleep(800,1200);
+        sleep(800, 1200);
         return handleDialogue();
     }
 
     /**
-     * Handles the flow of dialogue by clicking "continue" until options are presented or the dialogue ends.
-     * Captures the text of each dialogue screen that is continued through, prefixed by the speaker's name.
+     * Handles the flow of dialogue by clicking "continue" until options are
+     * presented or the dialogue ends.
+     * Captures the text of each dialogue screen that is continued through, prefixed
+     * by the speaker's name.
      *
-     * @return A DialogueResult containing the list of captured dialogue texts (prefixed) and the list of options if presented,
-     *         or an empty list for options if the dialogue ended without choices. Returns null if not in dialogue.
+     * @return A DialogueResult containing the list of captured dialogue texts
+     *         (prefixed) and the list of options if presented,
+     *         or an empty list for options if the dialogue ended without choices.
+     *         Returns null if not in dialogue.
      */
     static public DialogueResult handleDialogue() {
         if (!Rs2Dialogue.isInDialogue()) {
@@ -577,13 +613,14 @@ public class RsAgentTools {
                 dialogueTexts.add(prefixedText);
                 System.out.println(prefixedText);
             } else {
-                 System.out.println("Could not capture dialogue text this iteration.");
+                System.out.println("Could not capture dialogue text this iteration.");
             }
-
 
             Rs2Dialogue.clickContinue();
             sleep(500, 1000);
-            sleepUntil(() -> !Rs2Dialogue.hasContinue() || Rs2Dialogue.hasSelectAnOption() || !Rs2Dialogue.isInDialogue(), 2000);
+            sleepUntil(
+                    () -> !Rs2Dialogue.hasContinue() || Rs2Dialogue.hasSelectAnOption() || !Rs2Dialogue.isInDialogue(),
+                    2000);
         }
 
         if (Rs2Dialogue.hasSelectAnOption()) {
@@ -598,7 +635,7 @@ public class RsAgentTools {
             String speaker = "System";
             String finalText = null;
 
-             if (npcName != null) {
+            if (npcName != null) {
                 speaker = npcName;
                 finalText = generalText;
             } else if (playerText != null) {
@@ -609,48 +646,52 @@ public class RsAgentTools {
             }
 
             if (finalText != null && !finalText.trim().isEmpty()) {
-                 String prefixedText = speaker + ": " + finalText;
-                 dialogueTexts.add(prefixedText);
-                 System.out.println(prefixedText);
+                String prefixedText = speaker + ": " + finalText;
+                dialogueTexts.add(prefixedText);
+                System.out.println(prefixedText);
             }
             return new DialogueResult(dialogueTexts, Collections.emptyList());
         }
     }
 
-    static public String checkQuestStatus(String questName){
+    static public String checkQuestStatus(String questName) {
         Rs2Tab.switchToQuestTab();
-        sleep(100,200);
+        sleep(100, 200);
         var questBox = Rs2Widget.getWidget(ComponentID.QUEST_LIST_BOX);
         var searchQuests = questBox.getChild(0);
         Rs2Widget.clickWidget(searchQuests);
-        sleepUntilTrue(()->Rs2Widget.isWidgetVisible(ComponentID.CHATBOX_CONTAINER), 100, 1000);
+        sleepUntilTrue(() -> Rs2Widget.isWidgetVisible(ComponentID.CHATBOX_CONTAINER), 100, 1000);
         Rs2Keyboard.typeString(questName);
-        sleepUntilTrue(()->Rs2Widget.isWidgetVisible(399,7),100,1000);
+        sleepUntilTrue(() -> Rs2Widget.isWidgetVisible(399, 7), 100, 1000);
 
         Rs2Widget.clickWidget(questName, Optional.of(399), 7, false);
-        sleepUntilTrue(()->Rs2Widget.isWidgetVisible(119,5),100,1000);
+        sleepUntilTrue(() -> Rs2Widget.isWidgetVisible(119, 5), 100, 1000);
 
-        var questJournal = Rs2Widget.getWidget(InterfaceID.QUESTJOURNAL,5);
+        var questJournal = Rs2Widget.getWidget(InterfaceID.QUESTJOURNAL, 5);
         if (questJournal == null) {
             questJournal = Rs2Widget.getWidget(InterfaceID.QUESTJOURNAL_OVERVIEW, 6);
             if (questJournal == null) {
-            Microbot.log(Level.ERROR,
-                    "Quest log not opened");
-            throw new RuntimeException("Quest log not opened");
-        }}
-        List<String> texts =  new ArrayList<>();
+                Microbot.log(Level.ERROR,
+                        "Quest log not opened");
+                throw new RuntimeException("Quest log not opened");
+            }
+        }
+        List<String> texts = new ArrayList<>();
 
         Widget finalQuestJournal = questJournal;
         Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            List<Widget[]> childGroups = Stream.of(finalQuestJournal.getChildren(), finalQuestJournal.getNestedChildren(), finalQuestJournal.getDynamicChildren(), finalQuestJournal.getStaticChildren())
+            List<Widget[]> childGroups = Stream
+                    .of(finalQuestJournal.getChildren(), finalQuestJournal.getNestedChildren(),
+                            finalQuestJournal.getDynamicChildren(), finalQuestJournal.getStaticChildren())
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
             for (Widget[] childGroup : childGroups) {
                 if (childGroup != null) {
-                    for (Widget nestedChild : Arrays.stream(childGroup).filter(w -> w != null && !w.isHidden()).collect(Collectors.toList())) {
+                    for (Widget nestedChild : Arrays.stream(childGroup).filter(w -> w != null && !w.isHidden())
+                            .collect(Collectors.toList())) {
                         String clean = Rs2UiHelper.stripColTags(nestedChild.getText());
 
-                        if (!clean.isEmpty()){
+                        if (!clean.isEmpty()) {
                             texts.add(clean);
                         }
                     }
@@ -659,16 +700,13 @@ public class RsAgentTools {
             return texts;
         });
 
-
-
-
-        sleep(1000,2000);
+        sleep(1000, 2000);
 
         Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
-        sleep(200,500);
+        sleep(200, 500);
         Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
 
-        return String.join("",texts);
+        return String.join("", texts);
     }
 
     /**
@@ -689,11 +727,12 @@ public class RsAgentTools {
         }
 
         for (int i = 0; i < 28; i++) {
-                Rs2ItemModel itemModel = Rs2Inventory.getItemInSlot(i);
-                if  (itemModel == null) continue;
-                String itemName = itemModel.getName();
-                int quantity = itemModel.getQuantity();
-                inventoryContents.add("Slot " + i + ": " + itemName + ": " + quantity);
+            Rs2ItemModel itemModel = Rs2Inventory.getItemInSlot(i);
+            if (itemModel == null)
+                continue;
+            String itemName = itemModel.getName();
+            int quantity = itemModel.getQuantity();
+            inventoryContents.add("Slot " + i + ": " + itemName + ": " + quantity);
         }
 
         if (inventoryContents.isEmpty()) {
@@ -755,7 +794,8 @@ public class RsAgentTools {
     }
 
     /**
-     * Retrieves a list of nearby game objects (e.g., trees, rocks, doors) and NPCs (e.g. Man, Guard, Goblin).
+     * Retrieves a list of nearby game objects (e.g., trees, rocks, doors) and NPCs
+     * (e.g. Man, Guard, Goblin).
      *
      * @return A string describing nearby objects and NPCs, with their names.
      *         Example: "Objects: Tree, Rock\nNPCs: Man, Guard"
@@ -794,10 +834,9 @@ public class RsAgentTools {
         return "Objects: " + objectsOutput + "\nNPCs: " + npcsOutput;
     }
 
-
-
     /**
-     * Finds the nearest accessible bank within a 500-tile radius and returns its location and name.
+     * Finds the nearest accessible bank within a 500-tile radius and returns its
+     * location and name.
      *
      * @return A string describing the nearest bank, or an error/not found message.
      */
@@ -809,7 +848,8 @@ public class RsAgentTools {
         BankLocation nearestBank = Rs2Bank.getNearestBank(player.getWorldLocation(), 500);
         if (nearestBank != null) {
             WorldPoint bankPoint = nearestBank.getWorldPoint();
-            return "Nearest bank found at (" + bankPoint.getX() + ", " + bankPoint.getY() + ", " + bankPoint.getPlane() + ").";
+            return "Nearest bank found at (" + bankPoint.getX() + ", " + bankPoint.getY() + ", " + bankPoint.getPlane()
+                    + ").";
         } else {
             return "No accessible bank location found nearby within 500 tiles.";
         }
@@ -838,7 +878,7 @@ public class RsAgentTools {
             for (Rs2ItemModel item : bankItems) {
                 bankContents.append(item.getName()).append("- qty: ").append(item.getQuantity()).append("\n");
             }
-            return  "Bank opened successfully. \n Bank contents:\n" + bankContents;
+            return "Bank opened successfully. \n Bank contents:\n" + bankContents;
         } else {
             return "Failed to initiate bank opening (e.g., no bank nearby or interaction failed).";
         }
@@ -901,9 +941,10 @@ public class RsAgentTools {
             return "Failed to withdraw: Quantity must be positive.";
         }
         if (!Rs2Bank.hasItem(itemName)) {
-             return "Failed to withdraw: Bank does not have " + quantity + " of '" + itemName + "'.";
+            return "Failed to withdraw: Bank does not have " + quantity + " of '" + itemName + "'.";
         }
-        if (Rs2Inventory.isFull() && Rs2Bank.getBankItem(itemName) != null && !Rs2Bank.getBankItem(itemName).isStackable() && !Rs2Inventory.hasItem(itemName)) {
+        if (Rs2Inventory.isFull() && Rs2Bank.getBankItem(itemName) != null
+                && !Rs2Bank.getBankItem(itemName).isStackable() && !Rs2Inventory.hasItem(itemName)) {
             return "Failed to withdraw: Inventory is full and item is not stackable/already in inventory.";
         }
 
@@ -916,9 +957,11 @@ public class RsAgentTools {
             } else {
                 itemReceived = sleepUntil(() -> Rs2Inventory.hasItem(itemName), 5000);
             }
-            return itemReceived ? "Successfully withdrew " + quantity + " of '" + itemName + "'." : "Withdrawal action sent, but item not confirmed in inventory with specified quantity.";
+            return itemReceived ? "Successfully withdrew " + quantity + " of '" + itemName + "'."
+                    : "Withdrawal action sent, but item not confirmed in inventory with specified quantity.";
         } else {
-            return "Failed to withdraw " + quantity + " of '" + itemName + "' (e.g., item not found in bank, inventory full, or other issue).";
+            return "Failed to withdraw " + quantity + " of '" + itemName
+                    + "' (e.g., item not found in bank, inventory full, or other issue).";
         }
     }
 
