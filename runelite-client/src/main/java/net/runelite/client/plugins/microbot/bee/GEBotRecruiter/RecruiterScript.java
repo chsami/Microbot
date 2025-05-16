@@ -184,7 +184,9 @@ public class RecruiterScript extends Script {
     }
 
     public void sendMessage(String message) {
-
+            if (message.length() > 80) {
+                message = message.substring(0, 80);
+            }
             System.out.println("Sending message: " + message);
 
             // Type the message in the chatbox
