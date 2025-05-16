@@ -47,8 +47,7 @@ public interface RecruiterConfig extends Config {
     )
 
     default String customMessage() {
-        String defaultMessage = "Hi, My Clan is recruiting! Please Accept Aid on in settings for an invite :)";
-        return defaultMessage.substring(0, 80);
+        return "Hi, My Clan is recruiting! Please Accept Aid on in settings for an invite :)";
     }
 
-    }
+}

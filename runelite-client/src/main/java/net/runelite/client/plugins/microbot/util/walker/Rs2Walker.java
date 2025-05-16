@@ -757,15 +757,13 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
         if(Microbot.getClient().getTopLevelWorldView().isInstance()) return false;
         
         // If we are not inside of the Motherloade mine, ignore the following logic
-        if (Rs2Player.getWorldLocation().getRegionID() != 14936) return false;
+        if (Rs2Player.getWorldLocation().getRegionID() != 14936 || currentTarget.getRegionID() != 14936) return false;
         
         // We kill the path if no pickaxe is found to avoid walking around like an idiot
         if (!Rs2Inventory.hasItem("pickaxe")) {
             if (!Rs2Equipment.isWearing("pickaxe")) {
                 Microbot.log("Unable to find pickaxe to mine rockfall");
-                if (currentTarget.getRegionID() == 14936) {
-                    setTarget(null);
-                }
+                setTarget(null);
                 return false;
             }
         }
@@ -811,8 +809,8 @@ public static List<WorldPoint> getWalkPath(WorldPoint target) {
                 ? Rs2WorldPoint.convertInstancedWorldPoint(rawTo)
                 : rawTo;
 
-        boolean diagonal = Math.abs(rawFrom.getX() - rawTo.getX()) > 0
-                && Math.abs(rawFrom.getY() - rawTo.getY()) > 0;
+        boolean diagonal = Math.abs(fromWp.getX() - toWp.getX()) > 0
+                && Math.abs(fromWp.getY() - toWp.getY()) > 0;
 
         for (int offset = 0; offset <= 1; offset++) {
             int doorIdx = index + offset;
