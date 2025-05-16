@@ -1462,8 +1462,8 @@ public class Rs2GameObject {
     }
 
     private static <T extends TileObject> List<T> getSceneObjects(Function<Tile, Collection<? extends T>> extractor, Predicate<T> predicate, LocalPoint anchorLocal, int distance) {
-        if (distance > Constants.SCENE_SIZE) {
-            distance = Constants.SCENE_SIZE;
+        if (distance > Rs2LocalPoint.worldToLocalDistance(Constants.SCENE_SIZE)) {
+            distance = Rs2LocalPoint.worldToLocalDistance(Constants.SCENE_SIZE);
         }
 
         return getSceneObjects(extractor)
