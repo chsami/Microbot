@@ -801,34 +801,49 @@ public class RsAgentTools {
      *         Example: "Objects: Tree, Rock\nNPCs: Man, Guard"
      */
     static public String getNearbyObjectsAndNpcs() {
-        List<String> collectedObjectNames = Rs2GameObject.getAll(o -> true, 20)
+        List<String> collectedObjectInfo = Rs2GameObject.getAll(o -> true, 20) // Existing distance 20
                 .stream()
                 .map(obj -> {
                     ObjectComposition comp = Rs2GameObject.convertToObjectComposition(obj);
-                    return comp != null ? comp.getName() : null;
+                    String name = (comp != null) ? comp.getName() : null;
+                    WorldPoint loc = obj.getWorldLocation();
+
+                    if (name != null && !name.equalsIgnoreCase("null") && !name.trim().isEmpty() && loc != null) {
+                        return String.format("%s at (%d, %d, %d)", name, loc.getX(), loc.getY(), loc.getPlane());
+                    }
+                    return null;
                 })
-                .filter(name -> name != null && !name.equalsIgnoreCase("null") && !name.trim().isEmpty())
+                .filter(Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
 
-        List<String> collectedNpcNames = Rs2Npc.getNpcs() // Stream<Rs2NpcModel>
-                .map(Rs2NpcModel::getName)
-                .filter(name -> name != null && !name.trim().isEmpty())
+        List<String> collectedNpcInfo = Rs2Npc.getNpcs() // Stream<Rs2NpcModel>
+                .map(npcModel -> {
+                    String name = npcModel.getName(); // Rs2NpcModel is known to have getName()
+                    WorldPoint loc = npcModel.getWorldLocation(); // Alternative assumption: Rs2NpcModel has
+                                                                  // getWorldLocation()
+
+                    if (name != null && !name.trim().isEmpty() && loc != null) {
+                        return String.format("%s at (%d, %d, %d)", name, loc.getX(), loc.getY(), loc.getPlane());
+                    }
+                    return null;
+                })
+                .filter(Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
 
         String objectsOutput;
-        if (collectedObjectNames.isEmpty()) {
+        if (collectedObjectInfo.isEmpty()) {
             objectsOutput = "No valid game objects found nearby.";
         } else {
-            objectsOutput = String.join(", ", collectedObjectNames);
+            objectsOutput = String.join(", ", collectedObjectInfo);
         }
 
         String npcsOutput;
-        if (collectedNpcNames.isEmpty()) {
+        if (collectedNpcInfo.isEmpty()) {
             npcsOutput = "No valid NPCs found nearby.";
         } else {
-            npcsOutput = String.join(", ", collectedNpcNames);
+            npcsOutput = String.join(", ", collectedNpcInfo);
         }
 
         return "Objects: " + objectsOutput + "\nNPCs: " + npcsOutput;
