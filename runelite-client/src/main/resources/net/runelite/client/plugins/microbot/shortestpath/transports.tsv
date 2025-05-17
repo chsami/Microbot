@@ -3875,8 +3875,6 @@
 # Rellekka											
 2666 3694 0	2666 3694 1	Climb-up;Ladder;4187								2	
 2666 3694 1	2666 3694 0	Climb-down;Ladder;4189								2	
-2688 3697	2691 3697 0	Jump;Broken Fence;544	57 Agility							2			
-2691 3697 0	2688 3697 0	Jump;Broken Fence;544	57 Agility							2			
 2621 3694 0	2472 3994 0	Travel;Fremennik Boat;37432								2			
 2472 3994 0	2621 3692 0	Travel;Fremennik Boat;37408								2			
 2621 3693 0	2472 3994 0	Travel;Fremennik Boat;37432								2			
