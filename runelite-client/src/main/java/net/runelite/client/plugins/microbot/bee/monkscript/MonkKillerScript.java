@@ -7,21 +7,23 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
-import net.runelite.client.plugins.microbot.bee.MossKiller.MossKillerScript;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity;
+import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.player.Rs2PlayerModel;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import javax.inject.Inject;
 import javax.swing.*;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static net.runelite.api.Skill.DEFENCE;
 import static net.runelite.client.plugins.microbot.util.walker.Rs2Walker.walkTo;
@@ -42,69 +44,49 @@ public class MonkKillerScript extends Script {
     @Inject
     MonkKillerPlugin plugin;
 
-    private boolean firstSetting = true;
-
-
-    private final WorldArea monkArea = new WorldArea(3045, 3485, 14, 12, 0);
-    private final WorldPoint monkPoint = new WorldPoint(3052, 3491, 0); // Psuedo
-    private Rs2PlayerModel localPlayer;
+    private final WorldArea monkArea = new WorldArea(3040, 3475, 23, 36, 0);
+    private final WorldPoint monkPoint = new WorldPoint(3052, 3491, 0);
 
     public boolean run(MonkKillerConfig config) {
-        Microbot.enableAutoRunOn = false;
-        localPlayer = Rs2Player.getLocalPlayer();
+        if (mainScheduledFuture != null && !mainScheduledFuture.isCancelled() && !mainScheduledFuture.isDone()) {
+            Microbot.log("Scheduled task already running.");
+            return false;
+        }
+
+        Microbot.enableAutoRunOn = true;
         Rs2AntibanSettings.naturalMouse = true;
         Rs2AntibanSettings.simulateMistakes = true;
         Rs2AntibanSettings.antibanEnabled = true;
-        Rs2AntibanSettings.nonLinearIntervals = true;
-        Rs2AntibanSettings.behavioralVariability = true;
-        Rs2AntibanSettings.simulateFatigue = true;
-        Rs2AntibanSettings.usePlayStyle = true;
-        Rs2AntibanSettings.actionCooldownChance = 1;
-        Rs2AntibanSettings.moveMouseRandomly = true;
-        Rs2AntibanSettings.moveMouseOffScreen = true;
-        Rs2AntibanSettings.moveMouseOffScreenChance = 0.90;
-        Rs2AntibanSettings.moveMouseRandomlyChance = 0.90;
-        Rs2AntibanSettings.takeMicroBreaks = true;
-        Rs2AntibanSettings.microBreakChance = 0.50;
-        Rs2AntibanSettings.microBreakDurationLow = 5;
-        Rs2AntibanSettings.microBreakDurationHigh = 15;
-        Rs2AntibanSettings.dynamicActivity = false;
-        Rs2AntibanSettings.randomIntervals = true;
-        Rs2Antiban.setActivityIntensity(ActivityIntensity.VERY_LOW);
+        Rs2Antiban.setActivityIntensity(ActivityIntensity.LOW);
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
-                if (!Microbot.isLoggedIn()) return;
-                if (!super.run()) return;
+                if (!Microbot.isLoggedIn()) {
+                    Microbot.log("Not logged in, skipping tick.");
+                    return;}
+                if (!super.run()) {Microbot.log("super.run() returned false, skipping tick.");
+                    return;}
+                if (Microbot.getClient() == null || Microbot.getClient().getLocalPlayer() == null) {
+                    Microbot.log("Client or local player not ready. Skipping tick.");
+                    return;
+                }
 
                 if (BreakHandlerScript.breakIn <= 60) {
                     Microbot.log("Break in less than 60 seconds, walking outside of monk's sanctuary");
-                walkTo(3051,3470,0);
-                Microbot.log("Turn on breakhandler if this is not the desired behaviour");}
-
-
-                if (firstSetting && Rs2Player.getRealSkillLevel(DEFENCE) < 15) {
-                    Rs2AntibanSettings.takeMicroBreaks = false;
-                    firstSetting = false;
-                }
-
-                if (!firstSetting && Rs2Player.getRealSkillLevel(DEFENCE) > 15) {
-                    Rs2AntibanSettings.takeMicroBreaks = true;
-                    firstSetting = true;
-                }
+                    walkTo(3051,3470,0);
+                    Microbot.log("Turn on breakhandler if this is not desired behaviour");}
 
                 if (Rs2Player.getRealSkillLevel(DEFENCE) >= config.defenseLevel()) {
                     JOptionPane.showMessageDialog(null, "The Script has Shut Down due to Defence Level reached");
-                    MossKillerScript.stopAutologin();
-                    MossKillerScript.stopBreakHandlerPlugin();
                     shutdown();
                 }
 
-                Rs2NpcModel monk = findAvailableMonk();
                 if (isInMonkArea() && !underAttack()) {
+                    Rs2NpcModel monk = findAvailableMonk();
                     if (monk != null) {
-                            if (!attackMonk(monk)) {
-                                Microbot.log("monk is not null, tried to attack the monk, it failed, just wait a bit longer for a successful attack");
-                            }
+                        Microbot.log("monk is not null, entering attackMonk");
+                        if (!attackMonk(monk)) {
+                            Microbot.log("Failed to attack monk. Waiting...");
+                        }
                     } else {
                         Microbot.log("monk is null, sleeping a bit then if not under attack, logging out");
                         sleep(5000,15000);
@@ -115,26 +97,30 @@ public class MonkKillerScript extends Script {
                 } else {
                     Rs2NpcModel monk1 = findAvailableMonk1();
                     if (monk1 != null) {
-                        boolean isAttackingMe = monk1.getInteracting() != null &&
-                                monk1.getInteracting().getName().equals(Microbot.getClient().getLocalPlayer().getName());
+                        boolean isAttackingMe = Rs2Npc.getNpcsForPlayer()
+                                .anyMatch(npc -> npc.equals(monk1));
                         boolean noHealthBar = monk1.getHealthRatio() == -1;
 
                         if (isAttackingMe && noHealthBar) {
-                            Rs2Npc.attack(monk1);
+                            Rs2Npc.interact(monk1, "attack");
                         }
                     }
                 }
                 Rs2Player.eatAt(50);
-
             } catch (Exception ex) {
+                Microbot.log("Fatal error in scheduled task: " + ex.getClass().getSimpleName() + ": " + ex.getMessage());
                 System.out.println(ex.getMessage());
             }
-        }, 0, 10000, TimeUnit.MILLISECONDS); // Executes every 1000 milliseconds (1 second)
+        }, 0, 2000, TimeUnit.MILLISECONDS); // Executes every 1000 milliseconds (1 second)
         return true;
     }
 
     private boolean isInMonkArea() {
-        // Check if player is in the defined monk area
+        Rs2PlayerModel localPlayer = Rs2Player.getLocalPlayer();
+        if (localPlayer == null) {
+            Microbot.log("Local player is null in isInMonkArea");
+            return false;
+        }
         return monkArea.contains(localPlayer.getWorldLocation());
     }
 
@@ -143,40 +129,85 @@ public class MonkKillerScript extends Script {
     }
 
     private Rs2NpcModel findAvailableMonk1() {
-        Rs2PlayerModel localPlayer = Rs2Player.getLocalPlayer();
-        List<Rs2NpcModel> monks = Rs2Npc.getNpcs("Monk").collect(Collectors.toList());
-
-        for (Rs2NpcModel monk : monks) {
-            if (monk.getInteracting() != null &&
-                    monk.getInteracting().getName().equals(localPlayer.getName())) {
-                return monk;
-            }
-        }
-        return null;
+        List<Rs2NpcModel> monks = Rs2Npc.getNpcsForPlayer("Monk", false);
+        return monks.isEmpty() ? null : monks.get(0);
     }
 
 
     private Rs2NpcModel findAvailableMonk() {
-        List<Rs2NpcModel> monks = Rs2Npc.getNpcs("Monk").collect(Collectors.toList()); // Directly collect Stream into List
+        List<Rs2NpcModel> monks;
+        Rs2PlayerModel localPlayer = Rs2Player.getLocalPlayer();
+
+        if (localPlayer == null) {
+            Microbot.log("Local player is null in findAvailableMonk.");
+            return null;
+        }
+
+        try {
+            Stream<Rs2NpcModel> npcStream = Rs2Npc.getNpcs("Monk");
+
+            if (npcStream == null) {
+                Microbot.log("NPC stream is null, skipping this check.");
+                return null;
+            }
+
+            monks = npcStream.collect(Collectors.toList());
+        } catch (Exception e) {
+            Microbot.log("Error while getting monks: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            return null;
+        }
+
         for (Rs2NpcModel monk : monks) {
             if (!monk.isDead()
                     && (monk.getInteracting() == null || monk.getInteracting() == localPlayer)
-                    && monk.getAnimation() == -1 || monk.getInteracting() == localPlayer) {
+                    && monk.getAnimation() == -1) {
                 return monk;
             }
         }
-        return null; // Return null if no suitable monk is found
+
+        return null; // No monk found
     }
 
+
     private boolean attackMonk(Rs2NpcModel monk) {
-        if (!underAttack()
-                && (monk.getInteracting() != Microbot.getClient().getLocalPlayer())
-        && (monk.getInteracting() == null)) {
-            Rs2Npc.attack(monk);
+        Player localPlayer = getLocalPlayer();
+
+        if (monk == null) {
+            Microbot.log("No monk found.");
+            return false;
+        }
+
+        if (underAttack() || (monk.getInteracting() != null && monk.getInteracting() != localPlayer)) {
+            Microbot.log("Monk is already in combat or we're under attack.");
+            return false;
+        }
+
+        WorldPoint monkLocation = monk.getWorldLocation();
+        WorldPoint playerLocation = localPlayer.getWorldLocation();
+        int distance = monkLocation.distanceTo(playerLocation);
+
+        // ✅ Only turn camera if monk is not visible
+        if (!Rs2Camera.isTileOnScreen(monk.getLocalLocation())) {
+            Rs2Camera.turnTo(monk);
+        }
+
+        if (distance > 3) {
+            Microbot.log("Monk is far, walking using minimap...");
+            Rs2Walker.walkMiniMap(monkLocation);
+        }
+
+        // Optional: wait until close before attacking
+        sleepUntil(() -> localPlayer.getWorldLocation().distanceTo(monk.getWorldLocation()) <= 3, 3000);
+
+        if (Rs2Npc.attack(monk)) {
+            Microbot.log("Attacking monk...");
             return true;
         }
+
+        Microbot.log("Failed to attack monk.");
         return false;
     }
+
 
 
     private boolean underAttack() {
@@ -198,8 +229,7 @@ public class MonkKillerScript extends Script {
 
     @Override
     public void shutdown() {
-        firstSetting = true;
-      super.shutdown();
+        super.shutdown();
     }
 
 }
