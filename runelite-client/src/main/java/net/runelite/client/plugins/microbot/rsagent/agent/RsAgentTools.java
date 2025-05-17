@@ -429,38 +429,89 @@ public class RsAgentTools {
      *
      * @param name   The name of the NPC or Object to interact with.
      * @param action The action to perform (e.g., "Trade", "Attack").
+     * @param x      Optional x-coordinate of the NPC or Object.
+     * @param y      Optional y-coordinate of the NPC or Object.
+     * @param z      Optional z-coordinate (plane) of the NPC or Object.
      * @return true if the interaction was successful, false otherwise.
      */
-    static public boolean interactWith(String name, String action) {
-        NPC npc = Rs2Npc.getNpc(name);
-        if (npc != null) {
-            Rs2Walker.walkTo(npc.getWorldLocation(), 1);
-            boolean interacted = Rs2Npc.interact(new Rs2NpcModel(npc), action);
-            Rs2Player.waitForAnimation();
-            sleep(500, 1000);
-            if (interacted) {
-                Microbot.log(Level.INFO, "Interacted with NPC: " + name + " using action: " + action);
-                return true;
-            } else {
-                Microbot.log(Level.WARN, "Failed to interact with NPC: " + name + " using action: " + action);
-                return false;
-            }
-
+    static public boolean interactWith(String name, String action, Integer x, Integer y, Integer z) {
+        WorldPoint targetLocation = null;
+        if (x != null && y != null && z != null) {
+            targetLocation = new WorldPoint(x, y, z);
         }
 
-        GameObject object = Rs2GameObject.getGameObject(obj -> {
-            var compName = Rs2GameObject.convertToObjectComposition(obj).getName();
-            if (compName == null)
-                return false;
-            return compName.equalsIgnoreCase(name);
-        }, 20);
-        assert object != null;
-        Rs2Walker.walkTo(object.getWorldLocation(), 1);
-        var success = Rs2GameObject.interact(object, action);
-        Rs2Player.waitForAnimation();
-        sleep(500, 1000);
+        // Attempt NPC interaction
+        Rs2NpcModel npcModel = null;
+        if (targetLocation != null) {
+            final WorldPoint finalTargetLocation = targetLocation; // For lambda
+            npcModel = Rs2Npc
+                    .getNpcs(n -> n.getName() != null && n.getName().equalsIgnoreCase(name)
+                            && n.getWorldLocation().equals(finalTargetLocation))
+                    .findFirst().orElse(null);
+        } else {
+            npcModel = Rs2Npc.getNpc(name); // Finds closest/first by name
+        }
 
-        return success;
+        if (npcModel != null) {
+            String npcDisplayName = npcModel.getName() != null ? npcModel.getName() : "ID: " + npcModel.getId();
+            Rs2Walker.walkTo(npcModel.getWorldLocation(), 1);
+            boolean interacted = Rs2Npc.interact(npcModel, action);
+            if (interacted) {
+                Rs2Player.waitForAnimation();
+                sleep(500, 1000);
+                Microbot.log(Level.INFO, "Interacted with NPC: " + npcDisplayName
+                        + (targetLocation != null ? " at " + targetLocation : "") + " using action: " + action);
+                return true;
+            } else {
+                Microbot.log(Level.WARN, "Failed to interact with NPC: " + npcDisplayName
+                        + (targetLocation != null ? " at " + targetLocation : "") + " using action: " + action);
+            }
+        }
+
+        // Attempt GameObject interaction
+        GameObject gameObject = null;
+        if (targetLocation != null) {
+            final WorldPoint finalTargetLocation = targetLocation; // For lambda
+            gameObject = Rs2GameObject.getGameObjects(obj -> {
+                ObjectComposition comp = Rs2GameObject.convertToObjectComposition(obj);
+                return comp != null && comp.getName() != null && comp.getName().equalsIgnoreCase(name)
+                        && obj.getWorldLocation().equals(finalTargetLocation);
+            }, finalTargetLocation, 1).stream().findFirst().orElse(null); // Search radius 1 around the point
+        } else {
+            // Original logic: find GameObject by name, within 20 tiles
+            gameObject = Rs2GameObject.getGameObject(obj -> {
+                ObjectComposition comp = Rs2GameObject.convertToObjectComposition(obj);
+                if (comp == null || comp.getName() == null)
+                    return false; // Added null check
+                return comp.getName().equalsIgnoreCase(name);
+            }, 20);
+        }
+
+        if (gameObject != null) {
+            ObjectComposition comp = Rs2GameObject.convertToObjectComposition(gameObject);
+            String gameObjectName = (comp != null && comp.getName() != null) ? comp.getName()
+                    : "ID: " + gameObject.getId();
+
+            Rs2Walker.walkTo(gameObject.getWorldLocation(), 1);
+            boolean interacted = Rs2GameObject.interact(gameObject, action);
+            if (interacted) {
+                Rs2Player.waitForAnimation();
+                sleep(500, 1000);
+                Microbot.log(Level.INFO, "Interacted with GameObject: " + gameObjectName
+                        + (targetLocation != null ? " at " + targetLocation : "") + " using action: " + action);
+                return true;
+            } else {
+                Microbot.log(Level.WARN, "Failed to interact with GameObject: " + gameObjectName
+                        + (targetLocation != null ? " at " + targetLocation : "") + " using action: " + action);
+            }
+        }
+
+        // If neither NPC nor GameObject was found and interacted with successfully
+        if (npcModel == null && gameObject == null) {
+            Microbot.log(Level.WARN, "Could not find NPC or GameObject named: '" + name + "'"
+                    + (targetLocation != null ? " at " + targetLocation : "") + " for action: '" + action + "'.");
+        }
+        return false;
     }
 
     /**

@@ -16,7 +16,8 @@ walkTo: Walks to the specified world coordinates.
       Returns an output of type: boolean
 
 interactWith: Interacts with an NPC or Object by name using the specified action (e.g., 'Trade', 'Attack', 'Open'). Does not handle dialogue.
-      Takes inputs: name (string), action (string)
+      Optionally, x, y, and z coordinates can be provided to target an entity at a specific location.
+      Takes inputs: name (string), action (string), x (int, optional), y (int, optional), z (int, optional)
       Returns an output of type: boolean
 
 getInteractActions: Gets the available interaction options for a given NPC or Object by its name.

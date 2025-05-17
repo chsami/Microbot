@@ -184,12 +184,19 @@ public class Agent {
                     case "interactWith": {
                         String targetName = parameters.get("name").getAsString();
                         String interactionAction = parameters.get("action").getAsString();
-                        boolean success = RsAgentTools.interactWith(targetName, interactionAction);
+                        Integer x = parameters.has("x") ? parameters.get("x").getAsInt() : null;
+                        Integer y = parameters.has("y") ? parameters.get("y").getAsInt() : null;
+                        Integer z = parameters.has("z") ? parameters.get("z").getAsInt() : null;
+
+                        boolean success = RsAgentTools.interactWith(targetName, interactionAction, x, y, z);
+                        String locationInfo = (x != null && y != null && z != null)
+                                ? " at (" + x + ", " + y + ", " + z + ")"
+                                : "";
                         toolResult = success
-                                ? "Successfully interacted with '" + targetName + "' using action '" + interactionAction
-                                        + "'."
-                                : "Failed to interact with '" + targetName + "' using action '" + interactionAction
-                                        + "'. Might not be present or interaction is invalid.";
+                                ? "Successfully interacted with '" + targetName + "'" + locationInfo + " using action '"
+                                        + interactionAction + "'."
+                                : "Failed to interact with '" + targetName + "'" + locationInfo + " using action '"
+                                        + interactionAction + "'. Might not be present or interaction is invalid.";
                         break;
                     }
                     case "getInteractActions": {
