@@ -90,7 +90,7 @@ public class Agent {
         boolean done = false;
 
         ChatCompletionCreateParams.Builder paramsBuilder = ChatCompletionCreateParams.builder()
-                .model(ChatModel.GPT_4_1_MINI)
+                .model(ChatModel.GPT_4_1)
                 .maxCompletionTokens(512) // Increased token limit for potentially complex JSON outputs
                 .stopOfStrings(Arrays.asList("}}", "}\n}")) // Add stop sequence for the JSON closing brackets
                 .temperature(0)
@@ -359,7 +359,7 @@ public class Agent {
                         break;
                     }
                     case "buyInGrandExchange": {
-                        toolResult = RsAgentTools.buyInGrandExchange(parameters.get("itemName").getAsString(),
+                        toolResult = RsAgentTools.buyInGrandExchange(parameters.get("item").getAsString(),
                                 parameters.get("quantity").getAsInt());
                         break;
                     }

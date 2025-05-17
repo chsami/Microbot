@@ -18,6 +18,7 @@ import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory; // Added import for Rs2Inventory
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
+import net.runelite.client.plugins.microbot.util.item.Rs2ItemManager;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
@@ -492,7 +493,7 @@ public class RsAgentTools {
             String gameObjectName = (comp != null && comp.getName() != null) ? comp.getName()
                     : "ID: " + gameObject.getId();
 
-            Rs2Walker.walkTo(gameObject.getWorldLocation(), 1);
+            Rs2Walker.walkTo(gameObject.getWorldLocation());
             boolean interacted = Rs2GameObject.interact(gameObject, action);
             if (interacted) {
                 Rs2Player.waitForAnimation();
@@ -1032,10 +1033,18 @@ public class RsAgentTools {
     }
 
     static public String buyInGrandExchange(String itemName, int quantity) {
+        var item = Microbot.rs2ItemManager.searchItem(itemName);
+        if (item == null) {
+            return "Item '" + itemName + "' not found.";
+        }
         Rs2GrandExchange.walkToGrandExchange();
-        Rs2GrandExchange.buyItemAbove5Percent(itemName, quantity);
+        boolean bought = Rs2GrandExchange.buyItemAbove5Percent(itemName, quantity);
+        if (!bought){
+            return "Could not buy '" + itemName + "'.";
+        }
         sleepUntil(Rs2GrandExchange::hasBoughtOffer);
         Rs2GrandExchange.collectToInventory();
+        Rs2GrandExchange.closeExchange();
         return "Bought" + quantity + " of " + itemName;
     }
 
