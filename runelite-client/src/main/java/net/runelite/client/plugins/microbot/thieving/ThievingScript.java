@@ -1,9 +1,6 @@
 package net.runelite.client.plugins.microbot.thieving;
 
-import net.runelite.api.EquipmentInventorySlot;
-import net.runelite.api.NPC;
-import net.runelite.api.Skill;
-import net.runelite.api.Varbits;
+import net.runelite.api.*;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.client.game.npcoverlay.HighlightedNpc;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -30,7 +27,7 @@ import static net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment.i
 
 public class ThievingScript extends Script {
 
-    public static String version = "1.6.3";
+    public static String version = "1.6.4";
     ThievingConfig config;
 
     public boolean run(ThievingConfig config) {
@@ -65,7 +62,6 @@ public class ThievingScript extends Script {
                     handleShadowVeil();
                 }
 
-                // Randomize coinpouch threshold +-3 between 1 & 28
                 int threshold = config.coinPouchTreshHold();
                 threshold += (int) (Math.random() * 7 - 3);
                 threshold = Math.max(1, Math.min(28, threshold));
@@ -237,9 +233,11 @@ public class ThievingScript extends Script {
         }
 
     private void handleShadowVeil() {
-        if (!Rs2Magic.isShadowVeilActive() && Rs2Magic.isArceeus() &&
-            Rs2Player.getBoostedSkillLevel(Skill.MAGIC) >= MagicAction.SHADOW_VEIL.getLevel() &&
-            Microbot.getVarbitValue(Varbits.SHADOW_VEIL_COOLDOWN) == 0
+        if (!Rs2Magic.isShadowVeilActive() &&
+                Rs2Magic.isArceeus() &&
+                Rs2Player.getBoostedSkillLevel(Skill.MAGIC) >= MagicAction.SHADOW_VEIL.getLevel() &&
+                Microbot.getVarbitValue(Varbits.SHADOW_VEIL_COOLDOWN) == 0 &&
+                Rs2Inventory.contains(ItemID.COSMIC_RUNE)
         ) {
             Rs2Magic.cast(MagicAction.SHADOW_VEIL);
         }
@@ -253,6 +251,18 @@ public class ThievingScript extends Script {
         if (!isBankOpen || !Rs2Bank.isOpen()) return;
         Rs2Bank.depositAll();
 
+        if (config.shadowVeil()) {
+            Rs2Inventory.waitForInventoryChanges(5000);
+            if (!isEquipped("Lava battlestaff", EquipmentInventorySlot.WEAPON)) {
+                Rs2Bank.withdrawAll(true, "Fire rune", true);
+                Rs2Inventory.waitForInventoryChanges(5000);
+                Rs2Bank.withdrawAll(true, "Earth rune", true);
+                Rs2Inventory.waitForInventoryChanges(5000);
+            }
+            Rs2Bank.withdrawAll(true, "Cosmic rune", true);
+            Rs2Inventory.waitForInventoryChanges(5000);
+        }
+
         boolean successfullyWithdrawFood = Rs2Bank.withdrawX(true, config.food().getName(), config.foodAmount(), true);
         if (!successfullyWithdrawFood) {
             Microbot.showMessage(config.food().getName() + " not found in bank");
@@ -261,21 +271,7 @@ public class ThievingScript extends Script {
         }
 
         Rs2Bank.withdrawDeficit("dodgy necklace", config.dodgyNecklaceAmount());
-        Rs2Inventory.waitForInventoryChanges(5000);
 
-        if (config.shadowVeil()) {
-            // Check if Lava battlestaff is equipped
-            if (!isEquipped("Lava battlestaff", EquipmentInventorySlot.WEAPON)) {
-                // Withdraw Fire and Earth runes only if Lava battlestaff is not equipped
-                Rs2Bank.withdrawAll(true, "Fire rune", true);
-                Rs2Inventory.waitForInventoryChanges(5000);
-                Rs2Bank.withdrawAll(true, "Earth rune", true);
-                Rs2Inventory.waitForInventoryChanges(5000);
-            }
-            // Always withdraw Cosmic runes
-            Rs2Bank.withdrawAll(true, "Cosmic rune", true);
-            Rs2Inventory.waitForInventoryChanges(5000);
-        }
         Rs2Bank.closeBank();
         sleepUntil(() -> !Rs2Bank.isOpen());
     }
