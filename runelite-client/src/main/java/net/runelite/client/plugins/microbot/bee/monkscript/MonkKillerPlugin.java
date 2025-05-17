@@ -60,7 +60,7 @@ public class MonkKillerPlugin extends Plugin {
         if (event.getGameState() == GameState.LOGGED_IN) {
             if (mainScheduledFuture == null || mainScheduledFuture.isCancelled() || mainScheduledFuture.isDone()) {
                 Microbot.log("GameState is LOGGED_IN and script was idle. Restarting run loop...");
-                monkKillerScript.run(config); // Or call your safe wrapper to resume the script
+                monkKillerScript.run(config); 
             }
         }
     }
