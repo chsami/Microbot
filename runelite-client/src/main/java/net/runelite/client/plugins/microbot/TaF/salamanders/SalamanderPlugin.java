@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.bee.salamanders;
+package net.runelite.client.plugins.microbot.TaF.salamanders;
 
 import com.google.inject.Provides;
 import lombok.Getter;
@@ -17,7 +17,6 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.hunter.HunterTrap;
-import net.runelite.client.plugins.microbot.magic.orbcharger.enums.OrbChargerState;
 import net.runelite.client.plugins.microbot.util.misc.TimeUtils;
 import net.runelite.client.ui.overlay.OverlayManager;
 

@@ -29,6 +29,8 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static net.runelite.api.ItemID.BUCKET_OF_WATER;
+import static net.runelite.api.ItemID.POT_OF_FLOUR;
 import static net.runelite.client.plugins.microbot.util.npc.Rs2Npc.getNpcs;
 import static net.runelite.client.plugins.microbot.util.player.Rs2Player.toggleRunEnergy;
 
@@ -382,6 +384,12 @@ public class BurnBakingScript extends Script {
                         Rs2Bank.withdrawX("Bucket of water", 9);
                         sleep(400, 700);
                         Rs2Bank.closeBank();
+                        if (!Rs2Inventory.hasItem(POT_OF_FLOUR) || !Rs2Inventory.hasItem(BUCKET_OF_WATER)) {
+                            Microbot.log("trying to withdrawX didn't populate inventory, so withdrawing all");
+                            Rs2Bank.openBank();
+                            Rs2Bank.withdrawAll(POT_OF_FLOUR);
+                            Rs2Bank.withdrawAll(BUCKET_OF_WATER);
+                        }
                     } else {
                         Rs2Bank.depositAll(); //if inventory is not empty deposit all
                         System.out.println("Missing ingredients in the bank for bread-making.");
@@ -516,6 +524,10 @@ public class BurnBakingScript extends Script {
 
     // Interaction with Bowl of Water and Potato
     private void interactWithBowlAndPotato() {
+
+        if (Rs2Bank.isOpen()) {
+            Rs2Bank.closeBank();
+        }
 
         if (!Rs2Bank.isOpen()) {
             Rs2Inventory.combineClosest("Bowl of water","Potato");

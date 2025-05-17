@@ -111,6 +111,15 @@ public class Rs2Prayer {
                 .orElse(null);
     }
 
+    public static void swapOverHeadPrayer(Rs2PrayerEnum prayer) {
+        Rs2PrayerEnum activeProtectionPrayer = getActiveProtectionPrayer();
+        if (activeProtectionPrayer == prayer) {
+            return;
+        }
+        Rs2Prayer.toggle(activeProtectionPrayer, false);
+        Rs2Prayer.toggle(prayer, true);
+    }
+
     public static boolean isRangePrayerActive() {
         return Stream.of(
                 Rs2PrayerEnum.SHARP_EYE,

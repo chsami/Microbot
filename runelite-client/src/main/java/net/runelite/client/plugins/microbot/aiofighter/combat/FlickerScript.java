@@ -39,7 +39,7 @@ public class FlickerScript extends Script {
     int lastPrayerTick;
     int currentTick;
     int tickToFlick;
-    Stream<Rs2NpcModel> npcs;
+    private volatile List<Rs2NpcModel> npcs = new ArrayList<>();
 
     /**
      * This method is responsible for running the flicker script.
@@ -64,13 +64,13 @@ public class FlickerScript extends Script {
                 if (config.prayerStyle() == PrayerStyle.PERFECT_LAZY_FLICK) {
                     tickToFlick = 0;
                 }
-                npcs = Rs2Npc.getNpcsForPlayer();
+                npcs = Rs2Npc.getNpcsForPlayer().collect(Collectors.toList());
                 usePrayer = config.togglePrayer();
                 flickQuickPrayer = config.toggleQuickPray();
                 currentTick = Microbot.getClient().getTickCount();
                 // Keep track of which monsters still have aggro on the player
                 currentMonstersAttackingUs.forEach(monster -> {
-                    if (npcs.noneMatch(npc -> npc.getIndex() == monster.npc.getIndex())) {
+                    if (npcs.stream().noneMatch(npc -> npc.getIndex() == monster.npc.getIndex())) {
                         monster.delete = true;
                     }
                 });
@@ -178,7 +178,7 @@ public class FlickerScript extends Script {
      */
     public void resetLastAttack(boolean forceReset) {
 
-        for (NPC npc : npcs.collect(Collectors.toList())) {
+        for (NPC npc : npcs) {
             Monster currentMonster = currentMonstersAttackingUs.stream().filter(x -> x.npc.getIndex() == npc.getIndex()).findFirst().orElse(null);
             AttackStyle attackStyle = AttackStyleMapper.mapToAttackStyle(Rs2NpcManager.getAttackStyle(npc.getId()));
 

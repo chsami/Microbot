@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import static net.runelite.api.EquipmentInventorySlot.WEAPON;
@@ -58,6 +59,7 @@ public class MossKillerPlugin extends Plugin implements SchedulablePlugin {
 
     @Inject
     private Client client;
+    private ScheduledFuture<?> mainScheduledFuture;
     @Inject
     private OverlayManager overlayManager;
     @Inject
@@ -183,6 +185,35 @@ public class MossKillerPlugin extends Plugin implements SchedulablePlugin {
             toggleOverlay(hideOverlay);
         }
 
+    }
+
+    public void updateTargetByName() {
+        if (currentTarget == null || currentTarget.getPlayer() == null) return;
+
+        String name = currentTarget.getName();
+
+        // Use Rs2Player.getPlayers with a predicate to match the name
+        Optional<Rs2PlayerModel> updatedTarget = Rs2Player.getPlayers(
+                p -> p.getName() != null && p.getName().equals(name)
+        ).findFirst();
+
+        if (updatedTarget.isPresent()) {
+            currentTarget = updatedTarget.get();
+            Microbot.log("Refreshed target reference for: " + name);
+        } else {
+            Microbot.log("Target " + name + " not found in current player list.");
+        }
+    }
+
+
+    @Subscribe
+    public void onGameStateChanged(GameStateChanged event) {
+        if (event.getGameState() == GameState.LOGGED_IN && config.wildySafer()) {
+            if (mainScheduledFuture == null || mainScheduledFuture.isCancelled() || mainScheduledFuture.isDone()) {
+                Microbot.log("GameState is LOGGED_IN and script was idle. Restarting run loop...");
+                wildySaferScript.run(config); // Or call your safe wrapper to resume the script
+            }
+        }
     }
 
     @Subscribe

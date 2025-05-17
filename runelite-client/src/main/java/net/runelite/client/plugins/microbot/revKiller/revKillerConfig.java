@@ -14,7 +14,7 @@ public interface revKillerConfig extends Config {
             description = "Select a Rev",
             position = 0
     )
-    default revKillerConfig.RevSelections selectedRev() {
+    default RevSelections selectedRev() {
         return RevSelections.IMP; // Default selection
     }
 
@@ -55,7 +55,7 @@ public interface revKillerConfig extends Config {
             description = "Select an arrow type",
             position = 0
     )
-    default revKillerConfig.ArrowSelections selectedArrow() {
+    default ArrowSelections selectedArrow() {
         return ArrowSelections.RUNE; // Default selection
     }
 

@@ -518,6 +518,8 @@ public class MageTrainingArenaScript extends Script {
         if (item != null) {
             Rs2Magic.alch(item);
             return;
+        }else {
+            Rs2Inventory.dropAll(6897,6896,6895,6894,6893);
         }
 
         var timer = (AlchemyRoomTimer) Microbot.getInfoBoxManager().getInfoBoxes().stream()

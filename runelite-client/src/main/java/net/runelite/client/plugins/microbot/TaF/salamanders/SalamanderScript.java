@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.bee.salamanders;
+package net.runelite.client.plugins.microbot.TaF.salamanders;
 
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
@@ -17,9 +17,6 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
-import static net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity.EXTREME;
-import static net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity.MODERATE;
 
 public class SalamanderScript extends Script {
     public static final int SMALL_FISHING_NET = 303;

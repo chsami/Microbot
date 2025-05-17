@@ -42,6 +42,11 @@ public class BarrowsOverlay extends OverlayPanel {
                     .build());
 
             panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Tunnel:")
+                    .right(BarrowsScript.WhoisTun.split(" ")[0])
+                    .build());
+
+            panelComponent.getChildren().add(LineComponent.builder()
                     .left("Pieces found:")
                     .build());
 

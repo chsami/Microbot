@@ -48,6 +48,7 @@ public enum BankLocation {
     GNOME_TREE_BANK_WEST(new WorldPoint(2442, 3488, 1), true),
     GRAND_EXCHANGE(new WorldPoint(3166, 3485, 0), false),
     GREAT_KOUREND_CASTLE(new WorldPoint(1612, 3681, 2), true),
+    GUARDIANS_OF_THE_RIFT(new WorldPoint(3618, 9473, 0), true),
     HALLOWED_SEPULCHRE(new WorldPoint(2400, 5983, 0), true),
     HOSIDIUS(new WorldPoint(1749, 3599, 0), true),
     HOSIDIUS_KITCHEN(new WorldPoint(1676, 3617, 0), true),
@@ -140,8 +141,6 @@ public enum BankLocation {
                 return Rs2Player.getSkillRequirement(Skill.FISHING, 68, true);
             case LEGENDS_GUILD:
                 return Rs2Player.getQuestState(Quest.LEGENDS_QUEST) == QuestState.FINISHED;
-            case MAGE_TRAINING_ARENA:
-                return true;
             case PORT_PHASMATYS:
                 return Rs2Player.getQuestState(Quest.GHOSTS_AHOY) == QuestState.FINISHED;
             case CORSAIR_COVE:
@@ -235,6 +234,9 @@ public enum BankLocation {
             case LUMBRIDGE_FRONT:
                 // Requires to be in a PvP World
                 return Microbot.getClient().getWorldType().contains(WorldType.PVP);
+            case GUARDIANS_OF_THE_RIFT:
+                // Requires Temple of the Eye
+                return Rs2Player.getQuestState(Quest.TEMPLE_OF_THE_EYE) == QuestState.FINISHED;
             default:
                 return true;
         }

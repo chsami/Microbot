@@ -193,7 +193,7 @@ public class HerbrunScript extends Script {
     }
 
     private static String getHerbPatchState(TileObject rs2TileObject) {
-        var game_obj = Rs2GameObject.convertGameObjectToObjectComposition(rs2TileObject);
+        var game_obj = Rs2GameObject.convertToObjectComposition(rs2TileObject, true);
         var varbitValue = Microbot.getVarbitValue(game_obj.getVarbitId());
 
         if ((varbitValue >= 0 && varbitValue < 3) ||
