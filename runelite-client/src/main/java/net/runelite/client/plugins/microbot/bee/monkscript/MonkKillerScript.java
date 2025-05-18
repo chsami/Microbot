@@ -12,6 +12,7 @@ import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
+import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -73,7 +74,8 @@ public class MonkKillerScript extends Script {
                 if (BreakHandlerScript.breakIn <= 60) {
                     Microbot.log("Break in less than 60 seconds, walking outside of monk's sanctuary");
                     walkTo(3051,3470,0);
-                    Microbot.log("Turn on breakhandler if this is not desired behaviour");}
+                    Microbot.log("Turn on breakhandler if this is not desired behaviour");
+                    sleep(60000);} //sleep until break
 
                 if (Rs2Player.getRealSkillLevel(DEFENCE) >= config.defenseLevel()) {
                     JOptionPane.showMessageDialog(null, "The Script has Shut Down due to Defence Level reached");
@@ -94,17 +96,18 @@ public class MonkKillerScript extends Script {
                     }
                 } else if (!isInMonkArea()){
                     walkToMonkArea();
-                } else {
-                    Rs2NpcModel monk1 = findAvailableMonk1();
-                    if (monk1 != null) {
-                        boolean isAttackingMe = Rs2Npc.getNpcsForPlayer()
-                                .anyMatch(npc -> npc.equals(monk1));
-                        boolean noHealthBar = monk1.getHealthRatio() == -1;
-
-                        if (isAttackingMe && noHealthBar) {
-                            Rs2Npc.interact(monk1, "attack");
+                } else if (underAttack() && !Rs2Player.waitForXpDrop(DEFENCE, 30000)){
+                    Rs2NpcModel attackingMonk = findAttackingMonk();
+                    if (attackingMonk != null) {
+                        Microbot.log("attacking monk is not null");
+                        boolean noHealthBar = attackingMonk.getHealthRatio() == -1;
+                        Microbot.log("noHealthBar " + noHealthBar);
+                        if (noHealthBar) {
+                            Rs2Npc.interact(attackingMonk, "attack");
                         }
-                    }
+                        if (!Rs2Player.waitForXpDrop(DEFENCE, 30000) && noHealthBar) {Rs2Keyboard.enter();
+                            Microbot.log("pressed enter as fall-back to stimulate auto-retaliate");};
+                    } else {Microbot.log("attacking Monk is null");}
                 }
                 Rs2Player.eatAt(50);
             } catch (Exception ex) {
@@ -128,7 +131,7 @@ public class MonkKillerScript extends Script {
         walkTo(monkPoint);  // Walk to a specific point in the monk area
     }
 
-    private Rs2NpcModel findAvailableMonk1() {
+    private Rs2NpcModel findAttackingMonk() {
         List<Rs2NpcModel> monks = Rs2Npc.getNpcsForPlayer("Monk", false);
         return monks.isEmpty() ? null : monks.get(0);
     }

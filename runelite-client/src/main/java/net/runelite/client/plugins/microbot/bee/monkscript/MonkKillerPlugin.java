@@ -17,7 +17,7 @@ import java.awt.*;
 import java.util.concurrent.ScheduledFuture;
 
 @PluginDescriptor(
-        name = PluginDescriptor.Bee + "Monk Killer Plugin",
+        name = PluginDescriptor.Bee + "Monk Killer",
         description = "Kills monks for training defense pure",
         tags = {"monks", "combat", "training"},
         enabledByDefault = false
