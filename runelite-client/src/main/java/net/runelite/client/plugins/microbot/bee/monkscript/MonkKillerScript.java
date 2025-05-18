@@ -162,7 +162,7 @@ public class MonkKillerScript extends Script {
 
         for (Rs2NpcModel monk : monks) {
             if (!monk.isDead()
-                    && (monk.getInteracting() == null || monk.getInteracting() == localPlayer)
+                    && (monk.getInteractingModel() == null || monk.getInteractingModel() == localPlayer)
                     && monk.getAnimation() == -1) {
                 return monk;
             }
@@ -180,7 +180,7 @@ public class MonkKillerScript extends Script {
             return false;
         }
 
-        if (underAttack() || (monk.getInteracting() != null && monk.getInteracting() != localPlayer)) {
+        if (underAttack() || (monk.getInteractingModel() != null && monk.getInteractingModel() != localPlayer)) {
             Microbot.log("Monk is already in combat or we're under attack.");
             return false;
         }
