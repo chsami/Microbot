@@ -8,10 +8,12 @@ import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.util.Optional;
 
 @Getter
 @RequiredArgsConstructor
@@ -37,6 +39,16 @@ public class ActorModel implements Actor {
     @Override
     public boolean isInteracting() {
         return actor.isInteracting();
+    }
+
+    public Actor getInteractingModel() {
+        if (actor == null) return null;
+        Optional<Actor> result = Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            final Actor interactingActor = actor.getInteracting();
+            return interactingActor instanceof net.runelite.api.NPC ? new Rs2NpcModel((NPC) interactingActor) : interactingActor;
+        });
+
+        return result.orElse(null);
     }
 
     @Override
