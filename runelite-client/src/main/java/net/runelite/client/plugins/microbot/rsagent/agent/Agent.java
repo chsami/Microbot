@@ -39,6 +39,9 @@ public class Agent {
         this.openAIClient = OpenAIOkHttpClient.builder()
                 .apiKey(apiKey)
                 .build();
+
+        // Initialize the tool registry when the agent is created
+        ToolRegistry.initialize();
     }
 
     /*
@@ -171,224 +174,13 @@ public class Agent {
                     this.currentThought = "Preparing to execute: " + action;
                 }
                 log.info(currentAction);
-                switch (action) {
-                    case "walkTo": {
-                        int x = parameters.get("x").getAsInt();
-                        int y = parameters.get("y").getAsInt();
-                        int z = parameters.get("z").getAsInt();
-                        boolean success = RsAgentTools.walkTo(x, y, z);
-                        toolResult = success ? "Successfully initiated walk to (" + x + ", " + y + ", " + z + ")."
-                                : "Failed to initiate walk to (" + x + ", " + y + ", " + z + ").";
-                        break;
-                    }
-                    case "interactWith": {
-                        String targetName = parameters.get("name").getAsString();
-                        String interactionAction = parameters.get("action").getAsString();
-                        Integer x = parameters.has("x") ? parameters.get("x").getAsInt() : null;
-                        Integer y = parameters.has("y") ? parameters.get("y").getAsInt() : null;
-                        Integer z = parameters.has("z") ? parameters.get("z").getAsInt() : null;
 
-                        boolean success = RsAgentTools.interactWith(targetName, interactionAction, x, y, z);
-                        String locationInfo = (x != null && y != null && z != null)
-                                ? " at (" + x + ", " + y + ", " + z + ")"
-                                : "";
-                        toolResult = success
-                                ? "Successfully interacted with '" + targetName + "'" + locationInfo + " using action '"
-                                        + interactionAction + "'."
-                                : "Failed to interact with '" + targetName + "'" + locationInfo + " using action '"
-                                        + interactionAction + "'. Might not be present or interaction is invalid.";
-                        break;
-                    }
-                    case "getInteractActions": {
-                        String targetName = parameters.get("name").getAsString();
-                        toolResult = RsAgentTools.getInteractActions(targetName);
-                        break;
-                    }
-                    case "talkToNpc": {
-                        String npcName = parameters.get("name").getAsString();
-                        RsAgentTools.DialogueResult result = RsAgentTools.talkToNpc(npcName);
-                        if (result != null) {
-                            toolResult = "Initiated conversation with '" + npcName + "'. ";
-                            if (!result.dialogueTexts.isEmpty()) {
-                                toolResult += "Initial dialogue: [" + String.join(" | ", result.dialogueTexts) + "]. ";
-                            }
-                            if (result.hasOptions()) {
-                                toolResult += "Presented options: [" + String.join(" | ", result.options) + "]";
-                            } else {
-                                toolResult += "Dialogue ended or waiting for next step.";
-                            }
-                        } else {
-                            toolResult = "Failed to talk to NPC '" + npcName
-                                    + "' (NPC not found, interaction failed, or dialogue did not start).";
-                        }
-                        break;
-                    }
-                    case "pickupGroundItem": {
-                        String itemName = parameters.get("name").getAsString();
-                        boolean success = RsAgentTools.pickupGroundItem(itemName);
-                        toolResult = success ? "Successfully attempted to pick up item: " + itemName + "."
-                                : "Failed to find or pick up item: " + itemName + ".";
-                        break;
-                    }
-                    case "chooseOptionAndContinueDialogue": {
-                        int optionIndex = parameters.get("option").getAsInt();
-                        RsAgentTools.DialogueResult result = RsAgentTools.chooseOptionAndContinueDialogue(optionIndex);
-                        if (result != null) {
-                            toolResult = "Chose dialogue option " + optionIndex + ". ";
-                            if (!result.dialogueTexts.isEmpty()) {
-                                toolResult += "Dialogue continued: [" + String.join(" | ", result.dialogueTexts)
-                                        + "]. ";
-                            }
-                            if (result.hasOptions()) {
-                                toolResult += "New options: [" + String.join(" | ", result.options) + "]";
-                            } else {
-                                toolResult += "Dialogue ended or waiting for next step.";
-                            }
-                        } else {
-                            toolResult = "Failed to choose dialogue option " + optionIndex
-                                    + " (maybe not in dialogue or invalid option).";
-                        }
-                        break;
-                    }
-                    case "handleDialogue": {
-                        RsAgentTools.DialogueResult result = RsAgentTools.handleDialogue();
-                        if (result != null) {
-                            toolResult = "Handling dialogue. ";
-                            if (!result.dialogueTexts.isEmpty()) {
-                                toolResult += "Dialogue text: [" + String.join(" | ", result.dialogueTexts) + "]. ";
-                            }
-                            if (result.hasOptions()) {
-                                toolResult += "Presented options: [" + String.join(" | ", result.options) + "]";
-                            } else {
-                                toolResult += "Dialogue ended or waiting for next step.";
-                            }
-                        } else {
-                            toolResult = "Not currently in dialogue.";
-                        }
-                        break;
-                    }
-                    case "checkQuestStatus": {
-                        String questName = parameters.get("questName").getAsString();
-                        String status = RsAgentTools.checkQuestStatus(questName);
-                        toolResult = "Quest status for '" + questName + "': " + status;
-                        break;
-                    }
-                    case "getClosestNpcSpawn": {
-                        String npcName = parameters.get("npcName").getAsString();
-                        try {
-                            WorldPoint closestSpawn = RsAgentTools.getClosestNpcSpawnLocation(npcName);
-                            if (closestSpawn != null) {
-                                toolResult = "Closest spawn for '" + npcName + "' is at (" + closestSpawn.getX() + ", "
-                                        + closestSpawn.getY() + ", " + closestSpawn.getPlane() + ").";
-                            } else {
-                                toolResult = "No spawn location found for NPC '" + npcName + "' or NPC not in data.";
-                            }
-                        } catch (RuntimeException e) {
-                            toolResult = "Error processing NPC spawn location for '" + npcName + "': " + e.getMessage();
-                            log.error("Error in getClosestNpcSpawn tool: {}", e.getMessage());
-                        }
-                        break;
-                    }
-                    case "getPlayerInventory": {
-                        List<String> inventoryListResult = RsAgentTools.getPlayerInventory();
-                        if (inventoryListResult.isEmpty() || (inventoryListResult.size() == 1
-                                && inventoryListResult.get(0).startsWith("Could not access"))) {
-                            toolResult = "Error: Could not retrieve inventory contents.";
-                            log.warn("getPlayerInventory tool failed: {}",
-                                    inventoryListResult.isEmpty() ? "Empty list" : inventoryListResult.get(0));
-                        } else {
-                            toolResult = "Inventory contents:\n" + String.join("\n", inventoryListResult);
-                        }
-                        break;
-                    }
-                    case "equipItem": {
-                        String itemName = parameters.get("itemName").getAsString();
-                        boolean success = RsAgentTools.equipItem(itemName);
-                        toolResult = success ? "Successfully equipped '" + itemName + "'."
-                                : "Failed to equip '" + itemName
-                                        + "'. Item might not be in inventory or is not equippable.";
-                        break;
-                    }
-                    case "getEquippedItems": {
-                        List<String> equippedListResult = RsAgentTools.getEquippedItems();
-                        if (equippedListResult.isEmpty() || (equippedListResult.size() == 1
-                                && equippedListResult.get(0).startsWith("Could not access"))) {
-                            toolResult = "Error: Could not retrieve equipped items.";
-                            log.warn("getEquippedItems tool failed: {}",
-                                    equippedListResult.isEmpty() ? "Empty list" : equippedListResult.get(0));
-                        } else {
-                            toolResult = "Equipped items:\n" + String.join("\n", equippedListResult);
-                        }
-                        break;
-                    }
-                    case "getNearbyObjectsAndNpcs": {
-                        toolResult = RsAgentTools.getNearbyObjectsAndNpcs();
-                        break;
-                    }
-                    case "getNearestBank": {
-                        toolResult = RsAgentTools.getNearestBank();
-                        break;
-                    }
-                    case "openBank": {
-                        toolResult = RsAgentTools.openBank();
-                        break;
-                    }
-                    case "closeBank": {
-                        toolResult = RsAgentTools.closeBank();
-                        break;
-                    }
-                    case "depositXItems": {
-                        String itemName = parameters.get("itemName").getAsString();
-                        int quantity = parameters.get("quantity").getAsInt();
-                        toolResult = RsAgentTools.depositXItems(itemName, quantity);
-                        break;
-                    }
-                    case "withdrawXItems": {
-                        String itemName = parameters.get("itemName").getAsString();
-                        int quantity = parameters.get("quantity").getAsInt();
-                        toolResult = RsAgentTools.withdrawXItems(itemName, quantity);
-                        break;
-                    }
-                    case "getLocationCoords": {
-                        String locationName = parameters.get("locationName").getAsString();
-                        // RsAgentTools.getLocationCoords is now expected to return a String.
-                        // This string will either be the coordinates, a "Did you mean?" suggestion,
-                        // or a "not found" message, all pre-formatted by
-                        // RsAgentTools.getLocationCoords.
-                        toolResult = RsAgentTools.getLocationCoords(locationName);
-                        break;
-                    }
-                    case "buyInGrandExchange": {
-                        toolResult = RsAgentTools.buyInGrandExchange(parameters.get("item").getAsString(),
-                                parameters.get("quantity").getAsInt());
-                        break;
-                    }
-                    case "combine": {
-                        toolResult = RsAgentTools.combine(parameters.get("item1").getAsString(),
-                                parameters.get("item2").getAsString());
-                        break;
-                    }
-                    case "getWikiPageContent": {
-                        String pageTitle = parameters.get("pageTitle").getAsString();
-                        toolResult = WikiScraper.fetchWikiPageContent(pageTitle);
-                        break;
-                    }
-                    case "finish": {
-                        String finishResponse = "Task finished.";
-                        if (parameters.has("response") && parameters.get("response").isJsonPrimitive()
-                                && parameters.get("response").getAsJsonPrimitive().isString()) {
-                            finishResponse = parameters.get("response").getAsString();
-                        }
-                        toolResult = "Finish action acknowledged by agent: " + finishResponse;
-                        this.currentThought = "Task finished: " + finishResponse;
-                        log.info("Finish action processed: {}", finishResponse);
-                        done = true;
-                        break;
-                    }
-                    default:
-                        toolResult = "Unknown tool requested: " + action;
-                        log.warn("Unknown tool requested: {}", action);
-                        break;
+                // Use the ToolRegistry to execute the tool instead of the switch statement
+                toolResult = ToolRegistry.executeTool(action, parameters);
+
+                // Special handling for "finish" action
+                if ("finish".equals(action)) {
+                    done = true;
                 }
             } catch (JsonSyntaxException e) {
                 toolResult = "Error: LLM response was not valid JSON or missing required fields. Response: " + fullText;
@@ -416,17 +208,8 @@ public class Agent {
     }
 
     private static String loadPrompt() {
-        String promptPath = "rsagent/SystemPrompt.txt";
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
-                Agent.class.getClassLoader().getResourceAsStream(promptPath),
-                StandardCharsets.UTF_8))) {
-            if (reader == null) {
-                throw new RuntimeException("Failed to load system prompt: Resource not found at " + promptPath);
-            }
-            return reader.lines().collect(Collectors.joining("\n"));
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to load system prompt: " + promptPath, e);
-        }
+        // Get the dynamically generated prompt from the PromptGenerator
+        return PromptGenerator.generateToolDocumentation();
     }
 
 }

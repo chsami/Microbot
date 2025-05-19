@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.rsagent.agent;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
 import lombok.Getter;
 import net.runelite.api.*;
@@ -11,6 +12,8 @@ import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.rsagent.annotations.RsAgentTool;
+import net.runelite.client.plugins.microbot.rsagent.annotations.ToolParameter;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
@@ -31,6 +34,9 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import org.slf4j.event.Level;
 
 import java.awt.event.KeyEvent;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Type;
@@ -42,6 +48,7 @@ import java.util.stream.Stream;
 // Removed unused imports: net.runelite.api.Item, net.runelite.api.ItemContainer, net.runelite.api.InventoryID
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment; // Added import for Rs2Equipment
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject; // Added import for Rs2GameObject
+import net.runelite.client.plugins.microbot.rsagent.util.WikiScraper;
 
 import static net.runelite.client.plugins.microbot.util.Global.*;
 
@@ -196,7 +203,9 @@ public class RsAgentTools {
      * @return A string indicating the location's coordinates, a suggestion, or an
      *         error/not found message.
      */
-    static public String getLocationCoords(String locationName) {
+    @RsAgentTool(name = "getLocationCoords", description = "Gets the world coordinates for a named location from a predefined list (locations.json).")
+    static public String getLocationCoords(
+            @ToolParameter(name = "locationName", description = "The name of the location") String locationName) {
         loadLocationData();
 
         if (locationDataError != null && (locationCoordsData == null || locationCoordsData.isEmpty())) {
@@ -309,7 +318,9 @@ public class RsAgentTools {
      * @throws RuntimeException if there was an error loading the spawn data
      *                          initially.
      */
-    static public WorldPoint getClosestNpcSpawnLocation(String npcName) {
+    @RsAgentTool(name = "getClosestNpcSpawn", description = "Finds the closest spawn location for a given NPC name from a predefined list of known spawn points.")
+    static public WorldPoint getClosestNpcSpawnLocation(
+            @ToolParameter(name = "npcName", description = "The name of the NPC") String npcName) {
         loadNpcSpawnData();
 
         if (npcSpawnDataError != null && (npcSpawnData == null || npcSpawnData.isEmpty())) {
@@ -359,7 +370,11 @@ public class RsAgentTools {
      * @param z The plane (z-coordinate).
      * @return true if the walk action was initiated, false otherwise.
      */
-    static public boolean walkTo(int x, int y, int z) {
+    @RsAgentTool(name = "walkTo", description = "Walks to the specified world coordinates.")
+    static public boolean walkTo(
+            @ToolParameter(name = "x", description = "The x-coordinate") int x,
+            @ToolParameter(name = "y", description = "The y-coordinate") int y,
+            @ToolParameter(name = "z", description = "The plane (z-coordinate)") int z) {
         return Rs2Walker.walkTo(x, y, z);
     }
 
@@ -435,7 +450,13 @@ public class RsAgentTools {
      * @param z      Optional z-coordinate (plane) of the NPC or Object.
      * @return true if the interaction was successful, false otherwise.
      */
-    static public boolean interactWith(String name, String action, Integer x, Integer y, Integer z) {
+    @RsAgentTool(name = "interactWith", description = "Interacts with an NPC or Object by name using the specified action (e.g., 'Trade', 'Attack', 'Open'). Does not handle dialogue.")
+    static public boolean interactWith(
+            @ToolParameter(name = "name", description = "The name of the NPC or Object to interact with") String name,
+            @ToolParameter(name = "action", description = "The action to perform (e.g., 'Trade', 'Attack')") String action,
+            @ToolParameter(name = "x", description = "Optional x-coordinate of the NPC or Object", optional = true) Integer x,
+            @ToolParameter(name = "y", description = "Optional y-coordinate of the NPC or Object", optional = true) Integer y,
+            @ToolParameter(name = "z", description = "Optional z-coordinate (plane) of the NPC or Object", optional = true) Integer z) {
         WorldPoint targetLocation = null;
         if (x != null && y != null && z != null) {
             targetLocation = new WorldPoint(x, y, z);
@@ -525,7 +546,9 @@ public class RsAgentTools {
      *         Returns "No actions available" if the entity is not found or has no
      *         actions.
      */
-    static public String getInteractActions(String name) {
+    @RsAgentTool(name = "getInteractActions", description = "Gets the available interaction options for a given NPC or Object by its name.")
+    static public String getInteractActions(
+            @ToolParameter(name = "name", description = "The name of the NPC or Object") String name) {
         var npc = Rs2Npc.getNpc(name);
         List<String> actions = new ArrayList<>();
         if (npc != null) {
@@ -558,7 +581,9 @@ public class RsAgentTools {
      * @return A DialogueResult containing the initial conversation, or null if the
      *         NPC wasn't found or dialogue didn't start.
      */
-    static public DialogueResult talkToNpc(String name) {
+    @RsAgentTool(name = "talkToNpc", description = "Finds an NPC by name, interacts with \"Talk-to\", and handles the initial dialogue.")
+    static public DialogueResult talkToNpc(
+            @ToolParameter(name = "name", description = "The name of the NPC to talk to") String name) {
         NPC npc = Rs2Npc.getNpc(name);
         if (npc == null) {
             throw new RuntimeException("NPC " + name + " not found");
@@ -590,7 +615,9 @@ public class RsAgentTools {
      * @return true if the item was found and the "Take" action was initiated, false
      *         otherwise.
      */
-    static public boolean pickupGroundItem(String name) {
+    @RsAgentTool(name = "pickupGroundItem", description = "Finds and loots a ground item by name within a 255-tile radius.")
+    static public boolean pickupGroundItem(
+            @ToolParameter(name = "name", description = "The name of the item to pick up") String name) {
         return Rs2GroundItem.loot(name, 255); // 255 tile radius
     }
 
@@ -618,7 +645,9 @@ public class RsAgentTools {
      * @param option Index of option to choose
      * @return A DialogueResult containing conversation
      */
-    static public DialogueResult chooseOptionAndContinueDialogue(int option) {
+    @RsAgentTool(name = "chooseOptionAndContinueDialogue", description = "Chooses a dialogue option by index (1-n) and continues the conversation.")
+    static public DialogueResult chooseOptionAndContinueDialogue(
+            @ToolParameter(name = "option", description = "Index of option to choose (1-based)") int option) {
         Rs2Dialogue.keyPressForDialogueOption(option);
         sleep(800, 1200);
         return handleDialogue();
@@ -635,6 +664,7 @@ public class RsAgentTools {
      *         or an empty list for options if the dialogue ended without choices.
      *         Returns null if not in dialogue.
      */
+    @RsAgentTool(name = "handleDialogue", description = "Continues through dialogue screens and captures texts and options if present. Use this if you are already in dialogue but don't have options.")
     static public DialogueResult handleDialogue() {
         if (!Rs2Dialogue.isInDialogue()) {
             return null; // Not in dialogue
@@ -706,7 +736,9 @@ public class RsAgentTools {
         }
     }
 
-    static public String checkQuestStatus(String questName) {
+    @RsAgentTool(name = "checkQuestStatus", description = "Checks the status of a given quest from the quest list interface.")
+    static public String checkQuestStatus(
+            @ToolParameter(name = "questName", description = "The name of the quest to check") String questName) {
         Rs2Tab.switchToQuestTab();
         sleep(100, 200);
         var questBox = Rs2Widget.getWidget(ComponentID.QUEST_LIST_BOX);
@@ -768,6 +800,7 @@ public class RsAgentTools {
      *         (e.g., "Slot 0: Item Name: Quantity" or "Slot 0: Empty slot").
      *         Returns a list with an error message if inventory cannot be accessed.
      */
+    @RsAgentTool(name = "getPlayerInventory", description = "Checks the player's inventory and returns a list of items with their quantities, slot by slot.")
     static public List<String> getPlayerInventory() {
         List<String> inventoryContents = new ArrayList<>();
         List<Rs2ItemModel> items = Rs2Inventory.items();
@@ -800,7 +833,9 @@ public class RsAgentTools {
      * @param itemName The name of the item to equip.
      * @return true if the equip action was successfully initiated, false otherwise.
      */
-    static public boolean equipItem(String itemName) {
+    @RsAgentTool(name = "equipItem", description = "Equips an item from the player's inventory by its name.")
+    static public boolean equipItem(
+            @ToolParameter(name = "itemName", description = "The name of the item to equip") String itemName) {
         if (itemName == null || itemName.trim().isEmpty()) {
             Microbot.log(Level.WARN, "equipItem: Item name is null or empty.");
             return false;
@@ -815,6 +850,7 @@ public class RsAgentTools {
      *         (e.g., "HEAD: Dragon helm" or "WEAPON: Empty slot").
      *         Returns a list with an error message if equipment cannot be accessed.
      */
+    @RsAgentTool(name = "getEquippedItems", description = "Checks the player's equipped items and returns a list of items in each slot.")
     static public List<String> getEquippedItems() {
         List<String> equippedItems = new ArrayList<>();
         if (Microbot.getClient() == null || Microbot.getItemManager() == null) {
@@ -852,6 +888,7 @@ public class RsAgentTools {
      * @return A string describing nearby objects and NPCs, with their names.
      *         Example: "Objects: Tree, Rock\nNPCs: Man, Guard"
      */
+    @RsAgentTool(name = "getNearbyObjectsAndNpcs", description = "Finds interactable game objects and NPCs near the player, returning their names.")
     static public String getNearbyObjectsAndNpcs() {
         List<String> collectedObjectInfo = Rs2GameObject.getAll(o -> true, 20) // Existing distance 20
                 .stream()
@@ -902,36 +939,58 @@ public class RsAgentTools {
     }
 
     /**
-     * Finds the nearest accessible bank within a 500-tile radius and returns its
-     * location and name.
-     *
-     * @return A string describing the nearest bank, or an error/not found message.
-     */
-    static public String getNearestBank() {
-        Player player = Microbot.getClient().getLocalPlayer();
-        if (Microbot.getClient() == null || player == null || player.getWorldLocation() == null) {
-            return "Error: Client or player not available to determine current location.";
-        }
-        BankLocation nearestBank = Rs2Bank.getNearestBank(player.getWorldLocation(), 500);
-        if (nearestBank != null) {
-            WorldPoint bankPoint = nearestBank.getWorldPoint();
-            return "Nearest bank found at (" + bankPoint.getX() + ", " + bankPoint.getY() + ", " + bankPoint.getPlane()
-                    + ").";
-        } else {
-            return "No accessible bank location found nearby within 500 tiles.";
-        }
-    }
-
-    /**
-     * Opens the bank interface.
+     * Opens the bank interface. Finds the nearest bank, walks to it, and then opens
+     * it.
      *
      * @return A string indicating whether the bank was opened successfully.
      */
+    @RsAgentTool(name = "openBank", description = "Finds the nearest bank, walks to it if necessary, and opens the bank interface.")
     static public String openBank() {
         if (Rs2Bank.isOpen()) {
             return "Bank is already open.";
         }
+
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (Microbot.getClient() == null || player == null || player.getWorldLocation() == null) {
+            return "Failed to open bank: Client or player not available to determine current location.";
+        }
+
+        BankLocation nearestBankLocation = Rs2Bank.getNearestBank(player.getWorldLocation(), 500);
+
+        if (nearestBankLocation == null) {
+            return "Failed to open bank: No accessible bank location found nearby within 500 tiles.";
+        }
+
+        WorldPoint bankPoint = nearestBankLocation.getWorldPoint();
+        Microbot.log(Level.INFO,
+                "Nearest bank found: " + nearestBankLocation.name() + " at " + bankPoint + ". Walking to bank.");
+
+        boolean walked = Rs2Walker.walkTo(bankPoint);
+        if (!walked) {
+            boolean walkedAdjacent = false;
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    if (dx == 0 && dy == 0)
+                        continue;
+                    WorldPoint adjacentPoint = new WorldPoint(bankPoint.getX() + dx, bankPoint.getY() + dy,
+                            bankPoint.getPlane());
+                    if (Rs2Walker.walkTo(adjacentPoint)) {
+                        walkedAdjacent = true;
+                        break;
+                    }
+                }
+                if (walkedAdjacent)
+                    break;
+            }
+            if (!walkedAdjacent) {
+                return "Failed to open bank: Could not walk to the nearest bank at " + bankPoint + " or its vicinity.";
+            }
+        }
+
+        sleepUntil(() -> Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(bankPoint) <= 5, 5000);
+
         boolean success = Rs2Bank.openBank();
+
         if (success) {
             boolean isOpen = sleepUntil(Rs2Bank::isOpen, 5000);
             if (!isOpen) {
@@ -940,12 +999,12 @@ public class RsAgentTools {
             var bankItems = Rs2Bank.bankItems();
             StringBuilder bankContents = new StringBuilder();
             if (bankItems.isEmpty()) {
-                return "Bank opened succesfully, bank is empty";
+                return "Bank opened successfully at " + nearestBankLocation.name() + ", bank is empty.";
             }
             for (Rs2ItemModel item : bankItems) {
                 bankContents.append(item.getName()).append("- qty: ").append(item.getQuantity()).append("\n");
             }
-            return "Bank opened successfully. \n Bank contents:\n" + bankContents;
+            return "Bank opened successfully at " + nearestBankLocation.name() + ". \n Bank contents:\n" + bankContents;
         } else {
             return "Failed to initiate bank opening (e.g., no bank nearby or interaction failed).";
         }
@@ -956,6 +1015,7 @@ public class RsAgentTools {
      *
      * @return A string indicating whether the bank was closed successfully.
      */
+    @RsAgentTool(name = "closeBank", description = "Closes the bank interface if it is open.")
     static public String closeBank() {
         if (!Rs2Bank.isOpen()) {
             return "Bank is already closed.";
@@ -971,7 +1031,10 @@ public class RsAgentTools {
      * @param quantity The amount of the item to deposit.
      * @return A string indicating the result of the deposit attempt.
      */
-    static public String depositXItems(String itemName, int quantity) {
+    @RsAgentTool(name = "depositXItems", description = "Deposits a specified quantity of an item from the inventory into the bank.")
+    static public String depositXItems(
+            @ToolParameter(name = "itemName", description = "The name of the item to deposit") String itemName,
+            @ToolParameter(name = "quantity", description = "The amount of the item to deposit") int quantity) {
         if (!Rs2Bank.isOpen()) {
             Rs2Bank.openBank();
         }
@@ -997,7 +1060,10 @@ public class RsAgentTools {
      * @param quantity The amount of the item to withdraw.
      * @return A string indicating the result of the withdrawal attempt.
      */
-    static public String withdrawXItems(String itemName, int quantity) {
+    @RsAgentTool(name = "withdrawXItems", description = "Withdraws a specified quantity of an item from the bank into the inventory.")
+    static public String withdrawXItems(
+            @ToolParameter(name = "itemName", description = "The name of the item to withdraw") String itemName,
+            @ToolParameter(name = "quantity", description = "The amount of the item to withdraw") int quantity) {
         if (!Rs2Bank.isOpen()) {
             return "Failed to withdraw: Bank is not open.";
         }
@@ -1032,14 +1098,17 @@ public class RsAgentTools {
         }
     }
 
-    static public String buyInGrandExchange(String itemName, int quantity) {
+    @RsAgentTool(name = "buyInGrandExchange", description = "Buys the specified quantity of an item in the Grand Exchange.")
+    static public String buyInGrandExchange(
+            @ToolParameter(name = "item", description = "The name of the item to buy") String itemName,
+            @ToolParameter(name = "quantity", description = "The amount of the item to buy") int quantity) {
         var item = Microbot.rs2ItemManager.searchItem(itemName);
         if (item == null) {
             return "Item '" + itemName + "' not found.";
         }
         Rs2GrandExchange.walkToGrandExchange();
         boolean bought = Rs2GrandExchange.buyItemAbove5Percent(itemName, quantity);
-        if (!bought){
+        if (!bought) {
             return "Could not buy '" + itemName + "'.";
         }
         sleepUntil(Rs2GrandExchange::hasBoughtOffer);
@@ -1048,8 +1117,26 @@ public class RsAgentTools {
         return "Bought" + quantity + " of " + itemName;
     }
 
-    static public String combine(String item1, String item2) {
+    @RsAgentTool(name = "combine", description = "Combines 2 inventory items to craft a new item")
+    static public String combine(
+            @ToolParameter(name = "item1", description = "The first item to combine") String item1,
+            @ToolParameter(name = "item2", description = "The second item to combine") String item2) {
         boolean ok = Rs2Inventory.combine(item1, item2);
         return ok ? "Combined items" : "Failed to combine items";
+    }
+
+    @RsAgentTool(name = "getWikiPageContent", description = "Fetches the main textual content from an Old School Runescape Wiki page (oldschool.runescape.wiki).")
+    static public String getWikiPageContent(
+            @ToolParameter(name = "pageTitle", description = "The exact title of the wiki page (e.g., \"Cook's Assistant\", \"Dragon scimitar\")") String pageTitle) {
+        if (pageTitle == null || pageTitle.trim().isEmpty()) {
+            return "Error: Wiki page title cannot be empty.";
+        }
+        return WikiScraper.fetchWikiPageContent(pageTitle);
+    }
+
+    @RsAgentTool(name = "finish", description = "Call this when the goal is achieved, or you cannot proceed further.")
+    static public String finish(
+            @ToolParameter(name = "response", description = "A final summary message for the user") String response) {
+        return "Task completed: " + response;
     }
 }

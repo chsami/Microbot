@@ -5,7 +5,6 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.events.ChatMessage;
-import net.runelite.api.events.GameTick;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.client.config.ConfigManager;
@@ -15,7 +14,7 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.rsagent.agent.Agent;
-import net.runelite.client.plugins.microbot.rsagent.agent.RsAgentTools;
+import net.runelite.client.plugins.microbot.rsagent.agent.ToolRegistry;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.ui.overlay.OverlayManager;
 
@@ -25,22 +24,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
 
-@PluginDescriptor(
-        name = PluginDescriptor.Default + "RSAgent",
-        description = "Microbot AI Agent using LLMs", // Updated description
-        tags = {"ai", "llm", "agent", "microbot"}, // Updated tags
-        enabledByDefault = false
-)
+@PluginDescriptor(name = PluginDescriptor.Default + "RSAgent", description = "Microbot AI Agent using LLMs", // Updated
+                                                                                                             // description
+        tags = { "ai", "llm", "agent", "microbot" }, // Updated tags
+        enabledByDefault = false)
 @Slf4j
 public class RsAgentPlugin extends Plugin {
     @Inject
     private RsAgentConfig config;
+
     @Provides
     RsAgentConfig provideConfig(ConfigManager configManager) {
         return configManager.getConfig(RsAgentConfig.class);
     }
+
     @Getter
     private Agent agent;
 
@@ -49,13 +47,12 @@ public class RsAgentPlugin extends Plugin {
     @Inject
     private RsAgentOverlay rsAgentOverlay;
 
-     @Inject
-     RsAgentScript rsAgentScript;
+    @Inject
+    RsAgentScript rsAgentScript;
 
     Thread agentThread;
 
     static List<String> gameMessages = new ArrayList();
-
 
     @Override
     protected void startUp() throws AWTException {
@@ -66,6 +63,7 @@ public class RsAgentPlugin extends Plugin {
         // Initialize Agent only if API key is present
         if (config.llmApiKey() != null && !config.llmApiKey().isBlank()) {
             agent = new Agent(config.llmApiKey());
+            ToolRegistry.initialize();
 
             // Start agent thread only if goal is set
             String goal = config.goal();
@@ -80,11 +78,11 @@ public class RsAgentPlugin extends Plugin {
             log.warn("RSAgent enabled, but OpenAI API key is missing in config. Agent cannot start.");
         }
 
-//        rsAgentScript.run(config);
+        // rsAgentScript.run(config);
     }
 
     protected void shutDown() {
-//         rsAgentScript.shutdown();
+        // rsAgentScript.shutdown();
         overlayManager.remove(rsAgentOverlay);
         if (agentThread != null && agentThread.isAlive()) {
             agentThread.interrupt(); // Attempt to interrupt the agent thread
@@ -106,16 +104,18 @@ public class RsAgentPlugin extends Plugin {
                 log.info("API key changed, updating agent.");
                 agent.setApiKey(config.llmApiKey());
             } else if (config.llmApiKey() != null && !config.llmApiKey().isBlank()) {
-                // Initialize agent if it wasn't initialized before (e.g., key added after startup)
+                // Initialize agent if it wasn't initialized before (e.g., key added after
+                // startup)
                 log.info("API key added, initializing agent.");
                 agent = new Agent(config.llmApiKey());
-                // Optionally, check goal again and start thread if needed, or require plugin restart
-                 String goal = config.goal();
-                 if (goal != null && !goal.trim().isEmpty() && (agentThread == null || !agentThread.isAlive())) {
-                     log.info("Starting RSAgent thread after API key was added (Goal: {}).", goal);
-                     agentThread = new Thread(() -> agent.run(goal));
-                     agentThread.start();
-                 }
+                // Optionally, check goal again and start thread if needed, or require plugin
+                // restart
+                String goal = config.goal();
+                if (goal != null && !goal.trim().isEmpty() && (agentThread == null || !agentThread.isAlive())) {
+                    log.info("Starting RSAgent thread after API key was added (Goal: {}).", goal);
+                    agentThread = new Thread(() -> agent.run(goal));
+                    agentThread.start();
+                }
             }
         }
 
@@ -131,15 +131,14 @@ public class RsAgentPlugin extends Plugin {
             // Start new thread if goal is set and agent is initialized
             String newGoal = config.goal();
             if (agent != null && newGoal != null && !newGoal.trim().isEmpty()) {
-                 log.info("Starting new agent thread with goal: {}", newGoal);
-                 agentThread = new Thread(() -> agent.run(newGoal));
-                 agentThread.start();
+                log.info("Starting new agent thread with goal: {}", newGoal);
+                agentThread = new Thread(() -> agent.run(newGoal));
+                agentThread.start();
             } else if (agent != null) {
-                 log.info("Goal cleared or empty, agent thread stopped.");
+                log.info("Goal cleared or empty, agent thread stopped.");
             }
         }
     }
-
 
     @Subscribe
     public void onChatMessage(ChatMessage event) {
@@ -154,7 +153,7 @@ public class RsAgentPlugin extends Plugin {
         if (widgetLoaded.getGroupId() != InterfaceID.MESSAGEBOX) {
             return;
         }
-        Microbot.getClientThread().runOnSeperateThread(()->{
+        Microbot.getClientThread().runOnSeperateThread(() -> {
             sleepUntil(Rs2Dialogue::isInDialogue, 300);
             gameMessages.add(Rs2Dialogue.getDialogueText());
             return null;
@@ -164,7 +163,8 @@ public class RsAgentPlugin extends Plugin {
     /**
      * Retrieves all captured game messages and clears the list.
      *
-     * @return A formatted string of game messages, or an empty string if no messages were captured.
+     * @return A formatted string of game messages, or an empty string if no
+     *         messages were captured.
      */
     public static String getAndClearGameMessages() {
         if (gameMessages.isEmpty()) {
@@ -179,13 +179,14 @@ public class RsAgentPlugin extends Plugin {
     // @Subscribe
     // public void onGameTick(GameTick tick)
     // {
-    //     //System.out.println(getName().chars().mapToObj(i -> (char)(i + 3)).map(String::valueOf).collect(Collectors.joining()));
+    // //System.out.println(getName().chars().mapToObj(i -> (char)(i +
+    // 3)).map(String::valueOf).collect(Collectors.joining()));
     //
-    //     if (ticks > 0) {
-    //         ticks--;
-    //     } else {
-    //         ticks = 10;
-    //     }
+    // if (ticks > 0) {
+    // ticks--;
+    // } else {
+    // ticks = 10;
+    // }
     //
     // }
 }
