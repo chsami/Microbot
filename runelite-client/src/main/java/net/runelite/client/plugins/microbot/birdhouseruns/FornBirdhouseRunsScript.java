@@ -180,24 +180,6 @@ public class FornBirdhouseRunsScript extends Script {
         sleepUntil(() -> !Rs2Player.isInteracting());
         return true;
     }
-
-    private void logMissingBankItems(InventorySetup setup) {
-        List<InventorySetupsItem> allItems = new ArrayList<>();
-        allItems.addAll(setup.getInventory());
-        allItems.addAll(setup.getEquipment());
-
-        for (InventorySetupsItem item : allItems) {
-            if (item.getId() == -1) continue;
-
-            int requiredQuantity = item.getQuantity();
-            boolean isStackable = requiredQuantity > 1;
-
-            if (!Rs2Bank.hasBankItem(item.getName(), requiredQuantity, isStackable)) {
-                Microbot.showMessage("Missing from bank: " + item.getName() + " x" + requiredQuantity);
-            }
-        }
-    }
-
     private void seedHouse(WorldPoint worldPoint, states status) {
         Rs2Inventory.use(" seed");
         sleepUntil(Rs2Inventory::isItemSelected);
