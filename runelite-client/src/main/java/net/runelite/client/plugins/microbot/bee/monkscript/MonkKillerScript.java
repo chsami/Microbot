@@ -22,6 +22,7 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import javax.inject.Inject;
 import javax.swing.*;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -162,8 +163,8 @@ public class MonkKillerScript extends Script {
 
         for (Rs2NpcModel monk : monks) {
             if (!monk.isDead()
-                    && (monk.getInteractingModel() == null || monk.getInteractingModel() == localPlayer)
-                    && monk.getAnimation() == -1) {
+                    && (!monk.isInteracting() || Objects.equals(monk.getInteracting(), localPlayer)
+                    && monk.getAnimation() == -1)) {
                 return monk;
             }
         }
@@ -180,7 +181,7 @@ public class MonkKillerScript extends Script {
             return false;
         }
 
-        if (underAttack() || (monk.getInteractingModel() != null && monk.getInteractingModel() != localPlayer)) {
+    if (underAttack() || (monk.isInteracting() && !Objects.equals(monk.getInteracting(),localPlayer))) {
             Microbot.log("Monk is already in combat or we're under attack.");
             return false;
         }
