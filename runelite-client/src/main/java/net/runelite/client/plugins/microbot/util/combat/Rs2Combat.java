@@ -17,6 +17,8 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.Callable;
 
 import static net.runelite.client.plugins.microbot.Microbot.log;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
@@ -166,9 +168,19 @@ public class Rs2Combat {
 
     public static boolean inCombat() {
         if (!Microbot.isLoggedIn()) return false;
-        if (Microbot.getClientThread().runOnClientThreadOptional(() -> !Rs2Player.isInteracting()
-                || Rs2Player.getInteracting().getCombatLevel() < 1).orElse(true)) return false;
-        return Rs2Player.isInteracting() || Rs2Player.getAnimation() != -1;
+
+        Player player = Microbot.getClient().getLocalPlayer();
+        if (player == null) return false;
+
+        Actor interactingActor = Microbot.getClientThread().runOnClientThreadOptional(player::getInteracting).orElse(null);
+        if (interactingActor == null) return false;
+
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+                    if (interactingActor.getCombatLevel() < 1) return false;
+
+                    return player.getAnimation() != -1 || player.isInteracting();
+                })
+                .orElse(false);
     }
 
     /**
@@ -182,8 +194,6 @@ public class Rs2Combat {
      * @return the effective attack range in tiles (minimum of {@code 1})
      */
     public static int getAttackRange(boolean includeManualCast, boolean includeSpecialAttack) {
-        final int attackStyleVarbit = Microbot.getVarbitPlayerValue(VarPlayer.ATTACK_STYLE);
-        final int weaponTypeVarbit = Microbot.getVarbitValue(Varbits.EQUIPPED_WEAPON_TYPE);
         final Rs2ItemModel equippedWeapon = Rs2Equipment.get(EquipmentInventorySlot.WEAPON);
         final Map<Integer, Weapon> weaponsMap = WeaponsGenerator.generate();
 
@@ -192,7 +202,7 @@ public class Rs2Combat {
         }
 
         Weapon weapon = weaponsMap.get(equippedWeapon.getId());
-        String attackStyle = getWeaponAttackStyle(attackStyleVarbit, weaponTypeVarbit);
+        String attackStyle = getWeaponAttackStyle();
 
         int unmodifiedRange;
         if (weapon instanceof ManualCastable) {
@@ -221,11 +231,11 @@ public class Rs2Combat {
      * <p>
      * It looks up the weapon-styles enum to map varbit indices to style names.
      *
-     * @param attackStyleVarbit the varbit index representing the chosen attack style
-     * @param weaponTypeVarbit  the varbit index representing the equipped weapon type
      * @return the human-readable attack style name (e.g., "Slash", "Magic")
      */
-    private static String getWeaponAttackStyle(Integer attackStyleVarbit, Integer weaponTypeVarbit) {
+    public static String getWeaponAttackStyle() {
+        final int attackStyleVarbit = Microbot.getVarbitPlayerValue(VarPlayer.ATTACK_STYLE);
+        final int weaponTypeVarbit = Microbot.getVarbitValue(Varbits.EQUIPPED_WEAPON_TYPE);
         int weaponStyleEnum = Microbot.getEnum(EnumID.WEAPON_STYLES).getIntValue(weaponTypeVarbit);
         int[] weaponStyleStructs = Microbot.getEnum(weaponStyleEnum).getIntVals();
         StructComposition attackStylesStruct = Microbot.getStructComposition(weaponStyleStructs[attackStyleVarbit]);

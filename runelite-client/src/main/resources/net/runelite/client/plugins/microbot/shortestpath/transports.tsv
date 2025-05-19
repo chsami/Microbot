@@ -3872,9 +3872,18 @@
 3127 9337 0	3126 9337 0	Open;Door;11066								1	
 3126 9337 0	3127 9337 0	Open;Door;11066								1	
 											
-# Rellekka											
-2666 3694 0	2666 3694 1	Climb-up;Ladder;4187								2	
-2666 3694 1	2666 3694 0	Climb-down;Ladder;4189								2	
+# Rellekka
+2666 3694 0	2666 3694 1	Climb-up;Ladder;4187								2
+2666 3694 1	2666 3694 0	Climb-down;Ladder;4189								2
+2621 3694 0	2472 3994 0	Travel;Fremennik Boat;37432								2
+2472 3994 0	2621 3692 0	Travel;Fremennik Boat;37408								2
+2621 3693 0	2472 3994 0	Travel;Fremennik Boat;37432								2
+2473 3994 0	2621 3692 0	Travel;Fremennik Boat;37408								2
+2621 3692 0	2472 3994 0	Travel;Fremennik Boat;37432								2
+2621 3691 0	2472 3994 0	Travel;Fremennik Boat;37432								2
+2621 3690 0	2472 3994 0	Travel;Fremennik Boat;37432								2
+2598 3608 0	2596 3608 0	Cross;Broken bridge;4616								2
+2596 3608 0	2598 3608 0	Cross;Broken bridge;4615								2
 											
 # Isle of Stone											
 2465 4010 0	2461 10417 0	Enter;Cave;37433									

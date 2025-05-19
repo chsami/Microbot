@@ -22,7 +22,7 @@
 # Western Banner (3 has 1 teleport per day, 4 is unlimited)									
 2339 3649 0		13143;13144			Y	F	19	4	Western banner
 # Explorer's Ring (2 has 3 teleports per day, 3 and 4 are unlimited)									
-3052 3291 0		13126		4552<3	Y	T	19	4	Explorer's ring
+3052 3291 0		13126		4552<3	Y	T	19	4	Explorer's ring: Teleport
 3052 3291 0		13127;13128			Y	F	19	4	Explorer's ring
 # Rada's Blessing (Kourend Woodland, 1 has 3 teleports, 2 has 5 teleports, 3 and 4 have unlimited. For Mount Karuulum, 3 has 3 teleports and 4 has unlimited)									
 1554 3457 0		22941		7937<3	Y	T	19	4	Rada's blessing: Kourend Woodland
@@ -34,7 +34,7 @@
 # Games Necklace									
 2520 3571 0		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	2. Games necklace: Barbarian Outpost
 2898 3553 0		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	1. Games necklace: Burthorpe
-2965 4254 2		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	3. Games necklace: Corporeal Beast
+2967 4384 2		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	3. Games necklace: Corporeal Beast
 3245 9500 2		3853;3855;3857;3859;3861;3863;3865;3867	Tears of Guthix		Y	T	19	4	4. Games necklace: Tears of Guthix
 1631 3940 0		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	5. Games necklace: Wintertodt Camp
 
@@ -318,7 +318,7 @@
 # Requires the use of an ancient tablet to activate									
 1254 3560 0		13393			Y	T	19	4	5. Xeric's talisman: Xeric's Honour
 3200 3355 0		13660				T	19	4	Chronicle: Teleport
-3615 9461 0		26914			Y	F	19	4	Amulet of the eye
+3615 9461 0		26914			Y	F	19	4	Amulet of the eye: Teleport
 2981 3276 0		26818			Y	T	19	4	1. Ring of the elements: Air Altar
 3170 3155 0		26818			Y	T	19	4	2. Ring of the elements: Water Altar
 3288 3468 0		26818			Y	T	19	4	3. Ring of the elements: Earth Altar

@@ -71,7 +71,8 @@ public interface AutoCookingConfig extends Config {
                 "3. From level 1-40 cooking minimum required ingredients are 420 pots of flour, 420 buckets of water, " +
                 "420 bowls of water, 420 potatoes and 420 Cooked Meat or Cooked Chicken.\n" +
                 "4. From 40 cooking onwards the script will only bake cakes. The most optimal for burnt cakes is 1200 " +
-                "of each cake ingredient from level 40 cooking.";
+                "of each cake ingredient from level 40 cooking.\n" +
+                "NOTE: HAVE AN EVEN AMOUNT OF EACH INGREDIENT FOR EACH PRODUCT";
     }
 
     @ConfigItem(

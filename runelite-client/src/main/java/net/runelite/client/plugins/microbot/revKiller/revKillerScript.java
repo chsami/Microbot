@@ -66,7 +66,7 @@ public class revKillerScript extends Script {
     long randomdelay = generateRandomNumber(350,1000);
     protected ScheduledFuture<?> checkForPKerFuture;
     protected ScheduledFuture<?> healthCheckFuture;
-    public boolean weDied = false;
+    public static boolean weDied = false;
     private boolean useTimedWorldHopper = false;
     private long howLongUntilHop = 0;
     public volatile boolean shouldFlee = false;
@@ -333,13 +333,36 @@ public class revKillerScript extends Script {
         }
     }
 
+    public void stopTeleSpam(){
+        if(BankLocation.EDGEVILLE.getWorldPoint().distanceTo(Rs2Player.getWorldLocation()) < 30){
+            teleToFerox();
+        }
+    }
+
+    public void openBankCheck(){
+        if(Rs2Bank.isOpen()){
+            if(Rs2Bank.closeBank()){
+                sleepUntil(()-> Rs2Bank.isOpen(), Rs2Random.between(2000,4000));
+            }
+        }
+    }
+
     public void WalkToRevs(){
         drinkStamPotion();
         if(!WeAreInTheCaves()){
             //we must walk to the cave entrence
             if(Rs2Player.getWorldLocation().distanceTo(cave) > 6){
-                if(Rs2Walker.walkTo(cave)){
-                    Microbot.log("Walking to cave. with new method.");
+                reJfount();
+                stopTeleSpam();
+                if(selectedRev.contains("Knight")){
+                    openBankCheck();
+                    if(Rs2Walker.walkTo(selectedWP)){
+                        Microbot.log("Teleporting to level 40 rev cave.");
+                    }
+                } else {
+                    if(Rs2Walker.walkTo(cave)){
+                        Microbot.log("Walking to cave. with new method.");
+                    }
                 }
             } else {
                 if(!Rs2Dialogue.isInDialogue()){
@@ -353,8 +376,8 @@ public class revKillerScript extends Script {
                         Rs2Dialogue.clickContinue();
                         sleep(500,1000);
                     }
-                    if(Rs2Dialogue.getDialogueOption("Yes", false)!=null){
-                        Rs2Dialogue.clickOption("Yes", false);
+                    if(Rs2Dialogue.getDialogueOption("Yes, don't", false)!=null){
+                        Rs2Dialogue.clickOption("Yes, don't", false);
                         sleep(500,1000);
                     }
                     if(Rs2Dialogue.getDialogueOption("Accept", false)!=null){
@@ -422,25 +445,38 @@ public class revKillerScript extends Script {
     }
     public void getAwayFromPkerKnight(){
         Rs2Walker.setTarget(null);
-        if(Microbot.isLoggedIn()){
-            while(Microbot.isLoggedIn()){
-                if(!super.isRunning()){break;}
-                if(!Microbot.isLoggedIn()){break;}
-                Rs2Player.logout();
-                sleepUntil(()-> !Microbot.isLoggedIn(), Rs2Random.between(250,500));
-                sleep(1000,3000);
-            }
-        }
-        if(!Microbot.isLoggedIn()){
-            while(!Microbot.isLoggedIn()){
-                if(!super.isRunning()){break;}
-                if(Microbot.isLoggedIn()){break;}
-                sleep(1000,3000);
-                if(!Microbot.isLoggedIn()) {
-                    new Login(Login.getRandomWorld(Login.activeProfile.isMember()));
-                    sleepUntil(() -> Microbot.isLoggedIn(), Rs2Random.between(10000, 20000));
+        if(!Rs2Combat.inCombat()) {
+            if (Microbot.isLoggedIn()) {
+                while (Microbot.isLoggedIn()) {
+                    if (!super.isRunning()) {
+                        break;
+                    }
+                    if (!Microbot.isLoggedIn()) {
+                        break;
+                    }
+                    Rs2Player.logout();
+                    sleepUntil(() -> !Microbot.isLoggedIn(), Rs2Random.between(250, 500));
+                    sleep(1000, 3000);
                 }
             }
+            if (!Microbot.isLoggedIn()) {
+                while (!Microbot.isLoggedIn()) {
+                    if (!super.isRunning()) {
+                        break;
+                    }
+                    if (Microbot.isLoggedIn()) {
+                        break;
+                    }
+                    sleep(1000, 3000);
+                    if (!Microbot.isLoggedIn()) {
+                        new Login(Login.getRandomWorld(Login.activeProfile.isMember()));
+                        sleepUntil(() -> Microbot.isLoggedIn(), Rs2Random.between(10000, 20000));
+                    }
+                }
+            }
+        }
+        if(Rs2Combat.inCombat()) {
+            getAwayFromPker();
         }
         shouldFlee = false;
     }
@@ -452,6 +488,7 @@ public class revKillerScript extends Script {
 
         if(!Rs2Player.isTeleBlocked()){
             Microbot.log("At least we're not teleblocked.");
+            enablePrayer();
             if(Rs2Pvp.getWildernessLevelFrom(Rs2Player.getWorldLocation()) > 30) {
                 while (Rs2Pvp.getWildernessLevelFrom(Rs2Player.getWorldLocation()) > 30) {
                     if (!super.isRunning()) {
@@ -489,9 +526,7 @@ public class revKillerScript extends Script {
                         }
                     }
                     if (!WeAreInTheCaves()) {
-                        if(Rs2Player.isInCombat() || Rs2Player.isAnimating()){
-                            sleepUntil(()-> !Rs2Player.isInCombat() && !Rs2Player.isAnimating(), generateRandomNumber(10000,15000));
-                        }
+                        sleep(10000,15000);
                         hopToNewWorld();
                         break;
                     }
@@ -499,6 +534,7 @@ public class revKillerScript extends Script {
                         break;
                     }
                 }
+                Rs2Prayer.disableAllPrayers();
                 shouldFlee = false;
                 return;
             }
@@ -517,9 +553,7 @@ public class revKillerScript extends Script {
                         }
                     }
                     if (!WeAreInTheCaves()) {
-                        if(Rs2Player.isInCombat() || Rs2Player.isAnimating()){
-                            sleepUntil(()-> !Rs2Player.isInCombat() && !Rs2Player.isAnimating(), generateRandomNumber(10000,15000));
-                        }
+                        sleep(10000,15000);
                         hopToNewWorld();
                         break;
                     }
@@ -528,6 +562,7 @@ public class revKillerScript extends Script {
                     }
                 }
             }
+            Rs2Prayer.disableAllPrayers();
             shouldFlee = false;
         } else {
             Microbot.log("We're teleblocked! Attempting to run to the bank");
@@ -661,6 +696,37 @@ public class revKillerScript extends Script {
         }
     }
 
+    public void reJfount(){
+        int rejat = Rs2Random.between(10,30);
+        int runener = Rs2Random.between(50,65);
+        while(Rs2Player.getBoostedSkillLevel(Skill.PRAYER) < rejat || Rs2Player.getRunEnergy() <= runener){
+            if (!super.isRunning()) {
+                break;
+            }
+            if(Rs2Bank.isOpen()){
+                if(Rs2Bank.closeBank()){
+                    sleepUntil(()-> !Rs2Bank.isOpen(), Rs2Random.between(2000,4000));
+                }
+            } else {
+                GameObject rej = Rs2GameObject.get("Pool of Refreshment", true);
+                if(rej == null){
+                    return;
+                }
+                Microbot.log("Drinking");
+                if(Rs2GameObject.interact(rej, "Drink")){
+                    sleepUntil(()-> Rs2Player.isMoving(), Rs2Random.between(1000,3000));
+                    sleepUntil(()-> !Rs2Player.isMoving(), Rs2Random.between(5000,10000));
+                    sleepUntil(()-> Rs2Player.isAnimating(), Rs2Random.between(1000,4000));
+                    sleepUntil(()-> !Rs2Player.isAnimating(), Rs2Random.between(1000,4000));
+                }
+            }
+            if(Rs2Player.getBoostedSkillLevel(Skill.PRAYER) >= rejat && Rs2Player.getRunEnergy() >= runener){
+                break;
+            }
+
+        }
+    }
+
     public void hopToNewWorld(){
         // Thank you george!
 
@@ -764,13 +830,14 @@ public class revKillerScript extends Script {
                         break;
                     }
                 }
-                if(Rs2GroundItem.lootItemBasedOnValue(new LootingParameters(500,50000000, 10,1,1,false,false))){
+                String[] arr1={"Rune arrow","Amethyst arrow"};
+                //Rs2GroundItem.lootItemBasedOnValue(new LootingParameters(500,50000000, 10,1,1,false,false))
+                if(Rs2GroundItem.lootItemBasedOnValue(new LootingParameters(500,50000000,10,1,1,false,false,arr1))){
                     sleepUntil(()-> Rs2Player.isMoving(), Rs2Random.between(750,1500));
                     if(Rs2Player.isMoving()){
                         sleepUntil(()-> !Rs2Player.isMoving(), Rs2Random.between(3000,6000));
                     }
-                }
-                if(!Rs2GroundItem.isItemBasedOnValueOnGround(500,10)){
+                } else {
                     break;
                 }
             }
@@ -800,11 +867,11 @@ public class revKillerScript extends Script {
         }
     }
 
-    @Subscribe
-    public void onActorDeath(ActorDeath event) {
-        //Thank you george!
-        if (event.getActor() == Microbot.getClient().getLocalPlayer()) {
-            weDied = true;
+    private void teleToFerox(){
+        if (Rs2Equipment.useRingAction(JewelleryLocationEnum.FEROX_ENCLAVE)) {
+            sleepUntil(()-> Rs2Player.isAnimating(), generateRandomNumber(2000,4000));
+            sleepUntil(()-> !Rs2Player.isAnimating(), generateRandomNumber(6000,10000));
+            Microbot.log("Teleing");
         }
     }
 
@@ -823,11 +890,7 @@ public class revKillerScript extends Script {
                     }
                 }
                 if(Rs2Pvp.getWildernessLevelFrom(Rs2Player.getWorldLocation()) <= 20) {
-                    if (Rs2Equipment.useRingAction(JewelleryLocationEnum.FEROX_ENCLAVE)) {
-                        sleepUntil(()-> Rs2Player.isAnimating(), generateRandomNumber(2000,4000));
-                        sleepUntil(()-> !Rs2Player.isAnimating(), generateRandomNumber(6000,10000));
-                        Microbot.log("Teleing");
-                    }
+                    teleToFerox();
                 }
             }
             if(!WeAreInTheCaves()) {
@@ -835,6 +898,7 @@ public class revKillerScript extends Script {
                 DidWeDie();
                 OpenTheInv();
                 stuckAtEnclave();
+                stopTeleSpam();
                 Rs2Bank.walkToBankAndUseBank(BankLocation.FEROX_ENCLAVE);
             }
         } else {
@@ -951,7 +1015,21 @@ public class revKillerScript extends Script {
                 if(Rs2Equipment.get(EquipmentInventorySlot.AMMO).getQuantity() < LowOnArrowsCount){
                     if(Rs2Bank.count(selectedArrow)>100){
                         if(!Rs2Inventory.contains(selectedArrow)||Rs2Inventory.get(selectedArrow).getQuantity() < LowOnArrowsCount){
-                            if(Rs2Bank.withdrawX(selectedArrow, (generateRandomNumber(120,300)-Rs2Equipment.get(EquipmentInventorySlot.AMMO).getQuantity()) )){
+                            int min = 250;
+                            int max = 300;
+                            if(selectedArrow == ItemID.BOLT_RACK){
+                                min = 600;
+                                max = 700;
+                                if(Rs2Equipment.get(EquipmentInventorySlot.WEAPON).getId() == ItemID.KARILS_CROSSBOW_25){
+                                    Microbot.log("Please get a fresh karil's crossbow. Shutting down.");
+                                    super.shutdown();
+                                }
+                            }
+                            int amt = (generateRandomNumber(min,max)-Rs2Equipment.get(EquipmentInventorySlot.AMMO).getQuantity());
+                            if(amt <= 0){
+                                amt=generateRandomNumber(min,max);
+                            }
+                            if(Rs2Bank.withdrawX(selectedArrow, amt)){
                                 sleepUntil(()-> Rs2Inventory.contains(selectedArrow), generateRandomNumber(5000,15000));
                             }
                         }
@@ -966,6 +1044,25 @@ public class revKillerScript extends Script {
                     }
                 }
             }
+
+            howtobank = generateRandomNumber(0,100);
+            //equip arrows
+            if(selectedRev.contains("Knight")) {
+                if (howtobank <= 80) {
+                    Microbot.log("Grabbing rev cave teles");
+                    if (!Rs2Inventory.contains("Revenant cave teleport")) {
+                        if (Rs2Bank.count("Revenant cave teleport") > 5) {
+                            if (Rs2Bank.withdrawX("Revenant cave teleport", Rs2Random.between(2,5))) {
+                                sleepUntil(() -> Rs2Inventory.contains("Revenant cave teleport"), generateRandomNumber(5000, 15000));
+                            }
+                        } else {
+                            Microbot.log("Rev cave teleports, need at least 5");
+                            super.shutdown();
+                        }
+                    }
+                }
+            }
+
             howtobank = generateRandomNumber(0,100);
             //get stamina pot
             if(howtobank <= 40){
@@ -1148,6 +1245,15 @@ public class revKillerScript extends Script {
     if (!Rs2Equipment.get(EquipmentInventorySlot.AMULET).getName().contains("Amulet of glory(")) {
         Microbot.log("amulet is not charged");
         return false;
+    }
+
+    if(Rs2Equipment.get(EquipmentInventorySlot.GLOVES)!=null) {
+        if (Rs2Equipment.get(EquipmentInventorySlot.GLOVES).getName().contains("ethereum")) {
+            if (Rs2Equipment.get(EquipmentInventorySlot.GLOVES).getId() == ItemID.BRACELET_OF_ETHEREUM_UNCHARGED || ItemWithCharge.findItem(ItemID.BRACELET_OF_ETHEREUM).getCharges() < 5) {
+                Microbot.log("Our bracelet doesn't have enough charges.");
+                return false;
+            }
+        }
     }
 
     Microbot.log("We're fully equipped and ready to go.");

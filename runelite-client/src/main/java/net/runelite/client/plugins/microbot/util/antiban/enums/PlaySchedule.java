@@ -56,7 +56,11 @@ public enum PlaySchedule {
 
     SHORT_NIGHT(LocalTime.of(23, 0), LocalTime.of(7, 0)),
     MEDIUM_NIGHT(LocalTime.of(21, 0), LocalTime.of(9, 0)),
-    LONG_NIGHT(LocalTime.of(19, 0), LocalTime.of(11, 0));
+    LONG_NIGHT(LocalTime.of(19, 0), LocalTime.of(11, 0)),
+
+    FIRST_NIGHT(LocalTime.of(22, 0), LocalTime.of(1, 0)),
+    SECOND_NIGHT(LocalTime.of(1,0), LocalTime.of(4, 0)),
+    THIRD_NIGHT(LocalTime.of(4, 0), LocalTime.of(7, 0));
 
     private final LocalTime startTime;
     private final LocalTime endTime;

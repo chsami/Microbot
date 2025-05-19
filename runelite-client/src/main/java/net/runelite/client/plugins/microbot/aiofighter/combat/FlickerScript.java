@@ -1,7 +1,6 @@
 package net.runelite.client.plugins.microbot.aiofighter.combat;
 
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.NPC;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
@@ -22,7 +21,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * This class is responsible for handling the flicker script in the game.
@@ -32,14 +30,13 @@ import java.util.stream.Stream;
 public class FlickerScript extends Script {
     public static List<Monster> currentMonstersAttackingUs = new ArrayList<>();
     AttackStyle prayFlickAttackStyle = null;
-    boolean lazyFlick = false;
     boolean usePrayer = false;
     boolean flickQuickPrayer = false;
 
     int lastPrayerTick;
     int currentTick;
-    int tickToFlick;
-    Stream<Rs2NpcModel> npcs;
+    int tickToFlick = 0;
+    private volatile List<Rs2NpcModel> npcs = new ArrayList<>();
 
     /**
      * This method is responsible for running the flicker script.
@@ -64,13 +61,13 @@ public class FlickerScript extends Script {
                 if (config.prayerStyle() == PrayerStyle.PERFECT_LAZY_FLICK) {
                     tickToFlick = 0;
                 }
-                npcs = Rs2Npc.getNpcsForPlayer();
+                npcs = Rs2Npc.getNpcsForPlayer().collect(Collectors.toList());
                 usePrayer = config.togglePrayer();
                 flickQuickPrayer = config.toggleQuickPray();
                 currentTick = Microbot.getClient().getTickCount();
                 // Keep track of which monsters still have aggro on the player
                 currentMonstersAttackingUs.forEach(monster -> {
-                    if (npcs.noneMatch(npc -> npc.getIndex() == monster.npc.getIndex())) {
+                    if (npcs.stream().noneMatch(npc -> npc.getIndex() == monster.npc.getIndex())) {
                         monster.delete = true;
                     }
                 });
@@ -83,8 +80,6 @@ public class FlickerScript extends Script {
                 if (currentMonstersAttackingUs.isEmpty() && !Rs2Player.isInteracting() && (Rs2Prayer.isPrayerActive(Rs2PrayerEnum.PROTECT_MELEE) || Rs2Prayer.isPrayerActive(Rs2PrayerEnum.PROTECT_MAGIC) || Rs2Prayer.isPrayerActive(Rs2PrayerEnum.PROTECT_RANGE) || Rs2Prayer.isQuickPrayerEnabled())){
                     Rs2Prayer.disableAllPrayers();
                 }
-
-
             } catch (Exception ex) {
                 Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
             }
@@ -123,6 +118,7 @@ public class FlickerScript extends Script {
     /**
      * This method is responsible for shutting down the script.
      */
+    @Override
     public void shutdown() {
         super.shutdown();
     }
@@ -163,13 +159,10 @@ public class FlickerScript extends Script {
      * @param npcDespawned The despawned NPC.
      */
     public void onNpcDespawned(NpcDespawned npcDespawned) {
-        Monster monster = currentMonstersAttackingUs.stream()
+        currentMonstersAttackingUs.stream()
                 .filter(x -> x.npc.getIndex() == npcDespawned.getNpc().getIndex())
-                .findFirst().orElse(null);
+                .findFirst().ifPresent(monster -> currentMonstersAttackingUs.remove(monster));
 
-        if (monster != null) {
-            currentMonstersAttackingUs.remove(monster);
-        }
     }
 
     /**
@@ -178,16 +171,24 @@ public class FlickerScript extends Script {
      */
     public void resetLastAttack(boolean forceReset) {
 
-        for (NPC npc : npcs.collect(Collectors.toList())) {
+        for (Rs2NpcModel npc : npcs) {
             Monster currentMonster = currentMonstersAttackingUs.stream().filter(x -> x.npc.getIndex() == npc.getIndex()).findFirst().orElse(null);
+            String style = Rs2NpcManager.getAttackStyle(npc.getId());
+            if (style == null) {
+                continue;
+            }
             AttackStyle attackStyle = AttackStyleMapper.mapToAttackStyle(Rs2NpcManager.getAttackStyle(npc.getId()));
 
             if (currentMonster != null) {
-                if (forceReset) {
+                if (forceReset && currentMonster.lastAttack <= 0) {
                     currentMonster.lastAttack = currentMonster.rs2NpcStats.getAttackSpeed();
                 }
-                if (!npc.isDead() && currentMonster.lastAttack <= 0)
-                    currentMonster.lastAttack = currentMonster.rs2NpcStats.getAttackSpeed();
+                if ((!npc.isDead() && currentMonster.lastAttack <= 0) || (!npc.isDead() && npc.getGraphic() != -1)) {
+                    if (npc.getGraphic() != -1 && attackStyle != AttackStyle.MELEE)
+                        currentMonster.lastAttack = currentMonster.rs2NpcStats.getAttackSpeed() - 2 + tickToFlick;
+                    else
+                        currentMonster.lastAttack = currentMonster.rs2NpcStats.getAttackSpeed();
+                }
                 if (currentMonster.lastAttack <= -currentMonster.rs2NpcStats.getAttackSpeed() / 2){
                     currentMonstersAttackingUs.remove(currentMonster);
 

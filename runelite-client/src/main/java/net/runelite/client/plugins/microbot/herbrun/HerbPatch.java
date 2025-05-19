@@ -28,9 +28,9 @@ public class HerbPatch {
         this.location = getHerbFromName(regionName).getWorldPoint();
         switch (regionName) {
             case "Ardougne":
-                if (Rs2Bank.hasItem("Ardougne cloak 4")) {
-                    this.items.put("Ardougne cloak", 1);
-                }
+//                if (Rs2Bank.hasItem("Ardougne cloak")) {
+//                    this.items.put("Ardougne cloak", 1);
+//                }
                 this.enabled = config.enableArdougne();
                 break;
             case "Catherby":
@@ -93,7 +93,7 @@ public class HerbPatch {
         } else if(Objects.equals(regionName, "Troll Stronghold")) {
             return Rs2Player.getWorldLocation().getRegionID() == 11321;
         } else {
-            return Rs2Player.distanceTo(location) < distance;
+            return Rs2Player.getWorldLocation().distanceTo(location) < distance;
         }
     }
 

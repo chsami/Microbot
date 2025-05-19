@@ -26,7 +26,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static net.runelite.api.NullObjectID.NULL_34810;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
 /**
@@ -368,10 +367,10 @@ public class Rs2GameObject {
                 continue;
 
             //exceptions if the pathsize needs to be bigger
-            if (object.getId() == ObjectID.MARKET_STALL_14936) {
+            if (object.getId() == net.runelite.api.ObjectID.MARKET_STALL_14936) {
                 if (object instanceof GameObject && !Rs2Walker.canReach(object.getWorldLocation(), ((GameObject) object).sizeX(), ((GameObject) object).sizeY(), 4, 4))
                     continue;
-            } else if (object.getId() == ObjectID.BEAM_42220) {
+            } else if (object.getId() == net.runelite.api.ObjectID.BEAM_42220) {
                 if (object.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) > 6)
                     continue;
             } else {
@@ -430,7 +429,7 @@ public class Rs2GameObject {
     }
 
     public static <T extends TileObject> List<TileObject> getAll(Predicate<? super T> predicate) {
-        return getAll(predicate, Constants.SCENE_SIZE);
+        return getAll(predicate, (Constants.SCENE_SIZE / 2));
     }
 
     public static <T extends TileObject> List<TileObject> getAll(Predicate<? super T> predicate, int distance) {
@@ -453,7 +452,7 @@ public class Rs2GameObject {
     }
 
     public static TileObject getTileObject(int id, WorldPoint anchor) {
-        return getTileObject(id, anchor, Constants.SCENE_SIZE);
+        return getTileObject(id, anchor, (Constants.SCENE_SIZE / 2));
     }
 
     public static TileObject getTileObject(int id, WorldPoint anchor, int distance) {
@@ -551,11 +550,11 @@ public class Rs2GameObject {
     }
 
     public static TileObject getTileObject(Predicate<TileObject> predicate, WorldPoint anchor) {
-        return getTileObject(predicate, anchor, Constants.SCENE_SIZE);
+        return getTileObject(predicate, anchor, (Constants.SCENE_SIZE / 2));
     }
 
     public static TileObject getTileObject(Predicate<TileObject> predicate, LocalPoint anchorLocal) {
-        return getTileObject(predicate, anchorLocal, Constants.SCENE_SIZE * Perspective.LOCAL_TILE_SIZE);
+        return getTileObject(predicate, anchorLocal, (Constants.SCENE_SIZE / 2) * Perspective.LOCAL_TILE_SIZE);
     }
 
     public static TileObject getTileObject(Predicate<TileObject> predicate, WorldPoint anchor, int distance) {
@@ -607,11 +606,11 @@ public class Rs2GameObject {
     }
 
     public static List<TileObject> getTileObjects(Predicate<TileObject> predicate, WorldPoint anchor) {
-        return getTileObjects(predicate, anchor, Constants.SCENE_SIZE);
+        return getTileObjects(predicate, anchor, (Constants.SCENE_SIZE / 2));
     }
 
     public static List<TileObject> getTileObjects(Predicate<TileObject> predicate, LocalPoint anchorLocal) {
-        return getTileObjects(predicate, anchorLocal, Constants.SCENE_SIZE * Perspective.LOCAL_TILE_SIZE);
+        return getTileObjects(predicate, anchorLocal, (Constants.SCENE_SIZE / 2) * Perspective.LOCAL_TILE_SIZE);
     }
 
     public static List<TileObject> getTileObjects(Predicate<TileObject> predicate, WorldPoint anchor, int distance) {
@@ -631,7 +630,7 @@ public class Rs2GameObject {
     }
 
     public static GameObject getGameObject(int id) {
-        return getGameObject(id, Constants.SCENE_SIZE);
+        return getGameObject(id, (Constants.SCENE_SIZE / 2));
     }
 
     public static GameObject getGameObject(int id, int distance) {
@@ -643,7 +642,7 @@ public class Rs2GameObject {
     }
 
     public static GameObject getGameObject(int id, WorldPoint anchor) {
-        return getGameObject(id, anchor, Constants.SCENE_SIZE);
+        return getGameObject(id, anchor, (Constants.SCENE_SIZE / 2));
     }
 
     public static GameObject getGameObject(int id, WorldPoint anchor, int distance) {
@@ -747,11 +746,11 @@ public class Rs2GameObject {
     }
 
     public static GameObject getGameObject(Predicate<GameObject> predicate, WorldPoint anchor) {
-        return getGameObject(predicate, anchor, Constants.SCENE_SIZE);
+        return getGameObject(predicate, anchor, (Constants.SCENE_SIZE / 2));
     }
 
     public static GameObject getGameObject(Predicate<GameObject> predicate, LocalPoint anchorLocal) {
-        return getGameObject(predicate, anchorLocal, Constants.SCENE_SIZE * Perspective.LOCAL_TILE_SIZE);
+        return getGameObject(predicate, anchorLocal, (Constants.SCENE_SIZE / 2) * Perspective.LOCAL_TILE_SIZE);
     }
 
     public static GameObject getGameObject(Predicate<GameObject> predicate, WorldPoint anchor, int distance) {
@@ -803,11 +802,11 @@ public class Rs2GameObject {
     }
 
     public static List<GameObject> getGameObjects(Predicate<GameObject> predicate, WorldPoint anchor) {
-        return getGameObjects(predicate, anchor, Constants.SCENE_SIZE);
+        return getGameObjects(predicate, anchor, (Constants.SCENE_SIZE / 2));
     }
 
     public static List<GameObject> getGameObjects(Predicate<GameObject> predicate, LocalPoint anchorLocal) {
-        return getGameObjects(predicate, anchorLocal, Constants.SCENE_SIZE * Perspective.LOCAL_TILE_SIZE);
+        return getGameObjects(predicate, anchorLocal, (Constants.SCENE_SIZE / 2) * Perspective.LOCAL_TILE_SIZE);
     }
 
     public static List<GameObject> getGameObjects(Predicate<GameObject> predicate, WorldPoint anchor, int distance) {
@@ -827,7 +826,7 @@ public class Rs2GameObject {
     }
 
     public static GroundObject getGroundObject(int id) {
-        return getGroundObject(id, Constants.SCENE_SIZE);
+        return getGroundObject(id, (Constants.SCENE_SIZE / 2));
     }
 
     public static GroundObject getGroundObject(int id, int distance) {
@@ -839,7 +838,7 @@ public class Rs2GameObject {
     }
 
     public static GroundObject getGroundObject(int id, WorldPoint anchor) {
-        return getGroundObject(id, anchor, Constants.SCENE_SIZE);
+        return getGroundObject(id, anchor, (Constants.SCENE_SIZE / 2));
     }
 
     public static GroundObject getGroundObject(int id, WorldPoint anchor, int distance) {
@@ -937,11 +936,11 @@ public class Rs2GameObject {
     }
 
     public static GroundObject getGroundObject(Predicate<GroundObject> predicate, WorldPoint anchor) {
-        return getGroundObject(predicate, anchor, Constants.SCENE_SIZE);
+        return getGroundObject(predicate, anchor, (Constants.SCENE_SIZE / 2));
     }
 
     public static GroundObject getGroundObject(Predicate<GroundObject> predicate, LocalPoint anchorLocal) {
-        return getGroundObject(predicate, anchorLocal, Constants.SCENE_SIZE * Perspective.LOCAL_TILE_SIZE);
+        return getGroundObject(predicate, anchorLocal, (Constants.SCENE_SIZE / 2) * Perspective.LOCAL_TILE_SIZE);
     }
 
     public static GroundObject getGroundObject(Predicate<GroundObject> predicate, WorldPoint anchor, int distance) {
@@ -993,11 +992,11 @@ public class Rs2GameObject {
     }
 
     public static List<GroundObject> getGroundObjects(Predicate<GroundObject> predicate, WorldPoint anchor) {
-        return getGroundObjects(predicate, anchor, Constants.SCENE_SIZE);
+        return getGroundObjects(predicate, anchor, (Constants.SCENE_SIZE / 2));
     }
 
     public static List<GroundObject> getGroundObjects(Predicate<GroundObject> predicate, LocalPoint anchorLocal) {
-        return getGroundObjects(predicate, anchorLocal, Constants.SCENE_SIZE * Perspective.LOCAL_TILE_SIZE);
+        return getGroundObjects(predicate, anchorLocal, (Constants.SCENE_SIZE / 2) * Perspective.LOCAL_TILE_SIZE);
     }
 
     public static List<GroundObject> getGroundObjects(Predicate<GroundObject> predicate, WorldPoint anchor, int distance) {
@@ -1017,7 +1016,7 @@ public class Rs2GameObject {
     }
 
     public static WallObject getWallObject(int id) {
-        return getWallObject(id, Constants.SCENE_SIZE);
+        return getWallObject(id, (Constants.SCENE_SIZE / 2));
     }
 
     public static WallObject getWallObject(int id, int distance) {
@@ -1029,7 +1028,7 @@ public class Rs2GameObject {
     }
 
     public static WallObject getWallObject(int id, WorldPoint anchor) {
-        return getWallObject(id, anchor, Constants.SCENE_SIZE);
+        return getWallObject(id, anchor, (Constants.SCENE_SIZE / 2));
     }
 
     public static WallObject getWallObject(int id, WorldPoint anchor, int distance) {
@@ -1127,11 +1126,11 @@ public class Rs2GameObject {
     }
 
     public static WallObject getWallObject(Predicate<WallObject> predicate, WorldPoint anchor) {
-        return getWallObject(predicate, anchor, Constants.SCENE_SIZE);
+        return getWallObject(predicate, anchor, (Constants.SCENE_SIZE / 2));
     }
 
     public static WallObject getWallObject(Predicate<WallObject> predicate, LocalPoint anchorLocal) {
-        return getWallObject(predicate, anchorLocal, Constants.SCENE_SIZE * Perspective.LOCAL_TILE_SIZE);
+        return getWallObject(predicate, anchorLocal, (Constants.SCENE_SIZE / 2) * Perspective.LOCAL_TILE_SIZE);
     }
 
     public static WallObject getWallObject(Predicate<WallObject> predicate, WorldPoint anchor, int distance) {
@@ -1183,11 +1182,11 @@ public class Rs2GameObject {
     }
 
     public static List<WallObject> getWallObjects(Predicate<WallObject> predicate, WorldPoint anchor) {
-        return getWallObjects(predicate, anchor, Constants.SCENE_SIZE);
+        return getWallObjects(predicate, anchor, (Constants.SCENE_SIZE / 2));
     }
 
     public static List<WallObject> getWallObjects(Predicate<WallObject> predicate, LocalPoint anchorLocal) {
-        return getWallObjects(predicate, anchorLocal, Constants.SCENE_SIZE * Perspective.LOCAL_TILE_SIZE);
+        return getWallObjects(predicate, anchorLocal, (Constants.SCENE_SIZE / 2) * Perspective.LOCAL_TILE_SIZE);
     }
 
     public static List<WallObject> getWallObjects(Predicate<WallObject> predicate, WorldPoint anchor, int distance) {
@@ -1207,7 +1206,7 @@ public class Rs2GameObject {
     }
 
     public static DecorativeObject getDecorativeObject(int id) {
-        return getDecorativeObject(id, Constants.SCENE_SIZE);
+        return getDecorativeObject(id, (Constants.SCENE_SIZE / 2));
     }
 
     public static DecorativeObject getDecorativeObject(int id, int distance) {
@@ -1219,7 +1218,7 @@ public class Rs2GameObject {
     }
 
     public static DecorativeObject getDecorativeObject(int id, WorldPoint anchor) {
-        return getDecorativeObject(id, anchor, Constants.SCENE_SIZE);
+        return getDecorativeObject(id, anchor, (Constants.SCENE_SIZE / 2));
     }
 
     public static DecorativeObject getDecorativeObject(int id, WorldPoint anchor, int distance) {
@@ -1317,11 +1316,11 @@ public class Rs2GameObject {
     }
 
     public static DecorativeObject getDecorativeObject(Predicate<DecorativeObject> predicate, WorldPoint anchor) {
-        return getDecorativeObject(predicate, anchor, Constants.SCENE_SIZE);
+        return getDecorativeObject(predicate, anchor, (Constants.SCENE_SIZE / 2));
     }
 
     public static DecorativeObject getDecorativeObject(Predicate<DecorativeObject> predicate, LocalPoint anchorLocal) {
-        return getDecorativeObject(predicate, anchorLocal, Constants.SCENE_SIZE * Perspective.LOCAL_TILE_SIZE);
+        return getDecorativeObject(predicate, anchorLocal, (Constants.SCENE_SIZE / 2) * Perspective.LOCAL_TILE_SIZE);
     }
 
     public static DecorativeObject getDecorativeObject(Predicate<DecorativeObject> predicate, WorldPoint anchor, int distance) {
@@ -1373,11 +1372,11 @@ public class Rs2GameObject {
     }
 
     public static List<DecorativeObject> getDecorativeObjects(Predicate<DecorativeObject> predicate, WorldPoint anchor) {
-        return getDecorativeObjects(predicate, anchor, Constants.SCENE_SIZE);
+        return getDecorativeObjects(predicate, anchor, (Constants.SCENE_SIZE / 2));
     }
 
     public static List<DecorativeObject> getDecorativeObjects(Predicate<DecorativeObject> predicate, LocalPoint anchorLocal) {
-        return getDecorativeObjects(predicate, anchorLocal, Constants.SCENE_SIZE * Perspective.LOCAL_TILE_SIZE);
+        return getDecorativeObjects(predicate, anchorLocal, (Constants.SCENE_SIZE / 2) * Perspective.LOCAL_TILE_SIZE);
     }
 
     public static List<DecorativeObject> getDecorativeObjects(Predicate<DecorativeObject> predicate, WorldPoint anchor, int distance) {
@@ -1398,26 +1397,22 @@ public class Rs2GameObject {
 
     @Nullable
     public static <T extends TileObject> ObjectComposition convertToObjectComposition(T object) {
-        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
-                    ObjectComposition comp = Microbot.getClient().getObjectDefinition(object.getId());
-                    if (comp == null) return null;
-                    return comp.getImpostorIds() == null
-                            ? comp
-                            : comp.getImpostor();
-                })
-                .orElse(null);
+        return convertToObjectComposition(object.getId(), false);
     }
 
     @Nullable
     public static ObjectComposition convertToObjectComposition(int objectId) {
-        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
-                    ObjectComposition comp = Microbot.getClient().getObjectDefinition(objectId);
-                    if (comp == null) return null;
-                    return comp.getImpostorIds() == null
-                            ? comp
-                            : comp.getImpostor();
-                })
-                .orElse(null);
+        return convertToObjectCompositionInternal(objectId, false);
+    }
+
+    @Nullable
+    public static <T extends TileObject> ObjectComposition convertToObjectComposition(T object, boolean ignoreImpostor) {
+        return convertToObjectCompositionInternal(object.getId(), ignoreImpostor);
+    }
+
+    @Nullable
+    public static ObjectComposition convertToObjectComposition(int objectId, boolean ignoreImpostor) {
+        return convertToObjectCompositionInternal(objectId, ignoreImpostor);
     }
 
     public static <T> Optional<T> pickClosest(Collection<T> candidates, Function<T, WorldPoint> locFn, WorldPoint anchor) {
@@ -1467,6 +1462,10 @@ public class Rs2GameObject {
     }
 
     private static <T extends TileObject> List<T> getSceneObjects(Function<Tile, Collection<? extends T>> extractor, Predicate<T> predicate, LocalPoint anchorLocal, int distance) {
+        if (distance > Rs2LocalPoint.worldToLocalDistance(Constants.SCENE_SIZE)) {
+            distance = Rs2LocalPoint.worldToLocalDistance(Constants.SCENE_SIZE);
+        }
+
         return getSceneObjects(extractor)
                 .filter(withinTilesPredicate(distance, anchorLocal))
                 .filter(predicate)
@@ -1500,14 +1499,13 @@ public class Rs2GameObject {
 
     private static Optional<String> getCompositionName(TileObject obj) {
         ObjectComposition comp = convertToObjectComposition(obj);
-        if (comp == null) return Optional.empty();
-
-        String name = comp.getName();
-        if (name != null && !"null".equals(name)) {
-            return Optional.of(name);
+        if (comp == null) {
+            return Optional.empty();
         }
-
-        return Optional.empty();
+        String name = comp.getName();
+        return (name == null || name.equals("null"))
+                ? Optional.empty()
+                : Optional.of(Rs2UiHelper.stripColTags(name));
     }
 
     private static <T extends TileObject> Predicate<T> nameMatches(String objectName, boolean exact) {
@@ -1545,6 +1543,15 @@ public class Rs2GameObject {
     @SuppressWarnings("unchecked")
     private static <T extends TileObject> List<T> fetchGameObjects(Predicate<? super T> predicate) {
         return fetchGameObjects(predicate, Constants.SCENE_SIZE);
+    }
+
+    @Nullable
+    private static ObjectComposition convertToObjectCompositionInternal(int objectId, boolean ignoreImpostor) {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            ObjectComposition comp = Microbot.getClient().getObjectDefinition(objectId);
+            if (comp == null) return null;
+            return (ignoreImpostor || comp.getImpostorIds() == null) ? comp : comp.getImpostor();
+        }).orElse(null);
     }
 
     private static boolean clickObject(TileObject object) {
@@ -1683,7 +1690,8 @@ public class Rs2GameObject {
 
         Class<?>[] classesToScan = {
                 net.runelite.api.ObjectID.class,
-                net.runelite.api.gameval.ObjectID.class
+                net.runelite.api.gameval.ObjectID.class,
+                net.runelite.client.plugins.microbot.util.gameobject.ObjectID.class
         };
 
         for (Class<?> clazz : classesToScan) {

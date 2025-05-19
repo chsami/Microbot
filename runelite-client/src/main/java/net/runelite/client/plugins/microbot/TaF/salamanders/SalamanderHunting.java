@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.bee.salamanders;
+package net.runelite.client.plugins.microbot.TaF.salamanders;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

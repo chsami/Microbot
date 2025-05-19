@@ -14,7 +14,7 @@ public interface revKillerConfig extends Config {
             description = "Select a Rev",
             position = 0
     )
-    default revKillerConfig.RevSelections selectedRev() {
+    default RevSelections selectedRev() {
         return RevSelections.IMP; // Default selection
     }
 
@@ -55,13 +55,14 @@ public interface revKillerConfig extends Config {
             description = "Select an arrow type",
             position = 0
     )
-    default revKillerConfig.ArrowSelections selectedArrow() {
+    default ArrowSelections selectedArrow() {
         return ArrowSelections.RUNE; // Default selection
     }
 
     enum ArrowSelections {
         RUNE(ItemID.RUNE_ARROW, "Rune arrows"),
-        AMETHYST(ItemID.AMETHYST_ARROW, "Amethyst arrows");
+        AMETHYST(ItemID.AMETHYST_ARROW, "Amethyst arrows"),
+        BOLT_RACK(ItemID.BOLT_RACK, "Bolt rack");
         //more to come I'm lazy okay
 
         private final int id;

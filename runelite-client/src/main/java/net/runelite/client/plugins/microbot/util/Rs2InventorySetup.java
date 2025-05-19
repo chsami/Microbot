@@ -9,6 +9,7 @@ import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
+import org.slf4j.event.Level;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +19,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.stream.Collectors;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleep;
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
 /**
  * Utility class for managing inventory setups in the Microbot plugin.
@@ -102,7 +104,9 @@ public class Rs2InventorySetup {
                 inventorySetupsItem.setName(lowerCaseName.replaceAll("\\s+[1-9]\\d*$", ""));
             }
 
-            if (!Rs2Bank.hasBankItem(lowerCaseName, withdrawQuantity,false)) {
+            boolean exact = !inventorySetupsItem.isFuzzy();
+
+            if (!Rs2Bank.hasBankItem(lowerCaseName, withdrawQuantity, exact)) {
                 Microbot.pauseAllScripts = true;
                 Microbot.showMessage("Bank is missing the following item " + inventorySetupsItem.getName(), 10);
                 break;
@@ -193,6 +197,21 @@ public class Rs2InventorySetup {
         } else {
             //only deposit the items we don't need
             Rs2Bank.depositAllExcept(itemsToNotDeposit());
+        }
+
+
+        /*
+            Check if we have extra equipment already equipped before attempting to gear
+            For example, player is wearing full graceful set but your desired inventory setup does not contain boots, keeping the graceful boots equipped
+         */
+        boolean hasExtraGearEquipped = Rs2Equipment.contains(equip ->
+                inventorySetup.getEquipment().stream().noneMatch(setup -> setup.getId() == equip.getId())
+        );
+
+        if (hasExtraGearEquipped) {
+            Microbot.log("Found Extra Gear that is not contained within the setup", Level.DEBUG);
+            Rs2Bank.depositEquipment();
+            sleepUntil(() -> Rs2Equipment.items().stream().noneMatch(Objects::nonNull));
         }
 
         for (InventorySetupsItem inventorySetupsItem : inventorySetup.getEquipment()) {

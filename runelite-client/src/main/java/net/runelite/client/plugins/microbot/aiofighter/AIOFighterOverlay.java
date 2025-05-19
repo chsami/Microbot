@@ -71,8 +71,7 @@ public class AIOFighterOverlay extends OverlayPanel {
             }
         }
 
-        for (Rs2NpcModel npc :
-                filteredAttackableNpcs) {
+        for (Rs2NpcModel npc : filteredAttackableNpcs.get()) {
             if (npc != null && npc.getCanvasTilePoly() != null) {
                 try {
                     graphics.setColor(Color.CYAN);
