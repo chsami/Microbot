@@ -64,10 +64,6 @@ getNearbyObjectsAndNpcs: Finds interactable game objects (like trees, rocks, doo
       Takes inputs: none
       Returns an output of type: string (e.g. "Objects: Tree, Chest, Range\nNPCs: Cook, Guard, Goblin")
 
-getNearestBank: Finds the nearest accessible bank within a 500-tile radius and returns its location and name.
-      Takes inputs: none
-      Returns an output of type: string (e.g. "Nearest bank found: Bank Name at (x, y, z)." or "No accessible bank location found nearby within 500 tiles.")
-
 openBank: Finds the nearest bank, walks to it if necessary, and opens the bank interface.
       Takes inputs: none
       Returns an output of type: string (e.g. "Bank opened successfully." or "Failed to open bank.")
