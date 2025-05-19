@@ -88,7 +88,8 @@ public class MonkKillerScript extends Script {
                     if (monk != null) {
                         Microbot.log("monk is not null, entering attackMonk");
                         if (!attackMonk(monk)) {
-                            Microbot.log("Failed to attack monk. Waiting...");
+                             Microbot.log("Failed to attack monk. Probably due to a Rs2npc.attack() filter, attacking manually");
+                             Rs2Npc.interact(monk, "attack");
                         }
                     } else {
                         Microbot.log("monk is null, sleeping a bit then if not under attack, logging out");
