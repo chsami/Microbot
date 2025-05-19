@@ -2,8 +2,8 @@ package net.runelite.client.plugins.microbot.util;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import net.runelite.api.Point;
 import net.runelite.api.*;
+import net.runelite.api.Point;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
