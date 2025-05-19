@@ -36,7 +36,6 @@ public class FornBirdhouseRunsScript extends Script {
     private static final WorldPoint birdhouseLocation4 = new WorldPoint(3679, 3815, 0);
     public static double version = 1.0;
     private boolean initialized;
-    private boolean craftedBirdhouses = false;
     @Inject
     private Notifier notifier;
     private final FornBirdhouseRunsPlugin plugin;
@@ -60,7 +59,6 @@ public class FornBirdhouseRunsScript extends Script {
                     if (!inventorySetup.doesInventoryMatch() || !inventorySetup.doesEquipmentMatch()) {
                         Rs2Walker.walkTo(Rs2Bank.getNearestBank().getWorldPoint(), 20);
                         if (!inventorySetup.loadEquipment() || !inventorySetup.loadInventory()) {
-                            logMissingBankItems(config.inventorySetup());
                             Microbot.log("Failed to load inventory setup");
                             plugin.reportFinished("Birdhouse run failed to load inventory setup",false);
                             this.shutdown();
@@ -214,13 +212,8 @@ public class FornBirdhouseRunsScript extends Script {
 
     private void dismantleBirdhouse(int itemId, states status) {
         Rs2GameObject.interact(itemId, "Reset");
-        if (!craftedBirdhouses) {
-            sleepUntil(() -> (!Rs2Player.isAnimating() && !Rs2Player.isInteracting() && Rs2Player.waitForXpDrop(Skill.CRAFTING, 8000)));
-            sleep(Rs2Random.between(700, 1200));
-        } else {
-            sleepUntil(() -> (!Rs2Player.isAnimating() && !Rs2Player.isInteracting() && Rs2Player.waitForXpDrop(Skill.HUNTER, 8000)));
-            sleep(Rs2Random.between(700, 1200));
-        }
+        sleepUntil(() -> (!Rs2Player.isAnimating() && !Rs2Player.isInteracting() && Rs2Player.waitForXpDrop(Skill.CRAFTING, 8000)));
+        sleep(Rs2Random.between(700, 1200));
         //sleep(Rs2Random.between(2000, 3000));
         botStatus = status;
     }
