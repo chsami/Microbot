@@ -4,9 +4,13 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.rsagent.annotations.RsAgentTool;
 import net.runelite.client.plugins.microbot.rsagent.annotations.ToolParameter;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -20,35 +24,46 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 public class PromptGenerator {
-    // The template for the beginning of the SystemPrompt.txt file
-    private static final String PROMPT_HEADER = "You are RSAgent, a RuneScape bot agent. Your job is to think step-by-step and decide which tool to use to accomplish the goal stated by the user.\n"
-            +
-            "The rules:\n" +
-            "- Match the response format exactly, or you will fail\n" +
-            "- DO NOT ATTEMPT MULTIPLE STEPS. You should always perform one loop iteration at a time.\n" +
-            "- ALWAYS use the following format for all your responses:\n" +
-            "{\n" +
-            "  \"thought\": \"your reasoning about the next step\",\n" +
-            "  \"action\": \"tool_name\",\n" +
-            "  \"action_parameters\": {\n" +
-            "    \"key\": \"value\"\n" +
-            "  }\n" +
-            "}\n" +
-            "Do NOT explain anything outside the JSON. Available tools are:\n";
-
-    // The template for the end of the SystemPrompt.txt file
-    private static final String PROMPT_FOOTER =
-            // Footer content would go here - can be extracted from existing file
-            "Your thought process should be:\n" +
-                    "1. Understand the user's task.\n" +
-                    "2. Plan the sequence of actions to achieve the task.\n" +
-                    "3. For each action, select the appropriate tool and specify its parameters.\n" +
-                    "4. Output the JSON for the current action.\n" +
-                    "5. Wait for the \"Tool result:\" which will be the observation from the game after your action. This result may also include \"Game Messages:\" captured during the tool's execution, which provide additional context from the game chat.\n"
-                    +
-                    "6. Based on the result, decide the next action. If the task is complete, use the \"finish\" action.\n"
-                    +
-                    "\nYou are now ready to receive your first task.";
+    
+    /**
+     * Load content from a resource file
+     * 
+     * @param resourcePath The path to the resource
+     * @return The content of the resource file as a string
+     */
+    private static String loadResourceFile(String resourcePath) {
+        try (InputStream inputStream = PromptGenerator.class.getResourceAsStream(resourcePath)) {
+            if (inputStream == null) {
+                log.error("Resource not found: {}", resourcePath);
+                return "";
+            }
+            
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+                return reader.lines().collect(Collectors.joining("\n"));
+            }
+        } catch (IOException e) {
+            log.error("Error reading resource file {}: {}", resourcePath, e.getMessage(), e);
+            return "";
+        }
+    }
+    
+    /**
+     * Load the prompt header from the resource file
+     * 
+     * @return The content of the prompt header
+     */
+    private static String loadPromptHeader() {
+        return loadResourceFile("/rsagent/PromptHeader.txt");
+    }
+    
+    /**
+     * Load the prompt footer from the resource file
+     * 
+     * @return The content of the prompt footer
+     */
+    private static String loadPromptFooter() {
+        return loadResourceFile("/rsagent/PromptFooter.txt");
+    }
 
     /**
      * Generate the SystemPrompt.txt content from annotated methods
@@ -57,8 +72,12 @@ public class PromptGenerator {
      */
     public static String generateToolDocumentation() {
         StringBuilder sb = new StringBuilder();
-        sb.append(PROMPT_HEADER);
+        
+        // Load the header
+        String header = loadPromptHeader();
+        sb.append(header).append("\n");
 
+        // Generate the tool descriptions
         Method[] methods = RsAgentTools.class.getDeclaredMethods();
         for (Method method : methods) {
             RsAgentTool toolAnnotation = method.getAnnotation(RsAgentTool.class);
@@ -88,7 +107,10 @@ public class PromptGenerator {
             }
         }
 
-        sb.append(PROMPT_FOOTER);
+        // Load the footer
+        String footer = loadPromptFooter();
+        sb.append(footer);
+        
         return sb.toString();
     }
 
