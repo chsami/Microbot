@@ -83,9 +83,20 @@ public class Agent {
             equippedInfo = "Current Equipped items:\n" + String.join("\n", equippedList);
         }
 
+        // Get player skill levels
+        List<String> skillList = RsAgentTools.getPlayerSkills();
+        String skillInfo;
+        if (skillList.isEmpty()) {
+            skillInfo = "Could not retrieve player skill levels at the start of the task.";
+            log.warn("Initial getPlayerSkills tool failed: Empty list");
+        } else {
+            skillInfo = "Current Skill Levels:\n" + String.join("\n", skillList);
+        }
+
         augmentedSystemInstruction.append("\n\nInitial Player Status (provided at the beginning of the task):\n");
         augmentedSystemInstruction.append(inventoryInfo).append("\n");
-        augmentedSystemInstruction.append(equippedInfo);
+        augmentedSystemInstruction.append(equippedInfo).append("\n");
+        augmentedSystemInstruction.append(skillInfo);
 
         String finalSystemInstruction = augmentedSystemInstruction.toString();
         log.debug("Augmented System Prompt:\n{}", finalSystemInstruction);
