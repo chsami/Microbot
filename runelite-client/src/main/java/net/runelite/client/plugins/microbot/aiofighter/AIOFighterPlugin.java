@@ -68,7 +68,7 @@ public class AIOFighterPlugin extends Plugin {
     public static int cooldown = 0;
     private final CannonScript cannonScript = new CannonScript();
     private final AttackNpcScript attackNpc = new AttackNpcScript();
-
+    private final MonkKillerScript defencePure = new MonkKillerScript();
     private final FoodScript foodScript = new FoodScript();
     private final LootScript lootScript = new LootScript();
     private final SafeSpot safeSpotScript = new SafeSpot();
@@ -148,6 +148,7 @@ public class AIOFighterPlugin extends Plugin {
         highAlchScript.run(config);
         potionManagerScript.run(config);
         safetyScript.run(config);
+        defencePure.run(config);
         //slayerScript.run(config);
         Microbot.getSpecialAttackConfigs()
                 .setSpecialAttack(true);
@@ -171,6 +172,7 @@ public class AIOFighterPlugin extends Plugin {
         highAlchScript.shutdown();
         potionManagerScript.shutdown();
         safetyScript.shutdown();
+        defencePure.shutdown();
         //slayerScript.shutdown();
         resetLocation();
         overlayManager.remove(playerAssistOverlay);
