@@ -5,6 +5,7 @@ import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
 import lombok.Getter;
 import net.runelite.api.*;
+import net.runelite.api.Skill;
 // Removed unused import: net.runelite.api.TileItem;
 import net.runelite.api.coords.WorldPoint;
 // Removed unused import: net.runelite.api.gameval.InterfaceID;
@@ -481,6 +482,12 @@ public class RsAgentTools {
             if (interacted) {
                 Rs2Player.waitForAnimation();
                 sleep(500, 1000);
+                if (action.equals("Attack")) {
+                    sleepUntil(Rs2Player::isInCombat, Rs2Random.between(3000, 6000));
+                    while (Rs2Player.isInCombat()) {
+                        Microbot.log("Fighting " + npcDisplayName);
+                    }
+                }
                 Microbot.log(Level.INFO, "Interacted with NPC: " + npcDisplayName
                         + (targetLocation != null ? " at " + targetLocation : "") + " using action: " + action);
                 return true;
@@ -817,7 +824,8 @@ public class RsAgentTools {
                 continue;
             String itemName = itemModel.getName();
             int quantity = itemModel.getQuantity();
-            inventoryContents.add("Slot " + i + ": " + itemName + ": " + quantity);
+            boolean isNoted = itemModel.isNoted();
+            inventoryContents.add("Slot " + i + ": " + itemName + ": " + quantity + (isNoted ? " (Noted)" : ""));
         }
 
         if (inventoryContents.isEmpty()) {
@@ -1138,5 +1146,37 @@ public class RsAgentTools {
     static public String finish(
             @ToolParameter(name = "response", description = "A final summary message for the user") String response) {
         return "Task completed: " + response;
+    }
+
+    /**
+     * Retrieves the player's skill levels for all skills.
+     *
+     * @return A list of strings, where each string represents a skill and its level.
+     *         Each entry follows the format: "Skill Name: Level X (Boosted: Y)" if boosted,
+     *         or "Skill Name: Level X" if not boosted.
+     */
+    @RsAgentTool(name = "getPlayerSkills", description = "Retrieves the player's skill levels for all skills.")
+    static public List<String> getPlayerSkills() {
+        List<String> skillLevels = new ArrayList<>();
+        
+        for (Skill skill : Skill.values()) {
+            // Skip overall since it's a calculated value
+            if (skill == Skill.OVERALL)
+                continue;
+            
+            int realLevel = Rs2Player.getRealSkillLevel(skill);
+            int boostedLevel = Rs2Player.getBoostedSkillLevel(skill);
+            
+            String skillInfo;
+            if (boostedLevel != realLevel) {
+                skillInfo = skill.getName() + ": Level " + realLevel + " (Boosted: " + boostedLevel + ")";
+            } else {
+                skillInfo = skill.getName() + ": Level " + realLevel;
+            }
+            
+            skillLevels.add(skillInfo);
+        }
+        
+        return skillLevels;
     }
 }
