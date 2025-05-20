@@ -21,7 +21,6 @@ import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
-import net.runelite.client.plugins.microbot.util.player.Rs2PlayerModel;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Gembag;
@@ -30,8 +29,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Slf4j
 public class MotherloadMineScript extends Script
@@ -391,9 +388,6 @@ public class MotherloadMineScript extends Script
         int id = wallObject.getId();
         boolean isVein = (id == 26661 || id == 26662 || id == 26663 || id == 26664);
         if (!isVein) return false;
-
-        Stream<Rs2PlayerModel> players = Rs2Player.getPlayers(it -> it!=null && it.getWorldLocation().distanceTo(wallObject.getWorldLocation()) <= 2);
-        if (players.findAny().isPresent()) return false;
 
         if (config.mineUpstairs())
         {

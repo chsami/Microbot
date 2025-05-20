@@ -66,7 +66,7 @@ public class revKillerScript extends Script {
     long randomdelay = generateRandomNumber(350,1000);
     protected ScheduledFuture<?> checkForPKerFuture;
     protected ScheduledFuture<?> healthCheckFuture;
-    public static boolean weDied = false;
+    public boolean weDied = false;
     private boolean useTimedWorldHopper = false;
     private long howLongUntilHop = 0;
     public volatile boolean shouldFlee = false;
@@ -864,6 +864,14 @@ public class revKillerScript extends Script {
                     sleepUntil(()-> !Rs2Player.isMoving(), Rs2Random.between(4000,8000));
                 }
             }
+        }
+    }
+
+    @Subscribe
+    public void onActorDeath(ActorDeath event) {
+        //Thank you george!
+        if (event.getActor() == Microbot.getClient().getLocalPlayer()) {
+            weDied = true;
         }
     }
 
