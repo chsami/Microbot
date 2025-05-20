@@ -47,7 +47,7 @@ public class AttackNpcScript extends Script {
 
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
-                if (!Microbot.isLoggedIn() || !super.run() || !config.toggleCombat())
+                if (!Microbot.isLoggedIn() || !super.run() || !config.toggleCombat() || config.defencePureMode())
                     return;
 
                 if(config.centerLocation().distanceTo(Rs2Player.getWorldLocation()) < config.attackRadius() &&
