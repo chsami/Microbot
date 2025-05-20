@@ -987,6 +987,16 @@ public interface AIOFighterConfig extends Config {
         return new WorldPoint(0, 0, 0);
     }
 
+    @ConfigItem(
+            keyName = "monk_killer",
+            name = "Monk killer",
+            description = "Enable defence pure mode, goes to monestary and attacks monks",
+            position = 993
+    )
+    default boolean defencePureMode() {
+        return false;
+    }
+
 }
 
 
