@@ -30,7 +30,7 @@ public class LootScript extends Script {
                 minFreeSlots = config.bank() ? config.minFreeSlots() : 0;
                 if (!super.run()) return;
                 if (!Microbot.isLoggedIn()) return;
-                if (AIOFighterPlugin.getState().equals(State.BANKING) || AIOFighterPlugin.getState().equals(State.WALKING)) return;
+                if (AIOFighterPlugin.getState().equals(State.BANKING) || AIOFighterPlugin.getState().equals(State.WALKING) || config.defencePureMode()) return;
                 if (Rs2Inventory.isFull() || Rs2Inventory.getEmptySlots() <= minFreeSlots || (Rs2Combat.inCombat() && !config.toggleForceLoot()))
                     return;
 
