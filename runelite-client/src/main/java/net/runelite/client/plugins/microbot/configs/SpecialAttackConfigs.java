@@ -61,31 +61,31 @@ public class SpecialAttackConfigs {
 
         //check spec weapon in inventory
         for (SpecialAttackWeaponEnum specialAttackWeapon :SpecialAttackWeaponEnum.values()) {
-            boolean hasPresetSpecialAttackWeapon = Rs2Inventory.hasItem(specialAttackWeapon.getName())
-                    && Microbot.getSpecialAttackConfigs().getSpecialAttackWeapon() != null
-                    && Microbot.getSpecialAttackConfigs().getSpecialAttackWeapon().getName().toLowerCase().contains(specialAttackWeapon.getName());
-            boolean hasRandomSpecialAttackWeapon = Rs2Inventory.hasItem(specialAttackWeapon.getName()) && Microbot.getSpecialAttackConfigs().getSpecialAttackWeapon() == null;
+            boolean hasPresetSpecialAttackWeapon = Rs2Inventory.hasItem(specialAttackWeapon.getId())
+                    && Microbot.getSpecialAttackConfigs().getSpecialAttackWeapon() != null;
+                    //&& Microbot.getSpecialAttackConfigs().getSpecialAttackWeapon().getName().toLowerCase().contains(specialAttackWeapon.getName());
+            boolean hasRandomSpecialAttackWeapon = Rs2Inventory.hasItem(specialAttackWeapon.getId()) && Microbot.getSpecialAttackConfigs().getSpecialAttackWeapon() == null;
             if (hasPresetSpecialAttackWeapon || hasRandomSpecialAttackWeapon) {
-                if (useSpecWeapon(specialAttackWeapon.getName(), specialAttackWeapon.getEnergyRequired(), specialAttackWeapon.is2H()))
+                if (useSpecWeapon(specialAttackWeapon.getId(), specialAttackWeapon.getEnergyRequired(), specialAttackWeapon.is2H()))
                     return true;
             }
         }
         //check spec weapon in equipment slot
         for (SpecialAttackWeaponEnum specialAttackWeapon :SpecialAttackWeaponEnum.values()) {
-            boolean hasPresetSpecialAttackWeapon = Rs2Equipment.isWearing(specialAttackWeapon.getName())
-                    && Microbot.getSpecialAttackConfigs().getSpecialAttackWeapon() != null
-                    && Microbot.getSpecialAttackConfigs().getSpecialAttackWeapon().getName().toLowerCase().contains(specialAttackWeapon.getName());
-            boolean hasRandomSpecialAttackWeapon = Rs2Equipment.isWearing(specialAttackWeapon.getName()) && Microbot.getSpecialAttackConfigs().getSpecialAttackWeapon() == null;
+            boolean hasPresetSpecialAttackWeapon = Rs2Equipment.isWearing(specialAttackWeapon.getId())
+                    && Microbot.getSpecialAttackConfigs().getSpecialAttackWeapon() != null;
+                    //&& Microbot.getSpecialAttackConfigs().getSpecialAttackWeapon().getName().toLowerCase().contains(specialAttackWeapon.getName());
+            boolean hasRandomSpecialAttackWeapon = Rs2Equipment.isWearing(specialAttackWeapon.getId()) && Microbot.getSpecialAttackConfigs().getSpecialAttackWeapon() == null;
             if (hasPresetSpecialAttackWeapon || hasRandomSpecialAttackWeapon) {
-                if (useSpecWeapon(specialAttackWeapon.getName(), specialAttackWeapon.getEnergyRequired(), specialAttackWeapon.is2H()))
+                if (useSpecWeapon(specialAttackWeapon.getId(), specialAttackWeapon.getEnergyRequired(), specialAttackWeapon.is2H()))
                     return true;
             }
         }
         return false;
     }
 
-    public boolean useSpecWeapon(String name, int specEnergy, boolean is2H) {
-        if (name.isEmpty()) return false;
+    public boolean useSpecWeapon(int id, int specEnergy, boolean is2H) {
+        //if (name.isEmpty()) return false;
         if (Rs2Equipment.isWearingShield() && is2H && Rs2Inventory.isFull()) return false;
 
         if (currentEquipment == null) {
@@ -117,7 +117,7 @@ public class SpecialAttackConfigs {
             return false;
         }
 
-        boolean didInteract = Rs2Inventory.wear(name);
+        boolean didInteract = Rs2Inventory.wear(id);
         if (didInteract) sleep(600);
         return Rs2Combat.setSpecState(true, specEnergy);
     }

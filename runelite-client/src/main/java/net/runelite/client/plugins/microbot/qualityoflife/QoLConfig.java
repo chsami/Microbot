@@ -347,7 +347,7 @@ public interface QoLConfig extends Config {
             section = upkeepSection
     )
     default SpecialAttackWeaponEnum specWeapon() {
-        return SpecialAttackWeaponEnum.DRAGON_DAGGER;
+        return SpecialAttackWeaponEnum.DRAGON_DAGGER_P_PLUS_PLUS;
     }
 
     // boolean to auto use stamina potion
