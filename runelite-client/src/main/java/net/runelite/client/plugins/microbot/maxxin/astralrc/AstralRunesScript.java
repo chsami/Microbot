@@ -39,7 +39,7 @@ public class AstralRunesScript extends Script {
     private enum State {
         BANKING,
         CRAFTING,
-        REPAIRING;
+        REPAIRING
     }
 
     private State state = State.BANKING;
@@ -88,13 +88,13 @@ public class AstralRunesScript extends Script {
                     return;
                 }
 
-                if( !Rs2Magic.canCast(MagicAction.MOONCLAN_TELEPORT) ) {
+                if( !Rs2Bank.isOpen() && !Rs2Magic.canCast(MagicAction.MOONCLAN_TELEPORT) ) {
                     Microbot.showMessage("Required runes not found, make sure Dust staff is equipped and Rune pouch contains Law and Astral runes.");
                     shutdown();
                     return;
                 }
 
-                if( !Rs2Magic.canCast(MagicAction.MOONCLAN_TELEPORT) && Rs2Inventory.contains(ItemID.RCU_POUCH_COLOSSAL) ) {
+                if( !Rs2Bank.isOpen() && Rs2Inventory.contains(ItemID.RCU_POUCH_COLOSSAL) && !Rs2Magic.canCast(MagicAction.NPC_CONTACT) ) {
                     Microbot.showMessage("Required runes not found, make sure Dust staff is equipped and Rune pouch contains Law, Astral, and Cosmic runes.");
                     shutdown();
                     return;
@@ -103,9 +103,6 @@ public class AstralRunesScript extends Script {
                 plugin.setDebugText2(state.toString());
 
                 var playerLoc = Rs2Player.getWorldLocation();
-
-                MXUtil.switchInventoryTabIfNeeded();
-                MXUtil.closeWorldMapIfNeeded();
 
                 var distToCraftPoint = playerLoc.distanceTo(LUNAR_ISLE_CRAFT_WORLD_POINT);
 
@@ -252,9 +249,9 @@ public class AstralRunesScript extends Script {
                         break;
                     case CRAFTING:
                         plugin.setDebugText1("distance to craft - " + distToCraftPoint);
+                        MXUtil.closeWorldMapIfNeeded();
                         if( distToCraftPoint >= 3 && !Rs2Player.isMoving() ) {
                             Rs2Walker.walkTo(LUNAR_ISLE_CRAFT_WORLD_POINT, 2);
-                            MXUtil.closeWorldMapIfNeeded();
                             doAltarCraft();
                         }
 
