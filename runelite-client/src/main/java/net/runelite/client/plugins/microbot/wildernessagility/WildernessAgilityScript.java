@@ -306,6 +306,22 @@ public class WildernessAgilityScript extends Script {
                                     isWaitingForResult = true;
                                     obstacleStartingAgilityExp[currentObstacle] = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
                                     obstacleStartTime = System.currentTimeMillis();
+                                    // Wait for XP or fall
+                                    int startExp = obstacleStartingAgilityExp[currentObstacle];
+                                    long waitStart = System.currentTimeMillis();
+                                    while (System.currentTimeMillis() - waitStart < 5000 && isRunning()) {
+                                        int curExp = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
+                                        int y = Rs2Player.getWorldLocation().getY();
+                                        if (curExp > startExp) {
+                                            // Success, move on as normal
+                                            break;
+                                        }
+                                        if (y > 10000) {
+                                            pitRecoveryTargetObstacle = 1;
+                                            break;
+                                        }
+                                        sleep(100);
+                                    }
                                 }
                             }
                             break;
@@ -326,6 +342,22 @@ public class WildernessAgilityScript extends Script {
                                     isWaitingForResult = true;
                                     obstacleStartingAgilityExp[currentObstacle] = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
                                     obstacleStartTime = System.currentTimeMillis();
+                                    // Wait for XP or fall
+                                    int startExp = obstacleStartingAgilityExp[currentObstacle];
+                                    long waitStart = System.currentTimeMillis();
+                                    while (System.currentTimeMillis() - waitStart < 5000 && isRunning()) {
+                                        int curExp = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
+                                        int y = Rs2Player.getWorldLocation().getY();
+                                        if (curExp > startExp) {
+                                            // Success, move on as normal
+                                            break;
+                                        }
+                                        if (y > 10000) {
+                                            pitRecoveryTargetObstacle = 3;
+                                            break;
+                                        }
+                                        sleep(100);
+                                    }
                                 }
                             }
                             break;
