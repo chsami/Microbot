@@ -86,6 +86,9 @@ public class WildernessAgilityScript extends Script {
     // Used to throttle log spam for blocking pipe interaction
     private long lastBlockLogTime = 0;
 
+    // Add a field to track pit recovery target obstacle
+    private int pitRecoveryTargetObstacle = -1;
+
     public WildernessAgilityScript() {
         // Microbot.log("[DEBUG] WildernessAgilityScript constructor called");
         needsDispenserUnlock = false;
@@ -192,6 +195,53 @@ public class WildernessAgilityScript extends Script {
                         }
                         return;
                     }
+                }
+
+                // --- Pit recovery logic: if player is in the pit (y > 10000), always web walk to ladder and interact ---
+                if (Rs2Player.getWorldLocation() != null && Rs2Player.getWorldLocation().getY() > 10000) {
+                    WorldPoint pitLadder = new WorldPoint(3004, 10363, 0);
+                    Rs2Walker.walkTo(pitLadder, 2);
+                    sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(pitLadder) <= 2, 10000);
+                    TileObject ladderObj = Rs2GameObject.findObjectById(17385);
+                    if (ladderObj != null && Rs2Player.getWorldLocation().distanceTo(ladderObj.getWorldLocation()) <= 30) {
+                        Rs2GameObject.interact(ladderObj, "Climb-up");
+                        sleep(600);
+                        sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving(), 5000);
+                    }
+                    // After climbing up, set a flag to web walk to the correct obstacle
+                    if (waitingForObstacle == 1) {
+                        pitRecoveryTargetObstacle = 1;
+                    } else if (waitingForObstacle == 3) {
+                        pitRecoveryTargetObstacle = 3;
+                    }
+                    isWaitingForResult = false;
+                    waitingForObstacle = -1;
+                    return;
+                }
+
+                // --- After pit recovery, web walk to the correct obstacle and interact ---
+                if (pitRecoveryTargetObstacle == 1) {
+                    WorldPoint ropeStart = new WorldPoint(3005, 3952, 0);
+                    Rs2Walker.walkTo(ropeStart, 2);
+                    if (Rs2Player.getWorldLocation().distanceTo(ropeStart) <= 2) {
+                        TileObject ropeObj = Rs2GameObject.findObjectById(23132);
+                        if (ropeObj != null && Rs2Player.getWorldLocation().distanceTo(ropeObj.getWorldLocation()) <= 2) {
+                            Rs2GameObject.interact(ropeObj);
+                            pitRecoveryTargetObstacle = -1;
+                        }
+                    }
+                    return;
+                } else if (pitRecoveryTargetObstacle == 3) {
+                    WildernessAgilityObstacleModel logBalance = obstacles.get(3);
+                    TileObject logObj = Rs2GameObject.findObjectById(logBalance.getObjectId());
+                    if (logObj != null) {
+                        Rs2Walker.walkTo(logObj.getWorldLocation(), 8);
+                        if (Rs2Player.getWorldLocation().distanceTo(logObj.getWorldLocation()) <= 8) {
+                            Rs2GameObject.interact(logObj);
+                            pitRecoveryTargetObstacle = -1;
+                        }
+                    }
+                    return;
                 }
 
                 // --- Agility course loop ---
@@ -473,41 +523,8 @@ public class WildernessAgilityScript extends Script {
         if (event.getType() == ChatMessageType.GAMEMESSAGE || event.getType() == ChatMessageType.SPAM) {
             // Obstacle 1 (rope swing) fail handler
             if (msgAlpha.equals("you slip and fall to the pit below") && waitingForObstacle == 1) {
-                new Thread(() -> {
-                    try {
-                        // Wait until the player is not animating or moving
-                        sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving(), 5000);
-                        sleep(1000); // Small delay after fall
-                        // Web walk to pit ladder location
-                        WorldPoint pitLadder = new WorldPoint(3004, 10363, 0);
-                        Rs2Walker.walkTo(pitLadder, 2);
-                        // Wait until close enough to ladder
-                        sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(pitLadder) <= 2, 10000);
-                        // Interact with ladder (ID 17385) if within 30 tiles
-                        TileObject ladderObj = Rs2GameObject.findObjectById(17385);
-                        WorldPoint playerLoc = Rs2Player.getWorldLocation();
-                        if (ladderObj != null && playerLoc.distanceTo(ladderObj.getWorldLocation()) <= 30) {
-                            Rs2GameObject.interact(ladderObj, "Climb-up");
-                            sleep(600);
-                            // Wait for climb-up animation to finish
-                            sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving(), 5000);
-                        }
-                        // Web walk to rope swing start location
-                        WorldPoint ropeStart = new WorldPoint(3005, 3952, 0);
-                        Rs2Walker.walkTo(ropeStart, 2);
-                        sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(ropeStart) <= 2, 10000);
-                        // Interact with rope swing (ID: 23132) once close
-                        TileObject ropeObj = Rs2GameObject.findObjectById(23132);
-                        if (ropeObj != null && Rs2Player.getWorldLocation().distanceTo(ropeObj.getWorldLocation()) <= 2) {
-                            Rs2GameObject.interact(ropeObj);
-                        }
-                        // Reset state
-                        isWaitingForResult = false;
-                        waitingForObstacle = -1;
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }).start();
+                // Only set the pit recovery target, let the main loop handle the rest
+                pitRecoveryTargetObstacle = 1;
                 return;
             }
             // Obstacle 2 (stepping stones) fail handler
@@ -525,40 +542,8 @@ public class WildernessAgilityScript extends Script {
             }
             // Obstacle 3 (log balance) fail handler
             else if (msgAlpha.contains("lose your balance and fall off the log")) {
-                new Thread(() -> {
-                    try {
-                        // Wait until the player is not animating or moving
-                        sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving(), 5000);
-                        sleep(2000); // Wait an additional 2 seconds after fall completes
-                        // Web walk to pit ladder location
-                        WorldPoint pitLadder = new WorldPoint(3004, 10363, 0);
-                        Rs2Walker.walkTo(pitLadder, 2);
-                        sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(pitLadder) <= 2, 10000);
-                        // Interact with ladder (ID 17385) if within 30 tiles
-                        TileObject ladderObj = Rs2GameObject.findObjectById(17385);
-                        WorldPoint playerLoc = Rs2Player.getWorldLocation();
-                        if (ladderObj != null && playerLoc.distanceTo(ladderObj.getWorldLocation()) <= 30) {
-                            Rs2GameObject.interact(ladderObj, "Climb-up");
-                            sleep(600);
-                            // Wait for climb-up animation to finish
-                            sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving(), 5000);
-                        }
-                        // Web walk back to log balance
-                        WildernessAgilityObstacleModel logBalance = obstacles.get(3);
-                        TileObject logObj = Rs2GameObject.findObjectById(logBalance.getObjectId());
-                        if (logObj != null) {
-                            Rs2Walker.walkTo(logObj.getWorldLocation(), 8);
-                            // Wait until close enough to log
-                            sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(logObj.getWorldLocation()) <= 8, 4000);
-                            // Interact with log once close
-                            Rs2GameObject.interact(logObj);
-                        }
-                        isWaitingForResult = false;
-                        waitingForObstacle = -1;
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }).start();
+                // Only set the pit recovery target, let the main loop handle the rest
+                pitRecoveryTargetObstacle = 3;
                 return;
             }
         }
