@@ -213,10 +213,10 @@ public class WildernessAgilityScript extends Script {
                 // --- After pit recovery, web walk to the correct obstacle and interact ---
                 if (pitRecoveryTargetObstacle == 1) {
                     WorldPoint ropeStart = new WorldPoint(3005, 3952, 0);
-                    Rs2Walker.walkTo(ropeStart, 2);
-                    if (Rs2Player.getWorldLocation().distanceTo(ropeStart) <= 2) {
+                    Rs2Walker.walkTo(ropeStart, 4);
+                    if (Rs2Player.getWorldLocation().distanceTo(ropeStart) <= 4) {
                         TileObject ropeObj = Rs2GameObject.findObjectById(23132);
-                        if (ropeObj != null && Rs2Player.getWorldLocation().distanceTo(ropeObj.getWorldLocation()) <= 2) {
+                        if (ropeObj != null && Rs2Player.getWorldLocation().distanceTo(ropeObj.getWorldLocation()) <= 4) {
                             Rs2GameObject.interact(ropeObj);
                             pitRecoveryTargetObstacle = -1;
                         }
