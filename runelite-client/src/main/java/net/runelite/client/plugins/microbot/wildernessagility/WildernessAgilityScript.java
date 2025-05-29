@@ -11,17 +11,10 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
+import java.util.Objects;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.ChatMessageType;
-import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
-import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
-import net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer;
-import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
-import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
-import java.awt.event.KeyEvent;
-import net.runelite.api.events.ActorDeath;
-import java.util.Objects;
 
 public class WildernessAgilityScript extends Script {
     private WildernessAgilityConfig config;
@@ -53,8 +46,6 @@ public class WildernessAgilityScript extends Script {
     // XP tracking for all obstacles (0-4)
     private int[] obstacleStartingAgilityExp = new int[5];
 
-    private static final int LADDER_ID = 17358;
-    private static final int LADDER_SEARCH_RADIUS = 30;
 
     // Flag to handle walking south after stepping stones
     private boolean shouldWalkSouthAfterSteppingStones = false;
@@ -95,13 +86,13 @@ public class WildernessAgilityScript extends Script {
     }
 
     public boolean run(WildernessAgilityConfig config) {
-        Microbot.log("[DEBUG] Entered WildernessAgilityScript.run()");
+        // Microbot.log("[DEBUG] Entered WildernessAgilityScript.run()");
         this.config = config;
         startTime = System.currentTimeMillis();
         // On script start, ensure needsDispenserUnlock is set if coins are needed
         if (Rs2Inventory.itemQuantity("Coins") >= 150000) {
             needsDispenserUnlock = true;
-            Microbot.log("[DEBUG] Script start: needsDispenserUnlock set to true");
+            // Microbot.log("[DEBUG] Script start: needsDispenserUnlock set to true");
         }
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
@@ -110,7 +101,7 @@ public class WildernessAgilityScript extends Script {
 
                 // Check for player death
                 if (Rs2Player.getHealthPercentage() == 0) {
-                    Microbot.log("[WildernessAgility] Player has died. Shutting down script.");
+                    // Microbot.log("[WildernessAgility] Player has died. Shutting down script.");
                     shutdown();
                     return;
                 }
@@ -146,12 +137,12 @@ public class WildernessAgilityScript extends Script {
                     // Only log the block message every 2 seconds
                     long now = System.currentTimeMillis();
                     if (lastBlockLogTime == 0 || now - lastBlockLogTime > 2000) {
-                        Microbot.log("[DEBUG] Blocking pipe interaction: needsDispenserUnlock is true");
+                        // Microbot.log("[DEBUG] Blocking pipe interaction: needsDispenserUnlock is true");
                         lastBlockLogTime = now;
                     }
                     // If config.startAtCourse() is enabled, skip coin check and proceed
                     if (config.startAtCourse()) {
-                        Microbot.log("[DEBUG] startAtCourse config enabled, skipping coin/dispenser check.");
+                        // Microbot.log("[DEBUG] startAtCourse config enabled, skipping coin/dispenser check.");
                         needsDispenserUnlock = false;
                         hasStartedCourse = true;
                         justCompletedPipe = false;
@@ -160,13 +151,13 @@ public class WildernessAgilityScript extends Script {
                         int distanceToStart = playerLocation.distanceTo(START_POINT);
                         int coinCount = Rs2Inventory.itemQuantity("Coins");
                         TileObject dispenserObj = Rs2GameObject.findObjectById(DISPENSER_ID);
-                        Microbot.log("[DEBUG] Coin unlock check: distanceToStart=" + distanceToStart + ", coinCount=" + coinCount + ", dispenserObjFound=" + (dispenserObj != null));
+                        // Microbot.log("[DEBUG] Coin unlock check: distanceToStart=" + distanceToStart + ", coinCount=" + coinCount + ", dispenserObjFound=" + (dispenserObj != null));
                         if (distanceToStart > 6) {
                             Rs2Walker.walkTo(START_POINT, 2);
                             return;
                         }
                         if (coinCount >= 150000 && dispenserObj != null) {
-                            Microbot.log("[DEBUG] Using coins on dispenser. Coins: " + coinCount);
+                            // Microbot.log("[DEBUG] Using coins on dispenser. Coins: " + coinCount);
                             Rs2Inventory.use("Coins");
                             sleep(400);
                             Rs2GameObject.interact(dispenserObj, "Use");
@@ -177,20 +168,20 @@ public class WildernessAgilityScript extends Script {
                             while (System.currentTimeMillis() - coinWaitStart < 5000 && isRunning()) { // Wait up to 5 seconds
                                 int coinsLeft = Rs2Inventory.itemQuantity("Coins");
                                 if (coinsLeft < 150000) {
-                                    Microbot.log("[DEBUG] Coins removed from inventory after dispenser use.");
+                                    // Microbot.log("[DEBUG] Coins removed from inventory after dispenser use.");
                                     coinsRemoved = true;
                                     break;
                                 }
                                 sleep(100);
                             }
                             if (!coinsRemoved) {
-                                Microbot.log("[WARN] Coins were not removed from inventory after 5s timeout!");
+                                // Microbot.log("[WARN] Coins were not removed from inventory after 5s timeout!");
                             }
                             if (coinsRemoved) {
                                 needsDispenserUnlock = false;
                                 hasStartedCourse = true;
                                 justCompletedPipe = false;
-                                Microbot.log("[DEBUG] Dispenser unlock complete, pipe can now be used.");
+                                // Microbot.log("[DEBUG] Dispenser unlock complete, pipe can now be used.");
                             }
                         }
                         return;
@@ -231,6 +222,9 @@ public class WildernessAgilityScript extends Script {
                         }
                     }
                     return;
+                } else if (pitRecoveryTargetObstacle == 2) {
+                    // Remove pit recovery logic for obstacle 2
+                    // ... existing code ...
                 } else if (pitRecoveryTargetObstacle == 3) {
                     WildernessAgilityObstacleModel logBalance = obstacles.get(3);
                     TileObject logObj = Rs2GameObject.findObjectById(logBalance.getObjectId());
@@ -314,7 +308,9 @@ public class WildernessAgilityScript extends Script {
                                         int y = Rs2Player.getWorldLocation().getY();
                                         if (curExp > startExp) {
                                             // Success, move on as normal
-                                            break;
+                                            currentObstacle++;
+                                            isWaitingForResult = false;
+                                            return;
                                         }
                                         if (y > 10000) {
                                             pitRecoveryTargetObstacle = 1;
@@ -327,11 +323,26 @@ public class WildernessAgilityScript extends Script {
                             break;
                         case 2:
                             if (!Rs2Player.isAnimating()) {
-                                boolean interacted = Rs2GameObject.interact(currentObj);
-                                if (interacted) {
-                                    isWaitingForResult = true;
-                                    obstacleStartingAgilityExp[currentObstacle] = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
-                                    obstacleStartTime = System.currentTimeMillis();
+                                int lastExp = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
+                                while (true) {
+                                    boolean interacted = Rs2GameObject.interact(currentObj);
+                                    if (!interacted) break;
+                                    long waitStart = System.currentTimeMillis();
+                                    while (System.currentTimeMillis() - waitStart < 5000 && isRunning()) {
+                                        int curExp = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
+                                        int y = Rs2Player.getWorldLocation().getY();
+                                        if (curExp > lastExp) {
+                                            currentObstacle++;
+                                            isWaitingForResult = false;
+                                            return;
+                                        }
+                                        if (y > 3960) {
+                                            break;
+                                        }
+                                        sleep(100);
+                                    }
+                                    // Update lastExp in case we retry
+                                    lastExp = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
                                 }
                             }
                             break;
@@ -350,7 +361,9 @@ public class WildernessAgilityScript extends Script {
                                         int y = Rs2Player.getWorldLocation().getY();
                                         if (curExp > startExp) {
                                             // Success, move on as normal
-                                            break;
+                                            currentObstacle++;
+                                            isWaitingForResult = false;
+                                            return;
                                         }
                                         if (y > 10000) {
                                             pitRecoveryTargetObstacle = 3;
@@ -382,10 +395,10 @@ public class WildernessAgilityScript extends Script {
                     boolean nearDispenser = dispenserObj != null && Rs2Player.getWorldLocation().distanceTo(dispenserObj.getWorldLocation()) <= 12;
                     int ticketCount = Rs2Inventory.itemQuantity(29460);
                     int initialTicketCount = ticketCount;
-                    Microbot.log("[DEBUG] Dispenser step: nearDispenser=" + nearDispenser + ", isWaitingForResult=" + isWaitingForResult + ", dispenserLooted=" + dispenserLooted + ", ticketCount=" + ticketCount + ", threshold=" + config.useTicketsWhen());
+                    // Microbot.log("[DEBUG] Dispenser step: nearDispenser=" + nearDispenser + ", isWaitingForResult=" + isWaitingForResult + ", dispenserLooted=" + dispenserLooted + ", ticketCount=" + ticketCount + ", threshold=" + config.useTicketsWhen());
                     if (nearDispenser && !isWaitingForResult) {
                         if (ticketCount >= config.useTicketsWhen()) {
-                            Microbot.log("[DEBUG] Using " + ticketCount + " tickets at dispenser (using itemQuantity). Using tickets now.");
+                            // Microbot.log("[DEBUG] Using " + ticketCount + " tickets at dispenser (using itemQuantity). Using tickets now.");
                             Rs2Inventory.interact(29460, "Use");
                             sleep(400);
                             Rs2GameObject.interact(dispenserObj, "Use");
@@ -400,7 +413,7 @@ public class WildernessAgilityScript extends Script {
                         while (System.currentTimeMillis() - waitStart < 8000 && isRunning()) { // Wait up to 8 seconds
                             int newTicketCount = Rs2Inventory.itemQuantity(29460);
                             if (newTicketCount != initialTicketCount) {
-                                Microbot.log("[DEBUG] Ticket quantity changed from " + initialTicketCount + " to " + newTicketCount + ". Proceeding to next lap.");
+                                // Microbot.log("[DEBUG] Ticket quantity changed from " + initialTicketCount + " to " + newTicketCount + ". Proceeding to next lap.");
                                 break;
                             }
                             sleep(100);
@@ -463,7 +476,7 @@ public class WildernessAgilityScript extends Script {
             // In the main loop, after getting inventory value, check for ticket gain and log
             int currentTicketCount = Rs2Inventory.itemQuantity(29460);
             if (currentTicketCount > lastTicketCount) {
-                Microbot.log("[DEBUG] Received ticket. Now have " + currentTicketCount + " tickets. (using itemQuantity)");
+                // Microbot.log("[DEBUG] Received ticket. Now have " + currentTicketCount + " tickets. (using itemQuantity)");
                 dispenserLoots++;
             }
             lastTicketCount = currentTicketCount;
@@ -472,7 +485,7 @@ public class WildernessAgilityScript extends Script {
             if (shouldBank) {
                 if (Rs2Inventory.itemQuantity("Coins") >= 150000) {
                     needsDispenserUnlock = true;
-                    Microbot.log("[DEBUG] Post-bank: needsDispenserUnlock set to true");
+                    // Microbot.log("[DEBUG] Post-bank: needsDispenserUnlock set to true");
                 }
             }
         }, 0, 100, TimeUnit.MILLISECONDS);
@@ -518,146 +531,6 @@ public class WildernessAgilityScript extends Script {
         return false;
     }
 
-    private void bankAtFerox() {
-        // If already at bank and open, deposit all
-        if (Rs2Bank.isOpen()) {
-            Rs2Bank.depositAll();
-            sleepUntil(() -> Rs2Inventory.isEmpty(), 8000);
-            shouldBank = false;
-            return;
-        }
-        // If not at bank, walk to Ferox Enclave and open bank
-        if (Rs2Player.getWorldLocation().distanceTo(BankLocation.FEROX_ENCLAVE.getWorldPoint()) > 10) {
-            Rs2Walker.walkTo(BankLocation.FEROX_ENCLAVE.getWorldPoint(), 8);
-            return;
-        }
-        if (!Rs2Bank.isOpen()) {
-            Rs2Bank.walkToBankAndUseBank(BankLocation.FEROX_ENCLAVE);
-            sleepUntil(() -> Rs2Bank.isOpen(), 8000);
-        }
-    }
-
-    // Waits for agility obstacle to finish (XP gain or animation/movement stop)
-    private void waitForAgilityObstacleToFinish(int startingAgilityExp) {
-        sleepUntil(() -> {
-            int currentExp = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
-            boolean xpGained = currentExp != startingAgilityExp;
-            boolean notAnimating = !Rs2Player.isAnimating();
-            boolean notMoving = !Rs2Player.isMoving();
-            return xpGained || (notAnimating && notMoving);
-        }, 10000);
-    }
-
-    // Add chat message handler for fall detection
-    public void onChatMessage(ChatMessage event) {
-        String msgLower = event.getMessage().trim().toLowerCase();
-        String msgAlpha = msgLower.replaceAll("[^a-z ]", "");
-        if (event.getType() == ChatMessageType.GAMEMESSAGE || event.getType() == ChatMessageType.SPAM) {
-            // Obstacle 1 (rope swing) fail handler
-            if (msgAlpha.equals("you slip and fall to the pit below") && waitingForObstacle == 1) {
-                // Only set the pit recovery target, let the main loop handle the rest
-                pitRecoveryTargetObstacle = 1;
-                return;
-            }
-            // Obstacle 2 (stepping stones) fail handler
-            else if (msgAlpha.contains("lose your footing and fall into the lava")) {
-                // Special case: Stepping stones fail, just interact with obstacle 2 again
-                if (obstacles.size() > 2) {
-                    WildernessAgilityObstacleModel steppingStones = obstacles.get(2);
-                    TileObject steppingObj = Rs2GameObject.findObjectById(steppingStones.getObjectId());
-                    if (steppingObj != null) {
-                        Rs2GameObject.interact(steppingObj);
-                    }
-                }
-                isWaitingForResult = false;
-                waitingForObstacle = -1;
-            }
-            // Obstacle 3 (log balance) fail handler
-            else if (msgAlpha.contains("lose your balance and fall off the log")) {
-                // Only set the pit recovery target, let the main loop handle the rest
-                pitRecoveryTargetObstacle = 3;
-                return;
-            }
-        }
-    }
-
-    // --- Step Handlers ---
-    private void handlePipe() {
-        if (isWaitingForResult) return;
-        int PIPE_ID = 23137;
-        TileObject obj = Rs2GameObject.findObjectById(PIPE_ID);
-        if (obj == null) return;
-        if (Rs2Player.getWorldLocation().distanceTo(obj.getWorldLocation()) > 10) {
-            Rs2Walker.walkTo(obj.getWorldLocation(), 10);
-            return;
-        }
-        if (!Rs2Player.isAnimating() && Rs2GameObject.interact(obj)) {
-            isWaitingForResult = true;
-            waitingForObstacle = 0;
-            obstacleStartingAgilityExp[0] = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
-        }
-    }
-
-    private void handleRopeSwing() {
-        if (isWaitingForResult) return;
-        int ROPE_ID = 23132;
-        TileObject obj = Rs2GameObject.findObjectById(ROPE_ID);
-        if (obj == null) return;
-        if (Rs2Player.getWorldLocation().distanceTo(obj.getWorldLocation()) > 4) {
-            Rs2Walker.walkTo(obj.getWorldLocation(), 4);
-            return;
-        }
-        if (!Rs2Player.isAnimating() && Rs2GameObject.interact(obj)) {
-            isWaitingForResult = true;
-            waitingForObstacle = 1;
-            obstacleStartingAgilityExp[1] = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
-        }
-    }
-
-    private void handleSteppingStone() {
-        if (isWaitingForResult) return;
-        int STONE_ID = 23556;
-        TileObject obj = Rs2GameObject.findObjectById(STONE_ID);
-        if (obj == null) return;
-        if (Rs2Player.getWorldLocation().distanceTo(obj.getWorldLocation()) > 8) {
-            Rs2Walker.walkTo(obj.getWorldLocation(), 8);
-            return;
-        }
-        if (!Rs2Player.isAnimating() && Rs2GameObject.interact(obj)) {
-            isWaitingForResult = true;
-            waitingForObstacle = 2;
-            obstacleStartingAgilityExp[2] = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
-        }
-    }
-
-    private void handleLogBalance() {
-        if (isWaitingForResult) return;
-        int LOG_ID = 23542;
-        TileObject obj = Rs2GameObject.findObjectById(LOG_ID);
-        if (obj == null) return;
-        if (!Rs2Player.isAnimating() && Rs2GameObject.interact(obj)) {
-            isWaitingForResult = true;
-            waitingForObstacle = 3;
-            obstacleStartingAgilityExp[3] = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
-        }
-    }
-
-    private void handleClimbRocks() {
-        if (isWaitingForResult) return;
-        int ROCKS_ID = 23640;
-        TileObject obj = Rs2GameObject.findObjectById(ROCKS_ID);
-        if (obj == null) return;
-        if (Rs2Player.getWorldLocation().distanceTo(obj.getWorldLocation()) > 15) {
-            Rs2Walker.walkTo(obj.getWorldLocation(), 15);
-            return;
-        }
-        if (!Rs2Player.isAnimating() && Rs2GameObject.interact(obj)) {
-            isWaitingForResult = true;
-            waitingForObstacle = 4;
-            obstacleStartingAgilityExp[4] = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
-        }
-    }
-
     private void handlePauseAndRepeat() {
         sleep(2000);
         lapCount++;
@@ -672,92 +545,4 @@ public class WildernessAgilityScript extends Script {
         return String.format("%02d:%02d:%02d", hours, minutes, seconds);
     }
 
-    private void handleBankBreak() {
-        // 1. Web walk to Ferox Enclave safe spot
-        WorldPoint feroxSafeSpot = new WorldPoint(3130, 3635, 0);
-        // Enable Protect from Magic
-        Rs2Prayer.toggle(Rs2PrayerEnum.PROTECT_MAGIC, true);
-        Rs2Walker.walkTo(feroxSafeSpot, 2);
-        sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(feroxSafeSpot) <= 2, 20000);
-        // Disable Protect from Magic
-        Rs2Prayer.toggle(Rs2PrayerEnum.PROTECT_MAGIC, false);
-        // 2. Interact with Pool of Refreshment (ID 39651)
-        TileObject pool = Rs2GameObject.findObjectById(39651);
-        if (pool != null) {
-            Rs2GameObject.interact(pool, "Drink");
-            sleep(2000); // Wait for animation to start
-            // Wait until player is not animating or moving (up to 5 seconds)
-            sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving(), 5000);
-        }
-        // 3. Interact with Bank (ID 26711)
-        TileObject bank = Rs2GameObject.findObjectById(26711);
-        if (bank != null) {
-            boolean bankOpened = Rs2GameObject.interact(bank, "Bank");
-            sleepUntil(() -> Rs2Bank.isOpen(), 4000);
-            if (!Rs2Bank.isOpen()) {
-                // Retry once if not open
-                sleep(800);
-                Rs2GameObject.interact(bank, "Bank");
-                sleepUntil(() -> Rs2Bank.isOpen(), 4000);
-            }
-            if (Rs2Bank.isOpen()) {
-                Rs2Bank.depositAll();
-                sleepUntil(() -> Rs2Inventory.isEmpty(), 8000);
-                // 4. Withdraw 150k coins and 1 Ice plateau teleport
-                Rs2Bank.withdrawX("Coins", 150000);
-                sleep(600);
-                Rs2Bank.withdrawOne("Ice plateau teleport");
-                sleep(600);
-                // 5. Close bank via Rs2Bank.closeBank() or fallback to escape key
-                if (!Rs2Bank.closeBank()) {
-                    Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
-                }
-                sleepUntil(() -> !Rs2Bank.isOpen(), 4000);
-                // 6. Break the teleport in inventory, then press yes in the game chat widget
-                if (Rs2Inventory.contains("Ice plateau teleport")) {
-                    Rs2Inventory.interact("Ice plateau teleport", "Break");
-                    sleep(1000);
-                    // Confirm in chat widget (simulate pressing yes)
-                    Rs2Keyboard.enter();
-                    sleep(2000);
-                }
-                // Explicitly set needsDispenserUnlock to true after banking and withdrawing coins
-                needsDispenserUnlock = true;
-                Microbot.log("[DEBUG] handleBankBreak: needsDispenserUnlock set to true after banking");
-                // 7. Web walk back to the beginning of the course
-                Rs2Walker.walkTo(START_POINT, 8);
-                sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(START_POINT) <= 8, 20000);
-                // After returning, use coins on dispenser and wait 2s before resuming course
-                TileObject dispenserObj = Rs2GameObject.findObjectById(DISPENSER_ID);
-                if (Rs2Inventory.itemQuantity("Coins") >= 150000 && dispenserObj != null) {
-                    Rs2Inventory.use("Coins");
-                    sleep(400);
-                    Rs2GameObject.interact(dispenserObj, "Use");
-                    sleep(2000); // Always wait 2s after using coins on dispenser
-                    // Wait up to 5 seconds for coins to leave inventory
-                    long waitStart = System.currentTimeMillis();
-                    while (Rs2Inventory.itemQuantity("Coins") >= 150000 && System.currentTimeMillis() - waitStart < 5000 && isRunning()) {
-                        sleep(200);
-                    }
-                }
-                // Resume course loop
-                currentObstacle = 0;
-                isWaitingForResult = false;
-                waitingForObstacle = -1;
-                dispenserLooted = false;
-                if (mainScheduledFuture != null && mainScheduledFuture.isCancelled()) {
-                    // Restart the main loop
-                    run(config);
-                }
-            }
-        }
-    }
-
-    // Optionally, subscribe to ActorDeath event for more reliable detection
-    public void onActorDeath(ActorDeath event) {
-        if (event.getActor() == Microbot.getClient().getLocalPlayer()) {
-            Microbot.log("[WildernessAgility] Player death detected via ActorDeath event. Shutting down script.");
-            shutdown();
-        }
-    }
-} 
+}

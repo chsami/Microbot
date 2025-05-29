@@ -56,13 +56,4 @@ public class WildernessAgilityPlugin extends Plugin {
         }
         overlay.setActive(false);
     }
-
-    @Subscribe
-    public void onChatMessage(ChatMessage event) {
-        if (script != null) {
-            script.onChatMessage(event);
-        }
-    }
-
-    // TODO: Add script start/stop logic and UI integration if needed
 } 
