@@ -15,6 +15,9 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import java.util.Objects;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.ChatMessageType;
+import net.runelite.client.plugins.microbot.util.gameobject.Rs2WallObject;
+import net.runelite.api.Tile;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 
 public class WildernessAgilityScript extends Script {
     private WildernessAgilityConfig config;
@@ -80,6 +83,18 @@ public class WildernessAgilityScript extends Script {
     // Add a field to track pit recovery target obstacle
     private int pitRecoveryTargetObstacle = -1;
 
+    // Add state variables for banking
+    private int bankingStep = 0;
+    private static final WorldPoint BANK_ROUTE_1 = new WorldPoint(3095, 3957, 0);
+    private static final WorldPoint BANK_ROUTE_2 = new WorldPoint(3093, 3957, 0);
+    private static final WorldPoint BANK_ROUTE_3 = new WorldPoint(3091, 3957, 0);
+    private static final WorldPoint BANK_DEST_TELE = new WorldPoint(2539, 4712, 0);
+    private static final int WALL_ID_CLOSED = 733;
+    private static final int WALL_ID_OPEN = 734;
+    private static final int LEVER_ID = 5959;
+    private static final int BANK_OBJECT_ID_NEW = 26707;
+    private static final String TELEPORT_NAME = "Ice plateau teleport";
+
     public WildernessAgilityScript() {
         // Microbot.log("[DEBUG] WildernessAgilityScript constructor called");
         needsDispenserUnlock = false;
@@ -88,6 +103,8 @@ public class WildernessAgilityScript extends Script {
     public boolean run(WildernessAgilityConfig config) {
         // Microbot.log("[DEBUG] Entered WildernessAgilityScript.run()");
         this.config = config;
+        shouldBank = false;
+        bankingStep = 0;
         startTime = System.currentTimeMillis();
         // On script start, ensure needsDispenserUnlock is set if coins are needed
         if (Rs2Inventory.itemQuantity("Coins") >= 150000) {
@@ -96,18 +113,30 @@ public class WildernessAgilityScript extends Script {
         }
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
-                WorldPoint playerLocation = Rs2Player.getWorldLocation();
-                if (playerLocation == null) return;
+                if (!Microbot.isLoggedIn()) {
+                    return;
+                }
 
-                // Check for player death
                 if (Rs2Player.getHealthPercentage() == 0) {
-                    // Microbot.log("[WildernessAgility] Player has died. Shutting down script.");
+                    sleep(10000);
+                    net.runelite.client.plugins.microbot.Microbot.pauseAllScripts = true;
+                    Rs2Player.logout();
                     shutdown();
                     return;
                 }
 
-                // Eat/drop priority if inventory is full (27 items): eat 24592, drop 24598, then eat 24595/24589
-                if (Rs2Inventory.items().size() >= 27) {
+                // Check if we need to bank before processing any obstacles
+                if (!shouldBank && getInventoryValue() >= config.leaveAtValue()) {
+                    shouldBank = true;
+                    bankingStep = 0;
+                    return;
+                }
+
+                WorldPoint playerLocation = Rs2Player.getWorldLocation();
+                if (playerLocation == null) return;
+
+                // Eat/drop priority if inventory is full (26 items): eat 24592, drop 24598, then eat 24595/24589
+                if (Rs2Inventory.items().size() >= 26) {
                     if (Rs2Inventory.contains(24592)) {
                         Rs2Inventory.interact(24592, "Eat");
                         waitForInventoryChanges(1200);
@@ -127,8 +156,12 @@ public class WildernessAgilityScript extends Script {
                 TileObject pipeObj = Rs2GameObject.findObjectById(PIPE_ID);
                 boolean nearPipe = pipeObj != null && playerLocation.distanceTo(pipeObj.getWorldLocation()) <= 8;
                 // Only walk to start if script is just starting, not after pipe is completed
-                if (currentObstacle == 0 && !nearPipe && !hasStartedCourse) {
-                    Rs2Walker.walkTo(START_POINT, 8);
+                if (currentObstacle == 0 && !nearPipe && !hasStartedCourse && !shouldBank) {
+                    TileObject dispenserObj = Rs2GameObject.findObjectById(DISPENSER_ID);
+                    if (dispenserObj == null || playerLocation.distanceTo(dispenserObj.getWorldLocation()) > 4) {
+                        Rs2Walker.walkTo(START_POINT, 2);
+                        return;
+                    }
                     needsDispenserUnlock = true;
                     return;
                 }
@@ -192,7 +225,7 @@ public class WildernessAgilityScript extends Script {
                 if (Rs2Player.getWorldLocation() != null && Rs2Player.getWorldLocation().getY() > 10000) {
                     WorldPoint pitLadder = new WorldPoint(3004, 10363, 0);
                     Rs2Walker.walkTo(pitLadder, 2);
-                    sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(pitLadder) <= 2, 10000);
+                    sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(pitLadder) <= 4, 10000);
                     TileObject ladderObj = Rs2GameObject.findObjectById(17385);
                     if (ladderObj != null && Rs2Player.getWorldLocation().distanceTo(ladderObj.getWorldLocation()) <= 30) {
                         Rs2GameObject.interact(ladderObj, "Climb-up");
@@ -201,7 +234,9 @@ public class WildernessAgilityScript extends Script {
                     }
                     // After climbing up, set a flag to web walk to the correct obstacle
                     if (waitingForObstacle == 1) {
-                        pitRecoveryTargetObstacle = 1;
+                        mustWebWalkToRopeStart = true;
+                        WorldPoint ropeStart = new WorldPoint(3005, 3953, 0);
+                        Rs2Walker.walkTo(ropeStart, 2);
                     } else if (waitingForObstacle == 3) {
                         pitRecoveryTargetObstacle = 3;
                     }
@@ -211,28 +246,37 @@ public class WildernessAgilityScript extends Script {
                 }
 
                 // --- After pit recovery, web walk to the correct obstacle and interact ---
-                if (pitRecoveryTargetObstacle == 1) {
-                    WorldPoint ropeStart = new WorldPoint(3005, 3952, 0);
-                    Rs2Walker.walkTo(ropeStart, 4);
-                    if (Rs2Player.getWorldLocation().distanceTo(ropeStart) <= 4) {
-                        TileObject ropeObj = Rs2GameObject.findObjectById(23132);
-                        if (ropeObj != null && Rs2Player.getWorldLocation().distanceTo(ropeObj.getWorldLocation()) <= 4) {
-                            Rs2GameObject.interact(ropeObj);
-                            pitRecoveryTargetObstacle = -1;
-                        }
-                    }
-                    return;
-                } else if (pitRecoveryTargetObstacle == 2) {
-                    // Remove pit recovery logic for obstacle 2
-                    // ... existing code ...
-                } else if (pitRecoveryTargetObstacle == 3) {
+                if (pitRecoveryTargetObstacle == 3) {
                     WildernessAgilityObstacleModel logBalance = obstacles.get(3);
                     TileObject logObj = Rs2GameObject.findObjectById(logBalance.getObjectId());
                     if (logObj != null) {
+                        long walkStartTime = System.currentTimeMillis();
                         Rs2Walker.walkTo(logObj.getWorldLocation(), 8);
+                        // Wait up to 10 seconds to get close enough
+                        while (System.currentTimeMillis() - walkStartTime < 10000 && Rs2Player.getWorldLocation().distanceTo(logObj.getWorldLocation()) > 8 && isRunning()) {
+                            sleep(200);
+                        }
+                        // If after 10 seconds we're still not close enough, try walking again
+                        if (Rs2Player.getWorldLocation().distanceTo(logObj.getWorldLocation()) > 8) {
+                            Rs2Walker.walkTo(logObj.getWorldLocation(), 8);
+                            return;
+                        }
                         if (Rs2Player.getWorldLocation().distanceTo(logObj.getWorldLocation()) <= 8) {
+                            obstacleStartingAgilityExp[currentObstacle] = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
                             Rs2GameObject.interact(logObj);
-                            pitRecoveryTargetObstacle = -1;
+                            // Wait for XP gain
+                            sleepUntil(() -> {
+                                int currentExp = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
+                                return currentExp > obstacleStartingAgilityExp[currentObstacle];
+                            }, 8000);
+
+                            // If we got XP, increment obstacle and clear recovery flag
+                            int currentExp = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
+                            if (currentExp > obstacleStartingAgilityExp[currentObstacle]) {
+                                currentObstacle = 4; // Explicitly set to obstacle 4
+                                pitRecoveryTargetObstacle = -1;
+                                isWaitingForResult = false;
+                            }
                         }
                     }
                     return;
@@ -259,61 +303,57 @@ public class WildernessAgilityScript extends Script {
 
                 // XP-driven obstacle progression with fallback for obstacle 0 and 4
                 if (isWaitingForResult && currentObj != null) {
-                    int currentExp = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
-                    boolean xpGained = currentExp > obstacleStartingAgilityExp[currentObstacle];
-                    boolean fallback = false;
-                    // Only use fallback for obstacle 0 and obstacle 4
-                    if (currentObstacle == 0 || currentObstacle == 4) {
-                        boolean notAnimating = !Rs2Player.isAnimating();
-                        boolean notMoving = !Rs2Player.isMoving();
-                        boolean waitedLongEnough = System.currentTimeMillis() - obstacleStartTime > 4000; // 4 seconds
-                        fallback = notAnimating && notMoving && waitedLongEnough;
-                    }
-                    if (xpGained || fallback) {
-                        currentObstacle++;
-                        isWaitingForResult = false;
-                    }
+                    int startingExp = obstacleStartingAgilityExp[currentObstacle];
+                    double startingHealth = Rs2Player.getHealthPercentage();
+                    waitForWildernessObstacleToFinish(startingExp, startingHealth);
                 } else if (nearAnyObstacle && !isWaitingForResult && currentObj != null) {
                     switch (currentObstacle) {
                         case 0:
-                            if (Rs2Player.getWorldLocation().distanceTo(currentObj.getWorldLocation()) > 4) {
-                                return;
-                            }
-                            if (!Rs2Player.isAnimating()) {
-                                boolean interacted = Rs2GameObject.interact(currentObj);
-                                if (interacted) {
-                                    isWaitingForResult = true;
+                            if (!Rs2Player.isAnimating() && !Rs2Player.isMoving()) {
+                                // Only interact if pipe is within 5 tiles
+                                if (currentObj != null && Rs2Player.getWorldLocation().distanceTo(currentObj.getWorldLocation()) <= 5) {
                                     obstacleStartingAgilityExp[currentObstacle] = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
-                                    obstacleStartTime = System.currentTimeMillis();
+                                    boolean interacted = Rs2GameObject.interact(currentObj);
+                                    if (interacted) {
+                                        long waitStart = System.currentTimeMillis();
+                                        while (System.currentTimeMillis() - waitStart < 11000 && isRunning()) {
+                                            int curExp = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
+                                            if (curExp > obstacleStartingAgilityExp[currentObstacle]) {
+                                                currentObstacle++;
+                                                isWaitingForResult = false;
+                                                return;
+                                            }
+                                            sleep(100);
+                                        }
+                                    }
                                 }
                             }
                             break;
                         case 1:
-                            boolean enoughTimePassed = System.currentTimeMillis() - obstacleStartTime >= MIN_WAIT_AFTER_OBSTACLE_0;
-                            boolean notAnimating = !Rs2Player.isAnimating();
-                            if (!(enoughTimePassed && notAnimating)) {
-                                return;
-                            }
-                            if (!Rs2Player.isAnimating()) {
+                            if (!Rs2Player.isAnimating() && !Rs2Player.isMoving()) {
+                                if (mustWebWalkToRopeStart) {
+                                    WorldPoint ropeStart = new WorldPoint(3005, 3953, 0);
+                                    if (Rs2Player.getWorldLocation().distanceTo(ropeStart) > 2) {
+                                        Rs2Walker.walkTo(ropeStart, 2);
+                                        return;
+                                    } else {
+                                        mustWebWalkToRopeStart = false;
+                                    }
+                                }
+                                obstacleStartingAgilityExp[currentObstacle] = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
                                 boolean interacted = Rs2GameObject.interact(currentObj);
                                 if (interacted) {
-                                    isWaitingForResult = true;
-                                    obstacleStartingAgilityExp[currentObstacle] = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
-                                    obstacleStartTime = System.currentTimeMillis();
-                                    // Wait for XP or fall
-                                    int startExp = obstacleStartingAgilityExp[currentObstacle];
                                     long waitStart = System.currentTimeMillis();
-                                    while (System.currentTimeMillis() - waitStart < 5000 && isRunning()) {
+                                    while (System.currentTimeMillis() - waitStart < 11000 && isRunning()) {
                                         int curExp = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
                                         int y = Rs2Player.getWorldLocation().getY();
-                                        if (curExp > startExp) {
-                                            // Success, move on as normal
+                                        if (curExp > obstacleStartingAgilityExp[currentObstacle]) {
                                             currentObstacle++;
                                             isWaitingForResult = false;
                                             return;
                                         }
                                         if (y > 10000) {
-                                            pitRecoveryTargetObstacle = 1;
+                                            pitRecoveryTargetObstacle = currentObstacle;
                                             break;
                                         }
                                         sleep(100);
@@ -322,65 +362,73 @@ public class WildernessAgilityScript extends Script {
                             }
                             break;
                         case 2:
-                            if (!Rs2Player.isAnimating()) {
-                                int lastExp = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
-                                while (true) {
-                                    boolean interacted = Rs2GameObject.interact(currentObj);
-                                    if (!interacted) break;
+                            if (!Rs2Player.isAnimating() && !Rs2Player.isMoving()) {
+                                obstacleStartingAgilityExp[currentObstacle] = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
+                                boolean interacted = Rs2GameObject.interact(currentObj);
+                                if (interacted) {
                                     long waitStart = System.currentTimeMillis();
-                                    while (System.currentTimeMillis() - waitStart < 5000 && isRunning()) {
+                                    while (System.currentTimeMillis() - waitStart < 11000 && isRunning()) {
                                         int curExp = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
-                                        int y = Rs2Player.getWorldLocation().getY();
-                                        if (curExp > lastExp) {
+                                        WorldPoint currentLoc = Rs2Player.getWorldLocation();
+                                        if (curExp > obstacleStartingAgilityExp[currentObstacle]) {
                                             currentObstacle++;
                                             isWaitingForResult = false;
                                             return;
                                         }
-                                        if (y > 3960) {
-                                            break;
+                                        // If we've gone above the obstacle, we need to retry
+                                        if (currentLoc != null && currentLoc.getY() > 3960) {
+                                            return;  // Return to retry the obstacle immediately
                                         }
                                         sleep(100);
                                     }
-                                    // Update lastExp in case we retry
-                                    lastExp = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
                                 }
                             }
                             break;
                         case 3:
-                            if (!Rs2Player.isAnimating()) {
-                                boolean interacted = Rs2GameObject.interact(currentObj);
-                                if (interacted) {
-                                    isWaitingForResult = true;
+                            // Allow interaction with log balance even if we need to walk closer
+                            if (currentObj != null) {
+                                if (Rs2Player.getWorldLocation().distanceTo(currentObj.getWorldLocation()) > 8) {
+                                    Rs2Walker.walkTo(currentObj.getWorldLocation(), 8);
+                                }
+                                if (!Rs2Player.isAnimating()) {
                                     obstacleStartingAgilityExp[currentObstacle] = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
-                                    obstacleStartTime = System.currentTimeMillis();
-                                    // Wait for XP or fall
-                                    int startExp = obstacleStartingAgilityExp[currentObstacle];
-                                    long waitStart = System.currentTimeMillis();
-                                    while (System.currentTimeMillis() - waitStart < 5000 && isRunning()) {
-                                        int curExp = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
-                                        int y = Rs2Player.getWorldLocation().getY();
-                                        if (curExp > startExp) {
-                                            // Success, move on as normal
-                                            currentObstacle++;
-                                            isWaitingForResult = false;
-                                            return;
+                                    boolean interacted = Rs2GameObject.interact(currentObj);
+                                    if (interacted) {
+                                        long waitStart = System.currentTimeMillis();
+                                        while (System.currentTimeMillis() - waitStart < 11000 && isRunning()) {
+                                            int curExp = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
+                                            int y = Rs2Player.getWorldLocation().getY();
+                                            if (curExp > obstacleStartingAgilityExp[currentObstacle]) {
+                                                currentObstacle++;
+                                                isWaitingForResult = false;
+                                                return;
+                                            }
+                                            if (y > 10000) {
+                                                pitRecoveryTargetObstacle = currentObstacle;
+                                                break;
+                                            }
+                                            sleep(100);
                                         }
-                                        if (y > 10000) {
-                                            pitRecoveryTargetObstacle = 3;
-                                            break;
-                                        }
-                                        sleep(100);
                                     }
                                 }
                             }
                             break;
                         case 4:
-                            if (!Rs2Player.isAnimating()) {
+                            if (!Rs2Player.isAnimating() && !Rs2Player.isMoving()) {
+                                obstacleStartingAgilityExp[currentObstacle] = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
                                 boolean interacted = Rs2GameObject.interact(currentObj);
                                 if (interacted) {
-                                    isWaitingForResult = true;
-                                    obstacleStartingAgilityExp[currentObstacle] = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
-                                    obstacleStartTime = System.currentTimeMillis();
+                                    long waitStart = System.currentTimeMillis();
+                                    while (System.currentTimeMillis() - waitStart < 11000 && isRunning()) {
+                                        int curExp = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
+                                        if (curExp > obstacleStartingAgilityExp[currentObstacle]) {
+                                            currentObstacle++;
+                                            isWaitingForResult = false;
+                                            return;
+                                        }
+                                        sleep(100);
+                                    }
+                                    // Timeout reached: treat as fail and retry
                                 }
                             }
                             break;
@@ -391,43 +439,65 @@ public class WildernessAgilityScript extends Script {
 
                 // --- Combined dispenser logic for currentObstacle == 5 ---
                 if (currentObstacle == 5) {
-                    TileObject dispenserObj = Rs2GameObject.findObjectById(DISPENSER_ID);
-                    boolean nearDispenser = dispenserObj != null && Rs2Player.getWorldLocation().distanceTo(dispenserObj.getWorldLocation()) <= 12;
-                    int ticketCount = Rs2Inventory.itemQuantity(29460);
-                    int initialTicketCount = ticketCount;
-                    // Microbot.log("[DEBUG] Dispenser step: nearDispenser=" + nearDispenser + ", isWaitingForResult=" + isWaitingForResult + ", dispenserLooted=" + dispenserLooted + ", ticketCount=" + ticketCount + ", threshold=" + config.useTicketsWhen());
-                    if (nearDispenser && !isWaitingForResult) {
-                        if (ticketCount >= config.useTicketsWhen()) {
-                            // Microbot.log("[DEBUG] Using " + ticketCount + " tickets at dispenser (using itemQuantity). Using tickets now.");
-                            Rs2Inventory.interact(29460, "Use");
-                            sleep(400);
-                            Rs2GameObject.interact(dispenserObj, "Use");
-                            sleep(1200);
-                        } else {
-                            // Directly interact with dispenser if below threshold
-                            Rs2GameObject.interact(dispenserObj, "Search");
-                            sleep(1200);
-                        }
-                        // Wait for ticket quantity to change before transitioning
-                        long waitStart = System.currentTimeMillis();
-                        while (System.currentTimeMillis() - waitStart < 8000 && isRunning()) { // Wait up to 8 seconds
-                            int newTicketCount = Rs2Inventory.itemQuantity(29460);
-                            if (newTicketCount != initialTicketCount) {
-                                // Microbot.log("[DEBUG] Ticket quantity changed from " + initialTicketCount + " to " + newTicketCount + ". Proceeding to next lap.");
-                                break;
-                            }
-                            sleep(100);
-                        }
-                        // After ticket quantity change (or timeout), transition to obstacle 0
-                        currentObstacle = 0;
-                        isWaitingForResult = false;
-                        waitingForObstacle = -1;
-                        dispenserLooted = false;
-                        lapCount++;
+                    // Prevent any web walking if we're at obstacle 5
+                    if (Rs2Player.isMoving()) {
                         return;
                     }
+
+                    // Check inventory value before any other logic
+                    if (getInventoryValue() >= config.leaveAtValue()) {
+                        shouldBank = true;
+                        bankingStep = 0;
+                        return;
+                    }
+
+                    TileObject dispenserObj = Rs2GameObject.findObjectById(DISPENSER_ID);
+                    if (dispenserObj == null || Rs2Player.getWorldLocation().distanceTo(dispenserObj.getWorldLocation()) > 12) {
+                        return;
+                    }
+
+                    int ticketCount = Rs2Inventory.itemQuantity(29460);
+                    boolean didInteract = false;
+
+                    if (ticketCount >= config.useTicketsWhen()) {
+                        // If above threshold, use tickets then search
+                        didInteract = Rs2Inventory.interact(29460, "Use");
+                        if (didInteract) {
+                            sleep(600);
+                            didInteract = Rs2GameObject.interact(dispenserObj, "Use");
+                            if (didInteract) {
+                                // Wait for tickets to be used (check inventory)
+                                sleepUntil(() -> Rs2Inventory.itemQuantity(29460) < ticketCount, 5000);
+                                sleep(1200); // Extra safety sleep after tickets are used
+
+                                // Always do second interaction after tickets are used
+                                Rs2GameObject.interact(dispenserObj, "Search");
+                                sleep(1200);
+                            }
+                        }
+                    } else {
+                        // If below threshold, just search once
+                        Rs2GameObject.interact(dispenserObj, "Search");
+                        sleep(1200);
+                    }
+
+                    // Force state transition regardless of interaction success
+                    currentObstacle = 0;
+                    isWaitingForResult = false;
+                    waitingForObstacle = -1;
+                    dispenserLooted = true;  // Mark as looted to prevent re-entry
+                    lapCount++;
+
+                    // Ensure we break out of dispenser state
                     return;
                 }
+
+                // Add a safety check to prevent re-entering dispenser state
+                if (dispenserLooted && currentObstacle == 5) {
+                    currentObstacle = 0;
+                    return;
+                }
+
                 if (currentObstacle == 6) {
                     handlePauseAndRepeat();
                     return;
@@ -435,7 +505,7 @@ public class WildernessAgilityScript extends Script {
 
                 // After climbing rocks (obstacle 4), drop potions first, then eat food if inventory is full
                 if (currentObstacle == 4) {
-                    while ((Rs2Inventory.items().size() >= 27) && isRunning()) {
+                    while ((Rs2Inventory.items().size() >= 26) && isRunning()) {
                         if (Rs2Inventory.contains(24592)) {
                             Rs2Inventory.interact(24592, "Eat");
                             waitForInventoryChanges(1200);
@@ -454,7 +524,11 @@ public class WildernessAgilityScript extends Script {
                     }
                 }
 
-                // If mustWebWalkToRopeStart is set, walk to rope start and wait until there before resuming
+                // After climbing up from pit, set flag to web walk to rope start
+                if (waitingForObstacle == 1) {
+                    mustWebWalkToRopeStart = true;
+                }
+
                 if (mustWebWalkToRopeStart) {
                     WorldPoint ropeStart = new WorldPoint(3005, 3951, 0);
                     if (Rs2Player.getWorldLocation().distanceTo(ropeStart) > 2) {
@@ -465,9 +539,178 @@ public class WildernessAgilityScript extends Script {
                     }
                 }
 
-                // After climbing up, if failed obstacle 1, set mustWebWalkToRopeStart flag
-                if (waitingForObstacle == 1) {
-                    mustWebWalkToRopeStart = true;
+                if (shouldBank) {
+                    switch (bankingStep) {
+                        case 0:
+                            Rs2Walker.walkTo(BANK_ROUTE_1, 2);
+                            if (Rs2Player.isMoving() || Rs2Player.getWorldLocation().distanceTo(BANK_ROUTE_1) > 4) return;
+                            // Only interact with the wall at the exact BANK_ROUTE_1 location
+                            net.runelite.api.WallObject wall1 = Arrays.stream(Microbot.getClient().getScene().getTiles()[Microbot.getClient().getPlane()])
+                                    .flatMap(Arrays::stream)
+                                    .filter(Objects::nonNull)
+                                    .map(Tile::getWallObject)
+                                    .filter(Objects::nonNull)
+                                    .filter(wall -> wall.getId() == WALL_ID_CLOSED && wall.getWorldLocation().equals(BANK_ROUTE_1))
+                                    .findFirst()
+                                    .orElse(null);
+                            if (wall1 != null) {
+                                Rs2WallObject.interact(wall1, 1); // Interact once
+                                // Wait for this specific wall to change to 734
+                                boolean changed = Arrays.stream(Microbot.getClient().getScene().getTiles()[Microbot.getClient().getPlane()])
+                                        .flatMap(Arrays::stream)
+                                        .filter(Objects::nonNull)
+                                        .map(Tile::getWallObject)
+                                        .filter(Objects::nonNull)
+                                        .anyMatch(wall -> wall.getId() == WALL_ID_OPEN && wall.getWorldLocation().equals(BANK_ROUTE_1));
+                                if (!changed) {
+                                    return; // Try again next tick
+                                }
+                            } else {
+                                // If the wall at the location is not 733 or 734, wait
+                                boolean changed = Arrays.stream(Microbot.getClient().getScene().getTiles()[Microbot.getClient().getPlane()])
+                                        .flatMap(Arrays::stream)
+                                        .filter(Objects::nonNull)
+                                        .map(Tile::getWallObject)
+                                        .filter(Objects::nonNull)
+                                        .anyMatch(wall -> wall.getId() == WALL_ID_OPEN && wall.getWorldLocation().equals(BANK_ROUTE_1));
+                                if (!changed) {
+                                    return; // Still not open, try again next tick
+                                }
+                            }
+                            bankingStep++;
+                            break;
+                        case 1:
+                            Rs2Walker.walkTo(BANK_ROUTE_2, 2);
+                            if (Rs2Player.isMoving() || Rs2Player.getWorldLocation().distanceTo(BANK_ROUTE_2) > 4) return;
+                            // Only interact with the wall at the exact (3092, 3957) location
+                            net.runelite.api.WallObject wall2 = Arrays.stream(Microbot.getClient().getScene().getTiles()[Microbot.getClient().getPlane()])
+                                    .flatMap(Arrays::stream)
+                                    .filter(Objects::nonNull)
+                                    .map(Tile::getWallObject)
+                                    .filter(Objects::nonNull)
+                                    .filter(wall -> wall.getId() == WALL_ID_CLOSED && wall.getWorldLocation().getX() == 3092 && wall.getWorldLocation().getY() == 3957)
+                                    .findFirst()
+                                    .orElse(null);
+                            if (wall2 != null) {
+                                Rs2WallObject.interact(wall2, 1); // Interact once
+                                // Wait for this specific wall to change to 734
+                                boolean changed = Arrays.stream(Microbot.getClient().getScene().getTiles()[Microbot.getClient().getPlane()])
+                                        .flatMap(Arrays::stream)
+                                        .filter(Objects::nonNull)
+                                        .map(Tile::getWallObject)
+                                        .filter(Objects::nonNull)
+                                        .anyMatch(wall -> wall.getId() == WALL_ID_OPEN && wall.getWorldLocation().getX() == 3092 && wall.getWorldLocation().getY() == 3957);
+                                if (!changed) {
+                                    return; // Try again next tick
+                                }
+                            } else {
+                                // If the wall at the location is not 733 or 734, wait
+                                boolean changed = Arrays.stream(Microbot.getClient().getScene().getTiles()[Microbot.getClient().getPlane()])
+                                        .flatMap(Arrays::stream)
+                                        .filter(Objects::nonNull)
+                                        .map(Tile::getWallObject)
+                                        .filter(Objects::nonNull)
+                                        .anyMatch(wall -> wall.getId() == WALL_ID_OPEN && wall.getWorldLocation().getX() == 3092 && wall.getWorldLocation().getY() == 3957);
+                                if (!changed) {
+                                    return; // Still not open, try again next tick
+                                }
+                            }
+                            bankingStep++;
+                            break;
+                        case 2:
+                            Rs2Walker.walkTo(BANK_ROUTE_3, 2);
+                            WorldPoint leverTile = new WorldPoint(3091, 3956, 0);
+                            if (Rs2Player.getWorldLocation().distanceTo(leverTile) > 0) {
+                                Rs2Walker.walkTo(leverTile, 0);
+                                return;
+                            }
+                            if (Rs2Player.isMoving()) return;
+
+                            TileObject lever = Rs2GameObject.findObjectById(LEVER_ID);
+                            if (lever != null) {
+                                // Only pull lever if we haven't started teleporting yet
+                                if (!Rs2Player.isAnimating()) {
+                                    Rs2GameObject.interact(lever, "Pull");
+                                    // Wait for animation to start
+                                    sleepUntil(() -> Rs2Player.isAnimating(), 2000);
+                                }
+
+                                // Wait for teleport to complete - check both animation end and new location
+                                sleepUntil(() -> {
+                                    WorldPoint currentLoc = Rs2Player.getWorldLocation();
+                                    return currentLoc != null &&
+                                            currentLoc.equals(BANK_DEST_TELE) &&
+                                            !Rs2Player.isAnimating() &&
+                                            !Rs2Player.isMoving();
+                                }, 5000);
+
+                                // Final verification we're at bank location
+                                WorldPoint finalLoc = Rs2Player.getWorldLocation();
+                                if (finalLoc != null && finalLoc.equals(BANK_DEST_TELE)) {
+                                    bankingStep++;
+                                }
+                            }
+                            return;
+                        case 3:
+                            // First ensure we're at the teleport destination
+                            if (!Rs2Player.getWorldLocation().equals(BANK_DEST_TELE)) {
+                                return;
+                            }
+
+                            // Open bank if not open
+                            if (!Rs2Bank.isOpen()) {
+                                Rs2Bank.openBank();
+                                sleepUntil(Rs2Bank::isOpen, 20000);
+                                if (!Rs2Bank.isOpen()) {
+                                    return;  // Try again next tick if bank didn't open
+                                }
+                            }
+
+                            // Handle banking operations
+                            Rs2Bank.depositAll();
+                            sleep(600);
+                            Rs2Bank.withdrawX(995, 150000);
+                            sleep(600);
+                            Rs2Bank.withdrawOne(24963); // Ice plateau teleport
+                            sleep(600);
+                            Rs2Bank.withdrawOne("Knife");
+                            sleep(600);
+                            Rs2Bank.closeBank();
+                            sleep(1000);
+
+                            // Verify we got our items before proceeding
+                            if (Rs2Inventory.hasItem(995) && Rs2Inventory.hasItem(24963) && Rs2Inventory.hasItem("Knife")) {
+                                bankingStep++;
+                            }
+                            return;
+                        case 4:
+                            Rs2Walker.walkTo(START_POINT, 2);
+                            if (Rs2Player.getWorldLocation().distanceTo(START_POINT) > 2) return;
+
+                            // After reaching start point, use coins on dispenser
+                            TileObject dispenserObj = Rs2GameObject.findObjectById(DISPENSER_ID);
+                            if (dispenserObj != null) {
+                                Rs2Inventory.use("Coins");
+                                sleep(400);
+                                Rs2GameObject.interact(dispenserObj, "Use");
+                                sleep(1200);
+
+                                // Wait for coins to be removed from inventory (or timeout)
+                                sleepUntil(() -> !Rs2Inventory.hasItem("Coins"), 5000);
+
+                                if (Rs2Inventory.hasItem("Coins")) {
+                                    // If coins weren't removed, try again next tick
+                                    return;
+                                }
+                            }
+
+                            needsDispenserUnlock = true;
+                            shouldBank = false;
+                            bankingStep = 0;
+                            currentObstacle = 0;  // Set to obstacle 0 after successful banking
+                            break;
+                    }
+                    return;
                 }
             } catch (Exception ex) {
                 // Microbot.log("An error occurred: " + ex.getMessage(), ex);
@@ -504,6 +747,8 @@ public class WildernessAgilityScript extends Script {
         startTime = 0;
         needsDispenserUnlock = false;
         initialSetupDone = false;
+        shouldBank = false;
+        bankingStep = 0;
         // Microbot.log("WildernessAgilityScript: Shutdown called");
     }
 
@@ -543,6 +788,27 @@ public class WildernessAgilityScript extends Script {
         long minutes = (elapsed / (1000 * 60)) % 60;
         long hours = (elapsed / (1000 * 60 * 60));
         return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+    }
+
+    private boolean waitForWildernessObstacleToFinish(final int startingExp, final double startingHealth) {
+        sleepUntil(() -> {
+            int currentExp = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
+            double currentHealth = Rs2Player.getHealthPercentage();
+            return currentExp > startingExp || currentHealth < startingHealth;
+        }, 10000);
+        int currentExp = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
+        double currentHealth = Rs2Player.getHealthPercentage();
+
+        if (currentExp > startingExp) {
+            currentObstacle++;
+            isWaitingForResult = false;
+            return true;
+        } else if (currentHealth < startingHealth) {
+            isWaitingForResult = false;
+            return false;
+        }
+        isWaitingForResult = false;
+        return false;
     }
 
 }
