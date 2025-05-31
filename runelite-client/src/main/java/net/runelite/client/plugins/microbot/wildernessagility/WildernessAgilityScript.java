@@ -229,33 +229,94 @@ public class WildernessAgilityScript extends Script {
         return loc != null && loc.getY() > 10000;
     }
     private void recoverFromPit() {
-        WorldPoint pitLadder = new WorldPoint(3004, 10363, 0);
-        Rs2Walker.walkTo(pitLadder, 4);
-        sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(pitLadder) <= 4, 10000);
-        List<TileObject> ladders = Rs2GameObject.getAll(o -> o.getId() == 17385, 104);
-        TileObject ladderObj = ladders.isEmpty() ? null : ladders.get(0);
-        if (ladderObj != null && Rs2Player.getWorldLocation().distanceTo(ladderObj.getWorldLocation()) <= 30) {
-            Rs2GameObject.interact(ladderObj, "Climb-up");
-            sleep(600);
-            sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving(), 5000);
-        }
-        if (pitRecoveryTarget != null) {
-            if (pitRecoveryTarget == ObstacleState.ROPE) {
-                WorldPoint ropeStart = new WorldPoint(3005, 3953, 0);
-                Rs2Walker.walkTo(ropeStart, 2);
-                sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(ropeStart) <= 2, 8000);
-                currentState = ObstacleState.ROPE;
-            } else if (pitRecoveryTarget == ObstacleState.LOG) {
-                WorldPoint logStart = new WorldPoint(2996, 3955, 0);
-                Rs2Walker.walkTo(logStart, 2);
-                sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(logStart) <= 2, 8000);
-                currentState = ObstacleState.LOG;
-            } else {
-                currentState = pitRecoveryTarget;
+        // First check if we're still in the pit
+        if (isInPit()) {
+            List<TileObject> ladders = Rs2GameObject.getAll(o -> o.getId() == 17385, 104);
+            TileObject ladderObj = ladders.isEmpty() ? null : ladders.get(0);
+            if (ladderObj != null && Rs2Player.getWorldLocation().distanceTo(ladderObj.getWorldLocation()) <= 50) {
+                Rs2GameObject.interact(ladderObj, "Climb-up");
+                sleep(600);
+                sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving(), 5000);
             }
+            return; // Return here to let the next tick handle the state transition
+        }
+
+        // If we're here, we've successfully climbed out of the pit
+        if (pitRecoveryTarget != null) {
+            WorldPoint targetPoint;
+            int obstacleIndex;
+            switch (pitRecoveryTarget) {
+                case ROPE:
+                    targetPoint = new WorldPoint(3005, 3953, 0);
+                    obstacleIndex = 1;
+                    break;
+                case LOG:
+                    targetPoint = new WorldPoint(2996, 3955, 0);
+                    obstacleIndex = 3;
+                    break;
+                default:
+                    info("Unexpected pit recovery target: " + pitRecoveryTarget);
+                    targetPoint = new WorldPoint(3005, 3953, 0); // Default to rope as fallback
+                    obstacleIndex = 1;
+                    break;
+            }
+            
+            // First walk to the target point
+            if (Rs2Player.getWorldLocation().distanceTo(targetPoint) > 4) {
+                Rs2Walker.walkTo(targetPoint, 4);
+                sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(targetPoint) <= 4, 8000);
+                sleep(300, 600); // Small delay after walking
+            }
+
+            // Now try to interact with the obstacle
+            TileObject obstacle = getObstacleObj(obstacleIndex);
+            if (obstacle == null) {
+                List<TileObject> obstacles = Rs2GameObject.getAll(o -> o.getId() == this.obstacles.get(obstacleIndex).getObjectId(), 104);
+                obstacle = obstacles.isEmpty() ? null : obstacles.get(0);
+            }
+
+            if (obstacle != null) {
+                // Set up the appropriate waiting state before interaction
+                switch (pitRecoveryTarget) {
+                    case ROPE:
+                        isWaitingForRope = false;
+                        ropeStartXp = Microbot.getClient().getSkillExperience(net.runelite.api.Skill.AGILITY);
+                        break;
+                    case LOG:
+                        isWaitingForLog = false;
+                        break;
+                }
+
+                // Interact with the obstacle
+                Rs2GameObject.interact(obstacle);
+                sleep(300, 600);
+            }
+
+            currentState = pitRecoveryTarget;
             pitRecoveryTarget = null;
         } else {
-            currentState = ObstacleState.PIPE;
+            // This should never happen now that we set pitRecoveryTarget when detecting falls
+            info("No pit recovery target set - defaulting to rope");
+            WorldPoint ropeStart = new WorldPoint(3005, 3953, 0);
+            Rs2Walker.walkTo(ropeStart, 4);
+            sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(ropeStart) <= 4, 8000);
+            currentState = ObstacleState.ROPE;
+        }
+    }
+    private WorldPoint getCurrentObstacleStart() {
+        switch (currentState) {
+            case PIPE:
+                return new WorldPoint(3004, 3937, 0);
+            case ROPE:
+                return new WorldPoint(3005, 3953, 0);
+            case STONES:
+                return new WorldPoint(2993, 3960, 0);
+            case LOG:
+                return new WorldPoint(2996, 3955, 0);
+            case ROCKS:
+                return new WorldPoint(2993, 3937, 0);
+            default:
+                return null;
         }
     }
     private void clearInventoryIfNeeded() {
@@ -392,7 +453,7 @@ public class WildernessAgilityScript extends Script {
             }
             if (isUnderground(loc)) {
                 isWaitingForRope = false;
-                pitRecoveryTarget = ObstacleState.ROPE;
+                pitRecoveryTarget = currentState;
                 currentState = ObstacleState.PIT_RECOVERY;
                 return;
             }
@@ -455,7 +516,14 @@ public class WildernessAgilityScript extends Script {
                 currentState = ObstacleState.ROCKS;
                 return;
             }
-            if (isWaitingForLog) return;
+            if (isWaitingForLog) {
+                if (isUnderground(loc)) {
+                    isWaitingForLog = false;
+                    pitRecoveryTarget = currentState;
+                    currentState = ObstacleState.PIT_RECOVERY;
+                }
+                return;
+            }
             TileObject log = getObstacleObj(3);
             if (log == null) {
                 List<TileObject> logs = Rs2GameObject.getAll(o -> o.getId() == obstacles.get(3).getObjectId(), 104);
