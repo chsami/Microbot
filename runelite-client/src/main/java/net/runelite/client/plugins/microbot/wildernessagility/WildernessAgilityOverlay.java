@@ -31,21 +31,27 @@ public class WildernessAgilityOverlay extends OverlayPanel {
         if (!active || script == null) return null;
         panelComponent.setPreferredSize(new Dimension(200, 120));
         panelComponent.getChildren().add(TitleComponent.builder()
-                .text("Wilderness Agility")
-                .color(Color.GREEN)
+                .text("\uD83D\uDC2C Wilderness Agility v1.00 \uD83D\uDC2C")
+                .color(new Color(0x00B4D8))
                 .build());
         panelComponent.getChildren().add(LineComponent.builder().build());
         panelComponent.getChildren().add(LineComponent.builder()
                 .left("Dispensers Looted")
                 .right(Integer.toString(script.dispenserLoots))
+                .leftColor(Color.YELLOW)
+                .rightColor(Color.YELLOW)
                 .build());
         panelComponent.getChildren().add(LineComponent.builder()
                 .left("Time Running")
                 .right(script.getRunningTime())
+                .leftColor(new Color(0xFFA726)) // light orange
+                .rightColor(new Color(0xFFA726))
                 .build());
         panelComponent.getChildren().add(LineComponent.builder()
                 .left("Inventory Value")
-                .right(Integer.toString(script.getInventoryValue()) + " gp")
+                .right(String.format("%,d gp", script.getInventoryValue()))
+                .leftColor(new Color(0x2ECC40)) // money green
+                .rightColor(new Color(0x2ECC40))
                 .build());
         // Optionally show current obstacle if you track it
         // panelComponent.getChildren().add(LineComponent.builder()

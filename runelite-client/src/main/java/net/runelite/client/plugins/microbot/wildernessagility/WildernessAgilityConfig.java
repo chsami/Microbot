@@ -4,8 +4,16 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.Range;
+import net.runelite.client.config.ConfigInformation;
 
 @ConfigGroup("wildernessagility")
+@ConfigInformation(
+    "Wilderness Agility Course by Cranny<br><br>" +
+    "• Works both mass and solo<br>" +
+    "• See discord for setup guides<br>" +
+    "• Enable \"start at course?\" if you've already deposited 150k coins or want to run without getting loot (still will get tickets)<br>" +
+    "• Inventory requirements for mass (starting at a bank): 150k coins, knife, ice plateau teleport"
+)
 public interface WildernessAgilityConfig extends Config {
     @ConfigItem(
         keyName = "leaveAtValue",

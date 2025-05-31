@@ -66,6 +66,7 @@ public @interface PluginDescriptor
 	String Bradley = "<html>[<font color=#E32636>BR</font>] ";
 	String Frosty = "<html>[<font color=#00FFFF>\u2744</font>] ";
 	String Maxxin = "<html>[<font color='#8B0000'>MX</font>] ";
+    String Cranny = "<html>[<font color='#00B4D8'>\uD83D\uDC2C</font>] ";
 
 
 

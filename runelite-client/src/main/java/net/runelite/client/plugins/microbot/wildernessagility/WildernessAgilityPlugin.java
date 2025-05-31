@@ -12,8 +12,9 @@ import net.runelite.api.events.ChatMessage;
 import net.runelite.client.eventbus.Subscribe;
 
 @PluginDescriptor(
-    name = "Wilderness Agility",
-    enabledByDefault = false
+    name = PluginDescriptor.Cranny + "Wilderness Agility",
+    enabledByDefault = false,
+    tags = {"agility", "wilderness", "cranny", "mass", "tickets"}
 )
 public class WildernessAgilityPlugin extends Plugin {
     @Inject
@@ -33,15 +34,12 @@ public class WildernessAgilityPlugin extends Plugin {
     @Override
     protected void startUp() throws Exception {
         Microbot.log("WildernessAgilityPlugin: startUp called");
-        Microbot.log("Injected overlayManager: " + (overlayManager != null));
-        Microbot.log("Injected overlay: " + (overlay != null));
-        Microbot.log("Injected script: " + (script != null));
-        Microbot.log("Injected config: " + (config != null));
         if (overlayManager != null) {
             overlayManager.add(overlay);
         }
         overlay.setScript(script);
         overlay.setActive(true);
+        script.setPlugin(this);
         script.run(config);
     }
 
