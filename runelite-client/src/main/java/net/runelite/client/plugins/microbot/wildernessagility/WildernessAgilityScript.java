@@ -74,6 +74,9 @@ public class WildernessAgilityScript extends Script {
     private WorldPoint lastPosition = null;
     private static final int STUCK_TIMEOUT = 5000; // 5 seconds
 
+    private long pipeInteractionStartTime = 0;
+    private static final int PIPE_WAIT_TIMEOUT = 5000; // 5 seconds
+
     private void info(String msg) { Microbot.log(msg); }
 
     private boolean isUnderground(WorldPoint loc) {
@@ -339,7 +342,7 @@ public class WildernessAgilityScript extends Script {
         }
     }
     private void clearInventoryIfNeeded() {
-        while (Rs2Inventory.items().size() >= 25 && isRunning()) {
+        while (Rs2Inventory.items().size() >= 26 && isRunning()) {
             if (Rs2Inventory.contains(FOOD_PRIMARY)) {
                 Rs2Inventory.interact(FOOD_PRIMARY, "Eat");
                 waitForInventoryChanges(getActionDelay());
@@ -433,34 +436,47 @@ public class WildernessAgilityScript extends Script {
     private void handlePipe() {
         if (isWaitingForPipe) {
             WorldPoint loc = Rs2Player.getWorldLocation();
-            if (loc != null && loc.getY() >= 3950) {
+            // If player moved north of y=3949, consider pipe completed
+            if (loc != null && loc.getY() > 3949) {
                 isWaitingForPipe = false;
                 currentState = ObstacleState.ROPE;
                 return;
             }
+            // If XP changed, consider pipe completed
             if (waitForXpChange(pipeStartXp, getXpTimeout())) {
                 isWaitingForPipe = false;
                 currentState = ObstacleState.ROPE;
+                return;
+            }
+            // Timeout: if too much time has passed, reset and retry
+            if (System.currentTimeMillis() - pipeInteractionStartTime > PIPE_WAIT_TIMEOUT) {
+                isWaitingForPipe = false;
+                // Optionally log: info("Pipe interaction timed out, retrying...");
             }
             return;
         }
         if (!Rs2Player.isAnimating() && !Rs2Player.isMoving()) {
             WorldPoint loc = Rs2Player.getWorldLocation();
-            TileObject pipe = getObstacleObj(0);
-            if (pipe == null) return;
-            int distanceToPipe = loc.distanceTo(pipe.getWorldLocation());
-            if (distanceToPipe > 5) {
-                if (!isAt(pipe.getWorldLocation(), 5)) {
-                    Rs2Walker.walkTo(pipe.getWorldLocation(), 2);
+            // Player must be within 4 tiles of (3004, 3937, 0) to interact with the pipe at (3004, 3938, 0)
+            WorldPoint pipeTile = new WorldPoint(3004, 3938, 0);
+            WorldPoint pipeFrontTile = new WorldPoint(3004, 3937, 0);
+            int distanceToPipeFront = loc.distanceTo(pipeFrontTile);
+            if (distanceToPipeFront > 4) {
+                if (!isAt(pipeFrontTile, 4)) {
+                    Rs2Walker.walkTo(pipeFrontTile, 2);
                 }
                 return;
             }
-            if (distanceToPipe <= 5) {
-                boolean interacted = Rs2GameObject.interact(pipe);
-                if (interacted) {
-                    isWaitingForPipe = true;
-                    pipeStartXp = Microbot.getClient().getSkillExperience(AGILITY);
-                }
+            // Find the pipe object at the exact tile (3004, 3938, 0)
+            TileObject pipe = Rs2GameObject.getAll(o -> o.getId() == obstacles.get(0).getObjectId() &&
+                                                    o.getWorldLocation().equals(pipeTile), 10)
+                                        .stream().findFirst().orElse(null);
+            if (pipe == null) return;
+            boolean interacted = Rs2GameObject.interact(pipe);
+            if (interacted) {
+                isWaitingForPipe = true;
+                pipeStartXp = Microbot.getClient().getSkillExperience(AGILITY);
+                pipeInteractionStartTime = System.currentTimeMillis();
             }
         }
     }
@@ -490,7 +506,7 @@ public class WildernessAgilityScript extends Script {
         if (!Rs2Player.isAnimating() && !Rs2Player.isMoving()) {
             WorldPoint loc = Rs2Player.getWorldLocation();
             TileObject rope = getObstacleObj(1);
-            if (rope != null && loc.distanceTo(rope.getWorldLocation()) <= 5) {
+            if (rope != null) {
                 boolean interacted = Rs2GameObject.interact(rope);
                 if (interacted) {
                     isWaitingForRope = true;
@@ -533,7 +549,7 @@ public class WildernessAgilityScript extends Script {
         if (!Rs2Player.isAnimating() && !Rs2Player.isMoving()) {
             WorldPoint loc = Rs2Player.getWorldLocation();
             TileObject stones = getObstacleObj(2);
-            if (stones != null && loc.distanceTo(stones.getWorldLocation()) <= 10) {
+            if (stones != null) {
                 boolean interacted = Rs2GameObject.interact(stones);
                 if (interacted) {
                     isWaitingForStones = true;
@@ -566,7 +582,7 @@ public class WildernessAgilityScript extends Script {
                 List<TileObject> logs = Rs2GameObject.getAll(o -> o.getId() == obstacles.get(3).getObjectId(), 104);
                 log = logs.isEmpty() ? null : logs.get(0);
             }
-            if (log != null && loc.distanceTo(LOG_WALK_POINT) <= 20) {
+            if (log != null) {
                 boolean interacted = Rs2GameObject.interact(log);
                 sleep(100);
                 if (interacted && (Rs2Player.isAnimating() || Rs2Player.isMoving())) {
@@ -594,7 +610,7 @@ public class WildernessAgilityScript extends Script {
                 List<TileObject> rocksList = Rs2GameObject.getAll(o -> o.getId() == obstacles.get(4).getObjectId(), 104);
                 rocks = rocksList.isEmpty() ? null : rocksList.get(0);
             }
-            if (rocks != null && Rs2Player.getWorldLocation().distanceTo(rocks.getWorldLocation()) <= 14) {
+            if (rocks != null) {
                 int startExp = Microbot.getClient().getSkillExperience(AGILITY);
                 if (Rs2GameObject.interact(rocks)) {
                     if (waitForXpChange(startExp, getXpTimeout())) {
@@ -602,6 +618,12 @@ public class WildernessAgilityScript extends Script {
                         return;
                     }
                 }
+            }
+            // Fallback: if player Y < 3934, consider rocks completed
+            WorldPoint loc = Rs2Player.getWorldLocation();
+            if (loc != null && loc.getY() < 3934) {
+                currentState = ObstacleState.DISPENSER;
+                return;
             }
         }
     }
@@ -611,7 +633,7 @@ public class WildernessAgilityScript extends Script {
         if (dispenser == null || Rs2Player.getWorldLocation().distanceTo(dispenser.getWorldLocation()) > 12) return;
 
         // Check inventory space before interacting
-        if (Rs2Inventory.items().size() >= 25) {
+        if (Rs2Inventory.items().size() >= 26) {
             info("Clearing inventory before looting dispenser");
             clearInventoryIfNeeded();
             return;
