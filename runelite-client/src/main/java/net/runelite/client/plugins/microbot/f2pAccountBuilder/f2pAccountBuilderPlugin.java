@@ -47,6 +47,7 @@ public class f2pAccountBuilderPlugin extends Plugin {
         }
         f2paccountbuilderScript.run(config);
         f2paccountbuilderScript.shouldThink = true;
+        f2paccountbuilderScript.scriptStartTime = System.currentTimeMillis();
     }
 
     protected void shutDown() {

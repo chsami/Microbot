@@ -31,7 +31,7 @@ public class f2pAccountBuilderScript extends Script {
 
     public static boolean test = false;
     public volatile boolean shouldThink = true;
-    long scriptStartTime = System.currentTimeMillis();
+    public volatile long scriptStartTime = System.currentTimeMillis();
     private long howLongUntilThink = 0;
 
     private boolean shouldWoodcut = false;
