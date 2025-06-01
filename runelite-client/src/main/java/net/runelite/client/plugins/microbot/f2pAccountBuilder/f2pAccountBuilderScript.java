@@ -200,7 +200,8 @@ public class f2pAccountBuilderScript extends Script {
                         Rs2Walker.walkTo(chosenSpot);
                     } else {
                         if(Rs2Inventory.isFull()){
-                            if(Rs2Bank.walkToBankAndUseBank()){
+                            if(!Rs2Bank.isOpen()){
+                                Rs2Bank.walkToBankAndUseBank();
                                 sleepUntil(()-> Rs2Bank.isOpen(), Rs2Random.between(2000,5000));
                             }
                             if(Rs2Bank.isOpen()){
@@ -249,7 +250,8 @@ public class f2pAccountBuilderScript extends Script {
                         Rs2Walker.walkTo(chosenSpot);
                     } else {
                         if(Rs2Inventory.isFull()){
-                            if(Rs2Bank.walkToBankAndUseBank()){
+                            if(!Rs2Bank.isOpen()){
+                                Rs2Bank.walkToBankAndUseBank();
                                 sleepUntil(()-> Rs2Bank.isOpen(), Rs2Random.between(2000,5000));
                             }
                             if(Rs2Bank.isOpen()){
