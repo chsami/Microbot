@@ -31,7 +31,7 @@ public class WildernessAgilityOverlay extends OverlayPanel {
         if (!active || script == null) return null;
         panelComponent.setPreferredSize(new Dimension(200, 120));
         panelComponent.getChildren().add(TitleComponent.builder()
-                .text("\uD83D\uDC2C Wilderness Agility v1.00 \uD83D\uDC2C")
+                .text("\uD83D\uDC2C Wilderness Agility v" + (script != null ? script.VERSION : "?") + " \uD83D\uDC2C")
                 .color(new Color(0x00B4D8))
                 .build());
         panelComponent.getChildren().add(LineComponent.builder().build());
