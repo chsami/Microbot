@@ -201,8 +201,11 @@ public class f2pAccountBuilderScript extends Script {
                     } else {
                         if(Rs2Inventory.isFull()){
                             if(!Rs2Bank.isOpen()){
-                                Rs2Bank.walkToBankAndUseBank();
-                                sleepUntil(()-> Rs2Bank.isOpen(), Rs2Random.between(2000,5000));
+                                if (Rs2Bank.walkToBank()) {
+                                    if (Rs2GameObject.interact("Bank booth", "Bank") || Rs2Npc.interact("Banker", "Bank")) {
+                                        sleepUntil(Rs2Bank::isOpen, Rs2Random.between(3000, 6000));
+                                    }
+                                }
                             }
                             if(Rs2Bank.isOpen()){
                                 Rs2Bank.depositAllExcept("Iron axe");
@@ -251,8 +254,11 @@ public class f2pAccountBuilderScript extends Script {
                     } else {
                         if(Rs2Inventory.isFull()){
                             if(!Rs2Bank.isOpen()){
-                                Rs2Bank.walkToBankAndUseBank();
-                                sleepUntil(()-> Rs2Bank.isOpen(), Rs2Random.between(2000,5000));
+                                if (Rs2Bank.walkToBank()) {
+                                    if (Rs2GameObject.interact("Bank booth", "Bank") || Rs2Npc.interact("Banker", "Bank")) {
+                                        sleepUntil(Rs2Bank::isOpen, Rs2Random.between(3000, 6000));
+                                    }
+                                }
                             }
                             if(Rs2Bank.isOpen()){
                                 Rs2Bank.depositAllExcept("Iron pickaxe");
