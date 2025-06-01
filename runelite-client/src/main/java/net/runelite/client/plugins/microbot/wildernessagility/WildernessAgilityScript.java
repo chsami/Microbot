@@ -16,15 +16,13 @@ import java.util.Objects;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import javax.inject.Inject;
 import static net.runelite.api.Skill.AGILITY;
-import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
-import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import java.util.ArrayList;
 import net.runelite.api.widgets.Widget;
 
 public class WildernessAgilityScript extends Script {
-    public static final String VERSION = "1.2.0";
+    public static final String VERSION = "1.3.0";
     private WildernessAgilityConfig config;
     @Inject
     private WildernessAgilityPlugin plugin;
@@ -46,11 +44,7 @@ public class WildernessAgilityScript extends Script {
     private long startTime = 0;
     private boolean needsDispenserUnlock = false;
 
-    private static final WorldPoint LEVER_TILE = new WorldPoint(3091, 3956, 0);
-    private static final WorldPoint BANK_DEST_TELE = new WorldPoint(2539, 4712, 0);
-    private static final int LEVER_ID = 5959;
     private static final int TICKET_ITEM_ID = 29460;
-    private static final WorldPoint LOG_WALK_POINT = new WorldPoint(2996, 3955, 0);
 
     private enum ObstacleState {
         INIT, START, PIPE, ROPE, STONES, LOG, ROCKS, DISPENSER, CONFIG_CHECKS, BANKING, PIT_RECOVERY
@@ -250,7 +244,7 @@ public class WildernessAgilityScript extends Script {
     private void handlePlayerDeath() {
         info("Player died, logging out and shutting down script.");
         sleep(7000);
-        Rs2Player.logout();
+        attemptLogoutUntilLoggedOut();
         Microbot.stopPlugin(plugin);
     }
 
@@ -326,7 +320,7 @@ public class WildernessAgilityScript extends Script {
                         return;
                     }
                     sleep(300, 600);
-                    
+
                     // Now interact with rope
                     TileObject rope = getObstacleObj(1);
                     if (rope != null && !Rs2Player.isMoving()) {
@@ -425,8 +419,8 @@ public class WildernessAgilityScript extends Script {
                 break;
             case 1:
                 if (isInNewWorld()) {
-                    info("Banking progress 1: dropping FC");
-                    dropFC();
+                    info("Banking progress 1: leaving chat-channel");
+                    leaveChatChannel();
                     bankingProgress++;
                 }
                 break;
@@ -436,32 +430,16 @@ public class WildernessAgilityScript extends Script {
                 bankingProgress++;
                 break;
             case 3:
-                if (isInNewWorld() || !config.enableWorldHop()) {
-                    info("Banking progress 3: walking to lever");
-                    if (!isAt(LEVER_TILE, 2)) {
-                        Rs2Walker.walkTo(LEVER_TILE, 2);
-                        return;
-                    }
-                    TileObject lever = Rs2GameObject.findObjectById(LEVER_ID);
-                    if (lever != null && !Rs2Player.isAnimating()) {
-                        Rs2GameObject.interact(lever, "Pull");
-                        sleepUntil(() -> Rs2Player.isAnimating(), 2000);
-                    }
-                    sleepUntil(() -> {
-                        WorldPoint currentLoc = Rs2Player.getWorldLocation();
-                        return currentLoc != null && currentLoc.equals(BANK_DEST_TELE) && !Rs2Player.isAnimating() && !Rs2Player.isMoving();
-                    }, getXpTimeout());
-                    WorldPoint finalLoc = Rs2Player.getWorldLocation();
-                    if (finalLoc != null && finalLoc.equals(BANK_DEST_TELE)) {
-                        bankingProgress++;
-                    }
+                info("Banking progress 3: walking to Mage Bank");
+                WorldPoint mageBankTile = new WorldPoint(2534, 4712, 0);
+                if (!isAt(mageBankTile, 2)) {
+                    Rs2Walker.walkTo(mageBankTile, 2);
+                    return;
                 }
+                bankingProgress++;
                 break;
             case 4:
                 info("Banking progress 4: opening bank");
-                if (!Rs2Player.getWorldLocation().equals(BANK_DEST_TELE)) {
-                    return;
-                }
                 if (!Rs2Bank.isOpen()) {
                     Rs2Bank.openBank();
                     sleepUntil(Rs2Bank::isOpen, 20000);
@@ -477,13 +455,19 @@ public class WildernessAgilityScript extends Script {
                 sleep(getActionDelay());
                 Rs2Bank.withdrawX(COINS_ID, 150000);
                 sleep(getActionDelay());
-                Rs2Bank.withdrawOne(TELEPORT_ID);
-                sleep(getActionDelay());
+                if (config.useIcePlateauTp()) {
+                    Rs2Bank.withdrawOne(TELEPORT_ID);
+                    sleep(getActionDelay());
+                }
                 Rs2Bank.withdrawOne(KNIFE_ID);
                 sleep(getActionDelay());
                 Rs2Bank.closeBank();
                 sleep(getActionDelay());
-                if (Rs2Inventory.hasItem(COINS_ID) && Rs2Inventory.hasItem(TELEPORT_ID) && Rs2Inventory.hasItem(KNIFE_ID)) {
+                boolean hasAll = Rs2Inventory.hasItem(COINS_ID) && Rs2Inventory.hasItem(KNIFE_ID);
+                if (config.useIcePlateauTp()) {
+                    hasAll = hasAll && Rs2Inventory.hasItem(TELEPORT_ID);
+                }
+                if (hasAll) {
                     bankingProgress++;
                 }
                 break;
@@ -562,14 +546,28 @@ public class WildernessAgilityScript extends Script {
             }
         }
         info("Preparing to hop to world: " + targetWorld);
-        // If logged in, robustly attempt to logout
-        if (Microbot.isLoggedIn()) {
-            info("Attempting to logout before world hop...");
-            attemptLogoutUntilLoggedOut();
+        // Robust world hop with retries
+        int maxAttempts = 10;
+        int attempts = 0;
+        while (Rs2Player.getWorld() != targetWorld && attempts < maxAttempts) {
+            boolean hopInitiated = Microbot.hopToWorld(targetWorld);
+            if (hopInitiated) {
+                final int targetWorldFinal = targetWorld;
+                boolean hopSuccess = sleepUntil(() -> Rs2Player.getWorld() == targetWorldFinal, 15000);
+                if (hopSuccess) {
+                    info("Successfully hopped to world: " + targetWorldFinal);
+                    break;
+                } else {
+                    info("World hop did not complete in time (combat delay?), retrying...");
+                }
+            } else {
+                info("Failed to initiate world hop (combat delay?), retrying...");
+            }
+            sleep(3000); // Wait before retrying
+            attempts++;
         }
-        if ("LOGIN_SCREEN".equals(Microbot.getClient().getGameState().toString())) {
-            info("Using Login class to hop to world: " + targetWorld);
-            new Login(targetWorld);
+        if (Rs2Player.getWorld() != targetWorld) {
+            info("Failed to hop to world " + targetWorld + " after multiple attempts.");
         }
         previousWorld = current;
         currentWorld = targetWorld;
@@ -582,21 +580,17 @@ public class WildernessAgilityScript extends Script {
         return Rs2Player.getWorld() != previousWorld;
     }
 
-    private void dropFC() {
-        // Switch to friends tab
-        Rs2Tab.switchToFriendsTab();
+    private void leaveChatChannel() {
+        // Switch to Chat-Channel tab (Grouping Tab)
+        Rs2Tab.switchToGroupingTab();
         sleep(400, 800);
-        // Try to find and click the "Leave Chat" button (widget id may need adjustment)
-        // Widget id for leave chat is usually 42991621 (Friends Chat tab, "Leave Chat" button)
-        Widget leaveChatWidget = Rs2Widget.getWidget(42991621);
-        if (leaveChatWidget != null) {
-            Rs2Widget.clickWidget(leaveChatWidget);
+        // Try to click the "Leave" button in the Chat-Channel tab (WidgetID 71, ChildID 6)
+        Widget leaveButton = Rs2Widget.getWidget(71, 6);
+        if (leaveButton != null) {
+            Rs2Widget.clickWidget(leaveButton);
             sleep(600, 1200);
         } else {
-            // As a fallback, type /leave in chat
-            Rs2Keyboard.typeString("/leave");
-            Rs2Keyboard.enter();
-            sleep(600, 1200);
+            info("Could not find the chat-channel leave button widget (71,6).");
         }
     }
 
