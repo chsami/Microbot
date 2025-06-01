@@ -433,7 +433,7 @@ public class f2pAccountBuilderScript extends Script {
                                     }
                                 }
                                 if (Rs2Bank.isOpen()) {
-                                    if (Rs2Inventory.contains("Bronze bar")) {
+                                    if (Rs2Inventory.contains("Bronze bar") || Rs2Inventory.isFull()) {
                                         int random = Rs2Random.between(0, 100);
                                         if (random <= 75) {
                                             Rs2Bank.depositAll();
@@ -500,7 +500,7 @@ public class f2pAccountBuilderScript extends Script {
         }
 
         // interact with the furnace until the smelting dialogue opens in chat, click the selected bar icon
-        GameObject furnace = Rs2GameObject.findObject("furnace", true, 10, false, initialPlayerLocation);
+        GameObject furnace = Rs2GameObject.findObject("furnace", true, 10, false, chosenSpot);
         if (furnace != null) {
             Rs2GameObject.interact(furnace, "smelt");
             Rs2Widget.sleepUntilHasWidgetText("What would you like to smelt?", 270, 5, false, 5000);
