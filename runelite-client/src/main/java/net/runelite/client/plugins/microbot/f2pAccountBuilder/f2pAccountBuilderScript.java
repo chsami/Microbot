@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.f2pAccountBuilder;
 
 import net.runelite.api.GameObject;
+import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.Plugin;
@@ -8,6 +9,8 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.barrows.BarrowsPlugin;
 import net.runelite.client.plugins.microbot.example.ExampleConfig;
+import net.runelite.client.plugins.microbot.smelting.enums.Bars;
+import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
@@ -22,6 +25,7 @@ import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.microbot.woodcutting.AutoWoodcuttingPlugin;
 
 import java.util.List;
@@ -37,6 +41,7 @@ public class f2pAccountBuilderScript extends Script {
     private boolean shouldWoodcut = false;
     private boolean shouldMine = false;
     private boolean shouldFish = false;
+    private boolean shouldSmelt = false;
 
     private WorldPoint chosenSpot = null;
 
@@ -59,6 +64,7 @@ public class f2pAccountBuilderScript extends Script {
                 woodCutting();
                 mining();
                 fishing();
+                smelting();
 
                 //Skilling
 
@@ -81,6 +87,7 @@ public class f2pAccountBuilderScript extends Script {
             this.shouldWoodcut = false;
             this.shouldMine = false;
             this.shouldFish = false;
+            this.shouldSmelt = false;
 
             int random = Rs2Random.between(0,1000);
             if(random <= 100){
@@ -100,6 +107,13 @@ public class f2pAccountBuilderScript extends Script {
             if(random > 200 && random <= 300){
                 Microbot.log("We're going fishing.");
                 shouldFish = true;
+                shouldThink = false;
+                chosenSpot = null;
+                return;
+            }
+            if(random > 300 && random <= 400){
+                Microbot.log("We're going smelting.");
+                shouldSmelt = true;
                 shouldThink = false;
                 chosenSpot = null;
                 return;
@@ -169,9 +183,25 @@ public class f2pAccountBuilderScript extends Script {
             sleepUntil(()-> Rs2GrandExchange.isOpen(), Rs2Random.between(2000,5000));
         }
         if(Rs2GrandExchange.isOpen()){
-            if(Rs2GrandExchange.buyItemAboveXPercent(item, 1, 20)){
-                sleepUntil(()-> Rs2GrandExchange.hasFinishedBuyingOffers(), Rs2Random.between(2000,5000));
+
+            if(item.equals("Silver ore")){
+                if(Rs2GrandExchange.buyItemAboveXPercent(item, Rs2Random.between(100,200), 20)){
+                    sleepUntil(()-> Rs2GrandExchange.hasFinishedBuyingOffers(), Rs2Random.between(2000,5000));
+                }
             }
+
+            if(item.equals("Copper ore")){
+                if(Rs2GrandExchange.buyItemAboveXPercent(item, Rs2Random.between(100,200), 20)){
+                    sleepUntil(()-> Rs2GrandExchange.hasFinishedBuyingOffers(), Rs2Random.between(2000,5000));
+                }
+            }
+
+            if(!item.equals("Copper ore") && !item.equals("Silver ore")){
+                if(Rs2GrandExchange.buyItemAboveXPercent(item, 1, 20)){
+                    sleepUntil(()-> Rs2GrandExchange.hasFinishedBuyingOffers(), Rs2Random.between(2000,5000));
+                }
+            }
+
             if(Rs2GrandExchange.hasFinishedBuyingOffers()){
                 Rs2GrandExchange.collectToInventory();
                 sleepUntil(()-> Rs2Inventory.contains(item), Rs2Random.between(2000,5000));
@@ -325,6 +355,173 @@ public class f2pAccountBuilderScript extends Script {
 
             } else {
                 goToBankandGrabAnItem("Small fishing net");
+            }
+        }
+    }
+
+    public void smelting(){
+        if(shouldSmelt){
+
+                if(chosenSpot == null){
+                    WorldPoint spot1 = new WorldPoint(3106,3498,0);
+                    WorldPoint spot2 = new WorldPoint(3106,3498,0);
+                    if(Rs2Random.between(0,100) <=50){
+                        chosenSpot = spot1;
+                    } else {
+                        chosenSpot = spot2;
+                    }
+                }
+
+                if(chosenSpot != null){
+                    if(Rs2Player.getWorldLocation().distanceTo(chosenSpot) > 15){
+                        Rs2Walker.walkTo(chosenSpot);
+                    } else {
+                        //smelting bronze or silver
+                        boolean smeltingBronze = false;
+                        boolean smeltingSilver = false;
+
+                        if (Rs2Player.getRealSkillLevel(Skill.SMITHING) >= 20) {
+                            smeltingSilver = true;
+                        } else {
+                            smeltingBronze = true;
+                        }
+
+                        if (smeltingSilver) {
+                            if (Rs2Inventory.contains("Silver bar") || !Rs2Inventory.contains("Silver ore")) {
+                                if (!Rs2Bank.isOpen()) {
+                                    if (Rs2Bank.walkToBank()) {
+                                        if (Rs2GameObject.interact("Bank booth", "Bank") || Rs2Npc.interact("Banker", "Bank")) {
+                                            sleepUntil(Rs2Bank::isOpen, Rs2Random.between(3000, 6000));
+                                        }
+                                    }
+                                }
+                                if (Rs2Bank.isOpen()) {
+                                    if (Rs2Inventory.contains("Silver bar")) {
+                                        int random = Rs2Random.between(0, 100);
+                                        if (random <= 75) {
+                                            Rs2Bank.depositAll();
+                                            sleepUntil(() -> !Rs2Inventory.isFull(), Rs2Random.between(2000, 5000));
+                                        } else {
+                                            Rs2Bank.depositAll("Silver bar");
+                                            sleepUntil(() -> !Rs2Inventory.isFull(), Rs2Random.between(2000, 5000));
+                                        }
+                                    }
+                                    if (!Rs2Inventory.contains("Silver bar") && !Rs2Inventory.isFull()) {
+                                        if (Rs2Bank.getBankItem("Silver ore") != null) {
+                                            Rs2Bank.withdrawAll("Silver ore");
+                                            sleepUntil(() -> Rs2Inventory.isFull(), Rs2Random.between(2000, 5000));
+                                        } else {
+                                            //we need to buy silver ore
+                                            openGEandBuyItem("Silver ore");
+                                        }
+                                    }
+                                    if (Rs2Inventory.contains("Silver ore")) {
+                                        // walk to the initial position (near furnace)
+                                        smeltTheBar(Bars.SILVER);
+                                    }
+                                }
+                            }
+                        }
+
+                        if (smeltingBronze) {
+                            if (Rs2Inventory.contains("Bronze bar") || (!Rs2Inventory.contains("Copper ore") && !Rs2Inventory.contains("Tin ore"))) {
+                                if (!Rs2Bank.isOpen()) {
+                                    if (Rs2Bank.walkToBank()) {
+                                        if (Rs2GameObject.interact("Bank booth", "Bank") || Rs2Npc.interact("Banker", "Bank")) {
+                                            sleepUntil(Rs2Bank::isOpen, Rs2Random.between(3000, 6000));
+                                        }
+                                    }
+                                }
+                                if (Rs2Bank.isOpen()) {
+                                    if (Rs2Inventory.contains("Bronze bar")) {
+                                        int random = Rs2Random.between(0, 100);
+                                        if (random <= 75) {
+                                            Rs2Bank.depositAll();
+                                            sleepUntil(() -> !Rs2Inventory.isFull(), Rs2Random.between(2000, 5000));
+                                        } else {
+                                            Rs2Bank.depositAll("Bronze bar");
+                                            sleepUntil(() -> !Rs2Inventory.isFull(), Rs2Random.between(2000, 5000));
+                                        }
+                                    }
+                                    if ((!Rs2Inventory.contains("Copper ore") && !Rs2Inventory.contains("Tin ore")) && !Rs2Inventory.isFull()) {
+                                        if (Rs2Bank.getBankItem("Copper ore") != null && Rs2Bank.getBankItem("Tin ore") != null) {
+                                            int random = Rs2Random.between(0, 100);
+                                            if (random <= 50) {
+                                                if (Rs2Inventory.count("Copper ore") < 14) {
+                                                    Rs2Bank.withdrawX("Copper ore", 14);
+                                                    sleepUntil(() -> Rs2Inventory.count("Copper ore") >= 14, Rs2Random.between(2000, 5000));
+                                                }
+                                                if (Rs2Inventory.count("Tin ore") < 14) {
+                                                    Rs2Bank.withdrawX("Tin ore", 14);
+                                                    sleepUntil(() -> Rs2Inventory.count("Tin ore") >= 14, Rs2Random.between(2000, 5000));
+                                                }
+                                            } else {
+                                                if (Rs2Inventory.count("Tin ore") < 14) {
+                                                    Rs2Bank.withdrawX("Tin ore", 14);
+                                                    sleepUntil(() -> Rs2Inventory.count("Tin ore") >= 14, Rs2Random.between(2000, 5000));
+                                                }
+                                                if (Rs2Inventory.count("Copper ore") < 14) {
+                                                    Rs2Bank.withdrawX("Copper ore", 14);
+                                                    sleepUntil(() -> Rs2Inventory.count("Copper ore") >= 14, Rs2Random.between(2000, 5000));
+                                                }
+                                            }
+                                        } else {
+                                            //we need to buy copper ore
+                                            if (Rs2Bank.getBankItem("Tin ore") == null) {
+                                                this.shouldThink = true;
+                                                Microbot.log("We need to mine more tin");
+                                                return;
+                                            }
+                                            if (Rs2Bank.getBankItem("Copper ore") == null) {
+                                                openGEandBuyItem("Copper ore");
+                                            }
+                                        }
+                                    }
+                                    if ((Rs2Inventory.contains("Copper ore") && Rs2Inventory.contains("Tin ore"))) {
+                                        // walk to the initial position (near furnace)
+                                        smeltTheBar(Bars.BRONZE);
+                                    }
+                                }
+                            }
+
+                        }
+                    }
+                }
+
+        }
+    }
+
+    public void smeltTheBar(Bars bar){
+        // walk to the initial position (near furnace)
+        if (chosenSpot.distanceTo(Rs2Player.getWorldLocation()) > 4) {
+            if (Rs2Bank.isOpen())
+                Rs2Bank.closeBank();
+            Rs2Walker.walkTo(chosenSpot, 4);
+        }
+
+        // interact with the furnace until the smelting dialogue opens in chat, click the selected bar icon
+        GameObject furnace = Rs2GameObject.findObject("furnace", true, 10, false, initialPlayerLocation);
+        if (furnace != null) {
+            Rs2GameObject.interact(furnace, "smelt");
+            Rs2Widget.sleepUntilHasWidgetText("What would you like to smelt?", 270, 5, false, 5000);
+            Rs2Widget.clickWidget(bar.getName());
+            Rs2Widget.sleepUntilHasNotWidgetText("What would you like to smelt?", 270, 5, false, 5000);
+            Rs2Antiban.actionCooldown();
+            Rs2Antiban.takeMicroBreakByChance();
+        }
+        boolean stillSmelting = true;
+        while (stillSmelting) {
+            if (!super.isRunning()) {
+                break;
+            }
+            if (Rs2Player.isAnimating()) {
+                sleepUntil(() -> !Rs2Player.isAnimating(), Rs2Random.between(3000, 5000));
+            }
+            if (!Rs2Player.isAnimating()) {
+                sleepUntil(() -> Rs2Player.isAnimating(), Rs2Random.between(3000, 5000));
+            }
+            if (!Rs2Player.isAnimating()) {
+                stillSmelting = false;
             }
         }
     }
