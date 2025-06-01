@@ -396,7 +396,7 @@ public class f2pAccountBuilderScript extends Script {
                                     }
                                 }
                                 if (Rs2Bank.isOpen()) {
-                                    if (Rs2Inventory.contains("Silver bar")) {
+                                    if (Rs2Inventory.contains("Silver bar") || Rs2Inventory.contains(it->it!=null&&it.isNoted())) {
                                         int random = Rs2Random.between(0, 100);
                                         if (random <= 75) {
                                             Rs2Bank.depositAll();
@@ -424,7 +424,7 @@ public class f2pAccountBuilderScript extends Script {
                         }
 
                         if (smeltingBronze) {
-                            if (Rs2Inventory.contains("Bronze bar") || (!Rs2Inventory.contains("Copper ore") && !Rs2Inventory.contains("Tin ore"))) {
+                            if (Rs2Inventory.contains("Bronze bar") || !Rs2Inventory.contains("Copper ore") || !Rs2Inventory.contains("Tin ore")) {
                                 if (!Rs2Bank.isOpen()) {
                                     if (Rs2Bank.walkToBank()) {
                                         if (Rs2GameObject.interact("Bank booth", "Bank") || Rs2Npc.interact("Banker", "Bank")) {
@@ -433,7 +433,7 @@ public class f2pAccountBuilderScript extends Script {
                                     }
                                 }
                                 if (Rs2Bank.isOpen()) {
-                                    if (Rs2Inventory.contains("Bronze bar") || Rs2Inventory.isFull()) {
+                                    if (Rs2Inventory.contains("Bronze bar") || Rs2Inventory.isFull() || Rs2Inventory.contains(it->it!=null&&it.isNoted())) {
                                         int random = Rs2Random.between(0, 100);
                                         if (random <= 75) {
                                             Rs2Bank.depositAll();
@@ -445,6 +445,10 @@ public class f2pAccountBuilderScript extends Script {
                                     }
                                     if ((!Rs2Inventory.contains("Copper ore") && !Rs2Inventory.contains("Tin ore")) && !Rs2Inventory.isFull()) {
                                         if (Rs2Bank.getBankItem("Copper ore") != null && Rs2Bank.getBankItem("Tin ore") != null) {
+                                            if(Rs2Bank.getBankItem("Copper ore").getQuantity() < 14 || Rs2Bank.getBankItem("Tin ore").getQuantity() < 14){
+                                                outOfOre();
+                                                return;
+                                            }
                                             int random = Rs2Random.between(0, 100);
                                             if (random <= 50) {
                                                 if (Rs2Inventory.count("Copper ore") < 14) {
@@ -467,14 +471,7 @@ public class f2pAccountBuilderScript extends Script {
                                             }
                                         } else {
                                             //we need to buy copper ore
-                                            if (Rs2Bank.getBankItem("Tin ore") == null) {
-                                                this.shouldThink = true;
-                                                Microbot.log("We need to mine more tin");
-                                                return;
-                                            }
-                                            if (Rs2Bank.getBankItem("Copper ore") == null) {
-                                                openGEandBuyItem("Copper ore");
-                                            }
+                                            outOfOre();
                                         }
                                     }
                                     if ((Rs2Inventory.contains("Copper ore") && Rs2Inventory.contains("Tin ore"))) {
@@ -488,6 +485,18 @@ public class f2pAccountBuilderScript extends Script {
                     }
                 }
 
+        }
+    }
+
+    public void outOfOre(){
+        //we need to buy copper ore
+        if (Rs2Bank.getBankItem("Tin ore") == null) {
+            this.shouldThink = true;
+            Microbot.log("We need to mine more tin");
+            return;
+        }
+        if (Rs2Bank.getBankItem("Copper ore") == null) {
+            openGEandBuyItem("Copper ore");
         }
     }
 
