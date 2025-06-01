@@ -116,28 +116,9 @@ public class f2pAccountBuilderScript extends Script {
                 shouldThink = true;
 
                 scriptStartTime = currentTime;
-                howLongUntilThink = 15;
-                int mixUp = Rs2Random.between(5,10);
-                int io = 0;
-                while (io < mixUp){
-                    if(!super.isRunning()){
-                        break;
-                    }
-                    if(Rs2Random.between(0,100) < 50) {
-                        if (howLongUntilThink > 8 * 60 * 1000) {
-                            howLongUntilThink -= 2 * 60 * 1000;
-                        }
-                    }
-                    if(Rs2Random.between(0,100) < 50) {
-                        if (howLongUntilThink < 30 * 60 * 1000) {
-                            howLongUntilThink += 2 * 60 * 1000;
-                        }
-                    }
-                    if(howLongUntilThink < 8 || howLongUntilThink > 30){
-                        howLongUntilThink = 15;
-                    }
-                    io++;
-                }
+
+                howLongUntilThink = Rs2Random.between(8,40);
+
                 Microbot.log("We'll change activity again in "+howLongUntilThink+" minutes");
             }
     }
@@ -324,7 +305,7 @@ public class f2pAccountBuilderScript extends Script {
                             Rs2NpcModel ourFishingSpot = Rs2Npc.getNpc("Fishing spot");
                             if(ourFishingSpot!=null){
                                 if(!Rs2Player.isAnimating()){
-                                    if(Rs2Npc.interact(ourFishingSpot, "Small net")){
+                                    if(Rs2Npc.interact(ourFishingSpot, "Net")){
                                         sleepUntil(()-> !Rs2Player.isAnimating() || ourFishingSpot == null, Rs2Random.between(20000,50000));
                                         sleep(0,500);
                                     }
