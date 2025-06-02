@@ -5,6 +5,7 @@ import net.runelite.api.Skill;
 import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.ObjectID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.smelting.enums.Bars;
@@ -200,7 +201,7 @@ public class f2pAccountBuilderScript extends Script {
     public void walkToBankAndOpenIt(){
         if (!Rs2Bank.isOpen()) {
             if (Rs2Bank.walkToBank()) {
-                if (Rs2Npc.interact("Banker", "Bank") || Rs2GameObject.interact("Bank booth", "Bank")) {
+                if (Rs2Npc.interact(Rs2Npc.getNearestNpcWithAction("Bank"), "Bank") || Rs2GameObject.interact(Rs2GameObject.getGameObject(it->it!=null&&it.getId() == ObjectID.BANKBOOTH &&it.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) < 15), "Bank")) {
                     sleepUntil(Rs2Bank::isOpen, Rs2Random.between(3000, 6000));
                 }
             }
@@ -840,6 +841,10 @@ public class f2pAccountBuilderScript extends Script {
 
                             if(Rs2Player.isStandingOnGameObject()){
                                 Microbot.log("We're standing on an object, moving.");
+                                if(Rs2Player.getWorldLocation().equals(chosenSpot)){
+                                    //we're standing on the starting tile and there's already a fire here. Grab a new starting tile.
+                                    chosenSpot = null;
+                                }
                                 if(Rs2Player.distanceTo(chosenSpot) > 4){
                                     Rs2Walker.walkTo(chosenSpot);
                                 } else {
