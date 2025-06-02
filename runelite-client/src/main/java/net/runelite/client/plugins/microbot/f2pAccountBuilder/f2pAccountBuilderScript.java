@@ -852,7 +852,7 @@ public class f2pAccountBuilderScript extends Script {
                                 }
                             }
 
-                            GameObject geBooth = Rs2GameObject.getGameObject("Grand Exchange booth", true);
+                            TileObject geBooth = Rs2GameObject.getTileObject("Grand Exchange booth", true);
                             if(geBooth.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) <= 2){
                                 Microbot.log("We're too close to the GE, moving.");
                                 if(Rs2Player.distanceTo(chosenSpot) > 4){
