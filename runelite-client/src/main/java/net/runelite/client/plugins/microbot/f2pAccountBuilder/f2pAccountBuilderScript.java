@@ -293,18 +293,6 @@ public class f2pAccountBuilderScript extends Script {
                             }
                         }
                         if(!Rs2Inventory.contains("Needle")){
-                            walkToBankAndOpenIt();
-                            if(Rs2Bank.isOpen()){
-                                if(Rs2Bank.getBankItem("Needle") != null){
-                                    Rs2Bank.withdrawAll("Needle");
-                                    sleepUntil(()-> Rs2Inventory.contains("Needle"), Rs2Random.between(2000,5000));
-                                } else {
-                                    openGEandBuyItem("Needle", 1);
-                                }
-                            }
-                        }
-                        if(!Rs2Inventory.contains("Needle")){
-                            walkToBankAndOpenIt();
                             if(Rs2Bank.isOpen()){
                                 if(Rs2Bank.getBankItem("Needle") != null){
                                     Rs2Bank.withdrawAll("Needle");
@@ -315,7 +303,6 @@ public class f2pAccountBuilderScript extends Script {
                             }
                         }
                         if(Rs2Inventory.contains("Needle") && Rs2Inventory.contains("Thread") && !Rs2Inventory.isFull() && !Rs2Inventory.contains(craftingMaterial) || Rs2Inventory.count(craftingMaterial) < 3){
-                            walkToBankAndOpenIt();
                             if(Rs2Bank.isOpen()){
                                 if(Rs2Bank.getBankItem(craftingMaterial) != null){
                                     Rs2Bank.withdrawAll(craftingMaterial, true);
