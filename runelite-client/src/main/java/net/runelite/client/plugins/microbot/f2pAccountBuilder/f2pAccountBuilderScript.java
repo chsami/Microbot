@@ -276,10 +276,10 @@ public class f2pAccountBuilderScript extends Script {
                         Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
                         sleepThroughMulipleAnimations();
                     }
-                    if(!Rs2Inventory.contains(craftingMaterial) || Rs2Inventory.count(craftingMaterial) < 3 || Rs2Inventory.contains("Thread") || Rs2Inventory.contains("Needle")  || Rs2Inventory.contains(it->it!=null&&it.isNoted())){
+                    if(!Rs2Inventory.contains(craftingMaterial) || Rs2Inventory.count(craftingMaterial) < 3 || !Rs2Inventory.contains("Thread") || !Rs2Inventory.contains("Needle")  || Rs2Inventory.contains(it->it!=null&&it.isNoted())){
                         walkToBankAndOpenIt();
-                        if(Rs2Inventory.isFull() || Rs2Inventory.contains(it->it!=null&&it.isNoted())){
-                            Rs2Bank.depositAll();;
+                        if(Rs2Inventory.contains(craftingProduct) || Rs2Inventory.isFull() || Rs2Inventory.contains(it->it!=null&&it.isNoted())){
+                            Rs2Bank.depositAll();
                             sleepUntil(()-> Rs2Inventory.isEmpty(), Rs2Random.between(2000,5000));
                         }
                         if(!Rs2Inventory.contains("Thread")){
