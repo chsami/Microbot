@@ -104,47 +104,43 @@ public class f2pAccountBuilderScript extends Script {
             this.shouldFiremake = false;
             this.shouldCook = false;
 
+            this.chosenSpot = null;
+
             int random = Rs2Random.between(0,1000);
             if(random <= 100){
                 Microbot.log("We're going woodcutting.");
                 shouldWoodcut = true;
                 shouldThink = false;
-                chosenSpot = null;
                 return;
             }
             if(random > 100 && random <= 200){
                 Microbot.log("We're going mining.");
                 shouldMine = true;
                 shouldThink = false;
-                chosenSpot = null;
                 return;
             }
             if(random > 200 && random <= 300){
                 Microbot.log("We're going fishing.");
                 shouldFish = true;
                 shouldThink = false;
-                chosenSpot = null;
                 return;
             }
             if(random > 300 && random <= 400){
                 Microbot.log("We're going smelting.");
                 shouldSmelt = true;
                 shouldThink = false;
-                chosenSpot = null;
                 return;
             }
             if(random > 400 && random <= 500){
                 Microbot.log("We're going firemaking.");
                 shouldFiremake = true;
                 shouldThink = false;
-                chosenSpot = null;
                 return;
             }
             if(random > 500 && random <= 600){
                 Microbot.log("We're going to cook.");
                 shouldCook = true;
                 shouldThink = false;
-                chosenSpot = null;
                 return;
             }
 
@@ -174,7 +170,11 @@ public class f2pAccountBuilderScript extends Script {
         if(Rs2Bank.isOpen()){
             if(Rs2Bank.getBankItem(item) != null){
                 if(!Rs2Inventory.contains(item)){
-                    Rs2Bank.withdrawOne(item);
+                    if(item.equals("Feather")){
+                        Rs2Bank.withdrawAll(item);
+                    } else {
+                        Rs2Bank.withdrawOne(item);
+                    }
                     sleepUntil(() -> Rs2Inventory.contains(item), Rs2Random.between(2000, 5000));
                 }
             } else {
@@ -578,7 +578,7 @@ public class f2pAccountBuilderScript extends Script {
             } else {
                 goToBankandGrabAnItem(fishingGear);
                 if(fishingGear.equals("Fly fishing rod")){
-                    openGEandBuyItem("Feather");
+                    goToBankandGrabAnItem("Feather");
                 }
             }
         }
