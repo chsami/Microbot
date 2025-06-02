@@ -169,6 +169,10 @@ public class f2pAccountBuilderScript extends Script {
         }
         if(Rs2Bank.isOpen()){
             if(Rs2Bank.getBankItem(item) != null){
+                if(Rs2Inventory.getEmptySlots() < 10){
+                    Rs2Bank.depositAll();
+                    sleepUntil(() -> Rs2Inventory.getEmptySlots() > 10, Rs2Random.between(2000, 5000));
+                }
                 if(!Rs2Inventory.contains(item)){
                     if(item.equals("Feather")){
                         Rs2Bank.withdrawAll(item);
