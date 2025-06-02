@@ -1,40 +1,27 @@
 package net.runelite.client.plugins.microbot.f2pAccountBuilder;
 
-import net.runelite.api.AnimationID;
 import net.runelite.api.GameObject;
 import net.runelite.api.Skill;
-import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
-import net.runelite.api.widgets.Widget;
-import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
-import net.runelite.client.plugins.microbot.barrows.BarrowsPlugin;
-import net.runelite.client.plugins.microbot.example.ExampleConfig;
 import net.runelite.client.plugins.microbot.smelting.enums.Bars;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
-import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
-import net.runelite.client.plugins.microbot.util.grandexchange.GrandExchangeSlots;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
-import net.runelite.client.plugins.microbot.util.grounditem.LootingParameters;
-import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
-import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
-import net.runelite.client.plugins.microbot.woodcutting.AutoWoodcuttingPlugin;
 
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
@@ -178,13 +165,13 @@ public class f2pAccountBuilderScript extends Script {
             sleepUntil(()-> Rs2Bank.isOpen(), Rs2Random.between(2000,5000));
         }
         if(Rs2Bank.isOpen()){
-            if(Rs2Bank.getBankItem(item) != null){
+            if(Rs2Bank.getBankItem(item, true) != null){
                 if(Rs2Inventory.getEmptySlots() < 10){
                     Rs2Bank.depositAll();
                     sleepUntil(() -> Rs2Inventory.getEmptySlots() > 10, Rs2Random.between(2000, 5000));
                 }
                 if(!Rs2Inventory.contains(item)){
-                    Rs2Bank.withdrawX(item, howMany);
+                    Rs2Bank.withdrawX(item, howMany, true);
                     sleepUntil(() -> Rs2Inventory.contains(item), Rs2Random.between(2000, 5000));
                 }
             } else {
@@ -285,8 +272,8 @@ public class f2pAccountBuilderScript extends Script {
                         }
                         if(!Rs2Inventory.contains("Thread")){
                             if(Rs2Bank.isOpen()){
-                                if(Rs2Bank.getBankItem("Thread") != null && Rs2Bank.getBankItem("Thread").getQuantity() > 10){
-                                    Rs2Bank.withdrawAll("Thread");
+                                if(Rs2Bank.getBankItem("Thread", true) != null && Rs2Bank.getBankItem("Thread", true).getQuantity() > 10){
+                                    Rs2Bank.withdrawAll("Thread", true);
                                     sleepUntil(()-> Rs2Inventory.contains("Thread"), Rs2Random.between(2000,5000));
                                 } else {
                                     openGEandBuyItem("Thread", Rs2Random.between(100,200));
@@ -295,8 +282,8 @@ public class f2pAccountBuilderScript extends Script {
                         }
                         if(!Rs2Inventory.contains("Needle")){
                             if(Rs2Bank.isOpen()){
-                                if(Rs2Bank.getBankItem("Needle") != null){
-                                    Rs2Bank.withdrawAll("Needle");
+                                if(Rs2Bank.getBankItem("Needle", true) != null){
+                                    Rs2Bank.withdrawAll("Needle", true);
                                     sleepUntil(()-> Rs2Inventory.contains("Needle"), Rs2Random.between(2000,5000));
                                 } else {
                                     openGEandBuyItem("Needle", 1);
@@ -367,8 +354,8 @@ public class f2pAccountBuilderScript extends Script {
                                     sleepUntil(()->!Rs2Inventory.contains("Cooked chicken"), Rs2Random.between(3000, 6000));
                                 }
                                 if(!Rs2Inventory.contains(whatToCook) && !Rs2Inventory.isFull()){
-                                    if(Rs2Bank.getBankItem(whatToCook) != null) {
-                                        Rs2Bank.withdrawAll(whatToCook);
+                                    if(Rs2Bank.getBankItem(whatToCook, true) != null) {
+                                        Rs2Bank.withdrawAll(whatToCook, true);
                                         String cooked = whatToCook;
                                         sleepUntil(() -> !Rs2Inventory.contains(cooked), Rs2Random.between(3000, 6000));
                                     } else {
@@ -679,13 +666,13 @@ public class f2pAccountBuilderScript extends Script {
                                             Rs2Bank.depositAll();
                                             sleepUntil(() -> !Rs2Inventory.isFull(), Rs2Random.between(2000, 5000));
                                         } else {
-                                            Rs2Bank.depositAll("Silver bar");
+                                            Rs2Bank.depositAll("Silver bar", true);
                                             sleepUntil(() -> !Rs2Inventory.isFull(), Rs2Random.between(2000, 5000));
                                         }
                                     }
                                     if (!Rs2Inventory.contains("Silver bar") && !Rs2Inventory.isFull()) {
-                                        if (Rs2Bank.getBankItem("Silver ore") != null) {
-                                            Rs2Bank.withdrawAll("Silver ore");
+                                        if (Rs2Bank.getBankItem("Silver ore", true) != null) {
+                                            Rs2Bank.withdrawAll("Silver ore", true);
                                             sleepUntil(() -> Rs2Inventory.isFull(), Rs2Random.between(2000, 5000));
                                         } else {
                                             //we need to buy silver ore
@@ -711,7 +698,7 @@ public class f2pAccountBuilderScript extends Script {
                                             Rs2Bank.depositAll();
                                             sleepUntil(() -> !Rs2Inventory.isFull(), Rs2Random.between(2000, 5000));
                                         } else {
-                                            Rs2Bank.depositAll("Bronze bar");
+                                            Rs2Bank.depositAll("Bronze bar", true);
                                             sleepUntil(() -> !Rs2Inventory.isFull(), Rs2Random.between(2000, 5000));
                                         }
                                     }
@@ -834,8 +821,8 @@ public class f2pAccountBuilderScript extends Script {
                                     }
                                 }
                                 if(!Rs2Inventory.contains(logsToBurn)){
-                                    if(Rs2Bank.getBankItem(logsToBurn) != null){
-                                        Rs2Bank.withdrawAll(logsToBurn);
+                                    if(Rs2Bank.getBankItem(logsToBurn, true) != null){
+                                        Rs2Bank.withdrawAll(logsToBurn, true);
                                         String logs = logsToBurn;
                                         sleepUntil(()-> Rs2Inventory.contains(logs), Rs2Random.between(2000,5000));
                                     } else {
