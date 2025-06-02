@@ -182,7 +182,7 @@ public class f2pAccountBuilderScript extends Script {
                     emptySlots = 28;
                 }
             }
-            if(Rs2Bank.getBankItem(item, true) != null){
+            if(Rs2Bank.getBankItem(item, true) != null && Rs2Bank.getBankItem(item, true).getQuantity() >= howMany){
                 if(!Rs2Inventory.contains(item)){
                     Rs2Bank.withdrawX(item, howMany, true);
                     sleepUntil(() -> Rs2Inventory.contains(item), Rs2Random.between(2000, 5000));
