@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.f2pAccountBuilder;
 
 import net.runelite.api.GameObject;
 import net.runelite.api.Skill;
+import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -838,8 +839,11 @@ public class f2pAccountBuilderScript extends Script {
                             }
 
                             WorldPoint ourTile = Rs2Player.getWorldLocation();
-                            List<GameObject> objects = new ArrayList<>(Rs2GameObject.getGameObjects(ourTile));
-                            if(!objects.isEmpty()){
+                            TileObject tileObject = Rs2GameObject.getTileObject(ourTile);
+                            TileObject gameObject = Rs2GameObject.getGameObject(ourTile);
+
+                            if(tileObject != null || gameObject != null){
+                                Microbot.log("We're standing on an object, moving.");
                                 if(Rs2Player.distanceTo(chosenSpot) > 4){
                                     Rs2Walker.walkTo(chosenSpot);
                                 } else {
@@ -849,6 +853,7 @@ public class f2pAccountBuilderScript extends Script {
 
                             GameObject geBooth = Rs2GameObject.getGameObject("Grand Exchange booth", true);
                             if(geBooth.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) <= 2){
+                                Microbot.log("We're too close to the GE, moving.");
                                 if(Rs2Player.distanceTo(chosenSpot) > 4){
                                     Rs2Walker.walkTo(chosenSpot);
                                 } else {
