@@ -45,7 +45,7 @@ public class f2pAccountBuilderScript extends Script {
     public static boolean test = false;
     public volatile boolean shouldThink = true;
     public volatile long scriptStartTime = System.currentTimeMillis();
-    private long howLongUntilThink = 0;
+    private long howLongUntilThink = Rs2Random.between(10,40);
 
     private boolean shouldWoodcut = false;
     private boolean shouldMine = false;
@@ -211,7 +211,7 @@ public class f2pAccountBuilderScript extends Script {
     public void walkToBankAndOpenIt(){
         if (!Rs2Bank.isOpen()) {
             if (Rs2Bank.walkToBank()) {
-                if (Rs2GameObject.interact("Bank booth", "Bank") || Rs2Npc.interact("Banker", "Bank")) {
+                if (Rs2Npc.interact("Banker", "Bank") || Rs2GameObject.interact("Bank booth", "Bank")) {
                     sleepUntil(Rs2Bank::isOpen, Rs2Random.between(3000, 6000));
                 }
             }
