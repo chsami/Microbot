@@ -48,6 +48,7 @@ public class ConstructionScript extends Script {
                 Rs2Tab.switchToInventoryTab();
                 calculateState();
                 if (state == ConstructionState.Build) {
+                    butler();
                     build();
                 } else if (state == ConstructionState.Remove) {
                     remove();
@@ -114,7 +115,7 @@ public class ConstructionScript extends Script {
             return distance > 3;
         }).orElse(false);
         if (!butlerIsToFar) {
-            Rs2Npc.interact(butler, "talk-to");
+            Rs2Npc.interact(butler.getName(), "talk-to");
         } else {
             Rs2Tab.switchToSettingsTab();
             sleep(800, 1800);
@@ -131,8 +132,8 @@ public class ConstructionScript extends Script {
 
         if (Rs2Dialogue.hasQuestion("Repeat last task?")) {
             Rs2Dialogue.keyPressForDialogueOption(1);
-            Rs2Random.waitEx(2400, 300);
-            Rs2Dialogue.sleepUntilInDialogue();
+            //Rs2Random.waitEx(2400, 300);
+            //Rs2Dialogue.sleepUntilInDialogue();
             return;
         }
 
@@ -146,8 +147,8 @@ public class ConstructionScript extends Script {
                 Rs2Keyboard.typeString("28");
                 Rs2Keyboard.enter();
                 Rs2Dialogue.clickContinue();
-                Rs2Random.waitEx(2400, 300);
-                Rs2Dialogue.sleepUntilInDialogue();
+                //Rs2Random.waitEx(2400, 300);
+                //Rs2Dialogue.sleepUntilInDialogue();
                 return;
             }
         }
