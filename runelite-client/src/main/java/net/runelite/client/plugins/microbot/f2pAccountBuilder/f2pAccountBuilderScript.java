@@ -37,6 +37,7 @@ public class f2pAccountBuilderScript extends Script {
     public volatile boolean shouldThink = true;
     public volatile long scriptStartTime = System.currentTimeMillis();
     private long howLongUntilThink = Rs2Random.between(10,40);
+    private int emptySlots = 0;
 
     private boolean shouldWoodcut = false;
     private boolean shouldMine = false;
@@ -163,8 +164,8 @@ public class f2pAccountBuilderScript extends Script {
     }
 
     public void goToBankandGrabAnItem(String item, int howMany){
-        int emptySlots = Rs2Inventory.getEmptySlots();
         if(!Rs2Bank.isOpen()){
+            emptySlots = Rs2Inventory.getEmptySlots();
             Rs2Bank.walkToBankAndUseBank();
             sleepUntil(()-> Rs2Bank.isOpen(), Rs2Random.between(2000,5000));
         }
@@ -203,6 +204,7 @@ public class f2pAccountBuilderScript extends Script {
 
     public void walkToBankAndOpenIt(){
         if (!Rs2Bank.isOpen()) {
+            emptySlots = Rs2Inventory.getEmptySlots();
             if (Rs2Bank.walkToBank()) {
                 if (Rs2Npc.interact(Rs2Npc.getNearestNpcWithAction("Bank"), "Bank") || Rs2GameObject.interact(Rs2GameObject.getGameObject(it->it!=null&&it.getId() == ObjectID.BANKBOOTH &&it.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) < 15), "Bank")) {
                     sleepUntil(Rs2Bank::isOpen, Rs2Random.between(3000, 6000));
