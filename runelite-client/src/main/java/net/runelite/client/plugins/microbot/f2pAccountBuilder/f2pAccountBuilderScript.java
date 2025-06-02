@@ -832,9 +832,23 @@ public class f2pAccountBuilderScript extends Script {
                             }
                         }
                         if(Rs2Inventory.contains(logsToBurn) && Rs2Inventory.contains(ItemID.TINDERBOX)){
+                            if(Rs2Bank.isOpen()){
+                                Rs2Bank.closeBank();
+                                sleepUntil(()-> Rs2Bank.isOpen(), Rs2Random.between(2000,5000));
+                            }
+
                             WorldPoint ourTile = Rs2Player.getWorldLocation();
                             List<GameObject> objects = new ArrayList<>(Rs2GameObject.getGameObjects(ourTile));
                             if(!objects.isEmpty()){
+                                if(Rs2Player.distanceTo(chosenSpot) > 4){
+                                    Rs2Walker.walkTo(chosenSpot);
+                                } else {
+                                    Rs2Walker.walkCanvas(chosenSpot);
+                                }
+                            }
+
+                            GameObject geBooth = Rs2GameObject.getGameObject("Grand Exchange booth", true);
+                            if(geBooth.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) <= 2){
                                 if(Rs2Player.distanceTo(chosenSpot) > 4){
                                     Rs2Walker.walkTo(chosenSpot);
                                 } else {
