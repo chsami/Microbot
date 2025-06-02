@@ -169,7 +169,8 @@ public class f2pAccountBuilderScript extends Script {
         }
         if(Rs2Bank.isOpen()){
             if(Rs2Bank.getBankItem(item, true) != null){
-                if(Rs2Inventory.getEmptySlots() < 10){
+                if(Rs2Inventory.getEmptySlots() <= 24){
+                    //we want 24 open slots in the inventory
                     Rs2Bank.depositAll();
                     sleepUntil(() -> Rs2Inventory.getEmptySlots() > 10, Rs2Random.between(2000, 5000));
                 }
