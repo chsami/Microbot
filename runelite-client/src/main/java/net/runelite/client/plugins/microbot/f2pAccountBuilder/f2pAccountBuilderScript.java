@@ -874,7 +874,9 @@ public class f2pAccountBuilderScript extends Script {
                                 sleepUntil(()-> Rs2Bank.isOpen(), Rs2Random.between(2000,5000));
                             }
 
-                            if(Rs2Player.isStandingOnGameObject()){
+                            GameObject fire = Rs2GameObject.getGameObject(it->it!=null&&it.getId()==ObjectID.FIRE&&it.getWorldLocation().equals(Rs2Player.getWorldLocation()));
+
+                            if(Rs2Player.isStandingOnGameObject() || fire != null){
                                 Microbot.log("We're standing on an object, moving.");
                                 if(Rs2Player.getWorldLocation().equals(chosenSpot)){
                                     //we're standing on the starting tile and there's already a fire here. Grab a new starting tile.
