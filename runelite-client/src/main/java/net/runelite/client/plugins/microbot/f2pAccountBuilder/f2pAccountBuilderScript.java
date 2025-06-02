@@ -318,7 +318,7 @@ public class f2pAccountBuilderScript extends Script {
                             walkToBankAndOpenIt();
                             if(Rs2Bank.isOpen()){
                                 if(Rs2Bank.getBankItem(craftingMaterial) != null){
-                                    Rs2Bank.withdrawAll(craftingMaterial);
+                                    Rs2Bank.withdrawAll(craftingMaterial, true);
                                     Rs2Inventory.waitForInventoryChanges(5000);
                                 } else {
                                     openGEandBuyItem(craftingMaterial, Rs2Random.between(100,300));
