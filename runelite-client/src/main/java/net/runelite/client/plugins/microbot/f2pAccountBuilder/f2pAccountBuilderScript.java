@@ -213,7 +213,7 @@ public class f2pAccountBuilderScript extends Script {
         if (!Rs2Bank.isOpen()) {
             emptySlots = Rs2Inventory.getEmptySlots();
             if (Rs2Bank.walkToBank()) {
-                if (Rs2Npc.interact(Rs2Npc.getNearestNpcWithAction("Bank"), "Bank") || Rs2GameObject.interact(Rs2GameObject.getGameObject(it->it!=null&&it.getId() == ObjectID.BANKBOOTH &&it.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) < 15), "Bank")) {
+                if (Rs2GameObject.interact(Rs2GameObject.getGameObject(it->it!=null&&it.getId() == ObjectID.BANKBOOTH &&it.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) < 15), "Bank") || Rs2Npc.interact(Rs2Npc.getNearestNpcWithAction("Bank"), "Bank")) {
                     sleepUntil(Rs2Bank::isOpen, Rs2Random.between(3000, 6000));
                 }
             }
