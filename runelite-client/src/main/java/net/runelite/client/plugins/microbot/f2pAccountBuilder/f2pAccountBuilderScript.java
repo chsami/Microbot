@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.f2pAccountBuilder;
 import net.runelite.api.GameObject;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -13,6 +14,7 @@ import net.runelite.client.plugins.microbot.smelting.enums.Bars;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
+import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.grandexchange.GrandExchangeSlots;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
@@ -20,6 +22,7 @@ import net.runelite.client.plugins.microbot.util.grounditem.LootingParameters;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
+import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
@@ -28,6 +31,8 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.microbot.woodcutting.AutoWoodcuttingPlugin;
 
+import java.awt.event.KeyEvent;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -42,6 +47,7 @@ public class f2pAccountBuilderScript extends Script {
     private boolean shouldMine = false;
     private boolean shouldFish = false;
     private boolean shouldSmelt = false;
+    private boolean shouldFiremake = false;
 
     private WorldPoint chosenSpot = null;
 
@@ -65,6 +71,7 @@ public class f2pAccountBuilderScript extends Script {
                 mining();
                 fishing();
                 smelting();
+                firemake();
 
                 //Skilling
 
@@ -88,6 +95,7 @@ public class f2pAccountBuilderScript extends Script {
             this.shouldMine = false;
             this.shouldFish = false;
             this.shouldSmelt = false;
+            this.shouldFiremake = false;
 
             int random = Rs2Random.between(0,1000);
             if(random <= 100){
@@ -114,6 +122,13 @@ public class f2pAccountBuilderScript extends Script {
             if(random > 300 && random <= 400){
                 Microbot.log("We're going smelting.");
                 shouldSmelt = true;
+                shouldThink = false;
+                chosenSpot = null;
+                return;
+            }
+            if(random > 400 && random <= 500){
+                Microbot.log("We're going firemaking.");
+                shouldFiremake = true;
                 shouldThink = false;
                 chosenSpot = null;
                 return;
@@ -196,7 +211,19 @@ public class f2pAccountBuilderScript extends Script {
                 }
             }
 
-            if(!item.equals("Copper ore") && !item.equals("Silver ore")){
+            if(item.equals("Logs") || item.contains("logs")){
+                if(Rs2GrandExchange.buyItemAboveXPercent(item, Rs2Random.between(100,200), 20)){
+                    sleepUntil(()-> Rs2GrandExchange.hasFinishedBuyingOffers(), Rs2Random.between(2000,5000));
+                }
+            }
+
+            if(item.equals("Feather")){
+                if(Rs2GrandExchange.buyItemAboveXPercent(item, Rs2Random.between(1000,2000), 20)){
+                    sleepUntil(()-> Rs2GrandExchange.hasFinishedBuyingOffers(), Rs2Random.between(2000,5000));
+                }
+            }
+
+            if(!item.equals("Copper ore") && !item.equals("Silver ore") && !item.equals("Logs") && !item.contains("logs") && !item.equals("Feather")){
                 if(Rs2GrandExchange.buyItemAboveXPercent(item, 1, 20)){
                     sleepUntil(()-> Rs2GrandExchange.hasFinishedBuyingOffers(), Rs2Random.between(2000,5000));
                 }
@@ -213,12 +240,34 @@ public class f2pAccountBuilderScript extends Script {
 
     public void woodCutting(){
         if(shouldWoodcut){
-            if(Rs2Inventory.contains(it->it!=null&&it.getName().contains("axe")&&!it.getName().contains("pick"))){
+            String treeToChop = "Unknown";
+            String axeToUse = "Unknown";
+            int wcLvl = Rs2Player.getRealSkillLevel(Skill.WOODCUTTING);
+            if(wcLvl < 15){axeToUse = "Iron axe"; treeToChop = "Tree";}
+            if(wcLvl >= 15 && wcLvl < 30){axeToUse = "Steel axe"; treeToChop = "Oak tree";}
+            if(wcLvl == 30){axeToUse = "Mithril axe"; treeToChop = "Willow tree";}
+            if(wcLvl >= 31 && wcLvl < 41){axeToUse = "Adamant axe"; treeToChop = "Willow tree";}
+            if(wcLvl >= 41){axeToUse = "Rune axe"; treeToChop = "Willow tree";}
+            String finalaxe = axeToUse;
+
+            if(Rs2Inventory.contains(axeToUse) || Rs2Equipment.contains(it->it!=null&&it.getName().equals(finalaxe))){
 
                 if(chosenSpot == null){
-                    WorldPoint spot1 = new WorldPoint(3157,3456,0);
-                    WorldPoint spot2 = new WorldPoint(3164,3406,0);
-                    if(Rs2Random.between(0,100) <=50){
+                    WorldPoint spot1 = null;
+                    WorldPoint spot2 = null;
+                    if(treeToChop.equals("Tree")) {
+                        spot1 = new WorldPoint(3157, 3456, 0);
+                        spot2 = new WorldPoint(3164, 3406, 0);
+                    }
+                    if(treeToChop.equals("Oak tree")) {
+                        spot1 = new WorldPoint(3164, 3419, 0);
+                        spot2 = new WorldPoint(3127, 3433, 0);
+                    }
+                    if(treeToChop.equals("Willow tree")) {
+                        spot1 = new WorldPoint(3087, 3236, 0);
+                        spot2 = new WorldPoint(3087, 3236, 0);
+                    }
+                    if (Rs2Random.between(0, 100) <= 50) {
                         chosenSpot = spot1;
                     } else {
                         chosenSpot = spot2;
@@ -226,7 +275,7 @@ public class f2pAccountBuilderScript extends Script {
                 }
 
                 if(chosenSpot != null){
-                    if(Rs2Player.getWorldLocation().distanceTo(chosenSpot) > 15){
+                    if(Rs2Player.getWorldLocation().distanceTo(chosenSpot) > 12){
                         Rs2Walker.walkTo(chosenSpot);
                     } else {
                         if(Rs2Inventory.isFull()){
@@ -238,14 +287,14 @@ public class f2pAccountBuilderScript extends Script {
                                 }
                             }
                             if(Rs2Bank.isOpen()){
-                                Rs2Bank.depositAllExcept("Iron axe");
+                                Rs2Bank.depositAllExcept(axeToUse);
                                 sleepUntil(()-> !Rs2Inventory.isFull(), Rs2Random.between(2000,5000));
                             }
                             if(Rs2Bank.isOpen()&&!Rs2Inventory.isFull()){
                                 Rs2Bank.closeBank();
                             }
                         } else {
-                            GameObject ourTree = Rs2GameObject.getGameObject("Tree", true);
+                            GameObject ourTree = Rs2GameObject.getGameObject(treeToChop, true);
                             if(ourTree!=null){
                                if(!Rs2Player.isAnimating()){
                                    if(Rs2GameObject.interact(ourTree, "Chop down")){
@@ -259,23 +308,41 @@ public class f2pAccountBuilderScript extends Script {
                 }
 
             } else {
-                goToBankandGrabAnItem("Iron axe");
+                goToBankandGrabAnItem(axeToUse);
             }
         }
     }
 
     public void mining(){
         if(shouldMine){
-            if(Rs2Inventory.contains(it->it!=null&&it.getName().contains("pickaxe"))){
+            String rockToMine = "Unknown";
+            String axeToUse = "Unknown";
+            int miningLvl = Rs2Player.getRealSkillLevel(Skill.MINING);
+            if(miningLvl < 21){axeToUse = "Iron pickaxe"; rockToMine = "Tin rocks";}
+            if(miningLvl >= 21 && miningLvl < 31){axeToUse = "Mithril pickaxe"; rockToMine = "Iron rocks";}
+            if(miningLvl >= 31 && miningLvl < 41){axeToUse = "Adamant pickaxe"; rockToMine = "Iron rocks";}
+            if(miningLvl >= 41){axeToUse = "Rune pickaxe"; rockToMine = "Iron rocks";}
+            String finalaxe = axeToUse;
+
+            if(Rs2Inventory.contains(axeToUse) || Rs2Equipment.contains(it->it!=null&&it.getName().equals(finalaxe))){
 
                 if(chosenSpot == null){
-                    WorldPoint spot1 = new WorldPoint(3183,3374,0);
-                    WorldPoint spot2 = new WorldPoint(3283,3362,0);
-                    if(Rs2Random.between(0,100) <=50){
+                    WorldPoint spot1 = null;
+                    WorldPoint spot2 = null;
+                    if(rockToMine.equals("Tin rocks")) {
+                        spot1 = new WorldPoint(3183, 3374, 0);
+                        spot2 = new WorldPoint(3283, 3362, 0);
+                    }
+                    if(rockToMine.equals("Iron rocks")) {
+                        spot1 = new WorldPoint(3174, 3366, 0);
+                        spot2 = new WorldPoint(3296, 3309, 0);
+                    }
+                    if (Rs2Random.between(0, 100) <= 50) {
                         chosenSpot = spot1;
                     } else {
                         chosenSpot = spot2;
                     }
+
                 }
 
                 if(chosenSpot != null){
@@ -283,22 +350,27 @@ public class f2pAccountBuilderScript extends Script {
                         Rs2Walker.walkTo(chosenSpot);
                     } else {
                         if(Rs2Inventory.isFull()){
-                            if(!Rs2Bank.isOpen()){
-                                if (Rs2Bank.walkToBank()) {
-                                    if (Rs2GameObject.interact("Bank booth", "Bank") || Rs2Npc.interact("Banker", "Bank")) {
-                                        sleepUntil(Rs2Bank::isOpen, Rs2Random.between(3000, 6000));
+                            if(rockToMine.equals("Tin rocks")) {
+                                if (!Rs2Bank.isOpen()) {
+                                    if (Rs2Bank.walkToBank()) {
+                                        if (Rs2GameObject.interact("Bank booth", "Bank") || Rs2Npc.interact("Banker", "Bank")) {
+                                            sleepUntil(Rs2Bank::isOpen, Rs2Random.between(3000, 6000));
+                                        }
                                     }
                                 }
+                                if (Rs2Bank.isOpen()) {
+                                    Rs2Bank.depositAllExcept(axeToUse);
+                                    sleepUntil(() -> !Rs2Inventory.isFull(), Rs2Random.between(2000, 5000));
+                                }
+                                if (Rs2Bank.isOpen() && !Rs2Inventory.isFull()) {
+                                    Rs2Bank.closeBank();
+                                }
                             }
-                            if(Rs2Bank.isOpen()){
-                                Rs2Bank.depositAllExcept("Iron pickaxe");
-                                sleepUntil(()-> !Rs2Inventory.isFull(), Rs2Random.between(2000,5000));
-                            }
-                            if(Rs2Bank.isOpen()&&!Rs2Inventory.isFull()){
-                                Rs2Bank.closeBank();
+                            if(rockToMine.equals("Iron rocks")) {
+                                Rs2Inventory.dropAllExcept(axeToUse);
                             }
                         } else {
-                            GameObject ourRock = Rs2GameObject.getGameObject("Tin rocks");
+                            GameObject ourRock = Rs2GameObject.getGameObject(rockToMine);
                             if(ourRock!=null){
                                 if(!Rs2Player.isAnimating()){
                                     if(Rs2GameObject.interact(ourRock, "Mine")){
@@ -312,18 +384,36 @@ public class f2pAccountBuilderScript extends Script {
                 }
 
             } else {
-                goToBankandGrabAnItem("Iron pickaxe");
+                goToBankandGrabAnItem(axeToUse);
             }
         }
     }
 
     public void fishing(){
+        String fishingAction = "Unknown";
+        String fishingGear = "Unknown";
+        int fishingLvl = Rs2Player.getRealSkillLevel(Skill.FISHING);
+        if(fishingLvl < 20){fishingGear = "Small fishing net"; fishingAction = "Net";}
+        if(fishingLvl >= 21){fishingGear = "Fly fishing rod"; fishingAction = "Lure";}
+        String finalGear = fishingGear;
+
         if(shouldFish){
-            if(Rs2Inventory.contains(it->it!=null&&it.getName().contains("Small fishing net"))){
+            if(Rs2Inventory.contains(it->it!=null&&it.getName().contains(finalGear))){
 
                 if(chosenSpot == null){
-                    WorldPoint spot1 = new WorldPoint(3241,3151,0);
-                    WorldPoint spot2 = new WorldPoint(3241,3151,0);
+                    WorldPoint spot1 = null;
+                    WorldPoint spot2 = null;
+
+                    if(fishingGear.equals("Small fishing net")){
+                        spot1 = new WorldPoint(3241,3151,0);
+                        spot2 = new WorldPoint(3241,3151,0);
+                    }
+
+                    if(fishingGear.equals("Fly fishing rod")){
+                        spot1 = new WorldPoint(3104,3430,0);
+                        spot2 = new WorldPoint(3104,3430,0);
+                    }
+
                     if(Rs2Random.between(0,100) <=50){
                         chosenSpot = spot1;
                     } else {
@@ -336,14 +426,58 @@ public class f2pAccountBuilderScript extends Script {
                         Rs2Walker.walkTo(chosenSpot);
                     } else {
                         if(Rs2Inventory.isFull()){
-                            if(Rs2Inventory.dropAllExcept("Small fishing net")){
-                                sleepUntil(()-> !Rs2Inventory.isFull(), Rs2Random.between(2000,5000));
+                            if(fishingGear.equals("Small fishing net")){
+                                if(Rs2Inventory.dropAllExcept(fishingGear)){
+                                    sleepUntil(()-> !Rs2Inventory.isFull(), Rs2Random.between(2000,5000));
+                                }
                             }
+                            if(fishingGear.equals("Fly fishing rod")){
+                                int cookingLvl = Rs2Player.getRealSkillLevel(Skill.COOKING);
+                                if(cookingLvl < 15){
+                                    if(Rs2Inventory.dropAllExcept(fishingGear, "Feather")){
+                                        sleepUntil(()-> !Rs2Inventory.isFull(), Rs2Random.between(2000,5000));
+                                    }
+                                }
+                                if(cookingLvl >= 15 && cookingLvl < 25){
+                                    if(Rs2Inventory.contains("Raw trout")){
+                                        cookFish(Rs2Inventory.get("Raw trout").getId());
+                                        sleepThroughMulipleAnimations();
+                                    }
+                                    if(Rs2Inventory.dropAllExcept(fishingGear, "Feather")){
+                                        sleepUntil(()-> !Rs2Inventory.isFull(), Rs2Random.between(2000,5000));
+                                    }
+                                }
+                                if(cookingLvl >= 25){
+                                    if(Rs2Random.between(0,100) < 50){
+                                        if(Rs2Inventory.contains("Raw trout")){
+                                            cookFish(Rs2Inventory.get("Raw trout").getId());
+                                            sleepThroughMulipleAnimations();
+                                        }
+                                        if(Rs2Inventory.contains("Raw salmon")){
+                                            cookFish(Rs2Inventory.get("Raw salmon").getId());
+                                            sleepThroughMulipleAnimations();
+                                        }
+                                    } else {
+                                        if(Rs2Inventory.contains("Raw salmon")){
+                                            cookFish(Rs2Inventory.get("Raw salmon").getId());
+                                            sleepThroughMulipleAnimations();
+                                        }
+                                        if(Rs2Inventory.contains("Raw trout")){
+                                            cookFish(Rs2Inventory.get("Raw trout").getId());
+                                            sleepThroughMulipleAnimations();
+                                        }
+                                    }
+                                    if(Rs2Inventory.dropAllExcept(fishingGear, "Feather")){
+                                        sleepUntil(()-> !Rs2Inventory.isFull(), Rs2Random.between(2000,5000));
+                                    }
+                                }
+                            }
+
                         } else {
                             Rs2NpcModel ourFishingSpot = Rs2Npc.getNpc("Fishing spot");
                             if(ourFishingSpot!=null){
                                 if(!Rs2Player.isAnimating()){
-                                    if(Rs2Npc.interact(ourFishingSpot, "Net")){
+                                    if(Rs2Npc.interact(ourFishingSpot, fishingAction)){
                                         sleepUntil(()-> !Rs2Player.isAnimating() || ourFishingSpot == null, Rs2Random.between(20000,50000));
                                         sleep(0,500);
                                     }
@@ -354,8 +488,20 @@ public class f2pAccountBuilderScript extends Script {
                 }
 
             } else {
-                goToBankandGrabAnItem("Small fishing net");
+                goToBankandGrabAnItem(fishingGear);
+                if(fishingGear.equals("Fly fishing rod")){
+                    goToBankandGrabAnItem("Feather");
+                }
             }
+        }
+    }
+
+    public void cookFish(int fishesID){
+        if (Rs2Inventory.contains(fishesID)) {
+            Rs2Inventory.useItemOnObject(fishesID, 43475);
+            sleepUntil(() -> !Rs2Player.isMoving() && Rs2Widget.findWidget("How many would you like to cook?", null, false) != null, 5000);
+            sleep(180, 540);
+            Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
         }
     }
 
@@ -518,8 +664,87 @@ public class f2pAccountBuilderScript extends Script {
             Rs2Antiban.actionCooldown();
             Rs2Antiban.takeMicroBreakByChance();
         }
-        boolean stillSmelting = true;
-        while (stillSmelting) {
+
+        sleepThroughMulipleAnimations();
+    }
+
+    public void firemake(){
+        if(shouldFiremake){
+
+            String logsToBurn = "Unknown";
+            int fireMakingLvl = Rs2Player.getRealSkillLevel(Skill.FIREMAKING);
+            if(fireMakingLvl < 15){ logsToBurn = "Logs";}
+            if(fireMakingLvl >= 15 && fireMakingLvl < 30){ logsToBurn = "Oak logs";}
+            if(fireMakingLvl >= 30){ logsToBurn = "Willow logs";}
+
+                if(chosenSpot == null){
+                    WorldPoint spot1 = new WorldPoint(3171,3495,0);
+                    WorldPoint spot2 = new WorldPoint(3171,3484,0);
+                    if(Rs2Random.between(0,100) <=50){
+                        chosenSpot = spot1;
+                    } else {
+                        chosenSpot = spot2;
+                    }
+                }
+
+                if(chosenSpot != null){
+                    if(Rs2Player.getWorldLocation().distanceTo(chosenSpot) > 15){
+                        Rs2Walker.walkTo(chosenSpot);
+                    } else {
+                        if(!Rs2Inventory.contains(logsToBurn) || !Rs2Inventory.contains(ItemID.TINDERBOX)){
+                            if (!Rs2Bank.isOpen()) {
+                                if (Rs2Bank.walkToBank()) {
+                                    if (Rs2GameObject.interact("Bank booth", "Bank") || Rs2Npc.interact("Banker", "Bank")) {
+                                        sleepUntil(Rs2Bank::isOpen, Rs2Random.between(3000, 6000));
+                                    }
+                                }
+                            }
+                            if(Rs2Bank.isOpen()){
+                                if(!Rs2Inventory.contains(ItemID.TINDERBOX)){
+                                    if(Rs2Bank.getBankItem(ItemID.TINDERBOX) != null){
+                                        Rs2Bank.withdrawOne(ItemID.TINDERBOX);
+                                        sleepUntil(()-> Rs2Inventory.contains(ItemID.TINDERBOX), Rs2Random.between(2000,5000));
+                                    } else {
+                                        openGEandBuyItem("Tinderbox");
+                                    }
+                                }
+                                if(!Rs2Inventory.contains(logsToBurn)){
+                                    if(Rs2Bank.getBankItem(logsToBurn) != null){
+                                        Rs2Bank.withdrawAll(logsToBurn);
+                                        String logs = logsToBurn;
+                                        sleepUntil(()-> Rs2Inventory.contains(logs), Rs2Random.between(2000,5000));
+                                    } else {
+                                        openGEandBuyItem(logsToBurn);
+                                    }
+                                }
+                            }
+                        }
+                        if(Rs2Inventory.contains(logsToBurn) && Rs2Inventory.contains(ItemID.TINDERBOX)){
+                            WorldPoint ourTile = Rs2Player.getWorldLocation();
+                            List<GameObject> objects = new ArrayList<>(Rs2GameObject.getGameObjects(ourTile));
+                            if(!objects.isEmpty()){
+                                Rs2Walker.walkTo(chosenSpot);
+                                return;
+                            }
+
+                            Rs2Inventory.use("tinderbox");
+                            sleepUntil(Rs2Inventory::isItemSelected);
+                            int id = Rs2Inventory.get(logsToBurn).getId();
+                            Rs2Inventory.useLast(id);
+
+                            sleepThroughMulipleAnimations();
+                        }
+                    }
+                }
+
+        }
+    }
+
+    //skilling
+
+    public void sleepThroughMulipleAnimations(){
+        boolean stillAnimating = true;
+        while (stillAnimating) {
             if (!super.isRunning()) {
                 break;
             }
@@ -530,12 +755,10 @@ public class f2pAccountBuilderScript extends Script {
                 sleepUntil(() -> Rs2Player.isAnimating(), Rs2Random.between(3000, 5000));
             }
             if (!Rs2Player.isAnimating()) {
-                stillSmelting = false;
+                stillAnimating = false;
             }
         }
     }
-
-    //skilling
 
     @Override
     public void shutdown() {
