@@ -53,6 +53,7 @@ public class f2pAccountBuilderScript extends Script {
     private boolean shouldSmelt = false;
     private boolean shouldFiremake = false;
     private boolean shouldCook = false;
+    private boolean shouldCraft = false;
 
     private WorldPoint chosenSpot = null;
 
@@ -78,6 +79,7 @@ public class f2pAccountBuilderScript extends Script {
                 smelting();
                 firemake();
                 cook();
+                craft();
 
                 //Skilling
 
@@ -103,6 +105,7 @@ public class f2pAccountBuilderScript extends Script {
             this.shouldSmelt = false;
             this.shouldFiremake = false;
             this.shouldCook = false;
+            this.shouldCraft = false;
 
             this.chosenSpot = null;
 
@@ -143,6 +146,12 @@ public class f2pAccountBuilderScript extends Script {
                 shouldThink = false;
                 return;
             }
+            if(random > 600 && random <= 700){
+                Microbot.log("We're going to craft.");
+                shouldCraft = true;
+                shouldThink = false;
+                return;
+            }
 
         }
     }
@@ -162,7 +171,7 @@ public class f2pAccountBuilderScript extends Script {
             }
     }
 
-    public void goToBankandGrabAnItem(String item){
+    public void goToBankandGrabAnItem(String item, int howMany){
         if(!Rs2Bank.isOpen()){
             Rs2Bank.walkToBankAndUseBank();
             sleepUntil(()-> Rs2Bank.isOpen(), Rs2Random.between(2000,5000));
@@ -174,11 +183,7 @@ public class f2pAccountBuilderScript extends Script {
                     sleepUntil(() -> Rs2Inventory.getEmptySlots() > 10, Rs2Random.between(2000, 5000));
                 }
                 if(!Rs2Inventory.contains(item)){
-                    if(item.equals("Feather")){
-                        Rs2Bank.withdrawAll(item);
-                    } else {
-                        Rs2Bank.withdrawOne(item);
-                    }
+                    Rs2Bank.withdrawX(item, howMany);
                     sleepUntil(() -> Rs2Inventory.contains(item), Rs2Random.between(2000, 5000));
                 }
             } else {
@@ -197,13 +202,23 @@ public class f2pAccountBuilderScript extends Script {
                 }
 
                 if(!Rs2Inventory.contains(item) && Rs2Inventory.get("Coins").getQuantity() >= 1000){
-                    openGEandBuyItem(item);
+                    openGEandBuyItem(item, howMany);
                 }
             }
         }
     }
 
-    public void openGEandBuyItem(String item){
+    public void walkToBankAndOpenIt(){
+        if (!Rs2Bank.isOpen()) {
+            if (Rs2Bank.walkToBank()) {
+                if (Rs2GameObject.interact("Bank booth", "Bank") || Rs2Npc.interact("Banker", "Bank")) {
+                    sleepUntil(Rs2Bank::isOpen, Rs2Random.between(3000, 6000));
+                }
+            }
+        }
+    }
+
+    public void openGEandBuyItem(String item, int howMany){
         if(Rs2Bank.isOpen()){
             Rs2Bank.closeBank();
             sleepUntil(()-> !Rs2Bank.isOpen(), Rs2Random.between(2000,5000));
@@ -217,40 +232,8 @@ public class f2pAccountBuilderScript extends Script {
         }
         if(Rs2GrandExchange.isOpen()){
 
-            if(item.equals("Silver ore")){
-                if(Rs2GrandExchange.buyItemAboveXPercent(item, Rs2Random.between(100,200), 20)){
-                    sleepUntil(()-> Rs2GrandExchange.hasFinishedBuyingOffers(), Rs2Random.between(2000,5000));
-                }
-            }
-
-            if(item.equals("Copper ore")){
-                if(Rs2GrandExchange.buyItemAboveXPercent(item, Rs2Random.between(100,200), 20)){
-                    sleepUntil(()-> Rs2GrandExchange.hasFinishedBuyingOffers(), Rs2Random.between(2000,5000));
-                }
-            }
-
-            if(item.equals("Logs") || item.contains("logs")){
-                if(Rs2GrandExchange.buyItemAboveXPercent(item, Rs2Random.between(100,200), 20)){
-                    sleepUntil(()-> Rs2GrandExchange.hasFinishedBuyingOffers(), Rs2Random.between(2000,5000));
-                }
-            }
-
-            if(item.equals("Feather")){
-                if(Rs2GrandExchange.buyItemAboveXPercent(item, Rs2Random.between(1000,2000), 20)){
-                    sleepUntil(()-> Rs2GrandExchange.hasFinishedBuyingOffers(), Rs2Random.between(2000,5000));
-                }
-            }
-
-            if(item.equals("Raw chicken")){
-                if(Rs2GrandExchange.buyItemAboveXPercent(item, Rs2Random.between(100,200), 20)){
-                    sleepUntil(()-> Rs2GrandExchange.hasFinishedBuyingOffers(), Rs2Random.between(2000,5000));
-                }
-            }
-
-            if(!item.equals("Copper ore") && !item.equals("Silver ore") && !item.equals("Logs") && !item.contains("logs") && !item.equals("Feather") && !item.equals("Raw chicken")){
-                if(Rs2GrandExchange.buyItemAboveXPercent(item, 1, 20)){
-                    sleepUntil(()-> Rs2GrandExchange.hasFinishedBuyingOffers(), Rs2Random.between(2000,5000));
-                }
+            if(Rs2GrandExchange.buyItemAboveXPercent(item, howMany, 20)){
+                sleepUntil(()-> Rs2GrandExchange.hasFinishedBuyingOffers(), Rs2Random.between(2000,5000));
             }
 
             if(Rs2GrandExchange.hasFinishedBuyingOffers()){
@@ -261,6 +244,92 @@ public class f2pAccountBuilderScript extends Script {
     }
 
     //skilling
+
+    public void craft(){
+        if(shouldCraft){
+            String craftingMaterial = "Unknown";
+            String craftingProduct = "Unknown";
+            int craftingLvl = Rs2Player.getRealSkillLevel(Skill.CRAFTING);
+            if(craftingLvl < 7){craftingMaterial = "Leather"; craftingProduct = "Leather gloves";}
+            if(craftingLvl >= 7 && craftingLvl < 9){craftingMaterial = "Leather"; craftingProduct = "Leather boots";}
+            if(craftingLvl >= 9 && craftingLvl < 11){craftingMaterial = "Leather"; craftingProduct = "Leather cowl";}
+            if(craftingLvl >= 11 && craftingLvl < 14){craftingMaterial = "Leather"; craftingProduct = "Leather vambraces";}
+            if(craftingLvl >= 14 && craftingLvl < 18){craftingMaterial = "Leather"; craftingProduct = "Leather body";}
+            if(craftingLvl >= 18 && craftingLvl < 28){craftingMaterial = "Leather"; craftingProduct = "Leather chaps";}
+
+
+            if(chosenSpot == null){
+                chosenSpot = BankLocation.GRAND_EXCHANGE.getWorldPoint();
+            }
+
+            if(chosenSpot != null){
+                if(Rs2Player.getWorldLocation().distanceTo(chosenSpot) > 12){
+                    Rs2Walker.walkTo(chosenSpot);
+                } else {
+                    if(Rs2Inventory.contains(craftingMaterial) && Rs2Inventory.contains("Thread") && Rs2Inventory.contains("Needle")){
+                        if(Rs2Bank.isOpen()){
+                            Rs2Bank.closeBank();
+                            sleepUntil(()-> !Rs2Bank.isOpen(), Rs2Random.between(2000,5000));
+                        }
+
+                        Rs2Inventory.combine("Needle", "Leather");
+                        Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
+                        sleepThroughMulipleAnimations();
+                    }
+                    if(!Rs2Inventory.contains(craftingMaterial) || Rs2Inventory.count(craftingMaterial) < 3 || Rs2Inventory.contains("Thread") || Rs2Inventory.contains("Needle")){
+                        if(Rs2Inventory.isFull()){
+                            Rs2Bank.depositAll();;
+                            sleepUntil(()-> Rs2Inventory.isEmpty(), Rs2Random.between(2000,5000));
+                        }
+                        if(!Rs2Inventory.contains("Thread")){
+                            walkToBankAndOpenIt();
+                            if(Rs2Bank.isOpen()){
+                                if(Rs2Bank.getBankItem("Thread") != null && Rs2Bank.getBankItem("Thread").getQuantity() > 10){
+                                    Rs2Bank.withdrawAll("Thread");
+                                    sleepUntil(()-> Rs2Inventory.contains("Thread"), Rs2Random.between(2000,5000));
+                                } else {
+                                    openGEandBuyItem("Thread", Rs2Random.between(100,200));
+                                }
+                            }
+                        }
+                        if(!Rs2Inventory.contains("Needle")){
+                            walkToBankAndOpenIt();
+                            if(Rs2Bank.isOpen()){
+                                if(Rs2Bank.getBankItem("Needle") != null){
+                                    Rs2Bank.withdrawAll("Needle");
+                                    sleepUntil(()-> Rs2Inventory.contains("Needle"), Rs2Random.between(2000,5000));
+                                } else {
+                                    openGEandBuyItem("Needle", 1);
+                                }
+                            }
+                        }
+                        if(!Rs2Inventory.contains("Needle")){
+                            walkToBankAndOpenIt();
+                            if(Rs2Bank.isOpen()){
+                                if(Rs2Bank.getBankItem("Needle") != null){
+                                    Rs2Bank.withdrawAll("Needle");
+                                    sleepUntil(()-> Rs2Inventory.contains("Needle"), Rs2Random.between(2000,5000));
+                                } else {
+                                    openGEandBuyItem("Needle", 1);
+                                }
+                            }
+                        }
+                        if(Rs2Inventory.contains("Needle") && Rs2Inventory.contains("Thread") && !Rs2Inventory.isFull() && !Rs2Inventory.contains(craftingMaterial) || Rs2Inventory.count(craftingMaterial) < 3){
+                            walkToBankAndOpenIt();
+                            if(Rs2Bank.isOpen()){
+                                if(Rs2Bank.getBankItem(craftingMaterial) != null){
+                                    Rs2Bank.withdrawAll(craftingMaterial);
+                                    Rs2Inventory.waitForInventoryChanges(5000);
+                                } else {
+                                    openGEandBuyItem(craftingMaterial, Rs2Random.between(100,300));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     public void cook(){
         if(shouldCook){
@@ -302,13 +371,8 @@ public class f2pAccountBuilderScript extends Script {
                             }
                         }
                         if(!Rs2Inventory.contains(whatToCook)){
-                            if (!Rs2Bank.isOpen()) {
-                                if (Rs2Bank.walkToBank()) {
-                                    if (Rs2GameObject.interact("Bank booth", "Bank") || Rs2Npc.interact("Banker", "Bank")) {
-                                        sleepUntil(Rs2Bank::isOpen, Rs2Random.between(3000, 6000));
-                                    }
-                                }
-                            }
+                            walkToBankAndOpenIt();
+
                             if (Rs2Bank.isOpen()) {
                                 if(Rs2Inventory.contains("Cooked chicken")){
                                     Rs2Bank.depositAll();
@@ -320,7 +384,7 @@ public class f2pAccountBuilderScript extends Script {
                                         String cooked = whatToCook;
                                         sleepUntil(() -> !Rs2Inventory.contains(cooked), Rs2Random.between(3000, 6000));
                                     } else {
-                                        openGEandBuyItem(whatToCook);
+                                        openGEandBuyItem(whatToCook, Rs2Random.between(100,200));
                                     }
                                 }
                             }
@@ -371,13 +435,8 @@ public class f2pAccountBuilderScript extends Script {
                         Rs2Walker.walkTo(chosenSpot);
                     } else {
                         if(Rs2Inventory.isFull()){
-                            if(!Rs2Bank.isOpen()){
-                                if (Rs2Bank.walkToBank()) {
-                                    if (Rs2GameObject.interact("Bank booth", "Bank") || Rs2Npc.interact("Banker", "Bank")) {
-                                        sleepUntil(Rs2Bank::isOpen, Rs2Random.between(3000, 6000));
-                                    }
-                                }
-                            }
+                            walkToBankAndOpenIt();
+
                             if(Rs2Bank.isOpen()){
                                 Rs2Bank.depositAllExcept(axeToUse);
                                 sleepUntil(()-> !Rs2Inventory.isFull(), Rs2Random.between(2000,5000));
@@ -400,7 +459,7 @@ public class f2pAccountBuilderScript extends Script {
                 }
 
             } else {
-                goToBankandGrabAnItem(axeToUse);
+                goToBankandGrabAnItem(axeToUse, 1);
             }
         }
     }
@@ -443,13 +502,8 @@ public class f2pAccountBuilderScript extends Script {
                     } else {
                         if(Rs2Inventory.isFull()){
                             if(rockToMine.equals("Tin rocks")) {
-                                if (!Rs2Bank.isOpen()) {
-                                    if (Rs2Bank.walkToBank()) {
-                                        if (Rs2GameObject.interact("Bank booth", "Bank") || Rs2Npc.interact("Banker", "Bank")) {
-                                            sleepUntil(Rs2Bank::isOpen, Rs2Random.between(3000, 6000));
-                                        }
-                                    }
-                                }
+                                walkToBankAndOpenIt();
+
                                 if (Rs2Bank.isOpen()) {
                                     Rs2Bank.depositAllExcept(axeToUse);
                                     sleepUntil(() -> !Rs2Inventory.isFull(), Rs2Random.between(2000, 5000));
@@ -476,7 +530,7 @@ public class f2pAccountBuilderScript extends Script {
                 }
 
             } else {
-                goToBankandGrabAnItem(axeToUse);
+                goToBankandGrabAnItem(axeToUse,1);
             }
         }
     }
@@ -524,6 +578,11 @@ public class f2pAccountBuilderScript extends Script {
                                 }
                             }
                             if(fishingGear.equals("Fly fishing rod")){
+
+                                if(!Rs2Inventory.contains("Feather")) {
+                                    goToBankandGrabAnItem("Feather", Rs2Random.between(500,2000));
+                                }
+
                                 int cookingLvl = Rs2Player.getRealSkillLevel(Skill.COOKING);
                                 if(cookingLvl < 15){
                                     if(Rs2Inventory.dropAllExcept(fishingGear, "Feather")){
@@ -580,10 +639,7 @@ public class f2pAccountBuilderScript extends Script {
                 }
 
             } else {
-                goToBankandGrabAnItem(fishingGear);
-                if(fishingGear.equals("Fly fishing rod")){
-                    goToBankandGrabAnItem("Feather");
-                }
+                goToBankandGrabAnItem(fishingGear, 1);
             }
         }
     }
@@ -626,13 +682,8 @@ public class f2pAccountBuilderScript extends Script {
 
                         if (smeltingSilver) {
                             if (Rs2Inventory.contains("Silver bar") || !Rs2Inventory.contains("Silver ore")) {
-                                if (!Rs2Bank.isOpen()) {
-                                    if (Rs2Bank.walkToBank()) {
-                                        if (Rs2GameObject.interact("Bank booth", "Bank") || Rs2Npc.interact("Banker", "Bank")) {
-                                            sleepUntil(Rs2Bank::isOpen, Rs2Random.between(3000, 6000));
-                                        }
-                                    }
-                                }
+                                walkToBankAndOpenIt();
+
                                 if (Rs2Bank.isOpen()) {
                                     if (Rs2Inventory.contains("Silver bar") || Rs2Inventory.contains(it->it!=null&&it.isNoted())) {
                                         int random = Rs2Random.between(0, 100);
@@ -650,7 +701,7 @@ public class f2pAccountBuilderScript extends Script {
                                             sleepUntil(() -> Rs2Inventory.isFull(), Rs2Random.between(2000, 5000));
                                         } else {
                                             //we need to buy silver ore
-                                            openGEandBuyItem("Silver ore");
+                                            openGEandBuyItem("Silver ore", Rs2Random.between(100,200));
                                         }
                                     }
                                     if (Rs2Inventory.contains("Silver ore")) {
@@ -663,13 +714,8 @@ public class f2pAccountBuilderScript extends Script {
 
                         if (smeltingBronze) {
                             if (Rs2Inventory.contains("Bronze bar") || !Rs2Inventory.contains("Copper ore") || !Rs2Inventory.contains("Tin ore")) {
-                                if (!Rs2Bank.isOpen()) {
-                                    if (Rs2Bank.walkToBank()) {
-                                        if (Rs2GameObject.interact("Bank booth", "Bank") || Rs2Npc.interact("Banker", "Bank")) {
-                                            sleepUntil(Rs2Bank::isOpen, Rs2Random.between(3000, 6000));
-                                        }
-                                    }
-                                }
+                                walkToBankAndOpenIt();
+
                                 if (Rs2Bank.isOpen()) {
                                     if (Rs2Inventory.contains("Bronze bar") || Rs2Inventory.isFull() || Rs2Inventory.contains(it->it!=null&&it.isNoted())) {
                                         int random = Rs2Random.between(0, 100);
@@ -734,7 +780,7 @@ public class f2pAccountBuilderScript extends Script {
             return;
         }
         if (Rs2Bank.getBankItem("Copper ore") == null || Rs2Bank.getBankItem("Copper ore").getQuantity() < 14) {
-            openGEandBuyItem("Copper ore");
+            openGEandBuyItem("Copper ore", Rs2Random.between(100,200));
         }
     }
 
@@ -784,13 +830,8 @@ public class f2pAccountBuilderScript extends Script {
                         Rs2Walker.walkTo(chosenSpot);
                     } else {
                         if(!Rs2Inventory.contains(logsToBurn) || !Rs2Inventory.contains(ItemID.TINDERBOX) || Rs2Inventory.contains(it->it!=null&&it.isNoted())){
-                            if (!Rs2Bank.isOpen()) {
-                                if (Rs2Bank.walkToBank()) {
-                                    if (Rs2GameObject.interact("Bank booth", "Bank") || Rs2Npc.interact("Banker", "Bank")) {
-                                        sleepUntil(Rs2Bank::isOpen, Rs2Random.between(3000, 6000));
-                                    }
-                                }
-                            }
+                            walkToBankAndOpenIt();
+
                             if(Rs2Bank.isOpen()){
                                 if(Rs2Inventory.contains(it->it!=null&&it.isNoted())){
                                     Rs2Bank.depositAll();
@@ -801,7 +842,7 @@ public class f2pAccountBuilderScript extends Script {
                                         Rs2Bank.withdrawOne(ItemID.TINDERBOX);
                                         sleepUntil(()-> Rs2Inventory.contains(ItemID.TINDERBOX), Rs2Random.between(2000,5000));
                                     } else {
-                                        openGEandBuyItem("Tinderbox");
+                                        openGEandBuyItem("Tinderbox", 1);
                                     }
                                 }
                                 if(!Rs2Inventory.contains(logsToBurn)){
@@ -810,7 +851,7 @@ public class f2pAccountBuilderScript extends Script {
                                         String logs = logsToBurn;
                                         sleepUntil(()-> Rs2Inventory.contains(logs), Rs2Random.between(2000,5000));
                                     } else {
-                                        openGEandBuyItem(logsToBurn);
+                                        openGEandBuyItem(logsToBurn, Rs2Random.between(100,300));
                                     }
                                 }
                             }
