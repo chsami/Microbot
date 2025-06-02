@@ -172,8 +172,15 @@ public class f2pAccountBuilderScript extends Script {
         if(Rs2Bank.isOpen()){
             if(emptySlots <= 24){
                 //When we transition between skills if there aren't 24 free slots
-                Rs2Bank.depositAll();
-                sleepUntil(() -> Rs2Inventory.getEmptySlots() > 10, Rs2Random.between(2000, 5000));
+                while(!Rs2Inventory.isEmpty()){
+                    if(!super.isRunning()){break;}
+                    Rs2Bank.depositAll();
+                    sleepUntil(() -> Rs2Inventory.isEmpty(), Rs2Random.between(2000, 5000));
+                    sleep(0,500);
+                }
+                if(Rs2Inventory.isEmpty()){
+                    emptySlots = 28;
+                }
             }
             if(Rs2Bank.getBankItem(item, true) != null){
                 if(!Rs2Inventory.contains(item)){
