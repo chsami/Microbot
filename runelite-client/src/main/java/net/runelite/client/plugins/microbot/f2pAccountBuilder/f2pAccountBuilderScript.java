@@ -6,6 +6,7 @@ import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.smelting.enums.Bars;
@@ -224,6 +225,10 @@ public class f2pAccountBuilderScript extends Script {
 
             if(Rs2GrandExchange.buyItemAboveXPercent(item, howMany, 20)){
                 sleepUntil(()-> Rs2GrandExchange.hasFinishedBuyingOffers(), Rs2Random.between(2000,5000));
+            } else {
+                Microbot.log("We don't have enough GP :( re-rolling");
+                this.shouldThink = true;
+                return;
             }
 
             if(Rs2GrandExchange.hasFinishedBuyingOffers()){
@@ -263,7 +268,17 @@ public class f2pAccountBuilderScript extends Script {
                         }
 
                         Rs2Inventory.combine("Needle", "Leather");
-                        Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
+
+                        String whatWereCrafting = craftingProduct;
+                        sleepUntil(()-> Rs2Widget.hasWidget(whatWereCrafting), Rs2Random.between(2000,5000));
+
+                        Widget craftingWidget = Rs2Widget.findWidget(craftingProduct);
+                        if(craftingWidget != null){
+                            Rs2Widget.clickWidget(craftingWidget);
+                        } else {
+                            Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
+                        }
+
                         sleepThroughMulipleAnimations();
                     }
                     if(!Rs2Inventory.contains(craftingMaterial) || Rs2Inventory.count(craftingMaterial) < 3 || !Rs2Inventory.contains("Thread") || !Rs2Inventory.contains("Needle")  || Rs2Inventory.contains(it->it!=null&&it.isNoted())){
