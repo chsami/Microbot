@@ -838,11 +838,7 @@ public class f2pAccountBuilderScript extends Script {
                                 sleepUntil(()-> Rs2Bank.isOpen(), Rs2Random.between(2000,5000));
                             }
 
-                            WorldPoint ourTile = Rs2Player.getWorldLocation();
-                            TileObject tileObject = Rs2GameObject.getTileObject(ourTile);
-                            TileObject gameObject = Rs2GameObject.getGameObject(ourTile);
-
-                            if(tileObject != null || gameObject != null){
+                            if(Rs2Player.isStandingOnGameObject()){
                                 Microbot.log("We're standing on an object, moving.");
                                 if(Rs2Player.distanceTo(chosenSpot) > 4){
                                     Rs2Walker.walkTo(chosenSpot);
