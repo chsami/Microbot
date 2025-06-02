@@ -316,7 +316,7 @@ public class f2pAccountBuilderScript extends Script {
                                         String cooked = whatToCook;
                                         sleepUntil(() -> !Rs2Inventory.contains(cooked), Rs2Random.between(3000, 6000));
                                     } else {
-                                        goToBankandGrabAnItem(whatToCook);
+                                        openGEandBuyItem(whatToCook);
                                     }
                                 }
                             }
@@ -578,7 +578,7 @@ public class f2pAccountBuilderScript extends Script {
             } else {
                 goToBankandGrabAnItem(fishingGear);
                 if(fishingGear.equals("Fly fishing rod")){
-                    goToBankandGrabAnItem("Feather");
+                    openGEandBuyItem("Feather");
                 }
             }
         }
