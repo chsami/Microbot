@@ -28,6 +28,7 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
+import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -304,7 +305,7 @@ public class f2pAccountBuilderScript extends Script {
                         }
                         if(Rs2Inventory.contains("Needle") && Rs2Inventory.contains("Thread") && !Rs2Inventory.isFull() && !Rs2Inventory.contains(craftingMaterial) || Rs2Inventory.count(craftingMaterial) < 3){
                             if(Rs2Bank.isOpen()){
-                                if(Rs2Bank.getBankItem(craftingMaterial) != null){
+                                if(Rs2Bank.getBankItem(craftingMaterial, true) != null){
                                     Rs2Bank.withdrawAll(craftingMaterial, true);
                                     Rs2Inventory.waitForInventoryChanges(5000);
                                 } else {
@@ -847,8 +848,11 @@ public class f2pAccountBuilderScript extends Script {
                             WorldPoint ourTile = Rs2Player.getWorldLocation();
                             List<GameObject> objects = new ArrayList<>(Rs2GameObject.getGameObjects(ourTile));
                             if(!objects.isEmpty()){
-                                Rs2Walker.walkTo(chosenSpot);
-                                return;
+                                if(Rs2Player.distanceTo(chosenSpot) > 4){
+                                    Rs2Walker.walkTo(chosenSpot);
+                                } else {
+                                    Rs2Walker.walkCanvas(chosenSpot);
+                                }
                             }
 
                             Rs2Inventory.use("tinderbox");
