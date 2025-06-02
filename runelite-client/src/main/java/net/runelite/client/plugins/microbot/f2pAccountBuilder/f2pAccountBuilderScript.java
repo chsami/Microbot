@@ -163,17 +163,18 @@ public class f2pAccountBuilderScript extends Script {
     }
 
     public void goToBankandGrabAnItem(String item, int howMany){
+        int emptySlots = Rs2Inventory.getEmptySlots();
         if(!Rs2Bank.isOpen()){
             Rs2Bank.walkToBankAndUseBank();
             sleepUntil(()-> Rs2Bank.isOpen(), Rs2Random.between(2000,5000));
         }
         if(Rs2Bank.isOpen()){
+            if(emptySlots <= 24){
+                //When we transition between skills if there aren't 24 free slots
+                Rs2Bank.depositAll();
+                sleepUntil(() -> Rs2Inventory.getEmptySlots() > 10, Rs2Random.between(2000, 5000));
+            }
             if(Rs2Bank.getBankItem(item, true) != null){
-                if(Rs2Inventory.getEmptySlots() <= 24){
-                    //we want 24 open slots in the inventory
-                    Rs2Bank.depositAll();
-                    sleepUntil(() -> Rs2Inventory.getEmptySlots() > 10, Rs2Random.between(2000, 5000));
-                }
                 if(!Rs2Inventory.contains(item)){
                     Rs2Bank.withdrawX(item, howMany, true);
                     sleepUntil(() -> Rs2Inventory.contains(item), Rs2Random.between(2000, 5000));
