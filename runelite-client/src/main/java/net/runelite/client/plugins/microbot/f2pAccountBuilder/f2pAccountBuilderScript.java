@@ -1,7 +1,9 @@
 package net.runelite.client.plugins.microbot.f2pAccountBuilder;
 
+import net.runelite.api.AnimationID;
 import net.runelite.api.GameObject;
 import net.runelite.api.Skill;
+import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.widgets.Widget;
@@ -14,6 +16,8 @@ import net.runelite.client.plugins.microbot.smelting.enums.Bars;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
+import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
+import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.grandexchange.GrandExchangeSlots;
@@ -48,6 +52,7 @@ public class f2pAccountBuilderScript extends Script {
     private boolean shouldFish = false;
     private boolean shouldSmelt = false;
     private boolean shouldFiremake = false;
+    private boolean shouldCook = false;
 
     private WorldPoint chosenSpot = null;
 
@@ -72,6 +77,7 @@ public class f2pAccountBuilderScript extends Script {
                 fishing();
                 smelting();
                 firemake();
+                cook();
 
                 //Skilling
 
@@ -96,6 +102,7 @@ public class f2pAccountBuilderScript extends Script {
             this.shouldFish = false;
             this.shouldSmelt = false;
             this.shouldFiremake = false;
+            this.shouldCook = false;
 
             int random = Rs2Random.between(0,1000);
             if(random <= 100){
@@ -129,6 +136,13 @@ public class f2pAccountBuilderScript extends Script {
             if(random > 400 && random <= 500){
                 Microbot.log("We're going firemaking.");
                 shouldFiremake = true;
+                shouldThink = false;
+                chosenSpot = null;
+                return;
+            }
+            if(random > 500 && random <= 600){
+                Microbot.log("We're going to cook.");
+                shouldCook = true;
                 shouldThink = false;
                 chosenSpot = null;
                 return;
@@ -223,7 +237,13 @@ public class f2pAccountBuilderScript extends Script {
                 }
             }
 
-            if(!item.equals("Copper ore") && !item.equals("Silver ore") && !item.equals("Logs") && !item.contains("logs") && !item.equals("Feather")){
+            if(item.equals("Raw chicken")){
+                if(Rs2GrandExchange.buyItemAboveXPercent(item, Rs2Random.between(100,200), 20)){
+                    sleepUntil(()-> Rs2GrandExchange.hasFinishedBuyingOffers(), Rs2Random.between(2000,5000));
+                }
+            }
+
+            if(!item.equals("Copper ore") && !item.equals("Silver ore") && !item.equals("Logs") && !item.contains("logs") && !item.equals("Feather") && !item.equals("Raw chicken")){
                 if(Rs2GrandExchange.buyItemAboveXPercent(item, 1, 20)){
                     sleepUntil(()-> Rs2GrandExchange.hasFinishedBuyingOffers(), Rs2Random.between(2000,5000));
                 }
@@ -237,6 +257,74 @@ public class f2pAccountBuilderScript extends Script {
     }
 
     //skilling
+
+    public void cook(){
+        if(shouldCook){
+            String whatToCook = "Unknown";
+            int cookingLvl = Rs2Player.getRealSkillLevel(Skill.COOKING);
+            if(cookingLvl < 15){whatToCook = "Raw chicken";}
+            if(cookingLvl >= 15){whatToCook = "SwitchToFishing";}
+
+            if(whatToCook.equals("SwitchToFishing")){
+                Microbot.log("We're going fishing.");
+                shouldFish = true;
+                shouldCook = false;
+                shouldThink = false;
+                chosenSpot = null;
+                return;
+            }
+
+
+                if(chosenSpot == null){
+                    chosenSpot = new WorldPoint(3274,3180,0);
+                }
+
+                if(chosenSpot != null){
+                    if(Rs2Player.getWorldLocation().distanceTo(chosenSpot) > 12){
+                        Rs2Walker.walkTo(chosenSpot);
+                    } else {
+                        if(Rs2Inventory.contains(whatToCook)){
+                            GameObject range = Rs2GameObject.getGameObject("Range");
+                            if (range != null) {
+                                if (!Rs2Camera.isTileOnScreen(range.getLocalLocation())) {
+                                    Rs2Camera.turnTo(range.getLocalLocation());
+                                    return;
+                                }
+                                Rs2Inventory.useItemOnObject(Rs2Inventory.get(whatToCook).getId(), range.getId());
+                                sleepUntil(() -> !Rs2Player.isMoving() && Rs2Widget.findWidget("like to cook?", null, false) != null);
+
+                                Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
+                                sleepThroughMulipleAnimations();
+                            }
+                        }
+                        if(!Rs2Inventory.contains(whatToCook)){
+                            if (!Rs2Bank.isOpen()) {
+                                if (Rs2Bank.walkToBank()) {
+                                    if (Rs2GameObject.interact("Bank booth", "Bank") || Rs2Npc.interact("Banker", "Bank")) {
+                                        sleepUntil(Rs2Bank::isOpen, Rs2Random.between(3000, 6000));
+                                    }
+                                }
+                            }
+                            if (Rs2Bank.isOpen()) {
+                                if(Rs2Inventory.contains("Cooked chicken")){
+                                    Rs2Bank.depositAll();
+                                    sleepUntil(()->!Rs2Inventory.contains("Cooked chicken"), Rs2Random.between(3000, 6000));
+                                }
+                                if(!Rs2Inventory.contains(whatToCook) && !Rs2Inventory.isFull()){
+                                    if(Rs2Bank.getBankItem(whatToCook) != null) {
+                                        Rs2Bank.withdrawAll(whatToCook);
+                                        String cooked = whatToCook;
+                                        sleepUntil(() -> !Rs2Inventory.contains(cooked), Rs2Random.between(3000, 6000));
+                                    } else {
+                                        goToBankandGrabAnItem(whatToCook);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+        }
+    }
 
     public void woodCutting(){
         if(shouldWoodcut){
@@ -691,7 +779,7 @@ public class f2pAccountBuilderScript extends Script {
                     if(Rs2Player.getWorldLocation().distanceTo(chosenSpot) > 15){
                         Rs2Walker.walkTo(chosenSpot);
                     } else {
-                        if(!Rs2Inventory.contains(logsToBurn) || !Rs2Inventory.contains(ItemID.TINDERBOX)){
+                        if(!Rs2Inventory.contains(logsToBurn) || !Rs2Inventory.contains(ItemID.TINDERBOX) || Rs2Inventory.contains(it->it!=null&&it.isNoted())){
                             if (!Rs2Bank.isOpen()) {
                                 if (Rs2Bank.walkToBank()) {
                                     if (Rs2GameObject.interact("Bank booth", "Bank") || Rs2Npc.interact("Banker", "Bank")) {
@@ -700,6 +788,10 @@ public class f2pAccountBuilderScript extends Script {
                                 }
                             }
                             if(Rs2Bank.isOpen()){
+                                if(Rs2Inventory.contains(it->it!=null&&it.isNoted())){
+                                    Rs2Bank.depositAll();
+                                    sleepUntil(()-> Rs2Inventory.isEmpty(), Rs2Random.between(2000,5000));
+                                }
                                 if(!Rs2Inventory.contains(ItemID.TINDERBOX)){
                                     if(Rs2Bank.getBankItem(ItemID.TINDERBOX) != null){
                                         Rs2Bank.withdrawOne(ItemID.TINDERBOX);
