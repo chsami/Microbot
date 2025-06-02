@@ -571,10 +571,6 @@ public class f2pAccountBuilderScript extends Script {
                             }
                             if(fishingGear.equals("Fly fishing rod")){
 
-                                if(!Rs2Inventory.contains("Feather")) {
-                                    goToBankandGrabAnItem("Feather", Rs2Random.between(500,2000));
-                                }
-
                                 int cookingLvl = Rs2Player.getRealSkillLevel(Skill.COOKING);
                                 if(cookingLvl < 15){
                                     if(Rs2Inventory.dropAllExcept(fishingGear, "Feather")){
@@ -617,6 +613,13 @@ public class f2pAccountBuilderScript extends Script {
                             }
 
                         } else {
+                            if(fishingGear.equals("Fly fishing rod")) {
+                                if (!Rs2Inventory.contains("Feather")) {
+                                    goToBankandGrabAnItem("Feather", Rs2Random.between(500, 2000));
+                                    return;
+                                }
+                            }
+
                             Rs2NpcModel ourFishingSpot = Rs2Npc.getNpc("Fishing spot");
                             if(ourFishingSpot!=null){
                                 if(!Rs2Player.isAnimating()){
@@ -632,6 +635,11 @@ public class f2pAccountBuilderScript extends Script {
 
             } else {
                 goToBankandGrabAnItem(fishingGear, 1);
+                if(fishingGear.equals("Fly fishing rod")) {
+                    if (!Rs2Inventory.contains("Feather")) {
+                        goToBankandGrabAnItem("Feather", Rs2Random.between(500, 2000));
+                    }
+                }
             }
         }
     }
