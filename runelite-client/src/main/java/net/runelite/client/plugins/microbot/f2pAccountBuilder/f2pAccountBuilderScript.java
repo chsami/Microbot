@@ -192,7 +192,7 @@ public class f2pAccountBuilderScript extends Script {
                 if(Rs2Bank.getBankItem("Coins") != null){
                     if(Rs2Bank.getBankItem("Coins").getQuantity() >= 1000){
                         if(Rs2Inventory.get("Coins") == null || Rs2Inventory.get("Coins").getQuantity() < 1000) {
-                            Rs2Bank.withdrawX("Coins", Rs2Random.between(900,1100));
+                            Rs2Bank.withdrawX("Coins", Rs2Random.between(1000,1500));
                             sleepUntil(() -> Rs2Inventory.contains("Coins"), Rs2Random.between(2000, 5000));
                         }
                     }
