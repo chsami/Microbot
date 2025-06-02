@@ -251,6 +251,7 @@ public class f2pAccountBuilderScript extends Script {
             if(craftingLvl >= 11 && craftingLvl < 14){craftingMaterial = "Leather"; craftingProduct = "Leather vambraces";}
             if(craftingLvl >= 14 && craftingLvl < 18){craftingMaterial = "Leather"; craftingProduct = "Leather body";}
             if(craftingLvl >= 18 && craftingLvl < 28){craftingMaterial = "Leather"; craftingProduct = "Leather chaps";}
+            if(craftingLvl >= 28){craftingMaterial = "Leather"; craftingProduct = "Leather chaps";}
 
 
             if(chosenSpot == null){
@@ -531,7 +532,7 @@ public class f2pAccountBuilderScript extends Script {
         String fishingAction = "Unknown";
         String fishingGear = "Unknown";
         int fishingLvl = Rs2Player.getRealSkillLevel(Skill.FISHING);
-        if(fishingLvl < 20){fishingGear = "Small fishing net"; fishingAction = "Net";}
+        if(fishingLvl < 21){fishingGear = "Small fishing net"; fishingAction = "Net";}
         if(fishingLvl >= 21){fishingGear = "Fly fishing rod"; fishingAction = "Lure";}
         String finalGear = fishingGear;
 
