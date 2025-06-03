@@ -820,9 +820,7 @@ public class f2pAccountBuilderScript extends Script {
     public void outOfOre(){
         //we need to buy copper ore
         if (Rs2Bank.getBankItem("Tin ore") == null || Rs2Bank.getBankItem("Tin ore").getQuantity() < 14) {
-            this.shouldThink = true;
-            Microbot.log("We need to mine more tin");
-            return;
+            openGEandBuyItem("Tin ore", Rs2Random.between(100,200));
         }
         if (Rs2Bank.getBankItem("Copper ore") == null || Rs2Bank.getBankItem("Copper ore").getQuantity() < 14) {
             openGEandBuyItem("Copper ore", Rs2Random.between(100,200));
