@@ -240,8 +240,10 @@ public class f2pAccountBuilderScript extends Script {
             sleepUntil(()-> Rs2GrandExchange.isOpen(), Rs2Random.between(2000,5000));
         }
         if(Rs2GrandExchange.isOpen()){
+
             Rs2ItemManager itemManager = new Rs2ItemManager();
-            int itemsPrice = itemManager.getGEPrice(item);
+            int itemsID = itemManager.getItemId(item);
+            int itemsPrice = itemManager.getGEPrice(itemsID);
             int totalCost = itemsPrice * howMany;
 
             if(totalCost > totalGP){
