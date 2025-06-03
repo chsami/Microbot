@@ -710,7 +710,7 @@ public class f2pAccountBuilderScript extends Script {
                         }
 
                         if (smeltingSilver) {
-                            if (Rs2Inventory.contains("Silver bar") || !Rs2Inventory.contains("Silver ore")) {
+                            if (Rs2Inventory.contains("Silver bar") || !Rs2Inventory.contains("Silver ore") || Rs2Inventory.contains(it->it!=null&&it.isNoted()) {
                                 walkToBankAndOpenIt();
 
                                 if (Rs2Bank.isOpen()) {
@@ -742,7 +742,7 @@ public class f2pAccountBuilderScript extends Script {
                         }
 
                         if (smeltingBronze) {
-                            if (Rs2Inventory.contains("Bronze bar") || !Rs2Inventory.contains("Copper ore") || !Rs2Inventory.contains("Tin ore")) {
+                            if (Rs2Inventory.contains("Bronze bar") || !Rs2Inventory.contains("Copper ore") || !Rs2Inventory.contains("Tin ore") || Rs2Inventory.contains(it->it!=null&&it.isNoted()) {
                                 walkToBankAndOpenIt();
 
                                 if (Rs2Bank.isOpen()) {
