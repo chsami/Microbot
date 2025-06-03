@@ -18,6 +18,7 @@ import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.item.Rs2ItemManager;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
@@ -27,9 +28,8 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.awt.event.KeyEvent;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
+
 
 public class f2pAccountBuilderScript extends Script {
 
@@ -38,6 +38,7 @@ public class f2pAccountBuilderScript extends Script {
     public volatile long scriptStartTime = System.currentTimeMillis();
     private long howLongUntilThink = Rs2Random.between(10,40);
     private int emptySlots = 0;
+    private int totalGP = 0;
 
     private boolean shouldWoodcut = false;
     private boolean shouldMine = false;
@@ -170,6 +171,8 @@ public class f2pAccountBuilderScript extends Script {
             sleepUntil(()-> Rs2Bank.isOpen(), Rs2Random.between(2000,5000));
         }
         if(Rs2Bank.isOpen()){
+            if(Rs2Bank.getBankItem("Coins") != null){totalGP = Rs2Bank.getBankItem("Coins").getQuantity();}
+
             if(emptySlots <= 24){
                 //When we transition between skills if there aren't 24 free slots
                 while(!Rs2Inventory.isEmpty()){
@@ -215,6 +218,10 @@ public class f2pAccountBuilderScript extends Script {
             if (Rs2Bank.walkToBank()) {
                 if (Rs2GameObject.interact(Rs2GameObject.getGameObject(it->it!=null&&it.getId() == ObjectID.BANKBOOTH &&it.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) < 15), "Bank") || Rs2Npc.interact(Rs2Npc.getNearestNpcWithAction("Bank"), "Bank")) {
                     sleepUntil(Rs2Bank::isOpen, Rs2Random.between(3000, 6000));
+                    if(Rs2Bank.isOpen()){
+                        //Count our coins
+                        if(Rs2Bank.getBankItem("Coins") != null){totalGP = Rs2Bank.getBankItem("Coins").getQuantity();}
+                    }
                 }
             }
         }
@@ -233,13 +240,18 @@ public class f2pAccountBuilderScript extends Script {
             sleepUntil(()-> Rs2GrandExchange.isOpen(), Rs2Random.between(2000,5000));
         }
         if(Rs2GrandExchange.isOpen()){
+            Rs2ItemManager itemManager = new Rs2ItemManager();
+            int itemsPrice = itemManager.getGEPrice(item);
+            int totalCost = itemsPrice * howMany;
 
-            if(Rs2GrandExchange.buyItemAboveXPercent(item, howMany, 20)){
-                sleepUntil(()-> Rs2GrandExchange.hasFinishedBuyingOffers(), Rs2Random.between(2000,5000));
-            } else {
+            if(totalCost > totalGP){
                 Microbot.log("We don't have enough GP :( re-rolling");
                 this.shouldThink = true;
                 return;
+            }
+
+            if(Rs2GrandExchange.buyItemAboveXPercent(item, howMany, 20)){
+                sleepUntil(()-> Rs2GrandExchange.hasFinishedBuyingOffers(), Rs2Random.between(2000,5000));
             }
 
             if(Rs2GrandExchange.hasFinishedBuyingOffers()){
