@@ -243,8 +243,11 @@ public class f2pAccountBuilderScript extends Script {
 
             Rs2ItemManager itemManager = new Rs2ItemManager();
             int itemsID = itemManager.getItemId(item);
-            int itemsPrice = itemManager.getGEPrice(itemsID);
+            if(item.equals("Leather")){itemsID = ItemID.LEATHER;} //Needed because getItemID returns the wrong itemID for Leather
+            int itemsPrice = itemManager.getPrice(itemsID);
             int totalCost = itemsPrice * howMany;
+
+            Microbot.log("This will cost "+totalCost+" and we have "+totalGP);
 
             if(totalCost > totalGP){
                 Microbot.log("We don't have enough GP :( re-rolling");
