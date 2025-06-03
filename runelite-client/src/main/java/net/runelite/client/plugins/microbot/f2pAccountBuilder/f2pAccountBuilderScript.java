@@ -730,7 +730,7 @@ public class f2pAccountBuilderScript extends Script {
                                 walkToBankAndOpenIt();
 
                                 if (Rs2Bank.isOpen()) {
-                                    if (Rs2Inventory.contains("Silver bar") || Rs2Inventory.contains(it->it!=null&&it.isNoted())) {
+                                    if (Rs2Inventory.contains("Silver bar") || Rs2Inventory.contains(it->it!=null&&it.isNoted()) || !Rs2Inventory.onlyContains(it->it!=null&&it.getId() == ItemID.SILVER_BAR || it.getId() == ItemID.SILVER_ORE)) {
                                         int random = Rs2Random.between(0, 100);
                                         if (random <= 75) {
                                             Rs2Bank.depositAll();
@@ -762,7 +762,7 @@ public class f2pAccountBuilderScript extends Script {
                                 walkToBankAndOpenIt();
 
                                 if (Rs2Bank.isOpen()) {
-                                    if (Rs2Inventory.contains("Bronze bar") || Rs2Inventory.isFull() || Rs2Inventory.contains(it->it!=null&&it.isNoted())) {
+                                    if (Rs2Inventory.contains("Bronze bar") || Rs2Inventory.isFull() || Rs2Inventory.contains(it->it!=null&&it.isNoted()) || !Rs2Inventory.onlyContains(it->it!=null&&it.getId() == ItemID.BRONZE_BAR || it.getId() == ItemID.COPPER_ORE || it.getId() == ItemID.TIN_ORE)) {
                                         int random = Rs2Random.between(0, 100);
                                         if (random <= 75) {
                                             Rs2Bank.depositAll();
