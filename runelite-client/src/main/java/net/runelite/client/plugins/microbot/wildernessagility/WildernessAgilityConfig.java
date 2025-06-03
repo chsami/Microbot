@@ -9,7 +9,7 @@ import net.runelite.client.config.ConfigSection;
 
 @ConfigGroup("wildernessagility")
 @ConfigInformation(
-    "Wilderness Agility v1.3.0" +
+    "Wilderness Agility v1.4.0" +
     "• Works both mass and solo<br>" +
     "• See discord for setup guides<br>" +
     "• Enable \"start at course?\" if you've already deposited 150k coins or want to run without getting loot (still will get tickets)<br>" +
@@ -61,13 +61,13 @@ public interface WildernessAgilityConfig extends Config {
     default boolean enableWorldHop() { return true; }
 
     @ConfigItem(
-        keyName = "useIcePlateauTp",
-        name = "Use Ice Plateau TP?",
-        description = "Withdraw an ice plateau teleport from the bank during banking.",
-        position = 15,
+        keyName = "swapBack",
+        name = "Swap back?",
+        description = "If enabled, swaps the player back to the original world after banking, before returning to the course.",
+        position = 16,
         section = bankingSection
     )
-    default boolean useIcePlateauTp() { return true; }
+    default boolean swapBack() { return false; }
 
     // Add enum for dropdown
     enum BankWorldOption {
@@ -98,6 +98,15 @@ public interface WildernessAgilityConfig extends Config {
     }
 
     @ConfigItem(
+        keyName = "useIcePlateauTp",
+        name = "Use Ice Plateau TP?",
+        description = "Withdraw an ice plateau teleport from the bank during banking.",
+        position = 15,
+        section = bankingSection
+    )
+    default boolean useIcePlateauTp() { return true; }
+
+    @ConfigItem(
         keyName = "bankNow",
         name = "Bank now",
         description = "Force banking on the next dispenser loot regardless of threshold.",
@@ -105,4 +114,12 @@ public interface WildernessAgilityConfig extends Config {
         section = bankingSection
     )
     default boolean bankNow() { return false; }
+
+    @ConfigItem(
+        keyName = "runBack",
+        name = "Run back after death?",
+        description = "If enabled, after dying the script will run to the nearest bank and resume.",
+        position = 222
+    )
+    default boolean runBack() { return false; }
 } 
