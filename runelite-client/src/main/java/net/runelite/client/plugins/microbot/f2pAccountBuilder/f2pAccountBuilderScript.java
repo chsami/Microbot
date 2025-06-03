@@ -206,7 +206,7 @@ public class f2pAccountBuilderScript extends Script {
                     return;
                 }
 
-                if(!Rs2Inventory.contains(item) && Rs2Inventory.get("Coins").getQuantity() >= 1000){
+                if(!Rs2Inventory.contains(item) && totalCost < totalGP){
                     openGEandBuyItem(item, howMany);
                 }
             }
