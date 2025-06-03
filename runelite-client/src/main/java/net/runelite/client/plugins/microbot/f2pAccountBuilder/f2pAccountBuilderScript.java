@@ -192,16 +192,17 @@ public class f2pAccountBuilderScript extends Script {
                 }
             } else {
                 //We need to buy the item
-                if(Rs2Bank.getBankItem("Coins") != null){
-                    if(Rs2Bank.getBankItem("Coins").getQuantity() >= 1000){
-                        if(Rs2Inventory.get("Coins") == null || Rs2Inventory.get("Coins").getQuantity() < 1000) {
-                            Rs2Bank.withdrawX("Coins", Rs2Random.between(1000,1500));
-                            sleepUntil(() -> Rs2Inventory.contains("Coins"), Rs2Random.between(2000, 5000));
-                        }
-                    }
-                } else {
-                    Microbot.log("Can't buy the "+item+" changing activity.");
-                    shouldThink = true;
+                Rs2ItemManager itemManager = new Rs2ItemManager();
+                int itemsID = itemManager.getItemId(item);
+                if(item.equals("Leather")){itemsID = ItemID.LEATHER;} //Needed because getItemID returns the wrong itemID for Leather
+                int itemsPrice = itemManager.getGEPrice(itemsID);
+                int totalCost = itemsPrice * howMany;
+
+                Microbot.log("This will cost "+totalCost+" and we have "+totalGP);
+
+                if(totalCost > totalGP){
+                    Microbot.log("We don't have enough GP :( re-rolling");
+                    this.shouldThink = true;
                     return;
                 }
 
