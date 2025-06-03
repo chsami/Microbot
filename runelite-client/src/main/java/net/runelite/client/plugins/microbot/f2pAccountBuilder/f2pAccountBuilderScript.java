@@ -191,12 +191,14 @@ public class f2pAccountBuilderScript extends Script {
                     sleepUntil(() -> Rs2Inventory.contains(item), Rs2Random.between(2000, 5000));
                 }
             } else {
-                //We need to buy the item
                 Rs2ItemManager itemManager = new Rs2ItemManager();
-                int itemsID = itemManager.getItemId(item);
+                int itemsID = itemManager.getItemId(item); // Get our Items ID
                 if(item.equals("Leather")){itemsID = ItemID.LEATHER;} //Needed because getItemID returns the wrong itemID for Leather
-                int itemsPrice = itemManager.getGEPrice(itemsID);
-                int totalCost = itemsPrice * howMany;
+                int itemsPrice = itemManager.getGEPrice(itemsID); // Get our items price
+                int totalCost = itemsPrice * howMany; // Get how much it'll cost all together
+                double getTwentyPercent = totalCost * 0.30; // Get 20 percent of the total cost
+                double addTwentyPercent = getTwentyPercent + totalCost; // add the 20% we calculated to the total cost
+                totalCost = (int) addTwentyPercent; // convert it back to an int
 
                 Microbot.log("This will cost "+totalCost+" and we have "+totalGP);
 
@@ -243,10 +245,13 @@ public class f2pAccountBuilderScript extends Script {
         if(Rs2GrandExchange.isOpen()){
 
             Rs2ItemManager itemManager = new Rs2ItemManager();
-            int itemsID = itemManager.getItemId(item);
+            int itemsID = itemManager.getItemId(item); // Get our Items ID
             if(item.equals("Leather")){itemsID = ItemID.LEATHER;} //Needed because getItemID returns the wrong itemID for Leather
-            int itemsPrice = itemManager.getGEPrice(itemsID);
-            int totalCost = itemsPrice * howMany;
+            int itemsPrice = itemManager.getGEPrice(itemsID); // Get our items price
+            int totalCost = itemsPrice * howMany; // Get how much it'll cost all together
+            double getTwentyPercent = totalCost * 0.30; // Get 20 percent of the total cost
+            double addTwentyPercent = getTwentyPercent + totalCost; // add the 20% we calculated to the total cost
+            totalCost = (int) addTwentyPercent; // convert it back to an int
 
             Microbot.log("This will cost "+totalCost+" and we have "+totalGP);
 
@@ -256,7 +261,7 @@ public class f2pAccountBuilderScript extends Script {
                 return;
             }
 
-            if(Rs2GrandExchange.buyItemAboveXPercent(item, howMany, 20)){
+            if(Rs2GrandExchange.buyItemAboveXPercent(item, howMany, 30)){
                 sleepUntil(()-> Rs2GrandExchange.hasFinishedBuyingOffers(), Rs2Random.between(2000,5000));
             }
 
