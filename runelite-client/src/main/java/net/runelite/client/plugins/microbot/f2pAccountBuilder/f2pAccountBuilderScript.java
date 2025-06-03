@@ -149,6 +149,13 @@ public class f2pAccountBuilderScript extends Script {
         }
     }
 
+    public void closeTheBank(){
+        if(Rs2Bank.isOpen()){
+            Rs2Bank.closeBank();
+            sleepUntil(()-> !Rs2Bank.isOpen(), Rs2Random.between(2000,5000));
+        }
+    }
+
     public void thinkBasedOnTime(){
             long currentTime = System.currentTimeMillis();
             if (currentTime - scriptStartTime >= howLongUntilThink * 60 * 1000) {
@@ -231,10 +238,8 @@ public class f2pAccountBuilderScript extends Script {
     }
 
     public void openGEandBuyItem(String item, int howMany){
-        if(Rs2Bank.isOpen()){
-            Rs2Bank.closeBank();
-            sleepUntil(()-> !Rs2Bank.isOpen(), Rs2Random.between(2000,5000));
-        }
+        closeTheBank();
+
         if(Rs2Player.getWorldLocation().distanceTo(BankLocation.GRAND_EXCHANGE.getWorldPoint()) > 7){
             Rs2Walker.walkTo(BankLocation.GRAND_EXCHANGE.getWorldPoint());
         }
@@ -297,10 +302,7 @@ public class f2pAccountBuilderScript extends Script {
                     Rs2Walker.walkTo(chosenSpot);
                 } else {
                     if(Rs2Inventory.contains(craftingMaterial) && Rs2Inventory.contains("Thread") && Rs2Inventory.contains("Needle")){
-                        if(Rs2Bank.isOpen()){
-                            Rs2Bank.closeBank();
-                            sleepUntil(()-> !Rs2Bank.isOpen(), Rs2Random.between(2000,5000));
-                        }
+                        closeTheBank();
 
                         Rs2Inventory.combine("Needle", "Leather");
 
@@ -384,6 +386,8 @@ public class f2pAccountBuilderScript extends Script {
                         Rs2Walker.walkTo(chosenSpot);
                     } else {
                         if(Rs2Inventory.contains(whatToCook)){
+                            closeTheBank();
+
                             GameObject range = Rs2GameObject.getGameObject("Range");
                             if (range != null) {
                                 if (!Rs2Camera.isTileOnScreen(range.getLocalLocation())) {
@@ -472,6 +476,8 @@ public class f2pAccountBuilderScript extends Script {
                                 Rs2Bank.closeBank();
                             }
                         } else {
+                            closeTheBank();
+
                             GameObject ourTree = Rs2GameObject.getGameObject(treeToChop, true);
                             if(ourTree!=null){
                                if(!Rs2Player.isAnimating()){
@@ -543,6 +549,8 @@ public class f2pAccountBuilderScript extends Script {
                                 Rs2Inventory.dropAllExcept(axeToUse);
                             }
                         } else {
+                            closeTheBank();
+
                             GameObject ourRock = Rs2GameObject.getGameObject(rockToMine);
                             if(ourRock!=null){
                                 if(!Rs2Player.isAnimating()){
@@ -654,6 +662,8 @@ public class f2pAccountBuilderScript extends Script {
                                     return;
                                 }
                             }
+
+                            closeTheBank();
 
                             Rs2NpcModel ourFishingSpot = Rs2Npc.getNpc("Fishing spot");
                             if(ourFishingSpot!=null){
@@ -892,10 +902,7 @@ public class f2pAccountBuilderScript extends Script {
                             }
                         }
                         if(Rs2Inventory.contains(logsToBurn) && Rs2Inventory.contains(ItemID.TINDERBOX)){
-                            if(Rs2Bank.isOpen()){
-                                Rs2Bank.closeBank();
-                                sleepUntil(()-> Rs2Bank.isOpen(), Rs2Random.between(2000,5000));
-                            }
+                            closeTheBank();
 
                             GameObject fire = Rs2GameObject.getGameObject(it->it!=null&&it.getId()==ObjectID.FIRE&&it.getWorldLocation().equals(Rs2Player.getWorldLocation()));
 
