@@ -320,7 +320,7 @@ public class f2pAccountBuilderScript extends Script {
                     }
                     if(!Rs2Inventory.contains(craftingMaterial) || Rs2Inventory.count(craftingMaterial) < 3 || !Rs2Inventory.contains("Thread") || !Rs2Inventory.contains("Needle")  || Rs2Inventory.contains(it->it!=null&&it.isNoted())){
                         walkToBankAndOpenIt();
-                        if(Rs2Inventory.contains(craftingProduct) || Rs2Inventory.isFull() || Rs2Inventory.contains(it->it!=null&&it.isNoted())){
+                        if(Rs2Inventory.contains(craftingProduct) || Rs2Inventory.isFull() || Rs2Inventory.contains(it->it!=null&&it.isNoted()) || !Rs2Inventory.onlyContains(it->it!=null&&it.getId() == ItemID.NEEDLE || it.getId() == ItemID.THREAD || it.getName().equals("Leather"))){
                             Rs2Bank.depositAll();
                             sleepUntil(()-> Rs2Inventory.isEmpty(), Rs2Random.between(2000,5000));
                         }
@@ -405,7 +405,7 @@ public class f2pAccountBuilderScript extends Script {
                             walkToBankAndOpenIt();
 
                             if (Rs2Bank.isOpen()) {
-                                if(Rs2Inventory.contains("Cooked chicken")){
+                                if(Rs2Inventory.contains("Cooked chicken") || !Rs2Inventory.onlyContains("Raw chicken")){
                                     Rs2Bank.depositAll();
                                     sleepUntil(()->!Rs2Inventory.contains("Cooked chicken"), Rs2Random.between(3000, 6000));
                                 }
@@ -872,7 +872,8 @@ public class f2pAccountBuilderScript extends Script {
                     if(Rs2Player.getWorldLocation().distanceTo(chosenSpot) > 15){
                         Rs2Walker.walkTo(chosenSpot);
                     } else {
-                        if(!Rs2Inventory.contains(logsToBurn) || !Rs2Inventory.contains(ItemID.TINDERBOX) || Rs2Inventory.contains(it->it!=null&&it.isNoted())){
+                        String fixedLogstoBurn = logsToBurn;
+                        if(!Rs2Inventory.contains(logsToBurn) || !Rs2Inventory.contains(ItemID.TINDERBOX) || Rs2Inventory.contains(it->it!=null&&it.isNoted()) || !Rs2Inventory.onlyContains(it->it!=null&&it.getName().equals(fixedLogstoBurn) || it.getId() == ItemID.TINDERBOX)){
                             walkToBankAndOpenIt();
 
                             if(Rs2Bank.isOpen()){
