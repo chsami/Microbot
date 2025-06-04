@@ -402,10 +402,8 @@ public class f2pAccountBuilderScript extends Script {
                             }
 
                             int amt = Rs2Random.between(100,200);
-                            if(Rs2Bank.getBankItem(gem) == null || Rs2Bank.getBankItem(gem).getQuantity() < 13){
+                            if(Rs2Bank.getBankItem(gem) == null || Rs2Bank.getBankItem(bar) == null || Rs2Bank.getBankItem(gem).getQuantity() < 13 ||  Rs2Bank.getBankItem(bar).getQuantity() < 13){
                                 goToBankandGrabAnItem(gem, amt);
-                            }
-                            if(Rs2Bank.getBankItem(bar) == null || Rs2Bank.getBankItem(bar).getQuantity() < 13){
                                 goToBankandGrabAnItem(bar, amt);
                                 return;
                             }
