@@ -46,6 +46,7 @@ public class f2pAccountBuilderScript extends Script {
     private boolean shouldFiremake = false;
     private boolean shouldCook = false;
     private boolean shouldCraft = false;
+    private boolean shouldSellItems = false;
 
     private boolean weChangeActivity = false;
 
@@ -77,6 +78,7 @@ public class f2pAccountBuilderScript extends Script {
 
                 //Skilling
 
+                sellItems();
 
 
                 long endTime = System.currentTimeMillis();
@@ -100,6 +102,8 @@ public class f2pAccountBuilderScript extends Script {
             this.shouldFiremake = false;
             this.shouldCook = false;
             this.shouldCraft = false;
+
+            this.shouldSellItems = false;
 
             this.chosenSpot = null;
             this.weChangeActivity = true;
@@ -144,6 +148,12 @@ public class f2pAccountBuilderScript extends Script {
             if(random > 600 && random <= 700){
                 Microbot.log("We're going to craft.");
                 shouldCraft = true;
+                shouldThink = false;
+                return;
+            }
+            if(random > 700 && random <= 800){
+                Microbot.log("We're going to sell what we have.");
+                shouldSellItems = true;
                 shouldThink = false;
                 return;
             }
@@ -287,83 +297,217 @@ public class f2pAccountBuilderScript extends Script {
         }
     }
 
+    public void sellItems(){
+        if(shouldSellItems){
+            String[] items = {"Bronze bar", "Silver bar", "Diamond necklace", "Sapphire necklace", "Emerald necklace", "Ruby necklace", "Cooked chicken"};
+
+            if(!Rs2Bank.isOpen()){
+                walkToBankAndOpenIt();
+            }
+
+            if(Rs2Bank.isOpen()){
+                Rs2Bank.setWithdrawAsNote();
+
+                for (String item : items) {
+                    if(Rs2Bank.getBankItem(item) != null){
+                        Rs2Bank.withdrawAll(item);
+                        sleepUntil(()-> Rs2Inventory.contains(item), Rs2Random.between(2000,5000));
+                    }
+                }
+
+            }
+
+            closeTheBank();
+
+            Rs2GrandExchange.openExchange();
+            sleepUntil(()-> Rs2GrandExchange.isOpen(), Rs2Random.between(2000,5000));
+
+            if(Rs2GrandExchange.isOpen()){
+                for (String item : items) {
+                    if(Rs2Inventory.get(item) != null){
+                        Rs2GrandExchange.sellItemUnder5Percent(item);
+                        sleepUntil(()-> Rs2GrandExchange.hasFinishedSellingOffers(), Rs2Random.between(2000,5000));
+                    }
+                }
+                if(Rs2GrandExchange.hasFinishedSellingOffers()){
+                    Rs2GrandExchange.collectToBank();
+                }
+            }
+
+            shouldThink = true;
+        }
+    }
+
     //skilling
 
     public void craft(){
         if(shouldCraft){
             String craftingMaterial = "Unknown";
             String craftingProduct = "Unknown";
+            String mould = "Unknown";
+            String gem = "Unknown";
+            String bar = "Unknown";
+
             int craftingLvl = Rs2Player.getRealSkillLevel(Skill.CRAFTING);
             if(craftingLvl < 7){craftingMaterial = "Leather"; craftingProduct = "Leather gloves";}
             if(craftingLvl >= 7 && craftingLvl < 9){craftingMaterial = "Leather"; craftingProduct = "Leather boots";}
             if(craftingLvl >= 9 && craftingLvl < 11){craftingMaterial = "Leather"; craftingProduct = "Leather cowl";}
             if(craftingLvl >= 11 && craftingLvl < 14){craftingMaterial = "Leather"; craftingProduct = "Leather vambraces";}
             if(craftingLvl >= 14 && craftingLvl < 18){craftingMaterial = "Leather"; craftingProduct = "Leather body";}
-            if(craftingLvl >= 18 && craftingLvl < 28){craftingMaterial = "Leather"; craftingProduct = "Leather chaps";}
-            if(craftingLvl >= 28){craftingMaterial = "Leather"; craftingProduct = "Leather chaps";}
+            if(craftingLvl >= 18 && craftingLvl < 22){craftingMaterial = "Leather"; craftingProduct = "Leather chaps";}
+            if(craftingLvl >= 22 && craftingLvl < 29){mould = "Necklace mould"; gem = "Sapphire"; bar = "Gold bar"; craftingProduct ="Sapphire necklace";}
+            if(craftingLvl >= 29 && craftingLvl < 40){mould = "Necklace mould"; gem = "Emerald"; bar = "Gold bar"; craftingProduct ="Emerald necklace";}
+            if(craftingLvl >= 40 && craftingLvl < 56){mould = "Necklace mould"; gem = "Ruby"; bar = "Gold bar"; craftingProduct ="Ruby necklace";}
+            if(craftingLvl >= 56){mould = "Necklace mould"; gem = "Diamond"; bar = "Gold bar"; craftingProduct ="Diamond necklace";}
+
 
 
             if(chosenSpot == null){
-                chosenSpot = BankLocation.GRAND_EXCHANGE.getWorldPoint();
+                if(bar.equals("Gold bar")) {
+                    chosenSpot = new WorldPoint(3106, 3498, 0); // edgeville smelter
+                }
+                if(craftingMaterial.equals("Leather")) {
+                    chosenSpot = BankLocation.GRAND_EXCHANGE.getWorldPoint();
+                }
             }
 
             if(chosenSpot != null){
                 if(Rs2Player.getWorldLocation().distanceTo(chosenSpot) > 12){
                     Rs2Walker.walkTo(chosenSpot);
                 } else {
-                    if(Rs2Inventory.contains(craftingMaterial) && Rs2Inventory.contains("Thread") && Rs2Inventory.contains("Needle")){
-                        closeTheBank();
+                    if(bar.equals("Gold bar")) {
+                        if(!Rs2Inventory.contains(mould) || !Rs2Inventory.contains(gem) || !Rs2Inventory.contains(bar) || Rs2Inventory.contains(craftingProduct) || Rs2Inventory.contains(it -> it != null && it.isNoted()) || weChangeActivity){
+                            if(weChangeActivity || Rs2Inventory.contains(it -> it != null && it.isNoted())){
+                                Rs2Bank.depositAll();
+                                sleepUntil(() -> Rs2Inventory.isEmpty(), Rs2Random.between(2000, 5000));
+                                if (Rs2Inventory.isEmpty()) {
+                                    weChangeActivity = false;
+                                }
+                            }
+                            if(Rs2Inventory.contains(craftingProduct) || Rs2Inventory.isFull()){
+                                int random = Rs2Random.between(0,100);
+                                if(random <= 75){
+                                    Rs2Bank.depositAll(craftingProduct);
+                                    String finalCraftingProduct = craftingProduct;
+                                    sleepUntil(() -> !Rs2Inventory.contains(finalCraftingProduct), Rs2Random.between(2000, 5000));
+                                } else {
+                                    Rs2Bank.depositAll();
+                                    sleepUntil(() -> Rs2Inventory.isEmpty(), Rs2Random.between(2000, 5000));
+                                }
 
-                        Rs2Inventory.combine("Needle", "Leather");
+                            }
 
-                        String whatWereCrafting = craftingProduct;
-                        sleepUntil(()-> Rs2Widget.hasWidget(whatWereCrafting), Rs2Random.between(2000,5000));
+                            if(Rs2Bank.getBankItem(mould) == null){
+                                goToBankandGrabAnItem(mould, 1);
+                            }
 
-                        Widget craftingWidget = Rs2Widget.findWidget(craftingProduct);
-                        if(craftingWidget != null){
-                            Rs2Widget.clickWidget(craftingWidget);
-                        } else {
-                            Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
+                            int amt = Rs2Random.between(100,200);
+                            if(Rs2Bank.getBankItem(gem) == null || Rs2Bank.getBankItem(gem).getQuantity() < 13){
+                                goToBankandGrabAnItem(gem, amt);
+                            }
+                            if(Rs2Bank.getBankItem(bar) == null || Rs2Bank.getBankItem(bar).getQuantity() < 13){
+                                goToBankandGrabAnItem(bar, amt);
+                                return;
+                            }
+
+                            while(Rs2Inventory.count(mould) < 1 && Rs2Inventory.count(gem) < 13 && Rs2Inventory.count(bar) < 13){
+                                if(!super.isRunning()){break;}
+                                if(Rs2Inventory.isFull()){Rs2Bank.depositAll();}
+
+                                if(!Rs2Inventory.contains(mould) && Rs2Random.between(0,100) < 60){
+                                    Rs2Bank.withdrawOne(mould);
+                                    String finalMould = mould;
+                                    sleepUntil(() -> Rs2Inventory.contains(finalMould), Rs2Random.between(2000, 5000));
+                                }
+                                if(Rs2Inventory.count(gem) < 13 && Rs2Random.between(0,100) < 60){
+                                    Rs2Bank.withdrawX(gem, 13);
+                                    String finalGem = gem;
+                                    sleepUntil(() -> Rs2Inventory.contains(finalGem), Rs2Random.between(2000, 5000));
+                                }
+                                if(Rs2Inventory.count(bar) < 13 && Rs2Random.between(0,100) < 60){
+                                    Rs2Bank.withdrawX(bar, 13);
+                                    String finalBar = bar;
+                                    sleepUntil(() -> Rs2Inventory.contains(finalBar), Rs2Random.between(2000, 5000));
+                                }
+                            }
                         }
 
-                        sleepThroughMulipleAnimations();
+                        if(Rs2Inventory.contains(mould) && Rs2Inventory.contains(gem) && Rs2Inventory.contains(bar)){
+                            GameObject furnace = Rs2GameObject.findObject("furnace", true, 10, false, chosenSpot);
+
+                            if (furnace == null) {
+                                Rs2Walker.walkTo(chosenSpot);
+                                return;
+                            }
+
+                            if (!Rs2Camera.isTileOnScreen(furnace.getLocalLocation())) {
+                                Rs2Camera.turnTo(furnace.getLocalLocation());
+                                return;
+                            }
+
+                            Rs2GameObject.interact(furnace, "smelt");
+                            sleepUntilTrue(() -> Rs2Widget.isGoldCraftingWidgetOpen() || Rs2Widget.isSilverCraftingWidgetOpen(), 500, 20000);
+                            Rs2Widget.clickWidget(craftingProduct);
+                            sleepThroughMulipleAnimations();
+                        }
+
                     }
-                    if(!Rs2Inventory.contains(craftingMaterial) || Rs2Inventory.count(craftingMaterial) < 3 || !Rs2Inventory.contains("Thread") || !Rs2Inventory.contains("Needle")  || Rs2Inventory.contains(it->it!=null&&it.isNoted())){
-                        walkToBankAndOpenIt();
-                        if(Rs2Inventory.contains(craftingProduct) || Rs2Inventory.isFull() || Rs2Inventory.contains(it->it!=null&&it.isNoted()) || weChangeActivity){
-                            Rs2Bank.depositAll();
-                            sleepUntil(()-> Rs2Inventory.isEmpty(), Rs2Random.between(2000,5000));
-                            if(Rs2Inventory.isEmpty()){
-                                weChangeActivity = false;
+
+                    if(craftingMaterial.equals("Leather")) {
+                        if (Rs2Inventory.contains(craftingMaterial) && Rs2Inventory.contains("Thread") && Rs2Inventory.contains("Needle")) {
+                            closeTheBank();
+
+                            Rs2Inventory.combine("Needle", "Leather");
+
+                            String whatWereCrafting = craftingProduct;
+                            sleepUntil(() -> Rs2Widget.hasWidget(whatWereCrafting), Rs2Random.between(2000, 5000));
+
+                            Widget craftingWidget = Rs2Widget.findWidget(craftingProduct);
+                            if (craftingWidget != null) {
+                                Rs2Widget.clickWidget(craftingWidget);
+                            } else {
+                                Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
                             }
+
+                            sleepThroughMulipleAnimations();
                         }
-                        if(!Rs2Inventory.contains("Thread")){
-                            if(Rs2Bank.isOpen()){
-                                if(Rs2Bank.getBankItem("Thread", true) != null && Rs2Bank.getBankItem("Thread", true).getQuantity() > 10){
-                                    Rs2Bank.withdrawAll("Thread", true);
-                                    sleepUntil(()-> Rs2Inventory.contains("Thread"), Rs2Random.between(2000,5000));
-                                } else {
-                                    openGEandBuyItem("Thread", Rs2Random.between(100,200));
+                        if (!Rs2Inventory.contains(craftingMaterial) || Rs2Inventory.count(craftingMaterial) < 3 || !Rs2Inventory.contains("Thread") || !Rs2Inventory.contains("Needle") || Rs2Inventory.contains(it -> it != null && it.isNoted())) {
+                            walkToBankAndOpenIt();
+                            if (Rs2Inventory.contains(craftingProduct) || Rs2Inventory.isFull() || Rs2Inventory.contains(it -> it != null && it.isNoted()) || weChangeActivity) {
+                                Rs2Bank.depositAll();
+                                sleepUntil(() -> Rs2Inventory.isEmpty(), Rs2Random.between(2000, 5000));
+                                if (Rs2Inventory.isEmpty()) {
+                                    weChangeActivity = false;
                                 }
                             }
-                        }
-                        if(!Rs2Inventory.contains("Needle")){
-                            if(Rs2Bank.isOpen()){
-                                if(Rs2Bank.getBankItem("Needle", true) != null){
-                                    Rs2Bank.withdrawAll("Needle", true);
-                                    sleepUntil(()-> Rs2Inventory.contains("Needle"), Rs2Random.between(2000,5000));
-                                } else {
-                                    openGEandBuyItem("Needle", 1);
+                            if (!Rs2Inventory.contains("Thread")) {
+                                if (Rs2Bank.isOpen()) {
+                                    if (Rs2Bank.getBankItem("Thread", true) != null && Rs2Bank.getBankItem("Thread", true).getQuantity() > 10) {
+                                        Rs2Bank.withdrawAll("Thread", true);
+                                        sleepUntil(() -> Rs2Inventory.contains("Thread"), Rs2Random.between(2000, 5000));
+                                    } else {
+                                        openGEandBuyItem("Thread", Rs2Random.between(100, 200));
+                                    }
                                 }
                             }
-                        }
-                        if(Rs2Inventory.contains("Needle") && Rs2Inventory.contains("Thread") && !Rs2Inventory.isFull() && !Rs2Inventory.contains(craftingMaterial) || Rs2Inventory.count(craftingMaterial) < 3){
-                            if(Rs2Bank.isOpen()){
-                                if(Rs2Bank.getBankItem(craftingMaterial, true) != null){
-                                    Rs2Bank.withdrawAll(craftingMaterial, true);
-                                    Rs2Inventory.waitForInventoryChanges(5000);
-                                } else {
-                                    openGEandBuyItem(craftingMaterial, Rs2Random.between(100,300));
+                            if (!Rs2Inventory.contains("Needle")) {
+                                if (Rs2Bank.isOpen()) {
+                                    if (Rs2Bank.getBankItem("Needle", true) != null) {
+                                        Rs2Bank.withdrawAll("Needle", true);
+                                        sleepUntil(() -> Rs2Inventory.contains("Needle"), Rs2Random.between(2000, 5000));
+                                    } else {
+                                        openGEandBuyItem("Needle", 1);
+                                    }
+                                }
+                            }
+                            if (Rs2Inventory.contains("Needle") && Rs2Inventory.contains("Thread") && !Rs2Inventory.isFull() && !Rs2Inventory.contains(craftingMaterial) || Rs2Inventory.count(craftingMaterial) < 3) {
+                                if (Rs2Bank.isOpen()) {
+                                    if (Rs2Bank.getBankItem(craftingMaterial, true) != null) {
+                                        Rs2Bank.withdrawAll(craftingMaterial, true);
+                                        Rs2Inventory.waitForInventoryChanges(5000);
+                                    } else {
+                                        openGEandBuyItem(craftingMaterial, Rs2Random.between(100, 300));
+                                    }
                                 }
                             }
                         }
