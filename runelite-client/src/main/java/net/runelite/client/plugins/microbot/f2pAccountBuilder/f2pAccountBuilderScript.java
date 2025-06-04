@@ -319,18 +319,26 @@ public class f2pAccountBuilderScript extends Script {
 
             closeTheBank();
 
-            Rs2GrandExchange.openExchange();
-            sleepUntil(()-> Rs2GrandExchange.isOpen(), Rs2Random.between(2000,5000));
+            if(!Rs2Inventory.isEmpty()) {
 
-            if(Rs2GrandExchange.isOpen()){
-                for (String item : items) {
-                    if(Rs2Inventory.get(item) != null){
-                        Rs2GrandExchange.sellItemUnder5Percent(item);
-                        sleepUntil(()-> Rs2GrandExchange.hasFinishedSellingOffers(), Rs2Random.between(2000,5000));
-                    }
+                if(Rs2Player.getWorldLocation().distanceTo(BankLocation.GRAND_EXCHANGE.getWorldPoint()) > 12){
+                    Rs2Walker.walkTo(BankLocation.GRAND_EXCHANGE.getWorldPoint());
                 }
-                if(Rs2GrandExchange.hasFinishedSellingOffers()){
-                    Rs2GrandExchange.collectToBank();
+
+                if(Rs2GrandExchange.openExchange()){
+                    sleepUntil(() -> Rs2GrandExchange.isOpen(), Rs2Random.between(5000, 15000));
+                }
+
+                if (Rs2GrandExchange.isOpen()) {
+                    for (String item : items) {
+                        if (Rs2Inventory.get(item) != null) {
+                            Rs2GrandExchange.sellItemUnder5Percent(item);
+                            sleepUntil(() -> Rs2GrandExchange.hasFinishedSellingOffers(), Rs2Random.between(2000, 5000));
+                        }
+                    }
+                    if (Rs2GrandExchange.hasFinishedSellingOffers()) {
+                        Rs2GrandExchange.collectToBank();
+                    }
                 }
             }
 
