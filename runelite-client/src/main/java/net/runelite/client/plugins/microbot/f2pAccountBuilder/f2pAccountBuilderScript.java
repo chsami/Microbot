@@ -684,6 +684,10 @@ public class f2pAccountBuilderScript extends Script {
                         chosenSpot = spot1;
                     } else {
                         chosenSpot = spot2;
+                        if(Rs2Player.getCombatLevel() < 30){
+                            Microbot.log("We can't mine at Al Kharid until we get 30 combat");
+                            chosenSpot = spot1;
+                        }
                     }
 
                 }
