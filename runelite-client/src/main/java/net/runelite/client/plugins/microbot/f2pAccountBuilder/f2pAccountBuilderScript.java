@@ -410,7 +410,7 @@ public class f2pAccountBuilderScript extends Script {
                                 return;
                             }
 
-                            while(Rs2Inventory.count(mould) < 1 && Rs2Inventory.count(gem) < 13 && Rs2Inventory.count(bar) < 13){
+                            while(Rs2Inventory.count(mould) < 1 || Rs2Inventory.count(gem) < 13 || Rs2Inventory.count(bar) < 13){
                                 if(!super.isRunning()){break;}
                                 if(Rs2Inventory.isFull()){Rs2Bank.depositAll();}
 
