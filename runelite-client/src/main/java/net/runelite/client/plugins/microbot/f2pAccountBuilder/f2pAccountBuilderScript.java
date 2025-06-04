@@ -377,6 +377,8 @@ public class f2pAccountBuilderScript extends Script {
                 } else {
                     if(bar.equals("Gold bar")) {
                         if(!Rs2Inventory.contains(mould) || !Rs2Inventory.contains(gem) || !Rs2Inventory.contains(bar) || Rs2Inventory.contains(craftingProduct) || Rs2Inventory.contains(it -> it != null && it.isNoted()) || weChangeActivity){
+                            walkToBankAndOpenIt();
+
                             if(weChangeActivity || Rs2Inventory.contains(it -> it != null && it.isNoted())){
                                 Rs2Bank.depositAll();
                                 sleepUntil(() -> Rs2Inventory.isEmpty(), Rs2Random.between(2000, 5000));
