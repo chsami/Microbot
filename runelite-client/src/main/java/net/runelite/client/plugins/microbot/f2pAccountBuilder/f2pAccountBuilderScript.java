@@ -433,6 +433,8 @@ public class f2pAccountBuilderScript extends Script {
                         }
 
                         if(Rs2Inventory.contains(mould) && Rs2Inventory.contains(gem) && Rs2Inventory.contains(bar)){
+                            closeTheBank();
+
                             GameObject furnace = Rs2GameObject.findObject("furnace", true, 10, false, chosenSpot);
 
                             if (furnace == null) {
