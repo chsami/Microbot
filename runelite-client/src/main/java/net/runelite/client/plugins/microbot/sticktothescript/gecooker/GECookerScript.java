@@ -70,11 +70,6 @@ public class GECookerScript extends Script {
                 return;
             }
 
-            if (Rs2AntibanSettings.actionCooldownActive) {
-                debug("Cooldown active");
-                return;
-            }
-
             determineState(cookingItem, logType);
 
             // If the state is not cooking, then let's reset the variable as we are not expecting an XP drop
