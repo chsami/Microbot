@@ -7,6 +7,10 @@ import com.google.inject.Provides;
 import javax.inject.Inject;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.api.events.ChatMessage;
+import net.runelite.api.ChatMessageType;
+import net.runelite.client.util.Text;
+import net.runelite.client.eventbus.Subscribe;
 
 @PluginDescriptor(
     name = PluginDescriptor.Cranny + "Wilderness Agility",
@@ -50,5 +54,13 @@ public class WildernessAgilityPlugin extends Plugin {
             overlayManager.remove(overlay);
         }
         overlay.setActive(false);
+    }
+
+    @Subscribe
+    public void onChatMessage(ChatMessage chatMessage) {
+        String msg = Text.removeTags(chatMessage.getMessage());
+        if (chatMessage.getType() == ChatMessageType.FRIENDSCHATNOTIFICATION && msg.startsWith("Now talking in chat-channel")) {
+            script.setLastFcJoinMessageTime(System.currentTimeMillis());
+        }
     }
 } 

@@ -17,10 +17,15 @@ import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import javax.inject.Inject;
 import static net.runelite.api.Skill.AGILITY;
 import java.text.NumberFormat;
+import java.util.ArrayList;
+import java.util.Random;
+import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
+import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
+import net.runelite.api.widgets.Widget;
 
 
 public class WildernessAgilityScript extends Script {
-    public static final String VERSION = "1.4.0";
+    public static final String VERSION = "1.5.0";
     private WildernessAgilityConfig config;
     @Inject
     private WildernessAgilityPlugin plugin;
@@ -29,7 +34,7 @@ public class WildernessAgilityScript extends Script {
 
     private final List<WildernessAgilityObstacleModel> obstacles = Arrays.asList(
             new WildernessAgilityObstacleModel(23137, false),
-            new WildernessAgilityObstacleModel(23132, false),
+            new WildernessAgilityObstacleModel(23132, true),
             new WildernessAgilityObstacleModel(23556, false),
             new WildernessAgilityObstacleModel(23542, true),
             new WildernessAgilityObstacleModel(23640, false)
@@ -40,12 +45,20 @@ public class WildernessAgilityScript extends Script {
     public int lapCount = 0;
     public int dispenserLoots = 0;
     private long startTime = 0;
-    private boolean needsDispenserUnlock = false;
+    private boolean waitingForDispenserLoot = false;
 
     private static final int TICKET_ITEM_ID = 29460;
 
     private enum ObstacleState {
-        INIT, START, PIPE, ROPE, STONES, LOG, ROCKS, DISPENSER, CONFIG_CHECKS, BANKING, PIT_RECOVERY
+        INIT, START, PIPE, ROPE, STONES, LOG, ROCKS, DISPENSER, CONFIG_CHECKS,
+        WORLD_HOP_1, // hop to world 1
+        WORLD_HOP_2, // hop to world 2
+        WALK_TO_LEVER, // walk to lever
+        INTERACT_LEVER, // interact with lever and wait for teleport
+        BANKING, // perform banking
+        POST_BANK_CONFIG, // join FC, swap world, etc
+        WALK_TO_COURSE, // walk back to course/dispenser
+        SWAP_BACK, PIT_RECOVERY
     }
     private ObstacleState currentState = ObstacleState.START;
 
@@ -66,13 +79,6 @@ public class WildernessAgilityScript extends Script {
     private static final int TELEPORT_ID = 24963;
     private static final int COINS_ID = 995;
 
-    private enum BankingStep { WALK, OPEN_BANK, DEPOSIT, RETURN }
-    private BankingStep bankingStepEnum = BankingStep.WALK;
-
-    private long lastInteractionTime = 0;
-    private WorldPoint lastPosition = null;
-    private static final int STUCK_TIMEOUT = 5000; // 5 seconds
-
     private long pipeInteractionStartTime = 0;
     private static final int PIPE_WAIT_TIMEOUT = 5000; // 5 seconds
 
@@ -80,7 +86,6 @@ public class WildernessAgilityScript extends Script {
 
     private int bankingProgress = 0;
 
-    private boolean ropeInteractionStarted = false;
     private boolean ropeRecoveryWalked = false;
 
     private boolean pipeJustCompleted = false;
@@ -94,9 +99,6 @@ public class WildernessAgilityScript extends Script {
 
     private int dispenserPreValue = 0;
 
-    private static final int LOG_WAIT_TIMEOUT = 8000; // 8 seconds, matches XP_TIMEOUT
-    private long logInteractionStartTime = 0;
-
     private static final int ACTION_DELAY = 3000;
     private static final int XP_TIMEOUT = 8000;
 
@@ -109,23 +111,43 @@ public class WildernessAgilityScript extends Script {
     private int ropeStartXp = 0;
     private int stonesStartXp = 0;
 
-    private long pipeYThresholdTime = 0;
+    private long previousLapTime = 0;
+    private long fastestLapTime = Long.MAX_VALUE;
+    private long lastLapTimestamp = 0;
 
-    private int ladderTickCounter = 0;
+    private int originalWorld = -1;
+    private int bankWorld1 = -1;
+    private int bankWorld2 = -1;
+
+    private long lastLadderInteractTime = 0; // Add this field for ladder throttle
+
+    private int dispenserTicketsBefore = 0;
+
+    private volatile long lastFcJoinMessageTime = 0;
+    public void setLastFcJoinMessageTime(long time) { this.lastFcJoinMessageTime = time; }
+    public long getLastFcJoinMessageTime() { return lastFcJoinMessageTime; }
+
+    private boolean forceStartAtCourse = false;
 
     public WildernessAgilityScript() {
         // Empty constructor
     }
 
     private void info(String msg) {
+        // Only log dispenser value
         Microbot.log(msg);
         System.out.println(msg);
     }
 
     public boolean run(WildernessAgilityConfig config) {
         this.config = config;
-        bankingProgress = 0;
-        currentState = ObstacleState.START;
+        forceStartAtCourse = false; // Always reset on run
+        if (config.debugMode()) {
+            currentState = ObstacleState.valueOf(config.debugStartState().name());
+            Microbot.log("[DEBUG MODE] Starting in state: " + currentState);
+        } else {
+            currentState = ObstacleState.START;
+        }
         startTime = System.currentTimeMillis();
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
@@ -136,27 +158,26 @@ public class WildernessAgilityScript extends Script {
                     return;
                 }
 
-                // Check for pit fall first, before any other state changes
+                // Move global pitfall detection logic to the very top, broaden rope detection
                 WorldPoint currentLoc = Rs2Player.getWorldLocation();
                 if (currentLoc != null && isUnderground(currentLoc)) {
-                    // Set recovery target based on current state
-                    if (currentState == ObstacleState.ROPE || isWaitingForRope) {
+                    if (isWaitingForRope) {
                         pitRecoveryTarget = ObstacleState.ROPE;
                         isWaitingForRope = false;
-                    } else if (currentState == ObstacleState.LOG || isWaitingForLog) {
+                    } else if (currentState.ordinal() <= ObstacleState.ROPE.ordinal()) {
+                        pitRecoveryTarget = ObstacleState.ROPE;
+                    } else if (isWaitingForLog) {
                         pitRecoveryTarget = ObstacleState.LOG;
                         isWaitingForLog = false;
+                    } else if (currentState == ObstacleState.LOG) {
+                        pitRecoveryTarget = ObstacleState.LOG;
                     }
                     currentState = ObstacleState.PIT_RECOVERY;
                 }
 
-                if (System.currentTimeMillis() - lastInventoryCheck > 3000) {
-                    cachedInventoryValue = getInventoryValue();
-                    lastInventoryCheck = System.currentTimeMillis();
-                }
-
-                if (System.currentTimeMillis() - lastObjectCheck > 2000) {
+                if (System.currentTimeMillis() - lastObjectCheck > 1000) {
                     cachedDispenserObj = getDispenserObj();
+                    lastObjectCheck = System.currentTimeMillis();
                 }
 
                 switch (currentState) {
@@ -188,8 +209,29 @@ public class WildernessAgilityScript extends Script {
                     case CONFIG_CHECKS:
                         handleConfigChecks();
                         break;
+                    case WORLD_HOP_1:
+                        handleWorldHop1();
+                        break;
+                    case WORLD_HOP_2:
+                        handleWorldHop2();
+                        break;
+                    case WALK_TO_LEVER:
+                        handleWalkToLever();
+                        break;
+                    case INTERACT_LEVER:
+                        handleInteractLever();
+                        break;
                     case BANKING:
                         handleBanking();
+                        break;
+                    case POST_BANK_CONFIG:
+                        handlePostBankConfig();
+                        break;
+                    case WALK_TO_COURSE:
+                        handleWalkToCourse();
+                        break;
+                    case SWAP_BACK:
+                        handleSwapBack();
                         break;
                     case PIT_RECOVERY:
                         recoverFromPit();
@@ -223,7 +265,7 @@ public class WildernessAgilityScript extends Script {
             } catch (Exception ex) {
                 Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
             }
-        }, 0, 200, TimeUnit.MILLISECONDS);
+        }, 0, 100, TimeUnit.MILLISECONDS);
         return true;
     }
 
@@ -241,14 +283,11 @@ public class WildernessAgilityScript extends Script {
         isWaitingForRope = false;
         isWaitingForStones = false;
         isWaitingForLog = false;
-        lastInteractionTime = 0;
-        lastPosition = null;
-        bankingStepEnum = BankingStep.WALK;
         dispenserLootAttempts = 0;
         bankingProgress = 0;
-        ropeInteractionStarted = false;
         ropeRecoveryWalked = false;
         pipeJustCompleted = false;
+        Microbot.log("WildernessAgilityScript: shutdown called");
         super.shutdown();
     }
 
@@ -260,9 +299,13 @@ public class WildernessAgilityScript extends Script {
             currentState = ObstacleState.BANKING;
             return;
         }
-        sleep(7000);
-        attemptLogoutUntilLoggedOut();
-        Microbot.stopPlugin(plugin);
+        if (config.logoutAfterDeath()) {
+            sleep(12000); // Wait 12 seconds after dying
+            attemptLogoutUntilLoggedOut();
+            Microbot.stopPlugin(plugin);
+        } else {
+            Microbot.stopPlugin(plugin);
+        }
     }
 
     private boolean waitForInventoryChanges(int timeoutMs) {
@@ -298,25 +341,27 @@ public class WildernessAgilityScript extends Script {
     private TileObject getObstacleObj(int index) {
         return Rs2GameObject.findObjectById(obstacles.get(index).getObjectId());
     }
-    private boolean isInPit() {
-        WorldPoint loc = Rs2Player.getWorldLocation();
+    private boolean isUnderground(WorldPoint loc) {
         return loc != null && loc.getY() > 10000;
     }
     private void recoverFromPit() {
         // First check if we're still in the pit
-        if (isInPit()) {
-            ladderTickCounter++;
+        if (isUnderground(Rs2Player.getWorldLocation())) {
+            // Immediately refresh ladder object before attempting to interact
             List<TileObject> ladders = Rs2GameObject.getAll(o -> o.getId() == 17385, 104);
             TileObject ladderObj = ladders.isEmpty() ? null : ladders.get(0);
+            long now = System.currentTimeMillis();
             if (ladderObj != null && Rs2Player.getWorldLocation().distanceTo(ladderObj.getWorldLocation()) <= 50) {
-                // Only attempt to interact with the ladder every 3 ticks
-                if (ladderTickCounter % 3 == 0) {
+                // Only attempt to interact with the ladder every 2 seconds
+                if (now - lastLadderInteractTime > 2000) {
+                    // Refresh ladder object again just before interaction
+                    List<TileObject> laddersNow = Rs2GameObject.getAll(o -> o.getId() == 17385, 104);
+                    ladderObj = laddersNow.isEmpty() ? null : laddersNow.get(0);
                     Rs2GameObject.interact(ladderObj, "Climb-up");
+                    lastLadderInteractTime = now;
                 }
             }
             return; // Return here to let the next tick handle the state transition
-        } else {
-            ladderTickCounter = 0;
         }
 
         // If we're here, we've successfully climbed out of the pit
@@ -378,128 +423,6 @@ public class WildernessAgilityScript extends Script {
             ropeRecoveryWalked = false; // Reset if no recovery target
         }
     }
-    private WorldPoint getCurrentObstacleStart() {
-        switch (currentState) {
-            case PIPE:
-                return new WorldPoint(3004, 3937, 0);
-            case ROPE:
-                return new WorldPoint(3005, 3953, 0);
-            case STONES:
-                return new WorldPoint(2993, 3960, 0);
-            case LOG:
-                return new WorldPoint(2996, 3955, 0);
-            case ROCKS:
-                return new WorldPoint(2993, 3937, 0);
-            default:
-                return null;
-        }
-    }
-    private void clearInventoryIfNeeded() {
-        while (Rs2Inventory.items().size() >= 26 && isRunning()) {
-            if (Rs2Inventory.contains(FOOD_PRIMARY)) {
-                Rs2Inventory.interact(FOOD_PRIMARY, "Eat");
-                waitForInventoryChanges(getActionDelay());
-            } else if (Rs2Inventory.contains(FOOD_DROP)) {
-                Rs2Inventory.interact(FOOD_DROP, "Drop");
-                waitForInventoryChanges(800);
-            } else if (Rs2Inventory.contains(FOOD_SECONDARY)) {
-                Rs2Inventory.interact(FOOD_SECONDARY, "Eat");
-                waitForInventoryChanges(getActionDelay());
-            } else if (Rs2Inventory.contains(FOOD_TERTIARY)) {
-                Rs2Inventory.interact(FOOD_TERTIARY, "Eat");
-                waitForInventoryChanges(getActionDelay());
-            } else {
-                break;
-            }
-        }
-    }
-    private void handleBanking() {
-        handleBankingSequence();
-    }
-    private void handleBankingSequence() {
-        switch (bankingProgress) {
-            case 0:
-                WorldPoint mageBankTile = new WorldPoint(2534, 4712, 0);
-                if (!isAt(mageBankTile, 2)) {
-                    Rs2Walker.walkTo(mageBankTile, 2);
-                    return;
-                }
-                bankingProgress++;
-                break;
-            case 1:
-                if (!Rs2Bank.isOpen()) {
-                    Rs2Bank.openBank();
-                    sleepUntil(Rs2Bank::isOpen, 20000);
-                    if (!Rs2Bank.isOpen()) {
-                        return;
-                    }
-                }
-                bankingProgress++;
-                break;
-            case 2:
-                Rs2Bank.depositAll();
-                sleep(getActionDelay());
-                Rs2Bank.withdrawX(COINS_ID, 150000);
-                sleep(getActionDelay());
-                if (config.useIcePlateauTp()) {
-                    Rs2Bank.withdrawOne(TELEPORT_ID);
-                    sleep(getActionDelay());
-                }
-                Rs2Bank.withdrawOne(KNIFE_ID);
-                sleep(getActionDelay());
-                Rs2Bank.closeBank();
-                sleep(getActionDelay());
-                boolean hasAll = Rs2Inventory.hasItem(COINS_ID) && Rs2Inventory.hasItem(KNIFE_ID);
-                if (config.useIcePlateauTp()) {
-                    hasAll = hasAll && Rs2Inventory.hasItem(TELEPORT_ID);
-                }
-                if (hasAll) {
-                    bankingProgress++;
-                }
-                break;
-            case 3:
-                if (!isAt(START_POINT, 2)) {
-                    Rs2Walker.walkTo(START_POINT, 2);
-                    return;
-                }
-                TileObject dispenserObj = getDispenserObj();
-                if (dispenserObj != null) {
-                    int coinCount = Rs2Inventory.itemQuantity("Coins");
-                    if (coinCount >= 150000) {
-                        Rs2Inventory.use("Coins");
-                        sleep(400);
-                        Rs2GameObject.interact(dispenserObj, "Use");
-                        sleep(getActionDelay());
-                        // Wait for coins to be used
-                        if (sleepUntil(() -> Rs2Inventory.itemQuantity("Coins") < coinCount, getXpTimeout())) {
-                            needsDispenserUnlock = true;
-                            bankingProgress = 0;  // Reset for next time
-                            currentState = ObstacleState.PIPE;
-                            isWaitingForPipe = false;  // Ensure we start fresh
-                            return;
-                        }
-                    }
-                }
-                break;
-            case 4:
-                bankingProgress = 0;
-                break;
-            default:
-                bankingProgress = 0;
-                break;
-        }
-    }
-
-    private void attemptLogoutUntilLoggedOut() {
-        int maxAttempts = 30; // Try for up to 30 seconds
-        int attempts = 0;
-        while (!"LOGIN_SCREEN".equals(Microbot.getClient().getGameState().toString()) && attempts < maxAttempts) {
-            Rs2Player.logout();
-            sleep(1000); // Wait 1 second before trying again
-            attempts++;
-        }
-    }
-
     private void handlePipe() {
         if (isWaitingForPipe) {
             // Use XP drop to confirm pipe completion
@@ -509,8 +432,14 @@ public class WildernessAgilityScript extends Script {
                 currentState = ObstacleState.ROPE;
                 return;
             }
+            // Fail fast: if no animation/movement after failTimeoutMs, abort and retry
+            if (hasTimedOutSince(pipeInteractionStartTime, config.failTimeoutMs()) && !Rs2Player.isAnimating() && !Rs2Player.isMoving()) {
+                isWaitingForPipe = false;
+                pipeJustCompleted = false;
+                return;
+            }
             // Timeout: if too much time has passed, reset and retry
-            if (System.currentTimeMillis() - pipeInteractionStartTime > PIPE_WAIT_TIMEOUT) {
+            if (hasTimedOutSince(pipeInteractionStartTime, PIPE_WAIT_TIMEOUT)) {
                 if (!pipeJustCompleted) {
                     isWaitingForPipe = false;
                     pipeJustCompleted = false; // Clear on timeout
@@ -556,21 +485,18 @@ public class WildernessAgilityScript extends Script {
                 currentState = ObstacleState.PIT_RECOVERY;
             }
             isWaitingForRope = false;
-            ropeInteractionStarted = false;
             return;
         }
         if (isWaitingForRope) {
-            if (!ropeInteractionStarted) {
-                if (Rs2Player.isAnimating() || Rs2Player.isMoving()) {
-                    ropeInteractionStarted = true;
-                }
+            // Immediately check for XP gain or Y >= 3958
+            if (waitForXpChange(ropeStartXp, getXpTimeout()) || (loc != null && loc.getY() >= 3958)) {
+                isWaitingForRope = false;
+                currentState = ObstacleState.STONES;
                 return;
             }
-            // Now wait for XP drop or Y >= 3958
-            if (ropeInteractionStarted && (waitForXpChange(ropeStartXp, getXpTimeout()) || (loc != null && loc.getY() >= 3958))) {
+            // Fail fast: if no animation/movement after failTimeoutMs, abort and retry
+            if (hasTimedOutSince(lastObstacleInteractTime, config.failTimeoutMs()) && !Rs2Player.isAnimating() && !Rs2Player.isMoving()) {
                 isWaitingForRope = false;
-                ropeInteractionStarted = false;
-                currentState = ObstacleState.STONES;
                 return;
             }
             return;
@@ -581,7 +507,6 @@ public class WildernessAgilityScript extends Script {
                 boolean interacted = Rs2GameObject.interact(rope);
                 if (interacted) {
                     isWaitingForRope = true;
-                    ropeInteractionStarted = false;
                     ropeStartXp = Microbot.getClient().getSkillExperience(AGILITY);
                     lastObstacleInteractTime = System.currentTimeMillis();
                     lastObstaclePosition = Rs2Player.getWorldLocation();
@@ -593,18 +518,29 @@ public class WildernessAgilityScript extends Script {
         if (isWaitingForStones) {
             WorldPoint loc = Rs2Player.getWorldLocation();
             int currentXp = Microbot.getClient().getSkillExperience(AGILITY);
-            if (loc != null && loc.getY() > 3961) {
+            boolean yPassed = loc != null && loc.getY() > 3961;
+            boolean xPassed = loc != null && loc.getX() == 2996;
+            boolean xpPassed = currentXp > stonesStartXp;
+            if (yPassed) {
                 isWaitingForStones = false;
                 return;
             }
-            if (loc != null && loc.getX() == 2996) {
+            if (xPassed) {
                 isWaitingForStones = false;
                 currentState = ObstacleState.LOG;
                 return;
             }
-            if (currentXp > stonesStartXp) {
+            if (xpPassed) {
                 isWaitingForStones = false;
                 currentState = ObstacleState.LOG;
+                return;
+            }
+            // Fail fast: only if not animating, not moving, and not making progress
+            if (hasTimedOutSince(lastObstacleInteractTime, config.failTimeoutMs())
+                && !Rs2Player.isAnimating()
+                && !Rs2Player.isMoving()
+                && !yPassed && !xPassed && !xpPassed) {
+                isWaitingForStones = false;
                 return;
             }
             return;
@@ -626,7 +562,9 @@ public class WildernessAgilityScript extends Script {
     private void handleLog() {
         if (isWaitingForLog) {
             WorldPoint loc = Rs2Player.getWorldLocation();
-            if (loc != null && loc.getX() == 2994) {
+            boolean xCoordPassed = loc != null && loc.getX() == 2994;
+            boolean xpPassed = Microbot.getClient().getSkillExperience(AGILITY) > logStartXp;
+            if (xCoordPassed || xpPassed) {
                 isWaitingForLog = false;
                 currentState = ObstacleState.ROCKS;
                 return;
@@ -636,6 +574,11 @@ public class WildernessAgilityScript extends Script {
                     pitRecoveryTarget = ObstacleState.LOG;
                     currentState = ObstacleState.PIT_RECOVERY;
                 }
+                return;
+            }
+            // Fail fast: if no animation/movement after failTimeoutMs, abort and retry
+            if (hasTimedOutSince(lastObstacleInteractTime, config.failTimeoutMs()) && !Rs2Player.isAnimating() && !Rs2Player.isMoving()) {
+                isWaitingForLog = false;
                 return;
             }
         }
@@ -656,7 +599,6 @@ public class WildernessAgilityScript extends Script {
                     Rs2GameObject.interact(log);
                     isWaitingForLog = true;
                     logStartXp = Microbot.getClient().getSkillExperience(AGILITY);
-                    logInteractionStartTime = System.currentTimeMillis();
                     lastObstacleInteractTime = System.currentTimeMillis();
                     lastObstaclePosition = Rs2Player.getWorldLocation();
                 }
@@ -674,10 +616,24 @@ public class WildernessAgilityScript extends Script {
     private void handleRocks() {
         WorldPoint loc = Rs2Player.getWorldLocation();
         if (loc != null && loc.getY() <= 3933) {
+            // Get fresh dispenser object for immediate use
+            TileObject freshDispenser = getDispenserObj();
+            cachedDispenserObj = freshDispenser;
+            lastObjectCheck = System.currentTimeMillis();
+
             currentState = ObstacleState.DISPENSER;
-            handleDispenser();
+
+            // Immediate interaction without waiting for next tick
+            if (!Rs2Player.isAnimating() && freshDispenser != null) {
+                dispenserTicketsBefore = Rs2Inventory.itemQuantity(TICKET_ITEM_ID);
+                dispenserPreValue = getInventoryValue();
+                dispenserLootAttempts = 1;
+                waitingForDispenserLoot = true;
+                Rs2GameObject.interact(freshDispenser, "Search");
+            }
             return;
         }
+
         clearInventoryIfNeeded();
         if (!Rs2Player.isAnimating() && !Rs2Player.isMoving()) {
             TileObject rocks = getObstacleObj(4);
@@ -688,16 +644,25 @@ public class WildernessAgilityScript extends Script {
             if (rocks != null) {
                 int startExp = Microbot.getClient().getSkillExperience(AGILITY);
                 if (Rs2GameObject.interact(rocks)) {
-                    // If Y <= 3933 after interaction, immediately set state to DISPENSER
-                    loc = Rs2Player.getWorldLocation();
-                    if (loc != null && loc.getY() <= 3933) {
+                    // Check immediately after interaction
+                    WorldPoint newLoc = Rs2Player.getWorldLocation();
+                    if (newLoc != null && newLoc.getY() <= 3934) {
+                        // Transition immediately
+                        TileObject freshDispenser = getDispenserObj();
+                        cachedDispenserObj = freshDispenser;
+                        lastObjectCheck = System.currentTimeMillis();
                         currentState = ObstacleState.DISPENSER;
-                        handleDispenser();
+                        if (!Rs2Player.isAnimating() && freshDispenser != null) {
+                            dispenserTicketsBefore = Rs2Inventory.itemQuantity(TICKET_ITEM_ID);
+                            dispenserPreValue = getInventoryValue();
+                            dispenserLootAttempts = 1;
+                            waitingForDispenserLoot = true;
+                            Rs2GameObject.interact(freshDispenser, "Search");
+                        }
                         return;
                     }
                     if (waitForXpChange(startExp, getXpTimeout())) {
                         currentState = ObstacleState.DISPENSER;
-                        handleDispenser();
                         return;
                     }
                 }
@@ -706,56 +671,56 @@ public class WildernessAgilityScript extends Script {
             loc = Rs2Player.getWorldLocation();
             if (loc != null && loc.getY() < 3934) {
                 currentState = ObstacleState.DISPENSER;
-                handleDispenser();
-                return;
             }
         }
     }
     private void handleDispenser() {
-        if (Rs2Player.isMoving()) return;
         TileObject dispenser = cachedDispenserObj;
-        if (dispenser == null || Rs2Player.getWorldLocation().distanceTo(dispenser.getWorldLocation()) > 12) return;
+        WorldPoint playerLoc = Rs2Player.getWorldLocation();
+        if (dispenser == null || playerLoc == null) return;
+        if (playerLoc.distanceTo(dispenser.getWorldLocation()) > 20) return;
 
         // Update inventory value only here
         cachedInventoryValue = getInventoryValue();
-        
+
         int currentTickets = Rs2Inventory.itemQuantity(TICKET_ITEM_ID);
-        if (dispenser != null) {
-            if (dispenserLootAttempts == 0) {
-                dispenserPreValue = getInventoryValue();
-                Rs2GameObject.interact(dispenser, "Search");
-                sleep(1200);
-                sleepUntil(() -> Rs2Inventory.itemQuantity(TICKET_ITEM_ID) > currentTickets, 3000);
-                if (Rs2Inventory.itemQuantity(TICKET_ITEM_ID) > currentTickets) {
-                    dispenserLoots++;
-                    lapCount++;
-                    int dispenserValue = getInventoryValue() - dispenserPreValue;
-                    String formattedValue = NumberFormat.getIntegerInstance().format(dispenserValue);
-                    info("Dispenser Value: " + formattedValue);
-                    currentState = ObstacleState.CONFIG_CHECKS;
-                    dispenserLootAttempts = 0;
-                } else {
-                    dispenserLootAttempts = 1; // Try one more time
+
+        // If we're waiting for loot, check for ticket gain regardless of animation state
+        if (waitingForDispenserLoot) {
+            if (Rs2Inventory.itemQuantity(TICKET_ITEM_ID) > dispenserTicketsBefore) {
+                long now = System.currentTimeMillis();
+                if (lastLapTimestamp > 0) {
+                    previousLapTime = now - lastLapTimestamp;
+                    if (previousLapTime < fastestLapTime) {
+                        fastestLapTime = previousLapTime;
+                    }
                 }
-            } else if (dispenserLootAttempts == 1) {
-                dispenserPreValue = getInventoryValue();
-                Rs2GameObject.interact(dispenser, "Search");
-                sleep(1200);
-                sleepUntil(() -> Rs2Inventory.itemQuantity(TICKET_ITEM_ID) > currentTickets, 3000);
-                if (Rs2Inventory.itemQuantity(TICKET_ITEM_ID) > currentTickets) {
-                    dispenserLoots++;
-                    lapCount++;
-                    int dispenserValue = getInventoryValue() - dispenserPreValue;
-                    String formattedValue = NumberFormat.getIntegerInstance().format(dispenserValue);
-                    info("Dispenser Value: " + formattedValue);
-                    currentState = ObstacleState.CONFIG_CHECKS;
-                    dispenserLootAttempts = 0;
-                } else {
-                    // After two failed attempts, move on to PIPE
-                    dispenserLootAttempts = 0;
-                    currentState = ObstacleState.PIPE;
-                }
+                lastLapTimestamp = now;
+                dispenserLoots++;
+                lapCount++;
+                int dispenserValue = getInventoryValue() - dispenserPreValue;
+                String formattedValue = NumberFormat.getIntegerInstance().format(dispenserValue);
+                info("Dispenser Value: " + formattedValue);
+                currentState = ObstacleState.CONFIG_CHECKS;
+                dispenserLootAttempts = 0;
+                waitingForDispenserLoot = false;
             }
+            return;
+        }
+
+        // If the player is already animating (interacting with the dispenser), do not interact again
+        if (Rs2Player.isAnimating()) return;
+
+        // Try to interact with the dispenser every tick until animation starts
+        if (dispenserLootAttempts == 0) {
+            dispenserPreValue = getInventoryValue();
+            dispenserTicketsBefore = currentTickets;
+            Rs2GameObject.interact(dispenser, "Search");
+            waitingForDispenserLoot = true;
+            dispenserLootAttempts = 1; // Only try once, now wait for loot
+        } else if (dispenserLootAttempts == 1) {
+            // If for some reason we didn't get loot after a while, allow retry or fallback
+            // (Optional: add a timeout here if needed)
         }
     }
     private void handleConfigChecks() {
@@ -765,24 +730,41 @@ public class WildernessAgilityScript extends Script {
         if (ticketCount >= config.useTicketsWhen()) {
             boolean didInteract = Rs2Inventory.interact(TICKET_ITEM_ID, "Use");
             if (didInteract) {
-                sleep(600);
                 didInteract = Rs2GameObject.interact(dispenser, "Use");
                 if (didInteract) {
-                    sleepUntil(() -> Rs2Inventory.itemQuantity(TICKET_ITEM_ID) < ticketCount, 5000);
-                    sleep(1200);
+                    sleepUntil(() -> Rs2Inventory.itemQuantity(TICKET_ITEM_ID) < ticketCount, 2000);
                 }
             }
+        }
+        // Force banking if config.bankAfterDispensers() > 0 and dispenserLoots >= threshold
+        if (config.bankAfterDispensers() > 0 && dispenserLoots >= config.bankAfterDispensers()) {
+            if (config.enableWorldHop()) {
+                setupWorldHop();
+                currentState = ObstacleState.WORLD_HOP_1;
+            } else {
+                currentState = ObstacleState.WALK_TO_LEVER;
+            }
+            return;
         }
         // Force banking if config.bankNow() is enabled
         if (config.bankNow() || forceBankNextLoot) {
             forceBankNextLoot = false;
-            bankingProgress = 0;
-            currentState = ObstacleState.BANKING;
+            if (config.enableWorldHop()) {
+                setupWorldHop();
+                currentState = ObstacleState.WORLD_HOP_1;
+            } else {
+                currentState = ObstacleState.WALK_TO_LEVER;
+            }
             return;
         }
         // Only check banking threshold here
         if (cachedInventoryValue >= config.leaveAtValue()) {
-            currentState = ObstacleState.BANKING;
+            if (config.enableWorldHop()) {
+                setupWorldHop();
+                currentState = ObstacleState.WORLD_HOP_1;
+            } else {
+                currentState = ObstacleState.WALK_TO_LEVER;
+            }
             return;
         }
         currentState = ObstacleState.PIPE;
@@ -800,8 +782,8 @@ public class WildernessAgilityScript extends Script {
         TileObject dispenserObj = getDispenserObj();
         WorldPoint playerLoc = Rs2Player.getWorldLocation();
         boolean nearDispenser = dispenserObj != null && playerLoc != null && playerLoc.distanceTo(dispenserObj.getWorldLocation()) <= 4;
-        
-        if (!config.startAtCourse()) {
+
+        if (!(forceStartAtCourse || config.startAtCourse())) {
             if (!nearDispenser) {
                 WorldPoint walkTarget = dispenserObj != null ? dispenserObj.getWorldLocation() : DISPENSER_POINT;
                 if (!isAt(walkTarget, 4)) {
@@ -836,10 +818,6 @@ public class WildernessAgilityScript extends Script {
         }
     }
 
-    private boolean isUnderground(WorldPoint loc) {
-        return loc != null && loc.getY() > 10000;
-    }
-
     private boolean waitForXpChange(int startXp, int timeoutMs) {
         return sleepUntil(() -> Microbot.getClient().getSkillExperience(AGILITY) > startXp, timeoutMs);
     }
@@ -851,4 +829,319 @@ public class WildernessAgilityScript extends Script {
 
     private int getActionDelay() { return ACTION_DELAY; }
     private int getXpTimeout() { return XP_TIMEOUT; }
+
+    public String getPreviousLapTime() {
+        if (previousLapTime == 0) return "-";
+        return String.format("%.2f s", previousLapTime / 1000.0);
+    }
+
+    public String getFastestLapTime() {
+        if (fastestLapTime == Long.MAX_VALUE) return "-";
+        return String.format("%.2f s", fastestLapTime / 1000.0);
+    }
+
+    private void setupWorldHop() {
+        originalWorld = Rs2Player.getWorld();
+        bankWorld1 = getConfigWorld(config.bankWorld1());
+        bankWorld2 = getConfigWorld(config.bankWorld2());
+    }
+
+    private int getConfigWorld(WildernessAgilityConfig.BankWorldOption option) {
+        if (option == WildernessAgilityConfig.BankWorldOption.Random) {
+            // Pick a random world from the enum list, skipping the current world
+            List<WildernessAgilityConfig.BankWorldOption> all = Arrays.asList(WildernessAgilityConfig.BankWorldOption.values());
+            List<Integer> worldNums = new ArrayList<>();
+            for (WildernessAgilityConfig.BankWorldOption o : all) {
+                if (o != WildernessAgilityConfig.BankWorldOption.Random) {
+                    int num = Integer.parseInt(o.name().substring(1));
+                    if (num != Rs2Player.getWorld()) worldNums.add(num);
+                }
+            }
+            if (worldNums.isEmpty()) return Rs2Player.getWorld();
+            return worldNums.get(new Random().nextInt(worldNums.size()));
+        } else {
+            return Integer.parseInt(option.name().substring(1));
+        }
+    }
+
+    private void handleWorldHop1() {
+        if (Rs2Player.getWorld() != bankWorld1) {
+            Microbot.log("[WORLD HOP 1] Hopping to world " + bankWorld1);
+            Microbot.hopToWorld(bankWorld1);
+            boolean hopConfirmed = sleepUntil(() -> Rs2Player.getWorld() == bankWorld1, 8000);
+            if (!hopConfirmed) {
+                Microbot.log("[WORLD HOP 1] World hop to bankWorld1 failed, retrying...");
+                return; // Stay in this state to retry
+            }
+            Microbot.log("[WORLD HOP 1] Hop confirmed to world " + bankWorld1);
+        }
+        sleep(4000); // Wait 4 seconds after hop
+        leaveFriendChat();
+        currentState = ObstacleState.WORLD_HOP_2;
+    }
+
+    private void handleWorldHop2() {
+        if (Rs2Player.getWorld() != bankWorld2) {
+            Microbot.log("[WORLD HOP 2] Hopping to world " + bankWorld2);
+            Microbot.hopToWorld(bankWorld2);
+            boolean hopConfirmed = sleepUntil(() -> Rs2Player.getWorld() == bankWorld2, 8000);
+            if (!hopConfirmed) {
+                Microbot.log("[WORLD HOP 2] World hop to bankWorld2 failed, retrying...");
+                return; // Stay in this state to retry
+            }
+            Microbot.log("[WORLD HOP 2] Hop confirmed to world " + bankWorld2);
+        }
+        currentState = ObstacleState.WALK_TO_LEVER;
+    }
+
+    private void handleSwapBack() {
+        if (Rs2Player.getWorld() == originalWorld) {
+            if (config.joinFc()) {
+                joinFriendChat();
+            }
+            currentState = ObstacleState.PIPE;
+            return;
+        }
+        Microbot.hopToWorld(originalWorld);
+        sleepUntil(() -> Rs2Player.getWorld() == originalWorld, 8000);
+        if (config.joinFc()) {
+            joinFriendChat();
+        }
+        currentState = ObstacleState.PIPE;
+    }
+
+    private void leaveFriendChat() {
+        // Click the Leave button in the chat-channel tab if visible
+        Widget joinLeaveButton = Rs2Widget.getWidget(458, 770);
+        if (joinLeaveButton != null && !joinLeaveButton.isHidden()) {
+            if (joinLeaveButton.getText().equalsIgnoreCase("Leave")) {
+                Microbot.log("[FC LEAVE] Clicking Leave button (widget 458,770)");
+                Microbot.getMouse().click(joinLeaveButton.getCanvasLocation());
+                sleep(400, 600);
+                // Wait until the Join button is visible and says 'Join'
+                Microbot.log("[FC LEAVE] Waiting for Join button to reappear...");
+                sleepUntil(() -> {
+                    Widget joinBtn = Rs2Widget.getWidget(458, 770);
+                    return joinBtn != null && !joinBtn.isHidden() && joinBtn.getText().equalsIgnoreCase("Join");
+                }, 5000);
+                Microbot.log("[FC LEAVE] Confirmed left friends chat.");
+            }
+        }
+    }
+
+    private void joinFriendChat() {
+        joinChatChannel(config.fcChannel());
+    }
+
+    private void sendChatChannelTabMenuAction() {
+        try {
+            Widget chatTab = Rs2Widget.getWidget(10551339);
+            java.awt.Rectangle bounds = chatTab != null ? chatTab.getBounds() : new java.awt.Rectangle(1277, 807, 38, 36); // fallback to known values
+            Microbot.log("[FC JOIN] Sending direct menu action for Chat-channel tab (CC_OP, param1=10551339)");
+            Microbot.doInvoke(new net.runelite.client.plugins.microbot.util.menu.NewMenuEntry(
+                "Chat-channel", // option
+                -1,             // param0
+                10551339,       // param1
+                net.runelite.api.MenuAction.CC_OP.getId(), // opcode
+                1,              // identifier
+                -1,             // itemId
+                ""              // target
+            ), bounds);
+        } catch (Exception ex) {
+            Microbot.log("[FC JOIN] Exception in sendChatChannelTabMenuAction: " + ex.getMessage());
+        }
+    }
+
+    private void sendJoinButtonMenuAction() {
+        try {
+            Widget joinButton = Rs2Widget.getWidget(458, 770);
+            java.awt.Rectangle bounds = joinButton != null ? joinButton.getBounds() : new java.awt.Rectangle(0, 0, 30, 20); // fallback
+            Microbot.log("[FC JOIN] Sending direct menu action for Join button (CC_OP, param1=458770)");
+            Microbot.doInvoke(new net.runelite.client.plugins.microbot.util.menu.NewMenuEntry(
+                "Join", // option
+                -1,      // param0
+                458770,  // param1
+                net.runelite.api.MenuAction.CC_OP.getId(), // opcode
+                1,       // identifier
+                -1,      // itemId
+                ""      // target
+            ), bounds);
+        } catch (Exception ex) {
+            Microbot.log("[FC JOIN] Exception in sendJoinButtonMenuAction: " + ex.getMessage());
+        }
+    }
+
+    private void joinChatChannel(String channelName) {
+        Microbot.log("[FC JOIN] Preparing to join friends chat: " + channelName);
+        sleep(3000);
+        sendChatChannelTabMenuAction();
+        sleep(3000);
+        sleep(1000);
+        sendJoinButtonMenuAction();
+        Microbot.log("[FC JOIN] Sent Join button menu action. Sleeping 2s before typing...");
+        sleep(2000);
+        sleep(1000);
+        Microbot.log("[FC JOIN] Typing FC name: " + channelName);
+        final long firstJoinAttemptTime = System.currentTimeMillis();
+        Rs2Keyboard.typeString(channelName);
+        Rs2Keyboard.enter();
+        sleep(600, 900);
+        // Wait for FC join confirmation message
+        boolean joined = sleepUntil(() -> lastFcJoinMessageTime > firstJoinAttemptTime, 5000);
+        if (!joined) {
+            Microbot.log("[FC JOIN] Did not see join confirmation message, retrying...");
+            // Retry once more
+            final long secondJoinAttemptTime = System.currentTimeMillis();
+            Rs2Keyboard.typeString(channelName);
+            Rs2Keyboard.enter();
+            sleep(600, 900);
+            joined = sleepUntil(() -> lastFcJoinMessageTime > secondJoinAttemptTime, 5000);
+            if (!joined) {
+                Microbot.log("[FC JOIN] Still did not see join confirmation message after retry.");
+            }
+        }
+    }
+
+    private void handleWalkToLever() {
+        WorldPoint leverTile = new WorldPoint(3091, 3956, 0);
+        if (!isAt(leverTile, 2)) {
+            Rs2Walker.walkTo(leverTile);
+            sleepUntil(() -> isAt(leverTile, 2), 20000);
+            return;
+        }
+        currentState = ObstacleState.INTERACT_LEVER;
+    }
+
+    private void handleInteractLever() {
+        WorldPoint leverTile = new WorldPoint(3091, 3956, 0);
+        if (!isAt(leverTile, 2)) {
+            // If not at lever, go back to walk to lever state
+            currentState = ObstacleState.WALK_TO_LEVER;
+            return;
+        }
+        TileObject lever = Rs2GameObject.findObjectById(5959);
+        if (lever != null) {
+            Rs2GameObject.interact(lever, "Pull");
+            boolean animDetected = sleepUntil(() -> Rs2Player.getAnimation() == 2140, 8000);
+            if (animDetected) {
+                sleep(5000); // Wait for teleport
+                currentState = ObstacleState.BANKING;
+            } else {
+                Microbot.log("Lever pull animation not detected, retrying...");
+                // Stay in INTERACT_LEVER to retry, but do not re-walk unless player moved
+            }
+        }
+    }
+
+    private boolean isInFriendChat() {
+        Widget fcWidget = Rs2Widget.getWidget(162, 72);
+        return fcWidget != null && !fcWidget.isHidden() && fcWidget.getText() != null && !fcWidget.getText().toLowerCase().contains("join");
+    }
+
+    private void handlePostBankConfig() {
+        forceBankNextLoot = false;
+        if (config.swapBack() && Rs2Player.getWorld() != originalWorld) {
+            Microbot.hopToWorld(originalWorld);
+            sleepUntil(() -> Rs2Player.getWorld() == originalWorld, 8000);
+        }
+        if (config.joinFc()) {
+            joinFriendChat();
+        }
+        // Force disable startAtCourse after banking
+        forceStartAtCourse = false;
+        currentState = ObstacleState.WALK_TO_COURSE;
+    }
+
+    private void handleWalkToCourse() {
+        if (!isAt(START_POINT, 2)) {
+            Rs2Walker.walkTo(START_POINT, 2);
+            sleepUntil(() -> isAt(START_POINT, 2), 20000);
+            return;
+        }
+        TileObject dispenserObj = getDispenserObj();
+        if (dispenserObj != null) {
+            int coinCount = Rs2Inventory.itemQuantity("Coins");
+            if (coinCount >= 150000) {
+                Rs2Inventory.use("Coins");
+                sleep(400);
+                Rs2GameObject.interact(dispenserObj, "Use");
+                sleep(getActionDelay());
+                sleepUntil(() -> Rs2Inventory.itemQuantity("Coins") < coinCount, getXpTimeout());
+            }
+        }
+        currentState = ObstacleState.PIPE;
+    }
+
+    private void handleBanking() {
+        // Single-step banking logic (like BlastoiseFurnaceScript)
+        if (!Rs2Bank.isOpen()) {
+            Rs2Bank.openBank();
+            sleepUntil(Rs2Bank::isOpen, 20000);
+            if (!Rs2Bank.isOpen()) return;
+        }
+        // Deposit all
+        Rs2Bank.depositAll();
+        sleep(getActionDelay());
+
+        // Withdraw Knife
+        if (!Rs2Inventory.hasItem(KNIFE_ID)) {
+            Rs2Bank.withdrawOne(KNIFE_ID);
+            sleep(getActionDelay());
+        }
+        // Withdraw Teleport (if enabled)
+        if (config.useIcePlateauTp() && !Rs2Inventory.hasItem(TELEPORT_ID)) {
+            Rs2Bank.withdrawOne(TELEPORT_ID);
+            sleep(getActionDelay());
+        }
+        // Withdraw Coins (if enabled)
+        if (config.withdrawCoins() && (!Rs2Inventory.hasItem(COINS_ID) || Rs2Inventory.itemQuantity(COINS_ID) < 150000)) {
+            Rs2Bank.withdrawX(COINS_ID, 150000);
+            sleep(getActionDelay());
+        }
+        // Confirm all items are present
+        boolean allPresent = Rs2Inventory.hasItem(KNIFE_ID)
+            && (!config.withdrawCoins() || Rs2Inventory.hasItem(COINS_ID))
+            && (!config.useIcePlateauTp() || Rs2Inventory.hasItem(TELEPORT_ID));
+        if (!allPresent) return;
+
+        Rs2Bank.closeBank();
+        sleep(getActionDelay());
+
+        // Continue to next state
+        currentState = ObstacleState.POST_BANK_CONFIG;
+    }
+
+    private void attemptLogoutUntilLoggedOut() {
+        int maxAttempts = 30; // Try for up to 30 seconds
+        int attempts = 0;
+        while (!"LOGIN_SCREEN".equals(Microbot.getClient().getGameState().toString()) && attempts < maxAttempts) {
+            Rs2Player.logout();
+            sleep(1000); // Wait 1 second before trying again
+            attempts++;
+        }
+    }
+
+    private boolean hasTimedOutSince(long startTime, int threshold) {
+        return System.currentTimeMillis() - startTime > threshold;
+    }
+
+    private void clearInventoryIfNeeded() {
+        while (Rs2Inventory.items().size() >= 26 && isRunning()) {
+            if (Rs2Inventory.contains(FOOD_PRIMARY)) {
+                Rs2Inventory.interact(FOOD_PRIMARY, "Eat");
+                waitForInventoryChanges(getActionDelay());
+            } else if (Rs2Inventory.contains(FOOD_DROP)) {
+                Rs2Inventory.interact(FOOD_DROP, "Drop");
+                waitForInventoryChanges(800);
+            } else if (Rs2Inventory.contains(FOOD_SECONDARY)) {
+                Rs2Inventory.interact(FOOD_SECONDARY, "Eat");
+                waitForInventoryChanges(getActionDelay());
+            } else if (Rs2Inventory.contains(FOOD_TERTIARY)) {
+                Rs2Inventory.interact(FOOD_TERTIARY, "Eat");
+                waitForInventoryChanges(getActionDelay());
+            } else {
+                break;
+            }
+        }
+    }
 }
