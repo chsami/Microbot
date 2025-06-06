@@ -1,76 +1,36 @@
 package net.runelite.client.plugins.microbot.wildernessagility;
 
+import java.text.NumberFormat;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import javax.inject.Inject;
+
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.TileObject;
-import net.runelite.client.plugins.microbot.Script;
-import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
-import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
-import net.runelite.client.plugins.microbot.util.player.Rs2Player;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
-import java.util.Objects;
-import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
-import javax.inject.Inject;
-import static net.runelite.api.Skill.AGILITY;
-import java.text.NumberFormat;
-import java.util.ArrayList;
-import java.util.Random;
-import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
-import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.api.widgets.Widget;
+import net.runelite.client.plugins.microbot.*;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.inventory.*;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
+import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
+import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
+import static net.runelite.api.Skill.AGILITY;
+import lombok.Getter;
 
-
-public class WildernessAgilityScript extends Script {
+/**
+ * Wilderness Agility Script for RuneLite
+ */
+public final class WildernessAgilityScript extends Script {
     public static final String VERSION = "1.5.0";
-    private WildernessAgilityConfig config;
-    @Inject
-    private WildernessAgilityPlugin plugin;
 
-    private static final WorldPoint START_POINT = new WorldPoint(3004, 3936, 0);
-
-    private final List<WildernessAgilityObstacleModel> obstacles = Arrays.asList(
-            new WildernessAgilityObstacleModel(23137, false),
-            new WildernessAgilityObstacleModel(23132, true),
-            new WildernessAgilityObstacleModel(23556, false),
-            new WildernessAgilityObstacleModel(23542, true),
-            new WildernessAgilityObstacleModel(23640, false)
-    );
-
+    // --- Constants ---
+    private static final int ACTION_DELAY = 3000;
+    private static final int XP_TIMEOUT = 8000;
+    private static final int PIPE_WAIT_TIMEOUT = 5000;
     private static final int DISPENSER_ID = 53224;
-
-    public int lapCount = 0;
-    public int dispenserLoots = 0;
-    private long startTime = 0;
-    private boolean waitingForDispenserLoot = false;
-
     private static final int TICKET_ITEM_ID = 29460;
-
-    private enum ObstacleState {
-        INIT, START, PIPE, ROPE, STONES, LOG, ROCKS, DISPENSER, CONFIG_CHECKS,
-        WORLD_HOP_1, // hop to world 1
-        WORLD_HOP_2, // hop to world 2
-        WALK_TO_LEVER, // walk to lever
-        INTERACT_LEVER, // interact with lever and wait for teleport
-        BANKING, // perform banking
-        POST_BANK_CONFIG, // join FC, swap world, etc
-        WALK_TO_COURSE, // walk back to course/dispenser
-        SWAP_BACK, PIT_RECOVERY
-    }
-    private ObstacleState currentState = ObstacleState.START;
-
-    private long lastInventoryCheck = 0;
-    private long lastObjectCheck = 0;
-    private int cachedInventoryValue = 0;
-    private TileObject cachedDispenserObj = null;
-
-    private ObstacleState pitRecoveryTarget = null;
-
-    private static final WorldPoint DISPENSER_POINT = new WorldPoint(3004, 3936, 0);
-
     private static final int FOOD_PRIMARY = 24592;
     private static final int FOOD_SECONDARY = 24595;
     private static final int FOOD_TERTIARY = 24589;
@@ -78,67 +38,90 @@ public class WildernessAgilityScript extends Script {
     private static final int KNIFE_ID = 946;
     private static final int TELEPORT_ID = 24963;
     private static final int COINS_ID = 995;
+    private static final WorldPoint START_POINT = new WorldPoint(3004, 3936, 0);
+    private static final WorldPoint DISPENSER_POINT = new WorldPoint(3004, 3936, 0);
 
-    private long pipeInteractionStartTime = 0;
-    private static final int PIPE_WAIT_TIMEOUT = 5000; // 5 seconds
+    // --- Config & Plugin ---
+    private WildernessAgilityConfig config;
+    @Inject
+    private WildernessAgilityPlugin plugin;
 
+    // --- Obstacle Models ---
+    private final List<WildernessAgilityObstacleModel> obstacles = List.of(
+        new WildernessAgilityObstacleModel(23137, false),
+        new WildernessAgilityObstacleModel(23132, true),
+        new WildernessAgilityObstacleModel(23556, false),
+        new WildernessAgilityObstacleModel(23542, true),
+        new WildernessAgilityObstacleModel(23640, false)
+    );
+
+    // --- Dispenser Tracking ---
+    private int dispenserLoots = 0;
+    private boolean waitingForDispenserLoot = false;
     private int dispenserLootAttempts = 0;
-
-    private int bankingProgress = 0;
-
-    private boolean ropeRecoveryWalked = false;
-
-    private boolean pipeJustCompleted = false;
-
-    private boolean forceBankNextLoot = false;
-
-    private long lastObstacleInteractTime = 0;
-    private WorldPoint lastObstaclePosition = null;
-
-    private int logStartXp = 0;
-
+    private int dispenserTicketsBefore = 0;
     private int dispenserPreValue = 0;
+    private TileObject cachedDispenserObj = null;
+    private long lastObjectCheck = 0;
 
-    private static final int ACTION_DELAY = 3000;
-    private static final int XP_TIMEOUT = 8000;
+    // --- Lap & XP Tracking ---
+    public int lapCount = 0;
+    private int logStartXp = 0;
+    private int pipeStartXp = 0;
+    private int ropeStartXp = 0;
+    private int stonesStartXp = 0;
+    private long previousLapTime = 0;
+    private long fastestLapTime = Long.MAX_VALUE;
+    private long lastLapTimestamp = 0;
+    private long startTime = 0;
 
+    // --- State & Progress ---
+    private enum ObstacleState {
+        INIT,
+        START,
+        PIPE,
+        ROPE,
+        STONES,
+        LOG,
+        ROCKS,
+        DISPENSER,
+        CONFIG_CHECKS,
+        WORLD_HOP_1,
+        WORLD_HOP_2,
+        WALK_TO_LEVER,
+        INTERACT_LEVER,
+        BANKING,
+        POST_BANK_CONFIG,
+        WALK_TO_COURSE,
+        SWAP_BACK,
+        PIT_RECOVERY
+    }
+    private ObstacleState currentState = ObstacleState.START;
+    private ObstacleState pitRecoveryTarget = null;
     private boolean isWaitingForPipe = false;
     private boolean isWaitingForRope = false;
     private boolean isWaitingForStones = false;
     private boolean isWaitingForLog = false;
-
-    private int pipeStartXp = 0;
-    private int ropeStartXp = 0;
-    private int stonesStartXp = 0;
-
-    private long previousLapTime = 0;
-    private long fastestLapTime = Long.MAX_VALUE;
-    private long lastLapTimestamp = 0;
-
+    private boolean pipeJustCompleted = false;
+    private boolean ropeRecoveryWalked = false;
+    private boolean forceBankNextLoot = false;
+    private boolean forceStartAtCourse = false;
     private int originalWorld = -1;
     private int bankWorld1 = -1;
     private int bankWorld2 = -1;
-
-    private long lastLadderInteractTime = 0; // Add this field for ladder throttle
-
-    private int dispenserTicketsBefore = 0;
-
+    private long lastLadderInteractTime = 0;
+    private int cachedInventoryValue = 0;
+    private long lastObstacleInteractTime = 0;
+    private WorldPoint lastObstaclePosition = null;
+    @Getter
     private volatile long lastFcJoinMessageTime = 0;
-    public void setLastFcJoinMessageTime(long time) { this.lastFcJoinMessageTime = time; }
-    public long getLastFcJoinMessageTime() { return lastFcJoinMessageTime; }
+    private long pipeInteractionStartTime = 0;
 
-    private boolean forceStartAtCourse = false;
-
-    public WildernessAgilityScript() {
-        // Empty constructor
-    }
-
-    private void info(String msg) {
-        // Only log dispenser value
-        Microbot.log(msg);
-        System.out.println(msg);
-    }
-
+    /**
+     * Starts the Wilderness Agility script.
+     * @param config The script configuration
+     * @return true if started successfully
+     */
     public boolean run(WildernessAgilityConfig config) {
         this.config = config;
         forceStartAtCourse = false; // Always reset on run
@@ -149,16 +132,15 @@ public class WildernessAgilityScript extends Script {
             currentState = ObstacleState.START;
         }
         startTime = System.currentTimeMillis();
+        Microbot.log("[WildernessAgilityScript] startup called");
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!Microbot.isLoggedIn()) return;
-
                 if (Rs2Player.getHealthPercentage() <= 0) {
                     handlePlayerDeath();
                     return;
                 }
-
-                // Move global pitfall detection logic to the very top, broaden rope detection
+                // Pitfall detection logic
                 WorldPoint currentLoc = Rs2Player.getWorldLocation();
                 if (currentLoc != null && isUnderground(currentLoc)) {
                     if (isWaitingForRope) {
@@ -174,89 +156,38 @@ public class WildernessAgilityScript extends Script {
                     }
                     currentState = ObstacleState.PIT_RECOVERY;
                 }
-
                 if (System.currentTimeMillis() - lastObjectCheck > 1000) {
                     cachedDispenserObj = getDispenserObj();
                     lastObjectCheck = System.currentTimeMillis();
                 }
-
                 switch (currentState) {
-                    case INIT:
-                        currentState = ObstacleState.PIPE;
-                        break;
-                    case START:
-                        handleStart();
-                        break;
-                    case PIPE:
-                        handlePipe();
-                        break;
-                    case ROPE:
-                        handleRope();
-                        break;
-                    case STONES:
-                        pipeJustCompleted = false;
-                        handleStones();
-                        break;
-                    case LOG:
-                        handleLog();
-                        break;
-                    case ROCKS:
-                        handleRocks();
-                        break;
-                    case DISPENSER:
-                        handleDispenser();
-                        break;
-                    case CONFIG_CHECKS:
-                        handleConfigChecks();
-                        break;
-                    case WORLD_HOP_1:
-                        handleWorldHop1();
-                        break;
-                    case WORLD_HOP_2:
-                        handleWorldHop2();
-                        break;
-                    case WALK_TO_LEVER:
-                        handleWalkToLever();
-                        break;
-                    case INTERACT_LEVER:
-                        handleInteractLever();
-                        break;
-                    case BANKING:
-                        handleBanking();
-                        break;
-                    case POST_BANK_CONFIG:
-                        handlePostBankConfig();
-                        break;
-                    case WALK_TO_COURSE:
-                        handleWalkToCourse();
-                        break;
-                    case SWAP_BACK:
-                        handleSwapBack();
-                        break;
-                    case PIT_RECOVERY:
-                        recoverFromPit();
-                        break;
+                    case INIT: currentState = ObstacleState.PIPE; break;
+                    case START: handleStart(); break;
+                    case PIPE: handlePipe(); break;
+                    case ROPE: handleRope(); break;
+                    case STONES: pipeJustCompleted = false; handleStones(); break;
+                    case LOG: handleLog(); break;
+                    case ROCKS: handleRocks(); break;
+                    case DISPENSER: handleDispenser(); break;
+                    case CONFIG_CHECKS: handleConfigChecks(); break;
+                    case WORLD_HOP_1: handleWorldHop1(); break;
+                    case WORLD_HOP_2: handleWorldHop2(); break;
+                    case WALK_TO_LEVER: handleWalkToLever(); break;
+                    case INTERACT_LEVER: handleInteractLever(); break;
+                    case BANKING: handleBanking(); break;
+                    case POST_BANK_CONFIG: handlePostBankConfig(); break;
+                    case WALK_TO_COURSE: handleWalkToCourse(); break;
+                    case SWAP_BACK: handleSwapBack(); break;
+                    case PIT_RECOVERY: recoverFromPit(); break;
                 }
-
                 if (lastObstacleInteractTime > 0 && lastObstaclePosition != null && System.currentTimeMillis() - lastObstacleInteractTime > 2000) {
                     WorldPoint currentPos = Rs2Player.getWorldLocation();
                     if (currentPos != null && currentPos.equals(lastObstaclePosition)) {
-                        // Player hasn't moved, reset the current obstacle state
                         switch (currentState) {
-                            case ROPE:
-                                isWaitingForRope = false;
-                                break;
-                            case LOG:
-                                isWaitingForLog = false;
-                                break;
-                            case STONES:
-                                isWaitingForStones = false;
-                                break;
-                            case PIPE:
-                                if (!pipeJustCompleted) {
-                                    isWaitingForPipe = false;
-                                }
-                                break;
+                            case ROPE: isWaitingForRope = false; break;
+                            case LOG: isWaitingForLog = false; break;
+                            case STONES: isWaitingForStones = false; break;
+                            case PIPE: if (!pipeJustCompleted) { isWaitingForPipe = false; } break;
                         }
                         lastObstacleInteractTime = 0;
                         lastObstaclePosition = null;
@@ -269,6 +200,9 @@ public class WildernessAgilityScript extends Script {
         return true;
     }
 
+    /**
+     * Shuts down the script and resets state.
+     */
     @Override
     public void shutdown() {
         if (mainScheduledFuture != null && !mainScheduledFuture.isCancelled()) {
@@ -284,28 +218,34 @@ public class WildernessAgilityScript extends Script {
         isWaitingForStones = false;
         isWaitingForLog = false;
         dispenserLootAttempts = 0;
-        bankingProgress = 0;
         ropeRecoveryWalked = false;
         pipeJustCompleted = false;
-        Microbot.log("WildernessAgilityScript: shutdown called");
+        Microbot.log("[WildernessAgilityScript] shutdown called");
         super.shutdown();
     }
 
+    private void info(String msg) {
+        // Only log dispenser value
+        Microbot.log(msg);
+        System.out.println(msg);
+    }
+
+    public boolean runeliteClientPluginsMicrobotWildernessagilityWildernessAgilityScript_run(WildernessAgilityConfig config) {
+        return run(config);
+    }
+
     private void handlePlayerDeath() {
-        if (config.runBack()) {
-            sleep(10000); // Wait 10 seconds after dying
-            Rs2Bank.walkToBank();
-            bankingProgress = 4;
-            currentState = ObstacleState.BANKING;
+        if (!config.runBack()) {
+            if (config.logoutAfterDeath()) {
+                sleep(12000);
+                attemptLogoutUntilLoggedOut();
+            }
+            Microbot.stopPlugin(plugin);
             return;
         }
-        if (config.logoutAfterDeath()) {
-            sleep(12000); // Wait 12 seconds after dying
-            attemptLogoutUntilLoggedOut();
-            Microbot.stopPlugin(plugin);
-        } else {
-            Microbot.stopPlugin(plugin);
-        }
+        sleep(10000);
+        Rs2Bank.walkToBank();
+        currentState = ObstacleState.BANKING;
     }
 
     private boolean waitForInventoryChanges(int timeoutMs) {
@@ -336,10 +276,10 @@ public class WildernessAgilityScript extends Script {
     }
 
     private TileObject getDispenserObj() {
-        return Rs2GameObject.findObjectById(DISPENSER_ID);
+        return Rs2GameObject.getAll(o -> o.getId() == DISPENSER_ID, 104).stream().findFirst().orElse(null);
     }
     private TileObject getObstacleObj(int index) {
-        return Rs2GameObject.findObjectById(obstacles.get(index).getObjectId());
+        return Rs2GameObject.getAll(o -> o.getId() == obstacles.get(index).getObjectId(), 104).stream().findFirst().orElse(null);
     }
     private boolean isUnderground(WorldPoint loc) {
         return loc != null && loc.getY() > 10000;
@@ -866,14 +806,11 @@ public class WildernessAgilityScript extends Script {
 
     private void handleWorldHop1() {
         if (Rs2Player.getWorld() != bankWorld1) {
-            Microbot.log("[WORLD HOP 1] Hopping to world " + bankWorld1);
             Microbot.hopToWorld(bankWorld1);
             boolean hopConfirmed = sleepUntil(() -> Rs2Player.getWorld() == bankWorld1, 8000);
             if (!hopConfirmed) {
-                Microbot.log("[WORLD HOP 1] World hop to bankWorld1 failed, retrying...");
                 return; // Stay in this state to retry
             }
-            Microbot.log("[WORLD HOP 1] Hop confirmed to world " + bankWorld1);
         }
         sleep(4000); // Wait 4 seconds after hop
         leaveFriendChat();
@@ -882,14 +819,11 @@ public class WildernessAgilityScript extends Script {
 
     private void handleWorldHop2() {
         if (Rs2Player.getWorld() != bankWorld2) {
-            Microbot.log("[WORLD HOP 2] Hopping to world " + bankWorld2);
             Microbot.hopToWorld(bankWorld2);
             boolean hopConfirmed = sleepUntil(() -> Rs2Player.getWorld() == bankWorld2, 8000);
             if (!hopConfirmed) {
-                Microbot.log("[WORLD HOP 2] World hop to bankWorld2 failed, retrying...");
                 return; // Stay in this state to retry
             }
-            Microbot.log("[WORLD HOP 2] Hop confirmed to world " + bankWorld2);
         }
         currentState = ObstacleState.WALK_TO_LEVER;
     }
@@ -915,16 +849,13 @@ public class WildernessAgilityScript extends Script {
         Widget joinLeaveButton = Rs2Widget.getWidget(458, 770);
         if (joinLeaveButton != null && !joinLeaveButton.isHidden()) {
             if (joinLeaveButton.getText().equalsIgnoreCase("Leave")) {
-                Microbot.log("[FC LEAVE] Clicking Leave button (widget 458,770)");
                 Microbot.getMouse().click(joinLeaveButton.getCanvasLocation());
                 sleep(400, 600);
                 // Wait until the Join button is visible and says 'Join'
-                Microbot.log("[FC LEAVE] Waiting for Join button to reappear...");
                 sleepUntil(() -> {
                     Widget joinBtn = Rs2Widget.getWidget(458, 770);
                     return joinBtn != null && !joinBtn.isHidden() && joinBtn.getText().equalsIgnoreCase("Join");
                 }, 5000);
-                Microbot.log("[FC LEAVE] Confirmed left friends chat.");
             }
         }
     }
@@ -937,7 +868,6 @@ public class WildernessAgilityScript extends Script {
         try {
             Widget chatTab = Rs2Widget.getWidget(10551339);
             java.awt.Rectangle bounds = chatTab != null ? chatTab.getBounds() : new java.awt.Rectangle(1277, 807, 38, 36); // fallback to known values
-            Microbot.log("[FC JOIN] Sending direct menu action for Chat-channel tab (CC_OP, param1=10551339)");
             Microbot.doInvoke(new net.runelite.client.plugins.microbot.util.menu.NewMenuEntry(
                 "Chat-channel", // option
                 -1,             // param0
@@ -956,7 +886,6 @@ public class WildernessAgilityScript extends Script {
         try {
             Widget joinButton = Rs2Widget.getWidget(458, 770);
             java.awt.Rectangle bounds = joinButton != null ? joinButton.getBounds() : new java.awt.Rectangle(0, 0, 30, 20); // fallback
-            Microbot.log("[FC JOIN] Sending direct menu action for Join button (CC_OP, param1=458770)");
             Microbot.doInvoke(new net.runelite.client.plugins.microbot.util.menu.NewMenuEntry(
                 "Join", // option
                 -1,      // param0
@@ -972,16 +901,13 @@ public class WildernessAgilityScript extends Script {
     }
 
     private void joinChatChannel(String channelName) {
-        Microbot.log("[FC JOIN] Preparing to join friends chat: " + channelName);
         sleep(3000);
         sendChatChannelTabMenuAction();
         sleep(3000);
         sleep(1000);
         sendJoinButtonMenuAction();
-        Microbot.log("[FC JOIN] Sent Join button menu action. Sleeping 2s before typing...");
         sleep(2000);
         sleep(1000);
-        Microbot.log("[FC JOIN] Typing FC name: " + channelName);
         final long firstJoinAttemptTime = System.currentTimeMillis();
         Rs2Keyboard.typeString(channelName);
         Rs2Keyboard.enter();
@@ -989,7 +915,6 @@ public class WildernessAgilityScript extends Script {
         // Wait for FC join confirmation message
         boolean joined = sleepUntil(() -> lastFcJoinMessageTime > firstJoinAttemptTime, 5000);
         if (!joined) {
-            Microbot.log("[FC JOIN] Did not see join confirmation message, retrying...");
             // Retry once more
             final long secondJoinAttemptTime = System.currentTimeMillis();
             Rs2Keyboard.typeString(channelName);
@@ -997,7 +922,6 @@ public class WildernessAgilityScript extends Script {
             sleep(600, 900);
             joined = sleepUntil(() -> lastFcJoinMessageTime > secondJoinAttemptTime, 5000);
             if (!joined) {
-                Microbot.log("[FC JOIN] Still did not see join confirmation message after retry.");
             }
         }
     }
@@ -1027,7 +951,6 @@ public class WildernessAgilityScript extends Script {
                 sleep(5000); // Wait for teleport
                 currentState = ObstacleState.BANKING;
             } else {
-                Microbot.log("Lever pull animation not detected, retrying...");
                 // Stay in INTERACT_LEVER to retry, but do not re-walk unless player moved
             }
         }
@@ -1073,7 +996,7 @@ public class WildernessAgilityScript extends Script {
     }
 
     private void handleBanking() {
-        // Single-step banking logic (like BlastoiseFurnaceScript)
+        // Single-step banking logic
         if (!Rs2Bank.isOpen()) {
             Rs2Bank.openBank();
             sleepUntil(Rs2Bank::isOpen, 20000);
@@ -1143,5 +1066,12 @@ public class WildernessAgilityScript extends Script {
                 break;
             }
         }
+    }
+    public int getDispenserLoots() {
+        return dispenserLoots;
+    }
+
+    public void setLastFcJoinMessageTime(long time) {
+        this.lastFcJoinMessageTime = time;
     }
 }

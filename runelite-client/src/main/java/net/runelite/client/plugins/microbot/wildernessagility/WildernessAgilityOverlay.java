@@ -37,7 +37,7 @@ public class WildernessAgilityOverlay extends OverlayPanel {
         panelComponent.getChildren().add(LineComponent.builder().build());
         panelComponent.getChildren().add(LineComponent.builder()
                 .left("Dispensers Looted")
-                .right(Integer.toString(script.dispenserLoots))
+                .right(Integer.toString(script.getDispenserLoots()))
                 .leftColor(Color.YELLOW)
                 .rightColor(Color.YELLOW)
                 .build());
