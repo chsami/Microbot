@@ -2,13 +2,16 @@ package net.runelite.client.plugins.microbot.farmTreeRun;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import net.runelite.api.*;
+import net.runelite.api.ChatMessageType;
+import net.runelite.api.GameObject;
+import net.runelite.api.ItemID;
+import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.farmTreeRun.enums.FarmTreeRunState;
 import net.runelite.client.plugins.microbot.farmTreeRun.enums.FruitTreeEnum;
 import net.runelite.client.plugins.microbot.farmTreeRun.enums.TreeEnums;
-import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity;
@@ -502,8 +505,9 @@ public class FarmTreeRunScript extends Script {
                     treePlanted = true;
                 if (treePlanted && handlePayment(config, patch, PaymentKind.PROTECT))
                     protectionHandled = true;
-                if (treePlanted && protectionHandled)
+                if ((!isPatchEmpty(patch) && shouldProtectTree(config)) || (treePlanted && protectionHandled)) {
                     done = true;
+                }
                 break;
             default:
                 System.out.println("Unexpected action found on tree patch: " + foundAction);
@@ -556,7 +560,9 @@ public class FarmTreeRunScript extends Script {
         treeGardener = Rs2Npc.getNearestNpcWithAction("Pay");
         Rs2Npc.interact(treeGardener, "Pay");
 
-        if (treeGardener == null) {
+        if (treeGardener != null) {
+            Rs2Npc.interact(treeGardener, "Pay");
+        } else {
             handleExoticGardeners();
         }
 
@@ -570,13 +576,17 @@ public class FarmTreeRunScript extends Script {
 
         if (Rs2Dialogue.hasSelectAnOption()) {
             Rs2Dialogue.clickOption("Yes");
-            sleepUntil(() -> isPatchEmpty(patch), 6000);
+
+            // WARTE auf neues GameObject
+            sleep(1000, 1500); // leichte Verzögerung
+            sleepUntil(() -> Rs2GameObject.getObjectComposition(patch.getId()) != null, 5000);
+
             if (isPatchEmpty(patch)) {
                 return true;
             }
-            shutdown();
-            System.out.println("Failed gardener money payment.");
-            return false;
+
+            Microbot.log("Patch not detected as empty after payment. Possibly already planted?");
+            return true; // Zahlung war vermutlich dennoch erfolgreich, also NICHT abbrechen
         } else {
             System.out.println("Failed gardener payment.");
         }
@@ -766,7 +776,13 @@ public class FarmTreeRunScript extends Script {
     }
 
     private boolean isPatchEmpty(Patch patch) {
-        String name = Rs2GameObject.getObjectComposition(patch.getId()).getName().toLowerCase();
+        var composition = Rs2GameObject.getObjectComposition(patch.getId());
+        if (composition == null) {
+            Microbot.log("ObjectComposition was null for patch: " + patch.name());
+            return false; // Vorsichtshalber „nicht leer“ annehmen, um keine Aktionen auszuführen
+        }
+
+        String name = composition.getName().toLowerCase();
         return name.endsWith("patch");
     }
 
