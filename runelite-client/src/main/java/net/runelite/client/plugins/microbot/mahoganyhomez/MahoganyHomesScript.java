@@ -2,12 +2,17 @@ package net.runelite.client.plugins.microbot.mahoganyhomez;
 
 import com.google.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.*;
+import net.runelite.api.GameObject;
+import net.runelite.api.ItemID;
+import net.runelite.api.ObjectComposition;
+import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.util.Global;
+import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
@@ -17,12 +22,12 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
-import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.WalkerState;
+import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -36,22 +41,25 @@ public class MahoganyHomesScript extends Script {
     MahoganyHomesPlugin plugin;
 
     public boolean run(MahoganyHomesConfig config) {
+        applyAntiBanSettings(); // <-- Deine AntiBan Settings einmalig am Start
+
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
+
                 checkPlankSack();
                 fix();
                 finish();
                 getNewContract();
-                bank();
-                walkToHome();
-
+                bank();             // <-- Hier wird ggf. Teleport zur Bank benutzt
+                walkToHome();       // <-- Hier könnte man auch Teleport-Support für den Weg zum Haus ergänzen
 
             } catch (Exception ex) {
                 System.out.println(ex.getMessage());
             }
         }, 0, 600, TimeUnit.MILLISECONDS);
+
         return true;
     }
 
@@ -100,7 +108,7 @@ public class MahoganyHomesScript extends Script {
     // Tasks section
 
     private void checkPlankSack() {
-        if(plugin.getConfig().usePlankSack() && plugin.getPlankCount() == -1) {
+        if (plugin.getConfig().usePlankSack() && plugin.getPlankCount() == -1) {
             if (Rs2Inventory.contains(ItemID.PLANK_SACK)) {
                 Rs2ItemModel plankSack = Rs2Inventory.get(ItemID.PLANK_SACK);
                 if (plankSack != null) {
@@ -262,7 +270,7 @@ public class MahoganyHomesScript extends Script {
         if (plugin.getCurrentHome() != null
                 && plugin.getCurrentHome().isInside(Rs2Player.getWorldLocation())
                 && Hotspot.isEverythingFixed()) {
-            if(plugin.getConfig().usePlankSack() && planksInPlankSack() > 0){
+            if (plugin.getConfig().usePlankSack() && planksInPlankSack() > 0) {
                 if (Rs2Inventory.contains(ItemID.PLANK_SACK) && Rs2Inventory.contains(ItemID.STEEL_BAR)) {
                     Rs2ItemModel plankSack = Rs2Inventory.get(ItemID.PLANK_SACK);
                     if (plankSack != null) {
@@ -304,7 +312,7 @@ public class MahoganyHomesScript extends Script {
     // Get new contract
     private void getNewContract() {
         if (plugin.getCurrentHome() == null) {
-            if(plugin.getConfig().useNpcContact()){
+            if (plugin.getConfig().useNpcContact()) {
                 if (Rs2Magic.npcContact("amy")) {
                     handleContractDialogue();
                 }
@@ -351,9 +359,15 @@ public class MahoganyHomesScript extends Script {
                 && isMissingItems()) {
             ShortestPathPlugin.getPathfinderConfig().setIgnoreTeleportAndItems(true);
             BankLocation bankLocation = Rs2Bank.getNearestBank(currentHome.getLocation());
+
+            if (useTeleportTabForBank(bankLocation)) {
+                sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo2D(bankLocation.getWorldPoint()) < 15, 8000);
+            }
+
+
             ShortestPathPlugin.getPathfinderConfig().setIgnoreTeleportAndItems(false);
             if (Rs2Bank.walkToBank(bankLocation)) {
-                if(Rs2Bank.openBank()) {
+                if (Rs2Bank.openBank()) {
                     sleep(600, 1200);
                     if (plugin.getConfig().usePlankSack()) {
                         if (Rs2Inventory.isFull() && !Rs2Inventory.contains(ItemID.STEEL_BAR)) {
@@ -437,6 +451,80 @@ public class MahoganyHomesScript extends Script {
                 .min(Comparator.comparingInt(wp -> wp.distanceTo2D(Rs2Player.getWorldLocation())))
                 .orElse(null);
     }
+
+    private boolean useTeleportTabForBank(BankLocation bankLocation) {
+        // Falador
+        if (bankLocation == BankLocation.FALADOR_EAST || bankLocation == BankLocation.FALADOR_WEST) {
+            if (Rs2Inventory.contains(ItemID.FALADOR_TELEPORT)) {
+                Rs2Inventory.interact(ItemID.FALADOR_TELEPORT, "Break");
+                sleep(1800, 2400); // Wartezeit für Teleport-Animation
+                return true;
+            }
+        }
+        // Ardougne
+        if (bankLocation == BankLocation.ARDOUGNE_NORTH || bankLocation == BankLocation.ARDOUGNE_SOUTH) {
+            if (Rs2Inventory.contains(ItemID.ARDOUGNE_TELEPORT)) {
+                Rs2Inventory.interact(ItemID.ARDOUGNE_TELEPORT, "Break");
+                sleep(1800, 2400);
+                return true;
+            }
+        }
+        // Varrock
+        if (bankLocation == BankLocation.VARROCK_EAST || bankLocation == BankLocation.VARROCK_WEST) {
+            if (Rs2Inventory.contains(ItemID.VARROCK_TELEPORT)) {
+                Rs2Inventory.interact(ItemID.VARROCK_TELEPORT, "Break");
+                sleep(1800, 2400);
+                return true;
+            }
+        }
+        Rs2Inventory.interact(ItemID.XERICS_TALISMAN, "Rub");
+        sleep(800, 1200); // Kurzes Delay für das Menü
+
+        Widget adventureLogWidget = Rs2Widget.getWidget(187, 3);
+        if (adventureLogWidget != null) {
+            // Liste deiner gewünschten Teleports in Prioritäts-Reihenfolge:
+            List<String> bevorzugteZiele = Arrays.asList(
+                    "Xeric's Glade",
+                    "Xeric's Inferno",
+                    "Xeric's Lookout",
+                    "Xeric's Honour",
+                    "Xeric's Heart"
+            );
+            Widget bestWidget = null;
+            for (String ziel : bevorzugteZiele) {
+                bestWidget = Rs2Widget.findWidget(ziel, List.of(adventureLogWidget));
+                if (bestWidget != null) {
+                    Rs2Widget.clickWidget(bestWidget);
+                    Microbot.log("Teleported using: " + ziel);
+                    sleep(2000, 2500);
+                    break;
+                }
+            }
+            if (bestWidget == null) {
+                Microbot.log("Kein bevorzugtes Ziel gefunden!");
+            }
+        }
+
+
+        return false;
+    }
+
+    private void applyAntiBanSettings() {
+        Rs2AntibanSettings.antibanEnabled = true;
+        Rs2AntibanSettings.usePlayStyle = true;
+        Rs2AntibanSettings.simulateFatigue = true;
+        Rs2AntibanSettings.simulateAttentionSpan = true;
+        Rs2AntibanSettings.behavioralVariability = true;
+        Rs2AntibanSettings.nonLinearIntervals = true;
+        Rs2AntibanSettings.naturalMouse = true;
+        Rs2AntibanSettings.simulateMistakes = true;
+        Rs2AntibanSettings.moveMouseOffScreen = true;
+        Rs2AntibanSettings.contextualVariability = true;
+        Rs2AntibanSettings.devDebug = false;
+        Rs2AntibanSettings.playSchedule = true;
+        Rs2AntibanSettings.actionCooldownChance = 0.1;
+    }
+
 
     @Override
     public void shutdown() {
