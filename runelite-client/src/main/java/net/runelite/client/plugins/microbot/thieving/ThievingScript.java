@@ -203,36 +203,36 @@ public class ThievingScript extends Script {
         }
     }
 
-        private void handleWealthyCitizen() {
+    private void handleWealthyCitizen() {
+        try {
+            if (Rs2Player.isAnimating(3000)) {
+                return;
+            }
+            List<Rs2NpcModel> wealthyCitizenInteracting = new ArrayList<>();
             try {
-                if (Rs2Player.isAnimating(3000)) {
-                    return;
-                }
-                List<Rs2NpcModel> wealthyCitizenInteracting = new ArrayList<>();
-                try {
-                    Stream<Rs2NpcModel> npcStream = Rs2Npc.getNpcs("Wealthy citizen", true);
-                    if (npcStream != null) {
-                        wealthyCitizenInteracting = npcStream
-                                .filter(x -> x != null && x.isInteracting() && x.getInteracting() != null)
-                                .collect(Collectors.toList());
-                    }
-                } catch (Exception ex) {
-                    Microbot.log("Error retrieving Wealthy citizens: " + ex.getMessage());
-                    return;
-                }
-
-                Optional<Rs2NpcModel> wealthyCitizenToPickpocket = wealthyCitizenInteracting.stream().findFirst();
-                if (wealthyCitizenToPickpocket.isPresent()) {
-                    Rs2NpcModel pickpocketnpc = wealthyCitizenToPickpocket.get();
-                    if (!Rs2Player.isAnimating(3000) && Rs2Npc.pickpocket(pickpocketnpc)) {
-                        Microbot.status = "Pickpocketing " + pickpocketnpc.getName();
-                        sleep(300, 600);
-                    }
+                Stream<Rs2NpcModel> npcStream = Rs2Npc.getNpcs("Wealthy citizen", true);
+                if (npcStream != null) {
+                    wealthyCitizenInteracting = npcStream
+                            .filter(x -> x != null && x.isInteracting() && x.getInteracting() != null)
+                            .collect(Collectors.toList());
                 }
             } catch (Exception ex) {
-               Microbot.log("Error in handleWealthyCitizen: " + ex.getMessage());
+                Microbot.log("Error retrieving Wealthy citizens: " + ex.getMessage());
+                return;
             }
+
+            Optional<Rs2NpcModel> wealthyCitizenToPickpocket = wealthyCitizenInteracting.stream().findFirst();
+            if (wealthyCitizenToPickpocket.isPresent()) {
+                Rs2NpcModel pickpocketnpc = wealthyCitizenToPickpocket.get();
+                if (!Rs2Player.isAnimating(3000) && Rs2Npc.pickpocket(pickpocketnpc)) {
+                    Microbot.status = "Pickpocketing " + pickpocketnpc.getName();
+                    sleep(300, 600);
+                }
+            }
+        } catch (Exception ex) {
+            Microbot.log("Error in handleWealthyCitizen: " + ex.getMessage());
         }
+    }
 
     private void handleShadowVeil() {
         if (!Rs2Magic.isShadowVeilActive() && config.shadowVeil()) {
@@ -244,30 +244,52 @@ public class ThievingScript extends Script {
         }
     }
 
+    private final Map<String, EquipmentInventorySlot> vyreEquipment = new HashMap<String, EquipmentInventorySlot>(){{
+        put("Vyre noble shoes", EquipmentInventorySlot.BOOTS);
+        put("Vyre noble legs", EquipmentInventorySlot.LEGS);
+        put("Vyre noble top", EquipmentInventorySlot.BODY);
+    }};
+
+    private final Map<String, EquipmentInventorySlot> rogueEquipment = new HashMap<String, EquipmentInventorySlot>(){{
+        put("Rogue mask", EquipmentInventorySlot.HEAD);
+        put("Rogue top", EquipmentInventorySlot.BODY);
+        put("Rogue trousers", EquipmentInventorySlot.LEGS);
+        put("Rogue boots", EquipmentInventorySlot.BOOTS);
+        put("Rogue gloves", EquipmentInventorySlot.GLOVES);
+        put("Thieving cape(t)",EquipmentInventorySlot.CAPE);
+    }};
+
+    private void equipSet(Map<String, EquipmentInventorySlot> equipmentSet) {
+        for (Map.Entry<String, EquipmentInventorySlot> entry: equipmentSet.entrySet()) {
+            String itemName = entry.getKey();
+            EquipmentInventorySlot slot = entry.getValue();
+            if (!isEquipped(itemName, slot)) {
+                if (Rs2Inventory.contains(itemName)) {
+                    Rs2Inventory.wear(itemName);
+                    Rs2Inventory.waitForInventoryChanges(1200);
+
+                } else if (Rs2Bank.hasBankItem(itemName)) {
+                    Rs2Bank.withdrawAndEquip(itemName);
+                    Rs2Inventory.waitForInventoryChanges(1200);
+                }
+            }
+        }
+    }
+
     private void bank() {
         Microbot.status = "Getting food from bank...";
 
         BankLocation nearestBank = Rs2Bank.getNearestBank();
+
+        if (nearestBank != null && nearestBank == BankLocation.DARKMEYER) {
+            equipSet(vyreEquipment);
+        }
+
         boolean isBankOpen = Rs2Bank.isNearBank(nearestBank, 8) ? Rs2Bank.openBank() : Rs2Bank.walkToBankAndUseBank(nearestBank);
         if (!isBankOpen || !Rs2Bank.isOpen()) return;
         Rs2Bank.depositAll();
 
-        Map<String, EquipmentInventorySlot> rogueEquipment = new HashMap<>();
-        rogueEquipment.put("Rogue mask", EquipmentInventorySlot.HEAD);
-        rogueEquipment.put("Rogue top", EquipmentInventorySlot.BODY);
-        rogueEquipment.put("Rogue trousers", EquipmentInventorySlot.LEGS);
-        rogueEquipment.put("Rogue boots", EquipmentInventorySlot.BOOTS);
-        rogueEquipment.put("Rogue gloves", EquipmentInventorySlot.GLOVES);
-        rogueEquipment.put("Thieving cape(t)",EquipmentInventorySlot.CAPE);
-
-        for (Map.Entry<String, EquipmentInventorySlot> entry : rogueEquipment.entrySet()) {
-            String itemName = entry.getKey();
-            EquipmentInventorySlot slot = entry.getValue();
-            if (!isEquipped(itemName, slot) && Rs2Bank.hasBankItem(itemName)) {
-                Rs2Bank.withdrawAndEquip(itemName);
-                Rs2Inventory.waitForInventoryChanges(1200);
-            }
-        }
+        equipSet(rogueEquipment);
 
         if (config.shadowVeil()) {
             if (!isEquipped("Lava battlestaff", EquipmentInventorySlot.WEAPON)) {
@@ -300,19 +322,23 @@ public class ThievingScript extends Script {
 
         Rs2Bank.closeBank();
         sleepUntil(() -> !Rs2Bank.isOpen());
+
     }
 
     private void dropItems(List<Rs2ItemModel> food) {
         List<String> doNotDropItemList = Arrays.stream(config.DoNotDropItemList().split(",")).collect(Collectors.toList());
 
-        List<String> foodNames = food.stream().map(x -> x.name).collect(Collectors.toList());
+        List<String> foodNames = food.stream().map(Rs2ItemModel::getName).collect(Collectors.toList());
 
         doNotDropItemList.addAll(foodNames);
 
-        doNotDropItemList.add(config.food().getName());
+        //doNotDropItemList.add(config.food().getName());
         doNotDropItemList.add("dodgy necklace");
         doNotDropItemList.add("coins");
         doNotDropItemList.add("book of the dead");
+        doNotDropItemList.add("Vyre noble shoes");
+        doNotDropItemList.add("Vyre noble top");
+        doNotDropItemList.add("Vyre noble legs");
         if (config.shadowVeil()) {
             doNotDropItemList.add("Fire rune");
             doNotDropItemList.add("Earth rune");
