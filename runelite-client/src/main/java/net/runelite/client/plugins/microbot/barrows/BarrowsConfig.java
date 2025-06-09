@@ -35,8 +35,8 @@ public interface BarrowsConfig extends Config {
             description = "Between prayer potions, or moonlight moth mixes.",
             position = 2
     )
-    default BarrowsConfig.prayerRestoreType prayerRestoreType() {
-        return BarrowsConfig.prayerRestoreType.Prayer_Potion; // Default selection
+    default prayerRestoreType prayerRestoreType() {
+        return prayerRestoreType.Prayer_Potion; // Default selection
     }
 
     enum prayerRestoreType {
@@ -113,8 +113,8 @@ public interface BarrowsConfig extends Config {
             description = "Between using a barrows teleport tablet, or your POH portal.",
             position = 7
     )
-    default BarrowsConfig.selectedToBarrowsTPMethod selectedToBarrowsTPMethod() {
-        return BarrowsConfig.selectedToBarrowsTPMethod.Tablet; // Default selection
+    default selectedToBarrowsTPMethod selectedToBarrowsTPMethod() {
+        return selectedToBarrowsTPMethod.Tablet; // Default selection
     }
 
     enum selectedToBarrowsTPMethod {
