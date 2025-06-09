@@ -2,6 +2,8 @@ package net.runelite.client.plugins.microbot.LunarTablets;
 
 import com.google.inject.Provides;
 import net.runelite.api.GameObject;
+import net.runelite.api.Quest;
+import net.runelite.api.QuestState;
 import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.config.ConfigManager;
@@ -172,10 +174,32 @@ public class LunarTabletsScript extends Script {
         String selectedTabletName = config.selectedTablet().getName();
         System.out.println("Selected Lunar Tablet: " + selectedTabletName);
 
-        if (!Rs2Bank.isOpen()){
-            Rs2Bank.walkToBankAndUseBank(BankLocation.LUNAR_ISLE);
-            return;
+        if(Rs2Player.getQuestState(Quest.DREAM_MENTOR) == QuestState.FINISHED) {
+            if (!Rs2Bank.isOpen()) {
+                Rs2Bank.walkToBankAndUseBank(BankLocation.LUNAR_ISLE);
+                return;
+            }
+        } else {
+            //We must use the booths with people behind them.
+            GameObject acceptableBooth = Rs2GameObject.getGameObject("Bank booth", new WorldPoint(2097, 3920, 0));
+            GameObject acceptableBooth2 = Rs2GameObject.getGameObject("Bank booth", new WorldPoint(2098, 3920, 0));
+            if(acceptableBooth == null || acceptableBooth2 == null){
+                if(Rs2Walker.walkTo(BankLocation.LUNAR_ISLE.getWorldPoint())){
+                    return;
+                }
+            } else {
+                if(!Rs2Bank.isOpen()) {
+                    if(Rs2Random.between(0,100) < 50){
+                        Rs2GameObject.interact(acceptableBooth, "Bank");
+                        sleepUntil(() -> Rs2Bank.isOpen(), Rs2Random.between(3000, 5000));
+                    } else {
+                        Rs2GameObject.interact(acceptableBooth2, "Bank");
+                        sleepUntil(() -> Rs2Bank.isOpen(), Rs2Random.between(3000, 5000));
+                    }
+                }
+            }
         }
+
         System.out.println("Bank opened successfully.");
 
         if (Rs2Inventory.contains(item -> item.getName().toLowerCase().contains("teleport"))) {
