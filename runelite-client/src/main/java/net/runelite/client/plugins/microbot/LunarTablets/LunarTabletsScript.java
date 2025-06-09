@@ -183,12 +183,20 @@ public class LunarTabletsScript extends Script {
             //We must use the booths with people behind them.
             GameObject acceptableBooth = Rs2GameObject.getGameObject("Bank booth", new WorldPoint(2097, 3920, 0));
             GameObject acceptableBooth2 = Rs2GameObject.getGameObject("Bank booth", new WorldPoint(2098, 3920, 0));
+
             if(acceptableBooth == null || acceptableBooth2 == null){
                 if(Rs2Walker.walkTo(BankLocation.LUNAR_ISLE.getWorldPoint())){
                     return;
                 }
-            } else {
-                if(!Rs2Bank.isOpen()) {
+            }
+
+            if(acceptableBooth != null && acceptableBooth.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) > 7){
+                if(Rs2Walker.walkTo(BankLocation.LUNAR_ISLE.getWorldPoint())){
+                    return;
+                }
+            }
+
+            if(!Rs2Bank.isOpen()) {
                     if(Rs2Random.between(0,100) < 50){
                         Rs2GameObject.interact(acceptableBooth, "Bank");
                         sleepUntil(() -> Rs2Bank.isOpen(), Rs2Random.between(3000, 5000));
@@ -197,7 +205,7 @@ public class LunarTabletsScript extends Script {
                         sleepUntil(() -> Rs2Bank.isOpen(), Rs2Random.between(3000, 5000));
                     }
                 }
-            }
+
         }
 
         System.out.println("Bank opened successfully.");
