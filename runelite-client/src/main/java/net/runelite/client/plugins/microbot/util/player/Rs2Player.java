@@ -1423,8 +1423,7 @@ public class Rs2Player {
      */
     public static boolean isStandingOnGameObject() {
         WorldPoint playerPoint = getWorldLocation();
-        return Rs2GameObject.getGameObject(playerPoint) != null
-                && isStandingOnGroundItem();
+        return Rs2GameObject.getGameObject(o -> Objects.equals(playerPoint, o.getWorldLocation())) != null || isStandingOnGroundItem();
     }
 
     /**
