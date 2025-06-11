@@ -135,6 +135,8 @@ public class QoLPlugin extends Plugin {
 
     @Inject
     BankpinScript bankpinScript;
+    @Inject
+    private PotionManagerScript potionManagerScript;
 
     @Provides
     QoLConfig provideConfig(ConfigManager configManager) {
@@ -192,6 +194,7 @@ public class QoLPlugin extends Plugin {
         eventBus.register(gemCuttingManager);
         eventBus.register(craftingManager);
         bankpinScript.run(config);
+        potionManagerScript.run(config);
         // pvpScript.run(config);
         awaitExecutionUntil(() ->Microbot.getClientThread().invokeLater(this::updateUiElements), () -> !SplashScreen.isOpen(), 600);
     }
@@ -209,6 +212,8 @@ public class QoLPlugin extends Plugin {
         eventBus.unregister(firemakingManager);
         eventBus.unregister(gemCuttingManager);
         eventBus.unregister(craftingManager);
+        potionManagerScript.shutdown();
+
     }
 
     @Subscribe(

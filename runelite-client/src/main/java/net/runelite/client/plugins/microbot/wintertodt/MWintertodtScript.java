@@ -127,7 +127,7 @@ public class MWintertodtScript extends Script {
                             sleep(5000);
                             return;
                         }
-                        axe = Rs2Inventory.get("axe").name;
+                        axe = Rs2Inventory.get("axe").getName();
                     } else if (!Rs2Equipment.isWearing("axe")){
                         if (Rs2Inventory.hasItem("axe")) {
                             Rs2Inventory.wear("axe");
@@ -238,7 +238,7 @@ public class MWintertodtScript extends Script {
                             walkToBrazier();
 
                             Rs2ItemModel knife = Rs2Inventory.get("knife");
-                            if (knife.slot != 27) {
+                            if (knife.getSlot() != 27) {
                                 sleep(GAME_TICK_LENGTH * 2);
                                 if (Rs2Inventory.moveItemToSlot(knife, 27))
                                     sleepUntil(() -> Rs2Inventory.slotContains(27, "knife"), 5000);

@@ -2,28 +2,24 @@ package net.runelite.client.plugins.microbot.TaF.CalcifiedRockMiner;
 
 import net.runelite.api.GameObject;
 import net.runelite.api.GameState;
-import net.runelite.api.KeyCode;
 import net.runelite.api.Skill;
+import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
-import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
-import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
-import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.security.Login;
-import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
@@ -112,11 +108,16 @@ public class CalcifiedRockMinerScript extends Script {
             var weepingRocks = Rs2GameObject.getDecorativeObjects(x -> x.getId() == WEEPING_ROCK, Rs2Player.getWorldLocation());
             if (weepingRocks != null && !weepingRocks.isEmpty()) {
                 var rock = weepingRocks.stream().findFirst().get();
+                MoveCameraToRock(rock.getWorldLocation());
                 var distance = rock.getLocalLocation().distanceTo(Rs2Player.getLocalLocation());
                 // 128 == 1 tile, so we must be mining the tear, if above, we should move to the tear
                 if (distance > 128 || !Rs2Player.isAnimating()) {
                     Rs2Camera.turnTo(rock.getLocalLocation(), 45);
                     Microbot.getMouse().click(rock.getCanvasLocation());
+                    Rs2Player.waitForXpDrop(Skill.MINING, true);
+                    Rs2Antiban.actionCooldown();
+                    Rs2Antiban.takeMicroBreakByChance();
+                    sleepUntil(Rs2Player::isAnimating, 5000);
                     return;
                 }
             }
@@ -128,10 +129,12 @@ public class CalcifiedRockMinerScript extends Script {
 
         GameObject rock = Rs2GameObject.findReachableObject("Calcified rocks", true, 12, CALCIFIED_ROCK_LOCATION);
         if (rock != null) {
+            MoveCameraToRock(rock.getWorldLocation());
             if (Rs2GameObject.interact(rock)) {
                 Rs2Player.waitForXpDrop(Skill.MINING, true);
                 Rs2Antiban.actionCooldown();
                 Rs2Antiban.takeMicroBreakByChance();
+                sleepUntil(Rs2Player::isAnimating, 5000);
             }
         } else {
             Microbot.log("No calcified rock found. Waiting...");
@@ -184,6 +187,12 @@ public class CalcifiedRockMinerScript extends Script {
         } else {
             BOT_STATUS = CalcifiedRockMinerState.BANKING;
         }
+    }
+
+    private void MoveCameraToRock(WorldPoint rock) {
+        Rs2Camera.resetPitch();
+        Rs2Camera.resetZoom();
+        Rs2Camera.turnTo(LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), rock));
     }
 
     private void handleBanking(CalcifiedRockMinerConfig config) {

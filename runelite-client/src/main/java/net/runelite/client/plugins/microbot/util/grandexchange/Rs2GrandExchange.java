@@ -5,6 +5,9 @@ import com.google.gson.JsonParser;
 import net.runelite.api.GrandExchangeOffer;
 import net.runelite.api.GrandExchangeOfferState;
 import net.runelite.api.MenuAction;
+import net.runelite.api.VarClientStr;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetInfo;
@@ -153,17 +156,18 @@ public class Rs2GrandExchange {
             }
             Widget pricePerItemButtonX = getPricePerItemButton_X();
             if (pricePerItemButtonX != null) {
-                System.out.println("tried to click widget");
-                sleep(2000);
-                Microbot.getMouse().click(pricePerItemButtonX.getBounds());
-                Microbot.getMouse().click(pricePerItemButtonX.getBounds());
-                sleepUntil(() -> Rs2Widget.getWidget(162, 41) != null, 5000); //GE Enter Price
-                sleep(1000);
-                Rs2Keyboard.typeString(Integer.toString(price));
-                Rs2Keyboard.enter();
-                sleep(2000);
+
+
+                setPrice(price);
                 setQuantity(quantity);
-                confirm();
+                if(getOfferPrice() == price && getOfferQuantity() == quantity) {
+                    confirm();
+                    return true;
+                }
+                else {
+                    buyItem(itemName, searchTerm, price, quantity);
+                }
+
                 return true;
             } else {
                 System.out.println("unable to find widget setprice.");
@@ -185,16 +189,29 @@ public class Rs2GrandExchange {
     }
 
     private static void setQuantity(int quantity) {
-        if (quantity > 1) {
+        if (quantity != getOfferQuantity()) {
             Widget quantityButtonX = getQuantityButton_X();
             Microbot.getMouse().click(quantityButtonX.getBounds());
-            sleepUntil(() -> Rs2Widget.getWidget(162, 41) != null); //GE Enter Price/Quantity
+            sleepUntil(() -> Rs2Widget.getWidget(InterfaceID.Chatbox.MES_TEXT2) != null); //GE Enter Price/Quantity
             sleep(600, 1000);
-            Rs2Keyboard.typeString(Integer.toString(quantity));
+            setChatboxValue(quantity);
             sleep(500, 750);
             Rs2Keyboard.enter();
             sleep(1000);
         }
+    }
+    private static void setPrice(int price) {
+        if (price != getOfferPrice()) {
+            Widget pricePerItemButtonX = getPricePerItemButton_X();
+            Microbot.getMouse().click(pricePerItemButtonX.getBounds());
+            sleepUntil(() -> Rs2Widget.getWidget(InterfaceID.Chatbox.MES_TEXT2) != null); //GE Enter Price
+            sleep(600, 1000);
+            setChatboxValue(price);
+            sleep(500, 750);
+            Rs2Keyboard.enter();
+            sleep(1000);
+        }
+
     }
 
     public static boolean buyItemAbove5Percent(String itemName, int quantity) {
@@ -247,7 +264,7 @@ public class Rs2GrandExchange {
 
             Widget pricePerItemButtonXPercent = getPricePerItemButton_PlusXPercent();
             if (pricePerItemButtonXPercent != null) {
-                int basePrice = getItemPrice();
+                int basePrice = Microbot.getVarbitValue(VarbitID.GE_NEWOFFER_TYPE);
                 int currentPercent = NumberExtractor.extractNumber(pricePerItemButtonXPercent.getText());
 
                 // Update Price per item custom percentage if it doesn't match
@@ -305,7 +322,7 @@ public class Rs2GrandExchange {
     private static boolean buyItemAbove5Percent(int timesToIncreasePrice) {
         Widget pricePerItemButton5Percent = getPricePerItemButton_Plus5Percent();
         if (pricePerItemButton5Percent != null) {
-            int basePrice = getItemPrice();
+            int basePrice = Microbot.getVarbitValue(VarbitID.GE_NEWOFFER_TYPE);
             // Call click() as many times as the value of count
             IntStream.range(0, timesToIncreasePrice).forEach(i -> {
                 Microbot.getMouse().click(pricePerItemButton5Percent.getBounds());
@@ -357,15 +374,15 @@ public class Rs2GrandExchange {
             sleep(300, 600);
             Widget pricePerItemButtonX = getPricePerItemButton_X();
             if (pricePerItemButtonX != null) {
-                Microbot.getMouse().click(pricePerItemButtonX.getBounds());
-                sleepUntil(() -> Rs2Widget.getWidget(162, 41) != null, 5000); //GE Enter Price
-                sleep(1000);
-                Rs2Keyboard.typeString(Integer.toString(price));
-                Rs2Keyboard.enter();
-                sleep(300, 500);
+                setPrice(price);
                 setQuantity(quantity);
-                Microbot.getMouse().click(getConfirm().getBounds());
-                sleepUntil(() -> !isOfferTextVisible());
+                if(getOfferPrice() == price && getOfferQuantity() == quantity) {
+                    confirm();
+                    return true;
+                }
+                else {
+                    sellItem(itemName, quantity, price);
+                }
                 return true;
             } else {
                 System.out.println("unable to find widget setprice.");
@@ -488,7 +505,7 @@ public class Rs2GrandExchange {
                 sleep(600);
             }
 
-            Rs2GrandExchange.sellItemUnder5Percent(item.name);
+            Rs2GrandExchange.sellItemUnder5Percent(item.getName());
         }
         return Rs2Inventory.isEmpty();
     }
@@ -549,7 +566,7 @@ public class Rs2GrandExchange {
     }
 
     public static Pair<Widget, Integer> getSearchResultWidget(String search) {
-        Widget parent = Microbot.getClient().getWidget(ComponentID.CHATBOX_GE_SEARCH_RESULTS);
+        Widget parent = Microbot.getClient().getWidget(InterfaceID.Chatbox.MES_LAYER_SCROLLCONTENTS);
 
         if (parent == null || parent.getChildren() == null) return null;
 
@@ -582,7 +599,7 @@ public class Rs2GrandExchange {
     }
 
     private static Widget getOfferContainer() {
-        return Microbot.getClient().getWidget(ComponentID.GRAND_EXCHANGE_OFFER_CONTAINER);
+        return Microbot.getClient().getWidget(InterfaceID.GE_OFFERS,26);
     }
 
     public static Widget getQuantityButton_Minus() {
@@ -697,7 +714,7 @@ public class Rs2GrandExchange {
     }
 
     public static int getItemPrice() {
-        return Integer.parseInt(Rs2Widget.getWidget(465, 27).getText().replace(",", ""));
+        return Integer.parseInt(Rs2Widget.getWidget(465, 27).getText().replace(" coins", ""));
     }
 
     public static Widget getSlot(GrandExchangeSlots slot) {
@@ -901,5 +918,24 @@ public class Rs2GrandExchange {
             e.printStackTrace();
             return -1;
         }
+    }
+
+    static int getOfferQuantity() {
+        return Microbot.getVarbitValue(4396);
+    }
+
+    static int getOfferPrice() {
+        return Microbot.getVarbitValue(4398);
+    }
+
+    public static void setChatboxValue(int value) {
+        var chatboxInputWidget = Rs2Widget.getWidget(InterfaceID.Chatbox.MES_TEXT2);
+        if (chatboxInputWidget == null) return;
+        chatboxInputWidget.setText(value + "*");
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            Microbot.getClient().setVarcStrValue(VarClientStr.INPUT_TEXT, String.valueOf(value));
+            return null;
+        });
+
     }
 }

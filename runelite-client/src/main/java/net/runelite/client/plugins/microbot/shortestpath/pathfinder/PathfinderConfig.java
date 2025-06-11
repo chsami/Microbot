@@ -45,6 +45,7 @@ public class PathfinderConfig {
     private final SplitFlagMap mapData;
     private final ThreadLocal<CollisionMap> map;
     /** All transports by origin {@link WorldPoint}. The null key is used for transports centered on the player. */
+	@Getter
     private final Map<WorldPoint, Set<Transport>> allTransports;
     @Setter
     private Set<Transport> usableTeleports;

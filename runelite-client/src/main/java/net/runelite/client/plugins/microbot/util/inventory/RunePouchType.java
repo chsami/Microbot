@@ -4,6 +4,8 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.runelite.api.ItemID;
 
+import java.util.Arrays;
+
 @RequiredArgsConstructor
 public enum RunePouchType {
     STANDARD(ItemID.RUNE_POUCH),
@@ -14,4 +16,10 @@ public enum RunePouchType {
 
     @Getter
     private final int itemId;
+
+    public static int[] getPouchIds() {
+        return Arrays.stream(RunePouchType.values())
+                .mapToInt(RunePouchType::getItemId)
+                .toArray();
+    }
 }

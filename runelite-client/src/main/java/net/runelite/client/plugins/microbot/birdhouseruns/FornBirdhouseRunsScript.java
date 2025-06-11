@@ -175,7 +175,7 @@ public class FornBirdhouseRunsScript extends Script {
         );
 
         for (Rs2ItemModel item : Rs2Inventory.items()) {
-            if (ids.contains(item.id)) {
+            if (ids.contains(item.getId())) {
                 Rs2Inventory.interact(item, "Search");
             }
         }

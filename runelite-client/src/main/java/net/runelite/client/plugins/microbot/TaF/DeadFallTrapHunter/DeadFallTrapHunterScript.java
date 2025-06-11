@@ -138,6 +138,9 @@ public class DeadFallTrapHunterScript extends Script {
         }
 
         GameObject tree = Rs2GameObject.findReachableObject("tree", true, 20, config.deadFallTrapHunting().getHuntingPoint());
+        if (tree == null) {
+            tree = Rs2GameObject.findReachableObject("dead tree", true, 20, config.deadFallTrapHunting().getHuntingPoint());
+        }
         if (tree != null) {
             if (Rs2GameObject.interact(tree, "Chop down")) {
                 Rs2Player.waitForAnimation();
@@ -308,7 +311,7 @@ public class DeadFallTrapHunterScript extends Script {
         Axe bestPickaxe = null;
 
         for (Axe pickaxe : Axe.values()) {
-            if (items.stream().noneMatch(i -> i.name.toLowerCase().contains(pickaxe.getItemName()))) continue;
+            if (items.stream().noneMatch(i -> i.getName().toLowerCase().contains(pickaxe.getItemName()))) continue;
             if (pickaxe.hasRequirements(config.axeInInventory())) {
                 if (bestPickaxe == null || pickaxe.getWoodcuttingLevel() > bestPickaxe.getWoodcuttingLevel()) {
                     bestPickaxe = pickaxe;

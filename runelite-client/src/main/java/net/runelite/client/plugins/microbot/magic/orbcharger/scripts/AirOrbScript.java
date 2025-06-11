@@ -165,7 +165,7 @@ public class AirOrbScript extends Script {
                                 Rs2ItemModel energyRestoreItem = Rs2Bank.bankItems()
                                         .stream()
                                         .filter(item -> Rs2Potion.getRestoreEnergyPotionsVariants().stream()
-                                                .anyMatch(potion -> item.name.contains(potion)))
+                                                .anyMatch(potion -> item.getName().contains(potion)))
                                         .findFirst()
                                         .orElse(null);
 

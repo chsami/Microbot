@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.util.bank;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
+import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.gameval.VarbitID;
@@ -15,6 +16,7 @@ import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
+import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
@@ -89,14 +91,14 @@ public class Rs2Bank {
             itemBoundingBox = Rs2Inventory.itemBounds(rs2Item);
         }
         if (container == BANK_ITEM_CONTAINER) {
-            int itemTab = getItemTabForBankItem(rs2Item.slot);
+            int itemTab = getItemTabForBankItem(rs2Item.getSlot());
             if (!isTabOpen(itemTab))
                 openTab(itemTab);
-            scrollBankToSlot(rs2Item.slot);
+            scrollBankToSlot(rs2Item.getSlot());
             itemBoundingBox = itemBounds(rs2Item);
         }
 
-        Microbot.doInvoke(new NewMenuEntry(rs2Item.slot, container, MenuAction.CC_OP.getId(), identifier, rs2Item.id, rs2Item.name), (itemBoundingBox == null) ? new Rectangle(1, 1) : itemBoundingBox);
+        Microbot.doInvoke(new NewMenuEntry(rs2Item.getSlot(), container, MenuAction.CC_OP.getId(), identifier, rs2Item.getId(), rs2Item.getName()), (itemBoundingBox == null) ? new Rectangle(1, 1) : itemBoundingBox);
         // MenuEntryImpl(getOption=Wear, getTarget=<col=ff9040>Amulet of glory(4)</col>, getIdentifier=9, getType=CC_OP_LOW_PRIORITY, getParam0=1, getParam1=983043, getItemId=1712, isForceLeftClick=false, isDeprioritized=false)
         // Rs2Reflection.invokeMenu(rs2Item.slot, container, MenuAction.CC_OP.getId(), identifier, rs2Item.id, "Withdraw-1", rs2Item.name, -1, -1);
     }
@@ -109,7 +111,7 @@ public class Rs2Bank {
      * @return The bounding rectangle for the item's slot, or null if the item is not found.
      */
     public static Rectangle itemBounds(Rs2ItemModel rs2Item) {
-        Widget itemWidget = getItemWidget(rs2Item.slot);
+        Widget itemWidget = getItemWidget(rs2Item.getSlot());
 
         if (itemWidget == null) return null;
 
@@ -292,7 +294,7 @@ public class Rs2Bank {
         return Arrays.stream(ids)
                 .anyMatch(id -> {
                     Rs2ItemModel item = findBankItem(id);
-                    return item != null && item.quantity >= amount;
+                    return item != null && item.getQuantity() >= amount;
                 });
     }
 
@@ -307,7 +309,7 @@ public class Rs2Bank {
         return Arrays.stream(ids)
                 .allMatch(id -> {
                     Rs2ItemModel item = findBankItem(id);
-                    return item != null && item.quantity >= amount;
+                    return item != null && item.getQuantity() >= amount;
                 });
     }
 
@@ -360,8 +362,8 @@ public class Rs2Bank {
     public static boolean hasBankItem(int id, int amount) {
         Rs2ItemModel rs2Item = findBankItem(id);
         if (rs2Item == null) return false;
-        log.info("Item: " + rs2Item.name + " Amount: " + rs2Item.quantity);
-        return findBankItem(Objects.requireNonNull(rs2Item).name, true, amount) != null;
+        log.info("Item: " + rs2Item.getName() + " Amount: " + rs2Item.getQuantity());
+        return findBankItem(Objects.requireNonNull(rs2Item).getName(), true, amount) != null;
     }
 
     /**
@@ -370,7 +372,7 @@ public class Rs2Bank {
     public static int count(int id) {
         Rs2ItemModel bankItem = findBankItem(id);
         if (bankItem == null) return 0;
-        return bankItem.quantity;
+        return bankItem.getQuantity();
     }
 
     /**
@@ -379,7 +381,7 @@ public class Rs2Bank {
     public static int count(String name, boolean exact) {
         Rs2ItemModel bankItem = findBankItem(name, exact);
         if (bankItem == null) return 0;
-        return bankItem.quantity;
+        return bankItem.getQuantity();
     }
 
     /**
@@ -408,7 +410,7 @@ public class Rs2Bank {
     private static void depositOne(Rs2ItemModel rs2Item) {
         if (!isOpen()) return;
         if (rs2Item == null) return;
-        if (!Rs2Inventory.hasItem(rs2Item.id)) return;
+        if (!Rs2Inventory.hasItem(rs2Item.getId())) return;
         container = BANK_INVENTORY_ITEM_CONTAINER;
 
         if (Microbot.getVarbitValue(SELECTED_OPTION_VARBIT) == 0) {
@@ -461,7 +463,7 @@ public class Rs2Bank {
     private static void depositX(Rs2ItemModel rs2Item, int amount) {
         if (!isOpen()) return;
         if (rs2Item == null) return;
-        if (!Rs2Inventory.hasItem(rs2Item.id)) return;
+        if (!Rs2Inventory.hasItem(rs2Item.getId())) return;
         container = BANK_INVENTORY_ITEM_CONTAINER;
 
         handleAmount(rs2Item, amount);
@@ -604,7 +606,7 @@ public class Rs2Bank {
     private static boolean depositAll(Rs2ItemModel rs2Item) {
         if (!isOpen()) return false;
         if (rs2Item == null) return false;
-        if (!Rs2Inventory.hasItem(rs2Item.id)) return false;
+        if (!Rs2Inventory.hasItem(rs2Item.getId())) return false;
         container = BANK_INVENTORY_ITEM_CONTAINER;
 
         if (Microbot.getVarbitValue(SELECTED_OPTION_VARBIT) == 4) {
@@ -697,7 +699,7 @@ public class Rs2Bank {
      * @return true if any items were deposited, false otherwise.
      */
     public static boolean depositAllExcept(Integer... ids) {
-        return depositAll(x -> Arrays.stream(ids).noneMatch(id -> id == x.id));
+        return depositAll(x -> Arrays.stream(ids).noneMatch(id -> id == x.getId()));
     }
 
     /**
@@ -709,7 +711,7 @@ public class Rs2Bank {
      * @return true if any items were deposited, false otherwise.
      */
     public static boolean depositAllExcept(String... names) {
-        return depositAll(x -> Arrays.stream(names).noneMatch(name -> name.equalsIgnoreCase(x.name)));
+        return depositAll(x -> Arrays.stream(names).noneMatch(name -> name.equalsIgnoreCase(x.getName())));
     }
 
     /**
@@ -721,7 +723,7 @@ public class Rs2Bank {
      * @return true if any items were deposited, false otherwise.
      */
     public static boolean depositAllExcept(List<String> names) {
-        return depositAll(x -> names.stream().noneMatch(name -> name.equalsIgnoreCase(x.name)));
+        return depositAll(x -> names.stream().noneMatch(name -> name.equalsIgnoreCase(x.getName())));
     }
 
     /**
@@ -753,9 +755,9 @@ public class Rs2Bank {
      */
     public static boolean depositAllExcept(boolean exact, String... names) {
         if (!exact)
-            return depositAll(x -> Arrays.stream(names).noneMatch(name -> x.name.toLowerCase().contains(name.toLowerCase())));
+            return depositAll(x -> Arrays.stream(names).noneMatch(name -> x.getName().toLowerCase().contains(name.toLowerCase())));
         else
-            return depositAll(x -> Arrays.stream(names).noneMatch(name -> name.equalsIgnoreCase(x.name)));
+            return depositAll(x -> Arrays.stream(names).noneMatch(name -> name.equalsIgnoreCase(x.getName())));
     }
 
     /**
@@ -881,7 +883,7 @@ public class Rs2Bank {
     private static boolean withdrawXItem(Rs2ItemModel rs2Item, int amount) {
         if (!isOpen()) return false;
         if (rs2Item == null) return false;
-        if (Rs2Inventory.isFull() && !Rs2Inventory.hasItem(rs2Item.id) && !rs2Item.isStackable()) return false;
+        if (Rs2Inventory.isFull() && !Rs2Inventory.hasItem(rs2Item.getId()) && !rs2Item.isStackable()) return false;
         container = BANK_ITEM_CONTAINER;
 
         return handleAmount(rs2Item, amount);
@@ -1416,7 +1418,7 @@ public class Rs2Bank {
         if (bankItems == null) return null;
         if (bankItems.stream().findAny().isEmpty()) return null;
 
-        Rs2ItemModel bankItem = bankItems.stream().filter(x -> x.id == id).findFirst().orElse(null);
+        Rs2ItemModel bankItem = bankItems.stream().filter(x -> x.getId() == id).findFirst().orElse(null);
 
         return bankItem;
     }
@@ -1450,8 +1452,8 @@ public class Rs2Bank {
     }
     final String lowerCaseName = name.toLowerCase();
     return bankItems.stream()
-            .filter(x -> exact ? x.name.equalsIgnoreCase(lowerCaseName) : x.name.toLowerCase().contains(lowerCaseName))
-            .filter(x -> x.quantity >= amount)
+            .filter(x -> exact ? x.getName().equalsIgnoreCase(lowerCaseName) : x.getName().toLowerCase().contains(lowerCaseName))
+            .filter(x -> x.getQuantity() >= amount)
             .findAny()
             .orElse(null);
 }
@@ -1469,9 +1471,9 @@ public class Rs2Bank {
 
         return bankItems.stream()
                 .filter(item -> names.stream().anyMatch(name -> exact
-                        ? item.name.equalsIgnoreCase(name)
-                        : item.name.toLowerCase().contains(name.toLowerCase())))
-                .filter(item -> item.quantity >= amount)
+                        ? item.getName().equalsIgnoreCase(name)
+                        : item.getName().toLowerCase().contains(name.toLowerCase())))
+                .filter(item -> item.getQuantity() >= amount)
                 .findFirst()
                 .orElse(null);
     }
@@ -1534,12 +1536,10 @@ public class Rs2Bank {
             Optional<BankLocation> byObject = bankObjs.stream()
                     .map(obj -> {
                         BankLocation closestBank = accessibleBanks.stream()
-                                .min(Comparator.comparingInt(b -> obj.getWorldLocation().distanceTo(b.getWorldPoint())))
+                                .min(Comparator.comparingInt(b -> Rs2WorldPoint.quickDistance(obj.getWorldLocation(), b.getWorldPoint())))
                                 .orElse(null);
 
-                        int dist = closestBank == null
-                                ? Integer.MAX_VALUE
-                                : obj.getWorldLocation().distanceTo(closestBank.getWorldPoint());
+                        int dist = obj.getWorldLocation().distanceTo(closestBank.getWorldPoint());
 
                         return new AbstractMap.SimpleEntry<>(closestBank, dist);
                     })
@@ -1570,9 +1570,14 @@ public class Rs2Bank {
             return null;
         }
 
+		// Create a WorldArea around the final tile to be more generous
         WorldPoint nearestTile = path.get(path.size() - 1);
+		WorldArea nearestTileArea = new WorldArea(nearestTile, 2, 2);
         Optional<BankLocation> byPath = accessibleBanks.stream()
-                .filter(b -> b.getWorldPoint().equals(nearestTile))
+                .filter(b -> {
+					WorldArea accessibleBankArea = new WorldArea(b.getWorldPoint(), 2, 2);
+					return accessibleBankArea.intersectsWith2D(nearestTileArea);
+				})
                 .findFirst();
 
         if (byPath.isPresent()) {
@@ -1722,28 +1727,28 @@ public class Rs2Bank {
                 "FIRST digit", "SECOND digit", "THIRD digit", "FOURTH digit"
         };
 
-        if (isBankPinWidgetVisible()) {
-            synchronized (lock) {
-                for (int i = 0; i < pin.length(); i++) {
-                    char c = pin.charAt(i);
-                    String expectedInstruction = digitInstructions[i];
+		synchronized (lock) {
+			if (isBankPinWidgetVisible()) {
+				for (int i = 0; i < pin.length(); i++) {
+					char c = pin.charAt(i);
+					String expectedInstruction = digitInstructions[i];
 
-                    boolean instructionVisible = sleepUntil(() -> Rs2Widget.hasWidgetText(expectedInstruction, 213, 10, false), 2000);
+					boolean instructionVisible = sleepUntil(() -> Rs2Widget.hasWidgetText(expectedInstruction, 213, 10, false), 2000);
 
-                    if (!instructionVisible) {
-                        Microbot.log("Failed to detect instruction within timeout period: " + expectedInstruction);
-                        return false;
-                    }
+					if (!instructionVisible) {
+						Microbot.log("Failed to detect instruction within timeout period: " + expectedInstruction);
+						return false;
+					}
 
-                    if (isBankPluginEnabled() && hasKeyboardBankPinEnabled()) {
-                        Rs2Keyboard.typeString(String.valueOf(c));
-                    } else {
-                        Rs2Widget.clickWidget(String.valueOf(c), Optional.of(213), 0, true);
-                    }
-                }
-                return true;
-            }
-        }
+					if (isBankPluginEnabled() && hasKeyboardBankPinEnabled()) {
+						Rs2Keyboard.typeString(String.valueOf(c));
+					} else {
+						Rs2Widget.clickWidget(String.valueOf(c), Optional.of(213), 0, true);
+					}
+				}
+				return true;
+			}
+		}
         return false;
     }
 

@@ -270,12 +270,23 @@ public interface QoLConfig extends Config {
         return true;
     }
 
+    // boolean to enable Potion Manager
+    @ConfigItem(
+            keyName = "enablePotionManager",
+            name = "Auto Potion Manager",
+            description = "Toggle the Potion Manager on or off",
+            position = 0,
+            section = upkeepSection
+    )
+    default boolean enablePotionManager() {
+        return false;
+    }
     // boolean to auto eat food
     @ConfigItem(
             keyName = "autoEatFood",
             name = "Auto Eat Food",
             description = "Auto Eat Food",
-            position = 0,
+            position = 2,
             section = upkeepSection
     )
     default boolean autoEatFood() {
@@ -302,8 +313,8 @@ public interface QoLConfig extends Config {
     @ConfigItem(
             keyName = "autoDrinkPrayerPot",
             name = "Auto Drink Prayer Pot",
-            description = "Auto Drink Prayer Pot",
-            position = 0,
+            description = "Auto Drink Prayer Pot (if potion manager is enabled this setting will be ignored)",
+            position = 1,
             section = upkeepSection
     )
     default boolean autoDrinkPrayerPot() {
@@ -318,8 +329,8 @@ public interface QoLConfig extends Config {
     @ConfigItem(
             keyName = "drinkPrayerPotPoints",
             name = "Drink Prayer Pot Points",
-            description = "Drink Prayer Pot Points",
-            position = 0,
+            description = "Drink Prayer Pot Points (if potion manager is enabled this setting will be ignored)",
+            position = 1,
             section = upkeepSection
     )
     default int drinkPrayerPotPoints() {
@@ -867,4 +878,5 @@ public interface QoLConfig extends Config {
     default boolean useQuickTeleportToHouse() {
         return true;
     }
+
 }

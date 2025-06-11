@@ -134,7 +134,7 @@ public class Rs2DepositBox {
      * @return {@code true} if at least one item was deposited, {@code false} otherwise
      */
     public static boolean depositAllExcept(Integer... ids) {
-        return depositAll(x -> Arrays.stream(ids).noneMatch(id -> id == x.id));
+        return depositAll(x -> Arrays.stream(ids).noneMatch(id -> id == x.getId()));
     }
 
 
@@ -201,7 +201,7 @@ public class Rs2DepositBox {
      * @return {@code true} if any items were deposited, {@code false} otherwise
      */
     public static boolean depositAll(Integer... ids) {
-        return depositAll(x -> Arrays.stream(ids).anyMatch(id -> id == x.id));
+        return depositAll(x -> Arrays.stream(ids).anyMatch(id -> id == x.getId()));
     }
 
 
@@ -255,7 +255,7 @@ public class Rs2DepositBox {
      */
     public static void depositOne(Rs2ItemModel rs2Item) {
         if (rs2Item == null || !isOpen()) return;
-        if (!Rs2Inventory.hasItem(rs2Item.id)) return;
+        if (!Rs2Inventory.hasItem(rs2Item.getId())) return;
         
         invokeMenu(2, rs2Item);
     }
@@ -304,7 +304,7 @@ public class Rs2DepositBox {
      */
     public static void depositX(Rs2ItemModel rs2Item, int amount) {
         if (rs2Item == null || !isOpen()) return;
-        if (!Rs2Inventory.hasItem(rs2Item.id)) return;
+        if (!Rs2Inventory.hasItem(rs2Item.getId())) return;
 
         invokeMenu(5, rs2Item);
 
@@ -387,7 +387,7 @@ public class Rs2DepositBox {
      * @return the bounding rectangle of the item's slot, or {@code null} if the item is not found
      */
     public static Rectangle itemBounds(Rs2ItemModel rs2Item) {
-        Widget itemWidget = getItemWidget(rs2Item.slot);
+        Widget itemWidget = getItemWidget(rs2Item.getSlot());
         if (itemWidget == null) return null;
         return itemWidget.getBounds();
     }

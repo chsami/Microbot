@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.mining.motherloadmine;
 
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.mining.motherloadmine.enums.MLMMiningSpot;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.ui.overlay.OverlayPanel;
@@ -39,11 +40,12 @@ public class MotherloadMineOverlay extends OverlayPanel {
             addEmptyLine();
 
 
-            panelComponent.getChildren().add(LineComponent.builder()
-                    .left("Mining Location: " + MotherloadMineScript.miningSpot.name())
-                    .build());
-
-            addEmptyLine();
+            if (MotherloadMineScript.miningSpot != MLMMiningSpot.IDLE) {
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Mining Location: " + MotherloadMineScript.miningSpot.name())
+                        .build());
+                addEmptyLine();
+            }
 
             panelComponent.getChildren().add(LineComponent.builder()
                     .left(status.toString())

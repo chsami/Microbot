@@ -61,7 +61,7 @@ public class AmethystMiningScript extends Script {
                 return;
             }
             if (config.pickAxeInInventory() && pickAxeInInventory.isEmpty()) {
-                pickAxeInInventory = Rs2Inventory.get("pickaxe").name;
+                pickAxeInInventory = Rs2Inventory.get("pickaxe").getName();
                 if (!pickAxeInInventory.isEmpty()) {
                     itemsToKeep.add(pickAxeInInventory);
                 }

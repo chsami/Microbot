@@ -3,23 +3,20 @@ package net.runelite.client.plugins.microbot.runecrafting.ourania;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import javax.inject.Inject;
+import net.runelite.api.Constants;
 import net.runelite.api.GameObject;
 import net.runelite.api.GameState;
-import net.runelite.api.ItemID;
-import net.runelite.api.NpcID;
-import net.runelite.api.ObjectID;
-import net.runelite.api.coords.LocalPoint;
-import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.gameval.ObjectID;
 import net.runelite.client.plugins.gpu.GpuPlugin;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.MicrobotOverlay;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
 import net.runelite.client.plugins.microbot.qualityoflife.scripts.pouch.Pouch;
@@ -48,7 +45,6 @@ public class OuraniaScript extends Script
 
 	public static OuraniaState state;
 	private final OuraniaConfig config;
-	private final WorldArea ouraniaAltarArea = new WorldArea(new WorldPoint(3054, 5574, 0), 12, 12);
 	private final List<Integer> massWorlds = List.of(327, 480);
 	private final OuraniaPlugin plugin;
 	private int selectedWorld = 0;
@@ -130,13 +126,13 @@ public class OuraniaScript extends Script
 				switch (state)
 				{
 					case CRAFTING:
-						Rs2GameObject.interact(ObjectID.ALTAR_29631, "craft-rune");
-						Rs2Inventory.waitForInventoryChanges(5000);
-						if (Rs2Inventory.hasAnyPouch() && !Rs2Inventory.allPouchesEmpty())
+						if (!Rs2Inventory.hasItem(config.essence().getItemId()) && Rs2Inventory.hasAnyPouch() && !Rs2Inventory.allPouchesEmpty())
 						{
 							Rs2Inventory.emptyPouches();
 							return;
 						}
+						Rs2GameObject.interact(ObjectID.RC_ZMI_DUNGEON_CRACKED_CENTER_ALTAR, "craft-rune");
+						Rs2Inventory.waitForInventoryChanges(5000);
 						break;
 					case RESETTING:
 						if (Rs2Player.getWorldLocation().distanceTo(new WorldPoint(2468, 3246, 0)) > 24)
@@ -158,7 +154,7 @@ public class OuraniaScript extends Script
 
 						if (config.directInteract() && Microbot.isPluginEnabled(GpuPlugin.class))
 						{
-							GameObject ladder = Rs2GameObject.getGameObject(ObjectID.LADDER_29635);
+							GameObject ladder = Rs2GameObject.getGameObject(ObjectID.RC_ZMI_DUNGEON_ENTRANCE);
 							Rs2GameObject.interact(ladder, "Climb");
 							sleepUntil(this::isNearEniola, 20000);
 						}
@@ -177,7 +173,7 @@ public class OuraniaScript extends Script
 
 						if (!Rs2Bank.isOpen())
 						{
-							Rs2NpcModel eniola = Rs2Npc.getNpc(NpcID.ENIOLA);
+							Rs2NpcModel eniola = Rs2Npc.getNpc(NpcID.RC_ZMI_BANKER);
 							if (eniola == null)
 							{
 								return;
@@ -194,31 +190,33 @@ public class OuraniaScript extends Script
 
 						boolean hasRunes = Rs2Inventory.items().stream().anyMatch(item -> item.getName().toLowerCase().contains("rune") && !item.getName().toLowerCase().contains("rune pouch"));
 
-						if (config.useDepositAll() && hasRunes)
+						if (hasRunes)
 						{
-							Rs2Bank.depositAll();
+							if (config.useDepositAll())
+							{
+								Rs2Bank.depositAll();
+							}
+							else
+							{
+								// Get all RunePouchType IDs
+								Integer[] runePouchIds = Arrays.stream(RunePouchType.values())
+									.map(RunePouchType::getItemId)
+									.toArray(Integer[]::new);
+
+								// Get all eligible pouch IDs based on Runecrafting level
+								Integer[] eligiblePouchIds = Arrays.stream(Pouch.values())
+									.filter(Pouch::hasRequiredRunecraftingLevel)
+									.flatMap(pouch -> Arrays.stream(pouch.getItemIds()).boxed())
+									.toArray(Integer[]::new);
+
+								// Combine RunePouchType IDs and eligible pouch IDs into a single array
+								Integer[] excludedIds = Stream.concat(Arrays.stream(runePouchIds), Arrays.stream(eligiblePouchIds))
+									.toArray(Integer[]::new);
+
+								Rs2Bank.depositAllExcept(excludedIds);
+								Rs2Inventory.waitForInventoryChanges(1800);
+							}
 						}
-						else
-						{
-							// Get all RunePouchType IDs
-							Integer[] runePouchIds = Arrays.stream(RunePouchType.values())
-								.map(RunePouchType::getItemId)
-								.toArray(Integer[]::new);
-
-							// Get all eligible pouch IDs based on Runecrafting level
-							Integer[] eligiblePouchIds = Arrays.stream(Pouch.values())
-								.filter(Pouch::hasRequiredRunecraftingLevel)
-								.flatMap(pouch -> Arrays.stream(pouch.getItemIds()).boxed())
-								.toArray(Integer[]::new);
-
-							// Combine RunePouchType IDs and eligible pouch IDs into a single array
-							Integer[] excludedIds = Stream.concat(Arrays.stream(runePouchIds), Arrays.stream(eligiblePouchIds))
-								.toArray(Integer[]::new);
-
-							Rs2Bank.depositAllExcept(excludedIds);
-							Rs2Inventory.waitForInventoryChanges(1800);
-						}
-
 
 						if (config.useEnergyRestorePotions() && Rs2Player.getRunEnergy() <= config.drinkAtPercent())
 						{
@@ -283,9 +281,9 @@ public class OuraniaScript extends Script
 								sleepUntil(() -> !Rs2Inventory.hasItem(config.food().getId()));
 							}
 
-							if (Rs2Inventory.hasItem(ItemID.JUG))
+							if (Rs2Inventory.hasItem(ItemID.JUG_EMPTY))
 							{
-								Rs2Bank.depositAll(ItemID.JUG);
+								Rs2Bank.depositAll(ItemID.JUG_EMPTY);
 								Rs2Inventory.waitForInventoryChanges(1800);
 							}
 						}
@@ -325,36 +323,20 @@ public class OuraniaScript extends Script
 						{
 							if (config.directInteract() && Microbot.isPluginEnabled(GpuPlugin.class))
 							{
-								List<WorldPoint> nearestTiles = List.of(
-									new WorldPoint(3060, 5581, 0),
-									new WorldPoint(3059, 5581, 0),
-									new WorldPoint(3058, 5581, 0),
-									new WorldPoint(3058, 5580, 0),
-									new WorldPoint(3058, 5579, 0),
-									new WorldPoint(3058, 5578, 0),
-									new WorldPoint(3058, 5577, 0),
-									new WorldPoint(3059, 5577, 0),
-									new WorldPoint(3060, 5577, 0)
-								);
-
-								WorldPoint randomWorldPoint = nearestTiles.get(Rs2Random.nextInt(0, nearestTiles.size(), 1, false));
-								LocalPoint randomLocalPoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), randomWorldPoint);
+								GameObject altarObject = Rs2GameObject.getGameObject(ObjectID.RC_ZMI_DUNGEON_CRACKED_CENTER_ALTAR, Constants.SCENE_SIZE);
 								if (Rs2Camera.getPitch() < 210 || Rs2Camera.getPitch() > 280)
 								{
 									int randomPitch = Rs2Random.nextInt(220, 260, 1, false);
 									Rs2Camera.setPitch(randomPitch);
+									sleepUntil(() -> Rs2Camera.getPitch() == randomPitch);
 								}
 								if (Rs2Camera.getZoom() != 128)
 								{
 									Rs2Camera.setZoom(128);
+									sleepUntil(() -> Rs2Camera.getZoom() == 128);
 								}
 
-								if (!Rs2Camera.isTileOnScreen(randomLocalPoint))
-								{
-									Rs2Camera.turnTo(randomLocalPoint);
-								}
-
-								Rs2Walker.walkCanvas(randomWorldPoint);
+								Rs2GameObject.interact(altarObject, "craft-rune");
 								sleepUntil(this::isNearAltar, 30000);
 							}
 							else
@@ -364,7 +346,7 @@ public class OuraniaScript extends Script
 						}
 						else
 						{
-							Rs2GameObject.interact(ObjectID.CRACK_29626, "squeeze-through");
+							Rs2GameObject.interact(ObjectID.RC_ZMI_DUNGEON_WALL_CRACK_ENTRANCE, "squeeze-through");
 							sleepUntil(this::isNearAltar, 10000);
 						}
 						break;
@@ -450,12 +432,12 @@ public class OuraniaScript extends Script
 
 	private boolean isNearAltar()
 	{
-		return ouraniaAltarArea.contains(Rs2Player.getWorldLocation());
+		return plugin.getOuraniaAltarArea().contains(Rs2Player.getWorldLocation());
 	}
 
 	private boolean isNearEniola()
 	{
-		Rs2NpcModel eniola = Rs2Npc.getNpc(NpcID.ENIOLA);
+		Rs2NpcModel eniola = Rs2Npc.getNpc(NpcID.RC_ZMI_BANKER);
 		if (eniola == null)
 		{
 			return false;
@@ -475,9 +457,9 @@ public class OuraniaScript extends Script
 			Rs2Bank.depositOne(simplifiedPotionName);
 			Rs2Inventory.waitForInventoryChanges(1800);
 		}
-		if (Rs2Inventory.hasItem(ItemID.VIAL))
+		if (Rs2Inventory.hasItem(ItemID.VIAL_EMPTY))
 		{
-			Rs2Bank.depositOne(ItemID.VIAL);
+			Rs2Bank.depositOne(ItemID.VIAL_EMPTY);
 			Rs2Inventory.waitForInventoryChanges(1800);
 		}
 	}

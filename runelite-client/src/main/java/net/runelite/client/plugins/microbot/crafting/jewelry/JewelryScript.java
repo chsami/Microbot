@@ -16,7 +16,7 @@ import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
-import net.runelite.client.plugins.microbot.util.inventory.RunePouch;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2RunePouch;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
@@ -458,7 +458,7 @@ public class JewelryScript extends Script {
         // Check if the noted jewelry item is in the inventory
         if (!Rs2Inventory.hasItem(plugin.getJewelry().getItemID() + 1)) return false;
         
-        int notedJewelryAmount = Rs2Inventory.get(plugin.getJewelry().getItemID() + 1).quantity;
+        int notedJewelryAmount = Rs2Inventory.get(plugin.getJewelry().getItemID() + 1).getQuantity();
         int natureRuneAmount = getNatureRunesInInventory();
         
         return notedJewelryAmount <= natureRuneAmount || (plugin.isUseRunePouch() && !Rs2Inventory.hasRunePouch());
@@ -469,7 +469,7 @@ public class JewelryScript extends Script {
     }
     
     private int getNatureRunesInInventory() {
-        return plugin.isUseRunePouch() ? RunePouch.getItemAmount(ItemID.NATURE_RUNE) : Rs2Inventory.items().stream()
+        return plugin.isUseRunePouch() ? Rs2RunePouch.getQuantity(ItemID.NATURE_RUNE) : Rs2Inventory.items().stream()
                 .filter(item -> item.getId() == ItemID.NATURE_RUNE)
                 .mapToInt(Rs2ItemModel::getQuantity)
                 .sum();
@@ -566,7 +566,7 @@ public class JewelryScript extends Script {
 
         // Rune Pouch
         if (plugin.isUseRunePouch()) {
-            RunePouch.getRunes().forEach((runeID, quantity) -> {
+            Rs2RunePouch.getRunes().forEach((runeID, quantity) -> {
                 if (requiredRunes.containsKey(runeID)) {
                     availableRunes.merge(runeID, quantity, Integer::sum);
                 }

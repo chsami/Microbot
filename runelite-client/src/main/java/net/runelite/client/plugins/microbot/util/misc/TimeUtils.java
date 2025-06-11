@@ -29,4 +29,9 @@ public class TimeUtils {
         // Prefix with "-" if the original duration was negative
         return (isNegative ? "-" : "") + formattedDuration;
     }
+
+    public static long getDurationInSeconds(Instant scriptStartTime, Instant now) {
+        Duration duration = Duration.between(scriptStartTime, now);
+        return duration.getSeconds();
+    }
 }

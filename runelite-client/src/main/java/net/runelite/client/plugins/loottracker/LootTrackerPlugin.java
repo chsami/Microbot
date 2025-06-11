@@ -27,7 +27,13 @@ package net.runelite.client.plugins.loottracker;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
-import com.google.common.collect.*;
+import com.google.common.collect.HashMultiset;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Multimap;
+import com.google.common.collect.Multiset;
+import com.google.common.collect.Multisets;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.google.inject.Provides;
@@ -57,9 +63,26 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.*;
+import net.runelite.api.ChatMessageType;
+import net.runelite.api.Client;
+import net.runelite.api.Constants;
+import net.runelite.api.GameState;
+import net.runelite.api.ItemComposition;
+import net.runelite.api.ItemContainer;
+import net.runelite.api.MenuAction;
+import net.runelite.api.MessageNode;
+import net.runelite.api.NPCComposition;
+import net.runelite.api.Player;
+import net.runelite.api.Skill;
+import net.runelite.api.SpriteID;
+import net.runelite.api.WorldType;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.*;
+import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.events.MenuOptionClicked;
+import net.runelite.api.events.PostClientTick;
+import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.ItemID;
@@ -75,7 +98,14 @@ import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.events.*;
+import net.runelite.client.events.ClientShutdown;
+import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.events.ConfigSync;
+import net.runelite.client.events.PlayerLootReceived;
+import net.runelite.client.events.RuneScapeProfileChanged;
+import net.runelite.client.events.ServerNpcLoot;
+import net.runelite.client.events.SessionClose;
+import net.runelite.client.events.SessionOpen;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemStack;
 import net.runelite.client.game.LootManager;
@@ -142,7 +172,6 @@ public class LootTrackerPlugin extends Plugin
 		put(5179, "Brimstone Chest").
 		put(11573, "Crystal Chest").
 		put(12093, "Larran's big chest").
-		put(12127, "The Gauntlet").
 		put(13113, "Larran's small chest").
 		put(13151, "Elven Crystal Chest").
 		put(5277, "Stone chest").
@@ -194,11 +223,6 @@ public class LootTrackerPlugin extends Plugin
 		put(ObjectID.SHADECHEST_GOLD_BLACK, "Gold key black").
 		put(ObjectID.SHADECHEST_GOLD_PURPLE, "Gold key purple").
 		build();
-
-	// Hallow Sepulchre Coffin handling
-	private static final String COFFIN_LOOTED_MESSAGE = "You push the coffin lid aside.";
-	private static final String HALLOWED_SEPULCHRE_COFFIN_EVENT = "Coffin (Hallowed Sepulchre)";
-	private static final Set<Integer> HALLOWED_SEPULCHRE_MAP_REGIONS = ImmutableSet.of(8797, 10077, 9308, 10074, 9050); // one map region per floor
 
 	private static final String HALLOWED_SACK_EVENT = "Hallowed Sack";
 
@@ -265,23 +289,6 @@ public class LootTrackerPlugin extends Plugin
 	// Mahogany Homes
 	private static final String MAHOGANY_CRATE_EVENT = "Supply crate (Mahogany Homes)";
 
-	// Implings
-	private static final Set<Integer> IMPLING_JARS = ImmutableSet.of(
-		ItemID.II_CAPTURED_IMPLING_1,
-		ItemID.II_CAPTURED_IMPLING_2,
-		ItemID.II_CAPTURED_IMPLING_3,
-		ItemID.II_CAPTURED_IMPLING_4,
-		ItemID.II_CAPTURED_IMPLING_5,
-		ItemID.II_CAPTURED_IMPLING_6,
-		ItemID.II_CAPTURED_IMPLING_7,
-		ItemID.II_CAPTURED_IMPLING_8,
-		ItemID.II_CAPTURED_IMPLING_9,
-		ItemID.II_CAPTURED_IMPLING_12,
-		ItemID.II_CAPTURED_IMPLING_10,
-		ItemID.II_CAPTURED_IMPLING_11
-	);
-	private static final String IMPLING_CATCH_MESSAGE = "You manage to catch the impling and acquire some loot.";
-
 	// Raids
 	private static final String CHAMBERS_OF_XERIC = "Chambers of Xeric";
 	private static final String THEATRE_OF_BLOOD = "Theatre of Blood";
@@ -343,8 +350,7 @@ public class LootTrackerPlugin extends Plugin
 	private boolean chestLooted;
 	private boolean lastLoadingIntoInstance;
 	private String lastPickpocketTarget;
-	private int lastNpcTypeTarget;
-	private String lastMenuOption;
+	private int ignorePickpocketLoot;
 
 	private List<String> ignoredItems = new ArrayList<>();
 	private List<String> ignoredEvents = new ArrayList<>();
@@ -686,6 +692,12 @@ public class LootTrackerPlugin extends Plugin
 		final String name = npc.getName();
 		final int combat = npc.getCombatLevel();
 
+		if (ignorePickpocketLoot == client.getTickCount())
+		{
+			// server sends npc loot for pickpockets, ignore it
+			return;
+		}
+
 		addLoot(name, combat, LootRecordType.NPC, buildNpcMetadata(npc), items);
 
 		if (config.npcKillChatMessage())
@@ -907,13 +919,6 @@ public class LootTrackerPlugin extends Plugin
 			return;
 		}
 
-		if (message.equals(COFFIN_LOOTED_MESSAGE) &&
-			isPlayerWithinMapRegion(HALLOWED_SEPULCHRE_MAP_REGIONS))
-		{
-			onInvChange(collectInvAndGroundItems(LootRecordType.EVENT, HALLOWED_SEPULCHRE_COFFIN_EVENT));
-			return;
-		}
-
 		if (message.equals(HERBIBOAR_LOOTED_MESSAGE))
 		{
 			if (processHerbiboarHerbSackLoot(event.getTimestamp()))
@@ -952,6 +957,7 @@ public class LootTrackerPlugin extends Plugin
 				pickpocketTarget = lastPickpocketTarget;
 			}
 
+			ignorePickpocketLoot = client.getTickCount();
 			onInvChange(collectInvAndGroundItems(LootRecordType.PICKPOCKET, pickpocketTarget));
 			return;
 		}
@@ -1031,12 +1037,6 @@ public class LootTrackerPlugin extends Plugin
 		if (regionID == WINTERTODT_REGION && message.contains(WINTERTODT_LOOT_STRING))
 		{
 			onInvChange(collectInvItems(LootRecordType.EVENT, WINTERTODT_REWARD_CART_EVENT, client.getBoostedSkillLevel(Skill.FIREMAKING)));
-			return;
-		}
-
-		if (message.equals(IMPLING_CATCH_MESSAGE))
-		{
-			onInvChange(collectInvItems(LootRecordType.EVENT, client.getLocalPlayer().getInteracting().getName()));
 			return;
 		}
 
@@ -1167,6 +1167,7 @@ public class LootTrackerPlugin extends Plugin
 					case ItemID.MM_POTION_PACK_HIGH:
 					case ItemID.CASTLEWARS_CRATE:
 					case ItemID.FORGOTTEN_LOCKBOX:
+					case ItemID.YAMA_DOSSIER:
 						onInvChange(collectInvAndGroundItems(LootRecordType.EVENT, itemManager.getItemComposition(event.getItemId()).getName()));
 						break;
 					case ItemID.CONSTRUCTION_SUPPLY_CRATE:
@@ -1202,19 +1203,6 @@ public class LootTrackerPlugin extends Plugin
 						})));
 						break;
 				}
-			}
-			else if (event.getMenuOption().equals("Loot") && IMPLING_JARS.contains(event.getItemId()))
-			{
-				final int itemId = event.getItemId();
-				onInvChange(((invItems, groundItems, removedItems) ->
-				{
-					int cnt = removedItems.count(itemId);
-					if (cnt > 0)
-					{
-						String name = itemManager.getItemComposition(itemId).getMembersName();
-						addLoot(name, -1, LootRecordType.EVENT, null, invItems, cnt);
-					}
-				}));
 			}
 		}
 	}

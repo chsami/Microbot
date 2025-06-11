@@ -652,54 +652,19 @@ public class AttackTimerMetronomePlugin extends Plugin
             case AGGRESSIVE:
             case CONTROLLED:
             case DEFENSIVE:
-                if (Microbot.getVarbitValue(CAMELOT_TRAINING_ROOM_STATUS) == 8 &&
-                        Rs2Player.getRealSkillLevel(Skill.PRAYER) >= Rs2PrayerEnum.PIETY.getLevel()) {
-                    return Rs2PrayerEnum.PIETY;
-                }
-                if (Microbot.getVarbitValue(CAMELOT_TRAINING_ROOM_STATUS) == 8 &&
-                        Rs2Player.getRealSkillLevel(Skill.PRAYER) >= Rs2PrayerEnum.CHIVALRY.getLevel()) {
-                    return Rs2PrayerEnum.CHIVALRY;
-                }
-                if (Rs2Player.getRealSkillLevel(Skill.PRAYER) >= Rs2PrayerEnum.ULTIMATE_STRENGTH.getLevel()) {
-                    return Rs2PrayerEnum.ULTIMATE_STRENGTH;
-                }
-                if (Rs2Player.getRealSkillLevel(Skill.PRAYER) >= Rs2PrayerEnum.SUPERHUMAN_STRENGTH.getLevel()) {
-                    return Rs2PrayerEnum.SUPERHUMAN_STRENGTH;
-                }
-                break;
+                return Rs2Prayer.getBestMeleePrayer();
 
             case RANGING: // Ranged styles
             case LONGRANGE:
-                if (Microbot.getVarbitValue(RIGOUR_UNLOCKED) == 1 &&
-                        Rs2Player.getRealSkillLevel(Skill.PRAYER) >= Rs2PrayerEnum.RIGOUR.getLevel()) {
-                    return Rs2PrayerEnum.RIGOUR;
-                }
-                if (Rs2Player.getRealSkillLevel(Skill.PRAYER) >= Rs2PrayerEnum.EAGLE_EYE.getLevel()) {
-                    return Rs2PrayerEnum.EAGLE_EYE;
-                }
-                if (Rs2Player.getRealSkillLevel(Skill.PRAYER) >= Rs2PrayerEnum.HAWK_EYE.getLevel()) {
-                    return Rs2PrayerEnum.HAWK_EYE;
-                }
-                break;
+                return Rs2Prayer.getBestRangePrayer();
 
             case CASTING: // Magic styles
             case DEFENSIVE_CASTING:
-                if (Microbot.getVarbitValue(AUGURY_UNLOCKED) == 1 &&
-                        Rs2Player.getRealSkillLevel(Skill.PRAYER) >= Rs2PrayerEnum.AUGURY.getLevel()) {
-                    return Rs2PrayerEnum.AUGURY;
-                }
-                if (Rs2Player.getRealSkillLevel(Skill.PRAYER) >= Rs2PrayerEnum.MYSTIC_MIGHT.getLevel()) {
-                    return Rs2PrayerEnum.MYSTIC_MIGHT;
-                }
-                if (Rs2Player.getRealSkillLevel(Skill.PRAYER) >= Rs2PrayerEnum.MYSTIC_LORE.getLevel()) {
-                    return Rs2PrayerEnum.MYSTIC_LORE;
-                }
-                break;
+                return Rs2Prayer.getBestMagePrayer();
 
             default:
                 return null;
         }
-        return null;
     }
 
 

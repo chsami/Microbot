@@ -30,8 +30,9 @@ public class QoLScript extends Script {
                 if (!Microbot.isLoggedIn()) {
                     return;
                 }
+				if (!super.run()) return;
 
-                if (config.autoDrinkPrayerPot()) {
+                if (config.autoDrinkPrayerPot() && !config.enablePotionManager()) {
                     handleAutoDrinkPrayPot(config.drinkPrayerPotPoints());
                 }
 

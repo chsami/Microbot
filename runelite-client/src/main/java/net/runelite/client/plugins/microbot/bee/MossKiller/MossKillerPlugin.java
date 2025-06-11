@@ -460,13 +460,9 @@ public class MossKillerPlugin extends Plugin implements SchedulablePlugin {
         if (localPlayer == null)
             return;
 
-        WorldView worldView = Microbot.getClient().getWorldView(-1);
-        if (worldView == null)
-            return;
-
         LocalPoint playerPos = localPlayer.getLocalLocation();
 
-        Deque<Projectile> projectiles = worldView.getProjectiles();
+        Deque<Projectile> projectiles = Microbot.getClient().getProjectiles();
         for (Projectile projectile : projectiles)
         {
             if (projectile == null)

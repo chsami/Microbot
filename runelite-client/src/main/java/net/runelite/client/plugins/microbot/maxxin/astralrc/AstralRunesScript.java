@@ -7,31 +7,41 @@ import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.maxxin.MXUtil;
+import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.inventory.RunePouchType;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class AstralRunesScript extends Script {
-    public static String version = "0.0.1";
+    public static String version = "0.0.2";
     private final AstralRunesPlugin plugin;
 
     private final static List<Integer> LUNAR_ISLE_REGION_IDS = List.of(8509, 8508, 8253);
-    private static final WorldPoint SEAL_OF_PASSAGE_BANKER = new WorldPoint(2098, 3920, 0);
-    private static final WorldPoint DREAM_MENTOR_BANKER = new WorldPoint(2099, 3920, 0);
+    private final static WorldPoint SEAL_OF_PASSAGE_BANKER = new WorldPoint(2098, 3920, 0);
+    private final static WorldPoint DREAM_MENTOR_BANKER = new WorldPoint(2099, 3920, 0);
     private final static WorldPoint LUNAR_ISLE_BANK_WORLD_POINT = new WorldPoint(2099, 3918, 0);
     private final static WorldPoint LUNAR_ISLE_CRAFT_WORLD_POINT = new WorldPoint(2156, 3864, 0);
+    private final static WorldPoint LUNAR_ISLE_BANK_WORLD_POINT_AFTER_TELEPORT = new WorldPoint(2107, 3915, 0);
+    private final static WorldPoint ASTRAL_ALTAR_WORLD_POINT = new WorldPoint(2158, 3864, 0);
+    private final static int ASTRAL_ALTAR_ID = 34771;
 
+    private int foodItemId;
+    private boolean canCastMoonclanTeleport = false;
     public final int runeItemId = ItemID.ASTRALRUNE;
     public static int runesForSession = 0;
     public static int totalTrips = 0;
@@ -53,13 +63,25 @@ public class AstralRunesScript extends Script {
         Microbot.enableAutoRunOn = false;
         Rs2Antiban.resetAntibanSettings();
         Rs2AntibanSettings.naturalMouse = true;
+        this.foodItemId = config.foodType().getId();
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!Microbot.isLoggedIn()) return;
                 if (Microbot.pauseAllScripts) return;
                 if (Rs2AntibanSettings.actionCooldownActive) return;
 
-                var regionId = Rs2Player.getWorldLocation().getRegionID();
+                // Mitigate how often we check for runes since it switches to magic tab
+                if( !Rs2Bank.isOpen() )
+                    canCastMoonclanTeleport = Rs2Magic.isLunar() && Rs2Magic.canCast(MagicAction.MOONCLAN_TELEPORT);
+
+                if( config.autoSetup() ) {
+                    if (!handleAutoSetup(config)) {
+                        shutdown();
+                        return;
+                    }
+                }
+
+                int regionId = Rs2Player.getWorldLocation().getRegionID();
                 if( !LUNAR_ISLE_REGION_IDS.contains(regionId) ) {
                     plugin.setDebugText1("Region ID: " + regionId);
                     Microbot.showMessage("Start bot in Lunar Isle");
@@ -75,7 +97,7 @@ public class AstralRunesScript extends Script {
                 }
 
                 var dreamMentorComplete = Rs2Player.getQuestState(Quest.DREAM_MENTOR) == QuestState.FINISHED;
-                if(!dreamMentorComplete && !(Rs2Inventory.hasItem(ItemID.LUNAR_SEAL_OF_PASSAGE) || Rs2Equipment.hasEquipped(ItemID.LUNAR_SEAL_OF_PASSAGE))) {
+                if(!dreamMentorComplete && !(Rs2Inventory.hasItem(ItemID.LUNAR_SEAL_OF_PASSAGE) || Rs2Equipment.isWearing(ItemID.LUNAR_SEAL_OF_PASSAGE))) {
                     plugin.setDebugText1("Has Seal of Passage: " + Rs2Inventory.hasItem(ItemID.LUNAR_SEAL_OF_PASSAGE));
                     Microbot.showMessage("No Seal of Passage found equipped or in inventory");
                     shutdown();
@@ -88,13 +110,13 @@ public class AstralRunesScript extends Script {
                     return;
                 }
 
-                if( !Rs2Bank.isOpen() && !Rs2Magic.canCast(MagicAction.MOONCLAN_TELEPORT) ) {
+                if( !Rs2Bank.isOpen() && !canCastMoonclanTeleport ) {
                     Microbot.showMessage("Required runes not found, make sure Dust staff is equipped and Rune pouch contains Law and Astral runes.");
                     shutdown();
                     return;
                 }
 
-                if( !Rs2Bank.isOpen() && Rs2Inventory.contains(ItemID.RCU_POUCH_COLOSSAL) && !Rs2Magic.canCast(MagicAction.NPC_CONTACT) ) {
+                if( !Rs2Bank.isOpen() && Rs2Inventory.contains(ItemID.RCU_POUCH_COLOSSAL) && !canCastMoonclanTeleport ) {
                     Microbot.showMessage("Required runes not found, make sure Dust staff is equipped and Rune pouch contains Law, Astral, and Cosmic runes.");
                     shutdown();
                     return;
@@ -143,7 +165,7 @@ public class AstralRunesScript extends Script {
                             if( playerLoc.distanceTo(LUNAR_ISLE_BANK_WORLD_POINT) > 20 ) {
                                 Rs2Magic.cast(MagicAction.MOONCLAN_TELEPORT);
                                 sleep(2200);
-                                Rs2Walker.walkFastCanvas(new WorldPoint(2107, 3915, 0));
+                                Rs2Walker.walkFastCanvas(LUNAR_ISLE_BANK_WORLD_POINT_AFTER_TELEPORT);
                             }
 
                             MXUtil.switchInventoryTabIfNeeded();
@@ -173,8 +195,8 @@ public class AstralRunesScript extends Script {
                             Rs2Bank.depositAll(ItemID.VIAL_EMPTY);
                         }
 
-                        if( Rs2Inventory.hasItem(ItemID.LOBSTER) ) {
-                            Rs2Bank.depositAll(ItemID.LOBSTER);
+                        if( Rs2Inventory.hasItem(foodItemId) ) {
+                            Rs2Bank.depositAll(foodItemId);
                         }
 
                         if( !Rs2Bank.hasItem(ItemID.BLANKRUNE_HIGH) ) {
@@ -197,12 +219,12 @@ public class AstralRunesScript extends Script {
                         }
 
                         if( foodNeeded ) {
-                            if( !Rs2Bank.hasItem(ItemID.LOBSTER) ) {
-                                Microbot.showMessage("No lobsters found in bank");
+                            if( !Rs2Bank.hasItem(foodItemId) ) {
+                                Microbot.showMessage("No food found in bank (Item ID: " + foodItemId + ")");
                                 shutdown();
                                 return;
                             }
-                            Rs2Bank.withdrawOne(ItemID.LOBSTER);
+                            Rs2Bank.withdrawOne(foodItemId);
                             Rs2Inventory.waitForInventoryChanges(400);
                         }
 
@@ -213,10 +235,10 @@ public class AstralRunesScript extends Script {
                         }
 
                         if( foodNeeded ) {
-                            Rs2Inventory.interact(ItemID.LOBSTER, "Eat");
+                            Rs2Inventory.interact(foodItemId, "Eat");
                             Rs2Inventory.waitForInventoryChanges(400);
-                            if( Rs2Inventory.hasItem(ItemID.LOBSTER) ) {
-                                Rs2Inventory.interact(ItemID.LOBSTER, "Eat");
+                            if( Rs2Inventory.hasItem(foodItemId) ) {
+                                Rs2Inventory.interact(foodItemId, "Eat");
                                 Rs2Inventory.waitForInventoryChanges(400);
                             }
                         }
@@ -242,20 +264,28 @@ public class AstralRunesScript extends Script {
 
                         MXUtil.handlePouchOutOfSync(hasEmptySlots, colossalPouch);
 
-                        if( Rs2Inventory.allPouchesFull() && Rs2Inventory.getEmptySlots() < 1 ) {
+                        if( !Rs2Inventory.hasDegradedPouch() && Rs2Inventory.allPouchesFull() && Rs2Inventory.getEmptySlots() < 1 ) {
                             state = State.CRAFTING;
                         }
 
                         break;
                     case CRAFTING:
+                        if( Rs2Inventory.hasDegradedPouch() ) {
+                            state = State.REPAIRING;
+                            return;
+                        }
                         plugin.setDebugText1("distance to craft - " + distToCraftPoint);
                         MXUtil.closeWorldMapIfNeeded();
                         if( distToCraftPoint >= 3 && !Rs2Player.isMoving() ) {
                             Rs2Walker.walkTo(LUNAR_ISLE_CRAFT_WORLD_POINT, 2);
+                            MXUtil.closeWorldMapIfNeeded();
                             doAltarCraft();
                         }
 
                         doAltarCraft();
+
+                        if( !Rs2Inventory.allPouchesEmpty() || Rs2Inventory.hasItem(ItemID.BLANKRUNE_HIGH) )
+                            doAltarCraft();
 
                         if( Rs2Inventory.allPouchesEmpty() && !Rs2Inventory.hasItem(ItemID.BLANKRUNE_HIGH) ) {
                             state = State.BANKING;
@@ -276,10 +306,135 @@ public class AstralRunesScript extends Script {
         return true;
     }
 
+    private boolean handleAutoSetup(AstralRunesConfig config) {
+        var inventorySetup = new Rs2InventorySetup(config.inventorySetup(), mainScheduledFuture);
+        if (!inventorySetup.doesInventoryMatch() || !inventorySetup.doesEquipmentMatch()) {
+            if(!openBank()){
+                Microbot.showMessage("Failed to open bank for auto setup! Move closer to a bank or disable auto setup in config");
+                return false;
+            }
+            if (!inventorySetup.loadEquipment() || !inventorySetup.loadInventory()) {
+                Microbot.showMessage("Failed to auto equip inventory! Disable auto setup in config");
+                return false;
+            }
+        }
+
+        if(canCastMoonclanTeleport && isLunarIsleRegion())
+            return true;
+
+        if(!Rs2Magic.isLunar() && isLunarIsleRegion() && Rs2Player.getWorldLocation().distanceTo(LUNAR_ISLE_CRAFT_WORLD_POINT) < 20) {
+            setSpellbookLunarAltar();
+            canCastMoonclanTeleport = Rs2Magic.canCast(MagicAction.MOONCLAN_TELEPORT);
+        }
+
+        if(!canCastMoonclanTeleport) {
+            MXUtil.switchInventoryTabIfNeeded();
+            if(!openBank()){
+                Microbot.showMessage("Failed to open bank for auto setup! Move closer to a bank or disable auto setup in config");
+                return false;
+            }
+            Rs2Random.wait(1500, 2000);
+            setRunePouchLoadout(config);
+            Rs2Inventory.waitForInventoryChanges(600);
+            Rs2Bank.closeBank();
+            if( Rs2Magic.isLunar() )
+                canCastMoonclanTeleport = Rs2Magic.canCast(MagicAction.MOONCLAN_TELEPORT);
+        }
+
+        if(Rs2Magic.isLunar() && !canCastMoonclanTeleport) {
+            Microbot.showMessage("Equipment is correct, but unable to cast Moonclan Teleport! Check if Rune Pouch contains correct runes or disable auto setup in config");
+            return false;
+        }
+
+        if(!Rs2Magic.isLunar() && !isLunarIsleRegion()) {
+            if(!openBank()){
+                Microbot.showMessage("Failed to open bank for auto setup! Move closer to a bank or disable auto setup in config");
+                return false;
+            }
+            if(!Rs2Bank.hasItem(ItemID.TELEPORTSCROLL_LUNARISLE)) {
+                Microbot.showMessage("No teleport scroll for Lunar Isle found! Make sure bank has Lunar Isle teleport or disable auto setup in config");
+                return false;
+            }
+            Rs2Bank.withdrawItem(ItemID.TELEPORTSCROLL_LUNARISLE);
+            Rs2Inventory.waitForInventoryChanges(600);
+        }
+
+        if(Rs2Bank.isOpen()) {
+            Rs2Bank.closeBank();
+            Rs2Random.wait(600, 800);
+        }
+
+        if( !isLunarIsleRegion() ) {
+            if( !Rs2Magic.isLunar() && Rs2Inventory.hasItem(ItemID.TELEPORTSCROLL_LUNARISLE) ) {
+                Rs2Inventory.interact(ItemID.TELEPORTSCROLL_LUNARISLE, "Teleport");
+                sleep(2500);
+            } else if( Rs2Magic.isLunar() && canCastMoonclanTeleport ) {
+                Rs2Magic.cast(MagicAction.MOONCLAN_TELEPORT);
+                sleep(2500);
+            }
+            sleepUntil(() -> LUNAR_ISLE_REGION_IDS.contains(Rs2Player.getWorldLocation().getRegionID()));
+        }
+
+        if( !Rs2Magic.isLunar() )
+            setSpellbookLunarAltar();
+
+        return true;
+    }
+
+    private static boolean openBank() {
+        if(!Rs2Bank.isOpen()) {
+            if(isLunarIsleRegion()) {
+                if(!openLunarBank())
+                    Rs2Walker.walkTo(Rs2Bank.getNearestBank().getWorldPoint(), 20);
+                return openLunarBank();
+            } else {
+                if(!Rs2Bank.openBank())
+                    Rs2Walker.walkTo(Rs2Bank.getNearestBank().getWorldPoint(), 20);
+                return Rs2Bank.openBank();
+            }
+        } else
+            return true;
+    }
+
+    private static boolean isLunarIsleRegion() {
+        return LUNAR_ISLE_REGION_IDS.contains(Rs2Player.getWorldLocation().getRegionID());
+    }
+
+    private static boolean openLunarBank() {
+        var bankTileLoc = !(Rs2Player.getQuestState(Quest.DREAM_MENTOR) == QuestState.FINISHED) ? SEAL_OF_PASSAGE_BANKER : DREAM_MENTOR_BANKER;
+        var bankTile = Rs2GameObject.findGameObjectByLocation(bankTileLoc);
+        Rs2Bank.openBank(bankTile);
+        sleepUntil(Rs2Bank::isOpen);
+        return Rs2Bank.isOpen();
+    }
+
+    private static void setRunePouchLoadout(AstralRunesConfig config) {
+        var runePouchType = Arrays.stream(RunePouchType.values()).findFirst().orElse(null);
+        if( runePouchType != null ) {
+            var runePouchItemId = runePouchType.getItemId();
+            Rs2Inventory.interact(runePouchItemId, "Configure");
+            Rs2Random.wait(800, 1200);
+            Rs2Widget.clickWidget(config.runePouchLoadout().getWidgetId());
+            Rs2Random.wait(800, 1200);
+        }
+    }
+
+    private void setSpellbookLunarAltar() {
+        if( isLunarIsleRegion() ) {
+            Rs2Walker.walkTo(ASTRAL_ALTAR_WORLD_POINT);
+            var altarGameObject = Rs2GameObject.getGameObject(ASTRAL_ALTAR_ID);
+            if( altarGameObject != null ) {
+                Rs2GameObject.interact(altarGameObject, "Pray");
+                sleepUntil(Rs2Magic::isLunar);
+                Rs2Random.wait(400, 800);
+                canCastMoonclanTeleport = Rs2Magic.canCast(MagicAction.MOONCLAN_TELEPORT);
+            }
+        }
+    }
+
     private static void doAltarCraft() {
-        var altarLoc = new WorldPoint(2158, 3864, 0);
-        var altarTile = Rs2GameObject.findGameObjectByLocation(altarLoc);
-        if( altarTile != null && Rs2Player.getWorldLocation().distanceTo(altarLoc) < 5) {
+        var altarTile = Rs2GameObject.findGameObjectByLocation(ASTRAL_ALTAR_WORLD_POINT);
+        if( altarTile != null && Rs2Player.getWorldLocation().distanceTo(ASTRAL_ALTAR_WORLD_POINT) < 5) {
             if( Rs2Inventory.hasItem(ItemID.BLANKRUNE_HIGH) ) {
                 Rs2GameObject.interact(altarTile);
                 Rs2Inventory.waitForInventoryChanges(800);

@@ -42,7 +42,7 @@ public class BarbarianFishingOverlay extends OverlayPanel {
                     .build());
 
             panelComponent.getChildren().add(LineComponent.builder()
-                    .left("Feathers: " + (Rs2Inventory.hasItem("feather") ? String.valueOf(Rs2Inventory.get("feather").quantity) : "Not Present"))
+                    .left("Feathers: " + (Rs2Inventory.hasItem("feather") ? String.valueOf(Rs2Inventory.get("feather").getQuantity()) : "Not Present"))
                     .build());
 
             panelComponent.getChildren().add(LineComponent.builder().build());

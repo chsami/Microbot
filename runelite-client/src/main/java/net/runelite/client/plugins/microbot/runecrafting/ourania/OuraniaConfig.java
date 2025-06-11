@@ -33,6 +33,7 @@ public interface OuraniaConfig extends Config
 	String drinkAtPercent = "drinkAtPercent";
 	String toggleOverlay = "toggleOverlay";
 	String toggleProfitCalculator = "toggleProfitCalculator";
+	String toggleRunesCrafted = "toggleRunesCrafted";
 
 	@ConfigSection(
 		name = "General",
@@ -82,7 +83,7 @@ public interface OuraniaConfig extends Config
 	@ConfigItem(
 		keyName = directInteract,
 		name = "Direct Interaction",
-		description = "Directly interact with the Altar instead of using the walker (this requires the GPU plugin)",
+		description = "(Experimental) Directly interact with the Altar instead of using the walker (this requires the GPU plugin)",
 		position = 2,
 		section = generalSection
 	)
@@ -192,6 +193,18 @@ public interface OuraniaConfig extends Config
 		section = overlaySection
 	)
 	default boolean toggleProfitCalculator()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = toggleRunesCrafted,
+		name = "Toggle Runes Crafted",
+		description = "Should hide the runes crafted in the Overlay",
+		position = 2,
+		section = overlaySection
+	)
+	default boolean toggleRunesCrafted()
 	{
 		return false;
 	}

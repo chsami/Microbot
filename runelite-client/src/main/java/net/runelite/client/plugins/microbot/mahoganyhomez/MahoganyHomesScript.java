@@ -288,6 +288,9 @@ public class MahoganyHomesScript extends Script {
                     if (Rs2Npc.interact(npc, "Talk-to")) {
                         log("Getting reward from NPC");
                         sleepUntil(Rs2Dialogue::hasContinue, 10000);
+                        if (Rs2Dialogue.hasDialogueText("Please excuse me, I'm rather busy.")) {
+                            plugin.setCurrentHome(null);
+                        }
                         sleepUntil(() -> !Rs2Dialogue.isInDialogue(), Rs2Dialogue::clickContinue, 6000, 300);
                         sleep(600, 1200);
 
@@ -367,17 +370,29 @@ public class MahoganyHomesScript extends Script {
 
                         Global.sleepUntil(() -> planksInPlankSack() == 28, () -> {
                             Rs2Bank.withdrawAll(plugin.getConfig().currentTier().getPlankSelection().getPlankId());
+                            Rs2Inventory.waitForInventoryChanges(1000);
                             sleep(Rs2Random.randomGaussian(800, 200));
                             Rs2ItemModel plankSack = Rs2Inventory.get(ItemID.PLANK_SACK);
                             if (plankSack != null) {
-                                Rs2Inventory.interact(plankSack, "Use");
-                                sleep(Rs2Random.randomGaussian(800, 200));
+                                NewMenuEntry plankSackEntry = new NewMenuEntry();
+                                plankSackEntry.setOption("Use");
+                                plankSackEntry.setTarget("<col=ff9040>Plank sack</col>");
+                                plankSackEntry.setIdentifier(9);
+                                plankSackEntry.setType(MenuAction.CC_OP);
+                                plankSackEntry.setParam0(plankSack.getSlot());
+                                plankSackEntry.setParam1(983043);
+                                plankSackEntry.setItemId(plankSack.getId());
+                                plankSackEntry.setWorldViewId(-1);
+                                plankSackEntry.setForceLeftClick(false);
+                                plankSackEntry.setDeprioritized(false);
+                                Microbot.doInvoke(plankSackEntry,Rs2Inventory.itemBounds(plankSack));
+                                Rs2Inventory.waitForInventoryChanges(1000);
                             }
                         }, 20000, 1000);
                         if (Rs2Inventory.getEmptySlots() > 0)
+                            Rs2Bank.openBank();
                             Rs2Bank.withdrawAll(plugin.getConfig().currentTier().getPlankSelection().getPlankId());
-
-
+                            Rs2Bank.closeBank();
                     } else {
                         if (Rs2Inventory.getEmptySlots() - steelBarsNeeded() > 0)
                             Rs2Bank.withdrawX(plugin.getConfig().currentTier().getPlankSelection().getPlankId(), Rs2Inventory.getEmptySlots() - steelBarsNeeded());

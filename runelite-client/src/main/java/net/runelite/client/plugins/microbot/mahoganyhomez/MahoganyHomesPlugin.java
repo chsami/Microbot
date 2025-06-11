@@ -9,6 +9,7 @@ import com.google.common.primitives.Ints;
 import com.google.inject.Provides;
 import lombok.Data;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldArea;
@@ -221,6 +222,7 @@ public class MahoganyHomesPlugin extends Plugin
     private BufferedImage mapArrow;
 
     @Getter
+    @Setter
     private Home currentHome;
     private boolean varbChange;
     private boolean wasTimedOut;
@@ -730,7 +732,7 @@ public class MahoganyHomesPlugin extends Plugin
         }
     }
 
-    private void setCurrentHome(final Home h)
+    public void setCurrentHome(final Home h)
     {
         currentHome = h;
         client.clearHintArrow();

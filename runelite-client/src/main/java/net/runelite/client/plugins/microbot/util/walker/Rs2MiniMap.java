@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.util.walker;
 
+import java.awt.geom.AffineTransform;
 import net.runelite.api.Perspective;
 import net.runelite.api.Point;
 import net.runelite.api.SpriteID;
@@ -89,29 +90,43 @@ public class Rs2MiniMap {
         return new Ellipse2D.Double(bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight());
     }
 
-    /**
-     * Retrieves the minimap clipping area as a polygon.
-     *
-     * @return A {@link Shape} representing the minimap's clickable area.
-     */
-    public static Shape getMinimapClipArea() {
-        Widget minimapWidget = getMinimapDrawWidget();
-        if (minimapWidget == null) {
-            return null;
-        }
+	/**
+	 * Retrieves the minimap clipping area as a polygon derived from the minimap alpha mask sprite,
+	 * and scales it inward to avoid overlapping edge elements.
+	 *
+	 * @param scale The scale factor to shrink the polygon (e.g., 0.94 for 94% of the original size).
+	 * @return A {@link Shape} representing the scaled minimap clickable area, or a fallback shape if the sprite is unavailable.
+	 */
+	public static Shape getMinimapClipArea(double scale) {
+		Widget minimapWidget = getMinimapDrawWidget();
+		if (minimapWidget == null) {
+			return null;
+		}
 
-        boolean isResized = Microbot.getClient().isResized();
-        
-        BufferedImage minimapSprite = Microbot.getClientThread().runOnClientThreadOptional(() ->
-                Microbot.getSpriteManager().getSprite(
-                        isResized ? SpriteID.RESIZEABLE_MODE_MINIMAP_ALPHA_MASK : SpriteID.FIXED_MODE_MINIMAP_ALPHA_MASK, 0)).orElse(null);
+		boolean isResized = Microbot.getClient().isResized();
 
-        if (minimapSprite == null) {
-            return getMinimapClipAreaSimple();
-        }
+		BufferedImage minimapSprite = Microbot.getClientThread().runOnClientThreadOptional(() ->
+			Microbot.getSpriteManager().getSprite(
+				isResized ? SpriteID.RESIZEABLE_MODE_MINIMAP_ALPHA_MASK : SpriteID.FIXED_MODE_MINIMAP_ALPHA_MASK, 0)).orElse(null);
 
-        return bufferedImageToPolygon(minimapSprite, minimapWidget.getBounds());
-    }
+		if (minimapSprite == null) {
+			return getMinimapClipAreaSimple();
+		}
+
+		Shape rawClipArea = bufferedImageToPolygon(minimapSprite, minimapWidget.getBounds());
+		return shrinkShape(rawClipArea, scale);
+	}
+
+	/**
+	 * Retrieves the minimap clipping area as a {@link Shape}, scaled to slightly reduce its size.
+	 * <p>
+	 * This is useful for rendering overlays within the minimap without overlapping UI elements such as the globe icon.
+	 *
+	 * @return A {@link Shape} representing the scaled minimap clip area, or {@code null} if the minimap widget is unavailable.
+	 */
+	public static Shape getMinimapClipArea() {
+		return getMinimapClipArea(Microbot.getClient().isResized() ? 0.94 : 1.0);
+	}
 
     /**
      * Converts a BufferedImage to a polygon by detecting the border based on the outside color.
@@ -158,6 +173,25 @@ public class Rs2MiniMap {
         }
         return polygon;
     }
+
+	/**
+	 * Shrinks the given shape toward its center by the specified scale factor.
+	 *
+	 * @param shape The original shape to shrink.
+	 * @param scale The scale factor (e.g., 0.94 = 94% size). Must be > 0 and < 1 to reduce the shape.
+	 * @return A new {@link Shape} that is scaled inward toward its center.
+	 */
+	private static Shape shrinkShape(Shape shape, double scale) {
+		Rectangle bounds = shape.getBounds();
+		double centerX = bounds.getCenterX();
+		double centerY = bounds.getCenterY();
+
+		AffineTransform shrink = AffineTransform.getTranslateInstance(centerX, centerY);
+		shrink.scale(scale, scale);
+		shrink.translate(-centerX, -centerY);
+
+		return shrink.createTransformedShape(shape);
+	}
 
     /**
      * Checks if a given point is inside the minimap clipping area.

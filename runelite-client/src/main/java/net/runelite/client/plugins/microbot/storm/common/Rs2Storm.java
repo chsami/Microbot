@@ -25,7 +25,7 @@ public class Rs2Storm {
     }
     public static Rs2ItemModel getRandomItemWithLimit(int itemId, int max_tries) {
         List<Rs2ItemModel> matchingItems = Rs2Inventory.items().stream()
-                .filter(item -> item.id == itemId)
+                .filter(item -> item.getId() == itemId)
                 .collect(Collectors.toList());
 
         if (matchingItems.isEmpty()) {

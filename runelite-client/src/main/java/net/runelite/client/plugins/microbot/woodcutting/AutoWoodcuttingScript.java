@@ -42,6 +42,7 @@ public class AutoWoodcuttingScript extends Script {
 
     public static String version = "1.6.5";
     public volatile boolean cannotLightFire = false;
+	private boolean hasAutoHopMessageShown = false;
 
     State state = State.WOODCUTTING;
     private static WorldPoint returnPoint;
@@ -60,9 +61,6 @@ public class AutoWoodcuttingScript extends Script {
     );
 
     public boolean run(AutoWoodcuttingConfig config) {
-        if (config.hopWhenPlayerDetected()) {
-            Microbot.showMessage("Make sure autologin plugin is enabled and randomWorld checkbox is checked!");
-        }
         Rs2Antiban.resetAntibanSettings();
         Rs2Antiban.antibanSetupTemplates.applyWoodcuttingSetup();
         Rs2AntibanSettings.dynamicActivity = true;
@@ -77,6 +75,11 @@ public class AutoWoodcuttingScript extends Script {
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
                 if(Rs2AntibanSettings.actionCooldownActive) return;
+
+				if (!hasAutoHopMessageShown && config.hopWhenPlayerDetected()) {
+					Microbot.showMessage("Make sure autologin plugin is enabled and randomWorld checkbox is checked!");
+					hasAutoHopMessageShown = true;
+				}
 
                 if (initialPlayerLocation == null) {
                     initialPlayerLocation = Rs2Player.getWorldLocation();
@@ -300,6 +303,7 @@ public class AutoWoodcuttingScript extends Script {
         super.shutdown();
         returnPoint = null;
         initialPlayerLocation = null;
+		hasAutoHopMessageShown = false;
         Rs2Antiban.resetAntibanSettings();
     }
 }

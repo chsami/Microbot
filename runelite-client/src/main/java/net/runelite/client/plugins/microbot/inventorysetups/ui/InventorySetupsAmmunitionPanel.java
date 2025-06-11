@@ -41,11 +41,11 @@ import net.runelite.client.ui.ColorScheme;
 public abstract class InventorySetupsAmmunitionPanel extends InventorySetupsContainerPanel
 {
 
-	private List<InventorySetupsSlot> ammoSlots;
+	List<InventorySetupsSlot> ammoSlots;
 
-	private GridLayout gridLayout;
+	GridLayout gridLayout;
 
-	private List<Boolean> ammoSlotsAddedToPanel;
+	List<Boolean> ammoSlotsAddedToPanel;
 
 	InventorySetupsAmmunitionPanel(ItemManager itemManager, MInventorySetupsPlugin plugin, String captionText)
 	{

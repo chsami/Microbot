@@ -7,6 +7,7 @@ import net.runelite.client.plugins.microbot.nateplugins.skilling.natefishing.enu
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.depositbox.Rs2DepositBox;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
@@ -29,7 +30,7 @@ enum State {
 
 public class AutoFishingScript extends Script {
 
-    public static String version = "1.6.1";
+    public static String version = "1.6.2";
     private String fishAction = "";
     State state;
 
@@ -102,24 +103,26 @@ public class AutoFishingScript extends Script {
                         break;
                     case RESETTING:
                         if (config.useBank()) {
-                            if (Rs2Bank.walkToBankAndUseBank()) {
-                                Rs2Bank.depositAll(i -> fish.getRawNames().stream().anyMatch(fl -> i.getName().equalsIgnoreCase(fl)));
+                            BankLocation nearestBank = Rs2Bank.getNearestBank();
+                            boolean isBankOpen = Rs2Bank.isNearBank(nearestBank, 8) ? Rs2Bank.openBank() : Rs2Bank.walkToBankAndUseBank(nearestBank);
+                            if (!isBankOpen || !Rs2Bank.isOpen()) return;
+                            Rs2Bank.depositAll(i -> fish.getRawNames().stream().anyMatch(fl -> i.getName().equalsIgnoreCase(fl)));
+                            Rs2Inventory.waitForInventoryChanges(1800);
+                            if (config.shouldBankClueBottles()) {
+                                Rs2Bank.depositAll("clue bottle");
                                 Rs2Inventory.waitForInventoryChanges(1800);
-                                if (config.shouldBankClueBottles()) {
-                                    Rs2Bank.depositAll("clue bottle");
-                                    Rs2Inventory.waitForInventoryChanges(1800);
-                                }
-                                if (config.shouldBankCaskets()) {
-                                    Rs2Bank.depositAll("casket");
-                                    Rs2Inventory.waitForInventoryChanges(1800);
-                                }
-                                Rs2Bank.emptyFishBarrel();
-                                
-                                Rs2Bank.closeBank();
-                                sleepUntil(() -> !Rs2Bank.isOpen());
-
-                                Rs2Walker.walkTo(initialPlayerLocation);
                             }
+                            if (config.shouldBankCaskets()) {
+                                Rs2Bank.depositAll("casket");
+                                Rs2Inventory.waitForInventoryChanges(1800);
+                            }
+                            Rs2Bank.emptyFishBarrel();
+                                
+                            Rs2Bank.closeBank();
+                            sleepUntil(() -> !Rs2Bank.isOpen());
+
+                            Rs2Walker.walkTo(initialPlayerLocation);
+
                         } else if (config.useDepositBox()) {
                             if (Rs2DepositBox.walkToAndUseDepositBox()) {
                                 Rs2DepositBox.depositAll(i -> fish.getRawNames().stream().anyMatch(fl -> i.getName().equalsIgnoreCase(fl)));
@@ -132,7 +135,7 @@ public class AutoFishingScript extends Script {
                                     Rs2DepositBox.depositAll("casket");
                                     Rs2Inventory.waitForInventoryChanges(1800);
                                 }
-                                
+
                                 Rs2DepositBox.closeDepositBox();
                                 sleepUntil(() -> !Rs2DepositBox.isOpen());
                                 

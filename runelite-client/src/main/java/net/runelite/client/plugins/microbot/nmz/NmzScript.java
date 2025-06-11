@@ -268,7 +268,7 @@ public class NmzScript extends Script {
 
     public void useOverloadPotion() {
         if (useOverload && Rs2Inventory.hasItem("overload") && Microbot.getClient().getBoostedSkillLevel(Skill.HITPOINTS) > 50) {
-            Rs2Inventory.interact(x -> x.name.toLowerCase().contains("overload"), "drink");
+            Rs2Inventory.interact(x -> x.getName().toLowerCase().contains("overload"), "drink");
             sleep(10000);
         }
     }
@@ -276,7 +276,7 @@ public class NmzScript extends Script {
     public void useAbsorptionPotion() {
         if (Microbot.getVarbitValue(NMZ_ABSORPTION) < minAbsorption && Rs2Inventory.hasItem("absorption")) {
             for (int i = 0; i < Rs2Random.between(4, 8); i++) {
-                Rs2Inventory.interact(x -> x.name.toLowerCase().contains("absorption"), "drink");
+                Rs2Inventory.interact(x -> x.getName().toLowerCase().contains("absorption"), "drink");
                 sleep(600, 1000);
             }
             minAbsorption = Rs2Random.between(100, 300);

@@ -642,6 +642,8 @@
 # Witchaven Dungeon											
 2697 3283 0	2696 9683 0	Climb-down;Old ruin entrance;18270
 2696 9683 0	2697 3283 0	Climb-up;Exit;18354
+2700 9688 0	2323 5104 0	Enter;Wall opening;19124								2
+2323 5104 0	2700 9688 0	Enter;Passage;18412								2
 											
 # West Ardougne											
 2559 3300 0	2556 3300 0	Open;Ardougne Wall Door;8739									

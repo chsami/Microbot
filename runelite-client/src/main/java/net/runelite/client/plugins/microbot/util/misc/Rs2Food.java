@@ -100,4 +100,8 @@ public enum Rs2Food {
         return Arrays.stream(values()).map(Rs2Food::getId).collect(Collectors.toSet());
     }
 
+	public static Set<Integer> getFastFoodIds() {
+		return Arrays.stream(values()).filter(f -> f.getTickdelay() == 1).map(Rs2Food::getId).collect(Collectors.toSet());
+	}
+
 }

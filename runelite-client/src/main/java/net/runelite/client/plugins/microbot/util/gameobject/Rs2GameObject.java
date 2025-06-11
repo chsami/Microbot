@@ -5,6 +5,7 @@ import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
@@ -12,6 +13,7 @@ import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.coords.Rs2LocalPoint;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldArea;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -59,7 +61,7 @@ public class Rs2GameObject {
     }
 
     public static boolean interact(TileObject tileObject) {
-        return clickObject(tileObject, null);
+        return clickObject(tileObject, "");
     }
 
     public static boolean interact(TileObject tileObject, String action) {
@@ -144,7 +146,27 @@ public class Rs2GameObject {
         return findObjectById(id) != null;
     }
 
-    @Deprecated
+	public static boolean canReach(WorldPoint target, int objectSizeX, int objectSizeY, int pathSizeX, int pathSizeY) {
+		if (target == null) return false;
+
+		List<WorldPoint> path = Rs2Player.getRs2WorldPoint().pathTo(target, true);
+		if (path == null || path.isEmpty()) return false;
+
+		WorldArea pathArea = new WorldArea(path.get(path.size() - 1), pathSizeX, pathSizeY);
+		WorldArea objectArea = new WorldArea(target, objectSizeX + 2, objectSizeY + 2);
+
+		return pathArea.intersectsWith2D(objectArea);
+	}
+
+	public static boolean canReach(WorldPoint target, int objectSizeX, int objectSizeY) {
+		return canReach(target, objectSizeX, objectSizeY, 3, 3);
+	}
+
+	public static boolean canReach(WorldPoint target) {
+		return canReach(target, 2, 2, 2, 2);
+	}
+
+	@Deprecated
     public static TileObject findObjectById(int id) {
         return getAll(o -> o.getId() == id).stream().findFirst().orElse(null);
     }
@@ -310,6 +332,18 @@ public class Rs2GameObject {
                 return false;
             }
 
+			// Lunar Isle (exception)
+			// There is a bank booth @ Lunar Isle that is only accessible when Dream Mentor is completed
+			if (loc.equals(new WorldPoint(2099, 3920, 0)) && Rs2Player.getQuestState(Quest.DREAM_MENTOR) != QuestState.FINISHED) {
+				return false;
+			}
+
+			// Lunar Isle (additional exception to not use these banks if no seal of passage)
+			if ((loc.equals(new WorldPoint(2098, 3920, 0)) || loc.equals(new WorldPoint(2097, 3920, 0))) &&
+				!(Rs2Inventory.hasItem(ItemID.LUNAR_SEAL_OF_PASSAGE) || Rs2Equipment.isWearing(ItemID.LUNAR_SEAL_OF_PASSAGE))) {
+				return false;
+			}
+
             ObjectComposition comp = convertToObjectComposition(gameObject);
             if (comp == null) return false;
             return hasAction(comp, "Bank", false) || hasAction(comp, "Collect", false);
@@ -357,32 +391,6 @@ public class Rs2GameObject {
         return findGrandExchangeBooth(20);
     }
 
-    @Deprecated(since = "1.5.7 - use signature with Integer[] ids", forRemoval = true)
-    public static TileObject findObject(List<Integer> ids) {
-        for (int id : ids) {
-            TileObject object = findObjectById(id);
-            if (object == null) continue;
-            if (Rs2Player.getWorldLocation().getPlane() != object.getPlane()) continue;
-            if (object instanceof GroundObject && !Rs2Walker.canReach(object.getWorldLocation()))
-                continue;
-
-            //exceptions if the pathsize needs to be bigger
-            if (object.getId() == net.runelite.api.ObjectID.MARKET_STALL_14936) {
-                if (object instanceof GameObject && !Rs2Walker.canReach(object.getWorldLocation(), ((GameObject) object).sizeX(), ((GameObject) object).sizeY(), 4, 4))
-                    continue;
-            } else if (object.getId() == net.runelite.api.ObjectID.BEAM_42220) {
-                if (object.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) > 6)
-                    continue;
-            } else {
-                if (object instanceof GameObject && !Rs2Walker.canReach(object.getWorldLocation(), ((GameObject) object).sizeX(), ((GameObject) object).sizeY()))
-                    continue;
-            }
-
-            return object;
-        }
-        return null;
-    }
-
     @Deprecated
     public static ObjectComposition convertGameObjectToObjectComposition(TileObject tileObject) {
         return convertToObjectComposition(tileObject);
@@ -392,6 +400,23 @@ public class Rs2GameObject {
     public static ObjectComposition convertGameObjectToObjectComposition(int objectId) {
         return convertToObjectComposition(objectId);
     }
+
+	public static String getObjectType(TileObject object)
+	{
+		String type;
+		if (object instanceof WallObject) {
+			type = "WallObject";
+		} else if (object instanceof DecorativeObject) {
+			type = "DecorativeObject";
+		} else if (object instanceof GameObject) {
+			type = "GameObject";
+		} else if (object instanceof GroundObject) {
+			type = "GroundObject";
+		} else {
+			type = "TileObject";
+		}
+		return type;
+	}
 
     public static List<Tile> getTiles(int maxTileDistance) {
         int maxDistance = Math.max(2400, maxTileDistance * 128);
@@ -429,13 +454,25 @@ public class Rs2GameObject {
     }
 
     public static <T extends TileObject> List<TileObject> getAll(Predicate<? super T> predicate) {
-        return getAll(predicate, (Constants.SCENE_SIZE / 2));
+        return getAll(predicate, Constants.SCENE_SIZE);
     }
 
-    public static <T extends TileObject> List<TileObject> getAll(Predicate<? super T> predicate, int distance) {
+	public static <T extends TileObject> List<TileObject> getAll(Predicate<? super T> predicate, int distance) {
+		Player player = Microbot.getClient().getLocalPlayer();
+		if (player == null) {
+			return Collections.emptyList();
+		}
+		return getAll(predicate, player.getWorldLocation(), distance);
+	}
+
+	public static <T extends TileObject> List<TileObject> getAll(Predicate<? super T> predicate, WorldPoint anchor) {
+		return getAll(predicate, anchor, Constants.SCENE_SIZE);
+	}
+
+    public static <T extends TileObject> List<TileObject> getAll(Predicate<? super T> predicate, WorldPoint anchor, int distance) {
         List<TileObject> all = new ArrayList<>();
-        all.addAll(fetchGameObjects(predicate, distance));
-        all.addAll(fetchTileObjects(predicate, distance));
+        all.addAll(fetchGameObjects(predicate, anchor, distance));
+		all.addAll(fetchTileObjects(predicate, anchor, distance));
         return all;
     }
 
@@ -1525,14 +1562,42 @@ public class Rs2GameObject {
         };
     }
 
+	@SuppressWarnings("unchecked")
+	private static <T extends TileObject> List<T> fetchTileObjects(Predicate<? super T> predicate, WorldPoint anchor, int distance) {
+		return (List<T>) getTileObjects((Predicate<TileObject>) predicate, anchor, distance);
+	}
+
+	@SuppressWarnings("unchecked")
+	private static <T extends TileObject> List<T> fetchGameObjects(Predicate<? super T> predicate, WorldPoint anchor, int distance) {
+		return (List<T>) getGameObjects((Predicate<GameObject>) predicate, anchor, distance);
+	}
+
+	@SuppressWarnings("unchecked")
+	private static <T extends TileObject> List<T> fetchTileObjects(Predicate<? super T> predicate, WorldPoint anchor) {
+		return fetchTileObjects(predicate, anchor, Constants.SCENE_SIZE);
+	}
+
+	@SuppressWarnings("unchecked")
+	private static <T extends TileObject> List<T> fetchGameObjects(Predicate<? super T> predicate, WorldPoint anchor) {
+		return fetchTileObjects(predicate, anchor, Constants.SCENE_SIZE);
+	}
+
     @SuppressWarnings("unchecked")
     private static <T extends TileObject> List<T> fetchTileObjects(Predicate<? super T> predicate, int distance) {
-        return (List<T>) getTileObjects((Predicate<TileObject>) predicate, distance);
+		Player player = Microbot.getClient().getLocalPlayer();
+		if (player == null) {
+			return Collections.emptyList();
+		}
+        return fetchTileObjects(predicate, player.getWorldLocation(), distance);
     }
 
     @SuppressWarnings("unchecked")
     private static <T extends TileObject> List<T> fetchGameObjects(Predicate<? super T> predicate, int distance) {
-        return (List<T>) getGameObjects((Predicate<GameObject>) predicate, distance);
+		Player player = Microbot.getClient().getLocalPlayer();
+		if (player == null) {
+			return Collections.emptyList();
+		}
+        return fetchGameObjects(predicate, player.getWorldLocation(), distance);
     }
 
     @SuppressWarnings("unchecked")

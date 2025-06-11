@@ -3,11 +3,20 @@ package net.runelite.client.plugins.microbot.runecrafting.ourania;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import java.awt.AWTException;
-import java.time.Instant;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Getter;
 import net.runelite.api.ChatMessageType;
+import net.runelite.api.Item;
+import net.runelite.api.ItemComposition;
+import net.runelite.api.ItemContainer;
 import net.runelite.api.ItemID;
+import net.runelite.api.coords.WorldArea;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.gameval.InventoryID;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -17,6 +26,8 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerPlugin;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
+import net.runelite.client.plugins.microbot.util.magic.Runes;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 @PluginDescriptor(
@@ -28,9 +39,7 @@ import net.runelite.client.ui.overlay.OverlayManager;
 public class OuraniaPlugin extends Plugin
 {
 
-	public static String version = "1.3.0";
-	@Getter
-	public Instant startTime;
+	public static String version = "1.4.0";
 	@Inject
 	private OuraniaConfig config;
 	@Inject
@@ -43,6 +52,11 @@ public class OuraniaPlugin extends Plugin
 	private boolean ranOutOfAutoPay = false;
 	@Getter
 	private int profit;
+	@Getter
+	private final WorldArea ouraniaAltarArea = new WorldArea(new WorldPoint(3054, 5574, 0), 12, 12);
+	@Getter
+	private List<Rs2ItemModel> runesCrafted = new ArrayList<>();
+	private List<Rs2ItemModel> previousInventoryRunes = new ArrayList<>();
 
 	@Provides
 	OuraniaConfig provideConfig(ConfigManager configManager)
@@ -53,8 +67,6 @@ public class OuraniaPlugin extends Plugin
 	@Override
 	protected void startUp() throws AWTException
 	{
-		startTime = Instant.now();
-
 		if (overlayManager != null)
 		{
 			overlayManager.add(ouraniaOverlay);
@@ -69,6 +81,8 @@ public class OuraniaPlugin extends Plugin
 		overlayManager.remove(ouraniaOverlay);
 		ouraniaScript.shutdown();
 		ranOutOfAutoPay = false;
+		runesCrafted.clear();
+		previousInventoryRunes.clear();
 	}
 
 	@Subscribe
@@ -97,6 +111,71 @@ public class OuraniaPlugin extends Plugin
 		{
 			toggleOverlay(config.toggleOverlay());
 		}
+	}
+
+	@Subscribe
+	public void onItemContainerChanged(ItemContainerChanged event)
+	{
+		if (event.getContainerId() != InventoryID.INV)
+		{
+			return;
+		}
+		if (!getOuraniaAltarArea().contains(Microbot.getClient().getLocalPlayer().getWorldLocation()))
+		{
+			previousInventoryRunes.clear();
+			return;
+		}
+
+		final ItemContainer itemContainer = event.getItemContainer();
+		if (itemContainer == null)
+		{
+			return;
+		}
+
+		List<Rs2ItemModel> currentRunes = new ArrayList<>();
+
+		for (int i = 0; i < itemContainer.getItems().length; i++)
+		{
+			Item item = itemContainer.getItems()[i];
+			if (item.getId() == -1 || Runes.byItemId(item.getId()) == null)
+			{
+				continue;
+			}
+
+			ItemComposition itemComposition = Microbot.getClient().getItemDefinition(item.getId());
+			currentRunes.add(new Rs2ItemModel(item, itemComposition, i));
+		}
+
+		for (Rs2ItemModel current : currentRunes)
+		{
+			Rs2ItemModel previous = previousInventoryRunes.stream()
+				.filter(p -> p.getId() == current.getId())
+				.findFirst()
+				.orElse(null);
+
+			int previousQty = previous != null ? previous.getQuantity() : 0;
+			int gain = current.getQuantity() - previousQty;
+
+			if (gain > 0)
+			{
+				Rs2ItemModel existing = runesCrafted.stream()
+					.filter(r -> r.getId() == current.getId())
+					.findFirst()
+					.orElse(null);
+
+				if (existing != null)
+				{
+					existing.setQuantity(existing.getQuantity() + gain);
+				}
+				else
+				{
+					runesCrafted.add(current);
+				}
+			}
+		}
+
+		// Save snapshot for next comparison
+		previousInventoryRunes = currentRunes;
 	}
 
 	public boolean isBreakHandlerEnabled()
@@ -141,5 +220,10 @@ public class OuraniaPlugin extends Plugin
 				overlayManager.add(ouraniaOverlay);
 			}
 		}
+	}
+
+	public Duration getStartTime()
+	{
+		return ouraniaScript.getRunTime();
 	}
 }

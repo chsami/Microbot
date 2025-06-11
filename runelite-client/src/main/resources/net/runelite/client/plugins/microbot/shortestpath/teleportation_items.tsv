@@ -184,29 +184,30 @@
 # The Construction cape's home teleports, determined by varbit 2187									
 # 0 - None									
 # 1 - Rimmington									
-2952 3224 0		9789;9790		2187=1	Y	F	19	4	Construction cape: Home
+#2952 3224 0		9789;9790		2187=1	Y	F	19	4	Construction cape: Home
 # 2 - Taverly									
-2892 3465 0		9789;9790		2187=2	Y	F	19	4	Construction cape: Home
+#2892 3465 0		9789;9790		2187=2	Y	F	19	4	Construction cape: Home
 # 3 - Pollnivneach									
-3339 3001 0		9789;9790		2187=3	Y	F	19	4	Construction cape: Home
+#3339 3001 0		9789;9790		2187=3	Y	F	19	4	Construction cape: Home
 # 4 - Rellekka									
-2669 3629 0		9789;9790		2187=4	Y	F	19	4	Construction cape: Home
+#2669 3629 0		9789;9790		2187=4	Y	F	19	4	Construction cape: Home
 # 5 - Brimhaven									
-2756 3176 0		9789;9790		2187=5	Y	F	19	4	Construction cape: Home
+#2756 3176 0		9789;9790		2187=5	Y	F	19	4	Construction cape: Home
 # 6 - Yanille									
-2545 3097 0		9789;9790		2187=6	Y	F	19	4	Construction cape: Home
+#2545 3097 0		9789;9790		2187=6	Y	F	19	4	Construction cape: Home
 # 7 - Prifddinas									
-3239 6077 0		9789;9790		2187=7	Y	F	19	4	Construction cape: Home
+#3239 6077 0		9789;9790		2187=7	Y	F	19	4	Construction cape: Home
 # 8 - Hosidius									
-1740 3517 0		9789;9790		2187=8	Y	F	19	4	Construction cape: Home
-2952 3224 0		9789;9790			Y	F	19	4	Construction cape: Rimmington
-2892 3465 0		9789;9790			Y	F	19	4	Construction cape: Taverley
-3339 3001 0		9789;9790			Y	F	19	4	Construction cape: Pollnivneach
-1743 3517 0		9789;9790			Y	F	19	4	Construction cape: Hosidius
-2669 3629 0		9789;9790			Y	F	19	4	Construction cape: Rellekka
-2756 3176 0		9789;9790			Y	F	19	4	Construction cape: Brimhaven
-2545 3097 0		9789;9790			Y	F	19	4	Construction cape: Yanille
-3239 6077 0		9789;9790			Y	F	19	4	Construction cape: Prifddinas
+#1740 3517 0		9789;9790		2187=8	Y	F	19	4	Construction cape: Home
+2952 3224 0		9789;9790			Y	F	19	4	2. Construction cape: Rimmington
+2892 3465 0		9789;9790			Y	F	19	4	3. Construction cape: Taverley
+3339 3004 0		9789;9790			Y	F	19	4	4. Construction cape: Pollnivneach
+1743 3517 0		9789;9790			Y	F	19	4	5. Construction cape: Hosidius
+1422 2965 0		9789;9790			Y	F	19	4	6. Construction cape: Aldarin
+2669 3629 0		9789;9790			Y	F	19	4	7. Construction cape: Rellekka
+2756 3176 0		9789;9790			Y	F	19	4	8. Construction cape: Brimhaven
+2545 3097 0		9789;9790			Y	F	19	4	9. Construction cape: Yanille
+3239 6077 0		9789;9790			Y	F	19	4	10. Construction cape: Prifddinas
 2604 3401 0		9798;9799			Y	F	19	4	Fishing cape: Fishing Guild
 2504 3484 0		9798;9799			Y	F	19	4	Fishing cape: Otto's Grotto
 1248 3725 0		9810;9811			Y	F	19	4	Farming cape: Teleport

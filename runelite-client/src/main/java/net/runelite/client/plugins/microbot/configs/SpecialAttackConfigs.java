@@ -90,12 +90,12 @@ public class SpecialAttackConfigs {
 
         if (currentEquipment == null) {
             currentEquipment = new ArrayList<>();
-            currentEquipment.addAll(Rs2Equipment.equipmentItems);
+            currentEquipment.addAll(Rs2Equipment.items());
         }
 
         if (Rs2Combat.getSpecEnergy() < specEnergy && !NmzScript.isHasSurge()) {
             Rs2ItemModel rs2Item = currentEquipment.stream().filter(x -> x.getSlot() == EquipmentInventorySlot.WEAPON.getSlotIdx()).findFirst().orElse(null);
-            if (rs2Item != null && rs2Item.id != Rs2Equipment.get(EquipmentInventorySlot.WEAPON).id) {
+            if (rs2Item != null && rs2Item.getId() != Rs2Equipment.get(EquipmentInventorySlot.WEAPON).getId()) {
                 Rs2ItemModel weapon = currentEquipment
                         .stream()
                         .filter(x -> x.getSlot() == EquipmentInventorySlot.WEAPON.getSlotIdx())
@@ -108,10 +108,10 @@ public class SpecialAttackConfigs {
                         .orElse(null);
 
                 if (shield != null) {
-                    Rs2Inventory.wear(shield.name);
+                    Rs2Inventory.wear(shield.getName());
                 }
                 if (weapon != null) {
-                    Rs2Inventory.wear(Objects.requireNonNull(weapon).name);
+                    Rs2Inventory.wear(Objects.requireNonNull(weapon).getName());
                 }
             }
             return false;

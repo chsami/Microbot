@@ -12,6 +12,7 @@ public enum CookingItem
 {
 	// Meat / fish
 	RAW_BEEF("raw beef", ItemID.RAW_BEEF, 1, "cooked meat", ItemID.COOKED_MEAT, "burnt meat", ItemID.BURNT_MEAT, CookingAreaType.BOTH),
+	GIANT_SEAWEED("giant seaweed", ItemID.GIANT_SEAWEED, 1, "soda ash", ItemID.SODA_ASH, "none", 0, CookingAreaType.RANGE),
 	RAW_SHRIMP("raw shrimps", ItemID.RAW_SHRIMPS, 1, "shrimps", ItemID.SHRIMPS, "burnt shrimp", ItemID.BURNT_SHRIMP, CookingAreaType.BOTH),
 	RAW_CHICKEN("raw chicken", ItemID.RAW_CHICKEN, 1, "chicken", ItemID.CHICKEN, "burnt chicken", ItemID.BURNT_CHICKEN, CookingAreaType.BOTH),
 	RAW_ANCHOVIES("raw anchovies", ItemID.RAW_ANCHOVIES, 1, "anchovies", ItemID.ANCHOVIES, "burnt fish", ItemID.BURNT_FISH, CookingAreaType.BOTH),

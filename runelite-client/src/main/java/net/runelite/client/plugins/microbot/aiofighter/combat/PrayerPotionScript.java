@@ -25,7 +25,7 @@ public class PrayerPotionScript extends Script {
                     return;
                 }
                 for (Rs2ItemModel potion : potions) {
-                    if (potion.name.toLowerCase().contains("prayer") || potion.name.toLowerCase().contains("super restore") || potion.name.toLowerCase().contains("moonlight potion")) {
+                    if (potion.getName().toLowerCase().contains("prayer") || potion.getName().toLowerCase().contains("super restore") || potion.getName().toLowerCase().contains("moonlight potion")) {
                         Rs2Inventory.interact(potion, "drink");
                         sleep(1200, 2000);
                         Rs2Inventory.dropAll("Vial");
@@ -51,7 +51,7 @@ public class PrayerPotionScript extends Script {
                     return;
                 }
                 for (Rs2ItemModel potion : potions) {
-                    if (potion.name.toLowerCase().contains("prayer")) {
+                    if (potion.getName().toLowerCase().contains("prayer")) {
                         Rs2Inventory.interact(potion, "drink");
                         sleep(1200, 2000);
                         Rs2Inventory.dropAll("Vial");

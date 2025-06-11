@@ -54,8 +54,9 @@ public class BankTabSorterScript extends Script {
     private static final Map<String, Integer> BAR_LEVELS = new HashMap<>();
     private static final Map<String, Integer> HERB_LEVELS = new HashMap<>();
     private static final Map<String, Integer> SEED_LEVELS_FARMING = new HashMap<>();
+    // Re-ordered to define the "left-to-right" workflow stages for items of the same level
     private static final List<String> RESOURCE_BUCKET_ORDER = Arrays.asList(
-            "gem-cut", "gem-uncut", "log", "ore", "bar", "herb-cleaned", "herb-grimy", "seed", "bone", "hide", "fish-cooked", "fish-raw", "other-resource"
+            "gem-uncut", "gem-cut", "log", "ore", "bar", "herb-grimy", "herb-cleaned", "seed", "bone", "hide", "fish-raw", "fish-cooked", "other-resource"
     );
     private static final List<String> CATEGORY_ORDER = Arrays.asList(
             "Currency", "Teleportation", "Potions", "Food", "Runes", "Ammunition",
@@ -137,7 +138,16 @@ public class BankTabSorterScript extends Script {
         SEED_LEVELS_FARMING.put("guam seed", 9);
         SEED_LEVELS_FARMING.put("ranarr seed", 32);
         SEED_LEVELS_FARMING.put("snapdragon seed", 62);
-        // ... add other seeds as needed
+        SEED_LEVELS_FARMING.put("torstol seed", 75);
+        SEED_LEVELS_FARMING.put("irit seed", 40);
+        SEED_LEVELS_FARMING.put("avantoe seed", 48);
+        SEED_LEVELS_FARMING.put("lantadyme seed", 67);
+        SEED_LEVELS_FARMING.put("dwarf weed seed", 70);
+        SEED_LEVELS_FARMING.put("kwuarm seed", 54);
+        SEED_LEVELS_FARMING.put("harralander seed", 20);
+        SEED_LEVELS_FARMING.put("marrentill seed", 5);
+        SEED_LEVELS_FARMING.put("tarromin seed", 11);
+
     }
 
     @Inject
@@ -283,7 +293,7 @@ public class BankTabSorterScript extends Script {
 
         double jaroSim = jaroSimilarity(s1, s2);
         if (jaroSim < 0.7) { // Optimization: Winkler adjustment is less impactful for low Jaro scores
-             // Cache and return early for low Jaro scores
+            // Cache and return early for low Jaro scores
             synchronized (SIMILARITY_CACHE) {
                 Map<String, Double> resultMap = new HashMap<>();
                 resultMap.put("similarity", jaroSim);
@@ -358,18 +368,18 @@ public class BankTabSorterScript extends Script {
                 }
 
                 Microbot.log("Found " + itemsInCurrentTab.size() + " items in the current tab.");
-                Microbot.log("Using enhanced fuzzy matching algorithm to sort and group similar items...");
+                Microbot.log("Applying workflow-based sorting logic...");
                 long startTime = System.currentTimeMillis();
                 List<BankSortItem> sortedItems = sortItemsAndAssignSlots(itemsInCurrentTab);
                 long endTime = System.currentTimeMillis();
-                Microbot.log("Item list sorted with fuzzy similarity prioritization in " + (endTime - startTime) + "ms. Calculated " + sortedItems.size() + " target positions.");
+                Microbot.log("Item list sorted in " + (endTime - startTime) + "ms. Calculated " + sortedItems.size() + " target positions.");
 
                 int currentBankTab = Microbot.getVarbitValue(Varbits.CURRENT_BANK_TAB);
                 int tabAbsoluteStartIndex = calculateTabAbsoluteStartIndex(currentBankTab);
 
                 rearrangeBankItems(sortedItems, tabAbsoluteStartIndex);
 
-                Microbot.log("Bank tab sorting process completed for the current tab!");
+                Microbot.log("Item list sorted with fuzzy similarity prioritization in " + (endTime - startTime) + "ms. Calculated " + sortedItems.size() + " target positions.");
                 Microbot.log("It's recommended to review the tab. If issues, run again or manually adjust.");
             } catch (Exception e) { // Single catch block for Exception
                 log.error("Error during bank sorting script execution:", e);
@@ -394,26 +404,26 @@ public class BankTabSorterScript extends Script {
         int itemsInThisTabCount;
 
         if (currentTabVar == 0) { // "View All" or main tab items
-           int presentItemsInMainSection = 0;
+            int presentItemsInMainSection = 0;
 
             for (Widget widget : allBankItemWidgets) {
                 if (widget.getItemId() != -1 && widget.getItemId() != 6512) { // Filter placeholders
 
                 }
             }
-           // This means for tab 0, itemsInThisTabCount must be correctly determined.
+            // This means for tab 0, itemsInThisTabCount must be correctly determined.
             int mainSectionItemCount = 0;
             for(int i = 0; i < allBankItemWidgets.size(); i++) {
                 Widget widget = allBankItemWidgets.get(i);
-                 if (widget.getIndex() >= tabAbsoluteStartIndex && widget.getItemId() != -1 && widget.getItemId() != 6512) {
+                if (widget.getIndex() >= tabAbsoluteStartIndex && widget.getItemId() != -1 && widget.getItemId() != 6512) {
                     mainSectionItemCount++;
-                 }
+                }
             }
-           long totalNonPlaceholderItems = allBankItemWidgets.stream()
-                .filter(w -> w.getItemId() != -1 && w.getItemId() != 6512)
-                .count();
+            long totalNonPlaceholderItems = allBankItemWidgets.stream()
+                    .filter(w -> w.getItemId() != -1 && w.getItemId() != 6512)
+                    .count();
             itemsInThisTabCount = (int) totalNonPlaceholderItems - tabAbsoluteStartIndex;
-             if (itemsInThisTabCount < 0) itemsInThisTabCount = 0; // Should not happen if logic is sound
+            if (itemsInThisTabCount < 0) itemsInThisTabCount = 0; // Should not happen if logic is sound
 
 
         } else { // Specific tab (1-9)
@@ -423,7 +433,7 @@ public class BankTabSorterScript extends Script {
 
         int tabAbsoluteEndIndex = tabAbsoluteStartIndex + itemsInThisTabCount;
         List<BankSortItem> tabItems = new ArrayList<>();
- for (Widget widget : allBankItemWidgets) {
+        for (Widget widget : allBankItemWidgets) {
             int widgetAbsIndex = widget.getIndex(); // This is the slot index in the bank
             // We are interested in items whose current slot index falls within the calculated range for the current tab
             if (widgetAbsIndex >= tabAbsoluteStartIndex && widgetAbsIndex < tabAbsoluteEndIndex) {
@@ -435,75 +445,100 @@ public class BankTabSorterScript extends Script {
                 }
             }
         }
-       tabItems.sort(Comparator.comparingInt(BankSortItem::getOriginalIndex));
+        tabItems.sort(Comparator.comparingInt(BankSortItem::getOriginalIndex));
         return tabItems;
     }
 
     private int calculateTabAbsoluteStartIndex(int tabNumber) {
         int startIndex = 0;
-       int limit = (tabNumber == 0) ? 9 : tabNumber;
+        int limit = (tabNumber == 0) ? 9 : tabNumber;
         for (int i = 1; i < limit; i++) { // Sum counts of tabs *before* the current tab
             startIndex += Microbot.getVarbitValue(Varbits.BANK_TAB_ONE_COUNT + i - 1);
         }
-         if (tabNumber == 0) { // For "View All", the "main" items start after ALL numbered tabs
+        if (tabNumber == 0) { // For "View All", the "main" items start after ALL numbered tabs
             startIndex = 0; // Reset, then sum all tab counts
             for (int i = 1; i <= 9; i++) { // Assuming max 9 tabs
-                 startIndex += Microbot.getVarbitValue(Varbits.BANK_TAB_ONE_COUNT + i - 1);
+                startIndex += Microbot.getVarbitValue(Varbits.BANK_TAB_ONE_COUNT + i - 1);
             }
         }
         return startIndex;
     }
 
+    /**
+     * Determines if a category is part of a skilling workflow (e.g., raw -> processed).
+     */
+    private boolean isWorkflowCategory(String category) {
+        return category.startsWith("Skilling-Resource-") || category.equals("Potions");
+    }
+
+    /**
+     * Sorts bank items by separating them into two main groups: "Workflow" items (like herbs, ores, potions)
+     * and "Standard" items (like gear, tools, runes). Workflow items are sorted by their level and processing
+     * stage to create an intuitive assembly-line flow. Standard items are sorted by their existing rules.
+     */
     private List<BankSortItem> sortItemsAndAssignSlots(List<BankSortItem> items) {
         if (items.isEmpty()) return Collections.emptyList();
 
-        // First, group items by category
-        Map<String, List<BankSortItem>> itemsByCategory = new HashMap<>();
-        for (BankSortItem item : items) {
-            String category = item.getCategory();
-            itemsByCategory.computeIfAbsent(category, k -> new ArrayList<>()).add(item);
-        }
+        // 1. Separate items into workflow and standard groups.
+        List<BankSortItem> workflowItems = items.stream()
+                .filter(item -> isWorkflowCategory(item.getCategory()))
+                .collect(Collectors.toList());
 
-        // For each category, create similarity clusters or apply special sorting
-        Map<String, List<BankSortItem>> sortedItemsByCategory = new HashMap<>();
-        for (Map.Entry<String, List<BankSortItem>> entry : itemsByCategory.entrySet()) {
+        Map<String, List<BankSortItem>> otherItemsByCategory = items.stream()
+                .filter(item -> !isWorkflowCategory(item.getCategory()))
+                .collect(Collectors.groupingBy(BankSortItem::getCategory));
+
+        // 2. Sort the workflow items based on their level and processing stage.
+        // This groups items by level (top-to-bottom) and then by stage (left-to-right).
+        workflowItems.sort(
+                Comparator.comparingInt(BankSortItem::getItemLevel)
+                        .thenComparingInt(BankSortItem::getWorkflowStage)
+                        .thenComparing(BankSortItem::getBaseName) // Tie-break for items with same level/stage
+                        .thenComparing(item -> -item.getDoseOrCharge()) // Higher doses first
+        );
+
+        // 3. Sort the standard items using their respective logic (sets, tiers, fuzzy matching).
+        Map<String, List<BankSortItem>> sortedOtherItemsByCategory = new LinkedHashMap<>();
+        for (Map.Entry<String, List<BankSortItem>> entry : otherItemsByCategory.entrySet()) {
             String category = entry.getKey();
             List<BankSortItem> categoryItems = entry.getValue();
 
-            if (category.startsWith("Armour-Set-") ||
-                    category.equals("Potions") ||
-                    category.equals("Runes") ||
-                    category.startsWith("Tool-") ||
-                    category.startsWith("Weapon-") ||
-                    category.startsWith("Armour-") || // General armour pieces not in sets
-                    category.startsWith("Skilling-Resource-")) {
-
-                sortSpecialCategory(categoryItems, category); // Sort these categories using defined logic
-                sortedItemsByCategory.put(category, categoryItems);
+            // Use special sorting for gear, tools, etc., and fuzzy clustering for the rest.
+            if (category.startsWith("Armour-") || category.startsWith("Weapon-") ||
+                    category.startsWith("Tool-") || category.equals("Runes")) {
+                sortSpecialCategory(categoryItems, category);
+                sortedOtherItemsByCategory.put(category, categoryItems);
             } else {
-                // For other categories, use similarity clustering
-                List<BankSortItem> sortedCategoryItems = applySimilarityClustering(categoryItems);
-                sortedItemsByCategory.put(category, sortedCategoryItems);
+                sortedOtherItemsByCategory.put(category, applySimilarityClustering(categoryItems));
             }
         }
 
-        // Recombine all items in the defined CATEGORY_ORDER
-        List<BankSortItem> sortedItems = new ArrayList<>();
+        // 4. Recombine all items into a final list, preserving the master CATEGORY_ORDER.
+        List<BankSortItem> finalSortedList = new ArrayList<>();
+        boolean workflowItemsAdded = false;
+
         for (String category : CATEGORY_ORDER) {
-            if (sortedItemsByCategory.containsKey(category)) {
-                sortedItems.addAll(sortedItemsByCategory.get(category));
+            // If the category is a workflow type, add the entire sorted workflow block.
+            if (isWorkflowCategory(category)) {
+                if (!workflowItemsAdded) {
+                    finalSortedList.addAll(workflowItems);
+                    workflowItemsAdded = true;
+                }
+            }
+            // Otherwise, add the sorted standard items for that category.
+            else if (sortedOtherItemsByCategory.containsKey(category)) {
+                finalSortedList.addAll(sortedOtherItemsByCategory.get(category));
             }
         }
 
-        // Add any items with categories not in CATEGORY_ORDER (these will go to the end)
-        for (String category : sortedItemsByCategory.keySet()) {
+        // Add any items from categories not present in the master CATEGORY_ORDER to the end.
+        sortedOtherItemsByCategory.forEach((category, itemList) -> {
             if (!CATEGORY_ORDER.contains(category)) {
-                // These items are already sorted within their category (either by special sort or clustering)
-                sortedItems.addAll(sortedItemsByCategory.get(category));
+                finalSortedList.addAll(itemList);
             }
-        }
+        });
 
-        return sortedItems;
+        return finalSortedList;
     }
 
     private List<BankSortItem> applySimilarityClustering(List<BankSortItem> items) {
@@ -511,7 +546,7 @@ public class BankTabSorterScript extends Script {
             return items;
         }
 
-        final double SIMILARITY_THRESHOLD = 0.85;
+        final double SIMILARITY_THRESHOLD = 0.95;
         final int MAX_CLUSTER_SIZE = 30; // Example, adjust as needed
 
         List<BankSortItem> specialItems = new ArrayList<>();
@@ -543,7 +578,7 @@ public class BankTabSorterScript extends Script {
                 }
                 // Check if item can be added based on centroid similarity first
                 if (cluster.canAddItem(item)) {
-                     double similarity = cluster.getMaxSimilarityWithItem(item); // More precise check
+                    double similarity = cluster.getMaxSimilarityWithItem(item); // More precise check
                     if (similarity > bestSimilarity) { // No need to check > SIMILARITY_THRESHOLD again if canAddItem was true based on it.
                         bestSimilarity = similarity;
                         bestCluster = cluster;
@@ -559,7 +594,7 @@ public class BankTabSorterScript extends Script {
         }
 
         for (BankSortItem specialItem : specialItems) {
-             clusters.add(new SimilarityCluster(specialItem, SIMILARITY_THRESHOLD)); // Effectively a cluster of one
+            clusters.add(new SimilarityCluster(specialItem, SIMILARITY_THRESHOLD)); // Effectively a cluster of one
         }
 
 
@@ -618,13 +653,6 @@ public class BankTabSorterScript extends Script {
                 if (tierCompare != 0) return tierCompare;
             }
 
-            if ("Potions".equals(category)) {
-                int nameCompare = itemA.getBaseName().compareTo(itemB.getBaseName());
-                if (nameCompare != 0) return nameCompare;
-                // Higher doses first
-                return Integer.compare(itemB.getDoseOrCharge(), itemA.getDoseOrCharge());
-            }
-
             if ("Runes".equals(category)) {
                 int runeIndexA = RUNE_TYPES_ORDER.indexOf(itemA.getProcessedName());
                 int runeIndexB = RUNE_TYPES_ORDER.indexOf(itemB.getProcessedName());
@@ -633,13 +661,10 @@ public class BankTabSorterScript extends Script {
                     if (runeIndexB != -1 && runeIndexA == -1) return 1;
                     if (runeIndexA != runeIndexB) return Integer.compare(runeIndexA, runeIndexB);
                 }
-
             }
 
-            if (category.startsWith("Skilling-Resource-")) {
-                int resourceCompare = compareResources(itemA, itemB);
-                if (resourceCompare != 0) return resourceCompare;
-            }
+            // NOTE: The logic for 'Skilling-Resource-' and 'Potions' has been moved to the new workflow sorter
+            // in sortItemsAndAssignSlots. This method now handles non-workflow special cases.
 
             // Teleportation items with charges (like glory, dueling)
             if (itemA.getDoseOrCharge() != -1 && itemB.getDoseOrCharge() != -1 &&
@@ -658,7 +683,7 @@ public class BankTabSorterScript extends Script {
                 if (itemA.getDoseOrCharge() != -1 && itemB.getDoseOrCharge() == -1) return -1; // Dosed item first
                 if (itemB.getDoseOrCharge() != -1 && itemA.getDoseOrCharge() == -1) return 1;
                 if (itemA.getDoseOrCharge() != -1 && itemB.getDoseOrCharge() != -1) {
-                     return Integer.compare(itemB.getDoseOrCharge(), itemA.getDoseOrCharge()); // Higher dose first
+                    return Integer.compare(itemB.getDoseOrCharge(), itemA.getDoseOrCharge()); // Higher dose first
                 }
             }
 
@@ -720,8 +745,8 @@ public class BankTabSorterScript extends Script {
             if (tierValueA != null && tierValueB == null) return -1; // Tiered item first
             if (tierValueB != null && tierValueA == null) return 1;
             if (tierValueA != null && tierValueB != null) { // Both have tiers
-                 int tierCompare = Integer.compare(tierValueB, tierValueA); // Higher tier value first (e.g. Rune (50) > Adamant (40))
-                 if (tierCompare != 0) return tierCompare;
+                int tierCompare = Integer.compare(tierValueB, tierValueA); // Higher tier value first (e.g. Rune (50) > Adamant (40))
+                if (tierCompare != 0) return tierCompare;
             }
         }
 
@@ -858,13 +883,13 @@ public class BankTabSorterScript extends Script {
                 if (widgetCurrentSlotRelative >= 0 && widgetCurrentSlotRelative < sortedItems.size()) {
                     if (slotCorrectStatus[widgetCurrentSlotRelative] && sortedItems.get(widgetCurrentSlotRelative).getId() == widget.getItemId()) {
                         if (sortedItems.get(widgetCurrentSlotRelative) == itemToPlace) { // Comparing object reference
-                             isWidgetInFinalCorrectPlace = true;
+                            isWidgetInFinalCorrectPlace = true;
                         }
                     }
                 }
 
                 if (!isWidgetInFinalCorrectPlace) {
-                   if (widget.getIndex() == itemToPlace.getOriginalIndex()) {
+                    if (widget.getIndex() == itemToPlace.getOriginalIndex()) {
                         return widget; // Best candidate: the item at its original starting position.
                     }
                     if (candidateWidget == null) {
@@ -1018,6 +1043,9 @@ public class BankTabSorterScript extends Script {
         @Getter private final String itemSetType;
         @Getter private final String itemTier;
         @Getter private final int numericPartInName;
+        // NEW: Fields to support workflow-based sorting
+        @Getter private final int itemLevel;
+        @Getter private final int workflowStage;
 
         public BankSortItem(int id, String originalName, int originalIndex) {
             this.id = id;
@@ -1053,9 +1081,76 @@ public class BankTabSorterScript extends Script {
             }
             this.numericPartInName = tempNumericPartInName;
 
-            this.category = classifyItem(this); // classifyItem is a static method of the outer class
             this.itemSetType = determineItemSetType(this.baseName);
             this.itemTier = determineItemTier(this.baseName);
+            this.category = classifyItem(this);
+
+            // Initialize workflow data
+            int[] workflowData = getWorkflowData(this);
+            this.itemLevel = workflowData[0];
+            this.workflowStage = workflowData[1];
+        }
+
+        /**
+         * Determines the level and workflow stage for an item to enable 'assembly line' sorting.
+         *
+         * @param item The item to analyze.
+         * @return An array containing [itemLevel, workflowStage].
+         */
+        private static int[] getWorkflowData(BankSortItem item) {
+            int level = 0;
+            int stage = 99; // Default stage for non-workflow items, sorts them last in workflow group
+
+            switch (item.getCategory()) {
+                case "Skilling-Resource-Herb":
+                    level = HERB_LEVELS.getOrDefault(item.getProcessedName(), 0);
+                    stage = item.getProcessedName().startsWith("grimy") ? 0 : 1;
+                    break;
+                case "Potions":
+                    // Infer potion level from its base herb for correct row positioning
+                    level = HERB_LEVELS.entrySet().stream()
+                            .filter(entry -> !entry.getKey().startsWith("grimy"))
+                            .filter(entry -> {
+                                String herbName = entry.getKey().replace(" leaf", "").replace(" weed", "");
+                                return item.getBaseName().contains(herbName);
+                            })
+                            .map(Map.Entry::getValue)
+                            .findFirst()
+                            .orElse(HERB_LEVELS.getOrDefault(item.getBaseName(), 0));
+                    stage = item.getBaseName().contains("(unf)") ? 2 : 4;
+                    break;
+                case "Skilling-Resource-Gem":
+                    level = GEM_LEVELS.getOrDefault(item.getProcessedName(), 0);
+                    stage = item.getProcessedName().startsWith("uncut") ? 0 : 1;
+                    break;
+                case "Skilling-Resource-Ore":
+                    level = ORE_LEVELS.getOrDefault(item.getProcessedName(), 0);
+                    stage = 0;
+                    break;
+                case "Skilling-Resource-Bar":
+                    level = BAR_LEVELS.getOrDefault(item.getProcessedName(), 0);
+                    stage = 1;
+                    break;
+                case "Skilling-Resource-Log":
+                    level = LOG_LEVELS.getOrDefault(item.getProcessedName(), 0);
+                    stage = 0;
+                    break;
+                case "Skilling-Resource-Seed":
+                    level = SEED_LEVELS_FARMING.getOrDefault(item.getProcessedName(), 0);
+                    stage = 0;
+                    break;
+                case "Skilling-Resource-Fish":
+                    // Could add a fish level map for more precise sorting
+                    stage = item.getProcessedName().startsWith("raw") ? 0 : 1;
+                    break;
+                case "Skilling-Resource-Other":
+                    // Heuristic for potion secondaries
+                    if (item.getBaseName().contains("eye of newt") || item.getBaseName().contains("limpwurt root")) {
+                        stage = 3;
+                    }
+                    break;
+            }
+            return new int[]{level, stage};
         }
 
 
@@ -1100,7 +1195,7 @@ public class BankTabSorterScript extends Script {
         public boolean canAddItem(BankSortItem item) {
             // Special items with set types or tiers should be in their own clusters
             if (item.getItemSetType() != null || item.getItemTier() != null) {
-               return false;
+                return false;
             }
 
             // For potions, teleportation items and other items with charges/doses,
@@ -1161,7 +1256,7 @@ public class BankTabSorterScript extends Script {
                     bestMatch = Math.max(bestMatch, similarity);
                 }
 
-                if (bestMatch > 0.85) { // High similarity threshold for individual words
+                if (bestMatch > 0.95) { // High similarity threshold for individual words
                     matchedWords++;
                 }
                 maxWordSimilarity = Math.max(maxWordSimilarity, bestMatch);
@@ -1177,14 +1272,14 @@ public class BankTabSorterScript extends Script {
 
         private double getCommonWordSimilarity(String str1, String str2) {
             // Check for common words or important keywords
-            String[] commonKeywords = {"sword", "shield", "platebody", "platelegs", "robetop",
+            String[] commonKeywords = {"sword", "shield", "platebody", "platelegs", "robe", "top", "legs", "body",
                     "helm", "granite", "dragon", "rune", "adamant", "mithril", "gold", "iron",
                     "bronze", "potion", "teleport", "seeds", "herb"};
 
             for (String keyword : commonKeywords) {
                 if (str1.contains(keyword) && str2.contains(keyword)) {
                     // If they share an important keyword, boost similarity
-                    return 0.8; // Significant boost for sharing important keywords
+                    return 0.9; // Significant boost for sharing important keywords
                 }
             }
 

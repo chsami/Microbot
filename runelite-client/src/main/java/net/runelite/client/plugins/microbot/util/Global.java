@@ -81,10 +81,10 @@ public class Global {
         long timeoutNanos = TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
         try {
             while (System.nanoTime() - startTime < timeoutNanos) {
-                action.run();
                 if (awaitedCondition.getAsBoolean()) {
                     return true;
                 }
+				action.run();
                 sleep(sleepMillis);
             }
         } catch (Exception e) {

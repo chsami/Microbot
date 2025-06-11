@@ -87,36 +87,36 @@ public class FoodScript extends Script {
     private boolean equipFullGuthans() {
         Rs2ItemModel shield = get(EquipmentInventorySlot.SHIELD);
         if (shield != null)
-            shieldName = shield.name;
+            shieldName = shield.getName();
 
         if (!Rs2Equipment.hasGuthanWeaponEquiped()) {
             Rs2ItemModel spearWidget = Microbot.getClientThread().runOnClientThreadOptional(() ->
                     Rs2Inventory.get("guthan's warspear")).orElse(null);
             if (spearWidget == null) return false;
             Rs2ItemModel weapon = Rs2Equipment.get(EquipmentInventorySlot.WEAPON);
-            weaponname = weapon != null ? weapon.name : "";
-            Rs2Inventory.equip(spearWidget.name);
+            weaponname = weapon != null ? weapon.getName() : "";
+            Rs2Inventory.equip(spearWidget.getName());
         }
         if (!Rs2Equipment.hasGuthanBodyEquiped()) {
             Rs2ItemModel bodyWidget = Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2Inventory.get("guthan's platebody")).orElse(null);
             if (bodyWidget == null) return false;
             Rs2ItemModel body = Rs2Equipment.get(EquipmentInventorySlot.BODY);
-            bodyName = body != null ? body.name : "";
-            Rs2Inventory.equip(bodyWidget.name);
+            bodyName = body != null ? body.getName() : "";
+            Rs2Inventory.equip(bodyWidget.getName());
         }
         if (!Rs2Equipment.hasGuthanLegsEquiped()) {
             Rs2ItemModel legsWidget = Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2Inventory.get("guthan's chainskirt")).orElse(null);
             if (legsWidget == null) return false;
             Rs2ItemModel legs = Rs2Equipment.get(EquipmentInventorySlot.LEGS);
-            legsName = legs != null ? legs.name : "";
-            Rs2Inventory.equip(legsWidget.name);
+            legsName = legs != null ? legs.getName() : "";
+            Rs2Inventory.equip(legsWidget.getName());
         }
         if (!Rs2Equipment.hasGuthanHelmEquiped()) {
             Rs2ItemModel helmWidget = Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2Inventory.get("guthan's helm")).orElse(null);
             if (helmWidget == null) return false;
             Rs2ItemModel helm = Rs2Equipment.get(EquipmentInventorySlot.HEAD);
-            helmName = helm != null ? helm.name : "";
-            Rs2Inventory.equip(helmWidget.name);
+            helmName = helm != null ? helm.getName() : "";
+            Rs2Inventory.equip(helmWidget.getName());
         }
         return true;
     }

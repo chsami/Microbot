@@ -180,10 +180,10 @@ public class MageTrainingArenaScript extends Script {
             previousRewards.add(reward.getItemId());
         }
 
-        Predicate<Rs2ItemModel> additionalItemPredicate = x -> !x.name.toLowerCase().contains("rune")
-                && !x.name.toLowerCase().contains("staff")
-                && !x.name.toLowerCase().contains("tome")
-                && !previousRewards.contains(x.id);
+        Predicate<Rs2ItemModel> additionalItemPredicate = x -> !x.getName().toLowerCase().contains("rune")
+                && !x.getName().toLowerCase().contains("staff")
+                && !x.getName().toLowerCase().contains("tome")
+                && !previousRewards.contains(x.getId());
 
         if (Rs2Inventory.contains(additionalItemPredicate)) {
             if (!Rs2Bank.walkToBankAndUseBank())
@@ -213,7 +213,7 @@ public class MageTrainingArenaScript extends Script {
         for (var points : currentPoints.entrySet()) {
             int gain = 0;
             if (points.getKey() == Points.ALCHEMIST && currentRoom == Rooms.ALCHEMIST && Rs2Inventory.hasItem("Coins"))
-                gain = Rs2Inventory.get("Coins").quantity / 100;
+                gain = Rs2Inventory.get("Coins").getQuantity() / 100;
 
             var widget = Rs2Widget.getWidget(points.getKey().getWidgetId(), points.getKey().getChildId());
             if (widget != null && !Microbot.getClientThread().runOnClientThreadOptional(widget::isHidden).orElse(false))
@@ -424,7 +424,7 @@ public class MageTrainingArenaScript extends Script {
             }
 
             if (!Rs2Player.isAnimating()
-                    && StreamSupport.stream(Microbot.getClient().getTopLevelWorldView().getProjectiles().spliterator(), false).noneMatch(x -> x.getId() == GraphicID.TELEKINETIC_SPELL)
+                    && StreamSupport.stream(Microbot.getClient().getProjectiles().spliterator(), false).noneMatch(x -> x.getId() == GraphicID.TELEKINETIC_SPELL)
                     && !TelekineticRoom.getMoves().isEmpty()
                     && TelekineticRoom.getMoves().peek() == room.getPosition()
                     && room.getGuardian().getId() != NullNpcID.NULL_6778
@@ -469,7 +469,7 @@ public class MageTrainingArenaScript extends Script {
         var bonepile = Rs2GameObject.findObjectByLocation(new WorldPoint(3352, 9637, 1));
         var foodChute = Rs2GameObject.findObjectByLocation(new WorldPoint(3354, 9639, 1));
 
-        var boneGoal = 28 - Rs2Inventory.items().stream().filter(x -> x.name.equalsIgnoreCase("Animals' bones")).count();
+        var boneGoal = 28 - Rs2Inventory.items().stream().filter(x -> x.getName().equalsIgnoreCase("Animals' bones")).count();
         if (mtaPlugin.getGraveyardRoom().getCounter() != null && mtaPlugin.getGraveyardRoom().getCounter().getCount() >= boneGoal) {
             Rs2Magic.cast(btp ? MagicAction.BONES_TO_PEACHES : MagicAction.BONES_TO_BANANAS);
             Rs2Player.waitForAnimation();
