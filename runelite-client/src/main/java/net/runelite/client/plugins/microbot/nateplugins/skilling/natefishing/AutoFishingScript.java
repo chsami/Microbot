@@ -1,6 +1,6 @@
 package net.runelite.client.plugins.microbot.nateplugins.skilling.natefishing;
 
-import net.runelite.api.ItemID;
+import net.runelite.api.*;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.nateplugins.skilling.natefishing.enums.Fish;
@@ -11,11 +11,14 @@ import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.depositbox.Rs2DepositBox;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
+import java.awt.event.KeyEvent;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -29,12 +32,14 @@ enum State {
 
 public class AutoFishingScript extends Script {
 
-    public static String version = "1.6.1";
+    public static String version = "1.6.2";
     private String fishAction = "";
+    private AutoFishConfig config; // Added config field
     State state;
 
     public boolean run(AutoFishConfig config) {
         initialPlayerLocation = null;
+        this.config = config;
         Fish fish = config.fish();
 
         fishAction = "";
@@ -52,8 +57,8 @@ public class AutoFishingScript extends Script {
                 }
 
                 if (config.useEchoHarpoon()) {
-                    if (!Rs2Equipment.hasEquipped(ItemID.ECHO_HARPOON)) {
-                        if (!Rs2Inventory.hasItem(ItemID.ECHO_HARPOON)) {
+                    if (!Rs2Equipment.isEquipped("Echo harpoon",EquipmentInventorySlot.WEAPON)) {
+                        if (!Rs2Inventory.hasItem("Echo harpoon")) {
                             Microbot.showMessage("Missing Echo harpoon");
                             shutdown();
                             return;
@@ -138,7 +143,12 @@ public class AutoFishingScript extends Script {
                                 
                                 Rs2Walker.walkTo(initialPlayerLocation);
                             }
-                        } else {
+                        } else if (config.enableCooking()) {
+                            cookFish(fish);
+                            Rs2Inventory.dropAll(i -> !i.getName().equalsIgnoreCase("Fly fishing rod") && !i.getName().equalsIgnoreCase("Feather"), config.getDropOrder());
+                        }
+
+                        else {
                             Rs2Inventory.dropAll(i -> fish.getRawNames().stream().anyMatch(fl -> fl.equalsIgnoreCase(i.getName())), config.getDropOrder());
                         }
                         state = State.FISHING;
@@ -149,6 +159,27 @@ public class AutoFishingScript extends Script {
             }
         }, 0, 1000, TimeUnit.MILLISECONDS);
         return true;
+    }
+
+    public void cookFish(Fish fish) {
+        if (config.fireplaceID() != 0){
+            for (int i = 0; i < fish.getInventory_id().size(); i++) {
+                int inventoryId = fish.getInventory_id().get(i);
+                int requiredCookingLevel = fish.getRequired_cooking_level().get(i);
+                int currentCookingLevel = Rs2Player.getRealSkillLevel(Skill.COOKING);
+                if (currentCookingLevel < requiredCookingLevel) {
+                    continue;
+                }
+                while (Rs2Inventory.hasItem(inventoryId)) {
+                    Rs2Inventory.useItemOnObject(inventoryId, config.fireplaceID());
+                    sleepUntil(() -> !Rs2Player.isMoving() && Rs2Widget.findWidget("like to cook?", null, false) != null);
+                    Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
+                    Rs2Antiban.actionCooldown();
+                    sleepUntil(() -> Rs2Player.getAnimation() != AnimationID.IDLE);
+                    sleepUntilTrue(() -> !Rs2Inventory.hasItem(inventoryId) || !Rs2Player.isAnimating(7000), 500, 80000);
+                }
+            }
+        }
     }
 
     private boolean hasRequiredItems(Fish fish) {

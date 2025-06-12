@@ -9,7 +9,7 @@ import net.runelite.client.plugins.microbot.util.inventory.InteractOrder;
 
 @ConfigGroup(AutoFishConfig.configGroup)
 public interface AutoFishConfig extends Config {
-    
+
     String configGroup = "micro-fishing";
     @ConfigSection(
             name = "General",
@@ -17,13 +17,20 @@ public interface AutoFishConfig extends Config {
             position = 0
     )
     String generalSection = "general";
-    
+
     @ConfigSection(
             name = "Banking",
             description = "Bank Configuration",
             position = 1
     )
     String bankingSection = "banking";
+
+    @ConfigSection(
+            name = "Cooking",
+            description = "Cooking Configuration",
+            position = 2
+    )
+    String cookingSection = "cooking";
 
     @ConfigItem(
             keyName = "Fish",
@@ -94,7 +101,6 @@ public interface AutoFishConfig extends Config {
         return true;
     }
 
-    // boolean if to use Echo harpoon
     @ConfigItem(
             keyName = "UseEchoHarpoon",
             name = "Echo Harpoon",
@@ -107,4 +113,25 @@ public interface AutoFishConfig extends Config {
         return false;
     }
 
+    @ConfigItem(
+            keyName = "EnableCooking",
+            name = "Enable Cooking",
+            description = "Enable cooking of caught fish",
+            position = 1,
+            section = cookingSection
+    )
+    default boolean enableCooking()
+    {
+        return false;
+    }    @ConfigItem(
+            keyName = "FireplaceID",
+            name = "Fireplace ID",
+            description = "Enter the Fireplace ID for cooking",
+            position = 2,
+            section = cookingSection
+    )
+    default int fireplaceID()
+    {
+        return 0; //43475 barbarian village fireplace
+    }
 }
