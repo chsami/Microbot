@@ -128,7 +128,6 @@ public class FarmTreeRunScript extends Script {
                 Patch patch = null;
                 boolean handledPatch = false;
 
-                if(config.useSpiritMode()) {
                     switch (botStatus) {
                         case BANKING:
                             if (config.banking()) {
@@ -314,7 +313,6 @@ public class FarmTreeRunScript extends Script {
                             plugin.reportFinished("Scheduled with Wassuppzzz", true);
                             break;
                     }
-                }
 
                 long endTime = System.currentTimeMillis();
                 long totalTime = endTime - startTime;
