@@ -197,17 +197,6 @@ public interface FarmTreeRunConfig extends Config {
     }
 
     @ConfigItem(
-            keyName = "useSpiritMode",
-            name = "Spirit Mode BETA (Advanced users)",
-            description = "Use Spirit tree preferred routing, requires you to modify spirit_trees.tsv",
-            position = 12,
-            section = generalSection
-    )
-    default boolean useSpiritMode() {
-        return true;
-    }
-
-    @ConfigItem(
             keyName = "falador",
             name = "Falador",
             description = "Falador tree patch",

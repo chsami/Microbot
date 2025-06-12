@@ -7,6 +7,7 @@ import net.runelite.api.GrandExchangeOfferState;
 import net.runelite.api.MenuAction;
 import net.runelite.api.VarClientStr;
 import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetInfo;
@@ -263,7 +264,7 @@ public class Rs2GrandExchange {
 
             Widget pricePerItemButtonXPercent = getPricePerItemButton_PlusXPercent();
             if (pricePerItemButtonXPercent != null) {
-                int basePrice = getItemPrice();
+                int basePrice = Microbot.getVarbitValue(VarbitID.GE_NEWOFFER_TYPE);
                 int currentPercent = NumberExtractor.extractNumber(pricePerItemButtonXPercent.getText());
 
                 // Update Price per item custom percentage if it doesn't match
@@ -321,7 +322,7 @@ public class Rs2GrandExchange {
     private static boolean buyItemAbove5Percent(int timesToIncreasePrice) {
         Widget pricePerItemButton5Percent = getPricePerItemButton_Plus5Percent();
         if (pricePerItemButton5Percent != null) {
-            int basePrice = getItemPrice();
+            int basePrice = Microbot.getVarbitValue(VarbitID.GE_NEWOFFER_TYPE);
             // Call click() as many times as the value of count
             IntStream.range(0, timesToIncreasePrice).forEach(i -> {
                 Microbot.getMouse().click(pricePerItemButton5Percent.getBounds());
@@ -713,7 +714,7 @@ public class Rs2GrandExchange {
     }
 
     public static int getItemPrice() {
-        return Integer.parseInt(Rs2Widget.getWidget(465, 27).getText().replace(",", ""));
+        return Integer.parseInt(Rs2Widget.getWidget(465, 27).getText().replace(" coins", ""));
     }
 
     public static Widget getSlot(GrandExchangeSlots slot) {

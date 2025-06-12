@@ -11,12 +11,12 @@ import java.util.List;
 public enum Fish
 {
     SHRIMP(
-            "shrimp",
+            "shrimp/anchovies",
             FishingSpot.SHRIMP.getIds(),
             List.of("net", "small net"),
-            List.of("raw shrimps"),
-            List.of(317),
-            List.of(1)
+            List.of("raw shrimps","raw anchovies"),
+            List.of(317,321),
+            List.of(1, 1)
     ),
     SARDINE(
             "sardine/herring",

@@ -348,10 +348,19 @@ public class Rs2InventorySetup {
 		}
 
 		if (inventorySetup.getRune_pouch() != null) {
+			// TODO: allow each item's is fuzzy to contains(runes, isFuzzy), to allow combination rune matching
+			// This creates a hash-map of the 20% of the required runes in the setup
 			Map<Runes, Integer> requiredRunes = inventorySetup.getRune_pouch().stream()
 				.filter(item -> item.getId() != -1 && item.getQuantity() > 0)
-				.map(item -> Map.entry(Runes.byItemId(item.getId()), item.getQuantity()))
-				.filter(e -> e.getKey() != null)
+				.map(item -> {
+					Runes rune = Runes.byItemId(item.getId());
+					if (rune == null) return null;
+
+					int originalQty = item.getQuantity();
+					int minQty = Math.max(1, (int) Math.ceil(originalQty * 0.2));
+					return Map.entry(rune, minQty);
+				})
+				.filter(Objects::nonNull)
 				.collect(Collectors.toMap(
 					Map.Entry::getKey,
 					Map.Entry::getValue,

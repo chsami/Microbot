@@ -27,4 +27,10 @@ public class CanafisCourse implements AgilityCourseHandler
 			new AgilityObstacleModel(ObjectID.ROOFTOPS_CANIFIS_LEAPDOWN)
 		);
 	}
+
+	@Override
+	public Integer getRequiredLevel()
+	{
+		return 40;
+	}
 }

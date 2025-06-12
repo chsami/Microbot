@@ -27,4 +27,10 @@ public class ShayzienBasicCourse implements AgilityCourseHandler
 			new AgilityObstacleModel(ObjectID.SHAYZIEN_AGILITY_LOW_END_JUMP)
 		);
 	}
+
+	@Override
+	public Integer getRequiredLevel()
+	{
+		return 1;
+	}
 }

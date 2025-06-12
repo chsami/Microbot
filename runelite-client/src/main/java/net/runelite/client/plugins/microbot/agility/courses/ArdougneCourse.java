@@ -21,10 +21,16 @@ public class ArdougneCourse implements AgilityCourseHandler
 			new AgilityObstacleModel(ObjectID.ROOFTOPS_ARDY_WALLCLIMB),
 			new AgilityObstacleModel(ObjectID.ROOFTOPS_ARDY_JUMP),
 			new AgilityObstacleModel(ObjectID.ROOFTOPS_ARDY_PLANK),
-			new AgilityObstacleModel(ObjectID.ROOFTOPS_ARDY_JUMP_2),
+			new AgilityObstacleModel(ObjectID.ROOFTOPS_ARDY_JUMP_2, -1, 3318, Operation.GREATER, Operation.GREATER_EQUAL),
 			new AgilityObstacleModel(ObjectID.ROOFTOPS_ARDY_JUMP_3, -1, 3310, Operation.GREATER, Operation.GREATER_EQUAL),
 			new AgilityObstacleModel(ObjectID.ROOFTOPS_ARDY_WALLCROSSING),
 			new AgilityObstacleModel(ObjectID.ROOFTOPS_ARDY_JUMP_4)
 		);
+	}
+
+	@Override
+	public Integer getRequiredLevel()
+	{
+		return 90;
 	}
 }

@@ -9,6 +9,7 @@ import net.runelite.api.Skill;
 import net.runelite.api.TileObject;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ObjectID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.agility.models.AgilityObstacleModel;
 import net.runelite.client.plugins.microbot.util.Global;
@@ -21,7 +22,15 @@ public interface AgilityCourseHandler
 	int MAX_DISTANCE = 2300;
 
 	WorldPoint getStartPoint();
+
 	List<AgilityObstacleModel> getObstacles();
+
+	Integer getRequiredLevel();
+
+	default boolean canBeBoosted()
+	{
+		return true;
+	}
 
 	default TileObject getCurrentObstacle()
 	{
@@ -55,9 +64,9 @@ public interface AgilityCourseHandler
 				GameObject _obj = (GameObject) obj;
 				switch (obj.getId())
 				{
-					case 14936: // MARKET_STALL
+					case ObjectID.ROOFTOPS_POLLNIVNEACH_MARKETSTALL:
 						return Rs2GameObject.canReach(obj.getWorldLocation(), _obj.sizeX(), _obj.sizeY(), 4, 4);
-					case 42220: // BEAM
+					case ObjectID.SHAYZIEN_AGILITY_UP_SWING_JUMP_2:
 						return _obj.getWorldLocation().distanceTo(playerLocation) < 6;
 					default:
 						return Rs2GameObject.canReach(_obj.getWorldLocation(), _obj.sizeX() + 2, _obj.sizeY() + 2, 4, 4);

@@ -445,6 +445,8 @@ public class MageTrainingArenaScript extends Script {
             staffId = config.earthStaff().getItemId();
         } else if (Rs2Inventory.hasItem("earth rune")) {
             staffId = config.waterStaff().getItemId();
+        } else if (config.waterStaff() == WaterStaves.TOME_OF_WATER) {
+            staffId = config.earthStaff().getItemId();
         }
 
         if (Rs2Inventory.hasItem(staffId) || Rs2Equipment.isWearing(staffId)) {

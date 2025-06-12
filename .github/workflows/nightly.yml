@@ -9,13 +9,11 @@ jobs:
     runs-on: ubuntu-latest  # You can choose a different runner if needed
     permissions: write-all
 
-    env:
-      TAG_NAME: nightly
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          # Specify the branch you want
           ref: development
           fetch-depth: 0
 
@@ -28,25 +26,23 @@ jobs:
       - name: Build Shaded JAR
         run: mvn clean package
 
+
       - name: Create Release
-        uses: ncipollo/release-action@v1
+        uses: "marvinpinto/action-automatic-releases@latest"
         with:
-          tag: ${{ env.TAG_NAME }}
-          commit: refs/heads/development
-          name: Nightly Build
-          generateReleaseNotes: true
-          allowUpdates: true
-          replacesArtifacts: true
-          artifacts: |
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "nightly"
+          prerelease: false
+          title: "Nightly Build"
+          files: |
             /home/runner/work/Microbot/Microbot/runelite-client/target/microbot-*.jar
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Jar
-        uses: bacongobbler/azure-blob-storage-upload@main
+        uses: "bacongobbler/azure-blob-storage-upload@main"
         with:
           source_dir: runelite-client/target
           container_name: microbot
           connection_string: ${{ secrets.blobConnectionString }}
-          extra_args: '--pattern *.jar --destination-path ${{ env.TAG_NAME }}'
+          extra_args: '--pattern *.jar --destination-path nightly'
           # WARNING: this will overwrite existing blobs in your blob storage
           overwrite: 'true'

@@ -56,8 +56,6 @@ public class AutoBuyerScript extends Script {
 
 
                 } else {
-                    Microbot.log("Using manual item list");
-                    if (getQuestHelperPlugin().getSelectedQuest() == null) Microbot.log("maybe because you forgot to select Quest in the Quest helper ?");
                     listOfItemsToBuy = config.listOfItemsToBuy().replaceAll("\\s*,\\s*", ",");
                 }
 

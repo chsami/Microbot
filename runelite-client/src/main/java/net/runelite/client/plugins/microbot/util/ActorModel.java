@@ -60,13 +60,13 @@ public class ActorModel implements Actor
 	@Override
 	public int getHealthRatio()
 	{
-		return actor.getHealthRatio();
+		return Microbot.getClientThread().runOnClientThreadOptional(actor::getHealthRatio).orElse(0);
 	}
 
 	@Override
 	public int getHealthScale()
 	{
-		return actor.getHealthScale();
+		return Microbot.getClientThread().runOnClientThreadOptional(actor::getHealthScale).orElse(0);
 	}
 
 	@Override

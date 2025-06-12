@@ -5,6 +5,7 @@ import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.game.npcoverlay.HighlightedNpc;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.ActorModel;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
@@ -166,7 +167,7 @@ public class Rs2Npc {
     }
 
     /**
-     * Retrieves the health percentage of a given {@link Actor}.
+     * Retrieves the health percentage of a given {@link ActorModel}.
      *
      * <p>The health percentage is calculated using the formula:</p>
      * <pre>
@@ -176,10 +177,10 @@ public class Rs2Npc {
      * <p><b>Note:</b> If the actor's health ratio or scale is invalid (i.e., missing or zero),
      * this method may return unexpected values.</p>
      *
-     * @param npc The {@link Actor} whose health percentage is to be retrieved.
+     * @param npc The {@link ActorModel} whose health percentage is to be retrieved.
      * @return The health percentage of the actor as a {@code double}.
      */
-    public static double getHealth(Actor npc) {
+    public static double getHealth(ActorModel npc) {
         int ratio = npc.getHealthRatio();
         int scale = npc.getHealthScale();
 

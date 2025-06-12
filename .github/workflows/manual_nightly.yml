@@ -11,13 +11,11 @@ jobs:
     runs-on: ubuntu-latest  # You can choose a different runner if needed
     permissions: write-all
 
-    env:
-      TAG_NAME: nightly
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          # Specify the branch you want
           ref: development
           fetch-depth: 0
 
@@ -30,15 +28,13 @@ jobs:
       - name: Build Shaded JAR
         run: mvn clean package
 
+
       - name: Create Release
-        uses: ncipollo/release-action@v1
+        uses: "marvinpinto/action-automatic-releases@latest"
         with:
-          tag: ${{ env.TAG_NAME }}
-          commit: refs/heads/development
-          name: Nightly Build
-          generateReleaseNotes: true
-          allowUpdates: true
-          replacesArtifacts: true
-          artifacts: |
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "nightly"
+          prerelease: false
+          title: "Nightly Build"
+          files: |
             /home/runner/work/Microbot/Microbot/runelite-client/target/microbot-*.jar
-          token: ${{ secrets.GITHUB_TOKEN }}

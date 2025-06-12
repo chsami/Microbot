@@ -10,7 +10,7 @@ import net.runelite.client.config.ConfigItem;
         "Collects items to bank. " +
         "<br> Be cautious and monitor when using, because there are no failsafes added yet. " +
         "<br><br> Item name[quantity] for example: rune arrow[50],amulet of glory(6)[1]"+
-        "<br><br>If Buy Quest Items selected then buy List will be ignored. Ensure Quest Helper has quest selected before starting."
+        "<br><br>If Buy Quest Items is enabled, the Buy List will be ignored. Ensure Quest Helper has quest selected before starting."
 )
 public interface AutoBuyerConfig extends Config {
 

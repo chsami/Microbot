@@ -33,4 +33,10 @@ public class FaladorCourse implements AgilityCourseHandler
 			new AgilityObstacleModel(ObjectID.ROOFTOPS_FALADOR_EDGE)
 		);
 	}
+
+	@Override
+	public Integer getRequiredLevel()
+	{
+		return 50;
+	}
 }

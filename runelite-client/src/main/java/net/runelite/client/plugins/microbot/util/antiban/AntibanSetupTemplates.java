@@ -195,7 +195,7 @@ public class AntibanSetupTemplates {
         Rs2AntibanSettings.universalAntiban = false;
         Rs2AntibanSettings.microBreakDurationLow = 3;
         Rs2AntibanSettings.microBreakDurationHigh = 8;
-        Rs2AntibanSettings.actionCooldownChance = 1.00;
+        Rs2AntibanSettings.actionCooldownChance = 0.2;
         Rs2AntibanSettings.microBreakChance = 0.05;
         Rs2Antiban.setActivity(Activity.GENERAL_AGILITY);
     }
