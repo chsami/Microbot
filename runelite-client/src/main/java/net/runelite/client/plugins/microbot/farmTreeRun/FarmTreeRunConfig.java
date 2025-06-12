@@ -54,11 +54,19 @@ public interface FarmTreeRunConfig extends Config {
     )
     String treePatchesSection = "treePatchesSection";
 
+    // Hard Tree patches section
+    @ConfigSection(
+            name = "Hard Tree patches",
+            description = "Select which tree patches to use",
+            position = 3
+    )
+    String hardtreePatchesSection = "hardtreePatchesSection";
+
     // Fruit tree patches section
     @ConfigSection(
             name = "Fruit tree patches",
             description = "Select which fruit tree patches to use",
-            position = 3
+            position = 4
     )
     String fruitTreePatchesSection = "fruitTreePatchesSection";
 
@@ -204,7 +212,7 @@ public interface FarmTreeRunConfig extends Config {
             section = generalSection
     )
     default boolean useSpiritMode() {
-        return true;
+        return false;
     }
 
     @ConfigItem(
@@ -263,27 +271,26 @@ public interface FarmTreeRunConfig extends Config {
     }
 
     @ConfigItem(
-            keyName = "fossil",
-            name = "Fossil Island",
-            description = "Fossil Island tree patch x3",
-            position = 4,
-            section = treePatchesSection
-    )
-    default boolean fossilTreePatch() {
-        return true;
-    }
-
-    @ConfigItem(
             keyName = "farmingGuildTree",
             name = "Farming Guild",
             description = "FarmingGuild tree patch",
-            position = 5,
+            position = 4,
             section = treePatchesSection
     )
     default boolean farmingGuildTreePatch() {
         return true;
     }
 
+    @ConfigItem(
+            keyName = "fossil",
+            name = "Fossil Island",
+            description = "Fossil Island tree patch x3",
+            position = 1,
+            section = hardtreePatchesSection
+    )
+    default boolean fossilTreePatch() {
+        return true;
+    }
 
     @ConfigItem(
             keyName = "brimhaven",
