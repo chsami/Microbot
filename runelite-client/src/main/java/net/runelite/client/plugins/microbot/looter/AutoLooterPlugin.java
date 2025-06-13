@@ -24,19 +24,26 @@ import java.awt.*;
         enabledByDefault = false
 )
 public class AutoLooterPlugin extends Plugin {
-    public static double version = 1.0;
+    public static double version = 1.1;
+
     @Inject
-    DefaultScript defaultScript;
+    private DefaultScript defaultScript;
+
     @Inject
-    FlaxScript flaxScript;
+    private FlaxScript flaxScript;
+
     @Inject
-    NatureRuneChestScript natureRuneChestScript;
+    private NatureRuneChestScript natureRuneChestScript;
+
     @Inject
     private AutoLooterConfig config;
+
     @Inject
     private ConfigManager configManager;
+
     @Inject
     private OverlayManager overlayManager;
+
     @Inject
     private AutoLooterOverlay autoLooterOverlay;
 
@@ -47,29 +54,39 @@ public class AutoLooterPlugin extends Plugin {
 
     @Override
     protected void startUp() throws AWTException {
-        
-        switch (config.looterActivity()) {
-            case DEFAULT:
-                defaultScript.run(config);
-                defaultScript.handleWalk(config);
-                break;
-            case FLAX:
-                flaxScript.run(config);
-                break;
-            case NATURE_RUNE_CHEST:
-                natureRuneChestScript.run(config);
-                break;
-        }
-        
-        if(overlayManager != null){
+        if (overlayManager != null) {
             overlayManager.add(autoLooterOverlay);
+        }
+
+        try {
+            switch (config.looterActivity()) {
+                case DEFAULT:
+                    defaultScript.run(config);
+                    break;
+                case FLAX:
+                    flaxScript.run(config);
+                    break;
+                case NATURE_RUNE_CHEST:
+                    natureRuneChestScript.run(config);
+                    break;
+            }
+        } catch (Exception e) {
+            System.out.println("Error starting looter: " + e.getMessage());
         }
     }
 
-    protected void shutDown() throws Exception {
-        defaultScript.shutdown();
-        flaxScript.shutdown();
-        natureRuneChestScript.shutdown();
-        overlayManager.remove(autoLooterOverlay);
+    @Override
+    protected void shutDown() {
+        try {
+            defaultScript.shutdown();
+            flaxScript.shutdown();
+            natureRuneChestScript.shutdown();
+            
+            if (overlayManager != null) {
+                overlayManager.remove(autoLooterOverlay);
+            }
+        } catch (Exception e) {
+            System.out.println("Error shutting down looter: " + e.getMessage());
+        }
     }
 }

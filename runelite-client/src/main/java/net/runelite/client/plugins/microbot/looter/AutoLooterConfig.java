@@ -84,6 +84,39 @@ public interface AutoLooterConfig extends Config {
     }
 
     @ConfigItem(
+            keyName = "toggleForceLoot",
+            name = "Force Loot in Combat",
+            description = "Forces looting even when in combat",
+            position = 4,
+            section = generalSection
+    )
+    default boolean toggleForceLoot() {
+        return false;
+    }
+
+    @ConfigItem(
+            keyName = "toggleDelayedLooting",
+            name = "Delayed Looting",
+            description = "Waits a moment before looting items",
+            position = 5,
+            section = generalSection
+    )
+    default boolean toggleDelayedLooting() {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "bankingEnabled",
+            name = "Enable Banking",
+            description = "When disabled, the plugin will stop when inventory is full",
+            position = 6,
+            section = generalSection
+    )
+    default boolean bankingEnabled() {
+        return false;
+    }
+
+    @ConfigItem(
             name = "Loot Style",
             keyName = "lootStyle",
             position = 0,
@@ -146,17 +179,6 @@ public interface AutoLooterConfig extends Config {
             section = defaultSection
     )
     default boolean toggleLootMyItemsOnly() {
-        return false;
-    }
-
-    @ConfigItem(
-            name = "Delayed Looting",
-            keyName = "delayedLooting",
-            position = 6,
-            description = "Toggles Delayed Looting",
-            section = defaultSection
-    )
-    default boolean toggleDelayedLooting() {
         return false;
     }
 
