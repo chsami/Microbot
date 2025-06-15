@@ -5072,8 +5072,11 @@
 1439 9599 1	1440 9615 1	Pass-Through;Entrance;51375
 1440 9509 1	1435 3128 0	Pass-Through;Entrance;51375
 1435 3128 0	1440 9509 1	Pass-Through;Entrance;51375
-											
-# Legends Guild											
+1440 9653 0	1403 9704 0	Pass-Through;Entrance;51377
+1403 9704 0	1440 9653 0	Pass-Through;Entrance;51377
+
+
+# Legends Guild
 2732 3376 0	2732 3380 1	Climb-up;Staircase;15653									
 2733 3376 0	2733 3380 1	Climb-up;Staircase;15653									
 2732 3380 1	2732 3376 0	Climb-down;Staircase;15654									
