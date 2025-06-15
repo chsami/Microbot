@@ -66,6 +66,17 @@ public interface AutoWoodcuttingConfig extends Config {
         return false;
     }
 
+    @ConfigItem(
+            keyName = "HardwoodTreePatch",
+            name = "Woodcut at Hardwood Tree Patch",
+            description = "Woodcut at Hardwood Tree Patch",
+            position = 4,
+            section = generalSection
+    )
+    default boolean HardwoodTreePatch()
+    {
+        return false;
+    }
 
     @ConfigSection(
             name = "Reset",

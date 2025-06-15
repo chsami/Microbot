@@ -125,7 +125,14 @@ public class AutoWoodcuttingScript extends Script {
                             return;
                         }
 
-                        GameObject tree = Rs2GameObject.findReachableObject(config.TREE().getName(), true, config.distanceToStray(), getInitialPlayerLocation(), config.TREE().equals(WoodcuttingTree.REDWOOD),config.TREE().getAction());
+                        GameObject tree = null;
+                        if (config.HardwoodTreePatch()) {
+                            var patchIds = List.of(30480,30481,30482);
+                            var trees = Rs2GameObject.getGameObjects(x -> patchIds.contains(x.getId()) && Rs2GameObject.hasAction(Rs2GameObject.convertToObjectComposition(x), config.TREE().getAction()));
+                            tree = trees.stream().findFirst().orElse(null);
+                        } else {
+                            tree = Rs2GameObject.findReachableObject(config.TREE().getName(), true, config.distanceToStray(), getInitialPlayerLocation(), config.TREE().equals(WoodcuttingTree.REDWOOD),config.TREE().getAction());
+                        }
 
                         if (tree != null) {
                             if (Rs2GameObject.interact(tree, config.TREE().getAction())) {
