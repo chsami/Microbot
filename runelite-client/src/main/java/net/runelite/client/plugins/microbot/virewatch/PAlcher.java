@@ -16,7 +16,8 @@ public class PAlcher extends Script {
             "Adamant platelegs",
             "Adamant platebody",
             "Rune full helm",
-            "Rune kiteshield"
+            "Rune kiteshield",
+            "Rune 2h sword"
     };
 
     public boolean run(PVirewatchKillerConfig config, PVirewatchKillerPlugin plugin) {

@@ -18,22 +18,24 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class PLooter extends Script {
-
-    public PLooter() {}
-
     public boolean run(PVirewatchKillerConfig config) {
+        Microbot.enableAutoRunOn = false;
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
-            if (!super.run()) return;
 
-            if (Rs2Inventory.isFull() || Rs2Inventory.getEmptySlots() <= 1) {
-                bank(config);
-                return;
+            try{
+                if (!super.run()) return;
+
+                if (Rs2Inventory.isFull() || Rs2Inventory.getEmptySlots() <= 1) {
+                    bank(config);
+                    return;
+                }
+                System.out.println("toggleLootItems: " + config.toggleLootItems());
+                if (!config.toggleLootItems()) return;
+
+                loot(config);
+            }catch (Exception ex) {
+                Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
             }
-
-            if (!config.toggleLootItems()) return;
-
-            loot(config);
-
         }, 0, 200, TimeUnit.MILLISECONDS);
         return true;
     }
@@ -51,15 +53,15 @@ public class PLooter extends Script {
 
         Rs2Bank.openBank();
         if (!Rs2Bank.isOpen()) return;
-
+        Rs2Bank.depositAll("Blood shard");
         Rs2Bank.depositAll("Runite ore");
         Rs2Bank.depositAll("Runite bar");
-        Rs2Bank.depositAll("Dragonstone bolt tips");
         Rs2Bank.depositAll("Vampyre dust");
         Rs2Bank.depositAll("Dragonstone");
+        Rs2Bank.depositAll("Ranarr seed");
         Rs2Bank.depositAll("Tooth half of key");
         Rs2Bank.depositAll("Dragon med helm");
-        Rs2Bank.depositAll("Blood rune");
+        Rs2Bank.depositAll("Dragonstone bolt tips");
 
         Rs2Inventory.waitForInventoryChanges(1800);
         Rs2Bank.closeBank();
