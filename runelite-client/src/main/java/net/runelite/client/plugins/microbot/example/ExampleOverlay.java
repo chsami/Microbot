@@ -28,12 +28,16 @@ public class ExampleOverlay extends OverlayPanel {
         myButton.setParentOverlay(this);
         myButton.setFont(FontManager.getRunescapeBoldFont());
         myButton.setOnClick(() -> {
-            List<Integer> lockedSlots = Rs2Bank.findLockedItems();
-            String message;
-            message = "Locked slots: " + lockedSlots;
-            Microbot.status = message;
-            Microbot.openPopUp("Microbot",
-                    String.format("S-1D:<br><br><col=ffffff>%s</col>", message));
+            try {
+                List<Integer> lockedSlots = Rs2Bank.findLockedSlots();
+                String message = "Locked slots: " + lockedSlots;
+                Microbot.status = message;
+                Microbot.openPopUp("Microbot",
+                        String.format("S-1D:<br><br><col=ffffff>%s</col>", message));
+            } catch (Exception ex) {
+                Microbot.status = "Error fetching locked slots.";
+                ex.printStackTrace(); // logs error for debug
+            }
         });
     }
     @Override

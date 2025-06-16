@@ -2444,21 +2444,56 @@ public class Rs2Bank {
         return Microbot.getConfigManager().getConfiguration("bank","bankPinKeyboard").equalsIgnoreCase("true");
     }
 
-    public static List<Integer> findLockedItems() {
-        if (!isOpen()) {
-            return Collections.emptyList();
-        }
-
+    public static List<Integer> findLockedSlots() {
         List<Integer> lockedSlots = new ArrayList<>();
-        for (int slot = 0; slot < Rs2Inventory.capacity(); slot++) {
+        for (int slot = 0; slot < 28; slot++) {
             String[] actions = Rs2Inventory.getActionsForSlot(slot);
-            boolean isLocked = Arrays.stream(actions)
-                    .anyMatch(a -> a != null && a.equalsIgnoreCase("unlock"));
-            if (isLocked) {
-                lockedSlots.add(slot);
+            if (actions != null) {
+                for (String action : actions) {
+                    if (action != null && action.equalsIgnoreCase("Unlock")) {
+                        lockedSlots.add(slot);
+                        break;
+                    }
+                }
             }
         }
-
         return lockedSlots;
     }
+
+    public static boolean hasAnyLockedSlot() {
+        return !findLockedSlots().isEmpty();
+    }
+
+    public static void unlockAllSlots() {
+        for (int slot : findLockedSlots()) {
+            if (Rs2Inventory.interact(slot, "Unlock")) {
+                sleep(Rs2Random.randomGaussian(400, 75)); // Optional: human-like delay
+            }
+        }
+    }
+    public static boolean lockSlot(int slot) {
+        String[] actions = Rs2Inventory.getActionsForSlot(slot);
+        if (actions != null) {
+            for (String action : actions) {
+                if (action != null && action.equalsIgnoreCase("Lock")) {
+                    return Rs2Inventory.interact(slot, "Lock");
+                }
+            }
+        }
+        return false;
+    }
+
+    public static boolean lockSlot(String name) {
+        int slot = Rs2Inventory.slot(name);
+        if (slot == -1) return false;
+        return lockSlot(slot);
+    }
+
+    public static boolean lockSlotById(int itemId) {
+        int slot = Rs2Inventory.slot(itemId);
+        if (slot == -1) return false;
+        return lockSlot(slot);
+    }
+
+
 }
