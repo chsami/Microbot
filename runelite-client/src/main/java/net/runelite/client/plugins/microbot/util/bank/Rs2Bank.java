@@ -2443,4 +2443,22 @@ public class Rs2Bank {
     private static boolean hasKeyboardBankPinEnabled() {
         return Microbot.getConfigManager().getConfiguration("bank","bankPinKeyboard").equalsIgnoreCase("true");
     }
+
+    public static List<Integer> findLockedItems() {
+        if (!isOpen()) {
+            return Collections.emptyList();
+        }
+
+        List<Integer> lockedSlots = new ArrayList<>();
+        for (int slot = 0; slot < Rs2Inventory.capacity(); slot++) {
+            String[] actions = Rs2Inventory.getActionsForSlot(slot);
+            boolean isLocked = Arrays.stream(actions)
+                    .anyMatch(a -> a != null && a.equalsIgnoreCase("unlock"));
+            if (isLocked) {
+                lockedSlots.add(slot);
+            }
+        }
+
+        return lockedSlots;
+    }
 }
