@@ -123,7 +123,7 @@ public class CalcifiedRockMinerScript extends Script {
             }
         }
 
-        if (Rs2Player.isMoving() || Rs2Player.isAnimating(4000)) {
+        if (Rs2Player.isMoving() || Rs2Player.isAnimating(1500)) {
             return;
         }
 
