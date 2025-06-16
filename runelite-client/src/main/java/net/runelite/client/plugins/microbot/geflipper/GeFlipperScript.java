@@ -6,6 +6,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.globval.VarbitIndices;
 import net.runelite.client.game.ItemManager;
 import net.runelite.http.api.item.ItemPrice;
@@ -20,6 +21,8 @@ public class GeFlipperScript extends Script {
     public static final String VERSION = "1.0";
     public static int profit = 0;
     public static long startTime = 0;
+    public static int startGp = 0;
+    public static int currentGp = 0;
 
     private List<String> items = new ArrayList<>();
     private int index = 0;
@@ -55,9 +58,17 @@ public class GeFlipperScript extends Script {
         return list.get(0).getId();
     }
 
+    private int getCurrentGp() {
+        return Optional.ofNullable(Rs2Inventory.get(ItemID.COINS_995))
+                .map(Rs2ItemModel::getQuantity)
+                .orElse(0);
+    }
+
     public boolean run(GeFlipperConfig config) {
         loadItems(config);
         startTime = System.currentTimeMillis();
+        currentGp = getCurrentGp();
+        startGp = currentGp;
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!Microbot.isLoggedIn()) return;
@@ -66,7 +77,14 @@ public class GeFlipperScript extends Script {
                     Microbot.status = "Finished";
                     return;
                 }
+                currentGp = getCurrentGp();
                 String item = items.get(index);
+                int itemId = getItemId(item);
+                int gePrice = itemId == -1 ? 0 : Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getItemManager().getItemPrice(itemId)).orElse(0);
+                if (gePrice > currentGp) {
+                    index++;
+                    return;
+                }
                 if (!Rs2GrandExchange.isOpen()) {
                     Rs2GrandExchange.openExchange();
                     return;
@@ -85,6 +103,8 @@ public class GeFlipperScript extends Script {
                         }
                     }
                     Rs2GrandExchange.backToOverview();
+                    currentGp = getCurrentGp();
+                    profit = currentGp - startGp;
                 }
                 index++;
             } catch (Exception ex) {

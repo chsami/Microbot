@@ -33,6 +33,9 @@ public class GeFlipperOverlay extends OverlayPanel {
                 .left(Microbot.status)
                 .build());
         panelComponent.getChildren().add(LineComponent.builder()
+                .left("GP: " + GeFlipperScript.currentGp)
+                .build());
+        panelComponent.getChildren().add(LineComponent.builder()
                 .left("Profit: " + GeFlipperScript.profit + " gp")
                 .build());
         long elapsed = System.currentTimeMillis() - GeFlipperScript.startTime;
