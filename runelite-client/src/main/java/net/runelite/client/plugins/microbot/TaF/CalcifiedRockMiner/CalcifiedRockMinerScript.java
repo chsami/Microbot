@@ -75,7 +75,7 @@ public class CalcifiedRockMinerScript extends Script {
                 System.out.println("Exception message: " + ex.getMessage());
                 ex.printStackTrace();
             }
-        }, 0, 600, TimeUnit.MILLISECONDS);
+        }, 0, 1500, TimeUnit.MILLISECONDS);
         return true;
     }
 
@@ -99,7 +99,7 @@ public class CalcifiedRockMinerScript extends Script {
 
         if (hopIfTooManyPlayersNearby(config)) return; // Exit current cycle after hop
 
-        if (Rs2Equipment.isWearing("Dragon pickaxe") || Rs2Equipment.isWearing("Crystal pickaxe")) {
+        if ((Rs2Equipment.isWearing("Dragon pickaxe") || Rs2Equipment.isWearing("Crystal pickaxe")) && Rs2Combat.getSpecEnergy() == 1000) {
             Rs2Combat.setSpecState(true, 1000);
             return;
         }
@@ -123,7 +123,7 @@ public class CalcifiedRockMinerScript extends Script {
             }
         }
 
-        if (Rs2Player.isMoving() || Rs2Player.isAnimating()){
+        if (Rs2Player.isMoving() || Rs2Player.isAnimating(4000)) {
             return;
         }
 
@@ -170,7 +170,7 @@ public class CalcifiedRockMinerScript extends Script {
 
     private void handleCrushing(CalcifiedRockMinerConfig config) {
         if (config.crushDeposits() && Rs2Inventory.hasItem("hammer") && Rs2Inventory.hasItem(29088)) {
-            if (Rs2Player.getWorldLocation().distanceTo(ANVIL) < 3) {
+            if (Rs2Player.getWorldLocation().distanceTo(ANVIL) < 1) {
                 Rs2Inventory.interact(29088, "use");
                 Rs2GameObject.interact("Anvil");
                 sleep(400,600);
@@ -183,6 +183,7 @@ public class CalcifiedRockMinerScript extends Script {
             }
             else {
                 Rs2Walker.walkTo(ANVIL);
+                Rs2Walker.walkFastCanvas(ANVIL);
             }
         } else {
             BOT_STATUS = CalcifiedRockMinerState.BANKING;
@@ -199,6 +200,7 @@ public class CalcifiedRockMinerScript extends Script {
         if (!config.dropDeposits()) {
             Rs2Bank.walkToBank(BankLocation.CAM_TORUM);
             Rs2Bank.openBank();
+            sleepUntil(() -> Rs2Bank.isOpen(), 5000);
             Rs2Bank.depositAll("Calcified deposit");
             Rs2Bank.depositAll("Uncut");
             Rs2Bank.closeBank();
