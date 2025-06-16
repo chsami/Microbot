@@ -6,6 +6,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.globval.VarbitIndices;
 import net.runelite.client.game.ItemManager;
 import net.runelite.http.api.item.ItemPrice;
 
@@ -72,12 +73,12 @@ public class GeFlipperScript extends Script {
                 }
                 Microbot.status = "Flipping " + item;
                 if (Rs2GrandExchange.buyItemAbove5Percent(item, 1)) {
-                    int buyPrice = Rs2GrandExchange.getOfferPrice();
+                    int buyPrice = Microbot.getVarbitValue(VarbitIndices.GE_OFFER_PRICE_PER_ITEM);
                     sleepUntil(Rs2GrandExchange::hasFinishedBuyingOffers);
                     Rs2GrandExchange.collectToInventory();
                     if (Rs2Inventory.hasItem(item)) {
                         if (Rs2GrandExchange.sellItemUnder5Percent(item)) {
-                            int sellPrice = Rs2GrandExchange.getOfferPrice();
+                            int sellPrice = Microbot.getVarbitValue(VarbitIndices.GE_OFFER_PRICE_PER_ITEM);
                             sleepUntil(Rs2GrandExchange::hasFinishedSellingOffers);
                             Rs2GrandExchange.collectToInventory();
                             profit += sellPrice - buyPrice;
