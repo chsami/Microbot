@@ -130,73 +130,25 @@ public interface PVirewatchKillerConfig extends Config {
     }
 
     @ConfigItem(
-            keyName = "Min Price of items to loot",
-            name = "Min. Price of items to loot",
-            description = "Min. Price of items to loot",
+            keyName = "teleGrabLoot",
+            name = "Telekinetic Grab Loot",
+            description = "Use Telekinetic Grab to loot items instead of picking them up directly",
             position = 1,
             section = lootSection
     )
-    default int minPriceOfItemsToLoot() {
-        return 5000;
+    default boolean teleGrabLoot() {
+        return false;
     }
 
     @ConfigItem(
-            keyName = "Max Price of items to loot",
-            name = "Max. Price of items to loot",
-            description = "Max. Price of items to loot default is set to 10M",
+            keyName = "customLootItems",
+            name = "Custom loot items",
+            description = "Comma-separated list of item names to loot (e.g. Runite bar,Blood shard,Dragonstone)",
             position = 2,
             section = lootSection
     )
-    default int maxPriceOfItemsToLoot() {
-        return 15000000;
-    }
-
-    // delayed looting
-    @ConfigItem(
-            keyName = "delayedLooting",
-            name = "Delayed Looting",
-            description = "Lets the loot stay on the ground for a while before picking it up",
-            position = 3,
-            section = lootSection
-    )
-    default boolean toggleDelayedLooting() {
-        return false;
-    }
-
-    @ConfigItem(
-            keyName = "onlyLootMyItems",
-            name = "Only Loot My Items",
-            description = "Only loot items that are dropped by you",
-            position = 4,
-            section = lootSection
-    )
-
-    default boolean toggleOnlyLootMyItems() {
-        return false;
-    }
-
-    @ConfigItem(
-            keyName = "lootRunes",
-            name = "Loot runes",
-            description = "Loots the Death/Nature/Blood ignoring min value",
-            position = 5,
-            section = lootSection
-    )
-
-    default boolean lootRunes() {
-        return false;
-    }
-
-    @ConfigItem(
-            keyName = "lootCoins",
-            name = "Loot coins",
-            description = "Loots the coins dropped",
-            position = 6,
-            section = lootSection
-    )
-
-    default boolean lootCoins() {
-        return false;
+    default String customLootItems() {
+        return "Blood shard,Runite bar,Dragon med helm,Dragonstone,Rune dagger,Adamant platelegs,Adamant platebody,Rune full helm,Rune kiteshield,Rune dagger,Blood rune,Runite ore";
     }
 
     @ConfigItem(
@@ -209,7 +161,6 @@ public interface PVirewatchKillerConfig extends Config {
     default boolean alchItems() {
         return false;
     }
-
 
     @ConfigItem(
             keyName = "outOfAreaTicks",
@@ -266,4 +217,43 @@ public interface PVirewatchKillerConfig extends Config {
         return false;
     }
 
+    @ConfigSection(
+            name = "Equipment",
+            description = "Gear to equip before starting",
+            position = 6,
+            closedByDefault = false
+    )
+    String equipmentSection = "Equipment";
+    @ConfigItem(
+            keyName = "top",
+            name = "Top",
+            description = "Gear worn in the body slot (e.g. Inquisitor's hauberk)",
+            position = 0,
+            section = equipmentSection
+    )
+    default String top() {
+        return "Inquisitor's hauberk";
+    }
+
+    @ConfigItem(
+            keyName = "legs",
+            name = "Legs",
+            description = "Gear worn in the leg slot (e.g. Inquisitor's plateskirt)",
+            position = 1,
+            section = equipmentSection
+    )
+    default String legs() {
+        return "Inquisitor's plateskirt";
+    }
+
+    @ConfigItem(
+            keyName = "boots",
+            name = "Boots",
+            description = "Gear worn in the boots slot (e.g. Primordial boots)",
+            position = 2,
+            section = equipmentSection
+    )
+    default String boots() {
+        return "Primordial boots";
+    }
 }

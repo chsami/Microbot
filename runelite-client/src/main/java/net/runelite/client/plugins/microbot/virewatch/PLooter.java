@@ -1,64 +1,100 @@
 package net.runelite.client.plugins.microbot.virewatch;
 
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
-import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
-import net.runelite.client.plugins.microbot.util.grounditem.LootingParameters;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
 
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class PLooter extends Script {
 
     public PLooter() {}
+
     public boolean run(PVirewatchKillerConfig config) {
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             if (!super.run()) return;
-            if (Rs2Inventory.isFull() || Rs2Inventory.getEmptySlots() <= 1|| Rs2Combat.inCombat())
+
+            if (Rs2Inventory.isFull() || Rs2Inventory.getEmptySlots() <= 1) {
+                bank(config);
                 return;
+            }
 
             if (!config.toggleLootItems()) return;
 
-            lootItemsByValue(config);
-            // Normal looter also does this but its better to have it as an extra priority
-            lootItemByName(config, "Blood shard");
-            if(config.lootRunes()) lootItemByName(config, "rune");
-            if(config.lootCoins()) lootItemByName(config, "coins");
-
+            loot(config);
 
         }, 0, 200, TimeUnit.MILLISECONDS);
         return true;
     }
 
-    private void lootItemByName(PVirewatchKillerConfig config, String name) {
-        LootingParameters runeParams = new LootingParameters(
-                config.radius(),
-                1,
-                5,
-                1,
-                config.toggleDelayedLooting(),
-                config.toggleOnlyLootMyItems(),
-                name
-        );
-        if (Rs2GroundItem.lootItemsBasedOnNames(runeParams)) {
-            Microbot.pauseAllScripts = false;
-        }
+    private void bank(PVirewatchKillerConfig config) {
+        WorldPoint currentLocation = Rs2Player.getWorldLocation();
 
+        // Equip disguise
+        Rs2Inventory.equip("Vyre noble legs");
+        Rs2Inventory.equip("Vyre noble shoes");
+        Rs2Inventory.equip("Vyre noble top");
+
+        BankLocation nearestBank = Rs2Bank.getNearestBank();
+        Rs2Walker.walkTo(nearestBank.getWorldPoint());
+
+        Rs2Bank.openBank();
+        if (!Rs2Bank.isOpen()) return;
+
+        Rs2Bank.depositAll("Runite ore");
+        Rs2Bank.depositAll("Runite bar");
+        Rs2Bank.depositAll("Dragonstone bolt tips");
+        Rs2Bank.depositAll("Vampyre dust");
+        Rs2Bank.depositAll("Dragonstone");
+        Rs2Bank.depositAll("Tooth half of key");
+        Rs2Bank.depositAll("Dragon med helm");
+        Rs2Bank.depositAll("Blood rune");
+
+        Rs2Inventory.waitForInventoryChanges(1800);
+        Rs2Bank.closeBank();
+        sleepUntil(() -> !Rs2Bank.isOpen());
+
+        Rs2Walker.walkTo(currentLocation);
+
+        // Re-equip combat gear from config
+        Rs2Inventory.equip(config.top());
+        Rs2Inventory.equip(config.legs());
+        Rs2Inventory.equip(config.boots());
     }
 
-    private void lootItemsByValue(PVirewatchKillerConfig config) {
-        LootingParameters valueParams = new LootingParameters(
-                config.minPriceOfItemsToLoot(),
-                config.maxPriceOfItemsToLoot(),
-                config.radius(),
-                1,
-                1,
-                config.toggleDelayedLooting(),
-                config.toggleOnlyLootMyItems()
-        );
-        if (Rs2GroundItem.lootItemBasedOnValue(valueParams)) {
-            Microbot.pauseAllScripts = false;
+    private void loot(PVirewatchKillerConfig config) {
+        var nearbyItems = Rs2GroundItem.getAll(7);
+        var itemsToPickup = Arrays.stream(nearbyItems)
+                .filter(item -> config.customLootItems().contains(item.getItem().getName()))
+                .collect(Collectors.toList());
+
+        if (config.teleGrabLoot()) {
+            for (var item : itemsToPickup) {
+                int distance = Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(item.getTile().getWorldLocation());
+                if (distance > 2) {
+                    Rs2Magic.cast(MagicAction.TELEKINETIC_GRAB);
+                }
+                Rs2GroundItem.interact(item);
+                sleepUntil(() -> Rs2Inventory.waitForInventoryChanges(1800));
+                Rs2Tab.switchToInventoryTab();
+            }
+        } else {
+            for (var item : itemsToPickup) {
+                Rs2GroundItem.interact(item);
+                sleepUntil(() -> Rs2Inventory.waitForInventoryChanges(1800));
+                Rs2Tab.switchToInventoryTab();
+            }
         }
     }
 
