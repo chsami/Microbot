@@ -8,14 +8,28 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.api.ItemID;
 import net.runelite.api.ItemComposition;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.stream.JsonReader;
+import java.io.StringReader;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
 import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class GeFlipperScript extends Script {
-    // Price and volume data are retrieved from GE Tracker;
-    // the OSRS Wiki is not used for margins
+    // Prices are retrieved from the OSRS Wiki 5m API
+    // Trade volume continues to use GE Tracker
+    private static final String PRICE_API = "https://prices.runescape.wiki/api/v1/osrs/5m?id=";
+    private static final String USER_AGENT = "Microbot GE Flipper";
+    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
+            .build();
     private static final int MAX_TRADE_LIMIT = 50;
     private static final int GE_SLOT_COUNT = 3;
     private static final int MIN_VOLUME = 100;
@@ -43,6 +57,51 @@ public class GeFlipperScript extends Script {
     private long lastAction;
     private final java.util.List<ActiveOffer> offers = new java.util.ArrayList<>();
     private final Limits limits = new Limits();
+
+    private JsonObject parseJson(String json) {
+        JsonReader reader = new JsonReader(new StringReader(json));
+        reader.setLenient(true);
+        try {
+            var element = new JsonParser().parse(reader);
+            if (!element.isJsonObject()) {
+                log.error("Response was not JSON: {}", json.length() > 100 ? json.substring(0, 100) : json);
+                return null;
+            }
+            return element.getAsJsonObject();
+        } catch (Exception ex) {
+            log.error("Failed to parse JSON", ex);
+            return null;
+        }
+    }
+
+    private int[] fetchPrices(int itemId) {
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(PRICE_API + itemId))
+                    .header("User-Agent", USER_AGENT)
+                    .build();
+            HttpResponse<String> resp = HTTP_CLIENT.send(req, HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() != 200) {
+                log.info("Price fetch failed: {}", resp.statusCode());
+                return null;
+            }
+            JsonObject obj = parseJson(resp.body());
+            if (obj == null || !obj.has("data")) {
+                return null;
+            }
+            JsonObject data = obj.getAsJsonObject("data");
+            JsonObject item = data.getAsJsonObject(String.valueOf(itemId));
+            if (item == null || item.get("avgHighPrice").isJsonNull() || item.get("avgLowPrice").isJsonNull()) {
+                return null;
+            }
+            int high = item.get("avgHighPrice").getAsInt();
+            int low = item.get("avgLowPrice").getAsInt();
+            return new int[]{high, low};
+        } catch (Exception ex) {
+            log.error("Failed to fetch prices for {}", itemId, ex);
+            return null;
+        }
+    }
 
     private int getCoins() {
         return Rs2Inventory.itemQuantity(ItemID.COINS_995);
@@ -186,8 +245,14 @@ public class GeFlipperScript extends Script {
             int highVol = Rs2GrandExchange.getSellingVolume(itemId);
             int lowVol = Rs2GrandExchange.getBuyingVolume(itemId);
 
-            int high = Rs2GrandExchange.getSellPrice(itemId);
-            int low = Rs2GrandExchange.getOfferPrice(itemId);
+            int[] prices = fetchPrices(itemId);
+            if (prices == null) {
+                Microbot.log(itemName + " price lookup failed, skipping");
+                Microbot.status = "No price";
+                return null;
+            }
+            int high = prices[0];
+            int low = prices[1];
             int sellPrice = (int) Math.ceil(high * 1.05); // sell for +5%
             int buyPrice = (int) Math.floor(low * 0.95); // buy for -5%
 
