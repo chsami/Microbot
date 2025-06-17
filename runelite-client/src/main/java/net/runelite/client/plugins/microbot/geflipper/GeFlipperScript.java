@@ -236,10 +236,8 @@ public class GeFlipperScript extends Script {
             int lowVol = item.has("lowPriceVolume") && !item.get("lowPriceVolume").isJsonNull()
                     ? item.get("lowPriceVolume").getAsInt() : 0;
 
-            int high = item.has("avgHighPrice") && !item.get("avgHighPrice").isJsonNull()
-                    ? item.get("avgHighPrice").getAsInt() : 0;
-            int low = item.has("avgLowPrice") && !item.get("avgLowPrice").isJsonNull()
-                    ? item.get("avgLowPrice").getAsInt() : 0;
+            int high = Rs2GrandExchange.getSellPrice(itemId);
+            int low = Rs2GrandExchange.getOfferPrice(itemId);
 
             Integer limit = limits.fetchLimit(itemId);
             if (high == 0 || low == 0) {
