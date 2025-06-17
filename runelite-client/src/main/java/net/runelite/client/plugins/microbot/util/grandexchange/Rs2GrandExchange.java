@@ -48,6 +48,7 @@ public class Rs2GrandExchange {
     public static final int GRAND_EXCHANGE_OFFER_CONTAINER_QTY_X = 30474265;
     public static final int GRAND_EXCHANGE_OFFER_CONTAINER_QTY_1 = 30474265;
     public static final int COLLECT_BUTTON = 30474246;
+    public static final int BUY_LIMIT_WIDGET = 30474262;
     private static final String GE_TRACKER_API_URL = "https://www.ge-tracker.com/api/items/";
 
     /**
@@ -920,6 +921,67 @@ public class Rs2GrandExchange {
         }
     }
 
+    /**
+     * Read the buy limit text from the currently selected GE offer.
+     * Requires the buy offer interface to be open for an item.
+     *
+     * @return buy limit if visible or null
+     */
+    public static Integer getBuyLimitFromWidget() {
+        Widget limitWidget = Rs2Widget.getWidget(BUY_LIMIT_WIDGET);
+        if (limitWidget == null) {
+            return null;
+        }
+        String text = limitWidget.getText();
+        if (text == null || text.isEmpty()) {
+            return null;
+        }
+        int val = NumberExtractor.extractNumber(text);
+        return val > 0 ? val : null;
+    }
+
+    /**
+     * Look up an item's buy limit by opening the GE search and reading the
+     * limit widget. The interface is returned to the overview afterwards.
+     */
+    public static Integer lookupBuyLimit(String itemName, int itemId) {
+        try {
+            if (useGrandExchange()) {
+                return null;
+            }
+
+            Pair<GrandExchangeSlots, Integer> slot = getAvailableSlot();
+            if (slot.getLeft() == null) {
+                return null;
+            }
+
+            Widget buyOffer = getOfferBuyButton(slot.getLeft());
+            if (buyOffer == null) {
+                return null;
+            }
+
+            Rs2Widget.clickWidgetFast(buyOffer);
+            sleepUntil(Rs2GrandExchange::isOfferTextVisible, 5000);
+            sleepUntil(() -> Rs2Widget.hasWidget("What would you like to buy?"));
+            Rs2Keyboard.typeString(itemName);
+            sleepUntil(() -> getSearchResultWidget(itemId) != null || Rs2Widget.hasWidget("No matches found."), 5000);
+            Pair<Widget, Integer> itemResult = getSearchResultWidget(itemId);
+            if (itemResult == null) {
+                backToOverview();
+                return null;
+            }
+
+            Rs2Widget.clickWidgetFast(itemResult.getLeft(), itemResult.getRight(), 1);
+            sleepUntil(() -> getBuyLimitFromWidget() != null, 2000);
+            Integer limit = getBuyLimitFromWidget();
+            backToOverview();
+            return limit;
+        } catch (Exception ex) {
+            Microbot.logStackTrace("Rs2GrandExchange", ex);
+            return null;
+        }
+    }
+
     static int getOfferQuantity() {
         return Microbot.getVarbitValue(4396);
     }
@@ -939,3 +1001,4 @@ public class Rs2GrandExchange {
 
     }
 }
+
