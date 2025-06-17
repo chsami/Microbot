@@ -22,8 +22,8 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class GeFlipperScript extends Script {
-    // Fetch volume data from GE Tracker but use RuneLite's API for prices
-    private static final String VOLUME_API = "https://www.ge-tracker.com/api/items/";
+    // Fetch price and volume data from the OSRS Wiki 5m endpoint
+    private static final String PRICE_API = "https://prices.runescape.wiki/api/v1/osrs/5m?id=";
     private static final int MAX_TRADE_LIMIT = 50;
     private static final int GE_SLOT_COUNT = 3;
     private static final int MIN_VOLUME = 100;
@@ -207,36 +207,40 @@ public class GeFlipperScript extends Script {
         String itemName = getItemName(itemId);
         if (itemName == null || itemName.isEmpty()) return null;
         try {
-            HttpRequest priceReq = HttpRequest.newBuilder()
-                    .uri(URI.create(VOLUME_API + itemId))
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(PRICE_API + itemId))
                     .header("User-Agent", USER_AGENT)
                     .build();
 
-            HttpResponse<String> priceResp = HTTP_CLIENT.send(priceReq, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> resp = HTTP_CLIENT.send(req, HttpResponse.BodyHandlers.ofString());
 
-            if (priceResp.statusCode() != 200) {
-                Microbot.log(itemName + " volume fetch failed");
+            if (resp.statusCode() != 200) {
+                Microbot.log(itemName + " data fetch failed: " + resp.statusCode());
                 return null;
             }
 
-            JsonObject obj = parseJson(priceResp.body());
+            JsonObject obj = parseJson(resp.body());
             if (obj == null || !obj.has("data")) {
                 return null;
             }
 
             JsonObject data = obj.getAsJsonObject("data");
-            if (data == null) {
-                Microbot.log(itemName + " volume data missing, skipping");
+            if (data == null || !data.has(Integer.toString(itemId))) {
+                Microbot.log(itemName + " data missing, skipping");
                 return null;
             }
 
-            int highVol = data.has("sellingQuantity") && !data.get("sellingQuantity").isJsonNull()
-                    ? data.get("sellingQuantity").getAsInt() : 0;
-            int lowVol = data.has("buyingQuantity") && !data.get("buyingQuantity").isJsonNull()
-                    ? data.get("buyingQuantity").getAsInt() : 0;
+            JsonObject item = data.getAsJsonObject(Integer.toString(itemId));
+            int highVol = item.has("highPriceVolume") && !item.get("highPriceVolume").isJsonNull()
+                    ? item.get("highPriceVolume").getAsInt() : 0;
+            int lowVol = item.has("lowPriceVolume") && !item.get("lowPriceVolume").isJsonNull()
+                    ? item.get("lowPriceVolume").getAsInt() : 0;
 
-            int low = Microbot.getItemManager().getItemPriceWithSource(itemId, false);
-            int high = Microbot.getItemManager().getItemPriceWithSource(itemId, true);
+            int high = item.has("avgHighPrice") && !item.get("avgHighPrice").isJsonNull()
+                    ? item.get("avgHighPrice").getAsInt() : 0;
+            int low = item.has("avgLowPrice") && !item.get("avgLowPrice").isJsonNull()
+                    ? item.get("avgLowPrice").getAsInt() : 0;
+
             Integer limit = limits.fetchLimit(itemId);
             if (high == 0 || low == 0) {
                 Microbot.log(itemName + " price lookup failed, skipping");
