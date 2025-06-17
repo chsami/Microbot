@@ -1,12 +1,20 @@
 package net.runelite.client.plugins.microbot.geflipper;
 
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.ItemComposition;
-import net.runelite.api.ItemID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.api.ItemID;
+import net.runelite.api.ItemComposition;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.stream.JsonReader;
+import java.io.StringReader;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 
 
 import java.util.ArrayDeque;
@@ -15,7 +23,11 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class GeFlipperScript extends Script {
-    // Prices and volumes are fetched from GE Tracker via Rs2GrandExchange helpers
+    // Prices and volumes are fetched from the OSRS Wiki 5m API
+    private static final String PRICE_API = "https://prices.runescape.wiki/api/v1/osrs/5m?id=";
+    private static final String LIMIT_API = "https://prices.runescape.wiki/api/v1/osrs/limit?id=";
+    private static final String USER_AGENT = "Microbot GE Flipper";
+    private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
     private static final int MAX_TRADE_LIMIT = 50;
     private static final int GE_SLOT_COUNT = 3;
     // Minimum volume threshold for flipping
@@ -89,15 +101,27 @@ public class GeFlipperScript extends Script {
     }
 
     private ItemInfo fetchItemInfo(int itemId) {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(PRICE_API + itemId))
+                .header("User-Agent", USER_AGENT)
+                .build();
         try {
-            ItemInfo info = new ItemInfo();
-            info.highPrice = Rs2GrandExchange.getSellPrice(itemId);
-            info.lowPrice = Rs2GrandExchange.getOfferPrice(itemId);
-            info.highVolume = Rs2GrandExchange.getSellingVolume(itemId);
-            info.lowVolume = Rs2GrandExchange.getBuyingVolume(itemId);
-            if (info.highPrice <= 0 || info.lowPrice <= 0) {
+            HttpResponse<String> resp = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() != 200) {
                 return null;
             }
+            JsonReader reader = new JsonReader(new StringReader(resp.body()));
+            reader.setLenient(true);
+            JsonObject root = new JsonParser().parse(reader).getAsJsonObject();
+            JsonObject data = root.getAsJsonObject("data");
+            if (data == null) return null;
+            JsonObject item = data.getAsJsonObject(String.valueOf(itemId));
+            if (item == null) return null;
+            ItemInfo info = new ItemInfo();
+            info.highPrice = item.get("avgHighPrice").getAsInt();
+            info.lowPrice = item.get("avgLowPrice").getAsInt();
+            info.highVolume = item.get("highPriceVolume").getAsInt();
+            info.lowVolume = item.get("lowPriceVolume").getAsInt();
             return info;
         } catch (Exception e) {
             log.error("Failed to fetch price data", e);
@@ -221,7 +245,7 @@ public class GeFlipperScript extends Script {
                 return null;
             }
 
-            Integer limit = limits.fetchLimit(itemId);
+            Integer limit = limits.fetchLimit(itemId, itemName);
             if (info.highVolume < MIN_VOLUME || info.lowVolume < MIN_VOLUME) {
                 Microbot.log(itemName + " volume too low, skipping");
                 Microbot.status = "Low volume";
