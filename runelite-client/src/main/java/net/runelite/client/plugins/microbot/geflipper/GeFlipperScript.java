@@ -19,13 +19,11 @@ import java.net.http.HttpResponse;
 import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.concurrent.TimeUnit;
-import java.util.Map;
-import java.util.HashMap;
 
 @Slf4j
 public class GeFlipperScript extends Script {
-    // Fetch prices and limits from GE Tracker
-    private static final String GE_API = "https://www.ge-tracker.com/api/item/";
+    // Fetch prices from the OSRS Wiki
+    private static final String PRICE_API = "https://prices.runescape.wiki/api/v1/osrs/5m?id=";
     private static final int MAX_TRADE_LIMIT = 50;
     private static final int GE_SLOT_COUNT = 3;
     private static final int MIN_VOLUME = 100;
@@ -33,7 +31,6 @@ public class GeFlipperScript extends Script {
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)
             .build();
-    private static final long FOUR_HOURS_MS = TimeUnit.HOURS.toMillis(4);
 
     private final Queue<Integer> items = new ArrayDeque<>();
     private final java.util.List<Integer> f2pItems = new java.util.ArrayList<>();
@@ -54,8 +51,7 @@ public class GeFlipperScript extends Script {
 
     private long lastAction;
     private final java.util.List<ActiveOffer> offers = new java.util.ArrayList<>();
-    private final Map<Integer, Integer> remainingLimits = new HashMap<>();
-    private final Map<Integer, Long> limitResetTimes = new HashMap<>();
+    private final Limits limits = new Limits();
 
     private JsonObject parseJson(String json) {
         JsonReader reader = new JsonReader(new StringReader(json));
@@ -211,41 +207,40 @@ public class GeFlipperScript extends Script {
         String itemName = getItemName(itemId);
         if (itemName == null || itemName.isEmpty()) return null;
         try {
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(GE_API + itemId))
+            HttpRequest priceReq = HttpRequest.newBuilder()
+                    .uri(URI.create(PRICE_API + itemId))
                     .header("User-Agent", USER_AGENT)
                     .build();
 
-            HttpResponse<String> resp = HTTP_CLIENT.send(req, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> priceResp = HTTP_CLIENT.send(priceReq, HttpResponse.BodyHandlers.ofString());
 
-            if (resp.statusCode() != 200) {
+            if (priceResp.statusCode() != 200) {
                 Microbot.log(itemName + " data fetch failed");
                 return null;
             }
 
-            JsonObject obj = parseJson(resp.body());
-            if (obj == null) {
+            JsonObject obj = parseJson(priceResp.body());
+            if (obj == null || !obj.has("data")) {
                 return null;
             }
 
-            JsonObject data = obj.has("data") && obj.get("data").isJsonObject() ? obj.getAsJsonObject("data") : obj;
+            JsonObject data = obj.getAsJsonObject("data");
             JsonObject itemData = data.has(Integer.toString(itemId)) && data.get(Integer.toString(itemId)).isJsonObject()
-                    ? data.getAsJsonObject(Integer.toString(itemId)) : data;
+                    ? data.getAsJsonObject(Integer.toString(itemId)) : null;
             if (itemData == null) {
                 Microbot.log(itemName + " price data missing, skipping");
                 return null;
             }
 
-            int high = itemData.has("selling") && !itemData.get("selling").isJsonNull()
-                    ? itemData.get("selling").getAsInt() : 0;
-            int low = itemData.has("buying") && !itemData.get("buying").isJsonNull()
-                    ? itemData.get("buying").getAsInt() : 0;
-            int highVol = itemData.has("sellingQuantity") && !itemData.get("sellingQuantity").isJsonNull()
-                    ? itemData.get("sellingQuantity").getAsInt() : 0;
-            int lowVol = itemData.has("buyingQuantity") && !itemData.get("buyingQuantity").isJsonNull()
-                    ? itemData.get("buyingQuantity").getAsInt() : 0;
-            int limit = itemData.has("limit") && !itemData.get("limit").isJsonNull()
-                    ? itemData.get("limit").getAsInt() : 0;
+            int high = itemData.has("avgHighPrice") && !itemData.get("avgHighPrice").isJsonNull()
+                    ? itemData.get("avgHighPrice").getAsInt() : 0;
+            int low = itemData.has("avgLowPrice") && !itemData.get("avgLowPrice").isJsonNull()
+                    ? itemData.get("avgLowPrice").getAsInt() : 0;
+            int highVol = itemData.has("highPriceVolume") && !itemData.get("highPriceVolume").isJsonNull()
+                    ? itemData.get("highPriceVolume").getAsInt() : 0;
+            int lowVol = itemData.has("lowPriceVolume") && !itemData.get("lowPriceVolume").isJsonNull()
+                    ? itemData.get("lowPriceVolume").getAsInt() : 0;
+            Integer limit = limits.fetchLimit(itemId);
             if (high == 0 || low == 0) {
                 Microbot.log(itemName + " missing price info, skipping");
                 Microbot.status = "No price";
@@ -261,18 +256,12 @@ public class GeFlipperScript extends Script {
                 Microbot.status = "Low volume";
                 return null;
             }
-            if (limit <= 0) {
+            if (limit == null || limit <= 0) {
                 Microbot.log(itemName + " limit fetch failed");
                 Microbot.status = "No limit";
                 return null;
             }
-            long now = System.currentTimeMillis();
-            long reset = limitResetTimes.getOrDefault(itemId, 0L);
-            if (now >= reset) {
-                remainingLimits.put(itemId, limit);
-                limitResetTimes.put(itemId, now + FOUR_HOURS_MS);
-            }
-            int remaining = remainingLimits.getOrDefault(itemId, limit);
+            int remaining = limits.getRemaining(itemId, limit);
             if (remaining <= 0) {
                 Microbot.log(itemName + " reached trade limit, waiting");
                 Microbot.status = "Limit reached";
@@ -323,7 +312,7 @@ public class GeFlipperScript extends Script {
                 if (geOffer.getState() == net.runelite.api.GrandExchangeOfferState.SOLD) {
                     Rs2GrandExchange.collectToBank();
                     plugin.addProfit((offer.sellPrice - offer.buyPrice) * offer.quantity);
-                    updateRemainingLimit(offer.itemId, offer.quantity);
+                    limits.reduceRemaining(offer.itemId, offer.quantity);
                     items.offer(offer.itemId);
                     java.util.List<Integer> tmp = new java.util.ArrayList<>(items);
                     java.util.Collections.shuffle(tmp, random);
@@ -346,15 +335,7 @@ public class GeFlipperScript extends Script {
         running = false;
         offers.clear();
         items.clear();
-        remainingLimits.clear();
-        limitResetTimes.clear();
+        limits.clear();
     }
 
-    private void updateRemainingLimit(int itemId, int qty) {
-        remainingLimits.compute(itemId, (k, v) -> {
-            if (v == null) return 0;
-            int newVal = v - qty;
-            return Math.max(newVal, 0);
-        });
-    }
 }
