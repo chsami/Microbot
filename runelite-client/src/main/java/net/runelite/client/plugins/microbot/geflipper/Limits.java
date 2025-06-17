@@ -16,7 +16,8 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class Limits {
-    private static final String LIMIT_API = "https://prices.runescape.wiki/api/v1/osrs/limit?id=";
+    // Trade limits fetched from GE Tracker; no OSRS Wiki calls
+    private static final String LIMIT_API = "https://www.ge-tracker.com/api/items/";
     private static final String USER_AGENT = "Microbot GE Flipper";
     private static final long FOUR_HOURS_MS = TimeUnit.HOURS.toMillis(4);
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
