@@ -24,10 +24,8 @@ import java.util.HashMap;
 
 @Slf4j
 public class GeFlipperScript extends Script {
-    private static final String PRICE_API = "https://prices.runescape.wiki/api/v1/osrs/5m?id=";
-    // Fetch trade limits from flipping.gg. If that fails, fall back to the OSRS Wiki
-    private static final String LIMIT_API = "https://www.flipping.gg/api/limit?id=";
-    private static final String WIKI_LIMIT_API = "https://prices.runescape.wiki/api/v1/osrs/limits?id=";
+    // Fetch prices and limits from GE Tracker
+    private static final String GE_API = "https://www.ge-tracker.com/api/item/";
     private static final int MAX_TRADE_LIMIT = 50;
     private static final int GE_SLOT_COUNT = 3;
     private static final int MIN_VOLUME = 100;
@@ -213,19 +211,19 @@ public class GeFlipperScript extends Script {
         String itemName = getItemName(itemId);
         if (itemName == null || itemName.isEmpty()) return null;
         try {
-            HttpRequest priceReq = HttpRequest.newBuilder()
-                    .uri(URI.create(PRICE_API + itemId))
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(GE_API + itemId))
                     .header("User-Agent", USER_AGENT)
                     .build();
 
-            HttpResponse<String> priceResp = HTTP_CLIENT.send(priceReq, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> resp = HTTP_CLIENT.send(req, HttpResponse.BodyHandlers.ofString());
 
-            if (priceResp.statusCode() != 200) {
+            if (resp.statusCode() != 200) {
                 Microbot.log(itemName + " data fetch failed");
                 return null;
             }
 
-            JsonObject obj = parseJson(priceResp.body());
+            JsonObject obj = parseJson(resp.body());
             if (obj == null) {
                 return null;
             }
@@ -238,57 +236,16 @@ public class GeFlipperScript extends Script {
                 return null;
             }
 
-            int high = itemData.has("avgHighPrice") && !itemData.get("avgHighPrice").isJsonNull()
-                    ? itemData.get("avgHighPrice").getAsInt() : 0;
-            int low = itemData.has("avgLowPrice") && !itemData.get("avgLowPrice").isJsonNull()
-                    ? itemData.get("avgLowPrice").getAsInt() : 0;
-            int highVol = itemData.has("highPriceVolume") && !itemData.get("highPriceVolume").isJsonNull()
-                    ? itemData.get("highPriceVolume").getAsInt() : 0;
-            int lowVol = itemData.has("lowPriceVolume") && !itemData.get("lowPriceVolume").isJsonNull()
-                    ? itemData.get("lowPriceVolume").getAsInt() : 0;
-
-            HttpRequest limitReq = HttpRequest.newBuilder()
-                    .uri(URI.create(LIMIT_API + itemId))
-                    .header("User-Agent", USER_AGENT)
-                    .build();
-            HttpResponse<String> limitResp = HTTP_CLIENT.send(limitReq, HttpResponse.BodyHandlers.ofString());
-
-            JsonObject limitObj = null;
-            if (limitResp.statusCode() == 200) {
-                limitObj = parseJson(limitResp.body());
-            }
-            if (limitResp.statusCode() != 200 || limitObj == null) {
-                // Try the OSRS Wiki as a fallback if flipping.gg fails
-                HttpRequest wikiReq = HttpRequest.newBuilder()
-                        .uri(URI.create(WIKI_LIMIT_API + itemId))
-                        .header("User-Agent", USER_AGENT)
-                        .build();
-                HttpResponse<String> wikiResp = HTTP_CLIENT.send(wikiReq, HttpResponse.BodyHandlers.ofString());
-                if (wikiResp.statusCode() == 200) {
-                    limitObj = parseJson(wikiResp.body());
-                }
-                if (limitObj == null) {
-                    Microbot.log(itemName + " limit fetch failed: " + limitResp.statusCode());
-                    return null;
-                }
-            }
-
-            JsonObject limitData = limitObj.has("data") && limitObj.get("data").isJsonObject()
-                    ? limitObj.getAsJsonObject("data") : limitObj;
-            int limit = 0;
-            if (limitData.has("limit") && !limitData.get("limit").isJsonNull()) {
-                limit = limitData.get("limit").getAsInt();
-            } else if (limitData.has(Integer.toString(itemId)) && limitData.get(Integer.toString(itemId)).isJsonObject()) {
-                JsonObject byId = limitData.getAsJsonObject(Integer.toString(itemId));
-                if (byId.has("limit") && !byId.get("limit").isJsonNull()) {
-                    limit = byId.get("limit").getAsInt();
-                }
-            } else if (limitData.has("item") && limitData.get("item").isJsonObject()) {
-                JsonObject item = limitData.getAsJsonObject("item");
-                if (item.has("limit") && !item.get("limit").isJsonNull()) {
-                    limit = item.get("limit").getAsInt();
-                }
-            }
+            int high = itemData.has("selling") && !itemData.get("selling").isJsonNull()
+                    ? itemData.get("selling").getAsInt() : 0;
+            int low = itemData.has("buying") && !itemData.get("buying").isJsonNull()
+                    ? itemData.get("buying").getAsInt() : 0;
+            int highVol = itemData.has("sellingQuantity") && !itemData.get("sellingQuantity").isJsonNull()
+                    ? itemData.get("sellingQuantity").getAsInt() : 0;
+            int lowVol = itemData.has("buyingQuantity") && !itemData.get("buyingQuantity").isJsonNull()
+                    ? itemData.get("buyingQuantity").getAsInt() : 0;
+            int limit = itemData.has("limit") && !itemData.get("limit").isJsonNull()
+                    ? itemData.get("limit").getAsInt() : 0;
             if (high == 0 || low == 0) {
                 Microbot.log(itemName + " missing price info, skipping");
                 Microbot.status = "No price";
