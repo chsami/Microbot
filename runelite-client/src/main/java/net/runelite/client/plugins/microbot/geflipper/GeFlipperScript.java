@@ -25,8 +25,9 @@ import java.util.HashMap;
 @Slf4j
 public class GeFlipperScript extends Script {
     private static final String PRICE_API = "https://prices.runescape.wiki/api/v1/osrs/5m?id=";
-    // Fetch trade limits from flipping.gg
+    // Fetch trade limits from flipping.gg. If that fails, fall back to the OSRS Wiki
     private static final String LIMIT_API = "https://www.flipping.gg/api/limit?id=";
+    private static final String WIKI_LIMIT_API = "https://prices.runescape.wiki/api/v1/osrs/limits?id=";
     private static final int MAX_TRADE_LIMIT = 50;
     private static final int GE_SLOT_COUNT = 3;
     private static final int MIN_VOLUME = 100;
@@ -252,16 +253,26 @@ public class GeFlipperScript extends Script {
                     .build();
             HttpResponse<String> limitResp = HTTP_CLIENT.send(limitReq, HttpResponse.BodyHandlers.ofString());
 
-            if (limitResp.statusCode() != 200) {
-                Microbot.log(itemName + " limit fetch failed: " + limitResp.statusCode());
-                return null;
+            JsonObject limitObj = null;
+            if (limitResp.statusCode() == 200) {
+                limitObj = parseJson(limitResp.body());
+            }
+            if (limitResp.statusCode() != 200 || limitObj == null) {
+                // Try the OSRS Wiki as a fallback if flipping.gg fails
+                HttpRequest wikiReq = HttpRequest.newBuilder()
+                        .uri(URI.create(WIKI_LIMIT_API + itemId))
+                        .header("User-Agent", USER_AGENT)
+                        .build();
+                HttpResponse<String> wikiResp = HTTP_CLIENT.send(wikiReq, HttpResponse.BodyHandlers.ofString());
+                if (wikiResp.statusCode() == 200) {
+                    limitObj = parseJson(wikiResp.body());
+                }
+                if (limitObj == null) {
+                    Microbot.log(itemName + " limit fetch failed: " + limitResp.statusCode());
+                    return null;
+                }
             }
 
-            JsonObject limitObj = parseJson(limitResp.body());
-            if (limitObj == null) {
-                Microbot.log(itemName + " limit fetch failed");
-                return null;
-            }
             JsonObject limitData = limitObj.has("data") && limitObj.get("data").isJsonObject()
                     ? limitObj.getAsJsonObject("data") : limitObj;
             int limit = 0;
