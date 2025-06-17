@@ -3,8 +3,14 @@ package net.runelite.client.plugins.microbot.geflipper;
 import lombok.extern.slf4j.Slf4j;
 
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
-import net.runelite.api.ItemComposition;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.stream.JsonReader;
+import java.io.StringReader;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -13,34 +19,41 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class Limits {
     private static final long FOUR_HOURS_MS = TimeUnit.HOURS.toMillis(4);
-    // Buy limits are read from the Grand Exchange interface
+    private static final String LIMIT_API = "https://prices.runescape.wiki/api/v1/osrs/limit?id=";
+    private static final String USER_AGENT = "Microbot GE Flipper";
+    private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
     private final Map<Integer, Integer> remainingLimits = new HashMap<>();
     private final Map<Integer, Long> resetTimes = new HashMap<>();
 
     private final Map<Integer, Integer> limitCache = new HashMap<>();
 
-    /**
-     * Retrieve the buy limit for an item using its ID. The name is resolved
-     * internally before the Grand Exchange interface is queried.
-     */
-    public Integer fetchLimit(int itemId) {
+    public Integer fetchLimit(int itemId, String itemName) {
         Integer cached = limitCache.get(itemId);
         if (cached != null) {
             return cached;
         }
 
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(LIMIT_API + itemId))
+                .header("User-Agent", USER_AGENT)
+                .build();
         try {
-            String itemName = Microbot.getClientThread()
-                    .runOnClientThreadOptional(() -> Microbot.getItemManager().getItemComposition(itemId))
-                    .map(ItemComposition::getName)
-                    .orElse("");
-            Integer limit = Rs2GrandExchange.lookupBuyLimit(itemName, itemId);
-            if (limit != null) {
-                limitCache.put(itemId, limit);
-            } else {
-                Microbot.log(itemName + " limit fetch failed");
+            HttpResponse<String> resp = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() != 200) {
+                Microbot.log(itemName + " limit fetch failed: " + resp.statusCode());
+                return null;
             }
+            JsonReader reader = new JsonReader(new StringReader(resp.body()));
+            reader.setLenient(true);
+            JsonObject obj = new JsonParser().parse(reader).getAsJsonObject();
+            JsonObject data = obj.getAsJsonObject("data");
+            if (data == null || data.get("limit") == null || data.get("limit").isJsonNull()) {
+                Microbot.log(itemName + " limit fetch failed");
+                return null;
+            }
+            int limit = data.get("limit").getAsInt();
+            limitCache.put(itemId, limit);
             return limit;
         } catch (Exception ex) {
             log.error("Limit fetch error", ex);
