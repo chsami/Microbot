@@ -85,22 +85,23 @@ public class GeFlipperScript extends Script {
     }
 
     private java.util.List<Integer> loadF2pItems() {
-        java.util.List<Integer> list = new java.util.ArrayList<>();
-        for (java.lang.reflect.Field f : ItemID.class.getFields()) {
-            if (!java.lang.reflect.Modifier.isStatic(f.getModifiers()) || f.getType() != int.class) continue;
-            try {
-                int id = f.getInt(null);
-                ItemComposition comp = Microbot.getClientThread()
-                        .runOnClientThreadOptional(() -> Microbot.getItemManager().getItemComposition(id))
-                        .orElse(null);
-                if (comp != null && !comp.isMembers() && comp.isTradeable()) {
-                    list.add(id);
+        return Microbot.getClientThread().runOnClientThread(() -> {
+            java.util.List<Integer> list = new java.util.ArrayList<>();
+            for (java.lang.reflect.Field f : ItemID.class.getFields()) {
+                if (!java.lang.reflect.Modifier.isStatic(f.getModifiers()) || f.getType() != int.class)
+                    continue;
+                try {
+                    int id = f.getInt(null);
+                    ItemComposition comp = Microbot.getItemManager().getItemComposition(id);
+                    if (comp != null && !comp.isMembers() && comp.isTradeable()) {
+                        list.add(id);
+                    }
+                } catch (Exception ignored) {
                 }
-            } catch (Exception ignored) {
             }
-        }
-        java.util.Collections.shuffle(list, random);
-        return list;
+            java.util.Collections.shuffle(list, random);
+            return list;
+        });
     }
 
     private int pollRandomItem() {
