@@ -18,6 +18,8 @@ public class GeFlipperScript extends Script {
     // Prices are fetched from GE Tracker via Rs2GrandExchange helpers
     private static final int MAX_TRADE_LIMIT = 50;
     private static final int GE_SLOT_COUNT = 3;
+    private static final int MIN_VOLUME = 100;
+    private static final int MIN_PROFIT = 1;
 
     private final Queue<Integer> items = new ArrayDeque<>();
     private final java.util.List<Integer> f2pItems = new java.util.ArrayList<>();
@@ -41,6 +43,8 @@ public class GeFlipperScript extends Script {
     private static class ItemInfo {
         int highPrice;
         int lowPrice;
+        int highVolume;
+        int lowVolume;
     }
 
     private long lastAction;
@@ -84,6 +88,8 @@ public class GeFlipperScript extends Script {
             ItemInfo info = new ItemInfo();
             info.highPrice = Rs2GrandExchange.getSellPrice(itemId);
             info.lowPrice = Rs2GrandExchange.getOfferPrice(itemId);
+            info.highVolume = Rs2GrandExchange.getSellingVolume(itemId);
+            info.lowVolume = Rs2GrandExchange.getBuyingVolume(itemId);
             if (info.highPrice <= 0 || info.lowPrice <= 0) {
                 return null;
             }
@@ -205,6 +211,19 @@ public class GeFlipperScript extends Script {
             if (info == null) {
                 Microbot.log(itemName + " data fetch failed");
                 Microbot.status = "Data fail";
+                return null;
+            }
+
+            if (info.highVolume < MIN_VOLUME || info.lowVolume < MIN_VOLUME) {
+                Microbot.log(itemName + " volume too low, skipping");
+                Microbot.status = "Low volume";
+                return null;
+            }
+
+            int margin = info.highPrice - info.lowPrice;
+            if (margin < MIN_PROFIT) {
+                Microbot.log(itemName + " margin below " + MIN_PROFIT + "gp, skipping");
+                Microbot.status = "Bad margin";
                 return null;
             }
 
