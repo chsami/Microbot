@@ -7,6 +7,7 @@ import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.util.grandexchange.GrandExchangeSlots;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
+import net.runelite.client.plugins.microbot.util.item.Rs2ItemManager;
 import org.apache.commons.lang3.tuple.Pair;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 
@@ -22,8 +23,8 @@ public class AutoBuyerScript extends Script {
     private static int initialCount = 0;
     private static int totalBought = 0;
     private static Map<String, Integer> itemsList;
-    private Integer timesToClickIncrease = null;
-    private Integer percent = null;
+    private int percent = 0;
+    private final Rs2ItemManager itemManager = new Rs2ItemManager();
 
     public boolean run(AutoBuyerConfig config) {
 
@@ -68,14 +69,7 @@ public class AutoBuyerScript extends Script {
                     initialCount = itemsList.size();
                     initialized = true;
 
-                    if (config.pricePerItem().equals(Percentage.PERCENT_5))
-                        timesToClickIncrease = 1;
-                    else if (config.pricePerItem().equals(Percentage.PERCENT_10)) {
-                        timesToClickIncrease = 2;
-                    }
-                    else {
-                        percent = config.pricePerItem().getValue();
-                    }
+                    percent = config.pricePerItem().getValue();
                     if (!isRunning())
                         return;
                 }
@@ -98,12 +92,13 @@ public class AutoBuyerScript extends Script {
                         }
                     }
 
-                    boolean result;
-                    if (timesToClickIncrease != null ) {
-                        result = Rs2GrandExchange.buyItemAbove5Percent(itemName, quantity, timesToClickIncrease);
-                    } else {
-                        result = Rs2GrandExchange.buyItemAboveXPercent(itemName, quantity, percent);
+                    int basePrice = itemManager.getGEPrice(itemName);
+                    if (basePrice <= 0) {
+                        Microbot.log("Price lookup failed for " + itemName);
+                        return;
                     }
+                    int price = (int) Math.ceil(basePrice * (1 + percent / 100.0));
+                    boolean result = Rs2GrandExchange.buyItem(itemName, price, quantity);
 
                     if (!result) {
                         Microbot.log("Could not buy '" + itemName + "'. Skipping it.");
@@ -190,8 +185,7 @@ public class AutoBuyerScript extends Script {
         initialCount = 0;
         totalBought = 0;
         itemsList.clear();
-        timesToClickIncrease = null;
-        percent = null;
+        percent = 0;
         super.shutdown();
     }
 
