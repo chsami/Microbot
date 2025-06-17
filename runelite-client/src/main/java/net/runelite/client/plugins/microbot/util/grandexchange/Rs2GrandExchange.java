@@ -729,6 +729,20 @@ public class Rs2GrandExchange {
 
 
 
+            JsonParser parser = new JsonParser();
+            JsonObject jsonElement = parser.parse(new StringReader(jsonResponse)).getAsJsonObject();
+            JsonObject data = jsonElement.getAsJsonObject("data");
+
+            return data.get("sellingQuantity").getAsInt();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return -1;
+        }
+    }
+
+
+
+
     static int getOfferQuantity() {
         return Microbot.getVarbitValue(4396);
     }
