@@ -21,6 +21,10 @@ public class GeFlipperScript extends Script {
     private static final int MIN_VOLUME = 100;
     private static final int MIN_PROFIT = 1;
 
+    private static final int MAX_TRADE_LIMIT = 50;
+    private static final int GE_SLOT_COUNT = 3;
+
+
     private final Queue<Integer> items = new ArrayDeque<>();
     private final java.util.List<Integer> f2pItems = new java.util.ArrayList<>();
     private final java.util.Random random = new java.util.Random();
@@ -43,14 +47,14 @@ public class GeFlipperScript extends Script {
     private static class ItemInfo {
         int highPrice;
         int lowPrice;
-        int highVolume;
-        int lowVolume;
     }
 
     private long lastAction;
     private final java.util.List<ActiveOffer> offers = new java.util.ArrayList<>();
 
+
     // No JSON parsing methods are needed since prices are fetched directly via helper methods
+
 
     private int getCoins() {
         return Rs2Inventory.itemQuantity(ItemID.COINS_995);
@@ -88,8 +92,6 @@ public class GeFlipperScript extends Script {
             ItemInfo info = new ItemInfo();
             info.highPrice = Rs2GrandExchange.getSellPrice(itemId);
             info.lowPrice = Rs2GrandExchange.getOfferPrice(itemId);
-            info.highVolume = Rs2GrandExchange.getSellingVolume(itemId);
-            info.lowVolume = Rs2GrandExchange.getBuyingVolume(itemId);
             if (info.highPrice <= 0 || info.lowPrice <= 0) {
                 return null;
             }
@@ -214,6 +216,7 @@ public class GeFlipperScript extends Script {
                 return null;
             }
 
+
             if (info.highVolume < MIN_VOLUME || info.lowVolume < MIN_VOLUME) {
                 Microbot.log(itemName + " volume too low, skipping");
                 Microbot.status = "Low volume";
@@ -224,6 +227,18 @@ public class GeFlipperScript extends Script {
             if (margin < MIN_PROFIT) {
                 Microbot.log(itemName + " margin below " + MIN_PROFIT + "gp, skipping");
                 Microbot.status = "Bad margin";
+
+            Integer limit = limits.fetchLimit(itemId);
+            if (limit == null || limit <= 0) {
+                Microbot.log(itemName + " limit fetch failed");
+                Microbot.status = "No limit";
+                return null;
+            }
+            int remaining = limits.getRemaining(itemId, limit);
+            if (remaining <= 0) {
+                Microbot.log(itemName + " reached trade limit, waiting");
+                Microbot.status = "Limit reached";
+
                 return null;
             }
 
@@ -238,6 +253,11 @@ public class GeFlipperScript extends Script {
                 Microbot.log(itemName + " price data missing, skipping");
                 Microbot.status = "No price";
                 return null;
+
+            }
+            quantity = Math.min(MAX_TRADE_LIMIT, coins / buyPrice);
+
+             
             }
             quantity = Math.min(MAX_TRADE_LIMIT, coins / buyPrice);
             if (quantity <= 0) {
@@ -245,6 +265,16 @@ public class GeFlipperScript extends Script {
                 Microbot.status = "Insufficient gp";
                 return null;
             }
+          
+            }
+            quantity = Math.min(Math.min(Math.min(limit, MAX_TRADE_LIMIT), remaining), coins / buyPrice);
+
+            if (quantity <= 0) {
+                Microbot.log("Not enough gp to buy " + itemName);
+                Microbot.status = "Insufficient gp";
+                return null;
+            }
+
             offer.buyPrice = buyPrice;
             offer.sellPrice = sellPrice;
             offer.quantity = quantity;
@@ -282,6 +312,11 @@ public class GeFlipperScript extends Script {
                     offer.actualSellPrice = geOffer.getSpent() / Math.max(1, geOffer.getQuantitySold());
                     Rs2GrandExchange.collectToBank();
                     plugin.addProfit((offer.sellPrice - offer.buyPrice) * offer.quantity);
+
+
+                    limits.reduceRemaining(offer.itemId, offer.quantity);
+
+
                     items.offer(offer.itemId);
                     java.util.List<Integer> tmp = new java.util.ArrayList<>(items);
                     java.util.Collections.shuffle(tmp, random);
@@ -304,6 +339,10 @@ public class GeFlipperScript extends Script {
         running = false;
         offers.clear();
         items.clear();
+
+
+        limits.clear();
+
     }
 
 }
