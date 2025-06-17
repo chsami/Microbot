@@ -25,7 +25,8 @@ import java.util.HashMap;
 @Slf4j
 public class GeFlipperScript extends Script {
     private static final String PRICE_API = "https://prices.runescape.wiki/api/v1/osrs/5m?id=";
-    private static final String LIMIT_API = "https://prices.runescape.wiki/api/v1/osrs/limit?id=";
+    // Fetch trade limits from flipping.gg
+    private static final String LIMIT_API = "https://www.flipping.gg/api/limit?id=";
     private static final int MAX_TRADE_LIMIT = 50;
     private static final int GE_SLOT_COUNT = 3;
     private static final int MIN_VOLUME = 100;
@@ -85,22 +86,23 @@ public class GeFlipperScript extends Script {
     }
 
     private java.util.List<Integer> loadF2pItems() {
-        java.util.List<Integer> list = new java.util.ArrayList<>();
-        for (java.lang.reflect.Field f : ItemID.class.getFields()) {
-            if (!java.lang.reflect.Modifier.isStatic(f.getModifiers()) || f.getType() != int.class) continue;
-            try {
-                int id = f.getInt(null);
-                ItemComposition comp = Microbot.getClientThread()
-                        .runOnClientThreadOptional(() -> Microbot.getItemManager().getItemComposition(id))
-                        .orElse(null);
-                if (comp != null && !comp.isMembers() && comp.isTradeable()) {
-                    list.add(id);
+        return Microbot.getClientThread().runOnClientThread(() -> {
+            java.util.List<Integer> list = new java.util.ArrayList<>();
+            for (java.lang.reflect.Field f : ItemID.class.getFields()) {
+                if (!java.lang.reflect.Modifier.isStatic(f.getModifiers()) || f.getType() != int.class)
+                    continue;
+                try {
+                    int id = f.getInt(null);
+                    ItemComposition comp = Microbot.getItemManager().getItemComposition(id);
+                    if (comp != null && !comp.isMembers() && comp.isTradeable()) {
+                        list.add(id);
+                    }
+                } catch (Exception ignored) {
                 }
-            } catch (Exception ignored) {
             }
-        }
-        java.util.Collections.shuffle(list, random);
-        return list;
+            java.util.Collections.shuffle(list, random);
+            return list;
+        });
     }
 
     private int pollRandomItem() {
