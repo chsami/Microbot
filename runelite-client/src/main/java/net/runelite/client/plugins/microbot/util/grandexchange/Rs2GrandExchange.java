@@ -105,7 +105,7 @@ public class Rs2GrandExchange {
             if (npc == null) return false;
             Rs2Npc.interact(npc, "exchange");
             sleepUntil(Rs2GrandExchange::isOpen, 5000);
-            return false;
+            return isOpen();
         } catch (Exception ex) {
             Microbot.logStackTrace("Rs2GrandExchange", ex);
         }
