@@ -15,7 +15,6 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class GeFlipperScript extends Script {
-    // Prices are fetched from GE Tracker via Rs2GrandExchange helpers
     private static final int MAX_TRADE_LIMIT = 50;
     private static final int GE_SLOT_COUNT = 3;
 
@@ -46,7 +45,6 @@ public class GeFlipperScript extends Script {
     private long lastAction;
     private final java.util.List<ActiveOffer> offers = new java.util.ArrayList<>();
 
-    // No JSON parsing methods are needed since prices are fetched directly via helper methods
 
     private int getCoins() {
         return Rs2Inventory.itemQuantity(ItemID.COINS_995);
@@ -208,6 +206,19 @@ public class GeFlipperScript extends Script {
                 return null;
             }
 
+            Integer limit = limits.fetchLimit(itemId);
+            if (limit == null || limit <= 0) {
+                Microbot.log(itemName + " limit fetch failed");
+                Microbot.status = "No limit";
+                return null;
+            }
+            int remaining = limits.getRemaining(itemId, limit);
+            if (remaining <= 0) {
+                Microbot.log(itemName + " reached trade limit, waiting");
+                Microbot.status = "Limit reached";
+                return null;
+            }
+
             int coins = getCoins();
             int quantity;
             ActiveOffer offer = new ActiveOffer();
@@ -219,6 +230,7 @@ public class GeFlipperScript extends Script {
                 Microbot.log(itemName + " price data missing, skipping");
                 Microbot.status = "No price";
                 return null;
+             
             }
             quantity = Math.min(MAX_TRADE_LIMIT, coins / buyPrice);
             if (quantity <= 0) {
@@ -226,6 +238,15 @@ public class GeFlipperScript extends Script {
                 Microbot.status = "Insufficient gp";
                 return null;
             }
+          
+            }
+            quantity = Math.min(Math.min(Math.min(limit, MAX_TRADE_LIMIT), remaining), coins / buyPrice);
+            if (quantity <= 0) {
+                Microbot.log("Not enough gp to buy " + itemName);
+                Microbot.status = "Insufficient gp";
+                return null;
+            }
+
             offer.buyPrice = buyPrice;
             offer.sellPrice = sellPrice;
             offer.quantity = quantity;
@@ -263,6 +284,9 @@ public class GeFlipperScript extends Script {
                     offer.actualSellPrice = geOffer.getSpent() / Math.max(1, geOffer.getQuantitySold());
                     Rs2GrandExchange.collectToBank();
                     plugin.addProfit((offer.sellPrice - offer.buyPrice) * offer.quantity);
+
+                    limits.reduceRemaining(offer.itemId, offer.quantity);
+
                     items.offer(offer.itemId);
                     java.util.List<Integer> tmp = new java.util.ArrayList<>(items);
                     java.util.Collections.shuffle(tmp, random);
@@ -285,6 +309,9 @@ public class GeFlipperScript extends Script {
         running = false;
         offers.clear();
         items.clear();
+
+        limits.clear();
+
     }
 
 }
