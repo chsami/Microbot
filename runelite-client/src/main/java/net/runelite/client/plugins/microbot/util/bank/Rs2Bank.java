@@ -5,9 +5,11 @@ import net.runelite.api.*;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.bank.BankPlugin;
 import net.runelite.client.plugins.loottracker.LootTrackerItem;
 import net.runelite.client.plugins.loottracker.LootTrackerRecord;
@@ -2444,56 +2446,103 @@ public class Rs2Bank {
         return Microbot.getConfigManager().getConfiguration("bank","bankPinKeyboard").equalsIgnoreCase("true");
     }
 
-    public static List<Integer> findLockedSlots() {
-        List<Integer> lockedSlots = new ArrayList<>();
-        for (int slot = 0; slot < 28; slot++) {
-            String[] actions = Rs2Inventory.getActionsForSlot(slot);
-            if (actions != null) {
-                for (String action : actions) {
-                    if (action != null && action.equalsIgnoreCase("Unlock")) {
-                        lockedSlots.add(slot);
-                        break;
-                    }
-                }
+    public static int findLockedSlot() {
+        Widget container = Microbot.getClient().getWidget(BANK_INVENTORY_ITEM_CONTAINER);
+        if (container == null || container.getChildren() == null) {
+            log.warn("Bank inventory container is null or has no children.");
+            return -1;
+        }
+
+        Widget[] items = container.getChildren();
+
+        for (int i = 0; i < items.length; i++) {
+            Widget w = items[i];
+            if (w == null) {
+                log.info("Slot {}: null widget", i);
+                continue;
+            }
+
+            String[] actions = w.getActions();
+            log.info("Slot {}: actions = {}", i, Arrays.toString(actions));
+
+            if (actions != null && Arrays.stream(actions).anyMatch(a -> "Unlock-slot".equalsIgnoreCase(a))) {
+                log.info("Found locked slot at {}", i);
+                return i;
             }
         }
-        return lockedSlots;
+
+        log.info("No locked slots detected.");
+        return -1;
     }
 
-    public static boolean hasAnyLockedSlot() {
-        return !findLockedSlots().isEmpty();
+    public static Rs2ItemModel findLockedItem(int itemId) {
+        return Rs2Inventory.items().stream()
+                .filter(item -> item.getId() == itemId)
+                .filter(item -> isLockedSlot(item.getSlot()))
+                .findFirst().orElse(null);
     }
 
-    public static void unlockAllSlots() {
-        for (int slot : findLockedSlots()) {
-            if (Rs2Inventory.interact(slot, "Unlock")) {
-                sleep(Rs2Random.randomGaussian(400, 75)); // Optional: human-like delay
-            }
-        }
+    public static Rs2ItemModel findLockedItem(String name, boolean exact) {
+        return Rs2Inventory.items().stream()
+                .filter(item -> {
+                    if (exact) return item.getName().equalsIgnoreCase(name);
+                    return item.getName().toLowerCase().contains(name.toLowerCase());
+                })
+                .filter(item -> isLockedSlot(item.getSlot()))
+                .findFirst().orElse(null);
     }
-    public static boolean lockSlot(int slot) {
+
+    public static boolean isLockedSlot(int slot) {
+        if (slot < 0 || slot >= 28) return false;
         String[] actions = Rs2Inventory.getActionsForSlot(slot);
-        if (actions != null) {
-            for (String action : actions) {
-                if (action != null && action.equalsIgnoreCase("Lock")) {
-                    return Rs2Inventory.interact(slot, "Lock");
-                }
-            }
+        return actions != null &&
+                Arrays.stream(actions)
+                        .anyMatch(a -> "Unlock-slot".equalsIgnoreCase(a));
+    }
+
+    private static boolean toggleItemLock(Rs2ItemModel rs2Item)
+    {
+        if (rs2Item == null) return false;
+        if (!isOpen()) return false;
+        if (!Rs2Inventory.hasItem(rs2Item.getId())) return false;
+        boolean hasItemLockEnabled = Microbot.getVarbitValue(VarbitID.BANK_SIDE_SLOT_IGNOREINVLOCKS) == 0;
+        boolean hasItemLockInventoryOptionEnabled = Microbot.getVarbitValue(VarbitID.BANK_SIDE_SLOT_SHOWOP) == 1;
+        if (!hasItemLockEnabled || !hasItemLockInventoryOptionEnabled) return false;
+        container = BANK_INVENTORY_ITEM_CONTAINER;
+        invokeMenu(10, rs2Item);
+        return onBankInventoryUpdate();
+    }
+
+    public static boolean toggleItemLock(String itemName)
+    {
+        return toggleItemLock(itemName, false);
+    }
+
+    public static boolean toggleItemLock(String itemName, boolean exact)
+    {
+        Rs2ItemModel item = Rs2Inventory.get(itemName, exact);
+        return toggleItemLock(item);
+    }
+
+    public static boolean toggleItemLock(int itemId)
+    {
+        Rs2ItemModel item = Rs2Inventory.get(itemId);
+        return toggleItemLock(item);
+    }
+
+    private static int previousOverviewState = -1;
+
+    public static boolean onBankInventoryUpdate() {
+        int current = Microbot.getVarbitValue(VarbitID.BANK_SIDE_SLOT_OVERVIEW);
+        if (previousOverviewState == -1) {
+            previousOverviewState = current;
+            return false;
+        }
+        if (current != previousOverviewState) {
+            previousOverviewState = current;
+            return true;
         }
         return false;
     }
-
-    public static boolean lockSlot(String name) {
-        int slot = Rs2Inventory.slot(name);
-        if (slot == -1) return false;
-        return lockSlot(slot);
-    }
-
-    public static boolean lockSlotById(int itemId) {
-        int slot = Rs2Inventory.slot(itemId);
-        if (slot == -1) return false;
-        return lockSlot(slot);
-    }
-
 
 }
