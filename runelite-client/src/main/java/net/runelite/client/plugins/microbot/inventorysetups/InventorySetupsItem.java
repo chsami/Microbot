@@ -46,25 +46,15 @@ public class InventorySetupsItem
 	@Getter
 	@Setter
 	private InventorySetupsStackCompareID stackCompare;
-	@Getter
-	@Setter
-	private boolean locked;
-	@Getter
-	@Setter
-	private int slot = -1;
 
 	public void toggleIsFuzzy()
 	{
 		fuzzy = !fuzzy;
 	}
-	public void toggleIsLocked()
-	{
-		locked = !locked;
-	}
 
 	public static InventorySetupsItem getDummyItem()
 	{
-		return new InventorySetupsItem(-1, "", 0, false, InventorySetupsStackCompareID.None, false, -1);
+		return new InventorySetupsItem(-1, "", 0, false, InventorySetupsStackCompareID.None);
 	}
 
 	public static boolean itemIsDummy(final InventorySetupsItem item)
