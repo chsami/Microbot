@@ -4,11 +4,8 @@ import net.runelite.client.plugins.microbot.inventorysetups.InventorySetupsItem;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetupsStackCompareID;
 
 import lombok.Value;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 
 import javax.annotation.Nullable;
-
-import static net.runelite.client.plugins.microbot.util.bank.Rs2Bank.findLockedItem;
 
 @Value
 public class InventorySetupItemSerializable
@@ -20,9 +17,6 @@ public class InventorySetupItemSerializable
 	Boolean f;		// Fuzzy (null = FALSE)
 	@Nullable
 	InventorySetupsStackCompareID sc;	// Stack Compare (null = NONE)
-	@Nullable
-	Boolean l;
-	int s;
 
 	static public InventorySetupItemSerializable convertFromInventorySetupItem(final InventorySetupsItem item)
 	{
@@ -32,10 +26,8 @@ public class InventorySetupItemSerializable
 		}
 		Integer quantity = item.getQuantity() != 1 ? item.getQuantity() : null;
 		Boolean fuzzy = item.isFuzzy() ? Boolean.TRUE : null;
-		Boolean locked = item.isLocked() ? Boolean.TRUE : null;
-		Integer slot = item.getSlot() >= 0 ? item.getSlot() : null;
 		InventorySetupsStackCompareID sc = item.getStackCompare() != InventorySetupsStackCompareID.None ? item.getStackCompare() : null;
-		return new InventorySetupItemSerializable(item.getId(), quantity, fuzzy, sc, locked, slot);
+		return new InventorySetupItemSerializable(item.getId(), quantity, fuzzy, sc);
 	}
 
 	static public InventorySetupsItem convertToInventorySetupItem(final InventorySetupItemSerializable is)
@@ -49,9 +41,7 @@ public class InventorySetupItemSerializable
 		String name = "";
 		int quantity = is.getQ() != null ? is.getQ() : 1;
 		boolean fuzzy = is.getF() != null ? is.getF() : Boolean.FALSE;
-		boolean locked = is.getL() != null ? is.getL() : false;
-		int slot = is.getS();
 		InventorySetupsStackCompareID sc = is.getSc() != null ? is.getSc() : InventorySetupsStackCompareID.None;
-		return new InventorySetupsItem(id, name, quantity, fuzzy, sc, locked, slot);
+		return new InventorySetupsItem(id, name, quantity, fuzzy, sc);
 	}
 }
