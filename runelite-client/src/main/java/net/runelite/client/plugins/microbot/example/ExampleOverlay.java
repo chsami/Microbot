@@ -1,7 +1,6 @@
 package net.runelite.client.plugins.microbot.example;
 
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -10,10 +9,7 @@ import net.runelite.client.ui.overlay.components.LineComponent;
 import net.runelite.client.ui.overlay.components.TitleComponent;
 
 import javax.inject.Inject;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Graphics2D;
-import java.util.List;
+import java.awt.*;
 
 public class ExampleOverlay extends OverlayPanel {
     public final ButtonComponent myButton;
@@ -27,14 +23,7 @@ public class ExampleOverlay extends OverlayPanel {
         myButton.setPreferredSize(new Dimension(100, 30));
         myButton.setParentOverlay(this);
         myButton.setFont(FontManager.getRunescapeBoldFont());
-        myButton.setOnClick(() -> {
-            List<Integer> lockedSlots = Rs2Bank.findLockedItems();
-            String message;
-            message = "Locked slots: " + lockedSlots;
-            Microbot.status = message;
-            Microbot.openPopUp("Microbot",
-                    String.format("S-1D:<br><br><col=ffffff>%s</col>", message));
-        });
+        myButton.setOnClick(() -> Microbot.openPopUp("Microbot", String.format("S-1D:<br><br><col=ffffff>%s Popup</col>", "Example")));
     }
     @Override
     public Dimension render(Graphics2D graphics) {
