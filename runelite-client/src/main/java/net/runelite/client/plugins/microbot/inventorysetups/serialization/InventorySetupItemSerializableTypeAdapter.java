@@ -39,6 +39,13 @@ public class InventorySetupItemSerializableTypeAdapter extends TypeAdapter<Inven
 				out.name("sc");
 				out.value(iss.getSc().toString());
 			}
+			if (iss.getL() != null)
+			{
+				out.name("l");
+				out.value(iss.getL());
+			}
+			out.name("s");
+			out.value(iss.getS());
 			out.endObject();
 		}
 
@@ -57,6 +64,8 @@ public class InventorySetupItemSerializableTypeAdapter extends TypeAdapter<Inven
 		Integer q = null;
 		Boolean f = null;
 		InventorySetupsStackCompareID sc = null;
+		Boolean locked = null;
+		int slot = -1;
 
 		in.beginObject();
 		while (in.hasNext())
@@ -80,6 +89,12 @@ public class InventorySetupItemSerializableTypeAdapter extends TypeAdapter<Inven
 					case "sc":
 						sc = InventorySetupsStackCompareID.valueOf(in.nextString());
 						break;
+					case "l":
+						locked = in.nextBoolean();
+						break;
+					case "s":
+						slot = in.nextInt();
+						break;
 					default:
 						break;
 				}
@@ -87,6 +102,6 @@ public class InventorySetupItemSerializableTypeAdapter extends TypeAdapter<Inven
 		}
 
 		in.endObject();
-		return new InventorySetupItemSerializable(id, q, f, sc);
+		return new InventorySetupItemSerializable(id, q, f, sc, locked, slot);
 	}
 }
