@@ -63,7 +63,7 @@ public class DeviceIDTransformer implements ClassFileTransformer
 
 	private String targetClassName; // PlatformInfo
 	private final List<String> targetMethodNames = new ArrayList<>(); // Found 3 in RuneLite's GamePack as of rev 231
-	private FieldInsnNode getUsername; // Vanilla static getUsername
+	private FieldInsnNode getClient; // Vanilla static client
 
 	@Override
 	public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classFileBuffer)
@@ -78,23 +78,28 @@ public class DeviceIDTransformer implements ClassFileTransformer
 
 		transformedClasses.add(className);
 
-		// Find static getUsername
-		if (className.equals("client"))
+		// Find static client
+		if (getClient == null && className.equals("client"))
 		{
 			final ClassNode classNode = new ClassNode();
 			reader.accept(classNode, ClassReader.SKIP_FRAMES);
-			final MethodNode rl$getUsername = classNode.methods.stream()
-				.filter(m -> m.name.equals("getUsername"))
-				.findFirst()
-				.orElse(null);
-
-			if (rl$getUsername != null)
+			final List<MethodNode> methods = classNode.methods;
+			outer:
+			for (MethodNode m : methods)
 			{
-				log.info("Found getUsername");
-				AbstractInsnNode getUsernameInsn = rl$getUsername.instructions.get(0);
-				if (getUsernameInsn instanceof FieldInsnNode && getUsernameInsn.getOpcode() == Opcodes.GETSTATIC)
+				final InsnList instructions = m.instructions;
+				for (AbstractInsnNode insn : instructions)
 				{
-					this.getUsername = (FieldInsnNode) getUsernameInsn;
+					if (insn instanceof FieldInsnNode && insn.getOpcode() == Opcodes.GETSTATIC)
+					{
+						final FieldInsnNode getStaticInsn = (FieldInsnNode) insn;
+						if (getStaticInsn.desc.equals("Lclient;"))
+						{
+							log.info("Found static client: {}.{} {}", getStaticInsn.owner, getStaticInsn.name, getStaticInsn.desc);
+							this.getClient = getStaticInsn;
+							break outer;
+						}
+					}
 				}
 			}
 			return classFileBuffer;
@@ -134,7 +139,7 @@ public class DeviceIDTransformer implements ClassFileTransformer
 		}
 
 		// Not found yet
-		if (getUsername == null || targetClassName == null || targetMethodNames.isEmpty())
+		if (getClient == null || targetClassName == null || targetMethodNames.isEmpty())
 		{
 			return classFileBuffer;
 		}
@@ -152,7 +157,7 @@ public class DeviceIDTransformer implements ClassFileTransformer
 					return mv;
 				}
 
-				log.info("Found getDeviceId method: {} {} {}", Modifier.toString(access), name, descriptor);
+				log.info("Found getDeviceId method: {} {} {} in class {}", Modifier.toString(access), name, descriptor, className);
 
 				mv = new MethodVisitor(Opcodes.ASM9, mv)
 				{
@@ -160,7 +165,10 @@ public class DeviceIDTransformer implements ClassFileTransformer
 					public void visitCode()
 					{
 						// Get cached device id (UUID)
-						mv.visitFieldInsn(getUsername.getOpcode(), getUsername.owner, getUsername.name, getUsername.desc);
+						//mv.visitFieldInsn(getUsername.getOpcode(), getUsername.owner, getUsername.name, getUsername.desc);
+						mv.visitFieldInsn(getClient.getOpcode(), getClient.owner, getClient.name, getClient.desc);
+						mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "client", "getAccountHash", "()J", false);
+						mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/String", "valueOf", "(J)Ljava/lang/String;", false);
 						mv.visitMethodInsn(Opcodes.INVOKESTATIC, CachedDeviceID.class.getName().replace(".", "/"), "getCachedUUID", "(Ljava/lang/String;)Ljava/lang/String;", false);
 
 						// Store cached device id as local var 1
