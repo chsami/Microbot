@@ -26,6 +26,7 @@ package net.runelite;
 
 import lombok.extern.slf4j.Slf4j;
 import java.lang.instrument.Instrumentation;
+import net.runelite.transformers.ActorGetAnimationTransformer;
 import net.runelite.transformers.DeviceIDTransformer;
 import net.runelite.transformers.RandomDatTransformer;
 
@@ -76,6 +77,7 @@ public class Agent
 
 		try
 		{
+			inst.addTransformer(new ActorGetAnimationTransformer());
 			inst.addTransformer(new DeviceIDTransformer());
 			inst.addTransformer(new RandomDatTransformer());
 		}
