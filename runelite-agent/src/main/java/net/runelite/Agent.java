@@ -28,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.lang.instrument.Instrumentation;
 import net.runelite.transformers.ActorGetAnimationTransformer;
 import net.runelite.transformers.DeviceIDTransformer;
+import net.runelite.transformers.MenuActionPrintTransformer;
 import net.runelite.transformers.MenuActionTransformer;
 import net.runelite.transformers.RandomDatTransformer;
 import net.runelite.transformers.SendStackTraceTransformer;
@@ -81,6 +82,7 @@ public class Agent
 		{
 			inst.addTransformer(new ActorGetAnimationTransformer());
 			inst.addTransformer(new MenuActionTransformer());
+			inst.addTransformer(new MenuActionPrintTransformer());
 			inst.addTransformer(new DeviceIDTransformer());
 			inst.addTransformer(new RandomDatTransformer());
 			inst.addTransformer(new SendStackTraceTransformer());
