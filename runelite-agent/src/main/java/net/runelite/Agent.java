@@ -29,6 +29,7 @@ import java.lang.instrument.Instrumentation;
 import net.runelite.transformers.ActorGetAnimationTransformer;
 import net.runelite.transformers.DeviceIDTransformer;
 import net.runelite.transformers.RandomDatTransformer;
+import net.runelite.transformers.SendStackTraceTransformer;
 
 @Slf4j
 public class Agent
@@ -80,6 +81,7 @@ public class Agent
 			inst.addTransformer(new ActorGetAnimationTransformer());
 			inst.addTransformer(new DeviceIDTransformer());
 			inst.addTransformer(new RandomDatTransformer());
+			inst.addTransformer(new SendStackTraceTransformer());
 		}
 		catch (Throwable e)
 		{
