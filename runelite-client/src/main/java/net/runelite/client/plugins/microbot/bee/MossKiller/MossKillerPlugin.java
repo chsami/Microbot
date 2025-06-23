@@ -571,7 +571,7 @@ public class MossKillerPlugin extends Plugin implements SchedulablePlugin {
 
             // Increment tick count if the player is interacting and performing combat animation
             if (player.getInteracting() == localPlayer && !isNonCombatAnimation(player)) {
-                tickCount += 3;
+                tickCount += 2;
                 attackerTickMap.put(player, tickCount);
                 System.out.println(player.getName() + " in combat with us, ticks now: " + tickCount);
             }
@@ -583,16 +583,16 @@ public class MossKillerPlugin extends Plugin implements SchedulablePlugin {
                 System.out.println(player.getName() + " hitsplat applied, ticks now: " + tickCount);
             }
 
-            // If the player is no longer interacting, decrease their tick count - keeping your original formula
+            // If the player is no longer interacting, decrease their tick count
             if (player.getInteracting() != localPlayer && player.getAnimation() != 829) {
-                tickCount = Math.max(0, tickCount - 2);
+                tickCount = Math.max(0, tickCount - 1);
                 attackerTickMap.put(player, tickCount);
                 System.out.println(player.getName() + " no longer interacting, ticks now: " + tickCount);
             }
 
             // If player no longer interacting and doing non-combat anim
             if (player.getInteracting() != localPlayer && isNonCombatAnimation(player) && player.getAnimation() != 829) {
-                tickCount = Math.max(0, tickCount - 2);
+                tickCount = Math.max(0, tickCount - 1);
                 attackerTickMap.put(player, tickCount);
                 System.out.println(player.getName() + " non-combat animation, ticks now: " + tickCount);
             }
@@ -610,7 +610,7 @@ public class MossKillerPlugin extends Plugin implements SchedulablePlugin {
             if (tickCount == 0) {
                 attackerTickMap.remove(player);
                 Microbot.log("Removing " + player.getName() + " from map due to 0 ticks");
-                if (currentTarget == player.getPlayer()) {
+                if (Objects.equals(currentTarget.getPlayer().getName(), player.getPlayer().getName()) && currentTarget.getCombatLevel() < 88) {
                     resetTarget();
                     if (Rs2Player.getWorldLocation().getY() > 3675) wildyKillerScript.handleAsynchWalk("Twenty Wild"); Microbot.log("target has been reset, going twenty wild for safety");
                     Microbot.log("Resetting target since it was " + player.getName());
@@ -629,10 +629,10 @@ public class MossKillerPlugin extends Plugin implements SchedulablePlugin {
             }
 
             if (currentTarget.isDead() || !targetInList) {
-                System.out.println("Target is dead or not found, resetting target");
+                Microbot.log("Target is dead or not found, resetting target");
                 resetTarget();
             } else {
-                System.out.println("Current target remains: " + currentTarget.getName());
+                Microbot.log("Current target remains: " + currentTarget.getName());
             }
         }
     }

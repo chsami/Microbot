@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.bee.MossKiller;
 
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
@@ -67,6 +68,7 @@ import static net.runelite.client.plugins.skillcalculator.skills.MagicAction.HIG
 import static net.runelite.client.plugins.skillcalculator.skills.MagicAction.WIND_BLAST;
 
 
+@Slf4j
 public class WildyKillerScript extends Script {
 
     @Inject
@@ -601,6 +603,9 @@ public class WildyKillerScript extends Script {
         }
 
         eatingMethod(target);
+        if (getRunEnergy() < 25) {
+            drinkEnergy();
+        }
 
         //if we have a target and we're autocasting
         if (target != null
@@ -777,32 +782,41 @@ public class WildyKillerScript extends Script {
         boolean useRange = mossKillerPlugin.useRange();
 
         if (!isInMulti()) {
-            if (mossKillerPlugin.currentTarget != null) {
-                mossKillerPlugin.updateTargetByName();
+            if (target != null) {
+
+                if (mossKillerPlugin.playerJammed() && !Rs2Player.isAnimating() && !Rs2Player.isInteracting()) {
+                    Microbot.log("Before updateTargetByName: " + target);
+                    mossKillerPlugin.updateTargetByName(); Microbot.log("After updateTargetByName: " + mossKillerPlugin.currentTarget);
+                    if (target == null || target.getPlayer() == null || target.getPlayer().getName() == null) {
+                        Microbot.log("Invalid or dead target after updateTargetByName");
+                        return;
+                    }
+                }
+
                 boolean shouldProtectFromMagic =
-                        hasPlayerEquippedItem(mossKillerPlugin.currentTarget, STAFF_OF_FIRE)
-                                || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, STAFF_OF_AIR)
-                                || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, STAFF_OF_WATER)
-                                || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, STAFF_OF_EARTH)
-                                || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, BRYOPHYTAS_STAFF)
-                                || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, BRYOPHYTAS_STAFF_UNCHARGED);
+                        hasPlayerEquippedItem(target, STAFF_OF_FIRE)
+                                || hasPlayerEquippedItem(target, STAFF_OF_AIR)
+                                || hasPlayerEquippedItem(target, STAFF_OF_WATER)
+                                || hasPlayerEquippedItem(target, STAFF_OF_EARTH)
+                                || hasPlayerEquippedItem(target, BRYOPHYTAS_STAFF)
+                                || hasPlayerEquippedItem(target, BRYOPHYTAS_STAFF_UNCHARGED);
                 boolean shouldProtectFromRange =
-                        hasPlayerEquippedItem(mossKillerPlugin.currentTarget, MAPLE_SHORTBOW)
-                                || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, WILLOW_SHORTBOW)
-                                || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, OAK_SHORTBOW)
-                                || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, MAPLE_LONGBOW)
-                                || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, WILLOW_LONGBOW)
-                                || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, LONGBOW)
-                                || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, SHORTBOW)
-                                || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, OAK_LONGBOW);
+                        hasPlayerEquippedItem(target, MAPLE_SHORTBOW)
+                                || hasPlayerEquippedItem(target, WILLOW_SHORTBOW)
+                                || hasPlayerEquippedItem(target, OAK_SHORTBOW)
+                                || hasPlayerEquippedItem(target, MAPLE_LONGBOW)
+                                || hasPlayerEquippedItem(target, WILLOW_LONGBOW)
+                                || hasPlayerEquippedItem(target, LONGBOW)
+                                || hasPlayerEquippedItem(target, SHORTBOW)
+                                || hasPlayerEquippedItem(target, OAK_LONGBOW);
                 boolean shouldProtectFromMelee =
-                        hasPlayerEquippedItem(mossKillerPlugin.currentTarget, RUNE_SCIMITAR)
-                                || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, RUNE_WARHAMMER)
-                                || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, RUNE_2H_SWORD)
-                                || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, RUNE_BATTLEAXE)
-                                || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, RUNE_SWORD)
-                                || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, BARRONITE_MACE)
-                                || hasPlayerEquippedItem(mossKillerPlugin.currentTarget, RUNE_MACE);
+                        hasPlayerEquippedItem(target, RUNE_SCIMITAR)
+                                || hasPlayerEquippedItem(target, RUNE_WARHAMMER)
+                                || hasPlayerEquippedItem(target, RUNE_2H_SWORD)
+                                || hasPlayerEquippedItem(target, RUNE_BATTLEAXE)
+                                || hasPlayerEquippedItem(target, RUNE_SWORD)
+                                || hasPlayerEquippedItem(target, BARRONITE_MACE)
+                                || hasPlayerEquippedItem(target, RUNE_MACE);
                 // 🏹 Protect from Range
                 if (shouldProtectFromRange && Rs2Player.getRealSkillLevel(PRAYER) > 39 && Rs2Player.getBoostedSkillLevel(PRAYER) > 0) {
 
@@ -833,6 +847,14 @@ public class WildyKillerScript extends Script {
                 }
             }
         } else if (isInMulti()) {
+            if (mossKillerPlugin.playerJammed() && !Rs2Player.isAnimating() && !Rs2Player.isInteracting()) {
+                Microbot.log("Before updateTargetByName: " + target);
+                mossKillerPlugin.updateTargetByName(); Microbot.log("After updateTargetByName: " + target);
+                if (target == null || target.getPlayer() == null || target.getPlayer().getName() == null) {
+                    Microbot.log("Invalid or dead target after updateTargetByName");
+                    return;
+                }
+            }
             monitorAttacks();
         }
 
@@ -1066,8 +1088,8 @@ public class WildyKillerScript extends Script {
                 }
             }
 
-            Microbot.log("Leaving basicAttackSetup");
         }
+        Microbot.log("Leaving basicAttackSetup");
     }
 
     public boolean healthIsLow() {
@@ -1504,6 +1526,18 @@ public class WildyKillerScript extends Script {
         return false; // No strength potion in inventory
     }
 
+    private void drinkEnergy() {
+        if (Rs2Inventory.contains("Energy potion (1)")) {
+            Rs2Inventory.interact("Energy potion(1)", "Drink");
+        } else if (Rs2Inventory.contains("Energy potion(2)")) {
+            Rs2Inventory.interact("Energy potion(2)", "Drink");
+        } else if (Rs2Inventory.contains("Energy potion(3)")) {
+            Rs2Inventory.interact("Energy potion(3)", "Drink");
+        } else if (Rs2Inventory.contains("Energy potion(4)")) {
+            Rs2Inventory.interact("Energy potion(4)", "Drink");
+        }
+    }
+
     private void checkAndDrinkStrengthPotion() {
         int currentStrengthLevel = Microbot.getClient().getRealSkillLevel(Skill.STRENGTH); // Unboosted strength level
         int boostedStrengthLevel = Microbot.getClient().getBoostedSkillLevel(Skill.STRENGTH); // Current boosted strength level
@@ -1654,7 +1688,7 @@ public class WildyKillerScript extends Script {
 
         if (Rs2Walker.getDistanceBetween(playerLocation, MOSS_GIANT_SPOT) > 10 && mossKillerPlugin.currentTarget == null
                 && MOSS_GIANT_AREA.contains(playerLocation)) {
-            Rs2Walker.walkTo(MOSS_GIANT_SPOT);
+            Rs2Walker.walkTo(MOSS_GIANT_SPOT, 6, () -> mossKillerPlugin.currentTarget != null);
             return;
         }
         int lobsterCount = Rs2Inventory.count(ItemID.SWORDFISH);
@@ -2009,6 +2043,13 @@ public class WildyKillerScript extends Script {
             Microbot.log("Finished the 3 minute sleepUntil bank is open");
             Rs2Bank.depositAll();
             sleepUntil(Rs2Inventory::isEmpty);
+            if (!Rs2Inventory.isEmpty()) {Microbot.log("something unbankable in inventory, attempting to drop/destroy");
+                closeBankAndDropOrDestroyInventory();
+                sleepUntil(Rs2Inventory::isEmpty);
+                if (!Rs2Inventory.isEmpty()) {
+                    Microbot.log("inventory still has something, shutting down");
+                    shutdown();
+                }}
             if (Rs2Equipment.isNaked()) {
                 sleep(1000, 1500);
                 Rs2Bank.withdrawX(AIR_RUNE, 100);
@@ -2078,7 +2119,9 @@ public class WildyKillerScript extends Script {
                         break;
                     }
                 }
-
+                if (config.alchLoot()) {
+                    Rs2Bank.withdrawX(NATURE_RUNE, 10);
+                }
 
                 if (!Rs2Equipment.hasEquipped(RUNE_CHAINBODY)) {
                     OutfitHelper.equipOutfit(OutfitHelper.OutfitType.MOSS_MAGE);
@@ -2135,6 +2178,36 @@ public class WildyKillerScript extends Script {
 
         mossKillerPlugin.dead = false;
     }
+
+    public void closeBankAndDropOrDestroyInventory() {
+        // Step 1: Close the bank if it's open
+        if (Rs2Bank.isOpen()) {
+            Rs2Bank.closeBank();
+            sleepUntil(() -> !Rs2Bank.isOpen(), 3000);
+        }
+
+        // Step 2: Loop through inventory and drop or destroy each item
+        for (int slot = 0; slot < 28; slot++) {
+            var item = Rs2Inventory.getItemInSlot(slot);
+            if (item == null || item.getId() == -1) continue;
+
+            boolean dropped = Rs2Inventory.interact(item, "Drop");
+
+            // If item cannot be dropped, try to destroy it
+            if (!dropped) {
+                boolean destroyed = Rs2Inventory.interact(item, "Destroy");
+                if (destroyed) {
+                    // Click the confirmation dialog (assumes default destroy interface is visible)
+                    sleep(1200); // give UI a moment to appear
+                    Rs2Dialogue.keyPressForDialogueOption(1);
+                }
+            }
+
+            sleep(900); // Optional: small delay between actions to avoid misclicks
+        }
+    }
+
+
 
     public void setAutocastFireStrike() {
 
