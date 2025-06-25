@@ -1,6 +1,8 @@
 package net.runelite.client.plugins.microbot.birdhouseruns;
 
 import net.runelite.api.ItemID;
+import net.runelite.api.Quest;
+import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.Notifier;
@@ -8,8 +10,6 @@ import net.runelite.client.config.Notification;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.birdhouseruns.FornBirdhouseRunsInfo.states;
-import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
-import net.runelite.client.plugins.microbot.inventorysetups.InventorySetupsItem;
 import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
@@ -17,13 +17,11 @@ import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
-import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -53,18 +51,34 @@ public class FornBirdhouseRunsScript extends Script {
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!Microbot.isLoggedIn()) return;
+             
                 if (!initialized) {
+                    if (Rs2Player.getQuestState(Quest.BONE_VOYAGE) != QuestState.FINISHED) {
+                        Microbot.log("You need to finish the quest 'BONE VOYAGE' to use this script");
+                        plugin.reportFinished("Birdhouse run failed, you need to finish the quest 'BONE VOYAGE'",false);
+                        this.shutdown();
+                        return;
+                    }
                     initialized = true;
-                    var inventorySetup = new Rs2InventorySetup(config.inventorySetup(), mainScheduledFuture);
-                    if (!inventorySetup.doesInventoryMatch() || !inventorySetup.doesEquipmentMatch()) {
-                        Rs2Walker.walkTo(Rs2Bank.getNearestBank().getWorldPoint(), 20);
-                        if (!inventorySetup.loadEquipment() || !inventorySetup.loadInventory()) {
-                            Microbot.log("Failed to load inventory setup");
-                            plugin.reportFinished("Birdhouse run failed to load inventory setup",false);
-                            this.shutdown();
-                            return;
+                    
+                    boolean hasInventorySetup =  config.inventorySetup()!= null && Rs2InventorySetup.isInventorySetup(config.inventorySetup().getName());
+                    if (hasInventorySetup) {
+                        var inventorySetup = new Rs2InventorySetup(config.inventorySetup(), mainScheduledFuture);
+                        if (!inventorySetup.doesInventoryMatch() || !inventorySetup.doesEquipmentMatch()) {
+                            Rs2Walker.walkTo(Rs2Bank.getNearestBank().getWorldPoint(), 20);
+                            if (!inventorySetup.loadEquipment() || !inventorySetup.loadInventory()) {
+                                Microbot.log("Failed to load inventory setup");
+                                plugin.reportFinished("Birdhouse run failed to load inventory setup",false);                                                        
+                                this.shutdown();
+                                return;
+                            }
+                            if (Rs2Bank.isOpen()) Rs2Bank.closeBank();
                         }
-                        if (Rs2Bank.isOpen()) Rs2Bank.closeBank();
+                    }else{
+                        Microbot.log("Failed to load inventory, inventory setup not found:"+ config.inventorySetup());
+                        plugin.reportFinished("Birdhouse run failed to load inventory setup",false);                                                        
+                        this.shutdown();
+                        return;
                     }
                     botStatus = states.TELEPORTING;
                 }
@@ -180,6 +194,7 @@ public class FornBirdhouseRunsScript extends Script {
         sleepUntil(() -> !Rs2Player.isInteracting());
         return true;
     }
+
     private void seedHouse(WorldPoint worldPoint, states status) {
         Rs2Inventory.use(" seed");
         sleepUntil(Rs2Inventory::isItemSelected);
@@ -189,14 +204,19 @@ public class FornBirdhouseRunsScript extends Script {
     }
 
     private void buildBirdhouse(WorldPoint worldPoint, states status) {
+        if (!Rs2Inventory.hasItem("bird house") && Rs2Inventory.hasItem(ItemID.CLOCKWORK)) {
+            Rs2Inventory.use(ItemID.HAMMER);
+            Rs2Inventory.use(" logs");
+            Rs2Inventory.waitForInventoryChanges(5000);
+        }
+        Rs2GameObject.interact(worldPoint, "Build");
+        sleepUntil(Rs2Player::isAnimating);
         botStatus = status;
     }
 
     private void dismantleBirdhouse(int itemId, states status) {
-        Rs2GameObject.interact(itemId, "Reset");
-        sleepUntil(() -> (!Rs2Player.isAnimating() && !Rs2Player.isInteracting() && Rs2Player.waitForXpDrop(Skill.CRAFTING, 8000)));
-        sleep(Rs2Random.between(700, 1200));
-        //sleep(Rs2Random.between(2000, 3000));
+        Rs2GameObject.interact(itemId, "Empty");
+        Rs2Player.waitForXpDrop(Skill.HUNTER);
         botStatus = status;
     }
 }
