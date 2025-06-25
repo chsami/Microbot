@@ -41,7 +41,7 @@ public class MKE_WintertodtOverlay extends OverlayPanel {
 
             // Main title with version
             panelComponent.getChildren().add(TitleComponent.builder()
-                    .text("Enhanced Wintertodt Bot v" + MKE_WintertodtScript.version)
+                    .text("MKE Wintertodt Bot v" + MKE_WintertodtScript.version)
                     .color(Color.CYAN)
                     .build());
 
