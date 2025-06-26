@@ -205,13 +205,6 @@ public class FornBirdhouseRunsScript extends Script {
     }
 
     private void buildBirdhouse(WorldPoint worldPoint, states status) {
-        if (!Rs2Inventory.hasItem("bird house") && Rs2Inventory.hasItem(ItemID.CLOCKWORK)) {
-            Rs2Inventory.use(ItemID.HAMMER);
-            Rs2Inventory.use(" logs");
-            Rs2Inventory.waitForInventoryChanges(5000);
-        }
-        Rs2GameObject.interact(worldPoint, "Build");
-        sleepUntil(Rs2Player::isAnimating);
         botStatus = status;
     }
 
