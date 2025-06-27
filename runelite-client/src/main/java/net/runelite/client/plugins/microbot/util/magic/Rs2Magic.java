@@ -323,7 +323,7 @@ public class Rs2Magic {
         }
     }
 
-    // humidify
+    @Deprecated(since = "1.9.2 - use Rs2Magic.cast", forRemoval = true)
     public static void humidify() {
         sleepUntil(() -> {
             Rs2Tab.switchToMagicTab();

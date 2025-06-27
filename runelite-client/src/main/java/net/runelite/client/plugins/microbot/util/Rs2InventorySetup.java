@@ -141,7 +141,6 @@ public class Rs2InventorySetup {
 			.filter(item -> !InventorySetupsItem.itemIsDummy(item) && item.getSlot() >= 0)
 			.collect(Collectors.toList());
 
-		System.out.println("break");
 		sortInventoryItems(itemsWithSlots);
 
         if (inventorySetup.getRune_pouch() != null) {

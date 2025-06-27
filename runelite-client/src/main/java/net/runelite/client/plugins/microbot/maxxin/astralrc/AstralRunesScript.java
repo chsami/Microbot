@@ -14,6 +14,8 @@ import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2RunePouch;
 import net.runelite.client.plugins.microbot.util.inventory.RunePouchType;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
@@ -174,8 +176,8 @@ public class AstralRunesScript extends Script {
                             Rs2Walker.walkFastCanvas(LUNAR_ISLE_BANK_WORLD_POINT);
                             if( bankTile != null && !Rs2Bank.isOpen() ) {
                                 Rs2Bank.openBank(bankTile);
+                                updateRuneStates();
                                 if( Rs2Inventory.hasItem(runeItemId) ) {
-                                    updateRuneStates();
                                     Rs2Bank.depositAll(runeItemId);
                                 }
                             } else if( Rs2Player.distanceTo(bankTileLoc) > 2 ) {
@@ -446,10 +448,33 @@ public class AstralRunesScript extends Script {
         }
     }
 
+    private Integer initialRuneCount = null;
+
     private void updateRuneStates() {
-        var runes = Rs2Inventory.get(this.runeItemId);
-        if( runes != null ) runesForSession += runes.getQuantity();
+        // 1. tally all runes in inventory + pouch
+        final int[] currentCount = {0};
+        for (Rs2ItemModel item : Rs2Inventory.items()) {
+            if (item.getId() == this.runeItemId) {
+                currentCount[0] += item.getQuantity();
+            }
+        }
+        Rs2RunePouch.getRunes().forEach((runeId, qty) -> {
+            if (runeId == this.runeItemId) {
+                currentCount[0] += qty;
+            }
+        });
+        if (initialRuneCount == null) {
+            initialRuneCount = currentCount[0];
+            Microbot.log("Baseline rune count set to %d", initialRuneCount);
+            return;
+        }
+        int netGained = currentCount[0] - initialRuneCount;
+        runesForSession = Math.max(netGained, 0);
         totalTrips++;
+        Microbot.log(
+                "Trip #%d: current=%d, baseline=%d, runesForSession=%d",
+                totalTrips, currentCount[0], initialRuneCount, runesForSession
+        );
     }
 
     @Override
