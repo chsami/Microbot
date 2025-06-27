@@ -68,7 +68,7 @@ public class StunAlchScript extends Script {
                         }
 
                         if (Rs2AntibanSettings.naturalMouse) {
-                            int inventorySlot = Rs2Player.getSkillRequirement(Skill.MAGIC, 55) ? 11 : 4;
+                            int inventorySlot = Rs2Player.getSkillRequirement(Skill.MAGIC, 55) ? 12 : 4;
                             if (alchItem.getSlot() != inventorySlot) {
                                 Rs2Inventory.moveItemToSlot(alchItem, inventorySlot);
                                 return;

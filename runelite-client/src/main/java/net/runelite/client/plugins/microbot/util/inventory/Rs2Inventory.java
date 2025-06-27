@@ -2255,7 +2255,7 @@ public class Rs2Inventory {
         invokeMenu(rs2Item, action, -1);
     }
 
-    private static Widget getInventory() {
+    public static Widget getInventory() {
         final int BANK_PIN_INVENTORY_ITEM_CONTAINER = 17563648;
         final int SHOP_INVENTORY_ITEM_CONTAINER = 19726336;
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
@@ -2378,7 +2378,7 @@ public class Rs2Inventory {
         return initialInventory.stream()
                 .allMatch(initialItem -> currentInventory.stream()
                         .anyMatch(currentItem ->
-                                initialItem.getId() == currentItem.getId() && initialItem.getQuantity() == currentItem.getQuantity()));
+                                initialItem.getId() == currentItem.getId() && initialItem.getQuantity() == currentItem.getQuantity() && initialItem.getSlot() == currentItem.getSlot()));
     }
 
     /**
