@@ -51,6 +51,13 @@ public interface RoyalTitansConfig extends Config {
     )
     String lootingSettings = "LootingSettings";
 
+    @ConfigSection(
+            name = "Developer settings",
+            description = "Settings for development",
+            position = 5
+    )
+    String developerSettings = "Developer settings";
+
     // General
     @ConfigItem(
             keyName = "teammateName",
@@ -293,6 +300,28 @@ public interface RoyalTitansConfig extends Config {
     )
     default LootingTitan loot() {
         return LootingTitan.ALTERNATE;
+    }
+
+    @ConfigItem(
+            keyName = "overrideState",
+            name = "Override state?",
+            description = "Enable to override script starting state",
+            section = developerSettings,
+            position = 1
+    )
+    default boolean overrideState() {
+        return false;
+    }
+
+    @ConfigItem(
+            keyName = "startState",
+            name = "Starting state",
+            description = "The starting state of the bot. This is only used if override state is enabled.",
+            section = developerSettings,
+            position = 2
+    )
+    default RoyalTitansBotStatus startState() {
+        return RoyalTitansBotStatus.WAITING;
     }
 
     // Enums

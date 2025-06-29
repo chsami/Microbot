@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.client.plugins.cluescrolls.ClueScrollPlugin;
 import net.runelite.client.plugins.microbot.cluesolver.ClueSolverPlugin;
+
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -31,7 +32,7 @@ public abstract class ClueTask implements Runnable {
     public void run() {
         try {
             boolean success = executeTask();
-            completeTask(success);
+            //completeTask(success);
         } catch (Exception e) {
             log.error("Error executing ClueTask: {}", e.getMessage(), e);
             completeTask(false);

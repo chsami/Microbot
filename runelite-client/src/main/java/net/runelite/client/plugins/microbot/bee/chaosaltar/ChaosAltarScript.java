@@ -9,6 +9,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
@@ -21,7 +22,8 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import java.util.concurrent.TimeUnit;
 
-import static net.runelite.api.ItemID.*;
+import static net.runelite.api.ItemID.BURNING_AMULET5;
+import static net.runelite.api.ItemID.DRAGON_BONES;
 import static net.runelite.api.NpcID.CHAOS_FANATIC;
 import static net.runelite.client.plugins.microbot.util.walker.Rs2Walker.walkTo;
 
@@ -33,6 +35,7 @@ public class ChaosAltarScript extends Script {
     public static final WorldPoint CHAOS_ALTAR_POINT_SOUTH = new WorldPoint(2972, 3810,0);
 
     private ChaosAltarConfig config;
+    private boolean autoRetaliate = false;
 
     private State currentState = State.UNKNOWN;
 
@@ -45,9 +48,13 @@ public class ChaosAltarScript extends Script {
                 if (!super.run()) return;
                 long startTime = System.currentTimeMillis();
 
+                if (!autoRetaliate) {
+                Rs2Combat.setAutoRetaliate(false);
+                autoRetaliate = true;}
+
                 // Determine current state
                 currentState = determineState();
-                System.out.println("Current state: " + currentState);
+                Microbot.log("Current state: " + currentState);
 
                 // Execute state action
                 switch (currentState) {
@@ -62,7 +69,7 @@ public class ChaosAltarScript extends Script {
                         break;
                     case WALK_TO_ALTAR:
                         walkTo(CHAOS_ALTAR_POINT_SOUTH);
-                        offerBones();
+                        if (config.giveBonesFast()) {offerBonesFast();} else offerBones();
                         break;
                     case DIE_TO_NPC:
                         dieToNpc();
@@ -91,7 +98,7 @@ public class ChaosAltarScript extends Script {
                     GameObject gameObject = (GameObject) obj;
                     System.out.println("Found Chaos Altar GameObject at: " + gameObject.getWorldLocation());
                     if (Rs2GameObject.isReachable(gameObject)) {
-                        System.out.println("Chaos Altar is reachable.");
+                        Microbot.log("Chaos Altar is reachable.");
                         return true;
                     } else {
                         System.out.println("Chaos Altar found but not reachable.");
@@ -104,14 +111,14 @@ public class ChaosAltarScript extends Script {
 
 
     private void dieToNpc() {
-        System.out.println("Walking to dangerous NPC to die");
+        Microbot.log("Walking to dangerous NPC to die");
         Rs2Walker.walkTo(2978, 3854,0);
-        sleepUntil(() -> Rs2Npc.getNpc(CHAOS_FANATIC) != null, 15000);
+        sleepUntil(() -> Rs2Npc.getNpc(CHAOS_FANATIC) != null, 60000);
         // Attack chaos fanatic to die
         Rs2Npc.attack("Chaos Fanatic");
         // Wait until player dies
-        sleepUntil(() -> Microbot.getClient().getBoostedSkillLevel(Skill.HITPOINTS) == 0, 15000);
-        sleepUntil(() -> !Rs2Pvp.isInWilderness(), 5000);
+        sleepUntil(() -> Microbot.getClient().getBoostedSkillLevel(Skill.HITPOINTS) == 0, 60000);
+        sleepUntil(() -> !Rs2Pvp.isInWilderness(), 15000);
         sleep(1000,2000);
     }
 
@@ -126,22 +133,19 @@ public class ChaosAltarScript extends Script {
         }
 
         if (hasBurningAmulet()) {
-            walkTo(CHAOS_ALTAR_POINT);
+            walkTo(CHAOS_ALTAR_POINT_SOUTH);
         }
     }
 
     private void offerBones() {
-        System.out.println("Offering bones at altar");
-        if (Rs2Player.isInCombat()) {offerBonesFast(); return;}
-
-        if (Rs2Inventory.isFull()){
-            walkTo(CHAOS_ALTAR_POINT);
-        }
+        System.out.println("Offering bones at altar- IN OFFERBONES1");
 
         if (!CHAOS_ALTAR_AREA.contains(Rs2Player.getWorldLocation())) {
             if (Rs2Player.getWorldLocation().getY() > 3650)
             {walkTo(CHAOS_ALTAR_POINT);}
         }
+
+        if (Rs2Player.isInCombat()) {offerBonesFast(); return;}
 
         if (Rs2Inventory.contains(DRAGON_BONES) && isRunning()) {
             Rs2Inventory.slotInteract(2, "use");
@@ -149,27 +153,23 @@ public class ChaosAltarScript extends Script {
             Rs2GameObject.interact(411);
             sleep(300, 500);
 
-            int randomWait = Rs2Random.between(1000,5000);
+            int randomWait = Rs2Random.between(500,2000);
             Rs2Inventory.waitForInventoryChanges(randomWait);
-
-            // Small random delay between offerings
-            sleep(200, 400);
         }
     }
 
     private void offerBonesFast() {
-        System.out.println("Offering bones at altar");
-
-        if (Rs2Inventory.isFull()){
-            walkTo(CHAOS_ALTAR_POINT);
-        }
+        Microbot.log("Offering bones at altar - IN OFFERBONES");
 
         if (!CHAOS_ALTAR_AREA.contains(Rs2Player.getWorldLocation())) {
             if (Rs2Player.getWorldLocation().getY() > 3650)
             {walkTo(CHAOS_ALTAR_POINT);}
         }
 
-        if (Rs2Inventory.contains(DRAGON_BONES) && isRunning()) {
+        while (Rs2Inventory.contains(DRAGON_BONES)
+                && isRunning()
+                && !Rs2Player.isInCombat()
+                && Rs2GameObject.exists(411)) {
             Rs2Inventory.slotInteract(2, "use");
             sleep(100, 300);
             Rs2GameObject.interact(411);
@@ -202,8 +202,8 @@ public class ChaosAltarScript extends Script {
             // If amulet not equipped or in inventory
             if (!hasBurningAmulet()) {
                 sleep(400);
-                System.out.println("Withdrawing burning amulet");
-                Rs2Bank.withdrawOne(BURNING_AMULET5);
+                Microbot.log("Withdrawing burning amulet");
+                Rs2Bank.withdrawOne("burning amulet");
                 Rs2Inventory.waitForInventoryChanges(2000);
             }
 
@@ -253,6 +253,7 @@ public class ChaosAltarScript extends Script {
 
     @Override
     public void shutdown() {
+        autoRetaliate = false;
         super.shutdown();
     }
 }

@@ -57,6 +57,15 @@ public class TimeWindowConditionAdapter implements JsonSerializer<TimeWindowCond
         data.addProperty("endTime", endUtc.toLocalTime().format(TIME_FORMAT));
         data.addProperty("startDate", startDateUtc.toLocalDate().format(DATE_FORMAT));
         data.addProperty("endDate", endDateUtc.toLocalDate().format(DATE_FORMAT));
+        LocalDateTime currentStartDateTime = src.getCurrentStartDateTime();
+        LocalDateTime currentEndDateTime = src.getCurrentEndDateTime();
+        if (currentStartDateTime != null) {
+            data.addProperty("currentStartDateTime", currentStartDateTime.format(DateTimeFormatter.ISO_DATE_TIME));
+        }
+        if (currentEndDateTime != null) {
+            data.addProperty("currentEndDateTime", currentEndDateTime.format(DateTimeFormatter.ISO_DATE_TIME));
+        }
+        data.addProperty("transientNumberOfResetsWithinDailyInterval", src.getTransientNumberOfResetsWithinDailyInterval());
         
         // Mark that these are UTC times for future compatibility
         data.addProperty("timeFormat", "UTC");
@@ -67,8 +76,10 @@ public class TimeWindowConditionAdapter implements JsonSerializer<TimeWindowCond
         
         // Randomization settings
         data.addProperty("useRandomization", src.isUseRandomization());
-        data.addProperty("randomizeMinutes", src.getRandomizeMinutes());
+        data.addProperty("randomizerValue", src.getRandomizerValue());
         data.addProperty("maximumNumberOfRepeats", src.getMaximumNumberOfRepeats());
+        data.addProperty("currentValidResetCount", src.getCurrentValidResetCount());
+        
         
         // Add data to wrapper
         json.add("data", data);
@@ -164,14 +175,40 @@ public class TimeWindowConditionAdapter implements JsonSerializer<TimeWindowCond
         TimeWindowCondition condition = new TimeWindowCondition(
                 startTime, endTime, startDate, endDate, repeatCycle, repeatInterval, maximumNumberOfRepeats);
         
+        if (dataObj.has("currentStartDateTime") && dataObj.has("currentEndDateTime")) {
+            LocalDateTime lastCurrentStartDateTime = LocalDateTime.parse(dataObj.get("currentStartDateTime").getAsString());
+            LocalDateTime lastCurrentEndDateTime = LocalDateTime.parse(dataObj.get("currentEndDateTime").getAsString());
+            // check first if the last current start date time and end date time is in a future
+            // date time, if so set the current start date time and end date time to the last current start date time and end date time, otherwise set it to the current start date time and end date time
+            LocalDateTime currentStartDateTime = lastCurrentStartDateTime.isAfter(LocalDateTime.now()) ? lastCurrentStartDateTime : condition.getCurrentStartDateTime();
+            LocalDateTime currentEndDateTime = lastCurrentEndDateTime.isAfter(LocalDateTime.now()) ? lastCurrentEndDateTime : condition.getCurrentEndDateTime();                        
+            // ensure start date time is before end date time
+            if (currentStartDateTime.isAfter(currentEndDateTime)) {
+                throw new JsonParseException("Current start date time is after current end date time");
+            }            
+            condition.setCurrentStartDateTime(currentStartDateTime);
+            condition.setCurrentEndDateTime(currentEndDateTime);    
+        }
+        
+            
+        
+        if (dataObj.has("currentValidResetCount")){
+            condition.setCurrentValidResetCount(dataObj.get("currentValidResetCount").getAsLong());
+        }
+        if (dataObj.has("transientNumberOfResetsWithinDailyInterval")) {
+            condition.setTransientNumberOfResetsWithinDailyInterval(dataObj.get("transientNumberOfResetsWithinDailyInterval").getAsInt());
+        }
+
+
+        
         // Set timezone
         condition.setZoneId(targetZone);
         
         // Set randomization if present
-        if (dataObj.has("useRandomization") && dataObj.has("randomizeMinutes")) {
+        if (dataObj.has("useRandomization") && dataObj.has("randomizerValue")) {
             boolean useRandomization = dataObj.get("useRandomization").getAsBoolean();
-            int randomizeMinutes = dataObj.get("randomizeMinutes").getAsInt();
-            condition.setRandomization(useRandomization, randomizeMinutes);
+            int randomizerValue = dataObj.get("randomizerValue").getAsInt();
+            condition.setRandomization(useRandomization);
         }                        
         return condition;
        

@@ -20,7 +20,7 @@ public class KittenAttentionEvent implements BlockingEvent
     @Override
     public boolean validate()
     {
-        return (KittenPlugin.ATTENTION_FIRST_WARNING_TIME_LEFT_IN_SECONDS * 1000) >= kittenPlugin.getTimeBeforeNeedingAttention();
+        return (KittenPlugin.ATTENTION_FIRST_WARNING_TIME_LEFT_IN_SECONDS * 1000) >= kittenPlugin.getTimeBeforeNeedingAttention() && (kittenPlugin.playerHasFollower() && kittenPlugin.isKitten());
     }
 
     @Override

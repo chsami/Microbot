@@ -11,11 +11,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           # Specify the branch you want
           ref: development
-          # Fetch all history for all branches and tags
           fetch-depth: 0
 
       - name: Set up JDK 11
@@ -38,12 +37,12 @@ jobs:
           files: |
             /home/runner/work/Microbot/Microbot/runelite-client/target/microbot-*.jar
 
-      - name: Upload Jar
-        uses: "bacongobbler/azure-blob-storage-upload@main"
+      - name: Upload Jar to Hetzner
+        uses: appleboy/scp-action@v0.1.7
         with:
-          source_dir: runelite-client/target
-          container_name: microbot
-          connection_string: ${{ secrets.blobConnectionString }}
-          extra_args: '--pattern *.jar --destination-path nightly'
-          # WARNING: this will overwrite existing blobs in your blob storage
-          overwrite: 'true'
+          host: ${{ secrets.PROD_HOST }}
+          username: root
+          key: ${{ secrets.PROD_SSH_KEY }}
+          source: runelite-client/target/microbot-*.jar
+          target: /var/www/files/releases/microbot/nightly/
+          strip_components: 2

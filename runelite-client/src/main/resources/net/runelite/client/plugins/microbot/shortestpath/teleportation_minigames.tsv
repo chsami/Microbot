@@ -37,7 +37,9 @@ Destination	Skills	Quests	isMembers	Varbits	Varplayers	Wilderness level	Duration
 								
 # Rat Pits - East Ardougne, Keldagrim, Port Sarim, Varrock								
 2561 3319 0		Ratcatchers	Y		888@20	0	23	Rat Pits: Ardougne
-2914 10193 0		Ratcatchers	Y		888@20	0	23	Rat Pits: Keldagrim
+## NEEDS FIXING
+# 2914 10193 0		Ratcatchers	Y		888@20	0	23	Rat Pits: Keldagrim
+#
 3018 3231 0		Ratcatchers	Y		888@20	0	23	Rat Pits: Port Sarim
 3267 3399 0		Ratcatchers	Y		888@20	0	23	Rat Pits: Varrock
 								

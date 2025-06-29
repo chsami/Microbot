@@ -2,7 +2,7 @@ package net.runelite.client.plugins.microbot.LunarTablets;
 
 import com.google.inject.Provides;
 import net.runelite.api.GameObject;
-import net.runelite.api.Skill;
+import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -12,13 +12,14 @@ import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
-import net.runelite.client.plugins.microbot.util.mouse.VirtualMouse;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
-import java.util.Timer;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 
 public class LunarTabletsScript extends Script {
@@ -46,6 +47,7 @@ public class LunarTabletsScript extends Script {
                 }
 
                 if(Rs2Inventory.contains("Astral rune")&&Rs2Inventory.contains("Law rune")&&Rs2Inventory.contains("Soft clay")) {
+                    areWeStuck();
                     makeTablets();
                 }
 
@@ -143,6 +145,20 @@ public class LunarTabletsScript extends Script {
                     sleep(generateRandomNumber(0,1000));
                 }
             }
+        }
+    }
+    public void areWeStuck(){
+        WorldPoint badWorldPoint = new WorldPoint(2079, 3915, 0);
+        WorldPoint badWorldPoint1 = new WorldPoint(2079, 3916, 0);
+        WorldPoint badWorldPoint2 = new WorldPoint(2078, 3916, 0);
+        WorldPoint badWorldPoint3 = new WorldPoint(2077, 3916, 0);
+        WorldPoint badWorldPoint4 = new WorldPoint(2077, 3915, 0);
+        WorldPoint ourWorldPoint = Rs2Player.getWorldLocation();
+        if(ourWorldPoint.equals(badWorldPoint) || ourWorldPoint.equals(badWorldPoint1) || ourWorldPoint.equals(badWorldPoint2) ||
+                ourWorldPoint.equals(badWorldPoint3) || ourWorldPoint.equals(badWorldPoint4)){
+            Microbot.log("We seem to be stuck");
+            //letting the walker open the door.
+            Rs2Walker.walkTo(new WorldPoint(2078, 3914, 0));
         }
     }
     public void walkToLecturn(){

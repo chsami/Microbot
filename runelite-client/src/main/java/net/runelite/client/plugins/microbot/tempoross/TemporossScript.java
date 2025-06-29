@@ -658,7 +658,9 @@ public class TemporossScript extends Script {
                         return;
                     }
                     log("Can't find the fish spot, walking to the totem pole");
-                    Rs2Walker.walkTo(WorldPoint.fromLocalInstance(Microbot.getClient(),localPoint));
+                    if (localPoint != null) {
+                        Rs2Walker.walkTo(WorldPoint.fromLocalInstance(Microbot.getClient(),localPoint));
+                    }
                     return;
                 }
                 break;

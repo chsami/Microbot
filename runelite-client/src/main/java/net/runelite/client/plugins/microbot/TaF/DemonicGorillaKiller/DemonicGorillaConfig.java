@@ -7,12 +7,13 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 
 @ConfigInformation("IMPORTANT!<br/>"
         + "This plugin kills Demonic Gorillas, including combat, prayer, banking, and restocking.<br/><br/>"
-        + "<p>Have the following in your bank and inventory setup:</p>\n"
+        + "<p>Requirements:</p>\n"
         + "<ol>\n"
-        + "    <li><b>Inventory Setup named \"Demonic Gorilla\"</b> – includes all required supplies</li>\n"
-        + "    <li>Royal Seed Pot</li>\n"
+        + "    <li><b>Inventory Setup for banking – includes all required supplies</li>\n"
+        + "    <li><b>Inventory Setup for each of your combat style's equipment - The inventory is ignored</li>\n"
+        + "    <li>Royal Seed Pod is mandatory</li>\n"
         + "</ol>\n"
-        + "By default, it will auto loot most drops and alch rune items while retreating when low on supplies to restock.<br/><br/>"
+        + "The script fights Demonic Gorillas and retreats when low on supplies to restock.<br/><br/>"
         + "<br/>"
         + "Configure options in the settings to enable offensive prayers, auto gear change, and looting preferences.<br/>"
         + "</html>")

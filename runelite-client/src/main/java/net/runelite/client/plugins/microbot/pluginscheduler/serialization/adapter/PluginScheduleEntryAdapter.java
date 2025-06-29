@@ -33,9 +33,26 @@ public class PluginScheduleEntryAdapter implements JsonSerializer<PluginSchedule
         result.addProperty("enabled", src.isEnabled());
         result.addProperty("cleanName", src.getCleanName());
         result.addProperty("needsStopCondition", src.isNeedsStopCondition());
+        result.addProperty("hardResetOnLoad", false);
         // Serialize time fields
-        if (src.getLastRunTime() != null) {
-            result.addProperty("lastRunTime", src.getLastRunTime().toInstant().toEpochMilli());
+        if (src.getLastRunStartTime() != null) {
+            result.addProperty("lastRunStartTime", src.getLastRunStartTime().toInstant().toEpochMilli());
+        }
+        if (src.getLastRunEndTime() != null) {
+            result.addProperty("lastRunEndTime", src.getLastRunEndTime().toInstant().toEpochMilli());
+        }
+        
+        // Serialize last run duration
+        if (src.getLastRunDuration() != null) {
+            result.add("lastRunDuration", context.serialize(src.getLastRunDuration()));
+        }
+        
+        // Serialize stop reason info
+        if (src.getLastStopReason() != null) {
+            result.addProperty("lastStopReason", src.getLastStopReason());
+        }
+        if (src.getLastStopReasonType() != null) {
+            result.addProperty("lastStopReasonType", src.getLastStopReasonType().name());
         }
         
         // Serialize condition managers
@@ -50,11 +67,15 @@ public class PluginScheduleEntryAdapter implements JsonSerializer<PluginSchedule
         if (src.getMainTimeStartCondition() != null) {
             result.add("mainTimeStartCondition", context.serialize(src.getMainTimeStartCondition()));
         }
+     
         
         // Serialize other properties
-        result.addProperty("stopInitiated", src.isStopInitiated());
+        
         result.addProperty("allowRandomScheduling", src.isAllowRandomScheduling());
+        result.addProperty("allowContinue", src.isAllowContinue());
         result.addProperty("runCount", src.getRunCount());
+        result.addProperty("onLastStopUserConditionsSatisfied", src.isOnLastStopUserConditionsSatisfied());
+        result.addProperty("onLastStopPluginConditionsSatisfied", src.isOnLastStopPluginConditionsSatisfied());
         
         // Serialize durations
         if (src.getSoftStopRetryInterval() != null) {
@@ -102,19 +123,55 @@ public class PluginScheduleEntryAdapter implements JsonSerializer<PluginSchedule
             entry.setCleanName(jsonObject.get("cleanName").getAsString());
         }
         
-        // Deserialize time fields
+        // Deserialize time fields - handle both old and new time fields for backward compatibility
         if (jsonObject.has("lastRunTime")) {
-            ZonedDateTime lastRunTime = ZonedDateTime.now().withNano(0);
-            entry.setLastRunTime(lastRunTime);  // Placeholder to ensure field exists
-            
             try {
                 long timestamp = jsonObject.get("lastRunTime").getAsLong();
-                ZonedDateTime prvLastRunTime  = (ZonedDateTime.ofInstant(
+                ZonedDateTime prvLastRunTime = ZonedDateTime.ofInstant(
                     java.time.Instant.ofEpochMilli(timestamp), 
-                    java.time.ZoneId.systemDefault()));
-                entry.setLastRunTime(prvLastRunTime);
+                    java.time.ZoneId.systemDefault());
+                
+                // For backward compatibility, set both start and end time to the old lastRunTime
+                entry.setLastRunStartTime(prvLastRunTime);
+                entry.setLastRunEndTime(prvLastRunTime);
             } catch (Exception e) {
                 log.error("Failed to parse lastRunTime", e);
+            }
+        }
+        
+        // Deserialize new time fields
+        if (jsonObject.has("lastRunStartTime")) {
+            try {
+                long timestamp = jsonObject.get("lastRunStartTime").getAsLong();
+                ZonedDateTime lastRunStartTime = ZonedDateTime.ofInstant(
+                    java.time.Instant.ofEpochMilli(timestamp), 
+                    java.time.ZoneId.systemDefault());
+                entry.setLastRunStartTime(lastRunStartTime);
+            } catch (Exception e) {
+                log.error("Failed to parse lastRunStartTime", e);
+            }
+        }
+        
+        if (jsonObject.has("lastRunEndTime")) {
+            try {
+                long timestamp = jsonObject.get("lastRunEndTime").getAsLong();
+                ZonedDateTime lastRunEndTime = ZonedDateTime.ofInstant(
+                    java.time.Instant.ofEpochMilli(timestamp), 
+                    java.time.ZoneId.systemDefault());
+                entry.setLastRunEndTime(lastRunEndTime);
+            } catch (Exception e) {
+                log.error("Failed to parse lastRunEndTime", e);
+            }
+        }
+        
+        // Deserialize last run duration
+        if (jsonObject.has("lastRunDuration")) {
+            try {
+                Duration lastRunDuration = context.deserialize(
+                    jsonObject.get("lastRunDuration"), Duration.class);
+                entry.setLastRunDuration(lastRunDuration);
+            } catch (Exception e) {
+                log.error("Failed to parse lastRunDuration", e);
             }
         }
         
@@ -143,18 +200,39 @@ public class PluginScheduleEntryAdapter implements JsonSerializer<PluginSchedule
                 }                
             }
         }                        
-        
-        // Deserialize other properties
-        if (jsonObject.has("stopInitiated")) {
-            entry.setStopInitiated(jsonObject.get("stopInitiated").getAsBoolean());
-        }
+                
         
         if (jsonObject.has("allowRandomScheduling")) {
             entry.setAllowRandomScheduling(jsonObject.get("allowRandomScheduling").getAsBoolean());
         }
         
+        if (jsonObject.has("allowContinue")) {
+            entry.setAllowContinue(jsonObject.get("allowContinue").getAsBoolean());
+        }
+        
         if (jsonObject.has("runCount")) {
-            int runCount = jsonObject.get("runCount").getAsInt();            
+            int runCount = jsonObject.get("runCount").getAsInt();
+            entry.setRunCount(runCount);
+        }
+        
+        // Deserialize stop reason info
+        if (jsonObject.has("lastStopReason")) {
+            entry.setLastStopReason(jsonObject.get("lastStopReason").getAsString());
+        }
+        
+        if (jsonObject.has("lastStopReasonType")) {
+            try {
+                String stopReasonType = jsonObject.get("lastStopReasonType").getAsString();
+                entry.setLastStopReasonType(PluginScheduleEntry.StopReason.valueOf(stopReasonType));
+            } catch (Exception e) {
+                log.error("Failed to parse lastStopReasonType", e);
+            }
+        }
+        if (jsonObject.has("onLastStopUserConditionsSatisfied")) {
+            entry.setOnLastStopUserConditionsSatisfied(jsonObject.get("onLastStopUserConditionsSatisfied").getAsBoolean());
+        }
+        if (jsonObject.has("onLastStopPluginConditionsSatisfied")) {
+            entry.setOnLastStopPluginConditionsSatisfied(jsonObject.get("onLastStopPluginConditionsSatisfied").getAsBoolean());
         }
         
         // Deserialize durations
@@ -185,16 +263,12 @@ public class PluginScheduleEntryAdapter implements JsonSerializer<PluginSchedule
         }
         //entry.registerPluginConditions();
         
-        // Deserialize ConfigDescriptor if available
-        // This will be applied when the plugin instance is retrieved via getPlugin()
-        if (jsonObject.has("configDescriptor")) {
-            // We'll need to load the plugin first to get its descriptor schema
-            // The deserialized config will be applied when the plugin is loaded
-            JsonObject configDescriptorObj = jsonObject.getAsJsonObject("configDescriptor");
-            ConfigDescriptor configDescriptor = context.deserialize(configDescriptorObj, ConfigDescriptor.class);
-            // Store this object for later use when the plugin is loaded
-            entry.setSerializedConfigDescriptor(configDescriptor);
-        }
+       if (jsonObject.has("hardResetOnLoad")) {
+            boolean hardResetFlag = jsonObject.get("hardResetOnLoad").getAsBoolean();
+            if (hardResetFlag) {
+               entry.hardResetConditions();
+            }
+       }
         
         return entry;
     }

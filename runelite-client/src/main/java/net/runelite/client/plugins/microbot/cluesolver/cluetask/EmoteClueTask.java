@@ -19,6 +19,7 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleep;
 
@@ -32,6 +33,7 @@ public class EmoteClueTask extends ClueTask {
     private boolean firstEmotePerformed = false;
     private boolean secondEmotePerformed = false;
     private boolean enemyDefeated = false;
+    private Future<?> currentTask;
 
     private static final String DOUBLE_AGENT_NAME = "Double Agent";
     private static final int URI_ID = NpcID.URI;
@@ -77,7 +79,7 @@ public class EmoteClueTask extends ClueTask {
 
         log.info("Walking to clue location: {}", location);
         backgroundExecutor.submit(() -> {
-            if (!Rs2Walker.walkTo(location, 1)) {
+            if (!Rs2Walker.walkTo(location, 0)) {
                 log.error("Failed to initiate walking to location: {}", location);
                 completeTask(false);
             }
@@ -86,6 +88,23 @@ public class EmoteClueTask extends ClueTask {
 
     @Subscribe
     public void onGameTick(GameTick event) {
+        if (null != currentTask && !currentTask.isDone()) {
+            log.warn("Previous task is still running, skipping this tick.");
+            return;
+        }
+
+        currentTask = backgroundExecutor.submit(() -> {
+            try {
+                processGameTick(event);
+            } catch (Exception e) {
+                log.error("Error processing game tick in EmoteClueTask: {}", e.getMessage(), e);
+                completeTask(false);
+            }
+        });
+
+    }
+
+    private void processGameTick(GameTick event) {
         switch (state) {
             case WALKING_TO_LOCATION:
                 handleWalkingToLocation();
@@ -116,7 +135,7 @@ public class EmoteClueTask extends ClueTask {
             state = State.PERFORMING_EMOTES;
         } else {
             log.debug("Walking to clue location: {}", location);
-            Rs2Walker.walkTo(location, 1);
+            Rs2Walker.walkTo(location, 0);
         }
     }
 
@@ -157,7 +176,7 @@ public class EmoteClueTask extends ClueTask {
     }
 
     private void interactWithUri() {
-        Rs2Npc.interact(URI_ID, "Talk-to");
+        Rs2Npc.interact("Uri", "Talk-to");
         log.info("Interacted with Uri.");
     }
 

@@ -27,7 +27,51 @@ package net.runelite.client.plugins.config;
 
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Strings;
+import java.awt.BorderLayout;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import javax.swing.JCheckBox;
+import javax.swing.JPasswordField;
 import lombok.Getter;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ScheduledExecutorService;
+import javax.inject.Inject;
+import javax.swing.AbstractAction;
+import javax.swing.GroupLayout;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JFileChooser;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
+import javax.swing.JToggleButton;
+import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.MatteBorder;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DocumentFilter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLite;
 import net.runelite.client.account.SessionManager;
@@ -49,28 +93,6 @@ import net.runelite.client.ui.components.MouseDragEventForwarder;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.SwingUtil;
 import net.runelite.client.util.Text;
-
-import javax.inject.Inject;
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.MatteBorder;
-import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.text.AbstractDocument;
-import javax.swing.text.AttributeSet;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.DocumentFilter;
-import java.awt.*;
-import java.awt.event.*;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
-import java.util.List;
-import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 
 @Slf4j
 class ProfilePanel extends PluginPanel {
@@ -535,7 +557,7 @@ class ProfilePanel extends PluginPanel {
             } else {
                 discordWebhookUrl.setText(profile.getDiscordWebhookUrl());
             }
-            
+
             discordWebhookUrl.setEditable(false);
             discordWebhookUrl.setEnabled(false);
             discordWebhookUrl.setOpaque(false);
@@ -712,9 +734,9 @@ class ProfilePanel extends PluginPanel {
                 }
             }
 
-            {
-                GroupLayout layout = new GroupLayout(this);
-                this.setLayout(layout);
+			{
+				GroupLayout layout = new GroupLayout(this);
+				this.setLayout(layout);
 
                 layout.setVerticalGroup(layout.createParallelGroup()
                         .addGroup(layout.createSequentialGroup()
@@ -864,7 +886,7 @@ class ProfilePanel extends PluginPanel {
             bankPin.requestFocusInWindow();
             bankPin.selectAll();
         }
-        
+
         private void startRenamingDiscordWebhookUrl() {
             discordWebhookUrl.setEnabled(true);
             discordWebhookUrl.setEditable(true);

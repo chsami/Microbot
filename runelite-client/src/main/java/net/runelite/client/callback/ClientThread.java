@@ -67,7 +67,7 @@ public class ClientThread
 	@SneakyThrows
 	@Deprecated(since = "1.7.9", forRemoval = true)
 	public <T> T runOnClientThread(Callable<T> method) {
-		if (Microbot.getClient().isClientThread()) {
+		if (client.isClientThread()) {
 			return method.call();
 		}
 		final FutureTask<T> task = new FutureTask<>(method);
@@ -80,7 +80,7 @@ public class ClientThread
 				return null;
             }
 			if (!Microbot.isDebug()) {
-				Microbot.log("Exception during task execution: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+				log.error("Exception during task execution: {}: {}", e.getClass().getSimpleName(), e.getMessage());
 			}
 			return null;
 		}
@@ -94,12 +94,12 @@ public class ClientThread
 	 */
 	@SneakyThrows
 	public <T> Optional<T> runOnClientThreadOptional(Callable<T> method) {
-		if (Microbot.getClient().isClientThread()) {
+		if (client.isClientThread()) {
 			try {
 				return Optional.ofNullable(method.call());
 			} catch (Exception e) {
 				if (!Microbot.isDebug()) {
-					Microbot.log("Exception in client thread execution: " + e.getMessage());
+					log.error("Exception in client thread execution: {}", e.getMessage());
 				}
 				return Optional.empty();
 			}
@@ -114,7 +114,7 @@ public class ClientThread
 				return Optional.empty();
 			}
 			if (!Microbot.isDebug()) {
-				Microbot.log("Exception during task execution: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+				log.error("Exception during task execution: {}: {}", e.getClass().getSimpleName(), e.getMessage());
 			}
 			return Optional.empty();
 		}

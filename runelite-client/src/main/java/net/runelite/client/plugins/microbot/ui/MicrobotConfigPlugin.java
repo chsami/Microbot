@@ -24,10 +24,10 @@
  */
 package net.runelite.client.plugins.microbot.ui;
 
+import com.google.inject.Provides;
+import javax.inject.Singleton;
 import net.runelite.api.MenuAction;
-import net.runelite.client.config.ChatColorConfig;
 import net.runelite.client.config.ConfigManager;
-import net.runelite.client.config.RuneLiteConfig;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.OverlayMenuClicked;
 import net.runelite.client.plugins.Plugin;
@@ -61,26 +61,26 @@ public class MicrobotConfigPlugin extends Plugin {
     private ConfigManager configManager;
 
     @Inject
-    private RuneLiteConfig runeLiteConfig;
-
-    @Inject
-    private ChatColorConfig chatColorConfig;
+    private MicrobotConfig microbotConfig;
 
     private MicrobotTopLevelConfigPanel topLevelConfigPanel;
 
     private NavigationButton navButton;
+
+	@Provides
+	@Singleton
+	MicrobotConfig provideConfig(ConfigManager configManager)
+	{
+		return configManager.getConfig(MicrobotConfig.class);
+	}
 
     @Override
     protected void startUp() throws Exception {
         MicrobotPluginListPanel pluginListPanel = pluginListPanelProvider.get();
         pluginListPanel.addFakePlugin(new MicrobotPluginConfigurationDescriptor(
                         "Microbot", "Microbot client settings",
-                        new String[]{"client", "notification", "size", "position", "window", "chrome", "focus", "font", "overlay", "tooltip", "infobox"},
-                        runeLiteConfig, configManager.getConfigDescriptor(runeLiteConfig)
-                ),
-                new MicrobotPluginConfigurationDescriptor(
-                        "Chat Color", "Recolor chat text", new String[]{"colour", "messages"},
-                        chatColorConfig, configManager.getConfigDescriptor(chatColorConfig)
+                        new String[]{"client"},
+                        microbotConfig, configManager.getConfigDescriptor(microbotConfig)
                 ));
         pluginListPanel.rebuildPluginList();
 

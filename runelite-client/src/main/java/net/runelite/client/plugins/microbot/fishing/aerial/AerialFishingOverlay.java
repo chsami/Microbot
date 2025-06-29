@@ -45,7 +45,7 @@ public class AerialFishingOverlay extends OverlayPanel {
                     .build());
 
             panelComponent.getChildren().add(LineComponent.builder()
-                    .left("Bait: " + (Rs2Inventory.hasItem("fish chunks") ? String.valueOf(Rs2Inventory.get("fish chunks").quantity) : "Not Present"))
+                    .left("Bait: " + (Rs2Inventory.hasItem("fish chunks") ? String.valueOf(Rs2Inventory.get("fish chunks").getQuantity()) : "Not Present"))
                     .build());
 
             panelComponent.getChildren().add(LineComponent.builder().build());

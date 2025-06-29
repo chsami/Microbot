@@ -121,7 +121,7 @@ public class ArceuusRcScript extends Script {
     public void chipEssence() {
         Rs2ItemModel chisel = Rs2Inventory.get(ItemID.CHISEL);
         if (Rs2Inventory.moveItemToSlot(chisel,27)) {
-            sleepUntil(()->Rs2Inventory.slotContains(27,chisel.id),6000);
+            sleepUntil(()->Rs2Inventory.slotContains(27,chisel.getId()),6000);
         }
         if(Rs2Inventory.combineClosest(ItemID.DARK_ESSENCE_BLOCK,ItemID.CHISEL))
             sleepUntil(()->!Rs2Inventory.hasItem(ItemID.DARK_ESSENCE_BLOCK),60000);

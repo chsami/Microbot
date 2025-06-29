@@ -640,8 +640,10 @@
 2674 3306 0	2674 3305 0	Open;Door;11719								1	
 											
 # Witchaven Dungeon											
-2697 3283 0	2696 9683 0	Climb-down;Old ruin entrance;18270								
-2696 9683 0	2697 3283 0	Climb-up;Exit;18354								
+2697 3283 0	2696 9683 0	Climb-down;Old ruin entrance;18270
+2696 9683 0	2697 3283 0	Climb-up;Exit;18354
+2700 9688 0	2323 5104 0	Enter;Wall opening;19124								2
+2323 5104 0	2700 9688 0	Enter;Passage;18412								2
 											
 # West Ardougne											
 2559 3300 0	2556 3300 0	Open;Ardougne Wall Door;8739									
@@ -2436,11 +2438,86 @@
 2892 3571 0	2892 3571 1	Climb-up;Ladder;16683								2	
 2892 3571 1	2892 3571 0	Climb-down;Ladder;16679								2	
 2891 3570 0	2891 3570 1	Climb-up;Ladder;16683								2	
-2891 3570 1	2891 3570 0	Climb-down;Ladder;16679								2	
-2894 3566 0	2894 3567 0	Open;Large door;3743									
-2894 3567 0	2894 3566 0	Open;Large door;3743									
-											
-# Wilderness											
+2891 3570 1	2891 3570 0	Climb-down;Ladder;16679								2
+2894 3566 0	2894 3567 0	Open;Large door;3743
+2894 3567 0	2894 3566 0	Open;Large door;3743
+
+# Ice Wolf Mountain
+2837 3517 0	2840 3517 0	Mine;Rock slide;2634		1265;1267;1269;12297;1273;1271;1275;11920;23680
+2837 3518 0	2840 3518 0	Mine;Rock slide;2634		1265;1267;1269;12297;1273;1271;1275;11920;23680
+2840 3517 0	2837 3517 0	Mine;Rock slide;2634		1265;1267;1269;12297;1273;1271;1275;11920;23680
+2840 3518 0	2837 3518 0	Mine;Rock slide;2634		1265;1267;1269;12297;1273;1271;1275;11920;23680
+2844 3516 0	2844 9916 0	Climb-down;Ladder;16680
+2845 3515 0	2845 9915 0	Climb-down;Ladder;16680
+2846 3516 0	2846 9916 0	Climb-down;Ladder;16680
+2845 3517 0	2845 9917 0	Climb-down;Ladder;16680
+2844 9916 0	2844 3516 0	Climb-up;Ladder;17385
+2845 9915 0	2845 3515 0	Climb-up;Ladder;17385
+2846 9916 0	2846 3516 0	Climb-up;Ladder;17385
+2845 9917 0	2845 3517 0	Climb-up;Ladder;17385
+2847 3519 0	2847 9919 0	Climb-down;Ladder;16680
+2848 3518 0	2848 9918 0	Climb-down;Ladder;16680
+2848 3520 0	2848 9920 0	Climb-down;Ladder;16680
+2849 3519 0	2849 9919 0	Climb-down;Ladder;16680
+2847 9919 0	2847 3519 0	Climb-up;Ladder;17385
+2848 9918 0	2848 3518 0	Climb-up;Ladder;17385
+2848 9920 0	2848 3520 0	Climb-up;Ladder;17385
+2849 9919 0	2849 3519 0	Climb-up;Ladder;17385
+2848 3512 0	2848 9912 0	Climb-down;Ladder;16680
+2847 3513 0	2847 9913 0	Climb-down;Ladder;16680
+2848 3514 0	2848 9914 0	Climb-down;Ladder;16680
+2849 3513 0	2849 9913 0	Climb-down;Ladder;16680
+2848 9912 0	2848 3512 0	Climb-up;Ladder;17385
+2847 9913 0	2847 3513 0	Climb-up;Ladder;17385
+2848 9914 0	2848 3514 0	Climb-up;Ladder;17385
+2849 9913 0	2849 3513 0	Climb-up;Ladder;17385
+2837 9926 0	2837 3526 0	Climb-up;Ladder;17385
+2838 9927 0	2838 3527 0	Climb-up;Ladder;17385
+2837 9928 0	2837 3528 0	Climb-up;Ladder;17385
+2845 9926 0	2845 3526 0	Climb-up;Ladder;17385
+2844 9925 0	2844 3525 0	Climb-up;Ladder;17385
+2845 9924 0	2845 3524 0	Climb-up;Ladder;17385
+2824 3506 0	2824 9906 0	Climb-down;Ladder;16680
+2823 3507 0	2823 9907 0	Climb-down;Ladder;16680
+2824 3508 0	2824 9908 0	Climb-down;Ladder;16680
+2825 3507 0	2825 9907 0	Climb-down;Ladder;16680
+2824 9906 0	2824 3506 0	Climb-up;Ladder;17385
+2823 9907 0	2823 3507 0	Climb-up;Ladder;17385
+2824 9908 0	2824 3508 0	Climb-up;Ladder;17385
+2825 9907 0	2825 3507 0	Climb-up;Ladder;17385
+2826 3510 0	2826 9910 0	Climb-down;Ladder;16680
+2827 3509 0	2827 9909 0	Climb-down;Ladder;16680
+2828 3510 0	2828 9910 0	Climb-down;Ladder;16680
+2827 3511 0	2827 9911 0	Climb-down;Ladder;16680
+2826 9910 0	2826 3510 0	Climb-up;Ladder;17385
+2827 9909 0	2827 3509 0	Climb-up;Ladder;17385
+2828 9910 0	2828 3510 0	Climb-up;Ladder;17385
+2827 9911 0	2827 3511 0	Climb-up;Ladder;17385
+2824 3513 0	2824 9913 0	Climb-down;Ladder;16680
+2823 3512 0	2823 9912 0	Climb-down;Ladder;16680
+2822 3513 0	2822 9913 0	Climb-down;Ladder;16680
+2823 3514 0	2823 9914 0	Climb-down;Ladder;16680
+2824 9913 0	2824 3513 0	Climb-up;Ladder;17385
+2823 9912 0	2823 3512 0	Climb-up;Ladder;17385
+2822 9913 0	2822 3513 0	Climb-up;Ladder;17385
+2823 9914 0	2823 3514 0	Climb-up;Ladder;17385
+2823 9929 0	2823 3529 0	Climb-up;Ladder;17385
+2824 9930 0	2824 3530 0	Climb-up;Ladder;17385
+2823 9931 0	2823 3531 0	Climb-up;Ladder;17385
+2857 3516 0	2857 9916 0	Climb-down;Ladder;16680
+2858 3517 0	2858 9917 0	Climb-down;Ladder;16680
+2857 3518 0	2857 9918 0	Climb-down;Ladder;16680
+2857 9916 0	2857 3516 0	Climb-up;Ladder;17385
+2858 9917 0	2858 3517 0	Climb-up;Ladder;17385
+2857 9918 0	2857 3518 0	Climb-up;Ladder;17385
+2858 3519 0	2858 9919 0	Climb-down;Ladder;16680
+2859 3520 0	2859 9920 0	Climb-down;Ladder;16680
+2860 3519 0	2860 9919 0	Climb-down;Ladder;16680
+2858 9919 0	2858 3519 0	Climb-up;Ladder;17385
+2859 9920 0	2859 3520 0	Climb-up;Ladder;17385
+2860 9919 0	2860 3519 0	Climb-up;Ladder;17385
+
+# Wilderness
 3158 3950 0	3158 3952 0	Slash;Web;733								4	
 3158 3952 0	3158 3950 0	Slash;Web;733								4	
 3232 10351 0	3233 3950 0	Use;Crevice;26763									
@@ -3498,8 +3575,8 @@
 3491 3231 0	3491 3230 0	Climb-over;Broken wall;12737								3	
 3490 3232 0	3490 9631 0	Climb-down;Trapdoor;12743								2	
 3490 9631 0	3490 3232 0	Climb-up;Ladder;12779								2	
-3582 3264 0	3582 3263 0	Climb-over;Broken fence;18411				In Aid of the Myreque					 
-3582 3263 0	3582 3264 0	Climb-over;Broken fence;18411				In Aid of the Myreque					 
+3582 3264 0	3582 3263 0	Climb-over;Broken fence;18411				In Aid of the Myreque
+3582 3263 0	3582 3264 0	Climb-over;Broken fence;18411				In Aid of the Myreque
 											
 # Haunted Mine											
 3446 3236 0	3444 3236 0	Climb-over;Mine cart;4918									
@@ -3872,9 +3949,18 @@
 3127 9337 0	3126 9337 0	Open;Door;11066								1	
 3126 9337 0	3127 9337 0	Open;Door;11066								1	
 											
-# Rellekka											
-2666 3694 0	2666 3694 1	Climb-up;Ladder;4187								2	
-2666 3694 1	2666 3694 0	Climb-down;Ladder;4189								2	
+# Rellekka
+2666 3694 0	2666 3694 1	Climb-up;Ladder;4187								2
+2666 3694 1	2666 3694 0	Climb-down;Ladder;4189								2
+2621 3694 0	2472 3994 0	Travel;Fremennik Boat;37432								2
+2472 3994 0	2621 3692 0	Travel;Fremennik Boat;37408								2
+2621 3693 0	2472 3994 0	Travel;Fremennik Boat;37432								2
+2473 3994 0	2621 3692 0	Travel;Fremennik Boat;37408								2
+2621 3692 0	2472 3994 0	Travel;Fremennik Boat;37432								2
+2621 3691 0	2472 3994 0	Travel;Fremennik Boat;37432								2
+2621 3690 0	2472 3994 0	Travel;Fremennik Boat;37432								2
+2598 3608 0	2596 3608 0	Cross;Broken bridge;4616								2
+2596 3608 0	2598 3608 0	Cross;Broken bridge;4615								2
 											
 # Isle of Stone											
 2465 4010 0	2461 10417 0	Enter;Cave;37433									
@@ -4703,7 +4789,7 @@
 2371 3620 0	2371 3622 0	Climb-over;Stile;19222								8	
 											
 # Taverly dungeon											
-2924 9803 0	2923 9803 0	Open;Gate;2623									Taverly gate
+2924 9803 0	2923 9803 0	Open;Gate;2623
 											
 # Fight Caves											
 2493 5174 0	2495 5174 0	Pass;Hot vent door;30266								2	

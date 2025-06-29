@@ -84,7 +84,7 @@ public enum GameTimer
 	SHADOW_VEIL(SpriteID.SPELL_SHADOW_VEIL, GameTimerImageType.SPRITE, "Shadow veil", true),
 	RESURRECT_THRALL(SpriteID.SPELL_RESURRECT_SUPERIOR_SKELETON, GameTimerImageType.SPRITE, "Resurrect thrall", false),
 	WARD_OF_ARCEUUS(SpriteID.SPELL_WARD_OF_ARCEUUS, GameTimerImageType.SPRITE, "Ward of Arceuus", true),
-	DEATH_CHARGE(SpriteID.SPELL_DEATH_CHARGE, GameTimerImageType.SPRITE, "Death charge", false),
+	DEATH_CHARGE(SpriteID.SPELL_DEATH_CHARGE, GameTimerImageType.SPRITE, "Death charge", 60, ChronoUnit.SECONDS, false),
 	MARK_OF_DARKNESS(SpriteID.SPELL_MARK_OF_DARKNESS, GameTimerImageType.SPRITE, "Mark of Darkness", true),
 	SHADOW_VEIL_COOLDOWN(SpriteID.SPELL_SHADOW_VEIL_DISABLED, GameTimerImageType.SPRITE, "Shadow veil cooldown", 30, ChronoUnit.SECONDS),
 	RESURRECT_THRALL_COOLDOWN(SpriteID.SPELL_RESURRECT_SUPERIOR_SKELETON_DISABLED, GameTimerImageType.SPRITE, "Resurrect thrall cooldown", 17, GAME_TICKS),
@@ -104,6 +104,7 @@ public enum GameTimer
 	SMOULDERING_GLAND(ItemID.SMOULDERING_GLAND, GameTimerImageType.ITEM, "Smouldering gland", false),
 	GOADING(ItemID._4DOSEGOADING, GameTimerImageType.ITEM, "Goading potion", false),
 	PRAYER_REGENERATION(ItemID._4DOSE1PRAYER_REGENERATION, GameTimerImageType.ITEM, "Prayer regeneration", false),
+	SURGE_POTION(ItemID._4DOSESURGE, GameTimerImageType.ITEM, "Surge potion", false),
 	;
 
 	@Nullable

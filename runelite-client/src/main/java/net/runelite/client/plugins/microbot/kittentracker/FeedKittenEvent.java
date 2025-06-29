@@ -21,7 +21,7 @@ public class FeedKittenEvent implements BlockingEvent {
     @Override
     public boolean validate() {
         return Rs2Inventory.contains(ItemID.RAW_KARAMBWANJI)
-                && (KittenPlugin.HUNGRY_FIRST_WARNING_TIME_LEFT_IN_SECONDS * 1000) >= kittenPlugin.getTimeBeforeHungry();
+                && (KittenPlugin.HUNGRY_FIRST_WARNING_TIME_LEFT_IN_SECONDS * 1000) >= kittenPlugin.getTimeBeforeHungry() && (kittenPlugin.playerHasFollower() && kittenPlugin.isKitten());
 
     }
 

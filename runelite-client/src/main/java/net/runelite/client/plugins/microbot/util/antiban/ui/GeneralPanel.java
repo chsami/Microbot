@@ -47,7 +47,7 @@ public class GeneralPanel extends JPanel {
         // Add the "Dev Debug" checkbox
         add(devDebug, gbc);
 
-        // Add the "Apply settings to all scripts (use at your own risk" checkbox
+        // Add the "Apply settings to all scripts (use at your own risk" checkbox)
         add(overwriteScriptSetting, gbc);
 
         // Add the "Universal Antiban Settings" button

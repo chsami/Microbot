@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.condition.time;
 
+import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -21,25 +22,41 @@ import java.util.Optional;
 @Slf4j
 @EqualsAndHashCode(callSuper = false, exclude = {})
 public class SingleTriggerTimeCondition extends TimeCondition {
-
+    @Getter
+    private transient ZonedDateTime targetTime;    
+    @Getter
+    private Duration definedDelay;
+    @Getter    
+    private long maximumNumberOfRepeats = 1;
     public static String getVersion() {
         return "0.0.1";
     }
-    @Getter
-    private final ZonedDateTime targetTime;
-    
+ 
     
     private static final DateTimeFormatter FORMATTER = 
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    
+     public SingleTriggerTimeCondition copy(boolean reset){
+        SingleTriggerTimeCondition copy = new SingleTriggerTimeCondition(this.targetTime, this.definedDelay, this.maximumNumberOfRepeats);
+        if (reset) {
+            copy.hardReset();
+        }        
+        return copy;
+    }
+    public SingleTriggerTimeCondition copy(){
+        SingleTriggerTimeCondition copy = new SingleTriggerTimeCondition(this.targetTime, this.definedDelay, this.maximumNumberOfRepeats);
+           
+        return copy;
+    }
     /**
      * Creates a condition that triggers once at the specified time
      * 
      * @param targetTime The time at which this condition should trigger
      */
-    public SingleTriggerTimeCondition(ZonedDateTime targetTime) {
-        super(1); // Only allow one trigger
+    public SingleTriggerTimeCondition(ZonedDateTime targetTime, Duration definedDelay, 
+            long maximumNumberOfRepeats) {
+        super(maximumNumberOfRepeats); // Only allow one trigger
         this.targetTime = targetTime;
+        this.definedDelay = definedDelay;
     }
     
     /**
@@ -50,9 +67,10 @@ public class SingleTriggerTimeCondition extends TimeCondition {
      */
     public static SingleTriggerTimeCondition afterDelay(long delaySeconds) {
         ZonedDateTime triggerTime = ZonedDateTime.now(ZoneId.systemDefault())
-                .plusSeconds(delaySeconds);
-        return new SingleTriggerTimeCondition(triggerTime);
+                .plusSeconds(delaySeconds);        
+        return new SingleTriggerTimeCondition(triggerTime ,Duration.ofSeconds(delaySeconds), 1);
     }
+
 
     @Override
     public boolean isSatisfied() {
@@ -169,6 +187,14 @@ public class SingleTriggerTimeCondition extends TimeCondition {
         lastValidResetTime = LocalDateTime.now();    
         log.debug("SingleTriggerTimeCondition reset, will trigger again at: {}", 
                 targetTime.format(FORMATTER));
+    }
+    @Override
+    public void hardReset() {
+        // Reset the condition state
+        this.currentValidResetCount = 0;
+        this.lastValidResetTime = LocalDateTime.now();
+        this.targetTime = ZonedDateTime.now(ZoneId.systemDefault())
+                .plusSeconds(definedDelay.getSeconds());
     }
 
     

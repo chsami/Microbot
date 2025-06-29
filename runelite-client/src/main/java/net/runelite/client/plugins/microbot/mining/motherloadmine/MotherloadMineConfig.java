@@ -3,6 +3,8 @@ package net.runelite.client.plugins.microbot.mining.motherloadmine;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
+import net.runelite.client.plugins.microbot.mining.motherloadmine.enums.MLMMiningSpot;
+import net.runelite.client.plugins.microbot.mining.motherloadmine.enums.MLMMiningSpotList;
 
 @ConfigGroup("MotherloadMine")
 public interface MotherloadMineConfig extends Config {
@@ -14,7 +16,7 @@ public interface MotherloadMineConfig extends Config {
             position = 0
     )
     default String GUIDE() {
-        return "1. Have a hammer in your inventory \n2. Start near the bank chest in motherload mine";
+        return "1. Have a hammer in your inventory or equipped \n2. Start near the bank chest in motherload mine";
     }
 
     @ConfigItem(
@@ -47,5 +49,16 @@ public interface MotherloadMineConfig extends Config {
     )
     default boolean upstairsHopperUnlocked() {
         return false;
+    }
+
+    // Mining Area Selection
+    @ConfigItem(
+            keyName = "miningArea",
+            name = "Mining Area",
+            description = "Choose the specific area to mine in Motherload Mine",
+            position = 4
+    )
+    default MLMMiningSpotList miningArea() {
+        return MLMMiningSpotList.ANY;
     }
 }

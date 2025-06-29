@@ -12,6 +12,7 @@ import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.antiban.enums.Activity;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
@@ -25,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 
 public class CannonballSmelterScript extends Script {
 
-    public static String version = "1.0.1";
+    public static String version = "1.0.2";
     private final ThreadLocalRandom random = ThreadLocalRandom.current();
     @Inject
     private CannonballSmelterConfig config;
@@ -47,6 +48,8 @@ public class CannonballSmelterScript extends Script {
     private boolean required() {return (Rs2Inventory.hasItem(ItemID.AMMO_MOULD) || Rs2Inventory.hasItem(ItemID.DOUBLE_AMMO_MOULD));}
 
     public boolean run(CannonballSmelterConfig config) {
+        Rs2Camera.setZoom(260);
+        Rs2Camera.adjustPitch(383);
         Rs2Antiban.resetAntibanSettings();
         cannonballAntiBan();
         Rs2AntibanSettings.actionCooldownChance = 0.1;

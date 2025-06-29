@@ -33,12 +33,16 @@ import java.util.Optional;
 @Slf4j
 public class ScheduleFormPanel extends JPanel {
     private final SchedulerPlugin plugin;
+    
+    // Add a flag to track if the combo box change is from user or programmatic
+    private boolean isUserAction = true;
 
     @Getter
     private JComboBox<String> pluginComboBox;
     private JComboBox<String> timeConditionTypeComboBox;
     private JCheckBox randomSchedulingCheckbox;
     private JCheckBox timeBasedStopConditionCheckbox;
+    private JCheckBox allowContinueCheckbox; // Add new checkbox field
     @Getter
     private JSpinner prioritySpinner;
     private JCheckBox defaultPluginCheckbox;
@@ -50,6 +54,7 @@ public class ScheduleFormPanel extends JPanel {
     private JCheckBox selectedPluginEnabledCheckbox;
     private JCheckBox selectedPluginRandomCheckbox;
     private JCheckBox selectedPluginTimeStopCheckbox;
+    private JCheckBox selectedPluginAllowContinueCheckbox; // Add new checkbox field for properties panel
 
     // Statistics labels
     private JLabel selectedPluginNameLabel;
@@ -181,7 +186,7 @@ public class ScheduleFormPanel extends JPanel {
 
         // Add listener to clear table selection when ComboBox changes
         pluginComboBox.addActionListener(e -> {
-            if (pluginComboBox.getSelectedItem() != null && selectionChangeListener != null) {
+            if (pluginComboBox.getSelectedItem() != null && selectionChangeListener != null && isUserAction) {
                 selectionChangeListener.run();
             }
         });
@@ -226,6 +231,16 @@ public class ScheduleFormPanel extends JPanel {
         timeBasedStopConditionCheckbox.setForeground(Color.WHITE);
         timeBasedStopConditionCheckbox.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         checkboxesPanel.add(timeBasedStopConditionCheckbox);
+
+        // Allow continue checkbox
+        allowContinueCheckbox = new JCheckBox("Allow continue");
+        allowContinueCheckbox.setSelected(false);
+        allowContinueCheckbox.setToolTipText(
+            "<html>When enabled, the plugin will be allowed to continue running after its scheduled time.<br>" +
+            "This can be useful for long-running tasks that should not be interrupted.</html>");
+        allowContinueCheckbox.setForeground(Color.WHITE);
+        allowContinueCheckbox.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        checkboxesPanel.add(allowContinueCheckbox);
 
         // Add checkboxes panel to the top
         pluginSettingsPanel.add(checkboxesPanel, BorderLayout.NORTH);
@@ -419,9 +434,17 @@ public class ScheduleFormPanel extends JPanel {
             "When enabled, the scheduler will prompt you to add a time-based stop condition for this plugin.");
         editorPanel.add(selectedPluginTimeStopCheckbox, gbc);
         
-        // Plugin run statistics
+        // Add Allow Continue checkbox
         gbc.gridx = 0;
         gbc.gridy = 6;
+        gbc.gridwidth = 2;
+        selectedPluginAllowContinueCheckbox = createPropertyCheckbox("Allow Continue After Interruption", 
+            "When enabled, allows the plugin to continue running after an interruption");
+        editorPanel.add(selectedPluginAllowContinueCheckbox, gbc);
+        
+        // Plugin run statistics
+        gbc.gridx = 0;
+        gbc.gridy = 7;
         gbc.gridwidth = 2;
         JPanel statsPanel = new JPanel(new GridLayout(0, 1, 5, 5));
         statsPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
@@ -449,12 +472,12 @@ public class ScheduleFormPanel extends JPanel {
         statsPanel.add(lastStopReasonLabel);
         
         gbc.gridx = 0;
-        gbc.gridy = 7;
+        gbc.gridy = 8;
         editorPanel.add(statsPanel, gbc);
         
         // Save changes button with prominent styling
         gbc.gridx = 0;
-        gbc.gridy = 8;
+        gbc.gridy = 9;
         gbc.gridwidth = 2;
         saveChangesButton = new JButton("Save Changes");
         saveChangesButton.setBackground(new Color(76, 175, 80)); // Green
@@ -467,7 +490,9 @@ public class ScheduleFormPanel extends JPanel {
         selectedPluginEnabledCheckbox.addItemListener(e -> {
             if (selectedPlugin != null) {
                 selectedPlugin.setEnabled(selectedPluginEnabledCheckbox.isSelected());
-                updateSelectedPlugin();
+                if (tabbedPane.getSelectedIndex() == 1) {
+                    updateSelectedPlugin();
+                }                
                 updateControlButton();
                 updateStatistics();
             }
@@ -476,14 +501,37 @@ public class ScheduleFormPanel extends JPanel {
         selectedPluginRandomCheckbox.addItemListener(e -> {
             if (selectedPlugin != null) {
                 selectedPlugin.setAllowRandomScheduling(selectedPluginRandomCheckbox.isSelected());
-                updateSelectedPlugin();
+                if (tabbedPane.getSelectedIndex() == 1) {
+                    updateSelectedPlugin();
+                }       
             }
         });
         
         selectedPluginTimeStopCheckbox.addItemListener(e -> {
             if (selectedPlugin != null) {
                 selectedPlugin.setNeedsStopCondition(selectedPluginTimeStopCheckbox.isSelected());
-                updateSelectedPlugin();
+                if (tabbedPane.getSelectedIndex() == 1) {
+                    updateSelectedPlugin();
+                }       
+            }
+        });
+        
+        // Add listener for the new Allow Continue checkbox
+        selectedPluginAllowContinueCheckbox.addItemListener(e -> {
+            if (selectedPlugin != null) {
+                selectedPlugin.setAllowContinue(selectedPluginAllowContinueCheckbox.isSelected());
+                if (tabbedPane.getSelectedIndex() == 1) {
+                    updateSelectedPlugin();
+                }       
+            }
+        });
+        
+        selectedPluginDefaultCheckbox.addItemListener(e -> {
+            if (selectedPlugin != null) {
+                selectedPlugin.setDefault(selectedPluginDefaultCheckbox.isSelected());
+                if (tabbedPane.getSelectedIndex() == 1) {
+                    updateSelectedPlugin();
+                }       
             }
         });
         
@@ -508,9 +556,11 @@ public class ScheduleFormPanel extends JPanel {
                     } else if ((Integer) selectedPluginPrioritySpinner.getValue() == 0) {
                         selectedPluginPrioritySpinner.setValue(1); // Non-default get priority 1
                     }
-                    selectedPlugin.setDefault(e.getStateChange() == ItemEvent.SELECTED);
-                    selectedPlugin.setPriority((Integer) selectedPluginPrioritySpinner.getValue());
-                    updateSelectedPlugin();
+                    
+                    if (tabbedPane.getSelectedIndex() == 1) {
+                    
+                        updateSelectedPlugin();
+                    }
                 }
             } finally {
                 updatingValues = false; // Always reset flag
@@ -523,17 +573,16 @@ public class ScheduleFormPanel extends JPanel {
             updatingValues = true; // Set flag to prevent recursive updates
             try {
                 if (selectedPlugin != null) {
-                    int priority = (Integer) selectedPluginPrioritySpinner.getValue();
-                    selectedPlugin.setPriority(priority);
-                    
+                    int priority = (Integer) selectedPluginPrioritySpinner.getValue();                    
                     // Update default checkbox based on priority value
                     boolean shouldBeDefault = priority == 0;
                     if (selectedPluginDefaultCheckbox.isSelected() != shouldBeDefault) {
                         selectedPluginDefaultCheckbox.setSelected(shouldBeDefault);
                     }
-                    
-                    selectedPlugin.setDefault(shouldBeDefault);
-                    updateSelectedPlugin();
+                    if (tabbedPane.getSelectedIndex() == 1) {                    
+                        updateSelectedPlugin();
+                    }                    
+                   
                 }
             } finally {
                 updatingValues = false; // Always reset flag
@@ -577,11 +626,12 @@ public class ScheduleFormPanel extends JPanel {
         runsLabel.setText("Total Runs: " + selectedPlugin.getRunCount());
         
         // Update last run time
-        ZonedDateTime lastRunTime = selectedPlugin.getLastRunTime();
-        if (lastRunTime != null) {
-            lastRunLabel.setText("Last Run: " + lastRunTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        ZonedDateTime lastEndRunTime = selectedPlugin.getLastRunEndTime();
+        Duration lastRunTime = selectedPlugin.getLastRunDuration();
+        if (lastEndRunTime != null) {
+            lastRunLabel.setText("Last End: " + lastEndRunTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))+ " (" + lastRunTime.toHoursPart() + ":" + lastRunTime.toMinutesPart() + ":" + lastRunTime.toSecondsPart() + ")");
         } else {
-            lastRunLabel.setText("Last Run: Never");
+            lastRunLabel.setText("Last End: Never");
         }
         
         // Update duration if available
@@ -706,6 +756,7 @@ public class ScheduleFormPanel extends JPanel {
             // set tab 1 not showing
             // Disable the properties tab when no plugin is selected
             tabbedPane.setEnabledAt(1, false);
+            setEditMode(false);
             return;
         }
         tabbedPane.setEnabledAt(1, true);
@@ -736,12 +787,16 @@ public class ScheduleFormPanel extends JPanel {
         // Set time-based stop condition checkbox
         timeBasedStopConditionCheckbox.setSelected(entry.isNeedsStopCondition());
         
+        // Set allow continue checkbox
+        allowContinueCheckbox.setSelected(entry.isAllowContinue());
+        
         // Set priority spinner
         prioritySpinner.setValue(entry.getPriority());
         
         // Set default checkbox
         defaultPluginCheckbox.setSelected(entry.isDefault());
-                
+        // Update the properties panel
+        updatePropertiesPanel(entry);        
         
         // Determine the time condition type and set appropriate panel
         TimeCondition startCondition = null;
@@ -803,8 +858,7 @@ public class ScheduleFormPanel extends JPanel {
         
         // Update the control button to reflect the current plugin
         updateControlButton();        
-        // Update the properties panel
-        updatePropertiesPanel(entry);
+        
 
     }
     
@@ -847,6 +901,7 @@ public class ScheduleFormPanel extends JPanel {
             // Update other checkboxes
             selectedPluginRandomCheckbox.setSelected(entry.isAllowRandomScheduling());
             selectedPluginTimeStopCheckbox.setSelected(entry.isNeedsStopCondition());
+            selectedPluginAllowContinueCheckbox.setSelected(entry.isAllowContinue());
             
             // Update statistics
             updateStatistics();
@@ -881,6 +936,8 @@ public class ScheduleFormPanel extends JPanel {
         
         // Reset properties panel
         updatePropertiesPanel(null);
+        tabbedPane.setEnabledAt(1, false);
+        tabbedPane.setSelectedIndex(0);
     }
 
     public PluginScheduleEntry getPluginFromForm(PluginScheduleEntry existingPlugin) {
@@ -912,24 +969,31 @@ public class ScheduleFormPanel extends JPanel {
             log.warn("Could not create time condition from form");
             return null;
         }
-        
+   
         // Get other settings
         boolean randomScheduling = randomSchedulingCheckbox.isSelected();
         boolean needsStopCondition = timeBasedStopConditionCheckbox.isSelected();
+        boolean allowContinue = allowContinueCheckbox.isSelected();
         int priority = (Integer) prioritySpinner.getValue();
         boolean isDefault = defaultPluginCheckbox.isSelected();
         
         // Create the plugin schedule entry
         PluginScheduleEntry entry;
+        log.debug("values for PluginScheduleEntry entry {}\n priority {}\n isDefault {} \n needsStopCondition {} \n randomScheduling {}",pluginName,priority, isDefault, needsStopCondition, randomScheduling);
         if (existingPlugin != null) {            
+            log.debug("Updating existing plugin entry");
+                
             // Update the existing plugin with new values
             existingPlugin.updatePrimaryTimeCondition(timeCondition);
             existingPlugin.setAllowRandomScheduling(randomScheduling);
             existingPlugin.setNeedsStopCondition(needsStopCondition);
+            existingPlugin.setAllowContinue(allowContinue);
             existingPlugin.setPriority(priority);
             existingPlugin.setDefault(isDefault);
             entry = existingPlugin;
         } else {
+
+            log.debug("Creating new plugin entry");
             // Create a new plugin schedule entry
             entry = new PluginScheduleEntry(
                     pluginName,
@@ -938,10 +1002,18 @@ public class ScheduleFormPanel extends JPanel {
                     randomScheduling
             );
             entry.setNeedsStopCondition(needsStopCondition);
+            entry.setAllowContinue(allowContinue);
             entry.setPriority(priority);
             entry.setDefault(isDefault);
         }
-        
+        if (entry != null) {
+            randomSchedulingCheckbox.setSelected(entry.isAllowRandomScheduling());
+            timeBasedStopConditionCheckbox.setSelected(entry.isNeedsStopCondition());
+            allowContinueCheckbox.setSelected(entry.isAllowContinue());
+            prioritySpinner.setValue(entry.getPriority());
+            defaultPluginCheckbox.setSelected(entry.isDefault());
+            updatePropertiesPanel(entry);
+        }
         return entry;
     }
     
@@ -951,10 +1023,10 @@ public class ScheduleFormPanel extends JPanel {
     private void updateSelectedPlugin() {
         if (selectedPlugin == null) return;
         
-        // Get the values from the properties panel
         boolean enabled = selectedPluginEnabledCheckbox.isSelected();
         boolean randomScheduling = selectedPluginRandomCheckbox.isSelected();
         boolean needsStopCondition = selectedPluginTimeStopCheckbox.isSelected();
+        boolean allowContinue = selectedPluginAllowContinueCheckbox.isSelected();
         int priority = (Integer) selectedPluginPrioritySpinner.getValue();
         boolean isDefault = selectedPluginDefaultCheckbox.isSelected();
         
@@ -962,6 +1034,7 @@ public class ScheduleFormPanel extends JPanel {
         selectedPlugin.setEnabled(enabled);
         selectedPlugin.setAllowRandomScheduling(randomScheduling);
         selectedPlugin.setNeedsStopCondition(needsStopCondition);
+        selectedPlugin.setAllowContinue(allowContinue);
         selectedPlugin.setPriority(priority);
         selectedPlugin.setDefault(isDefault);
         
@@ -978,16 +1051,38 @@ public class ScheduleFormPanel extends JPanel {
     public void updateControlButton() {
         boolean isRunning = selectedPlugin != null && selectedPlugin.isRunning();
         boolean isEnabled = selectedPlugin != null && selectedPlugin.isEnabled();
+        boolean anyPluginRunning = plugin.isScheduledPluginRunning();
         
         if (isRunning) {
+            // If this plugin is running, show Stop button
             controlButton.setText("Stop Plugin");
             controlButton.setBackground(ColorScheme.PROGRESS_ERROR_COLOR);
         } else {
+            // Otherwise show Run Now button
             controlButton.setText("Run Now");
             controlButton.setBackground(ColorScheme.PROGRESS_COMPLETE_COLOR);
         }
         
-        controlButton.setEnabled(selectedPlugin != null && isEnabled);
+        // Disable the button if:
+        // 1. No plugin is selected, OR
+        // 2. Selected plugin is disabled, OR
+        // 3. Any plugin is running (not just the selected one) and we're showing "Run Now"
+        controlButton.setEnabled(
+            selectedPlugin != null && 
+            isEnabled && 
+            (!anyPluginRunning || isRunning)
+        );
+
+        // Update tooltip to explain why button might be disabled
+        if (selectedPlugin == null) {
+            controlButton.setToolTipText("No plugin selected");
+        } else if (!isEnabled) {
+            controlButton.setToolTipText("Plugin is disabled");
+        } else if (anyPluginRunning && !isRunning) {
+            controlButton.setToolTipText("Cannot start: Another plugin is already running");
+        } else {
+            controlButton.setToolTipText(isRunning ? "Stop the running plugin" : "Run this plugin now");
+        }
     }
 
     private void onControlButtonClicked(ActionEvent e) {
@@ -997,10 +1092,23 @@ public class ScheduleFormPanel extends JPanel {
         
         if (selectedPlugin.isRunning()) {
             // Stop the plugin
-            //plugin.stopPlugin(selectedPlugin);
+            if (plugin.getCurrentPlugin()!= null && plugin.getCurrentPlugin().equals(selectedPlugin)) {
+                plugin.forceStopCurrentPluginScheduleEntry(true);
+            }else{
+                plugin.forceStopCurrentPluginScheduleEntry(false);
+            }
         } else {
-            // Start the plugin
-            //plugin.startPlugin(selectedPlugin);
+            // Start the plugin using the new manualStartPlugin method
+            String result = plugin.manualStartPlugin(selectedPlugin);
+            if (!result.isEmpty()) {
+                // Show error message if starting failed
+                JOptionPane.showMessageDialog(
+                    SwingUtilities.getWindowAncestor(this),
+                    result,
+                    "Cannot Start Plugin",
+                    JOptionPane.WARNING_MESSAGE
+                );
+            }
         }
         
         // Update control button and statistics

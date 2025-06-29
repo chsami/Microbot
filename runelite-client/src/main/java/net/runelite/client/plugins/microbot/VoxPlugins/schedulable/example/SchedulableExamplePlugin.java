@@ -71,8 +71,7 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
     private WorldPoint lastLocation = null;
     private int itemsCollected = 0;
     private int npcKilled = 0;
-    private LocationStartNotificationOverlay locationOverlay;
-    private Condition currentCondition;
+    private LocationStartNotificationOverlay locationOverlay;    
     private LockCondition lockCondition;
     private LogicalCondition startCondition = null;
     private LogicalCondition stopCondition = null;
@@ -110,7 +109,7 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
     private final HotkeyListener lockConditionHotkeyListener = new HotkeyListener(() -> config.lockConditionHotkey()) {
         @Override
         public void hotkeyPressed() {
-            boolean newState = toggleLock(currentCondition);
+            boolean newState = toggleLock((Condition)(stopCondition));
             log.info("Lock condition toggled: {}", newState ? "LOCKED - " + config.lockDescription() : "UNLOCKED");
         }
     };
@@ -267,9 +266,8 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
          // Add a lock condition that can be toggled manually
          // NOTE: This condition uses AND logic with the other conditions since it's in an AND condition
          AndCondition andCondition = new AndCondition();
-         andCondition.addCondition(orCondition);
-         andCondition.addCondition(lockCondition);
-         this.currentCondition = andCondition;         
+         //andCondition.addCondition(orCondition);
+         //andCondition.addCondition(lockCondition);         
          //log.info("\nCreated stop condition: \n{}", andCondition.getDescription());
          return andCondition;
        

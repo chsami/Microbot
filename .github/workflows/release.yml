@@ -7,7 +7,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest  # You can choose a different runner if needed
-    permissions: write-all
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -27,18 +28,18 @@ jobs:
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "1.8.8.1"
+          automatic_release_tag: "1.9.2"
           prerelease: false
-          title: "Release 1.8.8.1"
+          title: "Release 1.9.2"
           files: |
             /home/runner/work/Microbot/Microbot/runelite-client/target/microbot-*.jar
 
-      - name: Upload Jar
-        uses: "bacongobbler/azure-blob-storage-upload@main"
+      - name: Upload Jar to Hetzner
+        uses: appleboy/scp-action@v0.1.7
         with:
-          source_dir: runelite-client/target
-          container_name: microbot
-          connection_string: ${{ secrets.blobConnectionString }}
-          extra_args: '--pattern *.jar --destination-path release'
-          # WARNING: this will overwrite existing blobs in your blob storage
-          overwrite: 'true'
+          host: ${{ secrets.PROD_HOST }}
+          username: root
+          key: ${{ secrets.PROD_SSH_KEY }}
+          source: runelite-client/target/microbot-*.jar
+          target: /var/www/files/releases/microbot/stable/
+          strip_components: 2

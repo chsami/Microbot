@@ -9,7 +9,7 @@ public class GabulhasKarambwansInfo {
         WALKING_TO_RING_TO_BANK,
         WALKING_TO_BANK,
         BANKING,
-        WALKING_TO_RING_TO_FISH,
+        WALKING_TO_FISH,
 
 
         }

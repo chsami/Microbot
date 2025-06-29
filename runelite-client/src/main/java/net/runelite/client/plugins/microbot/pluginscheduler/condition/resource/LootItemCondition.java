@@ -544,7 +544,7 @@ public class LootItemCondition extends ResourceCondition {
         if (event.getContainerId() != InventoryID.INVENTORY.getId()) {
             return;
         }
-        
+        log.info("Item container changed: {}", event.getContainerId());
         int currentCount = getCurrentInventoryCount();
         
         // Add to pending events if inventory count changed

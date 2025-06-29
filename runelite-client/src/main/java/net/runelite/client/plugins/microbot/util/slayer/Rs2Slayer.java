@@ -18,14 +18,24 @@ import net.runelite.client.plugins.microbot.util.slayer.enums.ProtectiveEquipmen
 import net.runelite.client.plugins.microbot.util.slayer.enums.SlayerMaster;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.slayer.Task;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * The type Rs 2 slayer.
+ */
 @Slf4j
 public class Rs2Slayer {
 
+    /**
+     * The constant slayerTaskMonsterTarget.
+     */
     public static String slayerTaskMonsterTarget;
+    /**
+     * The constant blacklistedSlayerMonsters.
+     */
     public static List<String> blacklistedSlayerMonsters = new ArrayList<>();
 
     /**
@@ -113,10 +123,22 @@ public class Rs2Slayer {
         return monsterLocation;
     }
 
+    /**
+     * Gets slayer task location.
+     *
+     * @param minClustering the min clustering
+     *
+     * @return the slayer task location
+     */
     public static MonsterLocation getSlayerTaskLocation(int minClustering) {
         return getSlayerTaskLocation(minClustering, true);
     }
 
+    /**
+     * Gets slayer task location.
+     *
+     * @return the slayer task location
+     */
     public static MonsterLocation getSlayerTaskLocation() {
         return getSlayerTaskLocation(3, true);
     }
@@ -156,6 +178,11 @@ public class Rs2Slayer {
         return Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getItemDefinition(itemId).getName()).orElse("");
     }
 
+    /**
+     * Gets slayer task weakness.
+     *
+     * @return the slayer task weakness
+     */
     public static int getSlayerTaskWeakness() {
         String taskName = getSlayerTask();
         if (taskName == null) {
@@ -194,10 +221,24 @@ public class Rs2Slayer {
         return itemName == null ? "None" : itemName;
     }
 
+    /**
+     * Walk to slayer master boolean.
+     *
+     * @param master the master
+     *
+     * @return the boolean
+     */
     public static boolean walkToSlayerMaster(SlayerMaster master) {
         return Rs2Walker.walkTo(master.getWorldPoint());
     }
 
+    /**
+     * Prepare item transports list.
+     *
+     * @param cachedMonsterLocation the cached monster location
+     *
+     * @return the list
+     */
     public static List<Transport> prepareItemTransports(WorldPoint cachedMonsterLocation) {
         ShortestPathPlugin.getPathfinderConfig().setUseBankItems(true);
         List<Transport> transports = Rs2Walker.getTransportsForPath(Rs2Walker.getWalkPath(cachedMonsterLocation), 0)
@@ -232,13 +273,20 @@ public class Rs2Slayer {
         return false;
     }
 
-    private static List<Transport> getMissingItemTransports(List<Transport> transports) {
+    private static List<Transport> getMissingItemTransports(@NotNull List<Transport> transports) {
         return transports.stream()
                 .filter(t -> !hasRequiredTeleportItem(t))
                 .collect(Collectors.toList());
     }
 
-    public static List<Integer> getMissingItemIds(List<Transport> transports) {
+    /**
+     * Gets missing item ids.
+     *
+     * @param transports the transports
+     *
+     * @return the missing item ids
+     */
+    public static List<Integer> getMissingItemIds(@NotNull List<Transport> transports) {
         return transports.stream()
                 .flatMap(transport -> transport.getItemIdRequirements()
                         .stream()

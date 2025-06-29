@@ -4,6 +4,7 @@ package net.runelite.client.plugins.microbot.fletching;
 import lombok.Getter;
 import lombok.Setter;
 import net.runelite.api.*;
+import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
@@ -32,6 +33,10 @@ class ProgressiveFletchingModel {
 public class FletchingScript extends Script {
 
     public static String version = "1.6.2";
+
+    // The fletching interface widget group ID
+    private static final int FLETCHING_WIDGET_GROUP_ID = 17694736;
+
     ProgressiveFletchingModel model = new ProgressiveFletchingModel();
 
     String primaryItemToFletch = "";
@@ -190,7 +195,7 @@ public class FletchingScript extends Script {
 
     private void fletch(FletchingConfig config) {
         Rs2Inventory.combineClosest(primaryItemToFletch, secondaryItemToFletch);
-        sleepUntil(() -> Rs2Widget.getWidget(17694736) != null, 5000);
+        sleepUntil(() -> Rs2Widget.getWidget(FLETCHING_WIDGET_GROUP_ID) != null, 5000);
         char option;
         if (fletchingMode == FletchingMode.PROGRESSIVE || fletchingMode == FletchingMode.PROGRESSIVE_STRUNG) {
 
@@ -283,5 +288,12 @@ public class FletchingScript extends Script {
         Rs2Antiban.resetAntibanSettings();
         super.shutdown();
     }
-}
 
+    public void onWidgetLoaded(WidgetLoaded event) {
+        if (event.getGroupId() == FLETCHING_WIDGET_GROUP_ID) {
+            hasLeveledUp = false;
+            Microbot.status = "Fletching";
+            Microbot.showMessage(Microbot.status);
+        }
+    }
+}

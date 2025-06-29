@@ -7,7 +7,7 @@ import net.runelite.client.config.ConfigItem;
 import net.runelite.client.plugins.microbot.runecrafting.gotr.data.Mode;
 
 @ConfigGroup("gotr")
-@ConfigInformation("This plugin is in preview & only supports masses. <br /> The script will not create elemental guardians. <br /> Have fun and don't get banned! <br /> If using NPC Contact to repair pouches, make sure you have Abyssal book in your bank!")
+@ConfigInformation("This plugin is in preview & only supports masses. <br /> The script will not create elemental guardians. <br /> Have fun and don't get banned! <br /> If using NPC Contact to repair pouches, make sure you have Abyssal book in your bank! <br /><br /> <b>NB</b> NPC Contact pouch repair doesn't seem to work; pay Apprentice Cordelia 25 abyssal pearls and have some in your inventory for smooth sailing. ")
 public interface GotrConfig extends Config {
 
     @ConfigItem(
@@ -38,5 +38,15 @@ public interface GotrConfig extends Config {
     )
     default int maxAmountEssence() {
         return 20;
+    }
+
+    @ConfigItem(
+            keyName = "shouldDepositRunes",
+            name = "Deposit runes?",
+            description = "Should you deposit runes into the deposit pool?",
+            position = 3
+    )
+    default boolean shouldDepositRunes() {
+        return true;
     }
 }

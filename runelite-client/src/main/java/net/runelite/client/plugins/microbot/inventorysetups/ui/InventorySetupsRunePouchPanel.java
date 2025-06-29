@@ -24,6 +24,9 @@
  */
 package net.runelite.client.plugins.microbot.inventorysetups.ui;
 
+import java.awt.GridLayout;
+import java.util.ArrayList;
+import javax.swing.JPanel;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetupsItem;
 import net.runelite.client.plugins.microbot.inventorysetups.MInventorySetupsPlugin;
@@ -38,6 +41,7 @@ import java.util.Set;
 import net.runelite.api.ItemID;
 import net.runelite.api.Varbits;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.ui.ColorScheme;
 
 public class InventorySetupsRunePouchPanel extends InventorySetupsAmmunitionPanel
 {
@@ -57,6 +61,31 @@ public class InventorySetupsRunePouchPanel extends InventorySetupsAmmunitionPane
 	InventorySetupsRunePouchPanel(ItemManager itemManager, MInventorySetupsPlugin plugin)
 	{
 		super(itemManager, plugin, "Rune Pouch");
+	}
+
+	@Override
+	public void setupContainerPanel(JPanel containerSlotsPanel)
+	{
+		ammoSlots = new ArrayList<>();
+		ammoSlotsAddedToPanel = new ArrayList<>();
+		for (int i = 0; i < getSlotsCount(); i++)
+		{
+			ammoSlots.add(new InventorySetupsSlot(ColorScheme.DARKER_GRAY_COLOR, getSlotId(), i));
+			ammoSlotsAddedToPanel.add(Boolean.TRUE);
+		}
+
+		this.gridLayout = new GridLayout(1, 4, 1, 1);
+		containerSlotsPanel.setLayout(gridLayout);
+
+		for (final InventorySetupsSlot slot : ammoSlots)
+		{
+			containerSlotsPanel.add(slot);
+			InventorySetupsSlot.addStackMouseListenerToSlot(plugin, slot);
+			InventorySetupsSlot.addUpdateFromContainerMouseListenerToSlot(plugin, slot);
+			InventorySetupsSlot.addUpdateFromSearchMouseListenerToSlot(plugin, slot, true);
+			InventorySetupsSlot.addFuzzyMouseListenerToSlot(plugin, slot);
+			InventorySetupsSlot.addRemoveMouseListenerToSlot(plugin, slot);
+		}
 	}
 
 	@Override

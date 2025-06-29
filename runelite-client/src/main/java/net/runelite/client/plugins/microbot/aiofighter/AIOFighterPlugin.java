@@ -134,13 +134,10 @@ public class AIOFighterPlugin extends Plugin {
         lootScript.run(config);
         cannonScript.run(config);
         attackNpc.run(config);
-        //combatPotion.run(config);
         foodScript.run(config);
-        //prayerPotionScript.run(config);
         safeSpotScript.run(config);
         flickerScript.run(config);
         useSpecialAttackScript.run(config);
-        //antiPoisonScript.run(config);
         buryScatterScript.run(config);
         attackStyleScript.run(config);
         bankerScript.run(config);
@@ -157,13 +154,10 @@ public class AIOFighterPlugin extends Plugin {
         lootScript.shutdown();
         cannonScript.shutdown();
         attackNpc.shutdown();
-        //combatPotion.shutdown();
         foodScript.shutdown();
-        //prayerPotionScript.shutdown();
         safeSpotScript.shutdown();
         flickerScript.shutdown();
         useSpecialAttackScript.shutdown();
-        //antiPoisonScript.shutdown();
         buryScatterScript.shutdown();
         attackStyleScript.shutdown();
         bankerScript.shutdown();

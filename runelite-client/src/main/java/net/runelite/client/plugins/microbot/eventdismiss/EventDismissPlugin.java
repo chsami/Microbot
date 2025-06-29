@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.microbot.Microbot;
 
 import java.awt.*;
 
@@ -19,11 +20,11 @@ import java.awt.*;
 @Slf4j
 public class EventDismissPlugin extends Plugin {
     @Inject
-    EventDismissScript eventDismissScript;
-    @Inject
     private ConfigManager configManager;
     @Inject
     private EventDismissConfig config;
+
+    private DismissNpcEvent dismissNpcEvent;
 
     @Provides
     EventDismissConfig provideConfig(ConfigManager configManager) {
@@ -32,10 +33,12 @@ public class EventDismissPlugin extends Plugin {
 
     @Override
     protected void startUp() throws AWTException {
-        eventDismissScript.run(config);
+        dismissNpcEvent = new DismissNpcEvent(config);
+        Microbot.getBlockingEventManager().add(dismissNpcEvent);
     }
 
     protected void shutDown() {
-        eventDismissScript.shutdown();
+        Microbot.getBlockingEventManager().remove(dismissNpcEvent);
+        dismissNpcEvent = null;
     }
 }

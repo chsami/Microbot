@@ -17,10 +17,11 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 @Slf4j
 public class MusicClueTask extends ClueTask {
-
+    private Future<?> currentTask;
     private final MusicClue clue;
     private final EventBus eventBus;
     private final ExecutorService backgroundExecutor;
@@ -56,17 +57,33 @@ public class MusicClueTask extends ClueTask {
         }
 
         log.info("Submitting walking task to background executor for location: {}", location);
-        backgroundExecutor.submit(() -> {
+
             boolean startedWalking = Rs2Walker.walkTo(location, 1);
             if (!startedWalking) {
                 log.error("Failed to initiate walking to location: {}", location);
                 completeTask(false);
             }
-        });
+
     }
 
     @Subscribe
     public void onGameTick(GameTick event) {
+        if (currentTask != null && !currentTask.isDone()) {
+            log.warn("Previous task is still running, skipping this tick.");
+            return;
+        }
+        currentTask = backgroundExecutor.submit(() -> {
+            try {
+                processGameTick(event);
+            } catch (Exception e) {
+                log.error("Error processing game tick in MusicClueTask: {}", e.getMessage(), e);
+                completeTask(false);
+            }
+        });
+
+    }
+
+    private void processGameTick(GameTick event) {
         Player player = client.getLocalPlayer();
         if (player == null) return;
 

@@ -21,7 +21,6 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
-import javax.inject.Inject;
 import java.awt.event.KeyEvent;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -30,7 +29,9 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
+import static net.runelite.api.ItemID.*;
+import static net.runelite.api.gameval.ItemID.CAKE_TIN;
+import static net.runelite.api.gameval.ItemID.EGG;
 import static net.runelite.client.plugins.microbot.util.npc.Rs2Npc.getNpcs;
 import static net.runelite.client.plugins.microbot.util.player.Rs2Player.toggleRunEnergy;
 
@@ -204,12 +205,16 @@ public class BurnBakingScript extends Script {
     }
 
     private void withdrawAndCheck(String itemName) {
-        Rs2Bank.withdrawAll(itemName);
-        sleep(1200, 1800);
-        if (!Rs2Inventory.contains(itemName)) {
-            System.out.println(itemName + " was not withdrawn, retrying...");
+        for (int attempt = 0; attempt < 5 && !Rs2Inventory.contains(itemName); attempt++) {
+            if (attempt > 0) {
+                Microbot.log(itemName + " was not withdrawn, retrying... (Attempt " + (attempt + 1) + ")");
+            }
             Rs2Bank.withdrawAll(itemName);
             sleep(1200, 1800);
+        }
+
+        if (!Rs2Inventory.contains(itemName)) {
+            Microbot.log("Failed to withdraw " + itemName + " after multiple attempts!");
         }
     }
 
@@ -384,16 +389,25 @@ public class BurnBakingScript extends Script {
                         Rs2Bank.withdrawX("Bucket of water", 9);
                         sleep(400, 700);
                         Rs2Bank.closeBank();
+                        if (!Rs2Inventory.hasItem(POT_OF_FLOUR) || !Rs2Inventory.hasItem(BUCKET_OF_WATER)) {
+                            Microbot.log("trying to withdrawX didn't populate inventory, so withdrawing all");
+                            Rs2Bank.openBank();
+                            if (!Rs2Inventory.hasItem(POT_OF_FLOUR)) {Rs2Bank.withdrawAll(POT_OF_FLOUR);}
+                            if (!Rs2Inventory.hasItem(BUCKET_OF_WATER)) {Rs2Bank.withdrawAll(BUCKET_OF_WATER);}
+                        }
                     } else {
                         Rs2Bank.depositAll(); //if inventory is not empty deposit all
                         System.out.println("Missing ingredients in the bank for bread-making.");
                         Microbot.log("Could not find flour or water in the bank for bread-making.");
                     }
-                }
+                } else if (!Rs2Bank.isOpen() && Rs2Inventory.isEmpty()) {Rs2Bank.openBank();}
             }
             // Step 5: If we already have flour and water in the inventory
-            else if (Rs2Inventory.hasItem("Pot of flour", true) && Rs2Inventory.hasItem("Bucket of water", true)) {
+            else if (Rs2Inventory.hasItem(POT_OF_FLOUR) && Rs2Inventory.hasItem(BUCKET_OF_WATER)) {
                 // Combine flour and water to make bread dough
+                if (Rs2Bank.isOpen()) {
+                    Rs2Bank.closeBank();
+                    sleep(900, 1300);}
 
                 Rs2Inventory.combineClosest("Pot of flour", "Bucket of water");
 
@@ -518,6 +532,10 @@ public class BurnBakingScript extends Script {
 
     // Interaction with Bowl of Water and Potato
     private void interactWithBowlAndPotato() {
+
+        if (Rs2Bank.isOpen()) {
+            Rs2Bank.closeBank();
+        }
 
         if (!Rs2Bank.isOpen()) {
             Rs2Inventory.combineClosest("Bowl of water","Potato");
@@ -778,6 +796,24 @@ public class BurnBakingScript extends Script {
 
             Rs2Bank.withdrawX("Pot of flour", 7);
             sleep(500, 800);
+
+            if (!Rs2Inventory.isFull()) {
+                Microbot.log("inventory not full after attempted withdrawing of 4x of 7 items (28 items)");
+                Microbot.log("Withdrawing ALL of X item(s) IF inventory doesn't have X item");
+                Microbot.log("If you are looping here make sure to have an EVEN NUMBER of EACH ingredient at the start");
+                if (!Rs2Inventory.contains(CAKE_TIN)) Rs2Bank.withdrawAll("Cake tin");
+                sleep(500, 800);
+
+                if (!Rs2Inventory.contains(EGG)) Rs2Bank.withdrawAll("Egg");
+                sleep(500, 800);
+
+                if (!Rs2Inventory.contains(BUCKET_OF_MILK)) Rs2Bank.withdrawAll("Bucket of Milk");
+                sleep(500, 800);
+
+                if (!Rs2Inventory.contains(POT_OF_FLOUR)) Rs2Bank.withdrawAll("Pot of flour");
+                sleep(500, 800);
+
+            }
 
             // Close the bank after completing withdrawals
             Rs2Bank.closeBank();

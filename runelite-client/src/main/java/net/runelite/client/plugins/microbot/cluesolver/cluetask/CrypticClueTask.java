@@ -20,10 +20,11 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 @Slf4j
 public class CrypticClueTask extends ClueTask {
-
+    private Future<?> currentTask;
     private final CrypticClue clue;
     private final EventBus eventBus;
     private final ExecutorService backgroundExecutor;
@@ -55,12 +56,12 @@ public class CrypticClueTask extends ClueTask {
         }
 
         log.info("Walking to clue location: {}", location);
-        backgroundExecutor.submit(() -> {
+
             if (!Rs2Walker.walkTo(location)) {
                 log.error("Failed to initiate walking to location: {}", location);
                 completeTask(false);
             }
-        });
+
     }
 
     private boolean isWithinRadius(WorldPoint targetLocation, WorldPoint playerLocation, int radius) {
@@ -71,6 +72,21 @@ public class CrypticClueTask extends ClueTask {
 
     @Subscribe
     public void onGameTick(GameTick event) {
+        if (currentTask != null && !currentTask.isDone()) {
+            log.warn("Previous task is still running, skipping this tick.");
+            return;
+        }
+        currentTask = backgroundExecutor.submit(() -> {
+            try {
+                processGameTick(event);
+            } catch (Exception e) {
+                log.error("Error processing game tick: {}", e.getMessage(), e);
+                completeTask(false);
+            }
+        });
+    }
+
+    private void processGameTick(GameTick event) {
         Player player = client.getLocalPlayer();
         WorldPoint playerLocation = player.getWorldLocation();
         WorldPoint clueLocation = clue.getLocation(clueScrollPlugin);
@@ -202,6 +218,7 @@ public class CrypticClueTask extends ClueTask {
     }
 
     private boolean handleDialogue() {
+        Rs2Dialogue.sleepUntilInDialogue();
         if (Rs2Dialogue.isInDialogue() && Rs2Dialogue.hasContinue()) {
             Rs2Dialogue.clickContinue();
             log.info("Handled dialogue continue.");

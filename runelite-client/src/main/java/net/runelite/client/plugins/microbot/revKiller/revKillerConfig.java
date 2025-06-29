@@ -5,7 +5,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.config.*;
 
 @ConfigGroup("Rev Killer")
-@ConfigInformation("1. Start fully equipped at the Enclave.<br /><br />Keep runtime low! Rev caves are HEAVILY monitored. <br /><br />Required items: Stamina potions, Ranging potions, Arrows, Sharks, Rings of Dueling, and Amulets of Glory.<br /><br />")
+@ConfigInformation("1. Start fully equipped at the Enclave.<br /><br />Keep runtime low! Rev caves are HEAVILY monitored. <br /><br />Required items: Stamina potions, Ranging potions, Arrows, Sharks, Rings of Dueling, and Amulets of Glory.<br /><br /> Rev Knights / Knight kiter by Man Im Shrek now")
 public interface revKillerConfig extends Config {
 
     @ConfigItem(
@@ -14,7 +14,7 @@ public interface revKillerConfig extends Config {
             description = "Select a Rev",
             position = 0
     )
-    default revKillerConfig.RevSelections selectedRev() {
+    default RevSelections selectedRev() {
         return RevSelections.IMP; // Default selection
     }
 
@@ -26,7 +26,8 @@ public interface revKillerConfig extends Config {
         CYCLOPS(new WorldPoint(3170, 10189, 0), "Rev Cyclops"),
         DEMON(new WorldPoint(3160, 10114, 0), "Rev Demon"),
         DARKBEAST(new WorldPoint(3207, 10163, 0), "Rev Darkbeast"),
-        ORK(new WorldPoint(3215, 10096, 0), "Rev Orks");
+        ORK(new WorldPoint(3215, 10096, 0), "Rev Orks"),
+        KNIGHT(new WorldPoint(3238,10226,0), "Rev Knight");
         //more to come I'm lazy okay
 
         private final WorldPoint wp;
@@ -54,13 +55,14 @@ public interface revKillerConfig extends Config {
             description = "Select an arrow type",
             position = 0
     )
-    default revKillerConfig.ArrowSelections selectedArrow() {
+    default ArrowSelections selectedArrow() {
         return ArrowSelections.RUNE; // Default selection
     }
 
     enum ArrowSelections {
         RUNE(ItemID.RUNE_ARROW, "Rune arrows"),
-        AMETHYST(ItemID.AMETHYST_ARROW, "Amethyst arrows");
+        AMETHYST(ItemID.AMETHYST_ARROW, "Amethyst arrows"),
+        BOLT_RACK(ItemID.BOLT_RACK, "Bolt rack");
         //more to come I'm lazy okay
 
         private final int id;

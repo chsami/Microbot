@@ -30,6 +30,7 @@ public class WineOverlay extends OverlayPanel {
 
             panelComponent.getChildren().add(LineComponent.builder()
                     .left(Microbot.status)
+                    .right("version: " + WineScript.version)
                     .build());
 
 

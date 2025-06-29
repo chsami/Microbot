@@ -58,17 +58,16 @@ public class HerbrunScript extends Script {
                 initialized = true;
                 HerbrunPlugin.status = "Gearing up";
                 populateHerbPatches();
-                if (herbPatches.isEmpty()) {
-                    log("No herb patches ready to farm");
-                    Microbot.stopPlugin(plugin);
+                if (herbPatches.isEmpty()) {                    
+                    plugin.reportFinished("No herb patches ready to farm",true);
+                    this.shutdown();
                     return;
                 }
                 var inventorySetup = new Rs2InventorySetup(config.inventorySetup(), mainScheduledFuture);
                 if (!inventorySetup.doesInventoryMatch() || !inventorySetup.doesEquipmentMatch()) {
                     Rs2Walker.walkTo(Rs2Bank.getNearestBank().getWorldPoint(), 20);
-                    if (!inventorySetup.loadEquipment() || !inventorySetup.loadInventory()) {
-                        Microbot.log("Failed to load inventory setup");
-                        Microbot.stopPlugin(plugin);
+                    if (!inventorySetup.loadEquipment() || !inventorySetup.loadInventory()) {                        
+                        plugin.reportFinished("Failed to load inventory setup",false);
                         return;
                     }
                     Rs2Bank.closeBank();
@@ -194,7 +193,7 @@ public class HerbrunScript extends Script {
     }
 
     private static String getHerbPatchState(TileObject rs2TileObject) {
-        var game_obj = Rs2GameObject.convertGameObjectToObjectComposition(rs2TileObject);
+        var game_obj = Rs2GameObject.convertToObjectComposition(rs2TileObject, true);
         var varbitValue = Microbot.getVarbitValue(game_obj.getVarbitId());
 
         if ((varbitValue >= 0 && varbitValue < 3) ||

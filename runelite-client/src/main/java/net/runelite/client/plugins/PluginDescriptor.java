@@ -56,7 +56,7 @@ public @interface PluginDescriptor
     String StickToTheScript = "<html>[<font color=#FF4F00>STTS</font>] ";
     String Gabulhas = "<html>[<font color=#F44FB0>Gab</font>] ";
     String zerozero ="<html>[<font color=#000000>00</font>] " ;
-    String LiftedMango = "<html>[<font color=#FF7F50>\uD83E\uDD6D</font>] ";
+    String LiftedMango = "<html>[<font color=#00FFFF>LM</font>] ";
     String eXioStorm = "<html>[<font color=#ff00dc>§</font>] "; Color stormColor = new Color(255, 0, 220);
     String Girdy = "<html>[<font color=#3DED97>\u01E5</font>] ";
     String Cicire = "<html>[<font color=#68ff00>Ci</font>] ";

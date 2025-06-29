@@ -27,10 +27,6 @@ package net.runelite.client.plugins.microbot.questhelper.helpers.quests.theforsa
 
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
-import net.runelite.client.plugins.microbot.questhelper.requirements.zone.ZoneRequirement;
-import net.runelite.client.plugins.microbot.questhelper.rewards.ItemReward;
-import net.runelite.client.plugins.microbot.questhelper.steps.*;
 import net.runelite.client.plugins.microbot.questhelper.collections.ItemCollections;
 import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.BasicQuestHelper;
@@ -42,9 +38,12 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.quest.Quest
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.Operation;
 import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarbitRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.widget.WidgetModelRequirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
+import net.runelite.client.plugins.microbot.questhelper.requirements.zone.ZoneRequirement;
 import net.runelite.client.plugins.microbot.questhelper.rewards.ExperienceReward;
+import net.runelite.client.plugins.microbot.questhelper.rewards.ItemReward;
 import net.runelite.client.plugins.microbot.questhelper.rewards.QuestPointReward;
-
+import net.runelite.client.plugins.microbot.questhelper.steps.*;
 
 import java.util.*;
 
@@ -95,7 +94,7 @@ public class TheForsakenTower extends BasicQuestHelper {
         puzzleSteps.addStep(new Conditions(inspectedDisplayCase, finishedFurnacePuzzle, finishedPowerPuzzle, finishedPotionPuzzle), altarPuzzle);
         puzzleSteps.addStep(new Conditions(inspectedDisplayCase, finishedFurnacePuzzle, finishedPowerPuzzle), potionPuzzle);
         puzzleSteps.addStep(new Conditions(inspectedDisplayCase, finishedFurnacePuzzle), powerPuzzle);
-        puzzleSteps.addStep(inspectedDisplayCase, furnacePuzzleSteps);
+        puzzleSteps.addStep(new Conditions(inspectedDisplayCase), furnacePuzzleSteps);
 
         steps.put(4, puzzleSteps);
         steps.put(5, puzzleSteps);
@@ -146,6 +145,7 @@ public class TheForsakenTower extends BasicQuestHelper {
 
     public void setupSteps() {
         talkToVulcana = new NpcStep(this, NpcID.LADY_VULCANA_LOVAKENGJ_11035, new WorldPoint(1483, 3747, 0), "Talk to Lady Vulcana Lovakengj in the south of Lovakengj.");
+        talkToVulcana.addDialogStep("Yes.");
         talkToVulcana.addDialogStep("I'm looking for a quest.");
         talkToVulcana.addDialogStep("I'll get going.");
         talkToUndor = new NpcStep(this, NpcID.UNDOR, new WorldPoint(1624, 3942, 0),

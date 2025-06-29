@@ -138,7 +138,7 @@ public class VorkathScript extends Script {
                         return;
                     }
                     calculateState();
-                    primaryBolts = Rs2Equipment.get(EquipmentInventorySlot.AMMO) != null ? Rs2Equipment.get(EquipmentInventorySlot.AMMO).name : "";
+                    primaryBolts = Rs2Equipment.get(EquipmentInventorySlot.AMMO) != null ? Rs2Equipment.get(EquipmentInventorySlot.AMMO).getName() : "";
                 }
 
                 if (state == State.FIGHT_VORKATH  && Rs2Equipment.get(EquipmentInventorySlot.AMMO) == null) {
@@ -250,7 +250,6 @@ public class VorkathScript extends Script {
                         }
                         if (Microbot.getClient().getBoostedSkillLevel(Skill.HITPOINTS) <= 0) {
                             state = State.DEAD_WALK;
-                            Rs2Equipment.equipmentItems = new ArrayList<>();
                             return;
                         }
                         if (Rs2Inventory.getInventoryFood().isEmpty()) {

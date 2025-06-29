@@ -14,7 +14,6 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.time.ZonedDateTime;
 import java.util.concurrent.TimeUnit;
-import javax.swing.SwingUtilities;
 
 public class SchedulerPanel extends PluginPanel {
     private final SchedulerPlugin plugin;
@@ -22,6 +21,12 @@ public class SchedulerPanel extends PluginPanel {
     // Current plugin section
     private final JLabel currentPluginLabel;
     private final JLabel runtimeLabel;
+
+    // Previous plugin section
+    private final JLabel prevPluginNameLabel;
+    private final JLabel prevPluginDurationLabel;
+    private final JLabel prevPluginStopReasonLabel;
+    private final JLabel prevPluginStopTimeLabel;
 
     // Next plugin section
     private final JLabel nextPluginNameLabel;
@@ -68,6 +73,40 @@ public class SchedulerPanel extends PluginPanel {
 
         runtimeLabel = createValueLabel("00:00:00");
         infoPanel.add(runtimeLabel, createGbc(1, 1));
+
+        // Previous plugin info panel
+        JPanel prevPluginPanel = createInfoPanel("Previous Plugin");
+        JLabel prevPluginTitleLabel = new JLabel("Plugin:");
+        prevPluginTitleLabel.setForeground(Color.WHITE);
+        prevPluginTitleLabel.setFont(FontManager.getRunescapeFont());
+        prevPluginPanel.add(prevPluginTitleLabel, createGbc(0, 0));
+
+        prevPluginNameLabel = createValueLabel("None");
+        prevPluginPanel.add(prevPluginNameLabel, createGbc(1, 0));
+
+        JLabel prevDurationLabel = new JLabel("Duration:");
+        prevDurationLabel.setForeground(Color.WHITE);
+        prevDurationLabel.setFont(FontManager.getRunescapeFont());
+        prevPluginPanel.add(prevDurationLabel, createGbc(0, 1));
+
+        prevPluginDurationLabel = createValueLabel("00:00:00");
+        prevPluginPanel.add(prevPluginDurationLabel, createGbc(1, 1));
+
+        JLabel prevStopReasonLabel = new JLabel("Stop Reason:");
+        prevStopReasonLabel.setForeground(Color.WHITE);
+        prevStopReasonLabel.setFont(FontManager.getRunescapeFont());
+        prevPluginPanel.add(prevStopReasonLabel, createGbc(0, 2));
+
+        prevPluginStopReasonLabel = createValueLabel("None");
+        prevPluginPanel.add(prevPluginStopReasonLabel, createGbc(1, 2));
+
+        JLabel prevStopTimeLabel = new JLabel("Stop Time:");
+        prevStopTimeLabel.setForeground(Color.WHITE);
+        prevStopTimeLabel.setFont(FontManager.getRunescapeFont());
+        prevPluginPanel.add(prevStopTimeLabel, createGbc(0, 3));
+
+        prevPluginStopTimeLabel = createValueLabel("--:--");
+        prevPluginPanel.add(prevPluginStopTimeLabel, createGbc(1, 3));
 
         // Next plugin info panel
         JPanel nextPluginPanel = createInfoPanel("Next Scheduled Plugin");
@@ -147,6 +186,8 @@ public class SchedulerPanel extends PluginPanel {
 
         // Add components to main panel
         mainPanel.add(infoPanel);
+        mainPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        mainPanel.add(prevPluginPanel);
         mainPanel.add(Box.createRigidArea(new Dimension(0, 10)));
         mainPanel.add(nextPluginPanel);
         mainPanel.add(Box.createRigidArea(new Dimension(0, 10)));
@@ -277,23 +318,119 @@ public class SchedulerPanel extends PluginPanel {
         PluginScheduleEntry currentPlugin = plugin.getCurrentPlugin();
 
         if (currentPlugin != null) {
-            ZonedDateTime startTimeZdt = currentPlugin.getLastRunTime();
-            currentPluginLabel.setText(currentPlugin.getCleanName());
-
-            if (startTimeZdt != null) {
-                long startTimeMillis = startTimeZdt.toInstant().toEpochMilli();
-                long runtimeMillis = System.currentTimeMillis() - startTimeMillis;
-                long hours = TimeUnit.MILLISECONDS.toHours(runtimeMillis);
-                long minutes = TimeUnit.MILLISECONDS.toMinutes(runtimeMillis) % 60;
-                long seconds = TimeUnit.MILLISECONDS.toSeconds(runtimeMillis) % 60;
-                runtimeLabel.setText(String.format("%02d:%02d:%02d", hours, minutes, seconds));
+            // Get start time for runtime calculation
+            ZonedDateTime startTimeZdt = currentPlugin.getLastRunStartTime();
+            String pluginName = currentPlugin.getCleanName();
+            
+            // Add the stop reason indicator to the plugin name if available
+            if (currentPlugin.getLastStopReasonType() != null && 
+                currentPlugin.getLastStopReasonType() != PluginScheduleEntry.StopReason.NONE) {
+                String stopReason = formatStopReason(currentPlugin.getLastStopReasonType());
+                pluginName += " (" + stopReason + ")";
+            }
+            
+            currentPluginLabel.setText(pluginName);
+            
+            // Show runtime - either current or last run duration
+            if (currentPlugin.isRunning()) {
+                // Calculate and display current runtime for active plugin
+                if (startTimeZdt != null) {
+                    long startTimeMillis = startTimeZdt.toInstant().toEpochMilli();
+                    long runtimeMillis = System.currentTimeMillis() - startTimeMillis;
+                    runtimeLabel.setText(formatDuration(runtimeMillis));
+                } else {
+                    runtimeLabel.setText("Running");
+                }
+            } else if (currentPlugin.getLastRunDuration() != null && !currentPlugin.getLastRunDuration().isZero()) {
+                // Show the stored last run duration for completed plugins
+                runtimeLabel.setText(formatDuration(currentPlugin.getLastRunDuration().toMillis()));
             } else {
                 runtimeLabel.setText("Not started");
             }
+            
+            // Update previous plugin information if it has run at least once
+            updatePreviousPluginInfo(currentPlugin);
         } else {
             currentPluginLabel.setText("None");
             runtimeLabel.setText("00:00:00");
+            
+            // Clear previous plugin info when there's no current plugin
+            prevPluginNameLabel.setText("None");
+            prevPluginDurationLabel.setText("00:00:00");
+            prevPluginStopReasonLabel.setText("None");
+            prevPluginStopTimeLabel.setText("--:--");
         }
+    }
+    
+    /**
+     * Updates information about the previously run plugin
+     */
+    private void updatePreviousPluginInfo(PluginScheduleEntry plugin) {
+        if (plugin == null) return;
+        
+        // Only show previous plugin info if the plugin has been run at least once
+        if (plugin.getLastRunEndTime() != null && plugin.getLastRunDuration() != null) {
+            // Set name
+            prevPluginNameLabel.setText(plugin.getCleanName());
+            
+            // Set duration
+            long durationMillis = plugin.getLastRunDuration().toMillis();
+            prevPluginDurationLabel.setText(formatDuration(durationMillis));
+            
+            // Set stop reason
+            String stopReason = "None";
+            if (plugin.getLastStopReasonType() != null && 
+                plugin.getLastStopReasonType() != PluginScheduleEntry.StopReason.NONE) {
+                stopReason = formatStopReason(plugin.getLastStopReasonType());
+            }
+            prevPluginStopReasonLabel.setText(stopReason);
+            
+            // Set stop time
+            ZonedDateTime endTime = plugin.getLastRunEndTime();
+            if (endTime != null) {
+                prevPluginStopTimeLabel.setText(
+                    endTime.format(PluginScheduleEntry.TIME_FORMATTER)
+                );
+            } else {
+                prevPluginStopTimeLabel.setText("--:--");
+            }
+        }
+    }
+    
+    /**
+     * Formats a duration in milliseconds as HH:MM:SS
+     */
+    private String formatDuration(long durationMillis) {
+        long hours = TimeUnit.MILLISECONDS.toHours(durationMillis);
+        long minutes = TimeUnit.MILLISECONDS.toMinutes(durationMillis) % 60;
+        long seconds = TimeUnit.MILLISECONDS.toSeconds(durationMillis) % 60;
+        return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+    }
+    
+    /**
+     * Returns a formatted stop reason
+     */
+    private String formatStopReason(PluginScheduleEntry.StopReason stopReason) {
+        // Use the description from the enum if available
+        if (stopReason != null) {
+            switch (stopReason) {
+                case MANUAL_STOP:
+                    return "Stopped";
+                case PLUGIN_FINISHED:
+                    return "Completed";
+                case ERROR:
+                    return "Error";
+                case SCHEDULED_STOP:
+                    return "Timed out";
+                case INTERRUPTED:
+                    return "Interrupted";
+                case HARD_STOP:
+                    return "Force stopped";
+                default:
+                    return stopReason.getDescription();
+            }
+        }
+        return "";
     }
     
     void updateNextPluginInfo() {

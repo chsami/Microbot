@@ -62,6 +62,11 @@ public class TimeRangePanel extends JPanel {
         JPanel presetsPanel = createPresetsPanel();
         add(presetsPanel, gbc);
         
+        // Add specialized time window presets
+        gbc.gridy = 3;
+        JPanel specialPresetsPanel = createSpecializedPresetsPanel();
+        add(specialPresetsPanel, gbc);
+        
         // Set up change listeners
         startTimePicker.setTimeChangeListener(t -> notifyRangeChanged());
         endTimePicker.setTimeChangeListener(t -> notifyRangeChanged());
@@ -85,6 +90,22 @@ public class TimeRangePanel extends JPanel {
         return panel;
     }
     
+    private JPanel createSpecializedPresetsPanel() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        
+        JLabel specialPresetsLabel = new JLabel("Special Presets:");
+        specialPresetsLabel.setForeground(Color.WHITE);
+        panel.add(specialPresetsLabel);
+        
+        // Special presets for all day, start of day, and end of day
+        addSpecialPresetButton(panel, "All Day", LocalTime.of(0, 0), LocalTime.of(23, 59));
+        addSpecialPresetButton(panel, "From Start of Day", LocalTime.of(0, 0), endTimePicker.getSelectedTime());
+        addSpecialPresetButton(panel, "Until End of Day", startTimePicker.getSelectedTime(), LocalTime.of(23, 59));
+        
+        return panel;
+    }
+    
     private void addPresetButton(JPanel panel, String label, LocalTime start, LocalTime end) {
         JButton button = new JButton(label);
         button.setFocusPainted(false);
@@ -94,6 +115,30 @@ public class TimeRangePanel extends JPanel {
         button.addActionListener(e -> {
             startTimePicker.setSelectedTime(start);
             endTimePicker.setSelectedTime(end);
+        });
+        panel.add(button);
+    }
+    
+    private void addSpecialPresetButton(JPanel panel, String label, LocalTime start, LocalTime end) {
+        JButton button = new JButton(label);
+        button.setFocusPainted(false);
+        button.setBackground(ColorScheme.LIGHT_GRAY_COLOR);
+        button.setForeground(Color.BLACK);
+        button.setFont(FontManager.getRunescapeSmallFont());
+        button.addActionListener(e -> {
+            if (label.equals("From Start of Day")) {
+                // Only update start time, keep current end time
+                startTimePicker.setSelectedTime(start);
+                // No need to update endTimePicker as we want to keep the current end time
+            } else if (label.equals("Until End of Day")) {
+                // Only update end time, keep current start time
+                endTimePicker.setSelectedTime(end);
+                // No need to update startTimePicker as we want to keep the current start time
+            } else {
+                // Update both times
+                startTimePicker.setSelectedTime(start);
+                endTimePicker.setSelectedTime(end);
+            }
         });
         panel.add(button);
     }

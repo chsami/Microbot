@@ -1,15 +1,18 @@
 package net.runelite.client.plugins.microbot.util.antiban.ui;
 
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.antiban.AntibanPlugin;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
+import net.runelite.client.util.ImageUtil;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.geom.AffineTransform;
+import java.awt.image.BufferedImage;
 
 /**
  * The MasterPanel is a user interface panel for configuring anti-ban settings.
@@ -116,6 +119,7 @@ public class MasterPanel extends PluginPanel {
         });
         timer.start(); // Start the movement timer
 
+
         add(headerPanel, BorderLayout.NORTH);
         add(mainDisplayPanel, BorderLayout.CENTER);
         add(resetButton, BorderLayout.SOUTH);
@@ -126,26 +130,56 @@ public class MasterPanel extends PluginPanel {
     }
 
     private JPanel createHeaderPanel(NavigationPanel navigationPanel) {
-        JPanel headerPanel = new JPanel();
-        headerPanel.setLayout(new BorderLayout());
-        headerPanel.setBackground(new Color(27, 27, 27));
+        // load your image (resource or file)
+        BufferedImage icon = ImageUtil.loadImageResource(
+                AntibanPlugin.class, "antibanHeader.png");
 
-//        JLabel headerLabel = new JLabel("<html><font color=#ffff1a>\uD83E\uDD86</font> ANTIBAN <font color=#ffff1a>\uD83E\uDD86</font></html>");
-        JLabel headerLabel = new JLabel("ANTIBAN");
-        headerLabel.setFont(FontManager.getRunescapeBoldFont().deriveFont(24.0F));
-        headerLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
-        headerLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        // we don't need to pre-scale it here; let paintComponent handle resizing
+        Image bgImage = icon;
+        JPanel titlePanel = new JPanel(new BorderLayout());
+        // “rubber-duck” yellow; feel free to tweak the RGB if you want
+        titlePanel.setBackground(new Color(255, 223, 0));
+        // label-only, centered
+        JLabel titleLabel = new JLabel("ANTIBAN", SwingConstants.CENTER);
+        titleLabel.setFont(FontManager.getRunescapeBoldFont().deriveFont(32.0f));
+        titleLabel.setForeground(Color.BLACK);
+        // add some vertical padding
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(1, 0, 1, 0));
+        titlePanel.add(titleLabel, BorderLayout.CENTER);
 
+        // use our custom panel
+        BackgroundPanel headerPanel = new BackgroundPanel(bgImage);
+        headerPanel.setBackground(new Color(27, 27, 27));  // fallback color
+
+        // your title label
+        JLabel headerLabel = new JLabel("", SwingConstants.CENTER);
+        headerLabel.setVerticalTextPosition(SwingConstants.BOTTOM);
+        headerLabel.setHorizontalTextPosition(SwingConstants.CENTER);
+        headerLabel.setFont(FontManager.getRunescapeBoldFont().deriveFont(36.0f));
+        headerLabel.setBorder(BorderFactory.createEmptyBorder(30, 0, 30, 0));
+        // (optionally) make the text opaque or give it a contrasting color
+        headerLabel.setForeground(Color.BLACK);
+
+
+
+        // add components on top of the background
         headerPanel.add(headerLabel, BorderLayout.NORTH);
-        headerPanel.add(navigationPanel, BorderLayout.CENTER);
+        headerPanel.add(navigationPanel, BorderLayout.SOUTH);
 
-        return headerPanel;
+        // Create a wrapper panel for the title and header
+        JPanel wrapperPanel = new JPanel(new BorderLayout());
+        wrapperPanel.setBackground(new Color(27, 27, 27)); // Set the background color
+        wrapperPanel.add(titlePanel, BorderLayout.NORTH);
+        wrapperPanel.add(headerPanel, BorderLayout.CENTER);
+
+
+        return wrapperPanel;
     }
 
     //set up the reset button to reset all settings
     public void setupResetButton() {
         resetButton.addActionListener(e -> {
-            Rs2Antiban.resetAntibanSettings();
+            Rs2Antiban.resetAntibanSettings(true);
             loadSettings();
         });
     }

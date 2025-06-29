@@ -169,7 +169,7 @@ public class ShootingStarScript extends Script {
                         if (!isBankOpen || !Rs2Bank.isOpen()) return;
 
                         if (Rs2Inventory.hasItem("uncut")) {
-                            Rs2Bank.depositAll(x -> x.name.toLowerCase().contains("uncut"));
+                            Rs2Bank.depositAll(x -> x.getName().toLowerCase().contains("uncut"));
                         }
 
                         if (isUsingInventorySetup()) {
@@ -373,7 +373,7 @@ public class ShootingStarScript extends Script {
         Pickaxe bestPickaxe = null;
 
         for (Pickaxe pickaxe : Pickaxe.values()) {
-            if (items.stream().noneMatch(i -> i.name.toLowerCase().contains(pickaxe.getItemName()))) continue;
+            if (items.stream().noneMatch(i -> i.getName().toLowerCase().contains(pickaxe.getItemName()))) continue;
             if (pickaxe.hasRequirements()) {
                 if (bestPickaxe == null || pickaxe.getMiningLevel() > bestPickaxe.getMiningLevel()) {
                     bestPickaxe = pickaxe;

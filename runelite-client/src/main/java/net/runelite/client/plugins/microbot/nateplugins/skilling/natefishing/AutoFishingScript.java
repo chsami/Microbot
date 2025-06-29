@@ -1,13 +1,13 @@
 package net.runelite.client.plugins.microbot.nateplugins.skilling.natefishing;
 
 import net.runelite.api.ItemID;
-import net.runelite.api.NPCComposition;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.nateplugins.skilling.natefishing.enums.Fish;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.depositbox.Rs2DepositBox;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
@@ -17,9 +17,7 @@ import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -32,18 +30,14 @@ enum State {
 
 public class AutoFishingScript extends Script {
 
-    private static final List<String> rawFishNames = List.of("raw shrimps", "raw anchovies", "raw sardine", "raw herring", "raw mackerel", "raw cod", "raw bass", "raw trout", "raw salmon", "raw pike", "raw tuna", "raw swordfish", "raw cave eel", "raw slimy eel", "raw lobster", "raw monkfish", "raw karambwanji", "raw shark", "raw anglerfish", "raw karambwan");
-    public static String version = "1.6.0";
+    public static String version = "1.6.2";
     private String fishAction = "";
     State state;
 
     public boolean run(AutoFishConfig config) {
         initialPlayerLocation = null;
-        List<String> fishList = new ArrayList<>(rawFishNames);
         Fish fish = config.fish();
-        if (fish.equals(Fish.KARAMBWAN) || fish.equals(Fish.KARAMBWANJI)) {
-            fishList.remove("raw karambwanji");
-        }
+
         fishAction = "";
         state = State.FISHING;
         Rs2Antiban.resetAntibanSettings();
@@ -109,27 +103,29 @@ public class AutoFishingScript extends Script {
                         break;
                     case RESETTING:
                         if (config.useBank()) {
-                            if (Rs2Bank.walkToBankAndUseBank()) {
-                                Rs2Bank.depositAll(i -> fishList.stream().anyMatch(fl -> i.getName().equalsIgnoreCase(fl)));
+                            BankLocation nearestBank = Rs2Bank.getNearestBank();
+                            boolean isBankOpen = Rs2Bank.isNearBank(nearestBank, 8) ? Rs2Bank.openBank() : Rs2Bank.walkToBankAndUseBank(nearestBank);
+                            if (!isBankOpen || !Rs2Bank.isOpen()) return;
+                            Rs2Bank.depositAll(i -> fish.getRawNames().stream().anyMatch(fl -> i.getName().equalsIgnoreCase(fl)));
+                            Rs2Inventory.waitForInventoryChanges(1800);
+                            if (config.shouldBankClueBottles()) {
+                                Rs2Bank.depositAll("clue bottle");
                                 Rs2Inventory.waitForInventoryChanges(1800);
-                                if (config.shouldBankClueBottles()) {
-                                    Rs2Bank.depositAll("clue bottle");
-                                    Rs2Inventory.waitForInventoryChanges(1800);
-                                }
-                                if (config.shouldBankCaskets()) {
-                                    Rs2Bank.depositAll("casket");
-                                    Rs2Inventory.waitForInventoryChanges(1800);
-                                }
-                                Rs2Bank.emptyFishBarrel();
-                                
-                                Rs2Bank.closeBank();
-                                sleepUntil(() -> !Rs2Bank.isOpen());
-
-                                Rs2Walker.walkTo(initialPlayerLocation);
                             }
+                            if (config.shouldBankCaskets()) {
+                                Rs2Bank.depositAll("casket");
+                                Rs2Inventory.waitForInventoryChanges(1800);
+                            }
+                            Rs2Bank.emptyFishBarrel();
+                                
+                            Rs2Bank.closeBank();
+                            sleepUntil(() -> !Rs2Bank.isOpen());
+
+                            Rs2Walker.walkTo(initialPlayerLocation);
+
                         } else if (config.useDepositBox()) {
                             if (Rs2DepositBox.walkToAndUseDepositBox()) {
-                                Rs2DepositBox.depositAll(i -> fishList.stream().anyMatch(fl -> i.getName().equalsIgnoreCase(fl)));
+                                Rs2DepositBox.depositAll(i -> fish.getRawNames().stream().anyMatch(fl -> i.getName().equalsIgnoreCase(fl)));
                                 Rs2Inventory.waitForInventoryChanges(1800);
                                 if (config.shouldBankClueBottles()) {
                                     Rs2DepositBox.depositAll("clue bottle");
@@ -139,14 +135,14 @@ public class AutoFishingScript extends Script {
                                     Rs2DepositBox.depositAll("casket");
                                     Rs2Inventory.waitForInventoryChanges(1800);
                                 }
-                                
+
                                 Rs2DepositBox.closeDepositBox();
                                 sleepUntil(() -> !Rs2DepositBox.isOpen());
                                 
                                 Rs2Walker.walkTo(initialPlayerLocation);
                             }
                         } else {
-                            Rs2Inventory.dropAll(i -> fishList.stream().anyMatch(fl -> fl.equalsIgnoreCase(i.getName())), config.getDropOrder());
+                            Rs2Inventory.dropAll(i -> fish.getRawNames().stream().anyMatch(fl -> fl.equalsIgnoreCase(i.getName())), config.getDropOrder());
                         }
                         state = State.FISHING;
                         break;

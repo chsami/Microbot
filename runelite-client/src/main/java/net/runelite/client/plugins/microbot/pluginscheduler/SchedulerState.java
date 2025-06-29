@@ -20,7 +20,8 @@ public enum SchedulerState {
     SOFT_STOPPING_PLUGIN("Soft Stopping Plugin", "Stopping the current plugin", new Color(255, 120, 0)),
     HOLD("Stopped", "Scheduler was manually stopped", new Color(244, 67, 54)),
     ERROR("Error", "Scheduler encountered an error", new Color(255, 0, 0)),
-    SHORT_BREAK("Short Break", "Taking a short break until next plugin", new Color(100, 149, 237)),
+    BREAK("Break", "Taking a break until next plugin", new Color(100, 149, 237)),
+    PLAYSCHEDULE_BREAK("Play Schedule Break", "Braking based on the configured Play Schedule", new Color(100, 149, 237)),
     WAITING_FOR_SCHEDULE("Next Schedule Soon", "Waiting for upcoming scheduled plugin", new Color(147, 112, 219)),
     WAITING_FOR_STOP_CONDITION("Waiting For Stop Condition", "Waiting For Stop Condition", new Color(255, 140, 0)),
     LOGIN("Login", "Try To Login", new Color(255, 215, 0));
@@ -74,9 +75,12 @@ public enum SchedulerState {
      */
     public boolean isWaiting() {
         return isSchedulerActive() &&
-               (this == SchedulerState.SCHEDULING ||
+               (               this == SchedulerState.SCHEDULING ||
                this == SchedulerState.WAITING_FOR_SCHEDULE ||
-               this == SchedulerState.SHORT_BREAK);
+               this == SchedulerState.BREAK || this == SchedulerState.PLAYSCHEDULE_BREAK);
+    }
+    public boolean isBreaking() {
+        return (this == SchedulerState.BREAK || this == SchedulerState.PLAYSCHEDULE_BREAK);
     }
 
     public boolean isInitializing() {

@@ -472,6 +472,22 @@ public class Rs2Random {
         final int n = Math.abs(max - min);
         return Math.min(min, max) + (n == 0 ? 0 : new java.util.Random().nextInt(n));
     }
+    /**
+     * Generates a random integer between min (inclusive) and max (inclusive).
+     * If min is greater than max, an IllegalArgumentException is thrown.
+     *
+     * @param min The minimum value (inclusive).
+     * @param max The maximum value (inclusive).
+     * @return A random integer between min and max, inclusive.
+     */
+    public static int betweenInclusive(final int min, final int max) {
+        if (min > max) {
+            throw new IllegalArgumentException("min must be <= max");
+        }
+        // The upper bound is exclusive, so we pass max+1
+        return ThreadLocalRandom.current().nextInt(min, max + 1);
+    }
+
 
     /**
      * random gaussian

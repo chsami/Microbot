@@ -3,9 +3,7 @@ package net.runelite.client.plugins.microbot.cluesolver;
 import com.google.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
-import net.runelite.api.events.GameTick;
 import net.runelite.client.eventbus.EventBus;
-import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.cluescrolls.ClueScrollPlugin;
 import net.runelite.client.plugins.cluescrolls.clues.*;
 import net.runelite.client.plugins.cluescrolls.clues.item.ItemRequirement;
@@ -24,19 +22,20 @@ import java.util.function.Supplier;
 @Slf4j
 public class ClueSolverScript extends Script {
     private Future<?> currentTask;
+    private Future<?> itemRequirementsTask;
     private ClueScroll currentClue;
     private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(3);
 
     @Inject
-    private Client client;
+    Client client;
     @Inject
-    private EventBus eventBus;
+    EventBus eventBus;
     @Inject
-    private ClueScrollPlugin clueScrollPlugin;
+    ClueScrollPlugin clueScrollPlugin;
     @Inject
-    private ClueSolverOverlay overlay;
+    ClueSolverOverlay overlay;
     @Inject
-    private ClueSolverPlugin clueSolverPlugin;
+    ClueSolverPlugin clueSolverPlugin;
 
     // Factory map to link ClueScroll subclasses to ClueTask suppliers
     private final Map<Class<? extends ClueScroll>, Supplier<ClueTask>> taskFactoryMap = new HashMap<>();
@@ -61,16 +60,18 @@ public class ClueSolverScript extends Script {
     }
 
     public boolean start() {
-        eventBus.register(this);
-        overlay.updateTaskStatus("Clue Solver Script started");
-        log.info("Clue Solver Script started.");
+        mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
+            try {
+                processClues();
+            } catch (Exception e) {
+                log.error("Error in main scheduled task", e);
+            }
+        }, 0, 1, TimeUnit.SECONDS);
+
         return true;
     }
 
-    @Subscribe
-    public void onGameTick(GameTick event) {
-        processClues();
-    }
+
 
     private void processClues() {
         if (executorService.isShutdown()) {
@@ -86,6 +87,10 @@ public class ClueSolverScript extends Script {
 
             List<ItemRequirement> requiredItems = determineRequiredItems(clue);
             if (!requiredItems.isEmpty()) {
+                if (itemRequirementsTask != null && !itemRequirementsTask.isDone()) {
+                    log.warn("Previous item requirements task is still running, skipping this clue.");
+                    return;
+                }
                 RequirementHandlerTask requirementHandlerTask = new RequirementHandlerTask(client, requiredItems, eventBus, clueScrollPlugin, clueSolverPlugin, executorService);
 
                 CompletableFuture<Boolean> requirementFuture = new CompletableFuture<>();
@@ -99,7 +104,7 @@ public class ClueSolverScript extends Script {
                         });
 
                 if (!executorService.isShutdown()) {
-                    executorService.submit(requirementHandlerTask);
+                   itemRequirementsTask = executorService.submit(requirementHandlerTask);
                 }
             } else {
                 startClueTask(createClueTaskForClue(clue));
@@ -187,17 +192,11 @@ public class ClueSolverScript extends Script {
         if (currentTask != null && !currentTask.isDone()) {
             currentTask.cancel(true);
         }
-        eventBus.unregister(this);
-        if (!executorService.isShutdown()) {
-            executorService.shutdown();
-            try {
-                if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
-                    executorService.shutdownNow();
-                }
-            } catch (InterruptedException e) {
-                executorService.shutdownNow();
-            }
+        if (itemRequirementsTask != null && !itemRequirementsTask.isDone()) {
+            itemRequirementsTask.cancel(true);
         }
+        eventBus.unregister(this);
+
         overlay.updateTaskStatus("Clue Solver Script stopped");
         log.info("Clue Solver Script stopped.");
     }

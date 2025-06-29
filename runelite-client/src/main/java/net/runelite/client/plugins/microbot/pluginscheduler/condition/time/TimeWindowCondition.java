@@ -2,10 +2,13 @@ package net.runelite.client.plugins.microbot.pluginscheduler.condition.time;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.ConditionType;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.enums.RepeatCycle;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,13 +22,12 @@ import java.util.Optional;
 import java.util.logging.Level;
 
 @Data
-@EqualsAndHashCode(callSuper = false, exclude = {   
-})
+@EqualsAndHashCode(callSuper = false, exclude = {   })
 @Slf4j
 public class TimeWindowCondition extends TimeCondition {
     
     public static String getVersion() {
-        return "0.0.1";
+        return "0.0.2";
     }
     // Time window bounds (daily start/end times)
     private final LocalTime startTime;
@@ -41,20 +43,24 @@ public class TimeWindowCondition extends TimeCondition {
     
 
     // Next window tracking (for non-daily cycles)
+    @Getter
+    @Setter
     private transient LocalDateTime currentStartDateTime;
+    @Getter
+    @Setter
     private transient LocalDateTime currentEndDateTime;
    
     // Randomization
     private transient boolean useRandomization = false;
-    private transient int randomizeMinutes = 0; // Minutes to randomize start/end by
-    
+    private transient int randomizerValue = 0; // Randomization value, depands on the repeat cycle
+    private transient RepeatCycle randomizerValueUnit;
     // Cached timezone for computation - not serialized
     private transient ZoneId zoneId;
 
 
-    private transient int randomStartMinutes = 0; // Minutes to randomize start/end by
-    private transient int randomEndMinutes = 0; // Minutes to randomize start/end by
 
+    @Getter
+    @Setter
     private transient int transientNumberOfResetsWithinDailyInterval = 0; // Number of resets since last calculation
 
     
@@ -109,6 +115,8 @@ public class TimeWindowCondition extends TimeCondition {
         this.zoneId = ZoneId.systemDefault(); // Initialize with system default
         this.lastValidResetTime = LocalDateTime.now();
         transientNumberOfResetsWithinDailyInterval = 0;
+        this.randomizerValue = 0;
+        this.useRandomization = true;
         
         // Initialize next window times based on repeat cycle
         calculateNextWindow();
@@ -132,6 +140,7 @@ public class TimeWindowCondition extends TimeCondition {
             1,
             0// 0 means infinity
         );
+
     }
 
     /**
@@ -171,39 +180,39 @@ public class TimeWindowCondition extends TimeCondition {
         LocalDateTime nowLocal = now.toLocalDateTime();
         LocalDateTime referenceTime = lastValidResetTime != null ? lastValidResetTime : nowLocal;
         
-        LocalDateTime todayStartDateTime = LocalDateTime.of(nowLocal.toLocalDate(), startTime);
-        LocalDateTime todayEndDateTime = LocalDateTime.of(nowLocal.toLocalDate(), endTime);
+        //LocalDateTime todayStartDateTime = LocalDateTime.of(nowLocal.toLocalDate(), startTime);
+        //LocalDateTime todayEndDateTime = LocalDateTime.of(nowLocal.toLocalDate(), endTime);
         if(Microbot.isDebug() ) log.info("Calculating next window - current: \n" +  this,Level.INFO);
         
         switch (repeatCycle) {
             case ONE_TIME:
-                calculateOneTimeWindow(referenceTime);
+                calculateOneTimeWindow(referenceTime);                
                 break;
             case DAYS:              
-                calculateCycleWindow(referenceTime);                
+                calculateCycleWindow(referenceTime);       
+               
                 break;
             case WEEKS:
                 calculateCycleWindow(referenceTime);
+                
                 break;
             case MINUTES:
+                calculateCycleWindow(referenceTime);
+                
+                break;
             case HOURS:
                 calculateCycleWindow(referenceTime);
+               
                 break;
+                
             default:
                 log.warn("Unsupported repeat cycle: {}", repeatCycle);
                 break;
         }
+        log.info(this.getDetailedDescription());
         if(Microbot.isDebug() ) log.info("After calculate new cycle window : \n" +  this,Level.INFO);
         // Apply randomization if enabled
-        if (useRandomization && randomizeMinutes > 0 && currentStartDateTime != null && this.currentEndDateTime != null) {        
-            currentStartDateTime = currentStartDateTime.plusMinutes(randomStartMinutes);
-            if (!LocalDateTime.of(endDate, endTime).isBefore(this.currentEndDateTime.plusMinutes(randomEndMinutes))) {                
-                this.currentEndDateTime = this.currentEndDateTime.plusMinutes(randomEndMinutes);
-            }else {
-                this.currentEndDateTime = this.currentEndDateTime.minusMinutes(randomEndMinutes);
-            }
-            
-        }
+        
         LocalDateTime lastEnd = LocalDateTime.of(endDate, endTime);
         if (currentStartDateTime != null) {
             if (this.currentStartDateTime.isAfter(lastEnd)){
@@ -274,10 +283,174 @@ public class TimeWindowCondition extends TimeCondition {
         LocalDate startday = currentStartDateTime.toLocalDate();           
         this.currentEndDateTime = LocalDateTime.of(startday, endTime);        
         if (currentEndDateTime.isBefore(currentStartDateTime)) {
-            this.currentEndDateTime = currentEndDateTime.plusDays(1);
+            this.currentEndDateTime = calculateNextTime( this.currentEndDateTime);  
+            LocalDateTime endDateTimeNextDay = LocalDateTime.of(startday.plusDays(1), endTime);
+            if (this.currentEndDateTime.isBefore(currentStartDateTime) || endDateTimeNextDay.isBefore(this.currentEndDateTime)) {
+                throw new IllegalStateException("Invalid end time calculation: " + this.currentEndDateTime);
+            }
         }      
-    }
     
+    }
+    private void randomizeCurrentStartEnd( ) {
+        ZonedDateTime now = ZonedDateTime.now(getZoneId());
+        LocalDateTime nowLocal = now.toLocalDateTime();                
+        LocalDateTime nextStartDateTime = LocalDateTime.of(nowLocal.toLocalDate().plusDays(1), startTime);
+        LocalDateTime nextEndDateTime = LocalDateTime.of(nowLocal.toLocalDate().plusDays(1), endTime);
+        if(Microbot.isDebug() ) log.info("Calculating next window - current: \n" +  this,Level.INFO);
+        int minOffset = -1;
+        int maxOffset=-1;
+        long intervalLength =0 ;
+        randomizerValueUnit = null;
+        log.info(" currentStartDateTime: {} - currentEndDateTime: {}", currentStartDateTime, currentEndDateTime);
+        if (useRandomization && currentStartDateTime != null && this.currentEndDateTime != null) {     
+            switch (repeatCycle) {
+                case ONE_TIME:
+                    randomizerValueUnit = RepeatCycle.ONE_TIME;
+                    break;
+                case DAYS:                                                      
+                    intervalLength = ChronoUnit.MINUTES.between(currentStartDateTime, currentEndDateTime);   
+                                    
+                    randomizerValueUnit = RepeatCycle.MINUTES;
+                    minOffset = Math.max(0,(int)(intervalLength*0.1));
+                    maxOffset = Math.max((int)(intervalLength*0.2),1);
+                    
+                    this.randomizerValue = Rs2Random.between(minOffset, maxOffset);
+                    
+                    if (currentStartDateTime.plusMinutes(this.randomizerValue).isBefore(nextEndDateTime)){
+                        currentStartDateTime = currentStartDateTime.plusMinutes(this.randomizerValue);
+                    }
+                    if (!LocalDateTime.of(endDate, endTime).isBefore(this.currentEndDateTime.plusMinutes(randomizerValue))) {                
+                        this.currentEndDateTime = this.currentEndDateTime.plusMinutes(randomizerValue);
+                    }else {
+                        this.currentEndDateTime = this.currentEndDateTime.plusMinutes(randomizerValue);
+                    }
+                    
+                    break;
+                case WEEKS:
+                                    
+                    long intervalLengthHours= ChronoUnit.HOURS.between(currentStartDateTime, currentEndDateTime);   
+                    randomizerValueUnit = RepeatCycle.HOURS;
+                    minOffset = Math.max( 0,(int)(intervalLengthHours*0.1));
+                    maxOffset = Math.max((int)(intervalLengthHours*0.2),1 );
+                    this.randomizerValue = Rs2Random.between(minOffset, maxOffset);
+                    //when on next day
+                    if (currentStartDateTime.isAfter(nextStartDateTime)){
+                        if (currentStartDateTime.plusHours(this.randomizerValue).isBefore(nextEndDateTime)){
+                            currentStartDateTime = currentStartDateTime.plusHours(this.randomizerValue);
+                        }  
+                    }                  
+                    if (!LocalDateTime.of(endDate, endTime).isBefore(this.currentEndDateTime.plusHours(randomizerValue))) {                
+                        this.currentEndDateTime = this.currentEndDateTime.plusHours(randomizerValue);
+                    }else {
+                        this.currentEndDateTime = this.currentEndDateTime.plusHours(randomizerValue);
+                    }                    
+                    break;
+                case MINUTES:                
+                   
+                    intervalLength = ChronoUnit.MILLIS.between(currentStartDateTime, currentEndDateTime);   
+                    randomizerValueUnit = RepeatCycle.MILLIS;
+                    minOffset = Math.max(0,(int)(intervalLength*0.1));
+                    maxOffset = Math.max(1,(int)(intervalLength*0.2));
+                    this.randomizerValue = Rs2Random.between(minOffset, maxOffset);
+                    currentStartDateTime = currentStartDateTime.plusSeconds(this.randomizerValue*1000);
+
+                    if (!LocalDateTime.of(endDate, endTime).isBefore(this.currentEndDateTime.plusSeconds(randomizerValue*1000))) {                
+                        this.currentEndDateTime = this.currentEndDateTime.plusSeconds(randomizerValue*1000);
+                    }else {
+                        this.currentEndDateTime = this.currentEndDateTime.plusSeconds(randomizerValue*1000);
+                    }            
+                    break;
+                case HOURS:                                  
+                    long intervalLengthSeconds = ChronoUnit.SECONDS.between(currentStartDateTime, currentEndDateTime);                   
+                    randomizerValueUnit = RepeatCycle.SECONDS;
+                    minOffset =  Math.max(0, (int)(intervalLengthSeconds*0.1));
+                    maxOffset = Math.max(1,(int)(intervalLengthSeconds*0.2));
+                    this.randomizerValue = Rs2Random.between(minOffset, maxOffset);
+                    currentStartDateTime = currentStartDateTime.plusSeconds(this.randomizerValue);
+                    if (!LocalDateTime.of(endDate, endTime).isBefore(this.currentEndDateTime.plusSeconds(randomizerValue))) {                
+                        this.currentEndDateTime = this.currentEndDateTime.plusSeconds(randomizerValue);
+                    }else {
+                        this.currentEndDateTime = this.currentEndDateTime.plusSeconds(randomizerValue);
+                    }                    
+                    break;
+                    
+                default:
+                    log.warn("Unsupported repeat cycle: {}", repeatCycle);
+                    break;
+            }
+            log.info("Interval length in hours: {} - min: {} - max: {} - randomizerValue: {} {}", intervalLength, minOffset, maxOffset,randomizerValue,repeatCycle.unit());
+        }
+       
+
+    }
+    private LocalDateTime calculateNextTime( LocalDateTime referenceTime) {
+            LocalDateTime nextStartTime;
+            int minOffset = -1;
+            int maxOffset=-1;
+            long intervalLength =0 ;
+            if (repeatIntervalUnit == 0) {
+                return referenceTime;
+            }   
+            switch (repeatCycle) {
+                case ONE_TIME:
+                    nextStartTime = referenceTime;
+                    break;
+                case MINUTES:
+                    if (useRandomization){
+                        intervalLength = ChronoUnit.SECONDS.between(referenceTime,  referenceTime.plusMinutes(repeatIntervalUnit));                   
+                        randomizerValueUnit = RepeatCycle.SECONDS;
+                        minOffset =  Math.max(0, (int)(intervalLength*0.1));
+                        maxOffset = Math.max(1,(int)(intervalLength*0.2));
+                        this.randomizerValue = Rs2Random.between(minOffset, maxOffset);
+                        nextStartTime = referenceTime.plusSeconds(this.randomizerValue);
+                    }else{
+                        nextStartTime = referenceTime.plusMinutes(repeatIntervalUnit);
+                    }
+                    break;
+                case HOURS:
+                    if(useRandomization){
+                        intervalLength = ChronoUnit.MINUTES.between(referenceTime,  referenceTime.plusHours(repeatIntervalUnit));                   
+                        randomizerValueUnit = RepeatCycle.MINUTES;
+                        minOffset =  Math.max(0, (int)(intervalLength*0.1));
+                        maxOffset = Math.max(1,(int)(intervalLength*0.2));
+                        this.randomizerValue = Rs2Random.between(minOffset, maxOffset);
+                        nextStartTime = referenceTime.plusMinutes(this.randomizerValue);
+                    }else{
+                        nextStartTime = referenceTime.plusHours(repeatIntervalUnit);
+                    }
+                    break;
+                case DAYS:                                        
+                    if (useRandomization){
+                        intervalLength = ChronoUnit.HOURS.between(referenceTime,  referenceTime.plusDays(repeatIntervalUnit));
+                        randomizerValueUnit = RepeatCycle.HOURS;
+                        minOffset =  Math.max(0, (int)(intervalLength*0.1));
+                        maxOffset = Math.max(1,(int)(intervalLength*0.2));
+                        this.randomizerValue = Rs2Random.between(minOffset, maxOffset);
+                        nextStartTime = referenceTime.plusHours(this.randomizerValue);
+                    }else{
+                        nextStartTime = referenceTime.plusDays(repeatIntervalUnit);
+                    }
+                    break;
+                case WEEKS:
+                    if (useRandomization){
+                        intervalLength = ChronoUnit.DAYS.between(referenceTime,  referenceTime.plusWeeks(repeatIntervalUnit));
+                        randomizerValueUnit = RepeatCycle.DAYS;
+                        minOffset =  Math.max(0, (int)(intervalLength*0.1));
+                        maxOffset = Math.max(1,(int)(intervalLength*0.2));
+                        this.randomizerValue = Rs2Random.between(minOffset, maxOffset);
+                        nextStartTime = referenceTime.plusDays(this.randomizerValue);
+
+                    
+                    }else{
+                        nextStartTime =  referenceTime.plusWeeks(repeatIntervalUnit);                                
+                    }
+                default:
+                    log.warn("Unsupported repeat cycle: {}", repeatCycle);
+                    nextStartTime=  referenceTime;
+                log.info("\n\t -Interval length in hours: {} - min: {} - max: {} - randomizerValue: {}", intervalLength, minOffset, maxOffset,randomizerValue);
+            }
+            return nextStartTime;
+        }
     /**
      * Helper method to calculate interval from a reference point
      */
@@ -290,26 +463,8 @@ public class TimeWindowCondition extends TimeCondition {
         LocalDateTime currentDayWindowEnd = LocalDateTime.of(today, endTime);
         if (this.currentValidResetCount > 0) {
             
-        
-            switch (repeatCycle) {
-                case ONE_TIME:
-                    nextStartTime = referenceTime;
-                    break;
-                case MINUTES:
-                    nextStartTime = referenceTime.plusMinutes(repeatIntervalUnit);
-                    break;
-                case HOURS:
-                    nextStartTime = referenceTime.plusHours(repeatIntervalUnit);
-                    break;
-                case DAYS:                                        
-                    nextStartTime = referenceTime.plusDays(repeatIntervalUnit);
-                    break;
-                case WEEKS:
-                    nextStartTime =  referenceTime.plusWeeks(repeatIntervalUnit);                                
-                default:
-                    log.warn("Unsupported repeat cycle: {}", repeatCycle);
-                    nextStartTime=  referenceTime;
-            }
+            nextStartTime = calculateNextTime(referenceTime);
+           
         }else {
             if (nowLocal.isBefore(currentDayWindowEnd)) {                
                 nextStartTime = currentDayWindowStart;
@@ -465,11 +620,22 @@ public class TimeWindowCondition extends TimeCondition {
      * amount within the specified range each time the condition is reset.
      *
      * @param useRandomization Whether to enable time randomization
-     * @param randomizeMinutes Maximum number of minutes to randomize by (plus or minus)
+     * @param randomizerValue Maximum number of minutes to randomize by (plus or minus)
      */
-    public void setRandomization(boolean useRandomization, int randomizeMinutes) {
+    public void setRandomization(boolean useRandomization, int randomizerValue) {
         this.useRandomization = useRandomization;
-        this.randomizeMinutes = Math.max(0, randomizeMinutes);
+        this.randomizerValue = Math.max(0, randomizerValue);
+    }
+   /**
+     * Configures time randomization for this window.
+     * When enabled, the start and end times will be adjusted by a random
+     * amount within the specified range each time the condition is reset.
+     *
+     * @param useRandomization Whether to enable time randomization     
+     */
+    public void setRandomization(boolean useRandomization) {
+        this.useRandomization = useRandomization;
+        this.randomizerValue = 0;
     }
 
    
@@ -497,20 +663,18 @@ public class TimeWindowCondition extends TimeCondition {
         reset(false);
     }
 
-    /**
-     * Resets the time window condition with specified randomization settings.
-     * Updates the randomization parameters and calculates the next time window.
-     *
-     * @param randomize Whether to apply randomization to window times
-     * @param randomizeMinutes Maximum minutes to randomize by (plus or minus)
-     */
-    public void reset(boolean randomize, int randomizeMinutes) {
-        this.useRandomization = randomize;
-        this.randomizeMinutes = randomizeMinutes;
-        reset(randomize);
-    }
   
-
+    public void hardReset() {
+        this.currentValidResetCount = 0;
+        this.lastValidResetTime = LocalDateTime.now();
+        this.currentStartDateTime = null;
+        this.currentEndDateTime = null;
+        this.useRandomization = true;
+        this.transientNumberOfResetsWithinDailyInterval = 0;
+        // Initialize next window times based on repeat cycle
+        calculateNextWindow();
+  
+    }
     /**
      * {@inheritDoc}
      * Resets the time window condition and calculates the next active window.
@@ -520,8 +684,7 @@ public class TimeWindowCondition extends TimeCondition {
      * @param randomize Whether to apply randomization to window times
      */
     @Override
-    public void reset(boolean randomize) {
-        this.useRandomization = randomize;        
+    public void reset(boolean randomize) {        
         // Store current time as the reset reference
         log.debug("Last reset time: {}", lastValidResetTime);
         this.lastValidResetTime = LocalDateTime.now();                                
@@ -650,9 +813,23 @@ public class TimeWindowCondition extends TimeCondition {
         sb.append("  ├─ Randomization ────────────────────────────\n");
         sb.append("  │ Randomization: ").append(useRandomization ? "Enabled" : "Disabled").append("\n");
         if (useRandomization) {
-            sb.append("  │ Random Range: ±").append(randomizeMinutes).append(" minutes\n");
-            sb.append("  │ Applied Offset: Start ").append(randomStartMinutes)
-              .append(" min, End ").append(randomEndMinutes).append(" min\n");
+            sb.append("  │ Random Range: ±").append(randomizerValue);
+            switch (repeatCycle) {
+                case MINUTES:
+                    sb.append(" millisec\n");
+                    break;
+                case HOURS:
+                    sb.append(" seconds\n");
+                    break;
+                case DAYS:
+                    sb.append(" minutes\n");
+                    break;         
+                case WEEKS:
+                    sb.append(" hours\n");
+                    break;   
+                default:
+                    break;
+            }
         }
         
         // Tracking info
@@ -728,15 +905,25 @@ public class TimeWindowCondition extends TimeCondition {
         } else {
             sb.append("No active window available\n");
         }
-        
-        // Randomization
         if (useRandomization) {
-            sb.append("Randomization: Enabled (±").append(randomizeMinutes).append(" minutes)\n");
-            if (randomStartMinutes != 0 || randomEndMinutes != 0) {
-                sb.append("Current offsets: Start ").append(randomStartMinutes)
-                  .append(" min, End ").append(randomEndMinutes).append(" min\n");
+            sb.append("  │ Random Range: ±").append(randomizerValue);
+            switch (repeatCycle) {
+                case MINUTES:
+                    sb.append(" millisec\n");
+                    break;
+                case HOURS:
+                    sb.append(" seconds\n");
+                    break;
+                case DAYS:
+                    sb.append(" minutes\n");
+                    break;         
+                case WEEKS:
+                    sb.append(" hours\n");
+                    break;   
+                default:
+                    break;
             }
-        } else {
+        }else {
             sb.append("Randomization: Disabled\n");
         }
         

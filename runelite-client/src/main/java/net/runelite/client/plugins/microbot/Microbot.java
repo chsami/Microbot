@@ -10,6 +10,7 @@ import net.runelite.api.*;
 import net.runelite.api.annotations.Component;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.widgets.Widget;
+import net.runelite.api.widgets.WidgetModalMode;
 import net.runelite.client.Notifier;
 import net.runelite.client.RuneLite;
 import net.runelite.client.RuneLiteDebug;
@@ -52,7 +53,10 @@ import javax.inject.Inject;
 import javax.swing.Timer;
 import javax.swing.*;
 import java.awt.*;
-import java.io.*;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.time.Instant;
@@ -550,6 +554,51 @@ public class Microbot {
                     Microbot.getClient().addChatMessage(ChatMessageType.ENGINE, "", "[" + formattedTime + "]: " +  _message, "", false)
             );
         }
+    }
+
+    /**
+     * Opens a pop‑up interface with the specified title and description.
+     * <p>
+     * This method uses the client thread to invoke the creation of a modal interface
+     * and displays the provided title and description. It ensures that the interface
+     * is properly closed after it is displayed.
+     * </p>
+     *
+     * <h3>Example:</h3>
+     * <pre><code>
+     * // show a popup titled "Microbot" with a formatted enabled message
+     * Microbot.openPopUp(
+     *     "Microbot",
+     *     String.format(
+     *         "S-1D:&lt;br&gt;&lt;br&gt;&lt;col=ffffff&gt;%s Enabled&lt;/col&gt;",
+     *         "Antiban"
+     *     )
+     * );
+     * </code></pre>
+     *
+     * @param title       The title to be displayed in the pop‑up.
+     * @param description The description or message to be displayed in the pop‑up.
+     */
+    public static void openPopUp(String title, String description) {
+        getClientThread().invoke(() -> {
+            // Open a modal interface with the specified widget ID and modal mode
+            WidgetNode widgetNode = getClient().openInterface((161 << 16) | 13, 660, WidgetModalMode.MODAL_CLICKTHROUGH);
+
+            // Run a client script to populate the interface with the title and description
+            getClient().runScript(3343, title, description, -1);
+
+            // Schedule a task to check the widget's state and close the interface if necessary
+            getClientThread().invokeLater(() -> {
+                Widget w = getClient().getWidget(660, 1);
+                if (w == null || w.getWidth() > 0) {
+                    return false; // Exit if the widget is null or already displayed
+                }
+
+                // Close the interface if the widget is valid
+                getClient().closeInterface(widgetNode, true);
+                return true;
+            });
+        });
     }
 
     private static boolean isPluginEnabled(String name) {

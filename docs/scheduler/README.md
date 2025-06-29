@@ -4,12 +4,17 @@
 
 The Plugin Scheduler is a sophisticated system that allows for the automatic scheduling and management of plugins based on various conditions. It provides a flexible framework for defining when plugins should start and stop, using a powerful condition-based approach.
 
+## User Guides
+
+- **[User Guide](user-guide.md)**: Comprehensive guide on using the Scheduler Plugin UI
+- **[Defining Conditions](defining-conditions.md)**: Detailed instructions on setting up start and stop conditions
+
 ## Key Components
 
 The Plugin Scheduler system consists of several key components:
 
 1. **[SchedulerPlugin](scheduler-plugin.md)**: The main plugin that manages the scheduling of other plugins.
-2. **[PluginScheduleEntry](plugin-schedule-entry.md)**: Represents a scheduled plugin with start and stop conditions.
+2. **[PluginScheduleEntry](plugin-schedule-entry-merged.md)**: Represents a scheduled plugin with start and stop conditions.
 3. **[ConditionManager](conditions/README.md)**: Manages logical conditions for plugin scheduling in a hierarchical structure.
 4. **[Condition](conditions/README.md)**: The base interface for all conditions that determine when plugins should run.
 5. **[SchedulablePlugin](schedulable-plugin.md)**: Interface that plugins must implement to be schedulable by the Scheduler.
@@ -174,7 +179,7 @@ For a complete example of a schedulable plugin, see the [SchedulableExamplePlugi
 For more detailed information about each component, refer to the specific documentation files:
 
 - [SchedulerPlugin](scheduler-plugin.md)
-- [PluginScheduleEntry](plugin-schedule-entry.md)
+- [PluginScheduleEntry](plugin-schedule-entry-merged.md)
 - [SchedulablePlugin](api/schedulable-plugin.md)
 - [Plugin Schedule Entry Soft Stop Event](plugin-schedule-entry-soft-stop-event.md)
 - [Plugin Schedule Entry Finished Event](plugin-schedule-entry-finished-event.md)

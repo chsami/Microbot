@@ -46,7 +46,7 @@ public class GiantsFoundryScript extends Script {
                 }
                 final Rs2ItemModel weapon = get(EquipmentInventorySlot.WEAPON);
                 final Rs2ItemModel shield = get(EquipmentInventorySlot.SHIELD);
-                if ((weapon != null || shield != null) && !weapon.name.equalsIgnoreCase("preform")) {
+                if ((weapon != null || shield != null) && !weapon.getName().equalsIgnoreCase("preform")) {
                     Microbot.showMessage(("Please start the script without any weapon or shield in your equipment slot."));
                     sleep(5000);
                     return;

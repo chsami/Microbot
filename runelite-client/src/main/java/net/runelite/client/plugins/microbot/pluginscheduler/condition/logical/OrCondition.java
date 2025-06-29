@@ -1,8 +1,9 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.condition.logical;
 
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
-
 import lombok.EqualsAndHashCode;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeCondition;
@@ -68,6 +69,24 @@ public class OrCondition extends LogicalCondition {
             return Optional.empty();
         }        
         
+    }
+    
+    /**
+     * For an OR condition, all conditions must be unsatisfied to block the entire OR.
+     * This method returns all child conditions if none are satisfied, or an empty list
+     * if at least one is satisfied (meaning the OR condition itself is satisfied).
+     * 
+     * @return List of all child conditions if none are satisfied, otherwise an empty list
+     */
+    @Override
+    public List<Condition> getBlockingConditions() {
+        // For an OR condition, if any condition is satisfied, nothing is blocking
+        if (isSatisfied()) {
+            return new ArrayList<>();
+        }
+        
+        // If we reach here, none are satisfied, so all conditions are blocking
+        return new ArrayList<>(conditions);
     }
     
     /**

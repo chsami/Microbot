@@ -18,10 +18,11 @@ import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 @Slf4j
 public class CoordinateClueTask extends ClueTask {
-
+    private Future<?> currentTask;
     private final CoordinateClue clue;
     private final EventBus eventBus;
     private final ExecutorService backgroundExecutor;
@@ -63,13 +64,13 @@ public class CoordinateClueTask extends ClueTask {
         }
 
         log.info("Walking to clue location: {}", location);
-        backgroundExecutor.submit(() -> {
-            if (!Rs2Walker.walkTo(location, 1)) {
-                log.error("Failed to initiate walking to location: {}", location);
-                completeTask(false);
-            }
-        });
+
+        if (!Rs2Walker.walkTo(location, 1)) {
+            log.error("Failed to initiate walking to location: {}", location);
+            completeTask(false);
+        }
     }
+
 
     private boolean isWithinRadius(WorldPoint targetLocation, WorldPoint playerLocation, int radius) {
         int deltaX = Math.abs(targetLocation.getX() - playerLocation.getX());
@@ -79,6 +80,20 @@ public class CoordinateClueTask extends ClueTask {
 
     @Subscribe
     public void onGameTick(GameTick event) {
+        if (currentTask != null && !currentTask.isDone()) {
+            log.warn("Previous task is still running, skipping this tick.");
+            return;
+        }
+        currentTask = backgroundExecutor.submit(() -> {
+            try {
+                processGameTick(event);
+            } catch (Exception ex) {
+                log.error("Error processing game tick", ex);
+            }
+        });
+    }
+
+    private void processGameTick(GameTick event) {
         Player player = client.getLocalPlayer();
         if (player == null) return;
 

@@ -80,7 +80,7 @@ public class Rs2Shop {
         Microbot.status = "Buying " + quantity + " " + itemName;
         try {
             Rs2ItemModel rs2Item = shopItems.stream()
-                    .filter(item -> item.name.equalsIgnoreCase(itemName))
+                    .filter(item -> item.getName().equalsIgnoreCase(itemName))
                     .findFirst().orElse(null);
             String actionAndQuantity = "Buy " + quantity;
             System.out.println(actionAndQuantity);
@@ -140,7 +140,7 @@ public class Rs2Shop {
         // Iterate through the shop items to find the specified item
         for (Rs2ItemModel item : shopItems) {
             // Check if the item name matches the specified item name
-            if (item.name.equalsIgnoreCase(itemName)) {
+            if (item.getName().equalsIgnoreCase(itemName)) {
                 // System.out.println(item.name + " is in stock. Quantity: " + item.quantity + ", Slot: " + item.getSlot());
                 return true; // Item found in stock
             }
@@ -162,7 +162,7 @@ public class Rs2Shop {
         // Iterate through the shop items to find the specified item
         for (Rs2ItemModel item : shopItems) {
             // Check if the item name matches the specified item name and quantity is >= minimumQuantity
-            if (item.name.equalsIgnoreCase(itemName) && item.quantity >= minimumQuantity) {
+            if (item.getName().equalsIgnoreCase(itemName) && item.getQuantity() >= minimumQuantity) {
                 return true; // Item found in stock with sufficient quantity
             }
         }
@@ -206,7 +206,7 @@ public class Rs2Shop {
         for (int i = 0; i < shopItems.size(); i++) {
             Rs2ItemModel item = shopItems.get(i);
             // Check if the item name matches the specified item name
-            if (item.name.equalsIgnoreCase(itemName)) {
+            if (item.getName().equalsIgnoreCase(itemName)) {
                 return item.getSlot(); // Return the slot number of the item
             }
         }
@@ -224,13 +224,13 @@ public class Rs2Shop {
     private static void invokeMenu(Rs2ItemModel rs2Item, String action) {
         if (rs2Item == null) return;
 
-        Microbot.status = action + " " + rs2Item.name;
+        Microbot.status = action + " " + rs2Item.getName();
 
         int param0;
         int param1;
         int identifier = 3;
         MenuAction menuAction = MenuAction.CC_OP;
-        ItemComposition itemComposition = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getItemDefinition(rs2Item.id))
+        ItemComposition itemComposition = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getItemDefinition(rs2Item.getId()))
                 .orElse(null);
         if (!action.isEmpty()) {
             String[] actions;
@@ -244,7 +244,7 @@ public class Rs2Shop {
             }
         }
         // Determine param0 (item slot in the shop)
-        param0 = getSlot(rs2Item.name) + 1; // Use the getSlot method to get the slot number
+        param0 = getSlot(rs2Item.getName()) + 1; // Use the getSlot method to get the slot number
         System.out.println(param0);
 
         // Shop Inventory
@@ -279,7 +279,7 @@ public class Rs2Shop {
 
         }
 
-        Microbot.doInvoke(new NewMenuEntry(param0, param1, menuAction.getId(), identifier, rs2Item.id, rs2Item.name), (itemBounds(rs2Item) == null) ? new Rectangle(1, 1) : itemBounds(rs2Item));
+        Microbot.doInvoke(new NewMenuEntry(param0, param1, menuAction.getId(), identifier, rs2Item.getId(), rs2Item.getName()), (itemBounds(rs2Item) == null) ? new Rectangle(1, 1) : itemBounds(rs2Item));
         //Rs2Reflection.invokeMenu(param0, param1, menuAction.getId(), identifier, rs2Item.id, action, target, -1, -1);
     }
 

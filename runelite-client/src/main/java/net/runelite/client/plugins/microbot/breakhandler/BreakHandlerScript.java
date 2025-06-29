@@ -86,7 +86,7 @@ public class BreakHandlerScript extends Script {
 
                 if (breakDuration <= 0 && Microbot.pauseAllScripts) {
                     if (Rs2AntibanSettings.universalAntiban && Rs2AntibanSettings.actionCooldownActive)
-                        return;
+                        return;                    
                     Microbot.pauseAllScripts = false;
                     if (breakIn <= 0 && !isLockState())
                         breakIn = Rs2Random.between(config.timeUntilBreakStart() * 60, config.timeUntilBreakEnd() * 60);

@@ -37,7 +37,7 @@ import static net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer.disable
 
 public class RoyalTitansScript extends Script {
 
-    public static String version = "1.0";
+    public static String version = "1.1";
 
     private final Integer MELEE_TITAN_ICE_REGION_X = 34;
     private final Integer MELEE_TITAN_FIRE_REGION_X = 26;
@@ -92,6 +92,9 @@ public class RoyalTitansScript extends Script {
         state = RoyalTitansBotStatus.TRAVELLING;
         Microbot.enableAutoRunOn = false;
 
+        if (config.overrideState()) {
+            state = config.startState();
+        }
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!Microbot.isLoggedIn()) return;

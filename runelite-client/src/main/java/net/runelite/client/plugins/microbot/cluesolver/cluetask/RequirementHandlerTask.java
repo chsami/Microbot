@@ -78,6 +78,7 @@ public class RequirementHandlerTask extends ClueTask {
 
     private void fetchMissingItemsFromBank(List<ItemRequirement> missingItems) {
         this.requirementIterator = missingItems.iterator();
+        log.info("Missing items: {}", missingItems.stream().map(e -> e.getCollectiveName(client)).collect(Collectors.joining(", ")));
 
         if (requirementIterator == null || !requirementIterator.hasNext()) {
             completeTask(true);
@@ -120,14 +121,17 @@ public class RequirementHandlerTask extends ClueTask {
             return;
         }
 
-        Rs2Bank.withdrawOne(itemName);
+        Rs2Bank.withdrawAndEquip(itemName);
         itemReceivedFuture = new CompletableFuture<>();
 
         backgroundExecutor.submit(() -> {
             try {
                 boolean received = itemReceivedFuture.get(5, TimeUnit.SECONDS);
+
                 if (received) {
-                    fetchNextItem();
+                    Microbot.log("Item " + itemName + " received: " + received);
+                    currentRequirement = null;
+
                 } else {
                     log.warn("Item {} not received in time.", itemName);
                     Rs2Bank.closeBank();

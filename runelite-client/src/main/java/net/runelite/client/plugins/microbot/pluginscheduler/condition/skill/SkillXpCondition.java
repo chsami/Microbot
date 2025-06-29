@@ -26,7 +26,7 @@ public class SkillXpCondition extends SkillCondition {
     private transient long currentTargetXp;// relative and absolute mode difference
     private final long targetXpMin;
     private final long targetXpMax;
-    private transient long startXp;
+    private transient long startXp  = -1;
     private transient long[] startXpBySkill; // Used for total XP tracking
     private final boolean randomized;
     @Getter
@@ -94,6 +94,7 @@ public class SkillXpCondition extends SkillCondition {
      * Initialize XP tracking for individual skill or all skills if total
      */
     private void initializeXpTracking() {
+        log.debug("Initializing XP tracking for skill: {}", skill);
         if (isTotal()) {
             Skill[] skills = getAllTrackableSkills();
             this.startXpBySkill = new long[skills.length];
@@ -156,10 +157,14 @@ public class SkillXpCondition extends SkillCondition {
      * Gets the amount of XP gained since condition was created
      */
     public long getXpGained() {
-        if (isTotal()) {
-            return getTotalXp() - startXp;
-        } else {
-            return getCurrentXp() - startXp;
+        if (startXp != -1){
+            if (isTotal()) {
+                return getTotalXp() - startXp;
+            } else {
+                return getCurrentXp() - startXp;
+            }
+        }else{
+            return 0;
         }
     }
     
@@ -208,7 +213,7 @@ public class SkillXpCondition extends SkillCondition {
             }
             
             if (currentTargetXp <= 0) {
-                return 100.0;
+                return 0;
             }
             
             return (100.0 * xpGained) / currentTargetXp;
@@ -234,19 +239,20 @@ public class SkillXpCondition extends SkillCondition {
         
         if (relative) {
             long xpGained = getXpGained();
-            long currentXp = getCurrentXp();                       
+            long currentXp = getCurrentXp();
+            long startXp = getStartingXp();                       
             String randomRangeInfo = "";
             
             if (targetXpMin != targetXpMax) {
                 randomRangeInfo = String.format(" (randomized from %d-%d)", targetXpMin, targetXpMax);
             }
             
-            return String.format("Gain Relative %d %s XP%s (gained: %d - %.1f%%, current total: %d)", 
+            return String.format("Gain Relative %d %s XP%s (gained: %d - %.1f%%, current total: %d  starting: %d)", 
                 currentTargetXp, 
                 skillName,
                 randomRangeInfo,                
                 xpGained,
-                getProgressPercentage(),currentXp);
+                getProgressPercentage(),currentXp, startXp);
         } else {
             long currentXp = getCurrentXp();
             String randomRangeInfo = "";

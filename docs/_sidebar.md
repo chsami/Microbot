@@ -29,7 +29,9 @@
         * [Fighter Script](combat.md)
     - **Plugin Scheduler**
       * [Overview](scheduler/README.md)
-      * [PluginScheduleEntry](scheduler/plugin-schedule-entry.md)
+      * [User Guide](scheduler/user-guide.md)
+      * [Defining Conditions](scheduler/defining-conditions.md)
+      * [PluginScheduleEntry](scheduler/plugin-schedule-entry-merged.md)
       * [SchedulerPlugin](scheduler/scheduler-plugin.md)
       * [PluginScheduleEntryFinishedEvent](scheduler/event/plugin-schedule-entry-finished-event.md)
       * [PluginScheduleEntrySoftStopEvent](scheduler/event/plugin-schedule-entry-soft-stop-event.md)

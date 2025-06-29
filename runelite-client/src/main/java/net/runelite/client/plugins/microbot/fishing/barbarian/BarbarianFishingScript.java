@@ -96,7 +96,7 @@ public class BarbarianFishingScript extends Script {
 
     private void dropInventoryItems(BarbarianFishingConfig config) {
         InteractOrder dropOrder = config.dropOrder() == InteractOrder.RANDOM ? InteractOrder.random() : config.dropOrder();
-        Rs2Inventory.dropAll(x -> x.name.toLowerCase().contains("leaping"), dropOrder);
+        Rs2Inventory.dropAll(x -> x.getName().toLowerCase().contains("leaping"), dropOrder);
     }
 
     public void shutdown() {

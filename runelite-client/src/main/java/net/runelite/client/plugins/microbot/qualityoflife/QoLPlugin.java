@@ -13,7 +13,6 @@ import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.ProfileChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.plugins.config.ConfigPlugin;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 import net.runelite.client.plugins.microbot.qualityoflife.enums.WintertodtActions;
@@ -26,6 +25,7 @@ import net.runelite.client.plugins.microbot.qualityoflife.scripts.bank.BankpinSc
 import net.runelite.client.plugins.microbot.qualityoflife.scripts.pvp.PvpScript;
 import net.runelite.client.plugins.microbot.qualityoflife.scripts.wintertodt.WintertodtOverlay;
 import net.runelite.client.plugins.microbot.qualityoflife.scripts.wintertodt.WintertodtScript;
+import net.runelite.client.plugins.microbot.ui.MicrobotConfigPlugin;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.antiban.FieldUtil;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -33,6 +33,7 @@ import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
+import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
@@ -50,6 +51,7 @@ import org.apache.commons.lang3.reflect.FieldUtils;
 import javax.inject.Inject;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.lang.reflect.Field;
 import java.util.Arrays;
@@ -133,6 +135,8 @@ public class QoLPlugin extends Plugin {
 
     @Inject
     BankpinScript bankpinScript;
+    @Inject
+    private PotionManagerScript potionManagerScript;
 
     @Provides
     QoLConfig provideConfig(ConfigManager configManager) {
@@ -190,6 +194,7 @@ public class QoLPlugin extends Plugin {
         eventBus.register(gemCuttingManager);
         eventBus.register(craftingManager);
         bankpinScript.run(config);
+        potionManagerScript.run(config);
         // pvpScript.run(config);
         awaitExecutionUntil(() ->Microbot.getClientThread().invokeLater(this::updateUiElements), () -> !SplashScreen.isOpen(), 600);
     }
@@ -207,6 +212,8 @@ public class QoLPlugin extends Plugin {
         eventBus.unregister(firemakingManager);
         eventBus.unregister(gemCuttingManager);
         eventBus.unregister(craftingManager);
+        potionManagerScript.shutdown();
+
     }
 
     @Subscribe(
@@ -301,6 +308,7 @@ public class QoLPlugin extends Plugin {
             event.consume();
             Microbot.getClientThread().runOnSeperateThread(() -> {
                 customHaProfitOnClicked(menuEntry);
+
                 return null;
             });
         }
@@ -432,6 +440,9 @@ public class QoLPlugin extends Plugin {
 
         if (config.rightClickCameraTracking() && menuEntry.getNpc() != null && menuEntry.getNpc().getId() > 0) {
             addMenuEntry(event, "Track", target, this::customTrackOnClicked);
+        }
+        if(config.useDoLastCooking() && "Cook".equals(option) && (target.contains("Range") || target.contains("Fire"))) {
+            addMenuEntry(event, "<col=FFA500>Do-Last</col>", target, this::customCookingOnClicked);
         }
 
         if (config.useDoLastBank()) {
@@ -614,6 +625,19 @@ public class QoLPlugin extends Plugin {
         Microbot.log("<col=245C2D>Recording actions for: </col>" + option);
     }
 
+    private void customCookingOnClicked(MenuEntry event) {
+        Microbot.getClientThread().runOnSeperateThread(() -> {
+            Global.sleepUntilTrue(Rs2Widget::isProductionWidgetOpen);
+            if (Rs2Widget.isProductionWidgetOpen()) {
+                Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
+            }
+        Microbot.log("<col=245C2D>Cooking</col>");
+
+            return null;
+        });
+
+    }
+
     private void quickTeleportToHouse(MenuEntry entry) {
         if (!Rs2Inventory.hasRunePouch()) return;
 
@@ -703,15 +727,15 @@ public class QoLPlugin extends Plugin {
             FieldUtil.setFinalStatic(accentColorField, config.accentColor());
 
             // Get the PluginToggleButton class to access its ON_SWITCHER field
-            Class<?> pluginButton = Class.forName("net.runelite.client.plugins.config.PluginToggleButton");
+            Class<?> pluginButton = Class.forName("net.runelite.client.plugins.microbot.ui.MicrobotPluginToggleButton");
             Field onSwitcherPluginPanel = pluginButton.getDeclaredField("ON_SWITCHER");
             onSwitcherPluginPanel.setAccessible(true);
             // Update the ON_SWITCHER field with a remapped image based on the config toggle button color
             FieldUtil.setFinalStatic(onSwitcherPluginPanel, remapImage(SWITCHER_ON_IMG, config.toggleButtonColor()));
 
             // Find the ConfigPlugin instance from the plugin manager
-            ConfigPlugin configPlugin = (ConfigPlugin) Microbot.getPluginManager().getPlugins().stream()
-                    .filter(plugin -> plugin instanceof ConfigPlugin)
+            MicrobotConfigPlugin configPlugin = (MicrobotConfigPlugin) Microbot.getPluginManager().getPlugins().stream()
+                    .filter(plugin -> plugin instanceof MicrobotConfigPlugin)
                     .findAny().orElse(null);
 
             // If ConfigPlugin is not found, log an error and return false
@@ -758,9 +782,10 @@ public class QoLPlugin extends Plugin {
         }
     }
 
-    private JPanel getPluginListPanel(ConfigPlugin configPlugin) throws ClassNotFoundException {
 
-        Class<?> pluginListPanelClass = Class.forName("net.runelite.client.plugins.config.PluginListPanel");
+    private JPanel getPluginListPanel(MicrobotConfigPlugin configPlugin) throws ClassNotFoundException {
+
+        Class<?> pluginListPanelClass = Class.forName("net.runelite.client.plugins.microbot.ui.MicrobotPluginListPanel");
         assert configPlugin != null;
         return (JPanel) configPlugin.getInjector().getProvider(pluginListPanelClass).get();
     }

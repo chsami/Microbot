@@ -34,7 +34,7 @@ public class ClueSolverPlugin extends Plugin {
     @Inject
     private ClueSolverConfig clueSolverConfig;
 
-    private boolean isSolverRunning = false;
+    public static boolean isSolverRunning = false;
 
     @Provides
     ClueSolverConfig provideClueSolverConfig(ConfigManager configManager) {
@@ -44,29 +44,32 @@ public class ClueSolverPlugin extends Plugin {
     @Override
     protected void startUp() {
         log.info("Starting Clue Solver Plugin");
-        overlayManager.add(clueSolverOverlay);
-        configureSolver();  // Check config setting at startup
+        if (null != overlayManager) {
+            overlayManager.add(clueSolverOverlay);
+            clueSolverOverlay.myButton.hookMouseListener();
+        }
     }
 
     @Override
     protected void shutDown() {
         log.info("Shutting down Clue Solver Plugin");
         overlayManager.remove(clueSolverOverlay);
+        clueSolverOverlay.myButton.unhookMouseListener();
         stopClueSolver();
     }
 
     private synchronized void startClueSolver() {
-        if (!isSolverRunning) {
+        if (!ClueSolverPlugin.isSolverRunning) {
             clueSolverScript.start();
-            isSolverRunning = true;
+            ClueSolverPlugin.isSolverRunning = true;
             log.info("Clue Solver Script started.");
         }
     }
 
     private synchronized void stopClueSolver() {
-        if (isSolverRunning) {
+        if (ClueSolverPlugin.isSolverRunning) {
             clueSolverScript.shutdown();
-            isSolverRunning = false;
+            ClueSolverPlugin.isSolverRunning = false;
             log.info("Clue Solver Script stopped.");
         }
     }
@@ -75,8 +78,8 @@ public class ClueSolverPlugin extends Plugin {
      * Configures the solver based on current settings.
      * Ensures the solver state reflects the config.
      */
-    private void configureSolver() {
-        if (clueSolverConfig.enableClueSolver()) {
+    public void configureSolver() {
+        if (!ClueSolverPlugin.isSolverRunning) {
             startClueSolver();
         } else {
             stopClueSolver();
@@ -90,4 +93,6 @@ public class ClueSolverPlugin extends Plugin {
             configureSolver();
         }
     }
+
+
 }

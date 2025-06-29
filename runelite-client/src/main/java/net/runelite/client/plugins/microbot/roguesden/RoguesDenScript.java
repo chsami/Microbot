@@ -254,13 +254,23 @@ public class RoguesDenScript extends Script {
     }
 
     private static boolean storeAllItemsInBank() {
-        if (!Rs2Inventory.isEmpty() || !Rs2Equipment.isNaked()) {
-            if (Rs2Bank.openBank()) {
-                Rs2Bank.depositEquipment();
-                Rs2Bank.depositAll();
+        sleep(150,300); // some time it does not detect the inventory is empty or naked
+        while (!Rs2Inventory.isEmpty() || !Rs2Equipment.isNaked())
+        {
+            if (Rs2Bank.walkToBankAndUseBank())
+            {
+                if (!Rs2Inventory.isEmpty())
+                {
+                    Rs2Bank.depositAll();
+                }
+                if (!Rs2Equipment.isNaked())
+                {
+                    Rs2Bank.depositEquipment();
+                }
                 sleepGaussian(1200, 400);
+                return true;
             }
-            return true;
+            sleep(300);
         }
         return false;
     }

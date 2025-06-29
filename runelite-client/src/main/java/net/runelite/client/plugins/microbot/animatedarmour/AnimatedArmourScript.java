@@ -4,12 +4,15 @@ import net.runelite.api.GameObject;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.grounditem.LootingParameters;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import java.util.concurrent.TimeUnit;
 
@@ -29,6 +32,12 @@ public class AnimatedArmourScript extends Script {
                 boolean hasArmorPieces = Rs2Inventory.contains(item -> item.getName().contains("platebody")) &&
                         Rs2Inventory.contains(item -> item.getName().contains("platelegs")) &&
                         Rs2Inventory.contains(item -> item.getName().contains("full helm"));
+                if (Rs2Inventory.getInventoryFood().isEmpty() && config.foodAmount() > 0) {
+                    Rs2Bank.walkToBank(BankLocation.WARRIORS_GUILD);
+                    Rs2Bank.openBank();
+                    Rs2Bank.withdrawX(config.food().getId(),config.foodAmount());
+                    Rs2Walker.walkTo(2855,3540,0);
+                }
                 if(hasArmorPieces) {
                     animateArmor();
                 } else {

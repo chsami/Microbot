@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.farmTreeRun;
 
 import net.runelite.client.config.*;
 import net.runelite.client.plugins.microbot.farmTreeRun.enums.FruitTreeEnum;
+import net.runelite.client.plugins.microbot.farmTreeRun.enums.HardTreeEnums;
 import net.runelite.client.plugins.microbot.farmTreeRun.enums.TreeEnums;
 
 /**
@@ -35,6 +36,9 @@ import net.runelite.client.plugins.microbot.farmTreeRun.enums.TreeEnums;
         "<br> If you want to stop the script during your farm run (maybe it gets stuck or whatever reason), make sure to disable 'Banking' and disable patches you previously ran. <br> Happy botting\n"
 )
 public interface FarmTreeRunConfig extends Config {
+
+    public static final boolean DEBUG_MODE = System.getProperty("java.vm.info", "").contains("sharing");
+
     @ConfigSection(
             name = "General",
             description = "General",
@@ -108,7 +112,7 @@ public interface FarmTreeRunConfig extends Config {
             keyName = "fruitTreeSapling",
             name = "Fruit tree sapling",
             description = "Select fruit tree sapling to use",
-            position = 3,
+            position = 4,
             section = generalSection
     )
     default FruitTreeEnum selectedFruitTree() {
@@ -119,7 +123,7 @@ public interface FarmTreeRunConfig extends Config {
             keyName = "protectFruitTree",
             name = "Protect fruit trees",
             description = "Do you want to protect your fruit trees?",
-            position = 4,
+            position = 5,
             section = generalSection
     )
     default boolean protectFruitTrees() {
@@ -127,10 +131,32 @@ public interface FarmTreeRunConfig extends Config {
     }
 
     @ConfigItem(
+            keyName = "Fossil Island Tree",
+            name = "Hard sapling",
+            description = "Select Hard tree sapling to use",
+            position = 6,
+            section = generalSection
+    )
+    default HardTreeEnums selectedHardTree() {
+        return HardTreeEnums.MAHOGANY;
+    }
+
+    @ConfigItem(
+            keyName = "protectHardTree",
+            name = "Protect Hard trees",
+            description = "Do you want to protect your hard wood ;) ?",
+            position = 7,
+            section = generalSection
+    )
+    default boolean protectHardTrees() {
+        return false;
+    }
+
+    @ConfigItem(
             keyName = "useCompost",
             name = "Use compost",
             description = "Only bottomless compost bucket is supported",
-            position = 5,
+            position = 8,
             section = generalSection
     )
     default boolean useCompost() {
@@ -141,10 +167,43 @@ public interface FarmTreeRunConfig extends Config {
             keyName = "useGraceful",
             name = "Use graceful",
             description = "Enable if you want to wear graceful outfit",
-            position = 5,
+            position = 9,
             section = generalSection
     )
     default boolean useGraceful() {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "useSkillsNecklace",
+            name = "Use Skills Necklace",
+            description = "Useful if you don't have Spirit tree or Farming cape",
+            position = 10,
+            section = generalSection
+    )
+    default boolean useSkillsNecklace() {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "useEnergyPotion",
+            name = "Use Energy Potion",
+            description = "Useful if you want to have a faster run",
+            position = 11,
+            section = generalSection
+    )
+    default boolean useEnergyPotion() {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "useSpiritMode",
+            name = "Spirit Mode BETA (Advanced users)",
+            description = "Use Spirit tree preferred routing, requires you to modify spirit_trees.tsv",
+            position = 12,
+            section = generalSection
+    )
+    default boolean useSpiritMode() {
         return true;
     }
 
@@ -200,6 +259,17 @@ public interface FarmTreeRunConfig extends Config {
             section = treePatchesSection
     )
     default boolean varrockTreePatch() {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "fossil",
+            name = "Fossil Island",
+            description = "Fossil Island tree patch x3",
+            position = 4,
+            section = treePatchesSection
+    )
+    default boolean fossilTreePatch() {
         return true;
     }
 
@@ -261,8 +331,8 @@ public interface FarmTreeRunConfig extends Config {
 
     @ConfigItem(
             keyName = "lletya",
-            name = "[Not implemented] Lletya",
-            description = "[Not tested] Lletya tree patch",
+            name = "Lletya",
+            description = "Lletya tree patch",
             position = 5,
             section = fruitTreePatchesSection
     )

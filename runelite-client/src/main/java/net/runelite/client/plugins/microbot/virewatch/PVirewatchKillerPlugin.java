@@ -198,7 +198,7 @@ public class PVirewatchKillerPlugin extends Plugin {
             {
                 if (item != null)
                 {
-                    previousInventory.put(item.getId(), item.quantity);
+                    previousInventory.put(item.getId(), item.getQuantity());
                 }
             }
         }

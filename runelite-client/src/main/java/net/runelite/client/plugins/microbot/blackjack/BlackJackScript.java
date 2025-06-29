@@ -296,9 +296,9 @@ public class BlackJackScript extends Script {
                                 sleepUntil(() -> Rs2Shop.isOpen(), 5000);
                                 sleep(620, 860);
                                 if(Rs2Shop.isOpen()){
-                                    if (Rs2Inventory.hasItem(Rs2Inventory.get(emptyJug).name)) {
-                                        Rs2Inventory.sellItem(Rs2Inventory.get(emptyJug).name, "50");
-                                        sleepUntil(() -> !Rs2Inventory.hasItem(Rs2Inventory.get(emptyJug).name));
+                                    if (Rs2Inventory.hasItem(Rs2Inventory.get(emptyJug).getName())) {
+                                        Rs2Inventory.sellItem(Rs2Inventory.get(emptyJug).getName(), "50");
+                                        sleepUntil(() -> !Rs2Inventory.hasItem(Rs2Inventory.get(emptyJug).getName()));
                                         sleep(400, 860);
                                         Rs2Shop.closeShop();
                                         sleepUntil(() -> !Rs2Shop.isOpen(), 5000);

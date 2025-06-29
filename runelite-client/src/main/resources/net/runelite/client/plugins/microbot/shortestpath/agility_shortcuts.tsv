@@ -150,10 +150,10 @@
 2871 3003 0	2871 3008 0	Climb;Rocks;53240	79 Agility			5	
 2880 9813 0	2877 9813 0	Jump-over;Strange floor;16510	80 Agility				
 2878 9813 0	2881 9813 0	Jump-over;Strange floor;16510	80 Agility				
-2775 10003 0	2773 10003 0	Jump-over;Strange floor;16544	81 Agility				
-2773 10003 0	2775 10003 0	Jump-over;Strange floor;16544	81 Agility				
-2768 10002 0	2770 10002 0	Jump-over;Strange floor;16544	81 Agility				
-2770 10002 0	2768 10002 0	Jump-over;Strange floor;16544	81 Agility				
+2775 10003 0	2773 10003 0	Jump-over;Strange floor;16544	43 Agility
+2773 10003 0	2775 10003 0	Jump-over;Strange floor;16544	43 Agility
+2768 10002 0	2770 10002 0	Jump-over;Strange floor;16544	43 Agility
+2770 10002 0	2768 10002 0	Jump-over;Strange floor;16544	43 Agility
 3500 9510 2	3506 9505 2	Squeeze-through;Crevice;16465	86 Agility				
 3506 9505 2	3500 9510 2	Squeeze-through;Crevice;16465	86 Agility				
 3308 3491 0	3308 3493 0	Climb-over;Broken Fence;2618					
@@ -212,21 +212,21 @@
 1346 10232 0	1316 10213 0	Enter;Mysterious pipe;34655	88 Agility			8	
 1316 10213 0	1346 10232 0	Enter;Mysterious pipe;34655	88 Agility			8	
 1820 9947 0	1820 9945 0	Jump-over;Strange floor;34834	63 Agility			4	
-2992 9547 0	2969 9551 0	Enter;Tunnel;55988	60 Agility			4	 
-2969 9551 0	2992 9547 0	Enter;Tunnel;55989	60 Agility			4	 
+2992 9547 0	2969 9551 0	Enter;Tunnel;55988	60 Agility			4
+2969 9551 0	2992 9547 0	Enter;Tunnel;55989	60 Agility			4
 3012 9550 0	3024 9554 0	Enter;Tunnel;53250	82 Agility			4	
 3024 9554 0	3012 9550 0	Enter;Tunnel;53251	82 Agility			4	
 3026 9572 0	3035 9557 0	Enter;Tunnel;42506	72 Agility			4	
 3035 9557 0	3026 9572 0	Enter;Tunnel;42507	72 Agility			4	
 3560 9814 0	3560 9809 0	Enter;Cave;43755	74 Agility			6	
 3560 9809 0	3560 9814 0	Enter;Cave;43756	74 Agility			6	
-3555 9788 0	3555 9783 0	Enter;Cave;43758	74 Agility			6	 
-3555 9783 0	3555 9788 0	Enter;Cave;43757	74 Agility			6	 
+3555 9788 0	3555 9783 0	Enter;Cave;43758	74 Agility			6
+3555 9783 0	3555 9788 0	Enter;Cave;43757	74 Agility			6
 3500 9804 0	3536 9769 0	Enter;Cave;43759	93 Agility			6	
 3536 9769 0	3500 9804 0	Enter;Cave;43840	93 Agility			6	
 3539 9771 0	3543 9772 0	Enter;Cave;43762	93 Agility			6	
 3543 9772 0	3539 9771 0	Enter;Cave;43763	93 Agility			6	
-3548 3282 0	3544 3282 0	Jump-Across;Dry stone wall;53256	72 Agility			6	 
+3548 3282 0	3544 3282 0	Jump-Across;Dry stone wall;53256	72 Agility			6
 3544 3282 0	3548 3282 0	Jump-Across;Dry stone wall;53256	72 Agility			6
 2154 3072 0	2160 3072 0	Cross;Stepping stone;10663	76 Agility			6
 2160 3072 0	2154 3072 0	Cross;Stepping stone;10663	76 Agility			6
@@ -240,3 +240,9 @@
 3204 10196 0	3200 10196 0	Jump to;Pillar;31561	75 Agility			6
 3180 10211 0	3180 10207 0	Jump to;Pillar;31561	75 Agility			6
 3180 10207 0	3180 10211 0	Jump to;Pillar;31561	75 Agility			6
+1720 3551 0	1724 3551 0	Cross;Stepping stone;29728	45 Agility			6
+1724 3551 0	1720 3551 0	Cross;Stepping stone;29728	45 Agility			6
+3228 3470 0	3228 3471 0	Climb;Trellis;2149	35 Agility		Garden Of Tranquillity	6
+3228 3471 0	3228 3470 0	Climb;Trellis;2149	35 Agility		Garden Of Tranquillity	6
+2330 5097 0	2333 5097 0	Climb-through;Shortcut;18416	30 Agility			6
+2333 5097 0	2330 5097 0	Climb-through;Shortcut;18416	30 Agility			6

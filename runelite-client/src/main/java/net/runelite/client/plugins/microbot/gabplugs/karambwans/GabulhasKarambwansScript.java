@@ -1,7 +1,6 @@
 package net.runelite.client.plugins.microbot.gabplugs.karambwans;
 
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.Notifier;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -9,16 +8,16 @@ import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import javax.inject.Inject;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-import static net.runelite.client.plugins.microbot.gabplugs.karambwans.GabulhasKarambwansInfo.*;
 import static net.runelite.client.plugins.microbot.gabplugs.karambwans.GabulhasKarambwansInfo.botStatus;
+import static net.runelite.client.plugins.microbot.gabplugs.karambwans.GabulhasKarambwansInfo.states;
 
 @Slf4j
 public class GabulhasKarambwansScript extends Script {
@@ -26,7 +25,7 @@ public class GabulhasKarambwansScript extends Script {
     @Inject
     private Notifier notifier;
 
-    private WorldPoint zanarisRing = new WorldPoint(2412, 4434, 0);
+    private final WorldPoint fishingPoint = new WorldPoint(2899, 3118, 0);
 
     private WorldPoint bankPoint = new WorldPoint(2381, 4455, 0);
 
@@ -40,30 +39,32 @@ public class GabulhasKarambwansScript extends Script {
                 switch (botStatus) {
                     case FISHING:
                         fishingLoop();
-                        botStatus = states.WALKING_TO_RING_TO_BANK;
-                        sleep(10000, 20000);
+                        botStatus = states.WALKING_TO_BANK;
+                        sleep(1000, 2000);
                         break;
                     case WALKING_TO_RING_TO_BANK:
                         walkToRingToBank();
                         botStatus = states.WALKING_TO_BANK;
                         sleep(100, 3000);
 
+
+
                         break;
                     case WALKING_TO_BANK:
                         doBank();
                         botStatus = states.BANKING;
-                        sleep(100, 3000);
+                        Rs2Random.waitEx(400, 200);
 
                         break;
                     case BANKING:
                         useBank();
-                        botStatus = states.WALKING_TO_RING_TO_FISH;
-                        sleep(100, 3000);
+                        botStatus = states.WALKING_TO_FISH;
+                        Rs2Random.waitEx(400, 200);
                         break;
-                    case WALKING_TO_RING_TO_FISH:
-                        walkToRingToFish();
+                    case WALKING_TO_FISH:
+                        walkToFish();
                         botStatus = states.FISHING;
-                        sleep(100, 3000);
+                        Rs2Random.waitEx(400, 200);
                         break;
                 }
 
@@ -96,53 +97,39 @@ public class GabulhasKarambwansScript extends Script {
 
     private void walkToRingToBank() {
         Rs2GameObject.interact(29495, "Zanaris");
-        sleepUntil(() -> Rs2Player.getWorldLocation().equals(zanarisRing));
+        sleepUntil(() -> Rs2Player.getWorldLocation().equals(fishingPoint));
     }
 
     private void doBank() {
-        Rs2Walker.walkTo(bankPoint, 6);
-        while (!Rs2Player.isNearArea(bankPoint, 6)  && super.isRunning()) {
-            sleep(100, 600);
+        Rs2Walker.walkTo(bankPoint, 3);
+        while (!Rs2Player.isNearArea(bankPoint, 4)  && super.isRunning()) {
+            Rs2Random.waitEx(400, 200);
         }
-        Rs2Bank.handleBankPin("");
         Rs2Bank.useBank();
     }
 
     private void useBank() {
         Rs2Bank.depositAll(3142);
+        Rs2Inventory.waitForInventoryChanges(1000);
+        Rs2Bank.emptyFishBarrel();
+        Rs2Random.waitEx(600,200);
     }
 
     private void interactWithFishingSpot() {
         Rs2Npc.interact(4712, "Fish");
     }
 
-    private void walkToRingToFish() {
+    private void walkToFish() {
 
-        while(!Rs2Walker.isInArea(zanarisRing.dx(2), zanarisRing.dy(-2))  && super.isRunning()) {
 
-            Rs2Walker.walkTo(zanarisRing.dx(2), 2);
-            sleep(1000, 2000);
-            var fairyRing = Rs2GameObject.findObjectById(29560);
-            if(!Objects.isNull(fairyRing)) {
-                Rs2GameObject.interact(fairyRing, "Last-destination (DKP)");
-            }
 
-        }
+            Rs2Walker.walkTo(fishingPoint, 2);
+            Rs2Random.waitEx(400, 200);
+
+
         System.out.println("Done walking");
-        sleep(100, 2000);
-
-        var fairyRing = Rs2GameObject.findObjectById(29560);
-
-        System.out.println("Ring:" + fairyRing.getId());
-
-        while (!Rs2Player.getWorldLocation().equals(new WorldPoint(2900, 3111, 0))  && super.isRunning()) {
-            Rs2GameObject.interact(fairyRing, "Last-destination (DKP)");
-            sleep(1000, 10000);
-        }
 
 
     }
-
-
 }
 

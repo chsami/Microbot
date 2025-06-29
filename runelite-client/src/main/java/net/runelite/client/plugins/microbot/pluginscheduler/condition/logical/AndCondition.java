@@ -2,7 +2,8 @@ package net.runelite.client.plugins.microbot.pluginscheduler.condition.logical;
 
 import java.time.ZonedDateTime;
 import java.util.Optional;
-
+import java.util.List;
+import java.util.ArrayList;
 import lombok.EqualsAndHashCode;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeCondition;
@@ -103,7 +104,25 @@ public class AndCondition extends LogicalCondition {
         return sb.toString();
     }
 
-  
+    /**
+     * For an AND condition, any unsatisfied child condition blocks the entire AND.
+     * This method returns all child conditions that are currently not satisfied.
+     * 
+     * @return List of all unsatisfied child conditions
+     */
+    @Override
+    public List<Condition> getBlockingConditions() {
+        List<Condition> blockingConditions = new ArrayList<>();
+        
+        // In an AND condition, any unsatisfied condition blocks the entire AND
+        for (Condition condition : conditions) {
+            if (!condition.isSatisfied()) {
+                blockingConditions.add(condition);
+            }
+        }
+        
+        return blockingConditions;
+    }
 
     /**
      * Gets the next time this AND condition will be satisfied.

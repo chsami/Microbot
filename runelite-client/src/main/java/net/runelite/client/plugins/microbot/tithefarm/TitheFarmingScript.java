@@ -172,7 +172,7 @@ public class TitheFarmingScript extends Script {
                     state = STARTING;
                     plants = new ArrayList<>();
                     Rs2ItemModel rs2ItemSeed = Rs2Inventory.get(TitheFarmMaterial.getSeedForLevel().getFruitId());
-                    initialFruit = rs2ItemSeed == null ? 0 : rs2ItemSeed.quantity;
+                    initialFruit = rs2ItemSeed == null ? 0 : rs2ItemSeed.getQuantity();
                     init = false;
                     sleep(2000); //extra sleep to have the game initialize correctly
                 }

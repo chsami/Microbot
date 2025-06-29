@@ -135,7 +135,7 @@ public class DemonicGorillaScript extends Script {
         return true;
     }
 
-private void handleTravel(DemonicGorillaConfig config) {
+    private void handleTravel(DemonicGorillaConfig config) {
         if (Rs2Walker.walkTo(GORILLA_LOCATION)) {
             BOT_STATUS = State.FIGHTING;
         }
@@ -566,12 +566,12 @@ private void handleTravel(DemonicGorillaConfig config) {
     private void activateOffensivePrayer(DemonicGorillaConfig config) {
         Rs2PrayerEnum newOffensivePrayer = null;
 
-        if (config.useMagicStyle() && magicGear.doesEquipmentMatch()) {
-            newOffensivePrayer = Rs2PrayerEnum.AUGURY;
-        } else if (config.useRangeStyle() && rangeGear.doesEquipmentMatch()) {
-            newOffensivePrayer = Rs2PrayerEnum.RIGOUR;
-        } else if (config.useMeleeStyle() && meleeGear.doesEquipmentMatch()) {
-            newOffensivePrayer = Rs2PrayerEnum.PIETY;
+        if (config.useMagicStyle() && currentGear == ArmorEquiped.MAGIC) {
+            newOffensivePrayer = Rs2Prayer.getBestMagePrayer();
+        } else if (config.useRangeStyle() && currentGear == ArmorEquiped.RANGED) {
+            newOffensivePrayer = Rs2Prayer.getBestRangePrayer();
+        } else if (config.useMeleeStyle() && currentGear == ArmorEquiped.MELEE) {
+            newOffensivePrayer = Rs2Prayer.getBestMeleePrayer();
         }
 
         if (newOffensivePrayer != null && newOffensivePrayer != currentOffensivePrayer) {

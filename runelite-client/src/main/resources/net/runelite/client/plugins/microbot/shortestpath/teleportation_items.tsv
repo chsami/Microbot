@@ -22,7 +22,7 @@
 # Western Banner (3 has 1 teleport per day, 4 is unlimited)									
 2339 3649 0		13143;13144			Y	F	19	4	Western banner
 # Explorer's Ring (2 has 3 teleports per day, 3 and 4 are unlimited)									
-3052 3291 0		13126		4552<3	Y	T	19	4	Explorer's ring
+3052 3291 0		13126		4552<3	Y	T	19	4	Explorer's ring: Teleport
 3052 3291 0		13127;13128			Y	F	19	4	Explorer's ring
 # Rada's Blessing (Kourend Woodland, 1 has 3 teleports, 2 has 5 teleports, 3 and 4 have unlimited. For Mount Karuulum, 3 has 3 teleports and 4 has unlimited)									
 1554 3457 0		22941		7937<3	Y	T	19	4	Rada's blessing: Kourend Woodland
@@ -34,7 +34,7 @@
 # Games Necklace									
 2520 3571 0		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	2. Games necklace: Barbarian Outpost
 2898 3553 0		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	1. Games necklace: Burthorpe
-2965 4254 2		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	3. Games necklace: Corporeal Beast
+2967 4384 2		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	3. Games necklace: Corporeal Beast
 3245 9500 2		3853;3855;3857;3859;3861;3863;3865;3867	Tears of Guthix		Y	T	19	4	4. Games necklace: Tears of Guthix
 1631 3940 0		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	5. Games necklace: Wintertodt Camp
 
@@ -184,29 +184,30 @@
 # The Construction cape's home teleports, determined by varbit 2187									
 # 0 - None									
 # 1 - Rimmington									
-2952 3224 0		9789;9790		2187=1	Y	F	19	4	Construction cape: Home
+#2952 3224 0		9789;9790		2187=1	Y	F	19	4	Construction cape: Home
 # 2 - Taverly									
-2892 3465 0		9789;9790		2187=2	Y	F	19	4	Construction cape: Home
+#2892 3465 0		9789;9790		2187=2	Y	F	19	4	Construction cape: Home
 # 3 - Pollnivneach									
-3339 3001 0		9789;9790		2187=3	Y	F	19	4	Construction cape: Home
+#3339 3001 0		9789;9790		2187=3	Y	F	19	4	Construction cape: Home
 # 4 - Rellekka									
-2669 3629 0		9789;9790		2187=4	Y	F	19	4	Construction cape: Home
+#2669 3629 0		9789;9790		2187=4	Y	F	19	4	Construction cape: Home
 # 5 - Brimhaven									
-2756 3176 0		9789;9790		2187=5	Y	F	19	4	Construction cape: Home
+#2756 3176 0		9789;9790		2187=5	Y	F	19	4	Construction cape: Home
 # 6 - Yanille									
-2545 3097 0		9789;9790		2187=6	Y	F	19	4	Construction cape: Home
+#2545 3097 0		9789;9790		2187=6	Y	F	19	4	Construction cape: Home
 # 7 - Prifddinas									
-3239 6077 0		9789;9790		2187=7	Y	F	19	4	Construction cape: Home
+#3239 6077 0		9789;9790		2187=7	Y	F	19	4	Construction cape: Home
 # 8 - Hosidius									
-1740 3517 0		9789;9790		2187=8	Y	F	19	4	Construction cape: Home
-2952 3224 0		9789;9790			Y	F	19	4	Construction cape: Rimmington
-2892 3465 0		9789;9790			Y	F	19	4	Construction cape: Taverley
-3339 3001 0		9789;9790			Y	F	19	4	Construction cape: Pollnivneach
-1743 3517 0		9789;9790			Y	F	19	4	Construction cape: Hosidius
-2669 3629 0		9789;9790			Y	F	19	4	Construction cape: Rellekka
-2756 3176 0		9789;9790			Y	F	19	4	Construction cape: Brimhaven
-2545 3097 0		9789;9790			Y	F	19	4	Construction cape: Yanille
-3239 6077 0		9789;9790			Y	F	19	4	Construction cape: Prifddinas
+#1740 3517 0		9789;9790		2187=8	Y	F	19	4	Construction cape: Home
+2952 3224 0		9789;9790			Y	F	19	4	2. Construction cape: Rimmington
+2892 3465 0		9789;9790			Y	F	19	4	3. Construction cape: Taverley
+3339 3004 0		9789;9790			Y	F	19	4	4. Construction cape: Pollnivneach
+1743 3517 0		9789;9790			Y	F	19	4	5. Construction cape: Hosidius
+1422 2965 0		9789;9790			Y	F	19	4	6. Construction cape: Aldarin
+2669 3629 0		9789;9790			Y	F	19	4	7. Construction cape: Rellekka
+2756 3176 0		9789;9790			Y	F	19	4	8. Construction cape: Brimhaven
+2545 3097 0		9789;9790			Y	F	19	4	9. Construction cape: Yanille
+3239 6077 0		9789;9790			Y	F	19	4	10. Construction cape: Prifddinas
 2604 3401 0		9798;9799			Y	F	19	4	Fishing cape: Fishing Guild
 2504 3484 0		9798;9799			Y	F	19	4	Fishing cape: Otto's Grotto
 1248 3725 0		9810;9811			Y	F	19	4	Farming cape: Teleport
@@ -318,7 +319,7 @@
 # Requires the use of an ancient tablet to activate									
 1254 3560 0		13393			Y	T	19	4	5. Xeric's talisman: Xeric's Honour
 3200 3355 0		13660				T	19	4	Chronicle: Teleport
-3615 9461 0		26914			Y	F	19	4	Amulet of the eye
+3615 9461 0		26914			Y	F	19	4	Amulet of the eye: Teleport
 2981 3276 0		26818			Y	T	19	4	1. Ring of the elements: Air Altar
 3170 3155 0		26818			Y	T	19	4	2. Ring of the elements: Water Altar
 3288 3468 0		26818			Y	T	19	4	3. Ring of the elements: Earth Altar

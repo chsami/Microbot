@@ -33,6 +33,9 @@ import java.util.function.Consumer;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.awt.font.TextAttribute;
+import javax.swing.Timer;
+import javax.swing.ToolTipManager;
+import javax.swing.Timer;
 
 @Slf4j
 public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
@@ -42,25 +45,32 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
     private Consumer<PluginScheduleEntry> selectionListener;
     private boolean updatingTable = false;
     
+    // Tooltip enhancement fields
+    private Timer tooltipRefreshTimer;
+    private Point hoverLocation;
+    private int hoverRow = -1;
+    private int hoverColumn = -1;
+    private static final int TOOLTIP_REFRESH_INTERVAL = 1000; // 1 second refresh
+    
     // Colors for different row states with improved visibility
     private static final Color CURRENT_PLUGIN_COLOR = new Color(138, 43, 226, 80); // Purple with transparency
     private static final Color NEXT_PLUGIN_COLOR = new Color(255, 193, 7, 60); // Amber with transparency
     private static final Color SELECTION_COLOR = new Color(0, 120, 215, 150); // Blue with transparency
-    private static final Color CONDITION_MET_COLOR = new Color(76, 175, 80, 70); // Green with transparency
-    private static final Color CONDITION_NOT_MET_COLOR = new Color(244, 67, 54, 70); // Red with transparency
+    private static final Color CONDITION_MET_COLOR = new Color(76, 175, 80, 45); // Darker green with lower transparency
+    private static final Color CONDITION_NOT_MET_COLOR = new Color(244, 67, 54, 45); // Darker red with lower transparency
     private static final Color DEFAULT_PLUGIN_COLOR = new Color(0, 150, 136, 40); // Teal with transparency
     
-    // Column indices for easy reference
-    private static final int COL_NAME = 0;
-    private static final int COL_SCHEDULE = 1;
-    private static final int COL_NEXT_RUN = 2;
-    private static final int COL_START_COND = 3;
-    private static final int COL_STOP_COND = 4;
-    private static final int COL_PRIORITY = 5;
-    private static final int COL_ENABLED = 6;
-    private static final int COL_RANDOM = 7;
-    private static final int COL_TIME_STOP = 8;
-    private static final int COL_RUNS = 9;
+    // Blend method is already defined elsewhere in the class
+    
+    // Column indices for easy reference - kept for future development but currently unused
+    @SuppressWarnings("unused") private static final int COL_NAME = 0;
+    @SuppressWarnings("unused") private static final int COL_SCHEDULE = 1;
+    @SuppressWarnings("unused") private static final int COL_NEXT_RUN = 2;
+    @SuppressWarnings("unused") private static final int COL_START_COND = 3;
+    @SuppressWarnings("unused") private static final int COL_STOP_COND = 4;
+    @SuppressWarnings("unused") private static final int COL_PRIORITY = 5;
+    @SuppressWarnings("unused") private static final int COL_ENABLED = 6;
+    @SuppressWarnings("unused") private static final int COL_RUNS = 7;
     
     private List<PluginScheduleEntry> rowToPluginMap = new ArrayList<>();
     
@@ -75,6 +85,11 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         
         this.schedulerPlugin = schedulerPlugin;
         
+        // Configure ToolTipManager for persistent tooltips
+        ToolTipManager.sharedInstance().setDismissDelay(Integer.MAX_VALUE); // Keep tooltips visible indefinitely
+        ToolTipManager.sharedInstance().setInitialDelay(300); // Show tooltips faster (300ms)
+        ToolTipManager.sharedInstance().setReshowDelay(0); // No delay when moving between tooltips
+        
         setLayout(new BorderLayout());
         setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createCompoundBorder(
@@ -88,20 +103,19 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         ));
         setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
-        // Update the table model to focus on important columns
-        // Removed less important columns to reduce clutter: Default, Random, Time Stop
+        // Focused table model with essential columns only 
+        // The columns are: Plugin, Schedule, Next Run, Start Conditions, Stop Conditions, Priority, Enabled, Run Count
         tableModel = new DefaultTableModel(
             new Object[]{"Plugin", "Schedule", "Next Run", "Start Conditions", "Stop Conditions", "Priority", "Enabled", "Runs"}, 0) {
             @Override
             public Class<?> getColumnClass(int column) {
-                if (column == 6) return Boolean.class; // Enabled column is boolean
-                if (column == 5) return Integer.class; // Priority column as Integer
+                if (column == 6) return Boolean.class; 
+                if (column == 5) return Integer.class; 
                 if (column == 7) return Integer.class; // Run count as Integer
                 return String.class;
             }
             @Override
-            public boolean isCellEditable(int row, int column) {                
-                // Only allow editing Priority and Enabled columns
+            public boolean isCellEditable(int row, int column) {                                
                 return column == 5 || column == 6;
             }
         };
@@ -169,7 +183,7 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         // Create table with custom styling
         scheduleTable = new JTable(tableModel);
         scheduleTable.setFillsViewportHeight(true);
-        scheduleTable.setRowHeight(30);
+        scheduleTable.setRowHeight(25); // Reduced row height for better density
         scheduleTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         scheduleTable.setShowGrid(false);
         scheduleTable.setIntercellSpacing(new Dimension(0, 0));
@@ -179,7 +193,7 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         // Set the custom editor for the Priority column
         scheduleTable.getColumnModel().getColumn(5).setCellEditor(new PrioritySpinnerEditor());
 
-        // Add mouse listener to handle clicks outside the table data
+        // Add mouse listener to handle clicks outside the table data and tooltip refreshing
         scheduleTable.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -198,6 +212,44 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
                     if (selectedRow == row) {
                         // Deselect the row
                         clearSelection();
+                    }
+                }
+            }
+            
+            @Override
+            public void mouseExited(MouseEvent e) {
+                // Reset hover tracking when mouse leaves table
+                hoverRow = -1;
+                hoverColumn = -1;
+                if (tooltipRefreshTimer != null && tooltipRefreshTimer.isRunning()) {
+                    tooltipRefreshTimer.stop();
+                }
+            }
+        });
+        
+        // Add mouse motion listener for hover detection and tooltip refresh
+        scheduleTable.addMouseMotionListener(new MouseAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                int row = scheduleTable.rowAtPoint(e.getPoint());
+                int col = scheduleTable.columnAtPoint(e.getPoint());
+                
+                if (row >= 0 && col >= 0) {
+                    // If hovering over a new cell, update tracking
+                    if (row != hoverRow || col != hoverColumn) {
+                        hoverRow = row;
+                        hoverColumn = col;
+                        hoverLocation = e.getPoint();
+                        
+                        // Start/restart timer for tooltip refresh
+                        startTooltipRefreshTimer();
+                    }
+                } else {
+                    // Not over any cell
+                    hoverRow = -1;
+                    hoverColumn = -1;
+                    if (tooltipRefreshTimer != null && tooltipRefreshTimer.isRunning()) {
+                        tooltipRefreshTimer.stop();
                     }
                 }
             }
@@ -220,10 +272,10 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
 
         // Set column widths
         scheduleTable.getColumnModel().getColumn(0).setPreferredWidth(180); // Plugin
-        scheduleTable.getColumnModel().getColumn(1).setPreferredWidth(150); // Schedule
-        scheduleTable.getColumnModel().getColumn(2).setPreferredWidth(150); // Next Run
-        scheduleTable.getColumnModel().getColumn(3).setPreferredWidth(110); // Start Conditions
-        scheduleTable.getColumnModel().getColumn(4).setPreferredWidth(110); // Stop Conditions
+        scheduleTable.getColumnModel().getColumn(1).setPreferredWidth(140); // Schedule
+        scheduleTable.getColumnModel().getColumn(2).setPreferredWidth(140); // Next Run
+        scheduleTable.getColumnModel().getColumn(3).setPreferredWidth(130); // Start Conditions
+        scheduleTable.getColumnModel().getColumn(4).setPreferredWidth(130); // Stop Conditions
         scheduleTable.getColumnModel().getColumn(5).setPreferredWidth(70);  // Priority
         scheduleTable.getColumnModel().getColumn(6).setPreferredWidth(70);  // Enabled
         scheduleTable.getColumnModel().getColumn(7).setPreferredWidth(60);  // Run Count
@@ -254,7 +306,7 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
                             c.setFont(Font.getFont(attributes));
                         }
                     }
-                    else if (rowPlugin.isRunning() && schedulerPlugin.getCurrentPlugin() != null && 
+                    else if ( schedulerPlugin.getCurrentPlugin() != null &&  schedulerPlugin.getCurrentPlugin().equals(rowPlugin) &&
                             rowPlugin.getName().equals(schedulerPlugin.getCurrentPlugin().getName())) {
                         // Currently running plugin
                         c.setBackground(CURRENT_PLUGIN_COLOR);
@@ -284,24 +336,116 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
                         // Apply background color based on condition status
                         if (column == 3) { // Start conditions
                             boolean hasStartConditions = entry.hasAnyStartConditions();
-                            boolean startConditionsMet = hasStartConditions && entry.getStartConditionManager().areConditionsMet();
+                            boolean startConditionsMet = hasStartConditions && entry.getStartConditionManager().areAllConditionsMet();
+                            boolean isRelevant = entry.isEnabled() && !entry.isRunning();
                             
                             if (hasStartConditions) {
-                                c.setBackground(startConditionsMet ? CONDITION_MET_COLOR : CONDITION_NOT_MET_COLOR);
+                                // When conditions are relevant (enabled but not running), show clearer status
+                                if (isRelevant) {
+                                    // Use darker base colors with the game's theme
+                                    Color baseColor = ColorScheme.DARKER_GRAY_COLOR;
+                                    
+                                    if (startConditionsMet) {
+                                        // For met conditions, use a subtle green tint
+                                        c.setBackground(new Color(
+                                            blend(baseColor.getRed(), 70, 0.85f),
+                                            blend(baseColor.getGreen(), 130, 0.85f),
+                                            blend(baseColor.getBlue(), 70, 0.85f)
+                                        ));
+                                    } else {
+                                        // For unmet conditions, use a subtle red tint
+                                        c.setBackground(new Color(
+                                            blend(baseColor.getRed(), 140, 0.85f),
+                                            blend(baseColor.getGreen(), 60, 0.85f),
+                                            blend(baseColor.getBlue(), 60, 0.85f)
+                                        ));
+                                        
+                                        // For blocking conditions, use an indicator rather than border
+                                        if (c instanceof JComponent) {
+                                            ((JComponent)c).setBorder(BorderFactory.createCompoundBorder(
+                                                BorderFactory.createMatteBorder(0, 3, 0, 0, new Color(180, 50, 50, 120)),
+                                                BorderFactory.createEmptyBorder(1, 4, 1, 4)
+                                            ));
+                                        }
+                                    }
+                                } else {
+                                    // Almost no color when not relevant - just slightly tinted
+                                    Color baseColor = row % 2 == 0 ? ColorScheme.DARKER_GRAY_COLOR : ColorScheme.DARK_GRAY_COLOR;
+                                    
+                                    if (startConditionsMet) {
+                                        c.setBackground(new Color(
+                                            blend(baseColor.getRed(), 76, 0.95f),
+                                            blend(baseColor.getGreen(), 120, 0.95f), 
+                                            blend(baseColor.getBlue(), 76, 0.95f)
+                                        ));
+                                    } else {
+                                        c.setBackground(new Color(
+                                            blend(baseColor.getRed(), 120, 0.95f),
+                                            blend(baseColor.getGreen(), 76, 0.95f),
+                                            blend(baseColor.getBlue(), 76, 0.95f)
+                                        ));
+                                    }
+                                }
                                 c.setForeground(Color.BLACK);
                             }
                         } else if (column == 4) { // Stop conditions
                             boolean hasStopConditions = entry.hasAnyStopConditions();
-                            boolean stopConditionsMet = hasStopConditions && entry.getStopConditionManager().areConditionsMet();
+                            boolean stopConditionsMet = hasStopConditions && entry.getStopConditionManager().areAllConditionsMet();
+                            boolean isRelevant = entry.isRunning();
                             
                             if (hasStopConditions) {
-                                c.setBackground(stopConditionsMet ? CONDITION_MET_COLOR : CONDITION_NOT_MET_COLOR);
+                                // More prominent when currently running
+                                if (isRelevant) {
+                                    // Use darker base colors with the game's theme
+                                    Color baseColor = ColorScheme.DARKER_GRAY_COLOR;
+                                    
+                                    if (stopConditionsMet) {
+                                        // For met conditions, use a noticeable but not harsh green tint
+                                        c.setBackground(new Color(
+                                            blend(baseColor.getRed(), 60, 0.85f),
+                                            blend(baseColor.getGreen(), 140, 0.85f),
+                                            blend(baseColor.getBlue(), 70, 0.85f)
+                                        ));
+                                        
+                                        // For satisfied stop conditions, use an indicator rather than full border
+                                        if (c instanceof JComponent) {
+                                            ((JComponent)c).setBorder(BorderFactory.createCompoundBorder(
+                                                BorderFactory.createMatteBorder(0, 0, 0, 3, new Color(50, 180, 50, 140)),
+                                                BorderFactory.createEmptyBorder(1, 4, 1, 4)
+                                            ));
+                                        }
+                                    } else {
+                                        // For unmet conditions, use a blueish tint (less alarming than red for stop)
+                                        c.setBackground(new Color(
+                                            blend(baseColor.getRed(), 70, 0.85f),
+                                            blend(baseColor.getGreen(), 70, 0.85f),
+                                            blend(baseColor.getBlue(), 140, 0.85f)
+                                        ));
+                                    }
+                                } else {
+                                    // Almost no color when not relevant - just slightly tinted
+                                    Color baseColor = row % 2 == 0 ? ColorScheme.DARKER_GRAY_COLOR : ColorScheme.DARK_GRAY_COLOR;
+                                    
+                                    if (stopConditionsMet) {
+                                        c.setBackground(new Color(
+                                            blend(baseColor.getRed(), 76, 0.95f),
+                                            blend(baseColor.getGreen(), 120, 0.95f),
+                                            blend(baseColor.getBlue(), 76, 0.95f)
+                                        ));
+                                    } else {
+                                        c.setBackground(new Color(
+                                            blend(baseColor.getRed(), 76, 0.95f),
+                                            blend(baseColor.getGreen(), 76, 0.95f),
+                                            blend(baseColor.getBlue(), 120, 0.95f)
+                                        ));
+                                    }
+                                }
                                 c.setForeground(Color.BLACK);
                             }
                         }
                     }
                     
-                    // Set tooltip based on column for better information
+                    // Set tooltip based on column for better information - always fresh with dynamic data
                     if (column == 0) { // Plugin name column
                         setToolTipText(getPluginDetailsTooltip(rowPlugin));
                     } else if (column == 1) { // Schedule
@@ -367,6 +511,14 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         // Condition indicators
         addLegendItem(legendPanel, CONDITION_MET_COLOR, "Condition Met", "Condition has been satisfied");
         addLegendItem(legendPanel, CONDITION_NOT_MET_COLOR, "Not Met", "Condition not yet satisfied");
+        
+        // Information about tooltips
+        JLabel tooltipInfo = new JLabel("Hover over cells for detailed tooltips");
+        tooltipInfo.setForeground(Color.LIGHT_GRAY);
+        tooltipInfo.setFont(FontManager.getRunescapeSmallFont());
+        tooltipInfo.setToolTipText("<html>Tooltips show detailed information<br>They stay visible and refresh automatically</html>");
+        legendPanel.add(Box.createHorizontalStrut(10));
+        legendPanel.add(tooltipInfo);
 
         // Add the legend panel to the bottom of the main panel
         add(legendPanel, BorderLayout.SOUTH);
@@ -455,6 +607,27 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         // Group conditions by type
         Map<ConditionType, List<Condition>> grouped = groupConditionsByType(conditions);
         
+        // Show root causes prominently if conditions are not met but are relevant
+        if (conditionsAreRelevant && !entry.canBeStarted()) {
+            tooltip.append("<div style='background-color:#3A2222; padding:3px; margin:3px; border-left:3px solid #E57373;'>");
+            tooltip.append("<b style='color:#E0E0E0'>Blocking Conditions:</b><br>");
+            
+            // First show user-defined root causes
+            String userRootCauses = entry.getStartConditionManager().getUserRootCausesSummary();
+            if (!userRootCauses.isEmpty()) {
+                tooltip.append("<span style='color:#FFAB91'><u>User-defined:</u></span><br>");
+                tooltip.append("<span style='color:#FFCCBC'>").append(userRootCauses).append("</span><br>");
+            }
+            
+            // Then show plugin-defined root causes
+            String pluginRootCauses = entry.getStartConditionManager().getPluginRootCausesSummary();
+            if (!pluginRootCauses.isEmpty()) {
+                tooltip.append("<span style='color:#FFAB91'><u>Plugin-defined:</u></span><br>");
+                tooltip.append("<span style='color:#FFCCBC'>").append(pluginRootCauses).append("</span><br>");
+            }
+            tooltip.append("</div><br>");
+        }
+        
         // If there are many conditions, add a summary first
         if (conditions.size() > 3) {
             tooltip.append("<i>").append(entry.getDetailedStartConditionsStatus()).append("</i>");
@@ -518,10 +691,35 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         // Add overall status
         if (conditionsAreRelevant) {
             tooltip.append("<br><b>Status:</b> <font color='gold'>⚡ Currently relevant</font>");
-            if (entry.areStartConditionsMet()) {
-                tooltip.append("<br><font color='green'>All conditions met - plugin can start</font>");
+            if (entry.canBeStarted()) {
+                tooltip.append("<br><font color='green'> All conditions met - plugin ready to start</font>");
             } else {
                 tooltip.append("<br><font color='red'>Some conditions not met - waiting to start</font>");
+                
+                // Add detailed explanation section if there are blocking conditions
+                String userExplanation = entry.getStartConditionManager().getUserBlockingExplanation();
+                String pluginExplanation = entry.getStartConditionManager().getPluginBlockingExplanation();
+                
+                if (!userExplanation.isEmpty() || !pluginExplanation.isEmpty()) {
+                    tooltip.append("<br><br><details>");
+                    tooltip.append("<summary><font color='#3377FF'><u>Show detailed diagnostics</u></font></summary>");
+                    
+                    if (!userExplanation.isEmpty()) {
+                        tooltip.append("<div style='margin-left:10px'>");
+                        tooltip.append("<b>User condition details:</b><br>");
+                        tooltip.append(userExplanation.replace("\n", "<br>"));
+                        tooltip.append("</div>");
+                    }
+                    
+                    if (!pluginExplanation.isEmpty()) {
+                        tooltip.append("<div style='margin-left:10px'>");
+                        tooltip.append("<b>Plugin condition details:</b><br>");
+                        tooltip.append(pluginExplanation.replace("\n", "<br>"));
+                        tooltip.append("</div>");
+                    }
+                    
+                    tooltip.append("</details>");
+                }
             }
         } else {
             tooltip.append("<br><b>Status:</b> <font color='gray'>Not currently relevant</font>");
@@ -533,6 +731,7 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
 
     /**
      * Creates a detailed tooltip for stop conditions with improved condition type display
+     * Updated to be more compact with less line breaks to reduce row height
      */
     private String getStopConditionsTooltip(PluginScheduleEntry entry) {
         if (!entry.hasStopConditions()) {
@@ -549,14 +748,51 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         // Group conditions by type
         Map<ConditionType, List<Condition>> grouped = groupConditionsByType(conditions);
         
+        // Show blocking conditions prominently if plugin is running but stop conditions not met
+        if (conditionsAreRelevant && !entry.allowedToBeStop()) {
+            // Show overall progress first
+            double progress = entry.getStopConditionProgress();
+            if (progress > 0) {
+                String progressColor = progress > 80 ? "#81C784" : progress > 50 ? "#FFB74D" : "#64B5F6"; 
+                
+                tooltip.append("<div style='background-color:#222D3A; padding:3px; margin:3px; border-left:3px solid #64B5F6;'>");
+                tooltip.append("<b style='color:#E0E0E0'>Current Progress: </b>");
+                tooltip.append("<span style='color:")
+                       .append(progressColor)
+                       .append("'>")
+                       .append(String.format("%.1f%%", progress))
+                       .append("</span></div><br>");
+            }
+            
+            // Then show what's preventing the plugin from stopping
+            tooltip.append("<div style='background-color:#1F2A33; padding:3px; margin:3px; border-left:3px solid #4FC3F7;'>");
+            tooltip.append("<b style='color:#E0E0E0'>Waiting For:</b><br>");
+            
+            // First show user-defined waiting conditions
+            String userRootCauses = entry.getStopConditionManager().getUserRootCausesSummary();
+            if (!userRootCauses.isEmpty()) {
+                tooltip.append("<span style='color:#90CAF9'><u>User-defined:</u></span><br>");
+                tooltip.append("<span style='color:#BBDEFB'>").append(userRootCauses).append("</span><br>");
+            }
+            
+            // Then show plugin-defined waiting conditions
+            String pluginRootCauses = entry.getStopConditionManager().getPluginRootCausesSummary();
+            if (!pluginRootCauses.isEmpty()) {
+                tooltip.append("<span style='color:#90CAF9'><u>Plugin-defined:</u></span><br>");
+                tooltip.append("<span style='color:#BBDEFB'>").append(pluginRootCauses).append("</span><br>");
+            }
+            tooltip.append("</div><br>");
+        }
         // If there are many conditions, add a summary first
-        if (conditions.size() > 3) {
+        else if (conditions.size() > 3) {
             tooltip.append("<i>").append(entry.getDetailedStopConditionsStatus()).append("</i>");
             tooltip.append("<br><br>");
         }
         
         // Show overall progress if relevant and available
-        if (conditionsAreRelevant) {
+        if (conditionsAreRelevant && !entry.allowedToBeStop()) {
+            // Progress already shown above
+        } else if (conditionsAreRelevant) {
             double progress = entry.getStopConditionProgress();
             if (progress > 0) {
                 tooltip.append("<b>Overall Progress: </b>");
@@ -630,10 +866,10 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         // Add overall status
         if (conditionsAreRelevant) {
             tooltip.append("<br><b>Status:</b> <font color='gold'>⚡ Currently relevant</font>");
-            if (entry.areStopConditionsMet()) {
-                tooltip.append("<br><font color='green'>Stop conditions met - plugin will stop</font>");
+            if (entry.allowedToBeStop()) {
+                tooltip.append("<br><font color='green'> Plugin Stop conditions met - plugin can be stopped</font>");
             } else {
-                tooltip.append("<br><font color='blue'>Waiting for stop conditions</font>");
+                tooltip.append("<br><font color='blue'>Waiting for plugin stop conditions</font>");
                 
                 // If there's timing info available, show it
                 String nextTrigger = entry.getNextStopTriggerTimeString();
@@ -641,6 +877,31 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
                     tooltip.append("<br><font color='blue'>Next potential trigger: ")
                            .append(nextTrigger)
                            .append("</font>");
+                }
+                
+                // Add detailed explanation section if there are blocking conditions
+                String userExplanation = entry.getStopConditionManager().getUserBlockingExplanation();
+                String pluginExplanation = entry.getStopConditionManager().getPluginBlockingExplanation();
+                
+                if (!userExplanation.isEmpty() || !pluginExplanation.isEmpty()) {
+                    tooltip.append("<br><br><details>");
+                    tooltip.append("<summary><font color='#3377FF'><u>Show detailed diagnostics</u></font></summary>");
+                    
+                    if (!userExplanation.isEmpty()) {
+                        tooltip.append("<div style='margin-left:10px'>");
+                        tooltip.append("<b>User condition details:</b><br>");
+                        tooltip.append(userExplanation.replace("\n", "<br>"));
+                        tooltip.append("</div>");
+                    }
+                    
+                    if (!pluginExplanation.isEmpty()) {
+                        tooltip.append("<div style='margin-left:10px'>");
+                        tooltip.append("<b>Plugin condition details:</b><br>");
+                        tooltip.append(pluginExplanation.replace("\n", "<br>"));
+                        tooltip.append("</div>");
+                    }
+                    
+                    tooltip.append("</details>");
                 }
             }
         } else {
@@ -784,7 +1045,8 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
     private void detectChangesInPluginlist(){
         List<PluginScheduleEntry> sortedPlugins = schedulerPlugin.sortPluginScheduleEntries();
         List<PluginScheduleEntry> currentRowToPluginMap = new ArrayList<>(sortedPlugins.size());
-        boolean foundAll = true;
+        
+        // Check if current rows match sorted plugins
         for (int j = 0; j < rowToPluginMap.size(); j++) {
             for (int i = 0; i < sortedPlugins.size(); i++) {
             
@@ -793,10 +1055,10 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
                     break;
                 }
             }
-           
         }
+        
+        // If the sizes don't match, our list has changed and we need to refresh
         if (currentRowToPluginMap.size() != rowToPluginMap.size()){
-            foundAll = false;
             log.info("Plugin list changed, refreshing");
             this.rowToPluginMap = new ArrayList<>(sortedPlugins);
         }
@@ -829,8 +1091,7 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
             }
 
 
-            // Save the current row map for comparison
-            List<PluginScheduleEntry> previousRowMap = new ArrayList<>(rowToPluginMap);
+            // We no longer need to save the previous row map for comparison
             // Track if we need to force repaint (visual changes that might not trigger repaint)
             boolean needsRepaint = false;
             
@@ -876,148 +1137,19 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
             if (needsRepaint) {
                 scheduleTable.repaint();
             }
+            
+            // Update tooltips after refresh
+            updateTooltipsAfterRefresh(newRowMap);
         } finally {
             this.updatingTable = false;            
         }
     }
-    @Deprecated
-    public void refreshTable__() {      
-        if (this.updatingTable) {
-            return; // Skip if already updating
-        }
-        
-        this.updatingTable = true;
-        
-        try {
-            detectChangesInPluginlist();
-            // Save current selection
-            PluginScheduleEntry selectedPlugin = getSelectedPlugin();
-            
-            // Get current plugins and sort them by next run time
-            List<PluginScheduleEntry> sortedPlugins = schedulerPlugin.sortPluginScheduleEntries();
-            
-            
-            
-            // Create a new row map with the correct size to match the sorted plugins
-            List<PluginScheduleEntry> newRowMap = new ArrayList<>(sortedPlugins.size());
-            // Initialize with nulls first
-            for (int i = 0; i < sortedPlugins.size(); i++) {
-                newRowMap.add(null);
-            }
-
-
-            // Save the current row map for comparison
-            List<PluginScheduleEntry> previousRowMap = new ArrayList<>(rowToPluginMap);
-            // Track if we need to force repaint (visual changes that might not trigger repaint)
-            boolean needsRepaint = false;
-            
-            // Set to track plugins we've processed to avoid duplicates
-            Set<PluginScheduleEntry> processedPlugins = new HashSet<>();
-            
-            // First pass: update existing rows in place if possible
-            for (int newIndex = 0; newIndex < sortedPlugins.size(); newIndex++) {
-                PluginScheduleEntry plugin = sortedPlugins.get(newIndex);
-                
-                // Skip if this plugin has already been processed
-                if (processedPlugins.contains(plugin)) {
-                    continue;
-                }
-                
-                boolean found = false;
-                
-                // Try to find the same plugin reference in the previous map
-                for (int oldIndex = 0; oldIndex < previousRowMap.size(); oldIndex++) {
-                    PluginScheduleEntry oldPlugin = previousRowMap.get(oldIndex);
-                    if (oldPlugin.equals(plugin)) { // Reference equality
-                        if (oldIndex < tableModel.getRowCount()) {
-                            if (oldIndex == newIndex) {
-                                // Same position, just update data in place
-                                updateRowWithPlugin(oldIndex, plugin);
-                            } else {
-                                // Different position - need to move row
-                                // First gather the data
-                                Object[] rowData = new Object[tableModel.getColumnCount()];
-                                for (int col = 0; col < tableModel.getColumnCount(); col++) {
-                                    rowData[col] = tableModel.getValueAt(oldIndex, col);
-                                }
-                                
-                                // Update the data with current plugin state
-                                updateRowData(rowData, plugin);
-                                
-                                // Remove old row first
-                                tableModel.removeRow(oldIndex);
-                                
-                                // Adjust insertion point if needed
-                                int adjustedNewIndex = newIndex;
-                                if (oldIndex < newIndex && tableModel.getRowCount() >= newIndex) {
-                                    adjustedNewIndex = newIndex - 1;
-                                }
-                                
-                                // Insert at the correct position or add to end
-                                if (adjustedNewIndex < tableModel.getRowCount()) {
-                                    tableModel.insertRow(adjustedNewIndex, rowData);
-                                } else {
-                                    tableModel.addRow(rowData);
-                                }
-                                
-                                needsRepaint = true;
-                            }
-                        } else {
-                            // Row doesn't exist yet, add it
-                            if (newIndex < tableModel.getRowCount()) {
-                                tableModel.insertRow(newIndex, createRowData(plugin));
-                            } else {
-                                tableModel.addRow(createRowData(plugin));
-                            }
-                            needsRepaint = true;
-                        }
-                        
-                        found = true;
-                        break;
-                    }
-                }
-                
-                // If plugin wasn't found in previous map, add as new
-                if (!found) {
-                    if (newIndex < tableModel.getRowCount()) {
-                        tableModel.insertRow(newIndex, createRowData(plugin));
-                    } else {
-                        tableModel.addRow(createRowData(plugin));
-                    }
-                    needsRepaint = true;
-                }
-                
-                // Mark as processed and update the new row map
-                processedPlugins.add(plugin);
-                newRowMap.set(newIndex, plugin);
-            }
-            
-            // Remove any excess rows
-            while (tableModel.getRowCount() > sortedPlugins.size()) {
-                tableModel.removeRow(tableModel.getRowCount() - 1);
-                needsRepaint = true;
-            }
-            
-            // Update our tracking map
-            rowToPluginMap = newRowMap;
-            
-            // Restore selection if possible
-            if (selectedPlugin != null) {
-                //selectPlugin(selectedPlugin);
-            }
-            
-            // Force repaint if needed
-            if (needsRepaint) {
-                scheduleTable.repaint();
-            }
-        } finally {
-            this.updatingTable = false;            
-        }
-    }
-
+  
     /**
      * Updates row data array with current plugin values
+     * Currently unused but kept for future use
      */
+    @SuppressWarnings("unused")
     private void updateRowData(Object[] rowData, PluginScheduleEntry plugin) {
         // Get basic information
         String pluginName = plugin.getCleanName();
@@ -1095,105 +1227,10 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
             plugin.isEnabled(),
             plugin.getRunCount()
         };
-    }
-    @Deprecated
-    public void refreshTableOld() {
-        log.info("Refreshing schedule table");
-        
-        // Save current selection
-        PluginScheduleEntry selectedPlugin = getSelectedPlugin();
-        int selectedRow = scheduleTable.getSelectedRow();
-        // Get current plugins and sort them by next run time
-        
-        List<PluginScheduleEntry> plugins = schedulerPlugin.sortPluginScheduleEntries();
-        
-        rowToPluginMap.clear();
-        
-        
-               
-        
-         // Update table model
-        tableModel.setRowCount(0);
-        
-        for (PluginScheduleEntry scheduled : plugins) {
-            rowToPluginMap.add(scheduled);
-            // Get basic information
-            String pluginName = scheduled.getCleanName();
-            
-            
-            if (schedulerPlugin.isRunningEntry(scheduled)) {
-                pluginName = "▶ " + pluginName;
-            }
-            
-            // Prepare schedule display with enhanced information
-            String scheduleDisplay = getEnhancedScheduleDisplay(scheduled);
-            
-            // Enhanced next run display
-            String nextRunDisplay = getEnhancedNextRunDisplay(scheduled);
-            
-            // Split condition info
-            String startConditionInfo = getStartConditionInfo(scheduled);
-            String stopConditionInfo = getStopConditionInfo(scheduled);
-            
-            // Add row to table
-            tableModel.addRow(new Object[]{
-                pluginName,
-                scheduleDisplay,
-                nextRunDisplay,
-                startConditionInfo,
-                stopConditionInfo,
-                scheduled.getPriority(),
-                scheduled.isDefault(),
-                scheduled.isEnabled(),
-                scheduled.isAllowRandomScheduling(),
-                scheduled.isNeedsStopCondition(),
-                scheduled.getRunCount()
-            });
-        }
-    
-        // Remove excess rows if there are more rows than plugins
-        while (tableModel.getRowCount() > plugins.size()) {
-            tableModel.removeRow(tableModel.getRowCount() - 1);
-        }
-       
-        // Restore selection if possible - using reference equality, not just equals()
-        if (selectedPlugin != null) {
-            log.info("Restoring selection for plugin: " + selectedPlugin.getName());
-            
-            // First try to find the exact same object reference
-            for (int i = 0; i < plugins.size(); i++) {
-                if (plugins.get(i) == selectedPlugin) { // Use reference equality
-                    scheduleTable.setRowSelectionInterval(i, i);
-                    log.info("Found selected plugin by reference equality: " + selectedPlugin.getName() + " at row " + i);                
-                    return;                   
-                }
-            }
-            
-            
-            // If reference equality fails, try equals() as fallback
-            for (int i = 0; i < plugins.size(); i++) {
-                if (plugins.get(i).equals(selectedPlugin)) {
-                    log.info("Found selected plugin by equals(): " + selectedPlugin.getName() + " at row " + i);
-                    scheduleTable.setRowSelectionInterval(i, i);
-                    return;
-                }
-            }
-            
-            // If all else fails, try by name as a last resort
-            for (int i = 0; i < plugins.size(); i++) {
-                if (plugins.get(i).getName().equals(selectedPlugin.getName())) {
-                    log.info("Found selected plugin by name: " + selectedPlugin.getName() + " at row " + i);
-                    scheduleTable.setRowSelectionInterval(i, i);
-                    return;
-                }
-            }
-        }else {
-            
-        }
-        
-    }
+    }   
     /**
      * Creates a display of start condition information
+     * Updated to be more compact with less line breaks to reduce row height
      */
     private String getStartConditionInfo(PluginScheduleEntry entry) {
         int startTotal = entry.getStartConditionManager().getConditions().size();
@@ -1206,22 +1243,48 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         
         StringBuilder info = new StringBuilder();
         info.append("<html>");
-        info.append(startMet).append("/").append(startTotal);
         
-        // Add type indicator
-        boolean startRequiresAll = entry.getStartConditionManager().requiresAll();
-        info.append("<br>").append(startRequiresAll ? "ALL" : "ANY");
+        // Check if conditions are relevant
+        boolean isRelevant = entry.isEnabled() && !entry.isRunning();
         
-        // Add one-time indicator if applicable
-        if (entry.hasAnyOneTimeStartConditions()) {
-            info.append("<br>One-time");
+        if (isRelevant && startMet < startTotal && entry.getStartConditionManager().requiresAll()) {
+            // When blocking conditions exist and ALL conditions required, show blocking info
+            int userBlockingCount = entry.getStartConditionManager().getUserLeafBlockingConditions().size();
+            int pluginBlockingCount = entry.getStartConditionManager().getPluginLeafBlockingConditions().size();
+            int totalBlocking = userBlockingCount + pluginBlockingCount;
+            
+            if (totalBlocking > 0) {
+                info.append("<span style='color:#E57373; font-weight:bold'>")
+                    .append(startMet).append("/").append(startTotal)
+                    .append(" met (").append(totalBlocking).append(" blocking)</span>");
+            } else {
+                info.append("<span style='color:#CCCCCC'>").append(startMet).append("/").append(startTotal).append(" met</span>");
+            }
+        } else if (isRelevant && !entry.canBeStarted()) {
+            // When ANY condition is required but none are met
+            info.append("<span style='color:#E57373; font-weight:bold'>")
+                .append(startMet).append("/").append(startTotal).append(" (Blocked)</span>");
+        } else {
+            // Normal display
+            info.append("<span style='color:#CCCCCC'>").append(startMet).append("/").append(startTotal).append(" met</span>");
         }
+        
+        // Add type indicator and one-time indicator if applicable more concisely
+        boolean startRequiresAll = entry.getStartConditionManager().requiresAll();
+        info.append(" <span style='font-size:8pt; color:#AAAAAA'>")
+             .append(startRequiresAll ? "ALL" : "ANY");
+             
+        if (entry.hasAnyOneTimeStartConditions()) {
+            info.append(", One-time");
+        }
+        info.append("</span>");
         
         return info.toString() + "</html>";
     }
 
     /**
      * Creates a display of stop condition information
+     * Updated to be more compact with less line breaks to reduce row height
      */
     private String getStopConditionInfo(PluginScheduleEntry entry) {
         int stopTotal = entry.getStopConditionManager().getConditions().size();
@@ -1234,24 +1297,48 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         
         StringBuilder info = new StringBuilder();
         info.append("<html>");
-        info.append(stopMet).append("/").append(stopTotal);
         
-        // Add type indicator
-        boolean stopRequiresAll = entry.getStopConditionManager().requiresAll();
-        info.append("<br>").append(stopRequiresAll ? "ALL" : "ANY");
+        // Check if conditions are relevant (plugin is running)
+        boolean isRelevant = entry.isRunning();
         
-        // Add progress for running plugins
-        if (entry.isRunning()) {
+        // Add progress for running plugins in a more compact format
+        if (isRelevant) {
             double progress = entry.getStopConditionProgress();
-            if (progress > 0) {
-                info.append("<br>").append(String.format("%.0f%%", progress));
+            
+            // Show progress and satisfied conditions count on same line
+            if (entry.allowedToBeStop()) {
+                // Ready to stop
+                info.append("<span style='color:#81C784; font-weight:bold'>")
+                    .append(stopMet).append("/").append(stopTotal)
+                    .append(" met (Ready ✓)</span>");
+            } else {
+                // Still waiting for conditions
+                String progressStr = progress > 0 ? String.format(" %.0f%%", progress) : "";
+                info.append("<span style='color:#64B5F6'>")
+                    .append(stopMet).append("/").append(stopTotal)
+                    .append(" met").append(progressStr).append("</span>");
+                
+                // If there are specific blocking conditions worth mentioning, add concisely
+                int waitingCount = entry.getStopConditionManager().getLeafBlockingConditions().size();
+                if (waitingCount > 0) {
+                    info.append(" <span style='font-size:8pt; color:#90CAF9'>(")
+                        .append(waitingCount).append(" waiting)</span>");
+                }
             }
+        } else {
+            // Standard display when not relevant
+            info.append("<span style='color:#CCCCCC'>").append(stopMet).append("/").append(stopTotal).append(" met</span>");
         }
         
-        // Add one-time indicator if applicable
+        // Add type indicator and one-time indicator more concisely
+        boolean stopRequiresAll = entry.getStopConditionManager().requiresAll();
+        info.append(" <span style='font-size:8pt; color:#AAAAAA'>")
+             .append(stopRequiresAll ? "ALL" : "ANY");
+             
         if (entry.hasAnyOneTimeStopConditions()) {
-            info.append("<br>One-time");
+            info.append(", One-time");
         }
+        info.append("</span>");
         
         return info.toString() + "</html>";
     }
@@ -1282,7 +1369,7 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
     }
 
     /**
-     * Creates an enhanced display of the next run time, including last stop info
+     * Creates an enhanced display of the next run time, including last stop icon
      */
     private String getEnhancedNextRunDisplay(PluginScheduleEntry entry) {
         StringBuilder display = new StringBuilder();
@@ -1302,37 +1389,33 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
             display.append(baseDisplay);
         }
         
-        // Add last stop info for plugins that have run before and aren't currently running
-        if (entry.getRunCount() > 0 && !entry.isRunning() && entry.getStopReasonType() != PluginScheduleEntry.StopReason.NONE) {
-            // Add a line break
-            display.append("<br>");
+        // Add just an icon for the last stop reason (if plugin has run before and isn't currently running)
+        if (entry.getRunCount() > 0 && !entry.isRunning() && entry.getLastStopReasonType() != PluginScheduleEntry.StopReason.NONE) {
+            // Add spacing
+            display.append(" ");
             
-            // Show different info based on stop reason
-            switch(entry.getStopReasonType()) {
+            // Show only an icon based on stop reason
+            switch(entry.getLastStopReasonType()) {
                 case SCHEDULED_STOP:
-                    display.append("✓ Stopped");  // Checkmark for normal stop
+                    display.append("<span style='color:#4CAF50'>✓</span>");  // Green checkmark for normal stop
                     break;
                 case PLUGIN_FINISHED:
-                    display.append("✓ Finished");  // Checkmark for self-completed
+                    display.append("<span style='color:#4CAF50'>✅</span>");  // Green check box for self-completed
                     break;
                 case MANUAL_STOP:
-                    display.append("⏹ Manual");  // Square for manual stop
+                    display.append("<span style='color:#9E9E9E'>⏹</span>");  // Gray square for manual stop
                     break;
-                case HARD_STOP_TIMEOUT:
-                    display.append("⚠ Timeout");  // Warning for timeout
+                case HARD_STOP:
+                    display.append("<span style='color:#FF9800'>⚠</span>");  // Orange warning for timeout
+                    break;
+                case INTERRUPTED:
+                    display.append("<span style='color:#2196F3'>⏸</span>");  // Blue pause for interrupted
                     break;
                 case ERROR:
-                    display.append("❌ Error");  // X for error
-                    // Add concise error message
-                    String errorMsg = entry.getLastStopReason();
-                    if (errorMsg != null && !errorMsg.isEmpty()) {
-                        if (errorMsg.length() > 30) {
-                            errorMsg = errorMsg.substring(0, 27) + "...";
-                        }
-                        display.append("<br>").append(errorMsg);
-                    }
+                    display.append("<span style='color:#F44336'>❌</span>");  // Red X for error
                     break;
                 default:
+                    display.append("<span style='color:#9E9E9E'>•</span>");  // Gray dot for unknown
                     break;
             }
         }
@@ -1342,7 +1425,9 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
 
     /**
      * Creates an enhanced display of condition information
+     * Currently unused but kept for future use
      */
+    @SuppressWarnings("unused")
     private String getEnhancedConditionInfo(PluginScheduleEntry entry) {
         StringBuilder info = new StringBuilder();
         
@@ -1433,6 +1518,17 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
             selectionListener.accept(null);
         }
     }
+    
+    /**
+     * Clears the table selection without triggering the selection callback.
+     * This is useful when we want to clear selection programmatically without
+     * triggering a cascade of UI updates.
+     */
+    public void clearSelectionWithoutCallback() {
+        scheduleTable.clearSelection();
+        // Unlike clearSelection(), this method does not call selectionListener
+    }
+
     public void addAndSelect(PluginScheduleEntry pluginEntry) {
         if (pluginEntry == null) return;
         
@@ -1516,28 +1612,39 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
                 tooltip.append("<br>Reason: ").append(stopReason);
             }
             
-            // Stop reason type
+            // Stop reason type with matching icon
             tooltip.append("<br>Type: ");
-            switch (entry.getStopReasonType()) {
-                case SCHEDULED_STOP:
-                    tooltip.append("Scheduled Stop (conditions met)");
-                    break;
-                case MANUAL_STOP:
-                    tooltip.append("Manual Stop (user initiated)");
-                    break;
-                case HARD_STOP_TIMEOUT:
-                    tooltip.append("Hard Stop (forced after timeout)");
-                    break;
-                case ERROR:
-                    tooltip.append("<span style='color:red'>Error</span>");
-                    break;
-                case PLUGIN_FINISHED:
-                    tooltip.append("Plugin Self-reported Completion");
-                    break;
-                case NONE:
-                default:
-                    tooltip.append("Unknown");
-                    break;
+            // Use the description from the enum if available
+            PluginScheduleEntry.StopReason reasonType = entry.getLastStopReasonType();
+            if (reasonType != null) {
+                switch (reasonType) {
+                    case SCHEDULED_STOP:
+                        tooltip.append("<span style='color:#4CAF50'>✓</span> Scheduled Stop (conditions met)");
+                        break;
+                    case MANUAL_STOP:
+                        tooltip.append("<span style='color:#9E9E9E'>⏹</span> Manual Stop (user initiated)");
+                        break;
+                    case HARD_STOP:
+                        tooltip.append("<span style='color:#FF9800'>⚠</span> Hard Stop (forced after timeout)");
+                        break;
+                    case ERROR:
+                        tooltip.append("<span style='color:#F44336'>❌</span> <span style='color:red'>Error</span>");
+                        break;
+                    case PLUGIN_FINISHED:
+                        tooltip.append("<span style='color:#4CAF50'>✅</span> Plugin Self-reported Completion");
+                        break;
+                    case INTERRUPTED:
+                        tooltip.append("<span style='color:#2196F3'>⏸</span> Plugin Interrupted");
+                        break;
+                    case NONE:
+                        tooltip.append("<span style='color:#9E9E9E'>•</span> " + reasonType.getDescription());
+                        break;
+                    default:
+                        tooltip.append("<span style='color:#9E9E9E'>•</span> " + reasonType.getDescription());
+                        break;
+                }
+            } else {
+                tooltip.append("<span style='color:#9E9E9E'>•</span> Unknown");
             }
             
             // Success status
@@ -1587,6 +1694,110 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
             return schedulerPlugin.getScheduledPlugins().get(row);
         }
         return null;
+    }
+
+    /**
+     * Helper method to blend colors with a given ratio
+     * @param baseValue Base color component value (0-255)
+     * @param targetValue Target color component value (0-255)
+     * @param ratio Blend ratio (0.0-1.0) where 1.0 is completely base color
+     * @return Blended color component value
+     */
+    private int blend(int baseValue, int targetValue, float ratio) {
+        return Math.max(0, Math.min(255, Math.round(baseValue * ratio + targetValue * (1 - ratio))));
+    }
+
+    /**
+     * Starts or restarts the tooltip refresh timer.
+     * This timer periodically triggers tooltip updates while hovering over a table cell.
+     * The implementation ensures tooltips remain visible and are refreshed with live data.
+     */
+    private void startTooltipRefreshTimer() {
+        // Stop existing timer if running
+        if (tooltipRefreshTimer != null && tooltipRefreshTimer.isRunning()) {
+            tooltipRefreshTimer.stop();
+        }
+        
+        // Create new timer if needed
+        if (tooltipRefreshTimer == null) {
+            tooltipRefreshTimer = new Timer(TOOLTIP_REFRESH_INTERVAL, e -> {
+                if (hoverRow >= 0 && hoverColumn >= 0 && hoverRow < rowToPluginMap.size()) {
+                    try {
+                        // Get current plugin entry for tooltip refresh
+                        PluginScheduleEntry currentEntry = rowToPluginMap.get(hoverRow);
+                        
+                        // Force tooltip to hide and then show again with fresh content
+                        // This two-step approach ensures the tooltip content is refreshed
+                        //ToolTipManager.sharedInstance().mouseMoved(
+                          //  new MouseEvent(scheduleTable, MouseEvent.MOUSE_EXITED,
+                            //    System.currentTimeMillis(), 0,
+                             //   hoverLocation.x, hoverLocation.y,
+                              //  0, false));
+                        
+                        // Small delay to allow the tooltip to hide before showing again
+                        SwingUtilities.invokeLater(() -> {
+                            // Now show fresh tooltip
+                            //ToolTipManager.sharedInstance().mouseMoved(
+                              //  new MouseEvent(scheduleTable, MouseEvent.MOUSE_MOVED,
+                                //    System.currentTimeMillis(), 0,
+                                  //  hoverLocation.x, hoverLocation.y,
+                                   // 0, false));
+                            
+                            // Also trigger a cell repaint to ensure tooltip data is current
+                            scheduleTable.repaint(scheduleTable.getCellRect(hoverRow, hoverColumn, false));
+                        });
+                    } catch (IndexOutOfBoundsException | NullPointerException ex) {
+                        // Safety check for race conditions when table data changes while hovering
+                        // Just skip this refresh cycle
+                        log.debug("Skipped tooltip refresh due to data change");
+                    }
+                }
+            });
+            tooltipRefreshTimer.setRepeats(true);
+        }
+        
+        // Start the timer
+        tooltipRefreshTimer.start();
+    }
+
+    /**
+     * Handles tooltip refresh when the table data changes
+     * This is called from refreshTable to update tooltips with fresh data
+     */
+    private void updateTooltipsAfterRefresh(List<PluginScheduleEntry> newRowMap) {
+        // Handle tooltip update if a tooltip is currently showing
+        if (hoverRow >= 0 && hoverColumn >= 0 && tooltipRefreshTimer != null && tooltipRefreshTimer.isRunning()) {
+            // If the row we were hovering over still exists
+            if (hoverRow < newRowMap.size()) {
+                // Force tooltip refresh with updated data 
+                SwingUtilities.invokeLater(() -> {
+                    // Re-trigger tooltip on the updated data
+                    ToolTipManager.sharedInstance().mouseMoved(
+                        new MouseEvent(scheduleTable, MouseEvent.MOUSE_MOVED,
+                            System.currentTimeMillis(), 0,
+                            hoverLocation.x, hoverLocation.y,
+                            0, false));
+                });
+            } else {
+                // Row is gone, reset tooltip tracking
+                hoverRow = -1;
+                hoverColumn = -1;
+                tooltipRefreshTimer.stop();
+            }
+        }
+    }
+
+    /**
+     * Cleans up timer resources when the panel is no longer used
+     */
+    @Override
+    public void removeNotify() {
+        // Stop and clean up timer when component is removed from UI
+        if (tooltipRefreshTimer != null && tooltipRefreshTimer.isRunning()) {
+            tooltipRefreshTimer.stop();
+            tooltipRefreshTimer = null;
+        }
+        super.removeNotify();
     }
 
 }

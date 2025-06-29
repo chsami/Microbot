@@ -49,16 +49,35 @@ public class AutoSmeltingScript extends Script {
 
                 // walk to bank until it's open then deposit everything and withdraw materials
                 if (!inventoryHasMaterialsForOneBar(config)) {
-                    if (!Rs2Bank.isOpen()) {
-                        Rs2Bank.walkToBankAndUseBank();
-                        return;
+                    if (!Rs2Bank.openBank()) {
+                        if (!Rs2Bank.isOpen()) {
+                            Rs2Bank.walkToBankAndUseBank();
+                            return;
+                        }
                     }
+
                     Rs2Bank.depositAll();
                     if (config.SELECTED_BAR_TYPE().getId() == ItemID.IRON_BAR && Rs2Bank.hasItem(ItemID.RING_OF_FORGING) && !Rs2Equipment.isWearing(ItemID.RING_OF_FORGING)) {
                         Rs2Bank.withdrawAndEquip(ItemID.RING_OF_FORGING);
                         return;
                     }
                     withdrawRightAmountOfMaterials(config);
+                    return;
+                }
+                GameObject oneClickFurnace = Rs2GameObject.findObject("furnace", true, 20, false, initialPlayerLocation);
+                if (oneClickFurnace != null) {
+                    if (Rs2Bank.isOpen()){
+                        Rs2Bank.closeBank();
+                        sleepUntil(() -> !Rs2Bank.isOpen(), 1000);
+                    }
+                    Rs2GameObject.interact(oneClickFurnace, "smelt");
+                    sleepUntil(Rs2Player::isMoving, 1000);
+                    sleepUntil(() -> !Rs2Player.isMoving(), 4000);
+                    Rs2Widget.sleepUntilHasWidgetText("What would you like to smelt?", 270, 5, false, 4000);
+                    Rs2Widget.clickWidget(config.SELECTED_BAR_TYPE().getName());
+                    Rs2Widget.sleepUntilHasNotWidgetText("What would you like to smelt?", 270, 5, false, 4000);
+                    Rs2Antiban.actionCooldown();
+                    Rs2Antiban.takeMicroBreakByChance();
                     return;
                 }
 
@@ -71,12 +90,12 @@ public class AutoSmeltingScript extends Script {
                 }
 
                 // interact with the furnace until the smelting dialogue opens in chat, click the selected bar icon
-                GameObject furnace = Rs2GameObject.findObject("furnace", true, 10, false, initialPlayerLocation);
+                GameObject furnace = Rs2GameObject.findObject("furnace",true,20,false,initialPlayerLocation);
                 if (furnace != null) {
                     Rs2GameObject.interact(furnace, "smelt");
-                    Rs2Widget.sleepUntilHasWidgetText("What would you like to smelt?", 270, 5, false, 5000);
+                    Rs2Widget.sleepUntilHasWidgetText("What would you like to smelt?", 270, 5, false, 4000);
                     Rs2Widget.clickWidget(config.SELECTED_BAR_TYPE().getName());
-                    Rs2Widget.sleepUntilHasNotWidgetText("What would you like to smelt?", 270, 5, false, 5000);
+                    Rs2Widget.sleepUntilHasNotWidgetText("What would you like to smelt?", 270, 5, false, 4000);
                     Rs2Antiban.actionCooldown();
                     Rs2Antiban.takeMicroBreakByChance();
                 }

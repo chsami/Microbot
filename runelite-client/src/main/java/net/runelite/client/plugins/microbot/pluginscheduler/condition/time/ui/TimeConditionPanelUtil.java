@@ -2,10 +2,8 @@ package net.runelite.client.plugins.microbot.pluginscheduler.condition.time.ui;
 import java.time.ZoneId;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.ButtonGroup;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JRadioButton;
 import net.runelite.client.plugins.microbot.pluginscheduler.ui.components.DateRangePanel;
 import net.runelite.client.plugins.microbot.pluginscheduler.ui.components.IntervalPickerPanel;
 import net.runelite.client.plugins.microbot.pluginscheduler.ui.components.SingleDateTimePickerPanel;
@@ -13,8 +11,6 @@ import net.runelite.client.plugins.microbot.pluginscheduler.ui.components.TimeRa
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import java.awt.Color;
-import java.awt.Component;
-import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -59,6 +55,48 @@ public class TimeConditionPanelUtil {
         IntervalPickerPanel intervalPicker = new IntervalPickerPanel(true);
         panel.add(intervalPicker, gbc);
         
+        // Add initial delay configuration
+        gbc.gridy++;
+        JPanel initialDelayPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        initialDelayPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        
+        JCheckBox initialDelayCheckBox = new JCheckBox("Initial Delay");
+        initialDelayCheckBox.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        initialDelayCheckBox.setForeground(Color.WHITE);
+        initialDelayPanel.add(initialDelayCheckBox);
+        
+        // Create spinner for minutes
+        SpinnerNumberModel delayMinutesModel = new SpinnerNumberModel(5, 0, 60, 1);
+        JSpinner delayMinutesSpinner = new JSpinner(delayMinutesModel);
+        delayMinutesSpinner.setPreferredSize(new Dimension(60, delayMinutesSpinner.getPreferredSize().height));
+        delayMinutesSpinner.setEnabled(false);
+        
+        JLabel delayMinutesLabel = new JLabel("min");
+        delayMinutesLabel.setForeground(Color.WHITE);
+        
+        // Create spinner for seconds
+        SpinnerNumberModel delaySecondsModel = new SpinnerNumberModel(0, 0, 59, 5);
+        JSpinner delaySecondsSpinner = new JSpinner(delaySecondsModel);
+        delaySecondsSpinner.setPreferredSize(new Dimension(60, delaySecondsSpinner.getPreferredSize().height));
+        delaySecondsSpinner.setEnabled(false);
+        
+        JLabel delaySecondsLabel = new JLabel("sec");
+        delaySecondsLabel.setForeground(Color.WHITE);
+        
+        initialDelayPanel.add(delayMinutesSpinner);
+        initialDelayPanel.add(delayMinutesLabel);
+        initialDelayPanel.add(delaySecondsSpinner);
+        initialDelayPanel.add(delaySecondsLabel);
+        
+        // Enable/disable delay spinners based on checkbox
+        initialDelayCheckBox.addActionListener(e -> {
+            boolean selected = initialDelayCheckBox.isSelected();
+            delayMinutesSpinner.setEnabled(selected);
+            delaySecondsSpinner.setEnabled(selected);
+        });
+        
+        panel.add(initialDelayPanel, gbc);
+        
         // Add a helpful description
         gbc.gridy++;
         JLabel descriptionLabel = new JLabel("Plugin will stop after specified time interval");
@@ -73,8 +111,18 @@ public class TimeConditionPanelUtil {
         randomInfoLabel.setFont(FontManager.getRunescapeSmallFont());
         panel.add(randomInfoLabel, gbc);
         
-        // Store component for later access
+        // Add information about initial delay
+        gbc.gridy++;
+        JLabel initialDelayInfoLabel = new JLabel("Initial delay adds waiting time before the first interval trigger");
+        initialDelayInfoLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        initialDelayInfoLabel.setFont(FontManager.getRunescapeSmallFont());
+        panel.add(initialDelayInfoLabel, gbc);
+        
+        // Store components for later access
         panel.putClientProperty("intervalPicker", intervalPicker);
+        panel.putClientProperty("initialDelayCheckBox", initialDelayCheckBox);
+        panel.putClientProperty("delayMinutesSpinner", delayMinutesSpinner);
+        panel.putClientProperty("delaySecondsSpinner", delaySecondsSpinner);
     }
     
     /**
@@ -114,13 +162,52 @@ public class TimeConditionPanelUtil {
      */
     public static IntervalCondition createIntervalCondition(JPanel configPanel) {
         IntervalPickerPanel intervalPicker = (IntervalPickerPanel) configPanel.getClientProperty("intervalPicker");
+        JCheckBox initialDelayCheckBox = (JCheckBox) configPanel.getClientProperty("initialDelayCheckBox");
+        JSpinner delayMinutesSpinner = (JSpinner) configPanel.getClientProperty("delayMinutesSpinner");
+        JSpinner delaySecondsSpinner = (JSpinner) configPanel.getClientProperty("delaySecondsSpinner");
         
         if (intervalPicker == null) {
             throw new IllegalStateException("Interval picker component not found");
         }
         
         // Get the interval condition from the picker component
-        return intervalPicker.createIntervalCondition();
+        IntervalCondition baseCondition = intervalPicker.createIntervalCondition();
+        
+        // Check if initial delay should be added
+        if (initialDelayCheckBox != null && initialDelayCheckBox.isSelected() && 
+            delayMinutesSpinner != null && delaySecondsSpinner != null) {
+            
+            int delayMinutes = (Integer) delayMinutesSpinner.getValue();
+            int delaySeconds = (Integer) delaySecondsSpinner.getValue();
+            int totalDelaySeconds = delayMinutes * 60 + delaySeconds;
+            
+            if (totalDelaySeconds > 0) {
+                // Create a new condition with the same parameters as the base condition plus the delay
+                if (baseCondition.isRandomize()) {
+                    // For randomized intervals
+                    return new IntervalCondition(
+                        baseCondition.getInterval(), 
+                        baseCondition.getMinInterval(), 
+                        baseCondition.getMaxInterval(),
+                        baseCondition.isRandomize(), 
+                        baseCondition.getRandomFactor(), 
+                        baseCondition.getMaximumNumberOfRepeats(),
+                        (long)totalDelaySeconds
+                    );
+                } else {
+                    // For fixed intervals
+                    return new IntervalCondition(
+                        baseCondition.getInterval(), 
+                        baseCondition.isRandomize(), 
+                        baseCondition.getRandomFactor(), 
+                        baseCondition.getMaximumNumberOfRepeats(),
+                        (long)totalDelaySeconds
+                    );
+                }
+            }
+        }
+        
+        return baseCondition;
     }
     
     public static void createTimeWindowConfigPanel(JPanel panel, GridBagConstraints gbc) {
@@ -311,8 +398,8 @@ public class TimeConditionPanelUtil {
         
         // Apply randomization if enabled
         if (randomizeCheckBox.isSelected()) {
-            int randomizeMinutes = (Integer) randomizeSpinner.getValue();
-            condition.setRandomization(true, randomizeMinutes);
+            int randomizerValue = (Integer) randomizeSpinner.getValue();
+            condition.setRandomization(true);
         }
         
         return condition;
@@ -373,7 +460,7 @@ public class TimeConditionPanelUtil {
         ZonedDateTime triggerTime = selectedDateTime.atZone(ZoneId.systemDefault());
         
         // Create and return the condition
-        return new SingleTriggerTimeCondition(triggerTime);
+        return new SingleTriggerTimeCondition(triggerTime,Duration.ofSeconds(0),1);
     }
     public static void createDayOfWeekConfigPanel(JPanel panel, GridBagConstraints gbc) {
         // Title and initial setup
@@ -625,6 +712,9 @@ public static DayOfWeekCondition createDayOfWeekCondition(JPanel configPanel) {
     private static void setupIntervalCondition(JPanel panel, IntervalCondition condition) {
         // Get the IntervalPickerPanel component which encapsulates all the interval UI controls
         IntervalPickerPanel intervalPicker = (IntervalPickerPanel) panel.getClientProperty("intervalPicker");
+        JCheckBox initialDelayCheckBox = (JCheckBox) panel.getClientProperty("initialDelayCheckBox");
+        JSpinner delayMinutesSpinner = (JSpinner) panel.getClientProperty("delayMinutesSpinner");
+        JSpinner delaySecondsSpinner = (JSpinner) panel.getClientProperty("delaySecondsSpinner");
         
         if (intervalPicker == null) {
             log.error("IntervalPickerPanel component not found for interval condition setup");
@@ -632,7 +722,35 @@ public static DayOfWeekCondition createDayOfWeekCondition(JPanel configPanel) {
         }
         
         // Use the IntervalPickerPanel's built-in method to configure itself from the condition
-        intervalPicker.setIntervalCondition(condition);                
+        intervalPicker.setIntervalCondition(condition);
+        
+        // Set initial delay if it exists
+        if (condition.getInitialDelayCondition() != null && 
+            initialDelayCheckBox != null && 
+            delayMinutesSpinner != null &&
+            delaySecondsSpinner != null) {
+            
+            // Extract the remaining delay time
+            ZonedDateTime now = ZonedDateTime.now();
+            ZonedDateTime targetTime = condition.getInitialDelayCondition().getTargetTime();
+            Duration definedDelay = condition.getInitialDelayCondition().getDefinedDelay();
+            Duration remainingDelay = Duration.between(now, targetTime);            
+            if (definedDelay != null && definedDelay.getSeconds() > 0) {                
+                long definedSeconds = definedDelay.getSeconds();
+                
+                // Set the delay time in the UI
+                int minutes = (int) (definedSeconds / 60);
+                int seconds = (int) (definedSeconds % 60);
+                
+                initialDelayCheckBox.setSelected(true);
+                delayMinutesSpinner.setValue(minutes);
+                delaySecondsSpinner.setValue(seconds);
+                
+                // Enable the spinners
+                delayMinutesSpinner.setEnabled(true);
+                delaySecondsSpinner.setEnabled(true);
+            }
+        }
     }
 
     /**
@@ -704,7 +822,7 @@ public static DayOfWeekCondition createDayOfWeekCondition(JPanel configPanel) {
             randomizeCheckBox.setSelected(condition.isUseRandomization());
             
             if (randomizeSpinner != null) {
-                randomizeSpinner.setValue(condition.getRandomizeMinutes());
+                randomizeSpinner.setValue(condition.getRandomizerValue());
                 randomizeSpinner.setEnabled(condition.isUseRandomization());
             }
         }

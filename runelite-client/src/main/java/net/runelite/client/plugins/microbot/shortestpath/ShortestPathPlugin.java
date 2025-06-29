@@ -483,7 +483,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         return null;
     }
 
-    private void setTarget(WorldPoint target) {
+    public void setTarget(WorldPoint target) {
         setTarget(target, false);
     }
 

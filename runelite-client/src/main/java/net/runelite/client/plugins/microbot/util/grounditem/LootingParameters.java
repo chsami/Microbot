@@ -5,6 +5,7 @@ public class LootingParameters {
     private int minValue, maxValue, range, minItems, minQuantity, minInvSlots;
     private boolean delayedLooting, antiLureProtection;
     private String[] names;
+    private String[] ignoredNames;
 
     /**
      * This constructor is used to create a new LootingParameters object.
@@ -19,7 +20,7 @@ public class LootingParameters {
      * @param antiLureProtection A boolean indicating whether anti-lure protection should be enabled.
      */
     public LootingParameters(int minValue, int maxValue, int range, int minItems, int minInvSlots, boolean delayedLooting, boolean antiLureProtection) {
-        setValues(minValue, maxValue, range, minItems, 1, minInvSlots, delayedLooting, antiLureProtection, null);
+        setValues(minValue, maxValue, range, minItems, 1, minInvSlots, delayedLooting, antiLureProtection, null, null);
     }
 
     /**
@@ -35,10 +36,28 @@ public class LootingParameters {
      * @param names              The names of the items to be looted.
      */
     public LootingParameters(int range, int minItems, int minQuantity, int minInvSlots, boolean delayedLooting, boolean antiLureProtection, String... names) {
-        setValues(0, 0, range, minItems, minQuantity, minInvSlots, delayedLooting, antiLureProtection, names);
+        setValues(0, 0, range, minItems, minQuantity, minInvSlots, delayedLooting, antiLureProtection, null, names);
     }
 
-    private void setValues(int minValue, int maxValue, int range, int minItems, int minQuantity, int minInvSlots, boolean delayedLooting, boolean antiLureProtection, String[] names) {
+    /**
+     * This constructor is used to create a new LootingParameters object.
+     * It sets the range, minimum items, minimum quantity, delayed looting, anti-lure protection, and names of the items to be looted.
+     *
+     * @param minValue           The minimum value of the items to be looted.
+     * @param maxValue           The maximum value of the items to be looted.
+     * @param range              The range within which the items to be looted are located.
+     * @param minItems           The minimum number of items to be looted.
+     * @param minInvSlots        The minimum number of inventory slots to have open.
+     * @param delayedLooting     A boolean indicating whether looting should be delayed.
+     * @param antiLureProtection A boolean indicating whether anti-lure protection should be enabled.
+     * @param ignoredNames       The names of the items to be ignored.
+     */
+
+    public LootingParameters(int minValue, int maxValue, int range, int minItems, int minInvSlots, boolean delayedLooting, boolean antiLureProtection, String[] ignoredNames) {
+        setValues(minValue, maxValue, range, minItems, 1, minInvSlots, delayedLooting, antiLureProtection, ignoredNames, null);
+    }
+
+    private void setValues(int minValue, int maxValue, int range, int minItems, int minQuantity, int minInvSlots, boolean delayedLooting, boolean antiLureProtection, String[] ignoredNames, String[] names) {
         this.minValue = minValue;
         this.maxValue = maxValue;
         this.range = range;
@@ -47,6 +66,7 @@ public class LootingParameters {
         this.minInvSlots = minInvSlots;
         this.delayedLooting = delayedLooting;
         this.antiLureProtection = antiLureProtection;
+        this.ignoredNames = ignoredNames;
         this.names = names;
     }
 
@@ -84,7 +104,12 @@ public class LootingParameters {
         return antiLureProtection;
     }
 
+    public String[] getIgnoredNames() {
+        return ignoredNames;
+    }
+
     public String[] getNames() {
         return names;
     }
+
 }

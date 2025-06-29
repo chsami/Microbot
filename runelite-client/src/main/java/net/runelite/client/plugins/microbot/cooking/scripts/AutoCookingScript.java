@@ -26,6 +26,7 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.awt.event.KeyEvent;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
@@ -144,9 +145,14 @@ public class AutoCookingScript extends Script {
                             shutdown();
                             return;
                         }
-                        
-                        Rs2Bank.withdrawAll(cookingItem.getRawItemName(), true);
-                        Rs2Inventory.waitForInventoryChanges(1800);
+                        if (Objects.equals(config.cookingItem().getRawItemName(), "giant seaweed")) {
+                            Rs2Bank.withdrawX(cookingItem.getRawItemName(), 4, true);
+                            Rs2Inventory.waitForInventoryChanges(1800);
+
+                        } else {
+                            Rs2Bank.withdrawAll(cookingItem.getRawItemName(), true);
+                            Rs2Inventory.waitForInventoryChanges(1800);
+                        }
                         
                         state = CookingState.WALKING;
                         Rs2Bank.closeBank();

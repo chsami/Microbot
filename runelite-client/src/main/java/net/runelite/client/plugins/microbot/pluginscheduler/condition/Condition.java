@@ -26,6 +26,7 @@ import net.runelite.api.events.VarbitChanged;
  * Base interface for script execution conditions.
  * Provides common functionality for condition checking and configuration.
  */
+
 public interface Condition {
     
     public static String getVersion(){
@@ -80,6 +81,26 @@ public interface Condition {
     }
 
     void reset (boolean randomize);
+    /**
+     * Performs a complete reset of the condition, including both the current trigger
+     * and all internal state tracking variables.
+     * <p>
+     * Unlike the standard {@link #reset()} method, this will clear accumulated state
+     * such as:
+     * <ul>
+     *   <li>Maximum trigger counters</li>
+     *   <li>Daily/periodic usage limits</li>
+     *   <li>Historical tracking data</li>
+     * </ul>
+     * <p>
+     * For example, if a condition can only be triggered a maximum number of times
+     * or has daily usage limits, this method will reset those tracking variables as well.
+     * <p>
+     * This method is equivalent to calling {@link #reset(boolean) reset(true)}.
+     */
+    default void hardReset(){
+        reset(true);
+    }
 
     default void onGameStateChanged(GameStateChanged gameStateChanged) {
         // This event handler is called whenever the game state changes

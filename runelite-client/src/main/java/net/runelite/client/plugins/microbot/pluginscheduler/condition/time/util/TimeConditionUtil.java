@@ -6,6 +6,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.Or
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.DayOfWeekCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.IntervalCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeWindowCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.enums.RepeatCycle;
 
 import java.time.DayOfWeek;
 import java.time.Duration;
@@ -13,7 +14,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
-import java.util.Set;
+
 
 /**
  * Utility class providing factory methods for creating time-based conditions
@@ -328,20 +329,20 @@ public final class TimeConditionUtil {
      * @param baseStartMinute Base starting minute (0-59)
      * @param baseEndHour Base ending hour (0-23)
      * @param baseEndMinute Base ending minute (0-59)
-     * @param randomizeMinutes Amount to randomize times by (±minutes)
+     * @param randomizerValue Amount to randomize times by (±minutes)
      * @param days Days of week to apply this schedule
      * @return A combined randomized time window and day of week condition
      */
     public static AndCondition createRandomizedTimeWindowSchedule(
             int baseStartHour, int baseStartMinute, int baseEndHour, int baseEndMinute,
-            int randomizeMinutes, DayOfWeek... days) {
+            int randomizerValue, DayOfWeek... days) {
         
         // Validate and cap time values
         baseStartHour = Math.min(Math.max(baseStartHour, 0), 23);
         baseStartMinute = Math.min(Math.max(baseStartMinute, 0), 59);
         baseEndHour = Math.min(Math.max(baseEndHour, 0), 23);
         baseEndMinute = Math.min(Math.max(baseEndMinute, 0), 59);
-        randomizeMinutes = Math.min(Math.max(randomizeMinutes, 0), 60);
+        randomizerValue = Math.min(Math.max(randomizerValue, 0), 60);
         
         // Create time window condition
         TimeWindowCondition timeWindow = new TimeWindowCondition(
@@ -352,8 +353,8 @@ public final class TimeConditionUtil {
                 null, 1, 0);
         
         // Set randomization if requested
-        if (randomizeMinutes > 0) {
-            timeWindow.setRandomization(true, randomizeMinutes);
+        if (randomizerValue > 0) {
+            timeWindow.setRandomization(true);
         }
         
         // Create day of week condition
@@ -587,6 +588,85 @@ public final class TimeConditionUtil {
         finalSchedule.addCondition(allDaySchedules);
         
         return finalSchedule;
+    }
+    
+    /**
+     * Creates a condition that runs all day (from midnight to midnight)
+     * 
+     * @param startDate The start date of the condition
+     * @param endDate The end date of the condition
+     * @param repeatCycle The repeat cycle type
+     * @param repeatIntervalUnit The interval between repetitions
+     * @return A TimeWindowCondition configured to run all day
+     */
+    public static TimeWindowCondition createAllDayTimeWindow(
+            LocalDate startDate, 
+            LocalDate endDate, 
+            RepeatCycle repeatCycle, 
+            int repeatIntervalUnit) {
+        return new TimeWindowCondition(
+            LocalTime.of(0, 0), 
+            LocalTime.of(23, 59), 
+            startDate,
+            endDate,
+            repeatCycle,
+            repeatIntervalUnit,
+            0 // unlimited
+        );
+    }
+    
+    /**
+     * Creates a condition that runs from the start of the day until a specific time
+     * 
+     * @param endTime The time when the window should end
+     * @param startDate The start date of the condition
+     * @param endDate The end date of the condition
+     * @param repeatCycle The repeat cycle type
+     * @param repeatIntervalUnit The interval between repetitions
+     * @return A TimeWindowCondition configured to run from midnight to the specified end time
+     */
+    public static TimeWindowCondition createStartOfDayTimeWindow(
+            LocalTime endTime,
+            LocalDate startDate, 
+            LocalDate endDate, 
+            RepeatCycle repeatCycle, 
+            int repeatIntervalUnit) {
+        return new TimeWindowCondition(
+            LocalTime.of(0, 0), 
+            endTime, 
+            startDate,
+            endDate,
+            repeatCycle,
+            repeatIntervalUnit,
+            0 // unlimited
+        );
+    }
+    
+    /**
+     * Creates a condition that runs from a specific time until the end of the day
+     * 
+     * @param startTime The time when the window should start
+     * @param startDate The start date of the condition
+     * @param endDate The end date of the condition
+     * @param repeatCycle The repeat cycle type
+     * @param repeatIntervalUnit The interval between repetitions
+     * @return A TimeWindowCondition configured to run from the specified start time until midnight
+     */
+    public static TimeWindowCondition createEndOfDayTimeWindow(
+            LocalTime startTime,
+            LocalDate startDate, 
+            LocalDate endDate, 
+            RepeatCycle repeatCycle, 
+            int repeatIntervalUnit) {
+        return new TimeWindowCondition(
+            startTime, 
+            LocalTime.of(23, 59), 
+            startDate,
+            endDate,
+            repeatCycle,
+            repeatIntervalUnit,
+            0 // unlimited
+        );
     }
     
     /**

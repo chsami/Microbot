@@ -46,7 +46,7 @@ public class SplashScript extends Script {
 					return;
 				}
 
-				if (Rs2Player.isMoving() || Rs2Player.isInCombat() || Microbot.pauseAllScripts) return;
+				if (Rs2Player.isMoving() || Rs2Combat.inCombat() || Microbot.pauseAllScripts) return;
 				if (Rs2AntibanSettings.actionCooldownActive) return;
 
 				if (Rs2Npc.attack(plugin.getNpcName())) {
