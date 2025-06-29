@@ -448,13 +448,14 @@ public class Rs2GrandExchange {
             openExchange();
         }
         sleepUntil(Rs2GrandExchange::isOpen);
-        Widget[] collectButton = Rs2Widget.getWidget(465, 6).getDynamicChildren();
-        if (!collectButton[1].isSelfHidden()) {
-            Rs2Widget.clickWidgetFast(
-                    COLLECT_BUTTON, collectToBank ? 2 : 1);
-            sleepUntil(() -> collectButton[1].isSelfHidden());
-        }
-        return collectButton[1].isSelfHidden();
+        Widget collectButton = Rs2Widget.getWidget(COLLECT_BUTTON);
+		if (collectButton == null) return false;
+		// MenuEntryImpl(getOption=Collect to bank, getTarget=, getIdentifier=2, getType=CC_OP, getParam0=0, getParam1=30474246, getItemId=-1, isForceLeftClick=false, getWorldViewId=-1, isDeprioritized=false)
+		// MenuEntryImpl(getOption=Collect to inventory, getTarget=, getIdentifier=1, getType=CC_OP, getParam0=0, getParam1=30474246, getItemId=-1, isForceLeftClick=false, getWorldViewId=-1, isDeprioritized=false)
+		NewMenuEntry entry = new NewMenuEntry(collectToBank ? "Collect to bank" : "Collect to inventory", "", collectToBank ? 2 : 1, MenuAction.CC_OP, 0, collectButton.getId(), false);
+		Rectangle bounds = new Rectangle(collectButton.getBounds());
+		Microbot.doInvoke(entry, bounds);
+		return true;
     }
 
     public static boolean collectToInventory() {

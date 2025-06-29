@@ -67,7 +67,13 @@
 2640 3696 0	2277 4034 0	Travel;Fremennik Boat;29917				Dragon Slayer II		6	
 2640 3697 0	2277 4034 0	Travel;Fremennik Boat;29917				Dragon Slayer II		6	
 2640 3698 0	2277 4034 0	Travel;Fremennik Boat;29917				Dragon Slayer II		6	
-2640 3699 0	2277 4034 0	Travel;Fremennik Boat;29917				Dragon Slayer II		6	
+2640 3699 0	2277 4034 0	Travel;Fremennik Boat;29917				Dragon Slayer II		6
+
+# River Kelda
+2841 10129 0	2892 10225 0	Travel;Dwarven Boatman;13826				The Giant Dwarf		6
+2888 10226 0	2838 10126 0	Travel;Dwarven Boatman;17768				The Giant Dwarf		6
+2839 10129 0	2837 10143 0	Travel;Dwarven Ferryman;13825			2 Coins	The Giant Dwarf		6
+2855 10146 0	2863 10133 0	Travel;Dwarven Ferryman;13829			2 Coins	The Giant Dwarf		6
 									
 # Fossil Island, Lithkren									
 3660 3848 0	3583 3973 0	Travel;Rowboat;29916				Dragon Slayer II		5	

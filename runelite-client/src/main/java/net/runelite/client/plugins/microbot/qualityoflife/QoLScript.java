@@ -102,6 +102,9 @@ public class QoLScript extends Script {
             if (!inventorySetup.doesInventoryMatch()) {
                 inventorySetup.loadInventory();
             }
+			if (!inventorySetup.getAdditionalItems().isEmpty()) {
+				inventorySetup.prePot();
+			}
             QoLPlugin.executeLoadoutActions = false;
             QoLPlugin.loadoutToLoad = null;
         } catch (Exception ignored) {
