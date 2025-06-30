@@ -2,10 +2,7 @@ package net.runelite.client.plugins.microbot.runecrafting.gotr;
 
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.ChatMessageType;
-import net.runelite.api.GameObject;
-import net.runelite.api.GameState;
-import net.runelite.api.NPC;
+import net.runelite.api.*;
 import net.runelite.api.events.*;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -14,17 +11,20 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerPlugin;
+import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.AndCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LockCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
 import net.runelite.client.plugins.microbot.qualityoflife.scripts.pouch.PouchOverlay;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.ui.overlay.OverlayManager;
-
 import javax.inject.Inject;
 import java.awt.*;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.regex.Matcher;
-
 @PluginDescriptor(
         name = PluginDescriptor.Mocrosoft + "GuardiansOfTheRift",
         description = "Guardians of the rift plugin",
@@ -32,7 +32,7 @@ import java.util.regex.Matcher;
         enabledByDefault = false
 )
 @Slf4j
-public class GotrPlugin extends Plugin {
+public class GotrPlugin extends Plugin implements SchedulablePlugin {
     @Inject
     private GotrConfig config;
 
@@ -50,6 +50,10 @@ public class GotrPlugin extends Plugin {
     @Inject
     GotrScript gotrScript;
 
+    private LockCondition lockCondition;
+    private LogicalCondition stopCondition = null;
+    private GotrPrePostScheduleTasks gotrActions;
+
     public GotrConfig getConfig() {
         return config;
     }
@@ -61,12 +65,30 @@ public class GotrPlugin extends Plugin {
             overlayManager.add(pouchOverlay);
             overlayManager.add(gotrOverlay);
         }
-        gotrScript.run(config);
+        
+        // Initialize GotrActions for schedule mode support
+        gotrActions = new GotrPrePostScheduleTasks(this);
+        
+        
+        // if In schedule mode: run pre-actions first, then start script when ready, when not in schedule mode, executePreSchedulePreparation just start the script
+        Microbot.log("GOTR Plugin starting in schedule mode - executing pre-schedule preparation");
+        gotrActions.executePreScheduleTasks(() -> {
+            // Callback: start the actual GOTR script after preparation is complete
+            Microbot.log("Pre-schedule preparation completed - starting GOTR script");
+            gotrScript.run(config);
+        });
+       
     }
 
     protected void shutDown() {
+        // Shutdown GotrActions if it exists
+        if (gotrActions != null) {
+            gotrActions.shutdown();
+        }
+
         gotrScript.shutdown();
         overlayManager.remove(gotrOverlay);
+        overlayManager.remove(pouchOverlay);
     }
 
     @Subscribe
@@ -115,9 +137,15 @@ public class GotrPlugin extends Plugin {
             GotrScript.timeSincePortal = Optional.of(Instant.now());
             GotrScript.isFirstPortal = true;
             GotrScript.state = GotrState.ENTER_GAME;
+            if (lockCondition != null) {
+                lockCondition.lock();
+            }
         } else if (msg.contains("The rift will become active in 30 seconds.")) {
             if (Microbot.isPluginEnabled(BreakHandlerPlugin.class)) {
                 BreakHandlerScript.setLockState(true);
+            }
+            if (lockCondition != null) {
+                lockCondition.lock();
             }
             GotrScript.shouldMineGuardianRemains = true;
             GotrScript.nextGameStart = Optional.of(Instant.now().plusSeconds(30));
@@ -135,7 +163,11 @@ public class GotrPlugin extends Plugin {
             Global.sleep(Rs2Random.randomGaussian(2000, 300));
             BreakHandlerScript.setLockState(false);
             }
+            if (lockCondition != null) {
+                lockCondition.unlock();
+            }
             GotrScript.shouldMineGuardianRemains = true;
+
         }
 
         Matcher rewardPointMatcher = GotrScript.rewardPointPattern.matcher(msg);
@@ -173,6 +205,47 @@ public class GotrPlugin extends Plugin {
             GotrScript.timeSincePortal = Optional.of(Instant.now());
         }
     }
-    
 
+    @Override
+    public LogicalCondition getStopCondition() {
+        if (this.stopCondition == null) {
+            this.stopCondition = createStopCondition();
+        }
+        return this.stopCondition;
+    }
+    private LogicalCondition createStopCondition() {
+        if (this.lockCondition == null) {
+            this.lockCondition = new LockCondition("Locked because the Plugin " + getName() + " is in a critical operation");
+        }
+
+        AndCondition andCondition = new AndCondition();
+        andCondition.addCondition(lockCondition);
+        return andCondition;
+    }
+
+
+    @Subscribe
+    public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
+        if (event.getPlugin() == this) {
+            Microbot.log("Scheduler about to turn off Guardians of the Rift");
+            
+            // Use GotrActions to handle post-schedule cleanup
+            if (gotrActions != null) {
+                gotrActions.executePostScheduleTasks(lockCondition);
+            } else {
+                // Fallback to direct shutdown if GotrActions is not available
+                Microbot.log("GotrActions not available, performing direct shutdown");
+                gotrScript.shutdown();
+                Microbot.getClientThread().invokeLater(() -> {
+                    Microbot.stopPlugin(this);
+                    return true;
+                });
+            }
+        }
+    }
+
+   
+
+
+    
 }

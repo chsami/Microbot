@@ -1,9 +1,14 @@
 package net.runelite.client.plugins.microbot.VoxPlugins.schedulable.example;
 
+
 import java.awt.event.KeyEvent;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 import javax.inject.Inject;
 
@@ -35,9 +40,11 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.resource.L
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.resource.ProcessItemCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.IntervalCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.AbstractPrePostScheduleTasks;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.HotkeyListener;
 
@@ -50,6 +57,8 @@ import net.runelite.client.util.HotkeyListener;
 @Slf4j
 public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugin, KeyListener {
     
+    
+
     @Inject
     private SchedulableExampleConfig config;
     
@@ -61,20 +70,38 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
     
     @Inject
     private OverlayManager overlayManager;
+    
+    @Inject
+    private SchedulableExampleOverlay overlay;
    
     @Provides
     SchedulableExampleConfig provideConfig(ConfigManager configManager) {
         return configManager.getConfig(SchedulableExampleConfig.class);
     }
     
+    /**
+     * Gets the plugin configuration.
+     * 
+     * @return The SchedulableExampleConfig instance
+     */
+    public SchedulableExampleConfig getConfig() {
+        return config;
+    }
+    
     private SchedulableExampleScript script;
     private WorldPoint lastLocation = null;
     private int itemsCollected = 0;
-    private int npcKilled = 0;
-    private LocationStartNotificationOverlay locationOverlay;    
+    
     private LockCondition lockCondition;
     private LogicalCondition startCondition = null;
     private LogicalCondition stopCondition = null;
+    private ScheduledExecutorService prePostTaskExecutorService = null;
+    private ScheduledFuture<?> postScheduleTaskScheduledFuture = null;
+    private ScheduledFuture<?> preScheduleTaskScheduledFuture = null;
+    
+    // Pre/Post Schedule Tasks and Requirements
+    private SchedulableExamplePrePostScheduleRequirements prePostScheduleRequirements = null;
+    private SchedulableExamplePrePostScheduleTasks prePostScheduleTasks = null;
     
     // HotkeyListener for the area marking
     private final HotkeyListener areaHotkeyListener = new HotkeyListener(() -> config.areaMarkHotkey()) {
@@ -90,7 +117,7 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
         public void hotkeyPressed() {
             String reason = config.finishReason() + " (success)";
             boolean success = true;
-            log.info("Manually triggering plugin finish: reason='{}', success={}", reason, success);
+            log.info("\nManually triggering plugin finish: reason='{}', success={}", reason, success);
             Microbot.getClientThread().invokeLater( () ->  {reportFinished(reason, success); return true;});
         }
     };
@@ -100,12 +127,12 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
         public void hotkeyPressed() {
             String reason = config.finishReason()+ " (not success)";
             boolean success = false;
-            log.info("Manually triggering plugin finish: reason='{}', success={}", reason, success);
+            log.info("\nManually triggering plugin finish: reason='{}', success={}", reason, success);
             Microbot.getClientThread().invokeLater( () ->  {reportFinished(reason, success); return true;});
         }
     };
     
-    // HotkeyListener for toggling the lock condition
+   // HotkeyListener for toggling the lock condition
     private final HotkeyListener lockConditionHotkeyListener = new HotkeyListener(() -> config.lockConditionHotkey()) {
         @Override
         public void hotkeyPressed() {
@@ -115,7 +142,48 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
                 return;
             }
             boolean newState = toggleLock((Condition)(stopCondition));
-            log.info("Lock condition toggled: {}", newState ? "LOCKED - " + config.lockDescription() : "UNLOCKED");
+            log.info("\n\tLock condition toggled: {}", newState ? "LOCKED - " + config.lockDescription() : "UNLOCKED");
+        }
+    };
+    
+    // HotkeyListener for testing pre-schedule tasks
+    private final HotkeyListener testPreScheduleTasksHotkeyListener = new HotkeyListener(() -> config.testPreScheduleTasksHotkey()) {
+        @Override
+        public void hotkeyPressed() {
+            // Initialize Pre/Post Schedule Requirements and Tasks if needed
+            if (config.enablePrePostRequirements()) {
+                if (prePostScheduleRequirements == null || prePostScheduleTasks == null) {
+                   getPrePostScheduleTasks();
+                }
+                
+                // Test only pre-schedule tasks
+                SchedulableExamplePlugin.this.testPreScheduleTasksOnly();
+            } else {
+                log.info("Pre/Post Schedule Requirements are disabled in configuration");
+            }
+        }
+    };
+    
+    // HotkeyListener for testing post-schedule tasks
+    private final HotkeyListener testPostScheduleTasksHotkeyListener = new HotkeyListener(() -> config.testPostScheduleTasksHotkey()) {
+        @Override
+        public void hotkeyPressed() {
+            // Initialize Pre/Post Schedule Requirements and Tasks if needed
+            if (config.enablePrePostRequirements()) {
+                if (prePostScheduleRequirements == null || prePostScheduleTasks == null) {
+                    log.info("Initializing Pre/Post Schedule Requirements and Tasks...");
+                    SchedulableExamplePlugin.this.prePostScheduleRequirements = new SchedulableExamplePrePostScheduleRequirements(config);
+                    SchedulableExamplePlugin.this.prePostScheduleTasks = new SchedulableExamplePrePostScheduleTasks(SchedulableExamplePlugin.this, prePostScheduleRequirements);
+                    
+                    // Log the requirements status
+                    log.info("PrePostScheduleRequirements initialized:\n{}", prePostScheduleRequirements.getEnabledRequirementsDisplay());
+                }
+                
+                // Test only post-schedule tasks
+                SchedulableExamplePlugin.this.testPostScheduleTasksOnly();
+            } else {
+                log.info("Pre/Post Schedule Requirements are disabled in configuration");
+            }
         }
     };
     
@@ -125,6 +193,18 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
         script = new SchedulableExampleScript();
         script.run(config, lastLocation);
         
+        // Initialize Pre/Post Schedule Requirements and Tasks
+        if (config.enablePrePostRequirements()) {
+            log.info("Initializing Pre/Post Schedule Requirements and Tasks...");
+            prePostScheduleRequirements = new SchedulableExamplePrePostScheduleRequirements(config);
+            prePostScheduleTasks = new SchedulableExamplePrePostScheduleTasks(this, prePostScheduleRequirements);
+            
+            // Log the requirements status
+            log.info("PrePostScheduleRequirements initialized:\n{}", prePostScheduleRequirements.getEnabledRequirementsDisplay());
+        } else {
+            log.info("Pre/Post Schedule Requirements are disabled in configuration");
+        }
+        
         keyManager.registerKeyListener(this);
         
         // Register the hotkey listeners
@@ -132,22 +212,55 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
         keyManager.registerKeyListener(finishPluginSuccessHotkeyListener);
         keyManager.registerKeyListener(finishPluginNotSuccessHotkeyListener);
         keyManager.registerKeyListener(lockConditionHotkeyListener);
+        keyManager.registerKeyListener(testPreScheduleTasksHotkeyListener);
+        keyManager.registerKeyListener(testPostScheduleTasksHotkeyListener);
         
-        // Create and add the overlay
-        locationOverlay = new LocationStartNotificationOverlay(this, config);
-        overlayManager.add(locationOverlay);
-        
-        log.info("Schedulable Example plugin started - Press {} to test the PluginScheduleEntryFinishedEvent successfully\nand\n{} to test the PluginScheduleEntryFinishedEvent unsuccessfully",
+        // Add the overlay
+        overlayManager.add(overlay);
+        boolean scheduleMode = Microbot.getConfigManager().getConfiguration(
+                                    "SchedulableExample", 
+                                    "scheduleMode", 
+                                Boolean.class
+                                );        log.info("\n\tSchedulable Example plugin started\n\t -In SchedulerMode:{}\n\t -Press {} to test the PluginScheduleEntryFinishedEvent successfully\n\t -Press {} to test the PluginScheduleEntryFinishedEvent unsuccessfully\n\t -Use {} to toggle the lock condition (prevents the plugin from being stopped)\n\t -Use {} to test Pre-Schedule Tasks functionality\n\t -Use {} to test Post-Schedule Tasks functionality",
+                scheduleMode,
                 config.finishPluginSuccessfulHotkey(),
-                config.finishPluginNotSuccessfulHotkey());                 
-        log.info("Use {} to toggle the lock condition (prevents the plugin from being stopped)", 
-                config.lockConditionHotkey());
-            
+                config.finishPluginNotSuccessfulHotkey(),
+                config.lockConditionHotkey(),
+                config.testPreScheduleTasksHotkey(),
+                config.testPostScheduleTasksHotkey());
+      
     }
     
     @Override
     protected void shutDown() {
-        if (script != null) {
+         // Cancel exit task if it exists
+        if (postScheduleTaskScheduledFuture != null && !postScheduleTaskScheduledFuture.isDone()) {
+            postScheduleTaskScheduledFuture.cancel(true);
+            postScheduleTaskScheduledFuture = null;
+        }
+        if (preScheduleTaskScheduledFuture != null && !preScheduleTaskScheduledFuture.isDone()) {
+            preScheduleTaskScheduledFuture.cancel(true);
+            preScheduleTaskScheduledFuture = null;
+        }
+        if (prePostTaskExecutorService != null && !prePostTaskExecutorService.isShutdown()) {
+            prePostTaskExecutorService.shutdownNow();
+            prePostTaskExecutorService = null;
+        }
+
+        // Clean up PrePostScheduleTasks if initialized
+        if (prePostScheduleTasks != null) {
+            try {
+                prePostScheduleTasks.close();
+                log.info("PrePostScheduleTasks cleaned up successfully");
+            } catch (Exception e) {
+                log.error("Error cleaning up PrePostScheduleTasks", e);
+            } finally {
+                prePostScheduleTasks = null;
+                prePostScheduleRequirements = null;
+            }
+        }
+
+        if (script != null && script.isRunning()) {
             saveCurrentLocation();
             script.shutdown();            
         }
@@ -157,9 +270,11 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
         keyManager.unregisterKeyListener(finishPluginSuccessHotkeyListener);
         keyManager.unregisterKeyListener(finishPluginNotSuccessHotkeyListener);
         keyManager.unregisterKeyListener(lockConditionHotkeyListener);
+        keyManager.unregisterKeyListener(testPreScheduleTasksHotkeyListener);
+        keyManager.unregisterKeyListener(testPostScheduleTasksHotkeyListener);
         
         // Remove the overlay
-        overlayManager.remove(locationOverlay);
+        overlayManager.remove(overlay);
     }
     
     /**
@@ -280,13 +395,58 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
          return andCondition;
        
     }
-    @Override
-    public LogicalCondition getStopCondition() {
-        // Create a new stop condition
-        if (this.stopCondition == null) {
-            this.stopCondition = createStopCondition();
+    /**
+     * Gets the PrePostScheduleRequirements instance.
+     * 
+     * @return The requirements instance or null if not initialized
+     */
+    public SchedulableExamplePrePostScheduleRequirements getPrePostScheduleRequirements() {
+        return prePostScheduleRequirements;
+    }
+    
+   
+    /**
+     * Tests only the pre-schedule tasks functionality.
+     * This method demonstrates how pre-schedule tasks work and logs the results.
+     */
+    private void testPreScheduleTasksOnly() {
+        log.info("Testing Pre-Schedule Tasks functionality...");
+        
+        if (prePostScheduleTasks == null) {
+            log.warn("PrePostScheduleTasks not initialized - cannot test");
+            return;
         }
-        return this.stopCondition;
+        
+        try {
+            // Execute only pre-schedule tasks using the public API
+            prePostScheduleTasks.executePreScheduleTasks(() -> {
+                log.info("Pre-Schedule Tasks completed successfully");
+            });
+        } catch (Exception e) {
+            log.error("Error during Pre-Schedule Tasks test", e);
+        }
+    }
+    
+    /**
+     * Tests only the post-schedule tasks functionality.
+     * This method demonstrates how post-schedule tasks work and logs the results.
+     */
+    private void testPostScheduleTasksOnly() {
+        log.info("Testing Post-Schedule Tasks functionality...");
+        
+        if (prePostScheduleTasks == null) {
+            log.warn("PrePostScheduleTasks not initialized - cannot test");
+            return;
+        }
+        
+        try {
+            // Execute only post-schedule tasks using the public API
+            prePostScheduleTasks.executePostScheduleTasks(() -> {
+                log.info("Post-Schedule Tasks completed successfully");
+            });
+        } catch (Exception e) {
+            log.error("Error during Post-Schedule Tasks test", e);
+        }
     }
     private LogicalCondition createStartCondition() {
         try {
@@ -352,6 +512,28 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
         return this.startCondition;
         
     }
+    @Override
+    public LogicalCondition getStopCondition() {
+        // Create a new stop condition
+        if (this.stopCondition == null) {
+            this.stopCondition = createStopCondition();
+        }
+        return this.stopCondition;
+    }
+    @Override
+    public AbstractPrePostScheduleTasks getPrePostScheduleTasks() {
+
+        if (prePostScheduleRequirements == null || prePostScheduleTasks == null) {
+            log.info("Initializing Pre/Post Schedule Requirements and Tasks...");
+            SchedulableExamplePlugin.this.prePostScheduleRequirements = new SchedulableExamplePrePostScheduleRequirements(config);
+            SchedulableExamplePlugin.this.prePostScheduleTasks = new SchedulableExamplePrePostScheduleTasks(SchedulableExamplePlugin.this, prePostScheduleRequirements);            
+            // Log the requirements status
+            log.info("PrePostScheduleRequirements initialized:\n{}", prePostScheduleRequirements.getEnabledRequirementsDisplay());
+        }
+        // Return the pre/post schedule tasks instance
+       
+        return this.prePostScheduleTasks;
+    }
     
     /**
      * Creates a time-based condition based on config settings
@@ -387,7 +569,7 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
         List<Integer> minLootItemPerPattern = new ArrayList<>();
         List<Integer> maxLootItemPerPattern = new ArrayList<>();
         
-        for (String item : lootItemsList) {
+        for (int i = 0; i < lootItemsList.size(); i++) {
             int minLoot = Rs2Random.between(minLootItems, maxLootItems);
             int maxLoot = Rs2Random.between(minLoot, maxLootItems);
             
@@ -443,7 +625,7 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
         List<Integer> minResourcesPerItem = new ArrayList<>();
         List<Integer> maxResourcesPerItem = new ArrayList<>();
         
-        for (String resource : resourcesList) {
+        for (int i = 0; i < resourcesList.size(); i++) {
             int minCount = Rs2Random.between(minResources, maxResources);
             int maxCount = Rs2Random.between(minCount, maxResources);
             
@@ -553,7 +735,7 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
             List<Integer> minKillsPerNpc = new ArrayList<>();
             List<Integer> maxKillsPerNpc = new ArrayList<>();
             
-            for (String npc : npcNamesList) {
+            for (int i = 0; i < npcNamesList.size(); i++) {
                 int minKillCount = Rs2Random.between(minKills, maxKills);
                 int maxKillCount = Rs2Random.between(minKillCount, maxKills);
                 
@@ -652,6 +834,18 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
 		{
 			this.startCondition = null;
             this.stopCondition = null;
+
+            // Initialize Pre/Post Schedule Requirements and Tasks
+            if (config.enablePrePostRequirements()) {
+                log.info("Initializing Pre/Post Schedule Requirements and Tasks...");
+                prePostScheduleRequirements = new SchedulableExamplePrePostScheduleRequirements(config);
+                prePostScheduleTasks = new SchedulableExamplePrePostScheduleTasks(this, prePostScheduleRequirements);
+                
+                // Log the requirements status
+                log.info("PrePostScheduleRequirements initialized:\n{}", prePostScheduleRequirements.getEnabledRequirementsDisplay());
+            } else {
+                log.info("Pre/Post Schedule Requirements are disabled in configuration");
+            }
 		}
 	}
     @Override
@@ -668,20 +862,55 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
                 return;
             }
             Microbot.getConfigManager().setConfiguration("SchedulableExample", "lastLocation", currentLocation);
-            log.info("onPluginScheduleEntrySoftStopEvent - Scheduling stop for plugin: {}", event.getPlugin().getClass().getSimpleName());
-            Microbot.stopPlugin(this);
+            log.info("Scheduling stop for plugin: {}", event.getPlugin().getClass().getSimpleName());
+
+
+
+            
+            
+
+            if (postScheduleTaskScheduledFuture != null) {     
+                return; // Exit task is already scheduled           
+            }
+            
+            if (prePostTaskExecutorService == null || prePostTaskExecutorService.isShutdown()) {
+                prePostTaskExecutorService = Executors.newSingleThreadScheduledExecutor();
+            }
+
+            postScheduleTaskScheduledFuture = prePostTaskExecutorService.scheduleWithFixedDelay(() -> {
+                try {                    
+                    Microbot.log("Successfully exited SchedulerExamplePlugin - stopping plugin");
+                    Microbot.getClientThread().invokeLater(() -> {
+                        Microbot.stopPlugin(this);
+                        return true;
+                    });
+                } catch (Exception ex) {
+                    Microbot.log("Error during safe exit: " + ex.getMessage());
+                    Microbot.getClientThread().invokeLater(() -> {
+                        Microbot.stopPlugin(this);
+                        return true;
+                    });
+                }
+            }, 0, 500, TimeUnit.MILLISECONDS);
+        
+            
             // Schedule the stop operation on the client thread
-            // Microbot.getClientThread().invokeLater(() -> {
-            //     try {                    
-            //         Microbot.getPluginManager().setPluginEnabled(this, false);
-            //         Microbot.getPluginManager().stopPlugin(this);
-            //     } catch (Exception e) {
-            //         log.error("Error stopping plugin", e);
-            //     }
-            // });
+            //Microbot.getClientThread().invokeLater(() -> {
+            //    try {                    
+            //        Microbot.getPluginManager().setPluginEnabled(this, false);
+            //        Microbot.getPluginManager().stopPlugin(this);
+            //    } catch (Exception e) {
+             //       log.error("Error stopping plugin", e);
+              //  }
+           // });
         }
     }
     
+
+
+
+
+
     @Override
     public void keyTyped(KeyEvent e) {
         // Not used
@@ -689,11 +918,24 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
 
     @Override
     public void keyPressed(KeyEvent e) {
-        // Can add additional key handlers here if needed
+        // Movement handling has been moved to VoxQoL plugin
+        // This plugin now only handles its core scheduling functionality
     }
+
+    
+   
+    
+
+
+
+
+
+
 
     @Override
     public void keyReleased(KeyEvent e) {
-        // Not used
+        // Not used but required by the KeyListener interface
     }
+
+
 }

@@ -9,6 +9,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.Lo
 import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryFinishedEvent;
 import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.AbstractPrePostScheduleTasks;
 import net.runelite.client.plugins.microbot.pluginscheduler.ui.util.SchedulerUIUtils;
 import net.runelite.client.plugins.microbot.pluginscheduler.util.SchedulerPluginUtil;
 
@@ -347,4 +348,11 @@ public interface SchedulablePlugin {
             return Optional.empty();
         }
     }
+    /** 
+     * Returns the pre/post schedule tasks for this plugin.
+     */
+    default AbstractPrePostScheduleTasks getPrePostScheduleTasks() {
+        return null; // Default implementation returns null, subclasses can override to provide tasks
+    }
+    
 }

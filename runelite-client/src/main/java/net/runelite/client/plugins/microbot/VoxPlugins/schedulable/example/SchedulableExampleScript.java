@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.VoxPlugins.schedulable.example;
 
 import net.runelite.api.Constants;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
@@ -21,7 +22,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import lombok.extern.slf4j.Slf4j;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Slf4j
 public class SchedulableExampleScript extends Script {
     private SchedulableExampleConfig config;
@@ -42,6 +45,7 @@ public class SchedulableExampleScript extends Script {
     private long totalBreakTime = 0;
     private int microBreakCount = 0;
     private boolean antibanInitialized = false;
+    private int aliveCounter = 0; // Counter to track when to report alive
     
     enum State {
         IDELE,
@@ -118,13 +122,32 @@ public class SchedulableExampleScript extends Script {
     public boolean run(SchedulableExampleConfig config, WorldPoint savedLocation) {
         this.returnPoint = savedLocation;
         this.config = config;
+        this.aliveCounter = 0;
         this.mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
                 
                 // Call the main method with antiban testing
-                main(config);                
+                main(config);                                               
+                // Increment counter and check if we should report alive
+                aliveCounter++;
+                int reportThreshold = (config.aliveReportTimeout() * 1000) / 800; // Convert seconds to iterations
+                
+                if (aliveCounter >= reportThreshold) {
+                    Microbot.log("SchedulableExampleScript is alive and running!");
+                    Rs2ItemModel oneDosePrayerRegeneration= Rs2ItemModel.createFromCache(ItemID._1DOSE1PRAYER_REGENERATION,1,1);
+                    List<String> equipmentActions =oneDosePrayerRegeneration.getEquipmentActions();
+                    boolean isTradeable = oneDosePrayerRegeneration.isTradeable();
+                    log.info("{}",oneDosePrayerRegeneration.toString() );
+                    Rs2ItemModel graceFullHelm= Rs2ItemModel.createFromCache(ItemID.GRACEFUL_HOOD,1,1);
+                    List<String> graceFullHelmActions = graceFullHelm.getEquipmentActions();
+                    boolean isGraceFullHelmTradeable = graceFullHelm.isTradeable();
+                    log.info("{}",graceFullHelm.toString() );
+                    aliveCounter = 0; // Reset counter
+                }
+                
+                return; //manuel play testing the Scheduler plugin.. doing nothing for now
             } catch (Exception ex) {
                 Microbot.log("SchedulableExampleScript error: " + ex.getMessage());
             }
@@ -232,6 +255,7 @@ public class SchedulableExampleScript extends Script {
             teardownAntibanTesting();
         }
         
+        Microbot.log("Shutting down SchedulableExampleScript");
         super.shutdown();
         returnPoint = null;
         
