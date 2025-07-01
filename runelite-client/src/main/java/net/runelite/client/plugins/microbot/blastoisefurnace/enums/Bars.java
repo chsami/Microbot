@@ -70,6 +70,42 @@ public enum Bars {
             Varbits.BLAST_FURNACE_COAL,
             true,
             false
+    ),
+    HYBRID_MITHRIL_BAR(
+            ItemID.MITHRIL_BAR,
+            ItemID.MITHRIL_ORE,
+            1,
+            ItemID.COAL,
+            2,
+            Varbits.BLAST_FURNACE_MITHRIL_BAR,
+            Varbits.BLAST_FURNACE_MITHRIL_ORE,
+            Varbits.BLAST_FURNACE_COAL,
+            true,
+            true
+    ),
+    HYBRID_ADAMANTITE_BAR(
+            ItemID.ADAMANTITE_BAR,
+            ItemID.ADAMANTITE_ORE,
+            1,
+            ItemID.COAL,
+            6,
+            Varbits.BLAST_FURNACE_ADAMANTITE_BAR,
+            Varbits.BLAST_FURNACE_ADAMANTITE_ORE,
+            Varbits.BLAST_FURNACE_COAL,
+            true,
+            true
+    ),
+    HYBRID_RUNITE_BAR(
+            ItemID.RUNITE_BAR,
+            ItemID.RUNITE_ORE,
+            1,
+            ItemID.COAL,
+            8,
+            Varbits.BLAST_FURNACE_RUNITE_BAR,
+            Varbits.BLAST_FURNACE_RUNITE_ORE,
+            Varbits.BLAST_FURNACE_COAL,
+            true,
+            true
     );
 
     private final int barID;

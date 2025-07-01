@@ -18,6 +18,7 @@ import javax.inject.Inject;
 import java.awt.event.KeyEvent;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
 import static net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory.calculateInteractOrder;
@@ -69,7 +70,7 @@ public class BanksBankStanderScript extends Script {
         thirdItemId = TryParseInt(config.thirdItemIdentifier());
         fourthItemId = TryParseInt(config.fourthItemIdentifier());
 
-        inventorySlots = calculateInteractOrder(new ArrayList<>(Rs2Inventory.items()), config.interactOrder());
+        inventorySlots = calculateInteractOrder(new ArrayList<>(Rs2Inventory.items().collect(Collectors.toList())), config.interactOrder());
 
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             if (!Microbot.isLoggedIn()) return;

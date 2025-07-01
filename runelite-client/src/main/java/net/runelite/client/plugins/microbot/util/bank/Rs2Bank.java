@@ -643,7 +643,7 @@ public class Rs2Bank {
 
     public static boolean depositAll(Predicate<Rs2ItemModel> predicate) {
         boolean result = false;
-        List<Rs2ItemModel> items = Rs2Inventory.items().stream().filter(predicate).distinct().collect(Collectors.toList());
+        List<Rs2ItemModel> items = Rs2Inventory.items(predicate).distinct().collect(Collectors.toList());
         for (Rs2ItemModel item : items) {
             if (item == null) continue;
             depositAll(item);

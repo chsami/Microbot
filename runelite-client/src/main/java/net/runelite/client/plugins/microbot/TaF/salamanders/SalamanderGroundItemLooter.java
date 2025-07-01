@@ -40,12 +40,12 @@ public class SalamanderGroundItemLooter extends Script {
     }
 
     private void cleanInventory() {
-        for (Rs2ItemModel item : Rs2Inventory.items()) {
+        Rs2Inventory.items().forEachOrdered(item -> {
             if (item.getId() == ItemID.BLACK_SALAMANDER || item.getId() == ItemID.GREEN_SALAMANDER || item.getId() == ItemID.ORANGE_SALAMANDER || item.getId() == ItemID.RED_SALAMANDER || item.getId() == ItemID.IMMATURE_MOUNTAIN_SALAMANDER) {
                 Rs2Inventory.interact(item, "Release");
                 sleep(150, 350);
             }
-        }
+        });
     }
 
     private void lootRobeAndNets() {

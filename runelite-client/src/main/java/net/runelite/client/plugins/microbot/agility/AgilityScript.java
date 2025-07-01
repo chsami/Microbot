@@ -108,7 +108,10 @@ public class AgilityScript extends Script
 					return;
 				}
 
-				getAlchItem().ifPresent(item -> Rs2Magic.alch(item, 50, 75));
+				if (config.alchemy())
+				{
+					getAlchItem().ifPresent(item -> Rs2Magic.alch(item, 50, 75));
+				}
 
 				if (plugin.getCourseHandler() instanceof PrifddinasCourse)
 				{

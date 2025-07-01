@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.thieving.stalls.model;
 import lombok.AllArgsConstructor;
 
 import javax.inject.Inject;
+import java.util.Arrays;
 
 @AllArgsConstructor(onConstructor_ = @Inject)
 public class DropInventoryStrategy implements IInventoryStrategy {
@@ -15,6 +16,6 @@ public class DropInventoryStrategy implements IInventoryStrategy {
             return;
         }
 
-        botApi.dropAll(stallThievingSpot.getItemIdsToDrop());
+        botApi.dropAll(Arrays.stream(stallThievingSpot.getItemIdsToDrop()).mapToInt(i -> i).toArray());
     }
 }

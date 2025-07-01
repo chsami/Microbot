@@ -35,6 +35,7 @@ public class BlastoiseFurnaceScript extends Script {
     static final int BAR_DISPENSER = 9092;
     static final int coalBag = 12019;
     private static final int MAX_ORE_PER_INTERACTION = 27;
+    private static final int MAX_ORE_PER_HYBRID_INTERACTION = 26;
     public static double version = 1.0;
     public static State state;
     static int staminaTimer;
@@ -276,6 +277,27 @@ public class BlastoiseFurnaceScript extends Script {
 
     }
 
+    private void retrieveCoalAndGold() {
+        if (!Rs2Inventory.hasItem(GOLD_ORE)) {
+            Rs2Bank.withdrawAll(GOLD_ORE);
+            return;
+        }
+        boolean fullCoalBag = Rs2Inventory.interact(coalBag, "Fill");
+        if (!fullCoalBag)
+            return;
+        sleep(500, 1200);
+        Rs2Bank.closeBank();
+        sleep(500, 1200);
+        depositOre();
+
+        Rs2Walker.walkFastCanvas(new WorldPoint(1940, 4962, 0));
+
+        sleep(3400);
+        sleepUntil(() -> barsInDispenser(config.getBars()) > 0, 10000);
+        Rs2Inventory.interact(ItemID.ICE_GLOVES, "wear");
+        Rs2Inventory.waitForInventoryChanges(2000);
+    }
+
     private void retrieveGold() {
         if (!Rs2Inventory.hasItem(GOLD_ORE)) {
             Rs2Bank.withdrawAll(GOLD_ORE);
@@ -307,6 +329,15 @@ public class BlastoiseFurnaceScript extends Script {
                 break;
             case RUNITE_BAR:
                 handleRunite();
+                break;
+            case HYBRID_MITHRIL_BAR:
+                handleHybridMithril();
+                break;
+            case HYBRID_ADAMANTITE_BAR:
+                handleHybridAdamantite();
+                break;
+            case HYBRID_RUNITE_BAR:
+                handleHybridRunite();
                 break;
         }
 
@@ -447,6 +478,73 @@ public class BlastoiseFurnaceScript extends Script {
 
     }
 
+    private void handleHybridMithril() {
+        int coalInFurnace = Microbot.getVarbitValue(Varbits.BLAST_FURNACE_COAL);
+        switch (coalInFurnace / MAX_ORE_PER_HYBRID_INTERACTION) {
+            case 8:
+            case 7:
+            case 6:
+            case 5:
+            case 4:
+            case 3:
+            case 2:
+            case 1:
+                retrieveCoalAndPrimary();
+                break;
+            case 0:
+                retrieveCoalAndGold();
+                break;
+            default:
+                assert false : "how did you get there";
+
+        }
+
+    }
+
+    private void handleHybridAdamantite() {
+        int coalInFurnace = Microbot.getVarbitValue(Varbits.BLAST_FURNACE_COAL);
+        switch (coalInFurnace / MAX_ORE_PER_HYBRID_INTERACTION) {
+            case 8:
+            case 7:
+            case 6:
+            case 5:
+            case 4:
+            case 3:
+            case 2:
+                retrieveCoalAndPrimary();
+                break;
+            case 1:
+            case 0:
+                retrieveCoalAndGold();
+                break;
+            default:
+                assert false : "how did you get there";
+        }
+
+    }
+
+    private void handleHybridRunite() {
+        int coalInFurnace = Microbot.getVarbitValue(Varbits.BLAST_FURNACE_COAL);
+        switch (coalInFurnace / MAX_ORE_PER_HYBRID_INTERACTION) {
+            case 8:
+            case 7:
+            case 6:
+            case 5:
+            case 4:
+            case 3:
+                retrieveCoalAndPrimary();
+                break;
+            case 2:
+            case 1:
+            case 0:
+                retrieveCoalAndGold();
+                break;
+            default:
+                assert false : "how did you get there";
+        }
+
+    }
+
     private void useStaminaPotions() {
 
         boolean usedPotion = false;
@@ -520,6 +618,14 @@ public class BlastoiseFurnaceScript extends Script {
             Rs2GameObject.interact(ObjectID.CONVEYOR_BELT, "Put-ore-on");
             Rs2Inventory.waitForInventoryChanges(3000);
         }
+        if (this.config.getBars().isRequiresCoalBag() && (Rs2Inventory.hasItem(ItemID.SMITHS_GLOVES_I) || Rs2Inventory.hasItem(ItemID.GOLDSMITH_GAUNTLETS) || Rs2Inventory.hasItem(ItemID.ICE_GLOVES))) {
+
+            Rs2Inventory.interact(coalBag, "Empty");
+            Rs2Inventory.waitForInventoryChanges(3000);
+
+            Rs2GameObject.interact(ObjectID.CONVEYOR_BELT, "Put-ore-on");
+            Rs2Inventory.waitForInventoryChanges(3000);
+        }
     }
 
     public int barsInDispenser(Bars bar) {
@@ -534,6 +640,20 @@ public class BlastoiseFurnaceScript extends Script {
                 return Microbot.getVarbitValue(Varbits.BLAST_FURNACE_ADAMANTITE_BAR);
             case RUNITE_BAR:
                 return Microbot.getVarbitValue(Varbits.BLAST_FURNACE_RUNITE_BAR);
+            case HYBRID_MITHRIL_BAR:
+                if (Microbot.getVarbitValue(Varbits.BLAST_FURNACE_MITHRIL_BAR) > 0)
+                    return Microbot.getVarbitValue(Varbits.BLAST_FURNACE_MITHRIL_BAR);
+                return Microbot.getVarbitValue(Varbits.BLAST_FURNACE_GOLD_BAR);
+
+            case HYBRID_ADAMANTITE_BAR:
+                if (Microbot.getVarbitValue(Varbits.BLAST_FURNACE_ADAMANTITE_BAR) > 0)
+                    return Microbot.getVarbitValue(Varbits.BLAST_FURNACE_ADAMANTITE_BAR);
+                return Microbot.getVarbitValue(Varbits.BLAST_FURNACE_GOLD_BAR);
+
+            case HYBRID_RUNITE_BAR:
+                if (Microbot.getVarbitValue(Varbits.BLAST_FURNACE_RUNITE_BAR) > 0)
+                    return Microbot.getVarbitValue(Varbits.BLAST_FURNACE_RUNITE_BAR);
+                return Microbot.getVarbitValue(Varbits.BLAST_FURNACE_GOLD_BAR);
             default:
                 return -1;
         }

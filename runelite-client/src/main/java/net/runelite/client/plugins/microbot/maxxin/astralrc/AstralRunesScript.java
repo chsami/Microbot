@@ -452,28 +452,19 @@ public class AstralRunesScript extends Script {
 
     private void updateRuneStates() {
         // 1. tally all runes in inventory + pouch
-        final int[] currentCount = {0};
-        for (Rs2ItemModel item : Rs2Inventory.items()) {
-            if (item.getId() == this.runeItemId) {
-                currentCount[0] += item.getQuantity();
-            }
-        }
-        Rs2RunePouch.getRunes().forEach((runeId, qty) -> {
-            if (runeId == this.runeItemId) {
-                currentCount[0] += qty;
-            }
-        });
+        final int currentCount = Rs2Inventory.itemQuantity(this.runeItemId) + Rs2RunePouch.getRunes().getOrDefault(this.runeItemId,0);
+
         if (initialRuneCount == null) {
-            initialRuneCount = currentCount[0];
+            initialRuneCount = currentCount;
             Microbot.log("Baseline rune count set to %d", initialRuneCount);
             return;
         }
-        int netGained = currentCount[0] - initialRuneCount;
+        int netGained = currentCount - initialRuneCount;
         runesForSession = Math.max(netGained, 0);
         totalTrips++;
         Microbot.log(
                 "Trip #%d: current=%d, baseline=%d, runesForSession=%d",
-                totalTrips, currentCount[0], initialRuneCount, runesForSession
+                totalTrips, currentCount, initialRuneCount, runesForSession
         );
     }
 

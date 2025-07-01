@@ -26,7 +26,7 @@ public class BotApi {
         Rs2GameObject.interact(gameObject, STEAL_ACTION);
     }
 
-    public void dropAll(Integer... ids)
+    public void dropAll(int... ids)
     {
         Rs2Inventory.dropAll(ids);
     }

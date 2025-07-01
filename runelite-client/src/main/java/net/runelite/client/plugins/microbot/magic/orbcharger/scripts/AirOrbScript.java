@@ -155,7 +155,7 @@ public class AirOrbScript extends Script {
                         }
 
                         if (plugin.isUseEnergyPotions()) {
-                            if (!Rs2Inventory.hasItem(Rs2Potion.getRestoreEnergyPotionsVariants())) {
+                            if (!Rs2Inventory.hasItem(Rs2Potion.getRestoreEnergyPotionsVariants().toArray(String[]::new))) {
                                 if (!Rs2Bank.hasItem(Rs2Potion.getRestoreEnergyPotionsVariants())) {
                                     Microbot.showMessage("Missing Energy Restore Potions");
                                     shutdown();

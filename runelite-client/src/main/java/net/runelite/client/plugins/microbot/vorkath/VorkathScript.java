@@ -86,7 +86,7 @@ public class VorkathScript extends Script {
 
     private static void drinkPrayer() {
         if ((Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER) * 100) / Microbot.getClient().getRealSkillLevel(Skill.PRAYER) < Rs2Random.between(25, 30)) {
-            Rs2Inventory.interact(Rs2Potion.getPrayerPotionsVariants(), "drink");
+            Rs2Inventory.interact(Rs2Potion.getPrayerPotionsVariants().toArray(String[]::new), "drink");
         }
     }
 
@@ -363,8 +363,8 @@ public class VorkathScript extends Script {
                         int foodInventorySize = Rs2Inventory.getInventoryFood().size();
                         boolean hasVenom = Rs2Inventory.hasItem("venom");
                         boolean hasSuperAntifire = Rs2Inventory.hasItem("super antifire");
-                        boolean hasPrayerPotion = Rs2Inventory.hasItem(Rs2Potion.getPrayerPotionsVariants());
-                        boolean hasRangePotion = Rs2Inventory.hasItem(Rs2Potion.getRangePotionsVariants());
+                        boolean hasPrayerPotion = Rs2Inventory.hasItem(Rs2Potion.getPrayerPotionsVariants().toArray(String[]::new));
+                        boolean hasRangePotion = Rs2Inventory.hasItem(Rs2Potion.getRangePotionsVariants().toArray(String[]::new));
                         sleep(600, 2000);
                         if (!Rs2GroundItem.isItemBasedOnValueOnGround(config.priceOfItemsToLoot(), 20) && !Rs2GroundItem.exists("Vorkath's head", 20)) {
                             if (config.KillsPerTrip() > 0 && kcPerTrip >= config.KillsPerTrip()){
@@ -472,9 +472,9 @@ public class VorkathScript extends Script {
             Rs2Player.waitForAnimation();
             hasInventory = false;
         }
-        while (Microbot.getClient().getRealSkillLevel(Skill.PRAYER) != Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER) && Rs2Inventory.hasItem(Rs2Potion.getPrayerPotionsVariants())) {
+        while (Microbot.getClient().getRealSkillLevel(Skill.PRAYER) != Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER) && Rs2Inventory.hasItem(Rs2Potion.getPrayerPotionsVariants().toArray(String[]::new))) {
             Rs2Bank.closeBank();
-            Rs2Inventory.interact(Rs2Potion.getPrayerPotionsVariants(), "drink");
+            Rs2Inventory.interact(Rs2Potion.getPrayerPotionsVariants().toArray(String[]::new), "drink");
             Rs2Player.waitForAnimation();
             hasInventory = false;
         }
@@ -519,7 +519,7 @@ public class VorkathScript extends Script {
         boolean drinkAntiVenom = !Rs2Player.hasAntiVenomActive();
 
         if (drinkRangePotion) {
-            Rs2Inventory.interact(Rs2Potion.getRangePotionsVariants(), "drink");
+            Rs2Inventory.interact(Rs2Potion.getRangePotionsVariants().toArray(String[]::new), "drink");
         }
         if (drinkAntiFire) {
             Rs2Inventory.interact("super antifire", "drink");

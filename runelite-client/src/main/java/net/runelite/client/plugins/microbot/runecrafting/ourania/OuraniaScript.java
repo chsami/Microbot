@@ -188,7 +188,7 @@ public class OuraniaScript extends Script
 							plugin.calcuateProfit();
 						}
 
-						boolean hasRunes = Rs2Inventory.items().stream().anyMatch(item -> item.getName().toLowerCase().contains("rune") && !item.getName().toLowerCase().contains("rune pouch"));
+						boolean hasRunes = Rs2Inventory.items().anyMatch(item -> item.getName().toLowerCase().contains("rune") && !item.getName().toLowerCase().contains("rune pouch"));
 
 						if (hasRunes)
 						{

@@ -212,7 +212,7 @@ public class Rs2InventorySetup {
                 }
             }
         } else {
-            withdrawQuantity = items.size() - (int) Rs2Inventory.items().stream().filter(x -> x.getId() == key).count();
+            withdrawQuantity = items.size() - (int) Rs2Inventory.items(x -> x.getId() == key).count();
             if (Rs2Inventory.hasItemAmount(inventorySetupsItem.getName(), items.size())) {
                 return 0;
             }
@@ -654,7 +654,7 @@ public class Rs2InventorySetup {
 		if (Rs2Inventory.isFull())
 		{
 			Microbot.log("Inventory is full, temporarily storing items to make space", Level.INFO);
-			Rs2Inventory.items().stream()
+			Rs2Inventory.items()
 				.sorted(Comparator.comparing(Rs2ItemModel::isStackable))
 				.limit(3)
 				.forEach(item -> {
@@ -705,7 +705,7 @@ public class Rs2InventorySetup {
 					if (resultingDose > 0)
 					{
 						String resultingName = potion.getName().replaceAll("\\(\\d\\)", "(" + resultingDose + ")");
-						Rs2ItemModel resultingItem = Rs2Inventory.items().stream()
+						Rs2ItemModel resultingItem = Rs2Inventory.items()
 							.filter(item -> item.getName().equalsIgnoreCase(resultingName))
 							.findFirst()
 							.orElse(null);

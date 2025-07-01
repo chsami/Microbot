@@ -2,11 +2,16 @@ package net.runelite.client.plugins.microbot;
 
 import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Objects;
 import javax.inject.Provider;
 import javax.inject.Singleton;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.*;
 import net.runelite.api.events.*;
 import net.runelite.client.Notifier;
@@ -60,6 +65,7 @@ import net.runelite.client.ui.overlay.worldmap.WorldMapPointManager;
 import javax.inject.Inject;
 import javax.swing.*;
 import java.awt.*;
+import java.util.List;
 import java.lang.reflect.InvocationTargetException;
 import java.time.Instant;
 import net.runelite.client.util.ImageUtil;
@@ -176,23 +182,57 @@ public class MicrobotPlugin extends Plugin
 	public void onItemContainerChanged(ItemContainerChanged event)
 	{
 		Microbot.getPouchScript().onItemContainerChanged(event);
-		if (event.getContainerId() == InventoryID.BANK.getId())
+		if (event.getContainerId() == InventoryID.BANK)
 		{
 			Rs2Bank.updateLocalBank(event);
 		}
-		else if (event.getContainerId() == InventoryID.INVENTORY.getId())
+		else if (event.getContainerId() == InventoryID.INV)
 		{
 			Rs2Inventory.storeInventoryItemsInMemory(event);
 		}
-		else if (event.getContainerId() == InventoryID.EQUIPMENT.getId())
+		else if (event.getContainerId() == InventoryID.WORN)
 		{
 			Rs2Equipment.storeEquipmentItemsInMemory(event);
 		}
-		else
-		{
+		else if (Arrays.stream(getShopContainerIds()).anyMatch(sid -> Objects.equals(event.getContainerId(), sid))) {
 			Rs2Shop.storeShopItemsInMemory(event, event.getContainerId());
 		}
 	}
+
+	/**
+	 * Retrieves all container IDs from {@link net.runelite.api.gameval.InventoryID}
+	 * that contain the word "shop" in their field names.
+	 * <p>
+	 * This method uses reflection to scan fields in the {@code InventoryID} class
+	 * and collects the integer values of those whose names include "shop" (case-insensitive).
+	 * It returns the result as an array of primitive integers.
+	 *
+	 * @return an array of container IDs related to shop inventories
+	 */
+	private int[] getShopContainerIds()
+	{
+		Field[] fields = net.runelite.api.gameval.InventoryID.class.getFields();
+		List<Integer> shopContainerIds = new ArrayList<>();
+		for (Field field : fields)
+		{
+			if (field.getType() != int.class) continue;
+
+			if (field.getName().toLowerCase().contains("shop"))
+			{
+				try
+				{
+					int id = field.getInt(null);
+					shopContainerIds.add(id);
+				}
+				catch (IllegalAccessException e)
+				{
+					log.error("Failed to access field: {}", field.getName(), e);
+				}
+			}
+		}
+		return shopContainerIds.stream().mapToInt(Integer::intValue).toArray();
+	}
+
 
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged gameStateChanged)

@@ -125,6 +125,14 @@ public interface QoLConfig extends Config {
     )
     String craftingSection = "craftingSection";
 
+    // Section for Auto Prayer
+    @ConfigSection(
+        name = "Auto Prayer",
+        description = "Settings for automatic protection prayers against players",
+        position = 90
+    )
+    String autoPrayerSection = "autoPrayerSection";
+
     // boolean to render Max Hit Overlay
     @ConfigItem(
             keyName = "renderMaxHitOverlay",
@@ -877,6 +885,42 @@ public interface QoLConfig extends Config {
     )
     default boolean useQuickTeleportToHouse() {
         return true;
+    }
+
+    // boolean to auto pray against player attacks
+    @ConfigItem(
+        keyName = "autoPrayAgainstPlayers",
+        name = "Auto Pray Against Players",
+        description = "Automatically activate protection prayers when attacked by other players",
+        position = 0,
+        section = autoPrayerSection
+    )
+    default boolean autoPrayAgainstPlayers() {
+        return false;
+    }
+
+    // boolean to enable Protect Item with anti-PK prayers
+    @ConfigItem(
+        keyName = "enableProtectItemPrayer",
+        name = "Enable Protect Item Prayer",
+        description = "Toggle using Protect Item prayer alongside protection prayers when attacked by a player",
+        position = 1,
+        section = autoPrayerSection
+    )
+    default boolean enableProtectItemPrayer() {
+        return true;
+    }
+
+    // Aggressive Anti-PK mode
+    @ConfigItem(
+        keyName = "aggressiveAntiPkMode",
+        name = "Aggressive Anti-PK Mode",
+        description = "Follow and swap prayers based on the attacker's equipped weapon for 10 seconds after being attacked.",
+        position = 2,
+        section = autoPrayerSection
+    )
+    default boolean aggressiveAntiPkMode() {
+        return false;
     }
 
 }

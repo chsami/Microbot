@@ -30,6 +30,7 @@ import java.awt.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @PluginDescriptor(
         name = PluginDescriptor.Pumster + "Vyrewatch Killer",
@@ -191,15 +192,10 @@ public class PVirewatchKillerPlugin extends Plugin {
 
     private void updateInventoryState()
     {
-        List<Rs2ItemModel> items = Rs2Inventory.items();
-        if (items != null)
-        {
-            for (Rs2ItemModel item : items)
-            {
-                if (item != null)
-                {
-                    previousInventory.put(item.getId(), item.getQuantity());
-                }
+        List<Rs2ItemModel> items = Rs2Inventory.items().collect(Collectors.toList());
+        for (Rs2ItemModel item : items) {
+            if (item != null) {
+                previousInventory.put(item.getId(), item.getQuantity());
             }
         }
     }

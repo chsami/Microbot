@@ -406,7 +406,7 @@ public class TormentedDemonScript extends Script {
         int currentHealth = Microbot.getClient().getBoostedSkillLevel(Skill.HITPOINTS);
         int currentPrayer = Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER);
         boolean noFood = Rs2Inventory.getInventoryFood().isEmpty();
-        boolean noPrayerPotions = Rs2Inventory.items().stream()
+        boolean noPrayerPotions = Rs2Inventory.items()
                 .noneMatch(item -> item != null && item.getName() != null && item.getName().toLowerCase().contains("prayer potion"));
 
         return (noFood || currentHealth <= config.healthThreshold()) || (noPrayerPotions && currentPrayer < 10);

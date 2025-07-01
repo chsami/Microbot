@@ -5,7 +5,6 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.*;
-import net.runelite.api.widgets.ComponentID;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
@@ -41,12 +40,14 @@ import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
+import net.runelite.client.plugins.microbot.globval.WidgetIndices;
 import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.SplashScreen;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ImageUtil;
 import org.apache.commons.lang3.reflect.FieldUtils;
+
 
 import javax.inject.Inject;
 import javax.swing.*;
@@ -137,6 +138,8 @@ public class QoLPlugin extends Plugin {
     BankpinScript bankpinScript;
     @Inject
     private PotionManagerScript potionManagerScript;
+    @Inject
+    private AutoPrayer autoPrayer;
 
     @Provides
     QoLConfig provideConfig(ConfigManager configManager) {
@@ -195,6 +198,7 @@ public class QoLPlugin extends Plugin {
         eventBus.register(craftingManager);
         bankpinScript.run(config);
         potionManagerScript.run(config);
+        autoPrayer.run(config);
         // pvpScript.run(config);
         awaitExecutionUntil(() ->Microbot.getClientThread().invokeLater(this::updateUiElements), () -> !SplashScreen.isOpen(), 600);
     }
@@ -213,7 +217,7 @@ public class QoLPlugin extends Plugin {
         eventBus.unregister(gemCuttingManager);
         eventBus.unregister(craftingManager);
         potionManagerScript.shutdown();
-
+        autoPrayer.shutdown();
     }
 
     @Subscribe(
@@ -427,7 +431,7 @@ public class QoLPlugin extends Plugin {
         MenuEntry menuEntry = event.getMenuEntry();
         boolean bankChestCheck = "Bank".equals(option) || ("Use".equals(option) && target.toLowerCase().contains("bank chest"));
 
-        if(config.quickHighAlch() && menuEntry.getItemId() != -1 && !menuEntry.getTarget().isEmpty() && menuEntry.getParam1() == ComponentID.INVENTORY_CONTAINER && menuEntry.getType() != MenuAction.WIDGET_TARGET_ON_WIDGET) {
+        if(config.quickHighAlch() && menuEntry.getItemId() != -1 && !menuEntry.getTarget().isEmpty() && menuEntry.getParam1() == WidgetIndices.ResizableModernViewport.INVENTORY_CONTAINER && menuEntry.getType() != MenuAction.WIDGET_TARGET_ON_WIDGET) {
             Rs2ItemModel item = Rs2Inventory.getItemInSlot(menuEntry.getParam0());
             if(item != null){
                 if(item.isHaProfitable()){
@@ -493,7 +497,7 @@ public class QoLPlugin extends Plugin {
 
     private void customHaProfitOnClicked(MenuEntry entry) {
         NewMenuEntry highAlch = new NewMenuEntry("Cast","High Alch",0,MenuAction.WIDGET_TARGET,-1,14286892,false);
-        NewMenuEntry highAlchItem = new NewMenuEntry("Cast","High Alch",0,MenuAction.WIDGET_TARGET_ON_WIDGET,entry.getParam0(),ComponentID.INVENTORY_CONTAINER,false);
+        NewMenuEntry highAlchItem = new NewMenuEntry("Cast","High Alch",0,MenuAction.WIDGET_TARGET_ON_WIDGET,entry.getParam0(),WidgetIndices.ResizableModernViewport.INVENTORY_CONTAINER,false);
         highAlchItem.setItemId(entry.getItemId());
         Rs2Tab.switchToMagicTab();
         Microbot.getMouse().click(Microbot.getClient().getMouseCanvasPosition(), highAlch);
@@ -804,5 +808,12 @@ public class QoLPlugin extends Plugin {
         executeAnvilActions = false;
         executeWorkbenchActions = false;
         executeLoadoutActions = false;
+    }
+
+    @Subscribe
+    public void onPlayerChanged(PlayerChanged event) {
+        if (config.aggressiveAntiPkMode() && autoPrayer.isFollowingPlayer(event.getPlayer())) {
+            autoPrayer.handleAggressivePrayerOnGearChange(event.getPlayer(), config);
+        }
     }
 }

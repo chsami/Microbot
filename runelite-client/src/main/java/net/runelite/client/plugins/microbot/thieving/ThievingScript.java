@@ -348,6 +348,6 @@ public class ThievingScript extends Script {
         }
         doNotDropItemList.addAll(vyreEquipment.keySet());
         doNotDropItemList.addAll(rogueEquipment.keySet());
-        Rs2Inventory.dropAllExcept(config.keepItemsAboveValue(), doNotDropItemList);
+        Rs2Inventory.dropAllExcept(config.keepItemsAboveValue(), doNotDropItemList.toArray(String[]::new));
     }
 }

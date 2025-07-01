@@ -221,7 +221,7 @@ public class RoyalTitansScript extends Script {
         int currentHealth = Microbot.getClient().getBoostedSkillLevel(Skill.HITPOINTS);
         int currentPrayer = Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER);
         boolean noFood = Rs2Inventory.getInventoryFood().isEmpty();
-        boolean noPrayerPotions = Rs2Inventory.items().stream()
+        boolean noPrayerPotions = Rs2Inventory.items()
                 .noneMatch(item -> item != null && item.getName() != null && !Rs2Potion.getPrayerPotionsVariants().contains(item.getName()));
         var teammate = Rs2Player.getPlayers(x -> Objects.equals(x.getName(), config.teammateName())).findFirst().orElse(null);
         if (teammate != null) {

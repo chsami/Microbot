@@ -497,9 +497,8 @@ public class Rs2GrandExchange {
      * @return
      */
     public static boolean sellInventory() {
-        for (Rs2ItemModel item : Rs2Inventory.items()) {
-
-            if (!item.isTradeable()) continue;
+        Rs2Inventory.items().forEachOrdered(item -> {
+            if (!item.isTradeable()) return;
 
             if (Rs2GrandExchange.getAvailableSlot().getKey() == null && Rs2GrandExchange.hasSoldOffer()) {
                 Rs2GrandExchange.collectToBank();
@@ -507,7 +506,7 @@ public class Rs2GrandExchange {
             }
 
             Rs2GrandExchange.sellItemUnder5Percent(item.getName());
-        }
+        });
         return Rs2Inventory.isEmpty();
     }
 

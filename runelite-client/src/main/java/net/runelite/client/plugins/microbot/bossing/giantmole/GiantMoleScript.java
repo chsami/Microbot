@@ -507,7 +507,7 @@ public class GiantMoleScript extends Script
             return false;
         }
         // The setup does require it; if we don't have it, we need to bank
-        return !Rs2Inventory.hasItem(potionVariants);
+        return !Rs2Inventory.hasItem(potionVariants.toArray(String[]::new));
     }
 
     /**
