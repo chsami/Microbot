@@ -17,6 +17,7 @@ public enum Rocks {
     GOLD("gold rocks", 40),
     GEM("gem rocks", 40),
     MITHRIL("mithril rocks", 55),
+    DAEYALT("Daeyalt Essence", 60),
     ADAMANTITE("adamantite rocks", 70),
     BASALT("Basalt rocks", 72),
     URT_SALT("Urt salt rocks", 72),

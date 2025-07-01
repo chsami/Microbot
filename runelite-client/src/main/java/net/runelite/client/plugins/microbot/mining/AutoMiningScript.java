@@ -36,7 +36,33 @@ public class AutoMiningScript extends Script {
     public static final String version = "1.4.4";
     private static final int GEM_MINE_UNDERGROUND = 11410;
     private static final int BASALT_MINE = 11425;
+    private static final int DAEYALT_MINE = 39095;
     State state = State.MINING;
+
+    private void mineDaeyalt(AutoMiningConfig config) {
+        GameObject minableEssence = Rs2GameObject.getGameObject(DAEYALT_MINE);
+        if (minableEssence != null) {
+            int distance = minableEssence.getWorldLocation().distanceTo(initialPlayerLocation);
+            if (distance <= config.distanceToStray()) {
+                if (Rs2GameObject.interact(minableEssence)) {
+                    Rs2Player.waitForXpDrop(Skill.MINING, true);
+                    Rs2Antiban.actionCooldown();
+                    Rs2Antiban.takeMicroBreakByChance();
+                }
+            }
+        }
+    }
+    private void mineRock(AutoMiningConfig config) {
+        GameObject rock = Rs2GameObject.findReachableObject(config.ORE().getName(), true, config.distanceToStray(), initialPlayerLocation);
+
+        if (rock != null) {
+            if (Rs2GameObject.interact(rock)) {
+                Rs2Player.waitForXpDrop(Skill.MINING, true);
+                Rs2Antiban.actionCooldown();
+                Rs2Antiban.takeMicroBreakByChance();
+            }
+        }
+    }
 
     public boolean run(AutoMiningConfig config) {
         initialPlayerLocation = null;
@@ -102,14 +128,13 @@ public class AutoMiningScript extends Script {
                             return;
                         }
 
-                        GameObject rock = Rs2GameObject.findReachableObject(config.ORE().getName(), true, config.distanceToStray(), initialPlayerLocation);
-
-                        if (rock != null) {
-                            if (Rs2GameObject.interact(rock)) {
-                                Rs2Player.waitForXpDrop(Skill.MINING, true);
-                                Rs2Antiban.actionCooldown();
-                                Rs2Antiban.takeMicroBreakByChance();
-                            }
+                        switch (config.ORE()) {
+                            case DAEYALT:
+                                mineDaeyalt(config);
+                                break;
+                            default:
+                                mineRock(config);
+                                break;
                         }
                         break;
                     case RESETTING:
