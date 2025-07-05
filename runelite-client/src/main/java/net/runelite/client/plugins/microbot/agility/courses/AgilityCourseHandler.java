@@ -160,7 +160,7 @@ public interface AgilityCourseHandler
 		if (playerWorldLocation.distanceTo(getStartPoint()) > 12)
 		{
 			Microbot.log("Going back to course's starting point");
-			Rs2Walker.walkTo(getStartPoint(), 8);
+			Rs2Walker.walkTo(getStartPoint(), 2);
 			return true;
 		}
 		return false;
