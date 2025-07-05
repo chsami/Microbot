@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.maxxin.housethieving;
 
 import net.runelite.client.config.*;
+import net.runelite.client.plugins.microbot.util.misc.Rs2Food;
 
 @ConfigGroup(HouseThievingConfig.configGroup)
 @ConfigInformation(
@@ -12,7 +13,10 @@ public interface HouseThievingConfig extends Config {
 
     String maxHouseKeys = "maxHouseKeys";
     String minHouseKeys = "minHouseKeys";
-    String pickpocketWaitTime = "pickpocketWaitTime";
+    String pickpocketFoodAmount = "pickpocketWaitTime";
+    String foodSelection = "foodSelection";
+    String useDodgyNecklace = "useDodgyNecklace";
+    String dodgyNecklaceAmount = "dodgyNecklaceAmount";
 
     @ConfigSection(
             name = "House Thieving Settings",
@@ -36,7 +40,7 @@ public interface HouseThievingConfig extends Config {
             keyName = minHouseKeys,
             name = "Minimum House Keys",
             description = "Number of house keys to use before switching to pickpocketing",
-            position = 1,
+            position = 2,
             section = generalSection
     )
     default int minHouseKeys() {
@@ -44,13 +48,45 @@ public interface HouseThievingConfig extends Config {
     }
 
     @ConfigItem(
-            keyName = pickpocketWaitTime,
-            name = "Pickpocket Wait Time",
-            description = "How long to wait for wealthy citizen pickpocket event before world hopping",
-            position = 1,
+            keyName = pickpocketFoodAmount,
+            name = "Pickpocket Food Amount",
+            description = "How much food to bring for wealthy citizen pickpocketing",
+            position = 3,
             section = generalSection
     )
-    default int pickpocketWaitTime() {
+    default int pickpocketFoodAmount() {
         return 90;
+    }
+
+    @ConfigItem(
+            keyName = foodSelection,
+            name = "Food Selection",
+            description = "Food to eat when pickpocketing",
+            position = 4,
+            section = generalSection
+    )
+    default Rs2Food foodSelection() {
+        return Rs2Food.LOBSTER;
+    }
+    @ConfigItem(
+            keyName = useDodgyNecklace,
+            name = "Use Dodgy Necklace",
+            description = "Use dodgy necklace when pickpocketing",
+            position = 5,
+            section = generalSection
+    )
+    default boolean useDodgyNecklace() {
+        return false;
+    }
+
+    @ConfigItem(
+            keyName = dodgyNecklaceAmount,
+            name = "Dodgy Necklace Amount",
+            description = "Dodgy necklace amount",
+            position = 6,
+            section = generalSection
+    )
+    default int dodgyNecklaceAmount() {
+        return 5;
     }
 }
