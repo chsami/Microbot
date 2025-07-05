@@ -15,6 +15,7 @@ public interface HouseThievingConfig extends Config {
     String minHouseKeys = "minHouseKeys";
     String pickpocketFoodAmount = "pickpocketWaitTime";
     String foodSelection = "foodSelection";
+    String foodEatPercentage = "foodEatPercentage";
     String useDodgyNecklace = "useDodgyNecklace";
     String dodgyNecklaceAmount = "dodgyNecklaceAmount";
 
@@ -55,7 +56,7 @@ public interface HouseThievingConfig extends Config {
             section = generalSection
     )
     default int pickpocketFoodAmount() {
-        return 90;
+        return 20;
     }
 
     @ConfigItem(
@@ -68,11 +69,23 @@ public interface HouseThievingConfig extends Config {
     default Rs2Food foodSelection() {
         return Rs2Food.LOBSTER;
     }
+
+    @ConfigItem(
+            keyName = foodEatPercentage,
+            name = "Food Eat Percentage",
+            description = "Health percentage to eat at when damaged by pickpocketing",
+            position = 5,
+            section = generalSection
+    )
+    default int foodEatPercentage() {
+        return 60;
+    }
+
     @ConfigItem(
             keyName = useDodgyNecklace,
             name = "Use Dodgy Necklace",
             description = "Use dodgy necklace when pickpocketing",
-            position = 5,
+            position = 6,
             section = generalSection
     )
     default boolean useDodgyNecklace() {
@@ -83,7 +96,7 @@ public interface HouseThievingConfig extends Config {
             keyName = dodgyNecklaceAmount,
             name = "Dodgy Necklace Amount",
             description = "Dodgy necklace amount",
-            position = 6,
+            position = 7,
             section = generalSection
     )
     default int dodgyNecklaceAmount() {
