@@ -52,7 +52,7 @@ public class HouseThievingScript extends Script {
     private final static String WEALTHY_CITIZEN = "Wealthy citizen";
 
     public boolean run(HouseThievingConfig config) {
-        Microbot.pauseAllScripts.set(false);
+		Microbot.pauseAllScripts.compareAndSet(true, false);
         Microbot.enableAutoRunOn = false;
         initialPlayerLocation = null;
         Rs2Antiban.resetAntibanSettings();
@@ -61,7 +61,6 @@ public class HouseThievingScript extends Script {
             try {
                 if (!super.run()) return;
                 if (!Microbot.isLoggedIn()) return;
-                if (Microbot.pauseAllScripts.get()) return;
                 if (Rs2AntibanSettings.actionCooldownActive) return;
 
                 var childrenOfTheSunComplete = Rs2Player.getQuestState(Quest.CHILDREN_OF_THE_SUN) == QuestState.FINISHED;
@@ -161,7 +160,7 @@ public class HouseThievingScript extends Script {
                     state = State.BANKING;
                     return;
                 }
-                if( Rs2Player.getHealthPercentage() <= 50.0 ) {
+                if( Rs2Player.getHealthPercentage() <= config.foodEatPercentage() ) {
                     Rs2Player.useFood();
                     Rs2Inventory.waitForInventoryChanges(600);
                 }
@@ -374,10 +373,20 @@ public class HouseThievingScript extends Script {
 
             if(!hasMaxHouseKeys(config)) {
                 if(!hasFood) {
+                    if(!Rs2Bank.hasItem(config.foodSelection().getId())) {
+                        Microbot.showMessage("No food found in bank!");
+                        shutdown();
+                        return;
+                    }
                     Rs2Bank.withdrawX(config.foodSelection().getId(), config.pickpocketFoodAmount());
                     Rs2Inventory.waitForInventoryChanges(600);
                 }
                 if(config.useDodgyNecklace()) {
+                    if(!Rs2Bank.hasItem(DODGY_NECKLACE)) {
+                        Microbot.showMessage("No dodgy necklace found in bank!");
+                        shutdown();
+                        return;
+                    }
                     if(currentDodgyNecklace < config.dodgyNecklaceAmount()) {
                         Rs2Bank.withdrawX(DODGY_NECKLACE, config.dodgyNecklaceAmount());
                         Rs2Inventory.waitForInventoryChanges(600);
