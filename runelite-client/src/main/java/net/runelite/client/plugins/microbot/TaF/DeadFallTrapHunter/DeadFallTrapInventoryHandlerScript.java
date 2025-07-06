@@ -25,7 +25,7 @@ public class DeadFallTrapInventoryHandlerScript extends Script {
                 if (!script.forceDrop) {
                     if (Rs2Player.isMoving()) return;
                     if (Rs2Player.isAnimating()) return;
-                    if (Rs2Inventory.size() > Rs2Random.between(8, 28)) {
+                    if (Rs2Inventory.count() > Rs2Random.between(8, 28)) {
                         cleanInventory(config);
                     }
                     return;

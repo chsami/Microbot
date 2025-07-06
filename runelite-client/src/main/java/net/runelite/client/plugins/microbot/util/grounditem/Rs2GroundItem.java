@@ -198,7 +198,7 @@ public class Rs2GroundItem {
 
     /**
      * Retrieves all RS2Item objects within a specified range of a WorldPoint, sorted by distance.
-     * 
+     *
      * @param range The radius in tiles to search around the given world point
      * @param worldPoint The center WorldPoint to search around
      * @return An array of RS2Item objects found within the specified range, sorted by proximity
@@ -266,7 +266,7 @@ public class Rs2GroundItem {
         RS2Item[] groundItems = Microbot.getClientThread().runOnClientThreadOptional(() ->
                 Rs2GroundItem.getAll(range)
         ).orElse(new RS2Item[] {});
-        final int invSize = Rs2Inventory.size();
+        final int invSize = Rs2Inventory.count();
         for (RS2Item rs2Item : groundItems) {
             if (!hasLineOfSight(rs2Item.getTile())) continue;
             long totalPrice = (long) Microbot.getClientThread().runOnClientThreadOptional(() ->
@@ -277,14 +277,14 @@ public class Rs2GroundItem {
                         Rs2Player.waitForAnimation();
                         boolean result = interact(rs2Item);
                         if (result) {
-                            sleepUntil(() -> invSize != Rs2Inventory.size());
+                            sleepUntil(() -> invSize != Rs2Inventory.count());
                         }
                         return result;
                     }
                 }
                 boolean result = interact(rs2Item);
                 if (result) {
-                    sleepUntil(() -> invSize != Rs2Inventory.size());
+                    sleepUntil(() -> invSize != Rs2Inventory.count());
                 }
                 return result;
             }

@@ -375,7 +375,7 @@ public class VorkathScript extends Script {
                             } else {
                                 calculateState();
                             }
-                        
+
                         }
                         break;
                     case TELEPORT_AWAY:
@@ -399,16 +399,16 @@ public class VorkathScript extends Script {
                                     leaveVorkath();
                                     return;
                                 }
-                                final int invSize = Rs2Inventory.size();
+                                final int invSize = Rs2Inventory.count();
                                 Rs2Widget.clickWidget(39452678);
                                 sleep(600);
                                 Rs2Widget.clickWidget(39452678);
-                                sleepUntil(() -> Rs2Inventory.size() != invSize);
+                                sleepUntil(() -> Rs2Inventory.count() != invSize);
                                 boolean isWearingOriginalEquipment = rs2InventorySetup.wearEquipment();
                                 if (!isWearingOriginalEquipment) {
-                                    int finalInvSize = Rs2Inventory.size();
+                                    int finalInvSize = Rs2Inventory.count();
                                     Rs2Widget.clickWidget(39452678);
-                                    sleepUntil(() -> Rs2Inventory.size() != finalInvSize);
+                                    sleepUntil(() -> Rs2Inventory.count() != finalInvSize);
                                     rs2InventorySetup.wearEquipment();
                                 }
                             }
@@ -509,7 +509,7 @@ public class VorkathScript extends Script {
             Rs2Player.waitForAnimation();
             sleepUntil(() -> !Microbot.getClient().isInInstancedRegion());
             state = State.TELEPORT_AWAY;
-        
+
     }
 
     private boolean drinkPotions() {
@@ -570,7 +570,7 @@ public class VorkathScript extends Script {
         if (Microbot.getClient().getLocalPlayer() == null) return false;
         return Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(new WorldPoint(2670, 3634, 0)) < 80;
     }
-    
+
     private boolean teleToPoh(){
         if(Rs2Magic.canCast(MagicAction.TELEPORT_TO_HOUSE)){
             Rs2Magic.cast(MagicAction.TELEPORT_TO_HOUSE);
@@ -624,7 +624,7 @@ public class VorkathScript extends Script {
 
             Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.ACID_POOL_32000).forEach(tileObject -> acidPools.add(tileObject.getWorldLocation()));
             Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.ACID_POOL).forEach(tileObject -> acidPools.add(tileObject.getWorldLocation()));
-            Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.ACID_POOL_37991).forEach(tileObject -> acidPools.add(tileObject.getWorldLocation()));        
+            Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.ACID_POOL_37991).forEach(tileObject -> acidPools.add(tileObject.getWorldLocation()));
 
         WorldPoint safeTile = findSafeTile();
         WorldPoint playerLocation = Microbot.getClient().getLocalPlayer().getWorldLocation();

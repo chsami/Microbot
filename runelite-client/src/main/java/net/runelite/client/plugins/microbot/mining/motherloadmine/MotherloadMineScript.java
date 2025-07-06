@@ -225,7 +225,7 @@ public class MotherloadMineScript extends Script
 
         while (Microbot.getVarbitValue(Varbits.SACK_NUMBER) > 0)
         {
-            if (Rs2Inventory.size() <= 2)
+            if (Rs2Inventory.count() <= 2)
             {
                 Rs2GameObject.interact(SACK_ID);
                 sleepUntil(this::hasOreInInventory);

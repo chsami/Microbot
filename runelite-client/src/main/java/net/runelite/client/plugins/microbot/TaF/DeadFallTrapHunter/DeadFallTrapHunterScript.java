@@ -336,7 +336,7 @@ public class DeadFallTrapHunterScript extends Script {
         if (!Rs2Player.isAnimating() && !Rs2Player.isMoving()) {
             var gameObject = Rs2GameObject.getGameObject(location);
             if (gameObject != null) {
-                if (Rs2Inventory.size() > 24) {
+                if (Rs2Inventory.count() > 24) {
                     forceDrop = true;
                     Rs2Inventory.waitForInventoryChanges(8000);
                 }

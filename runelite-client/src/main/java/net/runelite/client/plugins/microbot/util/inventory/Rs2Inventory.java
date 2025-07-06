@@ -1391,7 +1391,7 @@ public class Rs2Inventory {
      * @return The size of the inventory.
      */
     public static int size() {
-        return fullSlotCount();
+        return CAPACITY;
     }
 
     /**
