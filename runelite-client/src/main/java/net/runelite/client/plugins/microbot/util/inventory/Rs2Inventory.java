@@ -1391,7 +1391,7 @@ public class Rs2Inventory {
      * @return The size of the inventory.
      */
     public static int size() {
-        return CAPACITY;
+        return fullSlotCount();
     }
 
     /**
@@ -2168,7 +2168,7 @@ public class Rs2Inventory {
                     }
                 });
                 return rs2Items;
-                
+
             case ZIGZAG:
                 int[] customOrder = {
                         0, 4, 1, 5, 2, 6, 3, 7,
@@ -2176,7 +2176,7 @@ public class Rs2Inventory {
                         16, 20, 17, 21, 18, 22, 19, 23,
                         27, 26, 25, 24
                 };
-                
+
                 Map<Integer, Integer> orderMap = new HashMap<>();
                 for (int i = 0; i < customOrder.length; i++) {
                     orderMap.put(customOrder[i], i);
