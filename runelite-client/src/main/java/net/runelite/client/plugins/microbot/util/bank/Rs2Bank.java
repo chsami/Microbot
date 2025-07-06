@@ -549,9 +549,9 @@ public class Rs2Bank {
         }
 
         if (hasX && configuredX == amount) {
-            int before = Rs2Inventory.size();
+            int before = Rs2Inventory.count();
             invokeMenu(xSetOffset, rs2Item);
-            if (safe) return sleepUntilTrue(() -> Rs2Inventory.size() != before, 100, 2500);
+            if (safe) return sleepUntilTrue(() -> Rs2Inventory.count() != before, 100, 2500);
             return true;
         }
 

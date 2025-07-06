@@ -399,16 +399,16 @@ public class VorkathScript extends Script {
                                     leaveVorkath();
                                     return;
                                 }
-                                final int invSize = Rs2Inventory.size();
+                                final int invSize = Rs2Inventory.count();
                                 Rs2Widget.clickWidget(39452678);
                                 sleep(600);
                                 Rs2Widget.clickWidget(39452678);
-                                sleepUntil(() -> Rs2Inventory.size() != invSize);
+                                sleepUntil(() -> Rs2Inventory.count() != invSize);
                                 boolean isWearingOriginalEquipment = rs2InventorySetup.wearEquipment();
                                 if (!isWearingOriginalEquipment) {
-                                    int finalInvSize = Rs2Inventory.size();
+                                    int finalInvSize = Rs2Inventory.count();
                                     Rs2Widget.clickWidget(39452678);
-                                    sleepUntil(() -> Rs2Inventory.size() != finalInvSize);
+                                    sleepUntil(() -> Rs2Inventory.count() != finalInvSize);
                                     rs2InventorySetup.wearEquipment();
                                 }
                             }

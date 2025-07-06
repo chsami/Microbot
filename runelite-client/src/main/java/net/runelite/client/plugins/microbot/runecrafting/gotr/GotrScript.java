@@ -332,7 +332,7 @@ public class GotrScript extends Script {
     }
 
     private boolean usePortal() {
-        if (!isInHugeMine() && Microbot.getClient().hasHintArrow() && Rs2Inventory.size() < config.maxAmountEssence()) {
+        if (!isInHugeMine() && Microbot.getClient().hasHintArrow() && Rs2Inventory.count() < config.maxAmountEssence()) {
             if (leaveLargeMine()) return true;
             Rs2Walker.walkFastCanvas(Microbot.getClient().getHintArrowPoint());
             sleepUntil(Rs2Player::isMoving);

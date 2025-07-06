@@ -28,7 +28,7 @@ public class SalamanderGroundItemLooter extends Script {
                 if (Rs2Player.isMoving()) return;
                 if (Rs2Player.isAnimating()) return;
                 lootRobeAndNets();
-                if (Rs2Inventory.size() > 20) {
+                if (Rs2Inventory.count() > 20) {
                     cleanInventory();
                 }
             } catch (Exception ex) {
