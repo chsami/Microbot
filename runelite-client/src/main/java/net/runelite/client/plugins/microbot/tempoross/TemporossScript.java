@@ -535,35 +535,47 @@ public class TemporossScript extends Script {
         }
     }
 
-    private void handleDamagedMast() {
-        if (Rs2Player.isMoving() || Rs2Player.isInteracting() || (temporossConfig.hammer() && !Rs2Inventory.contains("Hammer")) || !temporossConfig.hammer())
-            return;
+    private void handleRepairable(String objectType) {
+    boolean hasRegularHammer = Rs2Inventory.contains("Hammer") || Rs2Equipment.contains("Hammer");
+    boolean hasImcandoHammer = Rs2Equipment.contains(ItemID.IMCANDO_HAMMER_OFFHAND); // equipped only
 
-        TileObject damagedMast = workArea.getBrokenMast();
-        if(damagedMast == null)
-            return;
-        if (Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(damagedMast.getWorldLocation()) <= 5) {
-            sleep(600);
-            if (Rs2GameObject.interact(damagedMast, "Repair")) {
-                log("Repairing mast");
-                Rs2Player.waitForXpDrop(Skill.CONSTRUCTION, 2500);
-            }
+    boolean needsRegularHammer = temporossConfig.hammer() && !hasRegularHammer;
+    boolean needsImcandoHammer = temporossConfig.imcandoHammerOffHand() && !hasImcandoHammer;
+
+    if (Rs2Player.isMoving() || Rs2Player.isInteracting() || needsRegularHammer || needsImcandoHammer)
+        return;
+
+    TileObject damagedObject = objectType.equals("Mast") ? workArea.getBrokenMast() : workArea.getBrokenTotem();
+    if (damagedObject == null)
+        return;
+
+    if (Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(damagedObject.getWorldLocation()) <= 5) {
+        sleep(600);
+        if (Rs2GameObject.interact(damagedObject, "Repair")) {
+            log("Repairing " + objectType.toLowerCase());
+            Rs2Player.waitForXpDrop(Skill.CONSTRUCTION, 2500);
         }
     }
+}
 
-    private void handleDamagedTotem() {
-        if (Rs2Player.isMoving() || Rs2Player.isInteracting() || (temporossConfig.hammer() && !Rs2Inventory.contains("Hammer")) || !temporossConfig.hammer())
-            return;
 
-        TileObject damagedTotem = workArea.getBrokenTotem();
-        if(damagedTotem == null)
-            return;
-        if (Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(damagedTotem.getWorldLocation()) <= 5) {
-            sleep(600);
-            if (Rs2GameObject.interact(damagedTotem, "Repair")) {
-                log("Repairing totem");
-                Rs2Player.waitForXpDrop(Skill.CONSTRUCTION, 2500);
-            }
+private void handleDamagedMast() {
+    handleRepairable("Mast");
+}
+
+private void handleDamagedTotem() {
+    handleRepairable("Totem");
+}
+
+
+private void handleDamagedMast() {
+    handleRepairable("Mast");
+}
+
+private void handleDamagedTotem() {
+    handleRepairable("Totem");
+}
+
         }
     }
 
