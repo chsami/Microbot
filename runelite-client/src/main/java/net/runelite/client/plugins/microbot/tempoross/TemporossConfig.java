@@ -52,7 +52,6 @@ public interface TemporossConfig extends Config {
         return 6;
     }
 
-
     // boolean to bring a hammer
     @ConfigItem(
         keyName = "hammer",
@@ -65,7 +64,6 @@ public interface TemporossConfig extends Config {
         return true;
     }
 
-
     // boolean to bring a rope
     @ConfigItem(
         keyName = "rope",
@@ -77,6 +75,7 @@ public interface TemporossConfig extends Config {
     default boolean rope() {
         return true;
     }
+
     // boolean to play solo
     @ConfigItem(
         keyName = "solo",
@@ -89,8 +88,6 @@ public interface TemporossConfig extends Config {
         return false;
     }
 
-
-
     // Equipment settings
     // boolean if we have Spirit Angler's outfit
     @ConfigItem(
@@ -101,6 +98,18 @@ public interface TemporossConfig extends Config {
         section = equipmentSection
     )
     default boolean spiritAnglers() {
+        return false;
+    }
+
+    // boolean if we are using Imcando hammer (off-hand)
+    @ConfigItem(
+        keyName = "ImcandoHammerOffHand",
+        name = "Imcando hammer (off-hand)",
+        description = "Imcando hammer (off-hand)",
+        position = 2,
+        section = equipmentSection
+    )
+    default boolean imcandoHammerOffHand() {
         return false;
     }
 
@@ -116,5 +125,4 @@ public interface TemporossConfig extends Config {
     default HarpoonType harpoonType() {
         return HarpoonType.INFERNAL_HARPOON;
     }
-
 }
