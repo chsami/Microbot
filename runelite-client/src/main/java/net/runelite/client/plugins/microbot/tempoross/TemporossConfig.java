@@ -123,6 +123,6 @@ default boolean imcandoHammerOffHand() {
         section = harpoonSection
     )
     default HarpoonType harpoonType() {
-        return HarpoonType.INFERNAL_HARPOON;
-    }
+    return null;
+}
 }
