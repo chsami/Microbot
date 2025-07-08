@@ -102,7 +102,7 @@ public interface TemporossConfig extends Config {
     }
 
     // boolean if we are using Imcando hammer (off-hand)
-@ConfigItem(
+    @ConfigItem(
     keyName = "imcandoHammerOffHand",
     name = "Imcando hammer (off-hand)",
     description = "Enable behavior when Imcando Hammer Offhand is equipped",
@@ -113,17 +113,17 @@ default boolean imcandoHammerOffHand() {
     return false;
 }
 
+
     // Harpoon settings
     // Harpoon type to use
     @ConfigItem(
         keyName = "harpoonType",
         name = "Harpoon",
-        description = "All harpoons supported/barehand option",
+        description = "Harpoon type to use",
         position = 1,
         section = harpoonSection
     )
     default HarpoonType harpoonType() {
-    return HarpoonType.HARPOON;
-}
-
+        return HarpoonType.INFERNAL_HARPOON;
+    }
 }
