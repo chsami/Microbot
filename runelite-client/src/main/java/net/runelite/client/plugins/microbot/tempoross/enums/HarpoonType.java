@@ -6,44 +6,58 @@ import net.runelite.client.game.ItemVariationMapping;
 
 import java.util.List;
 
-public enum HarpoonType {
-    HARPOON(AnimationID.FISHING_HARPOON, "Harpoon or variant"),
-    BAREHAND(AnimationID.FISHING_BAREHAND, "Bare-handed");
+public enum HarpoonType
+{
+    HARPOON(AnimationID.FISHING_HARPOON, "Harpoon or variant") {
+        @Override
+        public int[] getSupportedItemIds() {
+            List<Integer> variations = ItemVariationMapping.getVariations(ItemID.HARPOON);
+            return variations.stream().mapToInt(Integer::intValue).toArray();
+        }
+    },
+    INFERNAL_HARPOON(AnimationID.FISHING_HARPOON, "Infernal Harpoon") {
+        @Override
+        public int[] getSupportedItemIds() {
+            return new int[] { ItemID.INFERNAL_HARPOON };
+        }
+    },
+    BAREHAND(AnimationID.FISHING_BAREHAND, "Bare-handed") {
+        @Override
+        public int[] getSupportedItemIds() {
+            return new int[] { -1 };
+        }
+    };
 
     private final int animationId;
     private final String name;
 
-    HarpoonType(int animationId, String name) {
+    HarpoonType(int animationId, String name)
+    {
         this.animationId = animationId;
         this.name = name;
     }
 
-    public int getAnimationId() {
+    public int getAnimationId()
+    {
         return animationId;
     }
 
-    public String getName() {
+    public String getName()
+    {
         return name;
     }
 
-    /**
-     * Returns all supported item IDs for this type.
-     * For HARPOON, uses ItemVariationMapping to fetch all variations of HARPOON.
-     * For BAREHAND, returns -1.
-     */
-    public int[] getSupportedItemIds() {
-        if (this == HARPOON) {
-            List<Integer> variations = ItemVariationMapping.getVariations(ItemID.HARPOON);
-            return variations.stream().mapToInt(Integer::intValue).toArray();
-        } else if (this == BAREHAND) {
-            return new int[] { -1 };
-        }
+    public int[] getSupportedItemIds()
+    {
         return new int[0];
     }
 
-    public boolean matchesItemId(int itemId) {
-        for (int id : getSupportedItemIds()) {
-            if (id == itemId) {
+    public boolean matchesItemId(int itemId)
+    {
+        for (int id : getSupportedItemIds())
+        {
+            if (id == itemId)
+            {
                 return true;
             }
         }
@@ -51,7 +65,8 @@ public enum HarpoonType {
     }
 
     @Override
-    public String toString() {
+    public String toString()
+    {
         return name;
     }
 }
