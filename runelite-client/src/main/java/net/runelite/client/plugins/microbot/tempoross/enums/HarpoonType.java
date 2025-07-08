@@ -2,45 +2,56 @@ package net.runelite.client.plugins.microbot.tempoross.enums;
 
 import net.runelite.api.AnimationID;
 import net.runelite.api.ItemID;
+import net.runelite.client.game.ItemVariationMapping;
 
-public enum HarpoonType
-{
+import java.util.List;
 
-// HARPOON, BARBTAIL_HARPOON, DRAGON_HARPOON, INFERNAL_HARPOON, CRYSTAL_HARPOON
+public enum HarpoonType {
+    HARPOON(AnimationID.FISHING_HARPOON, "Harpoon or variant"),
+    BAREHAND(AnimationID.FISHING_BAREHAND, "Bare-handed");
 
-    HARPOON(ItemID.HARPOON, AnimationID.FISHING_HARPOON, "Harpoon"),
-    BAREHAND(-1, AnimationID.FISHING_BAREHAND, "Bare-handed"),
-    BARBTAIL_HARPOON(ItemID.BARBTAIL_HARPOON, AnimationID.FISHING_BARBTAIL_HARPOON, "Barb-tail harpoon"),
-    DRAGON_HARPOON(ItemID.DRAGON_HARPOON, AnimationID.FISHING_DRAGON_HARPOON,  "Dragon harpoon"),
-    INFERNAL_HARPOON(ItemID.INFERNAL_HARPOON, AnimationID.FISHING_INFERNAL_HARPOON, "Infernal harpoon"),
-    CRYSTAL_HARPOON(ItemID.CRYSTAL_HARPOON, AnimationID.FISHING_CRYSTAL_HARPOON, "Crystal harpoon");
-
-
-    private final int id;
     private final int animationId;
     private final String name;
 
-    HarpoonType(int id, int animationId, String name)
-    {
-        this.id = id;
+    HarpoonType(int animationId, String name) {
         this.animationId = animationId;
         this.name = name;
     }
 
-    public int getId()
-    {
-        return id;
-    }
-
-    public int getAnimationId()
-    {
+    public int getAnimationId() {
         return animationId;
     }
 
-    public String getName()
-    {
+    public String getName() {
         return name;
     }
 
+    /**
+     * Returns all supported item IDs for this type.
+     * For HARPOON, uses ItemVariationMapping to fetch all variations of HARPOON.
+     * For BAREHAND, returns -1.
+     */
+    public int[] getSupportedItemIds() {
+        if (this == HARPOON) {
+            List<Integer> variations = ItemVariationMapping.getVariations(ItemID.HARPOON);
+            return variations.stream().mapToInt(Integer::intValue).toArray();
+        } else if (this == BAREHAND) {
+            return new int[] { -1 };
+        }
+        return new int[0];
+    }
 
+    public boolean matchesItemId(int itemId) {
+        for (int id : getSupportedItemIds()) {
+            if (id == itemId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public String toString() {
+        return name;
+    }
 }
