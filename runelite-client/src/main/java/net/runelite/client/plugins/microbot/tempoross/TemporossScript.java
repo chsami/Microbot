@@ -229,13 +229,24 @@ public class TemporossScript extends Script {
         // ...
     }
 
-    private boolean areItemsMissing()
+     private boolean hasAnyHarpoon()
 {
-    // Check for harpoon
-    if (!hasAnyHarpoon() && harpoonType != HarpoonType.BAREHAND)
+    for (Item item : client.getItemContainer(InventoryID.INVENTORY).getItems())
     {
-        return true;
+        if (item == null) continue;
+
+        int itemId = item.getId();
+        for (HarpoonType type : HarpoonType.values())
+        {
+            if (type != HarpoonType.BAREHAND && type.matchesItemId(itemId))
+            {
+                return true;
+            }
+        }
     }
+    return false;
+}
+
 
         // Check bucket counts (empty or full)
         int bucketCount = Rs2Inventory.count(item ->
