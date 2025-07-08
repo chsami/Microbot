@@ -2,39 +2,35 @@ package net.runelite.client.plugins.microbot.tempoross.enums;
 
 import net.runelite.api.AnimationID;
 import net.runelite.api.ItemID;
-import net.runelite.client.game.ItemVariationMapping;
-
-import java.util.List;
 
 public enum HarpoonType
 {
-    HARPOON(AnimationID.FISHING_HARPOON, "Harpoon or variant") {
-        @Override
-        public int[] getSupportedItemIds() {
-            List<Integer> variations = ItemVariationMapping.getVariations(ItemID.HARPOON);
-            return variations.stream().mapToInt(Integer::intValue).toArray();
-        }
-    },
-    INFERNAL_HARPOON(AnimationID.FISHING_HARPOON, "Infernal Harpoon") {
-        @Override
-        public int[] getSupportedItemIds() {
-            return new int[] { ItemID.INFERNAL_HARPOON };
-        }
-    },
-    BAREHAND(AnimationID.FISHING_BAREHAND, "Bare-handed") {
-        @Override
-        public int[] getSupportedItemIds() {
-            return new int[] { -1 };
-        }
-    };
 
+// HARPOON, BARBTAIL_HARPOON, DRAGON_HARPOON, INFERNAL_HARPOON, CRYSTAL_HARPOON
+
+    HARPOON(ItemID.HARPOON, AnimationID.FISHING_HARPOON, "Harpoon"),
+    BAREHAND(-1, AnimationID.FISHING_BAREHAND, "Bare-handed"),
+    BARBTAIL_HARPOON(ItemID.BARBTAIL_HARPOON, AnimationID.FISHING_BARBTAIL_HARPOON, "Barb-tail harpoon"),
+    DRAGON_HARPOON(ItemID.DRAGON_HARPOON, AnimationID.FISHING_DRAGON_HARPOON,  "Dragon harpoon"),
+    INFERNAL_HARPOON(ItemID.INFERNAL_HARPOON, AnimationID.FISHING_INFERNAL_HARPOON, "Infernal harpoon")
+    INFERNAL_HARPOON_UNCHARGED(ItemID.INFERNAL_HARPOON_UNCHARGED, AnimationID.FISHING_INFERNAL_HARPOON, "Infernal harpoon (uncharged)"),
+    CRYSTAL_HARPOON(ItemID.CRYSTAL_HARPOON, AnimationID.FISHING_CRYSTAL_HARPOON, "Crystal harpoon");
+
+
+    private final int id;
     private final int animationId;
     private final String name;
 
-    HarpoonType(int animationId, String name)
+    HarpoonType(int id, int animationId, String name)
     {
+        this.id = id;
         this.animationId = animationId;
         this.name = name;
+    }
+
+    public int getId()
+    {
+        return id;
     }
 
     public int getAnimationId()
@@ -47,26 +43,5 @@ public enum HarpoonType
         return name;
     }
 
-    public int[] getSupportedItemIds()
-    {
-        return new int[0];
-    }
 
-    public boolean matchesItemId(int itemId)
-    {
-        for (int id : getSupportedItemIds())
-        {
-            if (id == itemId)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    @Override
-    public String toString()
-    {
-        return name;
-    }
 }
