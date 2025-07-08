@@ -5,6 +5,8 @@ import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.InventoryID;
+import net.runelite.api.ItemID;
 import net.runelite.api.NpcID;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameTick;
@@ -20,12 +22,13 @@ import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.ui.overlay.OverlayManager;
 
+import java.util.Arrays;
 import java.util.regex.Pattern;
 
 @PluginDescriptor(
         name = PluginDescriptor.See1Duck + "Tempoross",
         description = "Tempoross Plugin",
-        tags = {"Tempoross", "minigame", "s1d","see1duck","microbot", "fishing","skilling"},
+        tags = {"Tempoross", "minigame", "s1d", "see1duck", "microbot", "fishing", "skilling"},
         enabledByDefault = false
 )
 @Slf4j
@@ -51,7 +54,6 @@ public class TemporossPlugin extends Plugin {
     @Inject
     private Client client;
 
-
     public static int waves = 0;
     public static int fireClouds = 0;
     public static boolean incomingWave = false;
@@ -61,12 +63,10 @@ public class TemporossPlugin extends Plugin {
 
     private static final Pattern DIGIT_PATTERN = Pattern.compile("(\\d+)");
 
-
     @Provides
     TemporossConfig provideConfig(ConfigManager configManager) {
         return configManager.getConfig(TemporossConfig.class);
     }
-
 
     protected void startUp() throws Exception {
         if (overlayManager != null) {
@@ -86,10 +86,9 @@ public class TemporossPlugin extends Plugin {
 
     @Subscribe
     public void onNpcChanged(NpcChanged event) {
-
-        if(!TemporossScript.isInMinigame())
+        if (!TemporossScript.isInMinigame())
             return;
-        if(TemporossScript.workArea == null)
+        if (TemporossScript.workArea == null)
             return;
         TemporossScript.handleWidgetInfo();
         TemporossScript.updateFireData();
@@ -99,12 +98,12 @@ public class TemporossPlugin extends Plugin {
     }
 
     @Subscribe
-    public void onGameTick(GameTick e)
-    {
-        if(!TemporossScript.isInMinigame())
+    public void onGameTick(GameTick e) {
+        if (!TemporossScript.isInMinigame())
             return;
-        if(TemporossScript.workArea == null)
+        if (TemporossScript.workArea == null)
             return;
+
         TemporossScript.handleWidgetInfo();
         TemporossScript.updateFireData();
         TemporossScript.updateFishSpotData();
@@ -118,61 +117,68 @@ public class TemporossPlugin extends Plugin {
             TemporossScript.state = TemporossScript.state.next;
         }
 
-        if (TemporossScript.INTENSITY >= 94 && TemporossScript.state == State.THIRD_COOK)
-        {
+        if (TemporossScript.INTENSITY >= 94 && TemporossScript.state == State.THIRD_COOK) {
             return;
         }
 
-        if (TemporossScript.state == null)
-        {
+        if (TemporossScript.state == null) {
             TemporossScript.state = State.THIRD_CATCH;
+        }
+
+        // 👇 Added Imcando Hammer Offhand Logic
+        int IMCANDO_HAMMER_OFFHAND_ID = ItemID.IMCANDO_HAMMER_OFFHAND;
+
+        boolean hasImcandoOffhand = client.getItemContainer(InventoryID.EQUIPMENT) != null &&
+                Arrays.stream(client.getItemContainer(InventoryID.EQUIPMENT).getItems())
+                        .anyMatch(item -> item.getId() == IMCANDO_HAMMER_OFFHAND_ID);
+
+        if (hasImcandoOffhand && config.imcandoHammerOffHand()) {
+            log.debug("Imcando hammer (off-hand) is equipped and enabled in config.");
+            // Add your custom behavior here
         }
     }
 
     @Subscribe
-    public void onVarbitChanged(VarbitChanged event)
-    {
-        if (event.getVarbitId() == VARB_IS_TETHERED)
-        {
+    public void onVarbitChanged(VarbitChanged event) {
+        if (event.getVarbitId() == VARB_IS_TETHERED) {
             log.info("Tethered: {}", event.getValue());
             isTethered = event.getValue() > 0;
         }
     }
 
     @Subscribe
-    public void onChatMessage(ChatMessage event)
-    {
+    public void onChatMessage(ChatMessage event) {
         ChatMessageType type = event.getType();
         String message = event.getMessage();
 
-        if (type == ChatMessageType.GAMEMESSAGE)
-        {
-            if (message.contains("A colossal wave closes in"))
-            {
+        if (type == ChatMessageType.GAMEMESSAGE) {
+            if (message.contains("A colossal wave closes in")) {
                 waves++;
                 incomingWave = true;
                 log.info("Wave {}", waves);
             }
 
-            if (message.contains("the rope keeps you securely") || message.contains("the wave slams into you"))
-            {
+            if (message.contains("the rope keeps you securely") || message.contains("the wave slams into you")) {
                 incomingWave = false;
                 log.info("Wave passed");
             }
-            if (message.contains("A strong wind blows as clouds roll in"))
-            {
+
+            if (message.contains("A strong wind blows as clouds roll in")) {
                 fireClouds++;
                 log.info("Clouds {}", fireClouds);
-            }
-            {
-
             }
         }
     }
 
-    // Set harpoon type config
     public static void setHarpoonType(HarpoonType harpoonType) {
         Microbot.getConfigManager().setConfiguration("microbot-tempoross", "harpoonType", harpoonType);
+    }
+
+    public static void setRope(boolean rope) {
+        Microbot.getConfigManager().setConfiguration("microbot-tempoross", "rope", rope);
+    }
+}
+
     }
 
     // Set rope config
