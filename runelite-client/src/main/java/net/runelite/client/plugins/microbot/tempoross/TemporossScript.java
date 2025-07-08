@@ -260,7 +260,10 @@ public class TemporossScript extends Script {
         }
 
         // Check for hammer
-        return temporossConfig.hammer() && !Rs2Inventory.contains(ItemID.HAMMER);
+        return temporossConfig.hammer()
+        && !Rs2Inventory.contains(ItemID.HAMMER)
+        && !Rs2Inventory.contains(ItemID.IMCANDO_HAMMER)
+        && (!temporossConfig.ImcandoHammerOffHand() || !Rs2Inventory.contains(ItemID.IMCANDO_HAMMER_OFFHAND));
     }
 
     private void fetchMissingItems()
@@ -353,7 +356,10 @@ public class TemporossScript extends Script {
         }
 
         // 5) Hammer (if required)
-        if (temporossConfig.hammer() && !Rs2Inventory.contains(ItemID.HAMMER))
+        if (temporossConfig.hammer()
+            && !Rs2Inventory.contains(ItemID.HAMMER)
+            && !Rs2Inventory.contains(ItemID.IMCANDO_HAMMER)
+            && (!temporossConfig.ImcandoHammerOffHand() || !Rs2Inventory.contains(ItemID.IMCANDO_HAMMER_OFFHAND)))
         {
             // Before interacting, clear fires along the path to the hammer crate.
             if (!fightFiresInPath(workArea.hammerPoint))
