@@ -118,7 +118,7 @@ default boolean imcandoHammerOffHand() {
     @ConfigItem(
         keyName = "harpoonType",
         name = "Harpoon",
-        description = "Harpoon type to use",
+        description = "All harpoons supported/barehand option",
         position = 1,
         section = harpoonSection
     )
