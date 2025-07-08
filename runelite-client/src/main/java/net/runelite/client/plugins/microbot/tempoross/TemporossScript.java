@@ -23,6 +23,8 @@ import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.game.ItemVariationMapping;
+import net.runelite.api.ItemID;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -123,10 +125,6 @@ public class TemporossScript extends Script {
             return false;
         int regionId = Rs2Player.getWorldLocation().getRegionID();
         return regionId == TEMPOROSS_REGION;
-    }
-
-    private boolean hasHarpoon() {
-        return Rs2Inventory.contains(harpoonType.getId()) || Rs2Equipment.hasEquipped(harpoonType.getId());
     }
 
     private void determineWorkArea() {
@@ -232,12 +230,12 @@ public class TemporossScript extends Script {
     }
 
     private boolean areItemsMissing()
+{
+    // Check for harpoon
+    if (!hasAnyHarpoon() && harpoonType != HarpoonType.BAREHAND)
     {
-        // Check for harpoon
-        if (!hasHarpoon() && harpoonType != HarpoonType.BAREHAND)
-        {
-            return true;
-        }
+        return true;
+    }
 
         // Check bucket counts (empty or full)
         int bucketCount = Rs2Inventory.count(item ->
@@ -269,7 +267,7 @@ public class TemporossScript extends Script {
     private void fetchMissingItems()
     {
         // 1) Harpoon
-        if (!hasHarpoon() && harpoonType != HarpoonType.BAREHAND)
+        if (!hasAnyHarpoon() && harpoonType != HarpoonType.BAREHAND)
         {
             harpoonType = HarpoonType.HARPOON;
             log("Missing selected harpoon, setting to default harpoon");
@@ -286,7 +284,7 @@ public class TemporossScript extends Script {
             if (Rs2GameObject.interact(workArea.getHarpoonCrate(), "Take"))
             {
                 log("Taking harpoon");
-                sleepUntil(this::hasHarpoon, 10000);
+                sleepUntil(this::hasAnyHarpoon, 10000);
             }
             return;
         }
