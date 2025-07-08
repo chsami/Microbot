@@ -263,7 +263,7 @@ public class TemporossScript extends Script {
         return temporossConfig.hammer()
         && !Rs2Inventory.contains(ItemID.HAMMER)
         && !Rs2Inventory.contains(ItemID.IMCANDO_HAMMER)
-        && (!temporossConfig.ImcandoHammerOffHand() || !Rs2Inventory.contains(ItemID.IMCANDO_HAMMER_OFFHAND));
+        && (!temporossConfig.imcandoHammerOffHand() || !Rs2Inventory.contains(ItemID.IMCANDO_HAMMER_OFFHAND));
     }
 
     private void fetchMissingItems()
