@@ -213,25 +213,25 @@ public class TemporossScript extends Script {
     }
 
     private void handleMinigame()
+{
+    // Do not proceed if the minigame phase is too advanced
+    if (getPhase() > 2)
+        return;
+
+    // Update the current harpoon type from the configuration
+    harpoonType = temporossConfig.harpoonType();
+
+    // Check if any required item is missing. If so, fetch it and return.
+    if (areItemsMissing())
     {
-        // Do not proceed if the minigame phase is too advanced
-        if (getPhase() > 2)
-            return;
-
-        // Update the current harpoon type from the configuration
-        harpoonType = temporossConfig.harpoonType();
-
-        // Check if any required item is missing. If so, fetch it and return.
-        if (areItemsMissing())
-        {
-            // Before interacting with crates, clear fires along the path to the crate.
-            // In mass world mode, only fires blocking the path will be doused.
-            fetchMissingItems();
-        }
-
-        // Continue with further minigame logic if all items are available
-        // ...
+        // Before interacting with crates, clear fires along the path to the crate.
+        // In mass world mode, only fires blocking the path will be doused.
+        fetchMissingItems();
     }
+
+    // Continue with further minigame logic if all items are available
+    // ...
+} //
 
     private boolean areItemsMissing()
     {
