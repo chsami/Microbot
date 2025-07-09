@@ -902,3 +902,5 @@ private void handleDamagedTotem() {
         reset();
         // Any cleanup code here
     }
+
+}}
