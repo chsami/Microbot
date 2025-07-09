@@ -260,11 +260,15 @@ public class TemporossScript extends Script {
         }
 
         // Check for hammer
-        return temporossConfig.hammer()
-        && !Rs2Inventory.contains(ItemID.HAMMER)
-        && !Rs2Inventory.contains(ItemID.IMCANDO_HAMMER)
-        && (!temporossConfig.imcandoHammerOffHand() || !Rs2Inventory.contains(ItemID.IMCANDO_HAMMER_OFFHAND));
-    }
+     if (temporossConfig.hammer()
+    && !(Rs2Inventory.contains(ItemID.IMCANDO_HAMMER)
+        || Rs2Inventory.contains(ItemID.HAMMER)
+        || (temporossConfig.imcandoHammerOffHand()
+            && (Rs2Inventory.contains(ItemID.IMCANDO_HAMMER_OFFHAND)
+                || Rs2Equipment.hasEquipped(ItemID.IMCANDO_HAMMER_OFFHAND)))))
+        {
+           return true;
+        }
 
     private void fetchMissingItems()
     {
@@ -536,12 +540,13 @@ public class TemporossScript extends Script {
     }
 
     private void handleDamagedMast() {
-        if (Rs2Player.isMoving() || Rs2Player.isInteracting() || (temporossConfig.hammer() && !Rs2Inventory.contains("Hammer")) || !temporossConfig.hammer())
+        if (Rs2Player.isMoving() || Rs2Player.isInteracting() || !hasValidHammer())
             return;
 
         TileObject damagedMast = workArea.getBrokenMast();
-        if(damagedMast == null)
+        if (damagedMast == null)
             return;
+
         if (Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(damagedMast.getWorldLocation()) <= 5) {
             sleep(600);
             if (Rs2GameObject.interact(damagedMast, "Repair")) {
@@ -552,12 +557,13 @@ public class TemporossScript extends Script {
     }
 
     private void handleDamagedTotem() {
-        if (Rs2Player.isMoving() || Rs2Player.isInteracting() || (temporossConfig.hammer() && !Rs2Inventory.contains("Hammer")) || !temporossConfig.hammer())
+        if (Rs2Player.isMoving() || Rs2Player.isInteracting() || !hasValidHammer())
             return;
 
         TileObject damagedTotem = workArea.getBrokenTotem();
-        if(damagedTotem == null)
+        if (damagedTotem == null)
             return;
+
         if (Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(damagedTotem.getWorldLocation()) <= 5) {
             sleep(600);
             if (Rs2GameObject.interact(damagedTotem, "Repair")) {
@@ -565,6 +571,22 @@ public class TemporossScript extends Script {
                 Rs2Player.waitForXpDrop(Skill.CONSTRUCTION, 2500);
             }
         }
+    }
+
+    // ✅ Helper method goes here
+    private boolean hasValidHammer() {
+        if (!temporossConfig.hammer()) {
+            return true; // No hammer required
+        }
+
+        return Rs2Inventory.contains(ItemID.IMCANDO_HAMMER)
+            || Rs2Inventory.contains(ItemID.HAMMER)
+            || (temporossConfig.imcandoHammerOffHand() &&
+                (Rs2Inventory.contains(ItemID.IMCANDO_HAMMER_OFFHAND)
+                 || Rs2Equipment.hasEquipped(ItemID.IMCANDO_HAMMER_OFFHAND)));
+    }
+
+    // ... other methods, etc.
     }
 
     private void handleTether() {
