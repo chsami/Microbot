@@ -77,6 +77,17 @@ public interface BreakHandlerConfig extends Config {
         return false;
     }
 
+    @ConfigItem(
+            keyName = "breakEndNow",
+            name = "End Break Now",
+            description = "Toggle this to stop the current break immediately",
+            position = 5,
+            section = breakTimingSettings
+    )
+    default boolean breakEndNow() {
+        return false;
+    }
+
     // ============================================================
     // Break Behavior Options
     // ============================================================

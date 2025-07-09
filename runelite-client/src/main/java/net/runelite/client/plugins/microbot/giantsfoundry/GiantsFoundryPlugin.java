@@ -36,14 +36,6 @@ public class GiantsFoundryPlugin extends Plugin {
     }
 
     @Inject
-    private Client client;
-    @Inject
-    private ClientThread clientThread;
-    @Inject
-    private Notifier notifier;
-    @Inject
-    private ItemManager itemManager;
-    @Inject
     private OverlayManager overlayManager;
     @Inject
     private GiantsFoundryOverlay giantsFoundryOverlay;
@@ -52,12 +44,7 @@ public class GiantsFoundryPlugin extends Plugin {
 
     @Override
     protected void startUp() throws AWTException {
-        Microbot.pauseAllScripts = false;
-        Microbot.setClient(client);
-        Microbot.setClientThread(clientThread);
-        Microbot.setNotifier(notifier);
-        Microbot.setItemManager(itemManager);
-        Microbot.setMouse(new VirtualMouse());
+        Microbot.pauseAllScripts.compareAndSet(true, false);
         if (overlayManager != null) {
             overlayManager.add(giantsFoundryOverlay);
         }

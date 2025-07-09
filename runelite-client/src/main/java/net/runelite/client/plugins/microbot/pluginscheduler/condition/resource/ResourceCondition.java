@@ -11,7 +11,9 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.ConditionT
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 
+import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.ArrayList;
@@ -26,6 +28,28 @@ import java.util.Map;
 public abstract class ResourceCondition implements Condition {
     @Getter
     protected final Pattern itemPattern;  
+
+     /**
+     * Queue of item events waiting to be processed at the end of a game tick.
+     * Events are accumulated during the tick and processed together for efficiency.
+     */
+    protected final List<ItemTrackingEvent> pendingEvents = new ArrayList<>();
+    
+    /**
+     * Map tracking recently dropped items by the player, keyed by world location.
+     * Values are timestamps when the items were dropped, used to identify player actions.
+     */
+    protected final Map<WorldPoint, Long> playerDroppedItems = new HashMap<>();
+    
+    /**
+     * The player's last known position in the game world.
+     * Used for determining if items appearing nearby were likely dropped by the player.
+     */
+    protected WorldPoint lastPlayerPosition = null;
+    
+    // Pause-related fields
+    @Getter
+    protected transient boolean isPaused = false;
     public ResourceCondition() {
         this.itemPattern = null;
     }  
@@ -58,6 +82,34 @@ public abstract class ResourceCondition implements Condition {
     @Override
     public double getProgressPercentage() {
         return isSatisfied() ? 100.0 : 0.0;
+    }
+    
+    /**
+     * Gets the estimated time until this resource condition will be satisfied.
+     * Resource conditions typically cannot provide reliable time estimates since they
+     * depend on player actions, game events, or unpredictable external factors.
+     * 
+     * Subclasses may override this method if they can provide meaningful estimates
+     * (e.g., based on historical data or known resource generation rates).
+     * 
+     * @return Optional.empty() for most resource conditions, as time cannot be reliably estimated
+     */
+    @Override
+    public Optional<Duration> getEstimatedTimeWhenIsSatisfied() {
+        // If the condition is already satisfied, return zero duration
+        if (isSatisfied()) {
+            return Optional.of(Duration.ZERO);
+        }
+        
+        // Resource conditions generally cannot provide reliable time estimates
+        // since they depend on unpredictable factors like:
+        // - Player actions and behavior
+        // - Random game events
+        // - External market conditions
+        // - Item drop rates
+        // - NPC spawning patterns
+        
+        return Optional.empty();
     }
     
     /**
@@ -255,23 +307,7 @@ public abstract class ResourceCondition implements Condition {
         }
     }
     
-    /**
-     * Queue of item events waiting to be processed at the end of a game tick.
-     * Events are accumulated during the tick and processed together for efficiency.
-     */
-    protected final List<ItemTrackingEvent> pendingEvents = new ArrayList<>();
-    
-    /**
-     * Map tracking recently dropped items by the player, keyed by world location.
-     * Values are timestamps when the items were dropped, used to identify player actions.
-     */
-    protected final Map<WorldPoint, Long> playerDroppedItems = new HashMap<>();
-    
-    /**
-     * The player's last known position in the game world.
-     * Used for determining if items appearing nearby were likely dropped by the player.
-     */
-    protected WorldPoint lastPlayerPosition = null;
+   
     
     /**
      * Determines if an item spawned at a location was likely dropped by the player.
@@ -329,10 +365,33 @@ public abstract class ResourceCondition implements Condition {
      */
     @Override
     public void onGameTick(GameTick event) {
+        // Skip processing if paused
+        if (isPaused) {
+            return;
+        }
+        
         // Update player position
         updatePlayerPosition();
         
         // Process any pending events
         processPendingEvents();
+    }
+
+    @Override
+    public void pause() {
+        if (!isPaused) {
+            isPaused = true;
+            log.debug("Resource condition paused for item pattern: {}", 
+                    itemPattern != null ? itemPattern.pattern() : "any");
+        }
+    }
+    
+    @Override
+    public void resume() {
+        if (isPaused) {
+            isPaused = false;
+            log.debug("Resource condition resumed for item pattern: {}", 
+                    itemPattern != null ? itemPattern.pattern() : "any");
+        }
     }
 }

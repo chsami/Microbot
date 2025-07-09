@@ -9,10 +9,23 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.Lo
 import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryFinishedEvent;
 import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
+import net.runelite.client.plugins.microbot.pluginscheduler.ui.util.SchedulerUIUtils;
+import net.runelite.client.plugins.microbot.pluginscheduler.util.SchedulerPluginUtil;
+
 import org.slf4j.event.Level;
 import net.runelite.client.config.ConfigDescriptor;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.microbot.Microbot;
+
+import java.awt.Component;
+import java.awt.Window;
+import java.time.Duration;
+import java.util.List;
+import java.util.Optional;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+
 
 
 /**
@@ -89,24 +102,7 @@ public interface SchedulablePlugin {
     
     public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event);
     
-    /**
-     * Handles the {@link PluginScheduleEntryFinishedEvent} posted when a plugin self-reports completion.
-     * <p>
-     * This event handler is automatically called when a plugin posts a PluginScheduleEntryFinishedEvent
-     * to indicate it has completed its task and should be stopped. The default implementation
-     * allows the scheduler to know when to stop the plugin even when stop conditions aren't met.
-     * <p>
-     * Plugin developers should generally not override this method unless they need
-     * custom finished behavior.
-     * <p>
-     * Note: This is an EventBus subscriber method and requires the implementing
-     * plugin to be registered with the EventBus for it to be called.
-     *
-     * @param event The finished event containing the plugin reference and reason information
-     */
-    default public void onPluginScheduleEntryFinishedEvent(PluginScheduleEntryFinishedEvent event) {
-        // Default implementation does nothing - handled by scheduler
-    }
+    
     
     /**
      * Allows a plugin to report that it has finished its task and is ready to be stopped.
@@ -119,31 +115,73 @@ public interface SchedulablePlugin {
      */
     default public void reportFinished(String reason, boolean success) {
         SchedulerPlugin schedulablePlugin =  (SchedulerPlugin) Microbot.getPlugin(SchedulerPlugin.class.getName());
+        boolean shouldStop = false;
         if (schedulablePlugin == null) {
             Microbot.log("\n SchedulerPlugin is not loaded. so stopping the current plugin.", Level.INFO);
-            Microbot.getClientThread().invoke(()-> Microbot.stopPlugin((Plugin)this));
-            return;
-        }
-        PluginScheduleEntry currentPlugin =  schedulablePlugin.getCurrentPlugin();
-        if (currentPlugin == null) {
-            Microbot.log("\n SchedulerPlugin is not running any plugin. so stopping the current plugin.");
-            Microbot.getClientThread().invoke(()-> Microbot.stopPlugin((Plugin)this));
-            return;
-        }
-        if (currentPlugin.isRunning() && currentPlugin.getPlugin() != null && !currentPlugin.getPlugin().equals(this)) {
-            Microbot.log("\nCurrent running plugin running by the SchedulerPlugin is not the same as the one being stopped. Stopping current plugin.");
-            Microbot.getClientThread().invoke(()-> Microbot.stopPlugin((Plugin)this));
-            return;
+            shouldStop = true;
+            
+        }else{
+            PluginScheduleEntry currentPlugin =  schedulablePlugin.getCurrentPlugin();
+            if (currentPlugin == null) {
+                Microbot.log("\n SchedulerPlugin is not running any plugin. so stopping the current plugin.");
+                shouldStop = true;
+            }else{
+                if (currentPlugin.isRunning() && currentPlugin.getPlugin() != null && !currentPlugin.getPlugin().equals(this)) {
+                    Microbot.log("\n Current running plugin running by the SchedulerPlugin is not the same as the one being stopped. Stopping current plugin.");
+                    shouldStop = true;
+                }
+            }
         }
         String prefix = "Plugin [" + this.getClass().getSimpleName() + "] finished: ";
         String reasonExt= reason == null ? prefix+"No reason provided" : prefix+reason;
-
-
-        Microbot.getEventBus().post(new PluginScheduleEntryFinishedEvent(
-            (Plugin) this, // "this" will be the plugin instance
-            reasonExt,
-            success
-        ));
+        if (shouldStop){
+    
+            // If plugin finished unsuccessfully, show a non-blocking notification dialog
+            if (!success) {
+                Microbot.log("\nPlugin [" + this.getClass().getSimpleName() + "] stopped with error: " + reasonExt, Level.ERROR);
+                Microbot.getClientThread().invokeLater(()->{
+                    try {
+                        SwingUtilities.invokeAndWait(() -> {
+                            // Find a parent frame to attach the dialog to
+                            Component clientComponent = (Component)Microbot.getClient();
+                            Window window = SwingUtilities.getWindowAncestor(clientComponent);
+                            // Create message with HTML for proper text wrapping
+                            JLabel messageLabel = new JLabel("<html><div style='width: 350px;'>" + 
+                                    "Plugin [" + ((Plugin)this).getClass().getSimpleName() + 
+                                    "] stopped: " + (reason != null ? reason : "No reason provided") + 
+                                    "</div></html>");
+                            // Show error message if starting failed
+                            JOptionPane.showMessageDialog(
+                                SwingUtilities.getWindowAncestor(clientComponent),
+                                messageLabel,
+                                "Plugin Stopped",
+                                JOptionPane.WARNING_MESSAGE
+                            );
+                        
+                        });
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        Microbot.log("Dialog display was interrupted: " + e.getMessage(), Level.WARN);
+                    } catch (java.lang.reflect.InvocationTargetException e) {
+                        Microbot.log("Error displaying plugin stopped dialog: " + e.getCause().getMessage(), Level.ERROR);
+                    }
+                });
+            }
+            Microbot.getClientThread().invokeLater(()->Microbot.stopPlugin((Plugin)this));
+            return;
+        }else{
+            if (success) {
+                Microbot.log(reasonExt, Level.INFO);
+            } else {
+                Microbot.log(reasonExt, Level.ERROR);
+            }            
+            Microbot.getEventBus().post(new PluginScheduleEntryFinishedEvent(
+                (Plugin) this, // "this" will be the plugin instance
+                reasonExt,
+                success
+            ));
+            return;
+        }
     }
     
     /**
@@ -156,7 +194,7 @@ public interface SchedulablePlugin {
      * 
      * @return true if this plugin supports being forcibly terminated, false otherwise
      */
-    default public boolean isHardStoppable(){
+    default public boolean allowHardStop(){
         return false;
     }
 
@@ -187,13 +225,12 @@ public interface SchedulablePlugin {
         }
         
         if (condition instanceof LogicalCondition) {
-            LogicalCondition logicalCondition = (LogicalCondition) condition;
-            for (Condition subCondition : logicalCondition.getConditions()) {
-                LockCondition lockCondition = findLockCondition(subCondition);
-                if (lockCondition != null) {
-                    return lockCondition;
-                }
-            }
+            List<LockCondition> allLockCondtions = ((LogicalCondition)condition).findAllLockConditions();
+            // todo think of only allow one lock condition per plugin in the nested structure... because more makes no sense?
+            
+            return allLockCondtions.isEmpty() ? null : allLockCondtions.get(0);
+                
+            
         }
         
         return null;
@@ -244,7 +281,11 @@ public interface SchedulablePlugin {
      * @return The new lock state (true if locked, false if unlocked), or null if no lock condition exists
      */
     default Boolean toggleLock(Condition stopConditions) {
+        if (stopConditions == null) {
+            return null; // No stop conditions defined
+        }
         LockCondition lockCondition = getLockCondition( stopConditions);
+        
         if (lockCondition != null) {
             return lockCondition.toggleLock();
         }
@@ -254,4 +295,55 @@ public interface SchedulablePlugin {
         return null;
     }
 
+    // ...existing code...
+
+    /**
+     * Gets the time until the next scheduled plugin will run.
+     * This method checks the SchedulerPlugin for the upcoming plugin and calculates
+     * the duration until it's scheduled to execute.
+     * 
+     * @return Optional containing the duration until the next plugin runs, 
+     *         or empty if no plugin is upcoming or time cannot be determined
+     */
+    default Optional<Duration> getTimeUntilUpComingScheduledPlugin() {
+        try {
+           return SchedulerPluginUtil.getTimeUntilUpComingScheduledPlugin();
+            
+        } catch (Exception e) {
+            Microbot.log("Error getting time until next scheduled plugin: " + e.getMessage(), Level.ERROR);
+            return Optional.empty();
+        }
+    }
+    
+    /**
+     * Gets information about the next scheduled plugin.
+     * This method provides both the plugin entry and the time until it runs.
+     * 
+     * @return Optional containing a formatted string with plugin name and time until run,
+     *         or empty if no plugin is upcoming
+     */
+    default Optional<String> getUpComingScheduledPluginInfo() {
+        try {
+            return SchedulerPluginUtil.getUpComingScheduledPluginInfo();            
+        } catch (Exception e) {
+            Microbot.log("Error getting next scheduled plugin info: " + e.getMessage(), Level.ERROR);
+            return Optional.empty();
+        }
+    }
+    
+    /**
+     * Gets the next scheduled plugin entry with its complete information.
+     * This provides access to the full PluginScheduleEntry object.
+     * 
+     * @return Optional containing the next scheduled plugin entry,
+     *         or empty if no plugin is upcoming
+     */
+    default Optional<PluginScheduleEntry> getNextUpComingPluginScheduleEntry() {
+        try {
+            return SchedulerPluginUtil.getNextUpComingPluginScheduleEntry();
+        } catch (Exception e) {
+            Microbot.log("Error getting next scheduled plugin entry: " + e.getMessage(), Level.ERROR);
+            return Optional.empty();
+        }
+    }
 }

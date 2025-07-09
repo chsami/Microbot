@@ -40,7 +40,7 @@ public class RoyalTitansShared {
     }
 
     private static void consumePotion(List<String> keyword) {
-        var potion = Rs2Inventory.get(keyword);
+        var potion = Rs2Inventory.get(keyword.toArray(String[]::new));
         if (potion != null) {
             Rs2Inventory.interact(potion, "Drink");
             Rs2Player.waitForAnimation(1200);

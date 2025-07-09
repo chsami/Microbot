@@ -123,7 +123,7 @@ public class PlankRunnerPlugin extends Plugin {
     }
 
     public void calculateProfit() {
-        int plankCount = Rs2Inventory.items().stream()
+        int plankCount = Rs2Inventory.items()
                 .filter(rs2Item -> rs2Item.getId() == plank.getPlankItemId())
                 .mapToInt(rs2Item -> 1)
                 .sum();

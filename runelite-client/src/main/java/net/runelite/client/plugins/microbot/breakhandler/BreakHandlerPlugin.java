@@ -8,8 +8,7 @@ import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
-import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
+import net.runelite.client.plugins.microbot.util.events.PluginPauseEvent;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -66,8 +65,22 @@ public class BreakHandlerPlugin extends Plugin {
     }
 
     protected void shutDown() {
+        log.info("\nshutdown: "+
+                 "\nbreakDuration: " + BreakHandlerScript.breakDuration + 
+                 "\nbreakIn: " + BreakHandlerScript.breakIn + 
+                 "\nisLockState: " + BreakHandlerScript.isLockState() + 
+                 "\npauseAllScripts: " + Microbot.pauseAllScripts.get() + 
+                 "\nPluginPauseEvent.isPaused: " + PluginPauseEvent.isPaused());
         breakHandlerScript.shutdown();
+        log.info("\nshutdown: "+
+                 "\nbreakDuration: " + BreakHandlerScript.breakDuration + 
+                 "\nbreakIn: " + BreakHandlerScript.breakIn + 
+                 "\nisLockState: " + BreakHandlerScript.isLockState() + 
+                 "\npauseAllScripts: " + Microbot.pauseAllScripts.get() + 
+                 "\nPluginPauseEvent.isPaused: " + PluginPauseEvent.isPaused());
         overlayManager.remove(breakHandlerOverlay);
+
+        
     }
 
     // on settings change
@@ -81,6 +94,11 @@ public class BreakHandlerPlugin extends Plugin {
             if (event.getKey().equals("breakNow")) {
                 boolean breakNowValue = config.breakNow();
                 log.debug("Break Now toggled: {}", breakNowValue);
+            }
+
+            if (event.getKey().equals("breakEndNow")) {
+                boolean breakEndNowValue = config.breakEndNow();
+                log.debug("Break End Now toggled: {}", breakEndNowValue);
             }
 
             if (event.getKey().equals(BreakHandlerConfig.hideOverlay)) {

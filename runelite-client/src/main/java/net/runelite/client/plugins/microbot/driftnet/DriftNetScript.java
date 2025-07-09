@@ -2,11 +2,13 @@ package net.runelite.client.plugins.microbot.driftnet;
 
 import net.runelite.api.ItemID;
 import net.runelite.api.ObjectID;
+import net.runelite.api.gameval.NpcID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
+import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -16,9 +18,8 @@ import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
-import java.util.Comparator;
+import java.util.*;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -95,7 +96,9 @@ public class DriftNetScript extends Script {
         var maxDriftnets = maxWeight - Microbot.getClient().getWeight() - 1; // Driftnets are 1kg each; doing - 1 to be safe
         Rs2GameObject.interact(ObjectID.ANNETTE, "Nets");
         sleepUntil(() -> Rs2Widget.getWidget(20250629) != null);
-        Rs2Widget.clickWidgetFast(Rs2Widget.getWidget(20250629), 0, 3);
+        var annetteWidget = Rs2Widget.getWidget(20250629);
+        var annetteWithdrawXMenuEntry = new NewMenuEntry(0, 20250629, 57, 3, 21652, "<col=ff9040>Drift net</col>");
+        Microbot.doInvoke(annetteWithdrawXMenuEntry, Objects.requireNonNull(annetteWidget).getBounds());
         sleepGaussian(1500, 300);
         Rs2Keyboard.typeString(String.valueOf(maxDriftnets));
         sleepGaussian(1500, 300);
@@ -170,9 +173,15 @@ public class DriftNetScript extends Script {
      */
     private void chaseNearbyFish(Set<Integer> fishSet) {
         // Sort the NPC indexes by distance to the player
+        var fishNpcs = Rs2Npc.getNpcs(NpcID.FOSSIL_FISH_SHOAL).collect(Collectors.toList());
+        var fishIndexNpcMap = new HashMap<Integer, Rs2NpcModel>();
+        fishSet.forEach(index -> {
+            var fishNpc = fishNpcs.stream().filter(npc -> npc.getIndex() == index).findFirst().orElse(null);
+            fishIndexNpcMap.put(index, fishNpc);
+        });
         List<Integer> sortedFish = fishSet.stream()
                 .sorted(Comparator.comparingInt(fishIndex -> {
-                            Rs2NpcModel npc = Rs2Npc.getNpcByIndex(fishIndex);
+                            Rs2NpcModel npc = fishIndexNpcMap.get(fishIndex);
                             if (npc == null) {
                                 return Integer.MAX_VALUE;
                             }
@@ -185,7 +194,7 @@ public class DriftNetScript extends Script {
         for (int fishIndex : sortedFish) {
             if (DriftNetPlugin.getTaggedFish().containsKey(fishIndex)) continue;
 
-            Rs2NpcModel npc = Rs2Npc.getNpcByIndex(fishIndex);
+            Rs2NpcModel npc = fishIndexNpcMap.get(fishIndex);
             if (npc == null) continue;
 
             // Interact with the fish to "Chase" it

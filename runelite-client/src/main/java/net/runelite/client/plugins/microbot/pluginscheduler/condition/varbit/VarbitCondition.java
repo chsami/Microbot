@@ -544,4 +544,16 @@ public class VarbitCondition implements Condition {
         
         return progress;
     }
+    
+    @Override
+    public void pause() {
+        // Default implementation for VarbitCondition - no specific pause behavior needed
+        // Varbit conditions are event-based and don't track timing or accumulative state
+    }
+    
+    @Override
+    public void resume() {
+        // Default implementation for VarbitCondition - no specific resume behavior needed
+        // Varbit conditions are event-based and don't track timing or accumulative state
+    }
 }

@@ -535,6 +535,106 @@ public interface SchedulableExampleConfig extends Config {
     }
 
     @ConfigSection(
+        name = "Antiban Testing",
+        description = "Antiban system testing and configuration",
+        position = 199,
+        closedByDefault = true
+    )
+    String antibanTestSection = "antibanTestSection";
+
+    @ConfigItem(
+        keyName = "enableAntibanTesting",
+        name = "Enable Antiban Testing",
+        description = "Enable antiban features testing including micro breaks",
+        position = 0,
+        section = antibanTestSection
+    )
+    default boolean enableAntibanTesting() {
+        return false;
+    }
+
+    @ConfigItem(
+        keyName = "enableMicroBreaks",
+        name = "Enable Micro Breaks",
+        description = "Enable micro breaks during plugin execution",
+        position = 1,
+        section = antibanTestSection
+    )
+    default boolean enableMicroBreaks() {
+        return false;
+    }
+
+    @ConfigItem(
+        keyName = "microBreakChance",
+        name = "Micro Break Chance",
+        description = "Chance (0.0-1.0) of taking a micro break per check",
+        position = 2,
+        section = antibanTestSection
+    )
+    @Range(min = 0, max = 100)
+    default int microBreakChancePercent() {
+        return 10; // 10% default
+    }
+
+    @ConfigItem(
+        keyName = "microBreakDurationMin",
+        name = "Micro Break Min Duration (minutes)",
+        description = "Minimum duration for micro breaks in minutes",
+        position = 3,
+        section = antibanTestSection
+    )
+    @Range(min = 1, max = 30)
+    default int microBreakDurationMin() {
+        return 3;
+    }
+
+    @ConfigItem(
+        keyName = "microBreakDurationMax", 
+        name = "Micro Break Max Duration (minutes)",
+        description = "Maximum duration for micro breaks in minutes",
+        position = 4,
+        section = antibanTestSection
+    )
+    @Range(min = 1, max = 60)
+    default int microBreakDurationMax() {
+        return 15;
+    }
+
+    @ConfigItem(
+        keyName = "statusReportInterval",
+        name = "Status Report Interval (seconds)",
+        description = "How often to report break status (0 = disable reporting)",
+        position = 5,
+        section = antibanTestSection
+    )
+    @Range(min = 0, max = 300)
+    default int statusReportInterval() {
+        return 30; // Report every 30 seconds
+    }
+
+    @ConfigItem(
+        keyName = "enableActionCooldowns",
+        name = "Enable Action Cooldowns",
+        description = "Enable action cooldown testing",
+        position = 6,
+        section = antibanTestSection
+    )
+    default boolean enableActionCooldowns() {
+        return false;
+    }
+
+    @ConfigItem(
+        keyName = "moveMouseOffScreen",
+        name = "Move Mouse Off-Screen",
+        description = "Move mouse off-screen during breaks",
+        position = 7,
+        section = antibanTestSection
+    )
+    default boolean moveMouseOffScreen() {
+        return false;
+    }
+
+    @ConfigSection(
         name = "Debug Options",
         description = "Options for testing and debugging",
         position = 200,

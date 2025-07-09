@@ -54,6 +54,12 @@ public class PrifddinasCourse implements AgilityCourseHandler
 		);
 	}
 
+	@Override
+	public Integer getRequiredLevel()
+	{
+		return 75;
+	}
+
 	public boolean handlePortal()
 	{
 		TileObject portal = Rs2GameObject.findObject(PORTAL_OBSTACLE_IDS.toArray(new Integer[0]));
@@ -69,9 +75,14 @@ public class PrifddinasCourse implements AgilityCourseHandler
 	}
 
 	@Override
-	public boolean handleWalkToStart(WorldPoint playerWorldLocation, LocalPoint playerLocalLocation)
+	public boolean handleWalkToStart(WorldPoint playerWorldLocation)
 	{
 		if (Microbot.getClient().getTopLevelWorldView().getPlane() != 0)
+		{
+			return false;
+		}
+
+		if (getCurrentObstacleIndex() > 0)
 		{
 			return false;
 		}

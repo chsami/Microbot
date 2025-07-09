@@ -2,8 +2,6 @@ package net.runelite.client.plugins.microbot.TaF.DemonicGorillaKiller;
 
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
-import net.runelite.client.plugins.microbot.aiofighter.AIOFighterConfig;
-import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.grounditem.LootingParameters;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
@@ -52,7 +50,7 @@ public class DemonicGorillaLooterScript extends Script {
                 "untradeable"
         );
         if (Rs2GroundItem.lootUntradables(untradeableItemsParams)) {
-            Microbot.pauseAllScripts = false;
+            Microbot.pauseAllScripts.compareAndSet(true, false);
         }
     }
 
@@ -67,7 +65,7 @@ public class DemonicGorillaLooterScript extends Script {
                 " rune"
         );
         if (Rs2GroundItem.lootItemsBasedOnNames(runesParams)) {
-            Microbot.pauseAllScripts = false;
+            Microbot.pauseAllScripts.compareAndSet(true, false);
         }
     }
     private void lootCoins(DemonicGorillaConfig config) {
@@ -81,7 +79,7 @@ public class DemonicGorillaLooterScript extends Script {
                 "coins"
         );
         if (Rs2GroundItem.lootCoins(coinsParams)) {
-            Microbot.pauseAllScripts = false;
+            Microbot.pauseAllScripts.compareAndSet(true, false);
         }
     }
     private void lootItemsOnName(DemonicGorillaConfig config) {
@@ -95,7 +93,7 @@ public class DemonicGorillaLooterScript extends Script {
                 itemsToLoot.trim().split(",")
         );
         if (Rs2GroundItem.lootItemsBasedOnNames(valueParams)) {
-            Microbot.pauseAllScripts = false;
+            Microbot.pauseAllScripts.compareAndSet(true, false);
         }
     }
 

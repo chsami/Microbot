@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.pluginscheduler.ui;
 import net.runelite.client.plugins.microbot.pluginscheduler.SchedulerPlugin;
 import net.runelite.client.plugins.microbot.pluginscheduler.SchedulerState;
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
+import net.runelite.client.plugins.microbot.util.events.PluginPauseEvent;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
@@ -12,8 +13,11 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.time.Duration;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class SchedulerPanel extends PluginPanel {
     private final SchedulerPlugin plugin;
@@ -29,9 +33,9 @@ public class SchedulerPanel extends PluginPanel {
     private final JLabel prevPluginStopTimeLabel;
 
     // Next plugin section
-    private final JLabel nextPluginNameLabel;
-    private final JLabel nextPluginTimeLabel;
-    private final JLabel nextPluginScheduleLabel;
+    private final JLabel nextUpComingPluginNameLabel;
+    private final JLabel nextUpComingPluginTimeLabel;
+    private final JLabel nextUpComingPluginScheduleLabel;
 
     // Scheduler status section
     private final JLabel schedulerStatusLabel;
@@ -39,14 +43,21 @@ public class SchedulerPanel extends PluginPanel {
     private final JButton configButton;
     private final JButton runButton;
     private final JButton stopButton;
-    private final JButton antibanButton; // Added button for Antiban settings
+    private final JButton pauseSchedulerButton; 
+    private final JButton pauseResumePluginButton; 
+    private final JButton antibanButton; 
+
+    // State tracking for optimized updates
+    private PluginScheduleEntry lastTrackedCurrentPlugin;
+    private PluginScheduleEntry lastTrackedNextUpComingPlugin;
+    private SchedulerState lastTrackedState; 
 
 
     public SchedulerPanel(SchedulerPlugin plugin) {
         super(false);
         this.plugin = plugin;
 
-        setBorder(new EmptyBorder(10, 10, 10, 10));
+        setBorder(new EmptyBorder(8, 8, 8, 8));
         setBackground(ColorScheme.DARK_GRAY_COLOR);
         setLayout(new BorderLayout());
 
@@ -109,30 +120,30 @@ public class SchedulerPanel extends PluginPanel {
         prevPluginPanel.add(prevPluginStopTimeLabel, createGbc(1, 3));
 
         // Next plugin info panel
-        JPanel nextPluginPanel = createInfoPanel("Next Scheduled Plugin");
-        JLabel nextPluginTitleLabel = new JLabel("Plugin:");
-        nextPluginTitleLabel.setForeground(Color.WHITE);
-        nextPluginTitleLabel.setFont(FontManager.getRunescapeFont());
-        nextPluginPanel.add(nextPluginTitleLabel, createGbc(0, 0));
+        JPanel nextUpComingPluginPanel = createInfoPanel("Next Scheduled Plugin");
+        JLabel nextUpComingPluginTitleLabel = new JLabel("Plugin:");
+        nextUpComingPluginTitleLabel.setForeground(Color.WHITE);
+        nextUpComingPluginTitleLabel.setFont(FontManager.getRunescapeFont());
+        nextUpComingPluginPanel.add(nextUpComingPluginTitleLabel, createGbc(0, 0));
 
-        nextPluginNameLabel = createValueLabel("None");
-        nextPluginPanel.add(nextPluginNameLabel, createGbc(1, 0));
+        nextUpComingPluginNameLabel = createValueLabel("None");
+        nextUpComingPluginPanel.add(nextUpComingPluginNameLabel, createGbc(1, 0));
 
         JLabel nextRunLabel = new JLabel("Next Run:");
         nextRunLabel.setForeground(Color.WHITE);
         nextRunLabel.setFont(FontManager.getRunescapeFont());
-        nextPluginPanel.add(nextRunLabel, createGbc(0, 1));
+        nextUpComingPluginPanel.add(nextRunLabel, createGbc(0, 1));
 
-        nextPluginTimeLabel = createValueLabel("--:--");
-        nextPluginPanel.add(nextPluginTimeLabel, createGbc(1, 1));
+        nextUpComingPluginTimeLabel = createValueLabel("--:--");
+        nextUpComingPluginPanel.add(nextUpComingPluginTimeLabel, createGbc(1, 1));
 
         JLabel scheduleLabel = new JLabel("Schedule:");
         scheduleLabel.setForeground(Color.WHITE);
         scheduleLabel.setFont(FontManager.getRunescapeFont());
-        nextPluginPanel.add(scheduleLabel, createGbc(0, 2));
+        nextUpComingPluginPanel.add(scheduleLabel, createGbc(0, 2));
 
-        nextPluginScheduleLabel = createValueLabel("None");
-        nextPluginPanel.add(nextPluginScheduleLabel, createGbc(1, 2));
+        nextUpComingPluginScheduleLabel = createValueLabel("None");
+        nextUpComingPluginPanel.add(nextUpComingPluginScheduleLabel, createGbc(1, 2));
 
         // Scheduler status panel
         JPanel statusPanel = createInfoPanel("Scheduler Status");
@@ -146,7 +157,7 @@ public class SchedulerPanel extends PluginPanel {
         statusPanel.add(schedulerStatusLabel, createGbc(1, 0));
 
         // Button panel - vertical layout (one button per row)
-        JPanel buttonPanel = new JPanel(new GridLayout(4, 1, 0, 5)); // Changed to 4 rows for the new button
+        JPanel buttonPanel = new JPanel(new GridLayout(6, 1, 0, 5)); // Changed to 6 rows for all buttons
         buttonPanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
         
         // Add config button
@@ -177,26 +188,81 @@ public class SchedulerPanel extends PluginPanel {
         antibanButton.addActionListener(this::onAntibanButtonClicked);
         antibanButton.setToolTipText("Open Antiban settings in a separate window");
         this.antibanButton = antibanButton;
+ 
 
-        // Add buttons in order
+        // Add pause/resume button - uses orange color
+        Color orangeColor = new Color(255, 152, 0);
+        JButton pauseSchedulerButton = createButton("Pause Scheduler", orangeColor);
+        pauseSchedulerButton.addActionListener(e -> {
+            if (plugin.isPaused()) {
+                plugin.resumeScheduler();
+                pauseSchedulerButton.setText("Pause Scheduler");
+                pauseSchedulerButton.setBackground(orangeColor);
+            } else {
+                plugin.pauseScheduler();
+                pauseSchedulerButton.setText("Resume Scheduler");
+                pauseSchedulerButton.setBackground(greenColor);
+            }
+            refresh();
+        });
+        pauseSchedulerButton.setToolTipText("Pause or resume the scheduler without stopping it");
+        this.pauseSchedulerButton = pauseSchedulerButton;
+
+        // Add pause/resume button for the currently running plugin - use cyan color
+        Color cyanColor = new Color(0, 188, 212); // Material design cyan color
+        JButton pauseResumePluginButton = createButton("Pause Plugin", cyanColor);
+        pauseResumePluginButton.addActionListener(e -> {
+            // Toggle the pause state
+            boolean newPauseState = !PluginPauseEvent.isPaused();
+            PluginPauseEvent.setPaused(newPauseState);
+            
+            // Update button text and color based on state
+            if (newPauseState) {
+                plugin.pauseRunningPlugin();
+                pauseResumePluginButton.setText("Resume Plugin");
+                pauseResumePluginButton.setBackground(greenColor); // Change to green for resume
+            } else {
+                plugin.resumeRunningPlugin();
+                pauseResumePluginButton.setText("Pause Plugin");
+                pauseResumePluginButton.setBackground(cyanColor); // Change back to cyan for pause
+            }
+            refresh();
+        });
+        pauseResumePluginButton.setToolTipText("Pause or resume the currently running plugin");
+        this.pauseResumePluginButton = pauseResumePluginButton;
+
         buttonPanel.add(configButton);
         buttonPanel.add(runButton);
         buttonPanel.add(stopButton);
-        buttonPanel.add(antibanButton); // Add the new Antiban button
+        buttonPanel.add(pauseSchedulerButton); 
+        buttonPanel.add(pauseResumePluginButton); 
+        buttonPanel.add(antibanButton);
+        
 
         // Add components to main panel
         mainPanel.add(infoPanel);
-        mainPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        mainPanel.add(Box.createRigidArea(new Dimension(0, 8)));
         mainPanel.add(prevPluginPanel);
-        mainPanel.add(Box.createRigidArea(new Dimension(0, 10)));
-        mainPanel.add(nextPluginPanel);
-        mainPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        mainPanel.add(Box.createRigidArea(new Dimension(0, 8)));
+        mainPanel.add(nextUpComingPluginPanel);
+        mainPanel.add(Box.createRigidArea(new Dimension(0, 8)));
         mainPanel.add(statusPanel);
-        mainPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        mainPanel.add(Box.createRigidArea(new Dimension(0, 8)));
         mainPanel.add(buttonPanel);
-        mainPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        mainPanel.add(Box.createRigidArea(new Dimension(0, 8)));
 
-        add(mainPanel, BorderLayout.NORTH);
+        // Wrap main panel in scroll pane for better fit in different sidebar sizes
+        JScrollPane scrollPane = new JScrollPane(mainPanel);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.setBackground(ColorScheme.DARK_GRAY_COLOR);
+        scrollPane.getViewport().setBackground(ColorScheme.DARK_GRAY_COLOR);
+        
+        // Set the preferred width to maintain proper sidebar display
+        scrollPane.setPreferredSize(new Dimension(200, 400));
+        
+        add(scrollPane, BorderLayout.CENTER); // Changed from NORTH to CENTER for proper filling
         refresh();
     }
 
@@ -271,15 +337,55 @@ public class SchedulerPanel extends PluginPanel {
     }
 
     public void refresh() {
-        updatePluginInfo();
-        updateNextPluginInfo();
-        updateButtonStates();
+        // Get current state information
+        SchedulerState currentState = plugin.getCurrentState();
+        PluginScheduleEntry currentPlugin = plugin.getCurrentPlugin();
+        PluginScheduleEntry nextUpComingPlugin = plugin.getUpComingPlugin();
         
-        // Update scheduler status
-        SchedulerState state = plugin.getCurrentState();
-        schedulerStatusLabel.setText(state.getDisplayName());
-        schedulerStatusLabel.setForeground(state.getColor());
-        schedulerStatusLabel.setToolTipText(state.getDescription());
+        // Update current plugin info if it changed
+        if (currentPlugin != lastTrackedCurrentPlugin) {
+            updatePluginInfo();
+            lastTrackedCurrentPlugin = currentPlugin;
+        } else if (currentPlugin != null && currentPlugin.isRunning()) {
+            // Update only the runtime display without full refresh when plugin is running
+            updateCurrentPluginRuntimeOnly();
+        }
+        
+        // Update next plugin info if it changed
+        if (nextUpComingPlugin != lastTrackedNextUpComingPlugin) {
+            updateNextPluginInfo();
+            lastTrackedNextUpComingPlugin = nextUpComingPlugin;
+        } else if (nextUpComingPlugin != null && nextUpComingPlugin.isEnabled()) {
+            // Update only the time display without full refresh for real-time countdown
+            updateNextPluginTimeDisplayOnly(nextUpComingPlugin);
+        }
+        
+        // Update scheduler status and buttons if state changed
+        if (currentState != lastTrackedState) {
+            updateButtonStates();
+            
+            // Update scheduler status with pause information
+            String statusText = currentState.getDisplayName();
+            String statusTooltip = currentState.getDescription();
+            
+            // Add pause indicator to status if any plugins are paused
+            if (plugin.anyPluginEntryPaused()) {
+                List<PluginScheduleEntry> pausedPlugins = plugin.getScheduledPlugins().stream()
+                    .filter(PluginScheduleEntry::isPaused)
+                    .collect(Collectors.toList());
+                    
+                if (!pausedPlugins.isEmpty()) {
+                    statusText += " (" + pausedPlugins.size() + " paused)";
+                    statusTooltip = createAllPausedPluginsTooltip();
+                }
+            }
+            
+            schedulerStatusLabel.setText(statusText);
+            schedulerStatusLabel.setForeground(currentState.getColor());
+            schedulerStatusLabel.setToolTipText(statusTooltip);
+            
+            lastTrackedState = currentState;
+        }
     }
       
     /**
@@ -289,20 +395,56 @@ public class SchedulerPanel extends PluginPanel {
         
         
         SchedulerState state = plugin.getCurrentState();
-        boolean active = plugin.getCurrentState().isSchedulerActive();
+        boolean schedulerActive = plugin.getCurrentState().isSchedulerActive();
+        boolean pluginRunning = plugin.getCurrentState().isPluginRunning();
         configButton.setEnabled(state != SchedulerState.UNINITIALIZED || state != SchedulerState.ERROR || state != SchedulerState.INITIALIZING);
         
         // Only enable run button if we're in READY or HOLD state
-        runButton.setEnabled(!active && (state != SchedulerState.UNINITIALIZED || state != SchedulerState.ERROR || state != SchedulerState.INITIALIZING));
+        runButton.setEnabled(!schedulerActive && (state != SchedulerState.UNINITIALIZED || state != SchedulerState.ERROR || state != SchedulerState.INITIALIZING));
         
         // Only enable stop button in certain states
-        stopButton.setEnabled(active);
+        stopButton.setEnabled(schedulerActive);
+        
+        // Update pause scheduler button state
+        pauseSchedulerButton.setEnabled(schedulerActive|| state == SchedulerState.SCHEDULER_PAUSED);
+        if (plugin.isPaused()) {
+            pauseSchedulerButton.setText("Resume Scheduler");
+            pauseSchedulerButton.setBackground(new Color(76, 175, 80)); // Green color
+            pauseSchedulerButton.setToolTipText("Resume the paused scheduler");
+        } else {
+            pauseSchedulerButton.setText("Pause Scheduler");
+            pauseSchedulerButton.setBackground(new Color(255, 152, 0)); // Orange color
+            pauseSchedulerButton.setToolTipText("Pause the scheduler without stopping it");
+        }
+        
+        // Update pause plugin button state - only visible and enabled when a plugin is running
+        boolean pluginCanBePaused = state == SchedulerState.RUNNING_PLUGIN || 
+                                    state == SchedulerState.RUNNING_PLUGIN_PAUSED;
+        pauseResumePluginButton.setVisible(pluginCanBePaused);
+        pauseResumePluginButton.setEnabled(pluginCanBePaused);
+        
+        // Update button text and color based on plugin pause state
+        if (PluginPauseEvent.isPaused()) {
+            pauseResumePluginButton.setText("Resume Plugin");
+            pauseResumePluginButton.setBackground(new Color(76, 175, 80)); // Green color
+            pauseResumePluginButton.setToolTipText("Resume the paused plugin");
+        } else {
+            pauseResumePluginButton.setText("Pause Plugin");
+            pauseResumePluginButton.setBackground(new Color(0, 188, 212)); // Cyan color
+            pauseResumePluginButton.setToolTipText("Pause the currently running plugin");
+        }
+        
+        // Only enable antiban button when no plugin is running
+        antibanButton.setEnabled(!pluginRunning);
+    
+        
         
         // Add tooltips
         if (state == SchedulerState.UNINITIALIZED || state == SchedulerState.ERROR || state == SchedulerState.INITIALIZING) {
             configButton.setToolTipText("Plugin not initialized yet");
             runButton.setToolTipText("Plugin not initialized yet");
             stopButton.setToolTipText("Plugin not initialized yet");
+            pauseSchedulerButton.setToolTipText("Plugin not initialized yet");
         } else {
             configButton.setToolTipText("Open scheduler configuration");
             runButton.setToolTipText(!runButton.isEnabled() ? 
@@ -312,6 +454,8 @@ public class SchedulerPanel extends PluginPanel {
                 "Cannot stop scheduler: not running" : 
                 "Stop the scheduler");
         }
+        
+
     }
 
     void updatePluginInfo() {
@@ -322,6 +466,14 @@ public class SchedulerPanel extends PluginPanel {
             ZonedDateTime startTimeZdt = currentPlugin.getLastRunStartTime();
             String pluginName = currentPlugin.getCleanName();
             
+            // Add pause indicator if current plugin is paused
+            if (currentPlugin.isRunning() && PluginPauseEvent.isPaused()) {
+                pluginName += " [PAUSED]";
+                currentPluginLabel.setForeground(new Color(255, 152, 0)); // Orange
+            } else {
+                currentPluginLabel.setForeground(Color.WHITE);
+            }
+            
             // Add the stop reason indicator to the plugin name if available
             if (currentPlugin.getLastStopReasonType() != null && 
                 currentPlugin.getLastStopReasonType() != PluginScheduleEntry.StopReason.NONE) {
@@ -330,6 +482,10 @@ public class SchedulerPanel extends PluginPanel {
             }
             
             currentPluginLabel.setText(pluginName);
+            
+            // Create and set tooltip with pause information
+            String pauseTooltip = createPauseTooltipForCurrentPlugin(currentPlugin);
+            currentPluginLabel.setToolTipText(pauseTooltip);
             
             // Show runtime - either current or last run duration
             if (currentPlugin.isRunning()) {
@@ -351,7 +507,24 @@ public class SchedulerPanel extends PluginPanel {
             // Update previous plugin information if it has run at least once
             updatePreviousPluginInfo(currentPlugin);
         } else {
-            currentPluginLabel.setText("None");
+            // No current plugin - check for paused plugins and show in tooltip
+            String noneText = "None";
+            String noneTooltip = null;
+            
+            if (plugin.anyPluginEntryPaused()) {
+                List<PluginScheduleEntry> pausedPlugins = plugin.getScheduledPlugins().stream()
+                    .filter(PluginScheduleEntry::isPaused)
+                    .collect(Collectors.toList());
+                    
+                if (!pausedPlugins.isEmpty()) {
+                    noneText = "None (" + pausedPlugins.size() + " paused)";
+                    noneTooltip = createAllPausedPluginsTooltip();
+                }
+            }
+            
+            currentPluginLabel.setText(noneText);
+            currentPluginLabel.setToolTipText(noneTooltip);
+            currentPluginLabel.setForeground(plugin.anyPluginEntryPaused() ? new Color(255, 152, 0) : Color.WHITE);
             runtimeLabel.setText("00:00:00");
             
             // Clear previous plugin info when there's no current plugin
@@ -434,21 +607,21 @@ public class SchedulerPanel extends PluginPanel {
     }
     
     void updateNextPluginInfo() {
-        PluginScheduleEntry nextPlugin = plugin.getNextScheduledPlugin();
+        PluginScheduleEntry nextUpComingPlugin = plugin.getUpComingPlugin();
 
-        if (nextPlugin != null) {
+        if (nextUpComingPlugin != null) {
             // Set the plugin name
-            nextPluginNameLabel.setText(nextPlugin.getCleanName());
+            nextUpComingPluginNameLabel.setText(nextUpComingPlugin.getCleanName());
             
             // Set the next run time display (already handles various condition types)
-            nextPluginTimeLabel.setText(nextPlugin.getNextRunDisplay());
+            nextUpComingPluginTimeLabel.setText(nextUpComingPlugin.getNextRunDisplay());
 
             // Create an enhanced schedule description
-            StringBuilder scheduleDesc = new StringBuilder(nextPlugin.getIntervalDisplay());
+            StringBuilder scheduleDesc = new StringBuilder(nextUpComingPlugin.getIntervalDisplay());
             
             // Add information about one-time schedules
-            if (nextPlugin.hasAnyOneTimeStartConditions()) {
-                if (nextPlugin.hasTriggeredOneTimeStartConditions() && !nextPlugin.canStartTriggerAgain()) {
+            if (nextUpComingPlugin.hasAnyOneTimeStartConditions()) {
+                if (nextUpComingPlugin.hasTriggeredOneTimeStartConditions() && !nextUpComingPlugin.canStartTriggerAgain()) {
                     scheduleDesc.append(" (Completed)");
                 } else {
                     scheduleDesc.append(" (One-time)");
@@ -456,9 +629,9 @@ public class SchedulerPanel extends PluginPanel {
             }
             
             // Add condition status information if available
-            if (nextPlugin.hasAnyStartConditions()) {
-                int total = nextPlugin.getStartConditionManager().getConditions().size();
-                long satisfied = nextPlugin.getStartConditionManager().getConditions().stream()
+            if (nextUpComingPlugin.hasAnyStartConditions()) {
+                int total = nextUpComingPlugin.getStartConditionManager().getConditions().size();
+                long satisfied = nextUpComingPlugin.getStartConditionManager().getConditions().stream()
                         .filter(condition -> condition.isSatisfied())
                         .count();
                 
@@ -468,12 +641,44 @@ public class SchedulerPanel extends PluginPanel {
             }
             
             // Set the updated schedule description
-            nextPluginScheduleLabel.setText(scheduleDesc.toString());
+            nextUpComingPluginScheduleLabel.setText(scheduleDesc.toString());
         } else {
             // No next plugin scheduled
-            nextPluginNameLabel.setText("None");
-            nextPluginTimeLabel.setText("--:--");
-            nextPluginScheduleLabel.setText("None");
+            nextUpComingPluginNameLabel.setText("None");
+            nextUpComingPluginTimeLabel.setText("--:--");
+            nextUpComingPluginScheduleLabel.setText("None");
+        }
+    }
+
+    /**
+     * Updates only the runtime display for the current plugin without refreshing other info.
+     * This is used for regular runtime updates when the plugin hasn't changed.
+     */
+    private void updateCurrentPluginRuntimeOnly() {
+        PluginScheduleEntry currentPlugin = plugin.getCurrentPlugin();
+        if (currentPlugin != null && currentPlugin.isRunning()) {
+            // Calculate and display current runtime for active plugin
+            ZonedDateTime startTimeZdt = currentPlugin.getLastRunStartTime();
+            if (startTimeZdt != null) {
+                long startTimeMillis = startTimeZdt.toInstant().toEpochMilli();
+                long runtimeMillis = System.currentTimeMillis() - startTimeMillis;
+                runtimeLabel.setText(formatDuration(runtimeMillis));
+            } else {
+                runtimeLabel.setText("Running");
+            }
+        }
+    }
+    
+    /**
+     * Updates only the time display for the next plugin without full refresh.
+     * This is used for regular time updates when the plugin hasn't changed.
+     * 
+     * @param nextUpComingPlugin The next scheduled plugin
+     */
+    private void updateNextPluginTimeDisplayOnly(PluginScheduleEntry nextUpComingPlugin) {
+        if (nextUpComingPlugin != null && nextUpComingPlugin.isEnabled()) {
+            // Update only the time display - this calls getCurrentStartTriggerTime() for real-time accuracy
+            nextUpComingPluginTimeLabel.setText(nextUpComingPlugin.getNextRunDisplay());
         }
     }
 
@@ -483,5 +688,105 @@ public class SchedulerPanel extends PluginPanel {
 
     private void onAntibanButtonClicked(ActionEvent e) {
         plugin.openAntibanSettings();
+    }
+
+    /**
+     * Creates a tooltip showing pause status for the current plugin
+     * @param currentPlugin The current plugin (can be null)
+     * @return HTML formatted tooltip string
+     */
+    private String createPauseTooltipForCurrentPlugin(PluginScheduleEntry currentPlugin) {
+        StringBuilder tooltip = new StringBuilder("<html>");
+        
+        if (currentPlugin == null) {
+            tooltip.append("No current plugin");
+            tooltip.append("</html>");
+            return tooltip.toString();
+        }
+        
+        // Current plugin info
+        tooltip.append("<b>Current Plugin:</b> ").append(currentPlugin.getName()).append("<br>");
+        tooltip.append("<b>Priority:</b> ").append(currentPlugin.getPriority()).append("<br>");
+        tooltip.append("<b>Enabled:</b> ").append(currentPlugin.isEnabled() ? "Yes" : "No").append("<br>");
+        tooltip.append("<b>Running:</b> ").append(currentPlugin.isRunning() ? "Yes" : "No").append("<br>");
+        
+        // Pause status
+        if (currentPlugin.isPaused()) {
+            tooltip.append("<b><font color='orange'>Status: PAUSED</font></b><br>");
+        } else if (currentPlugin.isRunning()) {
+            tooltip.append("<b><font color='green'>Status: RUNNING</font></b><br>");
+        } else {
+            tooltip.append("<b>Status: STOPPED</b><br>");
+        }
+        
+        // Runtime info if available
+        if (currentPlugin.isRunning() && currentPlugin.getLastRunStartTime() != null) {
+            Duration runtime = Duration.between(currentPlugin.getLastRunStartTime(), ZonedDateTime.now());
+            tooltip.append("<b>Runtime:</b> ").append(formatDurationForTooltip(runtime)).append("<br>");
+        }
+        
+        // Add pause info for all plugins if any are paused
+        if (plugin.anyPluginEntryPaused()) {
+            tooltip.append("<br><b>Other Paused Plugins:</b><br>");
+            List<PluginScheduleEntry> pausedPlugins = plugin.getScheduledPlugins().stream()
+                .filter(p -> p.isPaused() && !p.equals(currentPlugin))
+                .collect(Collectors.toList());
+                
+            if (pausedPlugins.isEmpty()) {
+                tooltip.append("None");
+            } else {
+                for (PluginScheduleEntry pausedPlugin : pausedPlugins) {
+                    tooltip.append("• ").append(pausedPlugin.getName())
+                        .append(" (Priority: ").append(pausedPlugin.getPriority()).append(")<br>");
+                }
+            }
+        }
+        
+        tooltip.append("</html>");
+        return tooltip.toString();
+    }
+    
+    /**
+     * Creates a tooltip showing all paused plugins
+     * @return HTML formatted tooltip string
+     */
+    private String createAllPausedPluginsTooltip() {
+        StringBuilder tooltip = new StringBuilder("<html><b>Paused Plugins:</b><br>");
+        
+        List<PluginScheduleEntry> pausedPlugins = plugin.getScheduledPlugins().stream()
+            .filter(PluginScheduleEntry::isPaused)
+            .collect(Collectors.toList());
+            
+        if (pausedPlugins.isEmpty()) {
+            tooltip.append("No plugins are currently paused");
+        } else {
+            for (PluginScheduleEntry pausedPlugin : pausedPlugins) {
+                tooltip.append("• <b>").append(pausedPlugin.getName()).append("</b><br>");
+                tooltip.append("  Priority: ").append(pausedPlugin.getPriority()).append("<br>");
+                tooltip.append("  Enabled: ").append(pausedPlugin.isEnabled() ? "Yes" : "No").append("<br>");
+                tooltip.append("  Running: ").append(pausedPlugin.isRunning() ? "Yes" : "No").append("<br>");
+                
+                if (pausedPlugin.isRunning() && pausedPlugin.getLastRunStartTime() != null) {
+                    Duration runtime = Duration.between(pausedPlugin.getLastRunStartTime(), ZonedDateTime.now());
+                    tooltip.append("  Runtime: ").append(formatDurationForTooltip(runtime)).append("<br>");
+                }
+                tooltip.append("<br>");
+            }
+        }
+        
+        tooltip.append("</html>");
+        return tooltip.toString();
+    }
+    
+    /**
+     * Formats a duration for tooltip display
+     * @param duration The duration to format
+     * @return Formatted duration string (HH:MM:SS)
+     */
+    private String formatDurationForTooltip(Duration duration) {
+        long hours = duration.toHours();
+        long minutes = duration.toMinutesPart();
+        long seconds = duration.toSecondsPart();
+        return String.format("%02d:%02d:%02d", hours, minutes, seconds);
     }
 }

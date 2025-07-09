@@ -18,13 +18,18 @@ public class ShortestPathScript extends Script {
     // running the walker on a seperate thread is a lot easier for debugging
     private WorldPoint triggerWalker;
 
-    public boolean run() {
+    public boolean run(ShortestPathConfig config) {
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!Microbot.isLoggedIn()) return;
 
                 if (getTriggerWalker() != null) {
-                    WalkerState state = Rs2Walker.walkWithState(getTriggerWalker());
+                    WalkerState state  = WalkerState.UNREACHABLE;
+                    if (config.walkWithBankedTransports()){
+                        state= Rs2Walker.walkWithBankedTransportsAndState(getTriggerWalker(),10,false);
+                    }else {
+                        state= Rs2Walker.walkWithState(getTriggerWalker());
+                    }
                     if (state == WalkerState.ARRIVED || state == WalkerState.UNREACHABLE) {
                         setTriggerWalker(null);
                     }

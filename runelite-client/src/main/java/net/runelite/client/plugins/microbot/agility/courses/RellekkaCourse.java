@@ -27,4 +27,10 @@ public class RellekkaCourse implements AgilityCourseHandler
 			new AgilityObstacleModel(ObjectID.ROOFTOPS_RELLEKKA_DROPOFF)
 		);
 	}
+
+	@Override
+	public Integer getRequiredLevel()
+	{
+		return 80;
+	}
 }

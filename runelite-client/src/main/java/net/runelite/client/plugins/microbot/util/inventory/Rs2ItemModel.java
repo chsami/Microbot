@@ -2,9 +2,11 @@ package net.runelite.client.plugins.microbot.util.inventory;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.Item;
 import net.runelite.api.ItemComposition;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.ParamID;
 import net.runelite.client.plugins.microbot.Microbot;
 
@@ -12,7 +14,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.BiPredicate;
+import java.util.function.Predicate;
 
+@Slf4j
 public class Rs2ItemModel {
     @Getter
     private int id;
@@ -21,19 +26,13 @@ public class Rs2ItemModel {
 	private int quantity;
     @Getter
 	private int slot = -1;
-    @Getter
 	private String name;
-    @Getter
 	private String[] inventoryActions;
     @Getter
-	private List<String> equipmentActions = new ArrayList();
-    @Getter
+	private List<String> equipmentActions = new ArrayList<>();
 	private boolean isStackable;
-    @Getter
 	private boolean isNoted;
-    @Getter
 	private boolean isTradeable;
-    @Getter
 	private ItemComposition itemComposition;
 	private int[] wearableActionIndexes = new int[]{
             ParamID.OC_ITEM_OP1,
@@ -54,15 +53,149 @@ public class Rs2ItemModel {
         this.slot = slot;
         this.isStackable = itemComposition.isStackable();
         this.isNoted = itemComposition.getNote() == 799;
+        // This is to ensure the item is linked correctly if it's noted
         if (this.isNoted) {
             Microbot.getClientThread().runOnClientThreadOptional(() ->
-                    Microbot.getClient().getItemDefinition(this.id - 1)).ifPresent(itemDefinition -> this.isTradeable = itemDefinition.isTradeable());
+                    Microbot.getClient().getItemDefinition(itemComposition.getLinkedNoteId())).ifPresent(itemDefinition -> this.isTradeable = itemDefinition.isTradeable());
         } else {
             this.isTradeable = itemComposition.isTradeable();
         }
         this.inventoryActions = itemComposition.getInventoryActions();
         this.itemComposition = itemComposition;
-        addEquipmentActions(itemComposition);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            addEquipmentActions(itemComposition);
+       	    return true;
+        });
+    }
+
+    /**
+     * Creates an Rs2ItemModel from cached data (ID, quantity, slot).
+     * This is used when loading bank data from config where we don't have the full ItemComposition.
+     * ItemComposition data will be loaded lazily when needed.
+     * 
+     * @param id Item ID
+     * @param quantity Item quantity
+     * @param slot Item slot position
+     * @return Rs2ItemModel with basic data, ItemComposition loaded lazily
+     */
+    public static Rs2ItemModel createFromCache(int id, int quantity, int slot) {
+        return new Rs2ItemModel(id, quantity, slot);
+    }
+
+    /**
+     * Private constructor for creating Rs2ItemModel from cached data.
+     * ItemComposition will be loaded lazily when needed.
+     */
+    private Rs2ItemModel(int id, int quantity, int slot) {
+        this.id = id;
+        this.quantity = quantity;
+        this.slot = slot;
+        
+        // Initialize with defaults - will be loaded lazily
+        this.name = null;
+        this.isStackable = false;
+        this.isNoted = false;
+        this.isTradeable = false;
+        this.inventoryActions = new String[0];
+        this.itemComposition = null;
+        this.equipmentActions = new ArrayList<>();
+    }
+
+    /**
+     * Lazy loads the ItemComposition if not already loaded.
+     * This ensures we can work with cached items while minimizing performance impact.
+     */
+    private void ensureCompositionLoaded() {
+        
+        if (itemComposition == null && id > 0) {
+            itemComposition = Microbot.getClientThread().runOnClientThreadOptional(()->Microbot.getItemManager().getItemComposition(id)).orElse(null);
+            if (itemComposition != null) {
+                this.name = itemComposition.getName();
+                this.isStackable = itemComposition.isStackable();
+                this.isNoted = itemComposition.getNote() == 799;
+                if (this.isNoted) {
+                    Microbot.getClientThread().runOnClientThreadOptional(() ->
+                            Microbot.getClient().getItemDefinition(itemComposition.getLinkedNoteId())).ifPresent(itemDefinition -> this.isTradeable = itemDefinition.isTradeable());
+                } else {
+                    this.isTradeable = itemComposition.isTradeable();
+                }
+                this.inventoryActions = itemComposition.getInventoryActions();
+				Microbot.getClientThread().runOnClientThreadOptional(() -> {
+					addEquipmentActions(itemComposition);
+					return true;
+				});
+            }
+        }
+    }
+
+    /**
+     * Gets the item name, loading composition if needed.
+     */
+    public String getName() {
+        if (name == null) {
+            ensureCompositionLoaded();
+        }
+        return name != null ? name : "Unknown Item";
+    }
+
+    /**
+     * Gets whether the item is stackable, loading composition if needed.
+     */
+    public boolean isStackable() {
+        if (itemComposition == null) {
+            ensureCompositionLoaded();
+        }
+        return isStackable;
+    }
+
+    /**
+     * Gets whether the item is noted, loading composition if needed.
+     */
+    public boolean isNoted() {
+        if (itemComposition == null) {
+            ensureCompositionLoaded();
+        }
+        return isNoted;
+    }
+
+    /**
+     * Gets whether the item is tradeable, loading composition if needed.
+     */
+    public boolean isTradeable() {
+        if (itemComposition == null) {
+            ensureCompositionLoaded();
+        }
+        return isTradeable;
+    }
+
+    /**
+     * Gets the inventory actions, loading composition if needed.
+     */
+    public String[] getInventoryActions() {
+        if (itemComposition == null) {
+            ensureCompositionLoaded();
+        }
+        return inventoryActions;
+    }
+    /**
+     * Gets the equipment actions, loading composition if needed.
+     * This returns a list of actions that can be performed on the item when equipped.
+     */
+    public List<String> getEquipmentActions() {
+        if (itemComposition == null) {
+            ensureCompositionLoaded();
+        }
+        return equipmentActions;
+    }
+
+    /**
+     * Gets the item composition, loading it if needed.
+     */
+    public ItemComposition getItemComposition() {
+        if (itemComposition == null) {
+            ensureCompositionLoaded();
+        }
+        return itemComposition;
     }
 
 	public boolean isFood() {
@@ -82,6 +215,8 @@ public class Rs2ItemModel {
                 this.equipmentActions.add(value);
             } catch (Exception ex) {
                 this.equipmentActions.add("");
+                log.warn("Failed to get wearable action for index {} on item {}: {}", wearableActionIndexes[i], id, ex.getMessage());
+                ex.printStackTrace();
             }
         }
     }
@@ -97,7 +232,7 @@ public class Rs2ItemModel {
 
     public boolean isHaProfitable() {
         int natureRunePrice = Microbot.getClientThread().runOnClientThreadOptional(() ->
-                Microbot.getItemManager().getItemPrice(ItemID.NATURE_RUNE)).orElse(0);
+                Microbot.getItemManager().getItemPrice(ItemID.NATURERUNE)).orElse(0);
         return (getHaPrice() - natureRunePrice) > (getPrice()/quantity) && isTradeable;
 
     }
@@ -120,5 +255,83 @@ public class Rs2ItemModel {
             return false;
         Rs2ItemModel other = (Rs2ItemModel) obj;
         return id == other.id;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Rs2ItemModel {\n");
+        sb.append("\tid: ").append(id).append("\n");
+        sb.append("\tname: '").append(getName()).append("'\n");
+        sb.append("\tquantity: ").append(quantity).append("\n");
+        sb.append("\tslot: ").append(slot).append("\n");
+        sb.append("\tisStackable: ").append(isStackable()).append("\n");
+        sb.append("\tisNoted: ").append(isNoted()).append("\n");
+        sb.append("\tisTradeable: ").append(isTradeable()).append("\n");
+        sb.append("\tisFood: ").append(isFood()).append("\n");
+        
+        // Price information
+        int price = getPrice();
+        sb.append("\tprice: ").append(price).append(" gp (total)\n");
+        if (quantity > 0) {
+            sb.append("\tunitPrice: ").append(price / quantity).append(" gp (each)\n");
+        }
+        
+        // High Alchemy information
+        if (itemComposition != null) {
+            int haPrice = getHaPrice();
+            sb.append("\thaPrice: ").append(haPrice).append(" gp\n");
+            sb.append("\tisHaProfitable: ").append(isHaProfitable()).append("\n");
+        }
+        
+        // Actions
+        String[] invActions = getInventoryActions();
+        if (invActions != null && invActions.length > 0) {
+            sb.append("\tinventoryActions: [");
+            for (int i = 0; i < invActions.length; i++) {
+                if (invActions[i] != null && !invActions[i].isEmpty()) {
+                    if (i > 0) sb.append(", ");
+                    sb.append("'").append(invActions[i]).append("'");
+                }
+            }
+            sb.append("]\n");
+        }
+        
+        // Equipment actions
+        if (!equipmentActions.isEmpty()) {
+            sb.append("\tequipmentActions: [");
+            boolean first = true;
+            for (String action : equipmentActions) {
+                if (action != null && !action.isEmpty()) {
+                    if (!first) sb.append(", ");
+                    sb.append("'").append(action).append("'");
+                    first = false;
+                }
+            }
+            sb.append("]\n");
+        }
+        
+        // Composition status
+        sb.append("\tcompositionLoaded: ").append(itemComposition != null).append("\n");
+        
+        sb.append("}");
+        return sb.toString();
+    }
+
+    private static <T> Predicate<Rs2ItemModel> matches(T[] values, BiPredicate<Rs2ItemModel, T> biPredicate) {
+        return item -> Arrays.stream(values).filter(Objects::nonNull).anyMatch(value -> biPredicate.test(item, value));
+    }
+
+    public static Predicate<Rs2ItemModel> matches(boolean exact, String... names) {
+        return matches(names, exact ? (item, name) -> item.getName().equalsIgnoreCase(name) :
+                (item, name) -> item.getName().toLowerCase().contains(name.toLowerCase()));
+    }
+
+    public static Predicate<Rs2ItemModel> matches(int... ids) {
+        return item -> Arrays.stream(ids).anyMatch(id -> item.getId() == id);
+    }
+
+    public static Predicate<Rs2ItemModel> matches(EquipmentInventorySlot... slots) {
+        return matches(slots, (item, slot) -> item.getSlot() == slot.getSlotIdx());
     }
 }

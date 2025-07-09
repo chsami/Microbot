@@ -1,68 +1,61 @@
 package net.runelite.client.plugins.microbot.thieving;
 
-import net.runelite.client.config.Config;
-import net.runelite.client.config.ConfigGroup;
-import net.runelite.client.config.ConfigItem;
-import net.runelite.client.config.ConfigSection;
-import net.runelite.client.config.Range;
+import net.runelite.client.config.*;
 import net.runelite.client.plugins.microbot.thieving.enums.ThievingNpc;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Food;
 
 @ConfigGroup("Thieving")
+@ConfigInformation(
+        "Thieving plugin.<br/>" +
+        "<b>NOTES:</b><br/>" +
+        "- If the npc is not in the list, select “None” and mark the npc with RL “Npc Indicators” plugin.<br/><br/>" +
+        "- The plugin takes the player's starting position, not the npc's. Get close to the npc to steal before starting the plugin.<br/><br/>" +
+        "<b>EXPERIMENTAL:</b> Vyre mode is still in testing, by default it only supports stealing from: Natalidae Shadum, Misdrievus Shadum and Vallessia von Pitt.<br/><br/>" +
+        "<b>EQUIPMENT:</b><br/>" +
+        "- Equip as usual your rogue set. In case you are in Darkmeyer, have your vyre noble outfit in your inventory.<br/><br/>" +
+        "- Equip food, dodgy necklace, and if you want to cast the “Shadow Veil” spell, equip a Lava battlestaff and Cosmic rune (if you don't have lava battlestaff, it is assumed that you have Earth and Fire rune in your bank).<br/>"
+)
 public interface ThievingConfig extends Config {
-
-    @ConfigItem(
-            keyName = "guide",
-            name = "How to use",
-            description = "How to use this plugin",
-            position = 0,
-            section = generalSection
-    )
-    default String GUIDE() {
-        return "Start near any of the npc";
-    }
     @ConfigSection(
-            name = "general",
-            description = "general",
+            name = "General",
+            description = "General settings for the Thieving script.",
             position = 0
     )
     String generalSection = "General";
 
     @ConfigItem(
             keyName = "Npc",
-            name = "Npc",
-            description = "Choose the npc to start thieving from",
+            name = "NPC to Thieve",
+            description = "Choose the NPC to start thieving from.",
             position = 0,
             section = generalSection
     )
-    default ThievingNpc THIEVING_NPC()
-    {
+    default ThievingNpc THIEVING_NPC() {
         return ThievingNpc.NONE;
     }
 
     @ConfigItem(
             keyName = "ardougneAreaCheck",
-            name = "Ardy Knights Bank Area Check?",
-            description = "Enforce Ardougne Knight to be in Ardougne Bank area",
+            name = "Ardy Knights Bank Area Check",
+            description = "Require Ardougne Knight to be in the Ardougne bank area.",
             position = 1,
             section = generalSection
     )
-    default boolean ardougneAreaCheck()
-    {
+    default boolean ardougneAreaCheck() {
         return false;
     }
 
     @ConfigSection(
-            name = "buffs",
-            description = "general",
-            position = 0
+            name = "Buffs",
+            description = "Buffs and spell-casting options.",
+            position = 1
     )
     String buffsSection = "Buffs";
 
     @ConfigItem(
             keyName = "shadowVeil",
-            name = "Shadow veil",
-            description = "Choose whether to shadow veil",
+            name = "Shadow Veil",
+            description = "Enable automatic casting of Shadow Veil.",
             position = 0,
             section = buffsSection
     )
@@ -70,113 +63,106 @@ public interface ThievingConfig extends Config {
         return false;
     }
 
-
     @ConfigSection(
             name = "Food",
-            description = "Food",
-            position = 1
+            description = "Food and eating settings.",
+            position = 2
     )
-    String food = "Food";
+    String foodSection = "Food";
 
     @ConfigItem(
             keyName = "UseFood",
-            name = "Auto eat food",
-            description = "Automatically eats food",
-            position = 1,
-            section = food
+            name = "Auto Eat Food",
+            description = "Automatically eat food if HP is low.",
+            position = 0,
+            section = foodSection
     )
-    default boolean useFood() { return true; }
+    default boolean useFood() {
+        return true;
+    }
 
     @ConfigItem(
             keyName = "Hitpoints",
-            name = "Eat at %",
-            description = "Use food below certain hitpoint percent",
-            position = 2,
-            section = food
+            name = "Eat Below HP %",
+            description = "Eat food when HP falls below this percent.",
+            position = 1,
+            section = foodSection
     )
-    default int hitpoints()
-    {
+    default int hitpoints() {
         return 20;
     }
 
     @ConfigItem(
             keyName = "Food",
-            name = "Food",
-            description = "type of food",
-            position = 3,
-            section = food
+            name = "Food Type",
+            description = "Type of food to use.",
+            position = 2,
+            section = foodSection
     )
-    default Rs2Food food()
-    {
+    default Rs2Food food() {
         return Rs2Food.MONKFISH;
     }
 
     @ConfigItem(
             keyName = "FoodAmount",
             name = "Food Amount",
-            description = "Amount of food to withdraw from bank",
-            position = 4,
-            section = food
+            description = "Amount of food to withdraw from bank.",
+            position = 3,
+            section = foodSection
     )
-    default int foodAmount()
-    {
+    default int foodAmount() {
         return 5;
     }
 
     @ConfigSection(
-            name = "Coin pouch & Items",
-            description = "Coin pouch & Items",
-            position = 2
+            name = "Coin Pouch & Items",
+            description = "Settings for coin pouch handling and inventory management.",
+            position = 3
     )
-    String coinPouchSection = "Coin pouch & Items";
+    String coinPouchSection = "Coin Pouch & Items";
 
     @ConfigItem(
-            keyName = "Coin Pouch TreshHold",
-            name = "How many coinpouches in your inventory before opening?",
-            description = "How many coinpouches do you need in your inventory before opening them?",
-            position = 1,
+            keyName = "CoinPouchTreshHold",
+            name = "Coin Pouch Threshold",
+            description = "How many coin pouches to keep before opening them.",
+            position = 0,
             section = coinPouchSection
     )
     @Range(min = 1, max = 28)
-    default int coinPouchTreshHold()
-    {
+    default int coinPouchTreshHold() {
         return 28;
     }
 
     @ConfigItem(
-            keyName = "KeepItem",
-            name = "Keep items above value",
-            description = "Keep items above the gp value",
+            keyName = "KeepItemsAboveValue",
+            name = "Keep Items Above Value",
+            description = "Keep items in inventory worth more than this GP value.",
             position = 1,
             section = coinPouchSection
     )
-    default int keepItemsAboveValue()
-    {
+    default int keepItemsAboveValue() {
         return 10000;
     }
 
     @ConfigItem(
             keyName = "DodgyNecklaceAmount",
-            name = "Dodgy necklace Amount",
-            description = "Amount of dodgy necklace to withdraw from bank",
-            position = 1,
+            name = "Dodgy Necklace Amount",
+            description = "Amount of Dodgy Necklaces to withdraw from bank.",
+            position = 2,
             section = coinPouchSection
     )
-    default int dodgyNecklaceAmount()
-    {
+    default int dodgyNecklaceAmount() {
         return 5;
     }
 
     @ConfigItem(
-            keyName = "DoNotDropitemList",
-            name = "Do not drop item list",
-            description = "Do not drop item list comma seperated",
-            position = 1,
+            keyName = "DoNotDropItemList",
+            name = "Do Not Drop Item List",
+            description = "Comma-separated list of items never to drop from inventory.",
+            position = 3,
             section = coinPouchSection
     )
-    default String DoNotDropItemList()
-    {
+    default String DoNotDropItemList() {
         return "";
     }
-
 }

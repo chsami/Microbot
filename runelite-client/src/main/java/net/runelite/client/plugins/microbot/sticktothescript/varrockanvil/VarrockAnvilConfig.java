@@ -1,28 +1,18 @@
 package net.runelite.client.plugins.microbot.sticktothescript.varrockanvil;
 
-import net.runelite.client.config.Config;
-import net.runelite.client.config.ConfigGroup;
-import net.runelite.client.config.ConfigItem;
-import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.*;
 import net.runelite.client.plugins.microbot.smelting.enums.AnvilItem;
 import net.runelite.client.plugins.microbot.smelting.enums.Bars;
 
 
 @ConfigGroup("VarrockAnvil")
+@ConfigInformation("This plugin smiths bars at the Varrock anvil.<br /><br />For bugs or feature requests, contact me through Discord (@StickToTheScript).")
 public interface VarrockAnvilConfig extends Config {
-
-
-    @ConfigSection(
-            name = "General",
-            description = "General Information & Settings",
-            position = 0
-    )
-    String generalSection = "General";
 
     @ConfigSection(
             name = "Smithing",
             description = "Smithing Settings",
-            position = 1
+            position = 0
     )
     String smithingSection = "Smithing";
 
@@ -51,25 +41,26 @@ public interface VarrockAnvilConfig extends Config {
     }
 
     @ConfigItem(
+            keyName = "logout",
+            name = "Logout On Complete",
+            description = "Log out when completed all bars.",
+            position = 2,
+            section = smithingSection
+    )
+    default boolean sLogout()
+    {
+        return true;
+    }
+
+    @ConfigItem(
             keyName = "debug",
             name = "Debug",
             description = "Enable debug information",
-            position = 2,
+            position = 3,
             section = smithingSection
     )
     default boolean sDebug()
     {
         return false;
-    }
-
-    @ConfigItem(
-            keyName = "about",
-            name = "About This Script",
-            position = 0,
-            description = "",
-            section = generalSection
-    )
-    default String about() {
-        return "This plugin smiths bars at the Varrock anvil.\n\nIf you have any desired features, please contact me through Discord.";
     }
 }

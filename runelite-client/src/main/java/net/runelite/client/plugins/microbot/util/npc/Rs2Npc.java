@@ -5,6 +5,7 @@ import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.game.npcoverlay.HighlightedNpc;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.ActorModel;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
@@ -166,7 +167,7 @@ public class Rs2Npc {
     }
 
     /**
-     * Retrieves the health percentage of a given {@link Actor}.
+     * Retrieves the health percentage of a given {@link ActorModel}.
      *
      * <p>The health percentage is calculated using the formula:</p>
      * <pre>
@@ -176,10 +177,10 @@ public class Rs2Npc {
      * <p><b>Note:</b> If the actor's health ratio or scale is invalid (i.e., missing or zero),
      * this method may return unexpected values.</p>
      *
-     * @param npc The {@link Actor} whose health percentage is to be retrieved.
+     * @param npc The {@link ActorModel} whose health percentage is to be retrieved.
      * @return The health percentage of the actor as a {@code double}.
      */
-    public static double getHealth(Actor npc) {
+    public static double getHealth(ActorModel npc) {
         int ratio = npc.getHealthRatio();
         int scale = npc.getHealthScale();
 
@@ -548,17 +549,17 @@ public class Rs2Npc {
             if (Microbot.isCantReachTargetDetectionEnabled && Microbot.cantReachTarget) {
                 if (!hasLineOfSight(npc)) {
                     if (Microbot.cantReachTargetRetries >= Rs2Random.between(3, 5)) {
-                        Microbot.pauseAllScripts = true;
+						Microbot.pauseAllScripts.compareAndSet(false, true);
                         Microbot.showMessage("Your bot tried to interact with an NPC for "
                                 + Microbot.cantReachTargetRetries + " times but failed. Please take a look at what is happening.");
                         return false;
                     }
                     Rs2Walker.walkTo(Rs2Tile.getNearestWalkableTileWithLineOfSight(npc.getWorldLocation()), 0);
-                    Microbot.pauseAllScripts = false;
+                    Microbot.pauseAllScripts.compareAndSet(true, false);
                     Microbot.cantReachTargetRetries++;
                     return false;
                 } else {
-                    Microbot.pauseAllScripts = false;
+					Microbot.pauseAllScripts.compareAndSet(true, false);
                     Microbot.cantReachTarget = false;
                     Microbot.cantReachTargetRetries = 0;
                 }
@@ -912,7 +913,7 @@ public class Rs2Npc {
      *
      * @param npc The {@link NPC} whose world location is to be retrieved.
      * @return The {@link WorldPoint} representing the NPC's world location.
-     * @deprecated Since 1.7.2 - Use {@link Rs2NpcModel#getWorldLocation()} instead.
+         * @deprecated Since 1.7.2 - Use {@link Rs2NpcModel#getWorldLocation()} instead.
      */
     @Deprecated(since = "1.7.2", forRemoval = true)
     public static WorldPoint getWorldLocation(NPC npc) {

@@ -25,16 +25,6 @@ import java.awt.*;
 @Slf4j
 public class AutoLoginPlugin extends Plugin {
     @Inject
-    private Client client;
-    @Inject
-    private ClientThread clientThread;
-    @Inject
-    Notifier notifier;
-    @Inject
-    ProfileManager profileManager;
-    @Inject
-    WorldService worldService;
-    @Inject
     AutoLoginScript accountSelectorScript;
 
     @Inject
@@ -46,13 +36,7 @@ public class AutoLoginPlugin extends Plugin {
 
     @Override
     protected void startUp() throws AWTException {
-        Microbot.pauseAllScripts = false;
-        Microbot.setClient(client);
-        Microbot.setClientThread(clientThread);
-        Microbot.setNotifier(notifier);
-        Microbot.setMouse(new VirtualMouse());
-        Microbot.setProfileManager(profileManager);
-        Microbot.setWorldService(worldService);
+		Microbot.pauseAllScripts.compareAndSet(true, false);
         accountSelectorScript.run(autoLoginConfig);
     }
 

@@ -38,7 +38,7 @@ import java.util.List;
 
 @Value
 @RequiredArgsConstructor
-class MicrobotPluginConfigurationDescriptor
+public class MicrobotPluginConfigurationDescriptor
 {
 	private final String name;
 	private final String description;
@@ -58,7 +58,7 @@ class MicrobotPluginConfigurationDescriptor
 	@Nullable
 	private final List<String> conflicts;
 
-	MicrobotPluginConfigurationDescriptor(String name, String description, String[] tags, Config config, ConfigDescriptor configDescriptor)
+	public MicrobotPluginConfigurationDescriptor(String name, String description, String[] tags, Config config, ConfigDescriptor configDescriptor)
 	{
 		this(name, description, tags, null, config, configDescriptor, null);
 	}

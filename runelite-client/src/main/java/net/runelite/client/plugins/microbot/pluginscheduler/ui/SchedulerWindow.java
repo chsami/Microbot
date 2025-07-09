@@ -2,15 +2,14 @@ package net.runelite.client.plugins.microbot.pluginscheduler.ui;
 
 import net.runelite.client.plugins.microbot.pluginscheduler.SchedulerPlugin;
 import net.runelite.client.plugins.microbot.pluginscheduler.SchedulerState;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.AndCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.ui.ConditionConfigPanel;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.ui.callback.ConditionUpdateCallback;
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
 import net.runelite.client.plugins.microbot.pluginscheduler.ui.PluginScheduleEntry.ScheduleFormPanel;
 import net.runelite.client.plugins.microbot.pluginscheduler.ui.PluginScheduleEntry.ScheduleTablePanel;
 import net.runelite.client.plugins.microbot.pluginscheduler.ui.util.SchedulerUIUtils;
+
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 
@@ -19,6 +18,8 @@ import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
@@ -178,7 +179,6 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
         
         // Initialize with data
         refresh();
-        
     }
 
     /**
@@ -559,10 +559,31 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
         // Create a split pane for the tabs and info panel
         JSplitPane mainSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
         mainSplitPane.setLeftComponent(tabbedPane);
-        mainSplitPane.setRightComponent(infoPanel);
-        mainSplitPane.setResizeWeight(0.75); // Favor the main content
+        
+        // Configure the info panel for proper scaling
+        configureInfoPanelForScrollPane();
+        
+        // Wrap info panel in a scroll pane with proper configuration
+        JScrollPane infoScrollPane = createInfoScrollPane();
+        
+        // Set up the split pane configuration
+        mainSplitPane.setRightComponent(infoScrollPane);
+        mainSplitPane.setResizeWeight(0.75); // Favor the main content (75% left, 25% right)
         mainSplitPane.setDividerLocation(800);
         mainSplitPane.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        
+        // Add a single resize listener for proper scaling
+        mainSplitPane.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                updateInfoPanelSize(mainSplitPane, infoScrollPane);
+            }
+        });
+        
+        // Listen for divider location changes
+        mainSplitPane.addPropertyChangeListener(JSplitPane.DIVIDER_LOCATION_PROPERTY, evt -> {
+            SwingUtilities.invokeLater(() -> updateInfoPanelSize(mainSplitPane, infoScrollPane));
+        });
         
         // Add a top control panel for file operations with better visibility
         JPanel controlPanel = new JPanel();
@@ -602,6 +623,11 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
         
         // Add main split pane to the center
         mainContent.add(mainSplitPane, BorderLayout.CENTER);
+        
+        // Schedule initial size update after the window is displayed
+        SwingUtilities.invokeLater(() -> {
+            updateInfoPanelSize(mainSplitPane, infoScrollPane);
+        });
         
         return mainContent;
     }
@@ -883,6 +909,91 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
     public void switchToStopConditionsTab() {
         if (tabbedPane != null) {
             tabbedPane.setSelectedIndex(2); // Switch to stop conditions tab (now at index 2)
+        }
+    }
+    
+    /**
+     * Configures the info panel for optimal display within a scroll pane.
+     * This ensures the panel layout is properly prepared for dynamic resizing.
+     */
+    private void configureInfoPanelForScrollPane() {
+        // Set a minimum width for the info panel to ensure readability
+        int minInfoPanelWidth = 240;
+        infoPanel.setMinimumSize(new Dimension(minInfoPanelWidth, 0));
+        
+        // Allow the info panel to expand vertically but control horizontal size
+        infoPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+        
+        // Set an initial preferred size that will be adjusted by resize listeners
+        infoPanel.setPreferredSize(new Dimension(minInfoPanelWidth, 600));
+    }
+    
+    /**
+     * Creates and configures the scroll pane for the info panel with optimal settings.
+     * 
+     * @return A properly configured JScrollPane containing the info panel
+     */
+    private JScrollPane createInfoScrollPane() {
+        JScrollPane scrollPane = new JScrollPane(infoPanel);
+        
+        // Configure scroll policies
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        
+        // Style the scroll pane to match the application theme
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        scrollPane.getViewport().setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        
+        // Set initial size constraints
+        int minScrollPaneWidth = 250;
+        scrollPane.setMinimumSize(new Dimension(minScrollPaneWidth, 0));
+        scrollPane.setPreferredSize(new Dimension(minScrollPaneWidth, 600));
+        
+        return scrollPane;
+    }
+    
+    /**
+     * Updates the info panel size based on the current split pane configuration.
+     * This method ensures the info panel properly fits within the allocated space.
+     * 
+     * @param splitPane The main split pane containing the info panel
+     * @param scrollPane The scroll pane wrapping the info panel
+     */
+    private void updateInfoPanelSize(JSplitPane splitPane, JScrollPane scrollPane) {
+        if (splitPane == null || scrollPane == null) {
+            return;
+        }
+        
+        // Get the actual width allocated to the right component
+        Component rightComponent = splitPane.getRightComponent();
+        if (rightComponent == null) {
+            return;
+        }
+        
+        int availableWidth = rightComponent.getWidth();
+        if (availableWidth <= 0) {
+            // If width is not yet available, use the divider location to estimate
+            int dividerLocation = splitPane.getDividerLocation();
+            int totalWidth = splitPane.getWidth();
+            availableWidth = totalWidth - dividerLocation - splitPane.getDividerSize();
+        }
+        
+        if (availableWidth > 0) {
+            // Account for potential scrollbar width and margins
+            int scrollBarWidth = 20; // Conservative estimate including margins
+            int contentWidth = Math.max(240, availableWidth - scrollBarWidth); // Minimum width of 240px
+            
+            // Update the info panel size
+            Dimension newSize = new Dimension(contentWidth, infoPanel.getPreferredSize().height);
+            infoPanel.setPreferredSize(newSize);
+            infoPanel.setMaximumSize(new Dimension(contentWidth, Integer.MAX_VALUE));
+            
+            // Revalidate to apply the changes
+            infoPanel.revalidate();
+            scrollPane.revalidate();
+            
+            log.debug("Updated info panel size to {}px wide (available: {}px)", contentWidth, availableWidth);
         }
     }
 }

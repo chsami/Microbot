@@ -80,6 +80,35 @@ LockCondition condition = new LockCondition(
 - Useful for one-way transitions or milestone achievements
 - Can be reset if needed
 
+### PredicateCondition
+
+The `PredicateCondition` is a versatile logical condition that evaluates a Java Predicate function against a game state. It combines a manual lock mechanism with dynamic state evaluation.
+
+**Usage:**
+```java
+// Create a predicate condition that checks if the player is in an agility course region
+Predicate<Rs2Player> notInAgilityRegion = player -> {
+    if (player == null) return true;
+    int playerRegionId = player.getWorldLocation().getRegionID();
+    return !courseRegionIds.contains(playerRegionId);
+};
+
+// Create the predicate condition with a descriptive reason
+PredicateCondition<Player> condition = new PredicateCondition<>(
+    "Player is currently in an agility course", // reason for the lock
+    notInAgilityRegion,                         // the predicate to evaluate
+    () -> client.getLocalPlayer(),              // supplier of the state to check
+    "Player is not in an agility course region" // description of the predicate
+);
+```
+
+**Key features:**
+- Combines a traditional lock mechanism with dynamic predicate evaluation
+- Supports any type of game state through generic type parameter
+- Only satisfied when both the lock is unlocked AND the predicate evaluates to true
+- Extremely flexible for complex game state evaluation
+- Perfect for state-driven plugin control logic
+
 ## Common Features of Logical Conditions
 
 All logical conditions implement the `LogicalCondition` interface, which extends the base `Condition` interface and provides additional functionality for managing child conditions:

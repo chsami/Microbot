@@ -217,7 +217,7 @@ public class DeadFallTrapHunterPlugin extends Plugin implements SchedulablePlugi
         lastTickLocalPlayerLocation = client.getLocalPlayer().getWorldLocation();
     }
 
-    @Override
+    @Subscribe
     public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
         if (event.getPlugin() == this) {
             if (script != null) {

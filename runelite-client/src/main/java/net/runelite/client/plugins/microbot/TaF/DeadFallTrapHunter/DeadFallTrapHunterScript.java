@@ -256,7 +256,7 @@ public class DeadFallTrapHunterScript extends Script {
 
     private void getBestAxe(DeadFallTrapHunterConfig config) {
         // Find the best axe available in bank, inventory, and equipment
-        Axe bestAxeInInventory = getBestAxe(Rs2Inventory.items(), config);
+        Axe bestAxeInInventory = getBestAxe(Rs2Inventory.items().collect(Collectors.toList()), config);
         Axe bestAxeEquipped = getBestAxe(Rs2Equipment.items(), config);
         Axe bestAxeInBank = getBestAxe(Rs2Bank.bankItems(), config);
 
@@ -336,7 +336,7 @@ public class DeadFallTrapHunterScript extends Script {
         if (!Rs2Player.isAnimating() && !Rs2Player.isMoving()) {
             var gameObject = Rs2GameObject.getGameObject(location);
             if (gameObject != null) {
-                if (Rs2Inventory.size() > 24) {
+                if (Rs2Inventory.count() > 24) {
                     forceDrop = true;
                     Rs2Inventory.waitForInventoryChanges(8000);
                 }

@@ -31,6 +31,7 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.inventory.RunePouchType;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
+import net.runelite.client.plugins.microbot.util.magic.Rs2Spellbook;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Potion;
@@ -82,7 +83,7 @@ public class OuraniaScript extends Script
 				}
 				long startTime = System.currentTimeMillis();
 
-				if (!Rs2Magic.isLunar())
+				if (!Rs2Magic.isSpellbook(Rs2Spellbook.LUNAR))
 				{
 					Microbot.showMessage("Not currently on Lunar Spellbook");
 					Microbot.stopPlugin(plugin);
@@ -188,7 +189,7 @@ public class OuraniaScript extends Script
 							plugin.calcuateProfit();
 						}
 
-						boolean hasRunes = Rs2Inventory.items().stream().anyMatch(item -> item.getName().toLowerCase().contains("rune") && !item.getName().toLowerCase().contains("rune pouch"));
+						boolean hasRunes = Rs2Inventory.items().anyMatch(item -> item.getName().toLowerCase().contains("rune") && !item.getName().toLowerCase().contains("rune pouch"));
 
 						if (hasRunes)
 						{

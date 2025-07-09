@@ -1,7 +1,9 @@
 package net.runelite.client.plugins.microbot.TaF.RoyalTitans;
 
+import java.util.ArrayList;
 import net.runelite.api.Skill;
 import net.runelite.api.Tile;
+import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
@@ -51,6 +53,7 @@ public class RoyalTitansScript extends Script {
     private final Integer TUNNEL_ID_ESCAPE = 55987;
     private final Integer WIDGET_START_A_FIGHT = 14352385;
     private final WorldPoint BOSS_LOCATION = new WorldPoint(2951, 9574, 0);
+	private final WorldArea fightArea = new WorldArea(new WorldPoint(2909, 9561, 0), 12, 4);
     public RoyalTitansBotStatus state = RoyalTitansBotStatus.TRAVELLING;
     public volatile Tile enrageTile = null;
     public String subState = "";
@@ -218,7 +221,7 @@ public class RoyalTitansScript extends Script {
         int currentHealth = Microbot.getClient().getBoostedSkillLevel(Skill.HITPOINTS);
         int currentPrayer = Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER);
         boolean noFood = Rs2Inventory.getInventoryFood().isEmpty();
-        boolean noPrayerPotions = Rs2Inventory.items().stream()
+        boolean noPrayerPotions = Rs2Inventory.items()
                 .noneMatch(item -> item != null && item.getName() != null && !Rs2Potion.getPrayerPotionsVariants().contains(item.getName()));
         var teammate = Rs2Player.getPlayers(x -> Objects.equals(x.getName(), config.teammateName())).findFirst().orElse(null);
         if (teammate != null) {
@@ -494,21 +497,34 @@ public class RoyalTitansScript extends Script {
 
     private WorldPoint findSafeTile(WorldPoint playerLocation, List<WorldPoint> dangerousWorldPoints) {
         Microbot.log("Finding safe tile");
-        List<WorldPoint> nearbyTiles = List.of(
-                new WorldPoint(playerLocation.getX(), playerLocation.getY(), playerLocation.getPlane()),
-                new WorldPoint(playerLocation.getX() + 1, playerLocation.getY(), playerLocation.getPlane()),
-                new WorldPoint(playerLocation.getX() + 2, playerLocation.getY(), playerLocation.getPlane()),
-                new WorldPoint(playerLocation.getX() - 1, playerLocation.getY(), playerLocation.getPlane()),
-                new WorldPoint(playerLocation.getX() - 2, playerLocation.getY(), playerLocation.getPlane()),
-                new WorldPoint(playerLocation.getX(), playerLocation.getY() + 1, playerLocation.getPlane()),
-                new WorldPoint(playerLocation.getX(), playerLocation.getY() + 2, playerLocation.getPlane()),
-                new WorldPoint(playerLocation.getX(), playerLocation.getY() - 1, playerLocation.getPlane()),
-                new WorldPoint(playerLocation.getX(), playerLocation.getY() - 2, playerLocation.getPlane())
-        );
+		List<WorldPoint> nearbyTiles = new ArrayList<>();
+
+		int x = playerLocation.getX();
+		int y = playerLocation.getY();
+		int plane = playerLocation.getPlane();
+
+		nearbyTiles.add(playerLocation);
+
+		// Offset X
+		for (int dx : List.of(-2, -1, 1, 2)) {
+			nearbyTiles.add(new WorldPoint(x + dx, y, plane));
+		}
+
+		// Offset Y
+		for (int dy : List.of(-2, -1, 1, 2)) {
+			nearbyTiles.add(new WorldPoint(x, y + dy, plane));
+		}
+
+		// Offset X and Y (diagonal)
+		for (int dx : List.of(-2, -1, 1, 2)) {
+			for (int dy : List.of(-2, -1, 1, 2)) {
+				nearbyTiles.add(new WorldPoint(x + dx, y + dy, plane));
+			}
+		}
 
         for (WorldPoint tile : nearbyTiles) {
             // Tiles outside the arena returns true for isWalkable - Discard them
-            if (tile.getRegionX() < ARENA_X_START || tile.getRegionX() > ARENA_X_END) {
+            if (!fightArea.contains(tile)) {
                 Microbot.log("Tile is outside the arena, skipping");
                 continue;
             }
@@ -608,6 +624,9 @@ public class RoyalTitansScript extends Script {
             if (ate) {
                 inventorySetup.loadInventory();
             }
+			if (!inventorySetup.getAdditionalItems().isEmpty()) {
+				inventorySetup.prePot();
+			}
             Rs2Bank.closeBank();
             travelStatus = RoyalTitansTravelStatus.TO_TITANS;
             state = RoyalTitansBotStatus.TRAVELLING;

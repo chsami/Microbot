@@ -45,7 +45,7 @@ public class TeleportScript extends Script {
                 
                 switch (state) {
                     case CASTING:
-                        if (!Rs2Magic.cast(plugin.getTeleportSpell().getRs2Spell().getAction())) {
+                        if (!Rs2Magic.cast(plugin.getTeleportSpell().getRs2Spell().getMagicAction())) {
                             Microbot.log("Unable to cast " + plugin.getTeleportSpell().getRs2Spell().name());
                         }
                         sleep(2000, 2100);

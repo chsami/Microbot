@@ -1356,7 +1356,7 @@ public class GpuPlugin extends Plugin implements DrawCallbacks
 		{
 			// Notice that for some machines the GPU plugin might crash after long session
 			// Pause all scripts if this happens to avoid getting stuck
-			Microbot.pauseAllScripts = true;
+			Microbot.pauseAllScripts.compareAndSet(false, true);
 			// this is always fatal
 			if (!canvas.isValid())
 			{

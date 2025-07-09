@@ -533,4 +533,16 @@ public interface ShortestPathConfig extends Config {
     default boolean drawDebugPanel() {
         return false;
     }
+    @ConfigItem(
+            keyName = "walkWithBankedTransports",
+            name = "Walk with banked transports",
+            description = "Whether to use the walk with banked transport functionality or the normal walking.<br>" +
+                    "This will use banked transports when the path via the bank to grab the transportation items is more efficent, " +
+                    "otherwise it will use the normal pathfinding.",
+            position = 3,
+            section = sectionDebug
+    )
+    default boolean walkWithBankedTransports() {
+        return false;
+    }
 }

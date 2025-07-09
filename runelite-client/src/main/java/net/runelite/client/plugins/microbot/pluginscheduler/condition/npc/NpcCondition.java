@@ -34,4 +34,13 @@ public abstract class NpcCondition implements Condition {
         // Otherwise, create a contains pattern
         return Pattern.compile(".*" + Pattern.quote(npcName) + ".*", Pattern.CASE_INSENSITIVE);
     }
+
+    public void pause() {
+        
+    }
+    
+   
+    public void resume() {
+        
+    }
 }

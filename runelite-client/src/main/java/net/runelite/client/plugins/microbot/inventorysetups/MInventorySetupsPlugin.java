@@ -93,6 +93,7 @@ import java.util.stream.IntStream;
 
 import static net.runelite.client.plugins.microbot.inventorysetups.ui.InventorySetupsRunePouchPanel.RUNE_POUCH_AMOUNT_VARBITS;
 import static net.runelite.client.plugins.microbot.inventorysetups.ui.InventorySetupsRunePouchPanel.RUNE_POUCH_RUNE_VARBITS;
+import static net.runelite.client.plugins.microbot.util.bank.Rs2Bank.isLockedSlot;
 
 
 @PluginDescriptor(
@@ -954,8 +955,14 @@ public class MInventorySetupsPlugin extends Plugin
 		clientThread.invokeLater(() ->
 		{
 			List<InventorySetupsItem> inv = getNormalizedContainer(InventoryID.INVENTORY);
-			List<InventorySetupsItem> eqp = getNormalizedContainer(InventoryID.EQUIPMENT);
 
+			for (int i = 0; i < inv.size(); i++) {
+				InventorySetupsItem item = inv.get(i);
+				boolean isLocked = isLockedSlot(i);
+				item.setLocked(isLocked);
+			}
+
+			List<InventorySetupsItem> eqp = getNormalizedContainer(InventoryID.EQUIPMENT);
 			List<InventorySetupsItem> runePouchData = ammoHandler.getRunePouchDataIfInContainer(inv);
 			List<InventorySetupsItem> boltPouchData = ammoHandler.getBoltPouchDataIfInContainer(inv);
 			List<InventorySetupsItem> quiverData = ammoHandler.getQuiverDataIfInSetup(inv, eqp);
@@ -982,8 +989,8 @@ public class MInventorySetupsPlugin extends Plugin
 			tagManager.setHidden(setupLayout.getTag(), true);
 
 			SwingUtilities.invokeLater(() -> panel.redrawOverviewPanel(false));
-
 		});
+
 	}
 
 	public void addInventorySetup(String name) {
@@ -1285,7 +1292,7 @@ public class MInventorySetupsPlugin extends Plugin
 		{
 			final String name = itemManager.getItemComposition(processedItemId).getName();
 			InventorySetupsStackCompareID stackCompareType = panel.isStackCompareForSlotAllowed(InventorySetupsSlotID.ADDITIONAL_ITEMS, 0) ? config.stackCompareType() : InventorySetupsStackCompareID.None;
-			final InventorySetupsItem setupItem = new InventorySetupsItem(processedItemId, name, 1, config.fuzzy(), stackCompareType);
+			final InventorySetupsItem setupItem = new InventorySetupsItem(processedItemId, name, 1, config.fuzzy(), stackCompareType, config.locked(), -1);
 
 			additionalFilteredItems.put(processedItemId, setupItem);
 			layoutUtilities.recalculateLayout(setup);
@@ -1391,8 +1398,11 @@ public class MInventorySetupsPlugin extends Plugin
 			// copy over fuzzy attributes
 			for (int i = 0; i < inv.size(); i++)
 			{
-				inv.get(i).setFuzzy(setup.getInventory().get(i).isFuzzy());
-				inv.get(i).setStackCompare(setup.getInventory().get(i).getStackCompare());
+				InventorySetupsItem item = inv.get(i);
+				item.setFuzzy(setup.getInventory().get(i).isFuzzy());
+				item.setStackCompare(setup.getInventory().get(i).getStackCompare());
+				boolean locked = isLockedSlot(i);
+				item.setLocked(locked);
 			}
 			for (int i = 0; i < eqp.size(); i++)
 			{
@@ -1485,7 +1495,8 @@ public class MInventorySetupsPlugin extends Plugin
 			final InventorySetupsItem newItem = playerContainer.get(slot.getIndexInSlot());
 			newItem.setFuzzy(isFuzzy);
 			newItem.setStackCompare(stackCompareType);
-
+			boolean locked = isLockedSlot(slot.getIndexInSlot());
+			newItem.setLocked(locked);
 			if (updateAllInstances)
 			{
 				updateAllInstancesInSetupWithNewItem(oldItem, newItem);
@@ -1539,7 +1550,7 @@ public class MInventorySetupsPlugin extends Plugin
 					final String itemName = itemManager.getItemComposition(finalId).getName();
 					final List<InventorySetupsItem> container = getContainerFromSlot(slot);
 					final InventorySetupsItem itemToBeReplaced = container.get(slot.getIndexInSlot());
-					final InventorySetupsItem newItem = new InventorySetupsItem(finalId, itemName, 1, itemToBeReplaced.isFuzzy(), itemToBeReplaced.getStackCompare());
+					final InventorySetupsItem newItem = new InventorySetupsItem(finalId, itemName, 1, itemToBeReplaced.isFuzzy(), itemToBeReplaced.getStackCompare(), itemToBeReplaced.isLocked(), slot.getIndexInSlot());
 
 					// NOTE: the itemSearch shows items from skill guides which can be selected, which may be highlighted
 
@@ -1661,7 +1672,7 @@ public class MInventorySetupsPlugin extends Plugin
 
 			// update special containers
 			final InventorySetupsItem itemToBeReplaced = container.get(slot.getIndexInSlot());
-			final InventorySetupsItem dummyItem = new InventorySetupsItem(-1, "", 0, itemToBeReplaced.isFuzzy(), itemToBeReplaced.getStackCompare());
+			final InventorySetupsItem dummyItem = new InventorySetupsItem(-1, "", 0, itemToBeReplaced.isFuzzy(), itemToBeReplaced.getStackCompare(), itemToBeReplaced.isLocked(), slot.getIndexInSlot());
 			ammoHandler.handleSpecialAmmo(slot.getParentSetup(), itemToBeReplaced, dummyItem);
 
 			container.set(slot.getIndexInSlot(), dummyItem);
@@ -1715,6 +1726,81 @@ public class MInventorySetupsPlugin extends Plugin
 			item = container.get(slot.getIndexInSlot());
 		}
 		item.toggleIsFuzzy();
+		final int itemId = item.getId();
+		clientThread.invoke(() ->
+		{
+			if (itemId == -1)
+			{
+				return;
+			}
+			layoutUtilities.recalculateLayout(slot.getParentSetup());
+		});
+
+		dataManager.updateConfig(true, false);
+		panel.refreshCurrentSetup();
+	}
+
+	/**
+	 * Toggles the “locked” flag for an item in the inventory setup UI and updates the layout/config.
+	 *
+	 * This handles both regular and “additional” slots:
+	 * - Determines the corresponding InventorySetupsItem based on the slot type and index.
+	 * - Calls item.toggleIsLocked() to flip its locked state.
+	 * - On the client thread, if the item is valid, triggers a layout recalculation for the parent setup.
+	 * - Persists the updated configuration and refreshes the UI panel to reflect the change.
+	 *
+	 * Preconditions:
+	 * - panel.getCurrentSelectedSetup() must be non-null.
+	 * - For ADDITIONAL_ITEMS slots, index must be within the filtered-items map size.
+	 * - For other slots, index must be valid within the container list.
+	 *
+	 * Side Effects:
+	 * - Modifies the item's locked flag.
+	 * - Schedules a layout recalculation on the client thread.
+	 * - Calls dataManager.updateConfig(...) to save changes.
+	 * - Calls panel.refreshCurrentSetup() to redraw the UI.
+	 *
+	 * @param slot the UI slot representation being toggled; identifies which setup item to lock/unlock
+	 */
+	public void toggleLockOnSlot(final InventorySetupsSlot slot)
+	{
+		if (panel.getCurrentSelectedSetup() == null)
+		{
+			return;
+		}
+
+		InventorySetupsItem item = null;
+
+		if (slot.getSlotID() == InventorySetupsSlotID.ADDITIONAL_ITEMS)
+		{
+			if (slot.getIndexInSlot() >= slot.getParentSetup().getAdditionalFilteredItems().size())
+			{
+				return;
+			}
+
+			final Map<Integer, InventorySetupsItem> additionalFilteredItems = slot.getParentSetup().getAdditionalFilteredItems();
+			final int slotID = slot.getIndexInSlot();
+			int j = 0;
+			Integer keyToLock = null;
+			for (final Integer key : additionalFilteredItems.keySet())
+			{
+				if (slotID == j)
+				{
+					keyToLock = key;
+					break;
+				}
+				j++;
+			}
+			item = additionalFilteredItems.get(keyToLock);
+		}
+		else
+		{
+			final List<InventorySetupsItem> container = getContainerFromSlot(slot);
+			item = container.get(slot.getIndexInSlot());
+		}
+
+		item.toggleIsLocked();
+
 		final int itemId = item.getId();
 		clientThread.invoke(() ->
 		{
@@ -1951,7 +2037,7 @@ public class MInventorySetupsPlugin extends Plugin
 				{
 					itemName = itemManager.getItemComposition(item.getId()).getName();
 				}
-				newContainer.add(new InventorySetupsItem(item.getId(), itemName, item.getQuantity(), config.fuzzy(), stackCompareType));
+				newContainer.add(new InventorySetupsItem(item.getId(), itemName, item.getQuantity(), config.fuzzy(), stackCompareType, config.locked(), i));
 			}
 		}
 

@@ -84,23 +84,16 @@ public class Rs2RunePouch
 	 *
 	 * @param ev The varbit changed event.
 	 */
-	public static void onVarbitChanged(VarbitChanged ev)
-	{
-
+	public static void onVarbitChanged(VarbitChanged ev) {
 		assert Microbot.getClient().isClientThread();
 
-		int varbitId = ev.getVarbitId();
-		for (int i = 0; i < NUM_SLOTS; i++)
-		{
-			if (varbitId == RUNE_VARBITS[i])
-			{
-				int rawRune = Microbot.getClient().getVarbitValue(varbitId);
-				slots.get(i).setRune(Runes.byVarbitId(rawRune));
+		for (int i = 0; i < NUM_SLOTS; i++) {
+			if (ev.getVarbitId() == RUNE_VARBITS[i]) {
+				slots.get(i).setRune(Runes.byVarbitId(ev.getValue()));
 				break;
 			}
-			if (varbitId == AMOUNT_VARBITS[i])
-			{
-				slots.get(i).setQuantity(Microbot.getClient().getVarbitValue(varbitId));
+			if (ev.getVarbitId() == AMOUNT_VARBITS[i]) {
+				slots.get(i).setQuantity(ev.getValue());
 				break;
 			}
 		}
@@ -443,7 +436,7 @@ public class Rs2RunePouch
 			{
 				int widgetIndex = RUNEPOUCH_LOADOUT_WIDGETS.get(entry.getKey());
 				Rs2Widget.clickWidget(BANK_PARENT_ID, (widgetIndex + 1));
-				Global.sleepUntil(() -> getRunes().entrySet().stream().allMatch(e -> requiredRunes.getOrDefault(Runes.byItemId(e.getKey()), 0) <= e.getValue()));
+				Global.sleepUntil(() -> getRunes().entrySet().stream().allMatch(e -> requiredRunes.getOrDefault(e.getKey(), 0) <= e.getValue()));
 				return closeRunePouch();
 			}
 		}
@@ -454,8 +447,7 @@ public class Rs2RunePouch
 		}
 
 		// Withdraw runes from the bank
-		for (Map.Entry<Runes, Integer> entry : requiredRunes.entrySet())
-		{
+		for (Map.Entry<Runes, Integer> entry : requiredRunes.entrySet()) {
 			Runes rune = entry.getKey();
 			int qty = entry.getValue();
 
@@ -468,8 +460,8 @@ public class Rs2RunePouch
 		}
 
 		Global.sleepUntil(() -> {
-			Map<Integer, Integer> currentRunes = getRunes();
-			return requiredRunes.entrySet().stream().allMatch(e -> currentRunes.getOrDefault(e.getKey().getItemId(), 0) >= e.getValue());
+			Map<Runes, Integer> currentRunes = getRunes();
+			return requiredRunes.entrySet().stream().allMatch(e -> currentRunes.getOrDefault(e.getKey(), 0) >= e.getValue());
 		});
 
 		return closeRunePouch();
@@ -480,14 +472,10 @@ public class Rs2RunePouch
 	 *
 	 * @return A map of rune item IDs to their quantities.
 	 */
-	public static Map<Integer, Integer> getRunes()
-	{
+	public static Map<Runes, Integer> getRunes() {
 		return slots.stream()
 			.filter(s -> s.getRune() != null && s.getQuantity() > 0)
-			.collect(Collectors.toUnmodifiableMap(
-				s -> s.getRune().getItemId(),
-				PouchSlot::getQuantity
-			));
+			.collect(Collectors.toMap(PouchSlot::getRune, PouchSlot::getQuantity));
 	}
 
 	/**
@@ -566,15 +554,12 @@ public class Rs2RunePouch
 	private static final BiPredicate<Runes, Map<Runes, Integer>> COMBO_SUPPORT = (required, availableRunes) -> {
 		for (Map.Entry<Runes, Integer> entry : availableRunes.entrySet())
 		{
-			if (entry.getValue() <= 0)
-			{
-				continue;
-			}
+			final int availableQuantity = entry.getValue();
+			if (availableQuantity <= 0) continue;
 
-			Runes available = entry.getKey();
-			if (available.getBaseRunes().contains(required))
-			{
-				availableRunes.put(available, entry.getValue() - 1);
+			final Runes available = entry.getKey();
+			if (available != required && available.providesRune(required)) {
+				availableRunes.put(available, availableQuantity - 1);
 				return true;
 			}
 		}

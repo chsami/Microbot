@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.util.camera;
 
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.Point;
 import net.runelite.api.coords.LocalPoint;
@@ -14,6 +15,7 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 
+@Slf4j
 public class Rs2Camera {
     private static final NpcTracker NPC_TRACKER = new NpcTracker();
 
@@ -258,6 +260,22 @@ public class Rs2Camera {
         Microbot.getClientThread().invokeLater(() -> {
             Microbot.getClient().runScript(ScriptID.CAMERA_DO_ZOOM, zoom, zoom);
         });
+    }
+    // Get camera/compass facing
+    public static int getYaw() {
+        return Microbot.getClient().getCameraYaw();
+    }
+
+    // Set camera/compass facing
+    // North = 0, 2048
+    // East = 1536
+    // South = 1024
+    // West = 512
+
+    public static void setYaw(int yaw) {
+        if ( yaw >= 0 && yaw < 2048 ) {
+            Microbot.getClient().setCameraYawTarget(yaw);
+        }
     }
 
     /**

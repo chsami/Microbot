@@ -4,12 +4,10 @@ import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.events.ChatMessage;
-import net.runelite.api.events.GameTick;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.kaas.pyrefox.enums.PyreFoxState;
 import net.runelite.client.plugins.microbot.kaas.pyrefox.managers.PyreFoxScript;
 import net.runelite.client.plugins.microbot.kaas.pyrefox.managers.PyreFoxStateManager;
@@ -78,7 +76,6 @@ public class PyreFoxPlugin extends Plugin {
     protected void shutDown() {
         script.shutdown();
         stateManager.shutdown();
-        Microbot.pauseAllScripts = true;
         overlayManager.remove(overlay);
     }
 

@@ -2,54 +2,76 @@ package net.runelite.client.plugins.microbot.magetrainingarena.enums;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import net.runelite.api.ItemID;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
-import net.runelite.client.plugins.skillcalculator.skills.MagicAction;
+import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
+import org.slf4j.event.Level;
 
 import java.util.function.BooleanSupplier;
+
+import static net.runelite.client.plugins.microbot.magetrainingarena.MageTrainingArenaScript.tryEquipBestStaffAndCast;
 
 @Getter
 @AllArgsConstructor
 public enum Rooms {
-    TELEKINETIC("Telekinetic", 23673, null, null, ItemID.LAW_RUNE, Points.TELEKINETIC,
-            () -> Rs2Magic.canCast(MagicAction.TELEKINETIC_GRAB)),
-    ALCHEMIST("Alchemist", 23675, new WorldArea(3345, 9616, 38, 38, 2), new WorldPoint(3364, 9623, 2), ItemID.NATURE_RUNE, Points.ALCHEMIST,
-            () -> Rs2Magic.canCast(MagicAction.HIGH_LEVEL_ALCHEMY) || Rs2Magic.canCast(MagicAction.LOW_LEVEL_ALCHEMY)),
-    ENCHANTMENT("Enchantment", 23674, new WorldArea(3339, 9617, 50, 46, 0), new WorldPoint(3363, 9640, 0), ItemID.COSMIC_RUNE, Points.ENCHANTMENT,
+    TELEKINETIC("Telekinetic", 23673, null, null, Points.TELEKINETIC,
             () -> {
-                var magicLevel = Microbot.getClient().getBoostedSkillLevel(Skill.MAGIC);
-                MagicAction enchant;
-                if (magicLevel >= 87 && Rs2Inventory.hasItem("lava") || Rs2Equipment.isWearing("lava")) {
-                    enchant = MagicAction.ENCHANT_ONYX_JEWELLERY;
-                } else if (magicLevel >= 68) {
-                    enchant = MagicAction.ENCHANT_DRAGONSTONE_JEWELLERY;
-                } else if (magicLevel >= 57) {
-                    enchant = MagicAction.ENCHANT_DIAMOND_JEWELLERY;
-                } else if (magicLevel >= 49) {
-                    enchant = MagicAction.ENCHANT_RUBY_JEWELLERY;
-                } else if (magicLevel >= 27) {
-                    enchant = MagicAction.ENCHANT_EMERALD_JEWELLERY;
+                boolean result = tryEquipBestStaffAndCast(Rs2Spells.TELEKINETIC_GRAB, Rs2Inventory.hasRunePouch());
+                Microbot.log("TELEKINETIC req met: " + result, Level.DEBUG);
+                return result;
+            }),
+
+    ALCHEMIST("Alchemist", 23675,
+            new WorldArea(3345, 9616, 38, 38, 2),
+            new WorldPoint(3364, 9623, 2),
+            Points.ALCHEMIST,
+            () -> {
+                boolean high = tryEquipBestStaffAndCast(Rs2Spells.HIGH_LEVEL_ALCHEMY, Rs2Inventory.hasRunePouch());
+                boolean low = tryEquipBestStaffAndCast(Rs2Spells.LOW_LEVEL_ALCHEMY, Rs2Inventory.hasRunePouch());
+                Microbot.log("ALCHEMIST req met: HIGH=" + high + " LOW=" + low, Level.DEBUG);
+                return high || low;
+            }),
+
+    ENCHANTMENT("Enchantment", 23674,
+            new WorldArea(3339, 9617, 50, 46, 0),
+            new WorldPoint(3363, 9640, 0),
+            Points.ENCHANTMENT,
+            () -> {
+                int level = Microbot.getClient().getBoostedSkillLevel(Skill.MAGIC);
+                boolean result;
+
+                if (level >= 87) {
+                    result = tryEquipBestStaffAndCast(Rs2Spells.ENCHANT_ONYX_JEWELLERY, Rs2Inventory.hasRunePouch());
+                } else if (level >= 68) {
+                    result = tryEquipBestStaffAndCast(Rs2Spells.ENCHANT_DRAGONSTONE_JEWELLERY, Rs2Inventory.hasRunePouch());
+                } else if (level >= 57) {
+                    result = tryEquipBestStaffAndCast(Rs2Spells.ENCHANT_DIAMOND_JEWELLERY, Rs2Inventory.hasRunePouch());
+                } else if (level >= 49) {
+                    result = tryEquipBestStaffAndCast(Rs2Spells.ENCHANT_RUBY_JEWELLERY, Rs2Inventory.hasRunePouch());
+                } else if (level >= 27) {
+                    result = tryEquipBestStaffAndCast(Rs2Spells.ENCHANT_EMERALD_JEWELLERY, Rs2Inventory.hasRunePouch());
                 } else {
-                    enchant = MagicAction.ENCHANT_SAPPHIRE_JEWELLERY;
+                    result = tryEquipBestStaffAndCast(Rs2Spells.ENCHANT_SAPPHIRE_JEWELLERY, Rs2Inventory.hasRunePouch());
                 }
 
-                if (!Rs2Magic.canCast(enchant)) {
-                    Microbot.log("Your missing runes/staff for following spell: " + enchant.getName());
-                    return false;
-                }
-                return true;
+                Microbot.log("ENCHANTMENT req met (level=" + level + "): " + result, Level.DEBUG);
+                return result;
             }),
-    GRAVEYARD("Graveyard", 23676, new WorldArea(3336, 9614, 54, 51, 1), new WorldPoint(3363, 9640, 1), ItemID.NATURE_RUNE, Points.GRAVEYARD,
+
+    GRAVEYARD("Graveyard", 23676,
+            new WorldArea(3336, 9614, 54, 51, 1),
+            new WorldPoint(3363, 9640, 1),
+            Points.GRAVEYARD,
             () -> {
-                boolean btp = Rs2Magic.canCast(MagicAction.BONES_TO_PEACHES);
-                if (!Rs2Magic.canCast(MagicAction.BONES_TO_BANANAS) && !btp) {
-                    Microbot.log("Missing requirement to cast " + (btp ? MagicAction.BONES_TO_PEACHES : MagicAction.BONES_TO_BANANAS));
+                boolean bananas = tryEquipBestStaffAndCast(Rs2Spells.BONES_TO_BANANAS, Rs2Inventory.hasRunePouch());
+                boolean peaches = tryEquipBestStaffAndCast(Rs2Spells.BONES_TO_PEACHES, Rs2Inventory.hasRunePouch());
+
+                Microbot.log("GRAVEYARD req met: BANANAS=" + bananas + " PEACHES=" + peaches, Level.DEBUG);
+                if (!bananas && !peaches) {
+                    Microbot.log("Missing requirement to cast Bones to Bananas or Peaches.", Level.DEBUG);
                     return false;
                 }
                 return true;
@@ -59,13 +81,12 @@ public enum Rooms {
     private final int teleporter;
     private final WorldArea area;
     private final WorldPoint exit;
-    private final int runesId;
     private final Points points;
     private final BooleanSupplier requirements;
 
     @Override
     public String toString() {
-        String name = name();
-        return name.charAt(0) + name.substring(1).toLowerCase();
+        String n = name();
+        return n.charAt(0) + n.substring(1).toLowerCase();
     }
 }

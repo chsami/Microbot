@@ -77,7 +77,13 @@ import net.runelite.client.account.AccountSession;
 import net.runelite.client.account.SessionManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.events.*;
+import net.runelite.client.events.ClientShutdown;
+import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.events.ConfigSync;
+import net.runelite.client.events.ProfileChanged;
+import net.runelite.client.events.RuneScapeProfileChanged;
+import net.runelite.client.events.SessionClose;
+import net.runelite.client.events.SessionOpen;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 import net.runelite.client.plugins.microbot.util.security.Login;
@@ -108,6 +114,7 @@ public class ConfigManager
 	@Nullable
 	@Getter
 	private static String configProfileName;
+	private final ScheduledExecutorService executor;
 	private final EventBus eventBus;
 	private final Client client;
 	private final Gson gson;
@@ -143,6 +150,7 @@ public class ConfigManager
 	)
 	{
 		configProfileName = profile;
+		this.executor = scheduledExecutorService;
 		this.eventBus = eventBus;
 		this.client = client;
 		this.gson = gson;
@@ -287,7 +295,7 @@ public class ConfigManager
 
 			if (profile.isSync())
 			{
-				//log.info("Active remote profile '{}' lost due to session close, converting to a local profile.", profile.getName());
+				log.info("Active remote profile '{}' lost due to session close, converting to a local profile.", profile.getName());
 				profile.setSync(false);
 				profile.setRev(-1L);
 			}
@@ -422,7 +430,7 @@ public class ConfigManager
 			{
 				String targetProfileName = "default";
 
-//				log.info("Performing migration of config from {} to profile '{}'", configFile.getName(), targetProfileName);
+				log.info("Performing migration of config from {} to profile '{}'", configFile.getName(), targetProfileName);
 
 				ConfigProfile targetProfile = lock.createProfile(targetProfileName);
 				profiles.forEach(p -> p.setActive(false));
@@ -544,7 +552,7 @@ public class ConfigManager
 			{
 				var existing = seen.get(profile.getId());
 				log.warn("Duplicate profiles detected: {} and {}. Removing the latter.",
-						existing, profile);
+					existing, profile);
 				it.remove();
 				lock.dirty();
 				continue;
@@ -600,7 +608,7 @@ public class ConfigManager
 			{
 				if (p.isInternal())
 				{
-//					log.debug("Profile '{}' (sync: {}, active: {}, id: {}, internal)", p.getName(), p.isSync(), p.getId(), p.isActive());
+					log.debug("Profile '{}' (sync: {}, active: {}, id: {}, internal)", p.getName(), p.isSync(), p.getId(), p.isActive());
 
 					if (p.getName().equals(RSPROFILE_NAME))
 					{
@@ -610,7 +618,7 @@ public class ConfigManager
 					continue;
 				}
 
-//				log.info("Profile '{}' (sync: {}, active: {}, id: {})", p.getName(), p.isSync(), p.isActive(), p.getId());
+				log.info("Profile '{}' (sync: {}, active: {}, id: {})", p.getName(), p.isSync(), p.isActive(), p.getId());
 			}
 
 			if (rsProfile == null)
@@ -682,7 +690,7 @@ public class ConfigManager
 
 			if (profile != null)
 			{
-//				log.info("Using profile: {} ({})", profile.getName(), profile.getId());
+				log.info("Using profile: {} ({})", profile.getName(), profile.getId());
 			}
 			else
 			{
@@ -791,11 +799,11 @@ public class ConfigManager
 
 		if (profile.getRev() == remoteProfile.getRev())
 		{
-//			log.info("Profile '{}' is up to date", profile.getName());
+			log.info("Profile '{}' is up to date", profile.getName());
 		}
 		else
 		{
-//			log.info("Loading remote configuration for profile '{}'", profile.getName());
+			log.info("Loading remote configuration for profile '{}'", profile.getName());
 
 			try
 			{
@@ -1337,8 +1345,8 @@ public class ConfigManager
 					// To allow class unloading, use a temporary child injector
 					// and use it to get the instance, and cache it a weak map.
 					serializer = Microbot.getInjector()
-							.createChildInjector()
-							.getInstance(serializerClass);
+						.createChildInjector()
+						.getInstance(serializerClass);
 					serializers.put(type, serializer);
 				}
 				return serializer.deserialize(str);
@@ -1413,8 +1421,8 @@ public class ConfigManager
 				if (serializer == null)
 				{
 					serializer = Microbot.getInjector()
-							.createChildInjector()
-							.getInstance(serializerClass);
+						.createChildInjector()
+						.getInstance(serializerClass);
 					serializers.put(serializerClass, serializer);
 				}
 				return serializer.serialize(object);
@@ -1680,29 +1688,23 @@ public class ConfigManager
 	@Subscribe
 	private void onRuneScapeProfileChanged(RuneScapeProfileChanged ev)
 	{
-		ConfigProfile switchToProfile = null;
 		try (ProfileManager.Lock lock = profileManager.lock())
 		{
-			for (final ConfigProfile lockProfile : lock.getProfiles())
+			for (final ConfigProfile profile : lock.getProfiles())
 			{
-				final List<String> get = lockProfile.getDefaultForRsProfiles();
+				final List<String> get = profile.getDefaultForRsProfiles();
 				if (get != null && get.contains(rsProfileKey))
 				{
-					switchToProfile = lockProfile;
-
 					// change active profile
 					lock.getProfiles().forEach(p -> p.setActive(false));
-					switchToProfile.setActive(true);
+					profile.setActive(true);
 					lock.dirty();
+
+					log.debug("Switching to default profile {} for rsprofile {}", profile.getName(), rsProfileKey);
+					executor.submit(() -> switchProfile(profile));
 					break;
 				}
 			}
-		}
-
-		if (switchToProfile != null)
-		{
-			log.debug("Switching to default profile {} for rsprofile {}", switchToProfile.getName(), rsProfileKey);
-			switchProfile(switchToProfile);
 		}
 	}
 

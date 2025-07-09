@@ -33,7 +33,6 @@ import java.util.regex.Pattern;
 import static net.runelite.api.Constants.GAME_TICK_LENGTH;
 import static net.runelite.api.ObjectID.BRAZIER_29312;
 import static net.runelite.api.ObjectID.BURNING_BRAZIER_29314;
-import static net.runelite.client.plugins.microbot.util.Global.sleepGaussian;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
 import static net.runelite.client.plugins.microbot.util.player.Rs2Player.eatAt;
 
@@ -497,7 +496,7 @@ public class MWintertodtScript extends Script {
         }
         if (!Rs2Bank.hasBankItem(config.food().getName(), config.foodAmount(), true)) {
             Microbot.showMessage("Insufficient food supply");
-            Microbot.pauseAllScripts = true;
+			Microbot.pauseAllScripts.compareAndSet(false, true);
             return true;
         }
         Rs2Bank.withdrawX(config.food().getId(), config.foodAmount() - foodCount);

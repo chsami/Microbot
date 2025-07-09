@@ -4,6 +4,12 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.BorderFactory;
+import javax.swing.SwingUtilities;
+import javax.swing.border.TitledBorder;
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Container;
 import net.runelite.client.plugins.microbot.pluginscheduler.ui.components.DateRangePanel;
 import net.runelite.client.plugins.microbot.pluginscheduler.ui.components.IntervalPickerPanel;
 import net.runelite.client.plugins.microbot.pluginscheduler.ui.components.SingleDateTimePickerPanel;
@@ -38,6 +44,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.Inter
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeWindowCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.enums.RepeatCycle;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.SingleTriggerTimeCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.ui.components.InitialDelayPanel;
 @Slf4j
 public class TimeConditionPanelUtil {
     public static void createIntervalConfigPanel(JPanel panel, GridBagConstraints gbc) {
@@ -57,43 +64,7 @@ public class TimeConditionPanelUtil {
         
         // Add initial delay configuration
         gbc.gridy++;
-        JPanel initialDelayPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        initialDelayPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        
-        JCheckBox initialDelayCheckBox = new JCheckBox("Initial Delay");
-        initialDelayCheckBox.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        initialDelayCheckBox.setForeground(Color.WHITE);
-        initialDelayPanel.add(initialDelayCheckBox);
-        
-        // Create spinner for minutes
-        SpinnerNumberModel delayMinutesModel = new SpinnerNumberModel(5, 0, 60, 1);
-        JSpinner delayMinutesSpinner = new JSpinner(delayMinutesModel);
-        delayMinutesSpinner.setPreferredSize(new Dimension(60, delayMinutesSpinner.getPreferredSize().height));
-        delayMinutesSpinner.setEnabled(false);
-        
-        JLabel delayMinutesLabel = new JLabel("min");
-        delayMinutesLabel.setForeground(Color.WHITE);
-        
-        // Create spinner for seconds
-        SpinnerNumberModel delaySecondsModel = new SpinnerNumberModel(0, 0, 59, 5);
-        JSpinner delaySecondsSpinner = new JSpinner(delaySecondsModel);
-        delaySecondsSpinner.setPreferredSize(new Dimension(60, delaySecondsSpinner.getPreferredSize().height));
-        delaySecondsSpinner.setEnabled(false);
-        
-        JLabel delaySecondsLabel = new JLabel("sec");
-        delaySecondsLabel.setForeground(Color.WHITE);
-        
-        initialDelayPanel.add(delayMinutesSpinner);
-        initialDelayPanel.add(delayMinutesLabel);
-        initialDelayPanel.add(delaySecondsSpinner);
-        initialDelayPanel.add(delaySecondsLabel);
-        
-        // Enable/disable delay spinners based on checkbox
-        initialDelayCheckBox.addActionListener(e -> {
-            boolean selected = initialDelayCheckBox.isSelected();
-            delayMinutesSpinner.setEnabled(selected);
-            delaySecondsSpinner.setEnabled(selected);
-        });
+        InitialDelayPanel initialDelayPanel = new InitialDelayPanel();
         
         panel.add(initialDelayPanel, gbc);
         
@@ -120,9 +91,9 @@ public class TimeConditionPanelUtil {
         
         // Store components for later access
         panel.putClientProperty("intervalPicker", intervalPicker);
-        panel.putClientProperty("initialDelayCheckBox", initialDelayCheckBox);
-        panel.putClientProperty("delayMinutesSpinner", delayMinutesSpinner);
-        panel.putClientProperty("delaySecondsSpinner", delaySecondsSpinner);
+        panel.putClientProperty("initialDelayPanel", initialDelayPanel);
+        // Removed as delayMinutesSpinner is now encapsulated in InitialDelayPanel
+        // Removed as delaySecondsSpinner is now encapsulated in InitialDelayPanel
     }
     
     /**
@@ -162,25 +133,21 @@ public class TimeConditionPanelUtil {
      */
     public static IntervalCondition createIntervalCondition(JPanel configPanel) {
         IntervalPickerPanel intervalPicker = (IntervalPickerPanel) configPanel.getClientProperty("intervalPicker");
-        JCheckBox initialDelayCheckBox = (JCheckBox) configPanel.getClientProperty("initialDelayCheckBox");
-        JSpinner delayMinutesSpinner = (JSpinner) configPanel.getClientProperty("delayMinutesSpinner");
-        JSpinner delaySecondsSpinner = (JSpinner) configPanel.getClientProperty("delaySecondsSpinner");
-        
+        InitialDelayPanel initialDelayPanel = (InitialDelayPanel) configPanel.getClientProperty("initialDelayPanel");
         if (intervalPicker == null) {
             throw new IllegalStateException("Interval picker component not found");
         }
-        
+
         // Get the interval condition from the picker component
         IntervalCondition baseCondition = intervalPicker.createIntervalCondition();
-        
+
         // Check if initial delay should be added
-        if (initialDelayCheckBox != null && initialDelayCheckBox.isSelected() && 
-            delayMinutesSpinner != null && delaySecondsSpinner != null) {
-            
-            int delayMinutes = (Integer) delayMinutesSpinner.getValue();
-            int delaySeconds = (Integer) delaySecondsSpinner.getValue();
-            int totalDelaySeconds = delayMinutes * 60 + delaySeconds;
-            
+        if (initialDelayPanel != null && initialDelayPanel.isInitialDelayEnabled()) {
+            int delayHours = initialDelayPanel.getHours();
+            int delayMinutes = initialDelayPanel.getMinutes();
+            int delaySeconds = initialDelayPanel.getSeconds();
+            int totalDelaySeconds = delayHours * 3600 + delayMinutes * 60 + delaySeconds;
+
             if (totalDelaySeconds > 0) {
                 // Create a new condition with the same parameters as the base condition plus the delay
                 if (baseCondition.isRandomize()) {
@@ -206,7 +173,7 @@ public class TimeConditionPanelUtil {
                 }
             }
         }
-        
+
         return baseCondition;
     }
     
@@ -220,110 +187,37 @@ public class TimeConditionPanelUtil {
         gbc.gridwidth = 2;
         panel.add(titleLabel, gbc);
         
-        // Use our new custom components
+        // Date Range Configuration with Preset ComboBox
         gbc.gridy++;
+        gbc.gridwidth = 1;
+        JPanel dateRangeConfigPanel = createDateRangeConfigPanel();
+        gbc.gridwidth = 2;
+        panel.add(dateRangeConfigPanel, gbc);
         
-        // Create date range panel
-        DateRangePanel dateRangePanel = new DateRangePanel();
-        panel.add(dateRangePanel, gbc);
-        
-        // Add small vertical space
+        // Time Range Configuration with Preset ComboBox
         gbc.gridy++;
-        panel.add(Box.createVerticalStrut(10), gbc);
+        JPanel timeRangeConfigPanel = createTimeRangeConfigPanel();
+        panel.add(timeRangeConfigPanel, gbc);
         
-        // Create time range panel
+        // Repeat and Randomization Panel (combined for compactness)
         gbc.gridy++;
-        TimeRangePanel timeRangePanel = new TimeRangePanel();
-        panel.add(timeRangePanel, gbc);
+        JPanel optionsPanel = createOptionsPanel();
+        panel.add(optionsPanel, gbc);
         
-        // Repeat Cycle Panel
+        // Help text
         gbc.gridy++;
-        JPanel repeatPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        repeatPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        
-        JLabel repeatLabel = new JLabel("Repeat Cycle:");
-        repeatLabel.setForeground(Color.WHITE);
-        repeatPanel.add(repeatLabel);
-        
-        // Create combo box with repeat cycle options
-        String[] repeatOptions = {"Every Day", "Every X Days", "Every X Hours", "Every X Minutes", "Every X Weeks", "One Time Only"};
-        JComboBox<String> repeatComboBox = new JComboBox<>(repeatOptions);
-        repeatPanel.add(repeatComboBox);
-        
-        JLabel intervalLabel = new JLabel("Interval:");
-        intervalLabel.setForeground(Color.WHITE);
-        repeatPanel.add(intervalLabel);
-        
-        // Spinner for interval value (1-100)
-        SpinnerNumberModel intervalModel = new SpinnerNumberModel(1, 1, 100, 1);
-        JSpinner intervalSpinner = new JSpinner(intervalModel);
-        intervalSpinner.setPreferredSize(new Dimension(60, intervalSpinner.getPreferredSize().height));
-        repeatPanel.add(intervalSpinner);
-        
-        // Initially disable interval spinner for "Every Day" option
-        intervalSpinner.setEnabled(false);
-        
-        // Enable/disable interval spinner based on selection
-        repeatComboBox.addActionListener(e -> {
-            String selected = (String) repeatComboBox.getSelectedItem();
-            intervalSpinner.setEnabled(!selected.equals("Every Day") && !selected.equals("One Time Only"));
-        });
-        
-        panel.add(repeatPanel, gbc);
-        
-        // Randomization Panel
-        gbc.gridy++;
-        JPanel randomizePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        randomizePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        
-        JCheckBox randomizeCheckBox = new JCheckBox("Randomize window times");
-        randomizeCheckBox.setForeground(Color.WHITE);
-        randomizeCheckBox.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        randomizePanel.add(randomizeCheckBox);
-        
-        JLabel randomizeAmountLabel = new JLabel("± Minutes:");
-        randomizeAmountLabel.setForeground(Color.WHITE);
-        randomizePanel.add(randomizeAmountLabel);
-        
-        // Spinner for randomization amount (0-60 minutes)
-        SpinnerNumberModel randomizeModel = new SpinnerNumberModel(15, 1, 60, 1);
-        JSpinner randomizeSpinner = new JSpinner(randomizeModel);
-        randomizeSpinner.setPreferredSize(new Dimension(60, randomizeSpinner.getPreferredSize().height));
-        randomizeSpinner.setEnabled(false);
-        randomizePanel.add(randomizeSpinner);
-        
-        // Enable/disable randomize spinner based on checkbox
-        randomizeCheckBox.addActionListener(e -> 
-            randomizeSpinner.setEnabled(randomizeCheckBox.isSelected())
-        );
-        
-        panel.add(randomizePanel, gbc);
-        
-        // Add a helpful description
-        gbc.gridy++;
-        JLabel descriptionLabel = new JLabel("Plugin will only run during the specified time window");
-        descriptionLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-        descriptionLabel.setFont(FontManager.getRunescapeSmallFont());
-        panel.add(descriptionLabel, gbc);
-        
-        gbc.gridy++;
-        JLabel crossDayLabel = new JLabel("Note: If start time > end time, window crosses midnight");
-        crossDayLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-        crossDayLabel.setFont(FontManager.getRunescapeSmallFont());
-        panel.add(crossDayLabel, gbc);
-        
-        gbc.gridy++;
-        JPanel timezonePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        timezonePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-
-        JLabel timezoneLabel = new JLabel("Current timezone: " + ZoneId.systemDefault().getId());
-        timezoneLabel.setForeground(Color.YELLOW);
-        timezoneLabel.setFont(FontManager.getRunescapeSmallFont());
-        timezonePanel.add(timezoneLabel);
-        
-        panel.add(timezonePanel, gbc);
+        JPanel helpPanel = createHelpPanel();
+        panel.add(helpPanel, gbc);
         
         // Store components for later access
+        DateRangePanel dateRangePanel = (DateRangePanel) dateRangeConfigPanel.getClientProperty("dateRangePanel");
+        TimeRangePanel timeRangePanel = (TimeRangePanel) timeRangeConfigPanel.getClientProperty("timeRangePanel");
+        @SuppressWarnings("unchecked")
+        JComboBox<String> repeatComboBox = (JComboBox<String>) optionsPanel.getClientProperty("repeatComboBox");
+        JSpinner intervalSpinner = (JSpinner) optionsPanel.getClientProperty("intervalSpinner");
+        JCheckBox randomizeCheckBox = (JCheckBox) optionsPanel.getClientProperty("randomizeCheckBox");
+        JSpinner randomizeSpinner = (JSpinner) optionsPanel.getClientProperty("randomizeSpinner");
+        
         panel.putClientProperty("dateRangePanel", dateRangePanel); 
         panel.putClientProperty("timeRangePanel", timeRangePanel);
         panel.putClientProperty("repeatComboBox", repeatComboBox);
@@ -331,10 +225,412 @@ public class TimeConditionPanelUtil {
         panel.putClientProperty("randomizeCheckBox", randomizeCheckBox);
         panel.putClientProperty("randomizeSpinner", randomizeSpinner);
     }
+    
+    /**
+     * Creates a compact date range configuration panel with preset ComboBox
+     */
+    private static JPanel createDateRangeConfigPanel() {
+        JPanel mainPanel = new JPanel(new BorderLayout(5, 5));
+        mainPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        mainPanel.setBorder(BorderFactory.createTitledBorder(
+            BorderFactory.createLineBorder(ColorScheme.MEDIUM_GRAY_COLOR), 
+            "Date Range", 
+            TitledBorder.LEFT, 
+            TitledBorder.TOP, 
+            FontManager.getRunescapeSmallFont(), 
+            Color.WHITE));
+        
+        // Preset selection panel
+        JPanel presetPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        presetPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        
+        JLabel presetLabel = new JLabel("Preset:");
+        presetLabel.setForeground(Color.WHITE);
+        presetLabel.setFont(FontManager.getRunescapeSmallFont());
+        presetPanel.add(presetLabel);
+        
+        String[] datePresets = {
+            "Unlimited", "Today", "This Week", "This Month", 
+            "Next 7 Days", "Next 30 Days", "Next 90 Days", "Custom"
+        };
+        JComboBox<String> datePresetCombo = new JComboBox<>(datePresets);
+        datePresetCombo.setSelectedItem("Unlimited");
+        datePresetCombo.setFont(FontManager.getRunescapeSmallFont());
+        presetPanel.add(datePresetCombo);
+        
+        mainPanel.add(presetPanel, BorderLayout.NORTH);
+        
+        // Date range panel (initially hidden for preset selections)
+        DateRangePanel dateRangePanel = new DateRangePanel(
+            net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeWindowCondition.UNLIMITED_START_DATE,
+            net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeWindowCondition.UNLIMITED_END_DATE
+        );
+        dateRangePanel.setVisible(false); // Hidden by default for "Unlimited"
+        mainPanel.add(dateRangePanel, BorderLayout.CENTER);
+        
+        // Handle preset selection
+        datePresetCombo.addActionListener(e -> {
+            String selected = (String) datePresetCombo.getSelectedItem();
+            LocalDate today = LocalDate.now();
+            
+            switch (selected) {
+                case "Unlimited":
+                    dateRangePanel.setStartDate(net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeWindowCondition.UNLIMITED_START_DATE);
+                    dateRangePanel.setEndDate(net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeWindowCondition.UNLIMITED_END_DATE);
+                    dateRangePanel.setVisible(false);
+                    break;
+                case "Today":
+                    dateRangePanel.setStartDate(today);
+                    dateRangePanel.setEndDate(today);
+                    dateRangePanel.setVisible(true);
+                    break;
+                case "This Week":
+                    dateRangePanel.setStartDate(today);
+                    dateRangePanel.setEndDate(today.plusDays(7 - today.getDayOfWeek().getValue()));
+                    dateRangePanel.setVisible(true);
+                    break;
+                case "This Month":
+                    dateRangePanel.setStartDate(today);
+                    dateRangePanel.setEndDate(today.withDayOfMonth(today.lengthOfMonth()));
+                    dateRangePanel.setVisible(true);
+                    break;
+                case "Next 7 Days":
+                    dateRangePanel.setStartDate(today);
+                    dateRangePanel.setEndDate(today.plusDays(7));
+                    dateRangePanel.setVisible(true);
+                    break;
+                case "Next 30 Days":
+                    dateRangePanel.setStartDate(today);
+                    dateRangePanel.setEndDate(today.plusDays(30));
+                    dateRangePanel.setVisible(true);
+                    break;
+                case "Next 90 Days":
+                    dateRangePanel.setStartDate(today);
+                    dateRangePanel.setEndDate(today.plusDays(90));
+                    dateRangePanel.setVisible(true);
+                    break;
+                case "Custom":
+                    dateRangePanel.setVisible(true);
+                    break;
+            }
+            mainPanel.revalidate();
+            mainPanel.repaint();
+        });
+        
+        mainPanel.putClientProperty("dateRangePanel", dateRangePanel);
+        mainPanel.putClientProperty("datePresetCombo", datePresetCombo);
+        return mainPanel;
+    }
+    
+    /**
+     * Creates a compact time range configuration panel with preset ComboBox
+     */
+    private static JPanel createTimeRangeConfigPanel() {
+        JPanel mainPanel = new JPanel(new BorderLayout(5, 5));
+        mainPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        mainPanel.setBorder(BorderFactory.createTitledBorder(
+            BorderFactory.createLineBorder(ColorScheme.MEDIUM_GRAY_COLOR), 
+            "Time Range", 
+            TitledBorder.LEFT, 
+            TitledBorder.TOP, 
+            FontManager.getRunescapeSmallFont(), 
+            Color.WHITE));
+        
+        // Preset selection panel
+        JPanel presetPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        presetPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        
+        JLabel presetLabel = new JLabel("Preset:");
+        presetLabel.setForeground(Color.WHITE);
+        presetLabel.setFont(FontManager.getRunescapeSmallFont());
+        presetPanel.add(presetLabel);
+        
+        String[] timePresets = {
+            "All Day", "Business Hours", "Morning", "Afternoon", 
+            "Evening", "Night", "Custom"
+        };
+        JComboBox<String> timePresetCombo = new JComboBox<>(timePresets);
+        timePresetCombo.setSelectedItem("Business Hours");
+        timePresetCombo.setFont(FontManager.getRunescapeSmallFont());
+        presetPanel.add(timePresetCombo);
+        
+        mainPanel.add(presetPanel, BorderLayout.NORTH);
+        
+        // Time range panel (initially hidden for preset selections)
+        TimeRangePanel timeRangePanel = new TimeRangePanel(LocalTime.of(9, 0), LocalTime.of(17, 0));
+        timeRangePanel.setVisible(false); // Hidden by default for "Business Hours"
+        mainPanel.add(timeRangePanel, BorderLayout.CENTER);
+        
+        // Handle preset selection
+        timePresetCombo.addActionListener(e -> {
+            String selected = (String) timePresetCombo.getSelectedItem();
+            
+            switch (selected) {
+                case "All Day":
+                    timeRangePanel.setStartTime(LocalTime.of(0, 0));
+                    timeRangePanel.setEndTime(LocalTime.of(23, 59));
+                    timeRangePanel.setVisible(false);
+                    break;
+                case "Business Hours":
+                    timeRangePanel.setStartTime(LocalTime.of(9, 0));
+                    timeRangePanel.setEndTime(LocalTime.of(17, 0));
+                    timeRangePanel.setVisible(false);
+                    break;
+                case "Morning":
+                    timeRangePanel.setStartTime(LocalTime.of(6, 0));
+                    timeRangePanel.setEndTime(LocalTime.of(12, 0));
+                    timeRangePanel.setVisible(false);
+                    break;
+                case "Afternoon":
+                    timeRangePanel.setStartTime(LocalTime.of(12, 0));
+                    timeRangePanel.setEndTime(LocalTime.of(18, 0));
+                    timeRangePanel.setVisible(false);
+                    break;
+                case "Evening":
+                    timeRangePanel.setStartTime(LocalTime.of(18, 0));
+                    timeRangePanel.setEndTime(LocalTime.of(22, 0));
+                    timeRangePanel.setVisible(false);
+                    break;
+                case "Night":
+                    timeRangePanel.setStartTime(LocalTime.of(22, 0));
+                    timeRangePanel.setEndTime(LocalTime.of(6, 0));
+                    timeRangePanel.setVisible(false);
+                    break;
+                case "Custom":
+                    timeRangePanel.setVisible(true);
+                    break;
+            }
+            mainPanel.revalidate();
+            mainPanel.repaint();
+        });
+        
+        mainPanel.putClientProperty("timeRangePanel", timeRangePanel);
+        mainPanel.putClientProperty("timePresetCombo", timePresetCombo);
+        return mainPanel;
+    }
+    
+    /**
+     * Creates a compact options panel with repeat cycle and randomization controls
+     */
+    private static JPanel createOptionsPanel() {
+        JPanel mainPanel = new JPanel(new BorderLayout(5, 5));
+        mainPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        mainPanel.setBorder(BorderFactory.createTitledBorder(
+            BorderFactory.createLineBorder(ColorScheme.MEDIUM_GRAY_COLOR), 
+            "Options", 
+            TitledBorder.LEFT, 
+            TitledBorder.TOP, 
+            FontManager.getRunescapeSmallFont(), 
+            Color.WHITE));
+        
+        // Repeat options panel
+        JPanel repeatPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 2));
+        repeatPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        
+        JLabel repeatLabel = new JLabel("Repeat:");
+        repeatLabel.setForeground(Color.WHITE);
+        repeatLabel.setFont(FontManager.getRunescapeSmallFont());
+        repeatPanel.add(repeatLabel);
+        
+        String[] repeatOptions = {"Every Day", "Every X Days", "Every X Hours", "Every X Minutes", "Every X Weeks", "One Time Only"};
+        JComboBox<String> repeatComboBox = new JComboBox<>(repeatOptions);
+        repeatComboBox.setFont(FontManager.getRunescapeSmallFont());
+        repeatPanel.add(repeatComboBox);
+        
+        JLabel intervalLabel = new JLabel("Interval:");
+        intervalLabel.setForeground(Color.WHITE);
+        intervalLabel.setFont(FontManager.getRunescapeSmallFont());
+        repeatPanel.add(intervalLabel);
+        
+        SpinnerNumberModel intervalModel = new SpinnerNumberModel(1, 1, 100, 1);
+        JSpinner intervalSpinner = new JSpinner(intervalModel);
+        intervalSpinner.setPreferredSize(new Dimension(60, intervalSpinner.getPreferredSize().height));
+        intervalSpinner.setEnabled(false);
+        repeatPanel.add(intervalSpinner);
+        
+        // Randomization options panel
+        JPanel randomPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 2));
+        randomPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        
+        JCheckBox randomizeCheckBox = new JCheckBox("Randomize");
+        randomizeCheckBox.setForeground(Color.WHITE);
+        randomizeCheckBox.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        randomizeCheckBox.setFont(FontManager.getRunescapeSmallFont());
+        randomPanel.add(randomizeCheckBox);
+        
+        JLabel randomizeAmountLabel = new JLabel("±");
+        randomizeAmountLabel.setForeground(Color.WHITE);
+        randomizeAmountLabel.setFont(FontManager.getRunescapeSmallFont());
+        randomPanel.add(randomizeAmountLabel);
+        
+        SpinnerNumberModel randomizeModel = new SpinnerNumberModel(3, 1, 15, 1); // Default to 3 minutes, max 15 for default "Every Day"
+        JSpinner randomizeSpinner = new JSpinner(randomizeModel);
+        randomizeSpinner.setPreferredSize(new Dimension(50, randomizeSpinner.getPreferredSize().height));
+        randomizeSpinner.setEnabled(false);
+        randomizeSpinner.setToolTipText("<html>Randomization range: ±1 to ±15 minutes<br>Maximum is 40% of 1 days interval</html>");
+        randomPanel.add(randomizeSpinner);
+        
+        JLabel randomizerUnitLabel = new JLabel("min");
+        randomizerUnitLabel.setForeground(Color.WHITE);
+        randomizerUnitLabel.setFont(FontManager.getRunescapeSmallFont());
+        randomPanel.add(randomizerUnitLabel);
+        
+        // Control interactions
+        repeatComboBox.addActionListener(e -> {
+            String selected = (String) repeatComboBox.getSelectedItem();
+            boolean enableInterval = !selected.equals("Every Day") && !selected.equals("One Time Only");
+            intervalSpinner.setEnabled(enableInterval);
+            
+            // Update randomizer limits based on selected repeat cycle and interval
+            updateRandomizerLimits(repeatComboBox, intervalSpinner, randomizeSpinner, randomizerUnitLabel);
+        });
+        
+        // Update randomizer limits when interval changes
+        intervalSpinner.addChangeListener(e -> {
+            updateRandomizerLimits(repeatComboBox, intervalSpinner, randomizeSpinner, randomizerUnitLabel);
+        });
+        
+        randomizeCheckBox.addActionListener(e -> 
+            randomizeSpinner.setEnabled(randomizeCheckBox.isSelected())
+        );
+        
+        // Set initial randomizer limits based on default selection
+        SwingUtilities.invokeLater(() -> updateRandomizerLimits(repeatComboBox, intervalSpinner, randomizeSpinner, randomizerUnitLabel));
+        
+        // Layout both panels
+        JPanel combinedPanel = new JPanel(new GridLayout(2, 1, 0, 2));
+        combinedPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        combinedPanel.add(repeatPanel);
+        combinedPanel.add(randomPanel);
+        
+        mainPanel.add(combinedPanel, BorderLayout.CENTER);
+        
+        // Store components for later access
+        mainPanel.putClientProperty("repeatComboBox", repeatComboBox);
+        mainPanel.putClientProperty("intervalSpinner", intervalSpinner);
+        mainPanel.putClientProperty("randomizeCheckBox", randomizeCheckBox);
+        mainPanel.putClientProperty("randomizeSpinner", randomizeSpinner);
+        mainPanel.putClientProperty("randomizerUnitLabel", randomizerUnitLabel);
+        
+        return mainPanel;
+    }
+    
+    /**
+     * Updates the randomizer spinner limits based on the current repeat cycle and interval
+     */
+    private static void updateRandomizerLimits(JComboBox<String> repeatComboBox, JSpinner intervalSpinner, JSpinner randomizeSpinner, JLabel randomizerUnitLabel) {
+        String selectedOption = (String) repeatComboBox.getSelectedItem();
+        int interval = (Integer) intervalSpinner.getValue();
+        
+        // Map the selected option to RepeatCycle
+        RepeatCycle repeatCycle;
+        switch (selectedOption) {
+            case "Every Day":
+                repeatCycle = RepeatCycle.DAYS;
+                interval = 1;
+                break;
+            case "Every X Days":
+                repeatCycle = RepeatCycle.DAYS;
+                break;
+            case "Every X Hours":
+                repeatCycle = RepeatCycle.HOURS;
+                break;
+            case "Every X Minutes":
+                repeatCycle = RepeatCycle.MINUTES;
+                break;
+            case "Every X Weeks":
+                repeatCycle = RepeatCycle.WEEKS;
+                break;
+            case "One Time Only":
+                repeatCycle = RepeatCycle.ONE_TIME;
+                break;
+            default:
+                repeatCycle = RepeatCycle.DAYS;
+                interval = 1;
+        }
+        
+        // Get the automatic randomization unit based on repeat cycle
+        RepeatCycle randomUnit = getAutomaticRandomizerValueUnit(repeatCycle);
+        
+        // Calculate the maximum allowed randomizer value using the new logic
+        int maxRandomizer = calculateMaxAllowedRandomization(repeatCycle, interval);
+        
+        // Ensure minimum valid bounds for SpinnerNumberModel
+        if (maxRandomizer < 1) {
+            maxRandomizer = 1;
+        }
+        
+        // Update the spinner model with new limits
+        SpinnerNumberModel currentModel = (SpinnerNumberModel) randomizeSpinner.getModel();
+        int currentValue = currentModel.getNumber().intValue();
+        
+        // Ensure current value is within valid bounds
+        int validatedCurrentValue = Math.max(1, Math.min(currentValue, maxRandomizer));
+        
+        // Create new model with validated values
+        SpinnerNumberModel newModel = new SpinnerNumberModel(
+            validatedCurrentValue, // current value, validated to be within bounds
+            1, // minimum
+            maxRandomizer, // maximum (at least 1)
+            1 // step
+        );
+        
+        randomizeSpinner.setModel(newModel);
+        
+        // Update the unit label based on the automatic randomization unit
+        String unitDisplayName = getRandomizationUnitDisplayName(randomUnit);
+        randomizerUnitLabel.setText(unitDisplayName);
+        
+        // Update tooltip to show the reasoning with correct unit
+        randomizeSpinner.setToolTipText(String.format(
+            "<html>Randomization range: ±1 to ±%d %s<br>" +
+            "Unit: %s (auto-determined from %s cycle)<br>" +
+            "Maximum is 40%% of %d %s interval</html>",
+            maxRandomizer, 
+            unitDisplayName,
+            randomUnit.toString().toLowerCase(),
+            repeatCycle.toString().toLowerCase(),
+            interval,
+            repeatCycle.toString().toLowerCase()
+        ));
+    }
+
+    /**
+     * Creates a help panel with useful information
+     */
+    private static JPanel createHelpPanel() {
+        JPanel helpPanel = new JPanel();
+        helpPanel.setLayout(new BoxLayout(helpPanel, BoxLayout.Y_AXIS));
+        helpPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        
+        JLabel descriptionLabel = new JLabel("Plugin will only run during the specified time window");
+        descriptionLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        descriptionLabel.setFont(FontManager.getRunescapeSmallFont());
+        descriptionLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        JLabel crossDayLabel = new JLabel("Note: If start time > end time, window crosses midnight");
+        crossDayLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        crossDayLabel.setFont(FontManager.getRunescapeSmallFont());
+        crossDayLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        JLabel timezoneLabel = new JLabel("Timezone: " + ZoneId.systemDefault().getId());
+        timezoneLabel.setForeground(Color.YELLOW);
+        timezoneLabel.setFont(FontManager.getRunescapeSmallFont());
+        timezoneLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        helpPanel.add(descriptionLabel);
+        helpPanel.add(Box.createVerticalStrut(2));
+        helpPanel.add(crossDayLabel);
+        helpPanel.add(Box.createVerticalStrut(2));
+        helpPanel.add(timezoneLabel);
+        
+        return helpPanel;
+    }
 
     public static TimeWindowCondition createTimeWindowCondition(JPanel configPanel) {
         DateRangePanel dateRangePanel = (DateRangePanel) configPanel.getClientProperty("dateRangePanel");
         TimeRangePanel timeRangePanel = (TimeRangePanel) configPanel.getClientProperty("timeRangePanel");
+        @SuppressWarnings("unchecked")
         JComboBox<String> repeatComboBox = (JComboBox<String>) configPanel.getClientProperty("repeatComboBox");
         JSpinner intervalSpinner = (JSpinner) configPanel.getClientProperty("intervalSpinner");
         JCheckBox randomizeCheckBox = (JCheckBox) configPanel.getClientProperty("randomizeCheckBox");
@@ -399,7 +695,19 @@ public class TimeConditionPanelUtil {
         // Apply randomization if enabled
         if (randomizeCheckBox.isSelected()) {
             int randomizerValue = (Integer) randomizeSpinner.getValue();
+            int maxAllowedRandomizer = calculateMaxAllowedRandomization(condition.getRepeatCycle(), condition.getRepeatIntervalUnit());
+            int validatedValue = Math.max(1, Math.min(randomizerValue, maxAllowedRandomizer));            
+            if (validatedValue != randomizerValue) {
+                log.warn(" - createTimeWindowCondition - Randomizer value {} is too large for interval {} {}. Capping at maxi {}", 
+                    randomizerValue, interval, repeatCycle, maxAllowedRandomizer);
+                randomizerValue = validatedValue;
+                randomizeSpinner.setValue(validatedValue); // Update UI to reflect capped value
+            }
+            
             condition.setRandomization(true);
+            condition.setRandomizerValue(validatedValue);
+            // Note: randomization unit is now automatically determined based on repeat cycle
+            // No need to manually set it anymore - TimeWindow handles this internally
         }
         
         return condition;
@@ -712,43 +1020,30 @@ public static DayOfWeekCondition createDayOfWeekCondition(JPanel configPanel) {
     private static void setupIntervalCondition(JPanel panel, IntervalCondition condition) {
         // Get the IntervalPickerPanel component which encapsulates all the interval UI controls
         IntervalPickerPanel intervalPicker = (IntervalPickerPanel) panel.getClientProperty("intervalPicker");
-        JCheckBox initialDelayCheckBox = (JCheckBox) panel.getClientProperty("initialDelayCheckBox");
-        JSpinner delayMinutesSpinner = (JSpinner) panel.getClientProperty("delayMinutesSpinner");
-        JSpinner delaySecondsSpinner = (JSpinner) panel.getClientProperty("delaySecondsSpinner");
-        
+        InitialDelayPanel initialDelayPanel = (InitialDelayPanel) panel.getClientProperty("initialDelayPanel");
         if (intervalPicker == null) {
             log.error("IntervalPickerPanel component not found for interval condition setup");
             return; // Missing UI components
         }
-        
+
         // Use the IntervalPickerPanel's built-in method to configure itself from the condition
         intervalPicker.setIntervalCondition(condition);
-        
+
         // Set initial delay if it exists
-        if (condition.getInitialDelayCondition() != null && 
-            initialDelayCheckBox != null && 
-            delayMinutesSpinner != null &&
-            delaySecondsSpinner != null) {
-            
-            // Extract the remaining delay time
-            ZonedDateTime now = ZonedDateTime.now();
-            ZonedDateTime targetTime = condition.getInitialDelayCondition().getTargetTime();
+        if (condition.getInitialDelayCondition() != null && initialDelayPanel != null) {
             Duration definedDelay = condition.getInitialDelayCondition().getDefinedDelay();
-            Duration remainingDelay = Duration.between(now, targetTime);            
-            if (definedDelay != null && definedDelay.getSeconds() > 0) {                
+            if (definedDelay != null && definedDelay.getSeconds() > 0) {
                 long definedSeconds = definedDelay.getSeconds();
-                
+
                 // Set the delay time in the UI
-                int minutes = (int) (definedSeconds / 60);
+                int hours = (int) (definedSeconds / 3600);
+                int minutes = (int) ((definedSeconds % 3600) / 60);
                 int seconds = (int) (definedSeconds % 60);
-                
-                initialDelayCheckBox.setSelected(true);
-                delayMinutesSpinner.setValue(minutes);
-                delaySecondsSpinner.setValue(seconds);
-                
-                // Enable the spinners
-                delayMinutesSpinner.setEnabled(true);
-                delaySecondsSpinner.setEnabled(true);
+
+                initialDelayPanel.setEnabled(true);
+                initialDelayPanel.getHoursSpinner().setValue(hours);
+                initialDelayPanel.getMinutesSpinner().setValue(minutes);
+                initialDelayPanel.getSecondsSpinner().setValue(seconds);
             }
         }
     }
@@ -760,10 +1055,17 @@ public static DayOfWeekCondition createDayOfWeekCondition(JPanel configPanel) {
         // Get custom components from client properties
         DateRangePanel dateRangePanel = (DateRangePanel) panel.getClientProperty("dateRangePanel");
         TimeRangePanel timeRangePanel = (TimeRangePanel) panel.getClientProperty("timeRangePanel");
+        @SuppressWarnings("unchecked")
         JComboBox<String> repeatComboBox = (JComboBox<String>) panel.getClientProperty("repeatComboBox");
         JSpinner intervalSpinner = (JSpinner) panel.getClientProperty("intervalSpinner");
         JCheckBox randomizeCheckBox = (JCheckBox) panel.getClientProperty("randomizeCheckBox");
         JSpinner randomizeSpinner = (JSpinner) panel.getClientProperty("randomizeSpinner");
+        
+        // Find and update date preset ComboBox
+        updateDatePresetFromCondition(panel, condition);
+        
+        // Find and update time preset ComboBox
+        updateTimePresetFromCondition(panel, condition);
         
         // Set date range
         if (dateRangePanel != null) {
@@ -803,29 +1105,208 @@ public static DayOfWeekCondition createDayOfWeekCondition(JPanel configPanel) {
                 case ONE_TIME:
                     repeatComboBox.setSelectedItem("One Time Only");
                     break;
+                case SECONDS:
+                case MILLIS:
                 default:
+                    // Fallback for unsupported cycles
                     repeatComboBox.setSelectedItem("Every Day");
+                    break;
             }
             
-            // Set interval and enable spinner if needed
+            // Set interval value
             if (intervalSpinner != null) {
                 intervalSpinner.setValue(interval);
-                
-                // Only enable spinner for options that use it
-                String selected = (String) repeatComboBox.getSelectedItem();
-                intervalSpinner.setEnabled(!selected.equals("Every Day") && !selected.equals("One Time Only"));
+                intervalSpinner.setEnabled(!cycle.equals(RepeatCycle.DAYS) || interval != 1);
             }
         }
         
-        // Set randomization options
-        if (randomizeCheckBox != null) {
+        // Set randomization
+        if (randomizeCheckBox != null && randomizeSpinner != null) {
             randomizeCheckBox.setSelected(condition.isUseRandomization());
+            randomizeSpinner.setEnabled(condition.isUseRandomization());
             
-            if (randomizeSpinner != null) {
-                randomizeSpinner.setValue(condition.getRandomizerValue());
-                randomizeSpinner.setEnabled(condition.isUseRandomization());
+            // Get the randomizer unit label for updating
+            JLabel randomizerUnitLabel = (JLabel) panel.getClientProperty("randomizerUnitLabel");
+            
+            // Get the automatic randomization unit and update the label
+            RepeatCycle randomUnit = getAutomaticRandomizerValueUnit(condition.getRepeatCycle());
+            if (randomizerUnitLabel != null) {
+                String unitDisplayName = getRandomizationUnitDisplayName(randomUnit);
+                randomizerUnitLabel.setText(unitDisplayName);
+            }
+            
+            // Validate and set randomizer value using the new logic
+            int savedRandomizerValue = condition.getRandomizerValue();
+            if (savedRandomizerValue > 0) {
+                // Calculate max allowed for this condition's settings using new logic
+                int maxAllowedRandomizer = calculateMaxAllowedRandomization(condition.getRepeatCycle(), condition.getRepeatIntervalUnit());
+                int validatedValue = Math.max(1, Math.min(savedRandomizerValue, maxAllowedRandomizer));
+                
+                // Ensure maximum is at least 1
+                maxAllowedRandomizer = Math.max(1, maxAllowedRandomizer);
+                
+                // Update spinner model with proper limits
+                SpinnerNumberModel newModel = new SpinnerNumberModel(
+                    validatedValue, // current value, validated
+                    1, // minimum
+                    maxAllowedRandomizer, // maximum
+                    1 // step
+                );
+                randomizeSpinner.setModel(newModel);
+                
+                // Update tooltip with correct unit information
+                String unitDisplayName = getRandomizationUnitDisplayName(randomUnit);
+                randomizeSpinner.setToolTipText(String.format(
+                    "<html>Randomization range: ±1 to ±%d %s<br>" +
+                    "Unit: %s (auto-determined from %s cycle)<br>" +
+                    "Maximum is 40%% of %d %s interval</html>",
+                    maxAllowedRandomizer, 
+                    unitDisplayName,
+                    randomUnit.toString().toLowerCase(),
+                    condition.getRepeatCycle().toString().toLowerCase(),
+                    condition.getRepeatIntervalUnit(),
+                    condition.getRepeatCycle().toString().toLowerCase()
+                ));                
+                if ( savedRandomizerValue != validatedValue) {
+                    log.warn("Randomizer value {} was too large for {}x{} interval. Capped at {} - maximum {}", 
+                        savedRandomizerValue, condition.getRepeatIntervalUnit(), condition.getRepeatCycle(), validatedValue,maxAllowedRandomizer);
+                }
+            } else {
+                // Set default value if no randomization value is set
+                int maxAllowedRandomizer = calculateMaxAllowedRandomization(condition.getRepeatCycle(), 
+                                                                condition.getRepeatIntervalUnit());
+                int defaultValue = Math.max(1, Math.min(3, maxAllowedRandomizer));
+                
+                // Ensure maximum is at least 1
+                maxAllowedRandomizer = Math.max(1, maxAllowedRandomizer);
+                
+                // Update spinner model with proper limits  
+                SpinnerNumberModel newModel = new SpinnerNumberModel(
+                    defaultValue, // default value
+                    1, // minimum
+                    maxAllowedRandomizer, // maximum
+                    1 // step
+                );
+                randomizeSpinner.setModel(newModel);
+                
+                // Update tooltip with correct unit information
+                String unitDisplayName = getRandomizationUnitDisplayName(randomUnit);
+                randomizeSpinner.setToolTipText(String.format(
+                    "<html>Randomization range: ±1 to ±%d %s<br>" +
+                    "Unit: %s (auto-determined from %s cycle)<br>" +
+                    "Maximum is 40%% of %d %s interval</html>",
+                    maxAllowedRandomizer, 
+                    unitDisplayName,
+                    randomUnit.toString().toLowerCase(),
+                    condition.getRepeatCycle().toString().toLowerCase(),
+                    condition.getRepeatIntervalUnit(),
+                    condition.getRepeatCycle().toString().toLowerCase()
+                ));
             }
         }
+    }
+    
+    /**
+     * Updates the date preset ComboBox based on the condition's date range
+     */
+    private static void updateDatePresetFromCondition(JPanel panel, TimeWindowCondition condition) {
+        // Try to find the date preset ComboBox in the panel hierarchy
+        JComboBox<String> datePresetCombo = findDatePresetComboBox(panel);
+        if (datePresetCombo == null) return;
+        
+        LocalDate startDate = condition.getStartDate();
+        LocalDate endDate = condition.getEndDate();
+        LocalDate today = LocalDate.now();
+        
+        // Check if it matches any preset
+        if (condition.hasUnlimitedDateRange()) {
+            datePresetCombo.setSelectedItem("Unlimited");
+        } else if (startDate.equals(today) && endDate.equals(today)) {
+            datePresetCombo.setSelectedItem("Today");
+        } else if (startDate.equals(today) && endDate.equals(today.plusDays(7 - today.getDayOfWeek().getValue()))) {
+            datePresetCombo.setSelectedItem("This Week");
+        } else if (startDate.equals(today) && endDate.equals(today.withDayOfMonth(today.lengthOfMonth()))) {
+            datePresetCombo.setSelectedItem("This Month");
+        } else if (startDate.equals(today) && endDate.equals(today.plusDays(7))) {
+            datePresetCombo.setSelectedItem("Next 7 Days");
+        } else if (startDate.equals(today) && endDate.equals(today.plusDays(30))) {
+            datePresetCombo.setSelectedItem("Next 30 Days");
+        } else if (startDate.equals(today) && endDate.equals(today.plusDays(90))) {
+            datePresetCombo.setSelectedItem("Next 90 Days");
+        } else {
+            datePresetCombo.setSelectedItem("Custom");
+        }
+    }
+    
+    /**
+     * Updates the time preset ComboBox based on the condition's time range
+     */
+    private static void updateTimePresetFromCondition(JPanel panel, TimeWindowCondition condition) {
+        // Try to find the time preset ComboBox in the panel hierarchy
+        JComboBox<String> timePresetCombo = findTimePresetComboBox(panel);
+        if (timePresetCombo == null) return;
+        
+        LocalTime startTime = condition.getStartTime();
+        LocalTime endTime = condition.getEndTime();
+        
+        // Check if it matches any preset
+        if (startTime.equals(LocalTime.of(0, 0)) && endTime.equals(LocalTime.of(23, 59))) {
+            timePresetCombo.setSelectedItem("All Day");
+        } else if (startTime.equals(LocalTime.of(9, 0)) && endTime.equals(LocalTime.of(17, 0))) {
+            timePresetCombo.setSelectedItem("Business Hours");
+        } else if (startTime.equals(LocalTime.of(6, 0)) && endTime.equals(LocalTime.of(12, 0))) {
+            timePresetCombo.setSelectedItem("Morning");
+        } else if (startTime.equals(LocalTime.of(12, 0)) && endTime.equals(LocalTime.of(18, 0))) {
+            timePresetCombo.setSelectedItem("Afternoon");
+        } else if (startTime.equals(LocalTime.of(18, 0)) && endTime.equals(LocalTime.of(22, 0))) {
+            timePresetCombo.setSelectedItem("Evening");
+        } else if (startTime.equals(LocalTime.of(22, 0)) && endTime.equals(LocalTime.of(6, 0))) {
+            timePresetCombo.setSelectedItem("Night");
+        } else {
+            timePresetCombo.setSelectedItem("Custom");
+        }
+    }
+    
+    /**
+     * Recursively searches for the date preset ComboBox in the panel hierarchy
+     */
+    private static JComboBox<String> findDatePresetComboBox(Container container) {
+        for (Component component : container.getComponents()) {
+            if (component instanceof JPanel) {
+                JPanel panel = (JPanel) component;
+                Object datePresetCombo = panel.getClientProperty("datePresetCombo");
+                if (datePresetCombo instanceof JComboBox) {
+                    @SuppressWarnings("unchecked")
+                    JComboBox<String> comboBox = (JComboBox<String>) datePresetCombo;
+                    return comboBox;
+                }
+                // Recursively search in child panels
+                JComboBox<String> found = findDatePresetComboBox(panel);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Recursively searches for the time preset ComboBox in the panel hierarchy
+     */
+    private static JComboBox<String> findTimePresetComboBox(Container container) {
+        for (Component component : container.getComponents()) {
+            if (component instanceof JPanel) {
+                JPanel panel = (JPanel) component;
+                Object timePresetCombo = panel.getClientProperty("timePresetCombo");
+                if (timePresetCombo instanceof JComboBox) {
+                    @SuppressWarnings("unchecked")
+                    JComboBox<String> comboBox = (JComboBox<String>) timePresetCombo;
+                    return comboBox;
+                }
+                // Recursively search in child panels
+                JComboBox<String> found = findTimePresetComboBox(panel);
+                if (found != null) return found;
+            }
+        }
+        return null;
     }
 
     /**
@@ -883,8 +1364,129 @@ public static DayOfWeekCondition createDayOfWeekCondition(JPanel configPanel) {
         SingleDateTimePickerPanel dateTimePicker = (SingleDateTimePickerPanel) panel.getClientProperty("dateTimePicker");        
         if (dateTimePicker != null) {
             // Convert ZonedDateTime to LocalDateTime
-            dateTimePicker.setDateTime(condition.getTargetTime().toLocalDateTime());
+            dateTimePicker.setDateTime(condition.getNextTriggerTimeWithPause().get().toLocalDateTime());
         }
         
     }
+    
+  
+    
+    /**
+     * Gets the automatic randomization unit based on repeat cycle (mirrors TimeWindowCondition logic)
+     */
+    private static RepeatCycle getAutomaticRandomizerValueUnit(RepeatCycle repeatCycle) {
+        switch (repeatCycle) {
+            case MINUTES:
+                return RepeatCycle.SECONDS; // For minute intervals, randomize in seconds
+            case HOURS:
+                return RepeatCycle.MINUTES; // For hour intervals, randomize in minutes
+            case DAYS:
+                return RepeatCycle.MINUTES; // For day intervals, randomize in minutes
+            case WEEKS:
+                return RepeatCycle.HOURS;   // For week intervals, randomize in hours
+            case ONE_TIME:
+                return RepeatCycle.MINUTES; // For one-time, use minutes as default
+            default:
+                return RepeatCycle.MINUTES; // Default fallback to minutes
+        }
+    }
+    
+    /**
+     * Converts an interval value from one unit to another (mirrors TimeWindowCondition logic)
+     */
+    public static long convertToRandomizationUnit(int value, RepeatCycle fromUnit, RepeatCycle toUnit) {
+        // Convert to seconds first, then to target unit
+        long totalSeconds;
+        switch (fromUnit) {
+            case MINUTES:
+                totalSeconds = value * 60L;
+                break;
+            case HOURS:
+                totalSeconds = value * 3600L;
+                break;
+            case DAYS:
+                totalSeconds = value * 86400L;
+                break;
+            case WEEKS:
+                totalSeconds = value * 604800L;
+                break;
+            default:
+                totalSeconds = value;
+                break;
+        }
+        
+        // Convert from seconds to target unit
+        switch (toUnit) {
+            case SECONDS:
+                return totalSeconds;
+            case MINUTES:
+                return totalSeconds / 60L;
+            case HOURS:
+                return totalSeconds / 3600L;
+            default:
+                return totalSeconds / 60L; // Default to minutes
+        }
+    }
+    
+    /**
+     * Calculates the maximum allowed randomization value (mirrors TimeWindowCondition logic)
+     */
+    public static int calculateMaxAllowedRandomization(RepeatCycle repeatCycle, int interval) {
+        RepeatCycle randomUnit = getAutomaticRandomizerValueUnit(repeatCycle);
+        
+        // Calculate total interval in the randomization unit
+        long totalIntervalInRandomUnit;
+        switch (repeatCycle) {
+            case MINUTES:
+                totalIntervalInRandomUnit = convertToRandomizationUnit(interval, RepeatCycle.MINUTES, randomUnit);
+                break;
+            case HOURS:
+                totalIntervalInRandomUnit = convertToRandomizationUnit(interval, RepeatCycle.HOURS, randomUnit);
+                break;
+            case DAYS:
+                totalIntervalInRandomUnit = convertToRandomizationUnit(interval, RepeatCycle.DAYS, randomUnit);
+                break;
+            case WEEKS:
+                totalIntervalInRandomUnit = convertToRandomizationUnit(interval, RepeatCycle.WEEKS, randomUnit);
+                break;
+            case ONE_TIME:
+                // For one-time, allow up to 1 hour of randomization
+                return randomUnit == RepeatCycle.HOURS ? 1 : 
+                       randomUnit == RepeatCycle.MINUTES ? 60 : 
+                       randomUnit == RepeatCycle.SECONDS ? 3600 : 15;
+            default:
+                return 15; // Default fallback
+        }        
+        // Allow randomization up to 40% of the total interval, but apply sensible caps
+        int maxRandomization = (int) Math.min(totalIntervalInRandomUnit * 0.4, totalIntervalInRandomUnit / 2);
+        
+        // Apply caps based on randomization unit to prevent excessive randomization
+        switch (randomUnit) {
+            case SECONDS:
+                return Math.min(maxRandomization, 3600); // Max 1 hour in seconds
+            case MINUTES:
+                return Math.min(maxRandomization, 720); // Max 12 hours in minutes
+            case HOURS:
+                return Math.min(maxRandomization, 48); // Max 2 days in hours
+            default:
+                return Math.min(maxRandomization, 60); // Default to 1 hour equivalent
+        }
+    }
+    
+    /**
+     * Gets the display name for the randomization unit
+     */
+    private static String getRandomizationUnitDisplayName(RepeatCycle randomUnit) {
+        switch (randomUnit) {
+            case SECONDS:
+                return "sec";
+            case MINUTES:
+                return "min";
+            case HOURS:
+                return "hr";
+            default:
+                return "min";
+        }
+    }
+
 }

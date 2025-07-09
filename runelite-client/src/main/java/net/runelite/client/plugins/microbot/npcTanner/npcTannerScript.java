@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.npcTanner;
 
+import net.runelite.api.ItemID;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -137,9 +138,9 @@ public class npcTannerScript extends Script {
                     tries++;
                 }
                 tries=0;
-                while(!Rs2Inventory.contains(whattotan)||!Rs2Inventory.contains("Coins")){
+                while(!Rs2Inventory.contains(whattotan) || !Rs2Inventory.contains("Coins")){
                     // We always do coin first
-                    if(Rs2Inventory.contains(product)){
+                    if(Rs2Inventory.contains(product) || !Rs2Inventory.onlyContains(it->it!=null && it.getName().equals("Coins") || it.getName().equals(whattotan))){
                         if(generateRandomNumber(0,100)<75){
                             Rs2Bank.depositAll(product);
                             sleep(500,1000);
@@ -148,6 +149,14 @@ public class npcTannerScript extends Script {
                             sleep(500,1000);
                         }
                     }
+
+                    if(Rs2Player.isInMemberWorld()) {
+                        //credit to FunkyRhythm
+                        if (!Rs2Player.hasStaminaBuffActive() && Microbot.getClient().getEnergy() < 8100) {
+                            this.useStaminaPotions();
+                        }
+                    }
+
                     if(!Rs2Inventory.contains("Coins")||Rs2Inventory.count("Coins")<=1000){
                         Rs2Bank.withdrawAll("Coins");
                         sleep(500,1000);
@@ -171,6 +180,67 @@ public class npcTannerScript extends Script {
             }
         }
     }
+
+    private void useStaminaPotions() {
+        //credit to FunkyRhythm
+        boolean usedPotion = false;
+
+        // Step 1: Keep using Energy potions until energy is above 71%
+        while (Microbot.getClient().getEnergy() < 6900) {
+            usedPotion = usePotionIfNeeded("Energy potion", 6900);
+            if (!usedPotion) {
+                break; // Exit if no Energy potion is available
+            }
+        }
+
+        // Step 2: If energy is above 71% but below 81%, use Stamina potion if no stamina buff is active
+        if (Microbot.getClient().getEnergy() < 8100 && !Rs2Player.hasStaminaBuffActive()) {
+            usedPotion = usePotionIfNeeded("Stamina potion", 8100);
+        }
+
+        // Sleep after using a potion
+        if (usedPotion) {
+            this.sleep(161, 197);
+        }
+    }
+
+    private boolean usePotionIfNeeded(String potionName, int energyThreshold) {
+        //credit to FunkyRhythm
+        if (Microbot.getClient().getEnergy() < energyThreshold) {
+            if (withdrawPotion(potionName)) {
+                if (drinkPotion(potionName)) {
+                    depositItems(potionName);
+                    return true; // Potion was successfully used
+                }
+            }
+        }
+        return false; // Potion was not used
+    }
+
+    private boolean withdrawPotion(String potionName) {
+        //credit to FunkyRhythm
+        Rs2Bank.withdrawOne(potionName);
+        sleep(900);
+        return true;
+    }
+
+    private boolean drinkPotion(String potionName) {
+        //credit to FunkyRhythm
+        Rs2Inventory.interact(potionName, "Drink");
+        sleep(900);
+        return true;
+    }
+
+    private void depositItems(String potionName) {
+        //credit to FunkyRhythm
+        if (Rs2Inventory.hasItem(potionName)) {
+            Rs2Bank.depositOne(potionName);
+        }
+        if (Rs2Inventory.hasItem(ItemID.VIAL)) {
+            Rs2Bank.depositOne(ItemID.VIAL);
+        }
+    }
+
     public void WhatToTan(npcTannerConfig config){
         if(whattotan.equals("Unset")){
             if(Rs2Inventory.contains("Cowhide")){

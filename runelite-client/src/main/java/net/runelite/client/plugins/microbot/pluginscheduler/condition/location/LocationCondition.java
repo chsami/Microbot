@@ -254,4 +254,15 @@ public abstract class LocationCondition implements Condition {
             return orCondition;
         }
     }
+    @Override
+    public void pause() {
+     
+                
+        
+    }
+    
+    @Override
+    public void resume() {
+       
+    }    
 }

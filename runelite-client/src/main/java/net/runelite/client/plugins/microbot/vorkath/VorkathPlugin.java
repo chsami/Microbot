@@ -46,7 +46,7 @@ public class VorkathPlugin extends Plugin {
         if (overlayManager != null) {
             overlayManager.add(exampleOverlay);
         }
-        vorkathScript.run(config);
+        vorkathScript.run();
     }
 
     protected void shutDown() {

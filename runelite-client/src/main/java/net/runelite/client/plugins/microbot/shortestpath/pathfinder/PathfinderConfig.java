@@ -13,6 +13,7 @@ import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
+import net.runelite.client.plugins.microbot.util.magic.RuneFilter;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
@@ -492,7 +493,10 @@ public class PathfinderConfig {
         // If the transport has varplayer requirements & the varplayers do not match
         if (!varplayerChecks(transport)) return false;
         // If you don't have the required currency & amount for transport
-        if (transport.getCurrencyAmount() > 0 && !Rs2Inventory.hasItemAmount(transport.getCurrencyName(), transport.getCurrencyAmount())) return false;
+        if (transport.getCurrencyAmount() > 0 
+            && !Rs2Inventory.hasItemAmount(transport.getCurrencyName(), transport.getCurrencyAmount())
+            && !(ShortestPathPlugin.getPathfinderConfig().useBankItems && Rs2Bank.count(transport.getCurrencyName()) >= transport.getCurrencyAmount())
+            ) return false;
         // Check if Teleports are globally disabled
         if (TransportType.isTeleport(transport.getType()) && Rs2Walker.disableTeleports) return false;
         // Check Teleport Item Settings
@@ -643,7 +647,7 @@ public class PathfinderConfig {
                 : transport.getDisplayInfo();
         Rs2Spells rs2Spell = Rs2Magic.getRs2Spell(displayInfo);
         if (rs2Spell == null) return false;
-        return Rs2Magic.hasRequiredRunes(rs2Spell, Rs2Inventory.hasRunePouch(), useBankItems);
+        return Rs2Magic.hasRequiredRunes(rs2Spell, RuneFilter.builder().includeBank(useBankItems).build());
 //        return Rs2Magic.quickCanCast(displayInfo);
     }
 

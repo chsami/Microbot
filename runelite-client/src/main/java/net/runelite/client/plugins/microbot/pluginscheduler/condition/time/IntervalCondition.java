@@ -4,6 +4,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -26,7 +27,7 @@ public class IntervalCondition extends TimeCondition {
      * Version of the IntervalCondition class
      */
     public static String getVersion() {
-        return "0.0.3";
+        return "0.0.4";
     }
     
     /**
@@ -38,9 +39,9 @@ public class IntervalCondition extends TimeCondition {
     /**
      * The next time this condition should trigger
      */
-    @Getter
-    @Setter
-    private transient ZonedDateTime nextTriggerTime;
+    //@Getter
+    //@Setter
+    //private transient ZonedDateTime nextTriggerTime;
     
     /**
      * The variation factor (0.0-1.0) representing how much intervals can vary from the mean
@@ -128,7 +129,7 @@ public class IntervalCondition extends TimeCondition {
             this.initialDelayCondition = null;
         }
         
-        this.nextTriggerTime = calculateNextTriggerTime();
+        setNextTriggerTime (calculateNextTriggerTime());
     }
     
     /**
@@ -175,7 +176,7 @@ public class IntervalCondition extends TimeCondition {
             this.initialDelayCondition = null;
         }
         
-        this.nextTriggerTime = calculateNextTriggerTime();
+        setNextTriggerTime(calculateNextTriggerTime());
     }
 
     /**
@@ -207,7 +208,7 @@ public class IntervalCondition extends TimeCondition {
             this.initialDelayCondition = null;
         }
         
-        this.nextTriggerTime = calculateNextTriggerTime();
+        setNextTriggerTime(calculateNextTriggerTime());
     }
     
     /**
@@ -400,34 +401,43 @@ public class IntervalCondition extends TimeCondition {
 
     @Override
     public boolean isSatisfied() {
-        if (nextTriggerTime == null) {
+        return isSatisfiedAt(getNextTriggerTimeWithPause().orElse(getNow()));      
+    }
+    @Override
+    public boolean isSatisfiedAt(ZonedDateTime triggerTime) {
+        if (triggerTime == null) {
             return false;
         }
         if(!canTriggerAgain()) {
             return false;
         }
         
+        // Check if condition is paused (handled by superclass, but adding for clarity)
+        if (isPaused) {
+            return false;
+        }        
+        
         // Check initial delay condition first (if exists)
-        if (initialDelayCondition != null && !initialDelayCondition.isSatisfied()) {
+        if (initialDelayCondition != null && !initialDelayCondition.isSatisfiedAt(initialDelayCondition.getNextTriggerTimeWithPause().orElse(getNow()))) {
             return false; // Initial delay hasn't been met yet
         }
         
         ZonedDateTime now = getNow();
-        if (now.isAfter(nextTriggerTime)) {            
+        if (now.isAfter(triggerTime) || now.isEqual(triggerTime)) {            
             return true;
         }
         return false;
     }
-
     @Override
     public String getDescription() {
         ZonedDateTime now = getNow();
         String timeLeft = "";
         String initialDelayInfo = "";
+        String pauseInfo = isPaused ? " (PAUSED)" : "";
         
         // Check initial delay status
         if (initialDelayCondition != null && !initialDelayCondition.isSatisfied()) {
-            Duration initialDelayRemaining = Duration.between(now, initialDelayCondition.getTargetTime());
+            Duration initialDelayRemaining = Duration.between(now, initialDelayCondition.getNextTriggerTimeWithPause().orElse(now));
             long seconds = initialDelayRemaining.getSeconds();
             if (seconds > 0) {
                 initialDelayInfo = String.format(" (initial delay: %02d:%02d:%02d)", 
@@ -435,11 +445,11 @@ public class IntervalCondition extends TimeCondition {
             }
         }
         
-        if (nextTriggerTime != null && (initialDelayCondition == null || initialDelayCondition.isSatisfied())) {
-            if (now.isAfter(nextTriggerTime)) {
+        if (getNextTriggerTimeWithPause().orElse(null) != null && (initialDelayCondition == null || initialDelayCondition.isSatisfied())) {
+            if (now.isAfter(getNextTriggerTimeWithPause().orElse(getNow()))) {
                 timeLeft = " (ready now)";
             } else {
-                Duration remaining = Duration.between(now, nextTriggerTime);
+                Duration remaining = Duration.between(now, getNextTriggerTimeWithPause().orElse(getNow()));
                 long seconds = remaining.getSeconds();
                 timeLeft = String.format(" (next in %02d:%02d:%02d)", 
                     seconds / 3600, (seconds % 3600) / 60, seconds % 60);
@@ -449,14 +459,15 @@ public class IntervalCondition extends TimeCondition {
         // The condition was randomized if min and max intervals are different
         if (randomize) {
             // Show as a range when we have min and max
-            return String.format("Every %s-%s%s%s", 
+            return String.format("Every %s-%s%s%s%s", 
                     formatDuration(minInterval), 
                     formatDuration(maxInterval),
                     timeLeft,
-                    initialDelayInfo);
+                    initialDelayInfo,
+                    pauseInfo);
         } else {
             // Fixed interval
-            return String.format("Every %s%s%s", formatDuration(interval), timeLeft, initialDelayInfo);
+            return String.format("Every %s%s%s%s", formatDuration(interval), timeLeft, initialDelayInfo, pauseInfo);
         }
     }
 
@@ -468,14 +479,14 @@ public class IntervalCondition extends TimeCondition {
         sb.append(getDescription()).append("\n");
         
         ZonedDateTime now = getNow();
-        if (nextTriggerTime != null) {
+        if (getNextTriggerTimeWithPause().orElse(null) != null) {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            sb.append("Next trigger at: ").append(nextTriggerTime.format(formatter)).append("\n");
+            sb.append("Next trigger at: ").append(getNextTriggerTimeWithPause().orElse(getNow()).format(formatter)).append("\n");
             
-            if (now.isAfter(nextTriggerTime)) {
+            if (now.isAfter(getNextTriggerTimeWithPause().orElse(getNow()))) {
                 sb.append("Status: Ready to trigger\n");
             } else {
-                Duration remaining = Duration.between(now, nextTriggerTime);
+                Duration remaining = Duration.between(now, getNextTriggerTimeWithPause().orElse(getNow()));
                 long seconds = remaining.getSeconds();
                 sb.append("Time remaining: ")
                   .append(String.format("%02d:%02d:%02d", seconds / 3600, (seconds % 3600) / 60, seconds % 60))
@@ -524,7 +535,7 @@ public class IntervalCondition extends TimeCondition {
             if (initialDelayCondition.isSatisfied()) {
                 sb.append("Completed\n");
             } else {
-                Duration initialDelayRemaining = Duration.between(now, initialDelayCondition.getTargetTime());
+                Duration initialDelayRemaining = Duration.between(now, initialDelayCondition.getNextTriggerTimeWithPause().orElse(now));
                 long seconds = initialDelayRemaining.getSeconds();
                 if (seconds > 0) {
                     sb.append(String.format("%02d:%02d:%02d remaining\n", 
@@ -549,13 +560,16 @@ public class IntervalCondition extends TimeCondition {
         // Status information
         sb.append("  ├─ Status ──────────────────────────────────\n");
         sb.append("  │ Satisfied: ").append(isSatisfied()).append("\n");
+        if (isPaused) {
+            sb.append("  │ Status: PAUSED\n");
+        }
         
         ZonedDateTime now = getNow();
-        if (nextTriggerTime != null) {
-            sb.append("  │ Next Trigger: ").append(nextTriggerTime.format(dateTimeFormatter)).append("\n");
+        if (getNextTriggerTimeWithPause().orElse(null) != null) {
+            sb.append("  │ Next Trigger: ").append(getNextTriggerTimeWithPause().orElse(getNow()).format(dateTimeFormatter)).append("\n");
             
-            if (!now.isAfter(nextTriggerTime)) {
-                Duration remaining = Duration.between(now, nextTriggerTime);
+            if (!now.isAfter(getNextTriggerTimeWithPause().orElse(getNow()))) {
+                Duration remaining = Duration.between(now, getNextTriggerTimeWithPause().orElse(getNow()));
                 long seconds = remaining.getSeconds();
                 sb.append("  │ Time Remaining: ")
                   .append(String.format("%02d:%02d:%02d", seconds / 3600, (seconds % 3600) / 60, seconds % 60))
@@ -594,14 +608,14 @@ public class IntervalCondition extends TimeCondition {
     @Override
     public void reset(boolean randomize) {
         updateValidReset();
-        this.nextTriggerTime = calculateNextTriggerTime();
-        
+        setNextTriggerTime(calculateNextTriggerTime());
+        this.lastValidResetTime = LocalDateTime.now();
         // Reset initial delay condition if it exists
         if (initialDelayCondition != null) {
             initialDelayCondition.reset(false);
         }
         
-        log.debug("IntervalCondition reset, next trigger at: {}", nextTriggerTime);
+        log.debug("IntervalCondition reset, next trigger at: {}", getNextTriggerTimeWithPause().orElse(null));
     }
     @Override
     public void hardReset() {
@@ -613,19 +627,22 @@ public class IntervalCondition extends TimeCondition {
         if (initialDelayCondition != null) {
             initialDelayCondition.hardReset();
         }
-        this.nextTriggerTime = calculateNextTriggerTime();               
+        setNextTriggerTime(calculateNextTriggerTime());               
     }
-   
+  
     @Override
     public double getProgressPercentage() {
+     
+        
         ZonedDateTime now = getNow();
-        if (nextTriggerTime == null) {
+        if (getNextTriggerTimeWithPause().orElse(null) == null) {
             return 0.0;
         }
+        ZonedDateTime nextTriggerTime = getNextTriggerTimeWithPause().orElse(null);
         if (now.isAfter(nextTriggerTime)) {
             return 100.0;
         }
-        
+     
         // Calculate how much time has passed since the last trigger
         Duration timeUntilNextTrigger = Duration.between(now, nextTriggerTime);
         
@@ -643,22 +660,29 @@ public class IntervalCondition extends TimeCondition {
             // If we've had a previous trigger, calculate from that time to the next trigger
             Duration actualInterval = Duration.between(lastValidResetTime.atZone(getNow().getZone()), nextTriggerTime);
             lastInterval = actualInterval;
+            if(isPaused) {
+                lastInterval = lastInterval.plus(getCurrentPauseDuration());        
+            }
         }
+        
         
         // Calculate ratio of elapsed time
         long remainingMillis = timeUntilNextTrigger.toMillis();
-        long totalMillis = lastInterval.toMillis();
+        long totalMillis = interval.toMillis();
         
         double elapsedRatio = 1.0 - (remainingMillis / (double) totalMillis);
         return Math.max(0, Math.min(100, elapsedRatio * 100));
     }
     @Override
     public Optional<ZonedDateTime> getCurrentTriggerTime() {
-        if (!canTriggerAgain()) {
-            return Optional.empty(); // No trigger time if already triggered to often
+        // If paused or can't trigger again, don't provide a trigger time
+        if ( getNextTriggerTimeWithPause().orElse(null) == null || !canTriggerAgain()) {
+            return Optional.empty(); // No trigger time during pause or if already triggered too often
         }
+        
         ZonedDateTime now = getNow();
-
+        ZonedDateTime nextTriggerTime = getNextTriggerTimeWithPause().orElse(null);
+     
         if (initialDelayCondition != null && !initialDelayCondition.isSatisfied()) {
             return initialDelayCondition.getCurrentTriggerTime(); // Return the initial delay condition's trigger time
         }
@@ -668,7 +692,7 @@ public class IntervalCondition extends TimeCondition {
         }
         
         // Otherwise return the scheduled next trigger time
-        return Optional.of(nextTriggerTime);
+        return Optional.of(nextTriggerTime);          
     }
     
     /**
@@ -709,7 +733,8 @@ public class IntervalCondition extends TimeCondition {
         }
     }
     
-    private String formatDuration(Duration duration) {
+    @Override
+    protected String formatDuration(Duration duration) {
         long seconds = duration.getSeconds();
         if (seconds < 60) {
             return seconds + "s";
@@ -717,6 +742,40 @@ public class IntervalCondition extends TimeCondition {
             return String.format("%dm %ds", seconds / 60, seconds % 60);
         } else {
             return String.format("%dh %dm", seconds / 3600, (seconds % 3600) / 60);
+        }
+    }
+
+    /**
+     * Handles what happens when this condition is resumed.
+     * Shifts the next trigger time by the pause duration to maintain the same
+     * relative timing after a pause.
+     * 
+     * @param pauseDuration The duration for which this condition was paused
+     */
+    @Override
+    protected void onResume(Duration pauseDuration) {
+        if (isPaused()) {
+            return;
+        }
+         // If there's an initial delay condition, let it handle its own resume
+        if (initialDelayCondition != null) {
+            // Only shift if the initial delay hasn't been satisfied yet
+            if (initialDelayCondition instanceof TimeCondition) {
+                initialDelayCondition.onResume(pauseDuration);
+                // If initial delay already implements pause/resume, it will be handled by TimeCondition                
+            }
+        }
+        // getNextTriggerTimeWithPause() provide old next trigger time -> we are resumed.. 
+        ZonedDateTime nextTriggerTimeWithPauseDuration = getNextTriggerTimeWithPause().orElse(null);
+        if (nextTriggerTimeWithPauseDuration != null) {
+            nextTriggerTimeWithPauseDuration = nextTriggerTimeWithPauseDuration.plus(pauseDuration);
+            // Shift the next trigger time by the pause duration
+            setNextTriggerTime(nextTriggerTimeWithPauseDuration);
+            
+            if (lastValidResetTime != null) {
+                lastValidResetTime = lastValidResetTime.plus(pauseDuration);
+            }
+            log.debug("IntervalCondition resumed, next trigger time shifted to: {}", getNextTriggerTimeWithPause().get());
         }
     }
 }

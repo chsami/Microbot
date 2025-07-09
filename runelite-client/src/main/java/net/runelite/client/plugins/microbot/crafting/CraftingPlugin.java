@@ -3,7 +3,6 @@ package net.runelite.client.plugins.microbot.crafting;
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
-import net.runelite.api.Skill;
 import net.runelite.client.Notifier;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
@@ -35,12 +34,6 @@ public class CraftingPlugin extends Plugin {
     @Inject
     private CraftingConfig config;
     @Inject
-    private Client client;
-    @Inject
-    private ClientThread clientThread;
-    @Inject
-    private Notifier notifier;
-    @Inject
     private OverlayManager overlayManager;
     @Inject
     private CraftingOverlay craftingOverlay;
@@ -52,11 +45,7 @@ public class CraftingPlugin extends Plugin {
 
     @Override
     protected void startUp() throws AWTException {
-        Microbot.pauseAllScripts = false;
-        Microbot.setClient(client);
-        Microbot.setClientThread(clientThread);
-        Microbot.setNotifier(notifier);
-        Microbot.setMouse(new VirtualMouse());
+		Microbot.pauseAllScripts.compareAndSet(true, false);
         if (overlayManager != null) {
             overlayManager.add(craftingOverlay);
         }

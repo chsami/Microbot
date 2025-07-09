@@ -72,7 +72,7 @@ The implementation handles various edge cases:
 
 This method is commonly used when a plugin has met its objective (like completing a quest) or encountered a situation where it cannot continue (like running out of resources).
 
-#### `boolean isHardStoppable()`
+#### `boolean allowHardStop()`
 
 Indicates whether a plugin supports being forcibly terminated if it doesn't respond to a soft stop request. The default implementation returns `false`, meaning plugins will only be stopped gracefully. Plugins can override this to allow hard stops in specific situations.
 

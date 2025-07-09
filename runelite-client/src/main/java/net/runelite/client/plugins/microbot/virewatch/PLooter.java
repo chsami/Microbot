@@ -42,7 +42,7 @@ public class PLooter extends Script {
                 name
         );
         if (Rs2GroundItem.lootItemsBasedOnNames(runeParams)) {
-            Microbot.pauseAllScripts = false;
+            Microbot.pauseAllScripts.compareAndSet(true, false);
         }
 
     }
@@ -58,7 +58,7 @@ public class PLooter extends Script {
                 config.toggleOnlyLootMyItems()
         );
         if (Rs2GroundItem.lootItemBasedOnValue(valueParams)) {
-            Microbot.pauseAllScripts = false;
+            Microbot.pauseAllScripts.compareAndSet(true, false);
         }
     }
 

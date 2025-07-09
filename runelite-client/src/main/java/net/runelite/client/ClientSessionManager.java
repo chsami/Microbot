@@ -24,14 +24,6 @@
  */
 package net.runelite.client;
 
-import java.io.IOException;
-import java.util.UUID;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-import javax.inject.Inject;
-import javax.inject.Named;
-import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
@@ -39,6 +31,15 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ClientShutdown;
 import net.runelite.client.plugins.microbot.MicrobotApi;
 import net.runelite.client.util.RunnableExceptionLogger;
+
+import javax.inject.Inject;
+import javax.inject.Named;
+import javax.inject.Singleton;
+import java.io.IOException;
+import java.util.UUID;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 @Singleton
 @Slf4j
@@ -92,7 +93,7 @@ public class ClientSessionManager
 		scheduledFuture = executorService.scheduleWithFixedDelay(
 				RunnableExceptionLogger.wrap(this::ping), 1, 10, TimeUnit.MINUTES);
 		scheduledFutureMicroBot = executorService.scheduleWithFixedDelay(
-				RunnableExceptionLogger.wrap(this::microbotPing), 1, 5, TimeUnit.MINUTES);
+				RunnableExceptionLogger.wrap(this::microbotPing), 1, 10, TimeUnit.MINUTES);
 	}
 
 	@Subscribe
@@ -113,7 +114,6 @@ public class ClientSessionManager
 				UUID localMicrobotUuid = microbotSessionId;
 				if (localMicrobotUuid != null)
 				{
-					microbotApi.sendScriptStatistics();
 					microbotApi.microbotDelete(localMicrobotUuid);
 				}
 			}

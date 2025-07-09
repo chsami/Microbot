@@ -21,7 +21,6 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.An
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.OrCondition;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.models.RS2Item;
@@ -34,7 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 import static net.runelite.api.TileItem.OWNERSHIP_SELF;
 
@@ -62,6 +60,10 @@ public class LootItemCondition extends ResourceCondition {
     private transient int currentTargetAmount;
     private transient int currentTrackedCount;
     private transient int lastInventoryCount;
+    
+    // Pause/resume state for cumulative tracking
+    private transient int pausedInventoryCount;
+    private transient int pausedTrackedCount;
     
 
     private final Map<WorldPoint, Integer> trackedItemQuantities = new HashMap<>();
@@ -297,7 +299,11 @@ public class LootItemCondition extends ResourceCondition {
     }
    
     @Override
-    public boolean isSatisfied() {        
+    public boolean isSatisfied() {
+        // Return false if paused to prevent condition from being satisfied during pause
+        if (isPaused()) {
+            return false;
+        }
         return currentTrackedCount >= currentTargetAmount;
     }
 
@@ -436,6 +442,11 @@ public class LootItemCondition extends ResourceCondition {
      */
     @Override
     public void onItemSpawned(ItemSpawned event) {
+        // Skip updates if paused
+        if (isPaused()) {
+            return;
+        }
+        
         TileItem tileItem = event.getItem();
         WorldPoint location = event.getTile().getWorldLocation();
 
@@ -481,6 +492,11 @@ public class LootItemCondition extends ResourceCondition {
      */
     @Override
     public void onItemDespawned(ItemDespawned event) {
+        // Skip updates if paused
+        if (isPaused()) {
+            return;
+        }
+        
         WorldPoint location = event.getTile().getWorldLocation();
         TileItem tileItem = event.getItem();
         
@@ -540,6 +556,11 @@ public class LootItemCondition extends ResourceCondition {
      */
     @Override
     public void onItemContainerChanged(ItemContainerChanged event) {
+        // Skip updates if paused
+        if (isPaused()) {
+            return;
+        }
+        
         // Only interested in inventory changes
         if (event.getContainerId() != InventoryID.INVENTORY.getId()) {
             return;
@@ -699,6 +720,11 @@ public class LootItemCondition extends ResourceCondition {
      */
     @Override
     public void onGameTick(GameTick gameTick) {
+        // Skip updates if paused
+        if (isPaused()) {
+            return;
+        }
+        
         // Update player position for dropped item tracking
         updatePlayerPosition();
         
@@ -719,6 +745,40 @@ public class LootItemCondition extends ResourceCondition {
             }
             
             lastInventoryCount = currentCount;
+        }
+    }
+    
+    @Override
+    public void pause() {
+        super.pause();
+        
+        // Snapshot current state for adjustment on resume
+        pausedInventoryCount = getCurrentInventoryCount();
+        pausedTrackedCount = currentTrackedCount;
+        
+        if (Microbot.isDebug()) {
+            log.info("LootItemCondition paused: inventory={}, tracked={}", 
+                pausedInventoryCount, pausedTrackedCount);
+        }
+    }
+    
+    @Override
+    public void resume() {
+        super.resume();
+        
+        // Adjust tracked count to exclude items gained during pause
+        int currentInventoryCount = getCurrentInventoryCount();
+        int inventoryGainedDuringPause = Math.max(0, currentInventoryCount - pausedInventoryCount);
+        
+        // Subtract the gain from our tracked count to exclude pause progress
+        currentTrackedCount = Math.max(0, pausedTrackedCount - inventoryGainedDuringPause);
+        
+        // Update last inventory count to current state
+        lastInventoryCount = currentInventoryCount;
+        
+        if (Microbot.isDebug()) {
+            log.info("LootItemCondition resumed: adjusted tracked count from {} to {} (excluded {} items gained during pause)", 
+                pausedTrackedCount, currentTrackedCount, inventoryGainedDuringPause);
         }
     }
     

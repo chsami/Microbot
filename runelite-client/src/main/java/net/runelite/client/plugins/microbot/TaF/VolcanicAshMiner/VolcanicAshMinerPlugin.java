@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.TaF.VolcanicAshMiner;
 
+import net.runelite.client.eventbus.Subscribe;
 import com.google.inject.Provides;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.plugins.Plugin;
@@ -60,7 +61,7 @@ public class VolcanicAshMinerPlugin extends Plugin implements SchedulablePlugin 
         return configManager.getConfig(VolcanicAshMinerConfig.class);
     }
 
-    @Override
+    @Subscribe
     public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
         if (event.getPlugin() == this) {
             if (volcanicAshMinerScript != null) {

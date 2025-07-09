@@ -3,7 +3,6 @@
 This guide provides detailed instructions on how to use the condition configuration panels in the Plugin Scheduler UI to define start and stop conditions for your plugins.
 
 ## Understanding the Condition Panel
-
 The condition configuration panel is the heart of the scheduler's power, allowing you to create sophisticated logic that determines when plugins start and stop. Think of it as programming your character's behavior without writing code.
 
 ### Panel Components
@@ -350,6 +349,7 @@ Before we dive in, let's understand the basic logical operators:
 - **AND**: All conditions must be true (like saying "I'll only go fishing IF I have bait AND I have a fishing rod")
 - **OR**: Any condition can be true (like saying "I'll stop fishing IF my inventory is full OR it's been 2 hours")
 - **NOT**: Inverts a condition (like saying "Run the plugin when I'm NOT in the Wilderness")
+- **LOCK**: Prevents a plugin from stopping while the lock is active (critical for combat and dangerous activities)
 
 ### Using AND Logic (All Conditions)
 

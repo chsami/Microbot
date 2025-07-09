@@ -507,7 +507,7 @@ public class GiantMoleScript extends Script
             return false;
         }
         // The setup does require it; if we don't have it, we need to bank
-        return !Rs2Inventory.hasItem(potionVariants);
+        return !Rs2Inventory.hasItem(potionVariants.toArray(String[]::new));
     }
 
     /**
@@ -605,7 +605,7 @@ public class GiantMoleScript extends Script
             );
             if (Rs2GroundItem.lootItemsBasedOnNames(arrowParams))
             {
-                Microbot.pauseAllScripts = false;
+                Microbot.pauseAllScripts.compareAndSet(true, false);
             }
         }
     }
@@ -619,7 +619,7 @@ public class GiantMoleScript extends Script
             );
             if (Rs2GroundItem.lootItemsBasedOnNames(bonesParams))
             {
-                Microbot.pauseAllScripts = false;
+                Microbot.pauseAllScripts.compareAndSet(true, false);
             }
         }
     }
@@ -633,7 +633,7 @@ public class GiantMoleScript extends Script
             );
             if (Rs2GroundItem.lootItemsBasedOnNames(runesParams))
             {
-                Microbot.pauseAllScripts = false;
+                Microbot.pauseAllScripts.compareAndSet(true, false);
             }
         }
     }
@@ -647,7 +647,7 @@ public class GiantMoleScript extends Script
             );
             if (Rs2GroundItem.lootCoins(coinsParams))
             {
-                Microbot.pauseAllScripts = false;
+                Microbot.pauseAllScripts.compareAndSet(true, false);
             }
         }
     }
@@ -661,7 +661,7 @@ public class GiantMoleScript extends Script
             );
             if (Rs2GroundItem.lootUntradables(untradeableItemsParams))
             {
-                Microbot.pauseAllScripts = false;
+                Microbot.pauseAllScripts.compareAndSet(true, false);
             }
         }
     }
@@ -679,7 +679,7 @@ public class GiantMoleScript extends Script
         );
         if (Rs2GroundItem.lootItemBasedOnValue(valueParams))
         {
-            Microbot.pauseAllScripts = false;
+            Microbot.pauseAllScripts.compareAndSet(true, false);
         }
     }
 
@@ -696,7 +696,7 @@ public class GiantMoleScript extends Script
         );
         if (Rs2GroundItem.lootItemsBasedOnNames(valueParams))
         {
-            Microbot.pauseAllScripts = false;
+            Microbot.pauseAllScripts.compareAndSet(true, false);
         }
     }
 }

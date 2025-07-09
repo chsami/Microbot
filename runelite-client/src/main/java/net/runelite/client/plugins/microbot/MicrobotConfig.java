@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.ui;
+package net.runelite.client.plugins.microbot;
 
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
@@ -9,26 +9,23 @@ import net.runelite.client.config.ConfigSection;
 public interface MicrobotConfig extends Config
 {
 	String configGroup = "microbot";
-	String exampleConfigOption = "example";
+	String keyLogType = "logType";
 
 	@ConfigSection(
 		name = "General",
 		description = "The overall global settings for microbot",
-		position = 0,
-		closedByDefault = true
-	)
+		position = 0
+    )
 	String generalSection = "generalSection";
 
 	@ConfigItem(
-		keyName = exampleConfigOption,
-		name = "Example Global config option",
+		keyName = keyLogType,
+		name = "Game Chat Logging",
 		description = "",
-		position = 0,
-		section = generalSection,
-		hidden = true
+		position = 1,
+		section = generalSection
 	)
-	default boolean exampleConfigOption()
-	{
-		return false;
+	default LogType getLogType() {
+		return LogType.SIMPLE;
 	}
 }

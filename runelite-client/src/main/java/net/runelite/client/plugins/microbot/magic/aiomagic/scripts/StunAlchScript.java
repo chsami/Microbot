@@ -68,7 +68,7 @@ public class StunAlchScript extends Script {
                         }
 
                         if (Rs2AntibanSettings.naturalMouse) {
-                            int inventorySlot = Rs2Player.getSkillRequirement(Skill.MAGIC, 55) ? 11 : 4;
+                            int inventorySlot = Rs2Player.getSkillRequirement(Skill.MAGIC, 55) ? 12 : 4;
                             if (alchItem.getSlot() != inventorySlot) {
                                 Rs2Inventory.moveItemToSlot(alchItem, inventorySlot);
                                 return;
@@ -78,9 +78,9 @@ public class StunAlchScript extends Script {
                         var npc = (Rs2NpcModel) Rs2Player.getInteracting();
 
                         if (npc != null) {
-                            Rs2Magic.castOn(plugin.getStunSpell().getRs2Spell().getAction(), npc);
+                            Rs2Magic.castOn(plugin.getStunSpell().getRs2Spell().getMagicAction(), npc);
                         } else {
-                            Rs2Magic.castOn(plugin.getStunSpell().getRs2Spell().getAction(), Rs2Npc.getNpc(plugin.getStunNpcName()));
+                            Rs2Magic.castOn(plugin.getStunSpell().getRs2Spell().getMagicAction(), Rs2Npc.getNpc(plugin.getStunNpcName()));
                         }
 
                         if (Rs2AntibanSettings.naturalMouse) {

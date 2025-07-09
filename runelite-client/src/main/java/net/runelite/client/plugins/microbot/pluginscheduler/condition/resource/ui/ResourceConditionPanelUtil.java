@@ -314,7 +314,7 @@ public class ResourceConditionPanelUtil {
         gbc.gridy++;
         
         // Item names input
-        JLabel itemsLabel = new JLabel("Item Names (comma-separated, supports regex):");
+        JLabel itemsLabel = new JLabel("Item Names (comma-separated):");
         itemsLabel.setForeground(Color.WHITE);
         panel.add(itemsLabel, gbc);
         
@@ -322,12 +322,26 @@ public class ResourceConditionPanelUtil {
         gbc.gridy++;
         gbc.gridwidth = 2;
         JTextField itemsField = new JTextField();
-        itemsField.setToolTipText("<html>Examples:<br>" +
-                "- 'Bones' - Exact match for Bones<br>" +
-                "- 'Shark|Lobster' - Match either Shark OR Lobster<br>" + 
-                "- '.*rune$' - All items ending with 'rune'<br>" +
-                "- 'Dragon.*,Rune.*' - Multiple patterns (Dragon items AND Rune items)</html>");
+        itemsField.setToolTipText("<html>Item names are automatically detected as exact matches or regex patterns:<br>" +
+                "- Simple names: 'Dragon scimitar', 'Bones', 'Shark' → exact match<br>" +
+                "- Pattern names: 'Dragon.*', '^Rune.*sword$', '.*bones.*' → regex match<br>" +
+                "- Multiple items: 'Bones, Dragon.*' → mixed exact and regex matching</html>");
         panel.add(itemsField, gbc);
+        
+        // Matching mode information
+        gbc.gridy++;
+        JPanel matchingPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        matchingPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        
+        JLabel matchingInfoLabel = new JLabel("Item name matching: Automatic detection (exact names or regex patterns)");
+        matchingInfoLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        matchingInfoLabel.setFont(FontManager.getRunescapeSmallFont());
+        matchingInfoLabel.setToolTipText("<html>Item names are automatically detected as either exact matches or regex patterns.<br>" +
+                "Simple names like 'Dragon scimitar' are matched exactly.<br>" +
+                "Patterns like 'Dragon.*' or '^Rune.*sword$' are treated as regex.</html>");
+        matchingPanel.add(matchingInfoLabel);
+        
+        panel.add(matchingPanel, gbc);
         
         // Logical operator selection (AND/OR) - only visible with multiple items
         gbc.gridy++;
@@ -395,9 +409,6 @@ public class ResourceConditionPanelUtil {
         amountLabel.setForeground(Color.WHITE);
         amountPanel.add(amountLabel);
         
-     
-     
-        
         JCheckBox sameAmountCheckBox = new JCheckBox("Same amount for all items");
         sameAmountCheckBox.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         sameAmountCheckBox.setForeground(Color.WHITE);
@@ -406,33 +417,30 @@ public class ResourceConditionPanelUtil {
         sameAmountCheckBox.setToolTipText("Use the same target amount for all items");
         amountPanel.add(sameAmountCheckBox);
         
-    
-        
         panel.add(amountPanel, gbc);
         
-        // Min/Max panel
+        // Amount configuration panel (always visible)
         gbc.gridy++;
-        JPanel minMaxPanel = new JPanel(new GridLayout(1, 4, 5, 0));
-        minMaxPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        JPanel amountConfigPanel = new JPanel(new GridLayout(1, 4, 5, 0));
+        amountConfigPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         
         JLabel minLabel = new JLabel("Min:");
         minLabel.setForeground(Color.WHITE);
-        minMaxPanel.add(minLabel);
+        amountConfigPanel.add(minLabel);
         
-        SpinnerNumberModel minModel = new SpinnerNumberModel(50, 1, Integer.MAX_VALUE, 10);
+        SpinnerNumberModel minModel = new SpinnerNumberModel(1, 1, Integer.MAX_VALUE, 1);
         JSpinner minSpinner = new JSpinner(minModel);
-        minMaxPanel.add(minSpinner);
+        amountConfigPanel.add(minSpinner);
         
         JLabel maxLabel = new JLabel("Max:");
         maxLabel.setForeground(Color.WHITE);
-        minMaxPanel.add(maxLabel);
+        amountConfigPanel.add(maxLabel);
         
-        SpinnerNumberModel maxModel = new SpinnerNumberModel(150, 1, Integer.MAX_VALUE, 10);
+        SpinnerNumberModel maxModel = new SpinnerNumberModel(1, 1, Integer.MAX_VALUE, 1);
         JSpinner maxSpinner = new JSpinner(maxModel);
-        minMaxPanel.add(maxSpinner);
+        amountConfigPanel.add(maxSpinner);
         
-        minMaxPanel.setVisible(false);
-        panel.add(minMaxPanel, gbc);
+        panel.add(amountConfigPanel, gbc);
         
         // Additional options panel
         gbc.gridy++;
@@ -516,12 +524,12 @@ public class ResourceConditionPanelUtil {
         descriptionLabel.setFont(FontManager.getRunescapeSmallFont());
         panel.add(descriptionLabel, gbc);
         
-        // Add regex help
+        // Add help text
         gbc.gridy++;
-        JLabel regexHelpLabel = new JLabel("Regex help: Use '|' for OR, '.*' for any characters");
-        regexHelpLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-        regexHelpLabel.setFont(FontManager.getRunescapeSmallFont());
-        panel.add(regexHelpLabel, gbc);
+        JLabel helpLabel = new JLabel("Tip: Use simple names like 'Dragon scimitar' or regex patterns like 'Dragon.*'");
+        helpLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        helpLabel.setFont(FontManager.getRunescapeSmallFont());
+        panel.add(helpLabel, gbc);
         
         // Store components
         configPanel.putClientProperty("itemsField", itemsField);
@@ -539,6 +547,8 @@ public class ResourceConditionPanelUtil {
         JTextField itemsField = (JTextField) configPanel.getClientProperty("itemsField");
         JRadioButton andRadioButton = (JRadioButton) configPanel.getClientProperty("andRadioButton");
         JCheckBox sameAmountCheckBox = (JCheckBox) configPanel.getClientProperty("sameAmountCheckBox");        
+        JSpinner minAmountSpinner = (JSpinner) configPanel.getClientProperty("minAmountSpinner");
+        JSpinner maxAmountSpinner = (JSpinner) configPanel.getClientProperty("maxAmountSpinner");
         JCheckBox includeNotedCheckBox = (JCheckBox) configPanel.getClientProperty("includeNotedCheckBox");
         JCheckBox includeNoneOwnerCheckBox = (JCheckBox) configPanel.getClientProperty("includeNoneOwnerCheckBox");
         
@@ -548,8 +558,17 @@ public class ResourceConditionPanelUtil {
             return null;
         }
         
+        // Get configuration values
         boolean includeNoted = includeNotedCheckBox != null && includeNotedCheckBox.isSelected();
         boolean includeNoneOwner = includeNoneOwnerCheckBox != null && includeNoneOwnerCheckBox.isSelected();
+        
+        int minAmount = minAmountSpinner != null ? (Integer) minAmountSpinner.getValue() : 1;
+        int maxAmount = maxAmountSpinner != null ? (Integer) maxAmountSpinner.getValue() : minAmount;
+        
+        // Ensure max >= min
+        if (maxAmount < minAmount) {
+            maxAmount = minAmount;
+        }
         
         String itemNamesString = itemsField.getText().trim();
         if (itemNamesString.isEmpty()) {
@@ -563,6 +582,8 @@ public class ResourceConditionPanelUtil {
         for (String itemName : itemNamesArray) {
             itemName = itemName.trim();
             if (!itemName.isEmpty()) {
+                // Add the item name as-is - the ResourceCondition.createItemPattern() method
+                // will automatically detect if it's a regex pattern or exact match
                 itemNames.add(itemName);
             }
         }
@@ -573,15 +594,7 @@ public class ResourceConditionPanelUtil {
         
         // If only one item, create a simple LootItemCondition
         if (itemNames.size() == 1) {
-            
-            JSpinner minAmountSpinner = (JSpinner) configPanel.getClientProperty("minAmountSpinner");
-            JSpinner maxAmountSpinner = (JSpinner) configPanel.getClientProperty("maxAmountSpinner");
-            
-            int minAmount = minAmountSpinner != null ? (Integer) minAmountSpinner.getValue() : 1;
-            int maxAmount = maxAmountSpinner != null ? (Integer) maxAmountSpinner.getValue() : minAmount;
-            
             return LootItemCondition.createRandomized(itemNames.get(0), minAmount, maxAmount, includeNoted, includeNoneOwner);
-    
         }
         
         // For multiple items, create a logical condition based on selection
@@ -589,28 +602,13 @@ public class ResourceConditionPanelUtil {
         boolean useSameAmount = sameAmountCheckBox != null && sameAmountCheckBox.isSelected();
         
         if (useSameAmount) {
-        
-            JSpinner minAmountSpinner = (JSpinner) configPanel.getClientProperty("minAmountSpinner");
-            JSpinner maxAmountSpinner = (JSpinner) configPanel.getClientProperty("maxAmountSpinner");
-            
-            int minAmount = minAmountSpinner != null ? (Integer) minAmountSpinner.getValue() : 1;
-            int maxAmount = maxAmountSpinner != null ? (Integer) maxAmountSpinner.getValue() : minAmount;
-            
             if (useAndLogic) {
                 return LootItemCondition.createAndCondition(itemNames, minAmount, maxAmount, includeNoted, includeNoneOwner);
             } else {
                 return LootItemCondition.createOrCondition(itemNames, minAmount, maxAmount, includeNoted, includeNoneOwner);
             }
-        
         } else {
-        
-            JSpinner minAmountSpinner = (JSpinner) configPanel.getClientProperty("minAmountSpinner");
-            JSpinner maxAmountSpinner = (JSpinner) configPanel.getClientProperty("maxAmountSpinner");
-            
-            int minAmount = minAmountSpinner != null ? (Integer) minAmountSpinner.getValue() : 1;
-            int maxAmount = maxAmountSpinner != null ? (Integer) maxAmountSpinner.getValue() : minAmount;
-            
-            // Create lists of min/max amounts for each item
+            // Create lists of min/max amounts for each item (currently using same values for all)
             List<Integer> minAmounts = new ArrayList<>();
             List<Integer> maxAmounts = new ArrayList<>();
             
@@ -620,13 +618,10 @@ public class ResourceConditionPanelUtil {
             }
             
             if (useAndLogic) {
-                LogicalCondition condition = LootItemCondition.createAndCondition(itemNames, minAmounts, maxAmounts, includeNoted, includeNoneOwner);                                                          
-                return condition;
+                return LootItemCondition.createAndCondition(itemNames, minAmounts, maxAmounts, includeNoted, includeNoneOwner);                                                          
             } else {
-                // For OrCondition with different parameters, we need to use the overloaded version
                 return LootItemCondition.createOrCondition(itemNames, minAmounts, maxAmounts, includeNoted, includeNoneOwner);
             }
-           
         }
     }
 
@@ -763,6 +758,7 @@ public class ResourceConditionPanelUtil {
     /**
      * Creates a GatheredResourceCondition from the panel configuration
      */
+    @SuppressWarnings("unchecked")
     public static GatheredResourceCondition createGatheredResourceCondition(JPanel configPanel) {
         JTextField itemNameField = (JTextField) configPanel.getClientProperty("gatheredItemNameField");
         JComboBox<String> resourceTypeComboBox = (JComboBox<String>) configPanel.getClientProperty("gatheredResourceType");        
@@ -1058,17 +1054,17 @@ public static void createProcessItemPanel(JPanel panel, GridBagConstraints gbc, 
 /**
  * Creates a ProcessItemCondition from the panel configuration
  */
+@SuppressWarnings("unchecked")
 public static ProcessItemCondition createProcessItemCondition(JPanel configPanel) {
     JRadioButton sourceButton = (JRadioButton) configPanel.getClientProperty("procSourceRadio");
     JRadioButton targetButton = (JRadioButton) configPanel.getClientProperty("procTargetRadio");
     JRadioButton eitherButton = (JRadioButton) configPanel.getClientProperty("procEitherRadio");
-    JRadioButton bothButton = (JRadioButton) configPanel.getClientProperty("procBothRadio");
     
     DefaultListModel<String> sourceItemsModel = (DefaultListModel<String>) configPanel.getClientProperty("procSourceItemsModel");
     DefaultListModel<String> targetItemsModel = (DefaultListModel<String>) configPanel.getClientProperty("procTargetItemsModel");
         
     JSpinner minSpinner = (JSpinner) configPanel.getClientProperty("procMinSpinner");
-    JSpinner maxSpinner = (JSpinner) configPanel.getClientProperty("procMaxSpinner");    
+    JSpinner maxSpinner = (JSpinner) configPanel.getClientProperty("procMaxSpinner");
     
     // Determine tracking mode
     ProcessItemCondition.TrackingMode trackingMode;
@@ -1218,8 +1214,7 @@ private static void setupLootItemCondition(JPanel panel, Condition condition) {
     // Retrieve the UI components
     JTextField itemsField = (JTextField) panel.getClientProperty("itemsField");
     JRadioButton andRadioButton = (JRadioButton) panel.getClientProperty("andRadioButton");
-    JRadioButton orRadioButton = (JRadioButton) panel.getClientProperty("orRadioButton");    
-    JCheckBox sameAmountCheckBox = (JCheckBox) panel.getClientProperty("sameAmountCheckBox");    
+    JCheckBox sameAmountCheckBox = (JCheckBox) panel.getClientProperty("sameAmountCheckBox");
     JSpinner minAmountSpinner = (JSpinner) panel.getClientProperty("minAmountSpinner");
     JSpinner maxAmountSpinner = (JSpinner) panel.getClientProperty("maxAmountSpinner");
     JCheckBox includeNotedCheckBox = (JCheckBox) panel.getClientProperty("includeNotedCheckBox");
@@ -1231,33 +1226,38 @@ private static void setupLootItemCondition(JPanel panel, Condition condition) {
         if (!(condition instanceof LootItemCondition)) {
             conditionBaseCondition = ((LogicalCondition) condition).getConditions().get(0);
             if (condition instanceof OrCondition) {
-                isAndLogic =false;
+                isAndLogic = false;
             }
         }
         LootItemCondition itemCondition = (LootItemCondition) conditionBaseCondition;
         
         // Set item names
         if (itemsField != null) {
-            StringBuilder itemsText = new StringBuilder();
-            // for now only allow update 1 item at time
-            //for (String pattern : itemCondition.getItemPattern()) {
-            //    if (itemsText.length() > 0) {
-            //        itemsText.append(",");
-            //    }
-             //   itemsText.append(pattern);
-            //}
-            itemsText.append(itemCondition.getItemPattern());            
-            itemsField.setText(String.join(",", itemsText));
+            // For single condition, just use the pattern
+            String itemPatternString = itemCondition.getItemPatternString();
+            if (itemPatternString != null) {
+                // Clean up the pattern for display
+                String displayName = itemPatternString;
+                if (displayName.startsWith(".*") && displayName.endsWith(".*") && !displayName.contains("|")) {
+                    // Remove surrounding .* for cleaner display
+                    displayName = displayName.substring(2, displayName.length() - 2);
+                }
+                
+                // Handle patterns that were created with Pattern.quote() which escapes special characters
+                if (displayName.startsWith("\\Q") && displayName.endsWith("\\E")) {
+                    displayName = displayName.substring(2, displayName.length() - 2);
+                }
+                
+                itemsField.setText(displayName);
+            }
         }
         
         // Set logical operator
-        if (andRadioButton != null && orRadioButton != null) {
-            
+        if (andRadioButton != null) {
             andRadioButton.setSelected(isAndLogic);
-            orRadioButton.setSelected(!isAndLogic);
         }
                         
-        // Set min/max
+        // Set min/max amounts
         if (minAmountSpinner != null && maxAmountSpinner != null) {
             minAmountSpinner.setValue(itemCondition.getTargetAmountMin());
             maxAmountSpinner.setValue(itemCondition.getTargetAmountMax());
@@ -1265,65 +1265,68 @@ private static void setupLootItemCondition(JPanel panel, Condition condition) {
         
         // Set same amount for all
         if (sameAmountCheckBox != null) {
-            sameAmountCheckBox.setSelected(false);
+            sameAmountCheckBox.setSelected(true); // Default to same amount
         }
+        
+        // Set options
         if (includeNotedCheckBox != null) {
             includeNotedCheckBox.setSelected(itemCondition.isIncludeNoted());
         }
         if (includeNoneOwnerCheckBox != null) {
             includeNoneOwnerCheckBox.setSelected(itemCondition.isIncludeNoneOwner());
         }
-
     }
 }
 
 /**
  * Sets up process item condition panel
  */
+@SuppressWarnings("unchecked")
 private static void setupProcessItemCondition(JPanel panel, ProcessItemCondition condition) {
+    JRadioButton sourceButton = (JRadioButton) panel.getClientProperty("procSourceRadio");
+    JRadioButton targetButton = (JRadioButton) panel.getClientProperty("procTargetRadio");
+    JRadioButton eitherButton = (JRadioButton) panel.getClientProperty("procEitherRadio");
+    JRadioButton procBothRadio = (JRadioButton) panel.getClientProperty("procBothRadio");
     
-    JTextField inputItemsField = (JTextField) panel.getClientProperty("procSourceItemsModel");
-    JTextField outputItemsField = (JTextField) panel.getClientProperty("procTargetItemsModel");    
+    DefaultListModel<String> sourceItemsModel = (DefaultListModel<String>) panel.getClientProperty("procSourceItemsModel");
+    DefaultListModel<String> targetItemsModel = (DefaultListModel<String>) panel.getClientProperty("procTargetItemsModel");    
     JSpinner minCountSpinner = (JSpinner) panel.getClientProperty("procMinSpinner");
     JSpinner maxCountSpinner = (JSpinner) panel.getClientProperty("procMaxSpinner");
     
-    JRadioButton eitherButton = (JRadioButton) panel.getClientProperty("eitherButton");
-    JRadioButton targetButton = (JRadioButton) panel.getClientProperty("targetButton");
-    JRadioButton sourceButton = (JRadioButton) panel.getClientProperty("sourceButton");
-    JRadioButton procBothRadio = (JRadioButton) panel.getClientProperty("procBothRadio");
-   
-    
-    
-    
-    
-  
+    // Set tracking mode
     ProcessItemCondition.TrackingMode trackingMode = condition.getTrackingMode();
     switch (trackingMode) {   
         case SOURCE_CONSUMPTION:
-            sourceButton.setSelected(true);
-                        break;
+            if (sourceButton != null) sourceButton.setSelected(true);
+            break;
         case TARGET_PRODUCTION:
-            targetButton.setSelected(true);
+            if (targetButton != null) targetButton.setSelected(true);
             break;
         case EITHER:
-            eitherButton.setSelected(true);    
+            if (eitherButton != null) eitherButton.setSelected(true);    
             break;
         case BOTH:
-            procBothRadio.setSelected(true);            
+            if (procBothRadio != null) procBothRadio.setSelected(true);            
             break;
     }
-  
     
-    if (inputItemsField != null) {
-        inputItemsField.setText(String.join(",", condition.getInputItemPatternStrings()));
+    // Populate source items list
+    if (sourceItemsModel != null) {
+        sourceItemsModel.clear();
+        for (ProcessItemCondition.ItemTracker tracker : condition.getSourceItems()) {
+            sourceItemsModel.addElement(tracker.getQuantityPerProcess() + "x " + tracker.getItemName());
+        }
     }
     
-    if (outputItemsField != null) {
-        outputItemsField.setText(String.join(",", condition.getOutputItemPatternStrings()));
+    // Populate target items list  
+    if (targetItemsModel != null) {
+        targetItemsModel.clear();
+        for (ProcessItemCondition.ItemTracker tracker : condition.getTargetItems()) {
+            targetItemsModel.addElement(tracker.getQuantityPerProcess() + "x " + tracker.getItemName());
+        }
     }
-     
-
     
+    // Set count values
     if (minCountSpinner != null && maxCountSpinner != null) {
         minCountSpinner.setValue(condition.getTargetCountMin());
         maxCountSpinner.setValue(condition.getTargetCountMax());
@@ -1333,24 +1336,70 @@ private static void setupProcessItemCondition(JPanel panel, ProcessItemCondition
 /**
  * Sets up gathered resource condition panel
  */
+@SuppressWarnings("unchecked")
 private static void setupGatheredResourceCondition(JPanel panel, GatheredResourceCondition condition) {
-    JComboBox<String> resourceTypeComboBox = (JComboBox<String>) panel.getClientProperty("resourceTypeComboBox");
-    JTextField resourceNameField = (JTextField) panel.getClientProperty("resourceNameField");    
-    JSpinner minCountSpinner = (JSpinner) panel.getClientProperty("minCountSpinner");
-    JSpinner maxCountSpinner = (JSpinner) panel.getClientProperty("maxCountSpinner");
+    JComboBox<String> resourceTypeComboBox = (JComboBox<String>) panel.getClientProperty("gatheredResourceType");
+    JTextField resourceNameField = (JTextField) panel.getClientProperty("gatheredItemNameField");    
+    JSpinner minCountSpinner = (JSpinner) panel.getClientProperty("gatheredMinSpinner");
+    JSpinner maxCountSpinner = (JSpinner) panel.getClientProperty("gatheredMaxSpinner");
+    JCheckBox includeNotedCheckbox = (JCheckBox) panel.getClientProperty("gatheredIncludeNotedCheckbox");
     
     if (resourceTypeComboBox != null) {
         resourceTypeComboBox.setSelectedItem("Auto-detect");
     }
     
     if (resourceNameField != null) {
-        resourceNameField.setText(condition.getItemPatternString());
+        resourceNameField.setText(condition.getItemName());
     }
-                
+    
+    if (includeNotedCheckbox != null) {
+        includeNotedCheckbox.setSelected(condition.isIncludeNoted());
+    }
     
     if (minCountSpinner != null && maxCountSpinner != null) {
         minCountSpinner.setValue(condition.getTargetCountMin());
         maxCountSpinner.setValue(condition.getTargetCountMax());
     }
 }
+
+/**
+     * Checks if an item name string appears to be a regex pattern
+     * This method uses the same logic as ResourceCondition.createItemPattern()
+     * @param itemName The item name to check
+     * @return true if the item name appears to be a regex pattern, false otherwise
+     */
+    public static boolean isRegexPattern(String itemName) {
+        if (itemName == null || itemName.isEmpty()) {
+            return false;
+        }
+        
+        // Check for regex special characters that indicate a pattern
+        return itemName.startsWith("^") || itemName.endsWith("$") || 
+               itemName.contains(".*") || itemName.contains("[") || 
+               itemName.contains("(") || itemName.contains("|");
+    }
+    
+    /**
+     * Formats a list of item names for display, showing whether they are exact matches or regex patterns
+     * @param itemNames The list of item names
+     * @return A formatted string showing the item names and their matching mode
+     */
+    public static String formatItemNamesForDisplay(List<String> itemNames) {
+        if (itemNames == null || itemNames.isEmpty()) {
+            return "";
+        }
+        
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < itemNames.size(); i++) {
+            String itemName = itemNames.get(i);
+            if (i > 0) {
+                sb.append(", ");
+            }
+            sb.append(itemName);
+            if (isRegexPattern(itemName)) {
+                sb.append(" (regex)");
+            }
+        }
+        return sb.toString();
+    }
 }

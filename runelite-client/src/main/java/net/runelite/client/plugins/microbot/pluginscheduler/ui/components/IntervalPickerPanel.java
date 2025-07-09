@@ -2,13 +2,9 @@ package net.runelite.client.plugins.microbot.pluginscheduler.ui.components;
 
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.IntervalCondition;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
-
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;

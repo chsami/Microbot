@@ -57,7 +57,7 @@ public class TimeWindowConditionAdapter implements JsonSerializer<TimeWindowCond
         data.addProperty("endTime", endUtc.toLocalTime().format(TIME_FORMAT));
         data.addProperty("startDate", startDateUtc.toLocalDate().format(DATE_FORMAT));
         data.addProperty("endDate", endDateUtc.toLocalDate().format(DATE_FORMAT));
-        LocalDateTime currentStartDateTime = src.getCurrentStartDateTime();
+        LocalDateTime currentStartDateTime = src.getNextTriggerTimeWithPause().get().toLocalDateTime();
         LocalDateTime currentEndDateTime = src.getCurrentEndDateTime();
         if (currentStartDateTime != null) {
             data.addProperty("currentStartDateTime", currentStartDateTime.format(DateTimeFormatter.ISO_DATE_TIME));
@@ -180,13 +180,13 @@ public class TimeWindowConditionAdapter implements JsonSerializer<TimeWindowCond
             LocalDateTime lastCurrentEndDateTime = LocalDateTime.parse(dataObj.get("currentEndDateTime").getAsString());
             // check first if the last current start date time and end date time is in a future
             // date time, if so set the current start date time and end date time to the last current start date time and end date time, otherwise set it to the current start date time and end date time
-            LocalDateTime currentStartDateTime = lastCurrentStartDateTime.isAfter(LocalDateTime.now()) ? lastCurrentStartDateTime : condition.getCurrentStartDateTime();
+            LocalDateTime currentStartDateTime = lastCurrentStartDateTime.isAfter(LocalDateTime.now()) ? lastCurrentStartDateTime : condition.getNextTriggerTimeWithPause().get().toLocalDateTime();
             LocalDateTime currentEndDateTime = lastCurrentEndDateTime.isAfter(LocalDateTime.now()) ? lastCurrentEndDateTime : condition.getCurrentEndDateTime();                        
             // ensure start date time is before end date time
             if (currentStartDateTime.isAfter(currentEndDateTime)) {
                 throw new JsonParseException("Current start date time is after current end date time");
             }            
-            condition.setCurrentStartDateTime(currentStartDateTime);
+            condition.setNextTriggerTime(currentStartDateTime.atZone(ZoneId.systemDefault()));
             condition.setCurrentEndDateTime(currentEndDateTime);    
         }
         
@@ -209,6 +209,7 @@ public class TimeWindowConditionAdapter implements JsonSerializer<TimeWindowCond
             boolean useRandomization = dataObj.get("useRandomization").getAsBoolean();
             int randomizerValue = dataObj.get("randomizerValue").getAsInt();
             condition.setRandomization(useRandomization);
+            condition.setRandomizerValue(randomizerValue);
         }                        
         return condition;
        

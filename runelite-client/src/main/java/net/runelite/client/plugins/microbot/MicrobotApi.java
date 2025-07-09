@@ -3,18 +3,17 @@ package net.runelite.client.plugins.microbot;
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import net.runelite.client.RuneLiteProperties;
-import okhttp3.*;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 import javax.inject.Inject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
-
-import static net.runelite.http.api.RuneLiteAPI.JSON;
 
 /**
  * Class that communicates with the microbot api
@@ -98,53 +97,5 @@ public class MicrobotApi {
                 .build();
 
         client.newCall(request).execute().close();
-    }
-
-    /**
-     * Sends the runtime statistics of active scripts to a remote API endpoint.
-     *
-     * This method collects the runtime information of all active scripts, converts it into a map of
-     * script names and their corresponding runtimes in minutes, and sends the data to a predefined
-     * API endpoint as a JSON payload.
-     *
-     * Key Steps:
-     * 1. If the application is in debug mode, the method returns early without executing.
-     * 2. Collects active script runtime data:
-     *    - The script class names are used as keys in the map.
-     *    - The runtime of each script is converted to minutes and used as the map's values.
-     * 3. Prepares and sends an HTTP POST request with the runtime data serialized into JSON format.
-     *    - The payload is sent to the endpoint defined by `microbotApiUrl + "/script/runtime"`.
-     *    - The API request uses the `gson` library to serialize the `ScriptStats` object.
-     * 4. Handles the response:
-     *    - If the response indicates failure, an `IOException` is thrown to signal an error.
-     *    - The HTTP client connection is closed automatically using try-with-resources.
-     *
-     * @throws IOException if the HTTP request fails or if the response indicates an error.
-     */
-    public void sendScriptStatistics() throws IOException {
-        if (Microbot.isDebug()) return;
-
-        Map<String, Integer> scriptRuntimeMap = Microbot.getActiveScripts().stream()
-                .collect(Collectors.toMap(
-                        x -> x.getClass().getSimpleName(), // Key: Simple name of the class
-                        x -> (int) x.getRunTime().toMinutes()   // Value: Runtime in minutes
-                ));
-        try (Response response = client.newCall(new Request.Builder().url(microbotApiUrl + "/script/runtime")
-                .post(RequestBody.create(JSON, gson.toJson(new ScriptStats(scriptRuntimeMap))))
-                .build())
-                .execute()) {
-            if (!response.isSuccessful()) {
-                throw new IOException("Unsuccessful in sending runtime statistics to api");
-            }
-        }
-    }
-}
-
-
-class ScriptStats {
-    Map<String, Integer> scriptRunTimes;
-
-    ScriptStats(Map<String, Integer> scriptRunTimes) {
-        this.scriptRunTimes = scriptRunTimes;
     }
 }

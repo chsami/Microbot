@@ -68,7 +68,7 @@ public class AutoFishingScript extends Script {
                     return;
                 }
 
-                if (Rs2Player.isMoving() || Rs2Antiban.getCategory().isBusy() || Microbot.pauseAllScripts) return;
+                if (Rs2Player.isMoving() || Rs2Antiban.getCategory().isBusy()) return;
 
                 switch (state) {
                     case FISHING:

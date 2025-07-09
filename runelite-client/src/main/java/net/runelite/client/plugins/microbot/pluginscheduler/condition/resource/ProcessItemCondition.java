@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.InventoryID;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.AndCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.OrCondition;
@@ -21,7 +22,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 
@@ -43,6 +43,7 @@ public class ProcessItemCondition extends ResourceCondition {
     // Target count configuration
     private final int targetCountMin;
     private final int targetCountMax;
+    private final boolean includeBankForPauseResume; // Whether to include bank items when detecting processes during pause/resume
     private transient int currentTargetCount;
     
     // State tracking
@@ -52,6 +53,10 @@ public class ProcessItemCondition extends ResourceCondition {
     private transient Instant lastInventoryChange = Instant.now();
     private transient boolean isProcessingActive = false;
     private transient boolean initialInventoryLoaded = false;
+    
+    // Pause/resume state for cumulative tracking
+    private transient Map<String, Integer> pausedInventoryCounts = new HashMap<>();
+    private transient int pausedProcessedCount;
     public  List<Pattern>getInputItemPatterns() {
         return sourceItems.stream().map(ItemTracker::getItemPattern).collect(Collectors.toList());
     }
@@ -126,13 +131,15 @@ public class ProcessItemCondition extends ResourceCondition {
             List<ItemTracker> targetItems,
             TrackingMode trackingMode,
             int targetCountMin,
-            int targetCountMax) {
+            int targetCountMax,
+            Boolean includeBankForPauseResume) {
         super();
         this.sourceItems = sourceItems != null ? sourceItems : new ArrayList<>();
         this.targetItems = targetItems != null ? targetItems : new ArrayList<>();
         this.trackingMode = trackingMode != null ? trackingMode : TrackingMode.EITHER;
         this.targetCountMin = Math.max(0, targetCountMin);
         this.targetCountMax = Math.max(this.targetCountMin, targetCountMax);
+        this.includeBankForPauseResume = includeBankForPauseResume != null ? includeBankForPauseResume : true; // Default to true for better accuracy
         this.currentTargetCount = Rs2Random.between(this.targetCountMin, this.targetCountMax);
     }
     
@@ -185,6 +192,15 @@ public class ProcessItemCondition extends ResourceCondition {
      */
     public static ProcessItemCondition forRecipe(String sourceItemName, int sourceQuantity, 
             String targetItemName, int targetQuantity, int count) {
+        return forRecipe(sourceItemName, sourceQuantity, targetItemName, targetQuantity, count, true);
+    }
+    
+    /**
+     * Create a condition for tracking a complete recipe (source items and target items)
+     * @param includeBankForPauseResume whether to include bank items when detecting processes during pause/resume
+     */
+    public static ProcessItemCondition forRecipe(String sourceItemName, int sourceQuantity, 
+            String targetItemName, int targetQuantity, int count, boolean includeBankForPauseResume) {
         List<ItemTracker> sourceItems = new ArrayList<>();
         sourceItems.add(new ItemTracker(sourceItemName, sourceQuantity));
         
@@ -197,6 +213,7 @@ public class ProcessItemCondition extends ResourceCondition {
                 .trackingMode(TrackingMode.BOTH)
                 .targetCountMin(count)
                 .targetCountMax(count)
+                .includeBankForPauseResume(includeBankForPauseResume)
                 .build();
     }
     
@@ -274,6 +291,11 @@ public class ProcessItemCondition extends ResourceCondition {
     
     @Override
     public boolean isSatisfied() {
+        // Return false if paused to prevent condition from being satisfied during pause
+        if (isPaused()) {
+            return false;
+        }
+        
         // Once satisfied, stay satisfied until reset
         if (satisfied) {
             return true;
@@ -408,9 +430,13 @@ public class ProcessItemCondition extends ResourceCondition {
         
         return Math.min(100.0, (processedCount * 100.0) / currentTargetCount);
     }
-    
-    @Override
+     @Override
     public void onItemContainerChanged(ItemContainerChanged event) {
+        // Skip updates if paused
+        if (isPaused()) {
+            return;
+        }
+        
         // Only process inventory changes
         if (event.getContainerId() != InventoryID.INVENTORY.getId()) {
             return;
@@ -424,9 +450,14 @@ public class ProcessItemCondition extends ResourceCondition {
         // Update item tracking
         updateItemTracking();
     }
-    
+
     @Override
     public void onGameTick(GameTick event) {
+        // Skip updates if paused
+        if (isPaused()) {
+            return;
+        }
+        
         // Load initial inventory if not yet loaded
         if (!initialInventoryLoaded) {
             updateItemTracking();
@@ -549,21 +580,54 @@ public class ProcessItemCondition extends ResourceCondition {
      * Get current inventory counts for relevant items
      */
     private Map<String, Integer> getCurrentInventoryCounts() {
+        return getCurrentItemCounts(false);
+    }
+    
+    /**
+     * Get current total item counts (inventory + bank) for relevant items
+     */
+    private Map<String, Integer> getCurrentTotalItemCounts() {
+        return getCurrentItemCounts(true);
+    }
+    
+    /**
+     * Get current item counts for relevant items
+     * @param includeBank whether to include banked items in the count
+     */
+    private Map<String, Integer> getCurrentItemCounts(boolean includeBank) {
         Map<String, Integer> counts = new HashMap<>();
         
-        // Get all inventory items
+        // Get inventory items
         List<Rs2ItemModel> invItems = Rs2Inventory.all();
+        
+        // Get bank items if requested and bank data is available
+        List<Rs2ItemModel> bankItems = new ArrayList<>();
+        if (includeBank) {
+            try {
+                List<Rs2ItemModel> bankData = Rs2Bank.bankItems();
+                if (bankData != null) {
+                    bankItems.addAll(bankData);
+                }
+            } catch (Exception e) {
+                // Bank might not be accessible, continue with inventory only
+                if (Microbot.isDebug()) {
+                    log.debug("Could not access bank data: {}", e.getMessage());
+                }
+            }
+        }
         
         // Count source items
         for (ItemTracker sourceItem : sourceItems) {
-            int total = countItems(invItems, sourceItem.getItemPattern());
-            counts.put(sourceItem.getItemName(), total);
+            int invTotal = countItems(invItems, sourceItem.getItemPattern());
+            int bankTotal = includeBank ? countItems(bankItems, sourceItem.getItemPattern()) : 0;
+            counts.put(sourceItem.getItemName(), invTotal + bankTotal);
         }
         
         // Count target items
         for (ItemTracker targetItem : targetItems) {
-            int total = countItems(invItems, targetItem.getItemPattern());
-            counts.put(targetItem.getItemName(), total);
+            int invTotal = countItems(invItems, targetItem.getItemPattern());
+            int bankTotal = includeBank ? countItems(bankItems, targetItem.getItemPattern()) : 0;
+            counts.put(targetItem.getItemName(), invTotal + bankTotal);
         }
         
         return counts;
@@ -601,5 +665,140 @@ public class ProcessItemCondition extends ResourceCondition {
             orCondition.addCondition(condition);
         }
         return orCondition;
+    }
+
+    @Override
+    public void pause() {
+        super.pause();
+        
+        // Snapshot current state for adjustment on resume
+        // Use total counts (inventory + bank) if configured, otherwise inventory only
+        if (includeBankForPauseResume) {
+            pausedInventoryCounts = new HashMap<>(getCurrentTotalItemCounts());
+            if (Microbot.isDebug()) {
+                log.info("ProcessItemCondition paused: processed={}, total item counts (inv+bank) captured", pausedProcessedCount);
+            }
+        } else {
+            pausedInventoryCounts = new HashMap<>(getCurrentInventoryCounts());
+            if (Microbot.isDebug()) {
+                log.info("ProcessItemCondition paused: processed={}, inventory counts captured", pausedProcessedCount);
+            }
+        }
+        pausedProcessedCount = processedCount;
+    }
+    
+    @Override
+    public void resume() {
+        // Only proceed if actually paused
+        if (!isPaused()) {
+            return;
+        }
+        
+        // Get current item counts for comparison (use same method as pause)
+        Map<String, Integer> currentCounts = includeBankForPauseResume ? 
+            getCurrentTotalItemCounts() : getCurrentInventoryCounts();
+        
+        // Calculate how many processes occurred during pause
+        int processesDetectedDuringPause = 0;
+        
+        // For processing conditions, we need to detect actual processing that occurred
+        // Use the same counting method (inventory vs total) as used during pause
+        if (!pausedInventoryCounts.isEmpty()) {
+            // Check if we can detect processing based on our tracking mode
+            switch (trackingMode) {
+                case SOURCE_CONSUMPTION:
+                    processesDetectedDuringPause = detectProcessesDuringPauseByConsumption(pausedInventoryCounts, currentCounts);
+                    break;
+                case TARGET_PRODUCTION:
+                    processesDetectedDuringPause = detectProcessesDuringPauseByProduction(pausedInventoryCounts, currentCounts);
+                    break;
+                case EITHER:
+                    // Take the maximum of consumption or production detected
+                    int consumptionProcesses = detectProcessesDuringPauseByConsumption(pausedInventoryCounts, currentCounts);
+                    int productionProcesses = detectProcessesDuringPauseByProduction(pausedInventoryCounts, currentCounts);
+                    processesDetectedDuringPause = Math.max(consumptionProcesses, productionProcesses);
+                    break;
+                case BOTH:
+                    // For BOTH mode, we need to detect the minimum of both (since both are required)
+                    int consumptionDetected = detectProcessesDuringPauseByConsumption(pausedInventoryCounts, currentCounts);
+                    int productionDetected = detectProcessesDuringPauseByProduction(pausedInventoryCounts, currentCounts);
+                    processesDetectedDuringPause = Math.min(consumptionDetected, productionDetected);
+                    break;
+            }
+        }
+        
+        // Adjust processed count to exclude progress made during pause
+        processedCount = Math.max(0, pausedProcessedCount - processesDetectedDuringPause);
+        
+        // Call parent class resume method
+        super.resume();
+        
+        // Update baseline inventory counts for future tracking (inventory only for regular processing)
+        previousInventoryCounts = getCurrentInventoryCounts();
+        
+        if (Microbot.isDebug()) {
+            String countingMethod = includeBankForPauseResume ? "total counts (inv+bank)" : "inventory counts";
+            log.info("ProcessItemCondition resumed: detected {} processes during pause using {}, " +
+                    "adjusted processed count from {} to {}", 
+                    processesDetectedDuringPause, countingMethod, pausedProcessedCount, processedCount);
+        }
+    }
+    
+    /**
+     * Detect processes during pause by looking at source item consumption
+     */
+    private int detectProcessesDuringPauseByConsumption(Map<String, Integer> pausedCounts, Map<String, Integer> currentCounts) {
+        if (sourceItems.isEmpty()) {
+            return 0;
+        }
+        
+        int minProcesses = Integer.MAX_VALUE;
+        boolean anyConsumptionDetected = false;
+        
+        // Check each source item to see how much was consumed
+        for (ItemTracker sourceItem : sourceItems) {
+            String itemName = sourceItem.getItemName();
+            int pausedCount = pausedCounts.getOrDefault(itemName, 0);
+            int currentCount = currentCounts.getOrDefault(itemName, 0);
+            
+            if (pausedCount > currentCount) {
+                // Items were consumed during pause
+                int consumed = pausedCount - currentCount;
+                int processes = consumed / sourceItem.getQuantityPerProcess();
+                minProcesses = Math.min(minProcesses, processes);
+                anyConsumptionDetected = true;
+            }
+        }
+        
+        return anyConsumptionDetected ? minProcesses : 0;
+    }
+    
+    /**
+     * Detect processes during pause by looking at target item production
+     */
+    private int detectProcessesDuringPauseByProduction(Map<String, Integer> pausedCounts, Map<String, Integer> currentCounts) {
+        if (targetItems.isEmpty()) {
+            return 0;
+        }
+        
+        int minProcesses = Integer.MAX_VALUE;
+        boolean anyProductionDetected = false;
+        
+        // Check each target item to see how much was produced
+        for (ItemTracker targetItem : targetItems) {
+            String itemName = targetItem.getItemName();
+            int pausedCount = pausedCounts.getOrDefault(itemName, 0);
+            int currentCount = currentCounts.getOrDefault(itemName, 0);
+            
+            if (currentCount > pausedCount) {
+                // Items were produced during pause
+                int produced = currentCount - pausedCount;
+                int processes = produced / targetItem.getQuantityPerProcess();
+                minProcesses = Math.min(minProcesses, processes);
+                anyProductionDetected = true;
+            }
+        }
+        
+        return anyProductionDetected ? minProcesses : 0;
     }
 }

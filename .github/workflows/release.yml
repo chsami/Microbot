@@ -28,9 +28,9 @@ jobs:
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "1.9.2"
+          automatic_release_tag: "1.9.3"
           prerelease: false
-          title: "Release 1.9.2"
+          title: "Release 1.9.3"
           files: |
             /home/runner/work/Microbot/Microbot/runelite-client/target/microbot-*.jar
 

@@ -1,7 +1,9 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.condition.skill;
 
+
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.ConditionType;
@@ -12,6 +14,7 @@ import net.runelite.client.plugins.microbot.util.math.Rs2Random;
  */
 @Getter 
 @EqualsAndHashCode(callSuper = true)
+@Slf4j
 public class SkillLevelCondition extends SkillCondition {
     /**
      * Version of the condition class.
@@ -27,11 +30,12 @@ public class SkillLevelCondition extends SkillCondition {
     private final int targetLevelMax;
     private transient int startLevel;
     private transient int[] startLevelsBySkill; // Used for total level tracking
+    private transient boolean SKILL_LEVEL_INITIALIZED = false;
     @Getter
     private final boolean randomized;
     @Getter
     private final boolean relative; // Whether this is a relative or absolute level target
-
+    
     /**
      * Creates an absolute level condition (must reach a specific level)
      */
@@ -92,6 +96,16 @@ public class SkillLevelCondition extends SkillCondition {
      * Initialize level tracking for individual skill or all skills if total
      */
     private void initializeLevelTracking() {
+        
+        if (!Microbot.isLoggedIn()){
+            this.SKILL_LEVEL_INITIALIZED = false;
+            return; // Don't initialize if not logged in
+        }
+        if( SKILL_LEVEL_INITIALIZED) {            
+            return; // Already initialized, no need to re-initialize
+        }
+        log.info("\n\t--Initializing level tracking for skill: \"{}\"", skill);
+        super.forceUpdate();   
         if (isTotal()) {
             Skill[] skills = getAllTrackableSkills();
             startLevelsBySkill = new int[skills.length];
@@ -106,6 +120,7 @@ public class SkillLevelCondition extends SkillCondition {
         if (randomize) {
             currentTargetLevel = Rs2Random.between(targetLevelMin, targetLevelMax);
         }
+        SKILL_LEVEL_INITIALIZED = false; // Reset skill data initialization flag
         initializeLevelTracking();
     }
 
@@ -140,6 +155,11 @@ public class SkillLevelCondition extends SkillCondition {
     
     @Override
     public boolean isSatisfied() {
+        // A condition cannot be satisfied while paused
+        if (isPaused) {
+            return false;
+        }
+        
         if (relative) {
             // For relative mode, check if we've gained the target number of levels
             return getLevelsGained() >= currentTargetLevel;
@@ -387,6 +407,44 @@ public class SkillLevelCondition extends SkillCondition {
             }
             
             return (100.0 * levelsGained) / levelsNeeded;
+        }
+    }
+
+    @Override
+    public void pause() {
+        // Call parent class pause method to capture pause state
+        super.pause();
+    }
+    
+    @Override
+    public void resume() {
+        if (isPaused) {
+            // Call parent class resume method to clear pause state FIRST
+            super.resume();
+            // Calculate level gains during pause BEFORE calling super.resume() which clears pause state
+            int levelsGainedDuringPause;
+            if (isTotal()) {
+                levelsGainedDuringPause = getTotalLevelsGainedDuringPause();
+            } else {
+                levelsGainedDuringPause = getLevelsGainedDuringPause(skill);
+            }                                    
+            // Now adjust baselines to exclude levels gained during pause
+            if (levelsGainedDuringPause > 0) {
+                if (relative) {
+                    // For relative mode, adjust the starting baseline
+                    startLevel += levelsGainedDuringPause;
+                    log.debug("Adjusted {} level baseline by {} levels gained during pause for relative mode. New startLevel: {}", 
+                            isTotal() ? "Total" : skill.getName(), levelsGainedDuringPause, startLevel);
+                } else {
+                    // For absolute mode, increase target to exclude paused gains
+                    currentTargetLevel += levelsGainedDuringPause;
+                    log.debug("Adjusted {} level target by {} levels gained during pause for absolute mode. New target: {}", 
+                             isTotal() ? "Total" : skill.getName(), levelsGainedDuringPause, currentTargetLevel);
+                }
+            } else {
+                log.debug("No level adjustment needed for {} - no gains during pause", 
+                         isTotal() ? "Total" : skill.getName());
+            }
         }
     }
 }

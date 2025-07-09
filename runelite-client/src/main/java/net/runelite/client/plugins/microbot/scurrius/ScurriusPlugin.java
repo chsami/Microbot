@@ -3,7 +3,9 @@ package net.runelite.client.plugins.microbot.scurrius;
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
+import net.runelite.api.GraphicsObject;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.GraphicsObjectCreated;
 import net.runelite.api.events.ProjectileMoved;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -11,6 +13,7 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.magic.orbcharger.enums.OrbChargerState;
 import net.runelite.client.plugins.microbot.scurrius.enums.State;
+import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.ui.overlay.OverlayManager;
 
@@ -64,4 +67,16 @@ public class ScurriusPlugin extends Plugin {
             shutDown();
         }
     }
+
+	@Subscribe
+	public void onGraphicsObjectCreated(GraphicsObjectCreated event)
+	{
+		final GraphicsObject graphicsObject = event.getGraphicsObject();
+		int SCURRIUS_FALLING_ROCKS = 2644;
+		if (graphicsObject.getId() == SCURRIUS_FALLING_ROCKS) {
+			Rs2Tile.init();
+			int ticks = 8;
+			Rs2Tile.addDangerousGraphicsObjectTile(graphicsObject, 600 * ticks);
+		}
+	}
 }

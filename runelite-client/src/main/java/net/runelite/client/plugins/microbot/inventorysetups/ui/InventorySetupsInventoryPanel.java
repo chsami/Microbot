@@ -79,6 +79,7 @@ public class InventorySetupsInventoryPanel extends InventorySetupsContainerPanel
 			InventorySetupsSlot.addUpdateFromContainerMouseListenerToSlot(plugin, inventorySlots.get(i));
 			InventorySetupsSlot.addUpdateFromSearchMouseListenerToSlot(plugin, inventorySlots.get(i), true);
 			InventorySetupsSlot.addRemoveMouseListenerToSlot(plugin, inventorySlots.get(i));
+			InventorySetupsSlot.addLockMouseListenerToSlot(plugin, inventorySlots.get(i));
 
 			// Shift menu
 			InventorySetupsSlot.addUpdateFromContainerToAllInstancesMouseListenerToSlot(this, plugin, inventorySlots.get(i));

@@ -5,12 +5,9 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import net.runelite.api.gameval.AnimationID;
-import net.runelite.api.GameObject;
 import net.runelite.api.InventoryID;
 import net.runelite.api.Skill;
 import net.runelite.api.events.AnimationChanged;
-import net.runelite.api.events.GameObjectDespawned;
-import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.InteractingChanged;
 import net.runelite.api.events.ItemContainerChanged;
@@ -59,6 +56,11 @@ public class GatheredResourceCondition extends ResourceCondition {
     private transient int currentTargetCount;
     private transient int currentGatheredCount;
     private transient boolean satisfied = false;
+        
+    // Pause-related fields for cumulative tracking
+    private transient Map<String, Integer> pausedItemCounts = new HashMap<>();
+    private transient int pausedGatheredCount = 0;
+    
     
     // Animation tracking for gathering activities
     private static final int[] GATHERING_ANIMATIONS = {
@@ -236,6 +238,11 @@ public class GatheredResourceCondition extends ResourceCondition {
     
     @Override
     public boolean isSatisfied() {
+        // A condition cannot be satisfied while paused
+        if (isPaused) {
+            return false;
+        }
+        
         // Once satisfied, stay satisfied until reset
         if (satisfied) {
             return true;
@@ -550,5 +557,89 @@ public class GatheredResourceCondition extends ResourceCondition {
         }
         
         return orCondition;
+    }
+
+    @Override
+    public void pause() {
+        if (!isPaused) {
+            // Call parent class pause method
+            super.pause();
+            
+            // Capture current inventory state at pause time
+            pausedItemCounts.clear();
+            
+            // Get current inventory counts for items matching our pattern
+            List<Rs2ItemModel> items = new ArrayList<>();
+            items.addAll(getUnNotedItems());
+            if (includeNoted) {
+                items.addAll(getNotedItems());
+            }
+            
+            // Count matching items at pause time
+            for (Rs2ItemModel item : items) {
+                if (item != null && itemPattern.matcher(item.getName()).matches()) {
+                    String name = item.getName();
+                    pausedItemCounts.put(name, pausedItemCounts.getOrDefault(name, 0) + item.getQuantity());
+                }
+            }
+            
+            // Save current gathered count
+            pausedGatheredCount = currentGatheredCount;
+            
+            log.debug("GatheredResourceCondition paused. Captured pause state with {} gathered", 
+                    pausedGatheredCount);
+        }
+    }
+    
+    @Override
+    public void resume() {
+        if (isPaused) {
+            // Calculate items gained during pause
+            Map<String, Integer> currentCounts = new HashMap<>();
+            
+            // Get current inventory counts
+            List<Rs2ItemModel> currentItems = new ArrayList<>();
+            currentItems.addAll(getUnNotedItems());
+            if (includeNoted) {
+                currentItems.addAll(getNotedItems());
+            }
+            
+            // Count matching items now
+            for (Rs2ItemModel item : currentItems) {
+                if (item != null && itemPattern.matcher(item.getName()).matches()) {
+                    String name = item.getName();
+                    currentCounts.put(name, currentCounts.getOrDefault(name, 0) + item.getQuantity());
+                }
+            }
+            
+            // Calculate items gained during pause and adjust gathered counts
+            int itemsGainedDuringPause = 0;
+            for (Map.Entry<String, Integer> entry : currentCounts.entrySet()) {
+                String itemName = entry.getKey();
+                int currentCount = entry.getValue();
+                int pausedCount = pausedItemCounts.getOrDefault(itemName, 0);
+                
+                if (currentCount > pausedCount) {
+                    int gainedDuringPause = currentCount - pausedCount;
+                    itemsGainedDuringPause += gainedDuringPause;
+                    
+                    // Remove the pause-period gains from our gathered counts
+                    int existingGathered = gatheredItemCounts.getOrDefault(itemName, 0);
+                    gatheredItemCounts.put(itemName, Math.max(0, existingGathered - gainedDuringPause));
+                }
+            }
+            
+            // Adjust total gathered count to exclude pause-period gains
+            currentGatheredCount = Math.max(0, currentGatheredCount - itemsGainedDuringPause);
+            
+            // Call parent class resume method
+            super.resume();
+            
+            // Update baseline inventory counts for future comparisons
+            updatePreviousItemCounts();
+            
+            log.debug("GatheredResourceCondition resumed. Adjusted gathered count by {} items gained during pause. " +
+                    "New gathered count: {}", itemsGainedDuringPause, currentGatheredCount);
+        }
     }
 }

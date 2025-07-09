@@ -25,7 +25,7 @@ public class DeadFallTrapInventoryHandlerScript extends Script {
                 if (!script.forceDrop) {
                     if (Rs2Player.isMoving()) return;
                     if (Rs2Player.isAnimating()) return;
-                    if (Rs2Inventory.size() > Rs2Random.between(8, 28)) {
+                    if (Rs2Inventory.count() > Rs2Random.between(8, 28)) {
                         cleanInventory(config);
                     }
                     return;
@@ -40,12 +40,12 @@ public class DeadFallTrapInventoryHandlerScript extends Script {
     }
 
     private void cleanInventory(DeadFallTrapHunterConfig config) {
-        for (Rs2ItemModel item : Rs2Inventory.items()) {
+        Rs2Inventory.items().forEachOrdered(item -> {
             if (config.deadFallTrapHunting().getItemsToDrop().contains(item.getId())) {
                 Rs2Inventory.interact(item, "Drop");
                 sleep(600, 1200);
             }
-        }
+        });
         script.forceDrop = false;
     }
 }

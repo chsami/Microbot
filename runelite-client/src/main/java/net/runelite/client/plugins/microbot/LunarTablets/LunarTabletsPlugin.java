@@ -7,6 +7,8 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
+import net.runelite.client.plugins.microbot.util.antiban.enums.Activity;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -41,10 +43,16 @@ public class LunarTabletsPlugin extends Plugin {
         if (overlayManager != null) {
             overlayManager.add(lunartabletOverlay);
         }
+        Rs2Antiban.activateAntiban(); // Enable Anti Ban
+        Rs2Antiban.resetAntibanSettings();
+        Rs2Antiban.antibanSetupTemplates.applyCraftingSetup();
+        Rs2Antiban.setActivity(Activity.CREATING_TELEPORT_TABLETS_AT_LECTERN_LUNAR);
         lunartabletscript.run(config);
     }
 
     protected void shutDown() {
+        Rs2Antiban.resetAntibanSettings();
+        Rs2Antiban.deactivateAntiban();
         lunartabletscript.shutdown();
         overlayManager.remove(lunartabletOverlay);
     }

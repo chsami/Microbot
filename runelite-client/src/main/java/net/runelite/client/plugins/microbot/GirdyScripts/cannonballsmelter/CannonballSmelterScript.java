@@ -57,7 +57,7 @@ public class CannonballSmelterScript extends Script {
         Microbot.runEnergyThreshold = 5000;
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
-                if (!super.run() || !Microbot.isLoggedIn() || Microbot.pauseAllScripts) return;
+                if (!super.run() || !Microbot.isLoggedIn()) return;
                 if (Rs2AntibanSettings.actionCooldownActive) return;
                 startTime = System.currentTimeMillis();
 

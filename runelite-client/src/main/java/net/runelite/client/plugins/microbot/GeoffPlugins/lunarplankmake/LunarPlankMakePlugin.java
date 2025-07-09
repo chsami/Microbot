@@ -40,7 +40,6 @@ public class LunarPlankMakePlugin extends Plugin {
 
     @Override
     protected void startUp() throws AWTException {
-        Microbot.setMouse(new VirtualMouse());
         log.info("Starting up LunarPlankMakePlugin");
         if (overlayManager != null) {
             overlayManager.add(LunarPlankMakeOverlay);

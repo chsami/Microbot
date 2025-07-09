@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.condition;
 
+import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Optional;
@@ -48,6 +49,39 @@ public interface Condition {
      * Returns a detailed description of the level condition with additional status information
      */
     String getDetailedDescription();
+    
+    /**
+     * Gets the estimated time until this condition will be satisfied.
+     * This provides a duration-based estimate for when the condition might become true.
+     * 
+     * For time-based conditions, this calculates the duration until the next trigger time.
+     * For satisfied conditions, this returns Duration.ZERO.
+     * For conditions where the satisfaction time cannot be determined, this returns Optional.empty().
+     * 
+     * @return Optional containing the estimated duration until satisfaction, or empty if not determinable
+     */
+    default Optional<Duration> getEstimatedTimeWhenIsSatisfied() {
+        // If the condition is already satisfied, return zero duration
+        if (isSatisfied()) {
+            return Optional.of(Duration.ZERO);
+        }
+        
+        // Try to get trigger time and calculate duration
+        Optional<ZonedDateTime> triggerTime = getCurrentTriggerTime();
+        if (triggerTime.isPresent()) {
+            ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault());
+            Duration duration = Duration.between(now, triggerTime.get());
+            
+            // Ensure we don't return negative durations
+            if (duration.isNegative()) {
+                return Optional.of(Duration.ZERO);
+            }
+            return Optional.of(duration);
+        }
+        
+        // Default implementation for conditions that can't estimate satisfaction time
+        return Optional.empty();
+    }
     /**
      * Gets the next time this condition will be satisfied.
      * For time-based conditions, this returns the actual next trigger time.
@@ -219,6 +253,24 @@ public interface Condition {
     default int getMetConditionCount() {
         return isSatisfied() ? 1 : 0; // Simple conditions return 1 if met, 0 otherwise
     }
+
+    /**
+     * Pauses this condition, preventing it from being satisfied until resumed.
+     * While paused, the condition evaluation is suspended.
+     * For time-based conditions, the pause duration will be tracked to adjust trigger times accordingly.
+     * For event-based conditions, events may still be processed but won't trigger satisfaction.
+     */
+    public void pause();
+       
+    
+    /**
+     * Resumes this condition, allowing it to be satisfied again.
+     * Reactivates condition evaluation that was previously suspended by pause().
+     * For time-based conditions, trigger times will be adjusted by the pause duration.
+     * For event-based conditions, satisfaction evaluation will resume with the current state.
+     */
+    public void resume();
+       
     
     /**
      * Generates detailed status information for this condition and any nested conditions.

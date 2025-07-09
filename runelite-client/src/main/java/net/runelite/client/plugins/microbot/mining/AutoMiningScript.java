@@ -60,7 +60,7 @@ public class AutoMiningScript extends Script {
                 if (Rs2Equipment.isWearing("Dragon pickaxe"))
                     Rs2Combat.setSpecState(true, 1000);
 
-                if (Rs2Player.isMoving() || Rs2Player.isAnimating() || Microbot.pauseAllScripts) return;
+                if (Rs2Player.isMoving() || Rs2Player.isAnimating()) return;
 
                 //code to change worlds if there are too many players in the distance to stray tiles
                 int maxPlayers = config.maxPlayersInArea();

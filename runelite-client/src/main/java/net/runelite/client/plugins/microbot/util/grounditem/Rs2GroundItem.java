@@ -266,7 +266,7 @@ public class Rs2GroundItem {
         RS2Item[] groundItems = Microbot.getClientThread().runOnClientThreadOptional(() ->
                 Rs2GroundItem.getAll(range)
         ).orElse(new RS2Item[] {});
-        final int invSize = Rs2Inventory.size();
+        final int invSize = Rs2Inventory.count();
         for (RS2Item rs2Item : groundItems) {
             if (!hasLineOfSight(rs2Item.getTile())) continue;
             long totalPrice = (long) Microbot.getClientThread().runOnClientThreadOptional(() ->
@@ -277,14 +277,14 @@ public class Rs2GroundItem {
                         Rs2Player.waitForAnimation();
                         boolean result = interact(rs2Item);
                         if (result) {
-                            sleepUntil(() -> invSize != Rs2Inventory.size());
+                            sleepUntil(() -> invSize != Rs2Inventory.count());
                         }
                         return result;
                     }
                 }
                 boolean result = interact(rs2Item);
                 if (result) {
-                    sleepUntil(() -> invSize != Rs2Inventory.size());
+                    sleepUntil(() -> invSize != Rs2Inventory.count());
                 }
                 return result;
             }
@@ -330,7 +330,7 @@ public class Rs2GroundItem {
                 if (!Rs2Inventory.hasItem(groundItem.getId()))
                     return false;
             }
-            Microbot.pauseAllScripts = true;
+			Microbot.pauseAllScripts.compareAndSet(false, true);
             /** switched to waitForGroundItemDespawn instead of waitForInventoryChanges
              *  as waitForInventoryChanges can cause endless loops of trying to loot the same item
              *  even after it has been successfully looted by the player or another player.
@@ -348,11 +348,11 @@ public class Rs2GroundItem {
         //If there are no more lootable items we succesfully looted everything in the filter
         // true to let the script know that we succesfully looted
         if (!hasLootableItems) {
-            Microbot.pauseAllScripts = false;
+			Microbot.pauseAllScripts.compareAndSet(true, false);
             return true;
         }
         // This is needed to make sure we dont get stuck in a endless pause if something goes wrong
-        Microbot.pauseAllScripts = false;
+		Microbot.pauseAllScripts.compareAndSet(true, false);
         // If we reach this statement, we most likely still have items to loot, and we return false to the script
         // Script above can handle extra logic if the looting failed
         return false;

@@ -2,7 +2,6 @@ package net.runelite.client.plugins.microbot.pluginscheduler.ui.util;
 
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.SchedulerConfig;
-import net.runelite.client.plugins.microbot.pluginscheduler.SchedulerState;
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.ui.ColorScheme;

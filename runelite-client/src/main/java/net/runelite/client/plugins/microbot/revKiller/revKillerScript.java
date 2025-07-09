@@ -11,6 +11,7 @@ import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
+import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
@@ -73,7 +74,7 @@ public class revKillerScript extends Script {
     private long howLongUntilHop = 0;
     public volatile boolean shouldFlee = false;
     private long startTime = System.currentTimeMillis();
-    public volatile List<Rs2ItemModel> ourEquipmentForDeathWalking = new ArrayList<>();
+    public volatile boolean firstRun = false;
 
 
     public boolean run(revKillerConfig config) {
@@ -106,18 +107,36 @@ public class revKillerScript extends Script {
                 if(shouldFlee){
                     if(weDied){
                         shouldFlee = false;
+                        Rs2Walker.setTarget(null);
                     }
                     return;
                 }
 
-                DidWeDie();
+                if(!Rs2InventorySetup.isInventorySetup("Revs")){
+                    Microbot.showMessage("Please create an inventory setup named Revs");
+                    shutdown();
+                    return;
+                }
+
+                var inventorySetup = new Rs2InventorySetup("Revs", mainScheduledFuture);
+
+                if(firstRun || weDied) {
+                    if (!inventorySetup.doesEquipmentMatch()) {
+                        while(!inventorySetup.doesEquipmentMatch()) {
+                            if(!super.isRunning()){ break; }
+                            if (Rs2Bank.getNearestBank().getWorldPoint().distanceTo(Rs2Player.getWorldLocation()) > 6) {
+                                Rs2Bank.walkToBank();
+                            }
+                            if (Rs2Bank.getNearestBank().getWorldPoint().distanceTo(Rs2Player.getWorldLocation()) <= 6) {
+                                inventorySetup.loadEquipment();
+                            }
+                        }
+                    }
+                    firstRun = false;
+                    weDied = false;
+                }
 
                 if(areWeEquipped()){
-
-                    if(ourEquipmentForDeathWalking.isEmpty()){
-                        ourEquipmentForDeathWalking = new ArrayList<>(Rs2Equipment.items());
-                        Microbot.log("Equipped items saved.");
-                    }
 
                     if(Rs2Player.getWorldLocation().distanceTo(selectedWP)>12){
 
@@ -218,6 +237,10 @@ public class revKillerScript extends Script {
         WorldPoint jammedTile = new WorldPoint(3244,10224,0);
 
         Rs2Walker.setTarget(null);
+
+        if(shouldFlee){
+            return;
+        }
 
         if(Rs2Player.getWorldLocation().equals(fifthTile)){
             if(weAreInCombat()) {
@@ -355,75 +378,6 @@ public class revKillerScript extends Script {
 
     }
 
-    public void deathWalk(){
-        if (!new HashSet<>(Rs2Equipment.items()).equals(new HashSet<>(this.ourEquipmentForDeathWalking))) {
-            //If there's a mismatch between what we're wearing and what we were wearing before we died.
-
-            if (!Rs2Bank.isOpen()) {
-                if (Rs2Bank.walkToBankAndUseBank()) {
-                    sleepUntil(() -> Rs2Bank.isOpen(), Rs2Random.between(2000, 5000));
-                }
-            }
-            if (Rs2Bank.isOpen()) {
-                //take needed items
-                for (Rs2ItemModel theItem : this.ourEquipmentForDeathWalking) {
-                    if(theItem.getName().contains("Ring of dueling") && !theItem.getName().contains("(8)")){
-                        theItem = Rs2Bank.getBankItem("Ring of dueling(8)");
-                    }
-                    if(theItem.getName().contains("Amulet of glory") && !theItem.getName().contains("(6)")){
-                        theItem = Rs2Bank.getBankItem("Amulet of glory(6)");
-                    }
-                    if(theItem.getName().contains("Bracelet of ethereum") && !theItem.getName().contains("(uncharged)")){
-                        theItem = Rs2Bank.getBankItem("Bracelet of ethereum (uncharged)");
-                    }
-                    withdrawDeathWalkItem(theItem);
-                }
-                //equip them
-                for (Rs2ItemModel theItem : this.ourEquipmentForDeathWalking) {
-                    if(theItem.getName().contains("Ring of dueling") && !theItem.getName().contains("(8)")){
-                        theItem = Rs2Inventory.get("Ring of dueling(8)");
-                    }
-                    if(theItem.getName().contains("Amulet of glory") && !theItem.getName().contains("(6)")){
-                        theItem = Rs2Inventory.get("Amulet of glory(6)");
-                    }
-                    if(theItem.getName().contains("Bracelet of ethereum") && !theItem.getName().contains("(uncharged)")){
-                        theItem = Rs2Inventory.get("Bracelet of ethereum (uncharged)");
-                    }
-                    equipDeathWalkItem(theItem);
-                }
-            }
-        }
-        weDied = false;
-    }
-
-    public void withdrawDeathWalkItem(Rs2ItemModel item){
-        if(!Rs2Inventory.contains(item.getName())){
-            if(Rs2Bank.getBankItem(item.getId()) !=null){
-                Rs2Bank.withdrawOne(item.getId());
-                sleepUntil(()-> Rs2Inventory.contains(item.getId()), Rs2Random.between(3000,5000));
-            } else {
-                Microbot.log("Out of death walking item: "+item.getName());
-                super.shutdown();
-            }
-        }
-    }
-
-    public void equipDeathWalkItem(Rs2ItemModel item){
-        if(Rs2Inventory.contains(item.getName())){
-            if(Rs2Bank.isOpen()){
-                Rs2Bank.closeBank();
-                sleepUntil(() -> !Rs2Bank.isOpen(), Rs2Random.between(2000, 5000));
-            }
-            if(!Rs2Bank.isOpen()){
-                if(Rs2Inventory.contains(item.getId())){
-                    if(Rs2Inventory.equip(item.getId())){
-                        sleepUntil(()-> Rs2Equipment.contains(it->it!=null&&it.getId()==item.getId()), Rs2Random.between(2000,500));
-                    }
-                }
-            }
-        }
-    }
-
     public void moveCameraToTile(WorldPoint wp){
         LocalPoint lp = LocalPoint.fromWorld(Microbot.getClient().getWorldView(Microbot.getClient().getTopLevelWorldView().getId()), wp);
         Rectangle chatBox = null;
@@ -482,12 +436,6 @@ public class revKillerScript extends Script {
                     sleep(1000,3000);
                 }
             }
-        }
-    }
-
-    public void DidWeDie(){
-        if(weDied){
-            deathWalk();
         }
     }
 
@@ -627,12 +575,14 @@ public class revKillerScript extends Script {
             logBackIn();
             shouldFlee = false;
             return;
+        } else {
+            if(isPkerAround() && Microbot.isLoggedIn()) {
+                getAwayFromPker();
+            }
         }
 
-        if(Rs2Combat.inCombat() && Microbot.isLoggedIn()) {
-            getAwayFromPker();
-        }
         shouldFlee = false;
+        Rs2Walker.setTarget(null);
     }
 
     public void logBackIn(){
@@ -744,6 +694,7 @@ public class revKillerScript extends Script {
             Rs2Walker.walkTo(BankLocation.FEROX_ENCLAVE.getWorldPoint());
             Rs2Prayer.disableAllPrayers();
             shouldFlee = false;
+            Rs2Walker.setTarget(null);
         }
     }
 
@@ -844,12 +795,12 @@ public class revKillerScript extends Script {
     public void futurePKCheck(){
         try {
             if(!selectedRev.contains("Knight")) {
-                if (isPkerAround()) {
+                if (isPkerAround() && !shouldFlee) {
                     shouldFlee = true;
                     getAwayFromPker();
                 }
             } else {
-                if (isPkerAround()) {
+                if (isPkerAround() && !shouldFlee) {
                     shouldFlee = true;
                     getAwayFromPkerKnight();
                 }
@@ -1062,7 +1013,6 @@ public class revKillerScript extends Script {
             }
             if(!WeAreInTheCaves()) {
                 Microbot.log("Walking and using bank");
-                DidWeDie();
                 OpenTheInv();
                 stuckAtEnclave();
                 stopTeleSpam();
@@ -1157,7 +1107,7 @@ public class revKillerScript extends Script {
                                     if(Rs2Equipment.get(EquipmentInventorySlot.GLOVES)!=null){
                                         //we need to unequip our braclet.
                                         Rs2Equipment.unEquip(EquipmentInventorySlot.GLOVES);
-                                        sleepUntil(()-> !Rs2Equipment.contains(it->it!=null&&it.getId() == ItemID.BRACELET_OF_ETHEREUM_UNCHARGED), Rs2Random.between(2000,4000));
+                                        sleepUntil(()-> !Rs2Equipment.isWearing(it->it!=null&&it.getId() == ItemID.BRACELET_OF_ETHEREUM_UNCHARGED), Rs2Random.between(2000,4000));
                                     }
                                     if(Rs2Inventory.contains("Revenant ether") && (Rs2Inventory.contains(ItemID.BRACELET_OF_ETHEREUM) || Rs2Inventory.contains(ItemID.BRACELET_OF_ETHEREUM_UNCHARGED))){
                                         Rs2Inventory.interact("Revenant ether", "use");
@@ -1166,7 +1116,7 @@ public class revKillerScript extends Script {
                                     }
                                     if(!Rs2Inventory.contains("Revenant ether") && (Rs2Inventory.contains(ItemID.BRACELET_OF_ETHEREUM))){
                                         Rs2Inventory.interact(it->it!=null&&it.getId() == ItemID.BRACELET_OF_ETHEREUM, "Wear");
-                                        sleepUntil(()-> Rs2Equipment.contains(it->it!=null&&it.getId() == ItemID.BRACELET_OF_ETHEREUM), Rs2Random.between(2000,4000));
+                                        sleepUntil(()-> Rs2Equipment.isWearing(it->it!=null&&it.getId() == ItemID.BRACELET_OF_ETHEREUM), Rs2Random.between(2000,4000));
                                     }
                                 }
                             }
@@ -1177,11 +1127,11 @@ public class revKillerScript extends Script {
 
             howtobank = generateRandomNumber(0,100);
             //equip arrows
-            if(howtobank <= 40){
-                Microbot.log("We have "+Rs2Equipment.get(EquipmentInventorySlot.AMMO).getQuantity()+" arrows left");
-                if(Rs2Equipment.get(EquipmentInventorySlot.AMMO).getQuantity() < LowOnArrowsCount){
+            if(howtobank <= 60){
+                Microbot.log("Grabbing ammo");
+                if(Rs2Equipment.get(EquipmentInventorySlot.AMMO) == null || Rs2Equipment.get(EquipmentInventorySlot.AMMO).getQuantity() < LowOnArrowsCount){
                     if(Rs2Bank.count(selectedArrow)>100){
-                        if(!Rs2Inventory.contains(selectedArrow)||Rs2Inventory.get(selectedArrow).getQuantity() < LowOnArrowsCount){
+                        if(!Rs2Inventory.contains(selectedArrow)){
                             int min = 250;
                             int max = 300;
                             if(selectedArrow == ItemID.BOLT_RACK){
@@ -1192,10 +1142,7 @@ public class revKillerScript extends Script {
                                     super.shutdown();
                                 }
                             }
-                            int amt = (generateRandomNumber(min,max)-Rs2Equipment.get(EquipmentInventorySlot.AMMO).getQuantity());
-                            if(amt <= 0){
-                                amt=generateRandomNumber(min,max);
-                            }
+                            int amt = (generateRandomNumber(min,max));
                             if(Rs2Bank.withdrawX(selectedArrow, amt)){
                                 sleepUntil(()-> Rs2Inventory.contains(selectedArrow), generateRandomNumber(5000,15000));
                             }
@@ -1328,8 +1275,7 @@ public class revKillerScript extends Script {
     }
     public boolean isItTimeToGo(){
         int value = 0; //set to 0 so list doesn't compound with each run
-        List<Rs2ItemModel> ItemsInInventory = new ArrayList<Rs2ItemModel>();
-        ItemsInInventory.addAll(Rs2Inventory.items());
+        List<Rs2ItemModel> ItemsInInventory = Rs2Inventory.items().collect(Collectors.toList());
 
         for (Rs2ItemModel item : ItemsInInventory) {
             if(item!=null){

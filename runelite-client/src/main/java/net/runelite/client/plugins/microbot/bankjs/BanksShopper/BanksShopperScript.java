@@ -31,7 +31,7 @@ public class BanksShopperScript extends Script {
     }
 
     public boolean run(BanksShopperConfig config) {
-        Microbot.pauseAllScripts = false;
+		Microbot.pauseAllScripts.compareAndSet(true, false);
         Microbot.enableAutoRunOn = false;
         initialPlayerLocation = null;
         Rs2Antiban.resetAntibanSettings();
@@ -40,7 +40,6 @@ public class BanksShopperScript extends Script {
             try {
                 if (!super.run()) return;
                 if (!Microbot.isLoggedIn()) return;
-                if (Microbot.pauseAllScripts) return;
                 if (Rs2AntibanSettings.actionCooldownActive) return;
 
                 if (initialPlayerLocation == null) {
@@ -76,7 +75,7 @@ public class BanksShopperScript extends Script {
 
                         if (Rs2Shop.isOpen()) {
                             for (String itemName : plugin.getItemNames()) {
-                                if (!isRunning() || Microbot.pauseAllScripts) break;
+                                if (!isRunning() || Microbot.pauseAllScripts.get()) break;
 
                                 switch (plugin.getSelectedAction()) {
                                     case BUY:

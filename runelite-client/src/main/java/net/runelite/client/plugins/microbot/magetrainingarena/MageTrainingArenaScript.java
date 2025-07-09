@@ -1,15 +1,15 @@
 package net.runelite.client.plugins.microbot.magetrainingarena;
 
 import lombok.Getter;
-import net.runelite.api.*;
+import net.runelite.api.EquipmentInventorySlot;
+import net.runelite.api.Skill;
+import net.runelite.api.gameval.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.magetrainingarena.enums.*;
-import net.runelite.client.plugins.microbot.magetrainingarena.enums.staves.FireStaves;
-import net.runelite.client.plugins.microbot.magetrainingarena.enums.staves.WaterStaves;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
@@ -18,8 +18,9 @@ import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2RunePouch;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
-import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
+import net.runelite.client.plugins.microbot.util.magic.*;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
@@ -38,6 +39,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+
+import static net.runelite.client.plugins.microbot.util.magic.Rs2Magic.getRs2Staff;
+import static net.runelite.client.plugins.microbot.util.magic.Rs2Magic.getRs2Tome;
 
 public class MageTrainingArenaScript extends Script {
     public static String version = "1.1.2";
@@ -74,7 +78,7 @@ public class MageTrainingArenaScript extends Script {
                 if (!super.run()) return;
                 if (mtaPlugin != null && !Microbot.getPluginManager().isActive(mtaPlugin)) return;
 
-                if (!Rs2Magic.isModern()) {
+                if (!Rs2Magic.isSpellbook(Rs2Spellbook.MODERN)) {
                     Microbot.log("Wrong spellbook found...please use the modern spellbook for this script.");
                     sleep(5000);
                     return;
@@ -119,10 +123,11 @@ public class MageTrainingArenaScript extends Script {
 
                     var missingPoints = currentPoints.entrySet().stream()
                             .filter(entry -> {
-                                var requiredPoints = getRequiredPoints().get(entry.getKey()) * (config.buyRewards() ? 1 : (buyable + 1));
-                                var roomMatches = Arrays.stream(Rooms.values())
-                                        .anyMatch(room -> room.getPoints() == entry.getKey() && Rs2Inventory.contains(room.getRunesId()));
-                                return requiredPoints > entry.getValue() && roomMatches;
+                                var required = getRequiredPoints().get(entry.getKey()) * (config.buyRewards() ? 1 : (buyable + 1));
+                                return required > entry.getValue()
+                                        && Arrays.stream(Rooms.values())
+                                        .anyMatch(room -> room.getPoints() == entry.getKey()
+                                                && room.getRequirements().getAsBoolean());
                             })
                             .map(Map.Entry::getKey)
                             .collect(Collectors.toList());
@@ -139,10 +144,10 @@ public class MageTrainingArenaScript extends Script {
                         sleep(500);
                         shutdown();
                     }
-                } else if (!Rs2Inventory.contains(currentRoom.getRunesId())
+                } else if (!currentRoom.getRequirements().getAsBoolean()
                         || currentPoints.get(currentRoom.getPoints()) >= getRequiredPoints().get(currentRoom.getPoints()) * (config.buyRewards() ? 1 : (buyable + 1))) {
                     leaveRoom();
-                } else {
+            } else {
                     switch (currentRoom) {
                         case ALCHEMIST:
                             handleAlchemistRoom();
@@ -248,74 +253,39 @@ public class MageTrainingArenaScript extends Script {
 
     private void handleEnchantmentRoom() {
         MagicAction enchant;
-        int staffId;
         var magicLevel = Microbot.getClient().getBoostedSkillLevel(Skill.MAGIC);
 
-        if (magicLevel >= 87 && (config.fireStaff() == FireStaves.TOME_OF_FIRE)) {
+        if (magicLevel >= 87 && currentRoom.getRequirements().getAsBoolean()) {
             enchant = MagicAction.ENCHANT_ONYX_JEWELLERY;
-            staffId = config.earthStaff().getItemId();
-            if (Rs2Inventory.hasItem("tome of fire")) {
-                staffId = config.fireStaff().getItemId();
-            }
-        } else if (magicLevel >= 87 && (config.fireStaff() == FireStaves.LAVA_BATTLESTAFF || config.fireStaff() == FireStaves.MYSTIC_LAVA_STAFF)) {
-            enchant = MagicAction.ENCHANT_ONYX_JEWELLERY;
-            staffId = config.fireStaff().getItemId();
-        } else if (magicLevel >= 68 && (config.waterStaff() == WaterStaves.TOME_OF_WATER)) {
+        } else if (magicLevel >= 68 && currentRoom.getRequirements().getAsBoolean()) {
             enchant = MagicAction.ENCHANT_DRAGONSTONE_JEWELLERY;
-            staffId = config.earthStaff().getItemId();
-            if (Rs2Inventory.hasItem("tome of water")) {
-                staffId = config.waterStaff().getItemId();
-            }
-        } else if (magicLevel >= 68) {
-            enchant = MagicAction.ENCHANT_DRAGONSTONE_JEWELLERY;
-            staffId = config.waterStaff().getItemId();
-            if (Rs2Inventory.hasItem("water rune")) {
-                staffId = config.earthStaff().getItemId();
-            }
-        } else if (magicLevel >= 57) {
+        } else if (magicLevel >= 57 && currentRoom.getRequirements().getAsBoolean()) {
             enchant = MagicAction.ENCHANT_DIAMOND_JEWELLERY;
-            staffId = config.waterStaff().getItemId();
-            if (Rs2Inventory.hasItem("water rune")) {
-                staffId = config.earthStaff().getItemId();
-            }
-        } else if (magicLevel >= 49) {
+        } else if (magicLevel >= 49 && currentRoom.getRequirements().getAsBoolean()) {
             enchant = MagicAction.ENCHANT_RUBY_JEWELLERY;
-            staffId = config.fireStaff().getItemId();
-        } else if (magicLevel >= 27) {
+        } else if (magicLevel >= 27 && currentRoom.getRequirements().getAsBoolean()) {
             enchant = MagicAction.ENCHANT_EMERALD_JEWELLERY;
-            staffId = config.airStaff().getItemId();
         } else {
             enchant = MagicAction.ENCHANT_SAPPHIRE_JEWELLERY;
-            staffId = config.waterStaff().getItemId();
         }
 
-        if (!Rs2Equipment.isWearing(staffId)) {
-            if (!Rs2Inventory.wear(staffId)) {
-                final int _staffId = staffId;
-                ItemComposition item = Microbot.getClientThread().runOnClientThreadOptional(() ->
-                        Microbot.getClient().getItemDefinition(_staffId)).orElse(null);
-                Microbot.log("Inventory is missing " + item.getName());
-            }
-            return;
-        }
-
-        if (!isRoomRequirementsValid()) return;
+        if (areRoomRequirementsInvalid()) return;
 
         if (Rs2Inventory.isFull()) {
             if (!Rs2Walker.walkTo(new WorldPoint(3363, 9640, 0)))
                 return;
 
-            Rs2GameObject.interact(ObjectID.HOLE_23698, "Deposit");
+            Rs2GameObject.interact(ObjectID.MAGICTRAINING_ENCHA_HOLE, "Deposit");
             Rs2Player.waitForWalking();
             return;
         }
 
         boolean successFullLoot = Rs2Inventory.waitForInventoryChanges(() -> {
-            Rs2GroundItem.loot(ItemID.DRAGONSTONE_6903, 12);
+            Rs2GroundItem.loot(ItemID.MAGICTRAINING_DRAGONSTONE, 12);
             sleepUntil(() -> !Rs2Player.isMoving());
         });
 
-        if (successFullLoot && Rs2Inventory.getEmptySlots() > 0)
+        if (successFullLoot && Rs2Inventory.emptySlotCount() > 0)
             return;
 
         var bonusShape = getBonusShape();
@@ -336,12 +306,12 @@ public class MageTrainingArenaScript extends Script {
         }
 
         int itemId;
-        if (Rs2Inventory.contains(ItemID.DRAGONSTONE_6903))
-            itemId = ItemID.DRAGONSTONE_6903;
+        if (Rs2Inventory.contains(ItemID.MAGICTRAINING_DRAGONSTONE))
+            itemId = ItemID.MAGICTRAINING_DRAGONSTONE;
         else
             itemId = bonusShape.getItemId();
 
-        if (Rs2Inventory.contains(ItemID.DRAGONSTONE_6903) || Rs2Inventory.count(itemId) >= shapesToPick) {
+        if (Rs2Inventory.contains(ItemID.MAGICTRAINING_DRAGONSTONE) || Rs2Inventory.count(itemId) >= shapesToPick) {
             shapesToPick = Rs2Random.between(2, 4);
 
             Rs2Magic.cast(enchant);
@@ -349,7 +319,7 @@ public class MageTrainingArenaScript extends Script {
             sleepGaussian(600, 150);
             Rs2Inventory.interact(itemId);
 
-            sleepUntil(() -> !Rs2Inventory.contains(itemId) || itemId != ItemID.DRAGONSTONE_6903 && bonusShape != getBonusShape(), 20_000);
+            sleepUntil(() -> !Rs2Inventory.contains(itemId) || itemId != ItemID.MAGICTRAINING_DRAGONSTONE && bonusShape != getBonusShape(), 20_000);
         } else if (Rs2Inventory.waitForInventoryChanges(() -> Rs2GameObject.interact(object, "Take-from")) && Rs2Player.getWorldLocation().distanceTo(object.getWorldLocation()) > 10) {
             Rs2Walker.setTarget(null);
         } else
@@ -365,16 +335,7 @@ public class MageTrainingArenaScript extends Script {
     }
 
     private void handleTelekineticRoom() {
-        if (!Rs2Equipment.isWearing(config.airStaff().getItemId())) {
-            if (!Rs2Inventory.wear(config.airStaff().getItemId())) {
-                ItemComposition item = Microbot.getClientThread().runOnClientThreadOptional(() ->
-                        Microbot.getClient().getItemDefinition(config.airStaff().getItemId())).orElse(null);
-                Microbot.log("Inventory is missing " + item.getName());
-            }
-            return;
-        }
-
-        if (!isRoomRequirementsValid()) return;
+        if (areRoomRequirementsInvalid()) return;
 
         var room = mtaPlugin.getTelekineticRoom();
         var teleRoom = Arrays.stream(TelekineticRooms.values())
@@ -388,7 +349,7 @@ public class MageTrainingArenaScript extends Script {
         else {
             Rs2Walker.walkTo(teleRoom.getMaze(), 2);
             sleepUntil(() -> room.getTarget() != null, 10_000);
-            // MageTrainingArenaScript is dependant on the official mage arena plugin of runelite
+            // MageTrainingArenaScript is dependent on the official mage arena plugin of runelite
             // In some cases it glitches out and target is not defined by an arrow, in this case we will reset them room
             if (room.getTarget() == null) {
                 Microbot.log("Something seems wrong, room target was still not found...leaving room to reset.");
@@ -407,7 +368,7 @@ public class MageTrainingArenaScript extends Script {
         }
 
         if (room.getGuardian().getWorldLocation().equals(room.getFinishLocation())) {
-            sleepUntil(() -> room.getGuardian().getId() == NpcID.MAZE_GUARDIAN_6779);
+            sleepUntil(() -> room.getGuardian().getId() == NpcID.MAGICTRAINING_GUARD_MAZE_COMPLETE);
             sleep(200, 400);
             Rs2Npc.interact(new Rs2NpcModel(room.getGuardian()), "New-maze");
             sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(teleRoom.getArea()) != 0);
@@ -424,10 +385,10 @@ public class MageTrainingArenaScript extends Script {
             }
 
             if (!Rs2Player.isAnimating()
-                    && StreamSupport.stream(Microbot.getClient().getProjectiles().spliterator(), false).noneMatch(x -> x.getId() == GraphicID.TELEKINETIC_SPELL)
+                    && StreamSupport.stream(Microbot.getClient().getProjectiles().spliterator(), false).noneMatch(x -> x.getId() == SpotanimID.TELEGRAB_TRAVEL)
                     && !TelekineticRoom.getMoves().isEmpty()
                     && TelekineticRoom.getMoves().peek() == room.getPosition()
-                    && room.getGuardian().getId() != NullNpcID.NULL_6778
+                    && room.getGuardian().getId() != NpcID.MAGICTRAINING_GUARD_MAZE_MOVING
                     && !room.getGuardian().getLocalLocation().equals(room.getDestination())) {
                 Rs2Magic.cast(MagicAction.TELEKINETIC_GRAB);
                 sleepGaussian(600, 150);
@@ -440,25 +401,7 @@ public class MageTrainingArenaScript extends Script {
     }
 
     private void handleGraveyardRoom() {
-        int staffId = config.waterStaff().getItemId();
-        if (Rs2Inventory.hasItem("water rune")) {
-            staffId = config.earthStaff().getItemId();
-        } else if (Rs2Inventory.hasItem("earth rune")) {
-            staffId = config.waterStaff().getItemId();
-        }
-
-        if (Rs2Inventory.hasItem(staffId) || Rs2Equipment.isWearing(staffId)) {
-            if (!Rs2Equipment.isWearing(staffId) && !Rs2Inventory.wear(staffId)) {
-                final int _staffId = staffId;
-                ItemComposition item = Microbot.getClientThread().runOnClientThreadOptional(() ->
-                        Microbot.getClient().getItemDefinition(_staffId)).orElse(null);
-                Microbot.log("Inventory is missing " + item.getName());
-                leaveRoom();
-                return;
-            }
-        }
-
-        if (!isRoomRequirementsValid()) {
+        if (areRoomRequirementsInvalid()) {
             leaveRoom();
             return;
         }
@@ -466,10 +409,7 @@ public class MageTrainingArenaScript extends Script {
         if (btp == null)
             btp = Rs2Magic.canCast(MagicAction.BONES_TO_PEACHES);
 
-        var bonepile = Rs2GameObject.findObjectByLocation(new WorldPoint(3352, 9637, 1));
-        var foodChute = Rs2GameObject.findObjectByLocation(new WorldPoint(3354, 9639, 1));
-
-        var boneGoal = 28 - Rs2Inventory.items().stream().filter(x -> x.getName().equalsIgnoreCase("Animals' bones")).count();
+        var boneGoal = 28 - Rs2Inventory.items().filter(x -> x.getName().equalsIgnoreCase("Animals' bones")).count();
         if (mtaPlugin.getGraveyardRoom().getCounter() != null && mtaPlugin.getGraveyardRoom().getCounter().getCount() >= boneGoal) {
             Rs2Magic.cast(btp ? MagicAction.BONES_TO_PEACHES : MagicAction.BONES_TO_BANANAS);
             Rs2Player.waitForAnimation();
@@ -491,26 +431,16 @@ public class MageTrainingArenaScript extends Script {
                 }
             }
 
-            Rs2Inventory.waitForInventoryChanges(() -> Rs2GameObject.interact(foodChute, "Deposit"));
+            Rs2Inventory.waitForInventoryChanges(() -> Rs2GameObject.interact(new WorldPoint(3354, 9639, 1), "Deposit"));
             return;
         }
 
-        Rs2GameObject.interact(bonepile, "Grab");
-        if (Rs2Player.getWorldLocation().distanceTo(Objects.requireNonNull(bonepile).getWorldLocation()) > 1)
-            Rs2Player.waitForWalking();
+        Rs2GameObject.interact(new WorldPoint(3352, 9637, 1), "Grab");
+        Rs2Player.waitForWalking();
     }
 
     private void handleAlchemistRoom() {
-        if (!Rs2Equipment.isWearing(config.fireStaff().getItemId())) {
-            if (!Rs2Inventory.wear(config.fireStaff().getItemId())) {
-                ItemComposition item = Microbot.getClientThread().runOnClientThreadOptional(() ->
-                        Microbot.getClient().getItemDefinition(config.fireStaff().getItemId())).orElse(null);
-                Microbot.log("Inventory is missing " + item.getName());
-            }
-            return;
-        }
-
-        if (!isRoomRequirementsValid()) return;
+        if (areRoomRequirementsInvalid()) return;
 
         var room = mtaPlugin.getAlchemyRoom();
         var best = room.getBest();
@@ -540,13 +470,13 @@ public class MageTrainingArenaScript extends Script {
         }
     }
 
-    private boolean isRoomRequirementsValid() {
+    private boolean areRoomRequirementsInvalid() {
         if (!currentRoom.getRequirements().getAsBoolean()) {
             Microbot.log("You're missing room requirements. Please restock or fix your staves settings.");
             sleep(5000);
-            return false;
+            return true;
         }
-        return true;
+        return false;
     }
 
     private void buyReward(Rewards reward) {
@@ -554,7 +484,7 @@ public class MageTrainingArenaScript extends Script {
             return;
 
         if (!Rs2Widget.isWidgetVisible(197, 0)) {
-            Rs2Npc.interact(NpcID.REWARDS_GUARDIAN, "Trade-with");
+            Rs2Npc.interact(NpcID.MAGICTRAINING_GUARD_REWARDS, "Trade-with");
             sleepUntil(() -> Rs2Widget.isWidgetVisible(197, 0));
             sleepGaussian(600, 150);
             return;
@@ -616,7 +546,7 @@ public class MageTrainingArenaScript extends Script {
         if (!Rs2Walker.walkTo(exit))
             return;
 
-        Rs2GameObject.interact(ObjectID.EXIT_TELEPORT, "Enter");
+        Rs2GameObject.interact(ObjectID.MAGICTRAINING_RETURNDOOR, "Enter");
         Rs2Player.waitForWalking();
     }
 
@@ -626,7 +556,7 @@ public class MageTrainingArenaScript extends Script {
                 return true;
 
             if (!Rs2Dialogue.isInDialogue())
-                Rs2Npc.interact(NpcID.ENTRANCE_GUARDIAN, "Talk-to");
+                Rs2Npc.interact(NpcID.MAGICTRAINING_GUARD_ENTRANCE, "Talk-to");
             else if (Rs2Dialogue.hasSelectAnOption() && Rs2Widget.hasWidget("I'm new to this place"))
                 Rs2Widget.clickWidget("I'm new to this place");
             else if (Rs2Dialogue.hasSelectAnOption() && Rs2Widget.hasWidget("Thanks, bye!")) {
@@ -645,4 +575,112 @@ public class MageTrainingArenaScript extends Script {
     public void shutdown() {
         super.shutdown();
     }
+
+    /**
+     * Attempts to equip the best available {@code staff} from inventory that reduces rune cost for the specified {@link Rs2Spells} spell.
+     * This method also accounts for any equipped or equippable {@code tome} in the shield slot which may provide passive rune substitution.
+     *
+     * <p>The method evaluates all available staff+tome combinations, selects the one with the highest effective rune savings,
+     * equips the staff if not already equipped, and verifies that the spell is now castable with the resulting equipment and runes.
+     *
+     * <p><strong>Logic Summary:</strong>
+     * <ul>
+     *     <li>Scans equipped weapon/shield and inventory for candidate staff and tome combinations</li>
+     *     <li>Simulates rune savings provided by each staff+tome combo</li>
+     *     <li>Verifies castability after accounting for free runes and available inventory/pouch supply</li>
+     *     <li>Equips the best staff (if not already equipped) and confirms the spell is ready for casting</li>
+     * </ul>
+     *
+     * <p>This method <strong>does not</strong> return {@code true} unless a valid staff was equipped (or already equipped)
+     * and the spell is verifiably castable after staff+tome rune substitution.
+     *
+     * @param spell The {@link Rs2Spells} spell to evaluate for castability.
+     * @param hasRunePouch {@code true} if the player's rune pouch is available and should be included in rune calculations.
+     * @return {@code true} if the spell is castable after equipping the best available staff (and considering any tome); {@code false} otherwise.
+     *
+     * <p><strong>Side effects:</strong> May trigger staff equipping from inventory. No tome swapping is performed — only passively recognized if equipped.</p>
+     */
+    public static boolean tryEquipBestStaffAndCast(Rs2Spells spell, boolean hasRunePouch) {
+        Map<Runes, Integer> requiredRunes = spell.getRequiredRunes();
+
+        List<Rs2ItemModel> candidates = new ArrayList<>();
+        Rs2ItemModel equipped = Rs2Equipment.get(EquipmentInventorySlot.WEAPON);
+        if (equipped != null) candidates.add(equipped);
+        candidates.addAll(Rs2Inventory.items().collect(Collectors.toList()));
+
+        Rs2Tome equippedTome = Rs2Tome.NONE;
+        Rs2ItemModel shield = Rs2Equipment.get(EquipmentInventorySlot.SHIELD);
+        if (shield != null) equippedTome = getRs2Tome(shield.getId());
+
+        Map<Runes, Integer> inventoryRunes = new EnumMap<>(Runes.class);
+        Rs2Inventory.items().forEach(item -> {
+            Runes rune = Runes.byItemId(item.getId());
+            if (rune != null) {
+                inventoryRunes.merge(rune, item.getQuantity(), Integer::sum);
+            }
+        });
+
+        if (hasRunePouch) {
+            Rs2RunePouch.getRunes().forEach((id, qty) -> {
+                Runes rune = Runes.byItemId(id.getItemId());
+                if (rune != null) {
+                    inventoryRunes.merge(rune, qty, Integer::sum);
+                }
+            });
+        }
+
+        int maxSavings = -1;
+        Integer bestStaffId = null;
+        Set<Runes> bestProvidedRunes = null;
+
+        for (Rs2ItemModel staffItem : candidates) {
+            Rs2Staff staff = getRs2Staff(staffItem.getId());
+            if (staff == Rs2Staff.NONE) continue;
+
+            Set<Runes> providedRunes = new HashSet<>(staff.getRunes());
+            if (equippedTome != Rs2Tome.NONE) providedRunes.addAll(equippedTome.getRunes());
+
+            boolean castable = true;
+            int savings = 0;
+
+            for (Map.Entry<Runes, Integer> entry : requiredRunes.entrySet()) {
+                if (providedRunes.contains(entry.getKey())) {
+                    savings += entry.getValue();
+                    continue;
+                }
+                if (inventoryRunes.getOrDefault(entry.getKey(), 0) < entry.getValue()) {
+                    castable = false;
+                    break;
+                }
+            }
+
+            if (castable && savings > maxSavings) {
+                maxSavings = savings;
+                bestStaffId = staff.getItemID();
+                bestProvidedRunes = providedRunes;
+            }
+        }
+
+        if (bestStaffId != null) {
+            if (!Rs2Equipment.isWearing(bestStaffId)) {
+                Rs2Inventory.wear(bestStaffId);
+            }
+
+            Set<Runes> activeRunes = new HashSet<>(bestProvidedRunes);
+            Rs2ItemModel activeShield = Rs2Equipment.get(EquipmentInventorySlot.SHIELD);
+            if (activeShield != null) {
+                Rs2Tome newTome = getRs2Tome(activeShield.getId());
+                if (newTome != Rs2Tome.NONE) activeRunes.addAll(newTome.getRunes());
+            }
+
+            for (Map.Entry<Runes, Integer> entry : requiredRunes.entrySet()) {
+                if (activeRunes.contains(entry.getKey())) continue;
+                if (inventoryRunes.getOrDefault(entry.getKey(), 0) < entry.getValue()) return false;
+            }
+            return true;
+        }
+
+        return false;
+    }
+
 }

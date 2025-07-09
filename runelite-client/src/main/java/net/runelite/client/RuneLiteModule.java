@@ -55,6 +55,7 @@ import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.menus.MenuManager;
 import net.runelite.client.plugins.PluginManager;
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.task.Scheduler;
 import net.runelite.client.util.DeferredEventBus;
 import net.runelite.client.util.ExecutorServiceExceptionLogger;
@@ -147,6 +148,8 @@ public class RuneLiteModule extends AbstractModule
 		bind(EventBus.class)
 				.annotatedWith(Names.named("Deferred EventBus"))
 				.to(DeferredEventBus.class);
+
+		requestStaticInjection(Microbot.class);
 	}
 
 	@Provides

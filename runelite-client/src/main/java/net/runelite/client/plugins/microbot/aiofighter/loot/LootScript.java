@@ -71,7 +71,7 @@ public class LootScript extends Script {
                     "arrow"
             );
             if (Rs2GroundItem.lootItemsBasedOnNames(arrowParams)) {
-                Microbot.pauseAllScripts = false;
+                Microbot.pauseAllScripts.compareAndSet(true, false);
             }
         }
     }
@@ -88,7 +88,7 @@ public class LootScript extends Script {
                     "bones"
             );
             if (Rs2GroundItem.lootItemsBasedOnNames(bonesParams)) {
-                Microbot.pauseAllScripts = false;
+                Microbot.pauseAllScripts.compareAndSet(true, false);
             }
         }
     }
@@ -105,7 +105,7 @@ public class LootScript extends Script {
                     " ashes"
             );
             if (Rs2GroundItem.lootItemsBasedOnNames(ashesParams)) {
-                Microbot.pauseAllScripts = false;
+                Microbot.pauseAllScripts.compareAndSet(true, false);
             }
         }
     }
@@ -123,7 +123,7 @@ public class LootScript extends Script {
                     " rune"
             );
             if (Rs2GroundItem.lootItemsBasedOnNames(runesParams)) {
-                Microbot.pauseAllScripts = false;
+                Microbot.pauseAllScripts.compareAndSet(true, false);
             }
         }
     }
@@ -141,7 +141,7 @@ public class LootScript extends Script {
                     "coins"
             );
             if (Rs2GroundItem.lootCoins(coinsParams)) {
-                Microbot.pauseAllScripts = false;
+                Microbot.pauseAllScripts.compareAndSet(true, false);
             }
         }
     }
@@ -159,7 +159,7 @@ public class LootScript extends Script {
                     "untradeable"
             );
             if (Rs2GroundItem.lootUntradables(untradeableItemsParams)) {
-                Microbot.pauseAllScripts = false;
+                Microbot.pauseAllScripts.compareAndSet(true, false);
             }
         }
     }
@@ -175,7 +175,7 @@ public class LootScript extends Script {
                 config.toggleOnlyLootMyItems()
         );
         if (Rs2GroundItem.lootItemBasedOnValue(valueParams)) {
-            Microbot.pauseAllScripts = false;
+            Microbot.pauseAllScripts.compareAndSet(true, false);
         }
     }
 
@@ -190,7 +190,7 @@ public class LootScript extends Script {
                 config.listOfItemsToLoot().trim().split(",")
         );
         if (Rs2GroundItem.lootItemsBasedOnNames(valueParams)) {
-            Microbot.pauseAllScripts = false;
+            Microbot.pauseAllScripts.compareAndSet(true, false);
         }
     }
 

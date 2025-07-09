@@ -28,4 +28,10 @@ public class DraynorCourse implements AgilityCourseHandler
 			new AgilityObstacleModel(ObjectID.ROOFTOPS_DRAYNOR_CRATE) // 3096,3256
 		);
 	}
+
+	@Override
+	public Integer getRequiredLevel()
+	{
+		return 1;
+	}
 }

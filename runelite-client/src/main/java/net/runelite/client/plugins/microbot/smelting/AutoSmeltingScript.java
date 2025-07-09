@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.smelting;
 import net.runelite.api.GameObject;
 import net.runelite.api.ItemID;
 import net.runelite.api.Skill;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.smelting.enums.Ores;
@@ -24,6 +25,9 @@ import java.util.concurrent.TimeUnit;
 public class AutoSmeltingScript extends Script {
 
     public static String version = "1.0.3";
+    static boolean coalBagEmpty;
+    static final int coalBag = 12019;
+    boolean hasBeenFilled = false;
 
     public boolean run(AutoSmeltingConfig config) {
         initialPlayerLocation = null;
@@ -44,7 +48,7 @@ public class AutoSmeltingScript extends Script {
                     initialPlayerLocation = Rs2Player.getWorldLocation();
                 }
 
-                if (Rs2Player.isMoving() || Rs2Player.isAnimating(6500) || Microbot.pauseAllScripts) return;
+                if (Rs2Player.isMoving() || Rs2Player.isAnimating(6500)) return;
                 if (Rs2AntibanSettings.actionCooldownActive) return;
 
                 // walk to bank until it's open then deposit everything and withdraw materials
@@ -55,11 +59,53 @@ public class AutoSmeltingScript extends Script {
                             return;
                         }
                     }
-
-                    Rs2Bank.depositAll();
+                    Rs2Player.waitForWalking();
+                    sleep(600,1200);
+                    if (!Rs2Player.isInMemberWorld()) {
+                        Rs2Bank.depositAll();
+                    } else if (Rs2Player.isMember()) Rs2Bank.depositAllExcept(coalBag);
                     if (config.SELECTED_BAR_TYPE().getId() == ItemID.IRON_BAR && Rs2Bank.hasItem(ItemID.RING_OF_FORGING) && !Rs2Equipment.isWearing(ItemID.RING_OF_FORGING)) {
                         Rs2Bank.withdrawAndEquip(ItemID.RING_OF_FORGING);
                         return;
+                    }
+                    for (int i : new int[]{ItemID.GOLD_BAR}) {
+                        int selectedBar = config.SELECTED_BAR_TYPE().getId();
+                        if (selectedBar == i && Rs2Bank.hasItem(ItemID.GOLDSMITH_GAUNTLETS) && !Rs2Equipment.isWearing(ItemID.GOLDSMITH_GAUNTLETS)) {
+                            Rs2Bank.withdrawAndEquip(ItemID.GOLDSMITH_GAUNTLETS);
+                            return;
+                        }
+                        if (selectedBar != i && (Rs2Bank.hasItem(ItemID.SMITHS_GLOVES) || Rs2Bank.hasItem(ItemID.SMITHS_GLOVES_I)) && (!Rs2Equipment.isWearing(ItemID.SMITHS_GLOVES_I) ||!Rs2Equipment.isWearing(ItemID.SMITHS_GLOVES_I))) {
+                            if (Rs2Bank.hasItem(ItemID.SMITHS_GLOVES_I)) {
+                                Rs2Bank.withdrawAndEquip(ItemID.SMITHS_GLOVES_I);
+                                return;
+                            }
+                            if (Rs2Bank.hasItem(ItemID.SMITHS_GLOVES)) {
+                                Rs2Bank.withdrawAndEquip(ItemID.SMITHS_GLOVES);
+                                return;
+                            }
+                        }
+                    }
+                    int selectedBar = config.SELECTED_BAR_TYPE().getId();
+                    boolean needsCoalBag = false;
+
+                    for (int i : new int[]{ItemID.STEEL_BAR, ItemID.MITHRIL_BAR, ItemID.ADAMANTITE_BAR, ItemID.RUNITE_BAR}) {
+                        if (selectedBar == i && Rs2Player.isInMemberWorld()) {
+                            needsCoalBag = true;
+                            break;
+                        }
+                    }
+
+                    if (needsCoalBag && Rs2Bank.hasItem(coalBag) && !Rs2Inventory.hasItem(coalBag) && Rs2Player.isInMemberWorld()) {
+                        Rs2Bank.withdrawItem(coalBag);
+                        return;
+                    }
+
+                    if (!needsCoalBag && Rs2Inventory.hasItem(coalBag)) {
+                        Rs2Bank.depositItems(coalBag);
+                        return;
+                    }
+                    if ((coalBagEmpty || !hasBeenFilled) && Rs2Inventory.hasItem(coalBag) && Rs2Player.isInMemberWorld()) {
+                        handleCoalBag();
                     }
                     withdrawRightAmountOfMaterials(config);
                     return;
@@ -114,6 +160,11 @@ public class AutoSmeltingScript extends Script {
     }
 
     private boolean inventoryHasMaterialsForOneBar(AutoSmeltingConfig config) {
+        if (!coalBagEmpty && hasBeenFilled) {
+            Rs2Inventory.interact(coalBag, "Empty");
+            Rs2Inventory.waitForInventoryChanges(3000);
+            return true;
+        }
         for (Map.Entry<Ores, Integer> requiredMaterials : config.SELECTED_BAR_TYPE().getRequiredMaterials().entrySet()) {
             Integer amount = requiredMaterials.getValue();
             String name = requiredMaterials.getKey().toString();
@@ -127,7 +178,9 @@ public class AutoSmeltingScript extends Script {
         for (Map.Entry<Ores, Integer> requiredMaterials : config.SELECTED_BAR_TYPE().getRequiredMaterials().entrySet()) {
             Integer amountForOne = requiredMaterials.getValue();
             String name = requiredMaterials.getKey().toString();
-            int totalAmount = config.SELECTED_BAR_TYPE().maxBarsForFullInventory() * amountForOne;
+            int totalAmount = Rs2Inventory.hasItem(coalBag)
+                    ? config.SELECTED_BAR_TYPE().getWithdrawalsWithCoalBag(Rs2Inventory.capacity()).get(requiredMaterials.getKey())
+                    : config.SELECTED_BAR_TYPE().maxBarsForFullInventory() * amountForOne;
             if (!Rs2Bank.hasBankItem(name, totalAmount, true)) {
                 Microbot.showMessage(MessageFormat.format("Required Materials not in bank. You need {1} {0}.", name, totalAmount));
                 super.shutdown();
@@ -142,4 +195,12 @@ public class AutoSmeltingScript extends Script {
             }
         }
     }
+
+    private void handleCoalBag() {
+        boolean fullCoalBag = Rs2Inventory.interact(coalBag, "Fill");
+        if (!fullCoalBag)
+            return;
+        sleep(300, 1200);
+    }
+
 }

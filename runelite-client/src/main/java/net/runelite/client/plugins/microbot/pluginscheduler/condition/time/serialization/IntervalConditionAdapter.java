@@ -4,7 +4,7 @@ import com.google.gson.*;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.IntervalCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.SingleTriggerTimeCondition;
-
+import java.time.format.DateTimeFormatter;
 import java.lang.reflect.Type;
 import java.time.Duration;
 import java.time.Instant;
@@ -43,8 +43,7 @@ public class IntervalConditionAdapter implements JsonSerializer<IntervalConditio
         data.addProperty("maximumNumberOfRepeats", src.getMaximumNumberOfRepeats());
         data.addProperty("currentValidResetCount", src.getCurrentValidResetCount());
         // Store next trigger time if available
-        ZonedDateTime nextTrigger = src.getNextTriggerTime();
-        ZonedDateTime currentTriggerDateTime = src.getCurrentTriggerTime().get();
+        ZonedDateTime nextTrigger = src.getNextTriggerTimeWithPause().orElse(null);        
         
 
         if (nextTrigger != null) {
@@ -53,12 +52,11 @@ public class IntervalConditionAdapter implements JsonSerializer<IntervalConditio
         
         // Serialize initial delay condition if it exists
         if (src.getInitialDelayCondition() != null) {
-            SingleTriggerTimeCondition delayCondition = src.getInitialDelayCondition();
-            JsonObject initialDelayData = new JsonObject();
-            initialDelayData.addProperty("targetTimeMillis", 
-                    delayCondition.getTargetTime().toInstant().toEpochMilli());
-            data.add("initialDelayCondition", initialDelayData);
-            data.add("initialCondition", context.serialize(delayCondition));
+            SingleTriggerTimeCondition delayCondition = src.getInitialDelayCondition();            
+            if (delayCondition.getNextTriggerTimeWithPause().orElse(null) != null) {
+                data.addProperty("targetTimeMillis", delayCondition.getNextTriggerTimeWithPause().get().toInstant().toEpochMilli());
+            }                    
+            data.add("initialDelayCondition", context.serialize(delayCondition));
         }
         
         // Add data to wrapper
@@ -93,13 +91,9 @@ public class IntervalConditionAdapter implements JsonSerializer<IntervalConditio
         // Extract initial delay information if present
         Long initialDelaySeconds = null;
         SingleTriggerTimeCondition intialCondition = null;
-        if (jsonObject.has("initialDelayCondition")) {
-        
-            JsonObject initialDelayData = jsonObject.getAsJsonObject("initialDelayCondition");
-            JsonObject initialConditionData= jsonObject.getAsJsonObject("initialCondition");
-            intialCondition = context.deserialize(initialConditionData, SingleTriggerTimeCondition.class);
-         
-
+        if (jsonObject.has("initialDelayCondition")) {        
+            JsonObject initialDelayData = jsonObject.getAsJsonObject("initialDelayCondition");            
+            intialCondition = context.deserialize(initialDelayData, SingleTriggerTimeCondition.class);         
             if (initialDelayData.has("targetTimeMillis")) {
                 long targetTimeMillis = initialDelayData.get("targetTimeMillis").getAsLong();
                 
@@ -114,10 +108,50 @@ public class IntervalConditionAdapter implements JsonSerializer<IntervalConditio
                     initialDelaySeconds = (Long)(delayMillis / 1000);
                 }
             }
+            long intitalDelayFromCondition = intialCondition.getNextTriggerTimeWithPause().get().toInstant().toEpochMilli() - System.currentTimeMillis();
             if (intialCondition != null) {
-                log.debug("\nInitial delay condition: {} \n- target time {} \n- initialDelaySeconds {}", intialCondition.toString(),
-                        intialCondition.getTargetTime().toInstant().toEpochMilli(),initialDelaySeconds);
-            }else{
+                // Format times for better readability
+                ZonedDateTime targetTime = intialCondition.getNextTriggerTimeWithPause().get();
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                String formattedTargetTime = targetTime.format(formatter);
+                
+                // Convert milliseconds to duration for proper formatting
+                Duration delayFromCondition = Duration.ofMillis(Math.max(0, intitalDelayFromCondition));
+                String formattedDelay = String.format("%02d:%02d:%02d", 
+                    delayFromCondition.toHours(),
+                    delayFromCondition.toMinutesPart(),
+                    delayFromCondition.toSecondsPart()
+                );
+                
+                // Convert initialDelaySeconds to duration for formatting
+                Duration initialDelay = Duration.ofSeconds(initialDelaySeconds != null ? initialDelaySeconds : 0);
+                String formattedInitialDelay = String.format("%02d:%02d:%02d",
+                    initialDelay.toHours(),
+                    initialDelay.toMinutesPart(),
+                    initialDelay.toSecondsPart()
+                );
+                
+                Optional<ZonedDateTime> nextTriggerWithPause = intialCondition.getNextTriggerTimeWithPause();
+                String formattedNextTriggerWithPause = nextTriggerWithPause
+                    .map(time -> time.format(formatter))
+                    .orElse("Not set");
+                
+                // Check if next trigger time is before current time
+                boolean isBeforeCurrent = nextTriggerWithPause
+                    .map(time -> time.isBefore(ZonedDateTime.now(ZoneId.systemDefault())))
+                    .orElse(false);
+                
+                log.info("\nInitial delay condition: {}\n- Target time: {}\n- Initial delay: {} ({})\n- Delay from condition: {} ({})\n- Next trigger with pause: {}\n- Is before current time: {}\n",
+                    intialCondition.toString(),
+                    formattedTargetTime,
+                    formattedInitialDelay,
+                    initialDelaySeconds + " seconds",
+                    formattedDelay,
+                    (intitalDelayFromCondition / 1000) + " seconds",
+                    formattedNextTriggerWithPause,
+                    isBeforeCurrent
+                );
+            } else {
                 throw new JsonParseException("Initial delay condition is null");                
             }
         }
@@ -145,23 +179,28 @@ public class IntervalConditionAdapter implements JsonSerializer<IntervalConditio
                             jsonObject.get("maximumNumberOfRepeats").getAsLong() : 0;
         if(condition == null) {
             if (intialCondition != null) {
-                // Create a new condition with the initial delay
+                // Create a new condition with the initial delay from the initial condition
                 condition =  new IntervalCondition(interval, randomize, randomFactor, maximumNumberOfRepeats, (Long)intialCondition.getDefinedDelay().toSeconds());
             } else if (initialDelaySeconds != null && initialDelaySeconds > 0) {
                 // Create a new condition with the initial delay
                 condition =  new IntervalCondition(interval, randomize, randomFactor, maximumNumberOfRepeats, initialDelaySeconds);
+            }else{
+                // Create a new condition without initial delay
+                condition =  new IntervalCondition(interval, randomize, randomFactor, maximumNumberOfRepeats);
             }
+
                         
         }
 
 
 
 
-         if (intialCondition!= null && intialCondition.getTargetTime().isBefore(ZonedDateTime.now(ZoneId.systemDefault()))) {
+         if (intialCondition!= null  && intialCondition.getNextTriggerTimeWithPause().orElse(null) !=null && intialCondition.getNextTriggerTimeWithPause().get().isBefore(ZonedDateTime.now(ZoneId.systemDefault()))) {
             Duration initialDelay = Duration.ofSeconds(intialCondition.getDefinedDelay().toSeconds());
-            Duration remaingDuration = Duration.between(intialCondition.getTargetTime(),ZonedDateTime.now(ZoneId.systemDefault()));
-            log.debug  ("\nInitial delay condition: {} \n- target time {} \n- initialDelaySeconds {}", intialCondition.toString(),
-                    intialCondition.getTargetTime().toString(),remaingDuration.getSeconds());
+            Duration remaingDuration = Duration.between(intialCondition.getNextTriggerTimeWithPause().get(),ZonedDateTime.now(ZoneId.systemDefault()));
+            Duration remaingDuration__ = Duration.between(ZonedDateTime.now(ZoneId.systemDefault()),intialCondition.getNextTriggerTimeWithPause().get());
+            log.info  ("\nInitial delay condition: {} \n- next targeted trigger time {} \n-remaning {} -difference: {}", intialCondition.toString(),
+                    intialCondition.getNextTriggerTimeWithPause().get().toString(),remaingDuration.getSeconds(),remaingDuration__.getSeconds());
             condition =  new IntervalCondition(
                 condition.getInterval(),
                 condition.getMinInterval(),
@@ -169,11 +208,17 @@ public class IntervalConditionAdapter implements JsonSerializer<IntervalConditio
                 condition.isRandomize(),
                 condition.getRandomFactor(),
                 condition.getMaximumNumberOfRepeats(),
-                remaingDuration.getSeconds()
+                remaingDuration__.getSeconds()
             );
         }
         else if (initialDelaySeconds != null && initialDelaySeconds > 0) {
             // Create a new condition with the initial delay
+            log.info("\nInitial delay condition: {} \n- next targeted trigger time {} \n- initial delay seconds {}, before: {}", 
+                condition.toString(),
+                condition.getNextTriggerTimeWithPause().orElse(null),
+                initialDelaySeconds,
+                condition.getNextTriggerTimeWithPause().orElse(null).isBefore(ZonedDateTime.now(ZoneId.systemDefault())) ? "yes" : "no"
+                );
             condition =  new IntervalCondition(
                 condition.getInterval(),
                 condition.getMinInterval(),

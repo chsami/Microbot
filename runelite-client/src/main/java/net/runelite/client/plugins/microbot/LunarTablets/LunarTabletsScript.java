@@ -2,6 +2,8 @@ package net.runelite.client.plugins.microbot.LunarTablets;
 
 import com.google.inject.Provides;
 import net.runelite.api.GameObject;
+import net.runelite.api.Quest;
+import net.runelite.api.QuestState;
 import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.config.ConfigManager;
@@ -172,10 +174,11 @@ public class LunarTabletsScript extends Script {
         String selectedTabletName = config.selectedTablet().getName();
         System.out.println("Selected Lunar Tablet: " + selectedTabletName);
 
-        if (!Rs2Bank.isOpen()){
+        if (!Rs2Bank.isOpen()) {
             Rs2Bank.walkToBankAndUseBank(BankLocation.LUNAR_ISLE);
             return;
         }
+
         System.out.println("Bank opened successfully.");
 
         if (Rs2Inventory.contains(item -> item.getName().toLowerCase().contains("teleport"))) {

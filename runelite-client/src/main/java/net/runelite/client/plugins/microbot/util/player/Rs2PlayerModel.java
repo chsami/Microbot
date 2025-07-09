@@ -78,4 +78,10 @@ public class Rs2PlayerModel extends ActorModel implements Player
 	{
 		player.setSkullIcon(skullIcon);
 	}
+
+	@Override
+	public int getFootprintSize()
+	{
+		return 0;
+	}
 }

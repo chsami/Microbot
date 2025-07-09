@@ -118,7 +118,7 @@ public class Rs2DepositBox {
     public static boolean depositAll(Predicate<Rs2ItemModel> predicate) {
         if (!isOpen()) return false;
         boolean result = false;
-        List<Rs2ItemModel> items = Rs2Inventory.items().stream().filter(predicate).distinct().collect(Collectors.toList());
+        List<Rs2ItemModel> items = Rs2Inventory.items(predicate).distinct().collect(Collectors.toList());
         for (Rs2ItemModel item : items) {
             if (item == null) continue;
             invokeMenu(6, item);

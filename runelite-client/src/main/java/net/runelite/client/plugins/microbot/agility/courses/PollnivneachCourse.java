@@ -29,4 +29,10 @@ public class PollnivneachCourse implements AgilityCourseHandler
 			new AgilityObstacleModel(ObjectID.ROOFTOPS_POLLNIVNEACH_LINE)
 		);
 	}
+
+	@Override
+	public Integer getRequiredLevel()
+	{
+		return 70;
+	}
 }

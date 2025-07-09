@@ -34,9 +34,16 @@ public interface VorkathConfig extends Config {
     String teleportSection = "Teleports";
 
     @ConfigSection(
+            name = "POH",
+            description = "POH",
+            position = 5
+    )
+    String pohSection = "POH";
+
+    @ConfigSection(
             name = "Prayers",
             description = "Prayers",
-            position = 5
+            position = 6
     )
     String prayerSection = "Prayers";
 
@@ -86,6 +93,39 @@ public interface VorkathConfig extends Config {
     default String ItemsToNotSell()
     {
         return "item1,item2";
+    }
+
+    @ConfigItem(
+            keyName = "KillsPerTrip",
+            name = "KC per Trip",
+            description = "kills per trip before banking(0 to disable it)",
+            position = 1,
+            section = lootSection
+    )
+    default int KillsPerTrip() {
+        return 0;
+    }
+
+    @ConfigItem(
+            keyName = "PohInRellekka",
+            name = "POH in Rellekka",
+            description = "Teleport to POH in Rellekka and exit via portal",
+            position = 0,
+            section = pohSection
+    )
+    default boolean pohInRellekka() {
+    return false;
+    }
+
+    @ConfigItem(
+            keyName = "RejuvenationPool",
+            name = "Rejuvenation Pool",
+            description = "Use POH rejuv Pool to restore stats",
+            position = 1,
+            section = pohSection
+    )
+    default boolean rejuvinationPool() {
+        return false;
     }
 
     @ConfigItem(

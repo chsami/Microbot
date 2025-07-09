@@ -15,7 +15,7 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 
 @Singleton
-class MicrobotTopLevelConfigPanel extends PluginPanel {
+public class MicrobotTopLevelConfigPanel extends PluginPanel {
     private final MaterialTabGroup tabGroup;
     private final CardLayout layout;
     private final JPanel content;

@@ -39,6 +39,7 @@ import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.AsyncBufferedImage;
 
 import javax.swing.*;
+import javax.swing.border.BevelBorder;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
@@ -141,7 +142,7 @@ public class InventorySetupsSlot extends JPanel
 		add(stackIndicator, stackConstraints);
 	}
 
-	public void setImageLabel(String toolTip, BufferedImage itemImage, boolean isFuzzy, InventorySetupsStackCompareID stackCompare)
+	public void setImageLabel(String toolTip, BufferedImage itemImage, boolean isFuzzy, InventorySetupsStackCompareID stackCompare, boolean locked)
 	{
 		if (itemImage == null || toolTip == null)
 		{
@@ -167,13 +168,29 @@ public class InventorySetupsSlot extends JPanel
 		fuzzyIndicator.setText(isFuzzy ? "*" : "");
 		stackIndicator.setText(InventorySetupsStackCompareID.getStringFromValue(stackCompare));
 
+		if (locked)
+		{
+			this.setBorder(
+					BorderFactory.createBevelBorder(
+							BevelBorder.RAISED,
+							new Color(139, 0, 0),
+							new Color(139, 0, 0).darker(),
+							new Color(139, 0, 0),
+							new Color(139, 0, 0).darker()
+					));
+		}
+		else
+		{
+			this.setBorder(null);
+		}
+
 		validate();
 		repaint();
 	}
 
 	public void setImageLabel(String toolTip, BufferedImage itemImage)
 	{
-		setImageLabel(toolTip, itemImage, false, InventorySetupsStackCompareID.None);
+		setImageLabel(toolTip, itemImage, false, InventorySetupsStackCompareID.None, false);
 	}
 
 	// adds the menu option to update a slot from the container it presides in
@@ -258,6 +275,17 @@ public class InventorySetupsSlot extends JPanel
 		});
 	}
 
+	public static void addLockMouseListenerToSlot(final MInventorySetupsPlugin plugin, final InventorySetupsSlot slot)
+	{
+		JMenuItem toggleLock = new JMenuItem("Toggle Lock");
+		slot.getRightClickMenu().add(toggleLock);
+		toggleLock.addActionListener(e ->
+		{
+			plugin.toggleLockOnSlot(slot);
+		});
+	}
+
+
 	// adds the menu option to update set a slot to fuzzy
 	public static void addStackMouseListenerToSlot(final MInventorySetupsPlugin plugin, final InventorySetupsSlot slot)
 	{
@@ -317,7 +345,7 @@ public class InventorySetupsSlot extends JPanel
 
 		if (item.getId() == -1)
 		{
-			containerSlot.setImageLabel(null, null, item.isFuzzy(), item.getStackCompare());
+			containerSlot.setImageLabel(null, null, item.isFuzzy(), item.getStackCompare(), item.isLocked());
 			return;
 		}
 
@@ -330,7 +358,7 @@ public class InventorySetupsSlot extends JPanel
 		{
 			toolTip += " (" + quantity + ")";
 		}
-		containerSlot.setImageLabel(toolTip, itemImg, item.isFuzzy(), item.getStackCompare());
+		containerSlot.setImageLabel(toolTip, itemImg, item.isFuzzy(), item.getStackCompare(), item.isLocked());
 	}
 
 	// highlights the slot based on the configuration and the saved item vs item in the slot

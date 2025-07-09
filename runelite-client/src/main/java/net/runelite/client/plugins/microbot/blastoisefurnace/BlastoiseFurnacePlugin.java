@@ -3,9 +3,9 @@ package net.runelite.client.plugins.microbot.blastoisefurnace;
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
-import net.runelite.api.ItemID;
-import net.runelite.api.Varbits;
+import net.runelite.api.ItemContainer;
 import net.runelite.api.events.*;
+import net.runelite.api.gameval.*;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
@@ -15,8 +15,9 @@ import net.runelite.client.plugins.microbot.blastoisefurnace.enums.State;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
-import java.awt.*;
+import java.awt.AWTException;
 
+import static net.runelite.client.plugins.microbot.blastoisefurnace.BlastoiseFurnaceScript.*;
 
 
 @PluginDescriptor(
@@ -30,30 +31,29 @@ public class BlastoiseFurnacePlugin extends Plugin {
     @Inject
     private BlastoiseFurnaceConfig config;
     @Provides
-    BlastoiseFurnaceConfig provideConfig(ConfigManager configManager) {
+     BlastoiseFurnaceConfig provideConfig(ConfigManager configManager) {
         return configManager.getConfig(BlastoiseFurnaceConfig.class);
     }
 
     @Inject
     private OverlayManager overlayManager;
     @Inject
-    private BlastoiseFurnaceOverlay BlastoiseFurnaceOverlay;
+    private BlastoiseFurnaceOverlay blastoiseFurnaceOverlay;
 
     @Inject
-    BlastoiseFurnaceScript BlastoiseFurnaceScript;
-
+    BlastoiseFurnaceScript blastoiseFurnaceScript;
 
     @Override
     protected void startUp() throws AWTException {
         if (overlayManager != null) {
-            overlayManager.add(BlastoiseFurnaceOverlay);
+            overlayManager.add(blastoiseFurnaceOverlay);
         }
-        BlastoiseFurnaceScript.run(config);
+        blastoiseFurnaceScript.run(config);
     }
     @Subscribe
     public void onVarbitChanged(VarbitChanged event) {
-        if (event.getVarbitId() == Varbits.STAMINA_EFFECT) {
-            BlastoiseFurnaceScript.staminaTimer = event.getValue();
+        if (event.getVarbitId() == VarbitID.STAMINA_DURATION) {
+            staminaTimer = event.getValue();
         }
     }
 
@@ -61,51 +61,42 @@ public class BlastoiseFurnacePlugin extends Plugin {
     public void onChatMessage(ChatMessage chatMessage) {
         if (chatMessage.getType() == ChatMessageType.GAMEMESSAGE) {
             if(chatMessage.getMessage().contains("The coal bag is now empty.")){
-                if(!BlastoiseFurnaceScript.coalBagEmpty) BlastoiseFurnaceScript.coalBagEmpty=true;
+                if(!coalBagEmpty) coalBagEmpty=true;
             }
 
             if(chatMessage.getMessage().contains("The coal bag contains")){
-                if(BlastoiseFurnaceScript.coalBagEmpty) BlastoiseFurnaceScript.coalBagEmpty=false;
+                if(coalBagEmpty) coalBagEmpty=false;
             }
         }
     }
-    @Subscribe
-    public void onItemContainerChanged(ItemContainerChanged inventory){
-        if(inventory.getItemContainer().getId()==93) {
-            if (!inventory.getItemContainer().contains(ItemID.COAL) && BlastoiseFurnaceScript.state != State.BANKING) {
-                if (!BlastoiseFurnaceScript.coalBagEmpty) BlastoiseFurnaceScript.coalBagEmpty = true;//TODO this sets the bag to empty when we're smithing and coal is added to our inventory.
-            }
-            if (inventory.getItemContainer().contains(ItemID.COAL) && BlastoiseFurnaceScript.state != State.SMITHING) {
-                if (BlastoiseFurnaceScript.coalBagEmpty) BlastoiseFurnaceScript.coalBagEmpty = false;
-            }
-            if (inventory.getItemContainer().contains(config.getBars().getPrimaryOre()) && BlastoiseFurnaceScript.state != State.SMITHING){
-                if(BlastoiseFurnaceScript.primaryOreEmpty){ BlastoiseFurnaceScript.primaryOreEmpty=false; }
-            }
-            if (!inventory.getItemContainer().contains(config.getBars().getPrimaryOre()) && BlastoiseFurnaceScript.state != State.BANKING){
-                if(!BlastoiseFurnaceScript.primaryOreEmpty){ BlastoiseFurnaceScript.primaryOreEmpty=true; }
-            }
-            if (inventory.getItemContainer().contains(config.getBars().getSecondaryOre()) && BlastoiseFurnaceScript.state != State.SMITHING){
-                //TODO ffs for some reason the print fixes it when run from IDE, but compiled still bugs out...
-                if(BlastoiseFurnaceScript.secondaryOreEmpty){ System.out.println("secondary set to not empty"); BlastoiseFurnaceScript.secondaryOreEmpty=false; }
-            }
-            if (!inventory.getItemContainer().contains(config.getBars().getSecondaryOre()) && BlastoiseFurnaceScript.state != State.BANKING){
-                if(!BlastoiseFurnaceScript.secondaryOreEmpty){ BlastoiseFurnaceScript.secondaryOreEmpty=true; }
-            }
-            //TODO added
-            if (!inventory.getItemContainer().contains(config.getBars().getSecondaryOre()) && BlastoiseFurnaceScript.state != State.SMITHING){
-                if(!BlastoiseFurnaceScript.secondaryOreEmpty){ BlastoiseFurnaceScript.secondaryOreEmpty=true; }
-            }
-            if (inventory.getItemContainer().contains(config.getBars().getSecondaryOre()) && BlastoiseFurnaceScript.state != State.BANKING){
-                if(BlastoiseFurnaceScript.secondaryOreEmpty){ BlastoiseFurnaceScript.secondaryOreEmpty=false; }
-            }
-        }
-    }
-    @Subscribe
-    public void onClientTick(ClientTick clientTick) {
 
+    @Subscribe
+    public void onItemContainerChanged(ItemContainerChanged inventory) {
+        if (inventory.getItemContainer().getId() != 93) return;
+
+        final ItemContainer inv = inventory.getItemContainer();
+        final boolean hasCoal = inv.contains(ItemID.COAL);
+        final boolean hasPrimary = inv.contains(config.getBars().getPrimaryOre());
+        final boolean hasSecondary = inv.contains(config.getBars().getSecondaryOre());
+
+        // Coal bag tracking
+        if (state != State.BANKING && !hasCoal && !coalBagEmpty) coalBagEmpty = true;
+        if (state != State.SMITHING && hasCoal && coalBagEmpty) coalBagEmpty = false;
+
+        // Primary ore tracking
+        if (state != State.SMITHING && hasPrimary && primaryOreEmpty) primaryOreEmpty = false;
+        if (state != State.BANKING && !hasPrimary && !primaryOreEmpty) primaryOreEmpty = true;
+
+        // Secondary ore tracking
+        if (state != State.SMITHING && hasSecondary && secondaryOreEmpty) {
+            secondaryOreEmpty = false;
+            System.out.println("secondary set to not empty"); // Optional debug
+        }
+        if (state != State.BANKING && !hasSecondary && !secondaryOreEmpty) secondaryOreEmpty = true;
     }
+
     protected void shutDown() {
-        BlastoiseFurnaceScript.shutdown();
-        overlayManager.remove(BlastoiseFurnaceOverlay);
+        blastoiseFurnaceScript.shutdown();
+        overlayManager.remove(blastoiseFurnaceOverlay);
     }
 }

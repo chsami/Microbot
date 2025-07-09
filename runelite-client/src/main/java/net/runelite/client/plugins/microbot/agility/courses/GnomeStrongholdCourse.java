@@ -27,4 +27,10 @@ public class GnomeStrongholdCourse implements AgilityCourseHandler
 			new AgilityObstacleModel(ObjectID.OBSTICAL_PIPE3_1, -1, 3430, Operation.GREATER, Operation.LESS_EQUAL)
 		);
 	}
+
+	@Override
+	public Integer getRequiredLevel()
+	{
+		return 1;
+	}
 }

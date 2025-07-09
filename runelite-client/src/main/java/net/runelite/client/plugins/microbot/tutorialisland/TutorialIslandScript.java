@@ -73,7 +73,7 @@ public class TutorialIslandScript extends Script {
                     return;
                 }
 
-                if (Rs2Player.isMoving() || Rs2Player.isAnimating() || Microbot.pauseAllScripts) return;
+                if (Rs2Player.isMoving() || Rs2Player.isAnimating()) return;
 
                 switch (status) {
                     case NAME:

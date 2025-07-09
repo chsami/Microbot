@@ -186,7 +186,7 @@ public class OuraniaPlugin extends Plugin
 	public void calcuateProfit()
 	{
 		int teleportCost = Rs2GrandExchange.getPrice(ItemID.LAW_RUNE) + (Rs2GrandExchange.getPrice(ItemID.ASTRAL_RUNE) * 2);
-		int runesCrafted = Rs2Inventory.items().stream()
+		int runesCrafted = Rs2Inventory.items()
 			.filter(rs2Item -> rs2Item.getName().toLowerCase().contains("rune") && !rs2Item.getName().toLowerCase().contains("rune pouch"))
 			.mapToInt(rs2Item -> Rs2GrandExchange.getPrice(rs2Item.getId()))
 			.sum();

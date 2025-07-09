@@ -2,8 +2,7 @@ package net.runelite.client.plugins.microbot.pluginscheduler.condition.resource;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
+
 
 import lombok.Builder;
 import lombok.Getter;
@@ -74,7 +73,8 @@ public class InventoryItemCountCondition extends ResourceCondition {
      * Creates an AND logical condition requiring multiple items with individual targets
      * All conditions must be satisfied (must have the required number of each item)
      */
-    public static LogicalCondition createAndCondition(List<String> itemNames, List<Integer> targetCountsMins, List<Integer> targetCountsMaxs, boolean includeNoted) {
+    public static LogicalCondition createAndCondition(List<String> itemNames,
+     List<Integer> targetCountsMins, List<Integer> targetCountsMaxs, boolean includeNoted) {
         if (itemNames == null || itemNames.isEmpty()) {
             throw new IllegalArgumentException("Item name list cannot be null or empty");
         }
@@ -214,6 +214,11 @@ public class InventoryItemCountCondition extends ResourceCondition {
     
     @Override
     public boolean isSatisfied() {
+        // A condition cannot be satisfied while paused
+        if (isPaused) {
+            return false;
+        }
+        
         // Once satisfied, stay satisfied until reset
         if (satisfied) {
             return true;
@@ -297,6 +302,10 @@ public class InventoryItemCountCondition extends ResourceCondition {
     
     @Override
     public void onItemContainerChanged(ItemContainerChanged event) {
+        // Skip processing if paused
+        if (isPaused) {
+            return;
+        }
               
         if (event.getContainerId() == InventoryID.INVENTORY.getId()) {
             if (Rs2Bank.isOpen()) {
@@ -305,8 +314,14 @@ public class InventoryItemCountCondition extends ResourceCondition {
             updateCurrentCount();
         }
     }
+    
     @Override
     public void onGameTick(GameTick event) {
+        // Skip processing if paused
+        if (isPaused) {
+            return;
+        }
+        
         // Load initial inventory if not yet loaded
         if (!initialInventoryLoaded) {
             updateCurrentCount();
@@ -346,5 +361,23 @@ public class InventoryItemCountCondition extends ResourceCondition {
     @Override
     public int getMetConditionCount() {
         return isSatisfied() ? 1 : 0;
+    }
+    
+    @Override
+    public void pause() {
+        // Call parent class pause method
+        super.pause();
+    }
+    
+    @Override
+    public void resume() {
+        if (isPaused) {
+            // Call parent class resume method
+            super.resume();
+            
+            // For snapshot-type conditions, refresh current state on resume
+            updateCurrentCount();
+            initialInventoryLoaded = true; // Mark as loaded after resume
+        }
     }
 }

@@ -14,6 +14,7 @@ import net.runelite.client.plugins.cluescrolls.ClueScrollPlugin;
 import net.runelite.client.plugins.cluescrolls.clues.EmoteClue;
 import net.runelite.client.plugins.microbot.cluesolver.ClueSolverPlugin;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
@@ -26,7 +27,7 @@ import static net.runelite.client.plugins.microbot.util.Global.sleep;
 @Slf4j
 public class EmoteClueTask extends ClueTask {
 
-    private NPC doubleAgent;
+    private Rs2NpcModel doubleAgent;
     private final EmoteClue clue;
     private final EventBus eventBus;
     private final ExecutorService backgroundExecutor;
@@ -185,7 +186,7 @@ public class EmoteClueTask extends ClueTask {
         NPC npc = event.getNpc();
         if (npc.getName() != null) {
             if (state == State.WAITING_FOR_ENEMY_SPAWN && npc.getName().equalsIgnoreCase(DOUBLE_AGENT_NAME)) {
-                doubleAgent = npc;
+                doubleAgent = Rs2Npc.getNpcByIndex(npc.getIndex());
                 log.info("Double agent spawned.");
                 state = State.FIGHTING_ENEMY;
                 attackDoubleAgent();

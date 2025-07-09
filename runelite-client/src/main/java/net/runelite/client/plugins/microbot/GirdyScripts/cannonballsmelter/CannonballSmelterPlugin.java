@@ -36,7 +36,7 @@ public class CannonballSmelterPlugin extends Plugin {
 
         @Override
         protected void startUp() throws AWTException {
-            Microbot.pauseAllScripts = false;
+			Microbot.pauseAllScripts.compareAndSet(true, false);
             if (overlayManager != null) {
                 overlayManager.add(cannonballSmelterOverlay);
             }

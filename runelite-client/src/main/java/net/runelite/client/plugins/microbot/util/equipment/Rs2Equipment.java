@@ -19,14 +19,16 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 public class Rs2Equipment {
+    private static List<Rs2ItemModel> equipmentItems = Collections.emptyList();
+
     public static ItemContainer equipment() {
         return Microbot.getClient().getItemContainer(InventoryID.WORN);
     }
-
-    private static List<Rs2ItemModel> equipmentItems = Collections.emptyList();
 
     public static List<Rs2ItemModel> items() {
         return equipmentItems;
@@ -83,31 +85,38 @@ public class Rs2Equipment {
         return true;
     }
 
-    public static Rs2ItemModel get(EquipmentInventorySlot slot) {
-        return get(x -> x.getSlot() == slot.getSlotIdx());
+    public static Stream<Rs2ItemModel> all() {
+        final List<Rs2ItemModel> items = items();
+        if (items == null) return Stream.empty();
+        return items.stream();
     }
 
-    public static Rs2ItemModel get(int id) {
-        return get(x -> x.getId() == id);
+    public static Stream<Rs2ItemModel> all(Predicate<Rs2ItemModel> predicate) {
+        return all().filter(predicate);
     }
 
-    public static Rs2ItemModel get(String name, boolean exact) {
-        return get(x -> exact ? x.getName().equalsIgnoreCase(name) :
-                x.getName().toLowerCase().contains(name.toLowerCase()));
+    public static Stream<Rs2ItemModel> all(EquipmentInventorySlot... slots) {
+        return all(Rs2ItemModel.matches(slots));
     }
 
-    public static Rs2ItemModel get(String name) {
-        return get(name, false);
+    public static Stream<Rs2ItemModel> all(int... ids) {
+        return all(Rs2ItemModel.matches(ids));
     }
 
-    /**
-     * Checks if the equipment contains an item that matches the specified predicate.
-     *
-     * @param predicate The predicate to apply.
-     * @return True if the equipment contains an item that matches the predicate, false otherwise.
-     */
-    public static boolean contains(Predicate<Rs2ItemModel> predicate) {
-        return items().stream().anyMatch(predicate);
+    public static Stream<Rs2ItemModel> all(String[] names, boolean exact) {
+        return all(Rs2ItemModel.matches(exact, names));
+    }
+
+    public static Stream<Rs2ItemModel> all(String name, boolean exact) {
+        return all(Rs2ItemModel.matches(exact, name));
+    }
+
+    public static Stream<Rs2ItemModel> all(String... names) {
+        return all(names, false);
+    }
+
+    public static Rs2ItemModel get() {
+        return all().findFirst().orElse(null);
     }
 
     /**
@@ -117,23 +126,38 @@ public class Rs2Equipment {
      * @return The matching `Rs2Item` if found, or null otherwise.
      */
     public static Rs2ItemModel get(Predicate<Rs2ItemModel> predicate) {
-        return items().stream().filter(predicate).findFirst().orElse(null);
+        return all(predicate).findFirst().orElse(null);
+    }
+
+    public static Rs2ItemModel get(EquipmentInventorySlot... slots) {
+        return all(slots).findFirst().orElse(null);
+    }
+
+    public static Rs2ItemModel get(int... ids) {
+        return all(ids).findFirst().orElse(null);
+    }
+
+    public static Rs2ItemModel get(String[] names, boolean exact) {
+        return all(names, exact).findFirst().orElse(null);
+    }
+
+    public static Rs2ItemModel get(String name, boolean exact) {
+        return all(name, exact).findFirst().orElse(null);
+    }
+
+    public static Rs2ItemModel get(String... names) {
+        return all(names).findFirst().orElse(null);
     }
 
     /**
-     * Interacts with an equipped item matching the predicate.
+     * Checks if the equipment contains an item that matches the specified predicate.
      *
-     * @param predicate The predicate to identify the item.
-     * @param action    The action to perform.
-     * @return True if the interaction was successful, false otherwise.
+     * @param predicate The predicate to apply.
+     * @return True if the equipment contains an item that matches the predicate, false otherwise.
      */
-    public static boolean interact(Predicate<Rs2ItemModel> predicate, String action) {
-        Rs2ItemModel item = get(predicate);
-        if (item != null) {
-            invokeMenu(item, action);
-            return true;
-        }
-        return false;
+    @Deprecated(since = "Use isWearing", forRemoval = true)
+    public static boolean contains(Predicate<Rs2ItemModel> predicate) {
+        return get(predicate) != null;
     }
 
     @Deprecated(since = "Use isWearing", forRemoval = true)
@@ -156,15 +180,18 @@ public class Rs2Equipment {
         return isWearing(slot);
     }
 
+    @Deprecated(since = "Use isWearing", forRemoval = true)
     public static boolean isEquipped(String name, EquipmentInventorySlot slot) {
         return isEquipped(name, slot, false);
     }
 
+    @Deprecated(since = "Use isWearing", forRemoval = true)
     public static boolean isEquipped(int id, EquipmentInventorySlot slot) {
         final Rs2ItemModel item = get(slot);
         return item != null && item.getId() == id;
     }
 
+    @Deprecated(since = "Use isWearing", forRemoval = true)
     public static boolean isEquipped(String name, EquipmentInventorySlot slot, boolean exact) {
         final Rs2ItemModel item = get(slot);
         if (item == null) return false;
@@ -197,68 +224,158 @@ public class Rs2Equipment {
                 hasGuthanHelmEquiped() && hasGuthanLegsEquiped();
     }
 
-    public static boolean isWearing(String name) {
-        return isWearing(name, false);
+    public static boolean isWearing() {
+        return get() != null;
     }
 
     public static boolean isWearing(Predicate<Rs2ItemModel> predicate) {
-        return Arrays.stream(EquipmentInventorySlot.values()).anyMatch(slot -> {
-            final Rs2ItemModel item = get(slot);
-            return item != null && predicate.test(item);
-        });
+        return get(predicate) != null;
     }
 
-    public static boolean isWearing(EquipmentInventorySlot slot) {
-        return isWearing(item -> item.getSlot() == slot.getSlotIdx());
+    public static boolean isWearing(EquipmentInventorySlot... slots) {
+        return get(slots) != null;
     }
 
-    public static boolean isWearing(int id) {
-        return isWearing(item -> item.getId() == id);
+    public static boolean isWearing(int... ids) {
+        return get(ids) != null;
+    }
+
+    public static boolean isWearing(String[] names, boolean exact) {
+        return get(names, exact) != null;
     }
 
     public static boolean isWearing(String name, boolean exact) {
-        return isWearing(exact ? item -> item.getName().equalsIgnoreCase(name) :
-                item -> item.getName().toLowerCase().contains(name.toLowerCase()));
+        return get(name, exact) != null;
     }
 
+    public static boolean isWearing(String... names) {
+        return get(names) != null;
+    }
+
+    private static <T> Stream<T> getOthers(T[] values, T[] ignore) {
+        if (values == null || values.length == 0) return Stream.empty();
+        if (ignore == null || ignore.length == 0) return Arrays.stream(values);
+
+        final Set<T> ignoreSet = Set.of(ignore);
+        return Arrays.stream(values).filter(value -> !ignoreSet.contains(value));
+    }
+
+    public static boolean isWearing(String[] names, boolean exact, EquipmentInventorySlot[] searchSlots) {
+        final Rs2ItemModel[] equipment = all(searchSlots).toArray(Rs2ItemModel[]::new);
+        return Arrays.stream(names).allMatch(
+                name -> Arrays.stream(equipment).anyMatch(Rs2ItemModel.matches(exact, name))
+        );
+    }
+
+    public static boolean isWearing(String[] names, boolean exact, EquipmentInventorySlot[] slots, boolean areSearchSlots) {
+        final EquipmentInventorySlot[] searchSlots = areSearchSlots ? slots :
+                getOthers(EquipmentInventorySlot.values(), slots).toArray(EquipmentInventorySlot[]::new);
+        return isWearing(names, exact, searchSlots);
+    }
+
+    public static boolean isWearing(String[] names, EquipmentInventorySlot[] searchSlots) {
+        return isWearing(names, false, searchSlots);
+    }
+
+    @Deprecated(since = "Use isWearing", forRemoval = true)
     public static boolean isWearing(List<String> names, boolean exact, List<EquipmentInventorySlot> ignoreSlots) {
-        final EquipmentInventorySlot[] searchSlots = Arrays.stream(EquipmentInventorySlot.values())
-                .filter(slot -> ignoreSlots.stream().noneMatch(iSlot -> slot == iSlot))
-                .toArray(EquipmentInventorySlot[]::new);
-        return names.stream().allMatch(name -> Arrays.stream(searchSlots).anyMatch(slot -> isEquipped(name, slot, exact)));
+        return isWearing(names.toArray(String[]::new), exact, ignoreSlots.toArray(EquipmentInventorySlot[]::new), false);
+    }
+
+    private static boolean unEquip(Rs2ItemModel item) {
+        return interact(item, "remove");
+    }
+
+    public static boolean unEquip(Predicate<Rs2ItemModel> predicate) {
+        return unEquip(get(predicate));
+    }
+
+    public static boolean unEquip(EquipmentInventorySlot... slots) {
+        return unEquip(get(slots));
     }
 
     /**
-     * Unequips an item identified by its ID.
-     *
+     * Unequips an item identified by its ID.<p>
      * This method retrieves the item with the given ID and unequips it if found.
      *
-     * @param id The unique identifier of the item to unequip.
-     * @return True if the item was found and the action was performed, otherwise false.
+     * @param ids The unique identifier of the item to unequip.
+     * @return {@code true} if the item exists and the action is performed, otherwise {@code false}.
      */
-    public static boolean unEquip(int id) {
-        return interact(id, "remove");
+    public static boolean unEquip(int... ids) {
+        return unEquip(get(ids));
     }
 
-    public static boolean unEquip(EquipmentInventorySlot slot) {
-        return interact(slot, "remove");
+    public static boolean unEquip(String[] names, boolean exact) {
+        return unEquip(get(names, exact));
+    }
+
+    public static boolean unEquip(String name, boolean exact) {
+        return unEquip(get(name, exact));
+    }
+
+    public static boolean unEquip(String... names) {
+        return unEquip(names, false);
+    }
+
+    // TODO: can only be made public if we ensure item really is an equipment item
+    private static boolean interact(Rs2ItemModel item, String action) {
+        if (item == null) return false;
+        invokeMenu(item, action);
+        return true;
+    }
+
+    /**
+     * Interacts with an equipped item matching the predicate.
+     *
+     * @param predicate The predicate to identify the item.
+     * @param action    The action to perform.
+     * @return {@code true} if the item exists and the action is performed, otherwise {@code false}.
+     */
+    public static boolean interact(Predicate<Rs2ItemModel> predicate, String action) {
+        return interact(get(predicate), action);
     }
 
     public static boolean interact(EquipmentInventorySlot slot, String action) {
-        return interact(item -> item.getSlot() == slot.getSlotIdx(), action);
+        return interact(get(slot), action);
+    }
+
+    public static boolean interact(EquipmentInventorySlot[] slots, String action) {
+        if (slots == null) return false;
+        for (EquipmentInventorySlot slot : slots) {
+            if (interact(slot, action)) return true;
+        }
+        return false;
     }
 
     /**
      * Interacts with an item identified by its ID.
-     *
+     * <p>
      * This method retrieves the item with the given ID and performs an action on it if found.
      *
      * @param id The unique identifier of the item to interact with.
      * @param action The action to perform on the item (e.g., "use", "equip").
-     * @return True if the item was found and the action was performed, otherwise false.
+     * @return {@code true} if the item exists and the action is performed, otherwise {@code false}.
      */
     public static boolean interact(int id, String action) {
-        return interact(item -> item.getId() == id, action);
+        return interact(get(id), action);
+    }
+
+    /**
+     * Interacts with any item from a list of IDs.
+     * <p>
+     * This method iterates over a list of item IDs, retrieves the first matching item,
+     * and performs an action on it if found.
+     *
+     * @param ids An array of item IDs to search through.
+     * @param action The action to perform on the first matching item (e.g., "use", "equip").
+     * @return {@code true} if the item exists and the action is performed, otherwise {@code false}.
+     */
+    public static boolean interact(int[] ids, String action) {
+        if (ids == null) return false;
+        for (int id : ids) {
+            if (interact(id, action)) return true;
+        }
+        return false;
     }
 
     /**
@@ -268,39 +385,32 @@ public class Rs2Equipment {
      *
      * @param name The name of the item to interact with.
      * @param action The action to perform on the item (e.g., "use", "equip").
-     * @return True if the item was found and the action was performed, otherwise false.
+     * @return {@code true} if the item exists and the action is performed, otherwise {@code false}.
      */
     public static boolean interact(String name, String action) {
-        return interact(item -> item.getName().toLowerCase().contains(name.toLowerCase()), action);
+        return interact(get(name), action);
     }
-
-    /**
-     * Interacts with any item from a list of IDs.
-     *
-     * This method iterates over a list of item IDs, retrieves the first matching item,
-     * and performs an action on it if found.
-     *
-     * @param ids An array of item IDs to search through.
-     * @param action The action to perform on the first matching item (e.g., "use", "equip").
-     * @return True if any item from the list was found and the action was performed, otherwise false.
-     */
-    public static boolean interact(int[] ids, String action) {
-        for (int id : ids) {
-            if (interact(id, action)) return true;
-        }
-        return false;
-    }
-
 
     /**
      * @param name
      * @param action
      * @param exact  name of the item
-     * @return
+     * @return {@code true} if the item exists and the action is performed, otherwise {@code false}.
      */
     public static boolean interact(String name, String action, boolean exact) {
-        return interact(exact ? item -> item.getName().equalsIgnoreCase(name) :
-                item -> item.getName().toLowerCase().contains(name.toLowerCase()), action);
+        return interact(get(name, exact), action);
+    }
+
+    public static boolean interact(String[] names, String action, boolean exact) {
+        if (names == null) return false;
+        for (String name : names) {
+            if (interact(name, action, exact)) return true;
+        }
+        return false;
+    }
+
+    public static boolean interact(String[] names, String action) {
+        return interact(names, action, false);
     }
 
     @Deprecated(since = "Use isWearing", forRemoval = true)
@@ -308,15 +418,19 @@ public class Rs2Equipment {
         return isWearing(EquipmentInventorySlot.SHIELD);
     }
 
+    @Deprecated(since = "Use isWearing", forRemoval = true)
     public static boolean isNaked() {
-        return items().isEmpty();
+        return !isWearing();
     }
 
     public static void invokeMenu(Rs2ItemModel rs2Item, String action) {
         if (action == null || action.isEmpty()) return;
         if (rs2Item == null) return;
 
-        Rs2Tab.switchToEquipmentTab();
+        if (Rs2Tab.switchToEquipmentTab()) {
+            Microbot.log("Failed to switch to equipment tab", Level.ERROR);
+            return;
+        }
         Microbot.status = action + " " + rs2Item.getName();
 
         int param0 = -1;

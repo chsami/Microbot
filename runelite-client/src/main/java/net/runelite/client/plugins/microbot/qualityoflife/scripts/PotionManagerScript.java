@@ -12,13 +12,11 @@ import java.util.concurrent.TimeUnit;
 
 public class PotionManagerScript extends Script {
     public boolean run(QoLConfig config) {
-        if (!config.enablePotionManager()) {
-            return false;
-        }
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
+                if (!config.enablePotionManager()) return;
 
                 // Always attempt to drink anti-poison
                 if (Rs2Player.drinkAntiPoisonPotion()) {

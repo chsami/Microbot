@@ -514,4 +514,85 @@ public class Rs2Random {
     enum EWaitDir {
         wdLeft, wdMean, wdRight
     }
+     /**
+     * Generate a random sample from a truncated normal distribution with randomly-selected means.
+     * This produces a more "fancy" distribution than a standard normal distribution, which could emulate
+     * randomness in human gameplay activity.
+     *
+     * @param lowerBound The lower bound of the truncated normal distribution.
+     * @param upperBound The upper bound of the truncated normal distribution.
+     * @return A random float from a truncated normal distribution with randomly-selected means.
+     */
+    public static double fancyNormalSample(double lowerBound, double upperBound) {
+        // Default will be two means, one at 1/3rd and one at 2/3 of the range
+        double[] means = {
+            lowerBound + (upperBound - lowerBound) * 0.33,
+            lowerBound + (upperBound - lowerBound) * 0.66
+        };
+
+        // Generate probabilities for each mean proportional to the index
+        double[] p = new double[means.length];
+        double sum = 0;
+        for (int i = 0; i < means.length; i++) {
+            p[i] = Math.pow(means.length - i, 2);
+            sum += p[i];
+        }
+        for (int i = 0; i < p.length; i++) {
+            p[i] /= sum;
+        }
+
+        // Select a mean from the list with a probability proportional to the index
+        int index = selectIndexBasedOnProbability(p);
+        double mean = means[index];
+
+        // Retrieve a sample from the truncated normal distribution
+        return truncatedNormalSample(lowerBound, upperBound, mean, null);
+    }
+    public static int fancyNormalSample(int lowerBound, int upperBound) {
+
+        double value = fancyNormalSample((double) lowerBound, (double) upperBound);
+        //ensure round is in bounds
+        return (int) Math.max(lowerBound, Math.min(upperBound, Math.round(value)));
+    }
+
+    private static int selectIndexBasedOnProbability(double[] probabilities) {
+        double randomValue = RANDOM.nextDouble();
+        double cumulativeProbability = 0.0;
+        for (int i = 0; i < probabilities.length; i++) {
+            cumulativeProbability += probabilities[i];
+            if (randomValue < cumulativeProbability) {
+                return i;
+            }
+        }
+        return probabilities.length - 1; // This should rarely happen
+    }
+    /**
+     * Generate a random sample from a truncated normal distribution.
+     *
+     * @param lowerBound The lower bound of the truncated normal distribution.
+     * @param upperBound The upper bound of the truncated normal distribution.
+     * @param mean       The mean of the normal distribution (default is mid-point between bounds).
+     * @param std        The standard deviation of the normal distribution.
+     * @return A random double from the truncated normal distribution.
+     */
+    public static double truncatedNormalSample(double lowerBound, double upperBound, Double mean, Double std) {
+        if (mean == null) {
+            mean = (lowerBound + upperBound) / 2;
+        }
+        if (std == null) {
+            std = (upperBound - lowerBound) / 9;
+        }
+
+        while (true) {
+            double x1 = RANDOM.nextGaussian();
+            double x2 = RANDOM.nextGaussian();
+            double z = x1 * x1 + x2 * x2;
+            if (z >= 0 && z <= 1) {
+                double sample = mean + std * x1 * Math.sqrt(-2 * Math.log(z) / z);
+                if (sample >= lowerBound && sample <= upperBound) {
+                    return sample;
+                }
+            }
+        }
+    }
 }

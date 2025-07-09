@@ -177,7 +177,7 @@ public class PlankRunnerScript extends Script {
     }
 
     private boolean hasRequiredItems() {
-        int logsInInventory = Rs2Inventory.items().stream()
+        int logsInInventory = Rs2Inventory.items()
                 .filter(rs2Item -> rs2Item.getId() == plugin.getPlank().getLogItemId())
                 .mapToInt(rs2Item -> 1)
                 .sum();

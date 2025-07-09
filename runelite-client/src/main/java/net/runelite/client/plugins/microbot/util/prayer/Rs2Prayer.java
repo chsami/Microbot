@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.util.prayer;
 import net.runelite.api.MenuAction;
 import net.runelite.api.Skill;
 import net.runelite.api.annotations.Component;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -182,7 +183,7 @@ public class Rs2Prayer {
     public static Rs2PrayerEnum getBestMeleePrayer() {
         int prayerLevel = Microbot.getClient().getRealSkillLevel(Skill.PRAYER);
         int defenceLevel = Microbot.getClient().getRealSkillLevel(Skill.DEFENCE);
-        boolean knightWaveTrainingGroundComplete = Microbot.getVarbitValue(3909) == 8;
+        boolean knightWaveTrainingGroundComplete = Microbot.getVarbitValue(VarbitID.KR_KNIGHTWAVES_STATE) == 8;
 
         if (knightWaveTrainingGroundComplete && prayerLevel >= Rs2PrayerEnum.PIETY.getLevel() && defenceLevel >= 70)
             return Rs2PrayerEnum.PIETY;
@@ -195,4 +196,28 @@ public class Rs2Prayer {
 
         return null;
     }
+    public static boolean isRigourUnlocked() {
+        return !(Microbot.getVarbitValue(VarbitID.PRAYER_RIGOUR_UNLOCKED) == 0) && Microbot.getClient().getRealSkillLevel(Skill.PRAYER) >= 74 && Microbot.getClient().getRealSkillLevel(Skill.DEFENCE) >= 70;
+    }
+
+    public static boolean isPietyUnlocked() {
+        return Microbot.getVarbitValue(VarbitID.KR_KNIGHTWAVES_STATE) == 8 && Microbot.getClient().getRealSkillLevel(Skill.PRAYER) >= 70 && Microbot.getClient().getRealSkillLevel(Skill.DEFENCE) >= 70;
+    }
+    public static boolean isChivalryUnlocked() {
+        return Microbot.getVarbitValue(VarbitID.KR_KNIGHTWAVES_STATE) == 8 && Microbot.getClient().getRealSkillLevel(Skill.PRAYER) >= 60 && Microbot.getClient().getRealSkillLevel(Skill.DEFENCE) >= 65;
+    }
+
+    public static boolean isAuguryUnlocked() {
+        return !(Microbot.getVarbitValue(VarbitID.PRAYER_AUGURY_UNLOCKED) == 0) && Microbot.getClient().getRealSkillLevel(Skill.PRAYER) >= 77 && Microbot.getClient().getRealSkillLevel(Skill.DEFENCE) >= 70;
+    }
+    public static boolean isPreserveUnlocked() {
+        return !(Microbot.getVarbitValue(VarbitID.PRAYER_PRESERVE_UNLOCKED) == 0) && Microbot.getClient().getRealSkillLevel(Skill.PRAYER) >= 55;
+    }
+    public static boolean isDeadeyeUnlocked() {
+        return !(Microbot.getVarbitValue(VarbitID.PRAYER_DEADEYE_UNLOCKED) == 0) && Microbot.getClient().getRealSkillLevel(Skill.PRAYER) >= 62;
+    }
+    public static boolean isMysticVigourUnlocked() {
+        return !(Microbot.getVarbitValue(VarbitID.PRAYER_MYSTIC_VIGOUR_UNLOCKED) == 0) && Microbot.getClient().getRealSkillLevel(Skill.PRAYER) >= 62;
+    }
+    
 }

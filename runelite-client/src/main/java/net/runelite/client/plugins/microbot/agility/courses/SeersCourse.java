@@ -25,4 +25,10 @@ public class SeersCourse implements AgilityCourseHandler
 			new AgilityObstacleModel(ObjectID.ROOFTOPS_SEERS_LEAPDOWN)
 		);
 	}
+
+	@Override
+	public Integer getRequiredLevel()
+	{
+		return 60;
+	}
 }

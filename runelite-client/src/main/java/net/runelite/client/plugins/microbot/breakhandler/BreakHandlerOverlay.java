@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.breakhandler;
 
+import net.runelite.client.plugins.microbot.pluginscheduler.util.SchedulerPluginUtil;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -8,6 +9,7 @@ import net.runelite.client.ui.overlay.components.TitleComponent;
 
 import javax.inject.Inject;
 import java.awt.*;
+import java.time.Duration;
 
 public class BreakHandlerOverlay extends OverlayPanel {
     private final BreakHandlerConfig config;
@@ -35,18 +37,44 @@ public class BreakHandlerOverlay extends OverlayPanel {
                     .left("Total breaks: " + BreakHandlerScript.totalBreaks)
                     .build());
 
-            long hours = BreakHandlerScript.duration.toHours();
-            long minutes = BreakHandlerScript.duration.toMinutes() % 60;
-            long seconds = BreakHandlerScript.duration.getSeconds() % 60;
+            // Display lock state information
+            if (BreakHandlerScript.isLockState()) {
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Status: LOCKED")
+                        .right("Breaks Prevented")
+                        .leftColor(Color.RED)
+                        .rightColor(Color.RED)
+                        .build());
+                
+                // Show specific lock reason if it's manual lock vs plugin lock
+                if (BreakHandlerScript.lockState.get() && !SchedulerPluginUtil.hasLockedSchedulablePlugins()) {
+                    panelComponent.getChildren().add(LineComponent.builder()
+                            .left("Reason: Manual Lock")
+                            .leftColor(Color.ORANGE)
+                            .build());
+                } else {
+                    panelComponent.getChildren().add(LineComponent.builder()
+                            .left("Reason: Plugin Lock Condition Active")
+                            .leftColor(Color.ORANGE)
+                            .build());
+                }
+            } else {
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Status: UNLOCKED")
+                        .right("Breaks Allowed")
+                        .leftColor(Color.GREEN)
+                        .rightColor(Color.GREEN)
+                        .build());
+            }
 
             if (BreakHandlerScript.breakIn > 0) {
                 panelComponent.getChildren().add(LineComponent.builder()
-                        .left((Rs2AntibanSettings.takeMicroBreaks && config.onlyMicroBreaks()) ? "Only Micro Breaks" : BreakHandlerScript.formatDuration(BreakHandlerScript.breakInDuration, "Break in:"))
+                        .left((Rs2AntibanSettings.takeMicroBreaks && config.onlyMicroBreaks()) ? "Only Micro Breaks" : BreakHandlerScript.formatDuration(Duration.ofSeconds(BreakHandlerScript.breakIn), "Break in:"))
                         .build());
             }
             if (BreakHandlerScript.breakDuration > 0) {
                 panelComponent.getChildren().add(LineComponent.builder()
-                        .left(BreakHandlerScript.formatDuration(BreakHandlerScript.duration, "Break duration:"))
+                        .left(BreakHandlerScript.formatDuration(Duration.ofSeconds(BreakHandlerScript.breakDuration), "Break duration:"))
                         .build());
             }
 

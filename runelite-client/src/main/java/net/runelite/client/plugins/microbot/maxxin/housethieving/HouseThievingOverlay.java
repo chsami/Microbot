@@ -25,7 +25,7 @@ public class HouseThievingOverlay extends OverlayPanel {
         try {
             panelComponent.setPreferredSize(new Dimension(200, 300));
             panelComponent.getChildren().add(TitleComponent.builder()
-                    .text("Starter " + HouseThievingScript.version)
+                    .text("House Thieving " + HouseThievingScript.version)
                     .color(Color.GREEN)
                     .build());
 
@@ -33,6 +33,10 @@ public class HouseThievingOverlay extends OverlayPanel {
 
             panelComponent.getChildren().add(LineComponent.builder()
                     .left(Microbot.status)
+                    .build());
+
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("State: " + HouseThievingScript.state)
                     .build());
 
         } catch (Exception ex) {

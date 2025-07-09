@@ -135,7 +135,7 @@ public class AnagramClueTask extends ClueTask {
     private void transitionToInteractionState() {
         if (clue.getObjectId() != -1) {
             state = State.INTERACTING_WITH_OBJECT;
-        } else if (clue.getNpc() != null && Rs2Npc.getNpc(clue.getNpc()) != null) {
+        } else if (clue.getNpcProvider() != null && Rs2Npc.getNpc(clue.getNpcName(clueScrollPlugin)) != null) {
             state = State.INTERACTING_WITH_NPC;
         } else {
             log.warn("No valid interaction target found.");
@@ -160,18 +160,18 @@ public class AnagramClueTask extends ClueTask {
     }
 
     private boolean interactWithNpc() {
-        NPC targetNpc = Rs2Npc.getNpc(clue.getNpc());
+        var targetNpc = Rs2Npc.getNpc(clue.getNpcName(clueScrollPlugin));
         if (targetNpc == null) {
-            log.warn("NPC {} not found.", clue.getNpc());
+            log.warn("NPC {} not found.", clue.getNpcName(clueScrollPlugin));
             return false;
         }
 
         boolean interacted = Rs2Npc.interact(targetNpc, "Talk-to");
         if (interacted) {
-            log.info("Talking to NPC: {}", clue.getNpc());
+            log.info("Talking to NPC: {}", clue.getNpcName(clueScrollPlugin));
             Rs2Dialogue.sleepUntilInDialogue();
         } else {
-            log.warn("Failed to talk to NPC: {}", clue.getNpc());
+            log.warn("Failed to talk to NPC: {}", clue.getNpcName(clueScrollPlugin));
         }
         return interacted;
     }

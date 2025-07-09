@@ -1,7 +1,6 @@
 package net.runelite.client.plugins.microbot.bee.chaosaltar;
 
 import net.runelite.api.GameObject;
-import net.runelite.api.ItemID;
 import net.runelite.api.Skill;
 import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldArea;
@@ -10,8 +9,10 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
+import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -20,9 +21,9 @@ import net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
+import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
 
-import static net.runelite.api.ItemID.BURNING_AMULET5;
 import static net.runelite.api.ItemID.DRAGON_BONES;
 import static net.runelite.api.NpcID.CHAOS_FANATIC;
 import static net.runelite.client.plugins.microbot.util.walker.Rs2Walker.walkTo;
@@ -39,8 +40,9 @@ public class ChaosAltarScript extends Script {
 
     private State currentState = State.UNKNOWN;
 
-    public static boolean test = false;
-    public boolean run(ChaosAltarConfig config) {
+    public static boolean didWeDie = false;
+
+    public boolean run(ChaosAltarConfig config, ChaosAltarPlugin plugin) {
         Microbot.enableAutoRunOn = false;
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
@@ -49,8 +51,8 @@ public class ChaosAltarScript extends Script {
                 long startTime = System.currentTimeMillis();
 
                 if (!autoRetaliate) {
-                Rs2Combat.setAutoRetaliate(false);
-                autoRetaliate = true;}
+                    Rs2Combat.setAutoRetaliate(false);
+                    autoRetaliate = true;}
 
                 // Determine current state
                 currentState = determineState();
@@ -59,6 +61,7 @@ public class ChaosAltarScript extends Script {
                 // Execute state action
                 switch (currentState) {
                     case BANK:
+                        plugin.lockCondition.lock();
                         handleBanking();
                         break;
                     case TELEPORT_TO_WILDERNESS:
@@ -73,6 +76,7 @@ public class ChaosAltarScript extends Script {
                         break;
                     case DIE_TO_NPC:
                         dieToNpc();
+                        plugin.lockCondition.unlock();
                         handleBanking();
                         break;
                     default:
@@ -112,7 +116,7 @@ public class ChaosAltarScript extends Script {
 
     private void dieToNpc() {
         Microbot.log("Walking to dangerous NPC to die");
-        Rs2Walker.walkTo(2978, 3854,0);
+        Rs2Walker.walkTo(2979, 3845,0);
         sleepUntil(() -> Rs2Npc.getNpc(CHAOS_FANATIC) != null, 60000);
         // Attack chaos fanatic to die
         Rs2Npc.attack("Chaos Fanatic");
@@ -147,8 +151,11 @@ public class ChaosAltarScript extends Script {
 
         if (Rs2Player.isInCombat()) {offerBonesFast(); return;}
 
+        var lastBones = Rs2Inventory.getBones().stream().max(Comparator.comparingInt(Rs2ItemModel::getSlot)).orElse(null);
+        var interactSlot = lastBones != null ? lastBones.getSlot() : 2;
+
         if (Rs2Inventory.contains(DRAGON_BONES) && isRunning()) {
-            Rs2Inventory.slotInteract(2, "use");
+            Rs2Inventory.slotInteract(interactSlot, "use");
             sleep(300, 500);
             Rs2GameObject.interact(411);
             sleep(300, 500);
@@ -165,12 +172,14 @@ public class ChaosAltarScript extends Script {
             if (Rs2Player.getWorldLocation().getY() > 3650)
             {walkTo(CHAOS_ALTAR_POINT);}
         }
+        var lastBones = Rs2Inventory.getBones().stream().max(Comparator.comparingInt(Rs2ItemModel::getSlot)).orElse(null);
+        var interactSlot = lastBones != null ? lastBones.getSlot() : 2;
 
         while (Rs2Inventory.contains(DRAGON_BONES)
                 && isRunning()
                 && !Rs2Player.isInCombat()
                 && Rs2GameObject.exists(411)) {
-            Rs2Inventory.slotInteract(2, "use");
+            Rs2Inventory.slotInteract(interactSlot, "use");
             sleep(100, 300);
             Rs2GameObject.interact(411);
             Rs2Player.waitForXpDrop(Skill.PRAYER);
@@ -182,6 +191,9 @@ public class ChaosAltarScript extends Script {
 
 
     private void handleBanking() {
+        if(Rs2Inventory.contains(x-> x != null && x.getName().contains("Burning amulet"))){
+            Rs2Inventory.wear("Burning amulet");
+        }
         if (!Rs2Bank.isOpen()) {
             System.out.println("Opening bank");
             Rs2Bank.walkToBank();
@@ -194,8 +206,8 @@ public class ChaosAltarScript extends Script {
                 shutdown();
             }
 
-            if(!Rs2Bank.hasItem(BURNING_AMULET5)) {
-                Microbot.log("NO FULL BURNING AMULET, SHUTTING DOWN");
+            if(!Rs2Bank.hasBankItem("Burning Amulet")) {
+                Microbot.log("NO BURNING AMULET, SHUTTING DOWN");
                 shutdown();
             }
 
@@ -203,7 +215,7 @@ public class ChaosAltarScript extends Script {
             if (!hasBurningAmulet()) {
                 sleep(400);
                 Microbot.log("Withdrawing burning amulet");
-                Rs2Bank.withdrawOne("burning amulet");
+                Rs2Bank.withdrawAndEquip("burning amulet");
                 Rs2Inventory.waitForInventoryChanges(2000);
             }
 
@@ -219,11 +231,7 @@ public class ChaosAltarScript extends Script {
     }
 
     public boolean hasBurningAmulet() {
-        return Rs2Inventory.contains(ItemID.BURNING_AMULET1) ||
-                Rs2Inventory.contains(ItemID.BURNING_AMULET2) ||
-                Rs2Inventory.contains(ItemID.BURNING_AMULET3) ||
-                Rs2Inventory.contains(ItemID.BURNING_AMULET4) ||
-                Rs2Inventory.contains(BURNING_AMULET5);
+        return Rs2Inventory.contains(x-> x != null && x.getName().contains("Burning amulet")) || Rs2Equipment.isWearing("Burning amulet", false);
     }
 
     private State determineState() {
@@ -232,6 +240,11 @@ public class ChaosAltarScript extends Script {
         boolean hasAnyBones = Rs2Inventory.contains(DRAGON_BONES);
         boolean atAltar = isAtChaosAltar();
 
+        if(didWeDie){
+            didWeDie = false;
+            Microbot.log("We died! Going to the bank...");
+            return State.BANK;
+        }
         if (!inWilderness && !hasBones) {
             return State.BANK;
         }

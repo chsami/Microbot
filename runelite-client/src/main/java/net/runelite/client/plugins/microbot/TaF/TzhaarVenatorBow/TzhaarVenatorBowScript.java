@@ -124,7 +124,7 @@ public class TzhaarVenatorBowScript extends Script {
         int currentPrayer = Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER);
         var hasArrows = Rs2Equipment.hasEquippedSlot(EquipmentInventorySlot.AMMO);
         boolean shouldEscapeBasedOnFoodAndHealth = Rs2Inventory.getInventoryFood().isEmpty() && currentHealth < 50;
-        boolean noPrayerPotions = Rs2Inventory.items().stream()
+        boolean noPrayerPotions = Rs2Inventory.items()
                 .noneMatch(item -> item != null && item.getName() != null && item.getName().toLowerCase().contains("prayer potion"));
 
         return !hasArrows || shouldEscapeBasedOnFoodAndHealth || (noPrayerPotions && currentPrayer < 10);
@@ -256,7 +256,7 @@ public class TzhaarVenatorBowScript extends Script {
     }
 
     private void consumePotion(List<String> keyword) {
-        var potion = Rs2Inventory.get(keyword);
+        var potion = Rs2Inventory.get(keyword.toArray(String[]::new));
         if (potion != null) {
             Rs2Inventory.interact(potion, "Drink");
         }

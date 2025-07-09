@@ -8,18 +8,17 @@ import net.runelite.api.events.GameTick;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.AndCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.OrCondition;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalField;
+
 import java.time.temporal.WeekFields;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -34,14 +33,12 @@ import java.util.stream.Collectors;
 public class DayOfWeekCondition extends TimeCondition {
     
     public static String getVersion() {
-        return "0.0.1";
+        return "0.0.2";
     }
     private final Set<DayOfWeek> activeDays;
     private final long maxRepeatsPerDay;
     private final long maxRepeatsPerWeek;
-    @Getter
-    @Setter
-    private transient ZonedDateTime nextTriggerDay;
+    
     @Getter
     @Setter
     private transient Map<LocalDate, Integer> dailyResetCounts = new HashMap<>();
@@ -104,7 +101,7 @@ public class DayOfWeekCondition extends TimeCondition {
         this.maxRepeatsPerWeek = maxRepeatsPerWeek;
         this.dailyResetCounts = new HashMap<>();
         this.weeklyResetCounts = new HashMap<>();
-        updateNextTriggerDay();
+        updateNextTriggerDay(getNow());
         this.combinedCondition = new AndCondition();
         this.combinedCondition.addCondition(this);
     }
@@ -147,7 +144,7 @@ public class DayOfWeekCondition extends TimeCondition {
         this.maxRepeatsPerWeek = maxRepeatsPerWeek;
         this.dailyResetCounts = new HashMap<>();
         this.weeklyResetCounts = new HashMap<>();
-        updateNextTriggerDay();
+        updateNextTriggerDay(getNow());
         this.combinedCondition = new AndCondition();
         this.combinedCondition.addCondition(this);
     }
@@ -274,6 +271,13 @@ public class DayOfWeekCondition extends TimeCondition {
      */
     @Override
     public boolean isSatisfied() { 
+        return isSatisfiedAt(getNextTriggerTimeWithPause().orElse(getNow()));
+    }
+     @Override
+    public boolean isSatisfiedAt(ZonedDateTime triggerAt) { 
+        if (isPaused()) {
+            return false;
+        }
         // First make sure this condition can trigger again
         if (!canTriggerAgain()) {
             return false;
@@ -398,9 +402,9 @@ public class DayOfWeekCondition extends TimeCondition {
                                     weeklyResetCounts.getOrDefault(currentWeek, 0) >= maxRepeatsPerWeek;
         
         if (!activeDays.contains(today) || dailyLimitReached || weeklyLimitReached) {
-            if (nextTriggerDay != null) {
-                DayOfWeek nextDay = nextTriggerDay.getDayOfWeek();
-                long daysUntil = ChronoUnit.DAYS.between(now.toLocalDate(), nextTriggerDay.toLocalDate());
+            if (getNextTriggerTimeWithPause().orElse(null) != null) {
+                DayOfWeek nextDay = getNextTriggerTimeWithPause().get().getDayOfWeek();
+                long daysUntil = ChronoUnit.DAYS.between(now.toLocalDate(), getNextTriggerTimeWithPause().get().toLocalDate());
                 
                 sb.append("\nNext active day: ")
                   .append(nextDay.toString().charAt(0) + nextDay.toString().substring(1).toLowerCase())
@@ -468,6 +472,7 @@ public class DayOfWeekCondition extends TimeCondition {
         // Staus information
         sb.append("  ├─ Status ──────────────────────────────────\n");
         sb.append("  │ Satisfied: ").append(isSatisfied()).append("\n");
+        sb.append("  │ Paused: ").append(isPaused()).append("\n");
         
         ZonedDateTime now = getNow();
         DayOfWeek today = now.getDayOfWeek();
@@ -500,14 +505,14 @@ public class DayOfWeekCondition extends TimeCondition {
                                     weeklyResetCounts.getOrDefault(currentWeek, 0) >= maxRepeatsPerWeek;
         
         if ((!activeDays.contains(today) || dailyLimitReached || weeklyLimitReached) 
-            && nextTriggerDay != null) {
+            && getNextTriggerTimeWithPause().get() != null) {
             
-            DayOfWeek nextDay = nextTriggerDay.getDayOfWeek();
-            long daysUntil = ChronoUnit.DAYS.between(now.toLocalDate(), nextTriggerDay.toLocalDate());
+            DayOfWeek nextDay = getNextTriggerTimeWithPause().get().getDayOfWeek();
+            long daysUntil = ChronoUnit.DAYS.between(now.toLocalDate(), getNextTriggerTimeWithPause().get().toLocalDate());
             
             sb.append("  │ Next Active Day: ")
               .append(nextDay.toString().charAt(0) + nextDay.toString().substring(1).toLowerCase())
-              .append(" (").append(nextTriggerDay.toLocalDate())
+              .append(" (").append(getNextTriggerTimeWithPause().get().toLocalDate())
               .append(", in ").append(daysUntil).append(daysUntil == 1 ? " day)\n" : " days)\n");
             
             if (weeklyLimitReached) {
@@ -535,6 +540,15 @@ public class DayOfWeekCondition extends TimeCondition {
             sb.append("    Last Reset: ").append(lastValidResetTime.format(dateTimeFormatter)).append("\n");
         }
         sb.append("    Can Trigger Again: ").append(canTriggerAgain()).append("\n");
+        
+        // If paused, show pause information
+        if (isPaused()) {
+            Duration currentPauseDuration = Duration.between(pauseStartTime, getNow());
+            sb.append("    Current Pause Duration: ").append(formatDuration(currentPauseDuration)).append("\n");
+        }
+        if (totalPauseDuration.getSeconds() > 0) {
+            sb.append("    Total Pause Duration: ").append(formatDuration(totalPauseDuration)).append("\n");
+        }
         
         return sb.toString();
     }
@@ -588,17 +602,18 @@ public class DayOfWeekCondition extends TimeCondition {
     /**
      * Updates the next trigger day based on current day and daily/weekly limits
      */
-    private void updateNextTriggerDay() {
-        ZonedDateTime now = getNow();
-        DayOfWeek today = now.getDayOfWeek();
-        LocalDate todayDate = now.toLocalDate();
-        int currentWeek = getCurrentWeekNumber(now);
+    private void updateNextTriggerDay(ZonedDateTime nextPossibleDateTime) {
+        
+        DayOfWeek possibleDay = nextPossibleDateTime.getDayOfWeek();
+        LocalDate possibleDate = nextPossibleDateTime.toLocalDate();
+        int currentWeek = getCurrentWeekNumber(nextPossibleDateTime);
         
         // If today is active and hasn't reached limits, it's the trigger day
-        if (activeDays.contains(today) && 
-            (maxRepeatsPerDay <= 0 || dailyResetCounts.getOrDefault(todayDate, 0) < maxRepeatsPerDay) &&
+        if (activeDays.contains(possibleDay) && 
+            (maxRepeatsPerDay <= 0 || dailyResetCounts.getOrDefault(possibleDate, 0) < maxRepeatsPerDay) &&
             (maxRepeatsPerWeek <= 0 || weeklyResetCounts.getOrDefault(currentWeek, 0) < maxRepeatsPerWeek)) {
-            nextTriggerDay = now.truncatedTo(ChronoUnit.DAYS);
+            super.setNextTriggerTime(nextPossibleDateTime.minusSeconds(1));
+                
             return;
         }
         
@@ -609,14 +624,14 @@ public class DayOfWeekCondition extends TimeCondition {
         // If weekly limit reached, find first active day in next week
         if (weeklyLimitReached) {
             // Start from next Monday (first day of next week)
-            LocalDate mondayNextWeek = todayDate.plusDays(8 - today.getValue());
-            ZonedDateTime nextWeekStart = now.with(mondayNextWeek.atStartOfDay());
+            LocalDate mondayNextWeek = possibleDate.plusDays(8 - possibleDay.getValue());
+            ZonedDateTime nextWeekStart = nextPossibleDateTime.with(mondayNextWeek.atStartOfDay());
             
             // Find first active day in next week
             for (int daysToAdd = 0; daysToAdd < 7; daysToAdd++) {
                 ZonedDateTime checkDay = nextWeekStart.plusDays(daysToAdd);
                 if (activeDays.contains(checkDay.getDayOfWeek())) {
-                    nextTriggerDay = checkDay;
+                    super.setNextTriggerTime(checkDay);
                     return;
                 }
             }
@@ -625,7 +640,7 @@ public class DayOfWeekCondition extends TimeCondition {
         // Otherwise, find the next active day in current week that hasn't reached daily limit
         int daysToAdd = 1;
         while (daysToAdd <= 7) {
-            ZonedDateTime checkDay = now.plusDays(daysToAdd);
+            ZonedDateTime checkDay = nextPossibleDateTime.plusDays(daysToAdd);
             DayOfWeek checkDayOfWeek = checkDay.getDayOfWeek();
             LocalDate checkDate = checkDay.toLocalDate();
             int checkWeek = getCurrentWeekNumber(checkDay);
@@ -633,7 +648,7 @@ public class DayOfWeekCondition extends TimeCondition {
             // Skip to next week if current week has reached limit
             if (weeklyLimitReached && checkWeek == currentWeek) {
                 // Skip to Monday of next week
-                int daysToMonday = 8 - today.getValue();
+                int daysToMonday = 8 - possibleDay.getValue();
                 daysToAdd = daysToMonday;
                 continue;
             }
@@ -642,7 +657,7 @@ public class DayOfWeekCondition extends TimeCondition {
                 (maxRepeatsPerDay <= 0 || dailyResetCounts.getOrDefault(checkDate, 0) < maxRepeatsPerDay) &&
                 (maxRepeatsPerWeek <= 0 || weeklyResetCounts.getOrDefault(checkWeek, 0) < maxRepeatsPerWeek)) {
                 // Found the next active day that hasn't reached limits
-                nextTriggerDay = now.plusDays(daysToAdd).truncatedTo(ChronoUnit.DAYS);
+                super.setNextTriggerTime( nextPossibleDateTime.plusDays(daysToAdd).truncatedTo(ChronoUnit.DAYS));
                 return;
             }
             
@@ -650,7 +665,8 @@ public class DayOfWeekCondition extends TimeCondition {
         }
         
         // If no active days found within next 7 days, set to null
-        nextTriggerDay = null;
+        super.setNextTriggerTime( null);
+    
     }
 
     /**
@@ -667,14 +683,15 @@ public class DayOfWeekCondition extends TimeCondition {
         getIntervalCondition()
                 .ifPresent(IntervalCondition::reset);
         updateDailyResetCount();
-        updateNextTriggerDay();
+        updateNextTriggerDay(getNow());
     }
     @Override
     public void hardReset() {
         super.hardReset();
         dailyResetCounts.clear();
         weeklyResetCounts.clear();
-        updateNextTriggerDay();
+        resume();
+        updateNextTriggerDay(getNow());
     }
     
     /**
@@ -724,12 +741,12 @@ public class DayOfWeekCondition extends TimeCondition {
         }
         
         // Calculate days until the next active day
-        if (nextTriggerDay == null) {
-            updateNextTriggerDay();
+        if (getNextTriggerTimeWithPause().orElse(null) == null) {
+            updateNextTriggerDay(getNow());
         }
         
-        if (nextTriggerDay != null) {
-            long daysUntil = ChronoUnit.DAYS.between(now.toLocalDate(), nextTriggerDay.toLocalDate());
+        if (getNextTriggerTimeWithPause().orElse(null) != null) {
+            long daysUntil = ChronoUnit.DAYS.between(now.toLocalDate(), getNextTriggerTimeWithPause().get().toLocalDate());
             if (daysUntil == 0) {
                 return 100.0; // Same day
             } else if (daysUntil >= 7) {
@@ -779,11 +796,11 @@ public class DayOfWeekCondition extends TimeCondition {
         }
         
         // If nextTriggerDay isn't calculated yet or needs update
-        if (nextTriggerDay == null) {
-            updateNextTriggerDay();
+        if (getNextTriggerTimeWithPause().orElse(null) == null) {
+            updateNextTriggerDay(getNow());
         }
         
-        return Optional.ofNullable(nextTriggerDay);
+        return getNextTriggerTimeWithPause();
     }
     
     /**
@@ -1021,5 +1038,20 @@ public class DayOfWeekCondition extends TimeCondition {
         combinedSchedule.addCondition(weekendSchedule);
         
         return combinedSchedule;
+    }
+    
+    @Override
+    protected void onResume(Duration pauseDuration) {     
+        if (isPaused) {
+            return;
+        }
+        ZonedDateTime nextTriggerTimeWithPauseDuration = getNextTriggerTimeWithPause().orElse(null);
+        if (nextTriggerTimeWithPauseDuration != null) {
+            // Shift the next trigger time by the pause duration
+            // getNextTriggerTimeWithPause() provide old next trigger time -> we are resumed..     
+            nextTriggerTimeWithPauseDuration = nextTriggerTimeWithPauseDuration.plus(pauseDuration);
+            updateNextTriggerDay(nextTriggerTimeWithPauseDuration);
+            log.info("DayOfWeekCondition resumed, next trigger time shifted to: {}", getNextTriggerTimeWithPause().get());
+        }               
     }
 }

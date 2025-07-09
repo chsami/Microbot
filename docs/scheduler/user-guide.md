@@ -154,18 +154,41 @@ The "Allow Continue" option determines what happens when a plugin is interrupted
 - **When enabled**: The interrupted plugin will continue running immediately after the higher-priority plugin finishes, without resetting its start and stop conditions. This preserves all progress made toward stop conditions and doesn't require start conditions to be re-evaluated.
 - **When disabled**: The interrupted plugin will not automatically resume after being interrupted. It will need to be triggered again from scratch, with all start and stop conditions reset.
 
+**How "Allow Continue" Works in Detail**:
+
+1. **State Preservation**: 
+   - With "Allow Continue" enabled, a plugin that gets interrupted preserves its full state, including:
+     - Progress toward any stop conditions (e.g., items collected, time elapsed)
+     - Internal state variables and script position
+     - UI components and overlays
+   - This means the plugin can pick up exactly where it left off, which is ideal for complex, stateful plugins
+
+2. **Resumption Logic**:
+   - When a higher-priority plugin finishes:
+     - If the interrupted plugin had "Allow Continue" enabled, it immediately resumes
+     - If the interrupted plugin had "Allow Continue" disabled, it goes back into the pool of eligible plugins
+     - For default plugins with "Allow Continue" disabled, they must compete again with other default plugins based on run count
+
+3. **Default Plugin Considerations**:
+   - "Allow Continue" is especially important for default plugins (priority 0) that you want to resume predictably
+   - Without "Allow Continue", your default plugin might not be the one selected after an interruption
+   - This can lead to unpredictable switching between default plugins, which might not be desirable
+
+For a comprehensive explanation of this feature, see the [Allow Continue Feature Guide](allow-continue-feature.md).
+
 **Example Scenarios:**
 
 1. **Allow Continue = ON**
-   - You're running a Woodcutting plugin (priority 3)
+   - You're running a Woodcutting plugin (priority 0)
    - A Banking plugin (priority 2) interrupts it
    - After banking is done, the Woodcutting plugin automatically resumes with all progress intact
    - Perfect for plugins that should pick up where they left off after being interrupted
 
 2. **Allow Continue = OFF**
-   - You're running a Fishing plugin (priority 3) 
+   - You're running a Fishing plugin (priority 0)
    - A Cooking plugin (priority 2) interrupts it
    - After cooking is done, the Fishing plugin does not automatically resume
+   - The scheduler will select among eligible default plugins based on run count
    - Best for tasks that should fully restart from the beginning when interrupted
 
 ## What Happens When a Plugin Has No Stop Conditions
@@ -344,16 +367,103 @@ This creates a smart workflow where your character will mine until inventory is 
 
 This creates a progression plan where the scheduler automatically moves from one skill goal to the next.
 
-## Disclaimers
+### Scenario 6: Setting Up a Cycle of Default Plugins
 
-> **Note**: The examples and scenarios provided in this guide are illustrative only. Not all plugins mentioned in these examples may be schedulable at this time. Please check the Scheduler GUI to see which plugins are currently available for scheduling.
+**Goal**: Create a cycle where multiple default plugins (priority 0) take turns running, ensuring each runs once before cycling through again.
 
-> **Feedback Welcome**: The Plugin Scheduler and all its features are currently in an experimental state. User feedback is greatly appreciated to help improve functionality and documentation.
+**Solution**:
 
-## Conclusion
+1. Set up multiple plugins with priority 0 (default plugins):
+   - Plugin 1: Priority 0, with user-defined stop condition
+   - Plugin 2: Priority 0, with user-defined stop condition
+   - Plugin 3: Priority 0, with user-defined stop condition
 
-The Scheduler Plugin provides a powerful way to automate and coordinate your botting activities. By understanding how to properly configure start and stop conditions, priorities, and other settings, you can create sophisticated schedules that maximize efficiency while maintaining a natural play pattern.
+2. Ensure each plugin has a proper user  stop condition:
+   - Time-based: "Run for 30-35 minutes"
+   - Skill XP-based: "Stop after gaining X experience"
+   - Resource-based: "Stop after collecting Y items"
 
-For detailed instructions on creating specific condition types, including Time, Skill, Resource, and Location conditions, see the [Defining Conditions guide](defining-conditions.md). This companion guide provides examples, configuration steps, and advanced techniques for creating powerful condition logic.
+3. Enable "Allow Random Scheduling" for all plugins.
 
-For implementation details about the API and extending the condition system, see the [API documentation for conditions](api/conditions/).
+When all plugins are set to priority 0 and multiple ones are due to run at the same time, the scheduler will automatically select the one with the **lowest run count**. This ensures each plugin gets a fair chance to run, and the system will cycle through all plugins before repeating.
+
+**Example Setup - Cycling through 3 Default Plugins:**
+
+- Plugin 1: Woodcutting
+  - Priority: 0 (Default)
+  - User Start Condition: default (interval condition 1sec) or if you want to delay any other time condition
+  - User Stop Condition: TimeCondition(30-35 minutes)
+  - Allow Random Scheduling: Enabled
+
+- Plugin 2: Fishing
+  - Priority: 0 (Default)
+  - User Start Condition: default (interval condition 1sec) or if you want to delay any other time condition
+  - User Stop Condition: TimeCondition(30-35 minutes)
+  - Allow Random Scheduling: Enabled
+
+- Plugin 3: Mining
+  - Priority: 0 (Default)
+  - User Start Condition: default (interval condition 1sec) or if you want to delay any other time condition
+  - User Stop Condition: TimeCondition(30-35 minutes)
+  - Allow Random Scheduling: Enabled
+
+**Higher Priority Tasks:**
+
+- Plugin 4: Birdhouse Run
+  - Priority: 1
+  - User Start Condition: TimeCondition(Interval: 50 minutes)
+  - User Stop Condition: CompletionCondition(all birdhouses checked)
+
+- Plugin 5: Herb Run
+  - Priority: 1
+  - Start Condition: TimeCondition(Interval: 80 minutes)
+  - Stop Condition: CompletionCondition(all herbs harvested)
+
+In this setup:
+
+- Plugins 4 and 5 will always interrupt and take precedence over default plugins when their conditions are met
+- When no higher-priority plugin is running, the scheduler will cycle through Plugins 1, 2, and 3, always selecting the one with the lowest run count
+- Each default plugin will run once before any of them runs a second time
+
+### Scenario 7: Advanced Priority-Based Task Chain with Herb Running
+
+**Goal**: Set up a hierarchy of tasks with herb running as a priority task that interrupts default activities.
+
+**Solution**:
+
+1. Create a Herb Runner plugin schedule:
+   - Priority: 10 (high priority)
+   - Start Condition: TimeCondition(Interval: 80 minutes)
+   - Stop Condition: None (uses reportFinished to signal completion)
+   - Allow Continue: Not needed (runs completely each time)
+
+2. Create a Tree Runner plugin schedule:
+   - Priority: 5 (middle priority)
+   - Start Condition: TimeCondition(Interval: 8 hours)
+   - Stop Condition: None (uses reportFinished to signal completion)
+   - Allow Continue: Not needed (runs completely each time)
+
+3. Create a default NMZ plugin schedule:
+   - Priority: 0 (default plugin)
+   - Start Condition: TimeWindowCondition(10PM-8AM or your preferred hours)
+   - Stop Condition: Optional TimeCondition(run for maximum 6 hours)
+   - Allow Continue: Enabled (important for preserving state when interrupted)
+
+This setup creates a priority-based chain where:
+
+- The Herb Runner has highest priority and will interrupt any other active plugin every 80 minutes
+- The Tree Runner has middle priority and will interrupt only the NMZ plugin (but not Herb Runner)
+- The NMZ plugin serves as the default activity that runs during the specified time window
+- When the Herb Runner or Tree Runner completes its task, NMZ will automatically resume with its state preserved because "Allow Continue" is enabled
+
+## The "Allow Continue" Setting: Deep Dive
+
+The "Allow Continue" option is particularly important when using default plugins in a cycle or when higher-priority plugins might interrupt your default activities. Let's look more deeply at this feature:
+
+- **Behavior with Default Plugins:**
+  - Default plugins are meant to run in the background with no specific start conditions.
+  - If a default plugin is interrupted by a higher-priority plugin and "Allow Continue" is ON, it will resume immediately after the higher-priority plugin finishes.
+  - This is useful for preserving the state of long-running default activities.
+
+- **Behavior with Non-Default Plugins:**
+  - For non-default plugins, "Allow Continue" works similarly but consider

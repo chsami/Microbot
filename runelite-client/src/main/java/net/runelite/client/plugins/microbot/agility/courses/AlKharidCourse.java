@@ -27,4 +27,10 @@ public class AlKharidCourse implements AgilityCourseHandler
 			new AgilityObstacleModel(ObjectID.ROOFTOPS_KHARID_LEAPDOWN)
 		);
 	}
+
+	@Override
+	public Integer getRequiredLevel()
+	{
+		return 20;
+	}
 }

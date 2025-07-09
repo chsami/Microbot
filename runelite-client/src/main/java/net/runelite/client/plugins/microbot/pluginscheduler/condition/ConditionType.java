@@ -9,7 +9,7 @@ public enum ConditionType {
     TIME("TIME"),    
     SKILL("SKILL"),
     RESOURCE("RESOURCE"),    
-    LOCATION("location"),
+    LOCATION("LOCATION"),
     LOGICAL("LOGICAL"),
     NPC("NPC"),
     VARBIT("VARBIT");

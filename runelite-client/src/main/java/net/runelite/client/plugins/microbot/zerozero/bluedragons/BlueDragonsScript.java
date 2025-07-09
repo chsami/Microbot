@@ -495,7 +495,7 @@ public class BlueDragonsScript extends Script {
     }
 
     private void moveToSafeSpot() {
-        Microbot.pauseAllScripts = true;
+		Microbot.pauseAllScripts.compareAndSet(false, true);
         
         int distance = Rs2Player.distanceTo(SAFE_SPOT);
         
@@ -524,7 +524,7 @@ public class BlueDragonsScript extends Script {
             logOnceToChat("Successfully reached safe spot.", true, config);
         }
 
-        Microbot.pauseAllScripts = false;
+		Microbot.pauseAllScripts.compareAndSet(true, false);
     }
 
     private boolean hopIfPlayerAtSafeSpot() {
@@ -542,12 +542,12 @@ public class BlueDragonsScript extends Script {
                 
         if (otherPlayersAtSafeSpot) {
             logOnceToChat("Player detected at safe spot. Pausing script and hopping worlds.", false, config);
-            Microbot.pauseAllScripts = true;
+            Microbot.pauseAllScripts.set(true);
             
             boolean hopSuccess = Microbot.hopToWorld(findRandomWorld());
             sleep(5000);
             
-            Microbot.pauseAllScripts = false;
+            Microbot.pauseAllScripts.set(false);
             return hopSuccess;
         }
         

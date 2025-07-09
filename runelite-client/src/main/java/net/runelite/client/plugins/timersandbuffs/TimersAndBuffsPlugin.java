@@ -1044,13 +1044,9 @@ public class TimersAndBuffsPlugin extends Plugin
 				// by default the thrall lasts 1 tick per magic level
 				int t = client.getBoostedSkillLevel(Skill.MAGIC);
 				// ca tiers being completed boosts this
-				if (client.getVarbitValue(VarbitID.CA_TIER_STATUS_GRANDMASTER) == 2)
+				if (client.getVarbitValue(VarbitID.CA_TIER_STATUS_MASTER) == 2)
 				{
 					t += t; // 100% boost
-				}
-				else if (client.getVarbitValue(VarbitID.CA_TIER_STATUS_MASTER) == 2)
-				{
-					t += t / 2; // 50% boost
 				}
 				createGameTimer(RESURRECT_THRALL, Duration.of(t, RSTimeUnit.GAME_TICKS));
 			}
@@ -1058,8 +1054,7 @@ public class TimersAndBuffsPlugin extends Plugin
 
 		if (message.endsWith(MARK_OF_DARKNESS_MESSAGE) && config.showArceuusCooldown())
 		{
-			final int magicLevelMoD = getMagicLevelMoD(client.getRealSkillLevel(Skill.MAGIC));
-			createGameTimer(MARK_OF_DARKNESS_COOLDOWN, Duration.of(magicLevelMoD - 10, RSTimeUnit.GAME_TICKS));
+			createGameTimer(MARK_OF_DARKNESS_COOLDOWN);
 		}
 
 		if (TZHAAR_PAUSED_MESSAGE.matcher(message).find())

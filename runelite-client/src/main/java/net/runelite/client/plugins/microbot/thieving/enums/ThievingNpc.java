@@ -18,6 +18,7 @@ public enum ThievingNpc {
     ARDOUGNE_KNIGHT("knight of ardougne", 55),
     PALADIN("Paladin", 70),
     HERO("Hero", 80),
+    VYRES("Vyres", 82),
     ELVES("Elves", 85);
 
     private final String name;

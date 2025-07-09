@@ -8,9 +8,9 @@ import net.runelite.client.config.Range;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.antiban.enums.PlaySchedule;
 
-@ConfigGroup("PluginScheduler")
+@ConfigGroup(SchedulerPlugin.configGroup)
 public interface SchedulerConfig extends Config {
-    final static String CONFIG_GROUP = "PluginScheduler";
+    final static String CONFIG_GROUP = SchedulerPlugin.configGroup;
     
     @ConfigSection(
             name = "Control",
@@ -35,8 +35,8 @@ public interface SchedulerConfig extends Config {
     String loginLogOutSection = "Log-In\\Out Settings";
 
     @ConfigSection(
-            name = "Break",
-            description = "Break settings for the plugin scheduler, auto-enable break handler, etc.",            
+            name = "Break Between Schedules",
+            description = "Break Between Schedules settings for the plugin scheduler, auto-enable break handler, etc.",            
             position = 300,
             closedByDefault = true
     )
@@ -54,6 +54,18 @@ public interface SchedulerConfig extends Config {
     }
    
     void setScheduledPlugins(String json);
+    
+    // UI Settings
+    @ConfigItem(
+        keyName = "showOverlay",
+        name = "Show Info Overlay",
+        description = "Show a concise in-game overlay with scheduler status information",
+        position = 1
+    )
+    default boolean showOverlay() {
+        return false;
+    }
+    
     /// Control settings
     @Range(
 		min = 60,
@@ -238,7 +250,7 @@ public interface SchedulerConfig extends Config {
     // Break settings
     @ConfigItem(
         keyName = "enableBreakHandlerForSchedule",
-        name = "BreakHandler on Start",
+        name = "Break Handler on Start",
         description = "Automatically enable the BreakHandler when starting a plugin",
         position = 1,
         section = breakSection
@@ -250,13 +262,13 @@ public interface SchedulerConfig extends Config {
  
     
     @ConfigItem(
-        keyName = "breakDuringWait",
-        name = "Break During Wait",
-        description = "Break when waiting for the next schedule",
+        keyName = "pauseSchedulerDuringBreak",
+        name = "Pause the Scheduler during Wait",
+        description = "During a break, pause the scheduler, all plugins are paused, no progress of starting a plugin",
         position = 2,
         section = breakSection
     )
-    default boolean breakDuringWait() {
+    default boolean pauseSchedulerDuringBreak() {
         return true;
     }
     @Range(
@@ -278,13 +290,13 @@ public interface SchedulerConfig extends Config {
         max = 60
     )
     @ConfigItem(
-        keyName = "maxBreakDuratation",
+        keyName = "maxBreakDuration",
         name = "Max Break Duration (minutes)",        
         description = "When taking a break, the maximum duration of the break",
         position = 4,
         section = breakSection
     )
-    default int maxBreakDuratation() {
+    default int maxBreakDuration() {
         return 2;
     }
     @ConfigItem(

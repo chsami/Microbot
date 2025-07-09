@@ -98,6 +98,11 @@ public class DateRangePanel extends JPanel {
         addPresetButton(panel, "Next 30 Days", today, today.plusDays(30));
         addPresetButton(panel, "Next 90 Days", today, today.plusDays(90));
         
+        // Add unlimited option
+        addPresetButton(panel, "Unlimited", 
+            net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeWindowCondition.UNLIMITED_START_DATE, 
+            net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeWindowCondition.UNLIMITED_END_DATE);
+        
         return panel;
     }
     

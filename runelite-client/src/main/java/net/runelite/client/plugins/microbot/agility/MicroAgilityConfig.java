@@ -21,7 +21,6 @@ public interface MicroAgilityConfig extends Config
 	String hitpointsThreshold = "hitpointsThreshold";
 	String shouldAlch = "shouldAlch";
 	String itemsToAlch = "itemsToAlch";
-	String summerPieThreshold = "summerPieThreshold";
 
 	@ConfigSection(
 		name = "General",
@@ -53,18 +52,6 @@ public interface MicroAgilityConfig extends Config
 	default int hitpoints()
 	{
 		return 20;
-	}
-
-	@ConfigItem(
-		keyName = summerPieThreshold,
-		name = "Summer Pie Boost",
-		description = "Use Summer pies to boost agility level at start, set it to 0 to disable, set it to 5 to eat pie when you loose 1 level",
-		position = 3,
-		section = generalSection
-	)
-	default int pieThreshold()
-	{
-		return 5;
 	}
 
 	@ConfigItem(

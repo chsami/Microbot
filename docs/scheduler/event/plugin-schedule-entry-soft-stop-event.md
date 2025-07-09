@@ -96,7 +96,7 @@ private void softStopPlugin(PluginScheduleEntry entry) {
         currentState = SchedulerState.STOPPING;
         
         // Schedule hard stop fallback if plugin doesn't respond in time
-        if (entry.isHardStoppable()) {
+        if (entry.allowHardStop()) {
             scheduleHardStopFallback(entry, Duration.ofSeconds(30));
         }
     }

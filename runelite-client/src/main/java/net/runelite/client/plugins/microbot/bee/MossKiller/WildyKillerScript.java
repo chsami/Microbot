@@ -274,13 +274,7 @@ public class WildyKillerScript extends Script {
         //turn off breakhandler
         MossKillerScript.stopBreakHandlerPlugin();
         //turn off autologin and all other scripts in 5 seconds
-        Microbot.getClientThread().runOnSeperateThread(() -> {
-            if (!Microbot.pauseAllScripts) {
-                sleep(5000);
-                Microbot.pauseAllScripts = true;
-            }
-            return null;
-        });
+		Microbot.pauseAllScripts.compareAndSet(false, true);
         Rs2Player.logout();
         sleep(1000);
         shutdown();

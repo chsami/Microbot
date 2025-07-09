@@ -91,7 +91,7 @@ public class BanksShopperPlugin extends Plugin {
 
     @Subscribe
     public void onChatMessage(ChatMessage event) {
-        if (event.getType() == ChatMessageType.GAMEMESSAGE && !Microbot.pauseAllScripts) {
+        if (event.getType() == ChatMessageType.GAMEMESSAGE && !Microbot.pauseAllScripts.get()) {
             if (event.getMessage().toLowerCase().contains("you don't have enough coins.")) {
                 Microbot.status = "[Shutting down] - Reason: Not enough coins.";
                 Microbot.showMessage(Microbot.status);

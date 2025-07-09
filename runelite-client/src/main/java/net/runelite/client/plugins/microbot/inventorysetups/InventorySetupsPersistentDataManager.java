@@ -49,6 +49,7 @@ public class InventorySetupsPersistentDataManager
 	public static final String CONFIG_KEY_SETUPS_MIGRATED_V2 = "migratedV2";
 	public static final String CONFIG_KEY_SETUPS_MIGRATED_V3 = "migratedV3";
 	public static final String CONFIG_KEY_SETUPS_MIGRATED_CORE_BTL = "migratedCoreBTL";
+	public static final String CONFIG_KEY_SETUPS_MIGRATED_SLOTS = "migratedSlots";
 	public static final String CONFIG_KEY_SETUPS = "setups";
 	public static final String CONFIG_KEY_SETUPS_V2 = "setupsV2";
 	public static final String CONFIG_KEY_SETUPS_V3_PREFIX = "setupsV3_";
@@ -419,6 +420,22 @@ public class InventorySetupsPersistentDataManager
 			log.info("Removing old v2 data key");
 			configManager.unsetConfiguration(CONFIG_GROUP, CONFIG_KEY_SETUPS_V2);
 		}
+
+		String hasMigratedSlots = configManager.getConfiguration(CONFIG_GROUP, CONFIG_KEY_SETUPS_MIGRATED_SLOTS);
+		if (Strings.isNullOrEmpty(hasMigratedSlots))
+		{
+			log.info("Migrating inventory setup items to include slot and locked fields");
+			inventorySetups.addAll(loadV3Setups());
+
+			for (final InventorySetup setup : inventorySetups)
+			{
+				migrateSetupItemSlots(setup);
+			}
+
+			updateConfig(true, false);
+			inventorySetups.clear();
+			configManager.setConfiguration(CONFIG_GROUP, CONFIG_KEY_SETUPS_MIGRATED_SLOTS, "true");
+		}
 	}
 
 	private String fixOldJSONData(final String json)
@@ -440,5 +457,79 @@ public class InventorySetupsPersistentDataManager
 		return je.toString();
 	}
 
+	/**
+	 * Migrates existing inventory setups to populate slot field for items
+	 * This method is called when loading inventory setups that were created before
+	 * the slot and locked fields were added
+	 *
+	 * @param setup The inventory setup to migrate
+	 */
+	private void migrateSetupItemSlots(final InventorySetup setup)
+	{
+		log.info("Migrating item slots for setup: " + setup.getName());
 
+		if (setup.getInventory() != null)
+		{
+			for (int i = 0; i < setup.getInventory().size(); i++)
+			{
+				InventorySetupsItem item = setup.getInventory().get(i);
+				if (item != null && !InventorySetupsItem.itemIsDummy(item))
+				{
+					item.setSlot(i);
+					item.setLocked(false);
+				}
+			}
+		}
+		if (setup.getEquipment() != null)
+		{
+			for (int i = 0; i < setup.getEquipment().size(); i++)
+			{
+				InventorySetupsItem item = setup.getEquipment().get(i);
+				if (item != null && !InventorySetupsItem.itemIsDummy(item))
+				{
+					item.setSlot(i);
+					item.setLocked(false);
+				}
+			}
+		}
+
+		if (setup.getRune_pouch() != null)
+		{
+			for (int i = 0; i < setup.getRune_pouch().size(); i++)
+			{
+				InventorySetupsItem item = setup.getRune_pouch().get(i);
+				if (item != null && !InventorySetupsItem.itemIsDummy(item))
+				{
+					item.setSlot(i);
+					item.setLocked(false);
+				}
+			}
+		}
+
+		if (setup.getBoltPouch() != null)
+		{
+			for (int i = 0; i < setup.getBoltPouch().size(); i++)
+			{
+				InventorySetupsItem item = setup.getBoltPouch().get(i);
+				if (item != null && !InventorySetupsItem.itemIsDummy(item))
+				{
+					item.setSlot(i);
+					item.setLocked(false);
+				}
+			}
+		}
+
+		if (setup.getQuiver() != null)
+		{
+			for (int i = 0; i < setup.getQuiver().size(); i++)
+			{
+				InventorySetupsItem item = setup.getQuiver().get(i);
+				if (item != null && !InventorySetupsItem.itemIsDummy(item))
+				{
+					item.setSlot(i);
+					item.setLocked(false);
+				}
+			}
+		}
+	}
 }

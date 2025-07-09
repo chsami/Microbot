@@ -103,7 +103,7 @@ public class AutoWoodcuttingScript extends Script {
                     }
                 }
 
-                if (state != State.RESETTING && (Rs2Player.isMoving() || Rs2Player.isAnimating() || Microbot.pauseAllScripts))
+                if (state != State.RESETTING && (Rs2Player.isMoving() || Rs2Player.isAnimating()))
                     return;
 
                 if (Rs2AntibanSettings.actionCooldownActive)

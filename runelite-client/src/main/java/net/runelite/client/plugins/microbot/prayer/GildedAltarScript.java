@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.prayer;
 
+import net.runelite.api.GameObject;
 import net.runelite.api.ObjectID;
 import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
@@ -19,6 +20,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class GildedAltarScript extends Script {
 
@@ -243,15 +245,14 @@ public class GildedAltarScript extends Script {
             return;
         }
 
-        TileObject altar;
 
-        altar = Rs2GameObject.findObjectById(ObjectID.ALTAR_40878);
-        if (altar == null) {
-            altar = Rs2GameObject.findObjectById(ObjectID.ALTAR_13197);
+        TileObject altar = Rs2GameObject.getGameObject("Altar", true);
+        if (altar != null) {
+            Rs2Inventory.useUnNotedItemOnObject("bones", altar.getId());
+        Rs2Player.waitForAnimation();
         }
 
-        Rs2Inventory.useUnNotedItemOnObject("bones", altar);
-        Rs2Player.waitForAnimation();
+
 
         // Use bones on the altar if it's valid
         if(altarCoords == null){

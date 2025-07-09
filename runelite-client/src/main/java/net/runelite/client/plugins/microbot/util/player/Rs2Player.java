@@ -1240,15 +1240,27 @@ public class Rs2Player {
      * @return {@code true} if a potion was successfully consumed, {@code false} otherwise.
      */
     public static boolean drinkCombatPotionAt(Skill skill, boolean superCombat) {
-        // If the current boosted level is already 5 or more above the real level, don't drink
-        if (Microbot.getClient().getBoostedSkillLevel(skill)
-                - Microbot.getClient().getRealSkillLevel(skill) > 5) {
+        int real = Microbot.getClient().getRealSkillLevel(skill);
+        int boosted = Microbot.getClient().getBoostedSkillLevel(skill);
+
+        // max boost per wiki: RealLevel * (15/100) + 5
+        double maxBoost = real * 0.15 + 5;
+
+        // threshold is 20% of that max
+        double threshold = maxBoost * 0.20;
+
+        if ((boosted - real) > threshold) {
             return false;
         }
 
         // If superCombat is specified and the skill is Attack, Strength, or Defence, try super combat potions first
         if (superCombat && (skill == Skill.ATTACK || skill == Skill.STRENGTH || skill == Skill.DEFENCE)) {
-            if (usePotion(Rs2Potion.getCombatPotionsVariants().toArray(new String[0]))) {
+            // for Defence, exclude the basic "combat potion"
+            List<String> combatVariants = new ArrayList<>(Rs2Potion.getCombatPotionsVariants());
+            if (skill == Skill.DEFENCE) {
+                combatVariants.remove("combat potion");
+            }
+            if (usePotion(combatVariants.toArray(new String[0]))) {
                 return true;
             }
         }
@@ -1927,7 +1939,7 @@ public class Rs2Player {
      *
      * @return {@code true} if the player has finished Tutorial Island, {@code false} otherwise.
      */
-    public static boolean isInTutorialIsland() {
+    public static boolean hasCompletedTutorialIsland() {
         return Microbot.getVarbitPlayerValue(281) >= 1000;
     }
 }

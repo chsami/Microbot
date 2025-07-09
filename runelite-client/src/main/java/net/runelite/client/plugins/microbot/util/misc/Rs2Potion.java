@@ -32,7 +32,8 @@ public class Rs2Potion
                 "Moonlight potion",
                 "Moonlight moth mix",
                 "Egniol potion",
-                "Tears of elidinis"
+                "Tears of elidinis",
+                "Sanfew serum"
         );
     }
 

@@ -24,15 +24,9 @@ import java.awt.*;
 )
 public class BarbarianFishingPlugin extends Plugin {
     @Inject
-    Notifier notifier;
-    @Inject
     BarbarianFishingScript fishingScript;
     @Inject
     private BarbarianFishingConfig config;
-    @Inject
-    private Client client;
-    @Inject
-    private ClientThread clientThread;
     @Inject
     private OverlayManager overlayManager;
     @Inject
@@ -45,11 +39,7 @@ public class BarbarianFishingPlugin extends Plugin {
 
     @Override
     protected void startUp() throws AWTException {
-        Microbot.pauseAllScripts = false;
-        Microbot.setClient(client);
-        Microbot.setClientThread(clientThread);
-        Microbot.setNotifier(notifier);
-        Microbot.setMouse(new VirtualMouse());
+		Microbot.pauseAllScripts.compareAndSet(true, false);
         if (overlayManager != null) {
             overlayManager.add(fishingOverlay);
         }

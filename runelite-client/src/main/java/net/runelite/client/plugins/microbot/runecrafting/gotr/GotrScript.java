@@ -19,6 +19,7 @@ import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
+import net.runelite.client.plugins.microbot.util.magic.Rs2Spellbook;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
@@ -114,7 +115,7 @@ public class GotrScript extends Script {
 
                 if (!initCheck) {
                     initializeGuardianPortalInfo();
-                    if (!Rs2Magic.isLunar()) {
+                    if (!Rs2Magic.isSpellbook(Rs2Spellbook.LUNAR)) {
                         Microbot.log("Lunar spellbook not found...disabling npc contact");
                         useNpcContact = false;
                     }
@@ -261,7 +262,7 @@ public class GotrScript extends Script {
     }
 
     private boolean repairCells() {
-        Rs2ItemModel cell = Rs2Inventory.get(CellType.PoweredCellList().toArray(Integer[]::new));
+        Rs2ItemModel cell = Rs2Inventory.get(CellType.PoweredCellList().stream().mapToInt(i -> i).toArray());
         if (cell != null && isInMainRegion() && isInMiniGame() && !shouldMineGuardianRemains && !isInLargeMine() && !isInHugeMine()) {
             int cellTier = CellType.GetCellTier(cell.getId());
             List<Integer> shieldCellIds = Rs2GameObject.getObjectIdsByName("cell_tile");
@@ -331,7 +332,7 @@ public class GotrScript extends Script {
     }
 
     private boolean usePortal() {
-        if (!isInHugeMine() && Microbot.getClient().hasHintArrow() && Rs2Inventory.size() < config.maxAmountEssence()) {
+        if (!isInHugeMine() && Microbot.getClient().hasHintArrow() && Rs2Inventory.count() < config.maxAmountEssence()) {
             if (leaveLargeMine()) return true;
             Rs2Walker.walkFastCanvas(Microbot.getClient().getHintArrowPoint());
             sleepUntil(Rs2Player::isMoving);
@@ -346,7 +347,7 @@ public class GotrScript extends Script {
     }
 
     private boolean depositRunesIntoPool() {
-        if (config.shouldDepositRunes() && Rs2Inventory.hasItem(runeIds.toArray(Integer[]::new)) && !isInLargeMine() && !isInHugeMine() && !Rs2Inventory.isFull() && !optimizedEssenceLoop) {
+        if (config.shouldDepositRunes() && Rs2Inventory.hasItem(runeIds.stream().mapToInt(i -> i).toArray()) && !isInLargeMine() && !isInHugeMine() && !Rs2Inventory.isFull() && !optimizedEssenceLoop) {
             if (Rs2Player.isMoving()) return true;
             if (Rs2GameObject.interact(ObjectID.DEPOSIT_POOL)) {
                 log("Deposit runes into pool...");

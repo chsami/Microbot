@@ -59,7 +59,7 @@ public class JewelryScript extends Script {
                 
                 if (state == null) return; // Used to switch into completion action 
                 
-                if (Rs2Player.isMoving() || Rs2Player.isAnimating() || Rs2Antiban.getCategory().isBusy() || Microbot.pauseAllScripts) return;
+                if (Rs2Player.isMoving() || Rs2Player.isAnimating() || Rs2Antiban.getCategory().isBusy()) return;
                 if (Rs2AntibanSettings.actionCooldownActive) return;
                 
                 switch (state) {
@@ -237,7 +237,7 @@ public class JewelryScript extends Script {
                                 int totalNatureRunes = natureRunesInInventory + natureRunesInBank;
 
                                 // Check if required items are available
-                                if (totalNatureRunes < totalAlchJewelry || (!Rs2Bank.hasItem(staffItemID) && !Rs2Equipment.hasEquipped(staffItemID))) {
+                                if (totalNatureRunes < totalAlchJewelry || (!Rs2Bank.hasItem(staffItemID) && !Rs2Equipment.isWearing(staffItemID))) {
                                     Microbot.showMessage("Missing required items");
                                     shutdown();
                                     return;
@@ -254,7 +254,7 @@ public class JewelryScript extends Script {
                                 }
 
                                 // Withdraw and equip the staff if needed
-                                if (!Rs2Equipment.hasEquipped(staffItemID)) {
+                                if (!Rs2Equipment.isWearing(staffItemID)) {
                                     Rs2Bank.withdrawOne(staffItemID);
                                     Rs2Inventory.waitForInventoryChanges(1800);
                                     Rs2Inventory.equip(staffItemID);
@@ -326,7 +326,7 @@ public class JewelryScript extends Script {
                         Rs2Antiban.takeMicroBreakByChance();
                         break;
                     case ALCHING:
-                        if (!Rs2Equipment.hasEquipped(staffItemID)) {
+                        if (!Rs2Equipment.isWearing(staffItemID)) {
                             Rs2Inventory.equip(staffItemID);
                         }
                         
@@ -428,7 +428,7 @@ public class JewelryScript extends Script {
     }
     
     private boolean hasFinishedEnchanting() {
-        return Rs2Equipment.hasEquipped(staffItemID) && !Rs2Inventory.hasItem(plugin.getJewelry().getItemName());
+        return Rs2Equipment.isWearing(staffItemID) && !Rs2Inventory.hasItem(plugin.getJewelry().getItemName());
     }
     
     private boolean isCutting() {
@@ -449,7 +449,7 @@ public class JewelryScript extends Script {
     
     private boolean isAlching() {
         if (!plugin.getCompletionAction().equals(CompletionAction.ALCH)) return false;
-        if (!Rs2Equipment.hasEquippedSlot(EquipmentInventorySlot.WEAPON)) return false;
+        if (!Rs2Equipment.isWearing(EquipmentInventorySlot.WEAPON)) return false;
 
         staffItemID = plugin.getStaff() != Staff.NONE ? plugin.getStaff().getItemID() : findSuitableFireStaff();
 
@@ -465,18 +465,18 @@ public class JewelryScript extends Script {
     }
     
     private boolean hasFinishedAlching() {
-        return Rs2Equipment.hasEquipped(staffItemID) && !Rs2Inventory.hasItem(plugin.getJewelry().getItemID() + 1);
+        return Rs2Equipment.isWearing(staffItemID) && !Rs2Inventory.hasItem(plugin.getJewelry().getItemID() + 1);
     }
     
     private int getNatureRunesInInventory() {
-        return plugin.isUseRunePouch() ? Rs2RunePouch.getQuantity(ItemID.NATURE_RUNE) : Rs2Inventory.items().stream()
+        return plugin.isUseRunePouch() ? Rs2RunePouch.getQuantity(ItemID.NATURE_RUNE) : Rs2Inventory.items()
                 .filter(item -> item.getId() == ItemID.NATURE_RUNE)
                 .mapToInt(Rs2ItemModel::getQuantity)
                 .sum();
     }
     
     private int getNotedJewelryInInventory() {
-        return Rs2Inventory.items().stream()
+        return Rs2Inventory.items()
                 .filter(item -> item.getId() == (plugin.getJewelry().getItemID() + 1))
                 .mapToInt(Rs2ItemModel::getQuantity)
                 .sum();
@@ -504,7 +504,7 @@ public class JewelryScript extends Script {
                 .filter(staff -> !staff.equals(Staff.NONE)) // Skip NONE
                 .filter(staff -> staff.getRuneItemIDs().stream().anyMatch(requiredRuneIDs::contains))
                 .map(Staff::getItemID)
-                .filter(itemID -> Rs2Inventory.hasItem(itemID) || Rs2Equipment.hasEquipped(itemID) || Rs2Bank.hasItem(itemID))
+                .filter(itemID -> Rs2Inventory.hasItem(itemID) || Rs2Equipment.isWearing(itemID) || Rs2Bank.hasItem(itemID))
                 .findFirst()
                 .orElse(-1); // Return -1 if no staff is found
     }
@@ -521,7 +521,7 @@ public class JewelryScript extends Script {
     private int findSuitableFireStaff() {
         return Staff.getFireRuneStaffs().stream()
                 .map(Staff::getItemID)
-                .filter(itemID -> Rs2Inventory.hasItem(itemID) || Rs2Equipment.hasEquipped(itemID))
+                .filter(itemID -> Rs2Inventory.hasItem(itemID) || Rs2Equipment.isWearing(itemID))
                 .findFirst()
                 .orElseGet(() -> {
                     int[] fireRuneStaffIDs = Staff.getFireRuneStaffs().stream()
@@ -560,15 +560,15 @@ public class JewelryScript extends Script {
         Map<Integer, Integer> availableRunes = new HashMap<>();
 
         // Inventory
-        Rs2Inventory.items().stream()
+        Rs2Inventory.items()
                 .filter(item -> requiredRunes.containsKey(item.getId()))
                 .forEach(item -> availableRunes.merge(item.getId(), item.getQuantity(), Integer::sum));
 
         // Rune Pouch
         if (plugin.isUseRunePouch()) {
             Rs2RunePouch.getRunes().forEach((runeID, quantity) -> {
-                if (requiredRunes.containsKey(runeID)) {
-                    availableRunes.merge(runeID, quantity, Integer::sum);
+                if (requiredRunes.containsKey(runeID.getItemId())) {
+                    availableRunes.merge(runeID.getItemId(), quantity, Integer::sum);
                 }
             });
         }

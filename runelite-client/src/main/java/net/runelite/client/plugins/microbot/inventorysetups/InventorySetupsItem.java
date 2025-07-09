@@ -46,15 +46,25 @@ public class InventorySetupsItem
 	@Getter
 	@Setter
 	private InventorySetupsStackCompareID stackCompare;
+	@Getter
+	@Setter
+	private boolean locked;
+	@Getter
+	@Setter
+	private int slot = -1;
 
 	public void toggleIsFuzzy()
 	{
 		fuzzy = !fuzzy;
 	}
+	public void toggleIsLocked()
+	{
+		locked = !locked;
+	}
 
 	public static InventorySetupsItem getDummyItem()
 	{
-		return new InventorySetupsItem(-1, "", 0, false, InventorySetupsStackCompareID.None);
+		return new InventorySetupsItem(-1, "", 0, false, InventorySetupsStackCompareID.None, false, -1);
 	}
 
 	public static boolean itemIsDummy(final InventorySetupsItem item)
@@ -63,7 +73,9 @@ public class InventorySetupsItem
 		return item.getId() == -1 &&
 				item.getQuantity() == 0 &&
 				!item.isFuzzy() &&
-				(item.getStackCompare() == InventorySetupsStackCompareID.None || item.getStackCompare() == null);
+				(item.getStackCompare() == InventorySetupsStackCompareID.None || item.getStackCompare() == null) &&
+				!item.isLocked() &&
+				item.getSlot() == -1;
 	}
 
 	public String getName() {

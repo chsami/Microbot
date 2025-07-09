@@ -38,7 +38,7 @@ public class SingleTriggerTimeConditionAdapter implements JsonSerializer<SingleT
         LocalDate today = LocalDate.now();
         
         // Convert start time to UTC        
-        ZonedDateTime targetUtc = src.getTargetTime().withZoneSameInstant(ZoneId.of("UTC"));
+        ZonedDateTime targetUtc = src.getNextTriggerTimeWithPause().get().withZoneSameInstant(ZoneId.of("UTC"));
         data.addProperty("version", src.getVersion());
         data.addProperty("targetTime", targetUtc.toLocalTime().format(TIME_FORMAT));
         data.addProperty("targetDate", targetUtc.toLocalDate().format(DATE_FORMAT));
@@ -79,7 +79,10 @@ public class SingleTriggerTimeConditionAdapter implements JsonSerializer<SingleT
                         ", got " + dataObj.get("version").getAsString());
             }
         }
-        Duration definedDelay = Duration.ofSeconds(dataObj.get("definedDelay").getAsLong());
+        Duration definedDelay  = Duration.ofSeconds(0);
+        if (dataObj.has("definedDelay")){
+            definedDelay = Duration.ofSeconds(dataObj.get("definedDelay").getAsLong());
+        }
         // Parse time values
         LocalTime serializedStartTime = LocalTime.parse(dataObj.get("targetTime").getAsString(), TIME_FORMAT);
         // Parse date values

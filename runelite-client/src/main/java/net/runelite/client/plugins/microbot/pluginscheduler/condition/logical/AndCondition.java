@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.condition.logical;
 
+import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.Optional;
 import java.util.List;
@@ -179,5 +180,66 @@ public class AndCondition extends LogicalCondition {
         // of unsatisfied TimeConditions
         return maxUnsatisfiedTimeConditionTriggerTime != null ? 
             Optional.of(maxUnsatisfiedTimeConditionTriggerTime) : Optional.empty();
+    }
+    public void pause() {
+        // Pause all child conditions
+        for (Condition condition : conditions) {
+            condition.pause();
+        }
+                
+        
+    }
+    
+   
+    public void resume() {
+        // Resume all child conditions
+        for (Condition condition : conditions) {
+            condition.resume();
+        }        
+        
+    }
+
+    /**
+     * Gets the estimated time until this AND condition will be satisfied.
+     * For an AND condition, this returns the maximum (latest) estimated time
+     * among all child conditions, since all conditions must be satisfied
+     * for the entire AND condition to be satisfied.
+     * 
+     * @return Optional containing the estimated duration until satisfaction, or empty if not determinable
+     */
+    @Override
+    public Optional<Duration> getEstimatedTimeWhenIsSatisfied() {
+        if (conditions.isEmpty()) {
+            return Optional.of(Duration.ZERO);
+        }
+        
+        // If all conditions are already satisfied, return zero
+        if (isSatisfied()) {
+            return Optional.of(Duration.ZERO);
+        }
+        
+        Duration longestTime = Duration.ZERO;
+        boolean hasEstimate = false;
+        boolean allHaveEstimates = true;
+        
+        for (Condition condition : conditions) {
+            Optional<Duration> estimate = condition.getEstimatedTimeWhenIsSatisfied();
+            
+            if (estimate.isPresent()) {
+                hasEstimate = true;
+                Duration currentEstimate = estimate.get();
+                
+                if (currentEstimate.compareTo(longestTime) > 0) {
+                    longestTime = currentEstimate;
+                }
+            } else {
+                // If any condition can't provide an estimate, we can't provide a reliable estimate
+                // for the entire AND condition
+                allHaveEstimates = false;
+            }
+        }
+        
+        // Only return an estimate if all conditions can provide estimates
+        return (hasEstimate && allHaveEstimates) ? Optional.of(longestTime) : Optional.empty();
     }
 }

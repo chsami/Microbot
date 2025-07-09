@@ -249,4 +249,15 @@ public class NotCondition implements Condition {
         
         return sb.toString();
     }
+    @Override
+    public void pause() {
+     
+                
+        
+    }
+    
+    @Override
+    public void resume() {
+       
+    }    
 }

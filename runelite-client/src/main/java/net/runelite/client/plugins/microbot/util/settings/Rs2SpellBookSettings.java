@@ -216,6 +216,21 @@ public class Rs2SpellBookSettings {
             return success;
     }
 
+	public static boolean configureSpellbookSettings() {
+		boolean success = toggleCombatSpells(true, false) &&
+			toggleTeleportSpells(true, false) &&
+			toggleUtilitySpells(true, false) &&
+			toggleLackMagicLevel(true, false) &&
+			toggleLackRunes(true, false) &&
+			toggleLackRequirements(true, false) &&
+			toggleIconResizing(false, false);
+
+		if (success) {
+			closeSpellBookFilter();
+		}
+		return success;
+	}
+
     /**
      * @return
      */

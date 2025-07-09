@@ -7,13 +7,15 @@ import net.runelite.api.GameState;
 import net.runelite.api.Skill;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.StatChanged;
-import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
 import net.runelite.client.util.ImageUtil;
 
 import javax.swing.*;
+
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
+
 import java.awt.image.BufferedImage;
 import java.util.HashMap;
 import java.util.Map;
@@ -41,6 +43,14 @@ public abstract class SkillCondition implements Condition {
     
     private static final int ICON_SIZE = 24; // Standard size for all skill icons
     protected final Skill skill;
+    
+    // Pause-related fields
+    @Getter
+    protected transient boolean isPaused = false;
+    protected transient Map<Skill, Integer> pausedSkillLevels = new HashMap<>();
+    protected transient Map<Skill, Long> pausedSkillXp = new HashMap<>();
+    protected transient int pausedTotalLevel = 0;
+    protected transient long pausedTotalXp = 0;
     
     /**
      * Constructor requiring a skill to be set
@@ -180,6 +190,7 @@ public abstract class SkillCondition implements Condition {
                 // Ignore errors during initialization
             }            
         });
+
     }
     
     /**
@@ -237,7 +248,7 @@ public abstract class SkillCondition implements Condition {
     /**
      * Forces an update of all skill data (throttled to prevent performance issues)
      */
-    public static void forceUpdate() {
+    public static void forceUpdate() {      
         // Only update once every UPDATE_THROTTLE_MS milliseconds
         long currentTime = System.currentTimeMillis();
         if (currentTime - LAST_UPDATE_TIME < UPDATE_THROTTLE_MS) {
@@ -245,7 +256,8 @@ public abstract class SkillCondition implements Condition {
         }
         SKILL_DATA_INITIALIZED = false;
         initializeSkillData();
-       
+        sleepUntil(()-> SKILL_DATA_INITIALIZED);       
+        LAST_UPDATE_TIME = currentTime;
     }
     
     /**
@@ -253,6 +265,7 @@ public abstract class SkillCondition implements Condition {
      */
     @Override
     public void onStatChanged(StatChanged event) {
+    
         if (!SKILL_DATA_INITIALIZED) {
             initializeSkillData();
             return;
@@ -294,5 +307,116 @@ public abstract class SkillCondition implements Condition {
         }else{
             SKILL_DATA_INITIALIZED = false;
         }
+    }
+    
+    @Override
+    public void pause() {
+        if (!isPaused) {
+            isPaused = true;
+            
+            // Capture current skill values at pause time
+            this.pausedSkillLevels.clear();
+            this.pausedSkillXp.clear();
+            
+            // Force update skill data before capturing pause state
+            forceUpdate();
+            
+            StringBuilder pauseStateLog = new StringBuilder("Captured pause state for skills:\n");
+            
+            // Capture all individual skill levels and XP
+            for (Skill skill : Skill.values()) {
+                pausedSkillLevels.put(skill, SKILL_LEVELS.getOrDefault(skill, 0));
+                pausedSkillXp.put(skill, SKILL_XP.getOrDefault(skill, 0L));
+                pauseStateLog.append("\t")
+                        .append(skill.getName())
+                        .append("\tLevel: ")
+                        .append(pausedSkillLevels.get(skill))
+                        .append("\tXP: ")
+                        .append(pausedSkillXp.get(skill))
+                        .append("\n");
+            }
+            
+            
+            
+            // Capture total values
+            pausedTotalLevel = TOTAL_LEVEL;
+            pausedTotalXp = TOTAL_XP;
+            pauseStateLog.append("\nSkill condition paused. Captured pause state for skill tracking.");
+            log.debug(pauseStateLog.toString());            
+        }
+    }
+    
+    @Override
+    public void resume() {
+        if (isPaused) {
+            isPaused = false;
+            
+            // Force update skill data to get current values after resume
+            forceUpdate();            
+            // Log current skill values after resume using StringBuilder
+            StringBuilder resumeStateLog = new StringBuilder("Skill condition resumed. Current skill values:\n");            
+            for (Skill skill : Skill.values()) {
+                resumeStateLog.append("\t")
+                        .append(skill.getName())
+                        .append("\tLevel: ")
+                        .append(SKILL_LEVELS.get(skill))
+                        .append("\tXP: ")
+                        .append(SKILL_XP.get(skill))
+                        .append("\n");
+            }
+            resumeStateLog.append("\nSkill condition resumed. Pause state cleared for skill tracking.");
+            log.debug(resumeStateLog.toString());            
+        }
+    }
+    
+    /**
+     * Gets the amount of XP or levels gained while paused for a specific skill.
+     * This is used to adjust baseline values during resume.
+     * 
+     * @param skill The skill to check
+     * @return XP gained during pause, or 0 if not paused or skill not tracked
+     */
+    protected long getXpGainedDuringPause(Skill skill) {    
+        long currentXp = SKILL_XP.getOrDefault(skill, 0L);
+        long pausedXp = this.pausedSkillXp.getOrDefault(skill, 0L);
+        return Math.max(0, currentXp - pausedXp);
+    }
+    
+    /**
+     * Gets the number of levels gained while paused for a specific skill.
+     * 
+     * @param skill The skill to check
+     * @return Levels gained during pause, or 0 if not paused or skill not tracked
+     */
+    protected int getLevelsGainedDuringPause(Skill skill) {             
+        int currentLevel = SKILL_LEVELS.getOrDefault(skill, 0);
+        int pausedLevel = this.pausedSkillLevels.getOrDefault(skill, 0);
+        return Math.max(0, currentLevel - pausedLevel);
+    }
+    
+    /**
+     * Gets the total XP gained during pause across all skills.
+     * 
+     * @return Total XP gained during pause, or 0 if not paused
+     */
+    protected long getTotalXpGainedDuringPause() {
+        if (!isPaused) {
+            return 0;
+        }
+        
+        return Math.max(0, TOTAL_XP - pausedTotalXp);
+    }
+    
+    /**
+     * Gets the total levels gained during pause across all skills.
+     * 
+     * @return Total levels gained during pause, or 0 if not paused
+     */
+    protected int getTotalLevelsGainedDuringPause() {
+        if (!isPaused) {
+            return 0;
+        }
+        
+        return Math.max(0, TOTAL_LEVEL - pausedTotalLevel);
     }
 }

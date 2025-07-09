@@ -78,7 +78,7 @@ public class AnimatedArmourScript extends Script {
                 "platebody,platelegs,full helm,Warrior guild token".split(",")
         );
         if (Rs2GroundItem.lootItemsBasedOnNames(valueParams)) {
-            Microbot.pauseAllScripts = false;
+			Microbot.pauseAllScripts.compareAndSet(true, false);
         }
     }
 

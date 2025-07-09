@@ -24,9 +24,7 @@ public class AutoWoodcuttingOverlay extends OverlayPanel {
     {
         super(plugin);
         this.config = config;
-        setPosition(OverlayPosition.DYNAMIC);
-        setLayer(OverlayLayer.ABOVE_SCENE);
-        setPriority(OverlayPriority.HIGH);
+        setPosition(OverlayPosition.TOP_LEFT);
         setNaughty();
     }
     @Override

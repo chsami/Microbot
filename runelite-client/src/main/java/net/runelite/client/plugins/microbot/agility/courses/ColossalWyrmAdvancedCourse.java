@@ -26,4 +26,10 @@ public class ColossalWyrmAdvancedCourse implements AgilityCourseHandler
 			new AgilityObstacleModel(ObjectID.VARLAMORE_WYRM_AGILITY_END_ZIPLINE_TRIGGER)
 		);
 	}
+
+	@Override
+	public Integer getRequiredLevel()
+	{
+		return 62;
+	}
 }

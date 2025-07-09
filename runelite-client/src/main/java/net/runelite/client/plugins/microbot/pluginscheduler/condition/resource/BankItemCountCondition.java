@@ -73,6 +73,11 @@ public class BankItemCountCondition extends ResourceCondition {
     
     @Override
     public boolean isSatisfied() {
+        // A condition cannot be satisfied while paused
+        if (isPaused) {
+            return false;
+        }
+        
         // Once satisfied, stay satisfied until reset
         if (satisfied) {
             return true;
@@ -138,7 +143,10 @@ public class BankItemCountCondition extends ResourceCondition {
     @Override
     @Subscribe
     public void onItemContainerChanged(ItemContainerChanged event) {
-        
+        // Skip processing if paused
+        if (isPaused) {
+            return;
+        }
         
         // Update count when bank container changes
         if (event.getContainerId() == InventoryID.BANK.getId()) {
@@ -335,5 +343,22 @@ public class BankItemCountCondition extends ResourceCondition {
         }
         
         return orCondition;
+    }
+    
+    @Override
+    public void pause() {
+        // Call parent class pause method
+        super.pause();
+    }
+    
+    @Override
+    public void resume() {
+        if (isPaused) {
+            // Call parent class resume method
+            super.resume();
+            
+            // For snapshot-type conditions, refresh current state on resume
+            updateCurrentCount();
+        }
     }
 }

@@ -143,7 +143,7 @@ public class AntibanPlugin extends Plugin {
             } else {
                 Rs2AntibanSettings.actionCooldownActive = false;
                 if (Rs2AntibanSettings.universalAntiban && !Rs2AntibanSettings.microBreakActive)
-                    Microbot.pauseAllScripts = false;
+					Microbot.pauseAllScripts.compareAndSet(true, false);
             }
         }
     }

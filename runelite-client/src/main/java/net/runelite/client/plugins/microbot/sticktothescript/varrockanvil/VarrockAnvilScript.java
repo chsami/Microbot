@@ -31,20 +31,21 @@ enum State {
 
 public class VarrockAnvilScript extends Script {
 
-    public static String version = "1.0.1";
+    public static String version = "1.0.2";
     public State state = State.BANKING;
     public String debug = "";
     private boolean expectingXPDrop = false;
 
     private static WorldPoint AnvilLocation = new WorldPoint(3188, 3426, 0);
     private static WorldPoint BankLocation = new WorldPoint(3185, 3438, 0);
-    private static List<Integer> AnvilIDs = Arrays.asList(2097);
     private static int AnvilMakeVarbitPlayer = 2224;
     private static int AnvilContainerWidgetID = 312;
+    private static boolean logout = true;
 
     public boolean run(VarrockAnvilConfig config) {
         Bars barType = config.sBarType();
         AnvilItem anvilItem = config.sAnvilItem();
+        logout = config.sLogout();
 
         Microbot.enableAutoRunOn = false;
 
@@ -98,8 +99,6 @@ public class VarrockAnvilScript extends Script {
                         return;
                     }
 
-//                TileObject anvilTile = Rs2GameObject.findObjectById(AnvilIDs.get(0));
-
                     if (Rs2GameObject.interact(2097)) {
                         debug("Using anvil");
 
@@ -122,10 +121,6 @@ public class VarrockAnvilScript extends Script {
                         if (Rs2Player.isMoving()) {
                             return;
                         }
-
-//                    debug("Walking to anvil");
-//                    Rs2Walker.walkTo(AnvilLocation, 8);
-//                    sleep(180, 540);
                     }
 
                     break;
@@ -145,9 +140,6 @@ public class VarrockAnvilScript extends Script {
                         Rs2Player.toggleRunEnergy(true);
                     }
                     Rs2Bank.openBank();
-
-//               debug("Walking to bank");
-//               Rs2Walker.walkTo(BankLocation, 10);
                     break;
 
                 case WALK_TO_ANVIL:
@@ -208,28 +200,29 @@ public class VarrockAnvilScript extends Script {
             debug("Items deposited");
             sleep(180, 540);
 
-            if (!Rs2Inventory.hasItem("Hammer")) {
-                Rs2Bank.withdrawOne("Hammer");
-                sleepUntil(() -> Rs2Inventory.hasItem("Hammer"), 3500);
+            if (!Rs2Inventory.hasItem(ItemID.HAMMER)) {
+                Rs2Bank.withdrawOne(ItemID.HAMMER);
+                sleepUntil(() -> Rs2Inventory.hasItem(ItemID.HAMMER), 3500);
 
                 // Exit if we did not end up finding it.
-                if (!Rs2Inventory.hasItem("Hammer")) {
-                    debug("Could not find hammer in bank.");
-                    Microbot.showMessage("Could not find hammer in bank.");
-                    shutdown();
+                if (!Rs2Inventory.hasItem(ItemID.HAMMER)) {
+                    Rs2Bank.closeBank();
+                    stop("Could not find hammer in bank.");
                 }
                 sleep(180, 540);
 
             }
 
+            if (Rs2Bank.count(barType.toString()) < 1) {
+                Rs2Bank.closeBank();
+                stop("Out of bars.");
+            }
             Rs2Bank.withdrawAll(barType.toString());
             sleepUntil(() -> Rs2Inventory.hasItem(barType.toString()), 3500);
 
             // Exit if we did not end up finding it.
             if (!Rs2Inventory.hasItem(barType.toString())) {
-                debug("Could not find bars in bank.");
-                Microbot.showMessage("Could not find bars in bank.");
-                shutdown();
+                stop("Could not find bars in bank.");
             }
             sleep(180, 540);
             Rs2Bank.closeBank();
@@ -239,6 +232,15 @@ public class VarrockAnvilScript extends Script {
     private void debug(String msg) {
         debug = msg;
         System.out.println(msg);
+    }
+
+    public void stop(String message) {
+        if (logout) {
+            Rs2Player.logout();
+        }
+        debug(message);
+        Microbot.showMessage(message);
+        shutdown();
     }
 
     @Override

@@ -39,7 +39,6 @@ public class DefaultScript extends Script {
             try {
                 if (!super.run()) return;
                 if (!Microbot.isLoggedIn() || Rs2Combat.inCombat()) return;
-                if (Microbot.pauseAllScripts) return;
                 if (Rs2AntibanSettings.actionCooldownActive) return;
                 long startTime = System.currentTimeMillis();
 
@@ -94,7 +93,7 @@ public class DefaultScript extends Script {
                                 Rs2GroundItem.lootItemBasedOnValue(valueParams);
                             }
 
-                            Microbot.pauseAllScripts = false;
+                            Microbot.pauseAllScripts.set(false);
                             Rs2Antiban.actionCooldown();
                             Rs2Antiban.takeMicroBreakByChance();
                         }
@@ -143,7 +142,7 @@ public class DefaultScript extends Script {
     public boolean handleWalk(AutoLooterConfig config) {
         scheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
-                if (Microbot.pauseAllScripts) return;
+                if (Microbot.pauseAllScripts.get()) return;
                 if (initialPlayerLocation == null) return;
 
                 if (state == LooterState.LOOTING) {

@@ -28,4 +28,10 @@ public class ShayzienAdvancedCourse implements AgilityCourseHandler
 			new AgilityObstacleModel(ObjectID.SHAYZIEN_AGILITY_UP_END_JUMP)
 		);
 	}
+
+	@Override
+	public Integer getRequiredLevel()
+	{
+		return 45;
+	}
 }

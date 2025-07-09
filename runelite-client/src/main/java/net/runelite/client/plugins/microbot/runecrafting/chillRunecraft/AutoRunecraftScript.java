@@ -72,7 +72,7 @@ public class AutoRunecraftScript extends Script
                     state = States.WALKING_TO_ALTAR;
                 }
 
-                if (Rs2Player.isMoving() || Rs2Player.isAnimating() || Microbot.pauseAllScripts) return;
+                if (Rs2Player.isMoving() || Rs2Player.isAnimating()) return;
 
                 if (Rs2Player.isInteracting()) return;
 

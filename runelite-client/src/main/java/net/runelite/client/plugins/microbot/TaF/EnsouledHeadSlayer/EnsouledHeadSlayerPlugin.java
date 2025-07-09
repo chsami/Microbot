@@ -99,7 +99,7 @@ public class EnsouledHeadSlayerPlugin extends Plugin implements SchedulablePlugi
         return configManager.getConfig(EnsouledHeadSlayerConfig.class);
     }
 
-    @Override
+    @Subscribe
     public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
         if (event.getPlugin() == this) {
             if (ensouledHeadSlayerScript != null) {

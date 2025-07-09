@@ -2,10 +2,6 @@ package net.runelite.client.plugins.microbot.magetrainingarena;
 
 import net.runelite.client.config.*;
 import net.runelite.client.plugins.microbot.magetrainingarena.enums.*;
-import net.runelite.client.plugins.microbot.magetrainingarena.enums.staves.AirStaves;
-import net.runelite.client.plugins.microbot.magetrainingarena.enums.staves.EarthStaves;
-import net.runelite.client.plugins.microbot.magetrainingarena.enums.staves.FireStaves;
-import net.runelite.client.plugins.microbot.magetrainingarena.enums.staves.WaterStaves;
 
 @ConfigGroup("mta")
 @ConfigInformation("- Enable the official RuneLite plugin 'Mage Training Arena'<br />" +
@@ -29,16 +25,9 @@ public interface MageTrainingArenaConfig extends Config {
     String rewardsSection = "rewards";
 
     @ConfigSection(
-            name = "Staves",
-            description = "Staves",
-            position = 3
-    )
-    String stavesSection = "staves";
-
-    @ConfigSection(
             name = "Graveyard",
             description = "Graveyard",
-            position = 4,
+            position = 3,
             closedByDefault = true
     )
     String graveyardSection = "graveyard";
@@ -66,54 +55,10 @@ public interface MageTrainingArenaConfig extends Config {
     }
 
     @ConfigItem(
-            keyName = "Air staff",
-            name = "Air staff",
-            description = "Air staff is used for teleknetic room",
-            position = 3,
-            section = stavesSection
-    )
-    default AirStaves airStaff() {
-        return AirStaves.STAFF_OF_AIR;
-    }
-
-    @ConfigItem(
-            keyName = "Water staff",
-            name = "Water staff",
-            description = "Water staff is used for graveyard room",
-            position = 4,
-            section = stavesSection
-    )
-    default WaterStaves waterStaff() {
-        return WaterStaves.MUD_BATTLESTAFF;
-    }
-
-    @ConfigItem(
-            keyName = "Earth staff",
-            name = "Earth staff",
-            description = "Earth staff",
-            position = 5,
-            section = stavesSection
-    )
-    default EarthStaves earthStaff() {
-        return EarthStaves.MUD_BATTLESTAFF;
-    }
-
-    @ConfigItem(
-            keyName = "Fire staff",
-            name = "Fire staff",
-            description = "Fire staff",
-            position = 6,
-            section = stavesSection
-    )
-    default FireStaves fireStaff() {
-        return FireStaves.LAVA_BATTLESTAFF;
-    }
-
-    @ConfigItem(
             keyName = "Healing threshold (min)",
             name = "Healing threshold (min)",
             description = "Each time the bot eats it chooses a random threshold (between min and max value) to eat at next time.",
-            position = 7,
+            position = 3,
             section = graveyardSection
     )
     default int healingThresholdMin() {
@@ -124,7 +69,7 @@ public interface MageTrainingArenaConfig extends Config {
             keyName = "Healing threshold (max)",
             name = "Healing threshold (max)",
             description = "Each time the bot eats it chooses a random threshold (between min and max value) to eat at next time.",
-            position = 8,
+            position = 4,
             section = graveyardSection
     )
     default int healingThresholdMax() {

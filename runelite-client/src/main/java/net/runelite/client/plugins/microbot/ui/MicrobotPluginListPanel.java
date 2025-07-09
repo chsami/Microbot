@@ -64,7 +64,7 @@ import java.util.stream.Stream;
 
 @Slf4j
 @Singleton
-class MicrobotPluginListPanel extends PluginPanel
+public class MicrobotPluginListPanel extends PluginPanel
 {
 	private static final String RUNELITE_GROUP_NAME = RuneLiteConfig.class.getAnnotation(ConfigGroup.class).value();
 	private static final String PINNED_PLUGINS_CONFIG_KEY = "pinnedPlugins";
@@ -175,7 +175,7 @@ class MicrobotPluginListPanel extends PluginPanel
 		add(scrollPane, BorderLayout.CENTER);
 	}
 
-	void rebuildPluginList()
+	public void rebuildPluginList()
 	{
 		List<String> pinnedPlugins = getPinnedPluginNames();
 		//List<String> pinnedPlugins = new ArrayList<>();
@@ -217,7 +217,7 @@ class MicrobotPluginListPanel extends PluginPanel
 		refresh();
 	}
 
-	void addFakePlugin(MicrobotPluginConfigurationDescriptor... descriptor)
+	public void addFakePlugin(MicrobotPluginConfigurationDescriptor... descriptor)
 	{
 		Collections.addAll(fakePlugins, descriptor);
 	}

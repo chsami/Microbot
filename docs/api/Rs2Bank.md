@@ -75,8 +75,8 @@ The `Rs2Bank` class manages interactions with the banking system in the game, fa
 - **Signature**: `public static boolean openBank(TileObject object)`
 - **Description**: Attempts to open the bank by interacting with a specified tile object.
 
-### `storeBankItemsInMemory`
-- **Signature**: `public static void storeBankItemsInMemory(ItemContainerChanged e)`
+### `updateLocalBank`
+- **Signature**: `public static void updateLocalBank(ItemContainerChanged e)`
 - **Description**: Updates the cached list of bank items based on changes detected in an item container event.
 
 ### `useBank`

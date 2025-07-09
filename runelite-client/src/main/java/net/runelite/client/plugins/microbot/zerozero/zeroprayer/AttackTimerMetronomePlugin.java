@@ -546,10 +546,7 @@ public class AttackTimerMetronomePlugin extends Plugin
         int ticksUntilAttack = getTicksUntilNextAttack();
 
         // Skip all prayer logic if PrayerMode is NONE
-        if (prayerMode == AttackTimerMetronomeConfig.PrayerMode.NONE)
-        {
-            Rs2Prayer.disableAllPrayers();
-        }
+        if (prayerMode == AttackTimerMetronomeConfig.PrayerMode.NONE) return;
 
         // Handle Lazy Flick Mode
         if (prayerMode == AttackTimerMetronomeConfig.PrayerMode.LAZY)
@@ -566,7 +563,7 @@ public class AttackTimerMetronomePlugin extends Plugin
 
             if (prayerDeactivationTick == 0)
             {
-                Rs2Prayer.disableAllPrayers();
+                Rs2Prayer.toggle(activePrayer);
                 prayerDeactivationTick = -1; // Reset deactivation tracker
             }
 
@@ -595,7 +592,7 @@ public class AttackTimerMetronomePlugin extends Plugin
                 outOfCombatTicks++;
                 if (outOfCombatTicks >= OUT_OF_COMBAT_TIMEOUT_TICKS)
                 {
-                    Rs2Prayer.disableAllPrayers();
+                    Rs2Prayer.toggle(activePrayer, false);
                     activePrayer = null; // Clear the active prayer
                     outOfCombatTicks = 0; // Reset after deactivation
                 }

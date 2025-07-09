@@ -132,7 +132,7 @@ public class RoyalTitansLooterScript extends Script {
                 "untradeable"
         );
         if (Rs2GroundItem.lootUntradables(untradeableItemsParams)) {
-            Microbot.pauseAllScripts = false;
+            Microbot.pauseAllScripts.compareAndSet(true, false);
         }
     }
 
@@ -147,7 +147,7 @@ public class RoyalTitansLooterScript extends Script {
                 " rune"
         );
         if (Rs2GroundItem.lootItemsBasedOnNames(runesParams)) {
-            Microbot.pauseAllScripts = false;
+            Microbot.pauseAllScripts.compareAndSet(true, false);
         }
     }
 
@@ -162,7 +162,7 @@ public class RoyalTitansLooterScript extends Script {
                 "coins"
         );
         if (Rs2GroundItem.lootCoins(coinsParams)) {
-            Microbot.pauseAllScripts = false;
+            Microbot.pauseAllScripts.compareAndSet(true, false);
         }
     }
 
@@ -177,7 +177,7 @@ public class RoyalTitansLooterScript extends Script {
                 itemsToLoot.trim().split(",")
         );
         if (Rs2GroundItem.lootItemsBasedOnNames(valueParams)) {
-            Microbot.pauseAllScripts = false;
+            Microbot.pauseAllScripts.compareAndSet(true, false);
         }
     }
 }

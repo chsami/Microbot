@@ -37,26 +37,16 @@ public class HouseTabPlugin extends Plugin {
     }
 
     @Inject
-    private Client client;
-    @Inject
     private OverlayManager overlayManager;
     @Inject
     private HouseTabOverlay houseTabOverlay;
-    @Inject
-    private ClientThread clientThread;
-    @Inject
-    Notifier notifier;
 
     private final HouseTabScript houseTabScript = new HouseTabScript(HOUSETABS_CONFIG.FRIENDS_HOUSE,
             new String[]{"xGrace", "workless", "Lego Batman", "Batman 321", "Batman Chest"});
 
     @Override
     protected void startUp() throws AWTException {
-        Microbot.pauseAllScripts = false;
-        Microbot.setClient(client);
-        Microbot.setClientThread(clientThread);
-        Microbot.setNotifier(notifier);
-        Microbot.setMouse(new VirtualMouse());
+		Microbot.pauseAllScripts.compareAndSet(true, false);
         if (overlayManager != null) {
             overlayManager.add(houseTabOverlay);
         }

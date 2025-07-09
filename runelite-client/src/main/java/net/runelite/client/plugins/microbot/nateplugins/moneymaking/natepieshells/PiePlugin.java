@@ -25,13 +25,7 @@ import java.awt.*;
 @Slf4j
 public class PiePlugin extends Plugin {
     @Inject
-    private Client client;
-    @Inject
     private PieConfig config;
-    @Inject
-    private ClientThread clientThread;
-    @Inject
-    Notifier notifier;
 
     @Inject
     private OverlayManager overlayManager;
@@ -50,11 +44,7 @@ public class PiePlugin extends Plugin {
     @Override
     protected void startUp() throws AWTException {
         PieScript.totalPieShellsMade = 0;
-        Microbot.pauseAllScripts = false;
-        Microbot.setClient(client);
-        Microbot.setClientThread(clientThread);
-        Microbot.setNotifier(notifier);
-        Microbot.setMouse(new VirtualMouse());
+		Microbot.pauseAllScripts.compareAndSet(true, false);
         if (overlayManager != null) {
             overlayManager.add(pieOverlay);
         }

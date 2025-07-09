@@ -27,4 +27,10 @@ public class ArdougneCourse implements AgilityCourseHandler
 			new AgilityObstacleModel(ObjectID.ROOFTOPS_ARDY_JUMP_4)
 		);
 	}
+
+	@Override
+	public Integer getRequiredLevel()
+	{
+		return 90;
+	}
 }

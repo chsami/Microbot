@@ -1,7 +1,9 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.condition.logical;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -525,8 +527,36 @@ public abstract class LogicalCondition implements Condition {
      */
     public String getTooltipHtml() {
         return getHtmlDescription(100);
+    }        
+    /**
+     * Recursively finds all LockConditions within this LogicalCondition structure.
+     * This utility method is used by the break handler to detect locked conditions
+     * that should prevent breaks from occurring.
+     * 
+     * @return List of all LockConditions found in the structure
+     */
+    public List<LockCondition> findAllLockConditions() {
+        List<LockCondition> lockConditions = new ArrayList<>();
+        
+        for (Condition condition : conditions) {
+            if (condition instanceof LockCondition) {
+                lockConditions.add((LockCondition) condition);
+            } else if (condition instanceof LogicalCondition) {
+                // Recursively search in nested logical conditions
+                lockConditions.addAll(((LogicalCondition) condition).findAllLockConditions());
+            } else if (condition instanceof NotCondition) {
+                // Check if the wrapped condition is a LockCondition or contains LockConditions
+                Condition wrappedCondition = ((NotCondition) condition).getCondition();
+                if (wrappedCondition instanceof LockCondition) {
+                    lockConditions.add((LockCondition) wrappedCondition);
+                } else if (wrappedCondition instanceof LogicalCondition) {
+                    lockConditions.addAll(((LogicalCondition) wrappedCondition).findAllLockConditions());
+                }
+            }
+        }
+        
+        return lockConditions;
     }
-
     /**
      * Recursively finds all TimeCondition instances in this logical condition structure.
      * This searches through the entire hierarchy including nested logical conditions.
@@ -1420,6 +1450,24 @@ public abstract class LogicalCondition implements Condition {
         }
         
         return summary.toString();
+    }
+    
+    /**
+     * Base implementation for estimated satisfaction time in logical conditions.
+     * This is overridden by specific logical condition types (And/Or) to provide
+     * appropriate logic for their semantics.
+     * 
+     * @return Optional containing the estimated duration until satisfaction, or empty if not determinable
+     */
+    @Override
+    public Optional<Duration> getEstimatedTimeWhenIsSatisfied() {
+        if (conditions.isEmpty()) {
+            return Optional.of(Duration.ZERO);
+        }
+        
+        // This base implementation should be overridden by concrete classes
+        // Default behavior: return empty if we can't determine
+        return Optional.empty();
     }
 }
 

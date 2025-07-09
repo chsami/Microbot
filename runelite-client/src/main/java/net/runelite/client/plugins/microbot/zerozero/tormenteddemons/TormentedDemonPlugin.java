@@ -3,11 +3,8 @@ package net.runelite.client.plugins.microbot.zerozero.tormenteddemons;
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
-import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.AnimationChanged;
-import net.runelite.api.events.GameTick;
 import net.runelite.api.events.GraphicsObjectCreated;
-import net.runelite.api.events.ProjectileMoved;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -16,21 +13,12 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
 
 import java.awt.datatransfer.StringSelection;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.StringJoiner;
 import java.util.concurrent.Executors;
 
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
-import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
-import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
-import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
-import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
-import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -141,15 +129,15 @@ public class TormentedDemonPlugin extends Plugin {
         Rs2Tile.init();
         int ticks = 4;
 
-        Microbot.pauseAllScripts = true;
+		Microbot.pauseAllScripts.compareAndSet(false, true);
         try {
             scheduledExecutorService.schedule(() -> {
                 Rs2Tile.addDangerousGraphicsObjectTile(graphicsObject, 600 * ticks);
                 tormentedDemonScript.logOnceToChat("Successfully dodged Tormented Demon special attack.");
-                Microbot.pauseAllScripts = false;
+				Microbot.pauseAllScripts.compareAndSet(true, false);
             }, config.dodgeDelay(), TimeUnit.MILLISECONDS);
         } catch (Exception e) {
-            Microbot.pauseAllScripts = false;
+			Microbot.pauseAllScripts.compareAndSet(true, false);
             tormentedDemonScript.logOnceToChat("Error during dodging: " + e.getMessage());
         }
     }

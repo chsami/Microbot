@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.condition.logical;
 
+import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +24,47 @@ public class OrCondition extends LogicalCondition {
         return conditions.stream().anyMatch(Condition::isSatisfied);
     }
     
-
+    /**
+     * Gets the estimated time until this OR condition will be satisfied.
+     * For an OR condition, this returns the minimum (earliest) estimated time
+     * among all child conditions, since any one of them being satisfied
+     * will satisfy the entire OR condition.
+     * 
+     * @return Optional containing the estimated duration until satisfaction, or empty if not determinable
+     */
+    @Override
+    public Optional<Duration> getEstimatedTimeWhenIsSatisfied() {
+        if (conditions.isEmpty()) {
+            return Optional.of(Duration.ZERO);
+        }
+        
+        // If any condition is already satisfied, return zero
+        if (isSatisfied()) {
+            return Optional.of(Duration.ZERO);
+        }
+        
+        Duration shortestTime = null;
+        boolean hasEstimate = false;
+        
+        for (Condition condition : conditions) {
+            Optional<Duration> estimate = condition.getEstimatedTimeWhenIsSatisfied();
+            if (estimate.isPresent()) {
+                hasEstimate = true;
+                Duration currentEstimate = estimate.get();
+                
+                if (shortestTime == null || currentEstimate.compareTo(shortestTime) < 0) {
+                    shortestTime = currentEstimate;
+                }
+                
+                // If any condition has zero duration (satisfied), return immediately
+                if (currentEstimate.isZero()) {
+                    return Optional.of(Duration.ZERO);
+                }
+            }
+        }
+        
+        return hasEstimate ? Optional.of(shortestTime) : Optional.empty();
+    }
     
     /**
      * Gets the next time this OR condition will be satisfied.
@@ -172,5 +213,22 @@ public class OrCondition extends LogicalCondition {
         }
         
         return sb.toString();
+    }
+    public void pause() {
+        // Pause all child conditions
+        for (Condition condition : conditions) {
+            condition.pause();
+        }
+                
+        
+    }
+    
+   
+    public void resume() {
+        // Resume all child conditions
+        for (Condition condition : conditions) {
+            condition.resume();
+        }        
+        
     }
 }

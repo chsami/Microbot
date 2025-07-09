@@ -13,7 +13,7 @@ public class Rs2Storm {
 
     // For item name (String)
     public static Rs2ItemModel getRandomItemWithLimit(String itemName, int max_tries) {
-        List<Rs2ItemModel> matchingItems = Rs2Inventory.items().stream()
+        List<Rs2ItemModel> matchingItems = Rs2Inventory.items()
                 .filter(item -> item.getName().equalsIgnoreCase(itemName))
                 .collect(Collectors.toList());
 
@@ -24,7 +24,7 @@ public class Rs2Storm {
         return getRandomItemFromListWithLimit(matchingItems, max_tries);
     }
     public static Rs2ItemModel getRandomItemWithLimit(int itemId, int max_tries) {
-        List<Rs2ItemModel> matchingItems = Rs2Inventory.items().stream()
+        List<Rs2ItemModel> matchingItems = Rs2Inventory.items()
                 .filter(item -> item.getId() == itemId)
                 .collect(Collectors.toList());
 

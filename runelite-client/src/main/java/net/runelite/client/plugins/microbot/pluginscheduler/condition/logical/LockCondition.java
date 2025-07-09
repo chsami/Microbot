@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.ConditionType;
 
@@ -61,7 +62,12 @@ public class LockCondition implements Condition {
      * Locks the condition, preventing the plugin from being stopped.
      */
     public void lock() {
+        if (locked == null) {
+            log.warn("LockCondition is null, cannot lock");
+            return;
+        }
         boolean wasLocked = locked.getAndSet(true);
+        BreakHandlerScript.setLockState(true);
         if (!wasLocked) {
             log.debug("LockCondition locked: {}", reason);
         }
@@ -71,7 +77,12 @@ public class LockCondition implements Condition {
      * Unlocks the condition, allowing the plugin to be stopped.
      */
     public void unlock() {
+        if (locked == null) {
+            log.warn("LockCondition is null, cannot unlock");
+            return;
+        }
         boolean wasLocked = locked.getAndSet(false);
+        BreakHandlerScript.setLockState(false);
         if (wasLocked) {
             log.debug("LockCondition unlocked: {}", reason);
         }
@@ -83,7 +94,12 @@ public class LockCondition implements Condition {
      * @return The new lock state (true if locked, false if unlocked)
      */
     public boolean toggleLock() {
-        boolean newState = !locked.get();
+        if (locked == null) {
+            log.warn("LockCondition is null, cannot toggle lock state");
+            return false;
+        }
+        boolean newState = !locked.get();        
+        BreakHandlerScript.setLockState(newState);                
         locked.set(newState);        
         return newState;
     }
@@ -105,7 +121,7 @@ public class LockCondition implements Condition {
     
     @Override
     public String getDescription() {
-        return "Lock Condition: " + (isLocked() ? "\nLOCKED - " + reason : "\nUNLOCKED");
+        return "Lock Condition: " + (isLocked() ? "\"LOCKED\" - " + reason : "UNLOCKED");
     }
     
     @Override
@@ -128,4 +144,16 @@ public class LockCondition implements Condition {
         // Lock conditions don't have a specific trigger time
         return Optional.empty();
     }
+
+    public void pause() {
+     
+                
+        
+    }
+    
+   
+    public void resume() {
+       
+    }
+    
 }

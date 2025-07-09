@@ -174,11 +174,11 @@ public class FornBirdhouseRunsScript extends Script {
                 ItemID.BIRD_NEST_22800
         );
 
-        for (Rs2ItemModel item : Rs2Inventory.items()) {
+        Rs2Inventory.items().forEachOrdered(item -> {
             if (ids.contains(item.getId())) {
                 Rs2Inventory.interact(item, "Search");
             }
-        }
+        });
     }
 
     @Override

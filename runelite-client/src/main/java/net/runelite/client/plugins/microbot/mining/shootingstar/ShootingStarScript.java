@@ -30,6 +30,7 @@ import net.runelite.client.plugins.microbot.util.walker.WalkerState;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class ShootingStarScript extends Script {
     public static ShootingStarState state;
@@ -73,7 +74,7 @@ public class ShootingStarScript extends Script {
                     return;
                 }
 
-                if (Rs2Player.isMoving() || Rs2Antiban.getCategory().isBusy() || Microbot.pauseAllScripts) return;
+                if (Rs2Player.isMoving() || Rs2Antiban.getCategory().isBusy()) return;
                 if (Rs2AntibanSettings.actionCooldownActive) return;
                 
                 if (Rs2Gembag.isUnknown()) {
@@ -287,7 +288,7 @@ public class ShootingStarScript extends Script {
                 if (Rs2Inventory.hasItem("pickaxe") || Rs2Equipment.isWearing("pickaxe")) {
                     pickaxe = getBestPickaxe(Rs2Equipment.items());
                     if (pickaxe == null) {
-                        pickaxe = getBestPickaxe(Rs2Inventory.items());
+                        pickaxe = getBestPickaxe(Rs2Inventory.items().collect(Collectors.toList()));
                     }
                 }
             }

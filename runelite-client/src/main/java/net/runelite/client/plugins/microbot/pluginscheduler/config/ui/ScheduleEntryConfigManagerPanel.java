@@ -11,7 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.config.*;
 import net.runelite.client.plugins.microbot.Microbot;
 
-import net.runelite.client.plugins.microbot.ui.MicrobotConfigPlugin;
+import net.runelite.client.plugins.microbot.MicrobotPlugin;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.FontManager;
@@ -66,15 +66,15 @@ public class ScheduleEntryConfigManagerPanel extends JPanel {
     //private final JPanel configPanel;
     static
 	{
-		final BufferedImage backIcon = ImageUtil.loadImageResource(MicrobotConfigPlugin.class, "config_back_icon.png");
+		final BufferedImage backIcon = ImageUtil.loadImageResource(MicrobotPlugin.class, "config_back_icon.png");
 		BACK_ICON = new ImageIcon(backIcon);
 
-		BufferedImage sectionRetractIcon = ImageUtil.loadImageResource(MicrobotConfigPlugin.class, "/util/arrow_right.png");
+		BufferedImage sectionRetractIcon = ImageUtil.loadImageResource(MicrobotPlugin.class, "/util/arrow_right.png");
 		sectionRetractIcon = ImageUtil.luminanceOffset(sectionRetractIcon, -121);
 		SECTION_EXPAND_ICON = new ImageIcon(sectionRetractIcon);
 		final BufferedImage sectionExpandIcon = ImageUtil.rotateImage(sectionRetractIcon, Math.PI / 2);
 		SECTION_RETRACT_ICON = new ImageIcon(sectionExpandIcon);
-		BufferedImage configIcon = ImageUtil.loadImageResource(MicrobotConfigPlugin.class, "config_edit_icon.png");
+		BufferedImage configIcon = ImageUtil.loadImageResource(MicrobotPlugin.class, "config_edit_icon.png");
 		CONFIG_ICON = new ImageIcon(configIcon);
 	}
     /**

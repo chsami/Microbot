@@ -198,6 +198,17 @@ public interface MInventorySetupsConfig extends Config
 	}
 
 	@ConfigItem(
+			keyName = "locked",
+			name = "Default Locked",
+			description = "Configures the default setting for Locked Slot in new setups",
+			section = defaultSection
+	)
+	default boolean locked()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 			keyName = "stackCompare",
 			name = "Default Stack Compare",
 			description = "Configures the default setting for stack compare in new setups",

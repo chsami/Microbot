@@ -12,8 +12,12 @@ import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
+
+import lombok.Getter;
+import lombok.Setter;
 
 
 /**
@@ -28,7 +32,7 @@ public final class TimeConditionUtil {
     private static final Duration MAX_WEEKEND_SESSION = Duration.ofHours(6);
     private static final int MAX_DAILY_REPEATS = 5;
     private static final int MAX_WEEKLY_REPEATS = 20;
-    
+   
     // Private constructor to prevent instantiation
     private TimeConditionUtil() {}
 
