@@ -316,7 +316,7 @@ public class TemporossScript extends Script {
             return;
         }
 
-        // 3) Fill Buckets
+        // 3 Fill Buckets
         int fullBucketCount = Rs2Inventory.count(ItemID.BUCKET_OF_WATER);
         if (fullBucketCount <= 0)
         {
@@ -336,7 +336,7 @@ public class TemporossScript extends Script {
             return;
         }
 
-        // 4) Rope (if required)
+        // 4 Rope (if required)
         if (temporossConfig.rope() && !temporossConfig.spiritAnglers() && !Rs2Inventory.contains(ItemID.ROPE))
         {
             // Before interacting, clear fires along the path to the rope crate.
@@ -355,7 +355,7 @@ public class TemporossScript extends Script {
             return;
         }
 
-        // 5) Hammer (if required)
+        // 5 Hammer (if required)
         if (temporossConfig.hammer()
             && !Rs2Inventory.contains(ItemID.HAMMER)
             && !Rs2Inventory.contains(ItemID.IMCANDO_HAMMER)
@@ -375,7 +375,7 @@ public class TemporossScript extends Script {
                 sleepUntil(() -> Rs2Inventory.waitForInventoryChanges(10000));
             }
         }
-    }
+    
 
     private boolean isOnStartingBoat() {
         TileObject startingLadder = Rs2GameObject.findObjectById(ObjectID.ROPE_LADDER_41305);
@@ -576,8 +576,8 @@ private void handleDamagedTotem() {
     handleRepairable("Totem");
 }
 
-        }
-    }
+        
+    
 
     private void handleTether() {
         TileObject tether = workArea.getClosestTether();
@@ -902,4 +902,3 @@ private void handleDamagedTotem() {
         reset();
         // Any cleanup code here
     }
-}
