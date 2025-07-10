@@ -66,7 +66,7 @@ public class DefaultScript extends Script {
                         }
 
                         if (lootExists) {
-                            failedLootAttempts = 0;
+                            failedLootAttempts = 0; // No items found, increment failure count
 
                             if (config.looterStyle() == DefaultLooterStyle.ITEM_LIST || config.looterStyle() == DefaultLooterStyle.MIXED) {
                                 LootingParameters itemLootParams = new LootingParameters(
