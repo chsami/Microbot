@@ -577,7 +577,7 @@ public class BlastoiseFurnaceScript extends Script {
             }
         }
 
-        if (BreakHandlerScript.breakIn != 0)
+        if (BreakHandlerScript.breakIn >= 1)
         {
             return BreakHandlerScript.breakIn * 20;   // 1 s = 20 gold
         }

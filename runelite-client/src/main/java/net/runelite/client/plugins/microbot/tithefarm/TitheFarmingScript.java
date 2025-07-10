@@ -419,7 +419,7 @@ public class TitheFarmingScript extends Script {
         } else if (TitheFarmMaterial.hasWateringCanToBeFilled()) {
             walkToBarrel();
             Rs2Inventory.interact(TitheFarmMaterial.getWateringCanToBeFilled(), "Use");
-            Rs2GameObject.interact(ObjectID.FARM_WATER_BARREL1, "Use");
+            Rs2GameObject.interact(ObjectID.WATER_BARREL1, "Use");
             sleepUntil(() -> Rs2Inventory.hasItemAmount(ItemID.WATERING_CAN_8, WATERING_CANS_AMOUNT), 60000);
         } else {
             state = PLANTING_SEEDS;
@@ -427,7 +427,7 @@ public class TitheFarmingScript extends Script {
     }
 
     private void walkToBarrel() {
-        final TileObject gameObject = Rs2GameObject.findObjectById(ObjectID.FARM_WATER_BARREL1);
+        final TileObject gameObject = Rs2GameObject.findObjectById(ObjectID.WATER_BARREL1);
         if (gameObject.getWorldLocation().distanceTo2D(Microbot.getClient().getLocalPlayer().getWorldLocation()) > DISTANCE_TRESHHOLD_MINIMAP_WALK) {
             Rs2Walker.walkMiniMap(gameObject.getWorldLocation(), 1);
             sleepUntil(Rs2Player::isMoving);
