@@ -100,7 +100,7 @@ public class DefaultScript extends Script {
                         } else {
                             failedLootAttempts++;
 
-                            if (failedLootAttempts >= 5) {
+                            if (failedLootAttempts >= 5) { // Hop worlds after 5 failed attempts
                                 Microbot.log("Failed to find loot 5 times, hopping worlds...");
 
                                 if (Rs2Bank.isOpen()) {
@@ -117,7 +117,7 @@ public class DefaultScript extends Script {
                                 sleepUntil(() -> Microbot.getClient().getGameState() == GameState.HOPPING);
                                 sleepUntil(() -> Microbot.getClient().getGameState() == GameState.LOGGED_IN);
 
-                                failedLootAttempts = 0;
+                                failedLootAttempts = 0; // Reset failure count after hopping
                                 return;
                             }
                         }
