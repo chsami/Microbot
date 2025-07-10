@@ -3,8 +3,19 @@ name: CI
 on: [ push, pull_request ]
 
 jobs:
-  build:
+  conventional-commits:
+    name: Conventional Commits
     runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: webiny/action-conventional-commits@v1.3.0
+
+  build:
+    name: Build
+    runs-on: ubuntu-24.04
+    needs: conventional-commits
 
     permissions:
       contents: read
