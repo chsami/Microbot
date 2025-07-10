@@ -87,6 +87,7 @@ public class revKillerScript extends Script {
                     if(!timeToBreak()){
                         if(selectedRev.contains("Knight")) {
                             logBackIn();
+                            shouldFlee = false;
                         }
                     }
                     return;
@@ -580,8 +581,10 @@ public class revKillerScript extends Script {
             shouldFlee = false;
             return;
         } else {
-            if(isPkerAround() && Microbot.isLoggedIn()) {
+            if(isPkerAround()) {
                 getAwayFromPker();
+                shouldFlee = false;
+                return;
             }
         }
 
@@ -601,7 +604,7 @@ public class revKillerScript extends Script {
                 sleep(1000, 3000);
                 if (!Microbot.isLoggedIn()) {
                     new Login(Login.getRandomWorld(true));
-                    sleepUntil(() -> Microbot.isLoggedIn(), Rs2Random.between(10000, 20000));
+                    sleepUntil(() -> Microbot.isLoggedIn() && Rs2Player.getLocalPlayer() != null, Rs2Random.between(10000, 20000));
                 }
             }
             shouldFlee = false;
@@ -613,6 +616,11 @@ public class revKillerScript extends Script {
         Microbot.log("Attemping to get away from the PKer.");
         //kill the walker incase we were walking.
         Rs2Walker.setTarget(null);
+
+        if(!isPkerAround()){
+            shouldFlee = false;
+            return;
+        }
 
         if(!Rs2Player.isTeleBlocked()){
             Microbot.log("At least we're not teleblocked.");
