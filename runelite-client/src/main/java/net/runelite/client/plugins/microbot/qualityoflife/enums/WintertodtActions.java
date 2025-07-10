@@ -1,7 +1,7 @@
 package net.runelite.client.plugins.microbot.qualityoflife.enums;
 
 import lombok.Setter;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.MenuAction;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
@@ -26,14 +26,14 @@ public enum WintertodtActions {
     }
 
     public static void fletchBrumaRootsOnClicked() {
-        int brumaRootSlot = Rs2Inventory.slot(ItemID.BRUMA_ROOT);
+        int brumaRootSlot = Rs2Inventory.slot(ItemID.WINT_BRUMA_ROOT);
         if (brumaRootSlot == -1) {
             Microbot.log("<col=5F1515>Bruma root not found in inventory</col>");
             return;
         }
         Microbot.log("<col=245C2D>Fletching Kindling</col>");
         NewMenuEntry combinedMenuEntry = new NewMenuEntry("Fletch", "Bruma root", 0, MenuAction.WIDGET_TARGET_ON_WIDGET, brumaRootSlot, 9764864, false);
-        combinedMenuEntry.setItemId(ItemID.BRUMA_ROOT);
+        combinedMenuEntry.setItemId(ItemID.WINT_BRUMA_ROOT);
         Microbot.doInvoke(combinedMenuEntry, new Rectangle(1, 1));
     }
 

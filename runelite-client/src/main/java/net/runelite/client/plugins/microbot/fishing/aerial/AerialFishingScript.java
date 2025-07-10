@@ -1,8 +1,8 @@
 package net.runelite.client.plugins.microbot.fishing.aerial;
 
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
 import net.runelite.api.NPC;
-import net.runelite.api.NpcID;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
@@ -14,6 +14,7 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
@@ -35,14 +36,14 @@ public class AerialFishingScript extends Script {
         Rs2AntibanSettings.microBreakDurationLow = 1;
         Rs2AntibanSettings.microBreakDurationHigh = 5;
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
-            if (!super.run() || !Microbot.isLoggedIn() || !Rs2Inventory.hasItem("fish chunks","king worm") || (!Rs2Equipment.isWearing(ItemID.CORMORANTS_GLOVE)&&!Rs2Equipment.isWearing(ItemID.CORMORANTS_GLOVE_22817))) {
+            if (!super.run() || !Microbot.isLoggedIn() || !Rs2Inventory.hasItem("fish chunks","king worm") || (!Rs2Equipment.isWearing(ItemID.AERIAL_FISHING_GLOVES_NO_BIRD)&&!Rs2Equipment.isWearing(ItemID.AERIAL_FISHING_GLOVES_BIRD))) {
                 return;
             }
 
             if (Rs2AntibanSettings.actionCooldownActive) return;
 
 
-            if (Rs2Inventory.isFull() || (!Rs2Inventory.hasItem(ItemID.MOLCH_PEARL) && Rs2Inventory.getEmptySlots() == 1)) {
+            if (Rs2Inventory.isFull() || (!Rs2Inventory.hasItem(ItemID.AERIAL_FISHING_PEARL) && Rs2Inventory.emptySlotCount() == 1)) {
                 cutFish();
                 return;
             }
@@ -66,8 +67,8 @@ public class AerialFishingScript extends Script {
 
             if (Rs2Npc.interact(fishingspot)) {
                 if(sleepUntil(Rs2Player::isInteracting,1200)) {
-                    sleepUntil(() -> Rs2Equipment.isWearing(ItemID.CORMORANTS_GLOVE_22817), () -> {
-                        if((Rs2Inventory.getEmptySlots() <= 1 && Rs2Equipment.isWearing(ItemID.CORMORANTS_GLOVE)) || (Rs2Inventory.getEmptySlots() == 0 && Rs2Equipment.isWearing(ItemID.CORMORANTS_GLOVE_22817))) {
+                    sleepUntil(() -> Rs2Equipment.isWearing(ItemID.AERIAL_FISHING_GLOVES_BIRD), () -> {
+                        if((Rs2Inventory.getEmptySlots() <= 1 && Rs2Equipment.isWearing(ItemID.AERIAL_FISHING_GLOVES_NO_BIRD)) || (Rs2Inventory.getEmptySlots() == 0 && Rs2Equipment.isWearing(ItemID.AERIAL_FISHING_GLOVES_BIRD))) {
                             Microbot.log("Empty slot count:" + Rs2Inventory.getEmptySlots());
                             Rs2ItemModel knife = Rs2Inventory.get(ItemID.KNIFE);
                             Rs2Inventory.hover(knife);
@@ -97,18 +98,18 @@ public class AerialFishingScript extends Script {
 
 
     private NPC findFishingSpot() {
-        return Rs2Npc.getNpc(NpcID.FISHING_SPOT_8523);
+        return Rs2Npc.getNpc(NpcID.FISHING_SPOT_AERIAL);
     }
 
     private NPC findPreHoverSpot(NPC exludedSpot) {
-        return Rs2Npc.getNpcs(NpcID.FISHING_SPOT_8523).filter(x -> x != exludedSpot).findFirst().orElse(null);
+        return Rs2Npc.getNpcs(NpcID.FISHING_SPOT_AERIAL).filter(x -> x != exludedSpot).findFirst().orElse(null);
     }
 
     private void cutFish() {
-        Rs2ItemModel randomFish = Rs2Inventory.getRandom(ItemID.BLUEGILL,ItemID.COMMON_TENCH,ItemID.MOTTLED_EEL,ItemID.GREATER_SIREN);
+        Rs2ItemModel randomFish = Rs2Inventory.getRandom(ItemID.AERIAL_FISHING_BLUEGILL,ItemID.AERIAL_FISHING_COMMON_TENCH,ItemID.AERIAL_FISHING_MOTTLED_EEL,ItemID.AERIAL_FISHING_GREATER_SIREN);
         Rs2ItemModel knife = Rs2Inventory.get(ItemID.KNIFE);
         Rs2Inventory.combine(knife,randomFish);
-        sleepUntil(() -> !Rs2Inventory.hasItem(ItemID.BLUEGILL,ItemID.COMMON_TENCH,ItemID.MOTTLED_EEL,ItemID.GREATER_SIREN),1000*60);
+        sleepUntil(() -> !Rs2Inventory.hasItem(ItemID.AERIAL_FISHING_BLUEGILL,ItemID.AERIAL_FISHING_COMMON_TENCH,ItemID.AERIAL_FISHING_MOTTLED_EEL,ItemID.AERIAL_FISHING_GREATER_SIREN),1000*60);
         Rs2Random.waitEx(2000,2000);
     }
 

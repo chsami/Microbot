@@ -1,7 +1,7 @@
 package net.runelite.client.plugins.microbot.qualityoflife.enums;
 
-import net.runelite.api.ItemID;
 import net.runelite.api.Skill;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -11,25 +11,25 @@ import java.util.List;
 import java.util.Map;
 
 public enum DragonhideCrafting {
-    GREEN_DHIDE_VAMBRACES("Green d'hide vambraces", ItemID.GREEN_DRAGON_LEATHER),
-    GREEN_DHIDE_CHAPS("Green d'hide chaps", ItemID.GREEN_DRAGON_LEATHER),
-    GREEN_DHIDE_SHIELD("Green d'hide shield", ItemID.GREEN_DRAGON_LEATHER),
-    GREEN_DHIDE_BODY("Green d'hide body", ItemID.GREEN_DRAGON_LEATHER),
+    GREEN_DHIDE_VAMBRACES("Green d'hide vambraces", ItemID.DRAGON_LEATHER),
+    GREEN_DHIDE_CHAPS("Green d'hide chaps", ItemID.DRAGON_LEATHER),
+    GREEN_DHIDE_SHIELD("Green d'hide shield", ItemID.DRAGON_LEATHER),
+    GREEN_DHIDE_BODY("Green d'hide body", ItemID.DRAGON_LEATHER),
 
-    BLUE_DHIDE_VAMBRACES("Blue d'hide vambraces", ItemID.BLUE_DRAGON_LEATHER),
-    BLUE_DHIDE_CHAPS("Blue d'hide chaps", ItemID.BLUE_DRAGON_LEATHER),
-    BLUE_DHIDE_SHIELD("Blue d'hide shield", ItemID.BLUE_DRAGON_LEATHER),
-    BLUE_DHIDE_BODY("Blue d'hide body", ItemID.BLUE_DRAGON_LEATHER),
+    BLUE_DHIDE_VAMBRACES("Blue d'hide vambraces", ItemID.DRAGON_LEATHER_BLUE),
+    BLUE_DHIDE_CHAPS("Blue d'hide chaps", ItemID.DRAGON_LEATHER_BLUE),
+    BLUE_DHIDE_SHIELD("Blue d'hide shield", ItemID.DRAGON_LEATHER_BLUE),
+    BLUE_DHIDE_BODY("Blue d'hide body", ItemID.DRAGON_LEATHER_BLUE),
 
-    RED_DHIDE_VAMBRACES("Red d'hide vambraces", ItemID.RED_DRAGON_LEATHER),
-    RED_DHIDE_CHAPS("Red d'hide chaps", ItemID.RED_DRAGON_LEATHER),
-    RED_DHIDE_SHIELD("Red d'hide shield", ItemID.RED_DRAGON_LEATHER),
-    RED_DHIDE_BODY("Red d'hide body", ItemID.RED_DRAGON_LEATHER),
+    RED_DHIDE_VAMBRACES("Red d'hide vambraces", ItemID.DRAGON_LEATHER_RED),
+    RED_DHIDE_CHAPS("Red d'hide chaps", ItemID.DRAGON_LEATHER_RED),
+    RED_DHIDE_SHIELD("Red d'hide shield", ItemID.DRAGON_LEATHER_RED),
+    RED_DHIDE_BODY("Red d'hide body", ItemID.DRAGON_LEATHER_RED),
 
-    BLACK_DHIDE_VAMBRACES("Black d'hide vambraces", ItemID.BLACK_DRAGON_LEATHER),
-    BLACK_DHIDE_CHAPS("Black d'hide chaps", ItemID.BLACK_DRAGON_LEATHER),
-    BLACK_DHIDE_SHIELD("Black d'hide shield", ItemID.BLACK_DRAGON_LEATHER),
-    BLACK_DHIDE_BODY("Black d'hide body", ItemID.BLACK_DRAGON_LEATHER);
+    BLACK_DHIDE_VAMBRACES("Black d'hide vambraces", ItemID.DRAGON_LEATHER_BLACK),
+    BLACK_DHIDE_CHAPS("Black d'hide chaps", ItemID.DRAGON_LEATHER_BLACK),
+    BLACK_DHIDE_SHIELD("Black d'hide shield", ItemID.DRAGON_LEATHER_BLACK),
+    BLACK_DHIDE_BODY("Black d'hide body", ItemID.DRAGON_LEATHER_BLACK);
 
     private final String name;
     private final int id;

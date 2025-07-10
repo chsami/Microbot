@@ -1,6 +1,6 @@
 package net.runelite.client.plugins.microbot.qualityoflife.enums;
 
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.fletching.enums.FletchingItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;

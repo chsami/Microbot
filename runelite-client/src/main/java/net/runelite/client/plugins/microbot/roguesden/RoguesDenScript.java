@@ -1,9 +1,9 @@
 package net.runelite.client.plugins.microbot.roguesden;
 
 import lombok.Getter;
-import net.runelite.api.ItemID;
-import net.runelite.api.NpcID;
-import net.runelite.api.ObjectID;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -26,7 +26,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 import static net.runelite.client.plugins.microbot.roguesden.Obstacles.OBSTACLES;
-import static net.runelite.client.plugins.microbot.util.Global.sleepGaussian;
 
 public class RoguesDenScript extends Script {
 
@@ -155,7 +154,7 @@ public class RoguesDenScript extends Script {
 
                 if (Rs2Player.isAnimating() || Rs2Player.isMoving()) return;
 
-                boolean isInMinigame = Rs2Inventory.hasItem(ItemID.MYSTIC_JEWEL);
+                boolean isInMinigame = Rs2Inventory.hasItem(ItemID.ROGUESDEN_GEM);
 
                 if (!isInMinigame) {
                     currentObstacleIndex = 0;
@@ -216,7 +215,7 @@ public class RoguesDenScript extends Script {
             handleObstacle(nextObstacle);
         } else {
             if (currentObstacle.getTile().equals(new WorldPoint(3028, 5056, 0))) { //item requirement before going to obstacle
-                if (!Rs2Inventory.hasItem(ItemID.FLASH_POWDER)) {
+                if (!Rs2Inventory.hasItem(ItemID.ROGUESDEN_FLASH_POWDER)) {
                     handleObstacle(currentObstacle);
                     return true;
                 }
@@ -229,9 +228,9 @@ public class RoguesDenScript extends Script {
     }
 
     private boolean useFlashPowder() {
-        if (Rs2Inventory.hasItem(ItemID.FLASH_POWDER) && Rs2Player.getWorldLocation().getX() < 3026) {
+        if (Rs2Inventory.hasItem(ItemID.ROGUESDEN_FLASH_POWDER) && Rs2Player.getWorldLocation().getX() < 3026) {
             Microbot.log("Stunning guard");
-            if (Rs2Inventory.useItemOnNpc(ItemID.FLASH_POWDER, NpcID.ROGUE_GUARD_3191)) {
+            if (Rs2Inventory.useItemOnNpc(ItemID.ROGUESDEN_FLASH_POWDER, NpcID.ROGUESDEN_GUARD2)) {
                 if (Rs2Inventory.waitForInventoryChanges(5000)) {
                     handleObstacle(OBSTACLES[OBSTACLES.length - 3]);
                 }
@@ -242,7 +241,7 @@ public class RoguesDenScript extends Script {
     }
 
     private boolean useTileObject() {
-        if (Rs2Inventory.hasItem(ItemID.TILE_5568)) {
+        if (Rs2Inventory.hasItem(ItemID.ROGUESDEN_PUZZLE_MOSAIC_TILE1)) {
             Microbot.log("Handle tile door");
             Rs2GameObject.interact(7234, "Open");
             Rs2Widget.sleepUntilHasWidget("Select");
@@ -324,8 +323,8 @@ public class RoguesDenScript extends Script {
     private void enterMinigame() {
         WalkerState state = Rs2Walker.walkWithState(new WorldPoint(3056, 4991, 1));
         if (state == WalkerState.ARRIVED) {
-            Rs2GameObject.interact(ObjectID.DOORWAY_7256);
-            sleepUntil(() -> Rs2Inventory.hasItem(ItemID.MYSTIC_JEWEL));
+            Rs2GameObject.interact(ObjectID.ROGUESDEN_MAZEENTRANCE);
+            sleepUntil(() -> Rs2Inventory.hasItem(ItemID.ROGUESDEN_GEM));
         }
     }
 
@@ -351,12 +350,12 @@ public class RoguesDenScript extends Script {
             }
             Rs2Player.waitForWalking();
 
-        } else if (obstacle.getHint().equalsIgnoreCase("take") && !Rs2Inventory.hasItem(ItemID.FLASH_POWDER)) {
-            Rs2GroundItem.loot(obstacle.getTile(), ItemID.FLASH_POWDER);
-            sleepUntil(() -> Rs2Inventory.hasItem(ItemID.FLASH_POWDER));
-        } else if (obstacle.getHint().equalsIgnoreCase("tile") && !Rs2Inventory.hasItem(ItemID.TILE_5568)) {
-            Rs2GroundItem.loot(obstacle.getTile(), ItemID.TILE_5568);
-            sleepUntil(() -> Rs2Inventory.hasItem(ItemID.TILE_5568));
+        } else if (obstacle.getHint().equalsIgnoreCase("take") && !Rs2Inventory.hasItem(ItemID.ROGUESDEN_FLASH_POWDER)) {
+            Rs2GroundItem.loot(obstacle.getTile(), ItemID.ROGUESDEN_FLASH_POWDER);
+            sleepUntil(() -> Rs2Inventory.hasItem(ItemID.ROGUESDEN_FLASH_POWDER));
+        } else if (obstacle.getHint().equalsIgnoreCase("tile") && !Rs2Inventory.hasItem(ItemID.ROGUESDEN_PUZZLE_MOSAIC_TILE1)) {
+            Rs2GroundItem.loot(obstacle.getTile(), ItemID.ROGUESDEN_PUZZLE_MOSAIC_TILE1);
+            sleepUntil(() -> Rs2Inventory.hasItem(ItemID.ROGUESDEN_PUZZLE_MOSAIC_TILE1));
         } else {
             if (!Rs2Walker.walkFastCanvas(obstacle.getTile())) {
                 Rs2Walker.walkTo(obstacle.getTile());

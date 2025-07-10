@@ -1,6 +1,6 @@
 package net.runelite.client.plugins.microbot.revKiller;
 
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.config.*;
 
@@ -62,7 +62,7 @@ public interface revKillerConfig extends Config {
     enum ArrowSelections {
         RUNE(ItemID.RUNE_ARROW, "Rune arrows"),
         AMETHYST(ItemID.AMETHYST_ARROW, "Amethyst arrows"),
-        BOLT_RACK(ItemID.BOLT_RACK, "Bolt rack");
+        BOLT_RACK(ItemID.BARROWS_KARIL_AMMO, "Bolt rack");
         //more to come I'm lazy okay
 
         private final int id;

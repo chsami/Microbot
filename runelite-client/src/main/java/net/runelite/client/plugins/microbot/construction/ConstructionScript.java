@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.construction;
 
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.NPC;
 import net.runelite.api.SpriteID;
 import net.runelite.api.TileObject;
@@ -71,7 +72,7 @@ public class ConstructionScript extends Script {
         TileObject oakLarderSpace = getOakLarderSpace();
         TileObject oakLarder = getOakLarder();
         NPC butler = getButler();
-        boolean hasRequiredPlanks = Rs2Inventory.hasItemAmount(ItemID.OAK_PLANK, Rs2Random.between(8, 16));
+        boolean hasRequiredPlanks = Rs2Inventory.hasItemAmount(ItemID.PLANK_OAK, Rs2Random.between(8, 16));
         if (oakLarderSpace == null && oakLarder != null) {
             state = ConstructionState.Remove;
         } else if (oakLarderSpace != null && oakLarder == null && hasRequiredPlanks) {

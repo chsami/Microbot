@@ -576,10 +576,8 @@ public class BlastoiseFurnaceScript extends Script {
                 return (int) Math.ceil(millis * 0.2); // 1 ms = 0.2 gold
             }
         }
-
-        if (BreakHandlerScript.breakIn != 0)
-        {
-            return BreakHandlerScript.breakIn * 20;   // 1 s = 20 gold
+        if (BreakHandlerScript.breakIn > 0) {
+            return BreakHandlerScript.breakIn * 20;
         }
 
         return 72000;

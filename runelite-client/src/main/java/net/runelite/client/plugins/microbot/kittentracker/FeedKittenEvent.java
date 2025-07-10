@@ -1,7 +1,7 @@
 package net.runelite.client.plugins.microbot.kittentracker;
 
 
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.BlockingEvent;
 import net.runelite.client.plugins.microbot.BlockingEventPriority;
 import net.runelite.client.plugins.microbot.util.Global;
@@ -20,14 +20,14 @@ public class FeedKittenEvent implements BlockingEvent {
 
     @Override
     public boolean validate() {
-        return Rs2Inventory.contains(ItemID.RAW_KARAMBWANJI)
+        return Rs2Inventory.contains(ItemID.TBWT_RAW_KARAMBWANJI)
                 && (KittenPlugin.HUNGRY_FIRST_WARNING_TIME_LEFT_IN_SECONDS * 1000) >= kittenPlugin.getTimeBeforeHungry() && (kittenPlugin.playerHasFollower() && kittenPlugin.isKitten());
 
     }
 
     @Override
     public boolean execute() {
-        Rs2Npc.getNpcs("Kitten").findFirst().ifPresent(kitten -> Rs2Inventory.useItemOnNpc(ItemID.RAW_KARAMBWANJI, kitten));
+        Rs2Npc.getNpcs("Kitten").findFirst().ifPresent(kitten -> Rs2Inventory.useItemOnNpc(ItemID.TBWT_RAW_KARAMBWANJI, kitten));
         Global.sleepUntil(() -> (KittenPlugin.HUNGRY_FIRST_WARNING_TIME_LEFT_IN_SECONDS * 1000) < kittenPlugin.getTimeBeforeHungry());
         return true;
     }

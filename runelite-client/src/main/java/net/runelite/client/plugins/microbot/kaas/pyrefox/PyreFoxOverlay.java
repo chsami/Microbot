@@ -1,6 +1,6 @@
 package net.runelite.client.plugins.microbot.kaas.pyrefox;
 
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -69,7 +69,7 @@ public class PyreFoxOverlay extends OverlayPanel
                         .build());
             }
 
-            boolean hasPouch = Rs2Inventory.contains(ItemID.LARGE_MEAT_POUCH_OPEN) || Rs2Inventory.contains(ItemID.LARGE_MEAT_POUCH) || Rs2Inventory.contains(ItemID.SMALL_MEAT_POUCH) || Rs2Inventory.contains(ItemID.SMALL_MEAT_POUCH_OPEN);
+            boolean hasPouch = Rs2Inventory.contains(ItemID.HG_MEATPOUCH_LARGE_OPEN) || Rs2Inventory.contains(ItemID.HG_MEATPOUCH_LARGE) || Rs2Inventory.contains(ItemID.HG_MEATPOUCH_SMALL) || Rs2Inventory.contains(ItemID.HG_MEATPOUCH_SMALL_OPEN);
             panelComponent.getChildren().add(LineComponent.builder()
                     .left("Meat Pouch:")
                     .right(hasPouch ? "✓" : "x")

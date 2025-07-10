@@ -1,7 +1,6 @@
 package net.runelite.client.plugins.microbot.fishing.barbarian;
 
-import net.runelite.api.ItemID;
-import net.runelite.api.NPC;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.game.FishingSpot;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
@@ -37,7 +36,7 @@ public class BarbarianFishingScript extends Script {
                 return;
             }
 
-            if (Rs2Equipment.hasEquipped(ItemID.DRAGON_HARPOON)) {
+            if (Rs2Equipment.isWearing(ItemID.DRAGON_HARPOON)) {
                 if (Rs2Combat.getSpecEnergy() == 1000) {
                     if (specReadyTime == 0) {
                         double delay = Rs2Random.gaussRand(45000, 30000); // Delay in ms (mean 1200, stddev 200)

@@ -1,7 +1,7 @@
 package net.runelite.client.plugins.microbot.npcTanner;
 
-import net.runelite.api.ItemID;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
@@ -236,8 +236,8 @@ public class npcTannerScript extends Script {
         if (Rs2Inventory.hasItem(potionName)) {
             Rs2Bank.depositOne(potionName);
         }
-        if (Rs2Inventory.hasItem(ItemID.VIAL)) {
-            Rs2Bank.depositOne(ItemID.VIAL);
+        if (Rs2Inventory.hasItem(ItemID.VIAL_EMPTY)) {
+            Rs2Bank.depositOne(ItemID.VIAL_EMPTY);
         }
     }
 

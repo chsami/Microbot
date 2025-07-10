@@ -2,7 +2,7 @@ package net.runelite.client.plugins.microbot.util.magic;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 
 import java.util.Collections;
 import java.util.List;

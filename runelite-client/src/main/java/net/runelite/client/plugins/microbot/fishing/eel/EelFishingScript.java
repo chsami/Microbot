@@ -1,7 +1,7 @@
 package net.runelite.client.plugins.microbot.fishing.eel;
 
-import net.runelite.api.ItemID;
 import net.runelite.api.NPC;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.game.FishingSpot;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
@@ -24,7 +24,7 @@ public class EelFishingScript extends Script {
     private EelFishingConfig config;
 
     public static boolean hasRequiredGloves() {
-        return Rs2Equipment.isWearing(ItemID.ICE_GLOVES) || Rs2Equipment.isWearing(ItemID.SMITHS_GLOVES_I);
+        return Rs2Equipment.isWearing(ItemID.ICE_GLOVES) || Rs2Equipment.isWearing(ItemID.SMITHING_UNIFORM_GLOVES_ICE);
     }
 
     public boolean run(EelFishingConfig config) {

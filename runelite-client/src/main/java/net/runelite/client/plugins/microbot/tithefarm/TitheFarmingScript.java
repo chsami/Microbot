@@ -1,7 +1,9 @@
 package net.runelite.client.plugins.microbot.tithefarm;
 
 import net.runelite.api.*;
+import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.tithefarm.enums.TitheFarmLanes;
@@ -345,11 +347,11 @@ public class TitheFarmingScript extends Script {
 
         // Helper method to validate inventory items
         private void validateInventory() {
-            if (!Rs2Inventory.hasItem(ItemID.SEED_DIBBER) || !Rs2Inventory.hasItem(ItemID.SPADE)) {
+            if (!Rs2Inventory.hasItem(ItemID.DIBBER) || !Rs2Inventory.hasItem(ItemID.SPADE)) {
                 Microbot.showMessage("You need a seed dibber and a spade in your inventory!");
                 shutdown();
             }
-            if (!Rs2Inventory.hasItemAmount("watering can", WATERING_CANS_AMOUNT) && !Rs2Inventory.hasItem(ItemID.GRICOLLERS_CAN)) {
+            if (!Rs2Inventory.hasItemAmount("watering can", WATERING_CANS_AMOUNT) && !Rs2Inventory.hasItem(ItemID.ZEAH_WATERINGCAN)) {
                 Microbot.showMessage("You need at least 8 watering can(8) or a Gricoller's can!");
                 shutdown();
             }
@@ -408,7 +410,7 @@ public class TitheFarmingScript extends Script {
             sleepUntil(() -> gricollerCanCharges != -1);
             if (gricollerCanCharges < config.gricollerCanRefillTreshhold()) {
                 walkToBarrel();
-                Rs2Inventory.interact(ItemID.GRICOLLERS_CAN, "Use");
+                Rs2Inventory.interact(ItemID.ZEAH_WATERINGCAN, "Use");
                 Rs2GameObject.interact("Water barrel");
                 sleepUntil(Rs2Player::isAnimating, 10000);
             } else {
@@ -417,15 +419,15 @@ public class TitheFarmingScript extends Script {
         } else if (TitheFarmMaterial.hasWateringCanToBeFilled()) {
             walkToBarrel();
             Rs2Inventory.interact(TitheFarmMaterial.getWateringCanToBeFilled(), "Use");
-            Rs2GameObject.interact(ObjectID.WATER_BARREL, "Use");
-            sleepUntil(() -> Rs2Inventory.hasItemAmount(ItemID.WATERING_CAN8, WATERING_CANS_AMOUNT), 60000);
+            Rs2GameObject.interact(ObjectID.WATER_BARREL1, "Use");
+            sleepUntil(() -> Rs2Inventory.hasItemAmount(ItemID.WATERING_CAN_8, WATERING_CANS_AMOUNT), 60000);
         } else {
             state = PLANTING_SEEDS;
         }
     }
 
     private void walkToBarrel() {
-        final TileObject gameObject = Rs2GameObject.findObjectById(ObjectID.WATER_BARREL);
+        final TileObject gameObject = Rs2GameObject.findObjectById(ObjectID.WATER_BARREL1);
         if (gameObject.getWorldLocation().distanceTo2D(Microbot.getClient().getLocalPlayer().getWorldLocation()) > DISTANCE_TRESHHOLD_MINIMAP_WALK) {
             Rs2Walker.walkMiniMap(gameObject.getWorldLocation(), 1);
             sleepUntil(Rs2Player::isMoving);
@@ -435,7 +437,7 @@ public class TitheFarmingScript extends Script {
 
     private void checkGricollerCharges() {
         gricollerCanCharges = -1;
-        Rs2Inventory.interact(ItemID.GRICOLLERS_CAN, "check");
+        Rs2Inventory.interact(ItemID.ZEAH_WATERINGCAN, "check");
     }
 
     private void takeSeeds() {
@@ -443,7 +445,7 @@ public class TitheFarmingScript extends Script {
             Rs2Inventory.drop(TitheFarmMaterial.getSeedForLevel().getName());
             sleep(400, 600);
         }
-        Rs2GameObject.interact(ObjectID.SEED_TABLE);
+        Rs2GameObject.interact(ObjectID.TITHE_PLANT_SEED_TABLE);
         boolean result = Rs2Widget.sleepUntilHasWidget(TitheFarmMaterial.getSeedForLevel().getName());
         if (!result) return;
         keyPress(TitheFarmMaterial.getSeedForLevel().getOption());
@@ -463,7 +465,7 @@ public class TitheFarmingScript extends Script {
     private boolean depositSack() {
         if (Rs2Inventory.hasItem(TitheFarmMaterial.getSeedForLevel().getFruitId())) {
             Microbot.log("Storing fruits into sack for experience...");
-            Rs2GameObject.interact(ObjectID.SACK_27431);
+            Rs2GameObject.interact(ObjectID.TITHE_SACK_OF_FRUIT_EMPTY);
             Rs2Player.waitForWalking();
             Rs2Player.waitForAnimation();
             return true;

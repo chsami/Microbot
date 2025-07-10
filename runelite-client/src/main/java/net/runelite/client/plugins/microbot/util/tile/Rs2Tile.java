@@ -16,37 +16,38 @@ import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
-import org.apache.commons.lang3.tuple.MutablePair;
+import org.intellij.lang.annotations.MagicConstant;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public abstract class Rs2Tile implements Tile {
-
+    private static final Map<WorldPoint, Integer> dangerousGraphicsObjectTilesInternal = new ConcurrentHashMap<>();
     @Getter
-    public static List<MutablePair<WorldPoint, Integer>> dangerousGraphicsObjectTiles = new ArrayList<>();
+    private static final Map<WorldPoint, Integer> dangerousGraphicsObjectTiles = Collections.unmodifiableMap(dangerousGraphicsObjectTilesInternal);
 
     private static ScheduledExecutorService tileExecutor;
+
+    private static final int FLAG_DATA_SIZE = 104;
 
     /**
      * Initializes the tile executor
      * This will handle the removal of dangerous tiles after a certain amount of time
      */
     public static void init() {
-        if (tileExecutor == null) {
-            tileExecutor = Executors.newSingleThreadScheduledExecutor();
-            tileExecutor.scheduleWithFixedDelay(() -> {
-                if (dangerousGraphicsObjectTiles.isEmpty()) return;
+        if (tileExecutor != null) return;
+        tileExecutor = Executors.newSingleThreadScheduledExecutor();
+        tileExecutor.scheduleWithFixedDelay(() -> {
+            // TODO: call this on game tick?
+            if (dangerousGraphicsObjectTilesInternal.isEmpty()) return;
 
-                for (MutablePair<WorldPoint, Integer> dangerousTile : dangerousGraphicsObjectTiles) {
-                    dangerousTile.setValue(dangerousTile.getValue() - 600);
-                }
-                dangerousGraphicsObjectTiles = dangerousGraphicsObjectTiles.stream().filter(x -> x.getValue() > 0).collect(Collectors.toList());
-            }, 0, 600, TimeUnit.MILLISECONDS);
-        }
+            dangerousGraphicsObjectTilesInternal.replaceAll((worldPoint, time) -> time - 600);
+            dangerousGraphicsObjectTilesInternal.entrySet().removeIf(entry -> entry.getValue() <= 0);
+        }, 0, 600, TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -55,19 +56,13 @@ public abstract class Rs2Tile implements Tile {
      * @param time the time a tile is dangerous in milliseconds
      */
     public static void addDangerousGraphicsObjectTile(GraphicsObject graphicsObject, int time) {
-        WorldPoint worldPoint;
-
-        if (Microbot.getClient().getTopLevelWorldView().getScene().isInstance()) {
-            worldPoint = WorldPoint.fromLocalInstance(Microbot.getClient(), graphicsObject.getLocation());
-        } else {
-            worldPoint = WorldPoint.fromLocal(Microbot.getClient(), graphicsObject.getLocation());
-        }
+        final WorldPoint worldPoint = Microbot.getClient().getTopLevelWorldView().getScene().isInstance() ?
+                WorldPoint.fromLocalInstance(Microbot.getClient(), graphicsObject.getLocation()) :
+                WorldPoint.fromLocal(Microbot.getClient(), graphicsObject.getLocation());
 
         if (worldPoint == null) return;
 
-        final MutablePair<WorldPoint, Integer> dangerousTile = MutablePair.of(worldPoint, time);
-
-        dangerousGraphicsObjectTiles.add(dangerousTile);
+        dangerousGraphicsObjectTilesInternal.merge(worldPoint, time, Math::max);
 
         if (Rs2Player.getWorldLocation().equals(worldPoint)) {
             Microbot.getClientThread().runOnSeperateThread(() -> {
@@ -88,7 +83,7 @@ public abstract class Rs2Tile implements Tile {
         List<WorldPoint> safeTiles = new ArrayList<>();
 
         for (WorldPoint walkableTile : getWalkableTilesAroundPlayer(radius)) {
-            boolean isDangerousTile = dangerousGraphicsObjectTiles.stream().anyMatch(x -> x.getKey().equals(walkableTile));
+            boolean isDangerousTile = getDangerousGraphicsObjectTiles().containsKey(walkableTile);
             if (isDangerousTile) continue;
             safeTiles.add(walkableTile);
         }
@@ -106,43 +101,53 @@ public abstract class Rs2Tile implements Tile {
     }
 
     public static boolean isWalkable(Tile tile) {
-        Client client = Microbot.getClient();
-        if (client.getCollisionMaps() != null) {
-            int[][] flags = client.getCollisionMaps()[client.getPlane()].getFlags();
-            int data = flags[tile.getSceneLocation().getX()][tile.getSceneLocation().getY()];
+        if (tile == null) return false;
 
-            Set<MovementFlag> movementFlags = MovementFlag.getSetFlags(data);
+        final int[][] flags = getFlags();
+        if (flags == null) return false;
 
-            return movementFlags.isEmpty();
-        }
-        return true;
+        return isWalkable(flags, tile.getSceneLocation().getX(), tile.getSceneLocation().getY());
     }
 
     public static boolean isWalkable(WorldPoint worldPoint) {
-        Client client = Microbot.getClient();
-        LocalPoint localPoint = LocalPoint.fromWorld(client, worldPoint);
-        if (localPoint == null) {
-            return false;
-        }
-        return isWalkable(localPoint);
+        final WorldView wv = Microbot.getClient().getTopLevelWorldView();
+        if (wv == null) return false;
+
+        return isWalkable(LocalPoint.fromWorld(wv, worldPoint));
     }
 
+    private static int[][] getFlags() {
+        final WorldView wv = Microbot.getClient().getTopLevelWorldView();
+        if (wv == null) return null;
+
+        final CollisionData[] collisionData = wv.getCollisionMaps();
+        if (collisionData == null) return null;
+
+        return collisionData[wv.getPlane()].getFlags();
+    }
+
+    private static boolean isFlagSet(int data, @MagicConstant(flagsFromClass = CollisionDataFlag.class) int flag) {
+        return (data & flag) != 0;
+    }
+
+    @SuppressWarnings("MagicConstant")
+    private static boolean isAnyFlagSet(int data, @MagicConstant(flagsFromClass = CollisionDataFlag.class) int... flags) {
+        final int combinedFlag = Arrays.stream(flags).reduce(0, (i, j) -> i | j);
+        return isFlagSet(data, combinedFlag);
+    }
+
+    private static boolean isWalkable(int[][] flags, int x, int y) {
+        return !isFlagSet(flags[x][y], CollisionDataFlag.BLOCK_MOVEMENT_FULL);
+    }
 
     public static boolean isWalkable(LocalPoint localPoint) {
-        if (localPoint == null)
-            return true;
+        if (localPoint == null) return false;
 
-        Client client = Microbot.getClient();
-        if (client.getCollisionMaps() != null) {
-            int[][] flags = client.getCollisionMaps()[client.getPlane()].getFlags();
-            int data = flags[localPoint.getSceneX()][localPoint.getSceneY()];
+        final int[][] flags = getFlags();
+        if (flags == null) return false;
 
-            Set<MovementFlag> movementFlags = MovementFlag.getSetFlags(data);
-
-            return !movementFlags.contains(MovementFlag.BLOCK_MOVEMENT_FULL)
-                    && !movementFlags.contains(MovementFlag.BLOCK_MOVEMENT_FLOOR);
-        }
-        return true;
+        final int data = flags[localPoint.getSceneX()][localPoint.getSceneY()];
+        return !isFlagSet(data, CollisionDataFlag.BLOCK_MOVEMENT_FULL);
     }
 
     public static List<WorldPoint> getWalkableTilesAroundPlayer(int radius) {
@@ -150,25 +155,24 @@ public abstract class Rs2Tile implements Tile {
     }
 
     public static List<WorldPoint> getWalkableTilesAroundTile(WorldPoint point, int radius) {
-        List<WorldPoint> worldPoints = new ArrayList<>();
-        LocalPoint playerLocalPosition = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), point);
+        final LocalPoint localPoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), point);
+        if (localPoint == null) return Collections.emptyList();
 
-        if (playerLocalPosition == null) return new ArrayList<>();
+        final int[][] flags = getFlags();
+        if (flags == null) return Collections.emptyList(); // this differs from original impl. would return all tiles
 
+        final int sceneX = localPoint.getSceneX();
+        final int sceneY = localPoint.getSceneY();
+        // limit radius to the size of flags
+        if (sceneX - radius < 0 || sceneX + radius >= FLAG_DATA_SIZE) radius = Math.min(sceneX, FLAG_DATA_SIZE - sceneX - 1);
+        if (sceneY - radius < 0 || sceneY + radius >= FLAG_DATA_SIZE) radius = Math.min(sceneY, FLAG_DATA_SIZE - sceneY - 1);
+
+        final List<WorldPoint> worldPoints = new ArrayList<>();
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dy = -radius; dy <= radius; dy++) {
                 if (dx == 0 && dy == 0) continue; // Skip the player's current position
-                LocalPoint localPoint;
-                WorldPoint worldPoint;
-                localPoint = new LocalPoint(playerLocalPosition.getX() + (dx * 128), playerLocalPosition.getY() + (dy * 128), -1);
-                if (Microbot.getClient().getTopLevelWorldView().getScene().isInstance()) {
-                    worldPoint = WorldPoint.fromLocalInstance(Microbot.getClient(), localPoint);
-                } else {
-                    worldPoint = WorldPoint.fromLocal(Microbot.getClient(), localPoint);
-                }
-                if (!isWalkable(localPoint)) continue;
-
-                worldPoints.add(worldPoint);
+                if (!isWalkable(flags, sceneX + dx, sceneY + dy)) continue;
+                worldPoints.add(new WorldPoint(point.getX() + dx, point.getY() + dy, point.getPlane()));
             }
         }
         return worldPoints;
@@ -214,7 +218,7 @@ public abstract class Rs2Tile implements Tile {
      * @return A HashMap containing WorldPoints and their corresponding distances from the start tile.
      */
     public static HashMap<WorldPoint, Integer> getReachableTilesFromTile(WorldPoint tile, int distance, boolean ignoreCollision) {
-        var tileDistances = new HashMap<WorldPoint, Integer>();
+        final HashMap<WorldPoint, Integer> tileDistances = new HashMap<>();
         tileDistances.put(tile, 0);
 
         for (int i = 0; i < distance + 1; i++) {
@@ -223,7 +227,7 @@ public abstract class Rs2Tile implements Tile {
                 var point = kvp.getKey();
                 LocalPoint localPoint;
                 if (Microbot.getClient().getTopLevelWorldView().isInstance()) {
-                    var worldPoint = WorldPoint.toLocalInstance(Microbot.getClient().getTopLevelWorldView(), point).stream().findFirst().orElse(null);
+                    WorldPoint worldPoint = WorldPoint.toLocalInstance(Microbot.getClient().getTopLevelWorldView(), point).stream().findFirst().orElse(null);
                     if (worldPoint == null) break;
                     localPoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), worldPoint);
                 } else
@@ -304,24 +308,28 @@ public abstract class Rs2Tile implements Tile {
      */
     public static boolean isTileReachable(WorldPoint targetPoint) {
         if (targetPoint == null) return false;
-        if (targetPoint.getPlane() != Rs2Player.getWorldLocation().getPlane()) return false;
+
+        final WorldPoint playerLoc = Rs2Player.getWorldLocation();
+        if (playerLoc == null) return false;
+
+        if (targetPoint.getPlane() != playerLoc.getPlane()) return false;
         if (CollisionMap.ignoreCollision.contains(targetPoint)) return true;
-        boolean[][] visited = new boolean[104][104];
-        int[][] flags = Microbot.getClient().getCollisionMaps()[Microbot.getClient().getPlane()].getFlags();
-        WorldPoint playerLoc = Rs2Player.getWorldLocation();
-        int startX = 0;
-        int startY = 0;
-        int startPoint = 0;
+
+        final boolean[][] visited = new boolean[FLAG_DATA_SIZE][FLAG_DATA_SIZE];
+        final int[][] flags = getFlags();
+        if (flags == null) return false;
+
+        final int startX;
+        final int startY;
         if (Microbot.getClient().getTopLevelWorldView().getScene().isInstance()) {
             LocalPoint localPoint = Rs2Player.getLocalLocation();
             startX = localPoint.getSceneX();
             startY = localPoint.getSceneY();
-            startPoint = (startX << 16) | startY;
         } else {
             startX = playerLoc.getX() - Microbot.getClient().getBaseX();
             startY = playerLoc.getY() - Microbot.getClient().getBaseY();
-            startPoint = (startX << 16) | startY;
         }
+        final int startPoint = (startX << 16) | startY;
 
         ArrayDeque<Integer> queue = new ArrayDeque<>();
         queue.add(startPoint);
@@ -390,10 +398,10 @@ public abstract class Rs2Tile implements Tile {
      *
      * @param x The x-coordinate of the tile to check.
      * @param y The y-coordinate of the tile to check.
-     * @return True if the coordinates are within bounds (0 <= x, y < 104), otherwise false.
+     * @return True if the coordinates are within bounds (0 <= x, y < {@code FLAG_DATA_SIZE}), otherwise false.
      */
     private static boolean isWithinBounds(int x, int y) {
-        return x >= 0 && y >= 0 && x < 104 && y < 104;
+        return x >= 0 && y >= 0 && x < FLAG_DATA_SIZE && y < FLAG_DATA_SIZE;
     }
 
     /**

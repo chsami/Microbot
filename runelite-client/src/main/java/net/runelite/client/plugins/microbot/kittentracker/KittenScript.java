@@ -1,7 +1,7 @@
 // filepath: c:\Users\marcu\IdeaProjects\microbot\runelite-client\src\main\java\net\runelite\client\plugins\microbot\kittentracker\KittenScript.java
 package net.runelite.client.plugins.microbot.kittentracker;
 
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
@@ -32,7 +32,7 @@ public class KittenScript extends Script {
 
     private void handleKittenNeeds(KittenConfig config) {
         if (config.kittenHungryOverlay() 
-            && Rs2Inventory.contains(ItemID.RAW_KARAMBWANJI)
+            && Rs2Inventory.contains(ItemID.TBWT_RAW_KARAMBWANJI)
             && (KittenPlugin.HUNGRY_FIRST_WARNING_TIME_LEFT_IN_SECONDS * 1000) >= kittenPlugin.getTimeBeforeHungry()) {
             feedKitten();
         }
@@ -44,7 +44,7 @@ public class KittenScript extends Script {
     }
 
     private void feedKitten() {
-        Rs2Npc.getNpcs("Kitten").findFirst().ifPresent(kitten -> Rs2Inventory.useItemOnNpc(ItemID.RAW_KARAMBWANJI, kitten));
+        Rs2Npc.getNpcs("Kitten").findFirst().ifPresent(kitten -> Rs2Inventory.useItemOnNpc(ItemID.TBWT_RAW_KARAMBWANJI, kitten));
         sleep(1000, 2000);
     }
 

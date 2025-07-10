@@ -1,6 +1,6 @@
 package net.runelite.client.plugins.microbot.runecrafting.gotr.data;
 
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -12,7 +12,7 @@ public class RuneLookupTable {
 
     public RuneLookupTable() {
         this.lookupTable = new HashMap<Integer, List<LevelMultiplier>>() {{
-            put(ItemID.AIR_RUNE, new ArrayList<LevelMultiplier>() {{
+            put(ItemID.AIRRUNE, new ArrayList<LevelMultiplier>() {{
                 add(new LevelMultiplier(11, 2));
                 add(new LevelMultiplier(22, 3));
                 add(new LevelMultiplier(33, 4));
@@ -23,7 +23,7 @@ public class RuneLookupTable {
                 add(new LevelMultiplier(88, 9));
                 add(new LevelMultiplier(99, 10));
             }});
-            put(ItemID.MIND_RUNE, new ArrayList<LevelMultiplier>() {{
+            put(ItemID.MINDRUNE, new ArrayList<LevelMultiplier>() {{
                 add(new LevelMultiplier(14, 2));
                 add(new LevelMultiplier(28, 3));
                 add(new LevelMultiplier(42, 4));
@@ -32,40 +32,40 @@ public class RuneLookupTable {
                 add(new LevelMultiplier(84, 7));
                 add(new LevelMultiplier(98, 8));
             }});
-            put(ItemID.WATER_RUNE, new ArrayList<LevelMultiplier>() {{
+            put(ItemID.WATERRUNE, new ArrayList<LevelMultiplier>() {{
                 add(new LevelMultiplier(19, 2));
                 add(new LevelMultiplier(38, 3));
                 add(new LevelMultiplier(57, 4));
                 add(new LevelMultiplier(76, 5));
                 add(new LevelMultiplier(95, 6));
             }});
-            put(ItemID.EARTH_RUNE, new ArrayList<LevelMultiplier>() {{
+            put(ItemID.EARTHRUNE, new ArrayList<LevelMultiplier>() {{
                 add(new LevelMultiplier(26, 2));
                 add(new LevelMultiplier(52, 3));
                 add(new LevelMultiplier(78, 4));
                 add(new LevelMultiplier(104, 5));
             }});
-            put(ItemID.FIRE_RUNE, new ArrayList<LevelMultiplier>() {{
+            put(ItemID.FIRERUNE, new ArrayList<LevelMultiplier>() {{
                 add(new LevelMultiplier(35, 2));
                 add(new LevelMultiplier(70, 3));
             }});
-            put(ItemID.BODY_RUNE, new ArrayList<LevelMultiplier>() {{
+            put(ItemID.BODYRUNE, new ArrayList<LevelMultiplier>() {{
                 add(new LevelMultiplier(46, 2));
                 add(new LevelMultiplier(92, 3));
             }});
-            put(ItemID.COSMIC_RUNE, new ArrayList<LevelMultiplier>() {{
+            put(ItemID.COSMICRUNE, new ArrayList<LevelMultiplier>() {{
                 add(new LevelMultiplier(59, 2));
             }});
-            put(ItemID.CHAOS_RUNE, new ArrayList<LevelMultiplier>() {{
+            put(ItemID.CHAOSRUNE, new ArrayList<LevelMultiplier>() {{
                 add(new LevelMultiplier(74, 2));
             }});
-            put(ItemID.NATURE_RUNE, new ArrayList<LevelMultiplier>() {{
+            put(ItemID.NATURERUNE, new ArrayList<LevelMultiplier>() {{
                 add(new LevelMultiplier(91, 2));
             }});
-            put(ItemID.LAW_RUNE, new ArrayList<LevelMultiplier>() {{
+            put(ItemID.LAWRUNE, new ArrayList<LevelMultiplier>() {{
                 add(new LevelMultiplier(95, 2));
             }});
-            put(ItemID.DEATH_RUNE, new ArrayList<LevelMultiplier>() {{
+            put(ItemID.DEATHRUNE, new ArrayList<LevelMultiplier>() {{
                 add(new LevelMultiplier(99, 2));
             }});
         }};

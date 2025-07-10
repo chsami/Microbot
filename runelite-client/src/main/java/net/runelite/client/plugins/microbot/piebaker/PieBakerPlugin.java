@@ -3,7 +3,7 @@ package net.runelite.client.plugins.microbot.piebaker;
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.InventoryID;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.Skill;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ItemContainerChanged;
@@ -44,18 +44,18 @@ public class PieBakerPlugin extends Plugin {
     private static final Map<String, Integer> RAW_PIES = new HashMap<>();
 
     static {
-        RAW_PIES.put("uncooked berry pie", ItemID.UNCOOKED_BERRY_PIE);
+        RAW_PIES.put("uncooked berry pie", ItemID.UNCOOKED_REDBERRY_PIE);
         RAW_PIES.put("uncooked meat pie", ItemID.UNCOOKED_MEAT_PIE);
-        RAW_PIES.put("raw mud pie", ItemID.RAW_MUD_PIE);
+        RAW_PIES.put("raw mud pie", ItemID.UNCOOKED_MUD_PIE);
         RAW_PIES.put("uncooked apple pie", ItemID.UNCOOKED_APPLE_PIE);
-        RAW_PIES.put("raw garden pie", ItemID.RAW_GARDEN_PIE);
-        RAW_PIES.put("raw fish pie", ItemID.RAW_FISH_PIE);
+        RAW_PIES.put("raw garden pie", ItemID.UNCOOKED_GARDEN_PIE);
+        RAW_PIES.put("raw fish pie", ItemID.UNCOOKED_FISH_PIE);
         RAW_PIES.put("uncooked botanical pie", ItemID.UNCOOKED_BOTANICAL_PIE);
         RAW_PIES.put("uncooked mushroom pie", ItemID.UNCOOKED_MUSHROOM_PIE);
-        RAW_PIES.put("raw admiral pie", ItemID.RAW_ADMIRAL_PIE);
+        RAW_PIES.put("raw admiral pie", ItemID.UNCOOKED_ADMIRAL_PIE);
         RAW_PIES.put("uncooked dragonfruit pie", ItemID.UNCOOKED_DRAGONFRUIT_PIE);
-        RAW_PIES.put("raw wild pie", ItemID.RAW_WILD_PIE);
-        RAW_PIES.put("raw summer pie", ItemID.RAW_SUMMER_PIE);
+        RAW_PIES.put("raw wild pie", ItemID.UNCOOKED_WILD_PIE);
+        RAW_PIES.put("raw summer pie", ItemID.UNCOOKED_SUMMER_PIE);
     }
 
     private Instant startTime;

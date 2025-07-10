@@ -6,7 +6,13 @@ package net.runelite.client.plugins.microbot.vorkath;
 
 import javax.inject.Inject;
 import lombok.Getter;
-import net.runelite.api.*;
+import net.runelite.api.EquipmentInventorySlot;
+import net.runelite.api.NPC;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.Projectile;
+import net.runelite.api.Skill;
+import net.runelite.api.TileObject;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
@@ -93,15 +99,15 @@ public class VorkathScript extends Script {
     }
 
     private void calculateState() {
-        if (Rs2Npc.getNpc(NpcID.VORKATH_8061) != null) {
+        if (Rs2Npc.getNpc(NpcID.VORKATH) != null) {
             state = State.FIGHT_VORKATH;
             return;
         }
-        if (Rs2Npc.getNpc(NpcID.VORKATH_8059) != null) {
+        if (Rs2Npc.getNpc(NpcID.VORKATH_SLEEPING) != null) {
             state = State.PREPARE_FIGHT;
             return;
         }
-        if (Rs2GameObject.findObjectById(ObjectID.ICE_CHUNKS_31990) != null) {
+        if (Rs2GameObject.findObjectById(ObjectID.UNGAEL_CRATER_ENTRANCE) != null) {
             state = State.WALK_TO_VORKATH;
             return;
         }
@@ -109,7 +115,7 @@ public class VorkathScript extends Script {
             state = State.WALK_TO_VORKATH_ISLAND;
             return;
         }
-        if (Rs2Npc.getNpc(NpcID.TORFINN_10406) != null) {
+        if (Rs2Npc.getNpc(NpcID.TORFINN_COLLECT_UNGAEL) != null) {
             state = State.WALK_TO_VORKATH;
         }
     }
@@ -220,24 +226,24 @@ public class VorkathScript extends Script {
                     case WALK_TO_VORKATH_ISLAND:
                         Rs2Player.toggleRunEnergy(true);
                         Rs2Walker.walkTo(new WorldPoint(2640, 3693, 0));
-                        var torfin = Rs2Npc.getNpc(NpcID.TORFINN_10405);
+                        var torfin = Rs2Npc.getNpc(NpcID.TORFINN_COLLECT_RELLEKKA);
                         if (torfin != null) {
                             Rs2Npc.interact(torfin, "Ungael");
-                            sleepUntil(() -> Rs2Npc.getNpc(NpcID.TORFINN_10406) != null);
+                            sleepUntil(() -> Rs2Npc.getNpc(NpcID.TORFINN_COLLECT_UNGAEL) != null);
                         }
-                        if (Rs2Npc.getNpc(NpcID.TORFINN_10406) != null) {
+                        if (Rs2Npc.getNpc(NpcID.TORFINN_COLLECT_UNGAEL) != null) {
                             state = State.WALK_TO_VORKATH;
                         }
                         break;
                     case WALK_TO_VORKATH:
                         kcPerTrip = 0;
                         Rs2Walker.walkTo(new WorldPoint(2272, 4052, 0));
-                        TileObject iceChunks = Rs2GameObject.findObjectById(ObjectID.ICE_CHUNKS_31990);
+                        TileObject iceChunks = Rs2GameObject.findObjectById(ObjectID.UNGAEL_CRATER_ENTRANCE);
                         if (iceChunks != null) {
-                            Rs2GameObject.interact(ObjectID.ICE_CHUNKS_31990, "Climb-over");
-                            sleepUntil(() -> Rs2GameObject.findObjectById(ObjectID.ICE_CHUNKS_31990) == null);
+                            Rs2GameObject.interact(ObjectID.UNGAEL_CRATER_ENTRANCE, "Climb-over");
+                            sleepUntil(() -> Rs2GameObject.findObjectById(ObjectID.UNGAEL_CRATER_ENTRANCE) == null);
                         }
-                        if (Rs2GameObject.findObjectById(ObjectID.ICE_CHUNKS_31990) == null) {
+                        if (Rs2GameObject.findObjectById(ObjectID.UNGAEL_CRATER_ENTRANCE) == null) {
                             state = State.PREPARE_FIGHT;
                         }
                         break;
@@ -247,14 +253,14 @@ public class VorkathScript extends Script {
                         boolean result = drinkPotions();
 
                         if (result) {
-                            Rs2Npc.interact(NpcID.VORKATH_8059, "Poke");
+                            Rs2Npc.interact(NpcID.VORKATH_SLEEPING, "Poke");
                             Rs2Player.waitForWalking();
-                            Rs2Npc.interact(NpcID.VORKATH_8059, "Poke");
+                            Rs2Npc.interact(NpcID.VORKATH_SLEEPING, "Poke");
                             Rs2Player.waitForAnimation(1000);
                             walkToCenter();
                             Rs2Player.waitForWalking();
                             handlePrayer();
-                            sleepUntil(() -> Rs2Npc.getNpc(NpcID.VORKATH_8061) != null);
+                            sleepUntil(() -> Rs2Npc.getNpc(NpcID.VORKATH) != null);
                             if (doesProjectileExistById(redProjectileId)) {
                                 handleRedBall();
                                 sleep(300);
@@ -263,7 +269,7 @@ public class VorkathScript extends Script {
                         }
                         break;
                     case FIGHT_VORKATH:
-                        vorkath = Rs2Npc.getNpc(NpcID.VORKATH_8061);
+                        vorkath = Rs2Npc.getNpc(NpcID.VORKATH);
                         if (vorkath == null || vorkath.isDead()) {
                             vorkathSessionKills++;
                             tempVorkathKills--;
@@ -315,7 +321,7 @@ public class VorkathScript extends Script {
                         }
                         break;
                     case ZOMBIE_SPAWN:
-                        if (Rs2Npc.getNpc(NpcID.VORKATH_8061) == null) {
+                        if (Rs2Npc.getNpc(NpcID.VORKATH) == null) {
                             state = State.FIGHT_VORKATH;
                         }
                         togglePrayer(false);
@@ -382,7 +388,7 @@ public class VorkathScript extends Script {
                             } else {
                                 calculateState();
                             }
-                        
+
                         }
                         break;
                     case TELEPORT_AWAY:
@@ -398,7 +404,7 @@ public class VorkathScript extends Script {
                     case DEAD_WALK:
                         if (isCloseToRelleka()) {
                             Rs2Walker.walkTo(new WorldPoint(2640, 3693, 0));
-                            torfin = Rs2Npc.getNpc(NpcID.TORFINN_10405);
+                            torfin = Rs2Npc.getNpc(NpcID.TORFINN_COLLECT_RELLEKKA);
                             if (torfin != null) {
                                 Rs2Npc.interact(torfin, "Collect");
                                 sleepUntil(() -> Rs2Widget.hasWidget("Retrieval Service"), 1500);
@@ -516,7 +522,7 @@ public class VorkathScript extends Script {
             Rs2Player.waitForAnimation();
             sleepUntil(() -> !Microbot.getClient().isInInstancedRegion());
             state = State.TELEPORT_AWAY;
-        
+
     }
 
     private boolean drinkPotions() {
@@ -577,7 +583,7 @@ public class VorkathScript extends Script {
         if (Microbot.getClient().getLocalPlayer() == null) return false;
         return Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(new WorldPoint(2670, 3634, 0)) < 80;
     }
-    
+
     private boolean teleToPoh(){
         if(Rs2Magic.canCast(MagicAction.TELEPORT_TO_HOUSE)){
             Rs2Magic.cast(MagicAction.TELEPORT_TO_HOUSE);
@@ -622,16 +628,16 @@ public class VorkathScript extends Script {
     }
 
     private void handleAcidWalk() {
-        if (!doesProjectileExistById(acidProjectileId) && !doesProjectileExistById(acidRedProjectileId) && Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.ACID_POOL_32000).isEmpty()) {
+        if (!doesProjectileExistById(acidProjectileId) && !doesProjectileExistById(acidRedProjectileId) && Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.VORKATH_ACID).isEmpty()) {
             Rs2Npc.interact(vorkath, "attack");
             state = State.FIGHT_VORKATH;
             acidPools.clear();
             return;
         }
 
-            Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.ACID_POOL_32000).forEach(tileObject -> acidPools.add(tileObject.getWorldLocation()));
-            Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.ACID_POOL).forEach(tileObject -> acidPools.add(tileObject.getWorldLocation()));
-            Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.ACID_POOL_37991).forEach(tileObject -> acidPools.add(tileObject.getWorldLocation()));        
+        Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.VORKATH_ACID).forEach(tileObject -> acidPools.add(tileObject.getWorldLocation()));
+        Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.OLM_ACID_POOL).forEach(tileObject -> acidPools.add(tileObject.getWorldLocation()));
+        Rs2GameObject.getGameObjects(obj -> obj.getId() == ObjectID.MYQ5_ACID_POOL).forEach(tileObject -> acidPools.add(tileObject.getWorldLocation()));
 
         WorldPoint safeTile = findSafeTile();
         WorldPoint playerLocation = Microbot.getClient().getLocalPlayer().getWorldLocation();
@@ -647,7 +653,7 @@ public class VorkathScript extends Script {
     }
     //Only use this for testing purpose on sleeping vorkath
     private void testWooxWalk() {
-        vorkath = Rs2Npc.getNpc(NpcID.VORKATH_8059);
+        vorkath = Rs2Npc.getNpc(NpcID.VORKATH_SLEEPING);
         WorldPoint safeTile = findSafeTile();
         WorldPoint playerLocation = Microbot.getClient().getLocalPlayer().getWorldLocation();
 

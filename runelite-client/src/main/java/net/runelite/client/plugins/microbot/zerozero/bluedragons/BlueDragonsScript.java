@@ -1,13 +1,15 @@
 package net.runelite.client.plugins.microbot.zerozero.bluedragons;
 
 import lombok.Getter;
-import net.runelite.api.ItemID;
 import net.runelite.api.NPC;
 import net.runelite.api.Player;
 import net.runelite.api.Skill;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
+import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
@@ -33,7 +35,7 @@ public class BlueDragonsScript extends Script {
     public static final WorldPoint SAFE_SPOT = new WorldPoint(2918, 9781, 0);
     @Getter
     private Integer currentTargetId = null;
-    
+
     @Inject
     private BlueDragonsOverlay overlay;
     
@@ -185,10 +187,10 @@ public class BlueDragonsScript extends Script {
             return true;
         }
 
-        int lawRuneId = ItemID.LAW_RUNE;
-        int waterRuneId = ItemID.WATER_RUNE;
-        int dustRuneId = ItemID.DUST_RUNE;
-        int airRuneId = ItemID.AIR_RUNE;
+        int lawRuneId = ItemID.LAWRUNE;
+        int waterRuneId = ItemID.WATERRUNE;
+        int dustRuneId = ItemID.DUSTRUNE;
+        int airRuneId = ItemID.AIRRUNE;
 
         int requiredLawRunes = 1;
         int requiredAirRunes = 3;
@@ -530,10 +532,10 @@ public class BlueDragonsScript extends Script {
     private boolean hopIfPlayerAtSafeSpot() {
         boolean otherPlayersAtSafeSpot = false;
         List<Player> players = Rs2Player.getPlayers();
-        
+
         for (Player player : players) {
-            if (player != null && 
-                !player.equals(Microbot.getClient().getLocalPlayer()) && 
+            if (player != null &&
+                !player.equals(Microbot.getClient().getLocalPlayer()) &&
                 player.getWorldLocation().distanceTo(SAFE_SPOT) <= 1) {
                 otherPlayersAtSafeSpot = true;
                 break;

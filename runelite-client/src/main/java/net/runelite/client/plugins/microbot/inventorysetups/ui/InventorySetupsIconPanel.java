@@ -13,7 +13,7 @@ import javax.swing.JMenuItem;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import net.runelite.api.EquipmentInventorySlot;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.util.AsyncBufferedImage;
 
@@ -47,7 +47,7 @@ public class InventorySetupsIconPanel extends InventorySetupsPanel
 			itemIDForImage = invSetup.getEquipment().get(EquipmentInventorySlot.WEAPON.getSlotIdx()).getId();
 			if (itemIDForImage <= 0)
 			{
-				itemIDForImage = ItemID.CAKE_OF_GUIDANCE;
+				itemIDForImage = ItemID._100GUIDE_GUIDECAKE;
 			}
 		}
 

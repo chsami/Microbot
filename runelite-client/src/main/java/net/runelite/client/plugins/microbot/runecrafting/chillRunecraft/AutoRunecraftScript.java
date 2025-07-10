@@ -1,6 +1,6 @@
 package net.runelite.client.plugins.microbot.runecrafting.chillRunecraft;
 
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
@@ -153,7 +153,7 @@ public class AutoRunecraftScript extends Script
                     case CRAFTING_RUNES:
                         initialise = false;
                         Microbot.status = "Crafting runes";
-                        Rs2Inventory.useItemOnObject(ItemID.PURE_ESSENCE, altar.getAltarID()); //could just interact with altar, but I'm too lazy to change this now
+                        Rs2Inventory.useItemOnObject(ItemID.BLANKRUNE_HIGH, altar.getAltarID()); //could just interact with altar, but I'm too lazy to change this now
                         Rs2Random.wait(800, 1600);
                         sleepUntil(() -> Rs2Player.waitForXpDrop(Skill.RUNECRAFT));
                         Rs2Random.wait(800, 1600);

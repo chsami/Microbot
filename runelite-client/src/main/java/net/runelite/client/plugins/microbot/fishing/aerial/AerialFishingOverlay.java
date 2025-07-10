@@ -1,6 +1,6 @@
 package net.runelite.client.plugins.microbot.fishing.aerial;
 
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
@@ -41,7 +41,7 @@ public class AerialFishingOverlay extends OverlayPanel {
             panelComponent.getChildren().add(LineComponent.builder().build());
 
             panelComponent.getChildren().add(LineComponent.builder()
-                    .left("Cormorant's glove: " + ((Rs2Equipment.isWearing(ItemID.CORMORANTS_GLOVE) || Rs2Equipment.isWearing(ItemID.CORMORANTS_GLOVE_22817)) ? "Present" : "Not Present"))
+                    .left("Cormorant's glove: " + ((Rs2Equipment.isWearing(ItemID.AERIAL_FISHING_GLOVES_NO_BIRD) || Rs2Equipment.isWearing(ItemID.AERIAL_FISHING_GLOVES_BIRD)) ? "Present" : "Not Present"))
                     .build());
 
             panelComponent.getChildren().add(LineComponent.builder()

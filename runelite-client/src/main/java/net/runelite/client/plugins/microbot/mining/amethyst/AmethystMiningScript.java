@@ -1,7 +1,7 @@
 package net.runelite.client.plugins.microbot.mining.amethyst;
 
-import net.runelite.api.ItemID;
 import net.runelite.api.Skill;
+import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.TileObject;
 import net.runelite.api.WallObject;
 import net.runelite.api.coords.WorldPoint;
@@ -25,6 +25,7 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
+import net.runelite.api.gameval.ItemID;
 
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
@@ -128,8 +129,7 @@ public class AmethystMiningScript extends Script {
     }
 
     private void bank() {
-        TileObject bank = Rs2GameObject.findObjectById(4483);
-        if (Rs2Bank.openBank(bank)) {
+        if (Rs2Bank.openBank()) {
             sleepUntil(Rs2Bank::isOpen);
 
             Rs2Bank.depositAllExcept(itemsToKeep);

@@ -1,19 +1,19 @@
 package net.runelite.client.plugins.microbot.tempoross.enums;
 
-import net.runelite.api.AnimationID;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.AnimationID;
+import net.runelite.api.gameval.ItemID;
 
 public enum HarpoonType
 {
 
 // HARPOON, BARBTAIL_HARPOON, DRAGON_HARPOON, INFERNAL_HARPOON, CRYSTAL_HARPOON
 
-    HARPOON(ItemID.HARPOON, AnimationID.FISHING_HARPOON, "Harpoon"),
-    BAREHAND(-1, AnimationID.FISHING_BAREHAND, "Bare-handed"),
-    BARBTAIL_HARPOON(ItemID.BARBTAIL_HARPOON, AnimationID.FISHING_BARBTAIL_HARPOON, "Barb-tail harpoon"),
-    DRAGON_HARPOON(ItemID.DRAGON_HARPOON, AnimationID.FISHING_DRAGON_HARPOON,  "Dragon harpoon"),
-    INFERNAL_HARPOON(ItemID.INFERNAL_HARPOON, AnimationID.FISHING_INFERNAL_HARPOON, "Infernal harpoon"),
-    CRYSTAL_HARPOON(ItemID.CRYSTAL_HARPOON, AnimationID.FISHING_CRYSTAL_HARPOON, "Crystal harpoon");
+    HARPOON(ItemID.HARPOON, AnimationID.HUMAN_HARPOON, "Harpoon"),
+    BAREHAND(-1, AnimationID.BRUT_PLAYER_HAND_FISHING_END_BLANK, "Bare-handed"),
+    BARBTAIL_HARPOON(ItemID.HUNTING_BARBED_HARPOON, AnimationID.HUMAN_HARPOON_BARBED, "Barb-tail harpoon"),
+    DRAGON_HARPOON(ItemID.DRAGON_HARPOON, AnimationID.HUMAN_HARPOON_DRAGON,  "Dragon harpoon"),
+    INFERNAL_HARPOON(ItemID.INFERNAL_HARPOON, AnimationID.HUMAN_HARPOON_INFERNAL, "Infernal harpoon"),
+    CRYSTAL_HARPOON(ItemID.CRYSTAL_HARPOON, AnimationID.HUMAN_HARPOON_CRYSTAL, "Crystal harpoon");
 
 
     private final int id;

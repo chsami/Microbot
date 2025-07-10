@@ -4,7 +4,7 @@ import lombok.Getter;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Item;
 import net.runelite.api.ItemComposition;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -25,7 +25,7 @@ public class Rs2Gembag {
     private static final Pattern CHECK_PATTERN = Pattern.compile("Sapphires: (\\d+) / Emeralds: (\\d+) / Rubies: (\\d+) / Diamonds: (\\d+) / Dragonstones: (\\d+)");
 
     @Getter
-    private static final List<Integer> gemBagItemIds = List.of(ItemID.GEM_BAG_12020, ItemID.OPEN_GEM_BAG);
+    private static final List<Integer> gemBagItemIds = List.of(ItemID.GEM_BAG, ItemID.GEM_BAG_OPEN);
     private static boolean unknown = true;
 
     /**
@@ -268,11 +268,11 @@ public class Rs2Gembag {
             Microbot.log("No gem bag found in inventory.");
             return;
         }
-        if (Rs2Inventory.hasItem(ItemID.GEM_BAG_12020)) {
-            Rs2Inventory.interact(ItemID.GEM_BAG_12020, "Open");
-            Global.sleepUntil(() -> Rs2Inventory.hasItem(ItemID.OPEN_GEM_BAG));
+        if (Rs2Inventory.hasItem(ItemID.GEM_BAG)) {
+            Rs2Inventory.interact(ItemID.GEM_BAG, "Open");
+            Global.sleepUntil(() -> Rs2Inventory.hasItem(ItemID.GEM_BAG_OPEN));
         }
-        Rs2Inventory.interact(ItemID.OPEN_GEM_BAG, "Check");
+        Rs2Inventory.interact(ItemID.GEM_BAG_OPEN, "Check");
     }
 
     /**
@@ -285,7 +285,7 @@ public class Rs2Gembag {
     }
 
     public static boolean isGemBagOpen() {
-        return Rs2Inventory.hasItem(ItemID.OPEN_GEM_BAG);
+        return Rs2Inventory.hasItem(ItemID.GEM_BAG_OPEN);
     }
 
     public static boolean isUnknown() {

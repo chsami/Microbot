@@ -1,9 +1,8 @@
 package net.runelite.client.plugins.microbot.smelting;
 
 import net.runelite.api.GameObject;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.Skill;
-import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.smelting.enums.Ores;
@@ -70,17 +69,17 @@ public class AutoSmeltingScript extends Script {
                     }
                     for (int i : new int[]{ItemID.GOLD_BAR}) {
                         int selectedBar = config.SELECTED_BAR_TYPE().getId();
-                        if (selectedBar == i && Rs2Bank.hasItem(ItemID.GOLDSMITH_GAUNTLETS) && !Rs2Equipment.isWearing(ItemID.GOLDSMITH_GAUNTLETS)) {
-                            Rs2Bank.withdrawAndEquip(ItemID.GOLDSMITH_GAUNTLETS);
+                        if (selectedBar == i && Rs2Bank.hasItem(ItemID.GAUNTLETS_OF_GOLDSMITHING) && !Rs2Equipment.isWearing(ItemID.GAUNTLETS_OF_GOLDSMITHING)) {
+                            Rs2Bank.withdrawAndEquip(ItemID.GAUNTLETS_OF_GOLDSMITHING);
                             return;
                         }
-                        if (selectedBar != i && (Rs2Bank.hasItem(ItemID.SMITHS_GLOVES) || Rs2Bank.hasItem(ItemID.SMITHS_GLOVES_I)) && (!Rs2Equipment.isWearing(ItemID.SMITHS_GLOVES_I) ||!Rs2Equipment.isWearing(ItemID.SMITHS_GLOVES_I))) {
-                            if (Rs2Bank.hasItem(ItemID.SMITHS_GLOVES_I)) {
-                                Rs2Bank.withdrawAndEquip(ItemID.SMITHS_GLOVES_I);
+                        if (selectedBar != i && (Rs2Bank.hasItem(ItemID.SMITHING_UNIFORM_GLOVES) || Rs2Bank.hasItem(ItemID.SMITHING_UNIFORM_GLOVES_ICE)) && (!Rs2Equipment.isWearing(ItemID.SMITHING_UNIFORM_GLOVES_ICE) ||!Rs2Equipment.isWearing(ItemID.SMITHING_UNIFORM_GLOVES_ICE))) {
+                            if (Rs2Bank.hasItem(ItemID.SMITHING_UNIFORM_GLOVES_ICE)) {
+                                Rs2Bank.withdrawAndEquip(ItemID.SMITHING_UNIFORM_GLOVES_ICE);
                                 return;
                             }
-                            if (Rs2Bank.hasItem(ItemID.SMITHS_GLOVES)) {
-                                Rs2Bank.withdrawAndEquip(ItemID.SMITHS_GLOVES);
+                            if (Rs2Bank.hasItem(ItemID.SMITHING_UNIFORM_GLOVES)) {
+                                Rs2Bank.withdrawAndEquip(ItemID.SMITHING_UNIFORM_GLOVES);
                                 return;
                             }
                         }

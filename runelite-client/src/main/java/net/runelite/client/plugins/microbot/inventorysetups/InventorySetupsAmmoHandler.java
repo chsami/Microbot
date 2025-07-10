@@ -5,8 +5,8 @@ import net.runelite.client.plugins.microbot.inventorysetups.ui.InventorySetupsRu
 import net.runelite.client.plugins.microbot.inventorysetups.ui.InventorySetupsSlot;
 import net.runelite.api.Client;
 import net.runelite.api.EnumComposition;
-import net.runelite.api.ItemID;
-import net.runelite.api.VarPlayer;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.client.game.ItemManager;
 
 import java.util.ArrayList;
@@ -69,8 +69,8 @@ public class InventorySetupsAmmoHandler
 		}
 
 		// Handler for when an item being replaced is a bolt pouch
-		updateDataHandler.put(ItemID.BOLT_POUCH, (setup) -> setup.updateBoltPouch(getBoltPouchData()));
-		removeDataHandler.put(ItemID.BOLT_POUCH, (setup) -> setup.updateBoltPouch(null));
+		updateDataHandler.put(ItemID.XBOWS_BOLT_POUCH, (setup) -> setup.updateBoltPouch(getBoltPouchData()));
+		removeDataHandler.put(ItemID.XBOWS_BOLT_POUCH, (setup) -> setup.updateBoltPouch(null));
 
 		// Handler for when an item being replaced is a quiver
 		for (final int itemID : DIZANA_QUIVER_IDS)
@@ -126,7 +126,7 @@ public class InventorySetupsAmmoHandler
 		plugin.getClientThread().invoke(() ->
 				panel.getQuiverPanel().handleQuiverHighlighting(setup, !quiver_intersection.isEmpty()));
 
-		boolean currentInventoryHasBoltPouch = combinedIds.contains(ItemID.BOLT_POUCH);
+		boolean currentInventoryHasBoltPouch = combinedIds.contains(ItemID.XBOWS_BOLT_POUCH);
 		plugin.getClientThread().invoke(() ->
 				panel.getBoltPouchPanel().handleBoltPouchHighlighting(setup, currentInventoryHasBoltPouch));
 	}
@@ -178,7 +178,7 @@ public class InventorySetupsAmmoHandler
 
 	public boolean containerContainsBoltPouch(final List<InventorySetupsItem> container)
 	{
-		return plugin.containerContainsItem(ItemID.BOLT_POUCH, container, false, true);
+		return plugin.containerContainsItem(ItemID.XBOWS_BOLT_POUCH, container, false, true);
 	}
 
 	public List<InventorySetupsItem> getBoltPouchDataIfInContainer(final List<InventorySetupsItem> container)
@@ -231,8 +231,8 @@ public class InventorySetupsAmmoHandler
 	public List<InventorySetupsItem> getQuiverData()
 	{
 		List<InventorySetupsItem> quiverData = new ArrayList<>();
-		final int quiverAmmoId = client.getVarpValue(VarPlayer.DIZANAS_QUIVER_ITEM_ID);
-		final int quiverAmmoCount = Math.max(0, client.getVarpValue(VarPlayer.DIZANAS_QUIVER_ITEM_COUNT));
+		final int quiverAmmoId = client.getVarpValue(VarPlayerID.DIZANAS_QUIVER_TEMP_AMMO);
+		final int quiverAmmoCount = Math.max(0, client.getVarpValue(VarPlayerID.DIZANAS_QUIVER_TEMP_AMMO_AMOUNT));
 
 		if (quiverAmmoId == -1 || quiverAmmoCount == 0)
 		{

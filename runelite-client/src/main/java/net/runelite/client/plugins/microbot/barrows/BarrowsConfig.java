@@ -1,8 +1,7 @@
 package net.runelite.client.plugins.microbot.barrows;
 
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.config.*;
-import net.runelite.client.plugins.microbot.revKiller.revKillerConfig;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Food;
 
 @ConfigGroup("barrows")
@@ -51,9 +50,9 @@ public interface BarrowsConfig extends Config {
     }
 
     enum prayerRestoreType {
-        Prayer_Potion(ItemID.PRAYER_POTION4, "Prayer potion(4)"),
-        MoonlightMothMix(ItemID.MOONLIGHT_MOTH_MIX_2, "Moonlight moth mix (2)"),
-        MoonlightMoth(ItemID.MOONLIGHT_MOTH_28893, "Moonlight moth");
+        Prayer_Potion(ItemID._4DOSEPRAYERRESTORE, "Prayer potion(4)"),
+        MoonlightMothMix(ItemID.HUNTER_MIX_MOONMOTH_2DOSE, "Moonlight moth mix (2)"),
+        MoonlightMoth(ItemID.BUTTERFLY_JAR_MOONMOTH, "Moonlight moth");
 
         private final int id;
         private final String name;
@@ -129,8 +128,8 @@ public interface BarrowsConfig extends Config {
     }
 
     enum selectedToBarrowsTPMethod {
-        Tablet(ItemID.BARROWS_TELEPORT, "Barrows teleport"),
-        POH(ItemID.TELEPORT_TO_HOUSE, "Teleport to house");
+        Tablet(ItemID.TELETAB_BARROWS, "Barrows teleport"),
+        POH(ItemID.POH_TABLET_TELEPORTTOHOUSE, "Teleport to house");
 
         private final int id;
         private final String name;

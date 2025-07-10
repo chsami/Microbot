@@ -1,7 +1,7 @@
 package net.runelite.client.plugins.microbot.runecrafting.arceuus;
 
 import net.runelite.api.GameObject;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
@@ -19,7 +19,7 @@ public class ArceuusRcScript extends Script {
     public static String version = "1.0.0";
     public static int darkAltarTripCount = 0;
     private final int BLOOD_ESSENCE_ACTIVE = ItemID.BLOOD_ESSENCE_ACTIVE;
-    private final int BLOOD_ESSENCE = ItemID.BLOOD_ESSENCE;
+    private final int BLOOD_ESSENCE = ItemID.BLOOD_ESSENCE_INACTIVE;
     public static final WorldPoint ARCEUUS_BLOOD_ALTAR = new WorldPoint(1720, 3828, 0);
     public static final WorldPoint ARCEUUS_DARK_ALTAR = new WorldPoint(1718, 3880, 0);
     public static final WorldPoint DENSE_RUNESTONE = new WorldPoint(1760, 3853, 0);
@@ -27,9 +27,9 @@ public class ArceuusRcScript extends Script {
     public boolean run(ArceuusRcConfig config) {
         Rs2Antiban.antibanSetupTemplates.applyUniversalAntibanSetup();
         if(Microbot.isLoggedIn()) {
-            if(Rs2Inventory.hasItem(ItemID.DARK_ESSENCE_FRAGMENTS)) {
+            if(Rs2Inventory.hasItem(ItemID.BIGBLANKRUNE)) {
                 darkAltarTripCount++;
-                if(Rs2Inventory.hasItem(ItemID.DARK_ESSENCE_BLOCK)) {
+                if(Rs2Inventory.hasItem(ItemID.ARCEUUS_ESSENCE_BLOCK_DARK)) {
                     darkAltarTripCount++;
                 }
             }
@@ -65,7 +65,7 @@ public class ArceuusRcScript extends Script {
 
     public boolean shouldGoToBloodAltar() {
         return darkAltarTripCount >= 2
-                && Rs2Inventory.hasItem(ItemID.DARK_ESSENCE_FRAGMENTS)
+                && Rs2Inventory.hasItem(ItemID.BIGBLANKRUNE)
                 && Rs2Player.getWorldLocation().distanceTo(ARCEUUS_BLOOD_ALTAR) > 10;
     }
 
@@ -75,7 +75,7 @@ public class ArceuusRcScript extends Script {
 
     public boolean shouldGoToDarkAltar() {
         return Rs2Inventory.isFull()
-                && Rs2Inventory.hasItem(ItemID.DENSE_ESSENCE_BLOCK)
+                && Rs2Inventory.hasItem(ItemID.ARCEUUS_ESSENCE_BLOCK)
                 && Rs2Player.getWorldLocation().distanceTo(ARCEUUS_DARK_ALTAR) > 10
                 && darkAltarTripCount < 2;
     }
@@ -89,7 +89,7 @@ public class ArceuusRcScript extends Script {
                 && Rs2Player.getWorldLocation().distanceTo(DENSE_RUNESTONE) > 8
                 && darkAltarTripCount < 2
                 && !(Rs2Player.getWorldLocation().distanceTo(ARCEUUS_BLOOD_ALTAR) < 5
-                    && Rs2Inventory.hasItem(ItemID.DARK_ESSENCE_BLOCK,ItemID.DARK_ESSENCE_FRAGMENTS));
+                    && Rs2Inventory.hasItem(ItemID.ARCEUUS_ESSENCE_BLOCK_DARK,ItemID.BIGBLANKRUNE));
     }
 
     public void goToRunestone() {
@@ -97,7 +97,7 @@ public class ArceuusRcScript extends Script {
     }
 
     public boolean shouldUseBloodAltar() {
-        return  Rs2Inventory.hasItem(ItemID.DARK_ESSENCE_FRAGMENTS)
+        return  Rs2Inventory.hasItem(ItemID.BIGBLANKRUNE)
                 && Rs2GameObject.findObject("Blood Altar", true,10,false,Rs2Player.getWorldLocation()) != null;
     }
 
@@ -112,25 +112,26 @@ public class ArceuusRcScript extends Script {
     }
 
     public boolean shouldChipEssence() {
-        return Rs2Inventory.isFull() && !Rs2Inventory.hasItem(ItemID.DARK_ESSENCE_FRAGMENTS) && Rs2Inventory.hasItem(ItemID.DARK_ESSENCE_BLOCK)
-                || (!Rs2Inventory.hasItem(ItemID.DARK_ESSENCE_FRAGMENTS)
-                    && Rs2Inventory.hasItem(ItemID.DARK_ESSENCE_BLOCK)
+        return Rs2Inventory.isFull() && !Rs2Inventory.hasItem(ItemID.BIGBLANKRUNE) && Rs2Inventory.hasItem(ItemID.ARCEUUS_ESSENCE_BLOCK_DARK)
+                || (!Rs2Inventory.hasItem(ItemID.BIGBLANKRUNE)
+                    && Rs2Inventory.hasItem(ItemID.ARCEUUS_ESSENCE_BLOCK_DARK)
                     && Rs2GameObject.findObject("Blood Altar", true,10,false,Rs2Player.getWorldLocation()) != null);
     }
+    
 
     public void chipEssence() {
         Rs2ItemModel chisel = Rs2Inventory.get(ItemID.CHISEL);
         if (Rs2Inventory.moveItemToSlot(chisel,27)) {
             sleepUntil(()->Rs2Inventory.slotContains(27,chisel.getId()),6000);
         }
-        if(Rs2Inventory.combineClosest(ItemID.DARK_ESSENCE_BLOCK,ItemID.CHISEL))
-            sleepUntil(()->!Rs2Inventory.hasItem(ItemID.DARK_ESSENCE_BLOCK),60000);
+        if(Rs2Inventory.combineClosest(ItemID.ARCEUUS_ESSENCE_BLOCK_DARK,ItemID.CHISEL))
+            sleepUntil(()->!Rs2Inventory.hasItem(ItemID.ARCEUUS_ESSENCE_BLOCK_DARK),60000);
     }
 
     public boolean shouldUseDarkAltar() {
         GameObject darkAltar = Rs2GameObject.findObject("Dark altar", true,10,false,Rs2Player.getWorldLocation());
         return Rs2Inventory.isFull()
-                && Rs2Inventory.hasItem(ItemID.DENSE_ESSENCE_BLOCK)
+                && Rs2Inventory.hasItem(ItemID.ARCEUUS_ESSENCE_BLOCK)
                 && darkAltar != null;
     }
 
@@ -138,7 +139,7 @@ public class ArceuusRcScript extends Script {
         GameObject darkAltar = Rs2GameObject.findObject("Dark altar", true,10,false,Rs2Player.getWorldLocation());
         if (darkAltar != null) {
             Rs2GameObject.interact(darkAltar,"Venerate");
-            sleepUntil(()->!Rs2Inventory.hasItem(ItemID.DENSE_ESSENCE_BLOCK),6000);
+            sleepUntil(()->!Rs2Inventory.hasItem(ItemID.ARCEUUS_ESSENCE_BLOCK),6000);
             darkAltarTripCount++;
         }
     }
@@ -155,7 +156,7 @@ public class ArceuusRcScript extends Script {
     }
     public static boolean shouldMineEssence() {
         GameObject runeStone = Rs2GameObject.findObject("Dense runestone", true,11,false,Rs2Player.getWorldLocation());
-        return !Rs2Inventory.hasItem(ItemID.DARK_ESSENCE_BLOCK)
+        return !Rs2Inventory.hasItem(ItemID.ARCEUUS_ESSENCE_BLOCK_DARK)
                 && !Rs2Inventory.isFull()
                 && !Rs2Player.isAnimating()
                 && runeStone != null;

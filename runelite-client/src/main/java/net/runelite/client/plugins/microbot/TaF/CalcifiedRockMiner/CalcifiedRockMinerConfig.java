@@ -4,7 +4,7 @@ import net.runelite.client.config.*;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 
 @ConfigInformation(
-        "CalcifiedRockMiner")
+        "Start in Cam Torum with a pickaxe in your inventory. Recommended gear besides a pickaxe is varrock armor and an amulet of glory. If you want to crush the deposits, make sure you have a hammer in your inventory.")
 @ConfigGroup("CalcifiedRockMiner")
 public interface CalcifiedRockMinerConfig extends Config {
     @ConfigItem(

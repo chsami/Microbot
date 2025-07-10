@@ -11,7 +11,7 @@ import net.runelite.api.ChatMessageType;
 import net.runelite.api.Item;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.ItemContainer;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ChatMessage;
@@ -39,7 +39,7 @@ import net.runelite.client.ui.overlay.OverlayManager;
 public class OuraniaPlugin extends Plugin
 {
 
-	public static String version = "1.4.0";
+	public static final String version = "1.4.0";
 	@Inject
 	private OuraniaConfig config;
 	@Inject
@@ -185,7 +185,7 @@ public class OuraniaPlugin extends Plugin
 
 	public void calcuateProfit()
 	{
-		int teleportCost = Rs2GrandExchange.getPrice(ItemID.LAW_RUNE) + (Rs2GrandExchange.getPrice(ItemID.ASTRAL_RUNE) * 2);
+		int teleportCost = Rs2GrandExchange.getPrice(ItemID.LAWRUNE) + (Rs2GrandExchange.getPrice(ItemID.ASTRALRUNE) * 2);
 		int runesCrafted = Rs2Inventory.items()
 			.filter(rs2Item -> rs2Item.getName().toLowerCase().contains("rune") && !rs2Item.getName().toLowerCase().contains("rune pouch"))
 			.mapToInt(rs2Item -> Rs2GrandExchange.getPrice(rs2Item.getId()))

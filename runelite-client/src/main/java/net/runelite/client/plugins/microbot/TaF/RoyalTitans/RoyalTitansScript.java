@@ -1,6 +1,5 @@
 package net.runelite.client.plugins.microbot.TaF.RoyalTitans;
 
-import java.util.ArrayList;
 import net.runelite.api.Skill;
 import net.runelite.api.Tile;
 import net.runelite.api.coords.WorldArea;
@@ -24,11 +23,13 @@ import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
-import org.apache.commons.lang3.tuple.Pair;
 
 import java.awt.event.KeyEvent;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -459,21 +460,13 @@ public class RoyalTitansScript extends Script {
             return;
         }
 
-        var dangerousGraphicsObjectTiles = Rs2Tile.getDangerousGraphicsObjectTiles().stream()
-                .filter(x -> x.getValue() > 0)
-                .collect(Collectors.toList());
-
-        List<WorldPoint> dangerousWorldPoints = dangerousGraphicsObjectTiles
-                .stream()
-                .map(Pair::getKey)
-                .collect(Collectors.toList());
-
-        if (dangerousWorldPoints.isEmpty()) {
+        Map<WorldPoint, Integer> dangerousGraphicsObjectTiles = Rs2Tile.getDangerousGraphicsObjectTiles();
+        if (dangerousGraphicsObjectTiles.isEmpty()) {
             return;
         }
 
         // Check if player is on OR adjacent to a dangerous tile
-        boolean playerInDanger = dangerousWorldPoints.stream()
+        boolean playerInDanger = dangerousGraphicsObjectTiles.keySet().stream()
                 .anyMatch(x -> x.equals(Rs2Player.getWorldLocation()) ||
                         x.distanceTo(Rs2Player.getWorldLocation()) <= 1);
 
@@ -481,7 +474,7 @@ public class RoyalTitansScript extends Script {
             return;
         }
 
-        final WorldPoint safeTile = findSafeTile(Rs2Player.getWorldLocation(), dangerousWorldPoints);
+        final WorldPoint safeTile = findSafeTile(Rs2Player.getWorldLocation(), dangerousGraphicsObjectTiles.keySet());
         if (safeTile != null) {
             Rs2Walker.walkFastCanvas(safeTile);
             if (Rs2Player.getWorldLocation().equals(safeTile)) {
@@ -495,7 +488,7 @@ public class RoyalTitansScript extends Script {
         }
     }
 
-    private WorldPoint findSafeTile(WorldPoint playerLocation, List<WorldPoint> dangerousWorldPoints) {
+    private WorldPoint findSafeTile(WorldPoint playerLocation, Collection<WorldPoint> dangerousWorldPoints) {
         Microbot.log("Finding safe tile");
 		List<WorldPoint> nearbyTiles = new ArrayList<>();
 

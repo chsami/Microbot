@@ -2,8 +2,8 @@ package net.runelite.client.plugins.microbot.runecrafting.gotr.data;
 
 
 import com.google.common.collect.ImmutableList;
-import net.runelite.api.ItemID;
-import net.runelite.api.ObjectID;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.ObjectID;
 
 import java.util.List;
 
@@ -16,13 +16,13 @@ public enum CellType {
 
     public static int GetCellTier(int cellID) {
         switch (cellID) {
-            case ItemID.WEAK_CELL:
+            case ItemID.GOTR_CELL_TIER1:
                 return 1;
-            case ItemID.MEDIUM_CELL:
+            case ItemID.GOTR_CELL_TIER2:
                 return 2;
-            case ItemID.STRONG_CELL:
+            case ItemID.GOTR_CELL_TIER3:
                 return 3;
-            case ItemID.OVERCHARGED_CELL:
+            case ItemID.GOTR_CELL_TIER4:
                 return 4;
             default:
                 return -1;
@@ -31,15 +31,15 @@ public enum CellType {
 
     public static int GetShieldTier(int shieldID) {
         switch (shieldID) {
-            case ObjectID.INACTIVE_CELL_TILE:
+            case ObjectID.GOTR_CELL_TILE_INACTIVE_NOOP:
                 return 0;
-            case ObjectID.WEAK_CELL_TILE:
+            case ObjectID.GOTR_CELL_TILE_TIER1:
                 return 1;
-            case ObjectID.MEDIUM_CELL_TILE:
+            case ObjectID.GOTR_CELL_TILE_TIER2:
                 return 2;
-            case ObjectID.STRONG_CELL_TILE:
+            case ObjectID.GOTR_CELL_TILE_TIER3:
                 return 3;
-            case ObjectID.OVERPOWERED_CELL_TILE:
+            case ObjectID.GOTR_CELL_TILE_TIER4:
                 return 4;
             default:
                 return -1;
@@ -47,6 +47,6 @@ public enum CellType {
     }
 
     public static List<Integer> PoweredCellList() {
-        return ImmutableList.of(ItemID.WEAK_CELL, ItemID.OVERCHARGED_CELL, ItemID.STRONG_CELL, ItemID.MEDIUM_CELL);
+        return List.of(ItemID.GOTR_CELL_TIER1, ItemID.GOTR_CELL_TIER4, ItemID.GOTR_CELL_TIER3, ItemID.GOTR_CELL_TIER2);
     }
 }

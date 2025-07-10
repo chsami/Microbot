@@ -2,7 +2,7 @@ package net.runelite.client.plugins.microbot.smelting.enums;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 
 import java.util.Map;

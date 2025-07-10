@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.MessageNode;
 import net.runelite.api.Skill;
 import net.runelite.api.events.ChatMessage;
@@ -154,7 +154,7 @@ public class MWintertodtPlugin extends Plugin {
     }
 
     private int getResourcesInInventory() {
-        return Rs2Inventory.count(ItemID.BRUMA_ROOT) + Rs2Inventory.count(ItemID.BRUMA_KINDLING);
+        return Rs2Inventory.count(ItemID.WINT_BRUMA_ROOT) + Rs2Inventory.count(ItemID.WINT_BRUMA_KINDLING);
     }
 
     @Subscribe

@@ -1,10 +1,10 @@
 package net.runelite.client.plugins.microbot.mining;
 
 import net.runelite.api.GameObject;
-import net.runelite.api.ItemID;
-import net.runelite.api.NpcID;
+import net.runelite.api.gameval.NpcID;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.mining.enums.Rocks;
@@ -129,7 +129,7 @@ public class AutoMiningScript extends Script {
                             }
                             else if (Rocks.BASALT == config.ORE() && BASALT_MINE == Rs2Player.getWorldLocation().getRegionID()) {
                                 if (Rs2Walker.walkTo(2872,3935,0)){
-                                    Rs2Inventory.useItemOnNpc(ItemID.BASALT, NpcID.SNOWFLAKE);
+                                    Rs2Inventory.useItemOnNpc(ItemID.BASALT, NpcID.MY2ARM_SNOWFLAKE);
                                     Rs2Walker.walkTo(2841,10339,0);
                                 }
                             } else {

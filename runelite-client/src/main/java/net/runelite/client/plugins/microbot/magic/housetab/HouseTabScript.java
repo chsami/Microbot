@@ -1,7 +1,7 @@
 package net.runelite.client.plugins.microbot.magic.housetab;
 
-import net.runelite.api.ItemID;
-import net.runelite.api.ObjectID;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.Point;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -48,7 +48,7 @@ public class HouseTabScript extends Script {
     }
 
     private boolean hasLawRune() {
-        return Rs2Inventory.hasItem(ItemID.LAW_RUNE);
+        return Rs2Inventory.hasItem(ItemID.LAWRUNE);
     }
 
     public HouseTabScript(HOUSETABS_CONFIG houseTabConfig, String[] playerHouses) {
@@ -186,12 +186,12 @@ public class HouseTabScript extends Script {
                 if (Microbot.isGainingExp) return;
 
                 Rs2Player.toggleRunEnergy(true);
-                if (Microbot.getClient().getEnergy() < 3000 && !Rs2Widget.hasWidget("Teleport to House") && Rs2GameObject.findObject(new Integer[] {ObjectID.FROZEN_ORNATE_POOL_OF_REJUVENATION, ObjectID.POOL_OF_REJUVENATION}) != null) {
-                    Rs2GameObject.interact(new int[] {ObjectID.FROZEN_ORNATE_POOL_OF_REJUVENATION, ObjectID.POOL_OF_REJUVENATION}, "drink");
+                if (Microbot.getClient().getEnergy() < 3000 && !Rs2Widget.hasWidget("Teleport to House") && Rs2GameObject.findObject(new Integer[] {ObjectID.XMAS20_POH_POOL_REGENERATION, ObjectID.POH_POOL_REJUVENATION}) != null) {
+                    Rs2GameObject.interact(new int[] {ObjectID.XMAS20_POH_POOL_REGENERATION, ObjectID.POH_POOL_REJUVENATION}, "drink");
                     return;
                 }
 
-                boolean isInHouse = Rs2GameObject.findObject(new Integer[] {ObjectID.LECTERN_37349}) != null;
+                boolean isInHouse = Rs2GameObject.getGameObject(new Integer[] {ObjectID.POH_LECTERN_8}) != null;
                 if (isInHouse) {
                     lookForLectern();
                     createHouseTablet();
@@ -199,12 +199,12 @@ public class HouseTabScript extends Script {
                 } else {
                     unnoteClay();
                     if (config.ownHouse()) {
-                        if (Rs2GameObject.interact(ObjectID.PORTAL_15478, "Home")) {
+                        if (Rs2GameObject.interact(ObjectID.POH_RIMMINGTON_PORTAL, "Home")) {
                             sleep(800, 1200);
                         }
                         return;
                     }
-                    if (Rs2GameObject.interact(ObjectID.PORTAL_15478, "Friend's house")) {
+                    if (Rs2GameObject.interact(ObjectID.POH_RIMMINGTON_PORTAL, "Friend's house")) {
                         sleepUntil(() -> Rs2Widget.hasWidget("Enter name"));
                         if (Rs2Widget.hasWidget(config.housePlayerName())) {
                             Rs2Widget.clickWidget(config.housePlayerName());

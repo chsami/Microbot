@@ -1,6 +1,6 @@
 package net.runelite.client.plugins.microbot.zerozero.moonlightmoth;
 
-import net.runelite.api.NpcID;
+import net.runelite.api.gameval.NpcID;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -240,7 +240,7 @@ public class MoonlightMothScript extends Script {
 
         WorldArea excludedArea = new WorldArea(1550, 9426, 21, 8, 0);
 
-        Rs2Npc.getNpcs(NpcID.MOONLIGHT_MOTH).filter(moth -> {
+        Rs2Npc.getNpcs(NpcID.MOTH_MOONLIGHT).filter(moth -> {
             WorldPoint location = Rs2Npc.getWorldLocation(moth);
             return location != null && !excludedArea.contains(location);
         }).findFirst().ifPresent(moth -> {
