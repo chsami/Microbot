@@ -576,7 +576,7 @@ public class revKillerScript extends Script {
             return;
         }
 
-        if (Microbot.isLoggedIn()) {
+        if (Rs2Player.isInCombat()) {
             if(isPkerAround()) {
                 getAwayFromPker();
                 shouldFlee = false;
