@@ -113,12 +113,6 @@ public class revKillerScript extends Script {
                     return;
                 }
 
-                if(!Rs2InventorySetup.isInventorySetup("Revs")){
-                    Microbot.showMessage("Please create an inventory setup named Revs");
-                    shutdown();
-                    return;
-                }
-
                 var inventorySetup = new Rs2InventorySetup(config.inventorySetup().getName(), mainScheduledFuture);
 
                 if(firstRun || weDied) {
