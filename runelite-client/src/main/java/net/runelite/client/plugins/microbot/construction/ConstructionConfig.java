@@ -15,8 +15,22 @@ public interface ConstructionConfig extends Config {
             description = "How to use the script",
             position = 0
     )
+
     default String GUIDE()
     {
-        return "This script only supports oak larder with a demon butler.";
+        return "This script only supports oak larder with a demon butler or using Phials that goes outside of the home.";
     }
+
+    @ConfigItem(
+            keyName = "usePhials",
+            name = "Use Phials",
+            description = "Allows you to use Phials outside to unnote your planks.",
+            position = 1
+    )
+    default boolean usePhials()
+    {
+        return false;
+    }
+
+
 }
