@@ -76,7 +76,7 @@ public class BarrowsScript extends Script {
                     return;
                 }
 
-                var inventorySetup = new Rs2InventorySetup("Barrows", mainScheduledFuture);
+                var inventorySetup = new Rs2InventorySetup(config.inventorySetup().getName(), mainScheduledFuture);
 
                 if(firstRun) {
                     if (!inventorySetup.doesEquipmentMatch()) {

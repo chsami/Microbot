@@ -119,7 +119,7 @@ public class revKillerScript extends Script {
                     return;
                 }
 
-                var inventorySetup = new Rs2InventorySetup("Revs", mainScheduledFuture);
+                var inventorySetup = new Rs2InventorySetup(config.inventorySetup().getName(), mainScheduledFuture);
 
                 if(firstRun || weDied) {
                     if (!inventorySetup.doesEquipmentMatch()) {
@@ -580,16 +580,14 @@ public class revKillerScript extends Script {
             logBackIn();
             shouldFlee = false;
             return;
-        } else {
+        }
+
+        if (Microbot.isLoggedIn()) {
             if(isPkerAround()) {
                 getAwayFromPker();
                 shouldFlee = false;
-                return;
             }
         }
-
-        shouldFlee = false;
-        Rs2Walker.setTarget(null);
     }
 
     public void logBackIn(){

@@ -3,10 +3,18 @@ package net.runelite.client.plugins.microbot.revKiller;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.config.*;
+import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 
 @ConfigGroup("Rev Killer")
 @ConfigInformation("1. In Rs2InventorySetups have a setup named Revs.<br /><br />Keep runtime low! Rev caves are HEAVILY monitored. <br /><br />Required items: Stamina potions, Ranging potions, Arrows, Sharks, Rings of Dueling, and Amulets of Glory.<br /><br /> Rev Knights / Knight kiter by Man Im Shrek now")
 public interface revKillerConfig extends Config {
+    @ConfigItem(
+            keyName = "inventorySetup",
+            name = "Inventory Setup",
+            description = "Inventory Setup to use for Revs",
+            position = 0
+    )
+    default InventorySetup inventorySetup() { return null; }
 
     @ConfigItem(
             keyName = "selectedRev",
