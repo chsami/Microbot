@@ -3,7 +3,6 @@ package net.runelite.client.plugins.microbot.barrows;
 import net.runelite.api.ItemID;
 import net.runelite.client.config.*;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
-import net.runelite.client.plugins.microbot.revKiller.revKillerConfig;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Food;
 
 @ConfigGroup("barrows")
