@@ -255,10 +255,10 @@ public class BarrowsScript extends Script {
                                 }
 
                                 if (Rs2GameObject.interact(sarc, "Search")) {
-                                    sleepUntil(() -> Rs2Player.isMoving(), Rs2Random.between(1000, 3000));
-                                    sleepUntil(() -> !Rs2Player.isMoving() || Rs2Player.isInCombat(), Rs2Random.between(3000, 6000));
+                                    sleepUntil(() -> Rs2Player.isMoving(), Rs2Random.between(2000, 4000));
+                                    sleepUntil(() -> !Rs2Player.isMoving() || Rs2Player.isInCombat(), Rs2Random.between(6000, 9000));
                                     // the brother could take a second to spawn in.
-                                    sleepUntil(() -> Microbot.getClient().getHintArrowNpc()!=null, Rs2Random.between(750, 1500));
+                                    sleepUntil(() -> Microbot.getClient().getHintArrowNpc()!=null || Rs2Dialogue.isInDialogue(), Rs2Random.between(1500, 2500));
                                 }
                                 if(Rs2Dialogue.isInDialogue()){
                                     WhoisTun = brother.name;
