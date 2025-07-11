@@ -1,5 +1,8 @@
 package net.runelite.client.plugins.microbot.util.misc;
 
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import net.runelite.api.Point;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
@@ -61,7 +64,7 @@ public class Rs2UiHelper {
         LocalPoint lp = actor.getLocalLocation();
         if (lp == null) {
             Microbot.log("LocalPoint is null");
-            return new Rectangle(1, 1);
+            return getDefaultRectangle();
         }
 
 
@@ -69,7 +72,7 @@ public class Rs2UiHelper {
                 Perspective.getTileHeight(Microbot.getClient(), lp, actor.getWorldLocation().getPlane())))
                 .orElse(null);
 
-        if (clickbox == null) return new Rectangle(1, 1);  //return a small rectangle if clickbox is null
+        if (clickbox == null) return getDefaultRectangle();  //return a small rectangle if clickbox is null
         
 
         return new Rectangle(clickbox.getBounds());
@@ -77,25 +80,25 @@ public class Rs2UiHelper {
 
     public static Rectangle getObjectClickbox(TileObject object) {
 
-        if (object == null) return new Rectangle(1, 1);  //return a small rectangle if object is null
+        if (object == null) return getDefaultRectangle();  //return a small rectangle if object is null
         Shape clickbox = Microbot.getClientThread().runOnClientThreadOptional(object::getClickbox).orElse(null);
-        if (clickbox == null) return new Rectangle(1, 1);  //return a small rectangle if clickbox is null
-        if (clickbox.getBounds() == null) return new Rectangle(1, 1);
+        if (clickbox == null) return getDefaultRectangle();  //return a small rectangle if clickbox is null
+        if (clickbox.getBounds() == null) return getDefaultRectangle();
 
 
         return new Rectangle(clickbox.getBounds());
     }
     
     public static Rectangle getTileClickbox(Tile tile) {
-        if (tile == null) return new Rectangle(1, 1);
+        if (tile == null) return getDefaultRectangle();
 
         LocalPoint localPoint = tile.getLocalLocation();
-        if (localPoint == null) return new Rectangle(1, 1);
+        if (localPoint == null) return getDefaultRectangle();
 
         // Get the screen point of the tile center
         Point screenPoint = Perspective.localToCanvas(Microbot.getClient(), localPoint, Microbot.getClient().getPlane());
 
-        if (screenPoint == null) return new Rectangle(1, 1); 
+        if (screenPoint == null) return getDefaultRectangle();
         
         int tileSize = Perspective.LOCAL_TILE_SIZE;
         int halfSize = tileSize / 4;
@@ -122,4 +125,30 @@ public class Rs2UiHelper {
     public static String stripColTags(String text) {
         return text != null ? text.replaceAll("<col=[^>]+>|</col>", "") : "";
     }
+
+	public static Rectangle getDefaultRectangle() {
+		int randomValue = ThreadLocalRandom.current().nextInt(3) - 1;
+		return new Rectangle(randomValue, randomValue, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight());
+	}
+
+	/**
+	 * Extracts the first integer number from a given string.
+	 * For example: "+1%", "123abc", "Price: 99 dollars" will result in 1, 123, 99
+	 *
+	 * @param input The input string containing a number.
+	 * @return The extracted number, or -1 if no number is found.
+	 */
+	public static int extractNumber(String input) {
+		// Define a regex pattern to match one or more digits
+		Pattern pattern = Pattern.compile("\\d+");
+		Matcher matcher = pattern.matcher(input);
+
+		// Find the first match and parse it as an integer
+		if (matcher.find()) {
+			return Integer.parseInt(matcher.group());
+		}
+
+		// Return -1 if no number is found
+		return -1;
+	}
 }

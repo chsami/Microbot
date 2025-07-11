@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.thieving;
 
+import com.google.inject.Inject;
 import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldArea;
@@ -24,7 +25,8 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class ThievingScript extends Script {
-    ThievingConfig config;
+    private final ThievingConfig config;
+	private final ThievingPlugin plugin;
     private static final int DARKMEYER_REGION = 14388;
 
     private static final Map<String, EquipmentInventorySlot> VYRE_SET = Map.of(
@@ -65,8 +67,14 @@ public class ThievingScript extends Script {
         // add more...
     );
 
-    public boolean run(ThievingConfig config) {
-        this.config = config;
+	@Inject
+	public ThievingScript(final ThievingConfig config, final ThievingPlugin plugin)
+	{
+		this.config = config;
+		this.plugin = plugin;
+	}
+
+    public boolean run() {
         Microbot.isCantReachTargetDetectionEnabled = true;
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
@@ -146,7 +154,7 @@ public class ThievingScript extends Script {
     }
 
     private void openCoinPouches() {
-        int threshold = Math.max(1, Math.min(28, config.coinPouchTreshHold() + (int)(Math.random() * 7 - 3)));
+        int threshold = Math.max(1, Math.min(plugin.getMaxCoinPouch(), config.coinPouchTreshHold() + (int)(Math.random() * 7 - 3)));
         if (Rs2Inventory.hasItemAmount("coin pouch", threshold, true)) {
             Rs2Inventory.interact("coin pouch", "Open-all");
         }

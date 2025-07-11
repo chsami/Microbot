@@ -5,9 +5,9 @@ import net.runelite.api.ItemComposition;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
-import net.runelite.client.plugins.microbot.util.grandexchange.GrandExchangeSlots;
+import net.runelite.client.plugins.microbot.util.grandexchange.GrandExchangeAction;
+import net.runelite.client.plugins.microbot.util.grandexchange.GrandExchangeRequest;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
-import org.apache.commons.lang3.tuple.Pair;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 
 import java.util.*;
@@ -22,7 +22,6 @@ public class AutoBuyerScript extends Script {
     private static int initialCount = 0;
     private static int totalBought = 0;
     private static Map<String, Integer> itemsList;
-    private Integer timesToClickIncrease = null;
     private Integer percent = null;
 
     public boolean run(AutoBuyerConfig config) {
@@ -68,14 +67,8 @@ public class AutoBuyerScript extends Script {
                     initialCount = itemsList.size();
                     initialized = true;
 
-                    if (config.pricePerItem().equals(Percentage.PERCENT_5))
-                        timesToClickIncrease = 1;
-                    else if (config.pricePerItem().equals(Percentage.PERCENT_10)) {
-                        timesToClickIncrease = 2;
-                    }
-                    else {
-                        percent = config.pricePerItem().getValue();
-                    }
+					percent = config.pricePerItem().getValue();
+
                     if (!isRunning())
                         return;
                 }
@@ -90,7 +83,7 @@ public class AutoBuyerScript extends Script {
                     // Try to collect items to bank to free up slots
                     if (!hasFreeSlots()) {
                         if (canFreeUpSlots()) {
-                            Rs2GrandExchange.collectToBank();
+                            Rs2GrandExchange.collectAllToBank();
                             Microbot.log("Items bought from G.E. are collected to your bank.");
                         } else {
                             Microbot.log("All G.E. slots are in use, either abort or wait until one comes available.");
@@ -98,17 +91,20 @@ public class AutoBuyerScript extends Script {
                         }
                     }
 
-                    boolean result;
-                    if (timesToClickIncrease != null ) {
-                        result = Rs2GrandExchange.buyItemAbove5Percent(itemName, quantity, timesToClickIncrease);
-                    } else {
-                        result = Rs2GrandExchange.buyItemAboveXPercent(itemName, quantity, percent);
-                    }
+					GrandExchangeRequest request = GrandExchangeRequest.builder()
+						.action(GrandExchangeAction.BUY)
+						.itemName(itemName)
+						.quantity(quantity)
+						.percent(percent)
+						.build();
+
+					boolean result = Rs2GrandExchange.processOffer(request);
 
                     if (!result) {
                         Microbot.log("Could not buy '" + itemName + "'. Skipping it.");
                         Rs2GrandExchange.backToOverview();
                     }
+
                     itemsList.remove(itemName); // Remove from list so we don't buy the same item again
                     totalBought++;
                 });
@@ -148,8 +144,7 @@ public class AutoBuyerScript extends Script {
     }
 
     private boolean hasFreeSlots() {
-        Pair<GrandExchangeSlots, Integer> availableSlots = Rs2GrandExchange.getAvailableSlot();
-        return Integer.parseInt(String.valueOf(availableSlots.getRight())) > 0;
+        return Rs2GrandExchange.getAvailableSlot() != null;
     }
 
 
@@ -190,7 +185,6 @@ public class AutoBuyerScript extends Script {
         initialCount = 0;
         totalBought = 0;
         itemsList.clear();
-        timesToClickIncrease = null;
         percent = null;
         super.shutdown();
     }

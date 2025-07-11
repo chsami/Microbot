@@ -128,7 +128,6 @@ public interface ThievingConfig extends Config {
             position = 0,
             section = coinPouchSection
     )
-    @Range(min = 1, max = 28)
     default int coinPouchTreshHold() {
         return 28;
     }

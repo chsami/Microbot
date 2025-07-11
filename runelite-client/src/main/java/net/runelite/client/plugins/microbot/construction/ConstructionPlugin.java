@@ -37,7 +37,7 @@ public class ConstructionPlugin extends Plugin {
     @Inject
     private ConstructionOverlay constructionOverlay;
 
-    private final ConstructionScript constructionScript = new ConstructionScript();
+    public ConstructionScript constructionScript = new ConstructionScript();
 
     @Override
     protected void startUp() throws AWTException {
@@ -48,8 +48,9 @@ public class ConstructionPlugin extends Plugin {
         constructionScript.run(config);
     }
 
-    protected void shutDown() {
+    protected void shutDown() throws Exception {
         constructionScript.shutdown();
         overlayManager.remove(constructionOverlay);
+        super.shutDown();
     }
 }

@@ -30,7 +30,9 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Table;
+import com.google.common.collect.Tables;
 import com.google.inject.Provides;
 import java.awt.Color;
 import java.awt.Rectangle;
@@ -101,23 +103,6 @@ import net.runelite.client.util.QuantityFormatter;
 import net.runelite.client.util.RSTimeUnit;
 import net.runelite.client.util.Text;
 
-import javax.inject.Inject;
-import javax.swing.*;
-import java.applet.Applet;
-import java.awt.*;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.List;
-import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static java.lang.Boolean.FALSE;
-import static java.lang.Boolean.TRUE;
-import static net.runelite.api.TileItem.*;
 import static net.runelite.client.plugins.grounditems.config.MenuHighlightMode.*;
 
 @PluginDescriptor(
@@ -205,12 +190,15 @@ public class GroundItemsPlugin extends Plugin
 	@Inject
 	private ColorPickerManager colorPickerManager;
 
-	@Getter
-	private static final Table<WorldPoint, Integer, GroundItem> collectedGroundItems = HashBasedTable.create();
+	private static final Table<WorldPoint, Integer, GroundItem> collectedGroundItems = Tables.synchronizedTable(HashBasedTable.create());
 	private List<PriceHighlight> priceChecks = ImmutableList.of();
 	private LoadingCache<NamedQuantity, Boolean> highlightedItems;
 	private LoadingCache<NamedQuantity, Boolean> hiddenItems;
 	private final Map<WorldPoint, Lootbeam> lootbeams = new HashMap<>();
+
+	public static Table<WorldPoint, Integer, GroundItem> getCollectedGroundItems() {
+		return ImmutableTable.copyOf(collectedGroundItems);
+	}
 
 	@Provides
 	GroundItemsConfig provideConfig(ConfigManager configManager)
