@@ -1,10 +1,11 @@
-package net.runelite.client.plugins.microbot.hal.blessedwine;
+package net.runelite.client.plugins.microbot.hal.halsutility.modules.skilling.blessedwine;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.ObjectID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -46,6 +47,11 @@ public class BlessedWineScript extends Script {
     private static final Integer JUG_OF_WINE = ItemID.JUG_WINE;
     private static final Integer BLESSED_WINE = ItemID.JUG_WINE_BLESSED;
 
+    // === Object IDs (gameval) ===
+    private static final int EXPOSED_ALTAR_ID = ObjectID.VARLAMORE_PRAYER_ACTIVITY_ALTAR;
+    private static final int LIBATION_BOWL_ID = ObjectID.VARLAMORE_LIBATION_BOWL;
+    private static final int SHRINE_OF_RALOS_ID = ObjectID.RALOS_SHRINE;
+
     public boolean run() {
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             if (!Microbot.isLoggedIn()) return;
@@ -55,12 +61,12 @@ public class BlessedWineScript extends Script {
 
             switch (state) {
                 case INITIALIZING:
-                    BlessedWinePlugin.status = "Initializing run...";
+                    BlessedWineModule.status = "Initializing run...";
                     initialize();
                     break;
 
                 case WALK_TO_ALTAR:
-                    BlessedWinePlugin.status = "Walking to Exposed Altar...";
+                    BlessedWineModule.status = "Walking to Exposed Altar...";
                     Rs2Walker.walkTo(EXPOSED_ALTAR);
                     Rs2Player.waitForWalking();
                     if (!ALTAR_TOP.contains(Rs2Player.getWorldLocation())) return;
@@ -68,15 +74,15 @@ public class BlessedWineScript extends Script {
                     break;
 
                 case BLESS_AT_ALTAR:
-                    BlessedWinePlugin.status = "Blessing wine at altar...";
-                    Rs2GameObject.interact(52799, "Bless");
+                    BlessedWineModule.status = "Blessing wine at altar...";
+                    Rs2GameObject.interact(EXPOSED_ALTAR_ID, "Bless");
                     Rs2Inventory.waitForInventoryChanges(1200);
                     if (!Rs2Inventory.hasItem(BLESSED_WINE)) return;
                     state = BlessedWineState.WALK_TO_BOWL;
                     break;
 
                 case WALK_TO_BOWL:
-                    BlessedWinePlugin.status = "Walking to Libation Bowl...";
+                    BlessedWineModule.status = "Walking to Libation Bowl...";
                     Rs2Walker.walkTo(LIBATION_BOWL);
                     Rs2Player.waitForWalking();
                     if (!LIBATION_ROOM.contains(Rs2Player.getWorldLocation())) return;
@@ -84,8 +90,8 @@ public class BlessedWineScript extends Script {
                     break;
 
                 case USE_LIBATION_BOWL:
-                    BlessedWinePlugin.status = "Using Libation Bowl...";
-                    Rs2GameObject.interact(53018, "Fill");
+                    BlessedWineModule.status = "Using Libation Bowl...";
+                    Rs2GameObject.interact(LIBATION_BOWL_ID, "Fill");
                     if (currentPrayerPoints > 2 && !Rs2Player.isAnimating()) return;
                     if (currentPrayerPoints < 2 && !Rs2Player.isAnimating()) {
                         state = BlessedWineState.WALK_TO_SHRINE;
@@ -96,7 +102,7 @@ public class BlessedWineScript extends Script {
                     break;
 
                 case WALK_TO_SHRINE:
-                    BlessedWinePlugin.status = "Walking to Shrine of Ralos...";
+                    BlessedWineModule.status = "Walking to Shrine of Ralos...";
                     Rs2Walker.walkTo(SHRINE_OF_RALOS);
                     Rs2Player.waitForWalking();
                     if (!TEMPLE.contains(Rs2Player.getWorldLocation())) return;
@@ -104,8 +110,8 @@ public class BlessedWineScript extends Script {
                     break;
 
                 case RESTORE_PRAYER:
-                    BlessedWinePlugin.status = "Restoring prayer...";
-                    Rs2GameObject.interact(52405, "Bask");
+                    BlessedWineModule.status = "Restoring prayer...";
+                    Rs2GameObject.interact(SHRINE_OF_RALOS_ID, "Bask");
                     Rs2Player.waitForAnimation(5000);
                     if (currentPrayerPoints != maxPrayerLevel) return;
                     if (!Rs2Inventory.hasItem(BLESSED_WINE)) {
@@ -116,7 +122,7 @@ public class BlessedWineScript extends Script {
                     break;
 
                 case TELEPORT_TO_BANK:
-                    BlessedWinePlugin.status = "Teleporting back to Cam Torum Bank...";
+                    BlessedWineModule.status = "Teleporting back to Cam Torum Bank...";
                     if (Rs2Player.getWorldLocation().getPlane() != 1) {
                         for (int id : CALCIFIED_MOTH) {
                             if (!isRunning()) break;
@@ -141,7 +147,7 @@ public class BlessedWineScript extends Script {
                     break;
 
                 case BANKING:
-                    BlessedWinePlugin.status = "Banking and preparing next run...";
+                    BlessedWineModule.status = "Banking and preparing next run...";
                     if (!Rs2Bank.isOpen()) {
                         Rs2Bank.openBank();
                         sleepUntil(Rs2Bank::isOpen, 20000);
@@ -153,20 +159,20 @@ public class BlessedWineScript extends Script {
                     if (!Rs2Inventory.hasItem(BLESSED_BONE_SHARD) && !Rs2Bank.hasItem(BLESSED_BONE_SHARD)) {
                         state = BlessedWineState.FINISHED;
                     }
-                    BlessedWinePlugin.totalWinesToBless = Rs2Bank.count(JUG_OF_WINE);
+                    BlessedWineModule.totalWinesToBless = Rs2Bank.count(JUG_OF_WINE);
                     Rs2Bank.withdrawAll(JUG_OF_WINE);
                     Rs2Inventory.waitForInventoryChanges(1200);
                     if (!Rs2Inventory.contains(BLESSED_BONE_SHARD, JUG_OF_WINE)) {
                         state = BlessedWineState.FINISHED;
                     }
                     int currentXp = getCurrentXp();
-                    BlessedWinePlugin.endingXp = currentXp - BlessedWinePlugin.startingXp;
-                    BlessedWinePlugin.loopCount++;
+                    BlessedWineModule.endingXp = currentXp - BlessedWineModule.startingXp;
+                    BlessedWineModule.loopCount++;
                     state = BlessedWineState.WALK_TO_ALTAR;
                     break;
 
                 case FINISHED:
-                    BlessedWinePlugin.status = "Finished: out of materials or XP complete.";
+                    BlessedWineModule.status = "Finished: out of materials or XP complete.";
                     shutdown();
                     break;
             }
@@ -179,7 +185,11 @@ public class BlessedWineScript extends Script {
 
 
     private void initialize() {
-        Rs2Walker.walkTo(CAM_TORUM_BANK);
+        if (!BANK.contains(Rs2Player.getWorldLocation())) {
+            Rs2Walker.walkTo(CAM_TORUM_BANK);
+            Rs2Player.waitForWalking();
+            return;
+        }
         if (!Rs2Bank.openBank()) return;
         if (!Rs2Bank.isOpen()) return;
         if (!Rs2Bank.hasItem(BLESSED_BONE_SHARD) || !Rs2Bank.hasItem(JUG_OF_WINE)) {
@@ -219,12 +229,12 @@ public class BlessedWineScript extends Script {
         if (!Rs2Inventory.isFull()) return;
 
         // Overlay state
-        BlessedWinePlugin.loopCount = 0;
-        BlessedWinePlugin.totalLoops = expectedRuns;
-        BlessedWinePlugin.startingXp = getCurrentXp();
-        BlessedWinePlugin.expectedXp = expectedXp + getCurrentXp();
-        BlessedWinePlugin.endingXp = 0;
-        BlessedWinePlugin.totalWinesToBless = winesTotal;
+        BlessedWineModule.loopCount = 0;
+        BlessedWineModule.totalLoops = expectedRuns;
+        BlessedWineModule.startingXp = getCurrentXp();
+        BlessedWineModule.expectedXp = expectedXp + getCurrentXp();
+        BlessedWineModule.endingXp = 0;
+        BlessedWineModule.totalWinesToBless = winesTotal;
 
         state = BlessedWineState.WALK_TO_ALTAR;
         initialized = true;
@@ -240,4 +250,4 @@ public class BlessedWineScript extends Script {
         initialized = false;
         super.shutdown();
     }
-}
+} 

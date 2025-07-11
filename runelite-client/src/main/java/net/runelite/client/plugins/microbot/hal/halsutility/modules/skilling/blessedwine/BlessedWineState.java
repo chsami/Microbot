@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.hal.blessedwine;
+package net.runelite.client.plugins.microbot.hal.halsutility.modules.skilling.blessedwine;
 
 public enum BlessedWineState {
     INITIALIZING,         // Run setup, determine blessing capacity
@@ -13,4 +13,4 @@ public enum BlessedWineState {
     TELEPORT_TO_BANK,     // Use moth to teleport to Cam Torum
     BANKING,              // Deposit, withdraw, reload inventory
     FINISHED              // Run completed or resources exhausted
-}
+} 
