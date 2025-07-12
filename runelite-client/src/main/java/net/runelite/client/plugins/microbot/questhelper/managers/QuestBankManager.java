@@ -56,7 +56,7 @@ public class QuestBankManager
 	@Inject
 	private QuestBankTab questBankTab;
 
-	private boolean loggedInStateKnown;
+	private boolean vaildLoadedCache;
 
 	public void startUp(Injector injector, EventBus eventBus)
 	{
@@ -73,12 +73,12 @@ public class QuestBankManager
 
 	public void loadInitialStateFromConfig(Client client)
 	{
-		if (!loggedInStateKnown)
+		if (!vaildLoadedCache)
 		{
 			Player localPlayer = client.getLocalPlayer();
 			if (localPlayer != null && localPlayer.getName() != null)
 			{
-				loggedInStateKnown = true;
+				vaildLoadedCache = true;
 				loadState();
 			}
 		}
@@ -86,7 +86,7 @@ public class QuestBankManager
 
 	public void setUnknownInitialState()
 	{
-		loggedInStateKnown = false;
+		vaildLoadedCache = false;
 	}
 
 	public void loadState()
@@ -156,10 +156,10 @@ public class QuestBankManager
 	}
 
 
-	public void saveBankToConfig()
+	public void saveBankCacheToConfig()
 	{
-		questBank.saveBankToConfig();
-		groupBank.saveBankToConfig();
+		questBank.saveBankCacheToConfig();
+		groupBank.saveBankCacheToConfig();
 	}
 
 	public void emptyState()

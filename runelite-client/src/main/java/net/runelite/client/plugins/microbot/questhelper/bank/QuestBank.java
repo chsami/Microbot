@@ -96,7 +96,7 @@ public class QuestBank
 			// If we've hopped between profiles
 			if (rsProfileKey != null)
 			{
-				saveBankToConfig();
+				saveBankCacheToConfig();
 			}
 			loadBankFromConfig();
 		}
@@ -119,12 +119,12 @@ public class QuestBank
 		{
 			// Due to changing data format from list to array, need to handle for old users
 			questBankData.setIdAndQuantity(new int[0]);
-			saveBankToConfig();
+			saveBankCacheToConfig();
 		}
 		bankItems = questBankData.getAsList();
 	}
 
-	public void saveBankToConfig()
+	public void saveBankCacheToConfig()
 	{
 		if (rsProfileKey == null)
 		{

@@ -74,9 +74,11 @@ public class Rs2Bank {
     private static final String BANK_KEY = "bankitems";
     private static final Rs2BankData rs2BankData = new Rs2BankData();
     private static final Gson gson = new Gson();
-    private static String rsProfileKey;
+    private static String rsProfileKey= null;
     private static RuneScapeProfileType worldType;
-    private static boolean loggedInStateKnown = false;
+    private static boolean vaildLoadedCache = false;
+    // Used to synchronize calls
+    private static final Object lock = new Object();
     /**
      * Container describes from what interface the action happens
      * eg: withdraw means the contailer will be the bank container
@@ -490,16 +492,14 @@ public class Rs2Bank {
      * @param safe    will wait for item to appear in inventory before continuing if set to true
      */
     private static boolean handleAmount(Rs2ItemModel rs2Item, int amount, boolean safe) {
+        
         if (amount <= 0) return true;
         int selected = Microbot.getVarbitValue(SELECTED_OPTION_VARBIT);
         int configuredX = Microbot.getVarbitValue(X_AMOUNT_VARBIT);
-        boolean hasX = configuredX > 0;
-
+        boolean hasX = configuredX > 0;        
         boolean isInventory = (container == BANK_INVENTORY_ITEM_CONTAINER);
-
         int xSetOffset = -1;
         int xPromptOffset = -1;
-
         if (hasX) {
             switch (selected) {
                 case 0:
@@ -532,7 +532,7 @@ public class Rs2Bank {
         }
 
         if (hasX && configuredX == amount) {
-            final int before = Rs2Inventory.count();
+            final int before = Rs2Inventory.count();            
             invokeMenu(xSetOffset, rs2Item);
             if (safe) return sleepUntilTrue(() -> Rs2Inventory.count() != before, 100, 2500);
             return true;
@@ -543,8 +543,7 @@ public class Rs2Bank {
             Widget widget = Rs2Widget.getWidget(162, 42);
             return widget != null && widget.getText().equalsIgnoreCase("Enter amount:");
         }, 5000);
-        if (!foundEnterAmount) return false;
-
+        if (!foundEnterAmount) return false;        
         Rs2Random.waitEx(1200, 100);
         Rs2Keyboard.typeString(String.valueOf(amount));
         Rs2Keyboard.enter();
@@ -1557,7 +1556,7 @@ public class Rs2Bank {
                 .filter(BankLocation::hasRequirements)
                 .collect(Collectors.toSet());
         long accessibleBanksTime = System.nanoTime() - accessibleBanksStart;
-        log.info("Accessible banks filtering performance: {}ms, Found {} accessible banks out of {} total", 
+        log.info("\n\tAccessible banks filtering performance: \n\t{}ms, Found {} accessible banks out of {} total", 
                  accessibleBanksTime / 1_000_000.0, accessibleBanks.size(), BankLocation.values().length);
 
         if (accessibleBanks.isEmpty()) {
@@ -1757,14 +1756,21 @@ public class Rs2Bank {
 
     /**
      * Updates the bank items in memory based on the provided event.
+     * Thread-safe method called from the client thread via event handler.
      *
      * @param e The event containing the latest bank items.
      */
     public static void updateLocalBank(ItemContainerChanged e) {
-        List<Rs2ItemModel> list = updateItemContainer(InventoryID.BANK.getId(), e);
-        if (list != null) {
-            // Update the centralized bank data
-            rs2BankData.set(list);
+        synchronized (lock) {
+            List<Rs2ItemModel> list = updateItemContainer(InventoryID.BANK.getId(), e);
+            if (list != null) {
+                // Update the centralized bank data (Rs2BankData.set() is already synchronized)
+                rs2BankData.set(list);
+                vaildLoadedCache = true;
+                log.debug("Bank data updated with {} items from client thread", list.size());
+            } else {
+                log.debug("Bank data update skipped - no items received");
+            }
         }
     }
 
@@ -1774,58 +1780,80 @@ public class Rs2Bank {
      * 
      * @param items The current bank items
      */
-    private static void updateBankCache(List<Rs2ItemModel> items) {
-        if (items != null) {
+    private static void updateCache(List<Rs2ItemModel> items) {
+        if (items != null ) {
             rs2BankData.set(items);
-            saveBankToConfig();
+            if (Rs2Bank.rsProfileKey  == null){
+                Rs2Bank.rsProfileKey = Microbot.getConfigManager().getRSProfileKey();
+            }
+            saveCacheToConfig(Rs2Bank.rsProfileKey);
+            vaildLoadedCache = true;
         }
     }
-
+    public static void loadInitialCacheFromCurrentConfig() {
+        Rs2Bank.rsProfileKey = Microbot.getConfigManager().getRSProfileKey();
+        loadCacheFromConfig(rsProfileKey);
+    }
     /**
      * Loads the initial bank state from config. Should be called when a player logs in.
-     * Similar to QuestBankManager.loadInitialStateFromConfig().
+     * Thread-safe method that synchronizes config loading.
      */
-    public static void loadInitialBankStateFromConfig() {
-        if (!loggedInStateKnown) {
-            Player localPlayer = Microbot.getClient().getLocalPlayer();
-            if (localPlayer != null && localPlayer.getName() != null) {
-                loggedInStateKnown = true;
-                loadState();
+    public static void loadCacheFromConfig(String newRsProfileKey) {
+        synchronized (lock) {
+            if (!vaildLoadedCache) {
+                Player localPlayer = Microbot.getClient().getLocalPlayer();
+                if (localPlayer != null && localPlayer.getName() != null) {                
+                    loadCache(newRsProfileKey);
+                    log.info("-load bank cache, bank items size: {}", rs2BankData.size());
+                    vaildLoadedCache = Microbot.loggedIn;
+                }
             }
         }
     }
 
     /**
      * Sets the initial state as unknown. Called when logging out or changing profiles.
+     * Thread-safe method that synchronizes state clearing.
      */
-    public static void setUnknownInitialBankState() {
-        loggedInStateKnown = false;
+    public static void setUnknownInitialCacheState() {
+        synchronized (lock) {
+            if (vaildLoadedCache && Rs2Bank.rsProfileKey != null && Microbot.getConfigManager() != null && rsProfileKey == Microbot.getConfigManager().getRSProfileKey()) {
+                saveCacheToConfig(Rs2Bank.rsProfileKey);
+            }
+            vaildLoadedCache = false;
+            rsProfileKey = null;
+        }
     }
 
     /**
      * Loads bank state from config, handling profile changes.
      * Similar to QuestBank.loadState().
      */
-    public static void loadState() {
+    private static void loadCache(String newRsProfileKey ) {
         // Only re-load from config if loading from a new profile
-        if (!RuneScapeProfileType.getCurrent(Microbot.getClient()).equals(worldType)) {
+        if (newRsProfileKey != null && !newRsProfileKey.equals(rsProfileKey)) {
             // If we've hopped between profiles, save current state first
-            if (rsProfileKey != null) {
-                saveBankToConfig();
+            if (rsProfileKey != null && vaildLoadedCache) {
+                saveCacheToConfig(rsProfileKey);
             }
-            loadBankFromConfig();
+            
+            loadCacheFromConfigInternal(newRsProfileKey);
         }
     }
 
     /**
      * Loads bank data from RuneLite config system.
-     * Similar to QuestBank.loadBankFromConfig().
+     * Similar to QuestBank.loadCacheFromConfig().
      */
-    private static void loadBankFromConfig() {
-        rsProfileKey = Microbot.getConfigManager().getRSProfileKey();
+    private static void loadCacheFromConfigInternal(String rsProfileKey) {
+        if (rsProfileKey == null || Microbot.getConfigManager() == null) {
+            log.warn("Cannot load bank data, rsProfileKey or config manager is null");
+            return;
+        }
+        Rs2Bank.rsProfileKey = rsProfileKey;
         worldType = RuneScapeProfileType.getCurrent(Microbot.getClient());
-
-        String json = Microbot.getConfigManager().getRSProfileConfiguration(CONFIG_GROUP, BANK_KEY);
+        String json =Microbot.getConfigManager().getConfiguration(CONFIG_GROUP, rsProfileKey, BANK_KEY);
+        //String json = Microbot.getConfigManager().getRSProfileConfiguration(CONFIG_GROUP, BANK_KEY);
         try {
             if (json != null && !json.isEmpty()) {
                 int[] data = gson.fromJson(json, int[].class);
@@ -1843,22 +1871,22 @@ public class Rs2Bank {
         } catch (JsonSyntaxException err) {
             log.warn("Failed to parse cached bank data from config, resetting cache", err);
             rs2BankData.setEmpty();
-            saveBankToConfig();
+            saveCacheToConfig(Rs2Bank.rsProfileKey);
         }
     }
 
     /**
      * Saves the current bank state to RuneLite config system.
-     * Similar to QuestBank.saveBankToConfig().
+     * Similar to QuestBank.saveCacheToConfig().
      */
-    public static void saveBankToConfig() {
-        if (rsProfileKey == null || Microbot.getConfigManager() == null) {
+    public static void saveCacheToConfig(String newRsProfileKey) {
+        if (newRsProfileKey == null || Microbot.getConfigManager() == null) {
             return;
         }
 
         try {
             String json = gson.toJson(rs2BankData.getIdQuantityAndSlot());
-            Microbot.getConfigManager().setConfiguration(CONFIG_GROUP, rsProfileKey, BANK_KEY, json);
+            Microbot.getConfigManager().setConfiguration(CONFIG_GROUP, newRsProfileKey, BANK_KEY, json);
             log.debug("Saved {} bank items to config cache", rs2BankData.size());
         } catch (Exception e) {
             log.error("Failed to save bank data to config", e);
@@ -1867,13 +1895,16 @@ public class Rs2Bank {
 
     /**
      * Clears the bank cache state. Called when logging out.
+     * Thread-safe method that synchronizes cache clearing.
      */
-    public static void emptyBankState() {
-        rsProfileKey = null;
-        worldType = null;
-        rs2BankData.setEmpty();
-        loggedInStateKnown = false;
-        log.debug("Emptied bank state and cache");
+    public static void emptyCacheState() {
+        synchronized (lock) {
+            rsProfileKey = null;
+            worldType = null;
+            rs2BankData.setEmpty();
+            vaildLoadedCache = false;
+            log.debug("Emptied bank state and cache");
+        }
     }
    
 

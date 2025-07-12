@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.util.widget;
 
 import net.runelite.api.MenuAction;
 import net.runelite.api.annotations.Component;
+import java.awt.Rectangle;
 import net.runelite.api.widgets.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -12,9 +13,12 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import lombok.extern.slf4j.Slf4j;
+
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
 
+@Slf4j
 public class Rs2Widget {
 
     public static boolean sleepUntilHasWidgetText(String text, int widgetId, int childId, boolean exact, int sleep) {
@@ -400,5 +404,98 @@ public class Rs2Widget {
 
         return true;
     }
+
+
+
+    
+    public static boolean checkBoundsOverlapWidgetInMainModal( Rectangle overlayBoundsCanvas, int viewportXOffset, int viewportYOffset) {
+        final int MAIN_MODAL_TOPLEVEL_CHILD_ID = 40; // Main modal child ID
+        final int MAIN_MODAL_STRECH_CHILD_ID = 16; // Main modal child ID
+        Widget mainModalWidget = getWidget(net.runelite.api.gameval.InterfaceID.TOPLEVEL, MAIN_MODAL_TOPLEVEL_CHILD_ID);
+        if (mainModalWidget == null || mainModalWidget.isHidden()) {
+            mainModalWidget  = getWidget(net.runelite.api.gameval.InterfaceID.TOPLEVEL_OSRS_STRETCH, MAIN_MODAL_STRECH_CHILD_ID);
+            
+        }
+        if (mainModalWidget == null ) {            
+            mainModalWidget  = getWidget(net.runelite.api.gameval.InterfaceID.TOPLEVEL_PRE_EOC, MAIN_MODAL_STRECH_CHILD_ID);
+        }
+        return checkWidgetAndDescendantsForOverlapCanvas(mainModalWidget, overlayBoundsCanvas, viewportXOffset, viewportYOffset);
+    }
+    /**
+	* Recursively iterates all descendants, but only checks bounds for nested containers 
+	* This matches the requirement: only nested containers within the static container are checked for overlap.
+	*/    
+    private static boolean checkWidgetAndDescendantsForOverlapCanvas(Widget widget, Rectangle overlayBoundsCanvas, int viewportXOffset, int viewportYOffset) {
+	    if (widget == null || widget.isHidden()) {
+		   return false;
+	    }       	   
+	    List<Widget[]> nestedAndDynamicWidgets = new java.util.ArrayList<>();
+	    if (widget.getDynamicChildren() != null) nestedAndDynamicWidgets.add(widget.getDynamicChildren());
+		if (widget.getNestedChildren() != null) nestedAndDynamicWidgets.add(widget.getNestedChildren());
+	    for (Widget[] widgetArray : nestedAndDynamicWidgets) {
+		   for (Widget nestedOrDynamic : widgetArray) {
+			   if (nestedOrDynamic == null || nestedOrDynamic.isHidden()) {
+				   continue;
+			   }
+               int groupId = nestedOrDynamic.getId() >>> 16; // upper 16 bits
+			   if(  nestedOrDynamic.getCanvasLocation() == null) {				   
+				   continue;
+			   }
+			   Rectangle widgetBounds = nestedOrDynamic.getBounds();
+			   if (widgetBounds != null) {
+				   Rectangle widgetCanvasBounds = new Rectangle(
+					   widgetBounds.x + viewportXOffset,
+					   widgetBounds.y + viewportYOffset,
+					   widgetBounds.width,
+					   widgetBounds.height
+				   );
+				   if (widgetCanvasBounds.intersects(overlayBoundsCanvas)) {
+					   Rectangle intersection = widgetCanvasBounds.intersection(overlayBoundsCanvas);
+					   if (intersection.width > 8 && intersection.height > 8) {
+                            log.debug("Widget with group ID {} and child ID {} overlaps with the overlay bounds.\n" +
+                                 "Widget ID: {}, Title: {}, Canvas Location: {}, Bounds: {}, Intersection: {}",
+                                 groupId, nestedOrDynamic.getId() & 0xFFFF, nestedOrDynamic.getId(),
+                                 nestedOrDynamic.getName(), nestedOrDynamic.getCanvasLocation(),
+                                 widgetCanvasBounds, intersection);
+						   return true;
+					   }
+				   }
+			   }
+		   }
+	   }
+	   
+
+	   // Recursively check all children for nested containers
+	   List<Widget[]> childGroups = new java.util.ArrayList<>();
+	   
+	   if (widget.getStaticChildren() != null) childGroups.add(widget.getStaticChildren());
+	   
+
+	   for (Widget[] childGroup : childGroups) {
+		   for (Widget child : childGroup) {
+			   if (child != null && !child.isHidden()) {					
+					int widgetId = child.getId();
+					int groupId = widgetId >>> 16; // upper 16 bits
+					int childId = widgetId & 0xFFFF; // lower 16 bits	
+                    if (child.getCanvasLocation() == null || (child.getCanvasLocation().getX() == 0 && child.getCanvasLocation().getY() == 0)) {
+                        continue;
+                    }				
+				   if (checkWidgetAndDescendantsForOverlapCanvas(child, overlayBoundsCanvas, viewportXOffset, viewportYOffset)) {
+                        Widget parentWidget = child.getParent();
+                        String title = parentWidget != null ? parentWidget.getName() : "Unknown";
+                        int parentId = parentWidget != null ? parentWidget.getId() : -1;
+                        int parentGoupID = parentId >>> 16; // upper 16 bits
+                        int parentChildID = parentId & 0xFFFF; // lower 16 bits
+
+                        log.debug("Widget with group ID {} and child ID {} overlaps with the overlay bounds.\n" +
+                                 "Parent Widget ID: {}, Group ID: {}, Child ID: {}, Title: {}",
+                                 groupId, childId, parentId, parentGoupID, parentChildID, title);
+					   return true;
+				   }
+			   }
+		   }
+	   }
+	   return false;
+   }
 
 }

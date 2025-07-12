@@ -13,6 +13,8 @@ import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.VarbitValues;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
+import net.runelite.client.plugins.microbot.util.cache.Rs2QuestCache;
+import net.runelite.client.plugins.microbot.util.cache.Rs2SkillCache;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
@@ -1474,8 +1476,7 @@ public class Rs2Player {
      * @return The {@link QuestState} representing the player's progress in the quest.
      */
     public static QuestState getQuestState(Quest quest) {
-        Client client = Microbot.getClient();
-        return Microbot.getClientThread().runOnClientThreadOptional(() -> quest.getState(client)).orElse(null);
+        return Rs2QuestCache.getQuestState(quest);
     }
 
     /**
@@ -1485,7 +1486,7 @@ public class Rs2Player {
      * @return The player's real level for the specified skill.
      */
     public static int getRealSkillLevel(Skill skill) {
-        return Microbot.getClient().getRealSkillLevel(skill);
+        return Rs2SkillCache.getRealSkillLevel(skill);
     }
 
     /**
@@ -1494,8 +1495,8 @@ public class Rs2Player {
      * @param skill The {@link Skill} to check.
      * @return The player's boosted level for the specified skill.
      */
-    public static int getBoostedSkillLevel(Skill skill) {
-        return Microbot.getClient().getBoostedSkillLevel(skill);
+    public static int getBoostedSkillLevel(Skill skill) {        
+        return Rs2SkillCache.getBoostedSkillLevel(skill);
     }
 
     /**

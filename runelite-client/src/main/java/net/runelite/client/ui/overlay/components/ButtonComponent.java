@@ -42,7 +42,7 @@ public class ButtonComponent implements LayoutableRenderableEntity
                 return mouseEvent;
             }
             if (mouseEvent.getSource().toString().equals("Microbot"))
-                return mouseEvent;
+                return mouseEvent;            
             if (SwingUtilities.isLeftMouseButton(mouseEvent))
             {
                     Microbot.getClientThread().invokeLater(() ->
@@ -183,6 +183,10 @@ public class ButtonComponent implements LayoutableRenderableEntity
                 localBounds.height
         );
         return trueBounds.contains(mousePoint);
+    }
+
+    public boolean isHovered() {
+        return isHovered;
     }
 
 }

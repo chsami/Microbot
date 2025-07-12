@@ -296,7 +296,7 @@ public class QuestHelperPlugin extends Plugin
 
 		if (state == GameState.LOGIN_SCREEN)
 		{
-			questBankManager.saveBankToConfig();
+			questBankManager.saveBankCacheToConfig();
 			SwingUtilities.invokeLater(() -> panel.refresh(Collections.emptyList(), true, new HashMap<>()));
 			questBankManager.emptyState();
 			questManager.shutDownQuest(true);
@@ -449,7 +449,7 @@ public class QuestHelperPlugin extends Plugin
 	@Subscribe(priority = 100)
 	private void onClientShutdown(ClientShutdown e)
 	{
-		questBankManager.saveBankToConfig();
+		questBankManager.saveBankCacheToConfig();
 	}
 
 	public void refreshBank()
