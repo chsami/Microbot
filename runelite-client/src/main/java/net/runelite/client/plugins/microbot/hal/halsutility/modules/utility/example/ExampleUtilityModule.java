@@ -24,7 +24,7 @@ public class ExampleUtilityModule extends AbstractHalModule<ExampleUtilityConfig
         log.info("Example Utility module started");
         
         // Create and add overlay
-        utilityOverlay = new ExampleUtilityOverlay(this);
+        utilityOverlay = new ExampleUtilityOverlay();
         if (overlayManager != null && utilityOverlay != null) {
             overlayManager.add(utilityOverlay);
         }

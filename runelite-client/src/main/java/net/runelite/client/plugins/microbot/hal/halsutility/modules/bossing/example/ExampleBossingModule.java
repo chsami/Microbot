@@ -24,7 +24,7 @@ public class ExampleBossingModule extends AbstractHalModule<ExampleBossingConfig
         log.info("Example Bossing module started");
         
         // Create and add overlay
-        bossingOverlay = new ExampleBossingOverlay(this);
+        bossingOverlay = new ExampleBossingOverlay();
         if (overlayManager != null && bossingOverlay != null) {
             overlayManager.add(bossingOverlay);
         }

@@ -1,6 +1,5 @@
 package net.runelite.client.plugins.microbot.hal.halsutility.modules.utility.example;
 
-import net.runelite.client.plugins.microbot.hal.halsutility.modules.utility.example.ExampleUtilityModule;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
@@ -11,11 +10,8 @@ import java.awt.*;
 
 public class ExampleUtilityOverlay extends OverlayPanel {
 
-    private final ExampleUtilityModule utilityModule;
-
     @Inject
-    public ExampleUtilityOverlay(ExampleUtilityModule utilityModule) {
-        this.utilityModule = utilityModule;
+    public ExampleUtilityOverlay() {
         setPosition(OverlayPosition.TOP_LEFT);
         setNaughty();
     }
@@ -29,37 +25,30 @@ public class ExampleUtilityOverlay extends OverlayPanel {
                     .color(Color.MAGENTA)
                     .build());
 
-            if (utilityModule.isRunning()) {
-                panelComponent.getChildren().add(LineComponent.builder()
-                        .left("Status:")
-                        .right("Running")
-                        .build());
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Status:")
+                    .right("Running")
+                    .build());
 
-                panelComponent.getChildren().add(LineComponent.builder()
-                        .left("Type:")
-                        .right("Auto Clicker")
-                        .build());
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Type:")
+                    .right("Auto Clicker")
+                    .build());
 
-                panelComponent.getChildren().add(LineComponent.builder()
-                        .left("Interval:")
-                        .right("1000ms")
-                        .build());
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Interval:")
+                    .right("1000ms")
+                    .build());
 
-                panelComponent.getChildren().add(LineComponent.builder()
-                        .left("Randomized:")
-                        .right("Yes")
-                        .build());
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Randomized:")
+                    .right("Yes")
+                    .build());
 
-                panelComponent.getChildren().add(LineComponent.builder()
-                        .left("Clicks:")
-                        .right("1,234")
-                        .build());
-            } else {
-                panelComponent.getChildren().add(LineComponent.builder()
-                        .left("Status:")
-                        .right("Stopped")
-                        .build());
-            }
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Clicks:")
+                    .right("1,234")
+                    .build());
 
         } catch (Exception ex) {
             System.out.println("ExampleUtilityOverlay error: " + ex.getMessage());

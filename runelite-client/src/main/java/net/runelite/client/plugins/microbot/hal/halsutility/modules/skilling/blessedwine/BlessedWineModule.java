@@ -35,7 +35,7 @@ public class BlessedWineModule extends AbstractHalModule<BlessedWineConfig> {
         log.info("Blessed Wine module started");
         
         // Create overlay and script instances (following Quest Helper pattern)
-        blessedWineOverlay = new BlessedWineOverlay(this);
+        blessedWineOverlay = new BlessedWineOverlay();
         blessedWineScript = new BlessedWineScript();
         
         // Add overlay

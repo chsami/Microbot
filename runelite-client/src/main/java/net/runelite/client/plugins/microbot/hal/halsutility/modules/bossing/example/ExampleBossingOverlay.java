@@ -1,6 +1,5 @@
 package net.runelite.client.plugins.microbot.hal.halsutility.modules.bossing.example;
 
-import net.runelite.client.plugins.microbot.hal.halsutility.modules.bossing.example.ExampleBossingModule;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
@@ -11,11 +10,8 @@ import java.awt.*;
 
 public class ExampleBossingOverlay extends OverlayPanel {
 
-    private final ExampleBossingModule bossingModule;
-
     @Inject
-    public ExampleBossingOverlay(ExampleBossingModule bossingModule) {
-        this.bossingModule = bossingModule;
+    public ExampleBossingOverlay() {
         setPosition(OverlayPosition.TOP_LEFT);
         setNaughty();
     }
@@ -29,37 +25,30 @@ public class ExampleBossingOverlay extends OverlayPanel {
                     .color(Color.RED)
                     .build());
 
-            if (bossingModule.isRunning()) {
-                panelComponent.getChildren().add(LineComponent.builder()
-                        .left("Status:")
-                        .right("Running")
-                        .build());
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Status:")
+                    .right("Running")
+                    .build());
 
-                panelComponent.getChildren().add(LineComponent.builder()
-                        .left("Boss:")
-                        .right("Zulrah")
-                        .build());
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Boss:")
+                    .right("Zulrah")
+                    .build());
 
-                panelComponent.getChildren().add(LineComponent.builder()
-                        .left("Prayer Flick:")
-                        .right("Enabled")
-                        .build());
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Prayer Flick:")
+                    .right("Enabled")
+                    .build());
 
-                panelComponent.getChildren().add(LineComponent.builder()
-                        .left("Auto Eat:")
-                        .right("Enabled")
-                        .build());
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Auto Eat:")
+                    .right("Enabled")
+                    .build());
 
-                panelComponent.getChildren().add(LineComponent.builder()
-                        .left("Kills:")
-                        .right("12")
-                        .build());
-            } else {
-                panelComponent.getChildren().add(LineComponent.builder()
-                        .left("Status:")
-                        .right("Stopped")
-                        .build());
-            }
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Kills:")
+                    .right("12")
+                    .build());
 
         } catch (Exception ex) {
             System.out.println("ExampleBossingOverlay error: " + ex.getMessage());

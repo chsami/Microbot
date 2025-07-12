@@ -24,7 +24,7 @@ public class ExampleMoneyModule extends AbstractHalModule<ExampleMoneyConfig> {
         log.info("Example Money Making module started");
         
         // Create and add overlay
-        moneyOverlay = new ExampleMoneyOverlay(this);
+        moneyOverlay = new ExampleMoneyOverlay();
         if (overlayManager != null && moneyOverlay != null) {
             overlayManager.add(moneyOverlay);
         }

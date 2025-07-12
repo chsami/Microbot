@@ -129,7 +129,7 @@ public class HalsUtilityandPluginsPlugin extends Plugin {
     @Override
     protected void startUp() {
         // Load the custom hal_config_icon.png for the navigation button
-        final BufferedImage icon = ImageUtil.loadImageResource(HalsUtilityandPluginsPlugin.class, "panels/hal_config_icon.png");
+        final BufferedImage icon = ImageUtil.loadImageResource(HalsUtilityandPluginsPlugin.class, "hal_config_icon.png");
         
         // Load modules first
         scanAndInstantiate();

@@ -24,7 +24,7 @@ public class ExampleActivityModule extends AbstractHalModule<ExampleActivityConf
         log.info("Example Activity module started");
         
         // Create and add overlay
-        activityOverlay = new ExampleActivityOverlay(this);
+        activityOverlay = new ExampleActivityOverlay();
         if (overlayManager != null && activityOverlay != null) {
             overlayManager.add(activityOverlay);
         }

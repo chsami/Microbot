@@ -25,7 +25,7 @@ public class ExampleSkillingModule extends AbstractHalModule<ExampleSkillingConf
         log.info("Example Skilling module started");
         
         // Create and add overlay
-        skillingOverlay = new ExampleSkillingOverlay(this);
+        skillingOverlay = new ExampleSkillingOverlay();
         if (overlayManager != null && skillingOverlay != null) {
             overlayManager.add(skillingOverlay);
         }
