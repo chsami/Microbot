@@ -29,11 +29,12 @@ import java.util.concurrent.TimeUnit;
 import static net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity.VERY_LOW;
 
 public class CalcifiedRockMinerScript extends Script {
-    public static final String VERSION = "1.0";
+    public static final String VERSION = "1.1";
     public static final int WEEPING_ROCK = 51493;
     public static CalcifiedRockMinerState BOT_STATUS = CalcifiedRockMinerState.BANKING;
     private final WorldPoint CALCIFIED_ROCK_LOCATION = new WorldPoint(1516, 9545, 1);
     private final WorldPoint ANVIL = new WorldPoint(1447, 9584, 1);
+    public boolean shouldTryMiningAgain = true;
 
     {
         Microbot.enableAutoRunOn = false;
@@ -75,7 +76,7 @@ public class CalcifiedRockMinerScript extends Script {
                 System.out.println("Exception message: " + ex.getMessage());
                 ex.printStackTrace();
             }
-        }, 0, 600, TimeUnit.MILLISECONDS);
+        }, 0, 1500, TimeUnit.MILLISECONDS);
         return true;
     }
 
@@ -95,11 +96,12 @@ public class CalcifiedRockMinerScript extends Script {
         }
         if (Rs2Player.distanceTo(CALCIFIED_ROCK_LOCATION) > 15) {
             Rs2Walker.walkTo(CALCIFIED_ROCK_LOCATION);
+            return;
         }
 
         if (hopIfTooManyPlayersNearby(config)) return; // Exit current cycle after hop
 
-        if (Rs2Equipment.isWearing("Dragon pickaxe") || Rs2Equipment.isWearing("Crystal pickaxe")) {
+        if ((Rs2Equipment.isWearing("Dragon pickaxe") || Rs2Equipment.isWearing("Crystal pickaxe")) && Rs2Combat.getSpecEnergy() == 1000) {
             Rs2Combat.setSpecState(true, 1000);
             return;
         }
@@ -123,12 +125,12 @@ public class CalcifiedRockMinerScript extends Script {
             }
         }
 
-        if (Rs2Player.isMoving() || Rs2Player.isAnimating()){
+        if (Rs2Player.isMoving() || Rs2Player.isAnimating(1500)) {
             return;
         }
 
         GameObject rock = Rs2GameObject.findReachableObject("Calcified rocks", true, 12, CALCIFIED_ROCK_LOCATION);
-        if (rock != null) {
+        if (rock != null && shouldTryMiningAgain) {
             MoveCameraToRock(rock.getWorldLocation());
             if (Rs2GameObject.interact(rock)) {
                 Rs2Player.waitForXpDrop(Skill.MINING, true);
@@ -170,7 +172,7 @@ public class CalcifiedRockMinerScript extends Script {
 
     private void handleCrushing(CalcifiedRockMinerConfig config) {
         if (config.crushDeposits() && Rs2Inventory.hasItem("hammer") && Rs2Inventory.hasItem(29088)) {
-            if (Rs2Player.getWorldLocation().distanceTo(ANVIL) < 3) {
+            if (Rs2Player.getWorldLocation().distanceTo(ANVIL) < 1) {
                 Rs2Inventory.interact(29088, "use");
                 Rs2GameObject.interact("Anvil");
                 sleep(400,600);
@@ -178,11 +180,17 @@ public class CalcifiedRockMinerScript extends Script {
                 sleep(200,400);
                 Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
                 sleep(200,400);
-                sleepUntil(() -> !Rs2Player.isAnimating(), 16000);
+                while (Rs2Inventory.hasItem(29088)) {
+                    if (!this.isRunning()) {
+                        break;
+                    }
+                    sleep(1200,1600);
+                }
                 BOT_STATUS = CalcifiedRockMinerState.BANKING;
             }
             else {
                 Rs2Walker.walkTo(ANVIL);
+                Rs2Walker.walkFastCanvas(ANVIL);
             }
         } else {
             BOT_STATUS = CalcifiedRockMinerState.BANKING;
@@ -199,6 +207,7 @@ public class CalcifiedRockMinerScript extends Script {
         if (!config.dropDeposits()) {
             Rs2Bank.walkToBank(BankLocation.CAM_TORUM);
             Rs2Bank.openBank();
+            sleepUntil(() -> Rs2Bank.isOpen(), 5000);
             Rs2Bank.depositAll("Calcified deposit");
             Rs2Bank.depositAll("Uncut");
             Rs2Bank.closeBank();

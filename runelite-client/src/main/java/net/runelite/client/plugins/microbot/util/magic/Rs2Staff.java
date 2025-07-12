@@ -2,7 +2,7 @@ package net.runelite.client.plugins.microbot.util.magic;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 
 import java.util.Collections;
 import java.util.List;
@@ -30,12 +30,12 @@ public enum Rs2Staff {
     MYSTIC_WATER_STAFF(ItemID.MYSTIC_WATER_STAFF, List.of(Runes.WATER)),
     MYSTIC_EARTH_STAFF(ItemID.MYSTIC_EARTH_STAFF, List.of(Runes.EARTH)),
     MYSTIC_FIRE_STAFF(ItemID.MYSTIC_FIRE_STAFF, List.of(Runes.FIRE)),
-    MYSTIC_DUST_STAFF(ItemID.MYSTIC_DUST_STAFF, List.of(Runes.AIR, Runes.EARTH)),
+    MYSTIC_DUST_STAFF(ItemID.MYSTIC_DUST_BATTLESTAFF, List.of(Runes.AIR, Runes.EARTH)),
     MYSTIC_LAVA_STAFF(ItemID.MYSTIC_LAVA_STAFF, List.of(Runes.FIRE, Runes.EARTH)),
-    MYSTIC_MIST_STAFF(ItemID.MYSTIC_MIST_STAFF, List.of(Runes.AIR, Runes.WATER)),
+    MYSTIC_MIST_STAFF(ItemID.MYSTIC_MIST_BATTLESTAFF, List.of(Runes.AIR, Runes.WATER)),
     MYSTIC_MUD_STAFF(ItemID.MYSTIC_MUD_STAFF, List.of(Runes.WATER, Runes.EARTH)),
-    MYSTIC_SMOKE_STAFF(ItemID.MYSTIC_SMOKE_STAFF, List.of(Runes.AIR, Runes.FIRE)),
-    MYSTIC_STEAM_STAFF(ItemID.MYSTIC_STEAM_STAFF, List.of(Runes.WATER, Runes.FIRE)),
+    MYSTIC_SMOKE_STAFF(ItemID.MYSTIC_SMOKE_BATTLESTAFF, List.of(Runes.AIR, Runes.FIRE)),
+    MYSTIC_STEAM_STAFF(ItemID.MYSTIC_STEAM_BATTLESTAFF, List.of(Runes.WATER, Runes.FIRE)),
     TWINFLAME_STAFF(ItemID.TWINFLAME_STAFF, List.of(Runes.FIRE, Runes.WATER));
 
     private final int itemID;

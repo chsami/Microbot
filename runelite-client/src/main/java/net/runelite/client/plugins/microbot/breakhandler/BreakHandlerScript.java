@@ -192,7 +192,7 @@ public class BreakHandlerScript extends Script {
         // Count down to next break
         if (breakIn >= 0 && breakDuration <= 0) {
             if (!(Rs2AntibanSettings.takeMicroBreaks && config.onlyMicroBreaks())) {
-                if(Microbot.isLoggedIn() && !isLockState()) {
+                if(Microbot.isLoggedIn()) {
                     breakIn--;
                 }
             }

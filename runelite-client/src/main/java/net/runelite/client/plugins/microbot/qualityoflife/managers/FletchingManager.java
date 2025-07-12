@@ -3,7 +3,7 @@ package net.runelite.client.plugins.microbot.qualityoflife.managers;
 
 import com.google.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
 import net.runelite.api.events.MenuEntryAdded;
@@ -112,14 +112,14 @@ public class FletchingManager
 
     private void fletchBrumaRootsOnClick(MenuEntry event)
     {
-        int brumaRootSlot = Rs2Inventory.slot(ItemID.BRUMA_ROOT);
+        int brumaRootSlot = Rs2Inventory.slot(ItemID.WINT_BRUMA_ROOT);
         if (brumaRootSlot == -1)
         {
             Microbot.log("<col=5F1515>Bruma root not found in inventory</col>");
             return;
         }
         Microbot.log("<col=245C2D>Fletching Kindling</col>");
-        NewMenuEntry combined = createWidgetOnWidgetEntry("Fletch", "Bruma root", brumaRootSlot, event.getParam1(), ItemID.BRUMA_ROOT);
+        NewMenuEntry combined = createWidgetOnWidgetEntry("Fletch", "Bruma root", brumaRootSlot, event.getParam1(), ItemID.WINT_BRUMA_ROOT);
         Microbot.doInvoke(combined, new Rectangle(1, 1));
     }
 

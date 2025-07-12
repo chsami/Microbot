@@ -24,7 +24,7 @@ import java.awt.*;
         enabledByDefault = false
 )
 public class AutoLooterPlugin extends Plugin {
-    public static double version = 1.0;
+    public static double version = 1.1;
     @Inject
     DefaultScript defaultScript;
     @Inject

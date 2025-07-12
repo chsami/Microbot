@@ -32,15 +32,24 @@ import net.runelite.client.plugins.microbot.questhelper.util.Utils;
 
 @Value
 @AllArgsConstructor
-public class WidgetDetails {
-    public int groupID;
-    public int childID;
-    public int childChildID;
+public class WidgetDetails
+{
+	public int groupID;
+	public int childID;
+	public int childChildID;
 
-    public WidgetDetails(@Component int componentId) {
-        var pair = Utils.unpackWidget(componentId);
-        groupID = pair.getLeft();
-        childID = pair.getRight();
-        childChildID = -1;
-    }
+	public WidgetDetails(int groupID, int childID)
+	{
+		this.groupID = groupID;
+		this.childID = childID;
+		this.childChildID = -1;
+	}
+
+	public WidgetDetails(@Component int componentId)
+	{
+		var pair = Utils.unpackWidget(componentId);
+		groupID = pair.getLeft();
+		childID = pair.getRight();
+		childChildID = -1;
+	}
 }

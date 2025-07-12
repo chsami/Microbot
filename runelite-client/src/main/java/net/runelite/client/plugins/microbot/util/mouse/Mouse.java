@@ -1,5 +1,8 @@
 package net.runelite.client.plugins.microbot.util.mouse;
 
+import java.util.Collections;
+import java.util.Deque;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import lombok.Getter;
 import net.runelite.api.Point;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -14,21 +17,13 @@ import java.util.LinkedList;
 public abstract class Mouse {
     private static final int POINT_LIFETIME = 14;// Maximum number of points to store
     final int MAX_POINTS = 500;
-    LinkedList<Point> points = new LinkedList<>();
-    Point lastClick = new Point(-1, -1); // getter for last click
+	Deque<Point> points = new ConcurrentLinkedDeque<>();
+	Point lastClick = new Point(-1, -1); // getter for last click
     // getter for click before last click
     Point lastClick2 = new Point(-1, -1);
     Point lastMove = new Point(-1, -1); // getter for last move
     float hue = 0.0f; // Initial hue value
-    Timer timer = new Timer(POINT_LIFETIME, e -> {
-        if (!points.isEmpty()) {
-            try {
-                points.removeFirst();
-            } catch (Exception ignore) {
-            }
-
-        }
-    });
+	Timer timer = new Timer(POINT_LIFETIME, e -> points.pollFirst());
 
     public Mouse() {
     }

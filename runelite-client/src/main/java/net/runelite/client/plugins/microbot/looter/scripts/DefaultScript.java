@@ -35,11 +35,13 @@ public class DefaultScript extends Script {
         Rs2Antiban.resetAntibanSettings();
         applyAntiBanSettings();
         Rs2Antiban.setActivity(Activity.GENERAL_COLLECTING);
+
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!super.run()) return;
                 if (!Microbot.isLoggedIn() || Rs2Combat.inCombat()) return;
                 if (Rs2AntibanSettings.actionCooldownActive) return;
+
                 long startTime = System.currentTimeMillis();
 
                 if (initialPlayerLocation == null) {
@@ -52,19 +54,17 @@ public class DefaultScript extends Script {
                             if (config.looterStyle() == DefaultLooterStyle.ITEM_LIST) {
                                 lootExists = Arrays.stream(config.listOfItemsToLoot().trim().split(","))
                                         .anyMatch(itemName -> Rs2GroundItem.exists(itemName, config.distanceToStray()));
-                            }
-                            else if (config.looterStyle() == DefaultLooterStyle.GE_PRICE_RANGE) {
+                            } else if (config.looterStyle() == DefaultLooterStyle.GE_PRICE_RANGE) {
                                 lootExists = Rs2GroundItem.isItemBasedOnValueOnGround(config.minPriceOfItem(), config.distanceToStray());
-                            }
-                            else if (config.looterStyle() == DefaultLooterStyle.MIXED) {
+                            } else if (config.looterStyle() == DefaultLooterStyle.MIXED) {
                                 lootExists = Arrays.stream(config.listOfItemsToLoot().trim().split(","))
-                                        .anyMatch(itemName -> Rs2GroundItem.exists(itemName, config.distanceToStray())) || Rs2GroundItem.isItemBasedOnValueOnGround(config.minPriceOfItem(), config.distanceToStray());
+                                        .anyMatch(itemName -> Rs2GroundItem.exists(itemName, config.distanceToStray()))
+                                        || Rs2GroundItem.isItemBasedOnValueOnGround(config.minPriceOfItem(), config.distanceToStray());
                             }
-
                         } else {
                             lootExists = true;
                         }
-                        
+
                         if (lootExists) {
                             failedLootAttempts = 0;
 
@@ -80,6 +80,7 @@ public class DefaultScript extends Script {
                                 );
                                 Rs2GroundItem.lootItemsBasedOnNames(itemLootParams);
                             }
+
                             if (config.looterStyle() == DefaultLooterStyle.GE_PRICE_RANGE || config.looterStyle() == DefaultLooterStyle.MIXED) {
                                 LootingParameters valueParams = new LootingParameters(
                                         config.minPriceOfItem(),
@@ -96,17 +97,27 @@ public class DefaultScript extends Script {
                             Microbot.pauseAllScripts.set(false);
                             Rs2Antiban.actionCooldown();
                             Rs2Antiban.takeMicroBreakByChance();
-                        }
-                        else {
-                            failedLootAttempts++; // No items found, increment failure count
+                        } else {
+                            failedLootAttempts++;
 
-                            if (failedLootAttempts >= 5) { // Hop worlds after 5 failed attempts
+                            if (failedLootAttempts >= 5) {
                                 Microbot.log("Failed to find loot 5 times, hopping worlds...");
-                                int worldNumber = config.useNextWorld() ? Login.getNextWorld(Rs2Player.isMember()) : Login.getRandomWorld(Rs2Player.isMember());
+
+                                if (Rs2Bank.isOpen()) {
+                                    Microbot.log("Bank is open, closing before hopping...");
+                                    Rs2Bank.closeBank();
+                                    sleepUntil(() -> !Rs2Bank.isOpen(), 3000);
+                                }
+
+                                int worldNumber = config.useNextWorld()
+                                        ? Login.getNextWorld(Rs2Player.isMember())
+                                        : Login.getRandomWorld(Rs2Player.isMember());
+
                                 Microbot.hopToWorld(worldNumber);
                                 sleepUntil(() -> Microbot.getClient().getGameState() == GameState.HOPPING);
                                 sleepUntil(() -> Microbot.getClient().getGameState() == GameState.LOGGED_IN);
-                                failedLootAttempts = 0; // Reset failure count after hopping
+
+                                failedLootAttempts = 0;
                                 return;
                             }
                         }
@@ -116,6 +127,7 @@ public class DefaultScript extends Script {
                             return;
                         }
                         break;
+
                     case BANKING:
                         if (Rs2Inventory.getEmptySlots() <= config.minFreeSlots()) return;
                         state = LooterState.LOOTING;
@@ -134,11 +146,11 @@ public class DefaultScript extends Script {
     }
 
     @Override
-    public void shutdown(){
+    public void shutdown() {
         super.shutdown();
         Rs2Antiban.resetAntibanSettings();
     }
-    
+
     public boolean handleWalk(AutoLooterConfig config) {
         scheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
@@ -154,11 +166,16 @@ public class DefaultScript extends Script {
 
                 if (state == LooterState.BANKING) {
                     if (config.looterStyle() == DefaultLooterStyle.ITEM_LIST) {
-                        Rs2Bank.bankItemsAndWalkBackToOriginalPosition(Arrays.stream(config.listOfItemsToLoot().trim().split(",")).collect(Collectors.toList()), initialPlayerLocation, config.minFreeSlots());
+                        Rs2Bank.bankItemsAndWalkBackToOriginalPosition(
+                                Arrays.stream(config.listOfItemsToLoot().trim().split(",")).collect(Collectors.toList()),
+                                initialPlayerLocation,
+                                config.minFreeSlots());
                     } else {
-                        Rs2Bank.bankItemsAndWalkBackToOriginalPosition(Rs2Inventory.all().stream().map(Rs2ItemModel::getName).collect(Collectors.toList()), initialPlayerLocation, config.minFreeSlots());
+                        Rs2Bank.bankItemsAndWalkBackToOriginalPosition(
+                                Rs2Inventory.all().stream().map(Rs2ItemModel::getName).collect(Collectors.toList()),
+                                initialPlayerLocation,
+                                config.minFreeSlots());
                     }
-                    return;
                 }
             } catch (Exception ex) {
                 Microbot.log("Error in handleWalk: " + ex.getMessage());

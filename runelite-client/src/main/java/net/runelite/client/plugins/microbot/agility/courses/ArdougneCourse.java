@@ -33,4 +33,9 @@ public class ArdougneCourse implements AgilityCourseHandler
 	{
 		return 90;
 	}
+
+	@Override
+	public int getLootDistance() {
+		return 2;
+	}
 }

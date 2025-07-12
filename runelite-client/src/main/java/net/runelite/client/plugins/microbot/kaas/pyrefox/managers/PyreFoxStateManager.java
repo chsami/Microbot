@@ -1,7 +1,6 @@
 package net.runelite.client.plugins.microbot.kaas.pyrefox.managers;
 
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.ItemID;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
@@ -13,6 +12,7 @@ import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.api.gameval.ItemID;
 
 import java.util.concurrent.TimeUnit;
 
@@ -67,9 +67,9 @@ public class PyreFoxStateManager extends Script
 
 	private void _handleDroppingItems()
 	{
-		if (Rs2Inventory.hasItem(ItemID.FOX_FUR))
+		if (Rs2Inventory.hasItem(ItemID.HUNTING_FENNECFOX_FUR))
 		{
-			Rs2Inventory.drop(ItemID.FOX_FUR);
+			Rs2Inventory.drop(ItemID.HUNTING_FENNECFOX_FUR);
 			sleep(200, 400);
 		}
 		if (Rs2Inventory.hasItem(ItemID.BONES))
@@ -112,7 +112,7 @@ public class PyreFoxStateManager extends Script
 
 
 		// Handles banking.
-		boolean shouldBank = (_config.ForceBank() || Rs2Inventory.getEmptySlots() <= 2);
+		boolean shouldBank = (_config.ForceBank() || Rs2Inventory.emptySlotCount() <= 2);
 		if (shouldBank && !Rs2Bank.isOpen())
 			return WALK_TO_BANK;
 

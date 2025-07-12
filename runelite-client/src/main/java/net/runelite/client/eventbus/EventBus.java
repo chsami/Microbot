@@ -63,15 +63,19 @@ public class EventBus
 		@EqualsAndHashCode.Exclude
 		private final Consumer<Object> lambda;
 
-		void invoke(final Object arg) throws Exception
+		void invoke(final Object arg)
 		{
-			if (lambda != null)
-			{
-				lambda.accept(arg);
-			}
-			else
-			{
-				method.invoke(object, arg);
+			try {
+				if (lambda != null)
+				{
+					lambda.accept(arg);
+				}
+				else
+				{
+					method.invoke(object, arg);
+				}
+			} catch (Exception error) {
+				log.error("Failed to invoke Subscriber method: ", error);
 			}
 		}
 	}

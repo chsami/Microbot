@@ -1,7 +1,7 @@
 package net.runelite.client.plugins.microbot.zerozero.tormenteddemons;
 
 import net.runelite.api.HeadIcon;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -449,14 +449,14 @@ public class TormentedDemonScript extends Script {
 
     private void teleportToFeroxEnclave() {
         int[] duelingRingIds = {
-                ItemID.RING_OF_DUELING1,
-                ItemID.RING_OF_DUELING2,
-                ItemID.RING_OF_DUELING3,
-                ItemID.RING_OF_DUELING4,
-                ItemID.RING_OF_DUELING5,
-                ItemID.RING_OF_DUELING6,
-                ItemID.RING_OF_DUELING7,
-                ItemID.RING_OF_DUELING8
+                ItemID.RING_OF_DUELING_1,
+                ItemID.RING_OF_DUELING_2,
+                ItemID.RING_OF_DUELING_3,
+                ItemID.RING_OF_DUELING_4,
+                ItemID.RING_OF_DUELING_5,
+                ItemID.RING_OF_DUELING_6,
+                ItemID.RING_OF_DUELING_7,
+                ItemID.RING_OF_DUELING_8
         };
         for (int ringId : duelingRingIds) {
             if (Rs2Inventory.hasItem(ringId)) {

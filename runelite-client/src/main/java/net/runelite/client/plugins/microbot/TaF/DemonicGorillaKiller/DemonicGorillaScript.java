@@ -368,10 +368,7 @@ public class DemonicGorillaScript extends Script {
 
             // Handle AOE attack
             if (currentAnimation == DEMONIC_GORILLA_AOE_ATTACK && demonicGorillaRockPosition != null) {
-                List<WorldPoint> dangerousWorldPoints = Rs2Tile.getDangerousGraphicsObjectTiles()
-                        .stream()
-                        .map(Pair::getKey)
-                        .collect(Collectors.toList());
+                List<WorldPoint> dangerousWorldPoints = new ArrayList<>(Rs2Tile.getDangerousGraphicsObjectTiles().keySet());
                 dangerousWorldPoints.add(Microbot.getClient().getLocalPlayer().getWorldLocation());
                 dangerousWorldPoints.add(currentTarget.getWorldLocation());
                 dangerousWorldPoints.add(location);

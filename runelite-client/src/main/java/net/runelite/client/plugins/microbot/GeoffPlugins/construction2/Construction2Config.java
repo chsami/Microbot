@@ -1,6 +1,6 @@
 package net.runelite.client.plugins.microbot.GeoffPlugins.construction2;
 
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
@@ -12,9 +12,9 @@ public interface Construction2Config extends Config {
     String GROUP = "Construction2";
 
     enum ConstructionMode {
-        OAK_LARDER("Oak Larder", ItemID.OAK_PLANK),
-        OAK_DUNGEON_DOOR("Oak Dungeon Door", ItemID.OAK_PLANK),
-        MAHOGANY_TABLE("Mahogany Table", ItemID.MAHOGANY_PLANK);
+        OAK_LARDER("Oak Larder", ItemID.PLANK_OAK),
+        OAK_DUNGEON_DOOR("Oak Dungeon Door", ItemID.PLANK_OAK),
+        MAHOGANY_TABLE("Mahogany Table", ItemID.PLANK_MAHOGANY);
         // MYTHICAL_CAPE("Mythical Cape Mount", ItemID.MYTHICAL_CAPE); broken, keeps trying to remove the guild trophy space instead of build shits weird idk
 
         private final String name;

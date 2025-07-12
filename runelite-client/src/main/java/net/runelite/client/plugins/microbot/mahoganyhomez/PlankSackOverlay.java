@@ -1,6 +1,6 @@
 package net.runelite.client.plugins.microbot.mahoganyhomez;
 
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.widgets.WidgetItem;
 import net.runelite.client.ui.overlay.WidgetItemOverlay;
 

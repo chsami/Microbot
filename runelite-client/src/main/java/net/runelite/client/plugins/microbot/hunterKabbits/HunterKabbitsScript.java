@@ -1,7 +1,6 @@
 package net.runelite.client.plugins.microbot.hunterKabbits;
 
 import lombok.Getter;
-import net.runelite.api.ItemID;
 import net.runelite.api.NPC;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -12,6 +11,7 @@ import net.runelite.client.plugins.microbot.util.antiban.enums.Activity;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
+import net.runelite.api.gameval.ItemID;
 
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -71,7 +71,7 @@ public class HunterKabbitsScript extends Script {
                         break;
                     case CATCHING:
                     default:
-                        if (Rs2Inventory.isFull() || Rs2Inventory.getEmptySlots() <= 1) {
+                        if (Rs2Inventory.isFull() || Rs2Inventory.emptySlotCount() <= 1) {
                             currentState = State.DROPPING;
                         } else {
                             handleCatchingState(config);
@@ -192,11 +192,11 @@ public class HunterKabbitsScript extends Script {
     private Integer getSupportedFurItemId(KebbitHunting kebbit) {
         switch (kebbit) {
             case SPOTTED:
-                return ItemID.SPOTTED_KEBBIT_FUR;
+                return ItemID.HUNTINGBEAST_SPEEDY_FUR;
             case DASHING:
-                return ItemID.DASHING_KEBBIT_FUR;
+                return ItemID.HUNTINGBEAST_SPEEDY2_FUR;
             case DARK:
-                return ItemID.DARK_KEBBIT_FUR;
+                return ItemID.HUNTINGBEAST_SILENT_FUR;
             default:
                 return null;
         }

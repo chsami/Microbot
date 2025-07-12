@@ -38,25 +38,25 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import net.runelite.api.ItemID;
-import net.runelite.api.Varbits;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
 
 public class InventorySetupsRunePouchPanel extends InventorySetupsAmmunitionPanel
 {
 	// 23650 is what shows up when selecting a RunePouch from ChatBoxItemSearch, 27086 is likely lms
-	public static final List<Integer> RUNE_POUCH_IDS = Arrays.asList(ItemID.RUNE_POUCH, ItemID.RUNE_POUCH_L, ItemID.RUNE_POUCH_23650, ItemID.RUNE_POUCH_27086);
+	public static final List<Integer> RUNE_POUCH_IDS = Arrays.asList(ItemID.CASTLEWARS_RUNE_REPLACEMENT, ItemID.PVPA_RUNE_REPLACEMENT, ItemID.BH_RUNE_POUCH_TROUVER, ItemID.BR_RUNE_REPLACEMENT);
 
 	public static final Set<Integer> RUNE_POUCH_IDS_SET = new HashSet<>(RUNE_POUCH_IDS);
 
-	public static final List<Integer> RUNE_POUCH_DIVINE_IDS = Arrays.asList(ItemID.DIVINE_RUNE_POUCH, ItemID.DIVINE_RUNE_POUCH_L);
+	public static final List<Integer> RUNE_POUCH_DIVINE_IDS = Arrays.asList(ItemID.DIVINE_RUNE_POUCH, ItemID.DIVINE_RUNE_POUCH_TROUVER);
 
 	public static final Set<Integer> RUNE_POUCH_DIVINE_IDS_SET = new HashSet<>(RUNE_POUCH_DIVINE_IDS);
 
-	public static final List<Integer> RUNE_POUCH_AMOUNT_VARBITS = Arrays.asList(Varbits.RUNE_POUCH_AMOUNT1, Varbits.RUNE_POUCH_AMOUNT2, Varbits.RUNE_POUCH_AMOUNT3, Varbits.RUNE_POUCH_AMOUNT4);
+	public static final List<Integer> RUNE_POUCH_AMOUNT_VARBITS = Arrays.asList(VarbitID.RUNE_POUCH_QUANTITY_1, VarbitID.RUNE_POUCH_QUANTITY_2, VarbitID.RUNE_POUCH_QUANTITY_3, VarbitID.RUNE_POUCH_QUANTITY_4);
 
-	public static final List<Integer> RUNE_POUCH_RUNE_VARBITS = Arrays.asList(Varbits.RUNE_POUCH_RUNE1, Varbits.RUNE_POUCH_RUNE2, Varbits.RUNE_POUCH_RUNE3, Varbits.RUNE_POUCH_RUNE4);
+	public static final List<Integer> RUNE_POUCH_RUNE_VARBITS = Arrays.asList(VarbitID.RUNE_POUCH_TYPE_1, VarbitID.RUNE_POUCH_TYPE_2, VarbitID.RUNE_POUCH_TYPE_3, VarbitID.RUNE_POUCH_TYPE_4);
 
 	InventorySetupsRunePouchPanel(ItemManager itemManager, MInventorySetupsPlugin plugin)
 	{

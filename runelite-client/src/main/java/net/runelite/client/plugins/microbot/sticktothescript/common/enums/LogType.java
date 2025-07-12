@@ -1,6 +1,6 @@
 package net.runelite.client.plugins.microbot.sticktothescript.common.enums;
 
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 
 public enum LogType {
     NORMAL_LOGS("Logs", ItemID.LOGS),

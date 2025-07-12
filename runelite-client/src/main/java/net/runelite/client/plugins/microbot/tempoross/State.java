@@ -1,6 +1,6 @@
 package net.runelite.client.plugins.microbot.tempoross;
 
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 
 import java.util.function.BooleanSupplier;
@@ -30,7 +30,7 @@ public enum State {
     }
 
     public static int getRawFish() {
-        return Rs2Inventory.count(ItemID.RAW_HARPOONFISH);
+        return Rs2Inventory.count(ItemID.TEMPOROSS_RAW_HARPOONFISH);
     }
 
     public static int getAllFish() {
@@ -38,7 +38,7 @@ public enum State {
     }
 
     public static int getCookedFish() {
-        return Rs2Inventory.count(ItemID.HARPOONFISH);
+        return Rs2Inventory.count(ItemID.TEMPOROSS_HARPOONFISH);
     }
 
     public static int getTotalAvailableFishSlots() {

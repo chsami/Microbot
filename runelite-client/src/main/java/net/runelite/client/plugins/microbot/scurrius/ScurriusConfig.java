@@ -1,7 +1,7 @@
 package net.runelite.client.plugins.microbot.scurrius;
 
 import lombok.Getter;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
@@ -220,8 +220,8 @@ public interface ScurriusConfig extends Config {
 
     @Getter
     enum PotionSelection {
-        PRAYERPOTION(ItemID.PRAYER_POTION4),
-        SUPERRESTORE(ItemID.SUPER_RESTORE4);
+        PRAYERPOTION(ItemID._4DOSEPRAYERRESTORE),
+        SUPERRESTORE(ItemID._4DOSE2RESTORE);
 
         private final int itemId;
 

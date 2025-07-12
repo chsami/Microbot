@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-@Getter
+
 public class BlockingEventManager
 {
     private static final int MAX_QUEUE_SIZE = 10;

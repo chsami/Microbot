@@ -8,6 +8,7 @@ import net.runelite.api.MenuAction;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
@@ -427,7 +428,7 @@ public class Rs2Equipment {
         if (action == null || action.isEmpty()) return;
         if (rs2Item == null) return;
 
-        if (Rs2Tab.switchToEquipmentTab()) {
+        if (!Rs2Tab.switchTo(InterfaceTab.EQUIPMENT)) {
             Microbot.log("Failed to switch to equipment tab", Level.ERROR);
             return;
         }

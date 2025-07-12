@@ -1,10 +1,17 @@
 package net.runelite.client.plugins.microbot.util.settings;
 
-import net.runelite.api.Varbits;
+import java.util.Map;
+import lombok.NoArgsConstructor;
+import net.runelite.api.MenuAction;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.ComponentID;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
+import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
+import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
@@ -13,167 +20,264 @@ import java.awt.event.KeyEvent;
 import static net.runelite.client.plugins.microbot.globval.VarbitIndices.TOGGLE_ROOFS;
 import static net.runelite.client.plugins.microbot.util.Global.*;
 
-public class Rs2Settings {
+@NoArgsConstructor
+public class Rs2Settings
+{
 
-    static final int DROP_SHIFT_SETTING = 11556;
-    static final int ESC_CLOSE_INTERFACE_SETTING = 4681;
-    static final int SETTINGS_INTERFACE = 8781825;
-    static final int SETTINGS_SEARCHBAR = 8781834;
-    static final int ALL_SETTINGS_BUTTON = 7602208;
+	static final int SETTINGS_INTERFACE = InterfaceID.Settings.UNIVERSE;
+	static final int SETTINGS_CLICKABLE = InterfaceID.Settings.SETTINGS_CLICKZONE;
+	static final int SETTINGS_CATEGORIES = InterfaceID.Settings.CATEGORIES_CLICKZONE;
+	static final int ALL_SETTINGS_BUTTON = 7602208;
 
-    public static boolean openSettings() {
-        boolean isSettingsInterfaceVisible = Rs2Widget.isWidgetVisible(ComponentID.SETTINGS_INIT);
-        if (!isSettingsInterfaceVisible) {
-            if (Rs2Tab.getCurrentTab() != InterfaceTab.SETTINGS) {
-                Rs2Tab.switchToSettingsTab();
-                sleepUntil(() -> Rs2Tab.getCurrentTab() == InterfaceTab.SETTINGS);
-            }
-            Rs2Widget.clickWidget(ALL_SETTINGS_BUTTON);
-            sleepUntil(() -> Rs2Widget.isWidgetVisible(ComponentID.SETTINGS_INIT));
-        }
-        return true;
-    }
+	public static boolean openSettings()
+	{
+		boolean isSettingsInterfaceVisible = Rs2Widget.isWidgetVisible(SETTINGS_INTERFACE);
+		if (!isSettingsInterfaceVisible)
+		{
+			Rs2Tab.switchTo(InterfaceTab.SETTINGS);
+			Rs2Widget.clickWidget(ALL_SETTINGS_BUTTON);
+			sleepUntil(() -> Rs2Widget.isWidgetVisible(SETTINGS_INTERFACE));
+		}
+		return true;
+	}
 
-    public static boolean isDropShiftSettingEnabled() {
-        return Microbot.getVarbitValue(DROP_SHIFT_SETTING) == 1;
-    }
-    
-    public static boolean isEscCloseInterfaceSettingEnabled() {
-        return Microbot.getVarbitValue(ESC_CLOSE_INTERFACE_SETTING) == 1;
-    }
+	public static boolean isDropShiftSettingEnabled()
+	{
+		return Microbot.getVarbitValue(VarbitID.DESKTOP_SHIFTCLICKDROP_ENABLED) == 1;
+	}
 
-    public static boolean enableDropShiftSetting(boolean closeInterface) {
-        if (Rs2Widget.hasWidget("Click here to continue")) {
-            Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
-        }
-        if (!isDropShiftSettingEnabled()) {
-            Rs2Tab.switchToSettingsTab();
+	public static boolean isEscCloseInterfaceSettingEnabled()
+	{
+		return Microbot.getVarbitValue(VarbitID.KEYBINDING_ESC_TO_CLOSE) == 1;
+	}
 
-            boolean isSettingsInterfaceVisible = Rs2Widget.isWidgetVisible(SETTINGS_INTERFACE);
-            if (!isSettingsInterfaceVisible) {
-                Rs2Widget.clickWidget(ALL_SETTINGS_BUTTON);
-                return false;
-            }
+	public static boolean enableDropShiftSetting(boolean closeInterface)
+	{
+		if (isDropShiftSettingEnabled())
+		{
+			return true;
+		}
+		if (!openSettings())
+		{
+			return false;
+		}
 
-            Rs2Widget.clickWidget("controls", true);
-            sleep(600);
-            Rs2Widget.clickWidget("Shift click to drop items");
-            sleep(600);
-            if (closeInterface) {
-                Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
-                Rs2Tab.switchToInventoryTab();
-            }
-        }
-        return isDropShiftSettingEnabled();
-    }
+		if (!switchToSettingsTab("Controls"))
+		{
+			return false;
+		}
+		sleepGaussian(800, 100);
+		Widget widget = Rs2Widget.getWidget(SETTINGS_CLICKABLE);
+		if (widget == null)
+		{
+			return false;
+		}
 
-    public static boolean enableDropShiftSetting() {
-        return enableDropShiftSetting(true);
-    }
+		// MenuEntryImpl(getOption=Toggle, getTarget=, getIdentifier=1, getType=CC_OP, getParam0=8, getParam1=8781843, getItemId=-1, isForceLeftClick=false, getWorldViewId=-1, isDeprioritized=false)
+		NewMenuEntry menuEntry = new NewMenuEntry("Toggle", "", 1, MenuAction.CC_OP, 8, widget.getId(), false);
+		Microbot.doInvoke(menuEntry, Rs2UiHelper.getDefaultRectangle());
+		boolean success = sleepUntil(Rs2Settings::isDropShiftSettingEnabled);
 
-    public static boolean isHideRoofsEnabled() {
-        return Microbot.getVarbitValue(TOGGLE_ROOFS) == 1;
-    }
+		if (closeInterface)
+		{
+			closeSettingsMenu();
+			Rs2Tab.switchTo(InterfaceTab.INVENTORY);
+		}
+		return success;
+	}
 
-    public static boolean hideRoofs(boolean closeInterface) {
-        if (!isHideRoofsEnabled()) {
-            Rs2Tab.switchToSettingsTab();
+	public static boolean enableDropShiftSetting()
+	{
+		return enableDropShiftSetting(true);
+	}
 
-            boolean isSettingsInterfaceVisible = Rs2Widget.isWidgetVisible(SETTINGS_INTERFACE);
-            if (!isSettingsInterfaceVisible) {
-                Rs2Widget.clickWidget(ALL_SETTINGS_BUTTON);
-                return false;
-            }
+	public static boolean isHideRoofsEnabled()
+	{
+		return Microbot.getVarbitValue(TOGGLE_ROOFS) == 1;
+	}
 
-            Rs2Widget.clickWidget(SETTINGS_SEARCHBAR);
-            Rs2Keyboard.typeString("roofs");
-            sleep(600);
-            Rs2Widget.clickWidget("Hide roofs");
-            sleep(600);
-            if (closeInterface) {
-                Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
-                Rs2Tab.switchToInventoryTab();
-            }
-        }
-        return isHideRoofsEnabled();
-    }
+	public static boolean hideRoofs(boolean closeInterface)
+	{
+		if (isHideRoofsEnabled())
+		{
+			return true;
+		}
+		if (!openSettings())
+		{
+			return false;
+		}
 
-    public static boolean hideRoofs() {
-        return hideRoofs(true);
-    }
+		if (!switchToSettingsTab("Display"))
+		{
+			return false;
+		}
+		sleepGaussian(800, 100);
+		Widget widget = Rs2Widget.getWidget(SETTINGS_CLICKABLE);
+		if (widget == null)
+		{
+			return false;
+		}
 
-    public static boolean isLevelUpNotificationsEnabled() {
-        return Microbot.getVarbitValue(Varbits.DISABLE_LEVEL_UP_INTERFACE) == 0;
-    }
+		// MenuEntryImpl(getOption=Toggle, getTarget=, getIdentifier=1, getType=CC_OP, getParam0=4, getParam1=8781843, getItemId=-1, isForceLeftClick=false, getWorldViewId=-1, isDeprioritized=false)
+		NewMenuEntry menuEntry = new NewMenuEntry("Toggle", "", 1, MenuAction.CC_OP, 4, widget.getId(), false);
+		Microbot.doInvoke(menuEntry, Rs2UiHelper.getDefaultRectangle());
+		boolean success = sleepUntil(Rs2Settings::isHideRoofsEnabled);
 
-    public static boolean disableLevelUpNotifications(boolean closeInterface) {
-        if (!isLevelUpNotificationsEnabled()) return true;
-        if (!openSettings()) return false;
+		if (closeInterface)
+		{
+			closeSettingsMenu();
+			Rs2Tab.switchTo(InterfaceTab.INVENTORY);
+		}
+		return success;
+	}
 
-        Rs2Widget.clickWidget(SETTINGS_SEARCHBAR);
-        Rs2Keyboard.typeString("level-");
-        Rs2Widget.sleepUntilHasWidget("Disable level-up interface");
-        Rs2Widget.clickWidget("Disable level-up interface");
-        sleepUntil(() -> !isLevelUpNotificationsEnabled());
+	public static boolean hideRoofs()
+	{
+		return hideRoofs(true);
+	}
 
-        if (closeInterface) {
-            Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
-            Rs2Tab.switchToInventoryTab();
-        }
-        return isLevelUpNotificationsEnabled();
-    }
+	public static boolean isLevelUpNotificationsEnabled()
+	{
+		return Microbot.getVarbitValue(VarbitID.OPTION_LEVEL_UP_MESSAGE) == 0;
+	}
 
-    public static boolean disableLevelUpNotifications() {
-        return disableLevelUpNotifications(true);
-    }
+	public static boolean disableLevelUpNotifications(boolean closeInterface)
+	{
+		if (!isLevelUpNotificationsEnabled())
+		{
+			return true;
+		}
+		if (!openSettings())
+		{
+			return false;
+		}
+		if (!switchToSettingsTab("Interfaces"))
+		{
+			return false;
+		}
+		sleepGaussian(800, 100);
+		Widget widget = Rs2Widget.getWidget(SETTINGS_CLICKABLE);
+		if (widget == null)
+		{
+			return false;
+		}
 
-    public static void turnOffMusic() {
-        Rs2Tab.switchToSettingsTab();
-        sleepGaussian(800, 100);
-        Rs2Widget.clickWidget(116, 67);
-        sleepGaussian(800, 100);
-        var musicBtn = Rs2Widget.getWidget(ComponentID.SETTINGS_SIDE_MUSIC_SLIDER).getStaticChildren()[0];
-        var soundEffectBtn = Rs2Widget.getWidget(ComponentID.SETTINGS_SIDE_SOUND_EFFECT_SLIDER).getStaticChildren()[0];
-        var areaSoundBtn = Rs2Widget.getWidget(ComponentID.SETTINGS_SIDE_AREA_SOUND_SLIDER).getStaticChildren()[0];
-        if (musicBtn == null || soundEffectBtn == null|| areaSoundBtn == null)
-        {
-            Microbot.log("Music settings buttons not found");
-            return;
-        }
+		// MenuEntryImpl(getOption=Toggle, getTarget=, getIdentifier=1, getType=CC_OP, getParam0=14, getParam1=8781843, getItemId=-1, isForceLeftClick=false, getWorldViewId=-1, isDeprioritized=false)
+		NewMenuEntry menuEntry = new NewMenuEntry("Toggle", "", 1, MenuAction.CC_OP, 14, widget.getId(), false);
+		Microbot.doInvoke(menuEntry, Rs2UiHelper.getDefaultRectangle());
+		boolean success = sleepUntil(() -> !isLevelUpNotificationsEnabled());
 
-        if (musicBtn.getActions() == null || soundEffectBtn.getActions() == null || areaSoundBtn.getActions() == null)
-        {
-            Microbot.log("Music settings buttons actions not found");
-            return;
-        }
+		if (closeInterface)
+		{
+			closeSettingsMenu();
+			Rs2Tab.switchTo(InterfaceTab.INVENTORY);
+		}
+		return success;
+	}
 
-        boolean isMusicOn = musicBtn.getActions()[0].toLowerCase().equalsIgnoreCase("mute");
-        boolean isSoundEffectOn = soundEffectBtn.getActions()[0].equalsIgnoreCase("mute");
-        boolean isAreaSoundEffectOn = areaSoundBtn.getActions()[0].equalsIgnoreCase("mute");
-        if (!isMusicOn && !isSoundEffectOn && !isAreaSoundEffectOn)
-            return;
+	public static boolean disableLevelUpNotifications()
+	{
+		return disableLevelUpNotifications(true);
+	}
 
-        if (isMusicOn) {
-            Rs2Widget.clickWidget(musicBtn);
-            sleepGaussian(600, 150);
-        }
-        if (isSoundEffectOn) {
-            Rs2Widget.clickWidget(soundEffectBtn);
-            sleepGaussian(600, 150);
-        }
-        if (isAreaSoundEffectOn) {
-            Rs2Widget.clickWidget(areaSoundBtn);
-            sleepGaussian(600, 150);
-        }
-    }
+	public static void turnOffMusic()
+	{
+		Rs2Tab.switchTo(InterfaceTab.SETTINGS);
+		Rs2Widget.clickWidget(116, 67);
+		sleepGaussian(800, 100);
+		var musicBtn = Rs2Widget.getWidget(ComponentID.SETTINGS_SIDE_MUSIC_SLIDER).getStaticChildren()[0];
+		var soundEffectBtn = Rs2Widget.getWidget(ComponentID.SETTINGS_SIDE_SOUND_EFFECT_SLIDER).getStaticChildren()[0];
+		var areaSoundBtn = Rs2Widget.getWidget(ComponentID.SETTINGS_SIDE_AREA_SOUND_SLIDER).getStaticChildren()[0];
+		if (musicBtn == null || soundEffectBtn == null || areaSoundBtn == null)
+		{
+			Microbot.log("Music settings buttons not found");
+			return;
+		}
 
-    /**
-     * When casting alchemy spells on items in your inventory
-     * if the item is worth more than this value, a warning will be shown
-     *
-     * @return
-     */
-    public static int getMinimumItemValueAlchemyWarning() {
-        return Microbot.getVarbitValue(6091);
-    }
+		if (musicBtn.getActions() == null || soundEffectBtn.getActions() == null || areaSoundBtn.getActions() == null)
+		{
+			Microbot.log("Music settings buttons actions not found");
+			return;
+		}
+
+		boolean isMusicOn = musicBtn.getActions()[0].toLowerCase().equalsIgnoreCase("mute");
+		boolean isSoundEffectOn = soundEffectBtn.getActions()[0].equalsIgnoreCase("mute");
+		boolean isAreaSoundEffectOn = areaSoundBtn.getActions()[0].equalsIgnoreCase("mute");
+		if (!isMusicOn && !isSoundEffectOn && !isAreaSoundEffectOn)
+		{
+			return;
+		}
+
+		if (isMusicOn)
+		{
+			Rs2Widget.clickWidget(musicBtn);
+			sleepGaussian(600, 150);
+		}
+		if (isSoundEffectOn)
+		{
+			Rs2Widget.clickWidget(soundEffectBtn);
+			sleepGaussian(600, 150);
+		}
+		if (isAreaSoundEffectOn)
+		{
+			Rs2Widget.clickWidget(areaSoundBtn);
+			sleepGaussian(600, 150);
+		}
+	}
+
+	/**
+	 * When casting alchemy spells on items in your inventory
+	 * if the item is worth more than this value, a warning will be shown
+	 *
+	 * @return
+	 */
+	public static int getMinimumItemValueAlchemyWarning()
+	{
+		return Microbot.getVarbitValue(6091);
+	}
+
+	private static boolean closeSettingsMenu()
+	{
+		if (isEscCloseInterfaceSettingEnabled())
+		{
+			Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
+		}
+		else
+		{
+			Rs2Widget.clickWidget(InterfaceID.Settings.CLOSE);
+		}
+
+		return sleepUntil(() -> !Rs2Widget.isWidgetVisible(SETTINGS_INTERFACE));
+	}
+
+	private static boolean switchToSettingsTab(String tabName)
+	{
+		Widget widget = Rs2Widget.getWidget(SETTINGS_CATEGORIES);
+		if (widget == null)
+		{
+			return false;
+		}
+
+		Map<String, Integer> tabIndices = Map.of(
+			"Activities", 0,
+			"Audio", 1,
+			"Chat", 2,
+			"Controls", 3,
+			"Display", 4,
+			"Gameplay", 5,
+			"Interfaces", 6,
+			"Warnings", 7
+		);
+
+		Integer index = tabIndices.get(tabName);
+		if (index == null)
+		{
+			return false;
+		}
+
+		NewMenuEntry menuEntry = new NewMenuEntry("Select <col=ff981f> " + tabName, "", 1, MenuAction.CC_OP, index, widget.getId(), false);
+
+		Microbot.doInvoke(menuEntry, Rs2UiHelper.getDefaultRectangle());
+		return true;
+	}
 }

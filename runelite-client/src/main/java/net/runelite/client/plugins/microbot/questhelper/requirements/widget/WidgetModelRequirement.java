@@ -26,32 +26,39 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements.widget;
 
+import lombok.Setter;
 import net.runelite.api.Client;
 import net.runelite.api.widgets.Widget;
 
-public class WidgetModelRequirement extends WidgetPresenceRequirement {
-    private final int id;
+public class WidgetModelRequirement extends WidgetPresenceRequirement
+{
+	@Setter
+	private int id;
 
-    public WidgetModelRequirement(int groupId, int childId, int childChildId, int id) {
-        super(groupId, childId, childChildId);
-        this.id = id;
-    }
+	public WidgetModelRequirement(int groupId, int childId, int childChildId, int id)
+	{
+		super(groupId, childId, childChildId);
+		this.id = id;
+	}
 
-    public WidgetModelRequirement(int groupId, int childId, int id) {
-        super(groupId, childId);
-        this.id = id;
-    }
+	public WidgetModelRequirement(int groupId, int childId, int id)
+	{
+		super(groupId, childId);
+		this.id = id;
+	}
 
-    public boolean checkWidget(Client client) {
-        Widget widget = getWidget(client);
-        if (widget == null) {
-            return false;
-        }
-        return widget.getModelId() == id;
-    }
+	public boolean checkWidget(Client client)
+	{
+		Widget widget = getWidget(client);
+		if (widget == null)
+		{
+			return false;
+		}
+		return widget.getModelId() == id;
+	}
 
-    public void checkWidgetText(Client client) {
-        hasPassed = hasPassed || checkWidget(client);
-    }
+	public void checkWidgetText(Client client)
+	{
+		hasPassed = hasPassed || checkWidget(client);
+	}
 }
-

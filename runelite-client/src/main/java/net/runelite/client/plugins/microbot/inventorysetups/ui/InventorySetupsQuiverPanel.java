@@ -5,7 +5,7 @@ import net.runelite.client.plugins.microbot.inventorysetups.InventorySetupsItem;
 import net.runelite.client.plugins.microbot.inventorysetups.MInventorySetupsPlugin;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetupsSlotID;
 import lombok.Getter;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
 
@@ -30,14 +30,14 @@ public class InventorySetupsQuiverPanel
 	private final MInventorySetupsPlugin plugin;
 	private final ItemManager itemManager;
 
-	public static final List<Integer> DIZANA_QUIVER_IDS = Arrays.asList(ItemID.DIZANAS_QUIVER,
-			ItemID.DIZANAS_QUIVER_L,
+	public static final List<Integer> DIZANA_QUIVER_IDS = Arrays.asList(ItemID.DIZANAS_QUIVER_CHARGED,
+			ItemID.DIZANAS_QUIVER_CHARGED_TROUVER,
 			ItemID.DIZANAS_QUIVER_UNCHARGED,
-			ItemID.DIZANAS_QUIVER_UNCHARGED_L,
-			ItemID.DIZANAS_MAX_CAPE,
-			ItemID.DIZANAS_MAX_CAPE_L,
-			ItemID.BLESSED_DIZANAS_QUIVER,
-			ItemID.BLESSED_DIZANAS_QUIVER_L);
+			ItemID.DIZANAS_QUIVER_UNCHARGED_TROUVER,
+			ItemID.SKILLCAPE_MAX_DIZANAS,
+			ItemID.SKILLCAPE_MAX_DIZANAS_TROUVER,
+			ItemID.DIZANAS_QUIVER_INFINITE,
+			ItemID.DIZANAS_QUIVER_INFINITE_TROUVER);
 
 	public static final Set<Integer> DIZANA_QUIVER_IDS_SET = new HashSet<>(DIZANA_QUIVER_IDS);
 

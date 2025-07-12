@@ -20,10 +20,9 @@ public class WelcomeScreenEvent implements BlockingEvent {
     public boolean execute() {
         Widget welcomeScreenWidget = Rs2Widget.getWidget(WELCOME_SCREEN_COMPONENT_ID);
         
-        Rs2Widget.clickWidget(welcomeScreenWidget.getId());
+        Rs2Widget.clickWidget(welcomeScreenWidget);
 
-        Global.sleepUntil(() -> !Rs2Widget.isWidgetVisible(WELCOME_SCREEN_COMPONENT_ID), 10000);
-        return true;
+        return Global.sleepUntil(() -> !Rs2Widget.isWidgetVisible(WELCOME_SCREEN_COMPONENT_ID), 10000);
     }
 
     @Override

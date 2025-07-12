@@ -15,6 +15,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.awt.*;
+import java.util.Map;
 
 public class MicrobotOverlay extends OverlayPanel {
     MicrobotPlugin plugin;
@@ -30,7 +31,7 @@ public class MicrobotOverlay extends OverlayPanel {
     public Dimension render(Graphics2D graphics) {
         panelComponent.setPreferredSize(new Dimension(200, 300));
 
-        for (Pair<WorldPoint, Integer> dangerousTile : Rs2Tile.getDangerousGraphicsObjectTiles()) {
+        for (Map.Entry<WorldPoint, Integer> dangerousTile : Rs2Tile.getDangerousGraphicsObjectTiles().entrySet()) {
             drawTile(graphics, dangerousTile.getKey(), Color.RED, dangerousTile.getValue().toString());
         }
         return super.render(graphics);

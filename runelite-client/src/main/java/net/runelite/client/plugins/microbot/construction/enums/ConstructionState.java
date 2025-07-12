@@ -4,5 +4,7 @@ public enum ConstructionState {
     Build,
     Remove,
     Butler,
-    Idle
+    Idle,
+    Stopped,
+    Starting
 }

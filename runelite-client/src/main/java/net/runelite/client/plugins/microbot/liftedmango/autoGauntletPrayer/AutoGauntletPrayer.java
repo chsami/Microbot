@@ -2,7 +2,7 @@ package net.runelite.client.plugins.microbot.liftedmango.autoGauntletPrayer;
 
 import com.google.inject.Provides;
 import net.runelite.api.HeadIcon;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.NPC;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.GameTick;
@@ -189,55 +189,55 @@ public class AutoGauntletPrayer extends Plugin {
     }
 
     private boolean hasBowInInventory() {
-        return Rs2Inventory.contains(ItemID.CRYSTAL_BOW_BASIC)
-                || Rs2Inventory.contains(ItemID.CRYSTAL_BOW_ATTUNED)
-                || Rs2Inventory.contains(ItemID.CRYSTAL_BOW_PERFECTED)
-                || Rs2Inventory.contains(ItemID.CORRUPTED_BOW_BASIC)
-                || Rs2Inventory.contains(ItemID.CORRUPTED_BOW_ATTUNED)
-                || Rs2Inventory.contains(ItemID.CORRUPTED_BOW_PERFECTED);
+        return Rs2Inventory.contains(ItemID.GAUNTLET_RANGED_T1)
+                || Rs2Inventory.contains(ItemID.GAUNTLET_RANGED_T2)
+                || Rs2Inventory.contains(ItemID.GAUNTLET_RANGED_T3)
+                || Rs2Inventory.contains(ItemID.GAUNTLET_RANGED_T1_HM)
+                || Rs2Inventory.contains(ItemID.GAUNTLET_RANGED_T2_HM)
+                || Rs2Inventory.contains(ItemID.GAUNTLET_RANGED_T3_HM);
     }
 
     private boolean hasStaffInInventory() {
-        return Rs2Inventory.contains(ItemID.CRYSTAL_STAFF_BASIC)
-                || Rs2Inventory.contains(ItemID.CRYSTAL_STAFF_ATTUNED)
-                || Rs2Inventory.contains(ItemID.CRYSTAL_STAFF_PERFECTED)
-                || Rs2Inventory.contains(ItemID.CORRUPTED_STAFF_BASIC)
-                || Rs2Inventory.contains(ItemID.CORRUPTED_STAFF_ATTUNED)
-                || Rs2Inventory.contains(ItemID.CORRUPTED_STAFF_PERFECTED);
+        return Rs2Inventory.contains(ItemID.GAUNTLET_MAGIC_T1)
+                || Rs2Inventory.contains(ItemID.GAUNTLET_MAGIC_T2)
+                || Rs2Inventory.contains(ItemID.GAUNTLET_MAGIC_T3)
+                || Rs2Inventory.contains(ItemID.GAUNTLET_MAGIC_T1_HM)
+                || Rs2Inventory.contains(ItemID.GAUNTLET_MAGIC_T2_HM)
+                || Rs2Inventory.contains(ItemID.GAUNTLET_MAGIC_T3_HM);
     }
 
     private boolean hasHalberdInInventory() {
-        return Rs2Inventory.contains(ItemID.CRYSTAL_HALBERD_BASIC)
-                || Rs2Inventory.contains(ItemID.CRYSTAL_HALBERD_ATTUNED)
-                || Rs2Inventory.contains(ItemID.CRYSTAL_HALBERD_PERFECTED)
-                || Rs2Inventory.contains(ItemID.CORRUPTED_HALBERD_BASIC)
-                || Rs2Inventory.contains(ItemID.CORRUPTED_HALBERD_ATTUNED)
-                || Rs2Inventory.contains(ItemID.CORRUPTED_HALBERD_PERFECTED);
+        return Rs2Inventory.contains(ItemID.GAUNTLET_MELEE_T1)
+                || Rs2Inventory.contains(ItemID.GAUNTLET_MELEE_T2)
+                || Rs2Inventory.contains(ItemID.GAUNTLET_MELEE_T3)
+                || Rs2Inventory.contains(ItemID.GAUNTLET_MELEE_T1_HM)
+                || Rs2Inventory.contains(ItemID.GAUNTLET_MELEE_T2_HM)
+                || Rs2Inventory.contains(ItemID.GAUNTLET_MELEE_T3_HM);
     }
 
     private void equipBow() {
-        Rs2Inventory.equip(ItemID.CORRUPTED_BOW_ATTUNED);
-        Rs2Inventory.equip(ItemID.CRYSTAL_BOW_ATTUNED);
-        Rs2Inventory.equip(ItemID.CRYSTAL_BOW_PERFECTED);
-        Rs2Inventory.equip(ItemID.CORRUPTED_BOW_PERFECTED);
+        Rs2Inventory.equip(ItemID.GAUNTLET_RANGED_T1_HM);
+        Rs2Inventory.equip(ItemID.GAUNTLET_RANGED_T2);
+        Rs2Inventory.equip(ItemID.GAUNTLET_RANGED_T3);
+        Rs2Inventory.equip(ItemID.GAUNTLET_RANGED_T3_HM);
     }
 
     private void equipStaff() {
-        Rs2Inventory.equip(ItemID.CRYSTAL_STAFF_BASIC);
-        Rs2Inventory.equip(ItemID.CRYSTAL_STAFF_ATTUNED);
-        Rs2Inventory.equip(ItemID.CRYSTAL_STAFF_PERFECTED);
-        Rs2Inventory.equip(ItemID.CORRUPTED_STAFF_BASIC);
-        Rs2Inventory.equip(ItemID.CORRUPTED_STAFF_ATTUNED);
-        Rs2Inventory.equip(ItemID.CORRUPTED_STAFF_PERFECTED);
+        Rs2Inventory.equip(ItemID.GAUNTLET_MAGIC_T1);
+        Rs2Inventory.equip(ItemID.GAUNTLET_MAGIC_T2);
+        Rs2Inventory.equip(ItemID.GAUNTLET_MAGIC_T3);
+        Rs2Inventory.equip(ItemID.GAUNTLET_MAGIC_T1_HM);
+        Rs2Inventory.equip(ItemID.GAUNTLET_MAGIC_T2_HM);
+        Rs2Inventory.equip(ItemID.GAUNTLET_MAGIC_T3_HM);
     }
 
     private void equipHalberd() {
-        Rs2Inventory.equip(ItemID.CRYSTAL_HALBERD_BASIC);
-        Rs2Inventory.equip(ItemID.CRYSTAL_HALBERD_ATTUNED);
-        Rs2Inventory.equip(ItemID.CRYSTAL_HALBERD_PERFECTED);
-        Rs2Inventory.equip(ItemID.CORRUPTED_HALBERD_BASIC);
-        Rs2Inventory.equip(ItemID.CORRUPTED_HALBERD_ATTUNED);
-        Rs2Inventory.equip(ItemID.CORRUPTED_HALBERD_PERFECTED);
+        Rs2Inventory.equip(ItemID.GAUNTLET_MELEE_T1);
+        Rs2Inventory.equip(ItemID.GAUNTLET_MELEE_T2);
+        Rs2Inventory.equip(ItemID.GAUNTLET_MELEE_T3);
+        Rs2Inventory.equip(ItemID.GAUNTLET_MELEE_T1_HM);
+        Rs2Inventory.equip(ItemID.GAUNTLET_MELEE_T2_HM);
+        Rs2Inventory.equip(ItemID.GAUNTLET_MELEE_T3_HM);
     }
 
     private void checkAndTogglePrayers() {
@@ -253,30 +253,30 @@ public class AutoGauntletPrayer extends Plugin {
     }
 
     private boolean isBowEquipped() {
-        return Rs2Equipment.hasEquipped(ItemID.CRYSTAL_BOW_PERFECTED)
-                || Rs2Equipment.hasEquipped(ItemID.CRYSTAL_BOW_ATTUNED)
-                || Rs2Equipment.hasEquipped(ItemID.CRYSTAL_BOW_BASIC)
-                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_BOW_PERFECTED)
-                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_BOW_ATTUNED)
-                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_BOW_BASIC);
+        return Rs2Equipment.isWearing(ItemID.GAUNTLET_RANGED_T3)
+                || Rs2Equipment.isWearing(ItemID.GAUNTLET_RANGED_T2)
+                || Rs2Equipment.isWearing(ItemID.GAUNTLET_RANGED_T1)
+                || Rs2Equipment.isWearing(ItemID.GAUNTLET_RANGED_T3_HM)
+                || Rs2Equipment.isWearing(ItemID.GAUNTLET_RANGED_T2_HM)
+                || Rs2Equipment.isWearing(ItemID.GAUNTLET_RANGED_T1_HM);
     }
 
     private boolean isStaffEquipped() {
-        return Rs2Equipment.hasEquipped(ItemID.CRYSTAL_STAFF_PERFECTED)
-                || Rs2Equipment.hasEquipped(ItemID.CRYSTAL_STAFF_BASIC)
-                || Rs2Equipment.hasEquipped(ItemID.CRYSTAL_STAFF_ATTUNED)
-                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_STAFF_PERFECTED)
-                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_STAFF_ATTUNED)
-                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_STAFF_BASIC);
+        return Rs2Equipment.isWearing(ItemID.GAUNTLET_MAGIC_T3)
+                || Rs2Equipment.isWearing(ItemID.GAUNTLET_MAGIC_T1)
+                || Rs2Equipment.isWearing(ItemID.GAUNTLET_MAGIC_T2)
+                || Rs2Equipment.isWearing(ItemID.GAUNTLET_MAGIC_T3_HM)
+                || Rs2Equipment.isWearing(ItemID.GAUNTLET_MAGIC_T2_HM)
+                || Rs2Equipment.isWearing(ItemID.GAUNTLET_MAGIC_T1_HM);
     }
 
     private boolean isHalberdEquipped() {
-        return Rs2Equipment.hasEquipped(ItemID.CRYSTAL_HALBERD_PERFECTED)
-                || Rs2Equipment.hasEquipped(ItemID.CRYSTAL_HALBERD_BASIC)
-                || Rs2Equipment.hasEquipped(ItemID.CRYSTAL_HALBERD_ATTUNED)
-                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_HALBERD_PERFECTED)
-                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_HALBERD_ATTUNED)
-                || Rs2Equipment.hasEquipped(ItemID.CORRUPTED_HALBERD_BASIC);
+        return Rs2Equipment.isWearing(ItemID.GAUNTLET_MELEE_T3)
+                || Rs2Equipment.isWearing(ItemID.GAUNTLET_MELEE_T1)
+                || Rs2Equipment.isWearing(ItemID.GAUNTLET_MELEE_T2)
+                || Rs2Equipment.isWearing(ItemID.GAUNTLET_MELEE_T3_HM)
+                || Rs2Equipment.isWearing(ItemID.GAUNTLET_MELEE_T2_HM)
+                || Rs2Equipment.isWearing(ItemID.GAUNTLET_MELEE_T1_HM);
     }
 
     private void toggleRigourPrayer() {

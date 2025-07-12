@@ -34,37 +34,43 @@ import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class ConditionForStep implements InitializableRequirement {
-    @Setter
-    @Getter
-    protected boolean hasPassed;
-    protected boolean onlyNeedToPassOnce;
-    protected LogicType logicType;
+public abstract class ConditionForStep implements InitializableRequirement
+{
+	@Setter
+	@Getter
+	protected boolean hasPassed;
+	protected boolean onlyNeedToPassOnce;
+	protected LogicType logicType;
 
-    @Getter
-    protected List<Requirement> conditions = new ArrayList<>();
+	@Getter
+	protected List<Requirement> conditions = new ArrayList<>();
 
-    @Override
-    abstract public boolean check(Client client);
+	@Override
+	abstract public boolean check(Client client);
 
-    @Override
-    public void initialize(Client client) {
-        conditions.stream()
-                .filter(InitializableRequirement.class::isInstance)
-                .forEach(req -> ((InitializableRequirement) req).initialize(client));
-    }
+	@Override
+	public void initialize(Client client)
+	{
+		conditions.stream()
+			.filter(InitializableRequirement.class::isInstance)
+			.forEach(req -> ((InitializableRequirement) req).initialize(client));
+	}
 
-    @Override
-    public void updateHandler() {
-        conditions.stream()
-                .filter(InitializableRequirement.class::isInstance)
-                .forEach(req -> ((InitializableRequirement) req).updateHandler());
-    }
+	@Override
+	public void updateHandler()
+	{
+		conditions.stream()
+			.filter(InitializableRequirement.class::isInstance)
+			.forEach(req -> ((InitializableRequirement) req).updateHandler());
+	}
 
-    @Nonnull
-    @Override
-    public String getDisplayText() // conditions don't need display text (yet?)
-    {
-        return "";
-    }
+	@Setter
+	private String text = "";
+
+	@Nonnull
+	@Override
+	public String getDisplayText()
+	{
+		return this.text;
+	}
 }

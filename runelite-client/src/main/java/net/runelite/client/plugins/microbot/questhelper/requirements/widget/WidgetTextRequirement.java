@@ -39,130 +39,187 @@ import javax.annotation.Nonnull;
 import java.util.Arrays;
 import java.util.List;
 
-public class WidgetTextRequirement extends SimpleRequirement {
-    @Getter
-    private final int groupId;
-    private final int childId;
-    private final List<String> text;
-    @Setter
-    @Getter
-    protected boolean hasPassed;
-    private int childChildId = -1;
-    private boolean checkChildren;
+public class WidgetTextRequirement extends SimpleRequirement
+{
+	@Setter
+	@Getter
+	protected boolean hasPassed;
 
-    // Used to restrict the considered set of children
-    private int min = -1;
-    private int max = -1;
+	@Getter
+	private final int groupId;
 
-    @Setter
-    private String displayText = "";
+	private final int childId;
 
-    public WidgetTextRequirement(@Component int componentId, String... text) {
-        var pair = Utils.unpackWidget(componentId);
-        this.groupId = pair.getLeft();
-        this.childId = pair.getRight();
-        this.text = Arrays.asList(text);
-    }
+	private List<String> text;
 
-    public WidgetTextRequirement(@Component int componentId, boolean checkChildren, String... text) {
-        var pair = Utils.unpackWidget(componentId);
-        this.groupId = pair.getLeft();
-        this.childId = pair.getRight();
-        this.checkChildren = checkChildren;
-        this.text = Arrays.asList(text);
-    }
+	private int childChildId = -1;
+	private boolean checkChildren;
 
-    public WidgetTextRequirement(int groupId, int childId, boolean checkChildren, String... text) {
-        this.groupId = groupId;
-        this.childId = childId;
-        this.checkChildren = checkChildren;
-        this.text = Arrays.asList(text);
-    }
+	// Used to restrict the considered set of children
+	private int min = -1;
+	private int max = -1;
 
-    public WidgetTextRequirement(int groupId, int childId, String... text) {
-        this.groupId = groupId;
-        this.childId = childId;
-        this.text = Arrays.asList(text);
-    }
+	@Setter
+	private String displayText = "";
 
-    public WidgetTextRequirement(int groupId, int childId, int childChildId, String... text) {
-        this.groupId = groupId;
-        this.childId = childId;
-        this.childChildId = childChildId;
-        this.text = Arrays.asList(text);
-    }
+	/**
+	 * Use this if you need to update a widget requirement dynamically.
+	 * <p>
+	 * Updating the text will reset the `hasPassed` variable.
+	 *
+	 * @param text list of valid strings for this widget check
+	 */
+	public void setText(@Nonnull List<String> text) {
+		this.setHasPassed(false);
 
-    public void addRange(int min, int max) {
-        this.min = min;
-        this.max = max;
-    }
+		this.text = text;
+	}
 
-    @Override
-    public boolean check(Client client) {
-        return checkWidget(client);
-    }
+	/**
+	 * Use this if you need to update a widget requirement dynamically.
+	 * <p>
+	 * Updating the text will reset the `hasPassed` variable.
+	 *
+	 * @param text valid string for this widget check
+	 */
+	public void setText(@Nonnull String text) {
+		this.setText(List.of(text));
+	}
 
-    public boolean checkWidget(Client client) {
-        Widget widget = client.getWidget(groupId, childId);
-        if (widget != null) {
-            if (childChildId != -1) {
-                widget = widget.getChild(childChildId);
-            }
-            if (widget != null) {
-                for (String textOption : text) {
-                    if (checkChildren) {
-                        if (getChildren(widget, textOption) && !widget.isHidden()) {
-                            return true;
-                        }
-                    }
+	public WidgetTextRequirement(@Component int componentId, String... text)
+	{
+		var pair = Utils.unpackWidget(componentId);
+		this.groupId = pair.getLeft();
+		this.childId = pair.getRight();
+		this.text = Arrays.asList(text);
+	}
 
-                    if (widget.getText().contains(textOption) && !widget.isHidden()) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
+	public WidgetTextRequirement(@Component int componentId, boolean checkChildren, String... text)
+	{
+		var pair = Utils.unpackWidget(componentId);
+		this.groupId = pair.getLeft();
+		this.childId = pair.getRight();
+		this.checkChildren = checkChildren;
+		this.text = Arrays.asList(text);
+	}
 
-    private boolean getChildren(Widget parentWidget, String textOption) {
-        Widget[] children = parentWidget.getStaticChildren();
-        if (children.length == 0) {
-            return false;
-        }
+	public WidgetTextRequirement(int groupId, int childId, boolean checkChildren, String... text)
+	{
+		this.groupId = groupId;
+		this.childId = childId;
+		this.checkChildren = checkChildren;
+		this.text = Arrays.asList(text);
+	}
 
-        int currentMin;
-        int currentMax;
-        if (max == -1 || min == -1) {
-            currentMin = 0;
-            currentMax = children.length;
-        } else {
-            currentMax = Math.min(children.length, max);
-            currentMin = Math.max(0, min);
-        }
+	public WidgetTextRequirement(int groupId, int childId, String... text)
+	{
+		this.groupId = groupId;
+		this.childId = childId;
+		this.text = Arrays.asList(text);
+	}
 
-        for (int i = currentMin; i < currentMax; i++) {
-            Widget currentWidget = parentWidget.getStaticChildren()[i];
-            if (currentWidget.getNestedChildren() != null) {
-                if (currentWidget.getText().contains(textOption)) {
-                    return true;
-                }
-            } else {
-                if (getChildren(currentWidget, textOption)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
+	public WidgetTextRequirement(int groupId, int childId, int childChildId, String... text)
+	{
+		this.groupId = groupId;
+		this.childId = childId;
+		this.childChildId = childChildId;
+		this.text = Arrays.asList(text);
+	}
 
-    public void checkWidgetText(Client client) {
-        hasPassed = hasPassed || checkWidget(client);
-    }
+	public void addRange(int min, int max)
+	{
+		this.min = min;
+		this.max = max;
+	}
 
-    @Nonnull
-    @Override
-    public String getDisplayText() {
-        return displayText;
-    }
+	@Override
+	public boolean check(Client client)
+	{
+		return checkWidget(client);
+	}
+
+	public boolean checkWidget(Client client)
+	{
+		Widget widget = client.getWidget(groupId, childId);
+		if (widget != null)
+		{
+			if (childChildId != -1)
+			{
+				widget = widget.getChild(childChildId);
+			}
+			if (widget != null)
+			{
+				for (String textOption : text)
+				{
+					if (checkChildren)
+					{
+						if (getChildren(widget, textOption) && !widget.isHidden())
+						{
+							return true;
+						}
+					}
+
+					if (widget.getText().contains(textOption) && !widget.isHidden())
+					{
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	private boolean getChildren(Widget parentWidget, String textOption)
+	{
+		Widget[] children = parentWidget.getStaticChildren();
+		if (children.length == 0)
+		{
+			return false;
+		}
+
+		int currentMin;
+		int currentMax;
+		if (max == -1 || min == -1)
+		{
+			currentMin = 0;
+			currentMax = children.length;
+		}
+		else
+		{
+			currentMax = Math.min(children.length, max);
+			currentMin = Math.max(0, min);
+		}
+
+		for (int i = currentMin; i < currentMax; i++)
+		{
+			Widget currentWidget = parentWidget.getStaticChildren()[i];
+			if (currentWidget.getNestedChildren() != null)
+			{
+				if (currentWidget.getText().contains(textOption))
+				{
+					return true;
+				}
+			}
+			else
+			{
+				if (getChildren(currentWidget, textOption))
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	public void checkWidgetText(Client client)
+	{
+		hasPassed = hasPassed || checkWidget(client);
+	}
+
+	@Nonnull
+	@Override
+	public String getDisplayText()
+	{
+		return displayText;
+	}
 }

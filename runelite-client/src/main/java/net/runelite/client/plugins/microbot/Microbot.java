@@ -425,7 +425,7 @@ public class Microbot {
 	private static boolean togglePlugin(Plugin plugin, boolean enable) {
 		if (plugin == null) return false;
 		final AtomicBoolean success = new AtomicBoolean(false);
-		Callable<Boolean> callable = () -> {        
+		Runnable runnable = () -> {
         	try {
 				getPluginManager().setPluginEnabled(plugin, enable);
 				if (enable) {
@@ -438,10 +438,17 @@ public class Microbot {
 				log.error("Error toggling plugin {} ({}): {}", success.get() ? "on" : "off", plugin.getClass().getSimpleName(), e.getMessage(), e);
 				e.printStackTrace();
 			}
-			return success.get();
 		};
-		// When not on client thread, use client thread to execute
-		return getClientThread().runOnClientThreadOptional(callable).orElse(false);	
+
+		if (SwingUtilities.isEventDispatchThread()) {
+			runnable.run();
+		} else {
+			// Ensure the runnable is executed on the Event Dispatch Thread
+			// This is necessary for Swing components and plugin management
+			SwingUtilities.invokeLater(runnable);
+		}
+
+		return success.get();
 	}
 
 	/**

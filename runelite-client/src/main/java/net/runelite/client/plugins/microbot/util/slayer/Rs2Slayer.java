@@ -2,8 +2,8 @@ package net.runelite.client.plugins.microbot.util.slayer;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.EnumID;
-import net.runelite.api.ItemID;
-import net.runelite.api.VarPlayer;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
@@ -55,7 +55,7 @@ public class Rs2Slayer {
      * @return the size of the player's current Slayer task as an integer
      */
     public static int getSlayerTaskSize() {
-        return Microbot.getVarbitPlayerValue(VarPlayer.SLAYER_TASK_SIZE);
+        return Microbot.getVarbitPlayerValue(VarPlayerID.SLAYER_COUNT);
     }
 
     /**
@@ -64,7 +64,7 @@ public class Rs2Slayer {
      * @return the name of the Slayer task creature as a String, or null if the player does not have an active task
      */
     public static String getSlayerTask() {
-        int taskId = Microbot.getVarbitPlayerValue(VarPlayer.SLAYER_TASK_CREATURE);
+        int taskId = Microbot.getVarbitPlayerValue(VarPlayerID.SLAYER_TARGET);
         if (taskId == 0) {
             return null;
         }
@@ -246,7 +246,7 @@ public class Rs2Slayer {
                 .filter(t -> t.getType() == TransportType.TELEPORTATION_ITEM || t.getType() == TransportType.FAIRY_RING)
                 .peek(t -> {
                     if (t.getType() == TransportType.FAIRY_RING) {
-                        t.setItemIdRequirements(Set.of(Set.of(ItemID.DRAMEN_STAFF, ItemID.LUNAR_STAFF)));
+                        t.setItemIdRequirements(Set.of(Set.of(ItemID.DRAMEN_STAFF, ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF)));
                     }
                 })
                 .collect(Collectors.toList());
@@ -262,8 +262,8 @@ public class Rs2Slayer {
         if (transport.getType() == TransportType.FAIRY_RING) {
             return Rs2Inventory.hasItem(ItemID.DRAMEN_STAFF) ||
                     Rs2Equipment.isWearing(ItemID.DRAMEN_STAFF) ||
-                    Rs2Inventory.hasItem(ItemID.LUNAR_STAFF) ||
-                    Rs2Equipment.isWearing(ItemID.LUNAR_STAFF);
+                    Rs2Inventory.hasItem(ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF) ||
+                    Rs2Equipment.isWearing(ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF);
         } else if (transport.getType() == TransportType.TELEPORTATION_ITEM) {
             return transport.getItemIdRequirements()
                     .stream()

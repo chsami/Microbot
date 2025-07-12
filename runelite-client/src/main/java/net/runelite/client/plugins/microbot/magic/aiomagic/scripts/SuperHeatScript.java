@@ -1,6 +1,5 @@
 package net.runelite.client.plugins.microbot.magic.aiomagic.scripts;
 
-import net.runelite.api.ItemID;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
@@ -18,6 +17,7 @@ import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Staff;
 import net.runelite.client.plugins.microbot.util.magic.Runes;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.api.gameval.ItemID;
 
 import javax.inject.Inject;
 import java.util.List;
@@ -69,14 +69,14 @@ public class SuperHeatScript extends Script {
                         boolean isBankOpen = Rs2Bank.isNearBank(15) ? Rs2Bank.useBank() : Rs2Bank.walkToBankAndUseBank();
                         if (!isBankOpen || !Rs2Bank.isOpen()) return;
 
-                        Rs2Bank.depositAllExcept(ItemID.NATURE_RUNE);
+                        Rs2Bank.depositAllExcept(ItemID.NATURERUNE);
                         Rs2Inventory.waitForInventoryChanges(1200);
 
                         List<Rs2Staff> staffList = Rs2Magic.findStavesByRunes(List.of(Runes.FIRE));
 
                         boolean hasFireStaffEquipped = staffList.stream()
                                 .map(Rs2Staff::getItemID)
-                                .anyMatch(Rs2Equipment::hasEquipped);
+                                .anyMatch(Rs2Equipment::isWearing);
 
                         if (!hasFireStaffEquipped) {
                             Rs2ItemModel staffItem = Rs2Bank.bankItems().stream()
@@ -95,18 +95,18 @@ public class SuperHeatScript extends Script {
                             Rs2Bank.withdrawAndEquip(staffItem.getId());
                         }
 
-                        if (!Rs2Inventory.hasItem(ItemID.NATURE_RUNE)) {
-                            if (!Rs2Bank.hasItem(ItemID.NATURE_RUNE)) {
+                        if (!Rs2Inventory.hasItem(ItemID.NATURERUNE)) {
+                            if (!Rs2Bank.hasItem(ItemID.NATURERUNE)) {
                                 Microbot.showMessage("Nature Runes not found");
                                 shutdown();
                                 return;
                             }
 
-                            Rs2Bank.withdrawAll(ItemID.NATURE_RUNE);
+                            Rs2Bank.withdrawAll(ItemID.NATURERUNE);
                             Rs2Inventory.waitForInventoryChanges(1200);
                         }
 
-                        int[] requiredOreAndCoal = calculateOreAndCoal(plugin.getSuperHeatItem(), Rs2Inventory.getEmptySlots());
+                        int[] requiredOreAndCoal = calculateOreAndCoal(plugin.getSuperHeatItem(), Rs2Inventory.emptySlotCount());
                         int requiredOre = requiredOreAndCoal[0];
                         int requiredCoal = requiredOreAndCoal[1];
 
@@ -131,7 +131,7 @@ public class SuperHeatScript extends Script {
                         sleepUntil(() -> !Rs2Bank.isOpen());
                         break;
                     case CASTING:
-                        if (!Rs2Inventory.hasItem(ItemID.NATURE_RUNE)) {
+                        if (!Rs2Inventory.hasItem(ItemID.NATURERUNE)) {
                             Microbot.showMessage("Nature Runes not found");
                             shutdown();
                             return;

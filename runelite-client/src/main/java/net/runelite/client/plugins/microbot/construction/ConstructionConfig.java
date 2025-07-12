@@ -2,13 +2,13 @@ package net.runelite.client.plugins.microbot.construction;
 
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
-import net.runelite.client.config.ConfigItem;
+import net.runelite.client.config.ConfigInformation;
 
 @ConfigGroup(ConstructionConfig.GROUP)
+@ConfigInformation(ConstructionConfig.INFORMATION)
 public interface ConstructionConfig extends Config {
 
     String GROUP = "Construction";
-
     @ConfigItem(
             keyName = "Guide",
             name = "How to use",
@@ -31,6 +31,4 @@ public interface ConstructionConfig extends Config {
     {
         return false;
     }
-
-
 }

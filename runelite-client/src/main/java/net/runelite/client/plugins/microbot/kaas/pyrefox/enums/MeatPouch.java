@@ -1,12 +1,12 @@
 package net.runelite.client.plugins.microbot.kaas.pyrefox.enums;
 
 import lombok.Getter;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 
 public enum MeatPouch
 {
-	SMALL_MEAT_POUCH(ItemID.SMALL_MEAT_POUCH, ItemID.SMALL_MEAT_POUCH_OPEN),
-	LARGE_MEAT_POUCH(ItemID.LARGE_MEAT_POUCH, ItemID.LARGE_MEAT_POUCH_OPEN);
+	SMALL_MEAT_POUCH(ItemID.HG_MEATPOUCH_SMALL, ItemID.HG_MEATPOUCH_SMALL_OPEN),
+	LARGE_MEAT_POUCH(ItemID.HG_MEATPOUCH_LARGE, ItemID.HG_MEATPOUCH_LARGE_OPEN);
 
 	@Getter
 	private final int closedItemID;

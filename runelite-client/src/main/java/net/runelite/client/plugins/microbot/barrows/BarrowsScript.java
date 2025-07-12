@@ -15,6 +15,7 @@ import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
+import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.magic.Rs2CombatSpells;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
@@ -27,6 +28,7 @@ import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
+import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ScheduledFuture;
@@ -70,13 +72,7 @@ public class BarrowsScript extends Script {
                     return;
                 }
 
-                if(!Rs2InventorySetup.isInventorySetup("Barrows")){
-                    Microbot.showMessage("Please create an inventory setup named Barrows");
-                    shutdown();
-                    return;
-                }
-
-                var inventorySetup = new Rs2InventorySetup("Barrows", mainScheduledFuture);
+                var inventorySetup = new Rs2InventorySetup(config.inventorySetup().getName(), mainScheduledFuture);
 
                 if(firstRun) {
                     if (!inventorySetup.doesEquipmentMatch()) {
@@ -232,6 +228,8 @@ public class BarrowsScript extends Script {
                         if (Rs2Player.getWorldLocation().getPlane() != 3) {
                             Microbot.log("Entering the mound");
 
+                            checkForWorldMap();
+
                             handlePOH(config);
 
                             goToTheMound(mound);
@@ -266,7 +264,7 @@ public class BarrowsScript extends Script {
                                     // the brother could take a second to spawn in.
                                     sleepUntil(() -> Microbot.getClient().getHintArrowNpc()!=null, Rs2Random.between(750, 1500));
                                 }
-                                if(Rs2Dialogue.isInDialogue()){
+                                if(Rs2Dialogue.isInDialogue() && Rs2Dialogue.hasDialogueText("You've found a hidden")){
                                     WhoisTun = brother.name;
                                     Microbot.log(brother.name+" is our tunnel");
                                     break;
@@ -396,6 +394,14 @@ public class BarrowsScript extends Script {
                                 if (Rs2Player.getWorldLocation().getPlane() != 3) {
                                     //we're not in the mound
                                     break;
+                                }
+
+                                if(!Rs2Dialogue.isInDialogue()){
+                                    //Somehow we got tun wrong.
+                                    Microbot.log("We're in the wrong tunnel mound. Leaving...");
+                                    this.leaveTheMound();
+                                    WhoisTun = "Unknown";
+                                    return;
                                 }
 
                             }
@@ -710,6 +716,14 @@ public class BarrowsScript extends Script {
             }
         }, 0, scriptDelay, TimeUnit.MILLISECONDS);
         return true;
+    }
+
+    public void checkForWorldMap(){
+        if(Rs2Widget.getWidget(38993938) != null){
+            if(Rs2Widget.getWidget(38993938).getText().contains("Key")){
+                Rs2Keyboard.keyPress(KeyEvent.VK_ESCAPE);
+            }
+        }
     }
 
     public void closeBank(){

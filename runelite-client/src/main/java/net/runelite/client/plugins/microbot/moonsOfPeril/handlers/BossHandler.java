@@ -200,13 +200,7 @@ public final class BossHandler {
 
     /** True if the WorldPoint param is located on a dangerous tile*/
     public static boolean inDanger(WorldPoint location) {
-        if (Rs2Tile.dangerousGraphicsObjectTiles.stream()
-                .filter(p -> p.getValue() > 0)
-                .map(p -> p.getKey())
-                .anyMatch(pt -> pt.equals(location))) {
-            return true;
-        }
-        return false;
+        return Rs2Tile.getDangerousGraphicsObjectTiles().containsKey(location);
     }
 
     /** Runs the player out of the arena */

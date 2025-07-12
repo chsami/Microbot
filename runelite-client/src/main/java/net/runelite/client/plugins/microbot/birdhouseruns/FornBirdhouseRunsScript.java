@@ -1,6 +1,6 @@
 package net.runelite.client.plugins.microbot.birdhouseruns;
 
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
@@ -12,11 +12,8 @@ import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.birdhouseruns.FornBirdhouseRunsInfo.states;
 import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
-import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
-import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
@@ -165,13 +162,13 @@ public class FornBirdhouseRunsScript extends Script {
 
     private void emptyNests() {
         var ids = List.of(
-                ItemID.BIRD_NEST,
-                ItemID.BIRD_NEST_5071,
-                ItemID.BIRD_NEST_5072,
-                ItemID.BIRD_NEST_5073,
-                ItemID.BIRD_NEST_5074,
-                ItemID.BIRD_NEST_22798,
-                ItemID.BIRD_NEST_22800
+                ItemID.BIRD_NEST_EGG_RED,
+                ItemID.BIRD_NEST_EGG_GREEN,
+                ItemID.BIRD_NEST_EGG_BLUE,
+                ItemID.BIRD_NEST_SEEDS,
+                ItemID.BIRD_NEST_RING,
+                ItemID.BIRD_NEST_SEEDS_JAN2019,
+                ItemID.BIRD_NEST_DECENTSEEDS_JAN2019
         );
 
         Rs2Inventory.items().forEachOrdered(item -> {
@@ -204,7 +201,7 @@ public class FornBirdhouseRunsScript extends Script {
     }
 
     private void buildBirdhouse(WorldPoint worldPoint, states status) {
-        if (!Rs2Inventory.hasItem("bird house") && Rs2Inventory.hasItem(ItemID.CLOCKWORK)) {
+        if (!Rs2Inventory.hasItem("bird house") && Rs2Inventory.hasItem(ItemID.POH_CLOCKWORK_MECHANISM)) {
             Rs2Inventory.use(ItemID.HAMMER);
             Rs2Inventory.use(" logs");
             Rs2Inventory.waitForInventoryChanges(5000);

@@ -1,7 +1,7 @@
 package net.runelite.client.plugins.microbot.qualityoflife.enums;
 
 import lombok.Getter;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 

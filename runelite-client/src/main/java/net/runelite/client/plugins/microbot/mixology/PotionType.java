@@ -2,22 +2,22 @@ package net.runelite.client.plugins.microbot.mixology;
 
 import com.google.common.collect.ImmutableMap;
 import lombok.Getter;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 
 import java.util.Arrays;
 import java.util.Map;
 
 public enum PotionType {
-    MAMMOTH_MIGHT_MIX(ItemID.MAMMOTHMIGHT_MIX, ItemID.MAMMOTHMIGHT_MIX_30021, 1900, new PotionComponent[]{PotionComponent.MOX, PotionComponent.MOX, PotionComponent.MOX}),
-    MYSTIC_MANA_AMALGAM(ItemID.MYSTIC_MANA_AMALGAM, ItemID.MYSTIC_MANA_AMALGAM_30022, 2150, new PotionComponent[]{PotionComponent.MOX, PotionComponent.MOX, PotionComponent.AGA}),
-    MARLEYS_MOONLIGHT(ItemID.MARLEYS_MOONLIGHT, ItemID.MARLEYS_MOONLIGHT_30023, 2400, new PotionComponent[]{PotionComponent.MOX, PotionComponent.MOX, PotionComponent.LYE}),
-    ALCO_AUGMENTATOR(ItemID.ALCOAUGMENTATOR, ItemID.ALCOAUGMENTATOR_30024, 1900, new PotionComponent[]{PotionComponent.AGA, PotionComponent.AGA, PotionComponent.AGA}),
-    AZURE_AURA_MIX(ItemID.AZURE_AURA_MIX, ItemID.AZURE_AURA_MIX_30026, 2650, new PotionComponent[]{PotionComponent.AGA, PotionComponent.AGA, PotionComponent.MOX}),
-    AQUALUX_AMALGAM(ItemID.AQUALUX_AMALGAM, ItemID.AQUALUX_AMALGAM_30025, 2900, new PotionComponent[]{PotionComponent.AGA, PotionComponent.LYE, PotionComponent.AGA}),
-    LIPLACK_LIQUOR(ItemID.LIPLACK_LIQUOR, ItemID.LIPLACK_LIQUOR_30027, 1900, new PotionComponent[]{PotionComponent.LYE, PotionComponent.LYE, PotionComponent.LYE}),
-    MEGALITE_LIQUID(ItemID.MEGALITE_LIQUID, ItemID.MEGALITE_LIQUID_30029, 3150, new PotionComponent[]{PotionComponent.MOX, PotionComponent.LYE, PotionComponent.LYE}),
-    ANTI_LEECH_LOTION(ItemID.ANTILEECH_LOTION, ItemID.ANTILEECH_LOTION_30028, 3400, new PotionComponent[]{PotionComponent.AGA, PotionComponent.LYE, PotionComponent.LYE}),
-    MIXALOT(ItemID.MIXALOT, ItemID.MIXALOT_30030, 3650, new PotionComponent[]{PotionComponent.MOX, PotionComponent.AGA, PotionComponent.LYE});
+    MAMMOTH_MIGHT_MIX(ItemID.MM_POTION_MMM_UNFINISHED, ItemID.MM_POTION_MMM_FINISHED, 1900, new PotionComponent[]{PotionComponent.MOX, PotionComponent.MOX, PotionComponent.MOX}),
+    MYSTIC_MANA_AMALGAM(ItemID.MM_POTION_MMA_UNFINISHED, ItemID.MM_POTION_MMA_FINISHED, 2150, new PotionComponent[]{PotionComponent.MOX, PotionComponent.MOX, PotionComponent.AGA}),
+    MARLEYS_MOONLIGHT(ItemID.MM_POTION_MML_UNFINISHED, ItemID.MM_POTION_MML_FINISHED, 2400, new PotionComponent[]{PotionComponent.MOX, PotionComponent.MOX, PotionComponent.LYE}),
+    ALCO_AUGMENTATOR(ItemID.MM_POTION_AAA_UNFINISHED, ItemID.MM_POTION_AAA_FINISHED, 1900, new PotionComponent[]{PotionComponent.AGA, PotionComponent.AGA, PotionComponent.AGA}),
+    AZURE_AURA_MIX(ItemID.MM_POTION_AAM_UNFINISHED, ItemID.MM_POTION_AAM_FINISHED, 2650, new PotionComponent[]{PotionComponent.AGA, PotionComponent.AGA, PotionComponent.MOX}),
+    AQUALUX_AMALGAM(ItemID.MM_POTION_AAL_UNFINISHED, ItemID.MM_POTION_AAL_FINISHED, 2900, new PotionComponent[]{PotionComponent.AGA, PotionComponent.LYE, PotionComponent.AGA}),
+    LIPLACK_LIQUOR(ItemID.MM_POTION_LLL_UNFINISHED, ItemID.MM_POTION_LLL_FINISHED, 1900, new PotionComponent[]{PotionComponent.LYE, PotionComponent.LYE, PotionComponent.LYE}),
+    MEGALITE_LIQUID(ItemID.MM_POTION_LLM_UNFINISHED, ItemID.MM_POTION_LLM_FINISHED, 3150, new PotionComponent[]{PotionComponent.MOX, PotionComponent.LYE, PotionComponent.LYE}),
+    ANTI_LEECH_LOTION(ItemID.MM_POTION_LLA_UNFINISHED, ItemID.MM_POTION_LLA_FINISHED, 3400, new PotionComponent[]{PotionComponent.AGA, PotionComponent.LYE, PotionComponent.LYE}),
+    MIXALOT(ItemID.MM_POTION_MAL_UNFINISHED, ItemID.MM_POTION_MAL_FINISHED, 3650, new PotionComponent[]{PotionComponent.MOX, PotionComponent.AGA, PotionComponent.LYE});
 
     public static final PotionType[] TYPES = values();
     private static final Map<Integer, PotionType> ITEM_MAP;

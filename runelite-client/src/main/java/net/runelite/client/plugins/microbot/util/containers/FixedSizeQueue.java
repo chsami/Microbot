@@ -1,9 +1,11 @@
 package net.runelite.client.plugins.microbot.util.containers;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.Collection;
 import java.util.LinkedList;
 
-public class FixedSizeQueue<E> {
+public class FixedSizeQueue<E> extends LinkedList<E> {
     private final int maxSize;
-    private final LinkedList<E> list = new LinkedList<>();
 
     public FixedSizeQueue(int maxSize) {
         if (maxSize <= 0) {
@@ -12,35 +14,50 @@ public class FixedSizeQueue<E> {
         this.maxSize = maxSize;
     }
 
-    public void add(E element) {
-        if (list.size() == maxSize) {
-            list.removeFirst();
-        }
-        list.addLast(element);
-    }
-
-    public LinkedList<E> getAll() {
-        return list;
-    }
-
-    public E get(int index) {
-        return list.get(index);
-    }
-
-    public int size() {
-        return list.size();
-    }
-
-    public boolean isEmpty() {
-        return list.isEmpty();
-    }
-
-    public boolean contains(E element) {
-        return list.contains(element);
+    private void checkSize() {
+        if (super.size() < maxSize) return;
+        super.removeFirst();
     }
 
     @Override
-    public String toString() {
-        return list.toString();
+    public boolean add(E element) {
+        checkSize();
+        return super.add(element);
+    }
+
+    @Override
+    public boolean addAll(@NotNull Collection<? extends E> c) {
+        throw new UnsupportedOperationException("addAll is currently not supported");
+    }
+
+    @Override
+    public boolean addAll(int index, @NotNull Collection<? extends E> c) {
+        throw new UnsupportedOperationException("addAll is currently not supported");
+    }
+
+    @Override
+    public void add(int index, E element) {
+        if (super.size() >= maxSize) {
+            super.removeFirst();
+            index = Math.max(0, index-1);
+        }
+        super.add(index, element);
+    }
+
+    @Override
+    public void addFirst(E element) {
+        checkSize();
+        super.addFirst(element);
+    }
+
+    @Override
+    public void addLast(E element) {
+        checkSize();
+        super.addLast(element);
+    }
+
+    @Deprecated
+    public LinkedList<E> getAll() {
+        return this;
     }
 }

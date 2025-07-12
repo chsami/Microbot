@@ -3,8 +3,11 @@ package net.runelite.client.plugins.microbot.TaF.CalcifiedRockMiner;
 import com.google.inject.Provides;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.DecorativeObject;
+import net.runelite.api.Skill;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.DecorativeObjectSpawned;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.StatChanged;
 import net.runelite.api.gameval.ObjectID;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -53,10 +56,37 @@ public class CalcifiedRockMinerPlugin extends Plugin {
     protected void shutDown() {
         calcifiedRockMinerScript.shutdown();
         overlayManager.remove(calcifiedRockMinerOverlay);
+        gameTickCounter = 0;
+        lastGainedXpTick = 0;
+        calcifiedRockMinerScript.shouldTryMiningAgain = true;
     }
 
     @Provides
     CalcifiedRockMinerConfig provideConfig(ConfigManager configManager) {
         return configManager.getConfig(CalcifiedRockMinerConfig.class);
+    }
+
+    private long gameTickCounter = 0;
+    private long lastGainedXpTick = 0;
+    @Subscribe
+    public void onGameTick(GameTick tick)
+    {
+       gameTickCounter++;
+       if (gameTickCounter == Long.MAX_VALUE) {
+          gameTickCounter = 0;
+       }
+       if (lastGainedXpTick == 0) {
+           return;
+       }
+        calcifiedRockMinerScript.shouldTryMiningAgain = lastGainedXpTick + 14 < gameTickCounter;
+    }
+
+    @Subscribe
+    public void onStatChanged(StatChanged statChanged)
+    {
+        final Skill skill = statChanged.getSkill();
+        if (skill == Skill.MINING) {
+            lastGainedXpTick = gameTickCounter;
+        }
     }
 }

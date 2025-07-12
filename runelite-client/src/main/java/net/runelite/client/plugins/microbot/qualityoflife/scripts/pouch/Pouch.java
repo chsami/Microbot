@@ -3,20 +3,20 @@ package net.runelite.client.plugins.microbot.qualityoflife.scripts.pouch;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 public enum Pouch {
-    SMALL(new int[]{ItemID.SMALL_POUCH}, new int[]{3}, new int[]{3}, 1),
-    MEDIUM(new int[]{ItemID.MEDIUM_POUCH, ItemID.MEDIUM_POUCH_5511}, new int[]{6}, new int[]{3}, 25),
-    LARGE(new int[]{ItemID.LARGE_POUCH, ItemID.LARGE_POUCH_5513}, new int[]{9}, new int[]{7}, 50),
-    GIANT(new int[]{ItemID.GIANT_POUCH, ItemID.GIANT_POUCH_5515}, new int[]{12}, new int[]{9}, 75),
+    SMALL(new int[]{ItemID.RCU_POUCH_SMALL}, new int[]{3}, new int[]{3}, 1),
+    MEDIUM(new int[]{ItemID.RCU_POUCH_MEDIUM, ItemID.RCU_POUCH_MEDIUM_DEGRADE}, new int[]{6}, new int[]{3}, 25),
+    LARGE(new int[]{ItemID.RCU_POUCH_LARGE, ItemID.RCU_POUCH_LARGE_DEGRADE}, new int[]{9}, new int[]{7}, 50),
+    GIANT(new int[]{ItemID.RCU_POUCH_GIANT, ItemID.RCU_POUCH_GIANT_DEGRADE}, new int[]{12}, new int[]{9}, 75),
     // degradedBaseHoldAmount for colossal pouch is dynamic, it starts at 35 and lowers
     // each time you use the degraded pouch. We'll see it to 25 to be safe
     // holdAmount -1 for colossal pouch because it is calculated based on the rc level
-    COLOSSAL(new int[]{ItemID.COLOSSAL_POUCH, ItemID.COLOSSAL_POUCH_26786}, new int[]{8, 16, 27, 40}, new int[]{6, 13, 23, 35}, 25);
+    COLOSSAL(new int[]{ItemID.RCU_POUCH_COLOSSAL, ItemID.RCU_POUCH_COLOSSAL_DEGRADE}, new int[]{8, 16, 27, 40}, new int[]{6, 13, 23, 35}, 25);
 
 
     private final int[] baseHoldAmount;
@@ -88,20 +88,20 @@ public enum Pouch {
 
     static Pouch forItem(int itemId) {
         switch (itemId) {
-            case ItemID.SMALL_POUCH:
+            case ItemID.RCU_POUCH_SMALL:
                 return SMALL;
-            case ItemID.MEDIUM_POUCH:
-            case ItemID.MEDIUM_POUCH_5511:
+            case ItemID.RCU_POUCH_MEDIUM:
+            case ItemID.RCU_POUCH_MEDIUM_DEGRADE:
                 return MEDIUM;
-            case ItemID.LARGE_POUCH:
-            case ItemID.LARGE_POUCH_5513:
+            case ItemID.RCU_POUCH_LARGE:
+            case ItemID.RCU_POUCH_LARGE_DEGRADE:
                 return LARGE;
-            case ItemID.GIANT_POUCH:
-            case ItemID.GIANT_POUCH_5515:
+            case ItemID.RCU_POUCH_GIANT:
+            case ItemID.RCU_POUCH_GIANT_DEGRADE:
                 return GIANT;
-            case ItemID.COLOSSAL_POUCH:
-            case ItemID.COLOSSAL_POUCH_26786:
-            case ItemID.COLOSSAL_POUCH_26906:
+            case ItemID.RCU_POUCH_COLOSSAL:
+            case ItemID.RCU_POUCH_COLOSSAL_DEGRADE:
+            case ItemID.DEVIOUS_GLOWINGPOUCH_COLOSSAL:
                 return COLOSSAL;
             default:
                 return null;
@@ -153,7 +153,7 @@ public enum Pouch {
     }
 
     public boolean hasItemsToFillPouch() {
-        return Rs2Inventory.hasItem(ItemID.PURE_ESSENCE) || Rs2Inventory.hasItem(ItemID.DAEYALT_ESSENCE) || Rs2Inventory.hasItem(ItemID.GUARDIAN_ESSENCE);
+        return Rs2Inventory.hasItem(ItemID.BLANKRUNE_HIGH) || Rs2Inventory.hasItem(ItemID.BLANKRUNE_DAEYALT) || Rs2Inventory.hasItem(ItemID.GOTR_GUARDIAN_ESSENCE);
     }
 
     public boolean hasPouchInInventory() {

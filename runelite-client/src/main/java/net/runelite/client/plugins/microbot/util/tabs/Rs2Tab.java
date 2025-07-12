@@ -1,21 +1,25 @@
 package net.runelite.client.plugins.microbot.util.tabs;
 
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.VarClientInt;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.VarcIntValues;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
-import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
-import java.awt.event.KeyEvent;
 import java.util.Arrays;
+import java.util.Objects;
 
-import static net.runelite.client.plugins.microbot.util.Global.sleep;
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
+@Slf4j
 public class Rs2Tab {
+    private static final int TAB_SWITCH_SCRIPT = 915;
+
     public static InterfaceTab getCurrentTab() {
-        int varcIntValue = Microbot.getClient().getVarcIntValue(VarClientInt.INVENTORY_TAB);
+        final int varcIntValue = Microbot.getClient().getVarcIntValue(VarClientInt.INVENTORY_TAB);
         switch (VarcIntValues.valueOf(varcIntValue)) {
             case TAB_COMBAT_OPTIONS:
                 return InterfaceTab.COMBAT;
@@ -52,171 +56,100 @@ public class Rs2Tab {
         }
     }
 
+    public static boolean isCurrentTab(InterfaceTab tab) {
+        return getCurrentTab() == tab;
+    }
 
+    public static boolean switchTo(InterfaceTab tab) {
+        if (isCurrentTab(tab)) return true;
+
+        if (tab == InterfaceTab.NOTHING_SELECTED && Microbot.getVarbitValue(VarbitID.RESIZABLE_STONE_ARRANGEMENT) == 0)
+            return false;
+
+        Microbot.getClientThread().invokeLater(() -> Microbot.getClient().runScript(TAB_SWITCH_SCRIPT, tab.getIndex()));
+        return sleepUntil(() -> isCurrentTab(tab));
+    }
+
+    @Deprecated(since = "Use switchTo")
     public static boolean switchToInventoryTab() {
-        if (getCurrentTab() == InterfaceTab.INVENTORY) {
-            return true;
-        }
-        Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4678), InterfaceTab.INVENTORY));
-        return getCurrentTab() == InterfaceTab.INVENTORY;
+        return switchTo(InterfaceTab.INVENTORY);
     }
 
+    @Deprecated(since = "Use switchTo")
     public static boolean switchToCombatOptionsTab() {
-        if (getCurrentTab() == InterfaceTab.COMBAT) {
-            return true;
-        }
-        Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4675), InterfaceTab.COMBAT));
-        return getCurrentTab() == InterfaceTab.COMBAT;
+        return switchTo(InterfaceTab.COMBAT);
     }
 
+    @Deprecated(since = "Use switchTo")
     public static boolean switchToSkillsTab() {
-        if (getCurrentTab() == InterfaceTab.SKILLS) {
-            return true;
-        }
-        Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4676), InterfaceTab.SKILLS));
-        return getCurrentTab() == InterfaceTab.SKILLS;
+        return switchTo(InterfaceTab.SKILLS);
     }
 
+    @Deprecated(since = "Use switchTo")
     public static boolean switchToQuestTab() {
-        if (getCurrentTab() == InterfaceTab.QUESTS) {
-            return true;
-        }
-        Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4677), InterfaceTab.QUESTS));
-        return getCurrentTab() == InterfaceTab.QUESTS;
+        return switchTo(InterfaceTab.QUESTS);
     }
 
-
+    @Deprecated(since = "Use switchTo")
     public static boolean switchToEquipmentTab() {
-        if (getCurrentTab() == InterfaceTab.EQUIPMENT) {
-            return true;
-        }
-        Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4679), InterfaceTab.EQUIPMENT));
-        return getCurrentTab() == InterfaceTab.EQUIPMENT;
+        return switchTo(InterfaceTab.EQUIPMENT);
     }
 
+    @Deprecated(since = "Use switchTo")
     public static boolean switchToPrayerTab() {
-        if (getCurrentTab() == InterfaceTab.PRAYER) {
-            return true;
-        }
-        Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4680), InterfaceTab.PRAYER));
-        return getCurrentTab() == InterfaceTab.PRAYER;
+        return switchTo(InterfaceTab.PRAYER);
     }
 
+    @Deprecated(since = "Use switchTo")
     public static boolean switchToMagicTab() {
-        if (getCurrentTab() == InterfaceTab.MAGIC) {
-            return true;
-        }
-        Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4682), InterfaceTab.MAGIC));
-        return getCurrentTab() == InterfaceTab.MAGIC;
+        return switchTo(InterfaceTab.MAGIC);
     }
 
+    @Deprecated(since = "Use switchTo")
     public static boolean switchToGroupingTab() {
-        if (getCurrentTab() == InterfaceTab.CHAT) {
-            return true;
-        }
-        Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4683), InterfaceTab.CHAT));
-        return getCurrentTab() == InterfaceTab.CHAT;
+        return switchTo(InterfaceTab.CHAT);
     }
 
+    @Deprecated(since = "Use switchTo")
     public static boolean switchToFriendsTab() {
-        if (getCurrentTab() == InterfaceTab.FRIENDS) {
-            return true;
-        }
-        Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4684), InterfaceTab.FRIENDS));
-        return getCurrentTab() == InterfaceTab.FRIENDS;
+        return switchTo(InterfaceTab.FRIENDS);
     }
 
+    @Deprecated(since = "Use switchTo")
     public static boolean switchToAccountManagementTab() {
-        if (getCurrentTab() == InterfaceTab.ACC_MAN) {
-            return true;
-        }
-        Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(6517),  InterfaceTab.ACC_MAN));
-        return getCurrentTab() == InterfaceTab.ACC_MAN;
+        return switchTo(InterfaceTab.ACC_MAN);
     }
 
-
+    @Deprecated(since = "Use switchTo")
     public static boolean switchToSettingsTab() {
-        if (getCurrentTab() == InterfaceTab.SETTINGS) {
-            return true;
-        }
-        Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4686),InterfaceTab.SETTINGS));
-        return getCurrentTab() == InterfaceTab.SETTINGS;
+        return switchTo(InterfaceTab.SETTINGS);
     }
 
+    @Deprecated(since = "Use switchTo")
     public static boolean switchToEmotesTab() {
-        if (getCurrentTab() == InterfaceTab.EMOTES) {
-            return true;
-        }
-        Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4687), InterfaceTab.EMOTES));
-        return getCurrentTab() == InterfaceTab.EMOTES;
+        return switchTo(InterfaceTab.EMOTES);
     }
 
+    @Deprecated(since = "Use switchTo")
     public static boolean switchToMusicTab() {
-        if (getCurrentTab() == InterfaceTab.MUSIC) {
-            return true;
-        }
-        Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4688), InterfaceTab.MUSIC));
-        return getCurrentTab() == InterfaceTab.MUSIC;
+        return switchTo(InterfaceTab.MUSIC);
     }
 
+    @Deprecated(since = "Use switchTo")
     public static boolean switchToLogout() {
-        if (getCurrentTab() == InterfaceTab.LOGOUT) return true;
-        
-        // Logout is not configured by default, but we should prefer it if it is configured as it is faster than clicking the widget
-        boolean hasKeybindConfigured = Microbot.getVarbitValue(4689) != 0;
-        
-        if (!hasKeybindConfigured) {
-            int logout_widget_id = getLogoutWidgetId();
-
-            if (logout_widget_id == 0) return false;
-
-            Widget tab = Rs2Widget.getWidget(logout_widget_id);
-            if (tab == null) return false;
-
-            Rs2Widget.clickWidget(tab);
-            sleep(200, 600);
-        } else {
-            Rs2Keyboard.keyPress(getKeyBind(Microbot.getVarbitValue(4689), InterfaceTab.LOGOUT));
-        }
-
-        return getCurrentTab() == InterfaceTab.LOGOUT;
+        return switchTo(InterfaceTab.LOGOUT);
     }
 
-    private static int getLogoutWidgetId() {
-        return Arrays.stream(new int[]{
-                        35913778, // Fixed Classic Display
-                        10551342, // Resizable Classic Display
-                        10747938  // Resizable Modern Display
-                }).filter(id -> Rs2Widget.getWidget(id) != null)
-                .findFirst()
-                .orElseGet(() -> {
+    private final static int[] LOGOUT_WIDGET_ID_VARIATIONS = {
+            35913778, // Fixed Classic Display
+            10551342, // Resizable Classic Display
+            10747938  // Resizable Modern Display
+    };
+    private static Widget getLogoutWidget() {
+        return Arrays.stream(LOGOUT_WIDGET_ID_VARIATIONS).mapToObj(Rs2Widget::getWidget).filter(Objects::nonNull)
+                .findFirst().orElseGet(() -> {
                     Microbot.showMessage("Unable to find logout button widget!");
-                    return 0;
+                    return null;
                 });
     }
-
-    private static int getKeyBind(int value, InterfaceTab tab) {
-        if (value == 1) return KeyEvent.VK_F1;
-        if (value == 2) return KeyEvent.VK_F2;
-        if (value == 3) return KeyEvent.VK_F3;
-        if (value == 4) return KeyEvent.VK_F4;
-        if (value == 5) return KeyEvent.VK_F5;
-        if (value == 6) return KeyEvent.VK_F6;
-        if (value == 7) return KeyEvent.VK_F7;
-        if (value == 8) return KeyEvent.VK_F8;
-        if (value == 9) return KeyEvent.VK_F9;
-        if (value == 10) return KeyEvent.VK_F10;
-        if (value == 11) return KeyEvent.VK_F11;
-        if (value == 12) return KeyEvent.VK_F12;
-        if (value == 13) return KeyEvent.VK_ESCAPE;
-
-        if (value == 0 && Microbot.isLoggedIn()) {
-            Microbot.showMessage("Keybinding not found for tab " + tab.getName() + ". Please fill in the keybinding in your settings");
-            sleep(5000);
-        }
-
-        return -1;
-    }
-
-
 }

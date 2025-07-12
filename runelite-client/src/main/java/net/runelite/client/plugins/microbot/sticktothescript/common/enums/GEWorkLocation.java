@@ -1,6 +1,5 @@
 package net.runelite.client.plugins.microbot.sticktothescript.common.enums;
 
-import net.runelite.api.ItemID;
 import net.runelite.api.coords.WorldPoint;
 
 public enum GEWorkLocation {

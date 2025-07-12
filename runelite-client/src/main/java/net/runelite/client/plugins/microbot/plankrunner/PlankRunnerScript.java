@@ -1,8 +1,8 @@
 package net.runelite.client.plugins.microbot.plankrunner;
 
 import com.google.inject.Inject;
-import net.runelite.api.ItemID;
-import net.runelite.api.NpcID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.plankrunner.enums.PlankRunnerState;
@@ -64,13 +64,13 @@ public class PlankRunnerScript extends Script {
                             Rs2Inventory.waitForInventoryChanges(1800);
                         }
 
-                        if (Rs2Inventory.getEmptySlots() < 26) {
+                        if (Rs2Inventory.emptySlotCount() < 26) {
                             Rs2Bank.depositAll();
                             Rs2Inventory.waitForInventoryChanges(1800);
                         }
 
-                        if (!Rs2Inventory.contains(ItemID.COINS_995)) {
-                            Rs2Bank.withdrawAll(ItemID.COINS_995);
+                        if (!Rs2Inventory.contains(ItemID.COINS)) {
+                            Rs2Bank.withdrawAll(ItemID.COINS);
                             Rs2Inventory.waitForInventoryChanges(1800);
                         }
 
@@ -112,7 +112,7 @@ public class PlankRunnerScript extends Script {
                             }
                         }
 
-                        int logsToWithdraw = Rs2Inventory.getEmptySlots();
+                        int logsToWithdraw = Rs2Inventory.emptySlotCount();
                         if (!Rs2Bank.hasBankItem(plugin.getPlank().getLogItemId(), logsToWithdraw)) {
                             Microbot.showMessage("Not enough logs for a full run!");
                             shutdown();
@@ -131,7 +131,7 @@ public class PlankRunnerScript extends Script {
                             return;
                         }
 
-                        var sawmillOperator = Rs2Npc.getNpc(NpcID.SAWMILL_OPERATOR);
+                        var sawmillOperator = Rs2Npc.getNpc(NpcID.POH_SAWMILL_OPP);
                         if (sawmillOperator == null) {
                             Microbot.showMessage("Unable to find Sawmill Operator!");
                             shutdown();
@@ -182,7 +182,7 @@ public class PlankRunnerScript extends Script {
                 .mapToInt(rs2Item -> 1)
                 .sum();
         return Rs2Inventory.hasItem(plugin.getPlank().getLogItemId()) &&
-                Rs2Inventory.hasItemAmount(ItemID.COINS_995, logsInInventory * plugin.getPlank().getCostPerPlank());
+                Rs2Inventory.hasItemAmount(ItemID.COINS, logsInInventory * plugin.getPlank().getCostPerPlank());
     }
 
     private void withdrawAndDrink(String potionItemName) {
@@ -195,8 +195,8 @@ public class PlankRunnerScript extends Script {
             Rs2Bank.depositOne(simplifiedPotionName);
             Rs2Inventory.waitForInventoryChanges(1800);
         }
-        if (Rs2Inventory.hasItem(ItemID.VIAL)) {
-            Rs2Bank.depositOne(ItemID.VIAL);
+        if (Rs2Inventory.hasItem(ItemID.VIAL_EMPTY)) {
+            Rs2Bank.depositOne(ItemID.VIAL_EMPTY);
             Rs2Inventory.waitForInventoryChanges(1800);
         }
     }
