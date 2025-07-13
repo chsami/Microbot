@@ -1,8 +1,8 @@
 package net.runelite.client.plugins.microbot.bee.chaosaltar;
 
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.GameObject;
 import net.runelite.api.Skill;
-import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -23,17 +23,20 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 
 import static net.runelite.api.ItemID.DRAGON_BONES;
 import static net.runelite.api.NpcID.CHAOS_FANATIC;
 import static net.runelite.client.plugins.microbot.util.walker.Rs2Walker.walkTo;
 
-
+@Slf4j
 public class ChaosAltarScript extends Script {
 
     public static final WorldArea CHAOS_ALTAR_AREA = new WorldArea(2947, 3818, 11, 6, 0);
     public static final WorldPoint CHAOS_ALTAR_POINT = new WorldPoint(2949, 3820,0);
     public static final WorldPoint CHAOS_ALTAR_POINT_SOUTH = new WorldPoint(2972, 3810,0);
+
+    private static final int CHAOS_ALTAR = 411;
 
     private ChaosAltarConfig config;
     private boolean autoRetaliate = false;
@@ -52,7 +55,8 @@ public class ChaosAltarScript extends Script {
 
                 if (!autoRetaliate) {
                     Rs2Combat.setAutoRetaliate(false);
-                    autoRetaliate = true;}
+                    autoRetaliate = true;
+                }
 
                 // Determine current state
                 currentState = determineState();
@@ -68,11 +72,13 @@ public class ChaosAltarScript extends Script {
                         teleportToWilderness();
                         break;
                     case OFFER_BONES:
-                        if (config.giveBonesFast()) {offerBonesFast();} else offerBones();
+                        if (config.giveBonesFast()) offerBonesFast();
+                        else offerBones();
                         break;
                     case WALK_TO_ALTAR:
                         walkTo(CHAOS_ALTAR_POINT_SOUTH);
-                        if (config.giveBonesFast()) {offerBonesFast();} else offerBones();
+                        if (config.giveBonesFast()) offerBonesFast();
+                        else offerBones();
                         break;
                     case DIE_TO_NPC:
                         dieToNpc();
@@ -95,22 +101,19 @@ public class ChaosAltarScript extends Script {
         return true;
     }
 
+    private GameObject getChaosAltar() {
+        return (GameObject) Rs2GameObject
+                .getAll(obj -> obj.getId() == CHAOS_ALTAR && obj instanceof GameObject)
+                .stream().findFirst().orElse(null);
+    }
+
     public boolean isAtChaosAltar() {
-        for (TileObject obj : Rs2GameObject.getAll()) {
-            if (obj.getId() == 411) {
-                if (obj instanceof GameObject) {
-                    GameObject gameObject = (GameObject) obj;
-                    System.out.println("Found Chaos Altar GameObject at: " + gameObject.getWorldLocation());
-                    if (Rs2GameObject.isReachable(gameObject)) {
-                        Microbot.log("Chaos Altar is reachable.");
-                        return true;
-                    } else {
-                        System.out.println("Chaos Altar found but not reachable.");
-                    }
-                }
-            }
-        }
-        return false;
+        final GameObject gameObject = getChaosAltar();
+        if (gameObject == null) return false;
+
+        final boolean reachable = Rs2GameObject.isReachable(gameObject);
+        log.info("Found Chaos Altar GameObject at: {}. Reachable={}", gameObject.getWorldLocation(), reachable);
+        return reachable;
     }
 
 
@@ -141,27 +144,33 @@ public class ChaosAltarScript extends Script {
         }
     }
 
+    private Rs2ItemModel getLastBone() {
+        return Rs2Inventory.getBones().stream()
+                .max(Comparator.comparingInt(Rs2ItemModel::getSlot)).orElse(null);
+    }
+
     private void offerBones() {
         System.out.println("Offering bones at altar- IN OFFERBONES1");
 
         if (!CHAOS_ALTAR_AREA.contains(Rs2Player.getWorldLocation())) {
-            if (Rs2Player.getWorldLocation().getY() > 3650)
-            {walkTo(CHAOS_ALTAR_POINT);}
+            if (Rs2Player.getWorldLocation().getY() > 3650) {
+                walkTo(CHAOS_ALTAR_POINT);
+            }
         }
 
-        if (Rs2Player.isInCombat()) {offerBonesFast(); return;}
+        if (Rs2Player.isInCombat()) {
+            offerBonesFast();
+            return;
+        }
 
-        var lastBones = Rs2Inventory.getBones().stream().max(Comparator.comparingInt(Rs2ItemModel::getSlot)).orElse(null);
-        var interactSlot = lastBones != null ? lastBones.getSlot() : 2;
-
-        if (Rs2Inventory.contains(DRAGON_BONES) && isRunning()) {
-            Rs2Inventory.slotInteract(interactSlot, "use");
+        final Rs2ItemModel lastBones = getLastBone();
+        if (lastBones != null && isRunning()) {
+            Rs2Inventory.interact(lastBones, "use");
             sleep(300, 500);
-            Rs2GameObject.interact(411);
+            Rs2GameObject.interact(CHAOS_ALTAR);
             sleep(300, 500);
 
-            int randomWait = Rs2Random.between(500,2000);
-            Rs2Inventory.waitForInventoryChanges(randomWait);
+            Rs2Inventory.waitForInventoryChanges(Rs2Random.between(500,2000));
         }
     }
 
@@ -169,19 +178,19 @@ public class ChaosAltarScript extends Script {
         Microbot.log("Offering bones at altar - IN OFFERBONES");
 
         if (!CHAOS_ALTAR_AREA.contains(Rs2Player.getWorldLocation())) {
-            if (Rs2Player.getWorldLocation().getY() > 3650)
-            {walkTo(CHAOS_ALTAR_POINT);}
+            if (Rs2Player.getWorldLocation().getY() > 3650) {walkTo(
+                    CHAOS_ALTAR_POINT);
+            }
         }
-        var lastBones = Rs2Inventory.getBones().stream().max(Comparator.comparingInt(Rs2ItemModel::getSlot)).orElse(null);
-        var interactSlot = lastBones != null ? lastBones.getSlot() : 2;
 
-        while (Rs2Inventory.contains(DRAGON_BONES)
+        Rs2ItemModel lastBones;
+        while ((lastBones = getLastBone()) != null
                 && isRunning()
                 && !Rs2Player.isInCombat()
-                && Rs2GameObject.exists(411)) {
-            Rs2Inventory.slotInteract(interactSlot, "use");
+                && Rs2GameObject.exists(CHAOS_ALTAR)) {
+            Rs2Inventory.interact(lastBones, "use");
             sleep(100, 300);
-            Rs2GameObject.interact(411);
+            Rs2GameObject.interact(CHAOS_ALTAR);
             Rs2Player.waitForXpDrop(Skill.PRAYER);
 
             // Small random delay between offerings
@@ -189,44 +198,52 @@ public class ChaosAltarScript extends Script {
         }
     }
 
-
     private void handleBanking() {
-        if(Rs2Inventory.contains(x-> x != null && x.getName().contains("Burning amulet"))){
+        if(Rs2Inventory.contains(Rs2ItemModel.matches(false, "Burning amulet"))){
             Rs2Inventory.wear("Burning amulet");
         }
+
         if (!Rs2Bank.isOpen()) {
-            System.out.println("Opening bank");
-            Rs2Bank.walkToBank();
-            Rs2Bank.walkToBankAndUseBank();
-        } else {
-            Rs2Bank.depositAll();
-
-            if(!Rs2Bank.hasItem(DRAGON_BONES)) {
-                Microbot.log("NO BONES, SHUTTING DOWN");
-                shutdown();
+            log.info("Opening bank");
+            if (!Rs2Bank.walkToBankAndUseBank()) {
+                log.error("Failed to walk to or use bank");
+                return;
             }
+        }
 
-            if(!Rs2Bank.hasBankItem("Burning Amulet")) {
-                Microbot.log("NO BURNING AMULET, SHUTTING DOWN");
-                shutdown();
-            }
+        log.info("Depositing All");
+        Rs2Bank.depositAll();
 
-            // If amulet not equipped or in inventory
-            if (!hasBurningAmulet()) {
-                sleep(400);
-                Microbot.log("Withdrawing burning amulet");
-                Rs2Bank.withdrawAndEquip("burning amulet");
-                Rs2Inventory.waitForInventoryChanges(2000);
-            }
+        if(!Rs2Bank.hasItem(DRAGON_BONES)) {
+            Microbot.log("NO BONES, SHUTTING DOWN");
+            shutdown();
+            return;
+        }
 
-            // If no bones in inventory, withdraw 28
-            if (!Rs2Inventory.contains(DRAGON_BONES)) {
-                System.out.println("Withdrawing bones");
-                Rs2Bank.withdrawAll(DRAGON_BONES);
-                Rs2Inventory.waitForInventoryChanges(2000);
-            }
+        if(!Rs2Bank.hasBankItem("Burning Amulet")) {
+            Microbot.log("NO BURNING AMULET, SHUTTING DOWN");
+            shutdown();
+            return;
+        }
 
-            Rs2Bank.closeBank();
+        // If amulet not equipped or in inventory
+        if (!hasBurningAmulet()) {
+            sleep(400);
+            Microbot.log("Withdrawing burning amulet");
+            Rs2Bank.withdrawAndEquip("burning amulet");
+            Rs2Inventory.waitForInventoryChanges(2000);
+        }
+
+        // If no bones in inventory, withdraw 28
+        if (!Rs2Inventory.contains(DRAGON_BONES)) {
+            log.info("Withdrawing bones");
+            Rs2Bank.withdrawAll(DRAGON_BONES);
+            Rs2Inventory.waitForInventoryChanges(2000);
+        }
+
+        log.info("Closing Bank. Ammy={}, Bones={}", hasBurningAmulet(), Rs2Inventory.getBones().size());
+        if (!Rs2Bank.closeBank()) {
+            log.error("Failed to close bank");
         }
     }
 
@@ -235,10 +252,11 @@ public class ChaosAltarScript extends Script {
     }
 
     private State determineState() {
-        boolean inWilderness = Rs2Pvp.isInWilderness();
-        boolean hasBones = Rs2Inventory.count(DRAGON_BONES) > 4;
-        boolean hasAnyBones = Rs2Inventory.contains(DRAGON_BONES);
-        boolean atAltar = isAtChaosAltar();
+        final int boneCount = Rs2Inventory.getBones().size();
+        final boolean inWilderness = Rs2Pvp.isInWilderness();
+        final boolean hasBones = boneCount > 4;
+        final boolean hasAnyBones = boneCount > 0;
+        final boolean atAltar = isAtChaosAltar();
 
         if(didWeDie){
             didWeDie = false;

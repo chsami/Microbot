@@ -465,9 +465,15 @@
 2597 3108 1	2597 3108 0	Climb-down;Ladder;16681								2	
 2596 3107 0	2596 3107 1	Climb-up;Ladder;16683								2	
 2596 3107 1	2596 3107 0	Climb-down;Ladder;16681								2	
-2594 9484 0	2594 3084 0	Climb-up;Ladder;17385	 								
-2594 9486 0	2594 3086 0	Climb-up;Ladder;17385	 								
-2594 3086 0	2594 9486 0	Climb-down;Ladder;17384	 								
+2594 9484 0	2594 3084 0	Climb-up;Ladder;17385
+2594 9486 0	2594 3086 0	Climb-up;Ladder;17385
+2594 3086 0	2594 9486 0	Climb-down;Ladder;17384
+2620 9496 0	2620 9566 0	Climb-down;Staircase;15656								1
+2621 9496 0	2620 9566 0	Climb-down;Staircase;15656								1
+2620 9565 0	2621 9496 0	Climb-up;Staircase;15657								1
+2621 9565 0	2621 9496 0	Climb-up;Staircase;15657								1
+2601 9481 0	2601 9482 0	Pick-lock;Door;11728	82 Thieving	1523						10
+2601 9482 0	2601 9481 0	Pick-lock;Door;11728	82 Thieving	1523						10
 											
 # Hazelmere Island											
 2677 3088 1	2677 3088 0	Climb-down;Ladder;16679								2	

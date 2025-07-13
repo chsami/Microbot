@@ -134,26 +134,26 @@ public class PathfinderConfig {
 
     public void refresh() {
         calculationCutoffMillis = config.calculationCutoff() * Constants.GAME_TICK_LENGTH;
-        avoidWilderness = config.avoidWilderness();
-        useAgilityShortcuts = config.useAgilityShortcuts();
-        useGrappleShortcuts = config.useGrappleShortcuts();
-        useBoats = config.useBoats();
-        useCanoes = config.useCanoes();
-        useCharterShips = config.useCharterShips();
-        useShips = config.useShips();
-        useFairyRings = config.useFairyRings();
-        useGnomeGliders = config.useGnomeGliders();
-        useMinecarts = config.useMinecarts();
-        useQuetzals = config.useQuetzals();
-        useSpiritTrees = config.useSpiritTrees();
-        useTeleportationItems = config.useTeleportationItems();
-        useTeleportationMinigames = config.useTeleportationMinigames();
-        useTeleportationLevers = config.useTeleportationLevers();
-        useTeleportationPortals = config.useTeleportationPortals();
-        useTeleportationSpells = config.useTeleportationSpells();
-        useWildernessObelisks = config.useWildernessObelisks();
-        useMagicCarpets = config.useMagicCarpets();
-        distanceBeforeUsingTeleport = config.distanceBeforeUsingTeleport();
+        avoidWilderness = ShortestPathPlugin.override("avoidWilderness", config.avoidWilderness());
+        useAgilityShortcuts = ShortestPathPlugin.override("useAgilityShortcuts", config.useAgilityShortcuts());
+        useGrappleShortcuts = ShortestPathPlugin.override("useGrappleShortcuts", config.useGrappleShortcuts());
+        useBoats = ShortestPathPlugin.override("useBoats", config.useBoats());
+        useCanoes = ShortestPathPlugin.override("useCanoes", config.useCanoes());
+        useCharterShips = ShortestPathPlugin.override("useCharterShips", config.useCharterShips());
+        useShips = ShortestPathPlugin.override("useShips", config.useShips());
+        useFairyRings = ShortestPathPlugin.override("useFairyRings", config.useFairyRings());
+        useGnomeGliders = ShortestPathPlugin.override("useGnomeGliders", config.useGnomeGliders());
+        useMinecarts = ShortestPathPlugin.override("useMinecarts", config.useMinecarts());
+        useQuetzals = ShortestPathPlugin.override("useQuetzals", config.useQuetzals());
+        useSpiritTrees = ShortestPathPlugin.override("useSpiritTrees", config.useSpiritTrees());
+        useTeleportationItems = ShortestPathPlugin.override("useTeleportationItems", config.useTeleportationItems());
+        useTeleportationMinigames = ShortestPathPlugin.override("useTeleportationLevers", config.useTeleportationLevers());
+        useTeleportationLevers = ShortestPathPlugin.override("useTeleportationMinigames", config.useTeleportationMinigames());
+        useTeleportationPortals = ShortestPathPlugin.override("useTeleportationPortals", config.useTeleportationPortals());
+        useTeleportationSpells = ShortestPathPlugin.override("useTeleportationSpells", config.useTeleportationSpells());
+        useWildernessObelisks = ShortestPathPlugin.override("useWildernessObelisks", config.useWildernessObelisks());
+        useMagicCarpets = ShortestPathPlugin.override("useMagicCarpets", config.useMagicCarpets());
+        distanceBeforeUsingTeleport = ShortestPathPlugin.override("distanceBeforeUsingTeleports", config.distanceBeforeUsingTeleport());
 
         //START microbot variables
         useNpcs = config.useNpcs();

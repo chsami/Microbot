@@ -34,17 +34,17 @@ public class PathMinimapOverlay extends Overlay {
 
     @Override
     public Dimension render(Graphics2D graphics) {
+		if (!plugin.drawMinimap) {
+			return null;
+		}
         if (ShortestPathPlugin.getPathfinder() == null)
             return null;
-        if (!config.drawMinimap() || plugin.getPathfinder() == null) {
-            return null;
-        }
 
         graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
         graphics.setClip(plugin.getMinimapClipArea());
 
         List<WorldPoint> pathPoints = plugin.getPathfinder().getPath();
-        Color pathColor = plugin.getPathfinder().isDone() ? config.colourPath() : config.colourPathCalculating();
+        Color pathColor = plugin.getPathfinder().isDone() ? plugin.colourPath : plugin.colourPathCalculating;
         for (WorldPoint pathPoint : pathPoints) {
             if (pathPoint.getPlane() != client.getPlane()) {
                 continue;

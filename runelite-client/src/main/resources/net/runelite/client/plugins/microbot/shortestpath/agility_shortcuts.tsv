@@ -246,3 +246,19 @@
 3228 3471 0	3228 3470 0	Climb;Trellis;2149	35 Agility		Garden Of Tranquillity		6
 2330 5097 0	2333 5097 0	Climb-through;Shortcut;18416	30 Agility				6
 2333 5097 0	2330 5097 0	Climb-through;Shortcut;18416	30 Agility				6
+2322 3502 0	2324 3497 0	Climb;Rocks;19849	25 Agility				6
+2324 3497 0	2322 3502 0	Climb;Rocks;19849	25 Agility				6
+2580 9520 0	2580 9512 0	Walk-across;Balancing ledge;23548	40 Agility				9
+2580 9512 0	2580 9520 0	Walk-across;Balancing ledge;23548	40 Agility				9
+2598 9489 0	2598 9494 0	Swing across;Monkeybars;23567	57 Agility				6
+2598 9494 0	2598 9489 0	Swing across;Monkeybars;23567	57 Agility				6
+2599 9489 0	2599 9494 0	Swing across;Monkeybars;23567	57 Agility				6
+2599 9494 0	2599 9489 0	Swing across;Monkeybars;23567	57 Agility				6
+2615 9503 0	2616 9571 0	Climb-down;Pile of rubble;23564	67 Agility				3
+2616 9503 0	2616 9571 0	Climb-down;Pile of rubble;23564	67 Agility				3
+2614 9504 0	2616 9571 0	Climb-down;Pile of rubble;23564	67 Agility				3
+2614 9505 0	2616 9571 0	Climb-down;Pile of rubble;23564	67 Agility				3
+2615 9506 0	2616 9571 0	Climb-down;Pile of rubble;23564	67 Agility				3
+2616 9506 0	2616 9571 0	Climb-down;Pile of rubble;23564	67 Agility				3
+2616 9571 0	2615 9506 0	Climb-up;Pile of rubble;23563	67 Agility				3
+2617 9571 0	2615 9506 0	Climb-up;Pile of rubble;23563	67 Agility				3

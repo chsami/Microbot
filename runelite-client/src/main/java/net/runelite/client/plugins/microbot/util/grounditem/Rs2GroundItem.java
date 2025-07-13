@@ -141,7 +141,7 @@ public class Rs2GroundItem {
         return (int) (despawnTimeMillis / 600);
     }
 
-    private static final Object[] EMPTY_ARRAY = new Object[0];
+    private static final RS2Item[] EMPTY_ARRAY = new RS2Item[0];
 
     /**
      * Returns all the ground items at a tile on the current plane.
@@ -153,18 +153,18 @@ public class Rs2GroundItem {
      */
     public static RS2Item[] getAllAt(int x, int y) {
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            if (!Microbot.isLoggedIn()) return (RS2Item[]) EMPTY_ARRAY;
+            if (!Microbot.isLoggedIn()) return EMPTY_ARRAY;
 
             final Tile tile = Rs2Tile.getTile(x, y);
-            if (tile == null) return (RS2Item[]) EMPTY_ARRAY;
+            if (tile == null) return EMPTY_ARRAY;
 
             List<TileItem> groundItems = tile.getGroundItems();
-            if (groundItems == null) return (RS2Item[]) EMPTY_ARRAY;
+            if (groundItems == null) return EMPTY_ARRAY;
 
             return groundItems.stream()
                     .map(groundItem -> new RS2Item(Microbot.getItemManager().getItemComposition(groundItem.getId()), tile, groundItem))
                     .toArray(RS2Item[]::new);
-        }).orElse((RS2Item[]) EMPTY_ARRAY);
+        }).orElse(EMPTY_ARRAY);
     }
 
     public static RS2Item[] getAll(int range) {
@@ -200,7 +200,7 @@ public class Rs2GroundItem {
                     return temp.stream().sorted(Comparator.comparingInt(value -> value.getTile().getLocalLocation()
                                     .distanceTo(Microbot.getClient().getLocalPlayer().getLocalLocation())))
                             .toArray(RS2Item[]::new);
-                }).orElse((RS2Item[]) EMPTY_ARRAY);
+                }).orElse(EMPTY_ARRAY);
     }
 
 

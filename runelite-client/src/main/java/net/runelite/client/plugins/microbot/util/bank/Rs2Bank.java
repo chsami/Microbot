@@ -1761,12 +1761,10 @@ public class Rs2Bank {
         Rs2Player.toggleRunEnergy(toggleRun);
         Microbot.status = "Walking to nearest bank " + bankLocation.toString();
         boolean result = Rs2Walker.getDistanceBetween(Microbot.getClient().getLocalPlayer().getWorldLocation(), bankLocation.getWorldPoint()) <= 8;
-        if (result) {
-            return Rs2Bank.useBank();
-        } else {
+        if (!result) {
             Rs2Walker.walkTo(bankLocation.getWorldPoint());
         }
-        return false;
+        return Rs2Bank.useBank();
     }
 
     /**

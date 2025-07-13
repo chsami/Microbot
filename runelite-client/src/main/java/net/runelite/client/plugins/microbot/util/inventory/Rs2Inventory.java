@@ -61,7 +61,7 @@ public class Rs2Inventory {
     private static final int COLUMNS = 4;
     private static final int ROWS = 7;
     private static final int CAPACITY = COLUMNS * ROWS;
-    private static final Object[] EMPTY_ARRAY = new Object[0];
+    private static final String[] EMPTY_ARRAY = new String[0];
 
     private static List<Rs2ItemModel> inventoryItems = Collections.emptyList();
 
@@ -562,7 +562,7 @@ public class Rs2Inventory {
      * @return
      */
     public static boolean dropAllExcept(int gpValue) {
-        return dropAllExcept(gpValue, (String[]) EMPTY_ARRAY);
+        return dropAllExcept(gpValue, EMPTY_ARRAY);
     }
 
     /**
@@ -873,7 +873,7 @@ public class Rs2Inventory {
     public static String[] getActionsForSlot(int slot) {
         return items(x -> x.getSlot() == slot)
                 .map(Rs2ItemModel::getInventoryActions)
-                .findFirst().orElse((String[]) EMPTY_ARRAY);
+                .findFirst().orElse(EMPTY_ARRAY);
     }
 
 	/**

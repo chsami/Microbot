@@ -503,8 +503,8 @@ public class Rs2GrandExchange
 	private static void confirm()
 	{
 		Rs2Widget.clickWidget(GrandExchangeWidget.getConfirm());
-		sleepUntil(() -> Rs2Widget.hasWidget("Your offer is much higher"), 2000);
-		if (Rs2Widget.hasWidget("Your offer is much higher"))
+		sleepUntil(() -> Rs2Widget.hasWidget("Your offer is much"), 2000);
+		if (Rs2Widget.hasWidget("Your offer is much"))
 		{
 			Rs2Widget.clickWidget("Yes");
 		}

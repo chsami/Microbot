@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Zoinkwiz <https://github.com/Zoinkwiz>
+ * Copyright (c) 2024, pajlada <https://github.com/pajlada>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,55 +22,27 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.microbot.questhelper.requirements.conditional;
+package net.runelite.client.plugins.microbot.questhelper.helpers.quests.thecurseofarrav.rubblesolvers;
 
-import lombok.Getter;
-import lombok.Setter;
-import net.runelite.api.Client;
-import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicType;
-import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
+import net.runelite.client.plugins.microbot.questhelper.helpers.quests.thecurseofarrav.TheCurseOfArrav;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.coords.Direction;
 
-import javax.annotation.Nonnull;
-import java.util.ArrayList;
-import java.util.List;
-
-public abstract class ConditionForStep implements InitializableRequirement
+/**
+ * This class describes the rubble mining steps required for Roadblock 1 (when quest state varbit is 22)
+ */
+@Slf4j
+public class RubbleSolverOne extends RubbleSolver
 {
-	@Setter
-	@Getter
-	protected boolean hasPassed;
-	protected boolean onlyNeedToPassOnce;
-	protected LogicType logicType;
-
-	@Getter
-	protected List<Requirement> conditions = new ArrayList<>();
-
-	@Override
-	abstract public boolean check(Client client);
-
-	@Override
-	public void initialize(Client client)
-	{
-		conditions.stream()
-			.filter(InitializableRequirement.class::isInstance)
-			.forEach(req -> ((InitializableRequirement) req).initialize(client));
+	public RubbleSolverOne(TheCurseOfArrav theCurseOfArrav) {
+		super(theCurseOfArrav, "1");
 	}
 
 	@Override
-	public void updateHandler()
-	{
-		conditions.stream()
-			.filter(InitializableRequirement.class::isInstance)
-			.forEach(req -> ((InitializableRequirement) req).updateHandler());
-	}
-
-	@Setter
-	private String text = "";
-
-	@Nonnull
-	@Override
-	public String getDisplayText()
-	{
-		return this.text;
+	protected void setupRubbleSteps() {
+		this.addMineRubbleStep(2764, 10266, RubbleType.Two, Direction.SOUTH); // 1
+		this.addMineRubbleStep(2775, 10258, RubbleType.One, Direction.SOUTH); // 2
+		this.addMineRubbleStep(2764, 10266, RubbleType.One, Direction.EAST); // 3
+		this.addMineRubbleStep(2764, 10267, RubbleType.One, Direction.SOUTH); // 4
 	}
 }

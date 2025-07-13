@@ -1,11 +1,15 @@
 package net.runelite.client.plugins.devtools;
 
+import java.util.ArrayList;
+import java.util.LinkedList;
 import net.runelite.api.Client;
+import net.runelite.api.Point;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 
+import java.util.List;
 import javax.inject.Inject;
 import java.awt.*;
 import java.awt.geom.AffineTransform;
@@ -118,14 +122,10 @@ public class MicrobotMouseOverlay extends Overlay {
             g2d.fillRect(CROSSHAIR_SIZE / 2 - 2, CROSSHAIR_SIZE / 2 - 2, 4, 4);
 
 
-
-
-
             g2d.dispose();
             // Mouse position
             int x = Microbot.getMouse().getLastMove().getX();
             int y = Microbot.getMouse().getLastMove().getY();
-
 
 
             // Draw the crosshair centered
@@ -147,50 +147,49 @@ public class MicrobotMouseOverlay extends Overlay {
             g.setStroke(new BasicStroke(3));
             //g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             var points = Microbot.getMouse().getPoints();
-            if (points.size() > 1) {
-                Path2D path = new Path2D.Double();
+			// create a snapshot of the points to avoid concurrent modification
+			var pointArray = points.toArray(new Point[0]);
+			if (pointArray.length > 1)
+			{
+				Point firstPoint = pointArray[0];
+				Point lastPoint = pointArray[pointArray.length - 1];
 
-// Move to the first point
-                net.runelite.api.Point firstPoint = points.getFirst();
-                path.moveTo(firstPoint.getX(), firstPoint.getY());
+				if (firstPoint != null && lastPoint != null)
+				{
+					// Move to the first point
+					Path2D path = new Path2D.Double();
+					path.moveTo(firstPoint.getX(), firstPoint.getY());
 
-// For each intermediate pair of points, use a midpoint-based quadTo
-                for (int i = 1; i < points.size() - 2; i++)
-                {
-                    net.runelite.api.Point pCurrent = points.get(i);
-                    net.runelite.api.Point pNext = points.get(i + 1);
+					// For each intermediate pair of points, use a midpoint-based quadTo
+					for (int i = 1; i < pointArray.length - 2; i++)
+					{
+						Point pCurrent = pointArray[i];
+						Point pNext = pointArray[i + 1];
 
-                    // Calculate midpoints for a smoother curve
-                    double midX = (pCurrent.getX() + pNext.getX()) / 2.0;
-                    double midY = (pCurrent.getY() + pNext.getY()) / 2.0;
+						// Calculate midpoints for a smoother curve
+						double midX = (pCurrent.getX() + pNext.getX()) / 2.0;
+						double midY = (pCurrent.getY() + pNext.getY()) / 2.0;
 
-                    // Draw a quadratic curve from pCurrent toward midX/midY
-                    path.quadTo(
-                            pCurrent.getX(), pCurrent.getY(),
-                            midX, midY
-                    );
-                }
+						// Draw a quadratic curve from pCurrent toward midX/midY
+						path.quadTo(pCurrent.getX(), pCurrent.getY(), midX, midY);
+					}
 
-// Finally, connect the last two points with a final quadTo
-                net.runelite.api.Point secondLast = points.get(points.size() - 2);
-                net.runelite.api.Point last = points.getLast();
-                path.quadTo(
-                        secondLast.getX(), secondLast.getY(),
-                        last.getX(), last.getY()
-                );
+					// Finally, connect the last two points with a final quadTo
+					Point secondLast = pointArray[pointArray.length - 2];
+					path.quadTo(secondLast.getX(), secondLast.getY(), lastPoint.getX(), lastPoint.getY());
 
-// Optionally set a thicker stroke with round caps/joins for a “brush” feel
-                g.setColor(Microbot.getMouse().getRainbowColor());
-                g.setStroke(new BasicStroke(
-                        3.0f,                      // thickness
-                        BasicStroke.CAP_ROUND,     // end cap
-                        BasicStroke.JOIN_ROUND     // join style
-                ));
+					// Optionally set a thicker stroke with round caps/joins for a "brush" feel
+					g.setColor(Microbot.getMouse().getRainbowColor());
+					g.setStroke(new BasicStroke(
+						3.0f,
+						BasicStroke.CAP_ROUND,
+						BasicStroke.JOIN_ROUND
+					));
 
-// Draw the smooth path
-                g.draw(path);
-            }
-            // draw trail of mouse movements
+					// Draw the smooth path
+					g.draw(path);
+				}
+			}
 
         } else {
             Microbot.getMouse().getPoints().clear();
@@ -200,4 +199,3 @@ public class MicrobotMouseOverlay extends Overlay {
         return null;
     }
 }
-

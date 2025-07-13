@@ -3,6 +3,10 @@ package net.runelite.client.plugins.microbot;
 /**
  * Represents an event that can block the execution of a script if a specific issue is encountered.
  * Blocking events are used to handle situations that would prevent a script from running properly.
+ * <p>
+ * Blocking events are automatically managed by the {@link Script} framework. The abstract
+ * {@link Script#run()} method encapsulates the {@link BlockingEventManager}
+ * which continuously validates and executes registered blocking events before proceeding with the main script logic.
  */
 public interface BlockingEvent {
 

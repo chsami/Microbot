@@ -87,6 +87,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     private static final String PLUGIN_MESSAGE_CLEAR = "clear";
     private static final String PLUGIN_MESSAGE_START = "start";
     private static final String PLUGIN_MESSAGE_TARGET = "target";
+	private static final String PLUGIN_MESSAGE_CONFIG_OVERRIDE = "config";
     private static final String CLEAR = "Clear";
     private static final String PATH = ColorUtil.wrapWithColorTag("Path", JagexColors.MENU_TARGET);
     private static final String SET = "Set";
@@ -139,6 +140,21 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     @Inject
     private KeyManager keyManager;
 
+	boolean drawCollisionMap;
+	boolean drawMap;
+	boolean drawMinimap;
+	boolean drawTiles;
+	boolean drawTransports;
+	boolean showTransportInfo;
+	Color colourCollisionMap;
+	Color colourPath;
+	Color colourPathCalculating;
+	Color colourText;
+	Color colourTransports;
+	int tileCounterStep;
+	TileCounter showTileCounter;
+	TileStyle pathStyle;
+
     private Point lastMenuOpenedPoint;
     private ShortestPathPanel panel;
     @Getter
@@ -161,6 +177,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     public static Future<?> pathfinderFuture;
     @Getter
     public static final Object pathfinderMutex = new Object();
+	private static final Map<String, Object> configOverride = new HashMap<>(50);
     @Getter
     @Setter
     public static Pathfinder pathfinder;
@@ -180,6 +197,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 
     @Override
     protected void startUp() {
+		cacheConfigValues();
         SplitFlagMap map = SplitFlagMap.fromResources();
         Map<WorldPoint, Set<Transport>> transports = Transport.loadAllFromResources();
         List<Restriction> restrictions = Restriction.loadAllFromResources();
@@ -324,30 +342,101 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         }
     }
 
-    @Subscribe
-    public void onPluginMessage(PluginMessage event) {
-        if (!CONFIG_GROUP.equals(event.getNamespace())) {
-            return;
-        }
+	@Subscribe
+	public void onPluginMessage(PluginMessage event) {
+		if (!CONFIG_GROUP.equals(event.getNamespace())) {
+			return;
+		}
 
-        String action = event.getName();
-        if (PLUGIN_MESSAGE_PATH.equals(action)) {
-            Map<String, Object> data = event.getData();
-            Object objStart = data.getOrDefault(PLUGIN_MESSAGE_START, null);
-            Object objTarget = data.getOrDefault(PLUGIN_MESSAGE_TARGET, null);
-            WorldPoint start = (objStart instanceof WorldPoint) ? ((WorldPoint) objStart) : null;
-            WorldPoint target = (objTarget instanceof WorldPoint) ? ((WorldPoint) objTarget) : null;
-            if (target == null || (start == null && client.getLocalPlayer() == null)) {
-                return;
-            }
-            if (start == null) {
-                start = client.getLocalPlayer().getWorldLocation();
-            }
-            restartPathfinding(start, target);
-        } else if (PLUGIN_MESSAGE_CLEAR.equals(action)) {
-            setTarget(null);
-        }
-    }
+		String action = event.getName();
+		if (PLUGIN_MESSAGE_PATH.equals(action)) {
+			Map<String, Object> data = event.getData();
+			Object objStart = data.getOrDefault(PLUGIN_MESSAGE_START, null);
+			Object objTarget = data.getOrDefault(PLUGIN_MESSAGE_TARGET, null);
+			Object objConfigOverride = data.getOrDefault(PLUGIN_MESSAGE_CONFIG_OVERRIDE, null);
+
+			@SuppressWarnings("unchecked")
+			Map<String, Object> configOverride = (objConfigOverride instanceof Map<?,?>) ? ((Map<String, Object>) objConfigOverride) : null;
+			if (configOverride != null && !configOverride.isEmpty()) {
+				this.configOverride.clear();
+				for (String key : configOverride.keySet()) {
+					this.configOverride.put(key, configOverride.get(key));
+				}
+				cacheConfigValues();
+			}
+
+			if (objStart == null && objTarget == null) {
+				return;
+			}
+
+			WorldPoint start = (objStart instanceof WorldPoint) ? (WorldPoint) objStart
+				: ((objStart instanceof Integer) ? WorldPointUtil.unpackWorldPoint((int) objStart) : new WorldPoint(WorldPointUtil.UNDEFINED, WorldPointUtil.UNDEFINED, WorldPointUtil.UNDEFINED));
+
+			if (start.equals(new WorldPoint(WorldPointUtil.UNDEFINED, WorldPointUtil.UNDEFINED, WorldPointUtil.UNDEFINED))) {
+				if (client.getLocalPlayer() == null) {
+					return;
+				}
+				start = client.getLocalPlayer().getWorldLocation();
+			}
+
+			Set<WorldPoint> targets = new HashSet<>();
+			if (objTarget instanceof Integer) {
+				int packedPoint = (Integer) objTarget;
+				if (packedPoint == WorldPointUtil.UNDEFINED) {
+					return;
+				}
+				targets.add(WorldPointUtil.unpackWorldPoint(packedPoint));
+			} else if (objTarget instanceof WorldPoint) {
+				WorldPoint point = (WorldPoint) objTarget;
+				if (point.equals(new WorldPoint(WorldPointUtil.UNDEFINED, WorldPointUtil.UNDEFINED, WorldPointUtil.UNDEFINED))) {
+					return;
+				}
+				targets.add(point);
+			} else if (objTarget instanceof Set<?>) {
+				@SuppressWarnings("unchecked")
+				Set<Object> objTargets = (Set<Object>) objTarget;
+				for (Object obj : objTargets) {
+					WorldPoint point = new WorldPoint(WorldPointUtil.UNDEFINED, WorldPointUtil.UNDEFINED, WorldPointUtil.UNDEFINED);
+					if (obj instanceof Integer) {
+						point = WorldPointUtil.unpackWorldPoint((Integer) obj);
+					} else if (obj instanceof WorldPoint) {
+						point = (WorldPoint) obj;
+					}
+					if (point.equals(new WorldPoint(WorldPointUtil.UNDEFINED, WorldPointUtil.UNDEFINED, WorldPointUtil.UNDEFINED))) {
+						return;
+					}
+					targets.add(point);
+				}
+			}
+
+			boolean useOld = targets.isEmpty() && pathfinder != null;
+			restartPathfinding(start, useOld ? pathfinder.getTargets() : targets, useOld);
+		} else if (PLUGIN_MESSAGE_CLEAR.equals(action)) {
+			this.configOverride.clear();
+			cacheConfigValues();
+			setTarget(null);
+		}
+	}
+
+	private void cacheConfigValues() {
+		drawCollisionMap = override("drawCollisionMap", config.drawCollisionMap());
+		drawMap = override("drawMap", config.drawMap());
+		drawMinimap = override("drawMinimap", config.drawMinimap());
+		drawTiles = override("drawTiles", config.drawTiles());
+		drawTransports = override("drawTransports", config.drawTransports());
+		showTransportInfo = override("showTransportInfo", config.showTransportInfo());
+
+		colourCollisionMap = override("colourCollisionMap", config.colourCollisionMap());
+		colourPath = override("colourPath", config.colourPath());
+		colourPathCalculating = override("colourPathCalculating", config.colourPathCalculating());
+		colourText = override("colourText", config.colourText());
+		colourTransports = override("colourTransports", config.colourTransports());
+
+		tileCounterStep = override("tileCounterStep", config.tileCounterStep());
+
+		showTileCounter = override("showTileCounter", config.showTileCounter());
+		pathStyle = override("pathStyle", config.pathStyle());
+	}
 
     @Subscribe
     public void onMenuOpened(MenuOpened event) {
@@ -449,6 +538,75 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     public CollisionMap getMap() {
         return pathfinderConfig.getMap();
     }
+
+	public static boolean override(String configOverrideKey, boolean defaultValue) {
+		if (!configOverride.isEmpty()) {
+			Object value = configOverride.get(configOverrideKey);
+			if (value instanceof Boolean) {
+				return (boolean) value;
+			}
+		}
+		return defaultValue;
+	}
+
+	private Color override(String configOverrideKey, Color defaultValue) {
+		if (!configOverride.isEmpty()) {
+			Object value = configOverride.get(configOverrideKey);
+			if (value instanceof Color) {
+				return (Color) value;
+			}
+		}
+		return defaultValue;
+	}
+
+	public static int override(String configOverrideKey, int defaultValue) {
+		if (!configOverride.isEmpty()) {
+			Object value = configOverride.get(configOverrideKey);
+			if (value instanceof Integer) {
+				return (int) value;
+			}
+		}
+		return defaultValue;
+	}
+
+	public static TeleportationItem override(String configOverrideKey, TeleportationItem defaultValue) {
+		if (!configOverride.isEmpty()) {
+			Object value = configOverride.get(configOverrideKey);
+			if (value instanceof String) {
+				TeleportationItem teleportationItem = TeleportationItem.fromType((String) value);
+				if (teleportationItem != null) {
+					return teleportationItem;
+				}
+			}
+		}
+		return defaultValue;
+	}
+
+	private TileCounter override(String configOverrideKey, TileCounter defaultValue) {
+		if (!configOverride.isEmpty()) {
+			Object value = configOverride.get(configOverrideKey);
+			if (value instanceof String) {
+				TileCounter tileCounter = TileCounter.fromType((String) value);
+				if (tileCounter != null) {
+					return tileCounter;
+				}
+			}
+		}
+		return defaultValue;
+	}
+
+	private TileStyle override(String configOverrideKey, TileStyle defaultValue) {
+		if (!configOverride.isEmpty()) {
+			Object value = configOverride.get(configOverrideKey);
+			if (value instanceof String) {
+				TileStyle tileStyle = TileStyle.fromType((String) value);
+				if (tileStyle != null) {
+					return tileStyle;
+				}
+			}
+		}
+		return defaultValue;
+	}
 
     private void onMenuOptionClicked(MenuEntry entry) {
         if (entry.getOption().equals(SET) && entry.getTarget().equals(TARGET)) {

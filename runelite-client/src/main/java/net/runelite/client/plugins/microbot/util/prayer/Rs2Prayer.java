@@ -117,8 +117,7 @@ public class Rs2Prayer {
         if (activeProtectionPrayer == prayer) {
             return;
         }
-        Rs2Prayer.toggle(activeProtectionPrayer, false);
-        Rs2Prayer.toggle(prayer, true);
+		Rs2Prayer.toggle(prayer, true);
     }
 
     public static boolean isRangePrayerActive() {

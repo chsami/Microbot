@@ -1,144 +1,144 @@
-# Destination	Skills	Quests	Wilderness level	Varbits	isMembers	Duration	Display info
-# Standard Spellbook - Varbit 4070=0							
-# Varrock Teleport							
-3213 3424 0	25 Magic		19	4070=0;4585=0		4	Varrock Teleport
-# Varbit 4480 is DIARY_VARROCK_MEDIUM							
-3164 3478 0	25 Magic		19	4070=0;4480=1;4585=1		4	Varrock Teleport: Grand Exchange
-							
-# Lumbridge Teleport							
-3221 3218 0	31 Magic		19	4070=0		4	Lumbridge Teleport
-							
-# Falador Teleport							
-2965 3378 0	37 Magic		19	4070=0		4	Falador Teleport
-							
-# Teleport to House - These depend on the current player's home location  determined by varbit 2187							
-# 1 - Rimmington							
-2952 3224 0	40 Magic		19	4070=0;2187=1	Y	4	Teleport to House: Outside
-# 2 - Taverly							
-2892 3465 0	40 Magic		19	4070=0;2187=2	Y	4	Teleport to House: Outside
-# 3 - Pollnivneach							
-3339 3001 0	40 Magic		19	4070=0;2187=3	Y	4	Teleport to House: Outside
-# 4 - Rellekka							
-2669 3629 0	40 Magic		19	4070=0;2187=4	Y	4	Teleport to House: Outside
-# 5 - Brimhaven							
-2756 3176 0	40 Magic		19	4070=0;2187=5	Y	4	Teleport to House: Outside
-# 6 - Yanille							
-2545 3097 0	40 Magic		19	4070=0;2187=6	Y	4	Teleport to House: Outside
-# 7 - Prifddinas							
-3239 6077 0	40 Magic		19	4070=0;2187=7	Y	4	Teleport to House: Outside
-# 8 - Hosidius							
-1740 3517 0	40 Magic		19	4070=0;2187=8	Y	4	Teleport to House: Outside
-							
-# Camelot Teleport							
-2757 3478 0	45 Magic		19	4070=0	Y	10	Camelot Teleport
-							
-# Kourend Castle Teleport							
-1641 3673 0	48 Magic	Client of Kourend	19	4070=0	Y	4	Kourend Castle Teleport
-							
-# Ardougne Teleport							
-2661 3302 0	51 Magic	Plague City	19	4070=0	Y	10	Ardougne Teleport
-							
-# Civitas illa Fortis Teleport							
-1680 3134 0	54 Magic	Twilight's Promise	19	4070=0	Y	4	Civitas illa Fortis Teleport
-							
-# Watchtower Teleport							
-2549 3112 2	58 Magic	Watchtower Quest	19	4070=0;4548=0	Y	10	Watchtower Teleport
-# Varbit 4460 is DIARY_ARDOUGNE_HARD							
-2584 3097 0	58 Magic	Watchtower Quest	19	4070=0;4460=1;4548=1	Y	10	Watchtower Teleport: Yanille
-							
-# Trollheim Teleport							
-2890 3679 0	61 Magic	Eadgar's Ruse	19	4070=0	Y	10	Trollheim Teleport
-							
-# Ape Atoll Teleport							
-2797 2798 1	64 Magic	Freeing King Awowogei	19	4070=0	Y	10	Ape Atoll Teleport
-							
-# Ancient Spellbook - Varbit 4070=1							
-# Paddewwa Teleport							
-3100 9883 0	54 Magic	Desert Treasure I	19	4070=1	Y	10	Paddewwa Teleport
-							
-# Senntisten Teleport							
-3320 3337 0	60 Magic	Desert Treasure I	19	4070=1	Y	10	Senntisten Teleport
-							
-# Kharyrll Teleport							
-3494 3473 0	66 Magic	Desert Treasure I	19	4070=1	Y	10	Kharyrll Teleport
-							
-# Lassar Teleport							
-3002 3470 0	72 Magic	Desert Treasure I	19	4070=1	Y	10	Lassar Teleport
-							
-# Dareeyak Teleport							
-2968 3696 0	78 Magic	Desert Treasure I	19	4070=1	Y	10	Dareeyak Teleport
-							
-# Carrallanger Teleport							
-3158 3666 0	84 Magic	Desert Treasure I	19	4070=1	Y	10	Carrallanger Teleport
-							
-# Teleport to Target							
-#	85 Magic	Desert Treasure I	19	4070=1	Y	10	Teleport to Target
-							
-# Annakarl Teleport							
-3287 3888 0	90 Magic	Desert Treasure I	19	4070=1	Y	10	Annakarl Teleport
-							
-# Ghorrock Teleport							
-2974 3873 0	96 Magic	Desert Treasure I	19	4070=1	Y	10	Ghorrock Teleport
-							
-# Lunar Spellbook - Varbit 4070=2							
-# Moonclan Teleport							
-2113 3915 0	69 Magic	Lunar Diplomacy	19	4070=2	Y	10	Moonclan Teleport
-							
-# Ourania Teleport							
-2468 3246 0	71 Magic	Lunar Diplomacy	19	4070=2;5376=1	Y	10	Ourania Teleport
-							
-# Waterbirth Teleport							
-2546 3756 0	72 Magic	Lunar Diplomacy	19	4070=2	Y	10	Waterbirth Teleport
-							
-# Barbarian Teleport							
-2543 3569 0	75 Magic	Lunar Diplomacy	19	4070=2	Y	10	Barbarian Teleport
-							
-# Khazard Teleport							
-2636 3167 0	78 Magic	Lunar Diplomacy	19	4070=2	Y	10	Khazard Teleport
-							
-# Fishing Guild Teleport							
-2613 3391 0	85 Magic	Lunar Diplomacy	19	4070=2	Y	10	Fishing Guild Teleport
-							
-# Catherby Teleport							
-2801 3449 0	87 Magic	Lunar Diplomacy	19	4070=2	Y	10	Catherby Teleport
-							
-# Ice Plateau Teleport							
-2975 3938 0	89 Magic	Lunar Diplomacy	19	4070=2	Y	10	Ice Plateau Teleport
-							
-# Arceuus Spellbook - Varbit 4070=3							
-# Arceuus Library Teleport							
-1632 3834 0	6 Magic		19	4070=3	Y	10	Arceuus Library Teleport
-							
-# Draynor Manor Teleport							
-3108 3351 0	17 Magic		19	4070=3	Y	4	Draynor Manor Teleport
-							
-# Battlefront Teleport							
-1347 3741 0	23 Magic		19	4070=3	Y	4	Battlefront Teleport
-							
-# Mind Altar Teleport							
-2976 3509 0	28 Magic		19	4070=3	Y	10	Mind Altar Teleport
-							
-# Respawn Teleport							
-# TODO: Figure out values of Varbit 668							
-#	34 Magic		19	4070=3	Y	10	Respawn Teleport
-							
-# Salve Graveyard Teleport							
-3432 3459 0	40 Magic	Priest in Peril	19	4070=3	Y	10	Salve Graveyard Teleport
-							
-# Fenkenstrain's Castle Teleport							
-3548 3529 0	48 Magic	Priest in Peril	19	4070=3	Y	10	Fenkenstrain's Castle Teleport
-							
-# West Ardougne Teleport							
-2500 3290 0	61 Magic	Biohazard	19	4070=3	Y	10	West Ardougne Teleport
-							
-# Harmony Island Teleport							
-3796 2866 0	65 Magic	The Great Brain Robbery	19	4070=3	Y	10	Harmony Island Teleport
-							
-# Cemetery Teleport							
-2980 3762 0	71 Magic		20	4070=3	Y	10	Cemetery Teleport
-							
-# Barrows Teleport							
-3563 3314 0	83 Magic		20	4070=3	Y	10	Barrows Teleport
-							
-# Ape Atoll Teleport							
-2768 2702 0	90 Magic	Monkey Madness I	20	4070=3	Y	10	Ape Atoll Teleport
+# Destination	Skills	Quests	Wilderness level	Varbits	Varplayers	isMembers	Duration	Display info
+# Standard Spellbook - Varbit 4070=0								
+# Varrock Teleport								
+3213 3424 0	25 Magic		19	4070=0;4585=0			4	Varrock Teleport
+# Varbit 4480 is DIARY_VARROCK_MEDIUM								
+3164 3478 0	25 Magic		19	4070=0;4480=1;4585=1			4	Varrock Teleport: Grand Exchange
+								
+# Lumbridge Teleport								
+3221 3218 0	31 Magic		19	4070=0			4	Lumbridge Teleport
+								
+# Falador Teleport								
+2965 3378 0	37 Magic		19	4070=0			4	Falador Teleport
+								
+# Teleport to House - These depend on the current player's home location  determined by varbit 2187								
+# 1 - Rimmington								
+2952 3224 0	40 Magic		19	4070=0;2187=1		Y	4	Teleport to House: Outside
+# 2 - Taverly								
+2892 3465 0	40 Magic		19	4070=0;2187=2		Y	4	Teleport to House: Outside
+# 3 - Pollnivneach								
+3339 3001 0	40 Magic		19	4070=0;2187=3		Y	4	Teleport to House: Outside
+# 4 - Rellekka								
+2669 3629 0	40 Magic		19	4070=0;2187=4		Y	4	Teleport to House: Outside
+# 5 - Brimhaven								
+2756 3176 0	40 Magic		19	4070=0;2187=5		Y	4	Teleport to House: Outside
+# 6 - Yanille								
+2545 3097 0	40 Magic		19	4070=0;2187=6		Y	4	Teleport to House: Outside
+# 7 - Prifddinas								
+3239 6077 0	40 Magic		19	4070=0;2187=7		Y	4	Teleport to House: Outside
+# 8 - Hosidius								
+1740 3517 0	40 Magic		19	4070=0;2187=8		Y	4	Teleport to House: Outside
+								
+# Camelot Teleport								
+2757 3478 0	45 Magic		19	4070=0		Y	10	Camelot Teleport
+								
+# Kourend Castle Teleport								
+1641 3673 0	48 Magic	Client of Kourend	19	4070=0		Y	4	Kourend Castle Teleport
+								
+# Ardougne Teleport								
+2661 3302 0	51 Magic	Plague City	19	4070=0	165=30	Y	10	Ardougne Teleport
+								
+# Civitas illa Fortis Teleport								
+1680 3134 0	54 Magic	Twilight's Promise	19	4070=0		Y	4	Civitas illa Fortis Teleport
+								
+# Watchtower Teleport								
+2549 3112 2	58 Magic	Watchtower Quest	19	4070=0;4548=0		Y	10	Watchtower Teleport
+# Varbit 4460 is DIARY_ARDOUGNE_HARD								
+2584 3097 0	58 Magic	Watchtower Quest	19	4070=0;4460=1;4548=1		Y	10	Watchtower Teleport: Yanille
+								
+# Trollheim Teleport								
+2890 3679 0	61 Magic	Eadgar's Ruse	19	4070=0		Y	10	Trollheim Teleport
+								
+# Ape Atoll Teleport								
+2797 2798 1	64 Magic	Freeing King Awowogei	19	4070=0		Y	10	Ape Atoll Teleport
+								
+# Ancient Spellbook - Varbit 4070=1								
+# Paddewwa Teleport								
+3100 9883 0	54 Magic	Desert Treasure I	19	4070=1		Y	10	Paddewwa Teleport
+								
+# Senntisten Teleport								
+3320 3337 0	60 Magic	Desert Treasure I	19	4070=1		Y	10	Senntisten Teleport
+								
+# Kharyrll Teleport								
+3494 3473 0	66 Magic	Desert Treasure I	19	4070=1		Y	10	Kharyrll Teleport
+								
+# Lassar Teleport								
+3002 3470 0	72 Magic	Desert Treasure I	19	4070=1		Y	10	Lassar Teleport
+								
+# Dareeyak Teleport								
+2968 3696 0	78 Magic	Desert Treasure I	19	4070=1		Y	10	Dareeyak Teleport
+								
+# Carrallanger Teleport								
+3158 3666 0	84 Magic	Desert Treasure I	19	4070=1		Y	10	Carrallanger Teleport
+								
+# Teleport to Target								
+#	85 Magic	Desert Treasure I	19	4070=1		Y	10	Teleport to Target
+								
+# Annakarl Teleport								
+3287 3888 0	90 Magic	Desert Treasure I	19	4070=1		Y	10	Annakarl Teleport
+								
+# Ghorrock Teleport								
+2974 3873 0	96 Magic	Desert Treasure I	19	4070=1		Y	10	Ghorrock Teleport
+								
+# Lunar Spellbook - Varbit 4070=2								
+# Moonclan Teleport								
+2113 3915 0	69 Magic	Lunar Diplomacy	19	4070=2		Y	10	Moonclan Teleport
+								
+# Ourania Teleport								
+2468 3246 0	71 Magic	Lunar Diplomacy	19	4070=2;5376=1		Y	10	Ourania Teleport
+								
+# Waterbirth Teleport								
+2546 3756 0	72 Magic	Lunar Diplomacy	19	4070=2		Y	10	Waterbirth Teleport
+								
+# Barbarian Teleport								
+2543 3569 0	75 Magic	Lunar Diplomacy	19	4070=2		Y	10	Barbarian Teleport
+								
+# Khazard Teleport								
+2636 3167 0	78 Magic	Lunar Diplomacy	19	4070=2		Y	10	Khazard Teleport
+								
+# Fishing Guild Teleport								
+2613 3391 0	85 Magic	Lunar Diplomacy	19	4070=2		Y	10	Fishing Guild Teleport
+								
+# Catherby Teleport								
+2801 3449 0	87 Magic	Lunar Diplomacy	19	4070=2		Y	10	Catherby Teleport
+								
+# Ice Plateau Teleport								
+2975 3938 0	89 Magic	Lunar Diplomacy	19	4070=2		Y	10	Ice Plateau Teleport
+								
+# Arceuus Spellbook - Varbit 4070=3								
+# Arceuus Library Teleport								
+1632 3834 0	6 Magic		19	4070=3		Y	10	Arceuus Library Teleport
+								
+# Draynor Manor Teleport								
+3108 3351 0	17 Magic		19	4070=3		Y	4	Draynor Manor Teleport
+								
+# Battlefront Teleport								
+1347 3741 0	23 Magic		19	4070=3		Y	4	Battlefront Teleport
+								
+# Mind Altar Teleport								
+2976 3509 0	28 Magic		19	4070=3		Y	10	Mind Altar Teleport
+								
+# Respawn Teleport								
+# TODO: Figure out values of Varbit 668								
+#	34 Magic		19	4070=3		Y	10	Respawn Teleport
+								
+# Salve Graveyard Teleport								
+3432 3459 0	40 Magic	Priest in Peril	19	4070=3		Y	10	Salve Graveyard Teleport
+								
+# Fenkenstrain's Castle Teleport								
+3548 3529 0	48 Magic	Priest in Peril	19	4070=3		Y	10	Fenkenstrain's Castle Teleport
+								
+# West Ardougne Teleport								
+2500 3290 0	61 Magic	Biohazard	19	4070=3		Y	10	West Ardougne Teleport
+								
+# Harmony Island Teleport								
+3796 2866 0	65 Magic	The Great Brain Robbery	19	4070=3		Y	10	Harmony Island Teleport
+								
+# Cemetery Teleport								
+2980 3762 0	71 Magic		20	4070=3		Y	10	Cemetery Teleport
+								
+# Barrows Teleport								
+3563 3314 0	83 Magic		20	4070=3		Y	10	Barrows Teleport
+								
+# Ape Atoll Teleport								
+2768 2702 0	90 Magic	Monkey Madness I	20	4070=3		Y	10	Ape Atoll Teleport

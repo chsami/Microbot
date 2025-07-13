@@ -16,4 +16,13 @@ public enum TeleportationItem {
     public String toString() {
         return type;
     }
+
+	public static TeleportationItem fromType(String type) {
+		for (TeleportationItem teleportationItem : values()) {
+			if (teleportationItem.type.equals(type)) {
+				return teleportationItem;
+			}
+		}
+		return null;
+	}
 }

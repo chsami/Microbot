@@ -2,16 +2,24 @@ package net.runelite.client.plugins.microbot.barrows;
 
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.config.*;
+import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Food;
 
 @ConfigGroup("barrows")
 @ConfigInformation("1. Have an inventory setup named Barrows <br><br> 2. Required items: prayer potions or moonlight moth mixes(2), barrows teleports tablets, or teleport to house tablets, food, Catalyic runes (if using wind spells), and a spade.<br /><br /> 3. Spells: Wind: Blast, Wave, and Surge. Or Powered staffs: supports any trident, any sceptre, any crystal staff, Tumeken's, and Sanguinesti. <br /><br /> Special thanks to george for adding the barrows dungeon to the walker; and Crannyy for script testing!<br /><br /> Config by Crannyy")
 public interface BarrowsConfig extends Config {
     @ConfigItem(
+            keyName = "inventorySetup",
+            name = "Inventory Setup",
+            description = "Inventory Setup to use for Barrows",
+            position = 0
+    )
+    default InventorySetup inventorySetup() { return null; }
+    @ConfigItem(
             keyName = "Food",
             name = "Food",
             description = "type of food",
-            position = 0
+            position = 1
     )
     default Rs2Food food()
     {
@@ -21,7 +29,7 @@ public interface BarrowsConfig extends Config {
             keyName = "targetFoodAmount",
             name = "Max Food Amount",
             description = "Max amount of food to withdraw from the bank.",
-            position = 1
+            position = 2
     )
     @Range(min = 1, max = 28)
     default int targetFoodAmount() {
@@ -32,7 +40,7 @@ public interface BarrowsConfig extends Config {
             keyName = "minFood",
             name = "Min Food",
             description = "Minimum amount of food to withdraw from the bank.",
-            position = 2
+            position = 3
     )
     @Range(min = 1, max = 28)
     default int minFood() {
@@ -43,7 +51,7 @@ public interface BarrowsConfig extends Config {
             keyName = "selectedPrayerRestoreType",
             name = "Prayer Restore Type:",
             description = "Between prayer potions, or moonlight moth mixes.",
-            position = 3
+            position = 4
     )
     default prayerRestoreType prayerRestoreType() {
         return prayerRestoreType.Prayer_Potion; // Default selection
@@ -77,7 +85,7 @@ public interface BarrowsConfig extends Config {
             keyName = "targetPrayerPots",
             name = "Max Prayer Restore",
             description = "Max amount of prayer potions, or moonlight moth mixes to withdraw from the bank.",
-            position = 4
+            position = 5
     )
     @Range(min = 1, max = 20)
     default int targetPrayerPots() {
@@ -88,7 +96,7 @@ public interface BarrowsConfig extends Config {
             keyName = "minPrayerPots",
             name = "Min Prayer Restore",
             description = "Minimum amount of prayer potions, or moonlight moth mixes to withdraw from the bank.",
-            position = 5
+            position = 6
     )
     @Range(min = 1, max = 10)
     default int minPrayerPots() {
@@ -99,7 +107,7 @@ public interface BarrowsConfig extends Config {
             keyName = "targetForgottenBrew",
             name = "Max Forgotten Brews",
             description = "Max amount of forgotten brews to withdraw from the bank.",
-            position = 6
+            position = 7
     )
     @Range(min = 1, max = 5)
     default int targetForgottenBrew() {
@@ -110,7 +118,7 @@ public interface BarrowsConfig extends Config {
             keyName = "minForgottenBrew",
             name = "Min Forgotten Brews",
             description = "Minimum amount of forgotten brews to withdraw from the bank.",
-            position = 7
+            position = 8
     )
     @Range(min = 0, max = 5)
     default int minForgottenBrew() {
@@ -121,7 +129,7 @@ public interface BarrowsConfig extends Config {
             keyName = "selectedToBarrowsTPMethod",
             name = "Barrows TP Method",
             description = "Between using a barrows teleport tablet, or your POH portal.",
-            position = 8
+            position = 9
     )
     default selectedToBarrowsTPMethod selectedToBarrowsTPMethod() {
         return selectedToBarrowsTPMethod.Tablet; // Default selection
@@ -154,7 +162,7 @@ public interface BarrowsConfig extends Config {
             keyName = "targetBarrowsTeleports",
             name = "Max Barrows Teleports",
             description = "Max amount of Barrows teleports to withdraw from the bank.",
-            position = 9
+            position = 10
     )
     @Range(min = 1, max = 10)
     default int targetBarrowsTeleports() {
@@ -165,7 +173,7 @@ public interface BarrowsConfig extends Config {
             keyName = "minBarrowsTeleports",
             name = "Min Barrows Teleports",
             description = "Minimum amount of Barrows teleports to withdraw from the bank.",
-            position = 10
+            position = 11
     )
     @Range(min = 1, max = 10)
     default int minBarrowsTeleports() {
@@ -176,7 +184,7 @@ public interface BarrowsConfig extends Config {
             keyName = "minRuneAmount",
             name = "Min Runes",
             description = "Minimum amount of runes before banking",
-            position = 11
+            position = 12
     )
     @Range(min = 50, max = 1000)
     default int minRuneAmount() {
@@ -187,7 +195,7 @@ public interface BarrowsConfig extends Config {
             keyName = "shouldGainRP",
             name = "Aim for 86+% rewards potential",
             description = "Should we gain additional RP other than the barrows brothers?",
-            position = 12
+            position = 13
     )
     default boolean shouldGainRP() {
         return false;
@@ -197,7 +205,7 @@ public interface BarrowsConfig extends Config {
             keyName = "shouldPrayAgainstWeakerBrothers",
             name = "Pray against Torag, Verac, and Guthans?",
             description = "Should we Pray against Torag, Verac, and Guthans?",
-            position = 13
+            position = 14
     )
     default boolean shouldPrayAgainstWeakerBrothers() {
         return true;

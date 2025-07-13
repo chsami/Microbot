@@ -26,7 +26,7 @@ public class PrifddinasCourse implements AgilityCourseHandler
 		ObjectID.PRIF_AGILITY_SHORTCUT_PORTAL_6
 	);
 
-	private final WorldArea prifFallArea = new WorldArea(3260, 6103, 15, 9, 0);
+	private final WorldArea prifFallArea = new WorldArea(3260, 6103, 15, 17, 0);
 
 	@Override
 	public WorldPoint getStartPoint()
@@ -42,7 +42,7 @@ public class PrifddinasCourse implements AgilityCourseHandler
 			new AgilityObstacleModel(ObjectID.PRIF_AGILITY_TIGHTROPE_START1, 3258, -1, Operation.LESS_EQUAL, Operation.GREATER), // before 3255,6109 , after 3272, 6105
 			new AgilityObstacleModel(ObjectID.PRIF_AGILITY_CHIMNEY_JUMP, -1, 6106, Operation.GREATER, Operation.LESS_EQUAL), // before 3273,6105 , after 3269,6112
 			new AgilityObstacleModel(ObjectID.PRIF_AGILITY_ROOF_JUMP, -1, 6115, Operation.GREATER, Operation.LESS_EQUAL), // before 3269,6112 , after 3269,6117
-			new AgilityObstacleModel(ObjectID.PRIF_AGILITY_DARK_HOLE_ACTIVE, 3267, 6117, Operation.GREATER, Operation.LESS_EQUAL), // before 3269,6117  , after 2269,3389
+			new AgilityObstacleModel(ObjectID.PRIF_AGILITY_DARK_HOLE_ACTIVE, 3269	, 6117, Operation.EQUAL, Operation.LESS_EQUAL), // before 3269,6117  , after 2269,3389
 			new AgilityObstacleModel(ObjectID.PRIF_AGILITY_TREE_LADDER_LONG, -1, 3392, Operation.GREATER, Operation.LESS_EQUAL), // before 2269,3389 , after 2269,3393
 			new AgilityObstacleModel(ObjectID.PRIF_AGILITY_ROPE_BRIDGE1, 2265, -1, Operation.GREATER_EQUAL, Operation.GREATER), // before 2269,3393 , after 2257,3390
 			new AgilityObstacleModel(ObjectID.PRIF_AGILITY_TIGHTROPE1, 2254, -1, Operation.GREATER_EQUAL, Operation.GREATER), // before 2257,3390, after 2247,3397
@@ -82,14 +82,9 @@ public class PrifddinasCourse implements AgilityCourseHandler
 			return false;
 		}
 
-		if (getCurrentObstacleIndex() > 0)
+		if (prifFallArea.contains(playerWorldLocation) || getCurrentObstacleIndex() <= 0)
 		{
-			return false;
-		}
-
-		if (prifFallArea.contains(playerWorldLocation))
-		{
-			Rs2Walker.walkTo(getStartPoint(), 8);
+			Rs2Walker.walkTo(getStartPoint(), 2);
 			Microbot.log("Going back to course's starting point");
 			return true;
 		}

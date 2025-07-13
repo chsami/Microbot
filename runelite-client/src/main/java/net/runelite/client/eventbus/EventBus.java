@@ -65,17 +65,13 @@ public class EventBus
 
 		void invoke(final Object arg) throws Exception
 		{
-			try {
-				if (lambda != null)
-				{
-					lambda.accept(arg);
-				}
-				else
-				{
-					method.invoke(object, arg);
-				}
-			} catch (AbstractMethodError error) {
-				log.error("Failed to invoke Subscriber method: ", error);
+			if (lambda != null)
+			{
+				lambda.accept(arg);
+			}
+			else
+			{
+				method.invoke(object, arg);
 			}
 		}
 	}

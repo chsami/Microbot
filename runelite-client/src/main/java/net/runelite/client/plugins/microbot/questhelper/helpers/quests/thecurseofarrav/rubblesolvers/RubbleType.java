@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Zoinkwiz <https://github.com/Zoinkwiz>
+ * Copyright (c) 2024, pajlada <https://github.com/pajlada>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,55 +22,26 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.microbot.questhelper.requirements.conditional;
+package net.runelite.client.plugins.microbot.questhelper.helpers.quests.thecurseofarrav.rubblesolvers;
 
 import lombok.Getter;
-import lombok.Setter;
-import net.runelite.api.Client;
-import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicType;
-import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
+import net.runelite.api.gameval.ObjectID;
 
-import javax.annotation.Nonnull;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-public abstract class ConditionForStep implements InitializableRequirement
+@Getter
+public enum RubbleType
 {
-	@Setter
-	@Getter
-	protected boolean hasPassed;
-	protected boolean onlyNeedToPassOnce;
-	protected LogicType logicType;
+	Three(ObjectID.MAH3_TUNNEL_RUBBLE_MINE_3, ObjectID.MAH3_TUNNEL_RUBBLE_MINE_COLLAPSE),
+	Two(ObjectID.MAH3_TUNNEL_RUBBLE_MINE_2, ObjectID.MAH3_RUBBLE_2_WEST, ObjectID.MAH3_RUBBLE_2_SOUTH, ObjectID.MAH3_RUBBLE_2_NORTH),
+	One(ObjectID.MAH3_TUNNEL_RUBBLE_MINE_1, ObjectID.MAH3_RUBBLE_1_SOUTH, ObjectID.MAH3_RUBBLE_1_WEST, ObjectID.MAH3_RUBBLE_1_NORTH_WEST, ObjectID.MAH3_RUBBLE_1_SOUTH_WEST, ObjectID.MAH3_RUBBLE_1_NORTH, ObjectID.MAH3_RUBBLE_1_NORTH_SOUTH);
 
-	@Getter
-	protected List<Requirement> conditions = new ArrayList<>();
+	private final List<Integer> objectIDs;
 
-	@Override
-	abstract public boolean check(Client client);
-
-	@Override
-	public void initialize(Client client)
-	{
-		conditions.stream()
-			.filter(InitializableRequirement.class::isInstance)
-			.forEach(req -> ((InitializableRequirement) req).initialize(client));
-	}
-
-	@Override
-	public void updateHandler()
-	{
-		conditions.stream()
-			.filter(InitializableRequirement.class::isInstance)
-			.forEach(req -> ((InitializableRequirement) req).updateHandler());
-	}
-
-	@Setter
-	private String text = "";
-
-	@Nonnull
-	@Override
-	public String getDisplayText()
-	{
-		return this.text;
+	RubbleType(Integer... possibleObjectIDs) {
+		this.objectIDs = new ArrayList<>();
+		Collections.addAll(this.objectIDs, possibleObjectIDs);
 	}
 }

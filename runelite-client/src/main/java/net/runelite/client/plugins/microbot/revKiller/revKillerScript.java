@@ -112,13 +112,7 @@ public class revKillerScript extends Script {
                     return;
                 }
 
-                if(!Rs2InventorySetup.isInventorySetup("Revs")){
-                    Microbot.showMessage("Please create an inventory setup named Revs");
-                    shutdown();
-                    return;
-                }
-
-                var inventorySetup = new Rs2InventorySetup("Revs", mainScheduledFuture);
+                var inventorySetup = new Rs2InventorySetup(config.inventorySetup().getName(), mainScheduledFuture);
 
                 if(firstRun || weDied) {
                     if (!inventorySetup.doesEquipmentMatch()) {
@@ -575,11 +569,16 @@ public class revKillerScript extends Script {
             logBackIn();
             shouldFlee = false;
             return;
-        } else {
-            if(isPkerAround() && Microbot.isLoggedIn()) {
+        }
+
+        if(Rs2Player.isInCombat()) {
+            if (isPkerAround() && Microbot.isLoggedIn()) {
                 getAwayFromPker();
+                shouldFlee = false;
+                return;
             }
         }
+
 
         shouldFlee = false;
         Rs2Walker.setTarget(null);
@@ -618,6 +617,9 @@ public class revKillerScript extends Script {
                     if (!super.isRunning()) {
                         break;
                     }
+                    if(!shouldFlee){
+                        break;
+                    }
                     Microbot.log("Walking to below");
                     WorldPoint safe1 = (new WorldPoint(3199, 10071, 0));
                     WorldPoint safe2 = (new WorldPoint(3226, 10067, 0));
@@ -639,6 +641,9 @@ public class revKillerScript extends Script {
                 while (Rs2Pvp.getWildernessLevelFrom(Rs2Player.getWorldLocation()) >= 20 && Rs2Pvp.getWildernessLevelFrom(Rs2Player.getWorldLocation()) <= 30) {
                     Microbot.log("Attempting to teleport via glory");
                     if (!super.isRunning()) {
+                        break;
+                    }
+                    if(!shouldFlee){
                         break;
                     }
                     if (Rs2Equipment.interact(EquipmentInventorySlot.AMULET, "Edgeville")) {
@@ -666,6 +671,9 @@ public class revKillerScript extends Script {
                 while (Rs2Pvp.getWildernessLevelFrom(Rs2Player.getWorldLocation()) <= 20) {
                     Microbot.log("Attempting to teleport via dueling");
                     if (!super.isRunning()) {
+                        break;
+                    }
+                    if(!shouldFlee){
                         break;
                     }
                     if (Rs2Equipment.interact(EquipmentInventorySlot.RING, "Ferox Enclave")) {

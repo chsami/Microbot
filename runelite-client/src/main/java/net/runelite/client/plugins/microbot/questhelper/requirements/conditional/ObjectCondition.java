@@ -25,6 +25,8 @@
 package net.runelite.client.plugins.microbot.questhelper.requirements.conditional;
 
 
+import java.util.Objects;
+import java.util.Set;
 import lombok.Setter;
 import net.runelite.api.Client;
 import net.runelite.api.GameObject;
@@ -35,82 +37,117 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
 
 import static net.runelite.api.Perspective.SCENE_SIZE;
 
-public class ObjectCondition extends ConditionForStep {
-    private final int objectID;
-    private final Zone zone;
+public class ObjectCondition extends ConditionForStep
+{
+	private final Set<Integer> objectIDs;
+	private final Zone zone;
 
-    @Setter
-    private int maxDistanceFromPlayer = -1;
+	@Setter
+	private int maxDistanceFromPlayer = -1;
 
-    @Setter
-    private boolean onlyCheckGameObjects = false;
+	@Setter
+	private boolean onlyCheckGameObjects = false;
 
-    public ObjectCondition(int objectID) {
-        this.objectID = objectID;
-        this.zone = null;
-    }
+	public ObjectCondition(int objectID)
+	{
+		this.objectIDs = Set.of(objectID);
+		this.zone = null;
+	}
 
-    public ObjectCondition(int objectID, WorldPoint worldPoint) {
-        assert (worldPoint != null);
+	public ObjectCondition(int objectID, WorldPoint worldPoint)
+	{
+		assert(worldPoint != null);
 
-        this.objectID = objectID;
-        this.zone = new Zone(worldPoint);
-    }
+		this.objectIDs = Set.of(objectID);
+		this.zone = new Zone(worldPoint);
+	}
 
-    public ObjectCondition(int objectID, Zone zone) {
-        assert (zone != null);
+	public ObjectCondition(int objectID, Zone zone)
+	{
+		assert(zone != null);
 
-        this.objectID = objectID;
-        this.zone = zone;
-    }
+		this.objectIDs = Set.of(objectID);
+		this.zone = zone;
+	}
 
-    public boolean check(Client client) {
-        Tile[][] tiles;
-        if (client.getScene() == null) return false;
+	public ObjectCondition(Set<Integer> objectIDs, WorldPoint worldPoint)
+	{
+		assert(worldPoint != null);
+		assert(objectIDs != null);
+		assert(objectIDs.stream().noneMatch(Objects::isNull));
 
-        tiles = client.getScene().getTiles()[client.getPlane()];
+		this.objectIDs = objectIDs;
+		this.zone = new Zone(worldPoint);
+	}
 
-        for (int x = 0; x < SCENE_SIZE; x++) {
-            for (int y = 0; y < SCENE_SIZE; y++) {
-                if (checkTile(tiles[x][y], client)) {
-                    return true;
-                }
-            }
-        }
+	@Override
+	public boolean check(Client client)
+	{
+		Tile[][] tiles;
+		if (client.getScene() == null) return false;
+
+		tiles = client.getScene().getTiles()[client.getPlane()];
+
+		for (int x = 0; x < SCENE_SIZE; x++)
+		{
+			for (int y = 0; y < SCENE_SIZE; y++)
+			{
+				if (checkTile(tiles[x][y], client))
+				{
+					return true;
+				}
+			}
+		}
 
 
-        return false;
-    }
+		return false;
+	}
 
-    private boolean checkTile(Tile tile, Client client) {
-        if (tile == null) {
-            return false;
-        }
-        WorldPoint wp = WorldPoint.fromLocalInstance(client, tile.getLocalLocation());
-        if (zone != null && !zone.contains(wp)) return false;
+	private boolean checkTile(Tile tile, Client client)
+	{
+		if (tile == null)
+		{
+			return false;
+		}
+		WorldPoint wp = WorldPoint.fromLocalInstance(client, tile.getLocalLocation());
+		if (zone != null && !zone.contains(wp)) return false;
 
-        WorldPoint playerLocation = client.getLocalPlayer().getWorldLocation();
-        boolean playerClose = maxDistanceFromPlayer == -1 ||
-                (playerLocation.distanceTo(wp) < maxDistanceFromPlayer);
+		WorldPoint playerLocation = client.getLocalPlayer().getWorldLocation();
+		boolean playerClose = maxDistanceFromPlayer == -1 ||
+			(playerLocation.distanceTo(wp) < maxDistanceFromPlayer);
 
-        if (!playerClose) return false;
+		if (!playerClose) return false;
 
-        for (GameObject object : tile.getGameObjects()) {
-            if (checkForObjects(object)) return true;
-        }
-        if (onlyCheckGameObjects) return false;
+		for (GameObject object : tile.getGameObjects())
+		{
+			if (checkForObjects(object)) return true;
+		}
+		if (onlyCheckGameObjects) return false;
 
-        if (checkForObjects(tile.getDecorativeObject())) return true;
-        if (checkForObjects(tile.getGroundObject())) return true;
-        return checkForObjects(tile.getWallObject());
-    }
+		if (checkForObjects(tile.getDecorativeObject())) return true;
+		if (checkForObjects(tile.getGroundObject())) return true;
+		if (checkForObjects(tile.getWallObject())) return true;
 
-    private boolean checkForObjects(TileObject object) {
-        return object != null && (object.getId() == objectID || objectID == -1);
-    }
+		return false;
+	}
 
-    @Override
-    public void updateHandler() {
-        // Once this has checks done in ConditionalStep, this will need to set the boolean condition to false
-    }
+	private boolean checkForObjects(TileObject object)
+	{
+		if (object == null) {
+			return false;
+		}
+
+		// SPECIAL CASE FROM BEFORE: do we really need this?
+		if (this.objectIDs.contains(-1)) {
+			return true;
+		}
+
+		return this.objectIDs.contains(object.getId());
+	}
+
+	@Override
+	public void updateHandler()
+	{
+		// Once this has checks done in ConditionalStep, this will need to set the boolean condition to false
+	}
 }

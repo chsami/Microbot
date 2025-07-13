@@ -36,17 +36,13 @@ public class VirtualMouse extends Mouse {
         lastClick = point;
     }
 
-    public void setLastMove(Point point) {
-        lastMove = point;
-        points.add(point);
-        if (points.size() > MAX_POINTS) {
-            try {
-                points.removeFirst();
-            } catch(Exception ex) {
-                points.clear();
-            }
-        }
-    }
+	public void setLastMove(Point point) {
+		lastMove = point;
+		points.add(point);
+		if (points.size() > MAX_POINTS) {
+			points.pollFirst();
+		}
+	}
 
     private void handleClick(Point point, boolean rightClick) {
         entered(point);

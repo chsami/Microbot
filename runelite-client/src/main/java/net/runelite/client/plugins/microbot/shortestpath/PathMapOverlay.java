@@ -20,16 +20,14 @@ import java.util.List;
 public class PathMapOverlay extends Overlay {
     private final Client client;
     private final ShortestPathPlugin plugin;
-    private final ShortestPathConfig config;
 
     @Inject
     private WorldMapOverlay worldMapOverlay;
 
     @Inject
-    private PathMapOverlay(Client client, ShortestPathPlugin plugin, ShortestPathConfig config) {
+    private PathMapOverlay(Client client, ShortestPathPlugin plugin) {
         this.client = client;
         this.plugin = plugin;
-        this.config = config;
         setPosition(OverlayPosition.DYNAMIC);
         setPriority(Overlay.PRIORITY_LOW);
         setLayer(OverlayLayer.MANUAL);
@@ -38,7 +36,7 @@ public class PathMapOverlay extends Overlay {
 
     @Override
     public Dimension render(Graphics2D graphics) {
-        if (!config.drawMap()) {
+        if (!plugin.drawMap) {
             return null;
         }
 
@@ -49,8 +47,8 @@ public class PathMapOverlay extends Overlay {
         Area worldMapClipArea = getWorldMapClipArea(client.getWidget(ComponentID.WORLD_MAP_MAPVIEW).getBounds());
         graphics.setClip(worldMapClipArea);
 
-        if (config.drawCollisionMap()) {
-            graphics.setColor(config.colourCollisionMap());
+        if (plugin.drawCollisionMap) {
+            graphics.setColor(plugin.colourCollisionMap);
             Rectangle extent = getWorldMapExtent(client.getWidget(ComponentID.WORLD_MAP_MAPVIEW).getBounds());
             final CollisionMap map = plugin.getMap();
             final int z = client.getPlane();
@@ -63,7 +61,7 @@ public class PathMapOverlay extends Overlay {
             }
         }
 
-        if (config.drawTransports()) {
+        if (plugin.drawTransports) {
             graphics.setColor(Color.WHITE);
             if (plugin == null) return null;
             if (plugin.getTransports() == null) return null;
@@ -86,7 +84,7 @@ public class PathMapOverlay extends Overlay {
         }
 
         if (plugin.getPathfinder() != null) {
-            Color colour = plugin.getPathfinder().isDone() ? config.colourPath() : config.colourPathCalculating();
+            Color colour = plugin.getPathfinder().isDone() ? plugin.colourPath : plugin.colourPathCalculating;
             List<WorldPoint> path = plugin.getPathfinder().getPath();
             for (int i = 0; i < path.size(); i++) {
                 graphics.setColor(colour);

@@ -1,340 +1,340 @@
-# Destination	Skills	Item IDs	Quests	Varbits	isMembers	Consumable	Wilderness level	Duration	Display info
-# Ardougne Cloaks (2-4's farm teleport is limited to 3,5, or infinite times - can this be validated?)									
-2606 3221 0		13121;13122;13123;13124;20760			Y	F	19	4	Ardougne cloak: Kandarin Monastery
-2664 3374 0		13122;13123;13124;20760			Y	T	19	4	Ardougne cloak: Ardougne Farm
-# Karamja Gloves									
-2840 9387 0		11140;13103			Y	F	19	4	Karamja gloves
-# Desert Amulets (2 and 3 have one teleport per day, 4 is unlimited)									
-3420 2917 0		13134;13135		4558=0	Y	T	19	4	Desert amulet
-3426 2927 0		13136			Y	F	19	4	Desert amulet
-# Morytania Legs (2 and 3 have 5 teleports per day to slime, 4 is unlimited)									
-3683 9888 0		13112		4542<2	Y	T	19	4	Morytania legs: Ectofuntus Pit
-3683 9888 0		13113;13114		4542<5	Y	T	19	4	Morytania legs: Ectofuntus Pit
-3683 9888 0		13115			Y	F	19	4	Morytania legs: Ectofuntus Pit
-3482 3230 0		13114;13115			Y	F	19	4	Morytania legs: Burgh de Rott
-# Fremennik sea boots (1,2,3 have 1 teleport per day, 4 is unlimited)									
-2643 3675 0		13129;13130;13131		5005=0	Y	T	19	4	Fremennik sea boots
-2643 3675 0		13132			Y	F	19	4	Fremennik sea boots
-# Kandarin headgear (3 has 1 teleport per day, 4 is unlimited)									
-2729 3409 0		13137;13138;13139;13140			Y	F	19	4	Kandarin headgear
-# Wilderness Sword (3 has 1 teleport per day, 4 is unlimited)									
-3377 3890 0		13110;13111			Y	F	19	4	Wilderness sword
-# Western Banner (3 has 1 teleport per day, 4 is unlimited)									
-2339 3649 0		13143;13144			Y	F	19	4	Western banner
-# Explorer's Ring (2 has 3 teleports per day, 3 and 4 are unlimited)									
-3052 3291 0		13126		4552<3	Y	T	19	4	Explorer's ring: Teleport
-3052 3291 0		13127;13128			Y	F	19	4	Explorer's ring
-# Rada's Blessing (Kourend Woodland, 1 has 3 teleports, 2 has 5 teleports, 3 and 4 have unlimited. For Mount Karuulum, 3 has 3 teleports and 4 has unlimited)									
-1554 3457 0		22941		7937<3	Y	T	19	4	Rada's blessing: Kourend Woodland
-1554 3457 0		22943		7937<5	Y	T	19	4	Rada's blessing: Kourend Woodland
-1554 3457 0		22945;22947			Y	F	19	4	Rada's blessing: Kourend Woodland
-1311 3799 0		22945		7938<3	Y	T	19	4	Rada's blessing: Mount Karuulm
-1311 3799 0		22947			Y	F	19	4	Rada's blessing: Mount Karuulm
-									
-# Games Necklace									
-2520 3571 0		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	2. Games necklace: Barbarian Outpost
-2898 3553 0		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	1. Games necklace: Burthorpe
-2967 4384 2		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	3. Games necklace: Corporeal Beast
-3245 9500 2		3853;3855;3857;3859;3861;3863;3865;3867	Tears of Guthix		Y	T	19	4	4. Games necklace: Tears of Guthix
-1631 3940 0		3853;3855;3857;3859;3861;3863;3865;3867			Y	T	19	4	5. Games necklace: Wintertodt Camp
+# Destination	Skills	Item IDs	Quests	Varbits	Varplayers	isMembers	Consumable	Wilderness level	Duration	Display info
+# Ardougne Cloaks (2-4's farm teleport is limited to 3,5, or infinite times - can this be validated?)										
+2606 3221 0		13121;13122;13123;13124;20760				Y	F	19	4	Ardougne cloak: Kandarin Monastery
+2664 3374 0		13122;13123;13124;20760				Y	T	19	4	Ardougne cloak: Ardougne Farm
+# Karamja Gloves										
+2840 9387 0		11140;13103				Y	F	19	4	Karamja gloves
+# Desert Amulets (2 and 3 have one teleport per day, 4 is unlimited)										
+3420 2917 0		13134;13135		4558=0		Y	T	19	4	Desert amulet
+3426 2927 0		13136				Y	F	19	4	Desert amulet
+# Morytania Legs (2 and 3 have 5 teleports per day to slime, 4 is unlimited)										
+3683 9888 0		13112		4542<2		Y	T	19	4	Morytania legs: Ectofuntus Pit
+3683 9888 0		13113;13114		4542<5		Y	T	19	4	Morytania legs: Ectofuntus Pit
+3683 9888 0		13115				Y	F	19	4	Morytania legs: Ectofuntus Pit
+3482 3230 0		13114;13115				Y	F	19	4	Morytania legs: Burgh de Rott
+# Fremennik sea boots (1,2,3 have 1 teleport per day, 4 is unlimited)										
+2643 3675 0		13129;13130;13131		5005=0		Y	T	19	4	Fremennik sea boots
+2643 3675 0		13132				Y	F	19	4	Fremennik sea boots
+# Kandarin headgear (3 has 1 teleport per day, 4 is unlimited)										
+2729 3409 0		13137;13138;13139;13140				Y	F	19	4	Kandarin headgear
+# Wilderness Sword (3 has 1 teleport per day, 4 is unlimited)										
+3377 3890 0		13110;13111				Y	F	19	4	Wilderness sword
+# Western Banner (3 has 1 teleport per day, 4 is unlimited)										
+2339 3649 0		13143;13144				Y	F	19	4	Western banner
+# Explorer's Ring (2 has 3 teleports per day, 3 and 4 are unlimited)										
+3052 3291 0		13126		4552<3		Y	T	19	4	Explorer's ring: Teleport
+3052 3291 0		13127;13128				Y	F	19	4	Explorer's ring
+# Rada's Blessing (Kourend Woodland, 1 has 3 teleports, 2 has 5 teleports, 3 and 4 have unlimited. For Mount Karuulum, 3 has 3 teleports and 4 has unlimited)										
+1554 3457 0		22941		7937<3		Y	T	19	4	Rada's blessing: Kourend Woodland
+1554 3457 0		22943		7937<5		Y	T	19	4	Rada's blessing: Kourend Woodland
+1554 3457 0		22945;22947				Y	F	19	4	Rada's blessing: Kourend Woodland
+1311 3799 0		22945		7938<3		Y	T	19	4	Rada's blessing: Mount Karuulm
+1311 3799 0		22947				Y	F	19	4	Rada's blessing: Mount Karuulm
+										
+# Games Necklace										
+2520 3571 0		3853;3855;3857;3859;3861;3863;3865;3867				Y	T	19	4	2. Games necklace: Barbarian Outpost
+2898 3553 0		3853;3855;3857;3859;3861;3863;3865;3867				Y	T	19	4	1. Games necklace: Burthorpe
+2967 4384 2		3853;3855;3857;3859;3861;3863;3865;3867				Y	T	19	4	3. Games necklace: Corporeal Beast
+3245 9500 2		3853;3855;3857;3859;3861;3863;3865;3867	Tears of Guthix			Y	T	19	4	4. Games necklace: Tears of Guthix
+1631 3940 0		3853;3855;3857;3859;3861;3863;3865;3867				Y	T	19	4	5. Games necklace: Wintertodt Camp
 
 # Ring of Dueling (1-8)
-3315 3235 0		2566;2564;2562;2560;2558;2556;2554;2552			Y	T	19	6	1. Ring of dueling: Emir's Arena
-2440 3090 0		2566;2564;2562;2560;2558;2556;2554;2552			Y	T	19	6	2. Ring of dueling: Castle Wars
-3151 3635 0		2566;2564;2562;2560;2558;2556;2554;2552			Y	T	19	6	3. Ring of dueling: Ferox Enclave
+3315 3235 0		2566;2564;2562;2560;2558;2556;2554;2552				Y	T	19	6	1. Ring of dueling: Emir's Arena
+2440 3090 0		2566;2564;2562;2560;2558;2556;2554;2552				Y	T	19	6	2. Ring of dueling: Castle Wars
+3151 3635 0		2566;2564;2562;2560;2558;2556;2554;2552				Y	T	19	6	3. Ring of dueling: Ferox Enclave
 
 # Combat Bracelet (1-6) (uncharged is 11126)
-2882 3547 0		11118;11120;11122;11124;11972;11974			Y	T	29	4	1. Combat bracelet: Warriors' Guild
-3192 3368 0		11118;11120;11122;11124;11972;11974			Y	T	29	4	2. Combat bracelet: Champions' Guild
-3052 3490 0		11118;11120;11122;11124;11972;11974			Y	T	29	4	3. Combat bracelet: Monastery
-2653 3439 0		11118;11120;11122;11124;11972;11974			Y	T	29	4	4. Combat bracelet: Ranging Guild
+2882 3547 0		11118;11120;11122;11124;11972;11974				Y	T	29	4	1. Combat bracelet: Warriors' Guild
+3192 3368 0		11118;11120;11122;11124;11972;11974				Y	T	29	4	2. Combat bracelet: Champions' Guild
+3052 3490 0		11118;11120;11122;11124;11972;11974				Y	T	29	4	3. Combat bracelet: Monastery
+2653 3439 0		11118;11120;11122;11124;11972;11974				Y	T	29	4	4. Combat bracelet: Ranging Guild
 
 # Skills Necklace (1-6) (uncharged is 11113)
-2611 3390 0		11105;11107;11109;11111;11968;11970			Y	T	29	4	1. Skills necklace: Fishing Guild
-3049 9763 0		11105;11107;11109;11111;11968;11970			Y	T	29	4	2. Skills necklace: Mining Guild
-2933 3295 0		11105;11107;11109;11111;11968;11970			Y	T	29	4	3. Skills necklace: Crafting Guild
-3144 3438 0		11105;11107;11109;11111;11968;11970			Y	T	29	4	4. Skills necklace: Cooking Guild
-1662 3505 0		11105;11107;11109;11111;11968;11970			Y	T	29	4	5. Skills necklace: Woodcutting Guild
-1248 3725 0	45 Farming	11105;11107;11109;11111;11968;11970			Y	T	29	4	6. Skills necklace: Farming Guild
-1248 3719 0		11105;11107;11109;11111;11968;11970			Y	T	29	4	6. Skills necklace: Farming Guild
+2611 3390 0		11105;11107;11109;11111;11968;11970				Y	T	29	4	1. Skills necklace: Fishing Guild
+3049 9763 0		11105;11107;11109;11111;11968;11970				Y	T	29	4	2. Skills necklace: Mining Guild
+2933 3295 0		11105;11107;11109;11111;11968;11970				Y	T	29	4	3. Skills necklace: Crafting Guild
+3144 3438 0		11105;11107;11109;11111;11968;11970				Y	T	29	4	4. Skills necklace: Cooking Guild
+1662 3505 0		11105;11107;11109;11111;11968;11970				Y	T	29	4	5. Skills necklace: Woodcutting Guild
+1248 3725 0	45 Farming	11105;11107;11109;11111;11968;11970				Y	T	29	4	6. Skills necklace: Farming Guild
+1248 3719 0		11105;11107;11109;11111;11968;11970				Y	T	29	4	6. Skills necklace: Farming Guild
 
 # Amulet of Glory (1-6, 1t-6t, Eternal) (uncharged is 1704, trimmed 10362)
-3087 3496 0		1706;1708;1710;1712;11976;11978;10360;10358;10356;10354;11966;11964;19707			Y	T	29	4	1. Amulet of glory: Edgeville
-2918 3176 0		1706;1708;1710;1712;11976;11978;10360;10358;10356;10354;11966;11964;19707			Y	T	29	4	2. Amulet of glory: Karamja
-3105 3251 0		1706;1708;1710;1712;11976;11978;10360;10358;10356;10354;11966;11964;19707			Y	T	29	4	3. Amulet of glory: Draynor Village
-3293 3163 0		1706;1708;1710;1712;11976;11978;10360;10358;10356;10354;11966;11964;19707			Y	T	29	4	4. Amulet of glory: Al Kharid
+3087 3496 0		1706;1708;1710;1712;11976;11978;10360;10358;10356;10354;11966;11964;19707				Y	T	29	4	1. Amulet of glory: Edgeville
+2918 3176 0		1706;1708;1710;1712;11976;11978;10360;10358;10356;10354;11966;11964;19707				Y	T	29	4	2. Amulet of glory: Karamja
+3105 3251 0		1706;1708;1710;1712;11976;11978;10360;10358;10356;10354;11966;11964;19707				Y	T	29	4	3. Amulet of glory: Draynor Village
+3293 3163 0		1706;1708;1710;1712;11976;11978;10360;10358;10356;10354;11966;11964;19707				Y	T	29	4	4. Amulet of glory: Al Kharid
 
 # Ring of Wealth (1-5, 1i-5i) (uncharged is 2572, trimmed 12785)
-2534 3862 0		11988;11986;11984;11982;11980;20790;20789;20788;20787;20786	Throne of Miscellania		Y	T	29	4	1. Ring of wealth: Miscellania
-3163 3478 0		11988;11986;11984;11982;11980;20790;20789;20788;20787;20786			Y	T	29	4	2. Ring of wealth: Grand Exchange
-2995 3375 0		11988;11986;11984;11982;11980;20790;20789;20788;20787;20786			Y	T	29	4	3. Ring of wealth: Falador
-2824 10168 0		11988;11986;11984;11982;11980;20790;20789;20788;20787;20786	Between a Rock...		Y	T	29	4	4. Ring of wealth: Dondakan
+2534 3862 0		11988;11986;11984;11982;11980;20790;20789;20788;20787;20786	Throne of Miscellania			Y	T	29	4	1. Ring of wealth: Miscellania
+3163 3478 0		11988;11986;11984;11982;11980;20790;20789;20788;20787;20786				Y	T	29	4	2. Ring of wealth: Grand Exchange
+2995 3375 0		11988;11986;11984;11982;11980;20790;20789;20788;20787;20786				Y	T	29	4	3. Ring of wealth: Falador
+2824 10168 0		11988;11986;11984;11982;11980;20790;20789;20788;20787;20786	Between a Rock...			Y	T	29	4	4. Ring of wealth: Dondakan
 
 # Slayer Ring (1-8, eternal)
-2432 3423 0		11866;11867;11868;11869;11870;11871;11872;11873;21268			Y	T	29	4	1. Slayer ring: Stronghold Slayer Cave
-3421 3537 0		11866;11867;11868;11869;11870;11871;11872;11873;21268	Priest in Peril		Y	T	29	4	2. Slayer ring: Slayer Tower
-2802 10000 0		11866;11867;11868;11869;11870;11871;11872;11873;21268			Y	T	29	4	3. Slayer ring: Fremennik
-3185 4601 0		11866;11867;11868;11869;11870;11871;11872;11873;21268	Haunted Mine		Y	T	29	4	4. Slayer ring: Tarn's Lair
-2028 4636 0		11866;11867;11868;11869;11870;11871;11872;11873;21268	Mourning's End Part II		Y	T	29	4	5. Slayer ring: Dark Beasts
+2432 3423 0		11866;11867;11868;11869;11870;11871;11872;11873;21268				Y	T	29	4	1. Slayer ring: Stronghold Slayer Cave
+3421 3537 0		11866;11867;11868;11869;11870;11871;11872;11873;21268	Priest in Peril			Y	T	29	4	2. Slayer ring: Slayer Tower
+2802 10000 0		11866;11867;11868;11869;11870;11871;11872;11873;21268				Y	T	29	4	3. Slayer ring: Fremennik
+3185 4601 0		11866;11867;11868;11869;11870;11871;11872;11873;21268	Haunted Mine			Y	T	29	4	4. Slayer ring: Tarn's Lair
+2028 4636 0		11866;11867;11868;11869;11870;11871;11872;11873;21268	Mourning's End Part II			Y	T	29	4	5. Slayer ring: Dark Beasts
 
 # Digsite Pendant (can't find a varbit for the other location's activation)
-3341 3445 0		11190;11191;11192;11193;11194			Y	T	19	4	1. Digsite pendant: Digsite
-3763 3869 1		11190;11191;11192;11193;11194	Bone Voyage		Y	T	19	4	2. Digsite pendant: Fossil Island
-3549 10456 0		11190;11191;11192;11193;11194	Dragon Slayer II		Y	T	19	4	3. Digsite pendant: Lithkren
+3341 3445 0		11190;11191;11192;11193;11194				Y	T	19	4	1. Digsite pendant: Digsite
+3763 3869 1		11190;11191;11192;11193;11194	Bone Voyage			Y	T	19	4	2. Digsite pendant: Fossil Island
+3549 10456 0		11190;11191;11192;11193;11194	Dragon Slayer II			Y	T	19	4	3. Digsite pendant: Lithkren
 
 # Necklace of Passage (1-5)
-3114 3179 0		21146;21149;21151;21153;21155			Y	T	19	4	1. Necklace of passage: Wizards' Tower
-2428 3350 0		21146;21149;21151;21153;21155			Y	T	19	4	2. Necklace of passage: The Outpost
-3405 3158 0		21146;21149;21151;21153;21155			Y	T	19	4	3. Necklace of passage: Eagle's Eyrie
-									
-# Burning Amulet									
-3234 3634 0		21166;21169;21171;21173;21175			Y	T	19	4	1. Burning amulet: Chaos Temple
-3038 3651 0		21166;21169;21171;21173;21175			Y	T	19	4	2. Burning amulet: Bandit Camp
-3028 3842 0		21166;21169;21171;21173;21175			Y	T	19	4	3. Burning amulet: Lava Maze
-									
-# Teleport to House tablet - These depend on the current player's home location, determined by varbit 2187.									
-# 0 - None									
-# 1 - Rimmington									
-2952 3224 0		8013		2187=1	Y	T	19	4	Teleport to House tablet
-# 2 - Taverly									
-2892 3465 0		8013		2187=2	Y	T	19	4	Teleport to House tablet
-# 3 - Pollnivneach									
-3339 3001 0		8013		2187=3	Y	T	19	4	Teleport to House tablet
-# 4 - Rellekka									
-2669 3629 0		8013		2187=4	Y	T	19	4	Teleport to House tablet
-# 5 - Brimhaven									
-2756 3176 0		8013		2187=5	Y	T	19	4	Teleport to House tablet
-# 6 - Yanille									
-2545 3097 0		8013		2187=6	Y	T	19	4	Teleport to House tablet
-# 7 - Prifddinas									
-3239 6077 0		8013		2187=7	Y	T	19	4	Teleport to House tablet
-# 8 - Hosidius									
-1740 3517 0		8013		2187=8	Y	T	19	4	Teleport to House tablet
-									
-#  Teleport tablets									
-3213 3424 0		8007		4585=0	Y	T	19	4	Varrock tablet
-3164 3478 0		8007		4480=1;4585=1	Y	T	19	4	Varrock tablet: Grand exchange
-2965 3378 0		8009			Y	T	19	4	Falador tablet
-3221 3218 0		8008			Y	T	19	4	Lumbridge tablet
-2757 3478 0		8010			Y	T	19	4	Camelot tablet
-2661 3302 0		8011	Plague City		Y	T	19	4	Ardougne tablet
-2549 3112 0		8012	Watchtower		Y	T	19	4	Watchtower tablet
-									
-# Varbit 4460 is DIARY_ARDOUGNE_HARD									
-2584 3097 0		8012	Watchtower	4460=1	Y	T	19	4	Watchtower tablet: Yanille
-2953 3224 0		11741			Y	T	19	4	Rimmington tablet
-2893 3465 0		11742			Y	T	19	4	Taverley tablet
-3340 3004 0		11743			Y	T	19	4	Pollnivneach tablet
-2670 3631 0		11744			Y	T	19	4	Rellekka tablet
-2757 3179 0		11745			Y	T	19	4	Brimhaven tablet
-2544 3096 0		11746			Y	T	19	4	Yanille tablet
-2890 3679 0		11747			Y	T	19	4	Trollheim tablet
-1743 3517 0		19651			Y	T	19	4	Hosidius tablet
-3239 6077 0		23771			Y	T	19	4	Prifddinas tablet
-3100 9883 0		12781	Desert Treasure I		Y	T	19	4	Paddewwa tablet
-3320 3337 0		12782	Desert Treasure I		Y	T	19	4	Senntisten tablet
-3494 3473 0		12779	Desert Treasure I		Y	T	19	4	Kharyrll tablet
-3002 3470 0		12780	Desert Treasure I		Y	T	19	4	Lassar tablet
-2968 3696 0		12777	Desert Treasure I		Y	T	19	4	Dareeyak tablet
-3158 3666 0		12776	Desert Treasure I		Y	T	19	4	Carrallanger tablet
-3287 3888 0		12775	Desert Treasure I		Y	T	19	4	Annakarl tablet
-2974 3873 0		12778	Desert Treasure I		Y	T	19	4	Ghorrock tablet
-2113 3915 0		24949	Lunar Diplomacy		Y	T	19	4	Moonclan tablet
-2468 3246 0		24951	Lunar Diplomacy		Y	T	19	4	Ourania tablet
-2546 3756 0		24953			Y	T	19	4	Waterbirth tablet
-2543 3569 0		24955			Y	T	19	4	Barbarian tablet
-2636 3167 0		24957			Y	T	19	4	Khazard tablet
-2613 3391 0		24959			Y	T	19	4	Fishing guild tablet
-2801 3449 0		24961			Y	T	19	4	Catherby tablet
-2975 3938 0		24963			Y	T	19	4	Ice plateau tablet
-1633 3838 0		19613			Y	T	19	4	Arceuus Library tablet
-3110 3350 0		19615			Y	T	19	4	Draynor Manor tablet
-1347 3740 0		22949			Y	T	19	4	Battlefront tablet
-2980 3509 0		19617			Y	T	19	4	Mind Altar tablet
-3432 3461 0		19619	Priest in Peril		Y	T	19	4	Salve Graveyard tablet
-3548 3529 0		19621	Priest in Peril		Y	T	19	4	Fenkenstrain's Castle tablet
-2500 3291 0		19623	Biohazard		Y	T	19	4	West Ardougne tablet
-3797 2867 0		19625	The Great Brain Robbery		Y	T	19	4	Harmony Island tablet
-2980 3763 0		19627			Y	T	19	4	Cemetery tablet
-3565 3314 0		19629	Priest in Peril		Y	T	19	4	Barrows tablet
-2771 9102 0		19631	Monkey Madness I		Y	T	19	4	Ape Atoll tablet
-3811 3813 0		21541			Y	T	19	4	Volcanic Mine tablet
-3352 3782 0		24251			Y	T	19	4	Wilderness Crabs tablet
-1680 3134 0		28824	Twilight's Promise		Y	T	19	4	Civitas illa Fortis tablet
-									
-#  Teleport Scrolls (todo: how to detect these in the master scroll book?)									
-3419 2917 0		12402			Y	T	19	4	Nardah teleport
-3325 3412 0		12403			Y	T	19	4	Digsite teleport
-2541 2925 0		12404			Y	T	19	4	Feldip hills teleport
-2094 3913 0		12405	Lunar Diplomacy		Y	T	19	4	Lunar isle teleport
-3488 3288 0		12406	Priest in Peril		Y	T	19	4	Mort'ton teleport
-2658 2659 0		12407			Y	T	19	4	Pest control teleport
-2339 3649 0		12408			Y	T	19	4	Piscatoris teleport
-2789 3066 0		12409	Tai Bwo Wannai Trio		Y	T	19	4	Tai bwo wannai teleport
-2194 3258 0		12410	Regicide		Y	T	19	4	Iorwerth camp teleport
-3701 2996 0		12411	Cabin Fever		Y	T	19	4	Mos le'harmless teleport
-3302 3487 0		12642			Y	T	19	4	Lumberyard teleport
-2196 3056 0		12938	Regicide		Y	T	19	4	Zul-andra teleport
-1310 1250 0		13249			Y	T	19	4	Key master teleport
-3128 3832 0		21802			Y	T	19	4	Revenant cave teleport
-1645 3580 0		23387			Y	T	19	4	Watson teleport
-									
-# capes									
-2931 3286 0		9780;9781			Y	F	19	4	Crafting cape: Teleport
-# The Construction cape's home teleports, determined by varbit 2187									
-# 0 - None									
-# 1 - Rimmington									
-#2952 3224 0		9789;9790		2187=1	Y	F	19	4	Construction cape: Home
-# 2 - Taverly									
-#2892 3465 0		9789;9790		2187=2	Y	F	19	4	Construction cape: Home
-# 3 - Pollnivneach									
-#3339 3001 0		9789;9790		2187=3	Y	F	19	4	Construction cape: Home
-# 4 - Rellekka									
-#2669 3629 0		9789;9790		2187=4	Y	F	19	4	Construction cape: Home
-# 5 - Brimhaven									
-#2756 3176 0		9789;9790		2187=5	Y	F	19	4	Construction cape: Home
-# 6 - Yanille									
-#2545 3097 0		9789;9790		2187=6	Y	F	19	4	Construction cape: Home
-# 7 - Prifddinas									
-#3239 6077 0		9789;9790		2187=7	Y	F	19	4	Construction cape: Home
-# 8 - Hosidius									
-#1740 3517 0		9789;9790		2187=8	Y	F	19	4	Construction cape: Home
-2952 3224 0		9789;9790			Y	F	19	4	2. Construction cape: Rimmington
-2892 3465 0		9789;9790			Y	F	19	4	3. Construction cape: Taverley
-3339 3004 0		9789;9790			Y	F	19	4	4. Construction cape: Pollnivneach
-1743 3517 0		9789;9790			Y	F	19	4	5. Construction cape: Hosidius
-1422 2965 0		9789;9790			Y	F	19	4	6. Construction cape: Aldarin
-2669 3629 0		9789;9790			Y	F	19	4	7. Construction cape: Rellekka
-2756 3176 0		9789;9790			Y	F	19	4	8. Construction cape: Brimhaven
-2545 3097 0		9789;9790			Y	F	19	4	9. Construction cape: Yanille
-3239 6077 0		9789;9790			Y	F	19	4	10. Construction cape: Prifddinas
-2604 3401 0		9798;9799			Y	F	19	4	Fishing cape: Fishing Guild
-2504 3484 0		9798;9799			Y	F	19	4	Fishing cape: Otto's Grotto
-1248 3725 0		9810;9811			Y	F	19	4	Farming cape: Teleport
-2556 2917 0		9948;9949			Y	F	19	4	Hunter cape: Feldip Hills
-3144 3772 0		9948;9949			Y	F	19	4	Hunter cape: Black chinchompa
-2865 3546 0		9750;9751			Y	F	19	4	Strength cape: Warriors' Guild
-# Max capes									
-# The Max cape's home teleports, determined by varbit 2187									
-# 0 - None									
-# 1 - Rimmington									
-2952 3224 0		13280;13342		2187=1	Y	F	19	4	Max cape: Home
-# 2 - Taverly									
-2892 3465 0		13280;13342		2187=2	Y	F	19	4	Max cape: Home
-# 3 - Pollnivneach									
-3339 3001 0		13280;13342		2187=3	Y	F	19	4	Max cape: Home
-# 4 - Rellekka									
-2669 3629 0		13280;13342		2187=4	Y	F	19	4	Max cape: Home
-# 5 - Brimhaven									
-2756 3176 0		13280;13342		2187=5	Y	F	19	4	Max cape: Home
-# 6 - Yanille									
-2545 3097 0		13280;13342		2187=6	Y	F	19	4	Max cape: Home
-# 7 - Prifddinas									
-3239 6077 0		13280;13342		2187=7	Y	F	19	4	Max cape: Home
-# 8 - Hosidius									
-1740 3517 0		13280;13342		2187=8	Y	F	19	4	Max cape: Home
-2952 3224 0		13280;13342			Y	F	19	4	Max cape: Rimmington
-2892 3465 0		13280;13342			Y	F	19	4	Max cape: Taverley
-3339 3001 0		13280;13342			Y	F	19	4	Max cape: Pollnivneach
-1743 3517 0		13280;13342			Y	F	19	4	Max cape: Hosidius
-2669 3629 0		13280;13342			Y	F	19	4	Max cape: Rellekka
-2756 3176 0		13280;13342			Y	F	19	4	Max cape: Brimhaven
-2545 3097 0		13280;13342			Y	F	19	4	Max cape: Yanille
-3239 6077 0		13280;13342			Y	F	19	4	Max cape: Prifddinas
-2865 3546 0		13280;13342			Y	F	19	4	Max cape: Warriors' Guild
-2604 3401 0		13280;13342			Y	F	19	4	Max cape: Fishing Guild
-2931 3286 0		13280;13342			Y	F	19	4	Max cape: Crafting Guild
-2556 2917 0		13280;13342			Y	F	19	4	Max cape: Feldip Hills
-3144 3772 0		13280;13342			Y	F	19	4	Max cape: Black chinchompa
-3144 3772 0		13280;13342			Y	F	19	4	Max cape: Black chinchompa
-# Quest point cape (instead of using the item name we use the action teleport, we use the itemids to verifiy the item)									
-2728 3347 0		9813;13068			Y	F	19	4	Quest point cape: Teleport
-2689 3547 0		13221;13222			Y	F	19	4	Music cape: Teleport
-2574 3323 0		13069;19476			Y	F	19	4	1. Achievement diary cape: Two-pints
-3302 3122 0		13069;19476			Y	F	19	4	2. Achievement diary cape: Jarr
-2978 3347 0		13069;19476			Y	F	19	4	3. Achievement diary cape: Sir Rebral
-#2689 3547 0		13069;19476			Y	F	19	4	4. Achievement diary cape: Thorodin
-#2978 3347 0		13069;19476			Y	F	19	4	3. Achievement diary cape: Sir Rebral
-2659 3627 0		13069;19476			Y	F	19	4	4. Achievement diary cape: Thorodin
-2744 3443 0		13069;19476			Y	F	19	4	5. Achievement diary cape: Flax keeper
-2808 3192 0		13069;19476			Y	F	19	4	6. Achievement diary cape: Pirate Jackie the Fruit
-# The wiki lists these as (retired), so they are left out									
-#2862 2997 0		13069;19476			Y	F	19	4	7. Achievement diary cape: Kaleb Paramaya
-#2795 2947 0		13069;19476			Y	F	19	4	8. Achievement diary cape: Jungle forester
-#2453 5133 0		13069;19476			Y	F	19	4	9. Achievement diary cape: TzHaar-Mej
-1648 3665 0		13069;19476			Y	F	19	4	A. Achievement diary cape: Elise
-3234 3214 0		13069;19476			Y	F	19	4	B. Achievement diary cape: Hatius Cosaintus
-3465 3478 0		13069;19476			Y	F	19	4	C. Achievement diary cape: Le-sabrè
-3225 3415 0		13069;19476			Y	F	19	4	D. Achievement diary cape: Toby
-3121 3516 0		13069;19476			Y	F	19	4	E. Achievement diary cape: Lesser Fanatic
-2467 3459 0		13069;19476			Y	F	19	4	F. Achievement diary cape: Elder Gnome child
-3096 3227 0		13069;19476			Y	F	19	4	G. Achievement diary cape: Twiggy O'Korn
-									
-# Quest Items									
-# Ectophial - includes the empty version									
-3659 3523 0		4251;4252			Y	F	19	4	Ectophial
-2330 3171 0		6099;6100;6101;6102;13102			Y	T	19	4	Teleport crystal: Lletya
-3264 6066 0		6099;6100;6101;6102;13102	Song of the Elves		Y	T	19	4	Teleport crystal: Prifddinas
-2330 3171 0		23946			Y	F	19	4	Eternal teleport crystal: Lletya
-3264 6066 0		23946	Song of the Elves		Y	F	19	4	Eternal teleport crystal: Prifddinas
-2465 3495 0		19564			Y	F	29	4	Royal seed pod
-2465 3495 0		9469			Y	T	29	4	Grand seed pod
-# Enchanted lyre - 4493 is DIARY_FREMENNIK_HARD, 4494 is DIARY_FREMENNIK_ELITE									
-2662 3644 0		3691;6125;6126;6127;13079			Y	T	19	4	1. Enchanted lyre: Rellekka
-2551 3755 0		3691;6125;6126;6127;13079		4493=1	Y	T	19	4	2. Enchanted lyre: Waterbirth Island
-2409 3809 0		3691;6125;6126;6127;13079		4494=1	Y	T	19	4	3. Enchanted lyre: Jatizso
-2336 3802 0		3691;6125;6126;6127;13079		4494=1	Y	T	19	4	4. Enchanted lyre: Neitiznot
-2662 3644 0		23458			Y	F	19	4	1. Enchanted lyre(i): Rellekka
-2551 3755 0		23458		4493=1	Y	F	19	4	2. Enchanted lyre(i): Waterbirth Island
-2409 3809 0		23458		4494=1	Y	F	19	4	3. Enchanted lyre(i): Jatizso
-2336 3802 0		23458		4494=1	Y	F	19	4	4. Enchanted lyre(i): Neitiznot
-3105 9315 2		6707		1574>0	Y	F	19	4	1. Camulet: Enakhra's Temple
-3191 2924 0		6707		4485=1;1574>0	Y	F	19	4	2. Camulet: Enakhra's Temple Entrance
-1713 3612 0		21760;25818	The Depths of Despair	6028=1;6035>1	Y	T	19	4	1. Kharedst's memoirs: Lunch by the Lancalliums
-1802 3748 0		21760;25818	The Queen of Thieves	6038=1;6035>1	Y	T	19	4	2. Kharedst's memoirs: The Fisher's Flute
-1478 3576 0		21760;25818	Tale of the Righteous	6359=1;6035>1	Y	T	19	4	3. Kharedst's memoirs: History and Hearsay
-1544 3762 0		21760;25818	The Forsaken Tower	7801=1;6035>1	Y	T	19	4	4. Kharedst's memoirs: Jewellery of Jubilation
-1680 3746 0		21760;25818	The Ascent of Arceuus	7857=1;6035>1	Y	T	19	4	5. Kharedst's memoirs: A Dark Disposition
-3649 3230 0		22400			Y	F	19	4	Drakan's medallion: Ver Sinhaza
-3592 3337 0		22400	Sins of the Father		Y	F	19	4	Drakan's medallion: Darkmeyer
-# todo: this only works if you've used a Slepey tablet on the medallion									
-3808 9700 0		22400			Y	F	19	4	Drakan's medallion: Slepe
-#mythical cape (instead of using the item name we use the action teleport, we use the itemids to verifiy the item)									
-2457 2850 0		21913;22114;24855			Y	F	19	4	Mythical cape: Teleport
-# Stony Basalt - 4493 is DIARY_FREMENNIK_HARD									
-2845 3694 0		22601			Y	T	19	4	Stony basalt: Troll Stronghold
-2837 3695 0	73 Agility	22601		4493=1	Y	T	19	4	Stony basalt: Troll Stronghold
-2846 3938 0		22599			Y	T	19	4	Icy basalt
-									
-# Other									
-1934 4428 0		26948			Y	T	19	4	Pharaoh's sceptre: Jalsavrah
-3341 2827 0		26948			Y	T	19	4	Pharaoh's sceptre: Jaleustrophos
-3232 2897 0		26948			Y	T	19	4	Pharaoh's sceptre: Jaldraocht
-3313 2718 0		26948			Y	T	19	4	Pharaoh's sceptre: Jaltevas
-3081 3421 0		9013;21276				T	19	4	Skull sceptre
-1579 3530 0		13393			Y	T	19	4	1. Xeric's talisman: Xeric's Lookout
-1752 3566 0		13393			Y	T	19	4	2. Xeric's talisman: Xeric's Glade
-1504 3815 0		13393			Y	T	19	4	3. Xeric's talisman: Xeric's Inferno
-1644 3673 0		13393			Y	T	19	4	4. Xeric's talisman: Xeric's Heart
-# Requires the use of an ancient tablet to activate									
-1254 3560 0		13393			Y	T	19	4	5. Xeric's talisman: Xeric's Honour
-3200 3355 0		13660				T	19	4	Chronicle: Teleport
-3615 9461 0		26914			Y	F	19	4	Amulet of the eye: Teleport
-2981 3276 0		26818			Y	T	19	4	1. Ring of the elements: Air Altar
-3170 3155 0		26818			Y	T	19	4	2. Ring of the elements: Water Altar
-3288 3468 0		26818			Y	T	19	4	3. Ring of the elements: Earth Altar
-3314 3279 0		26818			Y	T	19	4	4. Ring of the elements: Fire Altar
-2400 5982 0		24709			Y	T	19	4	Hallowed crystal shard
-3296 6436 0		28327			Y	T	19	4	Ring of shadows: Ancient Vault
-# todo: The remaining Ring of shadows teleports require using a tablet on it once									
-2912 10336 0		28327			Y	T	19	4	Ring of shadows: Ghorrock Dungeon
-2019 6434 0		28327			Y	T	19	4	Ring of shadows: The Scar
-2588 6435 0		28327			Y	T	19	4	Ring of shadows: Lassar Undercity
-1175 3424 0		28327			Y	T	19	4	Ring of shadows: The Stranglewood
-									
-#Quetzal Whistle									
-1585 3053 0		29271;29273;29275	Children of the Sun		Y	T	19	4	Quetzal whistle
+3114 3179 0		21146;21149;21151;21153;21155				Y	T	19	4	1. Necklace of passage: Wizards' Tower
+2428 3350 0		21146;21149;21151;21153;21155				Y	T	19	4	2. Necklace of passage: The Outpost
+3405 3158 0		21146;21149;21151;21153;21155				Y	T	19	4	3. Necklace of passage: Eagle's Eyrie
+										
+# Burning Amulet										
+3234 3634 0		21166;21169;21171;21173;21175				Y	T	19	4	1. Burning amulet: Chaos Temple
+3038 3651 0		21166;21169;21171;21173;21175				Y	T	19	4	2. Burning amulet: Bandit Camp
+3028 3842 0		21166;21169;21171;21173;21175				Y	T	19	4	3. Burning amulet: Lava Maze
+										
+# Teleport to House tablet - These depend on the current player's home location, determined by varbit 2187.										
+# 0 - None										
+# 1 - Rimmington										
+2952 3224 0		8013		2187=1		Y	T	19	4	Teleport to House tablet
+# 2 - Taverly										
+2892 3465 0		8013		2187=2		Y	T	19	4	Teleport to House tablet
+# 3 - Pollnivneach										
+3339 3001 0		8013		2187=3		Y	T	19	4	Teleport to House tablet
+# 4 - Rellekka										
+2669 3629 0		8013		2187=4		Y	T	19	4	Teleport to House tablet
+# 5 - Brimhaven										
+2756 3176 0		8013		2187=5		Y	T	19	4	Teleport to House tablet
+# 6 - Yanille										
+2545 3097 0		8013		2187=6		Y	T	19	4	Teleport to House tablet
+# 7 - Prifddinas										
+3239 6077 0		8013		2187=7		Y	T	19	4	Teleport to House tablet
+# 8 - Hosidius										
+1740 3517 0		8013		2187=8		Y	T	19	4	Teleport to House tablet
+										
+#  Teleport tablets										
+3213 3424 0		8007		4585=0		Y	T	19	4	Varrock tablet
+3164 3478 0		8007		4480=1;4585=1		Y	T	19	4	Varrock tablet: Grand exchange
+2965 3378 0		8009				Y	T	19	4	Falador tablet
+3221 3218 0		8008				Y	T	19	4	Lumbridge tablet
+2757 3478 0		8010				Y	T	19	4	Camelot tablet
+2661 3302 0		8011	Plague City		165=30	Y	T	19	4	Ardougne tablet
+2549 3112 0		8012	Watchtower			Y	T	19	4	Watchtower tablet
+										
+# Varbit 4460 is DIARY_ARDOUGNE_HARD										
+2584 3097 0		8012	Watchtower	4460=1		Y	T	19	4	Watchtower tablet: Yanille
+2953 3224 0		11741				Y	T	19	4	Rimmington tablet
+2893 3465 0		11742				Y	T	19	4	Taverley tablet
+3340 3004 0		11743				Y	T	19	4	Pollnivneach tablet
+2670 3631 0		11744				Y	T	19	4	Rellekka tablet
+2757 3179 0		11745				Y	T	19	4	Brimhaven tablet
+2544 3096 0		11746				Y	T	19	4	Yanille tablet
+2890 3679 0		11747				Y	T	19	4	Trollheim tablet
+1743 3517 0		19651				Y	T	19	4	Hosidius tablet
+3239 6077 0		23771				Y	T	19	4	Prifddinas tablet
+3100 9883 0		12781	Desert Treasure I			Y	T	19	4	Paddewwa tablet
+3320 3337 0		12782	Desert Treasure I			Y	T	19	4	Senntisten tablet
+3494 3473 0		12779	Desert Treasure I			Y	T	19	4	Kharyrll tablet
+3002 3470 0		12780	Desert Treasure I			Y	T	19	4	Lassar tablet
+2968 3696 0		12777	Desert Treasure I			Y	T	19	4	Dareeyak tablet
+3158 3666 0		12776	Desert Treasure I			Y	T	19	4	Carrallanger tablet
+3287 3888 0		12775	Desert Treasure I			Y	T	19	4	Annakarl tablet
+2974 3873 0		12778	Desert Treasure I			Y	T	19	4	Ghorrock tablet
+2113 3915 0		24949	Lunar Diplomacy			Y	T	19	4	Moonclan tablet
+2468 3246 0		24951	Lunar Diplomacy			Y	T	19	4	Ourania tablet
+2546 3756 0		24953				Y	T	19	4	Waterbirth tablet
+2543 3569 0		24955				Y	T	19	4	Barbarian tablet
+2636 3167 0		24957				Y	T	19	4	Khazard tablet
+2613 3391 0		24959				Y	T	19	4	Fishing guild tablet
+2801 3449 0		24961				Y	T	19	4	Catherby tablet
+2975 3938 0		24963				Y	T	19	4	Ice plateau tablet
+1633 3838 0		19613				Y	T	19	4	Arceuus Library tablet
+3110 3350 0		19615				Y	T	19	4	Draynor Manor tablet
+1347 3740 0		22949				Y	T	19	4	Battlefront tablet
+2980 3509 0		19617				Y	T	19	4	Mind Altar tablet
+3432 3461 0		19619	Priest in Peril			Y	T	19	4	Salve Graveyard tablet
+3548 3529 0		19621	Priest in Peril			Y	T	19	4	Fenkenstrain's Castle tablet
+2500 3291 0		19623	Biohazard			Y	T	19	4	West Ardougne tablet
+3797 2867 0		19625	The Great Brain Robbery			Y	T	19	4	Harmony Island tablet
+2980 3763 0		19627				Y	T	19	4	Cemetery tablet
+3565 3314 0		19629	Priest in Peril			Y	T	19	4	Barrows tablet
+2771 9102 0		19631	Monkey Madness I			Y	T	19	4	Ape Atoll tablet
+3811 3813 0		21541				Y	T	19	4	Volcanic Mine tablet
+3352 3782 0		24251				Y	T	19	4	Wilderness Crabs tablet
+1680 3134 0		28824	Twilight's Promise			Y	T	19	4	Civitas illa Fortis tablet
+										
+#  Teleport Scrolls (todo: how to detect these in the master scroll book?)										
+3419 2917 0		12402				Y	T	19	4	Nardah teleport
+3325 3412 0		12403				Y	T	19	4	Digsite teleport
+2541 2925 0		12404				Y	T	19	4	Feldip hills teleport
+2094 3913 0		12405	Lunar Diplomacy			Y	T	19	4	Lunar isle teleport
+3488 3288 0		12406	Priest in Peril			Y	T	19	4	Mort'ton teleport
+2658 2659 0		12407				Y	T	19	4	Pest control teleport
+2339 3649 0		12408				Y	T	19	4	Piscatoris teleport
+2789 3066 0		12409	Tai Bwo Wannai Trio			Y	T	19	4	Tai bwo wannai teleport
+2194 3258 0		12410	Regicide			Y	T	19	4	Iorwerth camp teleport
+3701 2996 0		12411	Cabin Fever			Y	T	19	4	Mos le'harmless teleport
+3302 3487 0		12642				Y	T	19	4	Lumberyard teleport
+2196 3056 0		12938	Regicide			Y	T	19	4	Zul-andra teleport
+1310 1250 0		13249				Y	T	19	4	Key master teleport
+3128 3832 0		21802				Y	T	19	4	Revenant cave teleport
+1645 3580 0		23387				Y	T	19	4	Watson teleport
+										
+# capes										
+2931 3286 0		9780;9781				Y	F	19	4	Crafting cape: Teleport
+# The Construction cape's home teleports, determined by varbit 2187										
+# 0 - None										
+# 1 - Rimmington										
+#2952 3224 0		9789;9790		2187=1		Y	F	19	4	Construction cape: Home
+# 2 - Taverly										
+#2892 3465 0		9789;9790		2187=2		Y	F	19	4	Construction cape: Home
+# 3 - Pollnivneach										
+#3339 3001 0		9789;9790		2187=3		Y	F	19	4	Construction cape: Home
+# 4 - Rellekka										
+#2669 3629 0		9789;9790		2187=4		Y	F	19	4	Construction cape: Home
+# 5 - Brimhaven										
+#2756 3176 0		9789;9790		2187=5		Y	F	19	4	Construction cape: Home
+# 6 - Yanille										
+#2545 3097 0		9789;9790		2187=6		Y	F	19	4	Construction cape: Home
+# 7 - Prifddinas										
+#3239 6077 0		9789;9790		2187=7		Y	F	19	4	Construction cape: Home
+# 8 - Hosidius										
+#1740 3517 0		9789;9790		2187=8		Y	F	19	4	Construction cape: Home
+2952 3224 0		9789;9790				Y	F	19	4	2. Construction cape: Rimmington
+2892 3465 0		9789;9790				Y	F	19	4	3. Construction cape: Taverley
+3339 3004 0		9789;9790				Y	F	19	4	4. Construction cape: Pollnivneach
+1743 3517 0		9789;9790				Y	F	19	4	5. Construction cape: Hosidius
+1422 2965 0		9789;9790				Y	F	19	4	6. Construction cape: Aldarin
+2669 3629 0		9789;9790				Y	F	19	4	7. Construction cape: Rellekka
+2756 3176 0		9789;9790				Y	F	19	4	8. Construction cape: Brimhaven
+2545 3097 0		9789;9790				Y	F	19	4	9. Construction cape: Yanille
+3239 6077 0		9789;9790				Y	F	19	4	10. Construction cape: Prifddinas
+2604 3401 0		9798;9799				Y	F	19	4	Fishing cape: Fishing Guild
+2504 3484 0		9798;9799				Y	F	19	4	Fishing cape: Otto's Grotto
+1248 3725 0		9810;9811				Y	F	19	4	Farming cape: Teleport
+2556 2917 0		9948;9949				Y	F	19	4	Hunter cape: Feldip Hills
+3144 3772 0		9948;9949				Y	F	19	4	Hunter cape: Black chinchompa
+2865 3546 0		9750;9751				Y	F	19	4	Strength cape: Warriors' Guild
+# Max capes										
+# The Max cape's home teleports, determined by varbit 2187										
+# 0 - None										
+# 1 - Rimmington										
+2952 3224 0		13280;13342		2187=1		Y	F	19	4	Max cape: Home
+# 2 - Taverly										
+2892 3465 0		13280;13342		2187=2		Y	F	19	4	Max cape: Home
+# 3 - Pollnivneach										
+3339 3001 0		13280;13342		2187=3		Y	F	19	4	Max cape: Home
+# 4 - Rellekka										
+2669 3629 0		13280;13342		2187=4		Y	F	19	4	Max cape: Home
+# 5 - Brimhaven										
+2756 3176 0		13280;13342		2187=5		Y	F	19	4	Max cape: Home
+# 6 - Yanille										
+2545 3097 0		13280;13342		2187=6		Y	F	19	4	Max cape: Home
+# 7 - Prifddinas										
+3239 6077 0		13280;13342		2187=7		Y	F	19	4	Max cape: Home
+# 8 - Hosidius										
+1740 3517 0		13280;13342		2187=8		Y	F	19	4	Max cape: Home
+2952 3224 0		13280;13342				Y	F	19	4	Max cape: Rimmington
+2892 3465 0		13280;13342				Y	F	19	4	Max cape: Taverley
+3339 3001 0		13280;13342				Y	F	19	4	Max cape: Pollnivneach
+1743 3517 0		13280;13342				Y	F	19	4	Max cape: Hosidius
+2669 3629 0		13280;13342				Y	F	19	4	Max cape: Rellekka
+2756 3176 0		13280;13342				Y	F	19	4	Max cape: Brimhaven
+2545 3097 0		13280;13342				Y	F	19	4	Max cape: Yanille
+3239 6077 0		13280;13342				Y	F	19	4	Max cape: Prifddinas
+2865 3546 0		13280;13342				Y	F	19	4	Max cape: Warriors' Guild
+2604 3401 0		13280;13342				Y	F	19	4	Max cape: Fishing Guild
+2931 3286 0		13280;13342				Y	F	19	4	Max cape: Crafting Guild
+2556 2917 0		13280;13342				Y	F	19	4	Max cape: Feldip Hills
+3144 3772 0		13280;13342				Y	F	19	4	Max cape: Black chinchompa
+3144 3772 0		13280;13342				Y	F	19	4	Max cape: Black chinchompa
+# Quest point cape (instead of using the item name we use the action teleport, we use the itemids to verifiy the item)										
+2728 3347 0		9813;13068				Y	F	19	4	Quest point cape: Teleport
+2689 3547 0		13221;13222				Y	F	19	4	Music cape: Teleport
+2574 3323 0		13069;19476				Y	F	19	4	1. Achievement diary cape: Two-pints
+3302 3122 0		13069;19476				Y	F	19	4	2. Achievement diary cape: Jarr
+2978 3347 0		13069;19476				Y	F	19	4	3. Achievement diary cape: Sir Rebral
+#2689 3547 0		13069;19476				Y	F	19	4	4. Achievement diary cape: Thorodin
+#2978 3347 0		13069;19476				Y	F	19	4	3. Achievement diary cape: Sir Rebral
+2659 3627 0		13069;19476				Y	F	19	4	4. Achievement diary cape: Thorodin
+2744 3443 0		13069;19476				Y	F	19	4	5. Achievement diary cape: Flax keeper
+2808 3192 0		13069;19476				Y	F	19	4	6. Achievement diary cape: Pirate Jackie the Fruit
+# The wiki lists these as (retired), so they are left out										
+#2862 2997 0		13069;19476				Y	F	19	4	7. Achievement diary cape: Kaleb Paramaya
+#2795 2947 0		13069;19476				Y	F	19	4	8. Achievement diary cape: Jungle forester
+#2453 5133 0		13069;19476				Y	F	19	4	9. Achievement diary cape: TzHaar-Mej
+1648 3665 0		13069;19476				Y	F	19	4	A. Achievement diary cape: Elise
+3234 3214 0		13069;19476				Y	F	19	4	B. Achievement diary cape: Hatius Cosaintus
+3465 3478 0		13069;19476				Y	F	19	4	C. Achievement diary cape: Le-sabrè
+3225 3415 0		13069;19476				Y	F	19	4	D. Achievement diary cape: Toby
+3121 3516 0		13069;19476				Y	F	19	4	E. Achievement diary cape: Lesser Fanatic
+2467 3459 0		13069;19476				Y	F	19	4	F. Achievement diary cape: Elder Gnome child
+3096 3227 0		13069;19476				Y	F	19	4	G. Achievement diary cape: Twiggy O'Korn
+										
+# Quest Items										
+# Ectophial - includes the empty version										
+3659 3523 0		4251;4252				Y	F	19	4	Ectophial
+2330 3171 0		6099;6100;6101;6102;13102				Y	T	19	4	Teleport crystal: Lletya
+3264 6066 0		6099;6100;6101;6102;13102	Song of the Elves			Y	T	19	4	Teleport crystal: Prifddinas
+2330 3171 0		23946				Y	F	19	4	Eternal teleport crystal: Lletya
+3264 6066 0		23946	Song of the Elves			Y	F	19	4	Eternal teleport crystal: Prifddinas
+2465 3495 0		19564				Y	F	29	4	Royal seed pod
+2465 3495 0		9469				Y	T	29	4	Grand seed pod
+# Enchanted lyre - 4493 is DIARY_FREMENNIK_HARD, 4494 is DIARY_FREMENNIK_ELITE										
+2662 3644 0		3691;6125;6126;6127;13079				Y	T	19	4	1. Enchanted lyre: Rellekka
+2551 3755 0		3691;6125;6126;6127;13079		4493=1		Y	T	19	4	2. Enchanted lyre: Waterbirth Island
+2409 3809 0		3691;6125;6126;6127;13079		4494=1		Y	T	19	4	3. Enchanted lyre: Jatizso
+2336 3802 0		3691;6125;6126;6127;13079		4494=1		Y	T	19	4	4. Enchanted lyre: Neitiznot
+2662 3644 0		23458				Y	F	19	4	1. Enchanted lyre(i): Rellekka
+2551 3755 0		23458		4493=1		Y	F	19	4	2. Enchanted lyre(i): Waterbirth Island
+2409 3809 0		23458		4494=1		Y	F	19	4	3. Enchanted lyre(i): Jatizso
+2336 3802 0		23458		4494=1		Y	F	19	4	4. Enchanted lyre(i): Neitiznot
+3105 9315 2		6707		1574>0		Y	F	19	4	1. Camulet: Enakhra's Temple
+3191 2924 0		6707		4485=1;1574>0		Y	F	19	4	2. Camulet: Enakhra's Temple Entrance
+1713 3612 0		21760;25818	The Depths of Despair	6028=1;6035>1		Y	T	19	4	1. Kharedst's memoirs: Lunch by the Lancalliums
+1802 3748 0		21760;25818	The Queen of Thieves	6038=1;6035>1		Y	T	19	4	2. Kharedst's memoirs: The Fisher's Flute
+1478 3576 0		21760;25818	Tale of the Righteous	6359=1;6035>1		Y	T	19	4	3. Kharedst's memoirs: History and Hearsay
+1544 3762 0		21760;25818	The Forsaken Tower	7801=1;6035>1		Y	T	19	4	4. Kharedst's memoirs: Jewellery of Jubilation
+1680 3746 0		21760;25818	The Ascent of Arceuus	7857=1;6035>1		Y	T	19	4	5. Kharedst's memoirs: A Dark Disposition
+3649 3230 0		22400				Y	F	19	4	Drakan's medallion: Ver Sinhaza
+3592 3337 0		22400	Sins of the Father			Y	F	19	4	Drakan's medallion: Darkmeyer
+# todo: this only works if you've used a Slepey tablet on the medallion										
+3808 9700 0		22400				Y	F	19	4	Drakan's medallion: Slepe
+#mythical cape (instead of using the item name we use the action teleport, we use the itemids to verifiy the item)										
+2457 2850 0		21913;22114;24855				Y	F	19	4	Mythical cape: Teleport
+# Stony Basalt - 4493 is DIARY_FREMENNIK_HARD										
+2845 3694 0		22601				Y	T	19	4	Stony basalt: Troll Stronghold
+2837 3695 0	73 Agility	22601		4493=1		Y	T	19	4	Stony basalt: Troll Stronghold
+2846 3938 0		22599				Y	T	19	4	Icy basalt
+										
+# Other										
+1934 4428 0		26948				Y	T	19	4	Pharaoh's sceptre: Jalsavrah
+3341 2827 0		26948				Y	T	19	4	Pharaoh's sceptre: Jaleustrophos
+3232 2897 0		26948				Y	T	19	4	Pharaoh's sceptre: Jaldraocht
+3313 2718 0		26948				Y	T	19	4	Pharaoh's sceptre: Jaltevas
+3081 3421 0		9013;21276					T	19	4	Skull sceptre
+1579 3530 0		13393				Y	T	19	4	1. Xeric's talisman: Xeric's Lookout
+1752 3566 0		13393				Y	T	19	4	2. Xeric's talisman: Xeric's Glade
+1504 3815 0		13393				Y	T	19	4	3. Xeric's talisman: Xeric's Inferno
+1644 3673 0		13393				Y	T	19	4	4. Xeric's talisman: Xeric's Heart
+# Requires the use of an ancient tablet to activate										
+1254 3560 0		13393				Y	T	19	4	5. Xeric's talisman: Xeric's Honour
+3200 3355 0		13660					T	19	4	Chronicle: Teleport
+3615 9461 0		26914				Y	F	19	4	Amulet of the eye: Teleport
+2981 3276 0		26818				Y	T	19	4	1. Ring of the elements: Air Altar
+3170 3155 0		26818				Y	T	19	4	2. Ring of the elements: Water Altar
+3288 3468 0		26818				Y	T	19	4	3. Ring of the elements: Earth Altar
+3314 3279 0		26818				Y	T	19	4	4. Ring of the elements: Fire Altar
+2400 5982 0		24709				Y	T	19	4	Hallowed crystal shard
+3296 6436 0		28327				Y	T	19	4	Ring of shadows: Ancient Vault
+# todo: The remaining Ring of shadows teleports require using a tablet on it once										
+2912 10336 0		28327				Y	T	19	4	Ring of shadows: Ghorrock Dungeon
+2019 6434 0		28327				Y	T	19	4	Ring of shadows: The Scar
+2588 6435 0		28327				Y	T	19	4	Ring of shadows: Lassar Undercity
+1175 3424 0		28327				Y	T	19	4	Ring of shadows: The Stranglewood
+										
+#Quetzal Whistle										
+1585 3053 0		29271;29273;29275	Children of the Sun			Y	T	19	4	Quetzal whistle
 #Giantsoul Amulet
-3174 9898 0		30638			Y	T	19	4	Giantsoul Amulet: Bryophyta's lair
-6208 6336 0		30638			Y	T	19	4	Giantsoul Amulet: Obor's lair
-2952 9574 0		30638			Y	T	19	4	Giantsoul Amulet: Branda and Eldric's lair
+3174 9898 0		30638				Y	T	19	4	Giantsoul Amulet: Bryophyta's lair
+6208 6336 0		30638				Y	T	19	4	Giantsoul Amulet: Obor's lair
+2952 9574 0		30638				Y	T	19	4	Giantsoul Amulet: Branda and Eldric's lair

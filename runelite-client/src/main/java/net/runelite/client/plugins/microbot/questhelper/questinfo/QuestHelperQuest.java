@@ -97,6 +97,7 @@ import net.runelite.client.plugins.microbot.questhelper.helpers.quests.shieldofa
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.tearsofguthix.TearsOfGuthix;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.templeofikov.TempleOfIkov;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.thecorsaircurse.TheCorsairCurse;
+import net.runelite.client.plugins.microbot.questhelper.helpers.quests.thecurseofarrav.TheCurseOfArrav;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.thedepthsofdespair.TheDepthsOfDespair;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.thedigsite.TheDigSite;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.theforsakentower.TheForsakenTower;
@@ -463,6 +464,7 @@ public enum QuestHelperQuest {
     DEATH_ON_THE_ISLE(new DeathOnTheIsle(), Quest.DEATH_ON_THE_ISLE, QuestVarbits.QUEST_DEATH_ON_THE_ISLE, QuestDetails.Type.P2P, QuestDetails.Difficulty.INTERMEDIATE),
     MEAT_AND_GREET(new MeatAndGreet(), Quest.MEAT_AND_GREET, QuestVarbits.QUEST_MEAT_AND_GREET, QuestDetails.Type.P2P, QuestDetails.Difficulty.EXPERIENCED),
     THE_HEART_OF_DARKNESS(new TheHeartOfDarkness(), Quest.THE_HEART_OF_DARKNESS, QuestVarbits.QUEST_THE_HEART_OF_DARKNESS, QuestDetails.Type.P2P, QuestDetails.Difficulty.EXPERIENCED),
+	THE_CURSE_OF_ARRAV(new TheCurseOfArrav(), Quest.THE_CURSE_OF_ARRAV, QuestVarbits.QUEST_THE_CURSE_OF_ARRAV, QuestDetails.Type.P2P, QuestDetails.Difficulty.MASTER),
 
     //Miniquests
     ENTER_THE_ABYSS(new EnterTheAbyss(), Quest.ENTER_THE_ABYSS, QuestVarPlayer.QUEST_ENTER_THE_ABYSS, QuestDetails.Type.MINIQUEST, QuestDetails.Difficulty.MINIQUEST),
