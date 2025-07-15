@@ -5,7 +5,7 @@ import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.NPC;
 import net.runelite.api.SpriteID;
 import net.runelite.api.TileObject;
-import net.runelite.api.gameval.ItemID;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
@@ -15,8 +15,9 @@ import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
-import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.util.concurrent.TimeUnit;
@@ -28,6 +29,8 @@ public class ConstructionScript extends Script {
     public Integer lardersPerHour = 0;
     public Boolean servantsBagEmpty = false;
     public Boolean insufficientCoins = false;
+
+    ConstructionPlugin plugin;
 
     ConstructionState state = ConstructionState.Idle;
 
@@ -42,6 +45,12 @@ public class ConstructionScript extends Script {
     public Rs2NpcModel getButler() {
         return Rs2Npc.getNpc("Demon butler");
     }
+
+    public NPC getPhials() { return Rs2Npc.getNpc("Phials"); }
+
+    private final int HOUSE_PORTAL_OBJECT = 4525;
+
+    private final int OUTSIDE_HOUSE_PORTAL_OBJECT = 15478;
 
     public boolean hasFurnitureInterfaceOpen() {
         return Rs2Widget.findWidget("Furniture", null) != null;
@@ -60,7 +69,7 @@ public class ConstructionScript extends Script {
                 if (!super.run()) return;
 
                 Rs2Tab.switchToInventoryTab();
-                calculateState();
+                calculateState(config);
                 if (state == ConstructionState.Build) {
                     build();
                 } else if (state == ConstructionState.Remove) {
@@ -72,6 +81,9 @@ public class ConstructionScript extends Script {
                     insufficientCoins = false;
                     Microbot.stopPlugin(Microbot.getPlugin("ConstructionPlugin"));
                     shutdown();
+                }
+                else if (state == ConstructionState.Phials) {
+                    phials();
                 }
                 //System.out.println(hasPayButlerDialogue());
             } catch (Exception ex) {
@@ -86,39 +98,123 @@ public class ConstructionScript extends Script {
         super.shutdown();
     }
 
-    private void calculateState() {
+    private void calculateState(ConstructionConfig config) {
         TileObject oakLarderSpace = getOakLarderSpace();
         TileObject oakLarder = getOakLarder();
-        var butler = getButler();
-        int plankCount = Rs2Inventory.itemQuantity(ItemID.PLANK_OAK);
+        NPC butler = getButler();
+        boolean hasRequiredPlanks = Rs2Inventory.hasItemAmount(ItemID.OAK_PLANK, Rs2Random.between(7, 16));
 
-        if (servantsBagEmpty && insufficientCoins) {
-            state = ConstructionState.Stopped;
-            Microbot.getNotifier().notify("Insufficient coins to pay butler!");
-            Microbot.log("Insufficient coins to pay butler!");
-            return;
-        }
-        if (oakLarderSpace == null && oakLarder != null) {
-            state = ConstructionState.Remove;
-        } else if (oakLarderSpace != null && oakLarder == null) {
-            if (butler != null) {
-                if (plankCount > 16) {
-                    state = ConstructionState.Build;
-                } else {
-                    state = ConstructionState.Butler;
-                }
-            } else {
-                if (plankCount >= 8) {
-                    state = ConstructionState.Build;
-                } else {
-                    state = ConstructionState.Idle;
-                }
-            }
-        } else if (oakLarderSpace == null) {
+        // 1. FIRST: Handle error states
+        if (oakLarderSpace == null && oakLarder == null) {
             state = ConstructionState.Idle;
             Microbot.getNotifier().notify("Looks like we are no longer in our house.");
             shutdown();
+            return;
         }
+
+        // 2. SECOND: Handle removal (highest priority - clear obstacles)
+        if (oakLarderSpace == null && oakLarder != null) {
+            state = ConstructionState.Remove;
+            return;
+        }
+
+        // 3. THIRD: Handle building when we have materials
+        if (oakLarderSpace != null && oakLarder == null && hasRequiredPlanks) {
+            state = ConstructionState.Build;
+            return;
+        }
+
+        // 4. FOURTH: Handle resource gathering - use configured method
+        if (oakLarderSpace != null && oakLarder == null && !hasRequiredPlanks) {
+            if (config.usePhials()) {
+                state = ConstructionState.Phials;
+                return;
+            } else if (butler != null) {
+                state = ConstructionState.Butler;
+                return;
+            }
+        }
+
+        // 5. DEFAULT: Idle state
+        state = ConstructionState.Idle;
+    }
+
+    public void leaveHouse() {
+        System.out.println("Attempting to leave house...");
+
+        Rs2Tab.switchToSettingsTab();
+        sleep(1200);
+
+        String[] actions = Rs2Widget.getWidget(7602235).getActions(); // 116.59
+        boolean isControlsInterfaceVisible = actions != null && actions.length == 0;
+        if (!isControlsInterfaceVisible) {
+            Rs2Widget.clickWidget(7602235);
+            sleepUntil(() -> Rs2Widget.isWidgetVisible(7602207));
+        }
+        //house icon
+        if (Rs2Widget.clickWidget(7602207)) {
+            sleep(1200);
+        } else {
+            System.out.println("House Options button not found.");
+            return;
+        }
+
+        // Click Leave House
+        if (Rs2Widget.clickWidget(24248341)) {
+            sleep(3000);
+        } else {
+            System.out.println("Leave House button not found.");
+        }
+
+
+    }
+    public void unnotePlanks() {
+        if (Microbot.getClient().getWidget(14352385) == null) {
+            Rs2Inventory.useItemOnNpc(8779, 1614);
+            Rs2Player.waitForWalking();
+            sleepUntil(() -> Microbot.getClient().getWidget(14352385) != null, 5000);
+            Rs2Keyboard.keyPress('3');
+            Rs2Inventory.waitForInventoryChanges(2000);
+            sleep(2400,3000);
+        }
+    }
+
+    private void enterHouse() {
+        //entering house
+        TileObject portalObject = Rs2GameObject.findObjectById(OUTSIDE_HOUSE_PORTAL_OBJECT);
+        if (portalObject == null) {
+            System.out.println("Not outside house, OUTSIDE_HOUSE_PORTAL_OBJECT not found.");
+            return;
+        }
+        boolean interacted = Rs2GameObject.interact(portalObject, "Build mode");
+        sleep(2400, 3000);
+        System.out.println("Rs2GameObject.interact returned: " + interacted);
+        Rs2Player.waitForWalking();
+        sleep(2400, 3000);
+    }
+
+    private void phials() {
+        // Step 1: Leave the house
+        leaveHouse();
+
+        // Wait for us to be outside the house
+        sleepUntil(() -> Rs2GameObject.findObjectById(OUTSIDE_HOUSE_PORTAL_OBJECT) != null, 5000);
+
+        //walk to Phials
+        Rs2Walker.walkTo(new WorldPoint(2949,3213,0));
+        Rs2Player.waitForWalking();
+
+        // Step 2: Unnote planks with Phials
+        unnotePlanks();
+
+        // Wait for inventory to have the required planks
+        boolean hasEnoughPlanks = sleepUntil(() -> Rs2Inventory.hasItemAmount(ItemID.OAK_PLANK, 8), 5000);
+        if (!hasEnoughPlanks) {
+            return;
+        }
+        enterHouse();
+        // Wait for us to be back in the house
+        boolean backInHouse = sleepUntil(() -> Rs2GameObject.findObjectById(HOUSE_PORTAL_OBJECT) != null, 5000);
     }
 
     private void build() {
