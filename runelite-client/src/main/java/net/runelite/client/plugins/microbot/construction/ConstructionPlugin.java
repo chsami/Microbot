@@ -31,7 +31,9 @@ public class ConstructionPlugin extends Plugin {
     ConstructionConfig provideConfig(ConfigManager configManager) {
         return configManager.getConfig(ConstructionConfig.class);
     }
-
+    public ConstructionConfig getConfig() {
+        return config;
+    }
     @Inject
     private OverlayManager overlayManager;
     @Inject
