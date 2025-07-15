@@ -10,20 +10,22 @@ import ch.qos.logback.core.spi.FilterReply;
 import net.runelite.api.ChatMessageType;
 
 public class GameChatAppender extends AppenderBase<ILoggingEvent> {
-    public static final String DETAILED_PATTERN = "%d{HH:mm:ss} [%thread] %-5level %logger{36} - %msg%ex{0}%n";
-    public static final String SIMPLE_PATTERN = "[%d{HH:mm:ss}] %msg%ex{0}%n";
-
     private final PatternLayout layout = new PatternLayout();
+    
+    // Cache the current configuration to avoid config lookups during filtering
+    private static volatile boolean loggingEnabled = true;
+    private static volatile Level minimumLevel = Level.WARN;
+    private static volatile boolean onlyMicrobotLogging = true;
 
     public GameChatAppender(String pattern) {
-        addFilter(new DebugFilter());
-        // filter for log messages from the microbot folder
-        // addFilter(new OnlyMicrobotLoggingFilter());
+        // Order matters! Level filter should run first to deny based on log level
+        addFilter(new GameChatLevelFilter());
+        addFilter(new OnlyMicrobotLoggingFilter());
         layout.setPattern(pattern);
     }
 
     public GameChatAppender() {
-        this(SIMPLE_PATTERN);
+        this("[%d{HH:mm:ss}] %msg%ex{0}%n"); // Default simple pattern
     }
 
     @Override
@@ -50,6 +52,15 @@ public class GameChatAppender extends AppenderBase<ILoggingEvent> {
         layout.setPattern(pattern);
         if (started) layout.start();
     }
+    
+    /**
+     * Updates the cached configuration for filtering
+     */
+    public static void updateConfiguration(boolean enabled, Level level, boolean microbotOnly) {
+        loggingEnabled = enabled;
+        minimumLevel = level;
+        onlyMicrobotLogging = microbotOnly;
+    }
 
     @Override
     protected void append(ILoggingEvent event) {
@@ -62,16 +73,36 @@ public class GameChatAppender extends AppenderBase<ILoggingEvent> {
         );
     }
 
-    private static class DebugFilter extends Filter<ILoggingEvent> {
+    /**
+     * Filter to control which log levels appear in game chat based on configuration
+     */
+    private static class GameChatLevelFilter extends Filter<ILoggingEvent> {
         @Override
         public FilterReply decide(ILoggingEvent event) {
-            return event.getLevel() == Level.DEBUG && !Microbot.isDebug() ? FilterReply.DENY : FilterReply.ACCEPT;
+            // Check if logging is enabled
+            if (!loggingEnabled) {
+                return FilterReply.DENY;
+            }
+            
+            // In debug mode, show all levels (overrides configuration)
+            if (Microbot.isDebug()) {
+                return FilterReply.NEUTRAL;
+            }
+            
+            // Use cached minimum level to filter (includes DEBUG if configured)
+            return event.getLevel().isGreaterOrEqual(minimumLevel) ? FilterReply.NEUTRAL : FilterReply.DENY;
         }
     }
 
     private static class OnlyMicrobotLoggingFilter extends Filter<ILoggingEvent> {
         @Override
         public FilterReply decide(ILoggingEvent event) {
+            // If only microbot logging is disabled, accept all logs
+            if (!onlyMicrobotLogging) {
+                return FilterReply.ACCEPT;
+            }
+            
+            // Otherwise, only accept microbot logs
             return event.getLoggerName().startsWith("net.runelite.client.plugins.microbot") ? FilterReply.ACCEPT : FilterReply.DENY;
         }
     }

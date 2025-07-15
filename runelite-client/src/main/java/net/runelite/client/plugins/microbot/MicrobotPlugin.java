@@ -103,13 +103,26 @@ public class MicrobotPlugin extends Plugin
 	{
 		gameChatAppender = new GameChatAppender();
 		gameChatAppender.setName("GAME_CHAT");
-		gameChatAppender.setPattern(microbotConfig.getLogType() == LogType.DETAILED ? GameChatAppender.DETAILED_PATTERN : GameChatAppender.SIMPLE_PATTERN);
+		
+		// Set pattern based on new configuration
+		String pattern = microbotConfig.getGameChatLogPattern().getPattern();
+		gameChatAppender.setPattern(pattern);
 
 		final LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
 		gameChatAppender.setContext(context);
 		context.getLogger(Logger.ROOT_LOGGER_NAME).addAppender(gameChatAppender);
 
-		if (microbotConfig.getLogType() != LogType.DISABLED) gameChatAppender.start();
+		// Start appender if logging is enabled
+		if (microbotConfig.enableGameChatLogging()) {
+			gameChatAppender.start();
+		}
+		
+		// Initialize the cached configuration in GameChatAppender
+		GameChatAppender.updateConfiguration(
+			microbotConfig.enableGameChatLogging(),
+			microbotConfig.getGameChatLogLevel().toLogbackLevel(),
+			microbotConfig.onlyMicrobotLogging()
+		);
 
 		Microbot.pauseAllScripts.set(false);
 
@@ -331,14 +344,31 @@ public class MicrobotPlugin extends Plugin
 	public void onConfigChanged(ConfigChanged ev)
 	{
 		if (ev.getGroup().equals(MicrobotConfig.configGroup)) {
-			if (!ev.getKey().equals(MicrobotConfig.keyLogType)) return;
-
-			final boolean shouldBeStarted = microbotConfig.getLogType() != LogType.DISABLED;
-			if (shouldBeStarted) {
-				gameChatAppender.setPattern(microbotConfig.getLogType() == LogType.DETAILED ? GameChatAppender.DETAILED_PATTERN : GameChatAppender.SIMPLE_PATTERN);
-				if (!gameChatAppender.isStarted()) gameChatAppender.start();
-			} else if (gameChatAppender.isStarted()) {
-				gameChatAppender.stop();
+			// Handle any logging-related configuration changes
+			String key = ev.getKey();
+			if (key.equals("enableGameChatLogging") || key.equals("gameChatLogLevel") || 
+				key.equals("gameChatLogPattern") || key.equals("onlyMicrobotLogging")) {
+				
+				final boolean shouldBeStarted = microbotConfig.enableGameChatLogging();
+				
+				// Update the cached configuration in GameChatAppender
+				GameChatAppender.updateConfiguration(
+					microbotConfig.enableGameChatLogging(),
+					microbotConfig.getGameChatLogLevel().toLogbackLevel(),
+					microbotConfig.onlyMicrobotLogging()
+				);
+				
+				if (shouldBeStarted) {
+					// Update pattern if needed
+					String pattern = microbotConfig.getGameChatLogPattern().getPattern();
+					gameChatAppender.setPattern(pattern);
+					
+					if (!gameChatAppender.isStarted()) {
+						gameChatAppender.start();
+					}
+				} else if (gameChatAppender.isStarted()) {
+					gameChatAppender.stop();
+				}
 			}
 		}
 		if (ev.getKey().equals("displayPouchCounter"))
@@ -358,6 +388,7 @@ public class MicrobotPlugin extends Plugin
 	public void onWidgetLoaded(WidgetLoaded event)
 	{
 		Rs2RunePouch.onWidgetLoaded(event);
+		
 	}
 
 	@Subscribe

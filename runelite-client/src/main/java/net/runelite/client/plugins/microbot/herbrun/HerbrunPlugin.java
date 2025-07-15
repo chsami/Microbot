@@ -2,7 +2,7 @@ package net.runelite.client.plugins.microbot.herbrun;
 
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.events.GameTick;
+import net.runelite.client.config.ConfigDescriptor;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
@@ -67,6 +67,14 @@ public class HerbrunPlugin extends Plugin implements SchedulablePlugin{
     public LogicalCondition getStopCondition() {
         // Create a new stop condition        
         return this.stopCondition;
+    }
+    @Override
+    public ConfigDescriptor getConfigDescriptor() {
+        if (Microbot.getConfigManager() == null) {
+            return null;
+        }
+        HerbrunConfig conf = Microbot.getConfigManager().getConfig(HerbrunConfig.class);
+        return Microbot.getConfigManager().getConfigDescriptor(conf);
     }
 
 }

@@ -152,7 +152,7 @@ public interface SchedulablePlugin {
                                     "</div></html>");
                             // Show error message if starting failed
                             JOptionPane.showMessageDialog(
-                                SwingUtilities.getWindowAncestor(clientComponent),
+                                window,
                                 messageLabel,
                                 "Plugin Stopped",
                                 JOptionPane.WARNING_MESSAGE
@@ -167,7 +167,11 @@ public interface SchedulablePlugin {
                     }
                 });
             }
-            Microbot.getClientThread().invokeLater(()->Microbot.stopPlugin((Plugin)this));
+            // Capture the plugin reference explicitly to avoid timing issues
+            final Plugin pluginToStop = (Plugin) this;
+            Microbot.getClientThread().invokeLater(() -> {            
+                Microbot.stopPlugin(pluginToStop);                
+            });
             return;
         }else{
             if (success) {
@@ -294,9 +298,6 @@ public interface SchedulablePlugin {
     default public ConfigDescriptor getConfigDescriptor(){
         return null;
     }
-
-    // ...existing code...
-
     /**
      * Gets the time until the next scheduled plugin will run.
      * This method checks the SchedulerPlugin for the upcoming plugin and calculates

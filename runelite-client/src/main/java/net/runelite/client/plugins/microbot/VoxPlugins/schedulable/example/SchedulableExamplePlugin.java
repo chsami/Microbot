@@ -151,7 +151,7 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
             saveCurrentLocation();
             script.shutdown();            
         }
-        
+        unlock((Condition)(stopCondition));
         keyManager.unregisterKeyListener(this);
         keyManager.unregisterKeyListener(areaHotkeyListener);
         keyManager.unregisterKeyListener(finishPluginSuccessHotkeyListener);

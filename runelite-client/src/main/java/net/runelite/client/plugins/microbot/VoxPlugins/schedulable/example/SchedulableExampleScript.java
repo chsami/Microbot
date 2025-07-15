@@ -20,7 +20,9 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class SchedulableExampleScript extends Script {
     private SchedulableExampleConfig config;
     private WorldPoint returnPoint;
@@ -122,8 +124,7 @@ public class SchedulableExampleScript extends Script {
                 if (!super.run()) return;
                 
                 // Call the main method with antiban testing
-                main(config);
-                
+                main(config);                
             } catch (Exception ex) {
                 Microbot.log("SchedulableExampleScript error: " + ex.getMessage());
             }

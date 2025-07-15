@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.herbrun;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
+import net.runelite.api.gameval.ObjectID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -49,14 +50,15 @@ public class HerbrunScript extends Script {
 
     private final List<HerbPatch> herbPatches = new ArrayList<>();
 
-    public boolean run() {
+    public boolean run() {        
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             if (!Microbot.isLoggedIn()) return;
+            if (!super.run()) return;
             if (!initialized) {
                 initialized = true;
                 HerbrunPlugin.status = "Gearing up";
                 populateHerbPatches();
-                if (herbPatches.isEmpty()) {                    
+                if (herbPatches.isEmpty()) {                                        
                     plugin.reportFinished("No herb patches ready to farm",true);
                     this.shutdown();
                     return;
@@ -73,7 +75,7 @@ public class HerbrunScript extends Script {
 
                 log("Will visit " + herbPatches.size() + " herb patches");
             }
-            if (!super.run()) return;
+            
 
             if (Rs2Inventory.hasItem("Weeds")) {
                 Rs2Inventory.drop("Weeds");
@@ -149,16 +151,16 @@ public class HerbrunScript extends Script {
         }
 
         Integer[] ids = {
-                18816,
-                8151,
-                8153,
-                50697,
-                27115,
-                8152,
-                8150,
-                33979,
-                33176,
-                9372
+                ObjectID.MYARM_HERBPATCH,
+                ObjectID.FARMING_HERB_PATCH_2,
+                ObjectID.FARMING_HERB_PATCH_4,
+                ObjectID.FARMING_HERB_PATCH_8,
+                ObjectID.FARMING_HERB_PATCH_6,
+                ObjectID.FARMING_HERB_PATCH_3,
+                ObjectID.FARMING_HERB_PATCH_1,
+                ObjectID.FARMING_HERB_PATCH_7,
+                ObjectID.MY2ARM_HERBPATCH,
+                ObjectID.FARMING_HERB_PATCH_5
         };
         var obj = Rs2GameObject.findObject(ids);
         if (obj == null) return false;
