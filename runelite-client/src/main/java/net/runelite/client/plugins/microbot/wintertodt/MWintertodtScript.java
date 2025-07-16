@@ -388,7 +388,7 @@ public class MWintertodtScript extends Script {
         if (!config.fixBrazier() && Rs2Inventory.hasItem(ItemID.HAMMER)) {
             Rs2Inventory.drop(ItemID.HAMMER);
         }
-        if ((Rs2Equipment.hasEquipped(ItemID.BRUMA_TORCH) || Rs2Equipment.hasEquipped(ItemID.BRUMA_TORCH_OFFHAND)) && Rs2Inventory.hasItem(ItemID.TINDERBOX)) {
+        if (Rs2Equipment.isWearing(ItemID.BRUMA_TORCH, ItemID.BRUMA_TORCH_OFFHAND) && Rs2Inventory.hasItem(ItemID.TINDERBOX)) {
             Rs2Inventory.drop(ItemID.TINDERBOX);
         }
     }
@@ -481,18 +481,18 @@ public class MWintertodtScript extends Script {
         Rs2Bank.useBank();
         if (!Rs2Bank.isOpen()) return true;
         Rs2Bank.depositAllExcept("hammer", "tinderbox", "knife", config.food().getName(), axe);
-        int foodCount = (int) Rs2Inventory.getInventoryFood().stream().count();
+        int foodCount = Rs2Inventory.getInventoryFood().size();
         if (config.fixBrazier() && !Rs2Inventory.hasItem("hammer")) {
-            Rs2Bank.withdrawX(true, "hammer", 1);
+            Rs2Bank.withdrawDeficit("hammer", 1);
         }
-        if (!Rs2Equipment.hasEquipped(ItemID.BRUMA_TORCH) && !Rs2Equipment.hasEquipped(ItemID.BRUMA_TORCH_OFFHAND)) {
-            Rs2Bank.withdrawX(true, "tinderbox", 1, true);
+        if (!Rs2Equipment.isWearing(ItemID.BRUMA_TORCH, ItemID.BRUMA_TORCH_OFFHAND)) {
+            Rs2Bank.withdrawDeficit("tinderbox", 1, true);
         }
         if (config.fletchRoots()) {
-            Rs2Bank.withdrawX(true, "knife", 1, true);
+            Rs2Bank.withdrawDeficit("knife", 1, true);
         }
         if (config.axeInInventory()) {
-            Rs2Bank.withdrawX(true, axe, 1);
+            Rs2Bank.withdrawDeficit(axe, 1);
         }
         if (!Rs2Bank.hasBankItem(config.food().getName(), config.foodAmount(), true)) {
             Microbot.showMessage("Insufficient food supply");

@@ -337,9 +337,9 @@ public class BanksBankStanderScript extends Script {
                 // watching our time immediately before attempting to withdraw an item, so we can keep our sleep timer within an expected range when not our last item.
                 timeValue = System.currentTimeMillis();
                 if (id != null) {
-                    Rs2Bank.withdrawX(true, id, missingQuantity);
+                    Rs2Bank.withdrawX(id, missingQuantity);
                 } else {
-                    Rs2Bank.withdrawX(true, item, missingQuantity);
+                    Rs2Bank.withdrawX(item, missingQuantity);
                 }
                 // code here is checking that we've withdrawn our last item from the bank before we wait for it to be in our inventory before we attempt to close the bank.
                 int lastItem = (config.fourthItemQuantity() > 0) ? 4 : (config.thirdItemQuantity() > 0) ? 3 : (config.secondItemQuantity() > 0) ? 2 : 1;

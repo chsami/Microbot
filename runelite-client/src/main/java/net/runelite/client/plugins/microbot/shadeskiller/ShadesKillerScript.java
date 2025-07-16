@@ -8,7 +8,7 @@ import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.math.Random;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static net.runelite.client.plugins.microbot.shadeskiller.enums.State.USE_TELEPORT_TO_BANK;
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
 import static net.runelite.client.plugins.microbot.util.player.Rs2Player.eatAt;
 
 
@@ -66,19 +65,20 @@ public class ShadesKillerScript extends Script {
     }
 
     private boolean withdrawRequiredItems() {
-        sleepUntil(() -> Rs2Bank.isOpen());
+        sleepUntil(Rs2Bank::isOpen);
         Rs2Bank.depositAll();
         sleep(600, 1000);
         String key = getKeyInBank();
-        if (key.equals("")) {
+        if (key.isEmpty()) {
             Microbot.showMessage("You are missing a silver key.");
             sleep(5000);
             return false;
         }
-        Rs2Bank.withdrawOne(key, Random.random(100, 600));
-        Rs2Bank.withdrawOne(config.teleportItemToShades(), Random.random(100, 600));
-        Rs2Bank.withdrawOne(config.teleportItemToBank(), Random.random(100, 600));
-        Rs2Bank.withdrawX(true, config.food().getName(), config.foodAmount(), true);
+        Rs2Bank.withdrawOne(key, Rs2Random.between(100, 600));
+        Rs2Bank.withdrawOne(config.teleportItemToShades(), Rs2Random.between(100, 600));
+        Rs2Bank.withdrawOne(config.teleportItemToBank(), Rs2Random.between(100, 600));
+        final int missing = config.foodAmount() - Rs2Inventory.count(config.food().getName(), true);
+        if (missing > 0) Rs2Bank.withdrawX(config.food().getName(), missing, true);
         withdrawCoffin();
         sleep(800, 1200);
         return true;
@@ -151,6 +151,7 @@ public class ShadesKillerScript extends Script {
                         }
                         if (!Rs2Player.isFullHealth()) {
                             Rs2Bank.depositAll();
+                            // Rs2Bank refactor - this can stay unchanged since we just depositedAll
                             Rs2Bank.withdrawX(true, config.food().getName(), config.foodAmount(), true);
                             Rs2Bank.closeBank();
                             sleep(1200);

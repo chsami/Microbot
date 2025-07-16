@@ -41,9 +41,9 @@ public class PieScript extends Script {
         if(Rs2Bank.isOpen()){
             Rs2Bank.depositAll();
             if(Rs2Bank.hasItem("pie dish") &&  Rs2Bank.hasItem("pastry dough")) {
-                Rs2Bank.withdrawX(true, "pie dish", 14);
+                Rs2Bank.withdrawDeficit("pie dish", 14);
                 sleepUntilOnClientThread(() -> Rs2Inventory.hasItem("pie dish"));
-                Rs2Bank.withdrawX(true, "pastry dough", 14);
+                Rs2Bank.withdrawDeficit("pastry dough", 14);
                 sleepUntilOnClientThread(() -> Rs2Inventory.hasItem("pastry dough"));
             } else {
                 Microbot.getNotifier().notify("Run out of Materials");

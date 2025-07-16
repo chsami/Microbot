@@ -434,7 +434,7 @@ public class BlueDragonsScript extends Script {
         boolean success = false;
 
         while (retryCount < maxRetries && !success) {
-            success = Rs2Bank.withdrawX(false, food.getName(), deficit, true);
+            success = Rs2Bank.withdrawX(food.getName(), deficit, true);
             if (!success) {
                 retryCount++;
                 sleep(500);

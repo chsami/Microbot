@@ -316,7 +316,7 @@ public class ThievingScript extends Script {
             Rs2Bank.withdrawAll(true, "Cosmic rune", true);
             Rs2Inventory.waitForInventoryChanges(3000);
         }
-        boolean successfullyWithdrawFood = Rs2Bank.withdrawX(true, config.food().getName(), config.foodAmount(), true);
+        boolean successfullyWithdrawFood = Rs2Bank.withdrawDeficit(config.food().getName(), config.foodAmount(), true);
         if (!successfullyWithdrawFood) {
             Microbot.showMessage(config.food().getName() + " not found in bank. Shutting down");
             shutdown();

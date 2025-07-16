@@ -369,9 +369,7 @@ public class Rs2Bank {
 
     //hasBankItem overload to check with id and amount
     public static boolean hasBankItem(int id, int amount) {
-        Rs2ItemModel rs2Item = findBankItem(id);
-        if (rs2Item == null) return false;        
-        return findBankItem(Objects.requireNonNull(rs2Item).getName(), true, amount) != null;
+        return count(id) >= amount;
     }
 
     /**
@@ -503,6 +501,7 @@ public class Rs2Bank {
      * @param safe    will wait for item to appear in inventory before continuing if set to true
      */
     private static boolean handleAmount(Rs2ItemModel rs2Item, int amount, boolean safe) {
+        if (amount <= 0) return true;
         int selected = Microbot.getVarbitValue(SELECTED_OPTION_VARBIT);
         int configuredX = Microbot.getVarbitValue(X_AMOUNT_VARBIT);
         boolean hasX = configuredX > 0;
@@ -905,6 +904,12 @@ public class Rs2Bank {
         return withdrawX(id, deficit);
     }
 
+    public static boolean withdrawDeficit(String name, int requiredAmount, boolean exact) {
+        final int deficit = requiredAmount - Rs2Inventory.itemQuantity(name);
+        if (deficit <= 0) return true;
+        return hasBankItem(name, deficit, exact) && withdrawX(name, deficit, exact);
+    }
+
     /**
      * Withdraws the deficit of an item from the bank to meet the required amount.
      *
@@ -913,13 +918,7 @@ public class Rs2Bank {
      * @return True if any items were withdrawn, false otherwise.
      */
     public static boolean withdrawDeficit(String name, int requiredAmount) {
-        int currentAmount = Rs2Inventory.itemQuantity(name);
-        int deficit = requiredAmount - currentAmount;
-
-        if (deficit <= 0) return true;
-        if (!hasBankItem(name, deficit)) return false;
-
-        return withdrawX(name, deficit);
+        return withdrawDeficit(name, requiredAmount, false);
     }
 
     /**
