@@ -21,6 +21,7 @@ public class MicrobotClickOverlay extends Overlay {
         setPosition(OverlayPosition.DYNAMIC);
         setLayer(OverlayLayer.ABOVE_WIDGETS);
         setPriority(Overlay.PRIORITY_LOW);
+        setNaughty();
     }
 
     @Override
