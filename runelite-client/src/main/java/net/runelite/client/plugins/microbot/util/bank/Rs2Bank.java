@@ -128,23 +128,12 @@ public class Rs2Bank {
     }
 
     /**
-     * Closes the bank interface if it is open.
+     * Checks whether the bank interface is open.
      *
-     * @return true if the bank interface was open and successfully closed, false otherwise.
+     * @return {@code true} if the bank interface is open, {@code false} otherwise.
      */
     public static boolean isOpen() {
-        if (isBankPinWidgetVisible()) {
-            try {
-                if ((Login.activeProfile.getBankPin() == null || Login.activeProfile.getBankPin().isEmpty()) || Login.activeProfile.getBankPin().equalsIgnoreCase("**bankpin**")) {
-                    return false;
-                }
-                handleBankPin(Encryption.decrypt(Login.activeProfile.getBankPin()));
-            } catch (Exception e) {
-                System.out.println("Something went wrong handling bankpin ");
-                e.printStackTrace();
-            }
-            return false;
-        }
+        if (!handleBankPin()) return false;
         return Rs2Widget.hasWidgetText("Rearrange mode", 12, 18, false);
     }
 
@@ -1897,10 +1886,6 @@ public class Rs2Bank {
         return !rs2BankData.isEmpty();
     }
 
-    private static final String[] DIGIT_INSTRUCTIONS = {
-        "FIRST digit", "SECOND digit", "THIRD digit", "FOURTH digit"
-    };
-
     /**
      * Handle bank pin boolean.
      *
@@ -1909,13 +1894,16 @@ public class Rs2Bank {
      * @return the boolean
      */
     public static boolean handleBankPin(String pin) {
+        if (!isBankPinWidgetVisible()) return true;
+
+        final String[] DIGIT_INSTRUCTIONS = {"FIRST digit", "SECOND digit", "THIRD digit", "FOURTH digit"};
         if (pin == null || pin.length() != DIGIT_INSTRUCTIONS.length || !pin.matches("\\d+")) {
             Microbot.log("Unable to enter bankpin with value " + pin);
             return false;
         }
 
 		synchronized(Rs2Bank.class) {
-			if (isBankPinWidgetVisible()) return false;
+            if (!isBankPinWidgetVisible()) return true;
             for (int i = 0; i < pin.length(); i++) {
                 final char c = pin.charAt(i);
                 final String expectedInstruction = DIGIT_INSTRUCTIONS[i];
@@ -1934,6 +1922,18 @@ public class Rs2Bank {
             }
             return true;
 		}
+    }
+
+    public static boolean handleBankPin() {
+        final String encryptedBankPin = Login.activeProfile.getBankPin();
+        if (encryptedBankPin == null || encryptedBankPin.isBlank() || encryptedBankPin.equalsIgnoreCase("**bankpin**"))
+            return !isBankPinWidgetVisible();
+        try {
+            return handleBankPin(Encryption.decrypt(Login.activeProfile.getBankPin()));
+        } catch (Exception ex) {
+            log.error("Error handling Bank Pin", ex);
+            return false;
+        }
     }
 
     public static boolean isBankPinWidgetVisible() {
