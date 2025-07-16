@@ -48,7 +48,7 @@ public class ConstructionScript extends Script {
         return Rs2Npc.getNpc("Demon butler");
     }
 
-    public NPC getPhials() {
+    public Rs2NpcModel getPhials() {
         return Rs2Npc.getNpc("Phials");
     }
 
@@ -303,7 +303,7 @@ public class ConstructionScript extends Script {
     }
 
     private void butler() {
-        var butler = getButler();
+        Rs2NpcModel butler = getButler();
         boolean butlerIsTooFar;
         if (butler == null) return;
         butlerIsTooFar = Microbot.getClientThread().runOnClientThreadOptional(() -> {
