@@ -9,8 +9,6 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,7 +16,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Scanner;
-import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -37,7 +34,10 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.annotations.Component;
+import net.runelite.api.annotations.Varbit;
+import net.runelite.api.annotations.Varp;
 import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetModalMode;
 import net.runelite.client.Notifier;
@@ -66,7 +66,6 @@ import net.runelite.client.plugins.microbot.qualityoflife.scripts.pouch.PouchScr
 import static net.runelite.client.plugins.microbot.util.Global.sleep;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntilNotNull;
-import static net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject.get;
 
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.item.Rs2ItemManager;
@@ -166,7 +165,7 @@ public class Microbot {
 	private static ScheduledFuture<?> xpSchedulorFuture;
 	private static net.runelite.api.World quickHopTargetWorld;
 	/**
-	 * Pouchscript is injected in the main MicrobotPlugin as it's being used in multiple scripts
+	 * PouchScript is injected in the main MicrobotPlugin as it's being used in multiple scripts
 	 */
 	@Getter
 	@Inject
@@ -194,7 +193,7 @@ public class Microbot {
 	/**
 	 * Get the total runtime of the script
 	 *
-	 * @return
+	 * @return the {@link Duration} the account has been logged in
 	 */
 	public static Duration getLoginTime()
 	{
@@ -220,12 +219,12 @@ public class Microbot {
 			getInputArguments().toString().contains("-agentlib:jdwp");
 	}
 
-	public static int getVarbitValue(int varbit)
+	public static int getVarbitValue(@Varbit int varbit)
 	{
 		return getClientThread().runOnClientThreadOptional(() -> getClient().getVarbitValue(varbit)).orElse(0);
 	}
 
-	public static int getVarbitPlayerValue(int varpId)
+	public static int getVarbitPlayerValue(@Varp int varpId)
 	{
 		return getClientThread().runOnClientThreadOptional(() -> getClient().getVarpValue(varpId)).orElse(0);
 	}
@@ -360,8 +359,7 @@ public class Microbot {
 		}
 		catch (Exception ex)
 		{
-			log.error("Error displaying message {}: {}", message, ex.getMessage(), ex);
-			ex.printStackTrace();
+			log.error("Error displaying message {}:", message, ex);
 		}
 	}
 
@@ -388,8 +386,7 @@ public class Microbot {
 		}
 		catch (Exception ex)
 		{
-			log.error("Error displaying message {}: {}", message, ex.getMessage(), ex);
-			ex.printStackTrace();
+			log.error("Error displaying message {}:", message, ex);
 		}
 	}
 
@@ -422,6 +419,7 @@ public class Microbot {
 	}
 
 	@SneakyThrows
+	@SuppressWarnings("SpellCheckingInspection")
 	private static boolean togglePlugin(Plugin plugin, boolean enable) {
 		if (plugin == null) return false;
 		final AtomicBoolean success = new AtomicBoolean(false);
@@ -434,9 +432,8 @@ public class Microbot {
 				} else {
 					success.set(getPluginManager().stopPlugin(plugin));
 				}
-			} catch (PluginInstantiationException e) {
-				log.error("Error toggling plugin {} ({}): {}", success.get() ? "on" : "off", plugin.getClass().getSimpleName(), e.getMessage(), e);
-				e.printStackTrace();
+			} catch (PluginInstantiationException ex) {
+				log.error("Error {}abling plugin ({}):", enable ? "en" : "dis", plugin.getClass().getSimpleName(), ex);
 			}
 		};
 
@@ -520,9 +517,9 @@ public class Microbot {
 				click(new Rectangle(1, 1), entry);
 			}
 		}
-		catch (ArrayIndexOutOfBoundsException e)
+		catch (ArrayIndexOutOfBoundsException ex)
 		{
-			e.printStackTrace();
+			log.error("Error during doInvoke", ex);
 			// Handle the error as needed
 		}
 	}
@@ -627,12 +624,12 @@ public class Microbot {
 	/**
 	 * Logs the stack trace of an exception to the console and chat.
 	 *
-	 * @param scriptName
-	 * @param e
+	 * @param scriptName the name of the script where the exception occurred
+	 * @param ex the exception
 	 */
-	public static void logStackTrace(String scriptName, Exception e)
+	public static void logStackTrace(String scriptName, Exception ex)
 	{
-		log(scriptName, Level.ERROR, e);
+		log(scriptName, Level.ERROR, ex);
 	}
 
 	public static void log(String message)
@@ -724,7 +721,7 @@ public class Microbot {
 
 			// Schedule a task to check the widget's state and close the interface if necessary
 			getClientThread().invokeLater(() -> {
-				Widget w = getClient().getWidget(660, 1);
+				Widget w = getClient().getWidget(InterfaceID.NOTIFICATION_DISPLAY, 1);
 				if (w == null || w.getWidth() > 0)
 				{
 					return false; // Exit if the widget is null or already displayed
@@ -807,8 +804,7 @@ public class Microbot {
 			}
 			catch (Exception ex)
 			{
-				ex.printStackTrace();
-				System.out.println(ex.getMessage());
+				log.error("Error while checking should download vanilla client:", ex);
 			}
 		}
 		return false;
@@ -879,9 +875,9 @@ public class Microbot {
 						{
 							return (Script) field.get(x); // Map the field to a Script instance
 						}
-						catch (IllegalAccessException e)
+						catch (IllegalAccessException ex)
 						{
-							e.printStackTrace();
+							log.error("Error getting active scripts", ex);
 							return null; // Handle exception if field cannot be accessed
 						}
 					});
