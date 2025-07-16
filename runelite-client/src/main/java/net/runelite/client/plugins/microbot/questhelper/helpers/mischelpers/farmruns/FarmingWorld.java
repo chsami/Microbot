@@ -264,9 +264,6 @@ public class FarmingWorld
 				NpcID.FRANCIS)
 		), 11316);
 
-		/*
-			Needs Polygon to be set, otherwise the patch will not be detected
-		 */
 		add(new FarmingRegion("Etceteria", 10300, false,
 			new FarmingPatch("", VarbitID.FARMING_TRANSMIT_A, PatchImplementation.BUSH, new WorldPoint(2592, 3862, 0),
 				new Polygon(
