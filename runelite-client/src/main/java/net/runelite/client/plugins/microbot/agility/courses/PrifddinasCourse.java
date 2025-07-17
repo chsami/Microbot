@@ -27,7 +27,7 @@ public class PrifddinasCourse implements AgilityCourseHandler
 		ObjectID.PRIF_AGILITY_SHORTCUT_PORTAL_6
 	);
 
-	private final WorldArea prifFallArea = new WorldArea(3260, 6103, 15, 17, 0);
+	private final WorldArea prifFallArea = new WorldArea(3260, 6103, 15, 9, 0);
 
 	@Override
 	public WorldPoint getStartPoint()
