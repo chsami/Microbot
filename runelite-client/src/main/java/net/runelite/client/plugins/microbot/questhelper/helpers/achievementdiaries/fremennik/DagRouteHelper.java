@@ -24,92 +24,100 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.achievementdiaries.fremennik;
 
-
-import net.runelite.api.ItemID;
-import net.runelite.api.Prayer;
-import net.runelite.api.QuestState;
-import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
-import net.runelite.client.plugins.microbot.questhelper.requirements.player.PrayerRequirement;
-import net.runelite.client.plugins.microbot.questhelper.requirements.quest.QuestRequirement;
-import net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep;
-import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.client.plugins.microbot.questhelper.bank.banktab.BankSlotIcons;
 import net.runelite.client.plugins.microbot.questhelper.collections.ItemCollections;
 import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.ComplexStateQuestHelper;
+import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.player.PrayerRequirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.quest.QuestRequirement;
+import net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import net.runelite.api.Prayer;
+import net.runelite.api.QuestState;
+import net.runelite.api.gameval.ItemID;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class DagRouteHelper extends ComplexStateQuestHelper {
-    ItemRequirement combatGear, food, prayerPot, petRock, thrownaxe, stamPot;
+public class DagRouteHelper extends ComplexStateQuestHelper
+{
+	ItemRequirement combatGear, food, prayerPot, petRock, thrownaxe, stamPot;
 
-    Requirement protectMelee;
+	Requirement protectMelee;
 
-    DagRoute dagRoute;
+	DagRoute dagRoute;
 
-    @Override
-    public QuestStep loadStep() {
-        initializeRequirements();
-        setupSteps();
+	@Override
+	public QuestStep loadStep()
+	{
+		initializeRequirements();
+		setupSteps();
 
-        return new ConditionalStep(this, dagRoute);
-    }
+		return new ConditionalStep(this, dagRoute);
+	}
 
-    @Override
-    protected void setupRequirements() {
-        thrownaxe = new ItemRequirement("Rune thrownaxe", ItemID.RUNE_THROWNAXE);
-        petRock = new ItemRequirement("Pet rock", ItemID.PET_ROCK);
-        petRock.setTooltip("Can be substituted by having a friend");
+	@Override
+	protected void setupRequirements()
+	{
+		thrownaxe = new ItemRequirement("Rune thrownaxe", ItemID.RUNE_THROWNAXE);
+		petRock = new ItemRequirement("Pet rock", ItemID.VT_USELESS_ROCK);
+		petRock.setTooltip("Can be substituted by having a friend");
 
-        combatGear = new ItemRequirement("Combat gear", -1, -1);
-        combatGear.setDisplayItemId(BankSlotIcons.getCombatGear());
+		combatGear = new ItemRequirement("Combat gear", -1, -1);
+		combatGear.setDisplayItemId(BankSlotIcons.getCombatGear());
 
-        food = new ItemRequirement("Food", ItemCollections.GOOD_EATING_FOOD, -1);
-        prayerPot = new ItemRequirement("Prayer Potions", ItemCollections.PRAYER_POTIONS, -1);
-        stamPot = new ItemRequirement("Stamina Potions", ItemCollections.STAMINA_POTIONS, -1);
+		food = new ItemRequirement("Food", ItemCollections.GOOD_EATING_FOOD, -1);
+		prayerPot = new ItemRequirement("Prayer Potions", ItemCollections.PRAYER_POTIONS, -1);
+		stamPot = new ItemRequirement("Stamina Potions", ItemCollections.STAMINA_POTIONS, -1);
 
-        protectMelee = new PrayerRequirement("Protect from Melee", Prayer.PROTECT_FROM_MELEE);
-    }
+		protectMelee = new PrayerRequirement("Protect from Melee", Prayer.PROTECT_FROM_MELEE);
+	}
 
-    public void setupSteps() {
-        dagRoute = new DagRoute(this);
-    }
+	public void setupSteps()
+	{
+		dagRoute = new DagRoute(this);
+	}
 
 
-    @Override
-    public List<ItemRequirement> getItemRequirements() {
-        return Arrays.asList(petRock, thrownaxe, combatGear);
-    }
+	@Override
+	public List<ItemRequirement> getItemRequirements()
+	{
+		return Arrays.asList(petRock, thrownaxe, combatGear);
+	}
 
-    @Override
-    public List<ItemRequirement> getItemRecommended() {
-        return Arrays.asList(food, prayerPot, stamPot);
-    }
+	@Override
+	public List<ItemRequirement> getItemRecommended()
+	{
+		return Arrays.asList(food, prayerPot, stamPot);
+	}
 
-    @Override
-    public List<String> getCombatRequirements() {
-        return Collections.singletonList("Tank many hits in the Waterbirth Island Dungeon");
-    }
+	@Override
+	public List<String> getCombatRequirements()
+	{
+		return Collections.singletonList("Tank many hits in the Waterbirth Island Dungeon");
+	}
 
-    @Override
-    public List<Requirement> getGeneralRequirements() {
-        ArrayList<Requirement> reqs = new ArrayList<>();
-        reqs.add(new QuestRequirement(QuestHelperQuest.HORROR_FROM_THE_DEEP, QuestState.FINISHED));
-        reqs.add(new QuestRequirement(QuestHelperQuest.THE_FREMENNIK_TRIALS, QuestState.IN_PROGRESS));
-        return reqs;
-    }
+	@Override
+	public List<Requirement> getGeneralRequirements()
+	{
+		ArrayList<Requirement> reqs = new ArrayList<>();
+		reqs.add(new QuestRequirement(QuestHelperQuest.HORROR_FROM_THE_DEEP, QuestState.FINISHED));
+		reqs.add(new QuestRequirement(QuestHelperQuest.THE_FREMENNIK_TRIALS, QuestState.IN_PROGRESS));
+		return reqs;
+	}
 
-    @Override
-    public List<PanelDetails> getPanels() {
-        List<PanelDetails> allSteps = new ArrayList<>();
-        PanelDetails fullRoute = new PanelDetails("Travel to the Kings", dagRoute.getDisplaySteps(),
-                combatGear, thrownaxe, petRock);
-        allSteps.add(fullRoute);
-        return allSteps;
-    }
+	@Override
+	public List<PanelDetails> getPanels()
+	{
+		List<PanelDetails> allSteps = new ArrayList<>();
+		PanelDetails fullRoute = new PanelDetails("Travel to the Kings", dagRoute.getDisplaySteps(),
+			combatGear, thrownaxe, petRock);
+		allSteps.add(fullRoute);
+		return allSteps;
+	}
 }

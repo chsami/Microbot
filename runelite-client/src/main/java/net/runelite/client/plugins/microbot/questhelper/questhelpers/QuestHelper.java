@@ -28,12 +28,6 @@ import com.google.inject.Binder;
 import com.google.inject.CreationException;
 import com.google.inject.Injector;
 import com.google.inject.Module;
-import lombok.Getter;
-import lombok.Setter;
-import net.runelite.api.Client;
-import net.runelite.api.QuestState;
-import net.runelite.client.config.ConfigManager;
-import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.bank.QuestBank;
@@ -47,6 +41,12 @@ import net.runelite.client.plugins.microbot.questhelper.rewards.*;
 import net.runelite.client.plugins.microbot.questhelper.runeliteobjects.extendedruneliteobjects.RuneliteObjectManager;
 import net.runelite.client.plugins.microbot.questhelper.steps.OwnerStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import lombok.Getter;
+import lombok.Setter;
+import net.runelite.api.Client;
+import net.runelite.api.QuestState;
+import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.overlay.components.LineComponent;
 import net.runelite.client.ui.overlay.components.PanelComponent;
@@ -58,265 +58,328 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-public abstract class QuestHelper implements Module, QuestDebugRenderer {
-    @Inject
-    protected Client client;
+public abstract class QuestHelper implements Module, QuestDebugRenderer
+{
+	@Inject
+	protected Client client;
 
-    @Inject
-    @Getter
-    protected ConfigManager configManager;
+	@Inject
+	@Getter
+	protected ConfigManager configManager;
 
-    @Inject
-    protected RuneliteObjectManager runeliteObjectManager;
+	@Inject
+	protected RuneliteObjectManager runeliteObjectManager;
 
-    @Inject
-    protected QuestBank questBank;
+	@Inject
+	protected QuestBank questBank;
 
-    @Getter
-    @Setter
-    protected QuestHelperConfig config;
-    @Setter
-    @Getter
-    protected QuestHelperPlugin questHelperPlugin;
-    @Inject
-    private EventBus eventBus;
-    @Getter
-    private QuestStep currentStep;
-    @Getter
-    @Setter
-    private QuestHelperQuest quest;
-    @Setter
-    private Injector injector;
-    private boolean hasInitialized;
+	@Getter
+	@Setter
+	protected QuestHelperConfig config;
 
-    @Override
-    public void configure(Binder binder) {
-    }
+	@Inject
+	private EventBus eventBus;
 
-    public abstract void init();
+	@Getter
+	private QuestStep currentStep;
 
-    public abstract void startUp(QuestHelperConfig config);
+	@Getter
+	@Setter
+	private QuestHelperQuest quest;
 
-    public void shutDown() {
-        removeRuneliteObjects();
-    }
+	@Setter
+	private Injector injector;
 
-    public void removeRuneliteObjects() {
-        runeliteObjectManager.removeGroupAndSubgroups(toString());
-    }
+	@Setter
+	@Getter
+	protected QuestHelperPlugin questHelperPlugin;
 
-    public abstract boolean updateQuest();
+	private boolean hasInitialized;
 
-    public void debugStartup(QuestHelperConfig config) {
-    }
+	@Getter
+	@Setter
+	protected List<Integer> sidebarOrder;
 
-    protected void startUpStep(QuestStep step) {
-        if (step != null) {
-            currentStep = step;
-            currentStep.startUp();
-            eventBus.register(currentStep);
-        } else {
-            currentStep = null;
-        }
-    }
+	@Override
+	public void configure(Binder binder)
+	{
+	}
 
-    protected void shutDownStep() {
-        if (currentStep != null) {
-            eventBus.unregister(currentStep);
-            currentStep.shutDown();
-            currentStep = null;
-        }
-    }
+	public abstract void init();
 
-    protected void instantiateSteps(Collection<QuestStep> steps) {
-        for (QuestStep step : steps) {
-            instantiateStep(step);
-            if (step instanceof OwnerStep) {
-                instantiateSteps(((OwnerStep) step).getSteps());
-            }
-        }
-    }
+	public abstract void startUp(QuestHelperConfig config);
 
-    public void instantiateStep(QuestStep questStep) {
-        try {
-            if (questStep != null) {
-                injector.injectMembers(questStep);
-            }
-        } catch (CreationException ex) {
-            ex.printStackTrace();
-        }
-    }
+	public void shutDown()
+	{
+		removeRuneliteObjects();
+	}
 
-    public boolean isCompleted() {
-        return getState(client) == QuestState.FINISHED;
-    }
+	public void removeRuneliteObjects()
+	{
+		runeliteObjectManager.removeGroupAndSubgroups(toString());
+	}
 
-    public QuestState getState(Client client) {
-        return quest.getState(client, configManager);
-    }
+	public abstract boolean updateQuest();
 
-    public boolean clientMeetsRequirements() {
-        if (getGeneralRequirements() == null) {
-            return true;
-        }
+	public void debugStartup(QuestHelperConfig config)
+	{
+	}
 
-        return getGeneralRequirements().stream().filter(Objects::nonNull).allMatch(r ->
-                !r.shouldConsiderForFilter() || r.check(client));
-    }
+	protected void startUpStep(QuestStep step)
+	{
+		if (step != null)
+		{
+			currentStep = step;
+			currentStep.startUp();
+			eventBus.register(currentStep);
+		}
+		else
+		{
+			currentStep = null;
+		}
+	}
 
-    @Override
-    public void renderDebugOverlay(Graphics graphics, QuestHelperPlugin plugin, PanelComponent panelComponent) {
-        if (!plugin.isDeveloperMode()) {
-            return;
-        }
-        panelComponent.getChildren().add(LineComponent.builder()
-                .left("Quest")
-                .leftColor(ColorScheme.BRAND_ORANGE_TRANSPARENT)
-                .right("Var")
-                .rightColor(ColorScheme.BRAND_ORANGE_TRANSPARENT)
-                .build()
-        );
-        panelComponent.getChildren().add(LineComponent.builder()
-                .left(getQuest().getName())
-                .leftColor(getConfig().debugColor())
-                .right(getVar() + "")
-                .rightColor(getConfig().debugColor())
-                .build()
-        );
-    }
+	protected void shutDownStep()
+	{
+		if (currentStep != null)
+		{
+			eventBus.unregister(currentStep);
+			currentStep.shutDown();
+			currentStep = null;
+		}
+	}
 
-    public int getVar() {
-        return quest.getVar(client);
-    }
+	protected void instantiateSteps(Collection<QuestStep> steps)
+	{
+		for (QuestStep step : steps)
+		{
+			instantiateStep(step);
+			if (step instanceof OwnerStep)
+			{
+				instantiateSteps(((OwnerStep) step).getSteps());
+			}
+		}
+	}
 
-    public void makeWorldOverlayHint(Graphics2D graphics, QuestHelperPlugin plugin) {
+	public void instantiateStep(QuestStep questStep)
+	{
+		try
+		{
+			if (questStep != null)
+			{
+				injector.injectMembers(questStep);
+			}
+		}
+		catch (CreationException ex)
+		{
+			ex.printStackTrace();
+		}
+	}
 
-    }
+	public boolean isCompleted()
+	{
+		return getState(client) == QuestState.FINISHED;
+	}
 
-    protected void setupZones() {
+	public QuestState getState(Client client)
+	{
+		return quest.getState(client, configManager);
+	}
 
-    }
+	public boolean clientMeetsRequirements()
+	{
+		if (getGeneralRequirements() == null)
+		{
+			return true;
+		}
 
-    /**
-     * This method should not be called directly.
-     * It is used internally by {@link #initializeRequirements()}.
-     */
-    protected abstract void setupRequirements();
+		return getGeneralRequirements().stream().filter(Objects::nonNull).allMatch(r ->
+			!r.shouldConsiderForFilter() || r.check(client));
+	}
 
-    /**
-     * The expected interface to be used to initialize Quest Helper's Requirements
-     */
-    public void initializeRequirements() {
-        if (hasInitialized) {
-            return;
-        }
-        setupZones();
-        setupRequirements();
-        hasInitialized = true;
-    }
+	@Override
+	public void renderDebugOverlay(Graphics graphics, QuestHelperPlugin plugin, PanelComponent panelComponent)
+	{
+		if (!plugin.isDeveloperMode())
+		{
+			return;
+		}
+		panelComponent.getChildren().add(LineComponent.builder()
+			.left("Quest")
+			.leftColor(ColorScheme.BRAND_ORANGE_TRANSPARENT)
+			.right("Var")
+			.rightColor(ColorScheme.BRAND_ORANGE_TRANSPARENT)
+			.build()
+		);
+		panelComponent.getChildren().add(LineComponent.builder()
+			.left(getQuest().getName())
+			.leftColor(getConfig().debugColor())
+			.right(getVar() + "")
+			.rightColor(getConfig().debugColor())
+			.build()
+		);
+	}
 
-    public List<ItemRequirement> getItemRequirements() {
-        return null;
-    }
+	public int getVar()
+	{
+		return quest.getVar(client);
+	}
 
-    public List<Requirement> getGeneralRequirements() {
-        return null;
-    }
+	public void makeWorldOverlayHint(Graphics2D graphics, QuestHelperPlugin plugin)
+	{
 
-    public List<ItemRequirement> getItemRecommended() {
-        return null;
-    }
+	}
 
-    public List<Requirement> getGeneralRecommended() {
-        return null;
-    }
+	protected void setupZones()
+	{
 
-    public List<String> getCombatRequirements() {
-        return null;
-    }
+	}
 
-    public List<String> getNotes() {
-        return null;
-    }
+	/**
+	 * This method should not be called directly.
+	 * It is used internally by {@link #initializeRequirements()}.
+	 */
+	protected abstract void setupRequirements();
 
-    public QuestPointReward getQuestPointReward() {
-        return null;
-    }
+	/**
+	 * The expected interface to be used to initialize Quest Helper's Requirements
+	 *
+	 */
+	public void initializeRequirements()
+	{
+		if (hasInitialized)
+		{
+			return;
+		}
+		setupZones();
+		setupRequirements();
+		hasInitialized = true;
+	}
 
-    public List<ItemReward> getItemRewards() {
-        return null;
-    }
+	public List<ItemRequirement> getItemRequirements()
+	{
+		return null;
+	}
 
-    public List<ExperienceReward> getExperienceRewards() {
-        return null;
-    }
+	public List<Requirement> getGeneralRequirements()
+	{
+		return null;
+	}
 
-    public List<UnlockReward> getUnlockRewards() {
-        return null;
-    }
+	public List<ItemRequirement> getItemRecommended()
+	{
+		return null;
+	}
 
-    /**
-     * @return a list of all the quest's rewards
-     */
-    public List<Reward> getQuestRewards() {
-        var rewards = new ArrayList<Reward>();
+	public List<Requirement> getGeneralRecommended()
+	{
+		return null;
+	}
 
-        if (getQuestPointReward() != null) {
-            rewards.add(getQuestPointReward());
-        }
+	public List<String> getCombatRequirements()
+	{
+		return null;
+	}
 
-        if (getExperienceRewards() != null) {
-            rewards.addAll(getExperienceRewards());
-        }
+	public List<String> getNotes()
+	{
+		return null;
+	}
 
-        if (getItemRewards() != null) {
-            rewards.addAll(getItemRewards());
-        }
+	public QuestPointReward getQuestPointReward()
+	{
+		return null;
+	}
 
-        if (getUnlockRewards() != null) {
-            rewards.addAll(getUnlockRewards());
-        }
+	public List<ItemReward> getItemRewards()
+	{
+		return null;
+	}
 
-        return rewards;
-    }
+	public List<ExperienceReward> getExperienceRewards()
+	{
+		return null;
+	}
 
-    public List<String> getQuestRewardsText() {
-        List<String> rewards = new ArrayList<>();
+	public List<UnlockReward> getUnlockRewards()
+	{
+		return null;
+	}
 
-        QuestPointReward questPointReward = getQuestPointReward();
-        if (questPointReward != null) {
-            rewards.add(questPointReward.getDisplayText());
-            rewards.add("\n");
-        }
+	/**
+	 * @return a list of all the quest's rewards
+	 */
+	public List<Reward> getQuestRewards()
+	{
+		var rewards = new ArrayList<Reward>();
 
-        List<ItemReward> itemRewards = getItemRewards();
-        if (itemRewards != null) {
-            itemRewards.forEach((itemReward -> rewards.add(itemReward.getDisplayText())));
-            rewards.add("</br>");
-        }
+		if (getQuestPointReward() != null)
+		{
+			rewards.add(getQuestPointReward());
+		}
 
-        List<ExperienceReward> experienceReward = getExperienceRewards();
-        if (experienceReward != null) {
-            experienceReward.forEach((expReward -> rewards.add(expReward.getDisplayText())));
-            rewards.add("</br>");
-        }
+		if (getExperienceRewards() != null)
+		{
+			rewards.addAll(getExperienceRewards());
+		}
 
-        List<UnlockReward> unlockRewards = getUnlockRewards();
-        if (unlockRewards != null) {
-            unlockRewards.forEach((unlockReward -> rewards.add(unlockReward.getDisplayText())));
-            rewards.add("</br>");
-        }
+		if (getItemRewards() != null)
+		{
+			rewards.addAll(getItemRewards());
+		}
 
-        return rewards;
-    }
+		if (getUnlockRewards() != null)
+		{
+			rewards.addAll(getUnlockRewards());
+		}
 
-    public List<ExternalQuestResources> getExternalResources() {
-        return null;
-    }
+		return rewards;
+	}
 
-    public List<HelperConfig> getConfigs() {
-        return null;
-    }
+	public List<String> getQuestRewardsText()
+	{
+		List<String> rewards = new ArrayList<>();
 
-    public abstract List<PanelDetails> getPanels();
+		QuestPointReward questPointReward = getQuestPointReward();
+		if (questPointReward != null)
+		{
+			rewards.add(questPointReward.getDisplayText());
+			rewards.add("\n");
+		}
+
+		List<ItemReward> itemRewards = getItemRewards();
+		if (itemRewards != null)
+		{
+			itemRewards.forEach((itemReward -> rewards.add(itemReward.getDisplayText())));
+			rewards.add("</br>");
+		}
+
+		List<ExperienceReward> experienceReward = getExperienceRewards();
+		if (experienceReward != null)
+		{
+			experienceReward.forEach((expReward -> rewards.add(expReward.getDisplayText())));
+			rewards.add("</br>");
+		}
+
+		List<UnlockReward> unlockRewards = getUnlockRewards();
+		if (unlockRewards != null)
+		{
+			unlockRewards.forEach((unlockReward -> rewards.add(unlockReward.getDisplayText())));
+			rewards.add("</br>");
+		}
+
+		return rewards;
+	}
+
+	public List<ExternalQuestResources> getExternalResources()
+	{
+		return null;
+	}
+
+	public List<HelperConfig> getConfigs()
+	{
+		return null;
+	}
+
+	public abstract List<PanelDetails> getPanels();
 }

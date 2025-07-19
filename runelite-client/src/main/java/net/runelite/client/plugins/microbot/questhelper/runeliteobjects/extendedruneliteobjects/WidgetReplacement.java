@@ -24,23 +24,24 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.runeliteobjects.extendedruneliteobjects;
 
-
-import lombok.Getter;
 import net.runelite.client.plugins.microbot.questhelper.steps.widget.WidgetDetails;
+import lombok.Getter;
 
-public class WidgetReplacement {
-    @Getter
-    private final WidgetDetails widgetDetails;
-    @Getter
-    private final String textToReplace;
-    @Getter
-    private final String replacementText;
+public class WidgetReplacement
+{
+	@Getter
+	private final WidgetDetails widgetDetails;
+	@Getter
+	private final String textToReplace;
+	@Getter
+	private final String replacementText;
 
 //	Requirement requirement;
 
-    public WidgetReplacement(WidgetDetails widgetDetails, String textToReplace, String replacementText) {
-        this.widgetDetails = widgetDetails;
-        this.textToReplace = textToReplace;
-        this.replacementText = replacementText;
-    }
+	public WidgetReplacement(WidgetDetails widgetDetails, String textToReplace, String replacementText)
+	{
+		this.widgetDetails = widgetDetails;
+		this.textToReplace = textToReplace;
+		this.replacementText = replacementText;
+	}
 }

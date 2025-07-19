@@ -30,19 +30,22 @@ import net.runelite.api.MenuEntry;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
-public class LoopedAction extends Action {
-    @Getter
-    AtomicInteger ticksBetweenActions;
+public class LoopedAction extends Action
+{
+	@Getter
+	AtomicInteger ticksBetweenActions;
 
 
-    public LoopedAction(Consumer<MenuEntry> action, AtomicInteger ticksBetweenActions) {
-        super(action);
-        this.ticksBetweenActions = ticksBetweenActions;
-    }
+	public LoopedAction(Consumer<MenuEntry> action, AtomicInteger ticksBetweenActions)
+	{
+		super(action);
+		this.ticksBetweenActions = ticksBetweenActions;
+	}
 
-    @Override
-    protected Consumer<MenuEntry> createEndAction() {
-        return (menuEntry -> {
-        });
-    }
+	@Override
+	protected Consumer<MenuEntry> createEndAction()
+	{
+		return (menuEntry -> {
+		});
+	}
 }

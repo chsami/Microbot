@@ -24,12 +24,11 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.panel;
 
-
-import lombok.Getter;
-import net.runelite.api.QuestState;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.tools.Icon;
+import lombok.Getter;
+import net.runelite.api.QuestState;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 
@@ -38,49 +37,55 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class QuestSelectPanel extends JPanel {
-    private static final ImageIcon START_ICON = Icon.START.getIcon();
-    @Getter
-    private final List<String> keywords = new ArrayList<>();
-    @Getter
-    private final QuestHelper questHelper;
+public class QuestSelectPanel extends JPanel
+{
+	@Getter
+	private final List<String> keywords = new ArrayList<>();
 
-    public QuestSelectPanel(QuestHelperPlugin questHelperPlugin, QuestHelperPanel questHelperPanel, QuestHelper questHelper, QuestState questState) {
-        this.questHelper = questHelper;
+	@Getter
+	private final QuestHelper questHelper;
 
-        keywords.addAll(questHelper.getQuest().getKeywords());
+	private static final ImageIcon START_ICON = Icon.START.getIcon();
 
-        setLayout(new BorderLayout(3, 0));
-        setPreferredSize(new Dimension(PluginPanel.PANEL_WIDTH, 20));
+	public QuestSelectPanel(QuestHelperPlugin questHelperPlugin, QuestHelperPanel questHelperPanel, QuestHelper questHelper, QuestState questState)
+	{
+		this.questHelper = questHelper;
 
-        JLabel nameLabel = JGenerator.makeJLabel(questHelper.getQuest().getName());
-        Color color = questState == QuestState.FINISHED ? questHelperPlugin.getConfig().passColour() : (questState == QuestState.IN_PROGRESS ?
-                new Color(240, 207, 123) : Color.WHITE);
-        nameLabel.setForeground(color);
-        add(nameLabel, BorderLayout.CENTER);
+		keywords.addAll(questHelper.getQuest().getKeywords());
 
-        if (questState != QuestState.FINISHED) {
-            JButton startButton = new JButton();
-            startButton.setIcon(START_ICON);
-            startButton.addActionListener(e ->
-            {
-                questHelperPanel.setSelectedQuest(questHelper);
-                questHelperPanel.emptyBar();
-            });
-            add(startButton, BorderLayout.LINE_END);
-        }
-    }
+		setLayout(new BorderLayout(3, 0));
+		setPreferredSize(new Dimension(PluginPanel.PANEL_WIDTH, 20));
 
-    public QuestSelectPanel(String text) {
-        this.questHelper = null;
+		JLabel nameLabel = JGenerator.makeJLabel(questHelper.getQuest().getName());
+		Color color = questState == QuestState.FINISHED ? questHelperPlugin.getConfig().passColour() : (questState == QuestState.IN_PROGRESS ?
+			new Color(240,207, 123) : Color.WHITE);
+		nameLabel.setForeground(color);
+		add(nameLabel, BorderLayout.CENTER);
 
-        setLayout(new BorderLayout(3, 3));
-        setPreferredSize(new Dimension(PluginPanel.PANEL_WIDTH, 30));
-        setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		if (questState != QuestState.FINISHED)
+		{
+			JButton startButton = new JButton();
+			startButton.setIcon(START_ICON);
+			startButton.addActionListener(e ->
+			{
+				questHelperPanel.setSelectedQuest(questHelper);
+				questHelperPanel.emptyBar();
+			});
+			add(startButton, BorderLayout.LINE_END);
+		}
+	}
 
-        JLabel nameLabel = JGenerator.makeJLabel(text);
-        Color color = Color.WHITE;
-        nameLabel.setForeground(color);
-        add(nameLabel, BorderLayout.CENTER);
-    }
+	public QuestSelectPanel(String text)
+	{
+		this.questHelper = null;
+
+		setLayout(new BorderLayout(3, 3));
+		setPreferredSize(new Dimension(PluginPanel.PANEL_WIDTH, 30));
+		setBackground(ColorScheme.DARKER_GRAY_COLOR);
+
+		JLabel nameLabel = JGenerator.makeJLabel(text);
+		Color color = Color.WHITE;
+		nameLabel.setForeground(color);
+		add(nameLabel, BorderLayout.CENTER);
+	}
 }

@@ -24,40 +24,46 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.recipefordisaster;
 
-
-import net.runelite.api.NpcID;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.GameTick;
-import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
+import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.client.eventbus.Subscribe;
 
 import java.util.Collections;
 
-public class GetRohakDrunk extends NpcStep {
-    ItemRequirement asgoldianAle;
+public class GetRohakDrunk extends NpcStep
+{
+	ItemRequirement asgoldianAle;
 
-    public GetRohakDrunk(QuestHelper questHelper, ItemRequirement asgoldianAle4) {
-        super(questHelper, NpcID.AN_OLD_DWARF, new WorldPoint(2865, 9877, 0), "Keep giving the dwarf drinks until " +
-                "he's drunk.", asgoldianAle4);
-        addAlternateNpcs(NpcID.ROHAK, NpcID.ROHAK_4812);
-        asgoldianAle = asgoldianAle4;
-    }
+	public GetRohakDrunk(QuestHelper questHelper, ItemRequirement asgoldianAle4)
+	{
+		super(questHelper, NpcID.HUNDRED_DWARF_DAD, new WorldPoint(2865, 9877, 0), "Keep giving the dwarf drinks until " +
+			"he's drunk.", asgoldianAle4);
+		addAlternateNpcs(NpcID.HUNDRED_DWARF_DAD_ROHAK, NpcID.HUNDRED_DWARF_DAD_DRUNK);
+		asgoldianAle = asgoldianAle4;
+	}
 
-    @Subscribe
-    public void onGameTick(GameTick event) {
-        updateSteps();
-    }
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		updateSteps();
+	}
 
-    protected void updateSteps() {
-        int numAle = 4 - client.getVarbitValue(1893);
-        asgoldianAle.setQuantity(numAle);
-        if (numAle == 0) {
-            emptyRequirements();
-        } else {
-            this.setRequirements(Collections.singletonList(asgoldianAle));
-        }
-        this.setText("Keep talking to the dwarf until he's drunk and agrees to make the rock cake.");
-    }
+	protected void updateSteps()
+	{
+		int numAle = 4 - client.getVarbitValue(1893);
+		asgoldianAle.setQuantity(numAle);
+		if (numAle == 0)
+		{
+			emptyRequirements();
+		}
+		else
+		{
+			this.setRequirements(Collections.singletonList(asgoldianAle));
+		}
+		this.setText("Keep talking to the dwarf until he's drunk and agrees to make the rock cake.");
+	}
 }

@@ -32,39 +32,47 @@ import java.util.Arrays;
 import java.util.List;
 
 @Data
-class QuestBankData {
-    int[] idAndQuantity;
+class QuestBankData
+{
+	int[] idAndQuantity;
 
-    QuestBankData() {
-        idAndQuantity = new int[0];
-    }
+	QuestBankData()
+	{
+		idAndQuantity = new int[0];
+	}
 
-    void set(List<Item> items) {
-        int[] newIdAndQuantity = new int[(items.size() + 1) * 2];
-        for (int i = 0; i < items.size(); i++) {
-            Item item = items.get(i);
-            newIdAndQuantity[i * 2] = item.getId();
-            newIdAndQuantity[(i * 2) + 1] = item.getQuantity();
-        }
-        idAndQuantity = newIdAndQuantity;
-    }
+	void set(List<Item> items)
+	{
+		int[] newIdAndQuantity = new int[(items.size() + 1) * 2];
+		for (int i = 0; i < items.size(); i++)
+		{
+			Item item = items.get(i);
+			newIdAndQuantity[i*2] = item.getId();
+			newIdAndQuantity[(i*2)+1] = item.getQuantity();
+		}
+		idAndQuantity = newIdAndQuantity;
+	}
 
-    void set(Item[] items) {
-        set(Arrays.asList(items));
-    }
+	void set(Item[] items)
+	{
+		set(Arrays.asList(items));
+	}
 
-    void setEmpty() {
-        idAndQuantity = new int[0];
-    }
+	void setEmpty()
+	{
+		idAndQuantity = new int[0];
+	}
 
-    List<Item> getAsList() {
-        List<Item> items = new ArrayList<>();
+	List<Item> getAsList()
+	{
+		List<Item> items = new ArrayList<>();
 
-        if (idAndQuantity == null) return items;
+		if (idAndQuantity == null) return items;
 
-        for (int i = 0; i < idAndQuantity.length - 2; i += 2) {
-            items.add(new Item(idAndQuantity[i], idAndQuantity[i + 1]));
-        }
-        return items;
-    }
+		for (int i = 0; i < idAndQuantity.length - 2; i += 2)
+		{
+			items.add(new Item(idAndQuantity[i], idAndQuantity[i+1]));
+		}
+		return items;
+	}
 }

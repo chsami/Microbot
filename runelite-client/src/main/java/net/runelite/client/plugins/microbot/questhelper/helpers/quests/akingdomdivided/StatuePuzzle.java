@@ -24,190 +24,228 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.akingdomdivided;
 
-
-import net.runelite.api.ObjectID;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.GameTick;
-import net.runelite.api.widgets.Widget;
-import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.conditional.Conditions;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicType;
+import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarbitRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.ZoneRequirement;
 import net.runelite.client.plugins.microbot.questhelper.steps.DetailedOwnerStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
-import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
-import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarbitRequirement;
-import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.widgets.Widget;
+import net.runelite.client.eventbus.Subscribe;
 
 import java.util.*;
 
-public class StatuePuzzle extends DetailedOwnerStep {
-    DetailedQuestStep checkPanel, climbUpPillarLeglessFaun, climbDownLeglessFaun, moveShayzienStatue, moveHosidiusStatue,
-            moveLovakengjStatue, movePiscStatue, moveArceuusStatue, invalidState;
+public class StatuePuzzle extends DetailedOwnerStep
+{
+	DetailedQuestStep checkPanel, climbUpPillarLeglessFaun, climbDownLeglessFaun, moveShayzienStatue, moveHosidiusStatue,
+		moveLovakengjStatue, movePiscStatue, moveArceuusStatue, invalidState;
 
-    Zone leglessFaunF1;
+	Zone leglessFaunF1;
 
-    Requirement inLeglessFaunF1, statuesAllValid;
+	Requirement inLeglessFaunF1, statuesAllValid;
 
-    Requirement[] statueStates;
+	Requirement[] statueStates;
 
-    Boolean readOnce = false;
-    ArrayList<KourendCities> cityOrder;
-    HashMap<KourendCities, DetailedQuestStep> statueMap;
-
-
-    public StatuePuzzle(QuestHelper questHelper) {
-        super(questHelper, "Solve the statue puzzle.");
-    }
-
-    public enum KourendCities {
-        HOSIDIUS,
-        ARCEUUS,
-        SHAYZIEN,
-        LOVAKENGJ,
-        PISCARILIUS;
-
-        public int getPos() {
-            KourendCities[] cities = KourendCities.values();
-            for (int i = 0; i < cities.length; i++) {
-                if (cities[i] == this) {
-                    return i + 1;
-                }
-            }
-
-            return 0;
-        }
-    }
-
-    @Override
-    protected void updateSteps() {
-        if (!readOnce) {
-            if (inLeglessFaunF1.check(client)) {
-                startUpStep(checkPanel);
-            } else {
-                startUpStep(climbUpPillarLeglessFaun);
-            }
-        } else {
-            if (statuesAllValid != null && !statuesAllValid.check(client)) {
-                startUpStep(invalidState);
-            } else if (inLeglessFaunF1.check(client)) {
-                startUpStep(climbDownLeglessFaun);
-            } else {
-                // If conditional exists and
-                if (statueStates[0].check(client)) {
-                    startUpStep(statueMap.get(cityOrder.get(0)));
-                } else if (statueStates[1].check(client)) {
-                    startUpStep(statueMap.get(cityOrder.get(1)));
-                } else if (statueStates[2].check(client)) {
-                    startUpStep(statueMap.get(cityOrder.get(2)));
-                } else if (statueStates[3].check(client)) {
-                    startUpStep(statueMap.get(cityOrder.get(3)));
-                } else {
-                    startUpStep(statueMap.get(cityOrder.get(4)));
-                }
-            }
-        }
-    }
+	Boolean readOnce = false;
+	ArrayList<KourendCities> cityOrder;
+	HashMap<KourendCities, DetailedQuestStep> statueMap;
 
 
-    @Subscribe
-    public void onGameTick(GameTick event) {
-        Widget widgetPanel = client.getWidget(229, 1);
+	public enum KourendCities
+	{
+		HOSIDIUS,
+		ARCEUUS,
+		SHAYZIEN,
+		LOVAKENGJ,
+		PISCARILIUS;
 
-        if (widgetPanel != null && !widgetPanel.isHidden() && !readOnce) {
-            final String[] panelWords = widgetPanel
-                    .getText()
-                    .replaceAll("<br>", " ")
-                    .replaceAll(",", "")
-                    .split(" ");
+		public int getPos()
+		{
+			KourendCities[] cities = KourendCities.values();
+			for (int i = 0; i < cities.length; i++)
+			{
+				if (cities[i] == this)
+				{
+					return i + 1;
+				}
+			}
 
-            for (String word : panelWords) {
-                if (word.equalsIgnoreCase(KourendCities.SHAYZIEN.toString()) ||
-                        word.equalsIgnoreCase(KourendCities.PISCARILIUS.toString()) ||
-                        word.equalsIgnoreCase(KourendCities.HOSIDIUS.toString()) ||
-                        word.equalsIgnoreCase(KourendCities.LOVAKENGJ.toString()) ||
-                        word.equalsIgnoreCase(KourendCities.ARCEUUS.toString())
-                ) {
-                    cityOrder.add(KourendCities.valueOf(word.toUpperCase()));
-                }
-            }
+			return 0;
+		}
+	}
 
-            if (cityOrder.size() == 5) {
-                if (statueStates == null) {
-                    return;
-                }
-                readOnce = true;
+	public StatuePuzzle(QuestHelper questHelper)
+	{
+		super(questHelper, "Solve the statue puzzle.");
+	}
 
-                List<Requirement> validState = new ArrayList<>();
-                for (int i = 0; i < cityOrder.size() - 1; i++) {
-                    VarbitRequirement correctValue = new VarbitRequirement(12306 + i, cityOrder.get(i).getPos());
-                    validState.add(new Conditions(LogicType.OR, statueStates[i], correctValue));
-                }
+	@Override
+	protected void updateSteps()
+	{
+		if (!readOnce)
+		{
+			if (inLeglessFaunF1.check(client))
+			{
+				startUpStep(checkPanel);
+			}
+			else
+			{
+				startUpStep(climbUpPillarLeglessFaun);
+			}
+		}
+		else
+		{
+			if (statuesAllValid != null && !statuesAllValid.check(client))
+			{
+				startUpStep(invalidState);
+			}
+			else if (inLeglessFaunF1.check(client))
+			{
+				startUpStep(climbDownLeglessFaun);
+			}
+			else
+			{
+				// If conditional exists and
+				if (statueStates[0].check(client))
+				{
+					startUpStep(statueMap.get(cityOrder.get(0)));
+				}
+				else if (statueStates[1].check(client))
+				{
+					startUpStep(statueMap.get(cityOrder.get(1)));
+				}
+				else if (statueStates[2].check(client))
+				{
+					startUpStep(statueMap.get(cityOrder.get(2)));
+				}
+				else if (statueStates[3].check(client))
+				{
+					startUpStep(statueMap.get(cityOrder.get(3)));
+				}
+				else
+				{
+					startUpStep(statueMap.get(cityOrder.get(4)));
+				}
+			}
+		}
+	}
 
-                statuesAllValid = new Conditions(validState);
-            }
-        }
 
-        updateSteps();
-    }
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		Widget widgetPanel = client.getWidget(InterfaceID.Messagebox.TEXT);
 
-    protected void setupZones() {
-        leglessFaunF1 = new Zone(new WorldPoint(1766, 3686, 1), new WorldPoint(1773, 3679, 1));
-    }
+		if (widgetPanel != null && !widgetPanel.isHidden() && !readOnce)
+		{
+			final String[] panelWords = widgetPanel
+				.getText()
+				.replaceAll("<br>", " ")
+				.replaceAll(",", "")
+				.split(" ");
 
-    public void setupConditions() {
-        inLeglessFaunF1 = new ZoneRequirement(leglessFaunF1);
-        statueStates = new Requirement[]{
-                new VarbitRequirement(12306, 0),
-                new VarbitRequirement(12307, 0),
-                new VarbitRequirement(12308, 0),
-                new VarbitRequirement(12309, 0)
-        };
-    }
+			for (String word : panelWords)
+			{
+				if (word.equalsIgnoreCase(KourendCities.SHAYZIEN.toString()) ||
+					word.equalsIgnoreCase(KourendCities.PISCARILIUS.toString()) ||
+					word.equalsIgnoreCase(KourendCities.HOSIDIUS.toString()) ||
+					word.equalsIgnoreCase(KourendCities.LOVAKENGJ.toString()) ||
+					word.equalsIgnoreCase(KourendCities.ARCEUUS.toString())
+				)
+				{
+					cityOrder.add(KourendCities.valueOf(word.toUpperCase()));
+				}
+			}
 
-    @Override
-    protected void setupSteps() {
-        setupZones();
-        setupConditions();
+			if (cityOrder.size() == 5)
+			{
+				if (statueStates == null)
+				{
+					return;
+				}
+				readOnce = true;
 
-        cityOrder = new ArrayList<>();
-        statueMap = new HashMap<>();
+				List<Requirement> validState = new ArrayList<>();
+				for (int i = 0; i < cityOrder.size() - 1; i++)
+				{
+					VarbitRequirement correctValue = new VarbitRequirement(12306 + i, cityOrder.get(i).getPos());
+					validState.add(new Conditions(LogicType.OR, statueStates[i], correctValue));
+				}
 
-        checkPanel = new ObjectStep(getQuestHelper(), ObjectID.PANEL_41833, new WorldPoint(1768, 3686, 1), "Check the panel on the wall.");
-        climbUpPillarLeglessFaun = new ObjectStep(getQuestHelper(), ObjectID.PILLAR_41836, new WorldPoint(1772, 3680, 0), "Climb up the pillar west of Martin Holt.");
-        climbDownLeglessFaun = new ObjectStep(getQuestHelper(), ObjectID.WALL_41839, new WorldPoint(1772, 3679, 1), "Climb down the wall.");
+				statuesAllValid = new Conditions(validState);
+			}
+		}
 
-        moveArceuusStatue = new ObjectStep(getQuestHelper(), ObjectID.ARCEUUS_STATUE_41842, new WorldPoint(1777, 3686, 0), "Inspect the Arceuus statue.");
-        moveArceuusStatue.addDialogStep("Press it in.");
+		updateSteps();
+	}
 
-        movePiscStatue = new ObjectStep(getQuestHelper(), ObjectID.PISCARILIUS_STATUE_41848, new WorldPoint(1780, 3687, 0), "Inspect the Piscarilius statue.");
-        movePiscStatue.addDialogStep("Press it in.");
+	protected void setupZones()
+	{
+		leglessFaunF1 = new Zone(new WorldPoint(1766, 3686, 1), new WorldPoint(1773, 3679, 1));
+	}
 
-        moveHosidiusStatue = new ObjectStep(getQuestHelper(), ObjectID.HOSIDIUS_STATUE_41844, new WorldPoint(1780, 3677, 0), "Inspect the Hosidius statue.");
-        moveHosidiusStatue.addDialogStep("Press it in.");
+	public void setupConditions()
+	{
+		inLeglessFaunF1 = new ZoneRequirement(leglessFaunF1);
+		statueStates = new Requirement[]{
+			new VarbitRequirement(12306, 0),
+			new VarbitRequirement(12307, 0),
+			new VarbitRequirement(12308, 0),
+			new VarbitRequirement(12309, 0)
+		};
+	}
 
-        moveLovakengjStatue = new ObjectStep(getQuestHelper(), ObjectID.LOVAKENGJ_STATUE_41846, new WorldPoint(1776, 3682, 0), "Inspect the Lovakengj statue.");
-        moveLovakengjStatue.addDialogStep("Press it in.");
+	@Override
+	protected void setupSteps()
+	{
+		setupZones();
+		setupConditions();
 
-        moveShayzienStatue = new ObjectStep(getQuestHelper(), ObjectID.SHAYZIEN_STATUE_41850, new WorldPoint(1777, 3678, 0), "Inspect the Shayzien statue.");
-        moveShayzienStatue.addDialogStep("Press it in.");
+		cityOrder = new ArrayList<>();
+		statueMap = new HashMap<>();
 
-        invalidState = new DetailedQuestStep(getQuestHelper(), "You've inspected the statues in the wrong order." +
-                " Inspect the remaining statues to reset the puzzle.");
+		checkPanel = new ObjectStep(getQuestHelper(), ObjectID.AKD_PISCARILIUS_PANEL_OP, new WorldPoint(1768, 3686, 1), "Check the panel on the wall.");
+		climbUpPillarLeglessFaun = new ObjectStep(getQuestHelper(), ObjectID.AKD_PISCARILIUS_PILLAR_BROKEN_OP, new WorldPoint(1772, 3680, 0), "Climb up the pillar west of Martin Holt.");
+		climbDownLeglessFaun = new ObjectStep(getQuestHelper(), ObjectID.AKD_PISCARILIUS_BATTLEMENT_OP, new WorldPoint(1772, 3679, 1), "Climb down the wall.");
 
-        statueMap.put(KourendCities.ARCEUUS, moveArceuusStatue);
-        statueMap.put(KourendCities.HOSIDIUS, moveHosidiusStatue);
-        statueMap.put(KourendCities.PISCARILIUS, movePiscStatue);
-        statueMap.put(KourendCities.LOVAKENGJ, moveLovakengjStatue);
-        statueMap.put(KourendCities.SHAYZIEN, moveShayzienStatue);
-    }
+		moveArceuusStatue = new ObjectStep(getQuestHelper(), ObjectID.KOUREND_ENTRANCE_STATUE_ARCEUUS_OP, new WorldPoint(1777, 3686, 0), "Inspect the Arceuus statue.");
+		moveArceuusStatue.addDialogStep("Press it in.");
 
-    @Override
-    public Collection<QuestStep> getSteps() {
-        return Arrays.asList(checkPanel, climbUpPillarLeglessFaun, climbDownLeglessFaun, moveArceuusStatue,
-                moveHosidiusStatue, moveLovakengjStatue, moveShayzienStatue, movePiscStatue, invalidState);
-    }
+		movePiscStatue = new ObjectStep(getQuestHelper(), ObjectID.KOUREND_ENTRANCE_STATUE_PISCARILIUS_OP, new WorldPoint(1780, 3687, 0), "Inspect the Piscarilius statue.");
+		movePiscStatue.addDialogStep("Press it in.");
+
+		moveHosidiusStatue = new ObjectStep(getQuestHelper(), ObjectID.KOUREND_ENTRANCE_STATUE_HOSIDIUS_OP, new WorldPoint(1780, 3677, 0), "Inspect the Hosidius statue.");
+		moveHosidiusStatue.addDialogStep("Press it in.");
+
+		moveLovakengjStatue = new ObjectStep(getQuestHelper(), ObjectID.KOUREND_ENTRANCE_STATUE_LOVAKENGJ_OP, new WorldPoint(1776, 3682, 0), "Inspect the Lovakengj statue.");
+		moveLovakengjStatue.addDialogStep("Press it in.");
+
+		moveShayzienStatue = new ObjectStep(getQuestHelper(), ObjectID.KOUREND_ENTRANCE_STATUE_SHAYZIEN_OP, new WorldPoint(1777, 3678, 0), "Inspect the Shayzien statue.");
+		moveShayzienStatue.addDialogStep("Press it in.");
+
+		invalidState = new DetailedQuestStep(getQuestHelper(), "You've inspected the statues in the wrong order." +
+			" Inspect the remaining statues to reset the puzzle.");
+
+		statueMap.put(KourendCities.ARCEUUS, moveArceuusStatue);
+		statueMap.put(KourendCities.HOSIDIUS, moveHosidiusStatue);
+		statueMap.put(KourendCities.PISCARILIUS, movePiscStatue);
+		statueMap.put(KourendCities.LOVAKENGJ, moveLovakengjStatue);
+		statueMap.put(KourendCities.SHAYZIEN, moveShayzienStatue);
+	}
+
+	@Override
+	public Collection<QuestStep> getSteps()
+	{
+		return Arrays.asList(checkPanel, climbUpPillarLeglessFaun, climbDownLeglessFaun, moveArceuusStatue,
+			moveHosidiusStatue, moveLovakengjStatue, moveShayzienStatue, movePiscStatue, invalidState);
+	}
 }

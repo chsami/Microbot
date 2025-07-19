@@ -11,11 +11,34 @@ import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 import java.awt.event.KeyEvent;
+import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public class GemsScript extends Script {
+public class GemsScript extends Script implements ICraftingScript {
 
     public static double version = 1.0;
+
+    @Override
+    public String getName() {
+        return "Gems";
+    }
+
+    @Override
+    public String getVersion() {
+        return String.valueOf(version);
+    }
+
+    @Override
+    public String getState() {
+        return Microbot.status;
+    }
+
+    @Override
+    public Map<String, String> getCustomProperties() {
+        return Collections.emptyMap();
+    }
+
 
     public boolean run(CraftingConfig config) {
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {

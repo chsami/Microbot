@@ -24,36 +24,41 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.runeliteobjects.dialog;
 
-
-import lombok.Getter;
-import net.runelite.api.Client;
 import net.runelite.client.plugins.microbot.questhelper.runeliteobjects.RuneliteConfigSetter;
 import net.runelite.client.plugins.microbot.questhelper.runeliteobjects.extendedruneliteobjects.FaceAnimationIDs;
+import lombok.Getter;
+import net.runelite.api.Client;
 
 import java.util.ArrayList;
 
-public class RuneliteObjectDialogStep extends RuneliteDialogStep {
-    @Getter
-    private final ArrayList<RuneliteDialogStep> dialogChoices = new ArrayList<>();
+public class RuneliteObjectDialogStep extends RuneliteDialogStep
+{
+	@Getter
+	private final ArrayList<RuneliteDialogStep> dialogChoices = new ArrayList<>();
 
-    public RuneliteObjectDialogStep(Client client, String text, FaceAnimationIDs animation) {
-        super(client.getLocalPlayer().getName(), text, -1, animation.getAnimationID());
-        client.getLocalPlayer().getName();
-    }
+	public RuneliteObjectDialogStep(Client client, String text, FaceAnimationIDs animation)
+	{
+		super(client.getLocalPlayer().getName(), text, -1, animation.getAnimationID());
+		client.getLocalPlayer().getName();
+	}
 
-    public RuneliteObjectDialogStep(String name, String text, int faceID, int animation) {
-        super(name, text, faceID, animation);
-    }
+	public RuneliteObjectDialogStep(String name, String text, int faceID, int animation)
+	{
+		super(name, text, faceID, animation);
+	}
 
-    public RuneliteObjectDialogStep(String name, String text, int faceID, int animation, RuneliteConfigSetter setter) {
-        super(name, text, faceID, animation, setter);
-    }
+	public RuneliteObjectDialogStep(String name, String text, int faceID, int animation, RuneliteConfigSetter setter)
+	{
+		super(name, text, faceID, animation, setter);
+	}
 
-    public RuneliteObjectDialogStep(String name, String text, int faceID, RuneliteConfigSetter setter) {
-        super(name, text, faceID, 570, setter);
-    }
+	public RuneliteObjectDialogStep(String name, String text, int faceID, RuneliteConfigSetter setter)
+	{
+		super(name, text, faceID, 570, setter);
+	}
 
-    public RuneliteObjectDialogStep(String name, String text, int faceID) {
-        this(name, text, faceID, 570);
-    }
+	public RuneliteObjectDialogStep(String name, String text, int faceID)
+	{
+		this(name, text, faceID, 570);
+	}
 }

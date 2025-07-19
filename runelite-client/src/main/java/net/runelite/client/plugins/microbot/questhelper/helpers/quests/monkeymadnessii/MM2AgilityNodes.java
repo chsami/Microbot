@@ -29,18 +29,19 @@ import lombok.Getter;
 
 @AllArgsConstructor
 @Getter
-public enum MM2AgilityNodes {
-    NODE0(new MM2Route[]{MM2Route.S0E3, MM2Route.S0E1, null, null}),
-    NODE1(new MM2Route[]{MM2Route.S1E5, MM2Route.S1E2, null, MM2Route.S1E0}),
-    NODE2(new MM2Route[]{MM2Route.S2E6, null, null, MM2Route.S2E1}),
-    NODE3(new MM2Route[]{MM2Route.S3E7, null, MM2Route.S3E4, null}),
-    NODE4(new MM2Route[]{MM2Route.S4E8, MM2Route.S4E5, null, MM2Route.S4E3}),
-    NODE5(new MM2Route[]{null, MM2Route.S5E6, MM2Route.S5E1, MM2Route.S5E4}),
-    NODE6(new MM2Route[]{MM2Route.S6E9, null, null, MM2Route.S6E5}),
-    NODE7(new MM2Route[]{MM2Route.S7E10, MM2Route.S7E8, null, null}),
-    NODE8(new MM2Route[]{MM2Route.S8E10, MM2Route.S8E9, MM2Route.S8E4, MM2Route.S8E7}),
-    NODE9(new MM2Route[]{MM2Route.S9E10, null, null, MM2Route.S9E8}),
-    NODE10(new MM2Route[]{null, null, null, null});
+public enum MM2AgilityNodes
+{
+	NODE0(new MM2Route[] { MM2Route.S0E3, MM2Route.S0E1, null, null }),
+	NODE1(new MM2Route[] { MM2Route.S1E5, MM2Route.S1E2, null, MM2Route.S1E0 }),
+	NODE2(new MM2Route[] { MM2Route.S2E6, null, null, MM2Route.S2E1 }),
+	NODE3(new MM2Route[] { MM2Route.S3E7, null, MM2Route.S3E4, null }),
+	NODE4(new MM2Route[] { MM2Route.S4E8, MM2Route.S4E5, null, MM2Route.S4E3 }),
+	NODE5(new MM2Route[] { null, MM2Route.S5E6, MM2Route.S5E1, MM2Route.S5E4 }),
+	NODE6(new MM2Route[] { MM2Route.S6E9, null, null, MM2Route.S6E5 }),
+	NODE7(new MM2Route[] { MM2Route.S7E10, MM2Route.S7E8, null, null }),
+	NODE8(new MM2Route[] { MM2Route.S8E10, MM2Route.S8E9, MM2Route.S8E4, MM2Route.S8E7 }),
+	NODE9(new MM2Route[] { MM2Route.S9E10, null, null, MM2Route.S9E8 }),
+	NODE10(new MM2Route[] { null, null, null, null });
 
-    private final MM2Route[] paths;
+	private final MM2Route[] paths;
 }

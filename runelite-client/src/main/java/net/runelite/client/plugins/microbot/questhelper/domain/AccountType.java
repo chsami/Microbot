@@ -25,32 +25,36 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.domain;
 
-public enum AccountType {
-    NORMAL,
-    IRONMAN,
-    ULTIMATE_IRONMAN,
-    HARDCORE_IRONMAN,
-    GROUP_IRONMAN,
-    HARDCORE_GROUP_IRONMAN,
-    UNRANKED_GROUP_IRONMAN;
+public enum AccountType
+{
+	NORMAL,
+	IRONMAN,
+	ULTIMATE_IRONMAN,
+	HARDCORE_IRONMAN,
+	GROUP_IRONMAN,
+	HARDCORE_GROUP_IRONMAN,
+	UNRANKED_GROUP_IRONMAN;
 
-    private static final AccountType[] TYPES = values();
+	private static final AccountType[] TYPES = values();
 
-    /**
-     * @param varbitValue the value associated with {@link net.runelite.api.Varbits#ACCOUNT_TYPE}
-     * @return the equivalent enum value
-     */
-    public static AccountType get(int varbitValue) {
-        if (varbitValue < 0 || varbitValue >= TYPES.length) {
-            return null;
-        }
-        return TYPES[varbitValue];
-    }
+	/**
+	 * @param varbitValue the value associated with {@link net.runelite.api.Varbits#ACCOUNT_TYPE}
+	 * @return the equivalent enum value
+	 */
+	public static AccountType get(int varbitValue)
+	{
+		if (varbitValue < 0 || varbitValue >= TYPES.length)
+		{
+			return null;
+		}
+		return TYPES[varbitValue];
+	}
 
-    /**
-     * Checks whether this account type is any of the ironman types, solo or group.
-     */
-    public boolean isAnyIronman() {
-        return this == IRONMAN || this == ULTIMATE_IRONMAN || this == HARDCORE_IRONMAN || this == GROUP_IRONMAN || this == HARDCORE_GROUP_IRONMAN || this == UNRANKED_GROUP_IRONMAN;
-    }
+	/**
+	 * Checks whether this account type is any of the ironman types, solo or group.
+	 */
+	public boolean isAnyIronman()
+	{
+		return this == IRONMAN || this == ULTIMATE_IRONMAN || this == HARDCORE_IRONMAN || this == GROUP_IRONMAN || this == HARDCORE_GROUP_IRONMAN || this == UNRANKED_GROUP_IRONMAN;
+	}
 }

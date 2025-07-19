@@ -26,199 +26,232 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.bank.banktab;
 
+import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import lombok.Getter;
 import lombok.Setter;
 import net.runelite.api.*;
-import net.runelite.api.widgets.ComponentID;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.JavaScriptCallback;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetType;
 import net.runelite.client.callback.ClientThread;
-import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.ui.JagexColors;
 
 import javax.inject.Inject;
 
-public class QuestGrandExchangeInterface {
-    private static final String VIEW_TAB = "View missing items ";
-    private final Client client;
-    private final QuestHelperPlugin questHelper;
-    private final ClientThread clientThread;
-    @Setter
-    @Getter
-    private boolean active = false;
-    @Getter
-    private Widget parent;
-    @Getter
-    private Widget questIconWidget;
-    @Getter
-    private Widget questBackgroundWidget;
-    @Getter
-    private Widget grandExchangeTitle;
+public class QuestGrandExchangeInterface
+{
+	private static final String VIEW_TAB = "View missing items ";
 
-    @Inject
-    public QuestGrandExchangeInterface(Client client, QuestHelperPlugin questHelper, ClientThread clientThread) {
-        this.client = client;
-        this.questHelper = questHelper;
-        this.clientThread = clientThread;
-    }
+	@Setter
+	@Getter
+	private boolean active = false;
 
-    public void init() {
-        if (isHidden() || questHelper.getSelectedQuest() == null) {
-            return;
-        }
+	@Getter
+	private Widget parent;
 
-        parent = client.getWidget(ComponentID.CHATBOX_CONTAINER);
+	@Getter
+	private Widget questIconWidget;
 
-        int QUEST_BUTTON_SIZE = 20;
-        int QUEST_BUTTON_X = 480;
-        int QUEST_BUTTON_Y = 0;
-        questBackgroundWidget = createGraphic("quest helper", SpriteID.UNKNOWN_BUTTON_SQUARE_SMALL,
-                QUEST_BUTTON_SIZE,
-                QUEST_BUTTON_SIZE,
-                QUEST_BUTTON_X, QUEST_BUTTON_Y);
-        questBackgroundWidget.setAction(1, VIEW_TAB);
-        questBackgroundWidget.setOnOpListener((JavaScriptCallback) this::handleTagTab);
+	@Getter
+	private Widget questBackgroundWidget;
 
-        questIconWidget = createGraphic("", SpriteID.QUESTS_PAGE_ICON_BLUE_QUESTS, QUEST_BUTTON_SIZE - 6,
-                QUEST_BUTTON_SIZE - 6,
-                QUEST_BUTTON_X + 3, QUEST_BUTTON_Y + 3);
+	@Getter
+	private Widget grandExchangeTitle;
 
-        grandExchangeTitle = createTitle(parent);
+	private final Client client;
+	private final QuestHelperPlugin questHelper;
+	private final ClientThread clientThread;
 
-        if (active) {
-            active = false;
-            activateTab();
-        }
-    }
+	@Inject
+	public QuestGrandExchangeInterface(Client client, QuestHelperPlugin questHelper, ClientThread clientThread)
+	{
+		this.client = client;
+		this.questHelper = questHelper;
+		this.clientThread = clientThread;
+	}
 
-    public void destroy() {
-        if (active) {
-            closeOptions();
-        }
+	public void init()
+	{
+		if (isHidden() || questHelper.getSelectedQuest() == null)
+		{
+			return;
+		}
 
-        parent = null;
+		parent = client.getWidget(InterfaceID.Chatbox.MES_LAYER);
 
-        if (questIconWidget != null) {
-            questIconWidget.setHidden(true);
-        }
+		int QUEST_BUTTON_SIZE = 20;
+		int QUEST_BUTTON_X = 480;
+		int QUEST_BUTTON_Y = 0;
+		questBackgroundWidget = createGraphic("quest helper", SpriteID.UNKNOWN_BUTTON_SQUARE_SMALL,
+			QUEST_BUTTON_SIZE,
+			QUEST_BUTTON_SIZE,
+			QUEST_BUTTON_X, QUEST_BUTTON_Y);
+		questBackgroundWidget.setAction(1, VIEW_TAB);
+		questBackgroundWidget.setOnOpListener((JavaScriptCallback) this::handleTagTab);
 
-        if (questBackgroundWidget != null) {
-            questBackgroundWidget.setHidden(true);
-        }
+		questIconWidget = createGraphic("", SpriteID.QUESTS_PAGE_ICON_BLUE_QUESTS, QUEST_BUTTON_SIZE - 6,
+			QUEST_BUTTON_SIZE - 6,
+			QUEST_BUTTON_X + 3, QUEST_BUTTON_Y + 3);
 
-        if (grandExchangeTitle != null) {
-            grandExchangeTitle.setHidden(true);
-        }
-        active = false;
-    }
+		grandExchangeTitle = createTitle(parent);
 
-    public boolean isHidden() {
-        Widget widget = client.getWidget(ComponentID.CHATBOX_CONTAINER);
-        return widget == null || widget.isHidden();
-    }
+		if (active)
+		{
+			active = false;
+			activateTab();
+		}
+	}
 
-    private void handleTagTab(ScriptEvent event) {
-        if (active) {
-            closeOptions();
-        } else {
-            activateTab();
-        }
+	public void destroy()
+	{
+		if (active)
+		{
+			closeOptions();
+		}
 
-        client.playSoundEffect(SoundEffectID.UI_BOOP);
-    }
+		parent = null;
 
-    public void closeOptions() {
-        active = false;
-        if (questBackgroundWidget != null) {
-            questBackgroundWidget.setSpriteId(SpriteID.UNKNOWN_BUTTON_SQUARE_SMALL);
-            questBackgroundWidget.revalidate();
-        }
+		if (questIconWidget != null)
+		{
+			questIconWidget.setHidden(true);
+		}
 
-        grandExchangeTitle.setHidden(true);
+		if (questBackgroundWidget != null)
+		{
+			questBackgroundWidget.setHidden(true);
+		}
 
-        client.setVarcStrValue(VarClientStr.INPUT_TEXT, "");
-        client.setVarcIntValue(VarClientInt.INPUT_TYPE, 14);
+		if (grandExchangeTitle != null)
+		{
+			grandExchangeTitle.setHidden(true);
+		}
+		active = false;
+	}
 
-        clientThread.invokeLater(() -> updateSearchInterface(false));
-    }
+	public boolean isHidden()
+	{
+		Widget widget = client.getWidget(InterfaceID.Chatbox.MES_LAYER);
+		return widget == null || widget.isHidden();
+	}
 
-    private void activateTab() {
-        if (active) {
-            return;
-        }
+	private void handleTagTab(ScriptEvent event)
+	{
+		if (active)
+		{
+			closeOptions();
+		}
+		else
+		{
+			activateTab();
+		}
 
-        questBackgroundWidget.setSpriteId(SpriteID.UNKNOWN_BUTTON_SQUARE_SMALL_SELECTED);
-        questBackgroundWidget.revalidate();
-        grandExchangeTitle.setHidden(false);
-        active = true;
-        client.setVarcStrValue(VarClientStr.INPUT_TEXT, "quest-helper");
-        client.setVarcIntValue(VarClientInt.INPUT_TYPE, 14);
+		client.playSoundEffect(SoundEffectID.UI_BOOP);
+	}
 
-        clientThread.invokeLater(() -> updateSearchInterface(true));
-    }
+	public void closeOptions()
+	{
+		active = false;
+		if (questBackgroundWidget != null)
+		{
+			questBackgroundWidget.setSpriteId(SpriteID.UNKNOWN_BUTTON_SQUARE_SMALL);
+			questBackgroundWidget.revalidate();
+		}
 
-    private void updateSearchInterface(boolean hideSearchBox) {
-        Widget geSearchBox = client.getWidget(ComponentID.CHATBOX_FULL_INPUT);
-        if (geSearchBox == null) {
-            return;
-        }
+		grandExchangeTitle.setHidden(true);
 
-        Object[] scriptArgs = geSearchBox.getOnKeyListener();
-        if (scriptArgs == null) {
-            return;
-        }
+		client.setVarcStrValue(VarClientStr.INPUT_TEXT, "");
+		client.setVarcIntValue(VarClientInt.INPUT_TYPE, 14);
 
-        client.runScript(scriptArgs);
-        geSearchBox.setHidden(hideSearchBox);
-    }
+		clientThread.invokeLater(() -> updateSearchInterface(false));
+	}
 
-    private Widget createGraphic(Widget container, String name, int spriteId, int width, int height, int x, int y) {
-        Widget widget = container.createChild(-1, WidgetType.GRAPHIC);
-        widget.setOriginalWidth(width);
-        widget.setOriginalHeight(height);
-        widget.setOriginalX(x);
-        widget.setOriginalY(y);
+	private void activateTab()
+	{
+		if (active)
+		{
+			return;
+		}
 
-        widget.setSpriteId(spriteId);
-        widget.setOnOpListener(ScriptID.NULL);
-        widget.setHasListener(true);
-        widget.setName(name);
-        widget.revalidate();
+		questBackgroundWidget.setSpriteId(SpriteID.UNKNOWN_BUTTON_SQUARE_SMALL_SELECTED);
+		questBackgroundWidget.revalidate();
+		grandExchangeTitle.setHidden(false);
+		active = true;
+		client.setVarcStrValue(VarClientStr.INPUT_TEXT, "quest-helper");
+		client.setVarcIntValue(VarClientInt.INPUT_TYPE, 14);
 
-        return widget;
-    }
+		clientThread.invokeLater(() -> updateSearchInterface(true));
+	}
 
-    private Widget createGraphic(String name, int spriteId, int width, int height, int x, int y) {
-        return createGraphic(parent, name, spriteId, width, height, x, y);
-    }
+	private void updateSearchInterface(boolean hideSearchBox)
+	{
+		Widget geSearchBox = client.getWidget(InterfaceID.Chatbox.MES_TEXT2);
+		if (geSearchBox == null)
+		{
+			return;
+		}
 
-    private Widget createTitle(Widget container) {
-        Widget chatbox = client.getWidget(ComponentID.CHATBOX_FULL_INPUT);
+		Object[] scriptArgs = geSearchBox.getOnKeyListener();
+		if (scriptArgs == null)
+		{
+			return;
+		}
 
-        Widget widget = container.createChild(-1, WidgetType.TEXT);
-        if (chatbox == null) {
-            return widget;
-        }
+		client.runScript(scriptArgs);
+		geSearchBox.setHidden(hideSearchBox);
+	}
 
-        widget.setOriginalWidth(chatbox.getWidth());
-        widget.setOriginalHeight(chatbox.getHeight());
-        widget.setOriginalX(0);
-        widget.setOriginalY(0);
-        widget.setTextShadowed(false);
-        widget.setXTextAlignment(1);
-        widget.setYTextAlignment(1);
+	private Widget createGraphic(Widget container, String name, int spriteId, int width, int height, int x, int y)
+	{
+		Widget widget = container.createChild(-1, WidgetType.GRAPHIC);
+		widget.setOriginalWidth(width);
+		widget.setOriginalHeight(height);
+		widget.setOriginalX(x);
+		widget.setOriginalY(y);
 
-        widget.setText("<col=b40000>" + questHelper.getSelectedQuest().getQuest().getName() + "</col> required items");
-        widget.setFontId(FontID.BOLD_12);
-        widget.setTextColor(JagexColors.CHAT_GAME_EXAMINE_TEXT_OPAQUE_BACKGROUND.getRGB());
+		widget.setSpriteId(spriteId);
+		widget.setOnOpListener(ScriptID.NULL);
+		widget.setHasListener(true);
+		widget.setName(name);
+		widget.revalidate();
 
-        if (!active) {
-            widget.setHidden(true);
-        }
+		return widget;
+	}
 
-        widget.revalidate();
+	private Widget createGraphic(String name, int spriteId, int width, int height, int x, int y)
+	{
+		return createGraphic(parent, name, spriteId, width, height, x, y);
+	}
 
-        return widget;
-    }
+	private Widget createTitle(Widget container)
+	{
+		Widget chatbox = client.getWidget(InterfaceID.Chatbox.MES_TEXT2);
+
+		Widget widget = container.createChild(-1, WidgetType.TEXT);
+		if (chatbox == null)
+		{
+			return widget;
+		}
+
+		widget.setOriginalWidth(chatbox.getWidth());
+		widget.setOriginalHeight(chatbox.getHeight());
+		widget.setOriginalX(0);
+		widget.setOriginalY(0);
+		widget.setTextShadowed(false);
+		widget.setXTextAlignment(1);
+		widget.setYTextAlignment(1);
+
+		widget.setText("<col=b40000>" + questHelper.getSelectedQuest().getQuest().getName() + "</col> required items");
+		widget.setFontId(FontID.BOLD_12);
+		widget.setTextColor(JagexColors.CHAT_GAME_EXAMINE_TEXT_OPAQUE_BACKGROUND.getRGB());
+
+		if (!active)
+		{
+			widget.setHidden(true);
+		}
+
+		widget.revalidate();
+
+		return widget;
+	}
 }

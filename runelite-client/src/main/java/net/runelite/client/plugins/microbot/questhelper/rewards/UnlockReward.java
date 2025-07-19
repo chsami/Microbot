@@ -26,22 +26,26 @@ package net.runelite.client.plugins.microbot.questhelper.rewards;
 
 import javax.annotation.Nonnull;
 
-public class UnlockReward implements Reward {
+public class UnlockReward implements Reward
+{
     private final String unlock;
 
-    public UnlockReward(String unlock) {
+    public UnlockReward(String unlock)
+    {
         this.unlock = unlock;
     }
 
     @Nonnull
     @Override
-    public RewardType rewardType() {
+    public RewardType rewardType()
+    {
         return RewardType.UNLOCK;
     }
 
     @Nonnull
     @Override
-    public String getDisplayText() {
+    public String getDisplayText()
+    {
         return unlock;
     }
 }

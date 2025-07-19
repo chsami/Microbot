@@ -108,11 +108,11 @@ public class MQuestScript extends Script {
                     var widgetHighlight = questStep.getWidgetsToHighlight().stream()
                             .filter(x -> x instanceof WidgetHighlight)
                             .map(x -> (WidgetHighlight) x)
-                            .filter(x -> Rs2Widget.isWidgetVisible(x.getGroupId(), x.getChildId()))
+                            .filter(x -> Rs2Widget.isWidgetVisible(x.getInterfaceID()))
                             .findFirst().orElse(null);
 
                     if (widgetHighlight != null) {
-                        var widget = Rs2Widget.getWidget(widgetHighlight.getGroupId(), widgetHighlight.getChildId());
+                        var widget = Rs2Widget.getWidget(widgetHighlight.getInterfaceID());
                         if (widget != null) {
                             if (widgetHighlight.getChildChildId() != -1) {
                                 var childWidget = widget.getChildren()[widgetHighlight.getChildChildId()];
@@ -299,7 +299,7 @@ public class MQuestScript extends Script {
 
             if (step.getText().stream().anyMatch(x -> x.toLowerCase().contains("kill"))) {
                 if (!Rs2Combat.inCombat())
-                    Rs2Npc.interact(step.npcID, "Attack");
+                    Rs2Npc.interact(npc, "Attack");
 
                 return true;
             }

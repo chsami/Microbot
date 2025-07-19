@@ -24,13 +24,6 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.akingdomdivided;
 
-
-import net.runelite.api.ObjectID;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.GameTick;
-import net.runelite.api.events.WidgetLoaded;
-import net.runelite.api.widgets.Widget;
-import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
@@ -39,6 +32,13 @@ import net.runelite.client.plugins.microbot.questhelper.steps.DetailedOwnerStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.WidgetLoaded;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.widgets.Widget;
+import net.runelite.client.eventbus.Subscribe;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -46,126 +46,157 @@ import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class StonePuzzleStep extends DetailedOwnerStep {
-    private final HashMap<String, String> answers = new HashMap<>();
-    Requirement inPanelZone;
-    DetailedQuestStep checkRStone, checkOStone, checkSStone, checkEStone, chopVines, squeezeThroughVines, checkPanel;
-    Zone panelArea1, panelArea2;
-    private boolean rStoneDone = false;
-    private boolean oStoneDone = false;
-    private boolean sStoneDone = false;
-    private boolean eStoneDone = false;
-    private boolean codeFound = false;
+public class StonePuzzleStep extends DetailedOwnerStep
+{
+	Requirement inPanelZone;
+	private boolean rStoneDone = false;
+	private boolean oStoneDone = false;
+	private boolean sStoneDone = false;
+	private boolean eStoneDone = false;
+	private boolean codeFound = false;
 
-    public StonePuzzleStep(QuestHelper questHelper) {
-        super(questHelper, "Solve the wall panel puzzle.");
-    }
+	DetailedQuestStep checkRStone, checkOStone, checkSStone, checkEStone, chopVines, squeezeThroughVines, checkPanel;
 
-    @Override
-    protected void updateSteps() {
-        if (!codeFound) {
-            if (!eStoneDone) {
-                startUpStep(checkEStone);
-            } else if (!rStoneDone) {
-                startUpStep(checkRStone);
-            } else if (!sStoneDone) {
-                startUpStep(checkSStone);
-            } else if (!oStoneDone) {
-                startUpStep(checkOStone);
-            } else {
-                checkPanel.addText("Enter code: " +
-                        answers.get("R") +
-                        answers.get("O") +
-                        answers.get("S") +
-                        answers.get("E")
-                );
+	Zone panelArea1, panelArea2;
 
-                codeFound = true;
-            }
+	private final HashMap<String, String> answers = new HashMap<>();
 
-        } else {
-            if (inPanelZone.check(client)) {
+	public StonePuzzleStep(QuestHelper questHelper)
+	{
+		super(questHelper, "Solve the wall panel puzzle.");
+	}
 
-                startUpStep(checkPanel);
-            } else {
-                startUpStep(squeezeThroughVines);
-            }
-        }
-    }
+	@Override
+	protected void updateSteps()
+	{
+		if (!codeFound)
+		{
+			if (!eStoneDone)
+			{
+				startUpStep(checkEStone);
+			}
+			else if (!rStoneDone)
+			{
+				startUpStep(checkRStone);
+			}
+			else if (!sStoneDone)
+			{
+				startUpStep(checkSStone);
+			}
+			else if (!oStoneDone)
+			{
+				startUpStep(checkOStone);
+			}
+			else
+			{
+				checkPanel.addText("Enter code: " +
+					answers.get("R") +
+					answers.get("O") +
+					answers.get("S") +
+					answers.get("E")
+				);
 
-    @Subscribe
-    public void onGameTick(GameTick event) {
-        updateSteps();
-    }
+				codeFound = true;
+			}
 
-    @Subscribe
-    public void onWidgetLoaded(WidgetLoaded widgetLoaded) {
-        if (widgetLoaded.getGroupId() != 229) {
-            return;
-        }
+		}
+		else
+		{
+			if (inPanelZone.check(client))
+			{
 
-        clientThread.invokeLater(() -> {
-            Widget widgetStone = client.getWidget(229, 1);
+				startUpStep(checkPanel);
+			}
+			else
+			{
+				startUpStep(squeezeThroughVines);
+			}
+		}
+	}
 
-            if (widgetStone != null && !widgetStone.isHidden() && !codeFound) {
-                Matcher foundStoneValue = Pattern.compile("(?:^|)'([^']*?)'(?:\\s|$)").matcher(widgetStone.getText());
-                final boolean foundAnswer = foundStoneValue.find();
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		updateSteps();
+	}
 
-                if (foundAnswer) {
-                    final String value = foundStoneValue.group(0);
-                    final String letter = value.substring(1, 2);
-                    final String number = value.substring(value.length() - 2, value.length() - 1);
+	@Subscribe
+	public void onWidgetLoaded(WidgetLoaded widgetLoaded)
+	{
+		if (widgetLoaded.getGroupId() != 229)
+		{
+			return;
+		}
 
-                    switch (letter) {
-                        case "R":
-                            answers.put("R", number);
-                            rStoneDone = true;
-                            break;
-                        case "O":
-                            answers.put("O", number);
-                            oStoneDone = true;
-                            break;
-                        case "S":
-                            answers.put("S", number);
-                            sStoneDone = true;
-                            break;
-                        case "E":
-                            answers.put("E", number);
-                            eStoneDone = true;
-                            break;
-                    }
-                }
-            }
-        });
-    }
+		clientThread.invokeLater(() -> {
+			Widget widgetStone = client.getWidget(InterfaceID.Messagebox.TEXT);
 
-    protected void setupZones() {
-        panelArea1 = new Zone(new WorldPoint(1670, 3577, 0), new WorldPoint(1671, 3576, 0));
-        panelArea2 = new Zone(new WorldPoint(1669, 3581, 0), new WorldPoint(1672, 3578, 0));
-    }
+			if (widgetStone != null && !widgetStone.isHidden() && !codeFound)
+			{
+				Matcher foundStoneValue = Pattern.compile("(?:^|)'([^']*?)'(?:\\s|$)").matcher(widgetStone.getText());
+				final boolean foundAnswer = foundStoneValue.find();
 
-    public void setupConditions() {
-        inPanelZone = new ZoneRequirement(panelArea1, panelArea2);
-    }
+				if (foundAnswer)
+				{
+					final String value = foundStoneValue.group(0);
+					final String letter = value.substring(1, 2);
+					final String number = value.substring(value.length() - 2, value.length() - 1);
 
-    @Override
-    protected void setupSteps() {
-        setupZones();
-        setupConditions();
+					switch (letter)
+					{
+						case "R":
+							answers.put("R", number);
+							rStoneDone = true;
+							break;
+						case "O":
+							answers.put("O", number);
+							oStoneDone = true;
+							break;
+						case "S":
+							answers.put("S", number);
+							sStoneDone = true;
+							break;
+						case "E":
+							answers.put("E", number);
+							eStoneDone = true;
+							break;
+					}
+				}
+			}
+		});
+	}
+
+	protected void setupZones()
+	{
+		panelArea1 = new Zone(new WorldPoint(1670, 3577, 0), new WorldPoint(1671, 3576, 0));
+		panelArea2 = new Zone(new WorldPoint(1669, 3581, 0), new WorldPoint(1672, 3578, 0));
+	}
+
+	public void setupConditions()
+	{
+		inPanelZone = new ZoneRequirement(panelArea1, panelArea2);
+	}
+
+	@Override
+	protected void setupSteps()
+	{
+		setupZones();
+		setupConditions();
 
 
-        checkRStone = new ObjectStep(getQuestHelper(), ObjectID.STONE_PILE_41827, new WorldPoint(1678, 3567, 0), "Check the south east stone pile.");
-        checkOStone = new ObjectStep(getQuestHelper(), ObjectID.STONE_PILE_41827, new WorldPoint(1670, 3575, 0), "Check the north west stone pile.");
-        checkSStone = new ObjectStep(getQuestHelper(), ObjectID.STONE_PILE_41827, new WorldPoint(1672, 3571, 0), "Check the south west stone pile.");
-        checkEStone = new ObjectStep(getQuestHelper(), ObjectID.STONE_PILE_41827, new WorldPoint(1680, 3576, 0), "Check the north east stone pile.");
+		checkRStone = new ObjectStep(getQuestHelper(), ObjectID.AKD_FORTHOS_STONE_PILE_OP, new WorldPoint(1678, 3567, 0), "Check the south east stone pile.");
+		checkOStone = new ObjectStep(getQuestHelper(), ObjectID.AKD_FORTHOS_STONE_PILE_OP, new WorldPoint(1670, 3575, 0), "Check the north west stone pile.");
+		checkSStone = new ObjectStep(getQuestHelper(), ObjectID.AKD_FORTHOS_STONE_PILE_OP, new WorldPoint(1672, 3571, 0), "Check the south west stone pile.");
+		checkEStone = new ObjectStep(getQuestHelper(), ObjectID.AKD_FORTHOS_STONE_PILE_OP, new WorldPoint(1680, 3576, 0), "Check the north east stone pile.");
 
-        chopVines = new ObjectStep(getQuestHelper(), ObjectID.VINES_41815, new WorldPoint(1671, 3577, 0), "Chop the vines south of Martin Holt.");
-        squeezeThroughVines = new ObjectStep(getQuestHelper(), ObjectID.VINES_41816, new WorldPoint(1671, 3577, 0), "Squeeze through the vines.");
-        checkPanel = new ObjectStep(getQuestHelper(), ObjectID.PANEL_41822, new WorldPoint(1672, 3579, 0), "Check the panel on the wall.");
-    }
+		chopVines = new ObjectStep(getQuestHelper(), ObjectID.AKD_FORTHOS_VINES_OP, new WorldPoint(1671, 3577, 0), "Chop the vines south of Martin Holt.");
+		squeezeThroughVines = new ObjectStep(getQuestHelper(), ObjectID.AKD_FORTHOS_VINES_CUT, new WorldPoint(1671, 3577, 0), "Squeeze through the vines.");
+		checkPanel = new ObjectStep(getQuestHelper(), ObjectID.AKD_FORTHOS_PANEL_OP, new WorldPoint(1672, 3579, 0), "Check the panel on the wall.");
+	}
 
-    @Override
-    public Collection<QuestStep> getSteps() {
-        return Arrays.asList(checkEStone, checkRStone, checkSStone, checkOStone, squeezeThroughVines, checkPanel);
-    }
+	@Override
+	public Collection<QuestStep> getSteps()
+	{
+		return Arrays.asList(checkEStone, checkRStone, checkSStone, checkOStone, squeezeThroughVines, checkPanel);
+	}
 }

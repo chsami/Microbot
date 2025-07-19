@@ -24,88 +24,95 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.deserttreasureii;
 
-
-import net.runelite.api.ObjectID;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.VarbitChanged;
-import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
-import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.steps.DetailedOwnerStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.gameval.VarbitID;
 
 import java.util.Arrays;
 import java.util.Collection;
 
-public class MemoryPuzzle extends DetailedOwnerStep {
-    // Second time:
-    // 15212 1->3
-    // 15213 0->1
-    // 15214 0->0
-    // 15215 3->2
+public class MemoryPuzzle extends DetailedOwnerStep
+{
+	// Second time:
+	// 15212 1->3
+	// 15213 0->1
+	// 15214 0->0
+	// 15215 3->2
 
-    // 0 = SW = 1903, 6431, 0
-    // 1 = NW = 1900, 6442, 0
-    // 2 = NE = 1909, 6441, 0
-    // 3 = SE = 1914, 6434, 0
+	// 0 = SW = 1903, 6431, 0
+	// 1 = NW = 1900, 6442, 0
+	// 2 = NE = 1909, 6441, 0
+	// 3 = SE = 1914, 6434, 0
 
-    // Touched 1, 15217 = 1
-    // ++
+	// Touched 1, 15217 = 1
+	// ++
 
-    DetailedQuestStep neStep, nwStep, seStep, swStep;
-    QuestStep[] steps;
+	DetailedQuestStep neStep, nwStep, seStep, swStep;
+	QuestStep[] steps;
+	public MemoryPuzzle(QuestHelper questHelper)
+	{
+		super(questHelper, "Solve the memory puzzle. Make sure to go into air bubbles whenever your air meter is low.");
+	}
 
-    public MemoryPuzzle(QuestHelper questHelper) {
-        super(questHelper, "Solve the memory puzzle. Make sure to go into air bubbles whenever your air meter is low.");
-    }
+	@Override
+	public void startUp()
+	{
+		updateSteps();
+	}
 
-    @Override
-    public void startUp() {
-        updateSteps();
-    }
+	@Override
+	protected void setupSteps()
+	{
+		swStep = new ObjectStep(getQuestHelper(), ObjectID.DT2_SCAR_MAZE_2_SEQUENCE_GROWTH,
+			new WorldPoint(1903, 6431, 0), "Touch the south-western growth.");
+		nwStep = new ObjectStep(getQuestHelper(), ObjectID.DT2_SCAR_MAZE_2_SEQUENCE_GROWTH,
+			new WorldPoint(1900, 6442, 0), "Touch the north-western growth.");
+		neStep = new ObjectStep(getQuestHelper(), ObjectID.DT2_SCAR_MAZE_2_SEQUENCE_GROWTH,
+		new WorldPoint(1909, 6441, 0), "Touch the north-eastern growth.");
+		seStep = new ObjectStep(getQuestHelper(), ObjectID.DT2_SCAR_MAZE_2_SEQUENCE_GROWTH,
+			new WorldPoint(1914, 6434, 0), "Touch the south-eastern growth.");
 
-    @Override
-    protected void setupSteps() {
-        swStep = new ObjectStep(getQuestHelper(), ObjectID.ABYSSAL_GROWTH,
-                new WorldPoint(1903, 6431, 0), "Touch the south-western growth.");
-        nwStep = new ObjectStep(getQuestHelper(), ObjectID.ABYSSAL_GROWTH,
-                new WorldPoint(1900, 6442, 0), "Touch the north-western growth.");
-        neStep = new ObjectStep(getQuestHelper(), ObjectID.ABYSSAL_GROWTH,
-                new WorldPoint(1909, 6441, 0), "Touch the north-eastern growth.");
-        seStep = new ObjectStep(getQuestHelper(), ObjectID.ABYSSAL_GROWTH,
-                new WorldPoint(1914, 6434, 0), "Touch the south-eastern growth.");
+		steps = new QuestStep[4];
+		// SW
+		steps[0] = swStep;
+		// NW
+		steps[1] = nwStep;
+		// NE
+		steps[2] = neStep;
+		// SE
+		steps[3] = seStep;
+	}
 
-        steps = new QuestStep[4];
-        // SW
-        steps[0] = swStep;
-        // NW
-        steps[1] = nwStep;
-        // NE
-        steps[2] = neStep;
-        // SE
-        steps[3] = seStep;
-    }
+	@Override
+	public void onVarbitChanged(VarbitChanged varbitChanged)
+	{
+		updateSteps();
+	}
 
-    @Override
-    public void onVarbitChanged(VarbitChanged varbitChanged) {
-        updateSteps();
-    }
+	@Override
+	public void shutDown()
+	{
+		shutDownStep();
+		currentStep = null;
+	}
 
-    @Override
-    public void shutDown() {
-        shutDownStep();
-        currentStep = null;
-    }
+	protected void updateSteps()
+	{
+		// 0-1-2-3-4
+		int currentStep = client.getVarbitValue(VarbitID.DT2_SCAR_MAZE_2_SEQUENCE_STEP);
+		int thingToPress = client.getVarbitValue(VarbitID.DT2_SCAR_MAZE_2_SEQUENCE_1 + currentStep);
+		startUpStep(steps[thingToPress]);
+	}
 
-    protected void updateSteps() {
-        // 0-1-2-3-4
-        int currentStep = client.getVarbitValue(15217);
-        int thingToPress = client.getVarbitValue(15212 + currentStep);
-        startUpStep(steps[thingToPress]);
-    }
-
-    @Override
-    public Collection<QuestStep> getSteps() {
-        return Arrays.asList(seStep, swStep, neStep, nwStep);
-    }
+	@Override
+	public Collection<QuestStep> getSteps()
+	{
+		return Arrays.asList(seStep, swStep, neStep, nwStep);
+	}
 }

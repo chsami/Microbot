@@ -62,3 +62,4 @@ public class WidgetModelRequirement extends WidgetPresenceRequirement
 		hasPassed = hasPassed || checkWidget(client);
 	}
 }
+

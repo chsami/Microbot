@@ -11,7 +11,8 @@ public enum Activities {
     GEM_CUTTING("Cutting Gems"),
     GLASSBLOWING("Glassblowing"),
     STAFF_MAKING("Staff Making"),
-    FLAX_SPINNING("Flax Spinning");
+    FLAX_SPINNING("Flax Spinning"),
+    DRAGON_LEATHER("Dragon Leather");
 
     private final String name;
 

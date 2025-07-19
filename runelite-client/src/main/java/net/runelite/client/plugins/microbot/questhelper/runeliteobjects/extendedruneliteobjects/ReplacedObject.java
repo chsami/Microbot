@@ -29,10 +29,11 @@ import lombok.Getter;
 import net.runelite.api.coords.WorldPoint;
 
 @AllArgsConstructor
-public class ReplacedObject {
-    @Getter
-    private int objectID;
+public class ReplacedObject
+{
+	@Getter
+	private int objectID;
 
-    @Getter
-    private WorldPoint wp;
+	@Getter
+	private WorldPoint wp;
 }

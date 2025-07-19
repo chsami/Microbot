@@ -24,113 +24,119 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.panel;
 
-import lombok.Getter;
-import lombok.Setter;
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestUtil;
+import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.conditional.Conditions;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicType;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestUtil;
-import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.*;
 
-public class PanelDetails {
-    @Getter
-    String header;
+public class PanelDetails
+{
+	@Getter
+	int id;
 
-    @Getter
-    private final List<QuestStep> steps;
+	@Getter
+	String header;
 
-    @Getter
-    private QuestStep lockingQuestSteps;
+	@Getter
+	private final List<QuestStep> steps;
 
-    @Setter
-    @Getter
-    private Requirement hideCondition;
+	@Getter
+	private QuestStep lockingQuestSteps;
 
-    @Getter
-    private List<Requirement> requirements;
+	@Setter
+	@Getter
+	private Requirement hideCondition;
 
-    @Getter
-    private List<Requirement> recommended;
+	@Getter
+	private List<Requirement> requirements;
 
-    @Getter
-    private List<Integer> vars;
+	@Getter
+	private List<Requirement> recommended;
 
-    public PanelDetails(String header)
-    {
-        this.header = header;
-        this.steps = new ArrayList<>();
-    }
+	@Getter
+	private List<Integer> vars;
 
-    public PanelDetails(String header, QuestStep... steps)
-    {
-        this.header = header;
-        this.steps = QuestUtil.toArrayList(steps);
-        this.requirements = new ArrayList<>();
-    }
+	public PanelDetails(String header)
+	{
+		this.header = header;
+		this.steps = new ArrayList<>();
+	}
 
-    public PanelDetails(String header, List<QuestStep> steps, List<Requirement> requirements)
-    {
-        this.header = header;
-        this.steps = steps;
-        this.requirements = requirements;
-    }
+	public PanelDetails(String header, QuestStep... steps)
+	{
+		this.header = header;
+		this.steps = QuestUtil.toArrayList(steps);
+		this.requirements = new ArrayList<>();
+	}
 
-    public PanelDetails(String header, List<QuestStep> steps, Requirement... requirements)
-    {
-        this(header, steps, Arrays.asList(requirements));
-    }
+	public PanelDetails(String header, List<QuestStep> steps, List<Requirement> requirements)
+	{
+		this.header = header;
+		this.steps = steps;
+		this.requirements = requirements;
+	}
 
-    public PanelDetails(String header, List<QuestStep> steps, List<Requirement> requirements, List<Requirement> recommended)
-    {
-        this(header, steps, requirements);
-        this.recommended = recommended;
-    }
+	public PanelDetails(String header, List<QuestStep> steps, Requirement... requirements)
+	{
+		this(header, steps, Arrays.asList(requirements));
+	}
 
-    public void setDisplayCondition(Requirement req)
-    {
-        setHideCondition(new Conditions(LogicType.NOR, req));
-    }
+	public PanelDetails(String header, List<QuestStep> steps, List<Requirement> requirements, List<Requirement> recommended)
+	{
+		this(header, steps, requirements);
+		this.recommended = recommended;
+	}
 
-    /* Set the states of the quest the steps in the sidebar should be active */
-    public void setVars(Integer... vars)
-    {
-        this.vars = Arrays.asList(vars);
-    }
+	public PanelDetails withId(int id)
+	{
+		this.id = id;
+		return this;
+	}
 
-    public void setLockingStep(QuestStep lockingStep)
-    {
-        this.lockingQuestSteps = lockingStep;
-    }
+	public void setDisplayCondition(Requirement req)
+	{
+		setHideCondition(new Conditions(LogicType.NOR, req));
+	}
 
-    public void addSteps(QuestStep... steps)
-    {
-        this.steps.addAll(Arrays.asList(steps));
-    }
+	/* Set the states of the quest the steps in the sidebar should be active */
+	public void setVars(Integer... vars)
+	{
+		this.vars = Arrays.asList(vars);
+	}
 
-    public boolean contains(QuestStep currentStep)
-    {
-        if (getSteps().contains(currentStep))
-        {
-            return true;
-        }
-        else
-        {
-            return getSteps().stream()
-                    .filter(Objects::nonNull)
-                    .map(QuestStep::getSubsteps)
-                    .flatMap(Collection::stream)
-                    .anyMatch(step -> containsSubStep(currentStep, step));
-        }
-    }
+	public void setLockingStep(QuestStep lockingStep)
+	{
+		this.lockingQuestSteps = lockingStep;
+	}
 
-    private boolean containsSubStep(QuestStep currentStep, QuestStep check)
-    {
-        if (currentStep.getSubsteps().contains(check) || currentStep == check)
-        {
-            return true;
-        }
-        return currentStep.getSubsteps().stream().anyMatch(step -> containsSubStep(step, check));
-    }
+	public void addSteps(QuestStep... steps)
+	{
+		this.steps.addAll(Arrays.asList(steps));
+	}
+
+	public boolean contains(QuestStep currentStep)
+	{
+		if (getSteps().contains(currentStep))
+		{
+			return true;
+		}
+		else
+		{
+			return getSteps().stream()
+				    .filter(Objects::nonNull)
+					.map(QuestStep::getSubsteps)
+					.flatMap(Collection::stream)
+					.anyMatch(step -> containsSubStep(currentStep, step));
+		}
+	}
+
+	private boolean containsSubStep(QuestStep currentStep, QuestStep check)
+	{
+		return currentStep.containsSteps(check, new HashSet<>());
+	}
 }

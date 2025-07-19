@@ -30,71 +30,79 @@ import net.runelite.api.coords.WorldPoint;
 
 import static net.runelite.api.Constants.REGION_SIZE;
 
-public class Zone {
-    @Getter
-    private final int minX;
-    @Getter
-    private final int maxX;
-    @Getter
-    private final int minY;
-    @Getter
-    private final int maxY;
-    private int minPlane = 0;
-    private int maxPlane = 2;
+public class Zone
+{
+	@Getter
+	private final int minX;
+	@Getter
+	private final int maxX;
+	@Getter
+	private final int minY;
+	@Getter
+	private final int maxY;
+	private int minPlane = 0;
+	private int maxPlane = 2;
 
-    //The first plane of the "Overworld"
-    public Zone() {
-        minX = 1152;
-        maxX = 3903;
-        minY = 2496;
-        maxY = 4159;
-        maxPlane = 0;
-    }
+	//The first plane of the "Overworld"
+	public Zone()
+	{
+		minX = 1152;
+		maxX = 3903;
+		minY = 2496;
+		maxY = 4159;
+		maxPlane = 0;
+	}
 
-    public Zone(WorldPoint p1, WorldPoint p2) {
-        assert (p1 != null);
-        assert (p2 != null);
-        minX = Math.min(p1.getX(), p2.getX());
-        maxX = Math.max(p1.getX(), p2.getX());
-        minY = Math.min(p1.getY(), p2.getY());
-        maxY = Math.max(p1.getY(), p2.getY());
-        minPlane = Math.min(p1.getPlane(), p2.getPlane());
-        maxPlane = Math.max(p1.getPlane(), p2.getPlane());
-    }
+	public Zone(WorldPoint p1, WorldPoint p2)
+	{
+		assert(p1 != null);
+		assert(p2 != null);
+		minX = Math.min(p1.getX(), p2.getX());
+		maxX = Math.max(p1.getX(), p2.getX());
+		minY = Math.min(p1.getY(), p2.getY());
+		maxY = Math.max(p1.getY(), p2.getY());
+		minPlane = Math.min(p1.getPlane(), p2.getPlane());
+		maxPlane = Math.max(p1.getPlane(), p2.getPlane());
+	}
 
-    public Zone(WorldPoint p) {
-        assert (p != null);
-        minX = p.getX();
-        maxX = p.getX();
-        minY = p.getY();
-        maxY = p.getY();
-        minPlane = p.getPlane();
-        maxPlane = p.getPlane();
-    }
+	public Zone(WorldPoint p)
+	{
+		assert(p != null);
+		minX = p.getX();
+		maxX = p.getX();
+		minY = p.getY();
+		maxY = p.getY();
+		minPlane = p.getPlane();
+		maxPlane = p.getPlane();
+	}
 
-    public Zone(int regionID) {
-        minX = ((regionID >> 8) & 0xFF) << 6;
-        maxX = minX + REGION_SIZE;
-        minY = (regionID & 0xFF) << 6;
-        maxY = minY + REGION_SIZE;
-    }
+	public Zone(int regionID)
+	{
+		minX = ((regionID >> 8) & 0xFF) << 6;
+		maxX = minX + REGION_SIZE;
+		minY = (regionID & 0xFF) << 6;
+		maxY = minY + REGION_SIZE;
+	}
 
-    public Zone(int regionID, int plane) {
-        this(regionID);
-        minPlane = plane;
-        maxPlane = plane;
-    }
+	public Zone(int regionID, int plane)
+	{
+		this(regionID);
+		minPlane = plane;
+		maxPlane = plane;
+	}
 
-    public boolean contains(WorldPoint worldPoint) {
-        return minX <= worldPoint.getX()
-                && worldPoint.getX() <= maxX
-                && minY <= worldPoint.getY()
-                && worldPoint.getY() <= maxY
-                && minPlane <= worldPoint.getPlane()
-                && worldPoint.getPlane() <= maxPlane;
-    }
+	public boolean contains(WorldPoint worldPoint)
+	{
+		return minX <= worldPoint.getX()
+			&& worldPoint.getX() <= maxX
+			&& minY <= worldPoint.getY()
+			&& worldPoint.getY() <= maxY
+			&& minPlane <= worldPoint.getPlane()
+			&& worldPoint.getPlane() <= maxPlane;
+	}
 
-    public WorldPoint getMinWorldPoint() {
-        return new WorldPoint(minX, minY, minPlane);
-    }
+	public WorldPoint getMinWorldPoint()
+	{
+		return new WorldPoint(minX, minY, minPlane);
+	}
 }

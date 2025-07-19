@@ -25,92 +25,146 @@
 package net.runelite.client.plugins.microbot.questhelper.managers;
 
 import com.google.inject.Injector;
+import net.runelite.client.plugins.microbot.questhelper.bank.GroupBank;
+import net.runelite.client.plugins.microbot.questhelper.bank.QuestBank;
+import net.runelite.client.plugins.microbot.questhelper.bank.banktab.QuestBankTab;
+import net.runelite.client.plugins.microbot.questhelper.bank.banktab.QuestHelperBankTagService;
 import lombok.Getter;
 import net.runelite.api.Client;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.Player;
 import net.runelite.client.eventbus.EventBus;
-import net.runelite.client.plugins.microbot.questhelper.bank.QuestBank;
-import net.runelite.client.plugins.microbot.questhelper.bank.banktab.QuestBankTab;
-import net.runelite.client.plugins.microbot.questhelper.bank.banktab.QuestHelperBankTagService;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.List;
 
 @Singleton
-public class QuestBankManager {
-    @Inject
-    private QuestBank questBank;
+public class QuestBankManager
+{
+	@Inject
+	private QuestBank questBank;
 
-    @Getter
-    @Inject
-    private QuestHelperBankTagService bankTagService;
+	@Inject
+	private GroupBank groupBank;
 
-    @Inject
-    private QuestBankTab questBankTab;
+	@Getter
+	@Inject
+	private QuestHelperBankTagService bankTagService;
 
-    private boolean loggedInStateKnown;
+	@Inject
+	private QuestBankTab questBankTab;
 
-    public void startUp(Injector injector, EventBus eventBus) {
-        questBankTab.startUp();
-        injector.injectMembers(questBankTab);
-        eventBus.register(questBankTab);
-    }
+	private boolean loggedInStateKnown;
 
-    public void shutDown(EventBus eventBus) {
-        eventBus.unregister(questBankTab);
-        questBankTab.shutDown();
-    }
+	public void startUp(Injector injector, EventBus eventBus)
+	{
+		questBankTab.startUp();
+		injector.injectMembers(questBankTab);
+		questBankTab.register(eventBus);
+	}
 
-    public void loadInitialStateFromConfig(Client client) {
-        if (!loggedInStateKnown) {
-            Player localPlayer = client.getLocalPlayer();
-            if (localPlayer != null && localPlayer.getName() != null) {
-                loggedInStateKnown = true;
-                loadState();
-            }
-        }
-    }
+	public void shutDown(EventBus eventBus)
+	{
+		questBankTab.unregister(eventBus);
+		questBankTab.shutDown();
+	}
 
-    public void setUnknownInitialState() {
-        loggedInStateKnown = false;
-    }
+	public void loadInitialStateFromConfig(Client client)
+	{
+		if (!loggedInStateKnown)
+		{
+			Player localPlayer = client.getLocalPlayer();
+			if (localPlayer != null && localPlayer.getName() != null)
+			{
+				loggedInStateKnown = true;
+				loadState();
+			}
+		}
+	}
 
-    public void loadState() {
-        questBank.loadState();
-    }
+	public void setUnknownInitialState()
+	{
+		loggedInStateKnown = false;
+	}
 
-    public void startUpQuest() {
-        questBankTab.startUp();
-    }
+	public void loadState()
+	{
+		questBank.loadState();
+		groupBank.loadState();
+	}
 
-    public void shutDownQuest() {
-        questBankTab.shutDown();
-    }
+	public void startUpQuest()
+	{
+		questBankTab.startUp();
+	}
 
-    public List<Item> getBankItems() {
-        return questBank.getBankItems();
-    }
+	public void shutDownQuest()
+	{
+		questBankTab.shutDown();
+	}
 
-    public void refreshBankTab() {
-        questBankTab.refreshBankTab();
-    }
+	public List<Item> getBankItems()
+	{
+		return questBank.getBankItems();
+	}
 
-    public void updateLocalBank(ItemContainer itemContainer) {
-        questBank.updateLocalBank(itemContainer.getItems());
-    }
+	public List<Item> getGroupBankItems()
+	{
+		return groupBank.getBankItems();
+	}
 
-    public void updateBankForQuestSpeedrunningWorld() {
-        questBank.updateLocalBank(new Item[]{});
-    }
+	public void refreshBankTab()
+	{
+		questBankTab.refreshBankTab();
+	}
 
-    public void saveBankToConfig() {
-        questBank.saveBankToConfig();
-    }
+	public void updateLocalBank(ItemContainer itemContainer)
+	{
+		questBank.updateLocalBank(itemContainer.getItems());
+	}
 
-    public void emptyState() {
-        questBank.emptyState();
-    }
+	public void updateLocalGroupBank(Client client, ItemContainer itemContainer)
+	{
+		boolean hasChangedGroupStorage = client.getVarbitValue(4602) == 1;
+		if (hasChangedGroupStorage)
+		{
+			// If editing, group bank not actually 'saved', so don't update yet
+			groupBank.setGroupBankDuringEditing(itemContainer.getItems());
+		}
+		else
+		{
+			groupBank.updateLocalBank(itemContainer.getItems());
+		}
+	}
+
+	public void updateLocalGroupInventory(Item[] items)
+	{
+		groupBank.setGroupInventoryDuringEditing(items);
+	}
+
+	public boolean updateGroupBankOnInventoryChange(Item[] inventoryItems)
+	{
+		return groupBank.updateAfterInventoryChange(inventoryItems);
+	}
+
+	public void updateBankForQuestSpeedrunningWorld()
+	{
+		questBank.updateLocalBank(new Item[]{ });
+		groupBank.updateLocalBank(new Item[]{ });
+	}
+
+
+	public void saveBankToConfig()
+	{
+		questBank.saveBankToConfig();
+		groupBank.saveBankToConfig();
+	}
+
+	public void emptyState()
+	{
+		questBank.emptyState();
+		groupBank.emptyState();
+	}
 }

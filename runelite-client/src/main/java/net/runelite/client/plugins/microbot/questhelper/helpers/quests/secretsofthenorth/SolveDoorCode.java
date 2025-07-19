@@ -24,141 +24,157 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.secretsofthenorth;
 
-
+import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.api.events.VarClientIntChanged;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
-import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.ui.FontManager;
 
 import java.awt.*;
 import java.util.HashMap;
 import java.util.Map;
 
-public class SolveDoorCode extends QuestStep {
+public class SolveDoorCode extends QuestStep
+{
 
-    private final int ARROW_ONE_DOWN = 3;
-    private final int ARROW_ONE_UP = 4;
-    private final int ARROW_TWO_DOWN = 10;
-    private final int ARROW_TWO_UP = 11;
-    private final int ARROW_THREE_DOWN = 17;
-    private final int ARROW_THREE_UP = 18;
-    private final int ARROW_FOUR_DOWN = 24;
-    private final int ARROW_FOUR_UP = 25;
-    private final int ARROW_FIVE_DOWN = 31;
-    private final int ARROW_FIVE_UP = 32;
+	private final int ARROW_ONE_DOWN = 3;
+	private final int ARROW_ONE_UP = 4;
+	private final int ARROW_TWO_DOWN = 10;
+	private final int ARROW_TWO_UP = 11;
+	private final int ARROW_THREE_DOWN = 17;
+	private final int ARROW_THREE_UP = 18;
+	private final int ARROW_FOUR_DOWN = 24;
+	private final int ARROW_FOUR_UP = 25;
+	private final int ARROW_FIVE_DOWN = 31;
+	private final int ARROW_FIVE_UP = 32;
 
-    private final int COMPLETE = 5;
+	private final int COMPLETE = 5;
 
-    private final HashMap<Integer, Integer> highlightButtons = new HashMap<>();
-    private final HashMap<Integer, Integer> distance = new HashMap<>();
+	private final HashMap<Integer, Integer> highlightButtons = new HashMap<>();
+	private final HashMap<Integer, Integer> distance = new HashMap<>();
 
-    public SolveDoorCode(QuestHelper questHelper) {
-        super(questHelper, "Click the highlighted arrows to move the slots to the solution 'BLOOD'.");
-        highlightButtons.put(1, ARROW_ONE_DOWN);
-        highlightButtons.put(2, ARROW_TWO_DOWN);
-        highlightButtons.put(3, ARROW_THREE_DOWN);
-        highlightButtons.put(4, ARROW_FOUR_DOWN);
-        highlightButtons.put(5, ARROW_FIVE_DOWN);
+	public SolveDoorCode(QuestHelper questHelper)
+	{
+		super(questHelper, "Click the highlighted arrows to move the slots to the solution 'BLOOD'.");
+		highlightButtons.put(1, ARROW_ONE_DOWN);
+		highlightButtons.put(2, ARROW_TWO_DOWN);
+		highlightButtons.put(3, ARROW_THREE_DOWN);
+		highlightButtons.put(4, ARROW_FOUR_DOWN);
+		highlightButtons.put(5, ARROW_FIVE_DOWN);
 
-        distance.put(1, 0);
-        distance.put(2, 0);
-        distance.put(3, 0);
-        distance.put(4, 0);
-        distance.put(5, 0);
-    }
+		distance.put(1, 0);
+		distance.put(2, 0);
+		distance.put(3, 0);
+		distance.put(4, 0);
+		distance.put(5, 0);
+	}
 
-    @Subscribe
-    public void onVarClientIntChanged(VarClientIntChanged varClientIntChanged) {
-        updateSolvedPositionState();
-    }
+	@Subscribe
+	public void onVarClientIntChanged(VarClientIntChanged varClientIntChanged)
+	{
+		updateSolvedPositionState();
+	}
 
-    private void updateSolvedPositionState() {
-        final int SLOT_ONE = 1113;
-        final int SLOT_TWO = 1114;
-        final int SLOT_THREE = 1115;
-        final int SLOT_FOUR = 1116;
-        final int SLOT_FIVE = 1117;
+	private void updateSolvedPositionState()
+	{
+		final int SLOT_ONE = 1113;
+		final int SLOT_TWO = 1114;
+		final int SLOT_THREE = 1115;
+		final int SLOT_FOUR = 1116;
+		final int SLOT_FIVE = 1117;
 
-        final int ENTRY_ONE = 3;
-        final int ENTRY_TWO = 5;
-        final int ENTRY_THREE = 9;
-        final int ENTRY_FOUR = 4;
-        final int ENTRY_FIVE = 7;
-        highlightButtons.replace(1, matchStateToSolution(SLOT_ONE, ENTRY_ONE, ARROW_ONE_DOWN, ARROW_ONE_UP));
-        highlightButtons.replace(2, matchStateToSolution(SLOT_TWO, ENTRY_TWO, ARROW_TWO_DOWN, ARROW_TWO_UP));
-        highlightButtons.replace(3, matchStateToSolution(SLOT_THREE, ENTRY_THREE, ARROW_THREE_DOWN, ARROW_THREE_UP));
-        highlightButtons.replace(4, matchStateToSolution(SLOT_FOUR, ENTRY_FOUR, ARROW_FOUR_DOWN, ARROW_FOUR_UP));
-        highlightButtons.replace(5, matchStateToSolution(SLOT_FIVE, ENTRY_FIVE, ARROW_FIVE_DOWN, ARROW_FIVE_UP));
+		final int ENTRY_ONE = 3;
+		final int ENTRY_TWO = 5;
+		final int ENTRY_THREE = 9;
+		final int ENTRY_FOUR = 4;
+		final int ENTRY_FIVE = 7;
+		highlightButtons.replace(1, matchStateToSolution(SLOT_ONE, ENTRY_ONE, ARROW_ONE_DOWN, ARROW_ONE_UP));
+		highlightButtons.replace(2, matchStateToSolution(SLOT_TWO, ENTRY_TWO, ARROW_TWO_DOWN, ARROW_TWO_UP));
+		highlightButtons.replace(3, matchStateToSolution(SLOT_THREE, ENTRY_THREE, ARROW_THREE_DOWN, ARROW_THREE_UP));
+		highlightButtons.replace(4, matchStateToSolution(SLOT_FOUR, ENTRY_FOUR, ARROW_FOUR_DOWN, ARROW_FOUR_UP));
+		highlightButtons.replace(5, matchStateToSolution(SLOT_FIVE, ENTRY_FIVE, ARROW_FIVE_DOWN, ARROW_FIVE_UP));
 
-        distance.replace(1, matchStateToDistance(SLOT_ONE, ENTRY_ONE));
-        distance.replace(2, matchStateToDistance(SLOT_TWO, ENTRY_TWO));
-        distance.replace(3, matchStateToDistance(SLOT_THREE, ENTRY_THREE));
-        distance.replace(4, matchStateToDistance(SLOT_FOUR, ENTRY_FOUR));
-        distance.replace(5, matchStateToDistance(SLOT_FIVE, ENTRY_FIVE));
+		distance.replace(1, matchStateToDistance(SLOT_ONE, ENTRY_ONE));
+		distance.replace(2, matchStateToDistance(SLOT_TWO, ENTRY_TWO));
+		distance.replace(3, matchStateToDistance(SLOT_THREE, ENTRY_THREE));
+		distance.replace(4, matchStateToDistance(SLOT_FOUR, ENTRY_FOUR));
+		distance.replace(5, matchStateToDistance(SLOT_FIVE, ENTRY_FIVE));
 
-        if (highlightButtons.get(1) + highlightButtons.get(2) + highlightButtons.get(3) + highlightButtons.get(4) + highlightButtons.get(5) == 0) {
-            highlightButtons.put(6, COMPLETE);
-        } else {
-            highlightButtons.put(6, 0);
-        }
-    }
+		if (highlightButtons.get(1) + highlightButtons.get(2) + highlightButtons.get(3) + highlightButtons.get(4) + highlightButtons.get(5) == 0)
+		{
+			highlightButtons.put(6, COMPLETE);
+		}
+		else
+		{
+			highlightButtons.put(6, 0);
+		}
+	}
 
-    private int matchStateToSolution(final int slot, final int target, int arrowRightId, int arrowLeftId) {
-        int currentValue = client.getVarcIntValue(slot);
-        int id = Math.floorMod(currentValue - target, 10) < Math.floorMod(target - currentValue, 10) ? arrowRightId : arrowLeftId;
-        if (currentValue != target) return id;
-        return 0;
-    }
+	private int matchStateToSolution(final int slot, final int target, int arrowRightId, int arrowLeftId)
+	{
+		int currentValue = client.getVarcIntValue(slot);
+		int id = Math.floorMod(currentValue - target, 10) < Math.floorMod(target - currentValue, 10) ? arrowRightId : arrowLeftId;
+		if (currentValue != target) return id;
+		return 0;
+	}
 
-    private int matchStateToDistance(final int slot, final int target) {
-        int currentValue = client.getVarcIntValue(slot);
-        return Math.min(Math.floorMod(currentValue - target, 10), Math.floorMod(target - currentValue, 10));
-    }
+	private int matchStateToDistance(final int slot, final int target)
+	{
+		int currentValue = client.getVarcIntValue(slot);
+		return Math.min(Math.floorMod(currentValue - target, 10), Math.floorMod(target - currentValue, 10));
+	}
 
-    @Override
-    public void makeWidgetOverlayHint(Graphics2D graphics, QuestHelperPlugin plugin) {
-        super.makeWidgetOverlayHint(graphics, plugin);
-        for (Map.Entry<Integer, Integer> entry : highlightButtons.entrySet()) {
-            if (entry.getValue() == 0) {
-                continue;
-            }
+	@Override
+	public void makeWidgetOverlayHint(Graphics2D graphics, QuestHelperPlugin plugin)
+	{
+		super.makeWidgetOverlayHint(graphics, plugin);
+		for (Map.Entry<Integer, Integer> entry : highlightButtons.entrySet())
+		{
+			if (entry.getValue() == 0)
+			{
+				continue;
+			}
 
-            if (entry.getKey() == 6) {
-                Widget widget = client.getWidget(809, 5);
-                if (widget != null) {
-                    graphics.setColor(new Color(questHelper.getConfig().targetOverlayColor().getRed(),
-                            questHelper.getConfig().targetOverlayColor().getGreen(),
-                            questHelper.getConfig().targetOverlayColor().getBlue(), 65));
-                    graphics.fill(widget.getBounds());
-                    graphics.setColor(questHelper.getConfig().targetOverlayColor());
-                    graphics.draw(widget.getBounds());
-                }
-                continue;
-            }
+			if (entry.getKey() == 6)
+			{
+				Widget widget = client.getWidget(InterfaceID.CombinationLock.CONFIRM_BUTTON);
+				if (widget != null)
+				{
+					graphics.setColor(new Color(questHelper.getConfig().targetOverlayColor().getRed(),
+						questHelper.getConfig().targetOverlayColor().getGreen(),
+						questHelper.getConfig().targetOverlayColor().getBlue(), 65));
+					graphics.fill(widget.getBounds());
+					graphics.setColor(questHelper.getConfig().targetOverlayColor());
+					graphics.draw(widget.getBounds());
+				}
+				continue;
+			}
 
-            Widget widget = client.getWidget(809, 4);
-            if (widget != null) {
-                Widget arrow = widget.getChild(entry.getValue());
-                if (arrow == null) break;
-                graphics.setColor(new Color(questHelper.getConfig().targetOverlayColor().getRed(),
-                        questHelper.getConfig().targetOverlayColor().getGreen(),
-                        questHelper.getConfig().targetOverlayColor().getBlue(), 65));
-                graphics.fill(arrow.getBounds());
-                graphics.setColor(questHelper.getConfig().targetOverlayColor());
-                graphics.draw(arrow.getBounds());
+			Widget widget = client.getWidget(InterfaceID.CombinationLock.LOCK);
+			if (widget != null)
+			{
+				Widget arrow = widget.getChild(entry.getValue());
+				if (arrow == null) break;
+				graphics.setColor(new Color(questHelper.getConfig().targetOverlayColor().getRed(),
+					questHelper.getConfig().targetOverlayColor().getGreen(),
+					questHelper.getConfig().targetOverlayColor().getBlue(), 65));
+				graphics.fill(arrow.getBounds());
+				graphics.setColor(questHelper.getConfig().targetOverlayColor());
+				graphics.draw(arrow.getBounds());
 
-                if (distance.get(entry.getKey()) != null) {
-                    int widgetX = arrow.getCanvasLocation().getX() + (arrow.getWidth() / 2) - 30;
-                    int widgetY = arrow.getCanvasLocation().getY() + (arrow.getHeight() / 2) + 4;
-                    Font font = FontManager.getRunescapeFont().deriveFont(Font.BOLD, 16);
-                    graphics.setFont(font);
-                    graphics.drawString(Integer.toString(distance.get(entry.getKey())), widgetX, widgetY);
-                }
-            }
-        }
-    }
+				if (distance.get(entry.getKey()) != null)
+				{
+					int widgetX = arrow.getCanvasLocation().getX() + (arrow.getWidth() / 2) - 30;
+					int widgetY = arrow.getCanvasLocation().getY() + (arrow.getHeight() / 2) + 4;
+					Font font = FontManager.getRunescapeFont().deriveFont(Font.BOLD, 16);
+					graphics.setFont(font);
+					graphics.drawString(Integer.toString(distance.get(entry.getKey())), widgetX, widgetY);
+				}
+			}
+		}
+	}
 }
 

@@ -33,37 +33,41 @@ import java.util.Set;
 
 @AllArgsConstructor
 @Getter
-public enum MageArenaTemperature {
-    VERY_COLD("is very cold", 200, 5000),
-    COLD("is cold", 150, 199),
-    WARM("is warm", 100, 149),
-    HOT("is hot", 70, 99),
-    VERY_HOT("is very hot", 30, 69),
-    INCREDIBLY_HOT("is incredibly hot", 15, 29),
-    SHAKING("is visibly shaking", 0, 14);
+public enum MageArenaTemperature
+{
+	VERY_COLD("is very cold", 200, 5000),
+	COLD("is cold",  150, 199),
+	WARM("is warm", 100, 149),
+	HOT("is hot", 70, 99),
+	VERY_HOT("is very hot", 30, 69),
+	INCREDIBLY_HOT("is incredibly hot", 15, 29),
+	SHAKING("is visibly shaking", 0, 14);
 
-    public static final Set<MageArenaTemperature> temperatureSet = Sets.immutableEnumSet(
-            VERY_COLD,
-            COLD,
-            WARM,
-            HOT,
-            VERY_HOT,
-            INCREDIBLY_HOT,
-            SHAKING
-    );
+	public static final Set<MageArenaTemperature> temperatureSet = Sets.immutableEnumSet(
+		VERY_COLD,
+		COLD,
+		WARM,
+		HOT,
+		VERY_HOT,
+		INCREDIBLY_HOT,
+		SHAKING
+	);
 
-    private final String text;
-    private final int minDistance;
-    private final int maxDistance;
+	private final String text;
+	private final int minDistance;
+	private final int maxDistance;
 
-    @Nullable
-    public static MageArenaTemperature getFromTemperatureSet(final String message) {
-        for (final MageArenaTemperature temperature : temperatureSet) {
-            if (message.contains(temperature.getText())) {
-                return temperature;
-            }
-        }
+	@Nullable
+	public static MageArenaTemperature getFromTemperatureSet(final String message)
+	{
+		for (final MageArenaTemperature temperature : temperatureSet)
+		{
+			if (message.contains(temperature.getText()))
+			{
+				return temperature;
+			}
+		}
 
-        return null;
-    }
+		return null;
+	}
 }

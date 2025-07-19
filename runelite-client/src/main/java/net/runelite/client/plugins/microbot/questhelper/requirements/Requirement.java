@@ -26,9 +26,9 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements;
 
+import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
 import net.runelite.api.Client;
 import net.runelite.client.config.ConfigManager;
-import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
 import net.runelite.client.ui.overlay.components.LineComponent;
 
 import javax.annotation.Nonnull;
@@ -42,131 +42,138 @@ import java.util.List;
  * This is used in both rendering overlays and quest logic.<br>
  * All {@link Requirement}s are run on the {@link net.runelite.client.callback.ClientThread}.
  */
-public interface Requirement {
-    /**
-     * Check the {@link Client} that it meets this requirement.
-     *
-     * @param client client to check
-     * @return true if the client meets this requirement
-     */
-    boolean check(Client client);
+public interface Requirement
+{
+	/**
+	 * Check the {@link Client} that it meets this requirement.
+	 * @param client client to check
+	 * @return true if the client meets this requirement
+	 */
+	boolean check(Client client);
 
-    default boolean checkWithConfigChange(Client client, ConfigManager configManager, String configName, String value) {
-        if (check(client)) {
-            configManager.setRSProfileConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, configName, value);
-            return true;
-        }
-        return false;
-    }
+	default boolean checkWithConfigChange(Client client, ConfigManager configManager, String configName, String value)
+	{
+		if (check(client))
+		{
+			configManager.setRSProfileConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, configName, value);
+			return true;
+		}
+		return false;
+	}
 
-    /**
-     * @return whether the requirement should be considered for filtering in the sidebar
-     */
-    default boolean shouldConsiderForFilter() {
-        return false;
-    }
+	/**
+	 * @return whether the requirement should be considered for filtering in the sidebar
+	 */
+	default boolean shouldConsiderForFilter()
+	{
+		return false;
+	}
 
-    /**
-     * @return display text to be used for rendering either on overlays or panels. Cannot be null.
-     */
-    @Nonnull
-    String getDisplayText();
+	/**
+	 * @return display text to be used for rendering either on overlays or panels. Cannot be null.
+	 */
+	@Nonnull
+	String getDisplayText();
 
-    /**
-     * @return the wiki URL leading to information about this requirement, if any
-     */
-    @Nullable
-    default String getWikiUrl() {
-        return null;
-    }
+	/**
+	 * @return the wiki URL leading to information about this requirement, if any
+	 */
+	@Nullable
+	default String getWikiUrl()
+	{
+		return null;
+	}
 
-    /**
-     * The {@link Color} used to render the {@link #getDisplayText()} depending on what {@link #check(Client)}
-     * returns.<br>
-     * By default, if {@link #check(Client)} returns true, {@link Color#GREEN} is used, otherwise {@link Color#RED}.
-     *
-     * @param client client to check
-     * @return the {@link Color} to use
-     */
-    default Color getColor(Client client, QuestHelperConfig config) {
-        return check(client) ? config.passColour() : config.failColour();
-    }
+	/**
+	 * The {@link Color} used to render the {@link #getDisplayText()} depending on what {@link #check(Client)}
+	 * returns.<br>
+	 * By default, if {@link #check(Client)} returns true, {@link Color#GREEN} is used, otherwise {@link Color#RED}.
+	 *
+	 * @param client client to check
+	 * @return the {@link Color} to use
+	 */
+	default Color getColor(Client client, QuestHelperConfig config)
+	{
+		return check(client) ? config.passColour() : config.failColour();
+	}
 
-    /**
-     * If this requirement will be displayed on a quest's side panels they can have tooltips to
-     * give extra information.
-     *
-     * @return the tooltip text to display
-     */
-    @Nullable
-    default String getTooltip() {
-        return null;
-    }
+	/**
+	 * If this requirement will be displayed on a quest's side panels they can have tooltips to
+	 * give extra information.
+	 *
+	 * @return the tooltip text to display
+	 */
+	@Nullable
+	default String getTooltip()
+	{
+		return null;
+	}
 
-    /**
-     * Set the tooltip for this requirement
-     *
-     * @param tooltip the new tooltip
-     */
-    default void setTooltip(@Nullable String tooltip) {
-    }
+	/**
+	 * Set the tooltip for this requirement
+	 *
+	 * @param tooltip the new tooltip
+	 */
+	default void setTooltip(@Nullable String tooltip) {}
+	
+	/**
+	 * If a custom suffix has been set it will be used
+	 * over the default ItemID.
+	 *
+	 * @return custom url
+	 */
+	@Nullable
+	default String getUrlSuffix()
+	{
+		return null;
+	}
+	
+	/**
+	 * Set the suffix of the URL to the argument provided,
+	 *  overrides the url set from the ItemID.
+	 *
+	 * @param urlSuffix the new url
+	 */
+	default void setUrlSuffix(@Nullable String urlSuffix) {}
+	
 
-    /**
-     * If a custom suffix has been set it will be used
-     * over the default ItemID.
-     *
-     * @return custom url
-     */
-    @Nullable
-    default String getUrlSuffix() {
-        return null;
-    }
+	default List<LineComponent> getDisplayTextWithChecks(Client client, QuestHelperConfig config)
+	{
+		List<LineComponent> lines = new ArrayList<>();
 
-    /**
-     * Set the suffix of the URL to the argument provided,
-     * overrides the url set from the ItemID.
-     *
-     * @param urlSuffix the new url
-     */
-    default void setUrlSuffix(@Nullable String urlSuffix) {
-    }
+		if (!shouldDisplayText(client)) return lines;
 
+		String text = getDisplayText();
+		Color color = getColor(client, config);
 
-    default List<LineComponent> getDisplayTextWithChecks(Client client, QuestHelperConfig config) {
-        List<LineComponent> lines = new ArrayList<>();
+		lines.add(LineComponent.builder()
+			.left(text)
+			.leftColor(color)
+			.build());
 
-        if (!shouldDisplayText(client)) return lines;
+		return lines;
+	}
 
-        String text = getDisplayText();
-        Color color = getColor(client, config);
+	/**
+	 * @return If not null, this requirement will be displayed if this requirement fails during checks
+	 */
+	default Requirement getOverlayReplacement()
+	{
+		return null;
+	}
 
-        lines.add(LineComponent.builder()
-                .left(text)
-                .leftColor(color)
-                .build());
+	/**
+	 * @return If requirements pass, returns true
+	 */
+	default boolean shouldDisplayText(Client client)
+	{
+		return true;
+	}
 
-        return lines;
-    }
-
-    /**
-     * @return If not null, this requirement will be displayed if this requirement fails during checks
-     */
-    default Requirement getOverlayReplacement() {
-        return null;
-    }
-
-    /**
-     * Set the new {@link Requirement} to display if this one fails
-     *
-     * @param requirement the new requirement
-     */
-    default void setOverlayReplacement(Requirement requirement) {
-    }
-
-    /**
-     * @return If requirements pass, returns true
-     */
-    default boolean shouldDisplayText(Client client) {
-        return true;
-    }
+	/**
+	 * Set the new {@link Requirement} to display if this one fails
+	 *
+	 * @param requirement the new requirement
+	 */
+	default void setOverlayReplacement(Requirement requirement) {}
 }

@@ -29,29 +29,35 @@ package net.runelite.client.plugins.microbot.questhelper.requirements.widget;
 import net.runelite.api.Client;
 import net.runelite.api.widgets.Widget;
 
-public class WidgetSpriteRequirement extends WidgetPresenceRequirement {
-    private final int id;
+public class WidgetSpriteRequirement extends WidgetPresenceRequirement
+{
+	private final int id;
 
-    public WidgetSpriteRequirement(int groupId, int childId, int childChildId, int id) {
-        super(groupId, childId, childChildId);
-        this.id = id;
-    }
+	public WidgetSpriteRequirement(int groupId, int childId, int childChildId, int id)
+	{
+		super(groupId, childId, childChildId);
+		this.id = id;
+	}
 
-    public WidgetSpriteRequirement(int groupId, int childId, int id) {
-        super(groupId, childId);
-        this.id = id;
-    }
+	public WidgetSpriteRequirement(int groupId, int childId, int id)
+	{
+		super(groupId, childId);
+		this.id = id;
+	}
 
-    public boolean checkWidget(Client client) {
-        Widget widget = getWidget(client);
-        if (widget == null) {
-            return false;
-        }
-        return widget.getSpriteId() == id;
-    }
+	public boolean checkWidget(Client client)
+	{
+		Widget widget = getWidget(client);
+		if (widget == null)
+		{
+			return false;
+		}
+		return widget.getSpriteId() == id;
+	}
 
-    public void checkWidgetText(Client client) {
-        hasPassed = hasPassed || checkWidget(client);
-    }
+	public void checkWidgetText(Client client)
+	{
+		hasPassed = hasPassed || checkWidget(client);
+	}
 }
 

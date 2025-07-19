@@ -27,88 +27,104 @@
 
 package net.runelite.client.plugins.microbot.questhelper.requirements.item;
 
-
+import net.runelite.client.plugins.microbot.questhelper.requirements.conditional.ConditionForStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.tools.QuestPerspective;
 import net.runelite.api.Client;
 import net.runelite.api.Tile;
 import net.runelite.api.TileItem;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.questhelper.requirements.conditional.ConditionForStep;
-import net.runelite.client.plugins.microbot.questhelper.steps.tools.QuestPerspective;
 
 import java.util.Collections;
 import java.util.List;
 
-public class ItemOnTileRequirement extends ConditionForStep {
-    private final List<Integer> itemID;
-    private WorldPoint worldPoint;
+public class ItemOnTileRequirement extends ConditionForStep
+{
+	private final List<Integer> itemID;
+	private WorldPoint worldPoint;
 
-    public ItemOnTileRequirement(int itemID) {
-        this.itemID = Collections.singletonList(itemID);
-    }
+	public ItemOnTileRequirement(int itemID)
+	{
+		this.itemID = Collections.singletonList(itemID);
+	}
 
-    public ItemOnTileRequirement(ItemRequirement item) {
-        assert (item != null);
+	public ItemOnTileRequirement(ItemRequirement item)
+	{
+		assert(item != null);
 
-        this.itemID = item.getAllIds();
-    }
+		this.itemID = item.getAllIds();
+	}
 
-    public ItemOnTileRequirement(int itemID, WorldPoint worldPoint) {
-        assert (worldPoint != null);
+	public ItemOnTileRequirement(int itemID, WorldPoint worldPoint)
+	{
+		assert(worldPoint != null);
 
-        this.itemID = Collections.singletonList(itemID);
-        this.worldPoint = worldPoint;
-    }
+		this.itemID = Collections.singletonList(itemID);
+		this.worldPoint = worldPoint;
+	}
 
-    public ItemOnTileRequirement(ItemRequirement item, WorldPoint worldPoint) {
-        assert (item != null);
-        assert (worldPoint != null);
+	public ItemOnTileRequirement(ItemRequirement item, WorldPoint worldPoint)
+	{
+		assert(item != null);
+		assert(worldPoint != null);
 
-        this.itemID = item.getAllIds();
-        this.worldPoint = worldPoint;
-    }
+		this.itemID = item.getAllIds();
+		this.worldPoint = worldPoint;
+	}
 
 
-    public boolean check(Client client) {
-        return checkAllTiles(client);
-    }
+	public boolean check(Client client)
+	{
+		return checkAllTiles(client);
+	}
 
-    private boolean checkAllTiles(Client client) {
-        if (client.getScene() == null) return false;
+	private boolean checkAllTiles(Client client)
+	{
+		if (client.getTopLevelWorldView().getScene() == null) return false;
 
-        if (worldPoint != null) {
-            LocalPoint localPoint = QuestPerspective.getInstanceLocalPointFromReal(client, worldPoint);
-            if (localPoint == null) return false;
+		if (worldPoint != null)
+		{
+			List<LocalPoint> localPoints = QuestPerspective.getInstanceLocalPointFromReal(client, worldPoint);
+			for (LocalPoint localPoint : localPoints)
+			{
+				Tile tile = client.getTopLevelWorldView().getScene().getTiles()[client.getTopLevelWorldView().getPlane()][localPoint.getSceneX()][localPoint.getSceneY()];
+				if (tile != null)
+				{
+					List<TileItem> items = tile.getGroundItems();
+					if (items == null) return false;
+					for (TileItem item : items)
+					{
+						if (itemID.contains(item.getId()))
+						{
+							return true;
+						}
+					}
+				}
+			}
+			return false;
+		}
 
-            Tile tile = client.getScene().getTiles()[client.getPlane()][localPoint.getSceneX()][localPoint.getSceneY()];
-            if (tile != null) {
-                List<TileItem> items = tile.getGroundItems();
-                if (items == null) return false;
-                for (TileItem item : items) {
-                    if (itemID.contains(item.getId())) {
-                        return true;
-                    }
-                }
-
-                return false;
-            }
-        }
-
-        Tile[][] squareOfTiles = client.getScene().getTiles()[client.getPlane()];
-        for (Tile[] lineOfTiles : squareOfTiles) {
-            for (Tile tile : lineOfTiles) {
-                if (tile != null) {
-                    List<TileItem> items = tile.getGroundItems();
-                    if (items != null) {
-                        for (TileItem item : items) {
-                            if (itemID.contains(item.getId())) {
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return false;
-    }
+		Tile[][] squareOfTiles = client.getScene().getTiles()[client.getPlane()];
+		for (Tile[] lineOfTiles : squareOfTiles)
+		{
+			for (Tile tile : lineOfTiles)
+			{
+				if (tile != null)
+				{
+					List<TileItem> items = tile.getGroundItems();
+					if (items != null)
+					{
+						for (TileItem item : items)
+						{
+							if (itemID.contains(item.getId()))
+							{
+								return true;
+							}
+						}
+					}
+				}
+			}
+		}
+		return false;
+	}
 }

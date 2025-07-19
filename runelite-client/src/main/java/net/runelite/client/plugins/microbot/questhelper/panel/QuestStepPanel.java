@@ -24,12 +24,12 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.panel;
 
-import net.runelite.api.Client;
-import net.runelite.api.Item;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.managers.QuestManager;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import lombok.Getter;
+import net.runelite.api.Client;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.SwingUtil;
@@ -40,302 +40,368 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
-public class QuestStepPanel extends JPanel {
-    private static final int TITLE_PADDING = 5;
+public class QuestStepPanel extends JPanel
+{
+	private static final int TITLE_PADDING = 5;
 
-    private final PanelDetails panelDetails;
-    private final QuestHelperPlugin questHelperPlugin;
+	@Getter
+	private final PanelDetails panelDetails;
+	private final QuestHelperPlugin questHelperPlugin;
 
-    private final JPanel headerPanel = new JPanel();
-    private final JLabel headerLabel = JGenerator.makeJLabel();
-    private final JPanel bodyPanel = new JPanel();
-    private final JCheckBox lockStep = new JCheckBox();
-    private final JPanel leftTitleContainer;
-    private final JPanel viewControls;
-    private final HashMap<QuestStep, JTextPane> steps = new HashMap<>();
-    private final @Nullable QuestRequirementsPanel requiredItemsPanel;
-    private final @Nullable QuestRequirementsPanel recommendedItemsPanel;
-    private final QuestHelper questHelper;
-    private boolean stepAutoLocked;
-    private QuestStep lastHighlightedStep = null;
+	private final JPanel headerPanel = new JPanel();
+	private final JLabel headerLabel = JGenerator.makeJLabel();
+	private final JPanel bodyPanel = new JPanel();
+	private final JCheckBox lockStep = new JCheckBox();
+	@Getter
+	private final JPanel leftTitleContainer;
+	private final JPanel viewControls;
+	private final HashMap<QuestStep, JTextPane> steps = new HashMap<>();
+	private final @Nullable QuestRequirementsPanel requiredItemsPanel;
+	private final @Nullable QuestRequirementsPanel recommendedItemsPanel;
+	private boolean stepAutoLocked;
+	private final QuestHelper questHelper;
+	private QuestStep lastHighlightedStep = null;
 
-    public QuestStepPanel(PanelDetails panelDetails, QuestStep currentStep, QuestManager questManager, QuestHelperPlugin questHelperPlugin) {
-        this.panelDetails = panelDetails;
-        this.questHelperPlugin = questHelperPlugin;
-        this.questHelper = questManager.getSelectedQuest();
+	public QuestStepPanel(PanelDetails panelDetails, QuestStep currentStep, QuestManager questManager, QuestHelperPlugin questHelperPlugin)
+	{
+		this.panelDetails = panelDetails;
+		this.questHelperPlugin = questHelperPlugin;
+		this.questHelper = questManager.getSelectedQuest();
 
-        setLayout(new BorderLayout(0, 1));
-        setBorder(new EmptyBorder(5, 0, 0, 0));
+		setLayout(new BorderLayout(0, 1));
+		setBorder(new EmptyBorder(5, 0, 0, 0));
 
-        leftTitleContainer = new JPanel(new BorderLayout(5, 0));
+		leftTitleContainer = new JPanel(new BorderLayout(5, 0));
 
-        headerLabel.setText(panelDetails.getHeader());
-        headerLabel.setFont(FontManager.getRunescapeBoldFont());
+		headerLabel.setText(panelDetails.getHeader());
+		headerLabel.setFont(FontManager.getRunescapeBoldFont());
 
-        headerLabel.setMinimumSize(new Dimension(1, headerLabel.getPreferredSize().height));
+		headerLabel.setMinimumSize(new Dimension(1, headerLabel.getPreferredSize().height));
 
-        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.X_AXIS));
-        headerPanel.setBorder(new EmptyBorder(7, 7, 7, 7));
+		headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.X_AXIS));
+		headerPanel.setBorder(new EmptyBorder(7, 7, 7, 7));
 
-        headerPanel.add(Box.createRigidArea(new Dimension(TITLE_PADDING, 0)));
-        leftTitleContainer.add(headerLabel, BorderLayout.CENTER);
-        headerPanel.add(leftTitleContainer, BorderLayout.WEST);
+		headerPanel.add(Box.createRigidArea(new Dimension(TITLE_PADDING, 0)));
+		leftTitleContainer.add(headerLabel, BorderLayout.CENTER);
+		headerPanel.add(leftTitleContainer, BorderLayout.WEST);
 
-        viewControls = new JPanel(new GridLayout(1, 3, 10, 0));
+		viewControls = new JPanel(new GridLayout(1, 3, 10, 0));
 
-        SwingUtil.addModalTooltip(lockStep, "Mark section as incomplete", "Mark section as complete");
-        lockStep.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        lockStep.addActionListener(ev -> lockSection(lockStep.isSelected()));
-        lockStep.setVisible(false);
-        headerPanel.add(lockStep, BorderLayout.EAST);
+		SwingUtil.addModalTooltip(lockStep, "Mark section as incomplete", "Mark section as complete");
+		lockStep.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		lockStep.addActionListener(ev -> lockSection(lockStep.isSelected()));
+		lockStep.setVisible(false);
+		headerPanel.add(lockStep, BorderLayout.EAST);
 
-        viewControls.add(lockStep);
+		viewControls.add(lockStep);
 
-        headerPanel.add(viewControls, BorderLayout.EAST);
+		headerPanel.add(viewControls, BorderLayout.EAST);
 
-        if (panelDetails.contains(currentStep)) {
-            headerLabel.setForeground(Color.BLACK);
-            headerPanel.setBackground(ColorScheme.BRAND_ORANGE);
-            viewControls.setBackground(ColorScheme.BRAND_ORANGE);
-            leftTitleContainer.setBackground(ColorScheme.BRAND_ORANGE);
-        } else {
-            headerLabel.setForeground(Color.WHITE);
-            headerPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
-            viewControls.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
-            leftTitleContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
-        }
+		if (panelDetails.contains(currentStep))
+		{
+			headerLabel.setForeground(Color.BLACK);
+			headerPanel.setBackground(ColorScheme.BRAND_ORANGE);
+			viewControls.setBackground(ColorScheme.BRAND_ORANGE);
+			leftTitleContainer.setBackground(ColorScheme.BRAND_ORANGE);
+		}
+		else
+		{
+			headerLabel.setForeground(Color.WHITE);
+			headerPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
+			viewControls.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
+			leftTitleContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
+		}
 
-        /* Body */
-        bodyPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        bodyPanel.setLayout(new BorderLayout());
-        bodyPanel.setBorder(new EmptyBorder(10, 5, 10, 5));
+		/* Body */
+		bodyPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		bodyPanel.setLayout(new BorderLayout());
+		bodyPanel.setBorder(new EmptyBorder(10, 5, 10, 5));
 
-        if (panelDetails.getRequirements() != null) {
-            requiredItemsPanel = new QuestRequirementsPanel("Bring the following items:", panelDetails.getRequirements(), questManager, false);
-            bodyPanel.add(requiredItemsPanel, BorderLayout.NORTH);
-        } else {
-            requiredItemsPanel = null;
-        }
+		if (panelDetails.getRequirements() != null)
+		{
+			requiredItemsPanel = new QuestRequirementsPanel("Bring the following items:", panelDetails.getRequirements(), questManager, false);
+			bodyPanel.add(requiredItemsPanel, BorderLayout.NORTH);
+		}
+		else
+		{
+			requiredItemsPanel = null;
+		}
 
-        if (panelDetails.getRecommended() != null) {
-            recommendedItemsPanel = new QuestRequirementsPanel("Bring the following items:", panelDetails.getRecommended(), questManager, false);
-            bodyPanel.add(recommendedItemsPanel, BorderLayout.CENTER);
-        } else {
-            recommendedItemsPanel = null;
-        }
+		if (panelDetails.getRecommended() != null)
+		{
+			recommendedItemsPanel = new QuestRequirementsPanel("Optionally bring the following items:", panelDetails.getRecommended(), questManager,
+					false);
+			bodyPanel.add(recommendedItemsPanel, BorderLayout.CENTER);
+		}
+		else
+		{
+			recommendedItemsPanel = null;
+		}
 
-        JPanel questStepsPanel = new JPanel();
-        questStepsPanel.setLayout(new BoxLayout(questStepsPanel, BoxLayout.Y_AXIS));
-        questStepsPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		JPanel questStepsPanel = new JPanel();
+		questStepsPanel.setLayout(new BoxLayout(questStepsPanel, BoxLayout.Y_AXIS));
+		questStepsPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
-        for (QuestStep step : panelDetails.getSteps()) {
-            JTextPane questStepLabel = JGenerator.makeJTextPane();
-            questStepLabel.setLayout(new BorderLayout());
-            questStepLabel.setAlignmentX(SwingConstants.LEFT);
-            questStepLabel.setAlignmentY(SwingConstants.TOP);
-            questStepLabel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-            questStepLabel.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createMatteBorder(1, 0, 1, 0, ColorScheme.DARK_GRAY_COLOR.brighter()),
-                    BorderFactory.createEmptyBorder(5, 5, 10, 0)
-            ));
-            questStepLabel.setText(generateText(step));
-            questStepLabel.setOpaque(true);
-            questStepLabel.setVisible(step.isShowInSidebar());
+		for (QuestStep step : panelDetails.getSteps())
+		{
+			JTextPane questStepLabel = JGenerator.makeJTextPane();
+			questStepLabel.setLayout(new BorderLayout());
+			questStepLabel.setAlignmentX(SwingConstants.LEFT);
+			questStepLabel.setAlignmentY(SwingConstants.TOP);
+			questStepLabel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+			questStepLabel.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createMatteBorder(1, 0, 1, 0, ColorScheme.DARK_GRAY_COLOR.brighter()),
+				BorderFactory.createEmptyBorder(5, 5, 10, 0)
+			));
+			questStepLabel.setText(generateText(step));
+			questStepLabel.setOpaque(true);
+			questStepLabel.setVisible(step.isShowInSidebar());
 
-            steps.put(step, questStepLabel);
-            questStepsPanel.add(questStepLabel);
+			steps.put(step, questStepLabel);
+			questStepsPanel.add(questStepLabel);
 
-        }
+		}
 
-        bodyPanel.add(questStepsPanel, BorderLayout.SOUTH);
+		bodyPanel.add(questStepsPanel, BorderLayout.SOUTH);
 
-        add(headerPanel, BorderLayout.NORTH);
-        add(bodyPanel, BorderLayout.CENTER);
+		add(headerPanel, BorderLayout.NORTH);
+		add(bodyPanel, BorderLayout.CENTER);
 
-        if (!panelDetails.getSteps().contains(currentStep)) {
-            collapse();
-        }
-    }
+		if (!panelDetails.getSteps().contains(currentStep))
+		{
+			collapse();
+		}
+	}
 
-    public String generateText(QuestStep step) {
-        StringBuilder text = new StringBuilder();
+	public String generateText(QuestStep step)
+	{
+		StringBuilder text = new StringBuilder();
 
-        if (step.getText() != null) {
-            var first = true;
-            for (var line : step.getText()) {
-                if (!first) {
-                    text.append("\n\n");
-                }
-                text.append(line);
-                first = false;
-            }
-        }
+		if (step.getText() != null)
+		{
+			var first = true;
+			for (var line : step.getText())
+			{
+				if (!first)
+				{
+					text.append("\n\n");
+				}
+				text.append(line);
+				first = false;
+			}
+		}
 
-        return text.toString();
-    }
+		return text.toString();
+	}
 
-    public List<QuestStep> getSteps() {
-        return new ArrayList<>(steps.keySet());
-    }
+	public List<QuestStep> getSteps()
+	{
+		return new ArrayList<>(steps.keySet());
+	}
 
-    public HashMap<QuestStep, JTextPane> getStepsLabels() {
-        return steps;
-    }
+	public HashMap<QuestStep, JTextPane> getStepsLabels()
+	{
+		return steps;
+	}
 
-    public void setLockable(boolean canLock) {
-        lockStep.setVisible(canLock);
-    }
+	public void setLockable(boolean canLock)
+	{
+		lockStep.setVisible(canLock);
+	}
 
-    public void updateHighlightCheck(Client client, QuestStep newStep, QuestHelper currentQuest) {
-        if (panelDetails.getHideCondition() == null || !panelDetails.getHideCondition().check(client)) {
-            setVisible(true);
-            boolean highlighted = false;
-            setLockable(panelDetails.getLockingQuestSteps() != null &&
-                    (panelDetails.getVars() == null || panelDetails.getVars().contains(currentQuest.getVar())));
+	public void updateHighlightCheck(Client client, QuestStep newStep, QuestHelper currentQuest)
+	{
+		if (panelDetails.getHideCondition() == null || !panelDetails.getHideCondition().check(client))
+		{
+			setVisible(true);
+			boolean highlighted = false;
+			setLockable(panelDetails.getLockingQuestSteps() != null &&
+				(panelDetails.getVars() == null || panelDetails.getVars().contains(currentQuest.getVar())));
 
-            for (QuestStep step : getSteps()) {
-                if (step.getConditionToHide() != null && step.getConditionToHide().check(client)) continue;
-                if (step == newStep || step.getSubsteps().contains(newStep)) {
-                    highlighted = true;
-                    updateHighlight(step);
-                    break;
-                }
-            }
+			for (QuestStep sidebarStep : getSteps())
+			{
+				if (sidebarStep.getConditionToHide() != null && sidebarStep.getConditionToHide().check(client)) continue;
+				if (sidebarStep.containsSteps(newStep, new HashSet<>()))
+				{
+					highlighted = true;
+					updateHighlight(sidebarStep);
+					break;
+				}
+			}
 
-            if (!highlighted) {
-                removeHighlight();
-            }
-        } else {
-            setVisible(false);
-        }
-    }
+			if (!highlighted)
+			{
+				removeHighlight();
+			}
+		}
+		else
+		{
+			setVisible(false);
+		}
+	}
 
 
-    public void updateHighlight(QuestStep currentStep) {
-        expand();
+	public void updateHighlight(QuestStep currentStep)
+	{
+		expand();
 
-        if (steps.get(lastHighlightedStep) != null) {
-            steps.get(lastHighlightedStep).setForeground(Color.LIGHT_GRAY);
-        } else {
-            headerLabel.setForeground(Color.BLACK);
-            headerPanel.setBackground(ColorScheme.BRAND_ORANGE);
-            viewControls.setBackground(ColorScheme.BRAND_ORANGE);
-            leftTitleContainer.setBackground(ColorScheme.BRAND_ORANGE);
-        }
+		if (steps.get(lastHighlightedStep) != null)
+		{
+			steps.get(lastHighlightedStep).setForeground(Color.LIGHT_GRAY);
+		}
+		else
+		{
+			headerLabel.setForeground(Color.BLACK);
+			headerPanel.setBackground(ColorScheme.BRAND_ORANGE);
+			viewControls.setBackground(ColorScheme.BRAND_ORANGE);
+			leftTitleContainer.setBackground(ColorScheme.BRAND_ORANGE);
+		}
 
-        if (steps.get(currentStep) != null) {
-            steps.get(currentStep).setForeground(ColorScheme.BRAND_ORANGE);
-        }
+		if (steps.get(currentStep) != null)
+		{
+			steps.get(currentStep).setForeground(ColorScheme.BRAND_ORANGE);
+		}
 
-        lastHighlightedStep = currentStep;
-    }
+		lastHighlightedStep = currentStep;
+	}
 
-    public void removeHighlight() {
-        headerLabel.setForeground(Color.WHITE);
-        if (isCollapsed()) {
-            applyDimmer(false, headerPanel);
-        }
-        headerPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
-        viewControls.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
-        leftTitleContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
-        if (steps.get(currentlyActiveQuestSidebarStep()) != null) {
-            steps.get(currentlyActiveQuestSidebarStep()).setForeground(Color.LIGHT_GRAY);
-        }
+	public void removeHighlight()
+	{
+		headerLabel.setForeground(Color.WHITE);
+		if (isCollapsed())
+		{
+			applyDimmer(false, headerPanel);
+		}
+		headerPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
+		viewControls.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
+		leftTitleContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
+		if (steps.get(currentlyActiveQuestSidebarStep()) != null)
+		{
+			steps.get(currentlyActiveQuestSidebarStep()).setForeground(Color.LIGHT_GRAY);
+		}
 
-        collapse();
-    }
+		collapse();
+	}
 
-    public void updateLock() {
-        if (panelDetails.getLockingQuestSteps() == null) {
-            return;
-        }
+	public void updateLock()
+	{
+		if (panelDetails.getLockingQuestSteps() == null)
+		{
+			return;
+		}
 
-        if (panelDetails.getLockingQuestSteps().isUnlockable()) {
-            stepAutoLocked = false;
-            lockStep.setEnabled(true);
-        } else {
-            if (!stepAutoLocked) {
-                collapse();
-            }
-            stepAutoLocked = true;
-            lockStep.setEnabled(false);
-        }
+		if (panelDetails.getLockingQuestSteps().isUnlockable())
+		{
+			stepAutoLocked = false;
+			lockStep.setEnabled(true);
+		}
+		else
+		{
+			if (!stepAutoLocked)
+			{
+				collapse();
+			}
+			stepAutoLocked = true;
+			lockStep.setEnabled(false);
+		}
 
-        if (panelDetails.getLockingQuestSteps().isLocked()) {
-            lockStep.setSelected(true);
-        }
-    }
+		if (panelDetails.getLockingQuestSteps().isLocked())
+		{
+			lockStep.setSelected(true);
+		}
+	}
 
-    private void lockSection(boolean locked) {
-        if (locked) {
-            panelDetails.getLockingQuestSteps().setLockedManually(true);
-            if (!isCollapsed()) {
-                collapse();
-            }
-        } else {
-            panelDetails.getLockingQuestSteps().setLockedManually(false);
-            if (isCollapsed()) {
-                expand();
-            }
-        }
-    }
+	private void lockSection(boolean locked)
+	{
+		if (locked)
+		{
+			panelDetails.getLockingQuestSteps().setLockedManually(true);
+			if (!isCollapsed())
+			{
+				collapse();
+			}
+		}
+		else
+		{
+			panelDetails.getLockingQuestSteps().setLockedManually(false);
+			if (isCollapsed())
+			{
+				expand();
+			}
+		}
+	}
 
-    void collapse() {
-        if (!isCollapsed()) {
-            bodyPanel.setVisible(false);
-            applyDimmer(false, headerPanel);
-        }
-    }
+	void collapse()
+	{
+		if (!isCollapsed())
+		{
+			bodyPanel.setVisible(false);
+			applyDimmer(false, headerPanel);
+		}
+	}
 
-    void expand() {
-        if (isCollapsed()) {
-            bodyPanel.setVisible(true);
-            applyDimmer(true, headerPanel);
-        }
-    }
+	void expand()
+	{
+		if (isCollapsed())
+		{
+			bodyPanel.setVisible(true);
+			applyDimmer(true, headerPanel);
+		}
+	}
 
-    boolean isCollapsed() {
-        return !bodyPanel.isVisible();
-    }
+	boolean isCollapsed()
+	{
+		return !bodyPanel.isVisible();
+	}
 
-    private void applyDimmer(boolean brighten, JPanel panel) {
-        for (Component component : panel.getComponents()) {
-            Color color = component.getForeground();
-            component.setForeground(brighten ? color.brighter() : color.darker());
-        }
-    }
+	private void applyDimmer(boolean brighten, JPanel panel)
+	{
+		for (Component component : panel.getComponents())
+		{
+			Color color = component.getForeground();
+			component.setForeground(brighten ? color.brighter() : color.darker());
+		}
+	}
 
-    public void updateRequirements(Client client, List<Item> bankItems) {
-        if (requiredItemsPanel != null) {
-            requiredItemsPanel.update(client, questHelperPlugin, bankItems);
-        }
+	public void updateRequirements(Client client)
+	{
+		if (requiredItemsPanel != null)
+		{
+			requiredItemsPanel.update(client, questHelperPlugin);
+		}
 
-        if (recommendedItemsPanel != null) {
-            recommendedItemsPanel.update(client, questHelperPlugin, bankItems);
-        }
+		if (recommendedItemsPanel != null)
+		{
+			recommendedItemsPanel.update(client, questHelperPlugin);
+		}
 
-        updateStepVisibility(client);
-    }
+		updateStepVisibility(client);
+	}
 
-    public void updateStepVisibility(Client client) {
-        boolean stepVisibilityChanged = false;
-        for (QuestStep step : steps.keySet()) {
-            boolean oldVisibility = step.isShowInSidebar();
-            boolean newVisibility = step.getConditionToHide() == null || !step.getConditionToHide().check(client);
-            stepVisibilityChanged = stepVisibilityChanged || (oldVisibility != newVisibility);
+	public void updateStepVisibility(Client client)
+	{
+		boolean stepVisibilityChanged = false;
+		for (QuestStep step : steps.keySet())
+		{
+			boolean oldVisibility = step.isShowInSidebar();
+			boolean newVisibility = step.getConditionToHide() == null || !step.getConditionToHide().check(client);
+			stepVisibilityChanged = stepVisibilityChanged || (oldVisibility != newVisibility);
 
-            step.setShowInSidebar(newVisibility);
-            steps.get(step).setVisible(newVisibility);
-        }
+			step.setShowInSidebar(newVisibility);
+			steps.get(step).setVisible(newVisibility);
+		}
 
-        if (stepVisibilityChanged) {
-            updateHighlightCheck(client, currentlyActiveQuestSidebarStep(), questHelper);
-        }
-    }
+		if (stepVisibilityChanged)
+		{
+			updateHighlightCheck(client, currentlyActiveQuestSidebarStep(), questHelper);
+		}
+	}
 
-    private QuestStep currentlyActiveQuestSidebarStep() {
-        return questHelperPlugin.getSelectedQuest().getCurrentStep().getSidePanelStep();
-    }
+	private QuestStep currentlyActiveQuestSidebarStep()
+	{
+		return questHelperPlugin.getSelectedQuest().getCurrentStep().getActiveStep();
+	}
 }

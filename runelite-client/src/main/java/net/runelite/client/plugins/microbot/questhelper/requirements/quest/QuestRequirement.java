@@ -27,11 +27,11 @@
 
 package net.runelite.client.plugins.microbot.questhelper.requirements.quest;
 
+import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
+import net.runelite.client.plugins.microbot.questhelper.requirements.AbstractRequirement;
 import lombok.Getter;
 import net.runelite.api.Client;
 import net.runelite.api.QuestState;
-import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
-import net.runelite.client.plugins.microbot.questhelper.requirements.AbstractRequirement;
 
 import javax.annotation.Nonnull;
 import java.util.Locale;
@@ -41,88 +41,99 @@ import java.util.Locale;
  * Usually {@link QuestState#FINISHED}.
  */
 @Getter
-public class QuestRequirement extends AbstractRequirement {
-    private final QuestHelperQuest quest;
-    private final QuestState requiredState;
-    private final Integer minimumVarValue;
-    private String displayText = null;
+public class QuestRequirement extends AbstractRequirement
+{
+	private final QuestHelperQuest quest;
+	private final QuestState requiredState;
+	private final Integer minimumVarValue;
+	private String displayText = null;
 
-    /**
-     * Check if a {@link net.runelite.api.Quest} meets the required {@link QuestState}
-     *
-     * @param quest         the quest to check
-     * @param requiredState the required quest state
-     */
-    public QuestRequirement(QuestHelperQuest quest, QuestState requiredState) {
-        assert (quest != null);
-        assert (requiredState != null);
-        this.quest = quest;
-        this.requiredState = requiredState;
-        this.minimumVarValue = null;
-        shouldCountForFilter = true;
-    }
+	/**
+	 * Check if a {@link net.runelite.api.Quest} meets the required {@link QuestState}
+	 *
+	 * @param quest         the quest to check
+	 * @param requiredState the required quest state
+	 */
+	public QuestRequirement(QuestHelperQuest quest, QuestState requiredState)
+	{
+		assert(quest != null);
+		assert(requiredState != null);
+		this.quest = quest;
+		this.requiredState = requiredState;
+		this.minimumVarValue = null;
+		shouldCountForFilter = true;
+	}
 
-    /**
-     * Check if a {@link net.runelite.api.Quest} meets the required {@link QuestState}.
-     *
-     * @param quest         the quest to check
-     * @param requiredState the required quest state
-     * @param displayText   display text
-     */
-    public QuestRequirement(QuestHelperQuest quest, QuestState requiredState, String displayText) {
-        this(quest, requiredState);
-        this.displayText = displayText;
-    }
+	/**
+	 * Check if a {@link net.runelite.api.Quest} meets the required {@link QuestState}.
+	 *
+	 * @param quest         the quest to check
+	 * @param requiredState the required quest state
+	 * @param displayText   display text
+	 */
+	public QuestRequirement(QuestHelperQuest quest, QuestState requiredState, String displayText)
+	{
+		this(quest, requiredState);
+		this.displayText = displayText;
+	}
 
-    /**
-     * Check if a {@link net.runelite.api.Quest} is past the minimum var value
-     *
-     * @param quest           the quest to check
-     * @param minimumVarValue the required quest state
-     */
-    public QuestRequirement(QuestHelperQuest quest, int minimumVarValue) {
-        assert (quest != null);
-        this.quest = quest;
-        this.requiredState = null;
-        this.minimumVarValue = minimumVarValue;
-        shouldCountForFilter = true;
-    }
+	/**
+	 * Check if a {@link net.runelite.api.Quest} is past the minimum var value
+	 *
+	 * @param quest         the quest to check
+	 * @param minimumVarValue the required quest state
+	 */
+	public QuestRequirement(QuestHelperQuest quest, int minimumVarValue)
+	{
+		assert(quest != null);
+		this.quest = quest;
+		this.requiredState = null;
+		this.minimumVarValue = minimumVarValue;
+		shouldCountForFilter = true;
+	}
 
-    /**
-     * Check if a {@link net.runelite.api.Quest} is past the minimum var value
-     *
-     * @param quest           the quest to check
-     * @param minimumVarValue the required quest state
-     * @param displayText     display text
-     */
-    public QuestRequirement(QuestHelperQuest quest, int minimumVarValue, String displayText) {
-        this(quest, minimumVarValue);
-        this.displayText = displayText;
-    }
+	/**
+	 * Check if a {@link net.runelite.api.Quest} is past the minimum var value
+	 *
+	 * @param quest         the quest to check
+	 * @param minimumVarValue the required quest state
+	 * @param displayText   display text
+	 */
+	public QuestRequirement(QuestHelperQuest quest, int minimumVarValue, String displayText)
+	{
+		this(quest, minimumVarValue);
+		this.displayText = displayText;
+	}
 
-    @Override
-    public boolean check(Client client) {
-        if (minimumVarValue != null) {
-            return quest.getVar(client) >= minimumVarValue;
-        }
+	@Override
+	public boolean check(Client client)
+	{
+		if (minimumVarValue != null)
+		{
+			return quest.getVar(client) >= minimumVarValue;
+		}
 
-        QuestState state = quest.getState(client);
-        if (requiredState == QuestState.IN_PROGRESS && state == QuestState.FINISHED) {
-            return true;
-        }
-        return state == requiredState;
-    }
+		QuestState state = quest.getState(client);
+		if (requiredState == QuestState.IN_PROGRESS && state == QuestState.FINISHED)
+		{
+			return true;
+		}
+		return state == requiredState;
+	}
 
-    @Nonnull
-    @Override
-    public String getDisplayText() {
-        if (displayText != null && !displayText.isEmpty()) {
-            return displayText;
-        }
-        String text = Character.toUpperCase(requiredState.name().charAt(0)) + requiredState.name().toLowerCase(Locale.ROOT).substring(1);
-        if (requiredState == QuestState.IN_PROGRESS) {
-            text = "Started ";
-        }
-        return text.replaceAll("_", " ") + " " + quest.getName();
-    }
+	@Nonnull
+	@Override
+	public String getDisplayText()
+	{
+		if (displayText != null && !displayText.isEmpty())
+		{
+			return displayText;
+		}
+		String text = Character.toUpperCase(requiredState.name().charAt(0)) + requiredState.name().toLowerCase(Locale.ROOT).substring(1);
+		if (requiredState == QuestState.IN_PROGRESS)
+		{
+			text = "Started ";
+		}
+		return text.replaceAll("_", " ") + " " + quest.getName();
+	}
 }

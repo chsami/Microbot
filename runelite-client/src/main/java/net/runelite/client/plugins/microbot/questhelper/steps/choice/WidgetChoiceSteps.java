@@ -30,25 +30,31 @@ import net.runelite.api.Client;
 import java.util.ArrayList;
 import java.util.Collections;
 
-public class WidgetChoiceSteps {
-    @Getter
-    final private ArrayList<WidgetChoiceStep> choices = new ArrayList<>();
+public class WidgetChoiceSteps
+{
+	@Getter
+	final private ArrayList<WidgetChoiceStep> choices = new ArrayList<>();
 
-    public WidgetChoiceSteps(WidgetChoiceStep... choices) {
-        Collections.addAll(this.choices, choices);
-    }
+	public WidgetChoiceSteps(WidgetChoiceStep... choices)
+	{
+		Collections.addAll(this.choices, choices);
+	}
 
-    public void addChoice(WidgetChoiceStep choice) {
-        choices.add(choice);
-    }
+	public void addChoice(WidgetChoiceStep choice)
+	{
+		choices.add(choice);
+	}
 
-    public void checkChoices(Client client) {
-        if (choices.size() == 0) {
-            return;
-        }
+	public void checkChoices(Client client)
+	{
+		if (choices.size() == 0)
+		{
+			return;
+		}
 
-        for (WidgetChoiceStep currentChoice : choices) {
-            currentChoice.highlightChoice(client);
-        }
-    }
+		for (WidgetChoiceStep currentChoice : choices)
+		{
+			currentChoice.highlightChoice(client);
+		}
+	}
 }

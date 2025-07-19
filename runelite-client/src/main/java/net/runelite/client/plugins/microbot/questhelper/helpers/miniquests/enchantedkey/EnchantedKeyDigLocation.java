@@ -32,27 +32,29 @@ import java.awt.*;
 
 @AllArgsConstructor
 @Getter
-public enum EnchantedKeyDigLocation {
-    RELLEKKA(new WorldPoint(2715, 3610, 0), "South east of Rellekka.", 0),
-    SOUTH_EAST_VARROCK(new WorldPoint(3303, 3345, 0), "South east of Varrock.", 1),
-    SOUTH_FALADOR(new WorldPoint(2969, 3300, 0), "South of Falador", 2),
-    // True Al Kharid centre is 3294, 3224, 0
-    AL_KHARID(new WorldPoint(3295, 3222, 0), "North of Al Kharid", 3),
-    LUMBRIDGE_SWAMP(new WorldPoint(3158, 3178, 0), "Lumbridge Swamp.", 4),
-    GRAND_EXCHANGE(new WorldPoint(3161, 3490, 0), "In the Grand Exchange.", 5),
-    BODY_ALTAR(new WorldPoint(3034, 3437, 0), "Near the Body Altar.", 6),
-    OUTPOST(new WorldPoint(2419, 3378, 0), "South west of the Tree Gnome Stronghold.", 7),
-    MUDSKIPPER(new WorldPoint(3018, 3162, 0), "North of Mudskipper Point.", 8),
-    SOUTH_ARDOUGNE(new WorldPoint(2617, 3243, 0), "South of East Ardougne", 9),
-    GNOME_STRONGHOLD(new WorldPoint(2444, 3447, 0), "Centre of the Tree Gnome Stronghold.", 10);
+public enum EnchantedKeyDigLocation
+{
+	RELLEKKA(new WorldPoint(2715, 3610, 0), "South east of Rellekka.", 0),
+	SOUTH_EAST_VARROCK(new WorldPoint(3303, 3345, 0), "South east of Varrock.", 1),
+	SOUTH_FALADOR(new WorldPoint(2969, 3300, 0), "South of Falador", 2),
+	// True Al Kharid centre is 3294, 3224, 0
+	AL_KHARID(new WorldPoint(3295, 3222, 0), "North of Al Kharid", 3),
+	LUMBRIDGE_SWAMP(new WorldPoint(3158, 3178, 0), "Lumbridge Swamp.", 4),
+	GRAND_EXCHANGE(new WorldPoint(3161, 3490, 0), "In the Grand Exchange.", 5),
+	BODY_ALTAR(new WorldPoint(3034, 3437, 0), "Near the Body Altar.", 6),
+	OUTPOST(new WorldPoint(2419, 3378, 0), "South west of the Tree Gnome Stronghold.", 7),
+	MUDSKIPPER(new WorldPoint(3018, 3162, 0), "North of Mudskipper Point.", 8),
+	SOUTH_ARDOUGNE(new WorldPoint(2617, 3243, 0), "South of East Ardougne", 9),
+	GNOME_STRONGHOLD(new WorldPoint(2444, 3447, 0), "Centre of the Tree Gnome Stronghold.", 10);
 
 
-    private final WorldPoint worldPoint;
-    private final String area;
-    private final int bit;
+	private final WorldPoint worldPoint;
+	private final String area;
+	private final int bit;
 
-    public Rectangle getRect() {
-        final int digRadius = 6;
-        return new Rectangle(worldPoint.getX() - digRadius, worldPoint.getY() - digRadius, digRadius * 2 + 1, digRadius * 2 + 1);
-    }
+	public Rectangle getRect()
+	{
+		final int digRadius = 6;
+		return new Rectangle(worldPoint.getX() - digRadius, worldPoint.getY() - digRadius, digRadius * 2 + 1, digRadius * 2 + 1);
+	}
 }

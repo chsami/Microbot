@@ -25,21 +25,21 @@
 package net.runelite.client.plugins.microbot.questhelper.helpers.miniquests.enchantedkey;
 
 import com.google.inject.Inject;
+import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
+import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
 import lombok.NonNull;
 import net.runelite.api.ChatMessageType;
-import net.runelite.api.ItemID;
 import net.runelite.api.Player;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
-import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
-import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
-import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
-import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
 import net.runelite.client.ui.overlay.OverlayUtil;
 import net.runelite.client.ui.overlay.components.LineComponent;
 import net.runelite.client.ui.overlay.components.PanelComponent;
@@ -53,149 +53,181 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class EnchantedKeyDigStep extends DetailedQuestStep {
-    @Inject
-    ItemManager itemManager;
-    int currentVar = 0;
-    @Nullable
-    private EnchantedKeySolver enchantedKeySolver;
+public class EnchantedKeyDigStep extends DetailedQuestStep
+{
+	@Inject
+	ItemManager itemManager;
 
-    public EnchantedKeyDigStep(QuestHelper questHelper, ItemRequirement... requirements) {
-        super(questHelper, "Use the Enchanted Key to locate treasure.", requirements);
-    }
+	@Nullable
+	private EnchantedKeySolver enchantedKeySolver;
 
-    @Override
-    public void makeOverlayHint(PanelComponent panelComponent, QuestHelperPlugin plugin, @NonNull List<String> additionalText, @NonNull List<Requirement> additionalRequirements) {
-        super.makeOverlayHint(panelComponent, plugin, additionalText, additionalRequirements);
-        if (enchantedKeySolver == null) {
-            return;
-        }
+	int currentVar = 0;
 
-        final Collection<EnchantedKeyDigLocation> digLocations = enchantedKeySolver.getPossibleLocations();
+	public EnchantedKeyDigStep(QuestHelper questHelper, ItemRequirement... requirements)
+	{
+		super(questHelper, "Use the Enchanted Key to locate treasure.", requirements);
+	}
 
-        if (digLocations.size() > 1) {
-            panelComponent.getChildren().add(LineComponent.builder()
-                    .left("Possible locations:")
-                    .build());
-        } else if (digLocations.size() < 1) {
-            panelComponent.getChildren().add(LineComponent.builder()
-                    .left("Unable to establish dig location")
-                    .build());
-        }
-        {
-            panelComponent.getChildren().add(LineComponent.builder()
-                    .left("Dig location:")
-                    .build());
-        }
+	@Override
+	public void makeOverlayHint(PanelComponent panelComponent, QuestHelperPlugin plugin, @NonNull List<String> additionalText, @NonNull List<Requirement> additionalRequirements)
+	{
+		super.makeOverlayHint(panelComponent, plugin, additionalText, additionalRequirements);
+		if (enchantedKeySolver == null)
+		{
+			return;
+		}
 
-        for (EnchantedKeyDigLocation enchantedKeyDigLocation : digLocations) {
-            panelComponent.getChildren().add(LineComponent.builder()
-                    .left("- " + enchantedKeyDigLocation.getArea())
-                    .leftColor(Color.LIGHT_GRAY)
-                    .build());
-        }
-    }
+		final Collection<EnchantedKeyDigLocation> digLocations = enchantedKeySolver.getPossibleLocations();
 
-    @Override
-    public void onVarbitChanged(VarbitChanged varbitChanged) {
-        super.onVarbitChanged(varbitChanged);
-        if (questHelper.getVar() != currentVar) {
-            currentVar = questHelper.getVar();
-            resetState();
-        }
-    }
+		if (digLocations.size() > 1)
+		{
+			panelComponent.getChildren().add(LineComponent.builder()
+				.left("Possible locations:")
+				.build());
+		}
+		else if (digLocations.size() < 1)
+		{
+			panelComponent.getChildren().add(LineComponent.builder()
+				.left("Unable to establish dig location")
+				.build());
+		}
+		{
+			panelComponent.getChildren().add(LineComponent.builder()
+				.left("Dig location:")
+				.build());
+		}
 
-    public void resetState() {
-        setWorldPoint(null);
-        int locationStates = client.getVarbitValue(1391);
-        Set<EnchantedKeyDigLocation> locations = Arrays.stream(EnchantedKeyDigLocation.values()).filter(p -> ((locationStates >> p.getBit()) & 1) == 0)
-                .collect(Collectors.toSet());
-        if (enchantedKeySolver != null) {
-            enchantedKeySolver.resetSolver(locations);
-        }
-        if (enchantedKeySolver.getPossibleLocations().size() == 1) {
-            this.setWorldPoint(enchantedKeySolver.getPossibleLocations().iterator().next().getWorldPoint());
-        }
-    }
+		for (EnchantedKeyDigLocation enchantedKeyDigLocation : digLocations)
+		{
+			panelComponent.getChildren().add(LineComponent.builder()
+				.left("- " + enchantedKeyDigLocation.getArea())
+				.leftColor(Color.LIGHT_GRAY)
+				.build());
+		}
+	}
 
-    @Override
-    public void makeWorldOverlayHint(Graphics2D graphics, QuestHelperPlugin plugin) {
-        super.makeWorldOverlayHint(graphics, plugin);
+	@Override
+	public void onVarbitChanged(VarbitChanged varbitChanged)
+	{
+		super.onVarbitChanged(varbitChanged);
+		if (questHelper.getVar() != currentVar)
+		{
+			currentVar = questHelper.getVar();
+			resetState();
+		}
+	}
 
-        if (worldPoint == null) {
-            return;
-        }
+	public void resetState()
+	{
+		setWorldPoint(null);
+		int locationStates = client.getVarbitValue(1391);
+		Set<EnchantedKeyDigLocation> locations = Arrays.stream(EnchantedKeyDigLocation.values()).filter(p -> ((locationStates >> p.getBit()) & 1) == 0)
+			.collect(Collectors.toSet());
+		if (enchantedKeySolver != null)
+		{
+			enchantedKeySolver.resetSolver(locations);
+		}
+		if (enchantedKeySolver.getPossibleLocations().size() == 1)
+		{
+			this.setWorldPoint(enchantedKeySolver.getPossibleLocations().iterator().next().getWorldPoint());
+		}
+	}
 
-        LocalPoint localLocation = LocalPoint.fromWorld(client, worldPoint);
+	@Override
+	public void makeWorldOverlayHint(Graphics2D graphics, QuestHelperPlugin plugin)
+	{
+		super.makeWorldOverlayHint(graphics, plugin);
 
-        if (localLocation == null) {
-            return;
-        }
+		if (worldPoint == null)
+		{
+			return;
+		}
 
-        OverlayUtil.renderTileOverlay(client, graphics, localLocation, getSpadeImage(), questHelper.getConfig().targetOverlayColor());
-    }
+		LocalPoint localLocation = LocalPoint.fromWorld(client, worldPoint);
 
-    @Subscribe
-    public void onChatMessage(ChatMessage chatMessage) {
-        if (chatMessage.getType() == ChatMessageType.GAMEMESSAGE) {
-            update(chatMessage.getMessage());
-        }
-    }
+		if (localLocation == null)
+		{
+			return;
+		}
 
-    public boolean update(final String message) {
-        if (enchantedKeySolver == null) {
-            return false;
-        }
+		OverlayUtil.renderTileOverlay(client, graphics, localLocation, getSpadeImage(), questHelper.getConfig().targetOverlayColor());
+	}
 
-        final EnchantedKeyTemperature temperature = EnchantedKeyTemperature.getFromTemperatureSet(message);
+	@Subscribe
+	public void onChatMessage(ChatMessage chatMessage)
+	{
+		if (chatMessage.getType() == ChatMessageType.GAMEMESSAGE)
+		{
+			update(chatMessage.getMessage());
+		}
+	}
 
-        if (temperature == null) {
-            return false;
-        }
+	public boolean update(final String message)
+	{
+		if (enchantedKeySolver == null)
+		{
+			return false;
+		}
 
-        Player player = client.getLocalPlayer();
-        if (player == null) {
-            return false;
-        }
+		final EnchantedKeyTemperature temperature = EnchantedKeyTemperature.getFromTemperatureSet(message);
 
-        final WorldPoint localWorld = player.getWorldLocation();
+		if (temperature == null)
+		{
+			return false;
+		}
 
-        if (localWorld == null) {
-            return false;
-        }
+		Player player = client.getLocalPlayer();
+		if (player == null)
+		{
+			return false;
+		}
 
-        final EnchantedKeyTemperatureChange temperatureChange = EnchantedKeyTemperatureChange.of(message);
+		final WorldPoint localWorld = player.getWorldLocation();
 
-        enchantedKeySolver.signal(localWorld, temperature, temperatureChange);
+		if (localWorld == null)
+		{
+			return false;
+		}
 
-        if (enchantedKeySolver.getPossibleLocations().size() == 1) {
-            this.setWorldPoint(enchantedKeySolver.getPossibleLocations().iterator().next().getWorldPoint());
-        } else {
-            this.setWorldPoint(null);
-        }
+		final EnchantedKeyTemperatureChange temperatureChange = EnchantedKeyTemperatureChange.of(message);
 
-        return true;
-    }
+		enchantedKeySolver.signal(localWorld, temperature, temperatureChange);
 
-    @Override
-    public void startUp() {
-        super.startUp();
-        currentVar = questHelper.getVar();
-        Set<EnchantedKeyDigLocation> locations = Arrays.stream(EnchantedKeyDigLocation.values()).filter(p -> ((currentVar >> p.getBit()) & 1) == 0)
-                .collect(Collectors.toSet());
-        enchantedKeySolver = new EnchantedKeySolver(locations);
-        if (locations.size() == 1) {
-            this.setWorldPoint(locations.iterator().next().getWorldPoint());
-        }
-    }
+		if (enchantedKeySolver.getPossibleLocations().size() == 1)
+		{
+			this.setWorldPoint(enchantedKeySolver.getPossibleLocations().iterator().next().getWorldPoint());
+		}
+		else
+		{
+			this.setWorldPoint(null);
+		}
 
-    @Override
-    public void shutDown() {
-        super.shutDown();
-        this.setWorldPoint(null);
-    }
+		return true;
+	}
 
-    private BufferedImage getSpadeImage() {
-        return itemManager.getImage(ItemID.SPADE);
-    }
+	@Override
+	public void startUp()
+	{
+		super.startUp();
+		currentVar = questHelper.getVar();
+		Set<EnchantedKeyDigLocation> locations = Arrays.stream(EnchantedKeyDigLocation.values()).filter(p -> ((currentVar >> p.getBit()) & 1) == 0)
+			.collect(Collectors.toSet());
+		enchantedKeySolver = new EnchantedKeySolver(locations);
+		if (locations.size() == 1)
+		{
+			this.setWorldPoint(locations.iterator().next().getWorldPoint());
+		}
+	}
+
+	@Override
+	public void shutDown()
+	{
+		super.shutDown();
+		this.setWorldPoint(null);
+	}
+
+	private BufferedImage getSpadeImage()
+	{
+		return itemManager.getImage(ItemID.SPADE);
+	}
 }

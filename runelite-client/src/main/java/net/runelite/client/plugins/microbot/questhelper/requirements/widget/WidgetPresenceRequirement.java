@@ -26,58 +26,76 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements.widget;
 
-
+import net.runelite.client.plugins.microbot.questhelper.requirements.SimpleRequirement;
+import net.runelite.client.plugins.microbot.questhelper.util.Utils;
 import lombok.Getter;
 import lombok.Setter;
 import net.runelite.api.Client;
 import net.runelite.api.widgets.Widget;
-import net.runelite.client.plugins.microbot.questhelper.requirements.SimpleRequirement;
 
 import javax.annotation.Nullable;
 
-public class WidgetPresenceRequirement extends SimpleRequirement {
-    @Getter
-    protected final int groupId;
-    protected final int childId;
-    @Setter
-    @Getter
-    protected boolean hasPassed;
-    protected boolean onlyNeedToPassOnce;
-    protected int childChildId = -1;
+public class WidgetPresenceRequirement extends SimpleRequirement
+{
+	@Setter
+	@Getter
+	protected boolean hasPassed;
+	protected boolean onlyNeedToPassOnce;
 
-    public WidgetPresenceRequirement(int groupId, int childId, int childChildId) {
-        this.groupId = groupId;
-        this.childId = childId;
-        this.childChildId = childChildId;
-    }
+	@Getter
+	protected final int groupId;
 
-    public WidgetPresenceRequirement(int groupId, int childId) {
-        this.groupId = groupId;
-        this.childId = childId;
-    }
+	protected final int childId;
+	protected int childChildId = -1;
 
-    @Override
-    public boolean check(Client client) {
-        if (onlyNeedToPassOnce && hasPassed) {
-            return true;
-        }
-        return checkWidget(client);
-    }
+	public WidgetPresenceRequirement(int groupId, int childId, int childChildId)
+	{
+		this.groupId = groupId;
+		this.childId = childId;
+		this.childChildId = childChildId;
+	}
 
-    @Nullable
-    protected Widget getWidget(Client client) {
-        Widget widget = client.getWidget(groupId, childId);
-        if (widget == null) {
-            return null;
-        }
-        if (childChildId != -1) {
-            return widget.getChild(childChildId);
-        }
-        return widget;
-    }
+	public WidgetPresenceRequirement(int groupId, int childId)
+	{
+		this.groupId = groupId;
+		this.childId = childId;
+	}
 
-    public boolean checkWidget(Client client) {
-        return getWidget(client) != null;
-    }
+	public WidgetPresenceRequirement(int interfaceID)
+	{
+		var pair = Utils.unpackWidget(interfaceID);
+		this.groupId = pair.getLeft();
+		this.childId = pair.getRight();
+	}
+
+	@Override
+	public boolean check(Client client)
+	{
+		if (onlyNeedToPassOnce && hasPassed)
+		{
+			return true;
+		}
+		return checkWidget(client);
+	}
+
+	@Nullable
+	protected Widget getWidget(Client client)
+	{
+		Widget widget = client.getWidget(groupId, childId);
+		if (widget == null)
+		{
+			return null;
+		}
+		if (childChildId != -1)
+		{
+			return widget.getChild(childChildId);
+		}
+		return widget;
+	}
+
+	public boolean checkWidget(Client client)
+	{
+		return getWidget(client) != null;
+	}
 }
 

@@ -24,59 +24,64 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.elementalworkshopii;
 
-
-import net.runelite.api.widgets.Widget;
-import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.widgets.Widget;
 
 import java.awt.*;
 import java.awt.geom.Line2D;
 
-public class ConnectPipes extends QuestStep {
+public class ConnectPipes extends QuestStep
+{
 
-    public ConnectPipes(QuestHelper questHelper) {
-        super(questHelper, "Connect the pipes as marked..");
-    }
+	public ConnectPipes(QuestHelper questHelper)
+	{
+		super(questHelper, "Connect the pipes as marked..");
+	}
 
 
-    @Override
-    public void makeWidgetOverlayHint(Graphics2D graphics, QuestHelperPlugin plugin) {
-        super.makeWidgetOverlayHint(graphics, plugin);
+	@Override
+	public void makeWidgetOverlayHint(Graphics2D graphics, QuestHelperPlugin plugin)
+	{
+		super.makeWidgetOverlayHint(graphics, plugin);
 
-        Widget widget1 = client.getWidget(262, 41);
-        Widget widget2 = client.getWidget(262, 42);
-        Widget widget3 = client.getWidget(262, 37);
-        Widget widget4 = client.getWidget(262, 38);
-        Widget widget5 = client.getWidget(262, 39);
-        Widget widget6 = client.getWidget(262, 40);
+		Widget widget1 = client.getWidget(InterfaceID.ElemMagicpressPipes.INLETAM);
+		Widget widget2 = client.getWidget(InterfaceID.ElemMagicpressPipes.INLETBM);
+		Widget widget3 = client.getWidget(InterfaceID.ElemMagicpressPipes.INLETCM);
+		Widget widget4 = client.getWidget(InterfaceID.ElemMagicpressPipes.INLET1M);
+		Widget widget5 = client.getWidget(InterfaceID.ElemMagicpressPipes.INLET2M);
+		Widget widget6 = client.getWidget(InterfaceID.ElemMagicpressPipes.INLET3M);
 
-        if (widget1 != null) {
-            drawConnection(graphics, widget2, widget3);
-            drawConnection(graphics, widget1, widget6);
-            drawConnection(graphics, widget4, widget5);
-        }
-    }
+		if (widget1 != null)
+		{
+			drawConnection(graphics, widget2, widget3);
+			drawConnection(graphics, widget1, widget6);
+			drawConnection(graphics, widget4, widget5);
+		}
+	}
 
-    public void drawConnection(Graphics2D graphics, Widget widget1, Widget widget2) {
-        Line2D.Double line = new Line2D.Double(
-                widget1.getCanvasLocation().getX() + (widget1.getWidth() / 2.0f),
-                widget1.getCanvasLocation().getY() + (widget1.getHeight() / 2.0f),
-                widget2.getCanvasLocation().getX() + (widget2.getWidth() / 2.0f),
-                widget2.getCanvasLocation().getY() + (widget2.getHeight() / 2.0f));
+	public void drawConnection(Graphics2D graphics, Widget widget1, Widget widget2)
+	{
+		Line2D.Double line = new Line2D.Double(
+			widget1.getCanvasLocation().getX() + (widget1.getWidth() / 2.0f),
+			widget1.getCanvasLocation().getY() + (widget1.getHeight() / 2.0f),
+			widget2.getCanvasLocation().getX() + (widget2.getWidth() / 2.0f),
+			widget2.getCanvasLocation().getY() + (widget2.getHeight() / 2.0f));
 
-        graphics.setColor(new Color(0, 255, 255, 65));
-        graphics.fill(widget1.getBounds());
-        graphics.setColor(questHelper.getConfig().targetOverlayColor());
-        graphics.draw(widget1.getBounds());
+		graphics.setColor(new Color(0, 255, 255, 65));
+		graphics.fill(widget1.getBounds());
+		graphics.setColor(questHelper.getConfig().targetOverlayColor());
+		graphics.draw(widget1.getBounds());
 
-        graphics.setColor(new Color(0, 255, 255, 65));
-        graphics.fill(widget2.getBounds());
-        graphics.setColor(questHelper.getConfig().targetOverlayColor());
-        graphics.draw(widget2.getBounds());
+		graphics.setColor(new Color(0, 255, 255, 65));
+		graphics.fill(widget2.getBounds());
+		graphics.setColor(questHelper.getConfig().targetOverlayColor());
+		graphics.draw(widget2.getBounds());
 
-        graphics.setStroke(new BasicStroke(3));
-        graphics.draw(line);
-    }
+		graphics.setStroke(new BasicStroke(3));
+		graphics.draw(line);
+	}
 
 }

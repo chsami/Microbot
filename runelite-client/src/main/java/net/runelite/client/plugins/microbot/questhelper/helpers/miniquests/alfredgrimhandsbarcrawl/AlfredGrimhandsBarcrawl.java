@@ -25,195 +25,206 @@
 package net.runelite.client.plugins.microbot.questhelper.helpers.miniquests.alfredgrimhandsbarcrawl;
 
 
-import net.runelite.api.ItemID;
-import net.runelite.api.NpcID;
-import net.runelite.api.ObjectID;
-import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.questhelper.collections.ItemCollections;
+import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.ComplexStateQuestHelper;
+import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.conditional.Conditions;
+import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarplayerRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.ZoneRequirement;
+import net.runelite.client.plugins.microbot.questhelper.rewards.UnlockReward;
 import net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
-import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.ComplexStateQuestHelper;
-import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
-import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
-import net.runelite.client.plugins.microbot.questhelper.rewards.UnlockReward;
+import net.runelite.client.plugins.microbot.questhelper.util.QHObjectID;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.gameval.VarPlayerID;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class AlfredGrimhandsBarcrawl extends ComplexStateQuestHelper {
-    //Items Required
-    ItemRequirement coins208, coins50, coins10, coins70, coins8, coins7, coins15, coins18, coins12, barcrawlCard;
+public class AlfredGrimhandsBarcrawl extends ComplexStateQuestHelper
+{
+	//Items Required
+	ItemRequirement coins208, coins50, coins10, coins70, coins8, coins7, coins15, coins18, coins12, barcrawlCard;
 
-    //Items Recommended
-    ItemRequirement gamesNecklace, varrockTeleport, faladorTeleport, glory, ardougneTeleport, camelotTeleport,
-            duelingRing;
+	//Items Recommended
+	ItemRequirement gamesNecklace, varrockTeleport, faladorTeleport, glory, ardougneTeleport, camelotTeleport,
+		duelingRing;
 
-    Requirement notTalkedToGuard, notTalkedToBlueMoon, notTalkedToJollyBoar, notTalkedToRisingSun,
-            notTalkedToRustyAnchor,
-            notTalkedToZambo, notTalkedToDeadMansChest, notTalkedToFlyingHorseInn, notTalkedToForestersArms, notTalkedToBlurberry,
-            notTalkedToDragonInn, inGrandTreeF1;
+	Requirement notTalkedToGuard, notTalkedToBlueMoon, notTalkedToJollyBoar, notTalkedToRisingSun,
+		notTalkedToRustyAnchor,
+		notTalkedToZambo, notTalkedToDeadMansChest, notTalkedToFlyingHorseInn, notTalkedToForestersArms, notTalkedToBlurberry,
+		notTalkedToDragonInn, inGrandTreeF1;
 
-    QuestStep talkToGuardToGetCard, talkToBlueMoon, talkToJollyBoar, talkToRisingSun, talkToRustyAnchor, talkToZambo,
-            talkToDeadMansChest, talkToFlyingHorseInn, talkToForestersArms, goUpToBlurberry, talkToBlurberry,
-            talkToDragonInn, talkToGuardAgain;
+	QuestStep talkToGuardToGetCard, talkToBlueMoon, talkToJollyBoar, talkToRisingSun, talkToRustyAnchor, talkToZambo,
+		talkToDeadMansChest, talkToFlyingHorseInn, talkToForestersArms, goUpToBlurberry, talkToBlurberry,
+		talkToDragonInn, talkToGuardAgain;
 
-    //Zones
-    Zone grandTreeF1;
+	//Zones
+	Zone grandTreeF1;
 
-    @Override
-    public QuestStep loadStep() {
-        initializeRequirements();
-        setupZones();
-        setupConditions();
-        setupSteps();
+	@Override
+	public QuestStep loadStep()
+	{
+		initializeRequirements();
+		setupZones();
+		setupConditions();
+		setupSteps();
 
-        ConditionalStep barcrawl = new ConditionalStep(this, talkToGuardAgain);
-        barcrawl.addStep(notTalkedToGuard, talkToGuardToGetCard);
-        barcrawl.addStep(notTalkedToBlueMoon, talkToBlueMoon);
-        barcrawl.addStep(notTalkedToJollyBoar, talkToJollyBoar);
-        barcrawl.addStep(notTalkedToRisingSun, talkToRisingSun);
-        barcrawl.addStep(notTalkedToRustyAnchor, talkToRustyAnchor);
-        barcrawl.addStep(notTalkedToZambo, talkToZambo);
-        barcrawl.addStep(notTalkedToDeadMansChest, talkToDeadMansChest);
-        barcrawl.addStep(notTalkedToFlyingHorseInn, talkToFlyingHorseInn);
-        barcrawl.addStep(notTalkedToForestersArms, talkToForestersArms);
-        barcrawl.addStep(new Conditions(notTalkedToBlurberry, inGrandTreeF1), talkToBlurberry);
-        barcrawl.addStep(notTalkedToBlurberry, goUpToBlurberry);
-        barcrawl.addStep(notTalkedToDragonInn, talkToDragonInn);
+		ConditionalStep barcrawl = new ConditionalStep(this, talkToGuardAgain);
+		barcrawl.addStep(notTalkedToGuard, talkToGuardToGetCard);
+		barcrawl.addStep(notTalkedToBlueMoon, talkToBlueMoon);
+		barcrawl.addStep(notTalkedToJollyBoar, talkToJollyBoar);
+		barcrawl.addStep(notTalkedToRisingSun, talkToRisingSun);
+		barcrawl.addStep(notTalkedToRustyAnchor, talkToRustyAnchor);
+		barcrawl.addStep(notTalkedToZambo, talkToZambo);
+		barcrawl.addStep(notTalkedToDeadMansChest, talkToDeadMansChest);
+		barcrawl.addStep(notTalkedToFlyingHorseInn, talkToFlyingHorseInn);
+		barcrawl.addStep(notTalkedToForestersArms, talkToForestersArms);
+		barcrawl.addStep(new Conditions(notTalkedToBlurberry, inGrandTreeF1), talkToBlurberry);
+		barcrawl.addStep(notTalkedToBlurberry, goUpToBlurberry);
+		barcrawl.addStep(notTalkedToDragonInn, talkToDragonInn);
 
-        return barcrawl;
-    }
+		return barcrawl;
+	}
 
-    @Override
-    protected void setupRequirements() {
-        coins208 = new ItemRequirement("Coins", ItemCollections.COINS, 208);
-        coins50 = new ItemRequirement("Coins", ItemCollections.COINS, 50);
-        coins10 = new ItemRequirement("Coins", ItemCollections.COINS, 10);
-        coins70 = new ItemRequirement("Coins", ItemCollections.COINS, 70);
-        coins8 = new ItemRequirement("Coins", ItemCollections.COINS, 8);
-        coins7 = new ItemRequirement("Coins", ItemCollections.COINS, 7);
-        coins15 = new ItemRequirement("Coins", ItemCollections.COINS, 15);
-        coins18 = new ItemRequirement("Coins", ItemCollections.COINS, 18);
-        coins12 = new ItemRequirement("Coins", ItemCollections.COINS, 12);
+	@Override
+	protected void setupRequirements()
+	{
+		coins208 = new ItemRequirement("Coins", ItemCollections.COINS, 208);
+		coins50 = new ItemRequirement("Coins", ItemCollections.COINS, 50);
+		coins10 = new ItemRequirement("Coins", ItemCollections.COINS, 10);
+		coins70 = new ItemRequirement("Coins", ItemCollections.COINS, 70);
+		coins8 = new ItemRequirement("Coins", ItemCollections.COINS, 8);
+		coins7 = new ItemRequirement("Coins", ItemCollections.COINS, 7);
+		coins15 = new ItemRequirement("Coins", ItemCollections.COINS, 15);
+		coins18 = new ItemRequirement("Coins", ItemCollections.COINS, 18);
+		coins12 = new ItemRequirement("Coins", ItemCollections.COINS, 12);
 
-        gamesNecklace = new ItemRequirement("Games necklace", ItemCollections.GAMES_NECKLACES);
-        varrockTeleport = new ItemRequirement("Varrock teleport", ItemID.VARROCK_TELEPORT);
-        faladorTeleport = new ItemRequirement("Falador teleport", ItemID.FALADOR_TELEPORT);
-        glory = new ItemRequirement("Amulet of Glory", ItemCollections.AMULET_OF_GLORIES).isNotConsumed();
-        ardougneTeleport = new ItemRequirement("Ardougne teleport", ItemID.ARDOUGNE_TELEPORT);
-        camelotTeleport = new ItemRequirement("Camelot teleport", ItemID.CAMELOT_TELEPORT);
-        duelingRing = new ItemRequirement("Ring of dueling", ItemCollections.RING_OF_DUELINGS);
+		gamesNecklace = new ItemRequirement("Games necklace", ItemCollections.GAMES_NECKLACES);
+		varrockTeleport = new ItemRequirement("Varrock teleport", ItemID.POH_TABLET_VARROCKTELEPORT);
+		faladorTeleport = new ItemRequirement("Falador teleport", ItemID.POH_TABLET_FALADORTELEPORT);
+		glory = new ItemRequirement("Amulet of Glory", ItemCollections.AMULET_OF_GLORIES).isNotConsumed();
+		ardougneTeleport = new ItemRequirement("Ardougne teleport", ItemID.POH_TABLET_ARDOUGNETELEPORT);
+		camelotTeleport = new ItemRequirement("Camelot teleport", ItemID.POH_TABLET_CAMELOTTELEPORT);
+		duelingRing = new ItemRequirement("Ring of dueling", ItemCollections.RING_OF_DUELINGS);
 
-        barcrawlCard = new ItemRequirement("Barcrawl card", ItemID.BARCRAWL_CARD);
-        barcrawlCard.setTooltip("If you've lost it you can get another from the Barbarian Guard");
-    }
+		barcrawlCard = new ItemRequirement("Barcrawl card", ItemID.BARCRAWL_CARD);
+		barcrawlCard.setTooltip("If you've lost it you can get another from the Barbarian Guard");
+	}
 
-    public void setupZones() {
-        grandTreeF1 = new Zone(new WorldPoint(2437, 3474, 1), new WorldPoint(2493, 3511, 1));
-    }
+	public void setupZones()
+	{
+		grandTreeF1 = new Zone(new WorldPoint(2437, 3474, 1), new WorldPoint(2493, 3511, 1));
+	}
 
-    public void setupConditions() {
-        inGrandTreeF1 = new ZoneRequirement(grandTreeF1);
+	public void setupConditions()
+	{
+		inGrandTreeF1 = new ZoneRequirement(grandTreeF1);
 
-        notTalkedToGuard = new VarplayerRequirement(77, false, 0);
-        notTalkedToBlueMoon = new VarplayerRequirement(77, false, 3);
-        notTalkedToJollyBoar = new VarplayerRequirement(77, false, 9);
-        notTalkedToRisingSun = new VarplayerRequirement(77, false, 11);
-        notTalkedToRustyAnchor = new VarplayerRequirement(77, false, 12);
-        notTalkedToZambo = new VarplayerRequirement(77, false, 10);
-        notTalkedToDeadMansChest = new VarplayerRequirement(77, false, 5);
-        notTalkedToFlyingHorseInn = new VarplayerRequirement(77, false, 7);
-        notTalkedToForestersArms = new VarplayerRequirement(77, false, 8);
-        notTalkedToBlurberry = new VarplayerRequirement(77, false, 4);
-        notTalkedToDragonInn = new VarplayerRequirement(77, false, 6);
-    }
+		notTalkedToGuard = new VarplayerRequirement(VarPlayerID.BARCRAWL, false, 0);
+		notTalkedToBlueMoon = new VarplayerRequirement(VarPlayerID.BARCRAWL, false, 3);
+		notTalkedToJollyBoar = new VarplayerRequirement(VarPlayerID.BARCRAWL, false, 9);
+		notTalkedToRisingSun = new VarplayerRequirement(VarPlayerID.BARCRAWL, false, 11);
+		notTalkedToRustyAnchor = new VarplayerRequirement(VarPlayerID.BARCRAWL, false, 12);
+		notTalkedToZambo = new VarplayerRequirement(VarPlayerID.BARCRAWL, false, 10);
+		notTalkedToDeadMansChest = new VarplayerRequirement(VarPlayerID.BARCRAWL, false, 5);
+		notTalkedToFlyingHorseInn = new VarplayerRequirement(VarPlayerID.BARCRAWL, false, 7);
+		notTalkedToForestersArms = new VarplayerRequirement(VarPlayerID.BARCRAWL, false, 8);
+		notTalkedToBlurberry = new VarplayerRequirement(VarPlayerID.BARCRAWL, false, 4);
+		notTalkedToDragonInn = new VarplayerRequirement(VarPlayerID.BARCRAWL, false, 6);
+	}
 
-    public void setupSteps() {
-        talkToGuardToGetCard = new NpcStep(this, NpcID.BARBARIAN_GUARD_7285, new WorldPoint(2544, 3568, 0),
-                "Talk to a barbarian guard outside the Barbarian Agility Course.");
-        talkToGuardToGetCard.addDialogSteps("I want to come through this gate.",
-                "Looks can be deceiving, I am in fact a barbarian.");
+	public void setupSteps()
+	{
+		talkToGuardToGetCard = new NpcStep(this, NpcID.BARBGUARD1_PRECRAWL, new WorldPoint(2544, 3568, 0),
+			"Talk to a barbarian guard outside the Barbarian Agility Course.");
+		talkToGuardToGetCard.addDialogSteps("I want to come through this gate.",
+			"Looks can be deceiving, I am in fact a barbarian.");
 
 
-        talkToBlueMoon = new NpcStep(this, NpcID.BARTENDER_1312, new WorldPoint(3226, 3399, 0),
-                "Talk to the bartender in the Blue Moon Inn in Varrock.", coins50);
-        talkToBlueMoon.addDialogStep("I'm doing Alfred Grimhand's Barcrawl.");
+		talkToBlueMoon = new NpcStep(this, NpcID.BLUEMOON_BARTENDER, new WorldPoint(3226, 3399, 0),
+			"Talk to the bartender in the Blue Moon Inn in Varrock.", coins50);
+		talkToBlueMoon.addDialogStep("I'm doing Alfred Grimhand's Barcrawl.");
 
-        talkToJollyBoar = new NpcStep(this, NpcID.BARTENDER_1310, new WorldPoint(3279, 3488, 0),
-                "Talk to the bartender in the Jolly Boar Inn north east of Varrock.", coins10);
-        talkToJollyBoar.addDialogStep("I'm doing Alfred Grimhands Barcrawl.");
+		talkToJollyBoar = new NpcStep(this, NpcID.JOLLYBOAR_BARTENDER, new WorldPoint(3279, 3488, 0),
+			"Talk to the bartender in the Jolly Boar Inn north east of Varrock.", coins10);
+		talkToJollyBoar.addDialogStep("I'm doing Alfred Grimhands Barcrawl.");
 
-        talkToRisingSun = new NpcStep(this, NpcID.KAYLEE, new WorldPoint(2956, 3370, 0),
-                "Talk to a bartender in the Rising Sun Inn in Falador.", true, coins70);
-        talkToRisingSun.addDialogStep("I'm doing Alfred Grimhand's barcrawl.");
-        ((NpcStep) talkToRisingSun).addAlternateNpcs(NpcID.EMILY, NpcID.TINA);
+		talkToRisingSun = new NpcStep(this, NpcID.RISINGSUN_BARMAID2, new WorldPoint(2956, 3370, 0),
+			"Talk to a bartender in the Rising Sun Inn in Falador.", true, coins70);
+		talkToRisingSun.addDialogStep("I'm doing Alfred Grimhand's barcrawl.");
+		((NpcStep) talkToRisingSun).addAlternateNpcs(NpcID.RISINGSUN_BARMAID, NpcID.RISINGSUN_BARMAID3);
 
-        talkToRustyAnchor = new NpcStep(this, NpcID.BARTENDER_1313, new WorldPoint(3046, 3257, 0),
-                "Talk to the bartender in the Rusty Anchor in Port Sarim.", coins8);
-        talkToRustyAnchor.addDialogStep("I'm doing Alfred Grimhand's Barcrawl.");
-        talkToZambo = new NpcStep(this, NpcID.ZEMBO, new WorldPoint(2927, 3144, 0),
-                "Talk to Zembo in the Karamja Spirits Bar on Musa Point.", coins7);
-        talkToZambo.addDialogStep("I'm doing Alfred Grimhand's barcrawl.");
-        talkToDeadMansChest = new NpcStep(this, NpcID.BARTENDER_1314, new WorldPoint(2796, 3156, 0),
-                "Talk to the bartender in the Dead Man's Chest in Brimhaven.", coins15);
-        talkToDeadMansChest.addDialogStep("I'm doing Alfred Grimhand's Barcrawl.");
-        talkToFlyingHorseInn = new NpcStep(this, NpcID.BARTENDER_1319, new WorldPoint(2574, 3323, 0),
-                "Talk to the bartender in the Flying Horse Inn in Ardougne.", coins8);
-        talkToFlyingHorseInn.addDialogStep("I'm doing Alfred Grimhand's Barcrawl.");
-        talkToForestersArms = new NpcStep(this, NpcID.BARTENDER_1318, new WorldPoint(2690, 3494, 0),
-                "Talk to the bartender in the Forester's Arms in Seers' Village.", coins18);
-        talkToForestersArms.addDialogStep("I'm doing Alfred Grimhand's Barcrawl.");
+		talkToRustyAnchor = new NpcStep(this, NpcID.RUSTYANCHOR_BARTENDER, new WorldPoint(3046, 3257, 0),
+			"Talk to the bartender in the Rusty Anchor in Port Sarim.", coins8);
+		talkToRustyAnchor.addDialogStep("I'm doing Alfred Grimhand's Barcrawl.");
+		talkToZambo = new NpcStep(this, NpcID.ZEMBO, new WorldPoint(2927, 3144, 0),
+			"Talk to Zembo in the Karamja Spirits Bar on Musa Point.", coins7);
+		talkToZambo.addDialogStep("I'm doing Alfred Grimhand's barcrawl.");
+		talkToDeadMansChest = new NpcStep(this, NpcID.DEADMANS_BARTENDER, new WorldPoint(2796, 3156, 0),
+			"Talk to the bartender in the Dead Man's Chest in Brimhaven.", coins15);
+		talkToDeadMansChest.addDialogStep("I'm doing Alfred Grimhand's Barcrawl.");
+		talkToFlyingHorseInn = new NpcStep(this, NpcID.FLYINGHORSE_BARTENDER, new WorldPoint(2574, 3323, 0),
+			"Talk to the bartender in the Flying Horse Inn in Ardougne.", coins8);
+		talkToFlyingHorseInn.addDialogStep("I'm doing Alfred Grimhand's Barcrawl.");
+		talkToForestersArms = new NpcStep(this, NpcID.FORESTERS_BARTENDER, new WorldPoint(2690, 3494, 0),
+			"Talk to the bartender in the Forester's Arms in Seers' Village.", coins18);
+		talkToForestersArms.addDialogStep("I'm doing Alfred Grimhand's Barcrawl.");
 
-        goUpToBlurberry = new ObjectStep(this, ObjectID.LADDER_16683, new WorldPoint(2466, 3495, 0),
-                "Talk to Blurberry in the Grand Tree.", coins10);
-        talkToBlurberry = new NpcStep(this, NpcID.BLURBERRY, new WorldPoint(2482, 3491, 1),
-                "Talk to Blurberry in the Grand Tree.", coins10);
-        talkToBlurberry.addSubSteps(goUpToBlurberry);
-        talkToDragonInn = new NpcStep(this, NpcID.BARTENDER_1320, new WorldPoint(2556, 3079, 0),
-                "Talk to the bartender in Dragon Inn in Yanille.", coins12);
-        talkToDragonInn.addDialogStep("I'm doing Alfred Grimhand's Barcrawl.");
+		goUpToBlurberry = new ObjectStep(this, QHObjectID.GRAND_TREE_F0_LADDER, new WorldPoint(2466, 3495, 0),
+			"Talk to Blurberry in the Grand Tree.", coins10);
+		talkToBlurberry = new NpcStep(this, NpcID.BLURBERRY, new WorldPoint(2482, 3491, 1),
+			"Talk to Blurberry in the Grand Tree.", coins10);
+		talkToBlurberry.addSubSteps(goUpToBlurberry);
+		talkToDragonInn = new NpcStep(this, NpcID.DRAGON_BARTENDER, new WorldPoint(2556, 3079, 0),
+			"Talk to the bartender in Dragon Inn in Yanille.", coins12);
+		talkToDragonInn.addDialogStep("I'm doing Alfred Grimhand's Barcrawl.");
 
-        talkToGuardAgain = new NpcStep(this, NpcID.BARBARIAN_GUARD_7285, new WorldPoint(2544, 3568, 0),
-                "Return to the barbarian guards outside the Barbarian Agility Course.");
-    }
+		talkToGuardAgain = new NpcStep(this, NpcID.BARBGUARD1_PRECRAWL, new WorldPoint(2544, 3568, 0),
+			"Return to the barbarian guards outside the Barbarian Agility Course.");
+	}
 
-    @Override
-    public List<ItemRequirement> getItemRequirements() {
-        return List.of(coins208);
-    }
+	@Override
+	public List<ItemRequirement> getItemRequirements()
+	{
+		return List.of(coins208);
+	}
 
-    @Override
-    public List<ItemRequirement> getItemRecommended() {
-        return List.of(gamesNecklace, varrockTeleport, faladorTeleport, glory, ardougneTeleport,
-                camelotTeleport, duelingRing);
-    }
+	@Override
+	public List<ItemRequirement> getItemRecommended()
+	{
+		return List.of(gamesNecklace, varrockTeleport, faladorTeleport, glory, ardougneTeleport,
+			camelotTeleport, duelingRing);
+	}
 
-    @Override
-    public List<UnlockReward> getUnlockRewards() {
-        return List.of(
-                new UnlockReward("Access to Barbarian Outpost Agility Course"),
-                new UnlockReward("Speak to the Barbarian Guard to learn how to smash empty vials automatically.")
-        );
-    }
+	@Override
+	public List<UnlockReward> getUnlockRewards()
+	{
+		return List.of(
+			new UnlockReward("Access to Barbarian Outpost Agility Course"),
+			new UnlockReward("Speak to the Barbarian Guard to learn how to smash empty vials automatically.")
+		);
+	}
 
-    @Override
-    public ArrayList<PanelDetails> getPanels() {
-        var allSteps = new ArrayList<PanelDetails>();
+	@Override
+	public ArrayList<PanelDetails> getPanels()
+	{
+		var allSteps = new ArrayList<PanelDetails>();
 
-        allSteps.add(new PanelDetails("Getting started", List.of(talkToGuardToGetCard)));
+		allSteps.add(new PanelDetails("Getting started", List.of(talkToGuardToGetCard)));
 
-        allSteps.add(new PanelDetails("Drinking", Arrays.asList(talkToBlueMoon, talkToJollyBoar, talkToRisingSun,
-                talkToRustyAnchor, talkToZambo, talkToDeadMansChest, talkToFlyingHorseInn, talkToForestersArms, talkToBlurberry,
-                talkToDragonInn, talkToGuardAgain), barcrawlCard, coins208));
+		allSteps.add(new PanelDetails("Drinking", Arrays.asList(talkToBlueMoon, talkToJollyBoar, talkToRisingSun,
+			talkToRustyAnchor, talkToZambo, talkToDeadMansChest, talkToFlyingHorseInn, talkToForestersArms, talkToBlurberry,
+			talkToDragonInn, talkToGuardAgain), barcrawlCard, coins208));
 
-        return allSteps;
-    }
+		return allSteps;
+	}
 }

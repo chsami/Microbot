@@ -24,86 +24,97 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.lunardiplomacy;
 
-
-import net.runelite.api.NpcID;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.VarbitChanged;
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.steps.*;
 import net.runelite.client.plugins.microbot.questhelper.steps.emote.QuestEmote;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
-
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.gameval.NpcID;
 
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-public class MimicChallenge extends DetailedOwnerStep {
-    DetailedQuestStep cry, bow, dance, wave, think, talk;
+public class MimicChallenge extends DetailedOwnerStep
+{
+	DetailedQuestStep cry, bow, dance, wave, think, talk;
 
-    public MimicChallenge(QuestHelper questHelper) {
-        super(questHelper, "Copy the emotes that the NPC does.");
-    }
+	public MimicChallenge(QuestHelper questHelper)
+	{
+		super(questHelper, "Copy the emotes that the NPC does.");
+	}
 
-    public void setupSteps() {
-        cry = new EmoteStep(getQuestHelper(), QuestEmote.CRY, new WorldPoint(1769, 5058, 2), "Perform the cry emote.");
-        bow = new EmoteStep(getQuestHelper(), QuestEmote.BOW, new WorldPoint(1770, 5063, 2), "Perform the bow emote.");
-        dance = new EmoteStep(getQuestHelper(), QuestEmote.DANCE, new WorldPoint(1772, 5070, 2), "Perform the dance emote.");
-        wave = new EmoteStep(getQuestHelper(), QuestEmote.WAVE, new WorldPoint(1767, 5061, 2), "Perform the wave emote.");
-        think = new EmoteStep(getQuestHelper(), QuestEmote.THINK, new WorldPoint(1772, 5070, 2), "Perform the think emote.");
-        talk = new NpcStep(getQuestHelper(), NpcID.ETHEREAL_MIMIC, "Talk to the Ethereal Mimic.");
-        talk.addDialogStep("Suppose I may as well have a go.");
-    }
+	public void setupSteps()
+	{
+		cry = new EmoteStep(getQuestHelper(), QuestEmote.CRY, new WorldPoint(1769, 5058, 2), "Perform the cry emote.");
+		bow = new EmoteStep(getQuestHelper(), QuestEmote.BOW, new WorldPoint(1770, 5063, 2), "Perform the bow emote.");
+		dance = new EmoteStep(getQuestHelper(), QuestEmote.DANCE, new WorldPoint(1772, 5070, 2), "Perform the dance emote.");
+		wave = new EmoteStep(getQuestHelper(), QuestEmote.WAVE, new WorldPoint(1767, 5061, 2), "Perform the wave emote.");
+		think = new EmoteStep(getQuestHelper(), QuestEmote.THINK, new WorldPoint(1772, 5070, 2), "Perform the think emote.");
+		talk = new NpcStep(getQuestHelper(), NpcID.LUNAR_MOON_DREAM_MUSIC_GAME_MAN, "Talk to the Ethereal Mimic.");
+		talk.addDialogStep("Suppose I may as well have a go.");
+	}
 
-    @Override
-    public void onVarbitChanged(VarbitChanged varbitChanged) {
-        super.onVarbitChanged(varbitChanged);
-        updateSteps();
-    }
+	@Override
+	public void onVarbitChanged(VarbitChanged varbitChanged)
+	{
+		super.onVarbitChanged(varbitChanged);
+		updateSteps();
+	}
 
-    @Override
-    protected void updateSteps() {
-        if (client.getVarbitValue(2419) == 0) {
-            startUpStep(talk);
-            return;
-        }
+	@Override
+	protected void updateSteps()
+	{
+		if (client.getVarbitValue(2419) == 0)
+		{
+			startUpStep(talk);
+			return;
+		}
 
-        switch (client.getVarbitValue(2420)) {
-            case 1:
-                startUpStep(cry);
-                break;
-            case 2:
-                startUpStep(bow);
-                break;
-            case 3:
-                startUpStep(dance);
-                break;
-            case 4:
-                startUpStep(wave);
-                break;
-            case 5:
-                startUpStep(think);
-                break;
-            default:
-                startUpStep(talk);
-                break;
-        }
-    }
+		switch (client.getVarbitValue(2420))
+		{
+			case 1:
+				startUpStep(cry);
+				break;
+			case 2:
+				startUpStep(bow);
+				break;
+			case 3:
+				startUpStep(dance);
+				break;
+			case 4:
+				startUpStep(wave);
+				break;
+			case 5:
+				startUpStep(think);
+				break;
+			default:
+				startUpStep(talk);
+				break;
+		}
+	}
 
-    public void chooseStepBasedOnIfTalked(QuestStep emoteStep) {
-        if (client.getVarbitValue(2419) == 1) {
-            startUpStep(emoteStep);
-        } else {
-            startUpStep(talk);
-        }
-    }
+	public void chooseStepBasedOnIfTalked(QuestStep emoteStep)
+	{
+		if (client.getVarbitValue(2419) == 1)
+		{
+			startUpStep(emoteStep);
+		}
+		else
+		{
+			startUpStep(talk);
+		}
+	}
 
-    @Override
-    public Collection<QuestStep> getSteps() {
-        return Arrays.asList(talk, cry, bow, dance, think, wave);
-    }
+	@Override
+	public Collection<QuestStep> getSteps()
+	{
+		return Arrays.asList(talk, cry, bow, dance, think, wave);
+	}
 
-    public List<QuestStep> getDisplaySteps() {
-        return Arrays.asList(talk, cry, bow, dance, think, wave);
-    }
+	public List<QuestStep> getDisplaySteps()
+	{
+		return Arrays.asList(talk, cry, bow, dance, think, wave);
+	}
 }
 

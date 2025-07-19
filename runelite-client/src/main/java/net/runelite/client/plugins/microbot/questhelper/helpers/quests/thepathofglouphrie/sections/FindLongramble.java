@@ -24,12 +24,6 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.thepathofglouphrie.sections;
 
-
-import net.runelite.api.ItemID;
-import net.runelite.api.NpcID;
-import net.runelite.api.NullObjectID;
-import net.runelite.api.ObjectID;
-import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.questhelper.collections.ItemCollections;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.thepathofglouphrie.ThePathOfGlouphrie;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.TeleportItemRequirement;
@@ -37,54 +31,61 @@ import net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.gameval.ObjectID;
 
 import java.util.List;
 
-public class FindLongramble {
-    public ConditionalStep talkToLongramble;
-    public ConditionalStep talkToSpiritTree;
-    public ObjectStep useCrystalChime;
-    public ConditionalStep talkToSpiritTreeAgain;
+public class FindLongramble
+{
+	public ConditionalStep talkToLongramble;
+	public ConditionalStep talkToSpiritTree;
+	public ObjectStep useCrystalChime;
+	public ConditionalStep talkToSpiritTreeAgain;
 
-    public void setup(ThePathOfGlouphrie quest) {
-        var teleToLongramble = new TeleportItemRequirement("Fairy Ring BKP or Ring of Dueling to Castle Wars",
-                ItemCollections.RING_OF_DUELINGS, 1);
-        teleToLongramble.addAlternates(ItemCollections.FAIRY_STAFF);
+	public void setup(ThePathOfGlouphrie quest)
+	{
+		var teleToLongramble = new TeleportItemRequirement("Fairy Ring BKP or Ring of Dueling to Castle Wars",
+			ItemCollections.RING_OF_DUELINGS, 1);
+		teleToLongramble.addAlternates(ItemCollections.FAIRY_STAFF);
 
-        var goToLongramble = new ObjectStep(quest, ObjectID.TREE_49590, new WorldPoint(2333, 3081, 0), "");
-        goToLongramble.addRecommended(quest.earmuffsOrSlayerHelmet);
-        goToLongramble.addDialogStep("Castle Wars Arena.");
-        goToLongramble.addTeleport(teleToLongramble);
-        var actuallyTalkToLongramble = new NpcStep(quest, NpcID.LONGRAMBLE, new WorldPoint(2340, 3094, 0), "");
-        actuallyTalkToLongramble.addRecommended(quest.earmuffsOrSlayerHelmet);
+		var goToLongramble = new ObjectStep(quest, ObjectID.POG_GRAPPLE_TREE_BASE_OP, new WorldPoint(2333, 3081, 0), "");
+		goToLongramble.addRecommended(quest.earmuffsOrSlayerHelmet);
+		goToLongramble.addDialogStep("Castle Wars Arena.");
+		goToLongramble.addTeleport(teleToLongramble);
+		var actuallyTalkToLongramble = new NpcStep(quest, NpcID.POG_GNOME_LONGRAMBLE_VIS, new WorldPoint(2340, 3094, 0), "");
+		actuallyTalkToLongramble.addRecommended(quest.earmuffsOrSlayerHelmet);
 
 
-        talkToLongramble = new ConditionalStep(quest, goToLongramble,
-                "Go to Longramble, make sure to head to a bank & gear up first. You can drop all leftover discs.",
-                quest.combatGear, quest.crossbow.equipped().highlighted(), quest.mithGrapple.equipped().highlighted(),
-                quest.prayerPotions, quest.food, quest.crystalChime);
-        talkToLongramble.addStep(quest.nearLongramble, actuallyTalkToLongramble);
+		talkToLongramble = new ConditionalStep(quest, goToLongramble,
+			"Go to Longramble, make sure to head to a bank & gear up first. You can drop all leftover discs.",
+			quest.combatGear, quest.crossbow.equipped().highlighted(), quest.mithGrapple.equipped().highlighted(),
+			quest.prayerPotions, quest.food, quest.crystalChime);
+		talkToLongramble.addStep(quest.nearLongramble, actuallyTalkToLongramble);
 
-        {
-            var talk = new ObjectStep(quest, NullObjectID.NULL_49598, new WorldPoint(2339, 3111, 0), "");
-            talkToSpiritTree = new ConditionalStep(quest, talk, "Talk to the Spirit Tree.",
-                    quest.combatGear, quest.prayerPotions, quest.food, quest.crystalChime);
-        }
+		{
+			var talk = new ObjectStep(quest, ObjectID.POG_SPIRIT_TREE_MULTI, new WorldPoint(2339, 3111, 0), "");
+			talkToSpiritTree = new ConditionalStep(quest, talk, "Talk to the Spirit Tree.",
+				quest.combatGear, quest.prayerPotions, quest.food, quest.crystalChime);
+		}
 
-        useCrystalChime = new ObjectStep(quest, NullObjectID.NULL_49598, new WorldPoint(2339, 3111, 0),
-                "Use the Crystal Chime on the Spirit Tree.", quest.crystalChime.highlighted());
-        useCrystalChime.addIcon(ItemID.CRYSTAL_CHIME);
+		useCrystalChime = new ObjectStep(quest, ObjectID.POG_SPIRIT_TREE_MULTI, new WorldPoint(2339, 3111, 0),
+			"Use the Crystal Chime on the Spirit Tree.", quest.crystalChime.highlighted());
+		useCrystalChime.addIcon(ItemID.CRYSTAL_CHIME);
 
-        {
-            var talk = new ObjectStep(quest, NullObjectID.NULL_49598, new WorldPoint(2339, 3111, 0), "");
-            talkToSpiritTreeAgain = new ConditionalStep(quest, talk, "Talk to the Spirit Tree again.",
-                    quest.combatGear, quest.prayerPotions, quest.food, quest.crystalChime);
-        }
-    }
+		{
+			var talk = new ObjectStep(quest, ObjectID.POG_SPIRIT_TREE_MULTI, new WorldPoint(2339, 3111, 0), "");
+			talkToSpiritTreeAgain = new ConditionalStep(quest, talk, "Talk to the Spirit Tree again.",
+				quest.combatGear, quest.prayerPotions, quest.food, quest.crystalChime);
+		}
+	}
 
-    public List<QuestStep> getSteps() {
-        return List.of(
-                talkToLongramble, talkToSpiritTree, useCrystalChime, talkToSpiritTreeAgain
-        );
-    }
+	public List<QuestStep> getSteps()
+	{
+		return List.of(
+			talkToLongramble, talkToSpiritTree, useCrystalChime, talkToSpiritTreeAgain
+		);
+	}
 }

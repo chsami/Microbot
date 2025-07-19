@@ -25,107 +25,118 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.runeliteobjects;
 
-
-import net.runelite.api.*;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.chat.ChatMessageManager;
-import net.runelite.client.config.ConfigManager;
 import net.runelite.client.plugins.microbot.questhelper.runeliteobjects.extendedruneliteobjects.FakeNpc;
 import net.runelite.client.plugins.microbot.questhelper.runeliteobjects.extendedruneliteobjects.RuneliteObjectManager;
+import net.runelite.api.*;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.client.chat.ChatMessageManager;
+import net.runelite.client.config.ConfigManager;
 
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-public class Cheerer {
-    private static final List<FakeNpc> cheerers = new ArrayList<>();
+public class Cheerer
+{
+	private static final List<FakeNpc> cheerers = new ArrayList<>();
 
-    private static ModelData createModel(Client client, ModelData... data) {
-        return client.mergeModels(data);
-    }
+	public static void createCheerers(RuneliteObjectManager runeliteObjectManager, Client client, ConfigManager configManager)
+	{
+		cheerers.clear();
+		createWOM(runeliteObjectManager, client);
+		createZoinkwiz(runeliteObjectManager, client);
+	}
 
-    private static ModelData createModel(Client client, int... data) {
-        ModelData[] modelData = new ModelData[data.length];
-        for (int i = 0; i < data.length; i++) {
-            modelData[i] = client.loadModelData(data[i]);
-        }
-        return client.mergeModels(modelData);
-    }
+	private static void createWOM(RuneliteObjectManager runeliteObjectManager, Client client)
+	{
+		WorldPoint playerPos = client.getLocalPlayer().getWorldLocation();
+		WorldPoint pointAbovePlayer = new WorldPoint(playerPos.getX(), playerPos.getY() + 1, playerPos.getPlane());
+		FakeNpc wiseOldMan = runeliteObjectManager.createFakeNpc("global", wiseOldManOutfit(client), pointAbovePlayer, 862);
+		wiseOldMan.setName("Wise Old Man");
+		wiseOldMan.setExamine("Loves questing.");
+		wiseOldMan.addExamineAction(runeliteObjectManager);
+		wiseOldMan.disable();
 
-    private static void createWOM(RuneliteObjectManager runeliteObjectManager, Client client) {
-        WorldPoint playerPos = client.getLocalPlayer().getWorldLocation();
-        WorldPoint pointAbovePlayer = new WorldPoint(playerPos.getX(), playerPos.getY() + 1, playerPos.getPlane());
-        FakeNpc wiseOldMan = runeliteObjectManager.createFakeNpc("global", wiseOldManOutfit(client), pointAbovePlayer, 862);
-        wiseOldMan.setName("Wise Old Man");
-        wiseOldMan.setExamine("Loves questing.");
-        wiseOldMan.addExamineAction(runeliteObjectManager);
-        wiseOldMan.disable();
+		cheerers.add(wiseOldMan);
+	}
 
-        cheerers.add(wiseOldMan);
-    }
+	private static Model wiseOldManOutfit(Client client)
+	{
+		NPCComposition wom = client.getNpcDefinition(NpcID.WISE_OLD_MAN);
+		int[] models = wom.getModels();
+		short[] coloursToReplace = wom.getColorToReplace();
+		short[] coloursToReplaceWith = wom.getColorToReplaceWith();
+		ModelData mdf = createModel(client, models); // feet?
 
-    private static void createZoinkwiz(RuneliteObjectManager runeliteObjectManager, Client client) {
-        WorldPoint playerPos = client.getLocalPlayer().getWorldLocation();
-        WorldPoint pointAbovePlayer = new WorldPoint(playerPos.getX(), playerPos.getY() + 1, playerPos.getPlane());
-        FakeNpc zoinkwiz = runeliteObjectManager.createFakeNpc("global", zoinkwizOutfit(client), pointAbovePlayer, 862);
-        zoinkwiz.setName("Zoinkwiz");
-        zoinkwiz.setExamine("Loves questing.");
-        zoinkwiz.addExamineAction(runeliteObjectManager);
-        zoinkwiz.disable();
+		if (coloursToReplace != null && coloursToReplaceWith != null && coloursToReplace.length == coloursToReplaceWith.length) {
+			for (int i=0; i < coloursToReplace.length; i++)
+			{
+				mdf.recolor(coloursToReplace[i], coloursToReplaceWith[i]);
+			}
+		}
+		return mdf.cloneColors()
+			.light();
+	}
 
-        cheerers.add(zoinkwiz);
-    }
+	private static void createZoinkwiz(RuneliteObjectManager runeliteObjectManager, Client client)
+	{
+		WorldPoint playerPos = client.getLocalPlayer().getWorldLocation();
+		WorldPoint pointAbovePlayer = new WorldPoint(playerPos.getX(), playerPos.getY() + 1, playerPos.getPlane());
+		FakeNpc zoinkwiz = runeliteObjectManager.createFakeNpc("global", zoinkwizOutfit(client), pointAbovePlayer, 862);
+		zoinkwiz.setName("Zoinkwiz");
+		zoinkwiz.setExamine("Loves questing.");
+		zoinkwiz.addExamineAction(runeliteObjectManager);
+		zoinkwiz.disable();
 
-    private static Model wiseOldManOutfit(Client client) {
-        NPCComposition wom = client.getNpcDefinition(NpcID.WISE_OLD_MAN);
-        int[] models = wom.getModels();
-        short[] coloursToReplace = wom.getColorToReplace();
-        short[] coloursToReplaceWith = wom.getColorToReplaceWith();
-        ModelData mdf = createModel(client, models); // feet?
+		cheerers.add(zoinkwiz);
+	}
 
-        if (coloursToReplace != null && coloursToReplaceWith != null && coloursToReplace.length == coloursToReplaceWith.length) {
-            for (int i = 0; i < coloursToReplace.length; i++) {
-                mdf.recolor(coloursToReplace[i], coloursToReplaceWith[i]);
-            }
-        }
-        return mdf.cloneColors()
-                .light();
-    }
+	private static Model zoinkwizOutfit(Client client)
+	{
+		short qpcDark = (short) -22440;
+		final int QUEST_CAPE_MALE = 18946;
 
-    private static Model zoinkwizOutfit(Client client) {
-        short qpcDark = (short) -22440;
-        final int QUEST_CAPE_MALE = 18946;
+		ModelData cape = client.loadModelData(QUEST_CAPE_MALE).cloneColors()
+			.recolor((short) -8256, qpcDark) // Outside trim
+			.recolor((short) -11353, JagexColor.rgbToHSL(Color.WHITE.getRGB(), 1.0d)); // Inside trim
 
-        ModelData cape = client.loadModelData(QUEST_CAPE_MALE).cloneColors()
-                .recolor((short) -8256, qpcDark) // Outside trim
-                .recolor((short) -11353, JagexColor.rgbToHSL(Color.WHITE.getRGB(), 1.0d)); // Inside trim
+		ModelData mdf = createModel(client,
+				46603, 46606, 46607, 46608, 7207);
+		mdf = createModel(client, mdf, cape);
 
-        ModelData mdf = createModel(client,
-                46603, 46606, 46607, 46608, 7207);
-        mdf = createModel(client, mdf, cape);
+		return mdf.cloneColors()
+			.light(64, 768, -50, -50, 10);
+	}
 
-        return mdf.cloneColors()
-                .light(64, 768, -50, -50, 10);
-    }
+	private static ModelData createModel(Client client, ModelData... data)
+	{
+		return client.mergeModels(data);
+	}
 
-    public static void createCheerers(RuneliteObjectManager runeliteObjectManager, Client client, ConfigManager configManager) {
-        cheerers.clear();
-        createWOM(runeliteObjectManager, client);
-        createZoinkwiz(runeliteObjectManager, client);
-    }
+	private static ModelData createModel(Client client, int... data)
+	{
+		ModelData[] modelData = new ModelData[data.length];
+		for (int i = 0; i < data.length; i++)
+		{
+			modelData[i] = client.loadModelData(data[i]);
+		}
+		return client.mergeModels(modelData);
+	}
 
-    public static void activateCheerer(Client client, ChatMessageManager chatMessageManager) {
-        Random generator = new Random();
-        FakeNpc cheerer = cheerers.get(generator.nextInt(cheerers.size()));
-        WorldPoint playerPos = client.getLocalPlayer().getWorldLocation();
+	public static void activateCheerer(Client client, ChatMessageManager chatMessageManager)
+	{
+		Random generator = new Random();
+		FakeNpc cheerer = cheerers.get(generator.nextInt(cheerers.size()));
+		WorldPoint playerPos = client.getLocalPlayer().getWorldLocation();
 
-        int tickToRemoveOn = client.getTickCount() + 20;
+		int tickToRemoveOn = client.getTickCount() + 20;
 
-        WorldPoint pointAbovePlayer = new WorldPoint(playerPos.getX(), playerPos.getY() + 1, playerPos.getPlane());
-        cheerer.setWorldPoint(pointAbovePlayer);
-        cheerer.activate();
-        cheerer.addOverheadText("Congratz on completing the quest!", tickToRemoveOn, chatMessageManager);
-        cheerer.setDisableAfterTick(tickToRemoveOn);
-    }
+		WorldPoint pointAbovePlayer = new WorldPoint(playerPos.getX(), playerPos.getY() + 1, playerPos.getPlane());
+		cheerer.setWorldPoint(pointAbovePlayer);
+		cheerer.activate();
+		cheerer.addOverheadText("Congratz on completing the quest!", tickToRemoveOn, chatMessageManager);
+		cheerer.setDisableAfterTick(tickToRemoveOn);
+	}
 }

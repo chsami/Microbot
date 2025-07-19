@@ -24,98 +24,115 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.kingsransom;
 
-
-import net.runelite.api.events.GameTick;
-import net.runelite.api.widgets.Widget;
-import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.widgets.Widget;
+import net.runelite.client.eventbus.Subscribe;
 
 import java.awt.*;
 
-public class LockpickPuzzle extends QuestStep {
-    int[] TUMBLER_ANSWERS = new int[]{3894, 3895, 3896, 3897};
-    int[] TUMBLER_WIDGETS = new int[]{20, 21, 22, 23};
-    int[] TUMBLER_CURRENT = new int[]{3901, 3902, 3903, 3904};
-    int CURRENT_TUMBLER = 3905;
-    int UP_WIDGET = 12;
-    int DOWN_WIDGET = 13;
-    int TRY_LOCK = 14;
+public class LockpickPuzzle extends QuestStep
+{
+	int[] TUMBLER_ANSWERS = new int[]{3894, 3895, 3896, 3897};
+	int[] TUMBLER_WIDGETS = new int[]{20, 21, 22, 23};
+	int[] TUMBLER_CURRENT = new int[]{3901, 3902, 3903, 3904};
+	int CURRENT_TUMBLER = 3905;
+	int UP_WIDGET = 12;
+	int DOWN_WIDGET = 13;
+	int TRY_LOCK = 14;
 
-    int highlightChildID;
+	int highlightChildID;
 
-    public LockpickPuzzle(QuestHelper questHelper) {
-        super(questHelper, "Click the highlighted boxes to solve the puzzle. The solution is:");
-    }
+	public LockpickPuzzle(QuestHelper questHelper)
+	{
+		super(questHelper, "Click the highlighted boxes to solve the puzzle. The solution is:");
+	}
 
-    @Override
-    public void startUp() {
-        updateSolvedPositionState();
-        this.setText("Click the highlighted boxes to solve the puzzle. The solution is:");
-        this.addText("Tumbler 1: " + client.getVarbitValue(TUMBLER_ANSWERS[0]) + ".");
-        this.addText("Tumbler 2: " + client.getVarbitValue(TUMBLER_ANSWERS[1]) + ".");
-        this.addText("Tumbler 3: " + client.getVarbitValue(TUMBLER_ANSWERS[2]) + ".");
-        this.addText("Tumbler 4: " + client.getVarbitValue(TUMBLER_ANSWERS[3]) + ".");
-    }
+	@Override
+	public void startUp()
+	{
+		updateSolvedPositionState();
+		this.setText("Click the highlighted boxes to solve the puzzle. The solution is:");
+		this.addText("Tumbler 1: " + client.getVarbitValue(TUMBLER_ANSWERS[0]) + ".");
+		this.addText("Tumbler 2: " + client.getVarbitValue(TUMBLER_ANSWERS[1]) + ".");
+		this.addText("Tumbler 3: " + client.getVarbitValue(TUMBLER_ANSWERS[2]) + ".");
+		this.addText("Tumbler 4: " + client.getVarbitValue(TUMBLER_ANSWERS[3]) + ".");
+	}
 
-    @Subscribe
-    public void onGameTick(GameTick event) {
-        updateSolvedPositionState();
-    }
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		updateSolvedPositionState();
+	}
 
-    private void updateSolvedPositionState() {
-        int current0 = client.getVarbitValue(TUMBLER_CURRENT[0]);
-        int answer0 = client.getVarbitValue(TUMBLER_ANSWERS[0]);
-        if (current0 != answer0) {
-            updateWidget(0, current0, answer0);
-            return;
-        }
-        int current1 = client.getVarbitValue(TUMBLER_CURRENT[1]);
-        int answer1 = client.getVarbitValue(TUMBLER_ANSWERS[1]);
-        if (current1 != answer1) {
-            updateWidget(1, current1, answer1);
-            return;
-        }
+	private void updateSolvedPositionState()
+	{
+		int current0 = client.getVarbitValue(TUMBLER_CURRENT[0]);
+		int answer0 = client.getVarbitValue(TUMBLER_ANSWERS[0]);
+		if (current0 != answer0)
+		{
+			updateWidget(0, current0, answer0);
+			return;
+		}
+		int current1 = client.getVarbitValue(TUMBLER_CURRENT[1]);
+		int answer1 = client.getVarbitValue(TUMBLER_ANSWERS[1]);
+		if (current1 != answer1)
+		{
+			updateWidget(1, current1, answer1);
+			return;
+		}
 
-        int current2 = client.getVarbitValue(TUMBLER_CURRENT[2]);
-        int answer2 = client.getVarbitValue(TUMBLER_ANSWERS[2]);
-        if (current2 != answer2) {
-            updateWidget(2, current2, answer2);
-            return;
-        }
-        int current3 = client.getVarbitValue(TUMBLER_CURRENT[3]);
-        int answer3 = client.getVarbitValue(TUMBLER_ANSWERS[3]);
-        if (current3 != answer3) {
-            updateWidget(3, current3, answer3);
-            return;
-        }
+		int current2 = client.getVarbitValue(TUMBLER_CURRENT[2]);
+		int answer2 = client.getVarbitValue(TUMBLER_ANSWERS[2]);
+		if (current2 != answer2)
+		{
+			updateWidget(2, current2, answer2);
+			return;
+		}
+		int current3 = client.getVarbitValue(TUMBLER_CURRENT[3]);
+		int answer3 = client.getVarbitValue(TUMBLER_ANSWERS[3]);
+		if (current3 != answer3)
+		{
+			updateWidget(3, current3, answer3);
+			return;
+		}
 
-        highlightChildID = TRY_LOCK;
-    }
+		highlightChildID = TRY_LOCK;
+	}
 
-    private void updateWidget(int widgetID, int currentVal, int answer) {
-        int currentTumbler = client.getVarbitValue(CURRENT_TUMBLER);
-        if (currentTumbler != widgetID + 1) {
-            highlightChildID = TUMBLER_WIDGETS[widgetID];
-        } else if (currentVal > answer) {
-            highlightChildID = DOWN_WIDGET;
-        } else {
-            highlightChildID = UP_WIDGET;
-        }
-    }
+	private void updateWidget(int widgetID, int currentVal, int answer)
+	{
+		int currentTumbler = client.getVarbitValue(CURRENT_TUMBLER);
+		if (currentTumbler != widgetID + 1)
+		{
+			highlightChildID = TUMBLER_WIDGETS[widgetID];
+		}
+		else if (currentVal > answer)
+		{
+			highlightChildID = DOWN_WIDGET;
+		}
+		else
+		{
+			highlightChildID = UP_WIDGET;
+		}
+	}
 
-    @Override
-    public void makeWidgetOverlayHint(Graphics2D graphics, QuestHelperPlugin plugin) {
-        super.makeWidgetOverlayHint(graphics, plugin);
-        Widget widgetWrapper = client.getWidget(588, highlightChildID);
-        if (widgetWrapper != null) {
-            graphics.setColor(new Color(questHelper.getConfig().targetOverlayColor().getRed(),
-                    questHelper.getConfig().targetOverlayColor().getGreen(),
-                    questHelper.getConfig().targetOverlayColor().getBlue(), 65));
-            graphics.fill(widgetWrapper.getBounds());
-            graphics.setColor(questHelper.getConfig().targetOverlayColor());
-            graphics.draw(widgetWrapper.getBounds());
-        }
-    }
+	@Override
+	public void makeWidgetOverlayHint(Graphics2D graphics, QuestHelperPlugin plugin)
+	{
+		super.makeWidgetOverlayHint(graphics, plugin);
+		Widget widgetWrapper = client.getWidget(InterfaceID.KR_PICKLOCK, highlightChildID);
+		if (widgetWrapper != null)
+		{
+			graphics.setColor(new Color(questHelper.getConfig().targetOverlayColor().getRed(),
+				questHelper.getConfig().targetOverlayColor().getGreen(),
+				questHelper.getConfig().targetOverlayColor().getBlue(), 65));
+			graphics.fill(widgetWrapper.getBounds());
+			graphics.setColor(questHelper.getConfig().targetOverlayColor());
+			graphics.draw(widgetWrapper.getBounds());
+		}
+	}
 }

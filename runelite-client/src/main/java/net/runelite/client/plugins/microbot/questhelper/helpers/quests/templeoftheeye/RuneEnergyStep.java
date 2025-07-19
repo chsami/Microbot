@@ -24,88 +24,98 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.templeoftheeye;
 
-
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
 import net.runelite.api.ChatMessageType;
-import net.runelite.api.ObjectID;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.gameval.ObjectID;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 
-public class RuneEnergyStep extends ObjectStep {
-    String startText = "The ";
-    String endText = " energy reacts strangely to your touch.";
+public class RuneEnergyStep extends ObjectStep
+{
+	String startText = "The ";
+	String endText = " energy reacts strangely to your touch.";
 
-    String failedText = " energy does not respond to your touch.";
+	String failedText = " energy does not respond to your touch.";
 
-    int currentPos = 0;
+	int currentPos = 0;
 
-    RunicEnergy[] useList = new RunicEnergy[6];
+	RunicEnergy[] useList = new RunicEnergy[6];
 
-    RunicEnergy[] runicEnergies = new RunicEnergy[]{
-            new RunicEnergy("earth", new WorldPoint(3040, 4834, 0), ObjectID.EARTH_ENERGY),
-            new RunicEnergy("cosmic", new WorldPoint(3041, 4832, 0), ObjectID.COSMIC_ENERGY),
-            new RunicEnergy("death", new WorldPoint(3037, 4832, 0), ObjectID.DEATH_ENERGY),
-            new RunicEnergy("nature", new WorldPoint(3038, 4830, 0), ObjectID.NATURE_ENERGY),
-            new RunicEnergy("law", new WorldPoint(3038, 4834, 0), ObjectID.LAW_ENERGY),
-            new RunicEnergy("fire", new WorldPoint(3040, 4830, 0), ObjectID.FIRE_ENERGY),
-    };
+	RunicEnergy[] runicEnergies = new RunicEnergy[]{
+		new RunicEnergy("earth", new WorldPoint(3040, 4834, 0), ObjectID.TOTE_ABYSSAL_ENERGY_EARTH_VIS),
+		new RunicEnergy("cosmic", new WorldPoint(3041, 4832, 0), ObjectID.TOTE_ABYSSAL_ENERGY_COSMIC_VIS),
+		new RunicEnergy("death", new WorldPoint(3037, 4832, 0), ObjectID.TOTE_ABYSSAL_ENERGY_DEATH_VIS),
+		new RunicEnergy("nature", new WorldPoint(3038, 4830, 0), ObjectID.TOTE_ABYSSAL_ENERGY_NATURE_VIS),
+		new RunicEnergy("law", new WorldPoint(3038, 4834, 0), ObjectID.TOTE_ABYSSAL_ENERGY_LAW_VIS),
+		new RunicEnergy("fire", new WorldPoint(3040, 4830, 0), ObjectID.TOTE_ABYSSAL_ENERGY_FIRE_VIS),
+	};
 
-    int highestPointReached = 0;
+	int highestPointReached = 0;
+	public RuneEnergyStep(QuestHelper questHelper)
+	{
+		super(questHelper, -1,
+			"Work out the correct order to activate the runes through trial and error.");
+		addAlternateObjects(ObjectID.TOTE_ABYSSAL_ENERGY_EARTH_VIS, ObjectID.TOTE_ABYSSAL_ENERGY_COSMIC_VIS,
+			ObjectID.TOTE_ABYSSAL_ENERGY_DEATH_VIS,
+			ObjectID.TOTE_ABYSSAL_ENERGY_NATURE_VIS, ObjectID.TOTE_ABYSSAL_ENERGY_LAW_VIS,
+			ObjectID.TOTE_ABYSSAL_ENERGY_FIRE_VIS);
+	}
 
-    public RuneEnergyStep(QuestHelper questHelper) {
-        super(questHelper, -1,
-                "Work out the correct order to activate the runes through trial and error.");
-        addAlternateObjects(ObjectID.EARTH_ENERGY, ObjectID.COSMIC_ENERGY,
-                ObjectID.DEATH_ENERGY,
-                ObjectID.NATURE_ENERGY, ObjectID.LAW_ENERGY,
-                ObjectID.FIRE_ENERGY);
-    }
+	@Override
+	public void startUp()
+	{
+		super.startUp();
+		setupHighlights();
+	}
 
-    @Override
-    public void startUp() {
-        super.startUp();
-        setupHighlights();
-    }
-
-    @Override
-    public void onVarbitChanged(VarbitChanged varbitChanged) {
-        super.onVarbitChanged(varbitChanged);
-        setupHighlights();
-    }
+	@Override
+	public void onVarbitChanged(VarbitChanged varbitChanged)
+	{
+		super.onVarbitChanged(varbitChanged);
+		setupHighlights();
+	}
 
 
-    @Subscribe
-    public void onChatMessage(ChatMessage chatMessage) {
-        if (chatMessage.getType() == ChatMessageType.GAMEMESSAGE) {
-            if (chatMessage.getMessage().contains(endText)) {
-                for (RunicEnergy runicEnergy : runicEnergies) {
-                    if (chatMessage.getMessage().contains(runicEnergy.name)) {
-                        useList[currentPos] = runicEnergy;
-                        currentPos++;
-                        setupHighlights();
-                    }
-                }
-            }
-            if (chatMessage.getMessage().contains(failedText)) {
-                currentPos = 0;
-                setupHighlights();
-            }
-        }
-    }
+	@Subscribe
+	public void onChatMessage(ChatMessage chatMessage)
+	{
+		if (chatMessage.getType() == ChatMessageType.GAMEMESSAGE)
+		{
+			if (chatMessage.getMessage().contains(endText))
+			{
+				for (RunicEnergy runicEnergy : runicEnergies)
+				{
+					if (chatMessage.getMessage().contains(runicEnergy.name))
+					{
+						useList[currentPos] = runicEnergy;
+						currentPos++;
+						setupHighlights();
+					}
+				}
+			}
+			if (chatMessage.getMessage().contains(failedText))
+			{
+				currentPos = 0;
+				setupHighlights();
+			}
+		}
+	}
 
-    private void setupHighlights() {
-        if (useList[currentPos] == null) {
-            return;
-        }
+	private void setupHighlights()
+	{
+		if (useList[currentPos] == null)
+		{
+			return;
+		}
 
-        alternateObjectIDs.clear();
+		alternateObjectIDs.clear();
 
-        alternateObjectIDs.add(useList[currentPos].id);
-        worldPoint = useList[currentPos].wp;
+		alternateObjectIDs.add(useList[currentPos].id);
+		worldPoint = useList[currentPos].wp;
 
-        loadObjects();
-    }
+		loadObjects();
+	}
 }

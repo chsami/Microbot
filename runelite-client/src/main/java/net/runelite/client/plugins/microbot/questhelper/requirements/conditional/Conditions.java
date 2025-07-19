@@ -24,12 +24,12 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements.conditional;
 
+import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicType;
+import net.runelite.client.plugins.microbot.questhelper.requirements.util.Operation;
+import net.runelite.client.plugins.microbot.questhelper.util.Utils;
 import lombok.Setter;
 import net.runelite.api.Client;
-import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicType;
-import net.runelite.client.plugins.microbot.questhelper.util.Utils;
-import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
-import net.runelite.client.plugins.microbot.questhelper.requirements.util.Operation;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
@@ -37,124 +37,139 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class Conditions extends ConditionForStep {
-    protected Operation operation;
-    protected int quantity;
+public class Conditions extends ConditionForStep
+{
+	protected Operation operation;
+	protected int quantity;
 
-    @Setter
-    protected String text;
+	@Setter
+	protected String text;
 
-    /**
-     * @param conditions list of requirements that must all be met
-     */
-    public Conditions(Requirement... conditions) {
-        assert (Utils.varargsNotNull(conditions));
+	/**
+	 * @param conditions list of requirements that must all be met
+	 */
+	public Conditions(Requirement... conditions)
+	{
+		assert(Utils.varargsNotNull(conditions));
 
-        this.conditions = new ArrayList<>();
-        Collections.addAll(this.conditions, conditions);
-        logicType = LogicType.AND;
-    }
+		this.conditions = new ArrayList<>();
+		Collections.addAll(this.conditions, conditions);
+		logicType = LogicType.AND;
+	}
 
-    /**
-     * @param conditions list of requirements that must all be met
-     */
-    public Conditions(List<Requirement> conditions) {
-        assert (conditions.stream().noneMatch(Objects::isNull));
+	/**
+	 * @param conditions list of requirements that must all be met
+	 */
+	public Conditions(List<Requirement> conditions)
+	{
+		assert(conditions.stream().noneMatch(Objects::isNull));
 
-        this.conditions = new ArrayList<>(conditions);
-        logicType = LogicType.AND;
-    }
+		this.conditions = new ArrayList<>(conditions);
+		logicType = LogicType.AND;
+	}
 
-    /**
-     * @param logicType  type of logic to apply to the list of requirements for this Condition to be met
-     * @param conditions list of requirements that will be evaluated based on the logicType
-     */
-    public Conditions(LogicType logicType, Requirement... conditions) {
-        assert (Utils.varargsNotNull(conditions));
+	/**
+	 * @param logicType type of logic to apply to the list of requirements for this Condition to be met
+	 * @param conditions list of requirements that will be evaluated based on the logicType
+	 */
+	public Conditions(LogicType logicType, Requirement... conditions)
+	{
+		assert(Utils.varargsNotNull(conditions));
 
-        this.conditions = new ArrayList<>();
-        Collections.addAll(this.conditions, conditions);
-        this.logicType = logicType;
-    }
+		this.conditions = new ArrayList<>();
+		Collections.addAll(this.conditions, conditions);
+		this.logicType = logicType;
+	}
 
-    public Conditions(Operation operation, int quantity, Requirement... conditions) {
-        assert (Utils.varargsNotNull(conditions));
+	public Conditions(Operation operation, int quantity, Requirement... conditions)
+	{
+		assert(Utils.varargsNotNull(conditions));
 
-        this.conditions = new ArrayList<>();
-        Collections.addAll(this.conditions, conditions);
-        this.logicType = LogicType.AND;
-        this.operation = operation;
-        this.quantity = quantity;
-    }
+		this.conditions = new ArrayList<>();
+		Collections.addAll(this.conditions, conditions);
+		this.logicType = LogicType.AND;
+		this.operation = operation;
+		this.quantity = quantity;
+	}
 
-    public Conditions(LogicType logicType, List<Requirement> conditions) {
-        assert (conditions.stream().noneMatch(Objects::isNull));
+	public Conditions(LogicType logicType, List<Requirement> conditions)
+	{
+		assert(conditions.stream().noneMatch(Objects::isNull));
 
-        this.conditions = new ArrayList<>(conditions);
-        this.logicType = logicType;
-    }
+		this.conditions = new ArrayList<>(conditions);
+		this.logicType = logicType;
+	}
 
-    public Conditions(boolean onlyNeedToPassOnce, Operation operation, int quantity, Requirement... conditions) {
-        assert (Utils.varargsNotNull(conditions));
+	public Conditions(boolean onlyNeedToPassOnce, Operation operation, int quantity, Requirement... conditions)
+	{
+		assert(Utils.varargsNotNull(conditions));
 
-        this.conditions = new ArrayList<>();
-        Collections.addAll(this.conditions, conditions);
-        this.onlyNeedToPassOnce = onlyNeedToPassOnce;
-        this.logicType = LogicType.AND;
-        this.operation = operation;
-        this.quantity = quantity;
-    }
+		this.conditions = new ArrayList<>();
+		Collections.addAll(this.conditions, conditions);
+		this.onlyNeedToPassOnce = onlyNeedToPassOnce;
+		this.logicType = LogicType.AND;
+		this.operation = operation;
+		this.quantity = quantity;
+	}
 
-    public Conditions(boolean onlyNeedToPassOnce, LogicType logicType, Requirement... conditions) {
-        assert (Utils.varargsNotNull(conditions));
+	public Conditions(boolean onlyNeedToPassOnce, LogicType logicType, Requirement... conditions)
+	{
+		assert(Utils.varargsNotNull(conditions));
 
-        this.conditions = new ArrayList<>();
-        Collections.addAll(this.conditions, conditions);
-        this.onlyNeedToPassOnce = onlyNeedToPassOnce;
-        this.logicType = logicType;
-    }
+		this.conditions = new ArrayList<>();
+		Collections.addAll(this.conditions, conditions);
+		this.onlyNeedToPassOnce = onlyNeedToPassOnce;
+		this.logicType = logicType;
+	}
 
-    public Conditions(boolean onlyNeedToPassOnce, Requirement... conditions) {
-        assert (Utils.varargsNotNull(conditions));
+	public Conditions(boolean onlyNeedToPassOnce, Requirement... conditions)
+	{
+		assert(Utils.varargsNotNull(conditions));
 
-        this.conditions = new ArrayList<>();
-        Collections.addAll(this.conditions, conditions);
-        this.onlyNeedToPassOnce = onlyNeedToPassOnce;
-        this.logicType = LogicType.AND;
-    }
+		this.conditions = new ArrayList<>();
+		Collections.addAll(this.conditions, conditions);
+		this.onlyNeedToPassOnce = onlyNeedToPassOnce;
+		this.logicType = LogicType.AND;
+	}
 
-    @Override
-    @Nonnull
-    public String getDisplayText() {
-        return text;
-    }
+	@Override
+	@Nonnull
+	public String getDisplayText()
+	{
+		return text;
+	}
 
-    @Override
-    public boolean check(Client client) {
-        if (onlyNeedToPassOnce && hasPassed) {
-            return true;
-        }
+	@Override
+	public boolean check(Client client)
+	{
+		if (onlyNeedToPassOnce && hasPassed)
+		{
+			return true;
+		}
 
-        int conditionsPassed = (int) conditions.stream().filter(c -> {
-            if (c == null) {
-                return true;
-            }
-            return c.check(client);
-        }).count();
+		int conditionsPassed = (int) conditions.stream().filter(c -> {
+			if (c == null)
+			{
+				return true;
+			}
+			return c.check(client);
+		}).count();
 
-        if (operation != null) {
-            return operation.check(conditionsPassed, quantity);
-        }
+		if (operation != null)
+		{
+			return operation.check(conditionsPassed, quantity);
+		}
 
-        //TODO: Replace with LogicType check, however more testing to be done to make sure nothing breaks
-        if ((conditionsPassed > 0 && logicType == LogicType.OR)
-                || (conditionsPassed == 0 && logicType == LogicType.NOR)
-                || (conditionsPassed == conditions.size() && logicType == LogicType.AND)
-                || (conditionsPassed < conditions.size() && logicType == LogicType.NAND)) {
-            hasPassed = true;
-            return true;
-        }
+		//TODO: Replace with LogicType check, however more testing to be done to make sure nothing breaks
+		if ((conditionsPassed > 0 && logicType == LogicType.OR)
+			|| (conditionsPassed == 0 && logicType == LogicType.NOR)
+			|| (conditionsPassed == conditions.size() && logicType == LogicType.AND)
+			|| (conditionsPassed < conditions.size() && logicType == LogicType.NAND))
+		{
+			hasPassed = true;
+			return true;
+		}
 
-        return false;
-    }
+		return false;
+	}
 }

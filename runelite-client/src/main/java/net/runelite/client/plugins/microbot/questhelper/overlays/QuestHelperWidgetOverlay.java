@@ -37,27 +37,32 @@ import net.runelite.client.ui.overlay.OverlayPriority;
 import javax.inject.Inject;
 import java.awt.*;
 
-public class QuestHelperWidgetOverlay extends Overlay {
-    private final QuestHelperPlugin plugin;
+public class QuestHelperWidgetOverlay extends Overlay
+{
+	private final QuestHelperPlugin plugin;
 
-    @Inject
-    public QuestHelperWidgetOverlay(QuestHelperPlugin plugin) {
-        setPosition(OverlayPosition.DYNAMIC);
-        setLayer(OverlayLayer.ALWAYS_ON_TOP);
-        setPriority(OverlayPriority.HIGH);
-        this.plugin = plugin;
-    }
+	@Inject
+	public QuestHelperWidgetOverlay(QuestHelperPlugin plugin)
+	{
+		setPosition(OverlayPosition.DYNAMIC);
+		setLayer(OverlayLayer.ALWAYS_ON_TOP);
+		setPriority(OverlayPriority.HIGH);
+		this.plugin = plugin;
+	}
 
-    @Override
-    public Dimension render(Graphics2D graphics) {
-        QuestHelper quest = plugin.getSelectedQuest();
+	@Override
+	public Dimension render(Graphics2D graphics)
+	{
+		QuestHelper quest = plugin.getSelectedQuest();
 
-        if (quest != null && quest.getCurrentStep() != null && quest.getCurrentStep().getActiveStep() != null) {
-            if (plugin.getConfig().showWidgetHints()) {
-                quest.getCurrentStep().getActiveStep().makeWidgetOverlayHint(graphics, plugin);
-            }
-        }
-        plugin.getRuneliteObjectManager().makeWidgetOverlayHint(graphics);
-        return null;
-    }
+		if (quest != null && quest.getCurrentStep() != null)
+		{
+			if (plugin.getConfig().showWidgetHints())
+			{
+				quest.getCurrentStep().makeWidgetOverlayHint(graphics, plugin);
+			}
+		}
+		plugin.getRuneliteObjectManager().makeWidgetOverlayHint(graphics);
+		return null;
+	}
 }

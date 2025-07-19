@@ -24,12 +24,11 @@
  */
 package net.runelite.client.plugins.microbot.questhelper;
 
-
-import lombok.Getter;
-import net.runelite.client.config.*;
 import net.runelite.client.plugins.microbot.questhelper.panel.questorders.QuestOrders;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestDetails;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import lombok.Getter;
+import net.runelite.client.config.*;
 import net.runelite.client.util.Text;
 
 import java.awt.*;
@@ -41,572 +40,645 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 @ConfigGroup("questhelper")
-public interface QuestHelperConfig extends Config {
-    String QUEST_HELPER_GROUP = "questhelper";
-    String QUEST_BACKGROUND_GROUP = "questhelpervars";
-    @ConfigSection(
-            position = 0,
-            name = "Unfinished quest highlights",
-            description = "Highlight things you will need for quests you have not yet completed"
-    )
-    String itemSection = "itemSection";
-    @ConfigSection(
-            position = 1,
-            name = "Sidebar details",
-            description = "Determines sidebar rendering"
-    )
-    String sidebarDetailsSection = "sidebarDetailsSection";
-    @ConfigSection(
-            position = 2,
-            name = "Quest Hints",
-            description = "Determines what hints should be shown"
-    )
-    String hintsSection = "hintsSection";
-    @ConfigSection(
-            position = 3,
-            name = "Colours",
-            description = "What colour each option can be"
-    )
-    String colorSection = "colorSection";
-    @ConfigSection(
-            position = 4,
-            name = "Quest Filters",
-            description = "Determines which quests should be shown via the selected filter(s)"
-    )
-    String filterSection = "filterSection";
+public interface QuestHelperConfig extends Config
+{
+	String QUEST_HELPER_GROUP = "questhelper";
+	String QUEST_BACKGROUND_GROUP = "questhelpervars";
+	String QUEST_HELPER_SIDEBAR_ORDER_KEY_START = "quest-sidebar-order-";
 
-    enum QuestOrdering implements Comparator<QuestHelper> {
-        /**
-         * Sort quests in alphabetical order
-         */
-        A_TO_Z(QuestOrders.sortAToZ(), QuestFilter.QUEST, QuestFilter.MINIQUEST, QuestFilter.ACHIEVEMENT_DIARY,
-                QuestFilter.SKILL_HELPER, QuestFilter.GENERIC_HELPER, QuestFilter.PLAYER_MADE_QUESTS),
-        /**
-         * Sort quests in reverse alphabetical order
-         */
-        Z_TO_A(QuestOrders.sortZToA(), QuestFilter.QUEST, QuestFilter.MINIQUEST, QuestFilter.ACHIEVEMENT_DIARY,
-                QuestFilter.SKILL_HELPER, QuestFilter.GENERIC_HELPER, QuestFilter.PLAYER_MADE_QUESTS),
-        /**
-         * Sort quests according to the Optimal Quest Guide (https://oldschool.runescape.wiki/w/Optimal_quest_guide)
-         */
-        OPTIMAL(QuestOrders.sortOptimalOrder(), QuestFilter.OPTIMAL, QuestFilter.GENERIC_HELPER),
-        /**
-         * Sort quests according to the Optimal Quest Guide (Ironman version) (https://oldschool.runescape.wiki/w/Optimal_quest_guide/Ironman)
-         */
-        OPTIMAL_IRONMAN(QuestOrders.sortOptimalIronmanOrder(), QuestFilter.OPTIMAL, QuestFilter.GENERIC_HELPER),
-        /**
-         * Sort quest by their release date (https://oldschool.runescape.wiki/w/Quests/Release_dates)
-         */
-        RELEASE_DATE(QuestOrders.sortByRelease(), QuestFilter.QUEST, QuestFilter.MINIQUEST),
+	enum QuestOrdering implements Comparator<QuestHelper>
+	{
+		/**
+		 * Sort quests in alphabetical order
+		 */
+		A_TO_Z(QuestOrders.sortAToZ(), QuestFilter.QUEST, QuestFilter.MINIQUEST, QuestFilter.ACHIEVEMENT_DIARY,
+			QuestFilter.SKILL_HELPER, QuestFilter.GENERIC_HELPER, QuestFilter.PLAYER_MADE_QUESTS),
+		/**
+		 * Sort quests in reverse alphabetical order
+		 */
+		Z_TO_A(QuestOrders.sortZToA(), QuestFilter.QUEST, QuestFilter.MINIQUEST, QuestFilter.ACHIEVEMENT_DIARY,
+			QuestFilter.SKILL_HELPER, QuestFilter.GENERIC_HELPER, QuestFilter.PLAYER_MADE_QUESTS),
+		/**
+		 * Sort quests according to the Optimal Quest Guide (https://oldschool.runescape.wiki/w/Optimal_quest_guide)
+		 */
+		OPTIMAL(QuestOrders.sortOptimalOrder(), QuestFilter.OPTIMAL, QuestFilter.GENERIC_HELPER),
+		/**
+		 * Sort quests according to the Optimal Quest Guide (Ironman version) (https://oldschool.runescape.wiki/w/Optimal_quest_guide/Ironman)
+		 */
+		OPTIMAL_IRONMAN(QuestOrders.sortOptimalIronmanOrder(), QuestFilter.OPTIMAL, QuestFilter.GENERIC_HELPER),
+		/**
+		 * Sort quest by their release date (https://oldschool.runescape.wiki/w/Quests/Release_dates)
+		 */
+		RELEASE_DATE(QuestOrders.sortByRelease(), QuestFilter.QUEST, QuestFilter.MINIQUEST),
 
-        QUEST_POINTS_ASC(QuestOrders.sortByQuestPointRewardAscending(), QuestFilter.QUEST),
-        QUEST_POINTS_DESC(QuestOrders.sortByQuestPointRewardDescending(), QuestFilter.QUEST);
+		QUEST_POINTS_ASC(QuestOrders.sortByQuestPointRewardAscending(), QuestFilter.QUEST),
+		QUEST_POINTS_DESC(QuestOrders.sortByQuestPointRewardDescending(), QuestFilter.QUEST);
 
-        private final Comparator<QuestHelper> comparator;
-        @Getter
-        private final QuestFilter[] sections;
+		private final Comparator<QuestHelper> comparator;
+		@Getter
+		private final QuestFilter[] sections;
 
-        QuestOrdering(Comparator<QuestHelper> comparator, QuestFilter... sections) {
-            this.comparator = comparator;
-            this.sections = sections;
+		QuestOrdering(Comparator<QuestHelper> comparator, QuestFilter... sections)
+		{
+			this.comparator = comparator;
+			this.sections = sections;
 
-        }
+		}
 
-        public List<QuestHelper> sort(Collection<QuestHelper> list) {
-            return list.stream().sorted(this).collect(Collectors.toList());
-        }
+		public List<QuestHelper> sort(Collection<QuestHelper> list)
+		{
+			return list.stream().sorted(this).collect(Collectors.toList());
+		}
 
-        @Override
-        public int compare(QuestHelper o1, QuestHelper o2) {
-            return comparator.compare(o1, o2);
-        }
-    }
+		@Override
+		public int compare(QuestHelper o1, QuestHelper o2)
+		{
+			return comparator.compare(o1, o2);
+		}
+	}
 
-    enum QuestFilter implements Predicate<QuestHelper> {
-        /**
-         * Show all quests
-         */
-        SHOW_ALL(q -> true),
-        /**
-         * Show quests where the client meets the quest requirements
-         */
-        SHOW_MEETS_REQS(QuestHelper::clientMeetsRequirements),
-        /**
-         * Show all except generic helpers
-         */
-        OPTIMAL("Optimal ordering",
-                q -> q.getQuest().getQuestType() == QuestDetails.Type.P2P ||
-                        q.getQuest().getQuestType() == QuestDetails.Type.F2P ||
-                        q.getQuest().getQuestType() == QuestDetails.Type.MINIQUEST ||
-                        q.getQuest().getQuestType() == QuestDetails.Type.ACHIEVEMENT_DIARY,
-                false),
-        /**
-         * Show all free-to-play quests
-         */
-        FREE_TO_PLAY(QuestDetails.Type.F2P),
-        /**
-         * Show all members' quests
-         */
-        MEMBERS(QuestDetails.Type.P2P),
-        /**
-         * Show all quests
-         */
-        QUEST("Quests", q -> q.getQuest().getQuestType() == QuestDetails.Type.P2P ||
-                q.getQuest().getQuestType() == QuestDetails.Type.F2P),
-        /**
-         * Show all miniquests (all miniquests are members' only)
-         */
-        MINIQUEST("Miniquests", QuestDetails.Type.MINIQUEST),
-        /**
-         * Show all achievement diaries
-         */
-        ACHIEVEMENT_DIARY("Achievement diaries", QuestDetails.Type.ACHIEVEMENT_DIARY),
-        /**
-         * Show all generic helpers
-         */
-        GENERIC_HELPER("Generic helpers", QuestDetails.Type.GENERIC),
-        /**
-         * Show all skills
-         */
-        SKILL_HELPER("Skill helpers", q -> q.getQuest().getQuestType() == QuestDetails.Type.SKILL_P2P ||
-                q.getQuest().getQuestType() == QuestDetails.Type.SKILL_F2P),
-        /**
-         * Show all free-to-play skills
-         */
-        SKILL_FREE_TO_PLAY(QuestDetails.Type.SKILL_F2P),
-        /**
-         * Show all members' skills
-         */
-        SKILL_MEMBERS(QuestDetails.Type.SKILL_P2P),
+	enum QuestFilter implements Predicate<QuestHelper>
+	{
+		/**
+		 * Show all quests
+		 */
+		SHOW_ALL(q -> true),
+		/**
+		 * Show quests where the client meets the quest requirements
+		 */
+		SHOW_MEETS_REQS(QuestHelper::clientMeetsRequirements),
+		/**
+		 * Show all except generic helpers
+		 */
+		OPTIMAL("Optimal ordering",
+			q -> q.getQuest().getQuestType() == QuestDetails.Type.P2P ||
+				q.getQuest().getQuestType() == QuestDetails.Type.F2P ||
+				q.getQuest().getQuestType() == QuestDetails.Type.MINIQUEST ||
+				q.getQuest().getQuestType() == QuestDetails.Type.ACHIEVEMENT_DIARY,
+			false),
+		/**
+		 * Show all free-to-play quests
+		 */
+		FREE_TO_PLAY(QuestDetails.Type.F2P),
+		/**
+		 * Show all members' quests
+		 */
+		MEMBERS(QuestDetails.Type.P2P),
+		/**
+		 * Show all quests
+		 */
+		QUEST("Quests", q -> q.getQuest().getQuestType() == QuestDetails.Type.P2P ||
+			q.getQuest().getQuestType() == QuestDetails.Type.F2P),
+		/**
+		 * Show all miniquests (all miniquests are members' only)
+		 */
+		MINIQUEST("Miniquests", QuestDetails.Type.MINIQUEST),
+		/**
+		 * Show all achievement diaries
+		 */
+		ACHIEVEMENT_DIARY("Achievement diaries", QuestDetails.Type.ACHIEVEMENT_DIARY),
+		/**
+		 * Show all generic helpers
+		 */
+		GENERIC_HELPER("Generic helpers", QuestDetails.Type.GENERIC),
+		/**
+		 * Show all skills
+		 */
+		SKILL_HELPER("Skill helpers", q -> q.getQuest().getQuestType() == QuestDetails.Type.SKILL_P2P ||
+			q.getQuest().getQuestType() == QuestDetails.Type.SKILL_F2P),
+		/**
+		 * Show all free-to-play skills
+		 */
+		SKILL_FREE_TO_PLAY(QuestDetails.Type.SKILL_F2P),
+		/**
+		 * Show all members' skills
+		 */
+		SKILL_MEMBERS(QuestDetails.Type.SKILL_P2P),
 
-        PLAYER_MADE_QUESTS("Player-made quests", q -> q.getQuest().getQuestType() == QuestDetails.Type.PLAYER_QUEST);
+		PLAYER_MADE_QUESTS("Player-made quests", q -> q.getQuest().getQuestType() == QuestDetails.Type.PLAYER_QUEST);
 
 
-        private final Predicate<QuestHelper> predicate;
+		private final Predicate<QuestHelper> predicate;
 
-        @Getter
-        private final String displayName;
+		@Getter
+		private final String displayName;
 
-        private final boolean shouldDisplay;
+		private final boolean shouldDisplay;
 
-        QuestFilter(Predicate<QuestHelper> predicate) {
-            this.predicate = predicate;
-            this.displayName = Text.titleCase(this);
-            this.shouldDisplay = true;
-        }
+		QuestFilter(Predicate<QuestHelper> predicate)
+		{
+			this.predicate = predicate;
+			this.displayName = Text.titleCase(this);
+			this.shouldDisplay = true;
+		}
 
-        QuestFilter(String displayName, Predicate<QuestHelper> predicate) {
-            this.predicate = predicate;
-            this.displayName = displayName;
-            this.shouldDisplay = true;
-        }
+		QuestFilter(String displayName, Predicate<QuestHelper> predicate)
+		{
+			this.predicate = predicate;
+			this.displayName = displayName;
+			this.shouldDisplay = true;
+		}
 
-        QuestFilter(String displayName, Predicate<QuestHelper> predicate, boolean shouldDisplay) {
-            this.predicate = predicate;
-            this.displayName = displayName;
-            this.shouldDisplay = shouldDisplay;
-        }
+		QuestFilter(String displayName, Predicate<QuestHelper> predicate, boolean shouldDisplay)
+		{
+			this.predicate = predicate;
+			this.displayName = displayName;
+			this.shouldDisplay = shouldDisplay;
+		}
 
-        @Override
-        public boolean test(QuestHelper quest) {
-            return predicate.test(quest);
-        }
+		@Override
+		public boolean test(QuestHelper quest)
+		{
+			return predicate.test(quest);
+		}
 
-        public List<QuestHelper> test(Collection<QuestHelper> helpers) {
+		public List<QuestHelper> test(Collection<QuestHelper> helpers)
+		{
 
-            return helpers.stream().filter(this).collect(Collectors.toList());
-        }
+			return helpers.stream().filter(this).collect(Collectors.toList());
+		}
 
-        public static QuestFilter[] displayFilters() {
-            return Arrays.stream(QuestFilter.values()).filter((questFilter -> questFilter.shouldDisplay)).toArray(QuestFilter[]::new);
-        }
-    }
+		public static QuestFilter[] displayFilters()
+		{
+			return Arrays.stream(QuestFilter.values()).filter((questFilter -> questFilter.shouldDisplay)).toArray(QuestFilter[]::new);
+		}
+	}
 
-    enum NpcHighlightStyle {
-        NONE,
-        OUTLINE,
-        CONVEX_HULL,
-        TILE
-    }
+	enum NpcHighlightStyle
+	{
+		NONE,
+		OUTLINE,
+		CONVEX_HULL,
+		TILE
+	}
 
-    enum ObjectHighlightStyle {
-        NONE,
-        CLICK_BOX,
-        OUTLINE,
-    }
+	enum ObjectHighlightStyle
+	{
+		NONE,
+		CLICK_BOX,
+		OUTLINE,
+	}
 
-    enum GroundItemHighlightStyle {
-        NONE,
-        CLICK_BOX,
-        OUTLINE,
-        TILE
-    }
+	enum GroundItemHighlightStyle
+	{
+		NONE,
+		CLICK_BOX,
+		OUTLINE,
+		TILE
+	}
 
-    enum InventoryItemHighlightStyle {
-        NONE,
-        SQUARE,
-        OUTLINE,
-        FILLED_OUTLINE
-    }
+	enum InventoryItemHighlightStyle
+	{
+		NONE,
+		SQUARE,
+		OUTLINE,
+		FILLED_OUTLINE
+	}
 
-    @ConfigItem(
-            keyName = "autostartQuests",
-            name = "Auto start helper",
-            description = "Automatically start the quest helper when you start a quest"
-    )
-    default boolean autoStartQuests() {
-        return true;
-    }
+	@ConfigItem(
+		keyName = "autostartQuests",
+		name = "Auto start helper",
+		description = "Automatically start the quest helper when you start a quest"
+	)
+	default boolean autoStartQuests()
+	{
+		return true;
+	}
 
-    @ConfigItem(
-            keyName = "autoOpenSidebar",
-            name = "Auto open sidebar",
-            description = "Automatically opens the quest helper sidebar when you start a quest"
-    )
-    default boolean autoOpenSidebar() {
-        return true;
-    }
+	@ConfigItem(
+		keyName = "autoOpenSidebar",
+		name = "Auto open sidebar",
+		description = "Automatically opens the quest helper sidebar when you start a quest"
+	)
+	default boolean autoOpenSidebar()
+	{
+		return true;
+	}
 
-    @ConfigItem(
-            keyName = "showOverlayPanel",
-            name = "Display overlay on screen",
-            description = "Chose whether the overlay should be displayed on screen"
-    )
-    default boolean showOverlay() {
-        return true;
-    }
+	@ConfigItem(
+		keyName = "showOverlayPanel",
+		name = "Display overlay on screen",
+		description = "Chose whether the overlay should be displayed on screen"
+	)
+	default boolean showOverlay()
+	{
+		return true;
+	}
 
-    @ConfigItem(
-            keyName = "stewBoostsPanel",
-            name = "Use Spicy stew for boosts",
-            description = "Raises the boost maximum boost for certain skills to 5"
-    )
-    default boolean stewBoosts() {
-        return false;
-    }
+	@ConfigItem(
+		keyName = "stewBoostsPanel",
+		name = "Use Spicy stew for boosts",
+		description = "Raises the boost maximum boost for certain skills to 5"
+	)
+	default boolean stewBoosts()
+	{
+		return false;
+	}
 
-    @ConfigItem(
-            keyName = "showFan",
-            name = "Fan appears on quest completion",
-            description = "Have someone appear to celebrate whenever you complete a quest"
-    )
-    default boolean showFan() {
-        return false;
-    }
+	@ConfigItem(
+		keyName = "showFan",
+		name = "Fan appears on quest completion",
+		description = "Have someone appear to celebrate whenever you complete a quest"
+	)
+	default boolean showFan()
+	{
+		return false;
+	}
 
-    @ConfigItem(
-            keyName = "showRuneliteObjects",
-            name = "Show player-made quest rewards",
-            description = "Choose whether changes from player-made quests are displayed"
-    )
-    default boolean showRuneliteObjects() {
-        return true;
-    }
+	@ConfigItem(
+		keyName = "showRuneliteObjects",
+		name = "Show player-made quest rewards",
+		description = "Choose whether changes from player-made quests are displayed"
+	)
+	default boolean showRuneliteObjects()
+	{
+		return true;
+	}
 
-    @ConfigItem(
-            position = 0,
-            keyName = "highlightItemsBackground",
-            name = "Highlight missing items",
-            description = "Highlight items on the ground you might need for future quests or achievement diaries.<br>The settings below can be used to control if you want to show items from unfinished quests, miniquests, or diaries",
-            section = itemSection
-    )
-    default boolean highlightItemsBackground() {
-        return false;
-    }
+	@ConfigSection(
+		position = 0,
+		name = "Unfinished quest highlights",
+		description = "Highlight things you will need for quests you have not yet completed"
+	)
+	String itemSection = "itemSection";
 
-    @ConfigItem(
-            position = 1,
-            keyName = "highlightNeededQuestItems",
-            name = "Include quest items",
-            description = "Highlight every uncompleted quest's items you're missing on the floor.<br>Requires the Highlight missing items to be enabled",
-            section = itemSection
-    )
-    default boolean highlightNeededQuestItems() {
-        return true;
-    }
+	@ConfigItem(
+		position = 0,
+		keyName = "highlightItemsBackground",
+		name = "Highlight missing items",
+		description = "Highlight items on the ground you might need for future quests or achievement diaries.<br>The settings below can be used to control if you want to show items from unfinished quests, miniquests, or diaries",
+		section = itemSection
+	)
+	default boolean highlightItemsBackground()
+	{
+		return false;
+	}
 
-    @ConfigItem(
-            position = 2,
-            keyName = "highlightNeededMiniquestItems",
-            name = "Include miniquest items",
-            description = "Highlight every uncompleted miniquest's items you're missing on the floor.<br>Requires the Highlight missing items to be enabled",
-            section = itemSection
-    )
-    default boolean highlightNeededMiniquestItems() {
-        return true;
-    }
+	@ConfigItem(
+		position = 1,
+		keyName = "highlightNeededQuestItems",
+		name = "Include quest items",
+		description = "Highlight every uncompleted quest's items you're missing on the floor.<br>Requires the Highlight missing items to be enabled",
+		section = itemSection
+	)
+	default boolean highlightNeededQuestItems()
+	{
+		return true;
+	}
 
-    @ConfigItem(
-            position = 3,
-            keyName = "highlightNeededAchievementDiaryItems",
-            name = "Include achievement diary items",
-            description = "Highlight every uncompleted achievement diary's items you're missing on the floor.<br>Requires the Highlight missing items to be enabled",
-            section = itemSection
-    )
-    default boolean highlightNeededAchievementDiaryItems() {
-        return true;
-    }
+	@ConfigItem(
+		position = 2,
+		keyName = "highlightNeededMiniquestItems",
+		name = "Include miniquest items",
+		description = "Highlight every uncompleted miniquest's items you're missing on the floor.<br>Requires the Highlight missing items to be enabled",
+		section = itemSection
+	)
+	default boolean highlightNeededMiniquestItems()
+	{
+		return true;
+	}
 
-    @ConfigItem(
-            keyName = "showFullRequirements",
-            name = "Show full quest requirements",
-            description = "Show all quest requirements, including requirements for sub-quests",
-            section = sidebarDetailsSection
-    )
-    default boolean showFullRequirements() {
-        return false;
-    }
+	@ConfigItem(
+		position = 3,
+		keyName = "highlightNeededAchievementDiaryItems",
+		name = "Include achievement diary items",
+		description = "Highlight every uncompleted achievement diary's items you're missing on the floor.<br>Requires the Highlight missing items to be enabled",
+		section = itemSection
+	)
+	default boolean highlightNeededAchievementDiaryItems()
+	{
+		return true;
+	}
 
-    @ConfigItem(
-            keyName = "showTextHighlight",
-            name = "Highlight correct dialog",
-            description = "Highlight correct dialog choices",
-            section = hintsSection
-    )
-    default boolean showTextHighlight() {
-        return true;
-    }
+	@ConfigSection(
+		position = 1,
+		name = "Sidebar details",
+		description = "Determines sidebar rendering"
+	)
+	String sidebarDetailsSection = "sidebarDetailsSection";
 
-    @ConfigItem(
-            keyName = "showSymbolOverlay",
-            name = "Display icons on NPCs and objects",
-            description = "Choose whether NPCs should have icons marking them as the current target or not",
-            section = hintsSection
-    )
-    default boolean showSymbolOverlay() {
-        return true;
-    }
+	@ConfigItem(
+		keyName = "showFullRequirements",
+		name = "Show full quest requirements",
+		description = "Show all quest requirements, including requirements for sub-quests",
+		section = sidebarDetailsSection
+	)
+	default boolean showFullRequirements()
+	{
+		return false;
+	}
 
-    @ConfigItem(
-            keyName = "highlightStyleNpcs",
-            name = "Highlight style NPCs",
-            description = "Choose the highlight style of the target NPCs",
-            section = hintsSection
-    )
-    default NpcHighlightStyle highlightStyleNpcs() {
-        return NpcHighlightStyle.OUTLINE;
-    }
+	@ConfigItem(
+		keyName = "hideQuestRewards",
+		name = "Hide quest rewards",
+		description = "Enable this config if you want to hide quest rewards.<br>If you already had a quest helper open, you need to<br>restart it to hide the quest rewards.",
+		section = sidebarDetailsSection
+	)
+	default boolean hideQuestRewards()
+	{
+		return false;
+	}
 
-    @ConfigItem(
-            keyName = "highlightStyleObjects",
-            name = "Highlight style objects",
-            description = "Choose the highlight style of the target objects",
-            section = hintsSection
-    )
-    default ObjectHighlightStyle highlightStyleObjects() {
-        return ObjectHighlightStyle.OUTLINE;
-    }
+	@ConfigSection(
+		position = 2,
+		name = "Quest Hints",
+		description = "Determines what hints should be shown"
+	)
+	String hintsSection = "hintsSection";
 
-    @ConfigItem(
-            keyName = "highlightStyleGroundItems",
-            name = "Highlight style ground items",
-            description = "Choose the highlight style of the target items",
-            section = hintsSection
-    )
-    default GroundItemHighlightStyle highlightStyleGroundItems() {
-        return GroundItemHighlightStyle.OUTLINE;
-    }
+	@ConfigItem(
+		keyName = "showTextHighlight",
+		name = "Highlight correct dialog",
+		description = "Highlight correct dialog choices",
+		section = hintsSection
+	)
+	default boolean showTextHighlight()
+	{
+		return true;
+	}
 
-    @ConfigItem(
-            keyName = "highlightStyleInventoryItems",
-            name = "Highlight style inventory items",
-            description = "Choose the highlight style of the target inventory items",
-            section = hintsSection
-    )
-    default InventoryItemHighlightStyle highlightStyleInventoryItems() {
-        return InventoryItemHighlightStyle.FILLED_OUTLINE;
-    }
+	@ConfigItem(
+		keyName = "showSymbolOverlay",
+		name = "Display icons on NPCs and objects",
+		description = "Choose whether NPCs should have icons marking them as the current target or not",
+		section = hintsSection
+	)
+	default boolean showSymbolOverlay()
+	{
+		return true;
+	}
 
-    @Range(
-            min = 0,
-            max = 50
-    )
-    @ConfigItem(
-            keyName = "outlineThickness",
-            name = "Outline thickness",
-            description = "Choose the thickness of target model outlines",
-            section = hintsSection
-    )
-    default int outlineThickness() {
-        return 4;
-    }
+	@ConfigItem(
+		keyName = "highlightStyleNpcs",
+		name = "Highlight style NPCs",
+		description = "Choose the highlight style of the target NPCs",
+		section = hintsSection
+	)
+	default NpcHighlightStyle highlightStyleNpcs()
+	{
+		return NpcHighlightStyle.OUTLINE;
+	}
 
-    @Range(
-            min = 0,
-            max = 4
-    )
-    @ConfigItem(
-            keyName = "outlineFeathering",
-            name = "Outline feathering",
-            description = "Choose how the model outline is faded out",
-            section = hintsSection
-    )
-    default int outlineFeathering() {
-        return 4;
-    }
+	@ConfigItem(
+		keyName = "highlightStyleObjects",
+		name = "Highlight style objects",
+		description = "Choose the highlight style of the target objects",
+		section = hintsSection
+	)
+	default ObjectHighlightStyle highlightStyleObjects()
+	{
+		return ObjectHighlightStyle.OUTLINE;
+	}
 
-    @ConfigItem(
-            keyName = "showMiniMapArrow",
-            name = "Display arrows on the mini-map and overworld",
-            description = "Choose whether flashing arrows point to the next objective",
-            section = hintsSection
-    )
-    default boolean showMiniMapArrow() {
-        return true;
-    }
+	@ConfigItem(
+		keyName = "highlightStyleGroundItems",
+		name = "Highlight style ground items",
+		description = "Choose the highlight style of the target items",
+		section = hintsSection
+	)
+	default GroundItemHighlightStyle highlightStyleGroundItems()
+	{
+		return GroundItemHighlightStyle.OUTLINE;
+	}
 
-    @ConfigItem(
-            keyName = "haveMinimapArrowFlash",
-            name = "Have the minimap arrow flash",
-            description = "Choose whether the minimap direction arrow flashes",
-            section = hintsSection
-    )
-    default boolean haveMinimapArrowFlash() {
-        return true;
-    }
+	@ConfigItem(
+		keyName = "highlightStyleInventoryItems",
+		name = "Highlight style inventory items",
+		description = "Choose the highlight style of the target inventory items",
+		section = hintsSection
+	)
+	default InventoryItemHighlightStyle highlightStyleInventoryItems()
+	{
+		return InventoryItemHighlightStyle.FILLED_OUTLINE;
+	}
 
-    @ConfigItem(
-            keyName = "showWorldLines",
-            name = "Display navigation paths",
-            description = "Choose whether navigation paths are drawn to the next objective",
-            section = hintsSection
-    )
-    default boolean showWorldLines() {
-        return true;
-    }
+	@Range(
+		min = 0,
+		max = 50
+	)
+	@ConfigItem(
+		keyName = "outlineThickness",
+		name = "Outline thickness",
+		description = "Choose the thickness of target model outlines",
+		section = hintsSection
+	)
+	default int outlineThickness()
+	{
+		return 4;
+	}
 
-    @ConfigItem(
-            keyName = "showWidgetHints",
-            name = "Display widget hints",
-            description = "Choose whether important widget actions are highlighted",
-            section = hintsSection
-    )
-    default boolean showWidgetHints() {
-        return true;
-    }
+	@Range(
+		min = 0,
+		max = 4
+	)
+	@ConfigItem(
+		keyName = "outlineFeathering",
+		name = "Outline feathering",
+		description = "Choose how the model outline is faded out",
+		section = hintsSection
+	)
+	default int outlineFeathering()
+	{
+		return 4;
+	}
 
-    @ConfigItem(
-            keyName = "solvePuzzles",
-            name = "Show Puzzle Solutions",
-            description = "Shows the solutions to quest puzzles",
-            section = hintsSection
-    )
-    default boolean solvePuzzles() {
-        return true;
-    }
+	@ConfigItem(
+		keyName = "showMiniMapArrow",
+		name = "Display arrows on the mini-map and overworld",
+		description = "Choose whether flashing arrows point to the next objective",
+		section = hintsSection
+	)
+	default boolean showMiniMapArrow()
+	{
+		return true;
+	}
 
-    @ConfigItem(
-            keyName = "useShortestPath",
-            name = "Use 'Shortest Path' plugin",
-            description = "If you have the 'Shortest Path' plugin downloaded, it will be used to show routes to locations",
-            section = hintsSection
-    )
-    default boolean useShortestPath() {
-        return false;
-    }
+	@ConfigItem(
+		keyName = "haveMinimapArrowFlash",
+		name = "Have the minimap arrow flash",
+		description = "Choose whether the minimap direction arrow flashes",
+		section = hintsSection
+	)
+	default boolean haveMinimapArrowFlash()
+	{
+		return true;
+	}
 
-    @ConfigItem(
-            keyName = "textHighlightColor",
-            name = "Text highlight colour",
-            description = "Change the colour of dialog choices highlighted by the helper",
-            section = colorSection
-    )
-    default Color textHighlightColor() {
-        return Color.BLUE;
-    }
+	@ConfigItem(
+		keyName = "showWorldLines",
+		name = "Display navigation paths",
+		description = "Choose whether navigation paths are drawn to the next objective",
+		section = hintsSection
+	)
+	default boolean showWorldLines()
+	{
+		return true;
+	}
 
-    @ConfigItem(
-            keyName = "targetOverlayColor",
-            name = "Color of target overlay",
-            description = "Change the colour which target NPCs/Objects will be highlighted with",
-            section = colorSection
-    )
-    default Color targetOverlayColor() {
-        return Color.CYAN;
-    }
+	@ConfigItem(
+		keyName = "showWidgetHints",
+		name = "Display widget hints",
+		description = "Choose whether important widget actions are highlighted",
+		section = hintsSection
+	)
+	default boolean showWidgetHints()
+	{
+		return true;
+	}
 
-    @ConfigItem(
-            keyName = "passColour",
-            name = "Colour of passed requirements/checks",
-            description = "Change the colour that will indicate a check has passed",
-            section = colorSection
-    )
-    default Color passColour() {
-        return Color.GREEN;
-    }
+	@ConfigItem(
+		keyName = "solvePuzzles",
+		name = "Show Puzzle Solutions",
+		description = "Shows the solutions to quest puzzles",
+		section = hintsSection
+	)
+	default boolean solvePuzzles() { return true; }
 
-    @ConfigItem(
-            keyName = "failColour",
-            name = "Colour of failed requirements/checks",
-            description = "Change the colour that will indicate a check has failed",
-            section = colorSection
-    )
-    default Color failColour() {
-        return Color.RED;
-    }
+	@ConfigItem(
+			keyName = "useShortestPath",
+			name = "Use 'Shortest Path' plugin",
+			description = "If you have the 'Shortest Path' plugin downloaded, it will be used to show routes to locations",
+			section = hintsSection
+	)
+	default boolean useShortestPath() { return false; }
 
-    @ConfigItem(
-            keyName = "boostColour",
-            name = "Colour of boostable skill",
-            description = "Change the colour that will indicate a skill level check has passed",
-            section = colorSection
-    )
-    default Color boostColour() {
-        return Color.ORANGE;
-    }
+	@ConfigSection(
+		position = 3,
+		name = "Colours",
+		description = "What colour each option can be"
+	)
+	String colorSection = "colorSection";
 
-    @ConfigItem(
-            keyName = "debugColor",
-            name = "Debug Colour",
-            description = "debug",
-            hidden = true,
-            section = colorSection
-    )
-    default Color debugColor() {
-        return Color.MAGENTA;
-    }
+	@ConfigItem(
+		keyName = "textHighlightColor",
+		name = "Text highlight colour",
+		description = "Change the colour of dialog choices highlighted by the helper",
+		section = colorSection
+	)
+	default Color textHighlightColor()
+	{
+		return Color.BLUE;
+	}
 
-    @ConfigItem(
-            keyName = "orderListBy",
-            name = "Quest order",
-            description = "Configures which way to order the quest list",
-            position = 3,
-            section = filterSection
-    )
-    default QuestOrdering orderListBy() {
-        return QuestOrdering.A_TO_Z;
-    }
+	@ConfigItem(
+		keyName = "targetOverlayColor",
+		name = "Color of target overlay",
+		description = "Change the colour which target NPCs/Objects will be highlighted with",
+		section = colorSection
+	)
+	default Color targetOverlayColor()
+	{
+		return Color.CYAN;
+	}
 
-    @ConfigItem(
-            keyName = "filterListBy",
-            name = "Filter",
-            description = "Configures what to filter in the quest list",
-            position = 1,
-            section = filterSection
-    )
-    default QuestFilter filterListBy() {
-        return QuestFilter.SHOW_ALL;
-    }
+	@ConfigItem(
+		keyName = "passColour",
+		name = "Colour of passed requirements/checks",
+		description = "Change the colour that will indicate a check has passed",
+		section = colorSection
+	)
+	default Color passColour()
+	{
+		return Color.GREEN;
+	}
 
-    @ConfigItem(
-            keyName = "questDifficulty",
-            name = "Difficulty",
-            description = "Configures what quest difficulty to show",
-            position = 2,
-            section = filterSection
-    )
-    default QuestDetails.Difficulty difficulty() {
-        return QuestDetails.Difficulty.ALL;
-    }
+	@ConfigItem(
+		keyName = "failColour",
+		name = "Colour of failed requirements/checks",
+		description = "Change the colour that will indicate a check has failed",
+		section = colorSection
+	)
+	default Color failColour()
+	{
+		return Color.RED;
+	}
 
-    @ConfigItem(
-            keyName = "showCompletedQuests",
-            name = "Show Completed Quests",
-            description = "Will include completed quests in the other filter(s) that are chosen",
-            position = 4,
-            section = filterSection
-    )
-    default boolean showCompletedQuests() {
-        return false;
-    }
+	@ConfigItem(
+			keyName = "partialSuccessColour",
+			name = "Colour of partially passed requirements/checks",
+			description = "Change the colour that will indicate a check has partially passed (such as item is in your bank)",
+			section = colorSection
+	)
+	default Color partialSuccessColour()
+	{
+		return Color.WHITE;
+	}
+
+	@ConfigItem(
+		keyName = "boostColour",
+		name = "Colour of boostable skill",
+		description = "Change the colour that will indicate a skill level check has passed",
+		section = colorSection
+	)
+	default Color boostColour()
+	{
+		return Color.ORANGE;
+	}
+
+	@ConfigItem(
+		keyName = "debugColor",
+		name = "Debug Colour",
+		description = "debug",
+		hidden = true,
+		section = colorSection
+	)
+	default Color debugColor()
+	{
+		return Color.MAGENTA;
+	}
+
+	@ConfigSection(
+		position = 4,
+		name = "Quest Filters",
+		description = "Determines which quests should be shown via the selected filter(s)"
+	)
+	String filterSection = "filterSection";
+
+	@ConfigItem(
+		keyName = "orderListBy",
+		name = "Quest order",
+		description = "Configures which way to order the quest list",
+		position = 3,
+		section = filterSection
+	)
+	default QuestOrdering orderListBy()
+	{
+		return QuestOrdering.A_TO_Z;
+	}
+
+	@ConfigItem(
+		keyName = "filterListBy",
+		name = "Filter",
+		description = "Configures what to filter in the quest list",
+		position = 1,
+		section = filterSection
+	)
+	default QuestFilter filterListBy()
+	{
+		return QuestFilter.SHOW_ALL;
+	}
+
+	@ConfigItem(
+		keyName = "questDifficulty",
+		name = "Difficulty",
+		description = "Configures what quest difficulty to show",
+		position = 2,
+		section = filterSection
+	)
+	default QuestDetails.Difficulty difficulty()
+	{
+		return QuestDetails.Difficulty.ALL;
+	}
+
+	@ConfigItem(
+		keyName = "showCompletedQuests",
+		name = "Show Completed Quests",
+		description = "Will include completed quests in the other filter(s) that are chosen",
+		position = 4,
+		section = filterSection
+	)
+	default boolean showCompletedQuests()
+	{
+		return false;
+	}
 }

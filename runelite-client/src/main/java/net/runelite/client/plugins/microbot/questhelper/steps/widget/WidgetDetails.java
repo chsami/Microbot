@@ -24,11 +24,10 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.steps.widget;
 
-
+import net.runelite.client.plugins.microbot.questhelper.util.Utils;
 import lombok.AllArgsConstructor;
 import lombok.Value;
 import net.runelite.api.annotations.Component;
-import net.runelite.client.plugins.microbot.questhelper.util.Utils;
 
 @Value
 @AllArgsConstructor

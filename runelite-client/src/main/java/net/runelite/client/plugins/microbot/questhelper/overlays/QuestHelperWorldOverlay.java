@@ -25,7 +25,6 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.overlays;
 
-
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
@@ -36,39 +35,44 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 import javax.inject.Inject;
 import java.awt.*;
 
-public class QuestHelperWorldOverlay extends Overlay {
-    public static final int IMAGE_Z_OFFSET = 30;
+public class QuestHelperWorldOverlay extends Overlay
+{
+	public static final int IMAGE_Z_OFFSET = 30;
 
-    private final QuestHelperPlugin plugin;
+	private final QuestHelperPlugin plugin;
 
-    @Inject
-    public QuestHelperWorldOverlay(QuestHelperPlugin plugin) {
-        setPosition(OverlayPosition.DYNAMIC);
-        setLayer(OverlayLayer.ABOVE_SCENE);
-        this.plugin = plugin;
-    }
+	@Inject
+	public QuestHelperWorldOverlay(QuestHelperPlugin plugin)
+	{
+		setPosition(OverlayPosition.DYNAMIC);
+		setLayer(OverlayLayer.ABOVE_SCENE);
+		this.plugin = plugin;
+	}
 
-    @Override
-    public Dimension render(Graphics2D graphics) {
-        boolean noOverlaysDrawn = !plugin.getConfig().showSymbolOverlay()
-                && plugin.getConfig().highlightStyleGroundItems() == QuestHelperConfig.GroundItemHighlightStyle.NONE
-                && plugin.getConfig().highlightStyleNpcs() == QuestHelperConfig.NpcHighlightStyle.NONE
-                && plugin.getConfig().highlightStyleObjects() == QuestHelperConfig.ObjectHighlightStyle.NONE;
-        if (noOverlaysDrawn) {
-            return null;
-        }
+	@Override
+	public Dimension render(Graphics2D graphics)
+	{
+		boolean noOverlaysDrawn = !plugin.getConfig().showSymbolOverlay()
+			&& plugin.getConfig().highlightStyleGroundItems() == QuestHelperConfig.GroundItemHighlightStyle.NONE
+			&& plugin.getConfig().highlightStyleNpcs() == QuestHelperConfig.NpcHighlightStyle.NONE
+			&& plugin.getConfig().highlightStyleObjects() == QuestHelperConfig.ObjectHighlightStyle.NONE;
+		if (noOverlaysDrawn)
+		{
+			return null;
+		}
 
-        QuestHelper quest = plugin.getSelectedQuest();
+		QuestHelper quest = plugin.getSelectedQuest();
 
-        if (quest != null && quest.getCurrentStep() != null) {
-            quest.makeWorldOverlayHint(graphics, plugin);
-            quest.getCurrentStep().makeWorldOverlayHint(graphics, plugin);
-        }
+		if (quest != null && quest.getCurrentStep() != null)
+		{
+			quest.makeWorldOverlayHint(graphics, plugin);
+			quest.getCurrentStep().makeWorldOverlayHint(graphics, plugin);
+		}
 
-        plugin.getBackgroundHelpers().forEach((name, questHelper) -> questHelper.getCurrentStep().makeWorldOverlayHint(graphics, plugin));
+		plugin.getBackgroundHelpers().forEach((name, questHelper) -> questHelper.getCurrentStep().makeWorldOverlayHint(graphics, plugin));
 
-        plugin.getRuneliteObjectManager().makeWorldOverlayHint(graphics);
+		plugin.getRuneliteObjectManager().makeWorldOverlayHint(graphics);
 
-        return null;
-    }
+		return null;
+	}
 }

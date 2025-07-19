@@ -24,13 +24,13 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements.var;
 
+import net.runelite.client.plugins.microbot.questhelper.requirements.AbstractRequirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.util.Operation;
+import net.runelite.client.plugins.microbot.questhelper.util.Utils;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.Varbits;
-import net.runelite.client.plugins.microbot.questhelper.requirements.AbstractRequirement;
-import net.runelite.client.plugins.microbot.questhelper.requirements.util.Operation;
-import net.runelite.client.plugins.microbot.questhelper.util.Utils;
 
 import javax.annotation.Nonnull;
 import java.util.Locale;
@@ -41,7 +41,8 @@ import java.util.Locale;
  */
 @Getter
 @Slf4j
-public class VarComparisonRequirement extends AbstractRequirement {
+public class VarComparisonRequirement extends AbstractRequirement
+{
     private final VarType v1Type;
     private final int v1Id;
 
@@ -56,14 +57,15 @@ public class VarComparisonRequirement extends AbstractRequirement {
      * Compares the varbit/varp of a player to another varbit/varp of the player
      * {@link Operation}.
      *
-     * @param v1Type      the {@link VarType} to use for the first id
-     * @param v1Id        the {@link Varbits} or {@link net.runelite.api.annotations.Varp} id to use for the first id
-     * @param v2Type      the {@link VarType} to use for the second id
-     * @param v2Id        the {@link Varbits} or {@link net.runelite.api.annotations.Varp} id to use for the second id
-     * @param operation   the {@link Operation} to check with
-     * @param displayText the display text
+     * @param v1Type        the {@link VarType} to use for the first id
+     * @param v1Id          the {@link Varbits} or {@link net.runelite.api.annotations.Varp} id to use for the first id
+     * @param v2Type        the {@link VarType} to use for the second id
+     * @param v2Id          the {@link Varbits} or {@link net.runelite.api.annotations.Varp} id to use for the second id
+     * @param operation     the {@link Operation} to check with
+     * @param displayText   the display text
      */
-    public VarComparisonRequirement(VarType v1Type, int v1Id, VarType v2Type, int v2Id, Operation operation, String displayText) {
+    public VarComparisonRequirement(VarType v1Type, int v1Id, VarType v2Type, int v2Id, Operation operation, String displayText)
+    {
         this.v1Type = v1Type;
         this.v1Id = v1Id;
         this.v2Type = v2Type;
@@ -74,7 +76,8 @@ public class VarComparisonRequirement extends AbstractRequirement {
     }
 
     @Override
-    public boolean check(Client client) {
+    public boolean check(Client client)
+    {
         try {
             int v1Value = v1Type.getValue(client, v1Id);
             int v2Value = v2Type.getValue(client, v2Id);
@@ -93,8 +96,10 @@ public class VarComparisonRequirement extends AbstractRequirement {
 
     @Nonnull
     @Override
-    public String getDisplayText() {
-        if (displayText != null) {
+    public String getDisplayText()
+    {
+        if (displayText != null)
+        {
             return displayText;
         }
 

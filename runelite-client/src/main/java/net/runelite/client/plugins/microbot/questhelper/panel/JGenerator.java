@@ -27,20 +27,24 @@ package net.runelite.client.plugins.microbot.questhelper.panel;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
-public class JGenerator {
-    public static JLabel makeJLabel() {
+public class JGenerator
+{
+    public static JLabel makeJLabel()
+    {
         JLabel jLabel = new JLabel();
         jLabel.putClientProperty("html.disable", Boolean.TRUE);
         return jLabel;
     }
 
-    public static JLabel makeJLabel(String text) {
+    public static JLabel makeJLabel(String text)
+    {
         JLabel jLabel = new JLabel(text);
         jLabel.putClientProperty("html.disable", Boolean.TRUE);
         return jLabel;
     }
 
-    public static JTextPane makeJTextPane() {
+    public static JTextPane makeJTextPane()
+    {
         JTextPane titlePane = new JTextPane();
         titlePane.setEditable(false);
         titlePane.setFocusable(false);
@@ -49,7 +53,8 @@ public class JGenerator {
         return titlePane;
     }
 
-    public static JTextPane makeJTextPane(String text) {
+    public static JTextPane makeJTextPane(String text)
+    {
         JTextPane titlePane = new JTextPane();
         titlePane.setEditable(false);
         titlePane.setFocusable(false);
@@ -59,27 +64,29 @@ public class JGenerator {
         return titlePane;
     }
 
-    public static JTextArea makeJTextArea() {
+    public static JTextArea makeJTextArea()
+    {
         JTextArea jTextArea = new JTextArea();
         jTextArea.setLineWrap(true);
         jTextArea.setWrapStyleWord(true);
         jTextArea.setOpaque(false);
         jTextArea.setEditable(false);
         jTextArea.setFocusable(false);
-        jTextArea.setBackground(UIManager.getColor("Label.background"));
+        jTextArea.setBackground(javax.swing.UIManager.getColor("Label.background"));
         jTextArea.setBorder(new EmptyBorder(0, 0, 0, 0));
 
         return jTextArea;
     }
 
-    public static JTextArea makeJTextArea(String text) {
+    public static JTextArea makeJTextArea(String text)
+    {
         JTextArea jTextArea = new JTextArea(text);
         jTextArea.setLineWrap(true);
         jTextArea.setWrapStyleWord(true);
         jTextArea.setOpaque(false);
         jTextArea.setEditable(false);
         jTextArea.setFocusable(false);
-        jTextArea.setBackground(UIManager.getColor("Label.background"));
+        jTextArea.setBackground(javax.swing.UIManager.getColor("Label.background"));
         jTextArea.setBorder(new EmptyBorder(0, 0, 0, 0));
 
         return jTextArea;

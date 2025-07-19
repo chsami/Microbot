@@ -29,38 +29,44 @@ import net.runelite.api.MenuEntry;
 
 import java.util.function.Consumer;
 
-public class Action {
-    protected Consumer<MenuEntry> action;
+public class Action
+{
+	protected Consumer<MenuEntry> action;
 
-    protected boolean isActive = false;
+	protected boolean isActive = false;
 
-    @Getter
-    MenuEntry menuEntry;
+	@Getter
+	MenuEntry menuEntry;
 
-    public Action(Consumer<MenuEntry> action) {
-        this.action = action.andThen(createEndAction());
-    }
+	public Action(Consumer<MenuEntry> action)
+	{
+		this.action = action.andThen(createEndAction());
+	}
 
-    protected Consumer<MenuEntry> createEndAction() {
-        return (menuEntry -> {
-            isActive = false;
-        });
-    }
+	protected Consumer<MenuEntry> createEndAction()
+	{
+		return (menuEntry -> {
+			isActive = false;
+		});
+	}
 
-    public void activate(MenuEntry menuEntry) {
-        isActive = true;
-        this.menuEntry = menuEntry;
-        action.accept(menuEntry);
-    }
+	public void activate(MenuEntry menuEntry)
+	{
+		isActive = true;
+		this.menuEntry = menuEntry;
+		action.accept(menuEntry);
+	}
 
-    public void activate() {
-        isActive = true;
-        this.menuEntry = null;
-        action.accept(null);
-    }
+	public void activate()
+	{
+		isActive = true;
+		this.menuEntry = null;
+		action.accept(null);
+	}
 
-    public void deactivate() {
-        this.menuEntry = null;
-        isActive = false;
-    }
+	public void deactivate()
+	{
+		this.menuEntry = null;
+		isActive = false;
+	}
 }

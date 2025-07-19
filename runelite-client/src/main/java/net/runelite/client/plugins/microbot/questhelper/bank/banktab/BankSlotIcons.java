@@ -25,24 +25,25 @@
 package net.runelite.client.plugins.microbot.questhelper.bank.banktab;
 
 import lombok.Getter;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 
-public class BankSlotIcons {
-    @Getter
-    private static final Integer combatGear = ItemID.ABYSSAL_WHIP;
+public class BankSlotIcons
+{
+	@Getter
+	private static final Integer combatGear = ItemID.ABYSSAL_WHIP;
 
-    @Getter
-    private static final Integer meleeCombatGear = ItemID.ABYSSAL_WHIP;
+	@Getter
+	private static final Integer meleeCombatGear = ItemID.ABYSSAL_WHIP;
 
-    @Getter
-    private static final Integer rangedCombatGear = ItemID.MAGIC_SHORTBOW;
+	@Getter
+	private static final Integer rangedCombatGear = ItemID.MAGIC_SHORTBOW;
 
-    @Getter
-    private static final Integer magicCombatGear = ItemID.STAFF_OF_AIR;
+	@Getter
+	private static final Integer magicCombatGear = ItemID.STAFF_OF_AIR;
 
-    @Getter
-    private static final Integer food = ItemID.SHARK;
+	@Getter
+	private static final Integer food = ItemID.SHARK;
 
-    @Getter
-    private static final Integer armour = ItemID.RUNE_PLATEBODY;
+	@Getter
+	private static final Integer armour = ItemID.RUNE_PLATEBODY;
 }

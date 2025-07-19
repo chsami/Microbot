@@ -24,12 +24,6 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.belowicemountain;
 
-
-import net.runelite.api.ItemID;
-import net.runelite.api.NpcID;
-import net.runelite.api.NullObjectID;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.questhelper.requirements.quest.QuestPointRequirement;
 import net.runelite.client.plugins.microbot.questhelper.bank.banktab.BankSlotIcons;
 import net.runelite.client.plugins.microbot.questhelper.collections.ItemCollections;
 import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
@@ -39,260 +33,277 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.conditional
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirements;
 import net.runelite.client.plugins.microbot.questhelper.requirements.npc.NpcRequirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.quest.QuestPointRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicType;
 import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarbitRequirement;
 import net.runelite.client.plugins.microbot.questhelper.rewards.ItemReward;
 import net.runelite.client.plugins.microbot.questhelper.rewards.QuestPointReward;
 import net.runelite.client.plugins.microbot.questhelper.rewards.UnlockReward;
 import net.runelite.client.plugins.microbot.questhelper.steps.*;
-
 import net.runelite.client.plugins.microbot.questhelper.steps.emote.QuestEmote;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.gameval.ObjectID;
 
 import java.util.*;
 
-public class BelowIceMountain extends BasicQuestHelper {
-    // varbit 12065 tracks checkal line?
-    // varbit 12062 -> 1 after learning flex
-    private static final int VARBIT_CHECKAL_LINE = 12065;
-    private static final int VARBIT_MARLEY_LINE = 12064;
-    private static final int VARBIT_BURNTOF_LINE = 12066;
+public class BelowIceMountain extends BasicQuestHelper
+{
+	// varbit 12065 tracks checkal line?
+	// varbit 12062 -> 1 after learning flex
+	private static final int VARBIT_CHECKAL_LINE = 12065;
+	private static final int VARBIT_MARLEY_LINE = 12064;
+	private static final int VARBIT_BURNTOF_LINE = 12066;
 
-    //Items Required
-    ItemRequirement cookedMeat, bread, knife, coins, knifeHighlight, breadHighlight, steakSandwich,
-            beerHighlight;
+	//Items Required
+	ItemRequirement cookedMeat, bread, knife, coins, knifeHighlight, breadHighlight, steakSandwich,
+		beerHighlight;
 
-    ItemRequirement iceMountainTeleport, faladorTeleport, varrockTeleport, combatGearOrPickaxe;
+	ItemRequirement iceMountainTeleport, faladorTeleport, varrockTeleport, combatGearOrPickaxe;
 
-    Requirement needFlex, leftFlexBeforeLearning, haveFlex, recruitedCheckal, needRecipe, haveRecipe, haveIngredients,
-            fedMarley, recruitedMarley, needBeer, gaveBeer, needRPS, recruitedBurntof, inDungeon;
+	Requirement needFlex, leftFlexBeforeLearning, haveFlex, recruitedCheckal, needRecipe, haveRecipe, haveIngredients,
+		fedMarley, recruitedMarley, needBeer,gaveBeer, needRPS, recruitedBurntof, inDungeon;
 
-    QuestStep talkToWillowToStart, recruitCheckal, talkToAtlas, flexCheckal, talkToMarley, talkToCook, getIngredients,
-            makeSandwich, feedMarley, talkToMarleyAfterFeeding, talkToBurntof, buyBeer, giveBeer, playRPS, goToDungeon,
-            reenterDungeon, defeatGuardian, watchCutscene;
+	QuestStep talkToWillowToStart, recruitCheckal, talkToAtlas, flexCheckal, talkToMarley, talkToCook, getIngredients,
+		makeSandwich, feedMarley, talkToMarleyAfterFeeding, talkToBurntof, buyBeer, giveBeer, playRPS, goToDungeon,
+		reenterDungeon, defeatGuardian, watchCutscene;
 
-    ConditionalStep getCheckal, getMarley, getBurntof;
+	ConditionalStep getCheckal, getMarley, getBurntof;
 
-    @Override
-    public Map<Integer, QuestStep> loadSteps() {
-        initializeRequirements();
-        setupConditions();
-        setupSteps();
-        Map<Integer, QuestStep> steps = new HashMap<>();
+	@Override
+	public Map<Integer, QuestStep> loadSteps()
+	{
+		initializeRequirements();
+		setupConditions();
+		setupSteps();
+		Map<Integer, QuestStep> steps = new HashMap<>();
 
-        steps.put(0, talkToWillowToStart);
-        steps.put(5, talkToWillowToStart);
-        steps.put(7, talkToWillowToStart);
+		steps.put(0, talkToWillowToStart);
+		steps.put(5, talkToWillowToStart);
+		steps.put(7, talkToWillowToStart);
 
-        getCheckal = new ConditionalStep(this, recruitCheckal);
-        getCheckal.addStep(needFlex, talkToAtlas);
-        getCheckal.addStep(leftFlexBeforeLearning, talkToAtlas);
-        getCheckal.addStep(haveFlex, flexCheckal);
-        getCheckal.setLockingCondition(recruitedCheckal);
-        steps.put(10, getCheckal);
+		getCheckal = new ConditionalStep(this, recruitCheckal);
+		getCheckal.addStep(needFlex, talkToAtlas);
+		getCheckal.addStep(leftFlexBeforeLearning, talkToAtlas);
+		getCheckal.addStep(haveFlex, flexCheckal);
+		getCheckal.setLockingCondition(recruitedCheckal);
+		steps.put(10, getCheckal);
 
-        getMarley = new ConditionalStep(this, talkToMarley);
-        getMarley.addStep(fedMarley, talkToMarleyAfterFeeding);
-        getMarley.addStep(needRecipe, talkToCook);
-        getMarley.addStep(steakSandwich, feedMarley);
-        getMarley.addStep(new Conditions(LogicType.AND, haveRecipe, haveIngredients), makeSandwich);
-        getMarley.addStep(haveRecipe, getIngredients);
-        getMarley.setLockingCondition(recruitedMarley);
+		getMarley = new ConditionalStep(this, talkToMarley);
+		getMarley.addStep(fedMarley, talkToMarleyAfterFeeding);
+		getMarley.addStep(needRecipe, talkToCook);
+		getMarley.addStep(steakSandwich, feedMarley);
+		getMarley.addStep(new Conditions(LogicType.AND, haveRecipe, haveIngredients), makeSandwich);
+		getMarley.addStep(haveRecipe, getIngredients);
+		getMarley.setLockingCondition(recruitedMarley);
 
-        getBurntof = new ConditionalStep(this, talkToBurntof);
-        getBurntof.addStep(needRPS, playRPS);
-        getBurntof.addStep(gaveBeer, playRPS);
-        getBurntof.addStep(new Conditions(LogicType.AND, needBeer, beerHighlight), giveBeer);
-        getBurntof.addStep(needBeer, buyBeer);
-        getBurntof.setLockingCondition(recruitedBurntof);
+		getBurntof = new ConditionalStep(this, talkToBurntof);
+		getBurntof.addStep(needRPS, playRPS);
+		getBurntof.addStep(gaveBeer, playRPS);
+		getBurntof.addStep(new Conditions(LogicType.AND, needBeer, beerHighlight), giveBeer);
+		getBurntof.addStep(needBeer, buyBeer);
+		getBurntof.setLockingCondition(recruitedBurntof);
 
-        ConditionalStep marleyAndBurntof = new ConditionalStep(this, getMarley);
-        marleyAndBurntof.addStep(recruitedMarley, getBurntof);
-        steps.put(15, marleyAndBurntof);
+		ConditionalStep marleyAndBurntof = new ConditionalStep(this, getMarley);
+		marleyAndBurntof.addStep(recruitedMarley, getBurntof);
+		steps.put(15, marleyAndBurntof);
 
-        steps.put(20, goToDungeon);
-        steps.put(25, goToDungeon);
-        steps.put(30, reenterDungeon);
+		steps.put(20, goToDungeon);
+		steps.put(25, goToDungeon);
+		steps.put(30, reenterDungeon);
 
-        ConditionalStep guardian = new ConditionalStep(this, reenterDungeon);
-        guardian.addStep(inDungeon, defeatGuardian);
-        steps.put(35, guardian);
+		ConditionalStep guardian = new ConditionalStep(this, reenterDungeon);
+		guardian.addStep(inDungeon, defeatGuardian);
+		steps.put(35, guardian);
 
-        steps.put(40, watchCutscene);
+		steps.put(40, watchCutscene);
 
-        return steps;
-    }
+		return steps;
+	}
 
-    @Override
-    protected void setupRequirements() {
-        cookedMeat = new ItemRequirement("Cooked Meat", ItemID.COOKED_MEAT);
-        cookedMeat.canBeObtainedDuringQuest();
-        bread = new ItemRequirement("Bread", ItemID.BREAD);
-        knife = new ItemRequirement("Knife", ItemID.KNIFE).isNotConsumed();
-        coins = new ItemRequirement("Coins", ItemCollections.COINS, 3);
+	@Override
+	protected void setupRequirements()
+	{
+		cookedMeat = new ItemRequirement("Cooked Meat", ItemID.COOKED_MEAT);
+		cookedMeat.canBeObtainedDuringQuest();
+		bread = new ItemRequirement("Bread", ItemID.BREAD);
+		knife = new ItemRequirement("Knife", ItemID.KNIFE).isNotConsumed();
+		coins = new ItemRequirement("Coins", ItemCollections.COINS, 3);
 
-        knifeHighlight = knife.highlighted();
-        breadHighlight = bread.highlighted();
+		knifeHighlight = knife.highlighted();
+		breadHighlight = bread.highlighted();
 
-        steakSandwich = new ItemRequirement("Steak Sandwich", ItemID.STEAK_SANDWICH);
+		steakSandwich = new ItemRequirement("Steak Sandwich", ItemID.BIM_STEAK_SANDWICH);
 
-        beerHighlight = new ItemRequirement(true, "Asgarnian Ale", ItemID.ASGARNIAN_ALE);
+		beerHighlight = new ItemRequirement(true, "Asgarnian Ale", ItemID.ASGARNIAN_ALE);
 
-        iceMountainTeleport = new ItemRequirement("A teleport to near Ice Mountain", ItemCollections.AMULET_OF_GLORIES);
-        iceMountainTeleport.addAlternates(ItemCollections.COMBAT_BRACELETS);
-        iceMountainTeleport.addAlternates(ItemID.FALADOR_TELEPORT, ItemID.LASSAR_TELEPORT);
-        faladorTeleport = new ItemRequirement("Falador teleport", ItemID.FALADOR_TELEPORT);
-        varrockTeleport = new ItemRequirement("Varrock teleport", ItemID.VARROCK_TELEPORT);
-        combatGearOrPickaxe = new ItemRequirement("Combat gear or a pickaxe if you don't want to fight", -1, -1).isNotConsumed();
-        combatGearOrPickaxe.setDisplayItemId(BankSlotIcons.getCombatGear());
-    }
+		iceMountainTeleport = new ItemRequirement("A teleport to near Ice Mountain", ItemCollections.AMULET_OF_GLORIES);
+		iceMountainTeleport.addAlternates(ItemCollections.COMBAT_BRACELETS);
+		iceMountainTeleport.addAlternates(ItemID.POH_TABLET_FALADORTELEPORT, ItemID.TABLET_LASSAR);
+		faladorTeleport = new ItemRequirement("Falador teleport", ItemID.POH_TABLET_FALADORTELEPORT);
+		varrockTeleport = new ItemRequirement("Varrock teleport", ItemID.POH_TABLET_VARROCKTELEPORT);
+		combatGearOrPickaxe = new ItemRequirement("Combat gear or a pickaxe if you don't want to fight", -1, -1).isNotConsumed();
+		combatGearOrPickaxe.setDisplayItemId(BankSlotIcons.getCombatGear());
+	}
 
-    public void setupConditions() {
-        needFlex = new VarbitRequirement(VARBIT_CHECKAL_LINE, 5);
-        leftFlexBeforeLearning = new VarbitRequirement(VARBIT_CHECKAL_LINE, 10);
-        haveFlex = new VarbitRequirement(VARBIT_CHECKAL_LINE, 15);
-        recruitedCheckal = new VarbitRequirement(VARBIT_CHECKAL_LINE, 40);
+	public void setupConditions()
+	{
+		needFlex = new VarbitRequirement(VARBIT_CHECKAL_LINE, 5);
+		leftFlexBeforeLearning = new VarbitRequirement(VARBIT_CHECKAL_LINE, 10);
+		haveFlex = new VarbitRequirement(VARBIT_CHECKAL_LINE, 15);
+		recruitedCheckal = new VarbitRequirement(VARBIT_CHECKAL_LINE, 40);
 
-        needRecipe = new VarbitRequirement(VARBIT_MARLEY_LINE, 5);
-        haveRecipe = new VarbitRequirement(VARBIT_MARLEY_LINE, 10);
-        haveIngredients = new ItemRequirements(cookedMeat, bread, knife);
-        fedMarley = new VarbitRequirement(VARBIT_MARLEY_LINE, 35);
-        recruitedMarley = new VarbitRequirement(VARBIT_MARLEY_LINE, 40);
+		needRecipe = new VarbitRequirement(VARBIT_MARLEY_LINE, 5);
+		haveRecipe = new VarbitRequirement(VARBIT_MARLEY_LINE, 10);
+		haveIngredients = new ItemRequirements(cookedMeat, bread, knife);
+		fedMarley = new VarbitRequirement(VARBIT_MARLEY_LINE, 35);
+		recruitedMarley = new VarbitRequirement(VARBIT_MARLEY_LINE, 40);
 
-        needBeer = new VarbitRequirement(VARBIT_BURNTOF_LINE, 5);
-        gaveBeer = new VarbitRequirement(VARBIT_BURNTOF_LINE, 10);
-        needRPS = new VarbitRequirement(VARBIT_BURNTOF_LINE, 15);
-        recruitedBurntof = new VarbitRequirement(VARBIT_BURNTOF_LINE, 40);
+		needBeer = new VarbitRequirement(VARBIT_BURNTOF_LINE, 5);
+		gaveBeer = new VarbitRequirement(VARBIT_BURNTOF_LINE, 10);
+		needRPS = new VarbitRequirement(VARBIT_BURNTOF_LINE, 15);
+		recruitedBurntof = new VarbitRequirement(VARBIT_BURNTOF_LINE, 40);
 
-        inDungeon = new NpcRequirement("Ancient Guardian", 10654);
-    }
+		inDungeon = new NpcRequirement("Ancient Guardian", 10654);
+	}
 
-    public void setupSteps() {
-        talkToWillowToStart = new NpcStep(this, NpcID.WILLOW, new WorldPoint(3003, 3435, 0),
-                "Talk to Willow outside Falador, south of the Ice Mountain dwarves.");
-        talkToWillowToStart.addDialogStep("Yes.");
+	public void setupSteps()
+	{
+		talkToWillowToStart = new NpcStep(this, NpcID.BIM_WILLOW, new WorldPoint(3003, 3435, 0),
+			"Talk to Willow outside Falador, south of the Ice Mountain dwarves.");
+		talkToWillowToStart.addDialogStep("Yes.");
 
-        recruitCheckal = new NpcStep(this, NpcID.CHECKAL, new WorldPoint(3087, 3415, 0),
-                "Attempt to recruit Checkal to your team in Barbarian Village.");
+		recruitCheckal = new NpcStep(this, NpcID.BIM_CHECKAL, new WorldPoint(3087, 3415, 0),
+			"Attempt to recruit Checkal to your team in Barbarian Village.");
 
-        talkToAtlas = new NpcStep(this, NpcID.ATLAS, new WorldPoint(3076, 3440, 0), "Speak to Atlas in the Barbarian" +
-                " Village Inn to learn how to Flex.");
-        talkToAtlas.addDialogStep("Yes.");
+		talkToAtlas = new NpcStep(this, NpcID.BIM_ATLAS, new WorldPoint(3076, 3440, 0), "Speak to Atlas in the Barbarian" +
+			" Village Inn to learn how to Flex.");
+		talkToAtlas.addDialogStep("Yes.");
 
-        flexCheckal = new NpcEmoteStep(this, NpcID.CHECKAL, QuestEmote.FLEX, new WorldPoint(3087, 3415, 0), "Flex your muscles at Checkal to prove your worth.");
+		flexCheckal = new NpcEmoteStep(this, NpcID.BIM_CHECKAL, QuestEmote.FLEX, new WorldPoint(3087, 3415, 0), "Flex your muscles at Checkal to prove your worth.");
 
-        talkToMarley = new NpcStep(this, NpcID.MARLEY, new WorldPoint(3088, 3470, 0), "Speak to Marley in the Edgeville" +
-                " Ruins.");
+		talkToMarley = new NpcStep(this, NpcID.BIM_MARLEY, new WorldPoint(3088, 3470, 0), "Speak to Marley in the Edgeville" +
+			" Ruins.");
 
-        talkToCook = new NpcStep(this, NpcID.COOK_2895, new WorldPoint(3230, 3401, 0), "Ask the Cook at the Blue Moon Inn " +
-                "for a steak sandwich.");
-        talkToCook.addDialogStep("I was wondering if you'd be able to make me a Steak sandwich?");
+		talkToCook = new NpcStep(this, NpcID.FAI_VARROCK_BLUEMOON_CHEF, new WorldPoint(3230, 3401, 0), "Ask the Cook at the Blue Moon Inn " +
+			"for a steak sandwich.");
+		talkToCook.addDialogStep("I was wondering if you'd be able to make me a Steak sandwich?");
 
-        getIngredients = new DetailedQuestStep(this, "Collect meat, bread and a knife to make a steak sandwich.", cookedMeat, bread, knife);
+		getIngredients = new DetailedQuestStep(this, "Collect meat, bread and a knife to make a steak sandwich.", cookedMeat, bread, knife);
 
-        makeSandwich = new DetailedQuestStep(this, "Use the knife on the bread to make a steak sandwich. Be careful not to eat it!", knifeHighlight, breadHighlight);
+		makeSandwich = new DetailedQuestStep(this, "Use the knife on the bread to make a steak sandwich. Be careful not to eat it!", knifeHighlight, breadHighlight);
 
-        feedMarley = new NpcStep(this, NpcID.MARLEY, new WorldPoint(3088, 3470, 0), "Return to Marley and give him the steak sandwich. Be careful not to eat it!", steakSandwich);
+		feedMarley = new NpcStep(this, NpcID.BIM_MARLEY, new WorldPoint(3088, 3470, 0), "Return to Marley and give him the steak sandwich. Be careful not to eat it!", steakSandwich);
 
-        talkToMarleyAfterFeeding = new NpcStep(this, NpcID.MARLEY, new WorldPoint(3088, 3470, 0), "Talk to Marley to send him off to the excavation site.");
-        feedMarley.addSubSteps(talkToMarleyAfterFeeding);
+		talkToMarleyAfterFeeding = new NpcStep(this,  NpcID.BIM_MARLEY, new WorldPoint(3088, 3470, 0), "Talk to Marley to send him off to the excavation site.");
+		feedMarley.addSubSteps(talkToMarleyAfterFeeding);
 
-        talkToBurntof = new NpcStep(this, NpcID.BURNTOF, new WorldPoint(2956, 3367, 0), "Talk to Burntof in the " +
-                "Falador Inn.");
+		talkToBurntof = new NpcStep(this, NpcID.BIM_BURNTOF, new WorldPoint(2956, 3367, 0), "Talk to Burntof in the " +
+			"Falador Inn.");
 
-        buyBeer = new NpcStep(this, NpcID.KAYLEE, new WorldPoint(2954, 3368, 0), "Buy an Asgarnian Ale for Burntof.",
-                coins);
-        buyBeer.addDialogSteps("What ales are you serving?", "One Asgarnian Ale, please.");
+		buyBeer = new NpcStep(this, NpcID.RISINGSUN_BARMAID2, new WorldPoint(2954, 3368, 0), "Buy an Asgarnian Ale for Burntof.",
+			coins);
+		buyBeer.addDialogSteps("What ales are you serving?", "One Asgarnian Ale, please.");
 
-        giveBeer = new NpcStep(this, NpcID.BURNTOF, new WorldPoint(2956, 3367, 0), "Give Burntof the Asgarnian Ale.", beerHighlight);
+		giveBeer = new NpcStep(this, NpcID.BIM_BURNTOF, new WorldPoint(2956, 3367, 0), "Give Burntof the Asgarnian Ale.", beerHighlight);
 
-        playRPS = new NpcStep(this, NpcID.BURNTOF, new WorldPoint(2956, 3367, 0),
-                "Beat Burntof in a match of Rock-Paper-Scissors. Your choices of Rock, Paper and Scissors do not matter.");
-        playRPS.addDialogStep("Rock.");
+		playRPS = new NpcStep(this, NpcID.BIM_BURNTOF, new WorldPoint(2956, 3367, 0),
+			"Beat Burntof in a match of Rock-Paper-Scissors. Your choices of Rock, Paper and Scissors do not matter.");
+		playRPS.addDialogStep("Rock.");
 
-        goToDungeon = new NpcStep(this, NpcID.WILLOW, new WorldPoint(2996, 3494, 0), "Talk with Willow at the " +
-                "dungeon entrance on the west side of Ice Mountain.");
-        goToDungeon.addDialogStep("Yes.");
+		goToDungeon = new NpcStep(this, NpcID.BIM_WILLOW, new WorldPoint(2996, 3494, 0), "Talk with Willow at the " +
+			"dungeon entrance on the west side of Ice Mountain.");
+		goToDungeon.addDialogStep("Yes.");
 
-        reenterDungeon = new ObjectStep(this, NullObjectID.NULL_41357, new WorldPoint(3000, 3494, 0), "Re-enter the " +
-                "dungeon to finish the quest.");
-        reenterDungeon.addDialogStep("Yes.");
+		reenterDungeon = new ObjectStep(this, ObjectID.BIM_ENTRANCE, new WorldPoint(3000, 3494, 0), "Re-enter the " +
+			"dungeon to finish the quest.");
+		reenterDungeon.addDialogStep("Yes.");
 
-        defeatGuardian = new NpcStep(this, NpcID.ANCIENT_GUARDIAN, "Defeat the Lvl-25 Ancient Guardian. " +
-                "Alternatively, with Level 10 Mining, mine the 4 pillars in the corners.");
-        defeatGuardian.addSubSteps(reenterDungeon);
+		defeatGuardian = new NpcStep(this, NpcID.BIM_GOLEM_BOSS, "Defeat the Lvl-25 Ancient Guardian. " +
+			"Alternatively, with Level 10 Mining, mine the 4 pillars in the corners.");
+		defeatGuardian.addSubSteps(reenterDungeon);
 
-        watchCutscene = new ObjectStep(this, NullObjectID.NULL_41357, new WorldPoint(3000, 3494, 0), "Watch the cutscene to " +
-                "finish the quest.");
-        watchCutscene.addDialogStep("Yes.");
-    }
+		watchCutscene = new ObjectStep(this, ObjectID.BIM_ENTRANCE, new WorldPoint(3000, 3494, 0), "Watch the cutscene to " +
+			"finish the quest.");
+		watchCutscene.addDialogStep("Yes.");
+	}
 
-    @Override
-    public List<ItemRequirement> getItemRequirements() {
-        List<ItemRequirement> reqs = new ArrayList<>();
-        reqs.add(cookedMeat);
-        reqs.add(bread);
-        reqs.add(knife);
-        reqs.add(coins);
-        return reqs;
-    }
+	@Override
+	public List<ItemRequirement> getItemRequirements()
+	{
+		List<ItemRequirement> reqs = new ArrayList<>();
+		reqs.add(cookedMeat);
+		reqs.add(bread);
+		reqs.add(knife);
+		reqs.add(coins);
+		return reqs;
+	}
 
-    @Override
-    public List<ItemRequirement> getItemRecommended() {
-        return Arrays.asList(iceMountainTeleport, faladorTeleport, varrockTeleport, combatGearOrPickaxe);
-    }
+	@Override
+	public List<ItemRequirement> getItemRecommended()
+	{
+		return Arrays.asList(iceMountainTeleport, faladorTeleport, varrockTeleport, combatGearOrPickaxe);
+	}
 
-    @Override
-    public List<String> getCombatRequirements() {
-        return Collections.singletonList("Ancient Guardian (level 25), or 10 mining + a pickaxe");
-    }
+	@Override
+	public List<String> getCombatRequirements()
+	{
+		return Collections.singletonList("Ancient Guardian (level 25), or 10 mining + a pickaxe");
+	}
 
-    @Override
-    public List<Requirement> getGeneralRequirements() {
-        return Collections.singletonList(new QuestPointRequirement(16));
-    }
+	@Override
+	public List<Requirement> getGeneralRequirements()
+	{
+		return Collections.singletonList(new QuestPointRequirement(16));
+	}
 
-    @Override
-    public QuestPointReward getQuestPointReward() {
-        return new QuestPointReward(1);
-    }
+	@Override
+	public QuestPointReward getQuestPointReward()
+	{
+		return new QuestPointReward(1);
+	}
 
-    @Override
-    public List<ItemReward> getItemRewards() {
-        return Collections.singletonList(new ItemReward("Coins", ItemID.COINS_995, 2000));
-    }
+	@Override
+	public List<ItemReward> getItemRewards()
+	{
+		return Collections.singletonList(new ItemReward("Coins", ItemID.COINS, 2000));
+	}
 
-    @Override
-    public List<UnlockReward> getUnlockRewards() {
-        return Arrays.asList(
-                new UnlockReward("Access to the Ruins of Camdozaal."),
-                new UnlockReward("Flex Emote"),
-                new UnlockReward("The ability to make a steak sandwich")
-        );
-    }
+	@Override
+	public List<UnlockReward> getUnlockRewards()
+	{
+		return Arrays.asList(
+				new UnlockReward("Access to the Ruins of Camdozaal."),
+				new UnlockReward("Flex Emote"),
+				new UnlockReward("The ability to make a steak sandwich")
+		);
+	}
 
-    @Override
-    public List<PanelDetails> getPanels() {
-        List<PanelDetails> allSteps = new ArrayList<>();
+	@Override
+	public List<PanelDetails> getPanels()
+	{
+		List<PanelDetails> allSteps = new ArrayList<>();
 
-        allSteps.add(new PanelDetails("Starting Off", Collections.singletonList(talkToWillowToStart)));
+		allSteps.add(new PanelDetails("Starting Off", Collections.singletonList(talkToWillowToStart)));
 
-        PanelDetails checkalPanel = new PanelDetails("Recruit Checkal",
-                Arrays.asList(recruitCheckal, talkToAtlas, flexCheckal));
-        checkalPanel.setLockingStep(getCheckal);
-        allSteps.add(checkalPanel);
+		PanelDetails checkalPanel = new PanelDetails("Recruit Checkal",
+			Arrays.asList(recruitCheckal, talkToAtlas, flexCheckal));
+		checkalPanel.setLockingStep(getCheckal);
+		allSteps.add(checkalPanel);
 
-        PanelDetails marleyPanel = new PanelDetails("Recruit Marley",
-                Arrays.asList(talkToMarley, talkToCook, getIngredients, makeSandwich, feedMarley), cookedMeat, bread, knife);
-        marleyPanel.setLockingStep(getMarley);
-        allSteps.add(marleyPanel);
+		PanelDetails marleyPanel = new PanelDetails("Recruit Marley",
+			Arrays.asList(talkToMarley, talkToCook, getIngredients, makeSandwich, feedMarley), cookedMeat, bread, knife);
+		marleyPanel.setLockingStep(getMarley);
+		allSteps.add(marleyPanel);
 
-        PanelDetails burntofPanel = new PanelDetails("Recruit Burntof",
-                Arrays.asList(talkToBurntof, buyBeer, giveBeer, playRPS), coins);
-        burntofPanel.setLockingStep(getBurntof);
-        allSteps.add(burntofPanel);
+		PanelDetails burntofPanel = new PanelDetails("Recruit Burntof",
+			Arrays.asList(talkToBurntof, buyBeer, giveBeer, playRPS), coins);
+		burntofPanel.setLockingStep(getBurntof);
+		allSteps.add(burntofPanel);
 
-        allSteps.add(new PanelDetails("Excavation!", Arrays.asList(goToDungeon, defeatGuardian, watchCutscene), combatGearOrPickaxe));
+		allSteps.add(new PanelDetails("Excavation!", Arrays.asList(goToDungeon, defeatGuardian, watchCutscene), combatGearOrPickaxe));
 
-        return allSteps;
-    }
+		return allSteps;
+	}
 }

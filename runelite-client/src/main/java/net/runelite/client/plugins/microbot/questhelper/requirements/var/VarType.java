@@ -34,11 +34,13 @@ public enum VarType {
 
     private final ToIntBiFunction<Client, Integer> getter;
 
-    VarType(ToIntBiFunction<Client, Integer> getter) {
+    VarType(ToIntBiFunction<Client, Integer> getter)
+    {
         this.getter = getter;
     }
 
-    public int getValue(Client client, int id) {
+    public int getValue(Client client, int id)
+    {
         return getter.applyAsInt(client, id);
     }
 }

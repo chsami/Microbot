@@ -29,25 +29,30 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 @AllArgsConstructor
-public enum MageArenaTemperatureChange {
-    WARMER("and warmer"),
-    SAME("and the same temperature as"),
-    COLDER("but colder");
+public enum MageArenaTemperatureChange
+{
+	WARMER("and warmer"),
+	SAME("and the same temperature as"),
+	COLDER("but colder");
 
-    @Getter
-    private final String text;
+	@Getter
+	private final String text;
 
-    public static MageArenaTemperatureChange of(final String message) {
-        if (!message.endsWith(" last time.")) {
-            return null;
-        }
+	public static MageArenaTemperatureChange of(final String message)
+	{
+		if (!message.endsWith(" last time."))
+		{
+			return null;
+		}
 
-        for (final MageArenaTemperatureChange change : values()) {
-            if (message.contains(change.text)) {
-                return change;
-            }
-        }
+		for (final MageArenaTemperatureChange change : values())
+		{
+			if (message.contains(change.text))
+			{
+				return change;
+			}
+		}
 
-        return null;
-    }
+		return null;
+	}
 }

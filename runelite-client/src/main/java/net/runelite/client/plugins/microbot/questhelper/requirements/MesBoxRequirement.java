@@ -28,36 +28,47 @@ import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.events.ChatMessage;
 
-public class MesBoxRequirement extends ChatMessageRequirement {
+public class MesBoxRequirement extends ChatMessageRequirement
+{
 
-    public MesBoxRequirement(String... text) {
-        super(text);
-    }
+	public MesBoxRequirement(String... text)
+	{
+		super(text);
+	}
 
-    public boolean validateCondition(Client client, ChatMessage chatMessage) {
-        if (chatMessage.getType() != ChatMessageType.MESBOX) {
-            return false;
-        }
+	public boolean validateCondition(Client client, ChatMessage chatMessage)
+	{
+		if (chatMessage.getType() != ChatMessageType.MESBOX)
+		{
+			return false;
+		}
 
-        if (!hasReceivedChatMessage) {
-            if (isCurrentDialogMatching(chatMessage.getMessage())) {
-                if (condition == null || condition.check(client)) {
-                    hasReceivedChatMessage = true;
-                    return true;
-                }
-            }
-        } else if (invalidateRequirement != null) {
-            invalidateRequirement.validateCondition(client, chatMessage);
-            if (invalidateRequirement.check(client)) {
-                invalidateRequirement.setHasReceivedChatMessage(false);
-                setHasReceivedChatMessage(false);
-            }
-        }
+		if (!hasReceivedChatMessage)
+		{
+			if (isCurrentDialogMatching(chatMessage.getMessage()))
+			{
+				if (condition == null || condition.check(client))
+				{
+					hasReceivedChatMessage = true;
+					return true;
+				}
+			}
+		}
+		else if (invalidateRequirement != null)
+		{
+			invalidateRequirement.validateCondition(client, chatMessage);
+			if (invalidateRequirement.check(client))
+			{
+				invalidateRequirement.setHasReceivedChatMessage(false);
+				setHasReceivedChatMessage(false);
+			}
+		}
 
-        return false;
-    }
+		return false;
+	}
 
-    private boolean isCurrentDialogMatching(String dialogMessage) {
-        return messages.stream().anyMatch(dialogMessage::contains);
-    }
+	private boolean isCurrentDialogMatching(String dialogMessage)
+	{
+		return messages.stream().anyMatch(dialogMessage::contains);
+	}
 }

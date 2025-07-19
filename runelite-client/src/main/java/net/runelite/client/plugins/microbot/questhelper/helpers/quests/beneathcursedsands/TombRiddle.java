@@ -1,196 +1,239 @@
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.beneathcursedsands;
 
 import com.google.inject.Inject;
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
+import net.runelite.client.plugins.microbot.questhelper.steps.DetailedOwnerStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.api.Client;
-import net.runelite.api.ItemID;
-import net.runelite.api.NullObjectID;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.WidgetLoaded;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
-import net.runelite.client.plugins.microbot.questhelper.steps.DetailedOwnerStep;
-import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
-import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
-import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
 
 import java.util.*;
 
-public class TombRiddle extends DetailedOwnerStep {
-    private final HashMap<String, Integer> gods = new HashMap<>();
-    private final HashMap<String, Integer> items = new HashMap<>();
-    private final HashMap<Integer, ItemRequirement> emblems = new HashMap<>();
-    @Inject
-    protected EventBus eventBus;
-    @Inject
-    protected Client client;
-    Integer northernEmblem, centreNorthEmblem, centreSouthEmblem, southernEmblem;
-    ItemRequirement baboonEmblem, humanEmblem, crocodileEmblem, scarabEmblem;
-    DetailedQuestStep inspectPlaque, obtainEmblems, placeNorthernUrn, placeCentreNorthUrn, placeCentreSouthUrn, placeSouthernUrn, pullLever;
-    private boolean solutionFound;
+public class TombRiddle extends DetailedOwnerStep
+{
+	@Inject
+	protected EventBus eventBus;
 
-    public TombRiddle(QuestHelper questHelper) {
-        super(questHelper, "Solve the riddle.");
+	@Inject
+	protected Client client;
 
-        final int SCARAB = 4;
-        final int HUMAN = 2;
-        final int CROCODILE = 3;
-        final int BABOON = 1;
+	Integer northernEmblem, centreNorthEmblem, centreSouthEmblem, southernEmblem;
 
-        gods.put("god of isolation", SCARAB);
-        gods.put("god of health", HUMAN);
-        gods.put("goddess of resourcefulness", CROCODILE);
-        gods.put("goddess of companionship", BABOON);
+	private final HashMap<String, Integer> gods = new HashMap<>();
+	private final HashMap<String, Integer> items = new HashMap<>();
 
-        items.put("a carving", SCARAB);
-        items.put("some wine", HUMAN);
-        items.put("a necklace", CROCODILE);
-        items.put("some linen", BABOON);
+	private final HashMap<Integer, ItemRequirement> emblems = new HashMap<>();
 
-        emblems.put(BABOON, baboonEmblem);
-        emblems.put(HUMAN, humanEmblem);
-        emblems.put(CROCODILE, crocodileEmblem);
-        emblems.put(SCARAB, scarabEmblem);
-    }
+	private boolean solutionFound;
 
-    @Override
-    public void startUp() {
-        updateSteps();
-    }
+	ItemRequirement baboonEmblem, humanEmblem, crocodileEmblem, scarabEmblem;
 
-    @Override
-    public void shutDown() {
-        shutDownStep();
-        currentStep = null;
-    }
+	DetailedQuestStep inspectPlaque, obtainEmblems, placeNorthernUrn, placeCentreNorthUrn, placeCentreSouthUrn, placeSouthernUrn, pullLever;
 
-    @Subscribe
-    public void onGameTick(GameTick event) {
-        updateSteps();
-    }
+	public TombRiddle(QuestHelper questHelper)
+	{
+		super(questHelper, "Solve the riddle.");
 
-    protected void updateSteps() {
-        if (!solutionFound) {
-            startUpStep(inspectPlaque);
-            return;
-        }
+		final int SCARAB = 4;
+		final int HUMAN = 2;
+		final int CROCODILE = 3;
+		final int BABOON = 1;
 
-        int currentNorthernEmblem = client.getVarbitValue(13862);
-        int currentCentreNorthEmblem = client.getVarbitValue(13861);
-        int currentCentreSouthEmblem = client.getVarbitValue(13860);
-        int currentSouthernEmblem = client.getVarbitValue(13859);
+		gods.put("god of isolation", SCARAB);
+		gods.put("god of health", HUMAN);
+		gods.put("goddess of resourcefulness", CROCODILE);
+		gods.put("goddess of companionship", BABOON);
 
-        if (currentNorthernEmblem != northernEmblem) {
-            if (!emblems.get(northernEmblem).check(client)) {
-                startUpStep(obtainEmblems);
-            } else {
-                startUpStep(placeNorthernUrn);
-            }
-        } else if (currentCentreNorthEmblem != centreNorthEmblem) {
-            if (!emblems.get(centreNorthEmblem).check(client)) {
-                startUpStep(obtainEmblems);
-            } else {
-                startUpStep(placeCentreNorthUrn);
-            }
-        } else if (currentCentreSouthEmblem != centreSouthEmblem) {
-            if (!emblems.get(centreSouthEmblem).check(client)) {
-                startUpStep(obtainEmblems);
-            } else {
-                startUpStep(placeCentreSouthUrn);
-            }
-        } else if (currentSouthernEmblem != southernEmblem) {
-            if (!emblems.get(southernEmblem).check(client)) {
-                startUpStep(obtainEmblems);
-            } else {
-                startUpStep(placeSouthernUrn);
-            }
-        } else {
-            startUpStep(pullLever);
-        }
-    }
+		items.put("a carving", SCARAB);
+		items.put("some wine", HUMAN);
+		items.put("a necklace", CROCODILE);
+		items.put("some linen", BABOON);
 
-    private void setupItemRequirements() {
-        baboonEmblem = new ItemRequirement("Baboon emblem", ItemID.BABOON_EMBLEM);
-        baboonEmblem.setHighlightInInventory(true);
-        humanEmblem = new ItemRequirement("Human emblem", ItemID.HUMAN_EMBLEM);
-        humanEmblem.setHighlightInInventory(true);
-        crocodileEmblem = new ItemRequirement("Crocodile emblem", ItemID.CROCODILE_EMBLEM);
-        crocodileEmblem.setHighlightInInventory(true);
-        scarabEmblem = new ItemRequirement("Scarab emblem", ItemID.SCARAB_EMBLEM_26956);
-        scarabEmblem.setHighlightInInventory(true);
-    }
+		emblems.put(BABOON, baboonEmblem);
+		emblems.put(HUMAN, humanEmblem);
+		emblems.put(CROCODILE, crocodileEmblem);
+		emblems.put(SCARAB, scarabEmblem);
+	}
 
-    @Override
-    protected void setupSteps() {
-        inspectPlaque = new ObjectStep(questHelper, NullObjectID.NULL_20391, new WorldPoint(3391, 9251, 0), "Inspect the north-western plaque and read it.");
-        obtainEmblems = new ObjectStep(questHelper, NullObjectID.NULL_20392, new WorldPoint(3391, 9245, 0), "Inspect the south-western plaque to get four emblems.");
-        pullLever = new ObjectStep(questHelper, NullObjectID.NULL_20288, new WorldPoint(3390, 9247, 0), "Pull the lever to the south-west.");
+	@Override
+	public void startUp()
+	{
+		updateSteps();
+	}
 
-        placeNorthernUrn = new ObjectStep(questHelper, NullObjectID.NULL_44590, "Place the emblem in the northernmost urn.");
-        placeCentreNorthUrn = new ObjectStep(questHelper, NullObjectID.NULL_44589, "Place the emblem in the centre-north urn.");
-        placeCentreSouthUrn = new ObjectStep(questHelper, NullObjectID.NULL_44588, "Place the emblem in the centre-south urn.");
-        placeSouthernUrn = new ObjectStep(questHelper, NullObjectID.NULL_44587, "Place the emblem in the southernmost urn.");
+	@Override
+	public void shutDown()
+	{
+		shutDownStep();
+		currentStep = null;
+	}
 
-        setupItemRequirements();
-    }
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		updateSteps();
+	}
 
-    @Override
-    public Collection<QuestStep> getSteps() {
-        return Arrays.asList(inspectPlaque, obtainEmblems, placeNorthernUrn, placeCentreNorthUrn, placeCentreSouthUrn, placeSouthernUrn, pullLever);
-    }
+	protected void updateSteps()
+	{
+		if (!solutionFound)
+		{
+			startUpStep(inspectPlaque);
+			return;
+		}
 
-    @Subscribe
-    public void onWidgetLoaded(WidgetLoaded widgetLoaded) {
-        // The instructions are contained in the Text fields of Widget 749.2's children (IDs 749.3 through 749.13)
-        if (!solutionFound && widgetLoaded.getGroupId() == 749) {
-            Widget plaqueWidget = client.getWidget(749, 2);
-            if (plaqueWidget == null || plaqueWidget.getStaticChildren() == null) {
-                return;
-            }
+		int currentNorthernEmblem = client.getVarbitValue(13862);
+		int currentCentreNorthEmblem = client.getVarbitValue(13861);
+		int currentCentreSouthEmblem = client.getVarbitValue(13860);
+		int currentSouthernEmblem = client.getVarbitValue(13859);
 
-            String riddle = Arrays.stream(plaqueWidget.getStaticChildren())
-                    .map(Widget::getText)
-                    .reduce("", (carry, widget) -> carry + widget + " ");
+		if (currentNorthernEmblem != northernEmblem)
+		{
+			if (!emblems.get(northernEmblem).check(client)) {
+				startUpStep(obtainEmblems);
+			}
+			else
+			{
+				startUpStep(placeNorthernUrn);
+			}
+		}
+		else if (currentCentreNorthEmblem != centreNorthEmblem)
+		{
+			if (!emblems.get(centreNorthEmblem).check(client))
+			{
+				startUpStep(obtainEmblems);
+			}
+			else
+			{
+				startUpStep(placeCentreNorthUrn);
+			}
+		}
+		else if (currentCentreSouthEmblem != centreSouthEmblem)
+		{
+			if (!emblems.get(centreSouthEmblem).check(client))
+			{
+				startUpStep(obtainEmblems);
+			}
+			else
+			{
+				startUpStep(placeCentreSouthUrn);
+			}
+		}
+		else if (currentSouthernEmblem != southernEmblem)
+		{
+			if (!emblems.get(southernEmblem).check(client))
+			{
+				startUpStep(obtainEmblems);
+			}
+			else
+			{
+				startUpStep(placeSouthernUrn);
+			}
+		}
+		else
+		{
+			startUpStep(pullLever);
+		}
+	}
 
-            if (riddle.length() > 0) {
-                northernEmblem = gods.entrySet().stream()
-                        .filter(e -> riddle.contains(e.getKey() + " arrived just before"))
-                        .map(Map.Entry::getValue).findFirst()
-                        .orElse(null);
+	private void setupItemRequirements()
+	{
+		baboonEmblem = new ItemRequirement("Baboon emblem", ItemID.BCS_RIDDLE_EMBLEM_BABOON);
+		baboonEmblem.setHighlightInInventory(true);
+		humanEmblem = new ItemRequirement("Human emblem", ItemID.BCS_RIDDLE_EMBLEM_HUMAN);
+		humanEmblem.setHighlightInInventory(true);
+		crocodileEmblem = new ItemRequirement("Crocodile emblem", ItemID.BCS_RIDDLE_EMBLEM_CROCODILE);
+		crocodileEmblem.setHighlightInInventory(true);
+		scarabEmblem = new ItemRequirement("Scarab emblem", ItemID.BCS_RIDDLE_EMBLEM_SCARAB);
+		scarabEmblem.setHighlightInInventory(true);
+	}
 
-                centreNorthEmblem = gods.entrySet().stream()
-                        .filter(e -> riddle.contains("arrived just before the " + e.getKey()))
-                        .map(Map.Entry::getValue).findFirst()
-                        .orElse(null);
+	@Override
+	protected void setupSteps()
+	{
+		inspectPlaque = new ObjectStep(questHelper, ObjectID.BCS_RIDDLE_PLAQUE, new WorldPoint(3391, 9251, 0), "Inspect the north-western plaque and read it.");
+		obtainEmblems = new ObjectStep(questHelper, ObjectID.BCS_EMBLEM_PLAQUE, new WorldPoint(3391, 9245, 0), "Inspect the south-western plaque to get four emblems.");
+		pullLever = new ObjectStep(questHelper, ObjectID.BCS_TOMB_WALL_LEVER, new WorldPoint(3390, 9247, 0), "Pull the lever to the south-west.");
 
-                centreSouthEmblem = items.entrySet().stream()
-                        .filter(e -> riddle.contains("To the one that arrived first, he offered " + e.getKey()))
-                        .map(Map.Entry::getValue).findFirst()
-                        .orElse(null);
+		placeNorthernUrn = new ObjectStep(questHelper, ObjectID.BCS_TOMB_URN_4, "Place the emblem in the northernmost urn.");
+		placeCentreNorthUrn = new ObjectStep(questHelper, ObjectID.BCS_TOMB_URN_3, "Place the emblem in the centre-north urn.");
+		placeCentreSouthUrn = new ObjectStep(questHelper, ObjectID.BCS_TOMB_URN_2, "Place the emblem in the centre-south urn.");
+		placeSouthernUrn = new ObjectStep(questHelper, ObjectID.BCS_TOMB_URN_1, "Place the emblem in the southernmost urn.");
 
-                southernEmblem = items.entrySet().stream()
-                        .filter(e -> riddle.contains("The one that was offered " + e.getKey()))
-                        .map(Map.Entry::getValue).findFirst()
-                        .orElse(null);
+		setupItemRequirements();
+	}
 
-                if (northernEmblem == null || centreNorthEmblem == null || centreSouthEmblem == null || southernEmblem == null) {
-                    return;
-                }
+	@Override
+	public Collection<QuestStep> getSteps()
+	{
+		return Arrays.asList(inspectPlaque, obtainEmblems, placeNorthernUrn, placeCentreNorthUrn, placeCentreSouthUrn, placeSouthernUrn, pullLever);
+	}
 
-                placeNorthernUrn.addItemRequirements(Collections.singletonList(emblems.get(northernEmblem)));
-                placeNorthernUrn.addIcon(emblems.get(northernEmblem).getId());
-                placeCentreNorthUrn.addItemRequirements(Collections.singletonList(emblems.get(centreNorthEmblem)));
-                placeCentreNorthUrn.addIcon(emblems.get(centreNorthEmblem).getId());
-                placeCentreSouthUrn.addItemRequirements(Collections.singletonList(emblems.get(centreSouthEmblem)));
-                placeCentreSouthUrn.addIcon(emblems.get(centreSouthEmblem).getId());
-                placeSouthernUrn.addItemRequirements(Collections.singletonList(emblems.get(southernEmblem)));
-                placeSouthernUrn.addIcon(emblems.get(southernEmblem).getId());
+	@Subscribe
+	public void onWidgetLoaded(WidgetLoaded widgetLoaded)
+	{
+		// The instructions are contained in the Text fields of Widget 749.2's children (IDs 749.3 through 749.13)
+		if (!solutionFound && widgetLoaded.getGroupId() == 749)
+		{
+			Widget plaqueWidget = client.getWidget(InterfaceID.Woodplaque.CONTENT);
+			if (plaqueWidget == null || plaqueWidget.getStaticChildren() == null)
+			{
+				return;
+			}
 
-                solutionFound = true;
-            }
-        }
-    }
+			String riddle = Arrays.stream(plaqueWidget.getStaticChildren())
+				.map(Widget::getText)
+				.reduce("", (carry, widget) -> carry + widget + " ");
+
+			if (riddle.length() > 0)
+			{
+				northernEmblem = gods.entrySet().stream()
+					.filter(e -> riddle.contains(e.getKey() + " arrived just before"))
+					.map(Map.Entry::getValue).findFirst()
+					.orElse(null);
+
+				centreNorthEmblem = gods.entrySet().stream()
+					.filter(e -> riddle.contains("arrived just before the " + e.getKey()))
+					.map(Map.Entry::getValue).findFirst()
+					.orElse(null);
+
+				centreSouthEmblem = items.entrySet().stream()
+					.filter(e -> riddle.contains("To the one that arrived first, he offered " + e.getKey()))
+					.map(Map.Entry::getValue).findFirst()
+					.orElse(null);
+
+				southernEmblem = items.entrySet().stream()
+					.filter(e -> riddle.contains("The one that was offered " + e.getKey()))
+					.map(Map.Entry::getValue).findFirst()
+					.orElse(null);
+
+				if (northernEmblem == null || centreNorthEmblem == null || centreSouthEmblem == null || southernEmblem == null)
+				{
+					return;
+				}
+
+				placeNorthernUrn.addItemRequirements(Collections.singletonList(emblems.get(northernEmblem)));
+				placeNorthernUrn.addIcon(emblems.get(northernEmblem).getId());
+				placeCentreNorthUrn.addItemRequirements(Collections.singletonList(emblems.get(centreNorthEmblem)));
+				placeCentreNorthUrn.addIcon(emblems.get(centreNorthEmblem).getId());
+				placeCentreSouthUrn.addItemRequirements(Collections.singletonList(emblems.get(centreSouthEmblem)));
+				placeCentreSouthUrn.addIcon(emblems.get(centreSouthEmblem).getId());
+				placeSouthernUrn.addItemRequirements(Collections.singletonList(emblems.get(southernEmblem)));
+				placeSouthernUrn.addIcon(emblems.get(southernEmblem).getId());
+
+				solutionFound = true;
+			}
+		}
+	}
 }

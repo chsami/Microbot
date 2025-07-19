@@ -28,32 +28,59 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
-@Getter
-public enum Boosts {
-    AGILITY("Agility", 5),
-    ATTACK("Attack", 21),
-    CONSTRUCTION("Construction", 6),
-    COOKING("Cooking", 6),
-    CRAFTING("Crafting", 4),
-    DEFENCE("Defence", 21),
-    FARMING("Farming", 3),
-    FIREMAKING("Firemaking", 1),
-    FISHING("Fishing", 5),
-    FLETCHING("Fletching", 4),
-    HERBLORE("Herblore", 4),
-    HITPOINTS("Hitpoints", 22),
-    HUNTER("Hunter", 3),
-    MAGIC("Magic", 19),
-    MINING("Mining", 3),
-    PRAYER("Prayer", 0),
-    RANGED("Ranged", 19),
-    RUNECRAFT("Runecraft", 1),
-    SLAYER("Slayer", 5),
-    SMITHING("Smithing", 4),
-    STRENGTH("Strength", 19),
-    THIEVING("Thieving", 3),
-    WOODCUTTING("Woodcutting", 3);
+public enum Boosts
+{
+	AGILITY("Agility",5),
+	ATTACK("Attack",21),
+	CONSTRUCTION("Construction",6),
+	COOKING("Cooking",6),
+	CRAFTING("Crafting",4),
+	DEFENCE("Defence",21),
+	FARMING("Farming",3),
+	FIREMAKING("Firemaking",1),
+	FISHING("Fishing",5),
+	FLETCHING("Fletching",4),
+	HERBLORE("Herblore",4),
+	HITPOINTS("Hitpoints",22),
+	HUNTER("Hunter",3),
+	MAGIC("Magic",19),
+	MINING("Mining",3),
+	PRAYER("Prayer",0),
+	RANGED("Ranged",19),
+	RUNECRAFT("Runecraft",1),
+	SLAYER("Slayer",5),
+	SMITHING("Smithing",4),
+	STRENGTH("Strength",19),
+	THIEVING("Thieving",3),
+	WOODCUTTING("Woodcutting",3);
 
-    private final String name;
-    private final int highestBoost;
+	@Getter
+	private final String name;
+
+	private final int highestBoost;
+
+	int getHighestBoost(boolean includeSpicyStew, int currentUnboostedLevel) {
+		if (includeSpicyStew && highestBoost < 5) {
+			return 5;
+		}
+
+		else if (name.equals("Thieving"))
+		{
+			// Players only have access to Summer sq'irk juice at level 65 thieving which is the default boost value for thieving
+			if (currentUnboostedLevel < 45)
+			{
+				// Spring sq'irk
+				return 1;
+			}
+
+			if (currentUnboostedLevel < 65)
+			{
+				// Autumn sq'irk
+				return 2;
+			}
+
+		}
+
+		return highestBoost;
+	}
 }

@@ -24,37 +24,42 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.secretsofthenorth;
 
-
-import net.runelite.api.NpcID;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.GameTick;
-import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.choice.DialogChoiceSteps;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.client.eventbus.Subscribe;
 
-public class AskAboutRitual extends NpcStep {
+public class AskAboutRitual extends NpcStep
+{
 
-    public AskAboutRitual(QuestHelper questHelper) {
-        super(questHelper, NpcID.BIG_FISH, new WorldPoint(2880, 3946, 0),
-                "Talk to Big Fish (General Khazard) at the north entrance to Weiss again.");
-    }
+	public AskAboutRitual(QuestHelper questHelper)
+	{
+		super(questHelper, NpcID.SOTN_HAZEEL_TROLL_VIS, new WorldPoint(2880, 3946, 0),
+			"Talk to Big Fish (Hazeel) at the north entrance to Weiss again.");
+	}
 
-    @Subscribe
-    public void onGameTick(GameTick event) {
-        updateCorrectChoice();
-    }
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		updateCorrectChoice();
+	}
 
-    private void updateCorrectChoice() {
-        boolean askedAboutKiller = client.getVarbitValue(14743) == 1;
-        boolean askedAboutRitual = client.getVarbitValue(14744) == 1;
+	private void updateCorrectChoice()
+	{
+		boolean askedAboutKiller = client.getVarbitValue(14743) == 1;
+		boolean askedAboutRitual = client.getVarbitValue(14744) == 1;
 
-        choices = new DialogChoiceSteps();
-        if (!askedAboutKiller) {
-            addDialogStep("Why would the killer come here?");
-        }
-        if (!askedAboutRitual) {
-            addDialogStep("What is this ritual you keep talking about?");
-        }
-    }
+		choices = new DialogChoiceSteps();
+		if (!askedAboutKiller)
+		{
+			addDialogStep("Why would the killer come here?");
+		}
+		if (!askedAboutRitual)
+		{
+			addDialogStep("What is this ritual you keep talking about?");
+		}
+	}
 }

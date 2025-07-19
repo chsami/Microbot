@@ -26,24 +26,27 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements;
 
-import net.runelite.api.Client;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
+import net.runelite.api.Client;
 
 import javax.annotation.Nonnull;
 import java.awt.*;
 
-public abstract class SimpleRequirement extends AbstractRequirement {
-    @Override
-    public abstract boolean check(Client client);
+public abstract class SimpleRequirement extends AbstractRequirement
+{
+	@Override
+	public abstract boolean check(Client client);
 
-    @Nonnull
-    @Override
-    public String getDisplayText() {
-        return "";
-    }
+	@Nonnull
+	@Override
+	public String getDisplayText()
+	{
+		return "";
+	}
 
-    @Override
-    public Color getColor(Client client, QuestHelperConfig config) {
-        return check(client) ? config.passColour() : config.failColour();
-    }
+	@Override
+	public Color getColor(Client client, QuestHelperConfig config)
+	{
+		return check(client) ? config.passColour() : config.failColour();
+	}
 }

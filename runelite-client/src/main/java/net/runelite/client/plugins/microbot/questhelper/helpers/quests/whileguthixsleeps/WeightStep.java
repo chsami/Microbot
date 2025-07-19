@@ -25,11 +25,7 @@
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.whileguthixsleeps;
 
 import com.google.inject.Inject;
-import net.runelite.api.*;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.GameTick;
-import net.runelite.client.eventbus.EventBus;
-import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.ZoneRequirement;
@@ -37,162 +33,211 @@ import net.runelite.client.plugins.microbot.questhelper.steps.DetailedOwnerStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.api.Client;
+import net.runelite.api.Item;
+import net.runelite.api.ItemContainer;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.gameval.InventoryID;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.gameval.VarbitID;
+import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.eventbus.Subscribe;
 
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-public class WeightStep extends DetailedOwnerStep {
-    @Inject
-    protected EventBus eventBus;
+public class WeightStep extends DetailedOwnerStep
+{
+	@Inject
+	protected EventBus eventBus;
 
-    @Inject
-    protected Client client;
-    protected QuestStep currentStep;
-    ItemRequirement weight1Kg, weight2Kg, weight5Kg, weights;
-    private QuestStep crossOverBrokenWall, takeWeights, take1Kg, take2Kg, take5Kg, crossOverBrokenWallNorth, useWeights, openDoor, takeWeightFromStatue, dropWeights;
-    private Zone weightRoom;
-    private ZoneRequirement inWeightRoom;
+	@Inject
+	protected Client client;
 
-    public WeightStep(QuestHelper questHelper) {
-        super(questHelper, "");
-    }
+	private QuestStep crossOverBrokenWall, takeWeights, take1Kg, take2Kg, take5Kg, crossOverBrokenWallNorth, useWeights, openDoor, takeWeightFromStatue, dropWeights;
 
-    @Subscribe
-    public void onGameTick(GameTick event) {
-        updateSteps();
-    }
+	ItemRequirement weight1Kg, weight2Kg, weight5Kg, weights;
 
-    @Override
-    protected void updateSteps() {
-        int goal = client.getVarbitValue(10936);
-        int weightOnStatue = client.getVarbitValue(10937);
-        int totalWeightGoal = goal + weightOnStatue;
-        int playerWeight = client.getWeight();
+	protected QuestStep currentStep;
+	private Zone weightRoom;
+	private ZoneRequirement inWeightRoom;
 
-        ItemContainer inventory = client.getItemContainer(InventoryID.INVENTORY);
+	public WeightStep(QuestHelper questHelper)
+	{
+		super(questHelper, "");
+	}
 
-        int weightInInventoryFromWeights = 0;
-        for (Item item : inventory.getItems()) {
-            if (item.getId() == ItemID.WEIGHT_1KG) {
-                weightInInventoryFromWeights += 1;
-            } else if (item.getId() == ItemID.WEIGHT_2KG) {
-                weightInInventoryFromWeights += 2;
-            } else if (item.getId() == ItemID.WEIGHT_5KG) {
-                weightInInventoryFromWeights += 5;
-            }
-        }
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		updateSteps();
+	}
 
-        int playerWeightWithoutWeights = playerWeight - weightInInventoryFromWeights;
+	@Override
+	protected void updateSteps()
+	{
+		int goal = client.getVarbitValue(VarbitID.WGS_WEIGHT_VAR);
+		int weightOnStatue = client.getVarbitValue(VarbitID.WGS_WEIGHT_STATUE_VAR);
+		int totalWeightGoal = goal + weightOnStatue;
+		int playerWeight = client.getWeight();
 
-        if (playerWeight == totalWeightGoal) {
-            startUpStep(openDoor);
-        } else if (playerWeightWithoutWeights == totalWeightGoal + weightInInventoryFromWeights) {
-            if (inWeightRoom.check(client)) {
-                startUpStep(crossOverBrokenWallNorth);
-            } else {
-                startUpStep(useWeights);
-                // go use weights on statue
-            }
-        } else if (playerWeight < totalWeightGoal) {
-            if (!inWeightRoom.check(client)) {
-                startUpStep(crossOverBrokenWall);
-            } else {
-                int diffPlayerWeightToGoal = totalWeightGoal - playerWeight;
-                if (diffPlayerWeightToGoal / 5 >= 1) {
-                    startUpStep(take5Kg);
-                } else if (diffPlayerWeightToGoal / 2 >= 1) {
-                    startUpStep(take2Kg);
-                } else {
-                    startUpStep(take1Kg);
-                }
-            }
-        } else if (playerWeightWithoutWeights < totalWeightGoal + weightInInventoryFromWeights) {
-            if (weightInInventoryFromWeights > 0) {
-                startUpStep(dropWeights);
-            }
-            // if X, dropWeights
-            else if (weightOnStatue > 0) {
-                startUpStep(takeWeightFromStatue);
-            }
-            // Drop weights/remove weights from the statue
-        } else if (playerWeightWithoutWeights > totalWeightGoal + weightInInventoryFromWeights) {
-            if (!inWeightRoom.check(client)) {
-                startUpStep(crossOverBrokenWall);
-            } else {
-                int diff = playerWeightWithoutWeights - (totalWeightGoal + weightInInventoryFromWeights);
-                if (diff / 5 >= 1) {
-                    startUpStep(take5Kg);
-                } else if (diff / 2 >= 1) {
-                    startUpStep(take2Kg);
-                } else {
-                    startUpStep(take1Kg);
-                }
-            }
-        }
+		ItemContainer inventory = client.getItemContainer(InventoryID.INV);
 
-        // Player weighs more than goal (thus need to put weights on)
-        // Player weighs less than goal (thus need to hold weights in inventory)
+		int weightInInventoryFromWeights = 0;
+		for (Item item : inventory.getItems())
+		{
+			if (item.getId() == ItemID.WGS_WEIGHT_1KG)
+			{
+				weightInInventoryFromWeights += 1;
+			}
+			else if (item.getId() == ItemID.WGS_WEIGHT_2KG)
+			{
+				weightInInventoryFromWeights += 2;
+			}
+			else if (item.getId() == ItemID.WGS_WEIGHT_5KG)
+			{
+				weightInInventoryFromWeights += 5;
+			}
+		}
 
-        // 10935 = number of weights
-        // 10937 = total weight on statue
-    }
+		int playerWeightWithoutWeights = playerWeight - weightInInventoryFromWeights;
 
-    @Override
-    public QuestStep getActiveStep() {
-        if (currentStep != this) {
-            return currentStep.getActiveStep();
-        } else {
-            return this;
-        }
-    }
+		if (playerWeight == totalWeightGoal)
+		{
+			startUpStep(openDoor);
+		}
+		else if (playerWeightWithoutWeights == totalWeightGoal + weightInInventoryFromWeights)
+		{
+			if (inWeightRoom.check(client))
+			{
+				startUpStep(crossOverBrokenWallNorth);
+			}
+			else
+			{
+				startUpStep(useWeights);
+				// go use weights on statue
+			}
+		}
+		else if (playerWeight < totalWeightGoal)
+		{
+			if (!inWeightRoom.check(client))
+			{
+				startUpStep(crossOverBrokenWall);
+			}
+			else
+			{
+				int diffPlayerWeightToGoal = totalWeightGoal - playerWeight;
+				if (diffPlayerWeightToGoal / 5 >= 1)
+				{
+					startUpStep(take5Kg);
+				}
+				else if (diffPlayerWeightToGoal / 2 >= 1)
+				{
+					startUpStep(take2Kg);
+				}
+				else
+				{
+					startUpStep(take1Kg);
+				}
+			}
+		}
+		else if (playerWeightWithoutWeights < totalWeightGoal + weightInInventoryFromWeights)
+		{
+			if (weightInInventoryFromWeights > 0)
+			{
+				startUpStep(dropWeights);
+			}
+			// if X, dropWeights
+			else if (weightOnStatue > 0)
+			{
+				startUpStep(takeWeightFromStatue);
+			}
+			// Drop weights/remove weights from the statue
+		}
+		else if (playerWeightWithoutWeights > totalWeightGoal + weightInInventoryFromWeights)
+		{
+			if (!inWeightRoom.check(client))
+			{
+				startUpStep(crossOverBrokenWall);
+			}
+			else
+			{
+				int diff = playerWeightWithoutWeights - (totalWeightGoal + weightInInventoryFromWeights);
+				if (diff / 5 >= 1)
+				{
+					startUpStep(take5Kg);
+				}
+				else if (diff / 2 >= 1)
+				{
+					startUpStep(take2Kg);
+				}
+				else
+				{
+					startUpStep(take1Kg);
+				}
+			}
+		}
 
-    private void setupItemRequirements() {
-        weight1Kg = new ItemRequirement("Weight (1kg)", ItemID.WEIGHT_1KG);
-        weight2Kg = new ItemRequirement("Weight (2kg)", ItemID.WEIGHT_2KG);
-        weight5Kg = new ItemRequirement("Weight (5kg)", ItemID.WEIGHT_5KG);
+		// Player weighs more than goal (thus need to put weights on)
+		// Player weighs less than goal (thus need to hold weights in inventory)
 
-        weights = new ItemRequirement("Weights", ItemID.WEIGHT_1KG);
-        weights.addAlternates(ItemID.WEIGHT_2KG, ItemID.WEIGHT_5KG);
-    }
+		// 10935 = number of weights
+		// 10937 = total weight on statue
+	}
 
-    @Override
-    protected void setupSteps() {
-        setupItemRequirements();
+	private void setupItemRequirements()
+	{
+		weight1Kg = new ItemRequirement("Weight (1kg)", ItemID.WGS_WEIGHT_1KG);
+		weight2Kg = new ItemRequirement("Weight (2kg)", ItemID.WGS_WEIGHT_2KG);
+		weight5Kg = new ItemRequirement("Weight (5kg)", ItemID.WGS_WEIGHT_5KG);
 
-        weightRoom = new Zone(new WorldPoint(4177, 4944, 1), new WorldPoint(4181, 4946, 1));
-        inWeightRoom = new ZoneRequirement(weightRoom);
+		weights = new ItemRequirement("Weights", ItemID.WGS_WEIGHT_1KG);
+		weights.addAlternates(ItemID.WGS_WEIGHT_2KG, ItemID.WGS_WEIGHT_5KG);
+	}
 
-        take1Kg = new ObjectStep(getQuestHelper(), ObjectID.PILE_OF_WEIGHTS, new WorldPoint(4177, 4945, 1), "Take 1 kg from the pile of weights in the room.");
-        take1Kg.addDialogStep("1kg weight.");
-        take2Kg = new ObjectStep(getQuestHelper(), ObjectID.PILE_OF_WEIGHTS, new WorldPoint(4177, 4945, 1), "Take 2 kg from the pile of weights in the room.");
-        take2Kg.addDialogStep("2kg weight.");
-        take5Kg = new ObjectStep(getQuestHelper(), ObjectID.PILE_OF_WEIGHTS, new WorldPoint(4177, 4945, 1), "Take 5 kg from the pile of weights in the room.");
-        take5Kg.addDialogStep("5kg weight.");
-        crossOverBrokenWallNorth = new ObjectStep(getQuestHelper(), ObjectID.BROKEN_WALL_53884, new WorldPoint(4179, 4947, 1),
-                "Cross over the broken wall into the north room.");
-        useWeights = new ObjectStep(getQuestHelper(), NullObjectID.NULL_53934, new WorldPoint(4182, 4956, 1), "Use all your weights on the statue in the north-east of the room.", weights.highlighted());
-        useWeights.addSubSteps(crossOverBrokenWallNorth);
-        openDoor = new ObjectStep(getQuestHelper(), NullObjectID.NULL_54014, new WorldPoint(4187, 4953, 1), "Leave through the door in the north-east.");
-        takeWeightFromStatue = new ObjectStep(getQuestHelper(), NullObjectID.NULL_53934, new WorldPoint(4182, 4956, 1), "Remove weights from the statue in the north-east of the room.");
-        takeWeightFromStatue.addDialogStep("Remove the weights from the statue.");
-        dropWeights = new DetailedQuestStep(getQuestHelper(), "Drop some of the weights on you.");
+	@Override
+	protected void setupSteps()
+	{
+		setupItemRequirements();
+		
+		weightRoom = new Zone(new WorldPoint(4177, 4944, 1), new WorldPoint(4181, 4946, 1));
+		inWeightRoom = new ZoneRequirement(weightRoom);
 
-        crossOverBrokenWall = new ObjectStep(getQuestHelper(), ObjectID.BROKEN_WALL_53884, new WorldPoint(4179, 4947, 1),
-                "Cross over the broken wall into the south room.");
+		take1Kg = new ObjectStep(getQuestHelper(), ObjectID.LUC2_MOV_WEIGHTS, new WorldPoint(4177, 4945, 1), "Take 1 kg from the pile of weights in the room.");
+		take1Kg.addDialogStep("1kg weight.");
+		take2Kg = new ObjectStep(getQuestHelper(), ObjectID.LUC2_MOV_WEIGHTS, new WorldPoint(4177, 4945, 1), "Take 2 kg from the pile of weights in the room.");
+		take2Kg.addDialogStep("2kg weight.");
+		take5Kg = new ObjectStep(getQuestHelper(), ObjectID.LUC2_MOV_WEIGHTS, new WorldPoint(4177, 4945, 1), "Take 5 kg from the pile of weights in the room.");
+		take5Kg.addDialogStep("5kg weight.");
+		crossOverBrokenWallNorth = new ObjectStep(getQuestHelper(), ObjectID.LUC2_MOVARIO_BASE_PAINTING_WALL_CLICK, new WorldPoint(4179, 4947, 1),
+			"Cross over the broken wall into the north room.");
+		useWeights = new ObjectStep(getQuestHelper(), ObjectID.LUC2_MOV_STATUE_ATLAS_MULTI, new WorldPoint(4182, 4956, 1), "Use all your weights on the statue in the north-east of the room.", weights.highlighted());
+		useWeights.addSubSteps(crossOverBrokenWallNorth);
+		openDoor = new ObjectStep(getQuestHelper(), ObjectID.LUC2_MOV_BARRACKS_DOOR_BACKING_01, new WorldPoint(4187, 4953, 1), "Leave through the door in the north-east.");
+		takeWeightFromStatue = new ObjectStep(getQuestHelper(), ObjectID.LUC2_MOV_STATUE_ATLAS_MULTI, new WorldPoint(4182, 4956, 1), "Remove weights from the statue in the north-east of the room.");
+		takeWeightFromStatue.addDialogStep("Remove the weights from the statue.");
+		dropWeights = new DetailedQuestStep(getQuestHelper(), "Drop some of the weights on you.");
 
-        takeWeights = new DetailedQuestStep(getQuestHelper(), "Take weights to equal the difference between you on entering and now.");
-        takeWeights.addSubSteps(crossOverBrokenWall, take1Kg, take2Kg, take5Kg, takeWeightFromStatue, dropWeights);
-    }
+		crossOverBrokenWall = new ObjectStep(getQuestHelper(), ObjectID.LUC2_MOVARIO_BASE_PAINTING_WALL_CLICK, new WorldPoint(4179, 4947, 1),
+			"Cross over the broken wall into the south room.");
 
-    public List<QuestStep> getDisplaySteps() {
-        return List.of(takeWeights, useWeights, openDoor);
-    }
+		takeWeights = new DetailedQuestStep(getQuestHelper(), "Take weights to equal the difference between you on entering and now.");
+		takeWeights.addSubSteps(crossOverBrokenWall, take1Kg, take2Kg, take5Kg, takeWeightFromStatue, dropWeights);
+	}
+
+	public List<QuestStep> getDisplaySteps()
+	{
+		return List.of(takeWeights, useWeights, openDoor);
+	}
 
 
-    @Override
-    public Collection<QuestStep> getSteps() {
-        return Arrays.asList(crossOverBrokenWall, take1Kg, take2Kg, take5Kg, crossOverBrokenWallNorth, useWeights, openDoor, takeWeightFromStatue, dropWeights);
-    }
+	@Override
+	public Collection<QuestStep> getSteps()
+	{
+		return Arrays.asList(crossOverBrokenWall, take1Kg, take2Kg, take5Kg, crossOverBrokenWallNorth, useWeights, openDoor, takeWeightFromStatue,
+				dropWeights, takeWeights);
+	}
 }

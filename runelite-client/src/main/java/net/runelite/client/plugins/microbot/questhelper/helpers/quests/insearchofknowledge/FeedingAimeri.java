@@ -24,34 +24,37 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.insearchofknowledge;
 
-
-import net.runelite.api.ItemID;
-import net.runelite.api.NpcID;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.GameTick;
-import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.microbot.questhelper.collections.ItemCollections;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.client.eventbus.Subscribe;
 
-public class FeedingAimeri extends NpcStep {
-    static ItemRequirement food5Highlighted = new ItemRequirement("Food", ItemCollections.FISH_FOOD, 5);
-    static ItemRequirement knife = new ItemRequirement("Knife or slash weapon to cut through a web", ItemID.KNIFE);
+public class FeedingAimeri extends NpcStep
+{
+	static ItemRequirement food5Highlighted = new ItemRequirement("Food", ItemCollections.FISH_FOOD, 5);
+	static ItemRequirement knife = new ItemRequirement("Knife or slash weapon to cut through a web",ItemID.KNIFE);
 
-    public FeedingAimeri(QuestHelper questHelper) {
-        super(questHelper, NpcID.BROTHER_AIMERI, new WorldPoint(1840, 9926, 0), "Cut through the web to" +
-                " the south, and use 5 pieces of food on Aimeri there.", food5Highlighted, knife);
-        food5Highlighted.setHighlightInInventory(true);
-    }
+	public FeedingAimeri(QuestHelper questHelper)
+	{
+		super(questHelper, NpcID.HOSDUN_AIMERI_INJURED, new WorldPoint(1840, 9926, 0), "Cut through the web to" +
+				" the south, and use 5 pieces of food on Aimeri there.", food5Highlighted, knife);
+		food5Highlighted.setHighlightInInventory(true);
+	}
 
-    @Subscribe
-    public void onGameTick(GameTick event) {
-        updateSteps();
-    }
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		updateSteps();
+	}
 
-    protected void updateSteps() {
-        int numFoodUsed = client.getVarbitValue(8393);
-        food5Highlighted.setQuantity(5 - numFoodUsed);
-    }
+	protected void updateSteps()
+	{
+		int numFoodUsed = client.getVarbitValue(8393);
+		food5Highlighted.setQuantity(5 - numFoodUsed);
+	}
 }

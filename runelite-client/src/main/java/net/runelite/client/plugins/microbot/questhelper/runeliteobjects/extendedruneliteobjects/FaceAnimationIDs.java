@@ -28,22 +28,23 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 @AllArgsConstructor
-public enum FaceAnimationIDs {
-    NORMAL(554),
-    FRIENDLY(567),
-    YES(568),
-    QUIZZICAL(569),
-    CHATTY(570),
-    QUESTIONING(575),
-    FRIENDLY_QUESTIONING(588),
-    FRIENDLY_2(589),
-    SHORT_LAUGH(605),
-    LAUGHING(606),
-    BIG_LAUGH(607),
-    SAD(610),
-    WORRIED_SAD(612),
-    ANNOYED(614),
-    ANNOYED_2(615);
-    @Getter
-    private final int animationID;
+public enum FaceAnimationIDs
+{
+	NORMAL(554),
+	FRIENDLY(567),
+	YES(568),
+	QUIZZICAL(569),
+	CHATTY(570),
+	QUESTIONING(575),
+	FRIENDLY_QUESTIONING(588),
+	FRIENDLY_2(589),
+	SHORT_LAUGH(605),
+	LAUGHING(606),
+	BIG_LAUGH(607),
+	SAD(610),
+	WORRIED_SAD(612),
+	ANNOYED(614),
+	ANNOYED_2(615);
+	@Getter
+	private final int animationID;
 }

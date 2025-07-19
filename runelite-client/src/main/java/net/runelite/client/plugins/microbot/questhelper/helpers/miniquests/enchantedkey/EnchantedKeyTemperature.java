@@ -34,35 +34,39 @@ import java.util.Set;
 
 @AllArgsConstructor
 @Getter
-public enum EnchantedKeyTemperature {
-    FREEZING("It's freezing", 500, 5000),
-    COLD("It's cold", 120, 499),
-    WARM("It's warm", 60, 119),
-    VERY_HOT("It's very hot", 30, 59),
-    BURNING("Ouch! It's burning hot", 5, 29),
-    STEAMING("The key is steaming.", 0, 4);
+public enum EnchantedKeyTemperature
+{
+	FREEZING("It's freezing", 500, 5000),
+	COLD("It's cold",  120, 499),
+	WARM("It's warm", 60, 119),
+	VERY_HOT("It's very hot", 30, 59),
+	BURNING("Ouch! It's burning hot", 5, 29),
+	STEAMING("The key is steaming.", 0, 4);
 
-    public static final Set<EnchantedKeyTemperature> temperatureSet = Sets.immutableEnumSet(
-            FREEZING,
-            COLD,
-            WARM,
-            VERY_HOT,
-            BURNING,
-            STEAMING
-    );
+	public static final Set<EnchantedKeyTemperature> temperatureSet = Sets.immutableEnumSet(
+		FREEZING,
+		COLD,
+		WARM,
+		VERY_HOT,
+		BURNING,
+		STEAMING
+	);
 
-    private final String text;
-    private final int minDistance;
-    private final int maxDistance;
+	private final String text;
+	private final int minDistance;
+	private final int maxDistance;
 
-    @Nullable
-    public static EnchantedKeyTemperature getFromTemperatureSet(final String message) {
-        for (final EnchantedKeyTemperature temperature : temperatureSet) {
-            if (message.contains(temperature.getText())) {
-                return temperature;
-            }
-        }
+	@Nullable
+	public static EnchantedKeyTemperature getFromTemperatureSet(final String message)
+	{
+		for (final EnchantedKeyTemperature temperature : temperatureSet)
+		{
+			if (message.contains(temperature.getText()))
+			{
+				return temperature;
+			}
+		}
 
-        return null;
-    }
+		return null;
+	}
 }

@@ -28,19 +28,22 @@ import lombok.Getter;
 import net.runelite.api.SpriteID;
 import net.runelite.api.coords.WorldPoint;
 
-public class QuestTile {
-    @Getter
-    private final WorldPoint worldPoint;
-    @Getter
-    private final int iconID;
+public class QuestTile
+{
+	@Getter
+	private final WorldPoint worldPoint;
+	@Getter
+	private final int iconID;
 
-    public QuestTile(WorldPoint worldPoint) {
-        this.worldPoint = worldPoint;
-        this.iconID = SpriteID.QUESTS_PAGE_ICON_BLUE_QUESTS;
-    }
+	public QuestTile(WorldPoint worldPoint)
+	{
+		this.worldPoint = worldPoint;
+		this.iconID = SpriteID.QUESTS_PAGE_ICON_BLUE_QUESTS;
+	}
 
-    public QuestTile(WorldPoint worldPoint, int iconID) {
-        this.worldPoint = worldPoint;
-        this.iconID = iconID;
-    }
+	public QuestTile(WorldPoint worldPoint, int iconID)
+	{
+		this.worldPoint = worldPoint;
+		this.iconID = iconID;
+	}
 }

@@ -29,19 +29,22 @@ import net.runelite.api.Client;
 
 import java.util.function.BooleanSupplier;
 
-public class ConfigRequirement extends SimpleRequirement {
-    @Setter
-    boolean shouldPass;
+public class ConfigRequirement extends SimpleRequirement
+{
+	@Setter
+	boolean shouldPass;
 
-    BooleanSupplier booleanSupplier;
+	BooleanSupplier booleanSupplier;
 
-    public ConfigRequirement(BooleanSupplier booleanSupplier) {
-        this.booleanSupplier = booleanSupplier;
-    }
+	public ConfigRequirement(BooleanSupplier booleanSupplier)
+	{
+		this.booleanSupplier = booleanSupplier;
+	}
 
-    @Override
-    public boolean check(Client client) {
-        return booleanSupplier.getAsBoolean();
-    }
+	@Override
+	public boolean check(Client client)
+	{
+		return booleanSupplier.getAsBoolean();
+	}
 }
 

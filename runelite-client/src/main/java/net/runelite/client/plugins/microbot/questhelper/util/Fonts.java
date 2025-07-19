@@ -24,24 +24,26 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.util;
 
-import lombok.Getter;
 import net.runelite.client.plugins.microbot.questhelper.panel.JGenerator;
+import lombok.Getter;
 
 import java.awt.*;
 import java.awt.font.TextAttribute;
 import java.util.HashMap;
 
-public class Fonts {
-    @Getter
-    private static final Font originalFont;
-    @Getter
-    private static final Font underlinedFont;
+public class Fonts
+{
+	@Getter
+	private static final Font originalFont;
+	@Getter
+	private static final Font underlinedFont;
 
-    static {
-        var label = JGenerator.makeJTextArea();
-        originalFont = label.getFont();
-        var attributes = new HashMap<TextAttribute, Object>(originalFont.getAttributes());
-        attributes.put(TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON);
-        underlinedFont = originalFont.deriveFont(attributes);
-    }
+	static
+	{
+		var label = JGenerator.makeJTextArea();
+		originalFont = label.getFont();
+		var attributes = new HashMap<TextAttribute, Object>(originalFont.getAttributes());
+		attributes.put(TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON);
+		underlinedFont = originalFont.deriveFont(attributes);
+	}
 }

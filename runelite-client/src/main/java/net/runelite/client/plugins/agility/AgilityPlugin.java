@@ -140,8 +140,8 @@ public class AgilityPlugin extends Plugin
 	@Getter
 	private int agilityLevel;
 
-	@Getter(AccessLevel.PACKAGE)
-	private Tile stickTile;
+	@Getter
+	private static Tile stickTile;
 
 	@Provides
 	AgilityConfig getConfig(ConfigManager configManager)

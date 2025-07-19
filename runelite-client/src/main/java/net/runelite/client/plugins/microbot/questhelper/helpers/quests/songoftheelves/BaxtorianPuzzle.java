@@ -25,272 +25,314 @@
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.songoftheelves;
 
 import com.google.inject.Inject;
-import net.runelite.api.Client;
-import net.runelite.api.GraphicID;
-import net.runelite.api.GraphicsObject;
-import net.runelite.api.ItemID;
-import net.runelite.api.coords.LocalPoint;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.GameTick;
-import net.runelite.api.events.GraphicsObjectCreated;
-import net.runelite.api.events.WidgetLoaded;
-import net.runelite.api.widgets.ComponentID;
-import net.runelite.api.widgets.Widget;
-import net.runelite.client.eventbus.EventBus;
-import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirements;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicType;
 import net.runelite.client.plugins.microbot.questhelper.steps.DetailedOwnerStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.api.Client;
+import net.runelite.api.GraphicID;
+import net.runelite.api.GraphicsObject;
+import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.GraphicsObjectCreated;
+import net.runelite.api.events.WidgetLoaded;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.widgets.Widget;
+import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.eventbus.Subscribe;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
 
-public class BaxtorianPuzzle extends DetailedOwnerStep {
-    @Inject
-    protected EventBus eventBus;
+public class BaxtorianPuzzle extends DetailedOwnerStep
+{
+	@Inject
+	protected EventBus eventBus;
 
-    @Inject
-    protected Client client;
-    ItemRequirement natureRune, flowersOrIrit, blackKnifeOrDagger, wineOfZamorakOrZamorakBrew, cabbage, adamantChainbody, blackKnife, blackDagger, wineOfZamorak, zamorakBrew, flowers, iritLeaf;
-    boolean foundFinalItem;
-    private HashMap<String, ItemRequirement> items;
-    private ArrayList<BaxtorianPillar> pillars;
-    private ArrayList<String> unknownItems;
+	@Inject
+	protected Client client;
 
-    public BaxtorianPuzzle(QuestHelper questHelper) {
-        super(questHelper, "Solve the pillar puzzle.");
-    }
+	private HashMap<String, ItemRequirement> items;
+	private ArrayList<BaxtorianPillar> pillars;
+	private ArrayList<String> unknownItems;
 
-    @Override
-    public void startUp() {
-        updateSteps();
-    }
+	ItemRequirement natureRune, flowersOrIrit, blackKnifeOrDagger, wineOfZamorakOrZamorakBrew, cabbage, adamantChainbody, blackKnife, blackDagger, wineOfZamorak, zamorakBrew, flowers, iritLeaf;
 
-    @Override
-    public void shutDown() {
-        shutDownStep();
-        currentStep = null;
-    }
+	boolean foundFinalItem;
 
-    @Subscribe
-    public void onGameTick(GameTick event) {
-        updateSteps();
-    }
+	public BaxtorianPuzzle(QuestHelper questHelper)
+	{
+		super(questHelper, "Solve the pillar puzzle.");
+	}
 
-    protected void updateSteps() {
-        for (BaxtorianPillar pillar : pillars) {
-            if (pillar.getAnswerText() == null) {
-                startUpStep(pillar.getUseStep());
-                return;
-            } else if (pillar.getSolution() == null) {
-                startUpStep(pillar.getInspectStep());
-                return;
-            } else if (pillar.getSolution() != pillar.getPlacedItem()) {
-                startUpStep(pillar.getUseStep());
-                return;
-            }
-        }
-    }
+	@Override
+	public void startUp()
+	{
+		updateSteps();
+	}
 
-    private void checkHint(String hintText) {
-        if (hintText == null) {
-            return;
-        }
+	@Override
+	public void shutDown()
+	{
+		shutDownStep();
+		currentStep = null;
+	}
 
-        String id;
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		updateSteps();
+	}
 
-        for (BaxtorianPillar pillar : pillars) {
-            if (pillar.getAnswerText() != null && hintText.contains(pillar.getAnswerText())) {
-                id = hintText.replace(pillar.getAnswerText(), "");
-                pillar.setSolution(items.get(id));
+	protected void updateSteps()
+	{
+		for (BaxtorianPillar pillar : pillars)
+		{
+			if (pillar.getAnswerText() == null)
+			{
+				startUpStep(pillar.getUseStep());
+				return;
+			}
+			else if (pillar.getSolution() == null)
+			{
+				startUpStep(pillar.getInspectStep());
+				return;
+			}
+			else if (pillar.getSolution() != pillar.getPlacedItem())
+			{
+				startUpStep(pillar.getUseStep());
+				return;
+			}
+		}
+	}
 
-                unknownItems.remove(id);
-                if (!foundFinalItem && unknownItems.size() == 1) {
-                    foundFinalItem = true;
-                    pillars.get(pillars.size() - 1).setSolution(items.get(unknownItems.get(0)));
-                }
-                return;
-            }
-        }
-    }
+	private void checkHint(String hintText)
+	{
+		if (hintText == null)
+		{
+			return;
+		}
 
-    @Subscribe
-    public void onGraphicsObjectCreated(GraphicsObjectCreated event) {
-        final GraphicsObject go = event.getGraphicsObject();
+		String id;
 
-        if (go.getId() == GraphicID.GREY_BUBBLE_TELEPORT) {
-            clientThread.invokeLater(() ->
-            {
-                Widget itemPlacedWidget = client.getWidget(ComponentID.DIALOG_SPRITE_TEXT);
+		for (BaxtorianPillar pillar : pillars)
+		{
+			if (pillar.getAnswerText() != null && hintText.contains(pillar.getAnswerText()))
+			{
+				id = hintText.replace(pillar.getAnswerText(), "");
+				pillar.setSolution(items.get(id));
 
-                if (itemPlacedWidget == null) {
-                    return;
-                }
+				unknownItems.remove(id);
+				if (!foundFinalItem && unknownItems.size() == 1)
+				{
+					foundFinalItem = true;
+					pillars.get(pillars.size() - 1).setSolution(items.get(unknownItems.get(0)));
+				}
+				return;
+			}
+		}
+	}
 
-                LocalPoint smokePoint = go.getLocation();
-                WorldPoint worldSmokePoint = WorldPoint.fromLocal(client, smokePoint);
+	@Subscribe
+	public void onGraphicsObjectCreated(GraphicsObjectCreated event)
+	{
+		final GraphicsObject go = event.getGraphicsObject();
 
-                for (BaxtorianPillar pillar : pillars) {
-                    if (worldSmokePoint.equals(pillar.getWp())) {
-                        checkItemPlaced(itemPlacedWidget.getText(), pillar);
-                        return;
-                    }
-                }
-            });
-        }
-    }
+		if (go.getId() == GraphicID.GREY_BUBBLE_TELEPORT)
+		{
+			clientThread.invokeLater(() ->
+			{
+				Widget itemPlacedWidget = client.getWidget(InterfaceID.Objectbox.TEXT);
 
-    private void checkItemPlaced(String itemPlacedText, BaxtorianPillar pillar) {
-        if (itemPlacedText == null) {
-            return;
-        }
+				if (itemPlacedWidget == null)
+				{
+					return;
+				}
 
-        String textStart = "You place the ";
-        String textEnd = " on the pillar.";
+				LocalPoint smokePoint = go.getLocation();
+				WorldPoint worldSmokePoint = WorldPoint.fromLocal(client, smokePoint);
 
-        String itemPlaced = StringUtils.substringBetween(itemPlacedText, textStart, textEnd);
+				for (BaxtorianPillar pillar : pillars)
+				{
+					if (worldSmokePoint.equals(pillar.getWp()))
+					{
+						checkItemPlaced(itemPlacedWidget.getText(), pillar);
+						return;
+					}
+				}
+			});
+		}
+	}
 
-        for (ItemRequirement item : items.values()) {
-            if (checkIfItemMatches(itemPlaced, item)) {
-                pillar.setPlacedItem(item);
-            }
-        }
-    }
+	private void checkItemPlaced(String itemPlacedText, BaxtorianPillar pillar)
+	{
+		if (itemPlacedText == null)
+		{
+			return;
+		}
 
-    private boolean checkIfItemMatches(String itemPlaced, ItemRequirement solutionItem) {
-        if (solutionItem instanceof ItemRequirements) {
-            ItemRequirements solutionItems = (ItemRequirements) solutionItem;
-            for (ItemRequirement itemRequirement : solutionItems.getItemRequirements()) {
-                if (checkIfItemMatches(itemPlaced, itemRequirement)) {
-                    return true;
-                }
-            }
-        } else {
-            return itemPlaced.contains(solutionItem.getName());
-        }
+		String textStart = "You place the ";
+		String textEnd = " on the pillar.";
 
-        return false;
-    }
+		String itemPlaced = StringUtils.substringBetween(itemPlacedText, textStart, textEnd);
 
-    private void setupItemRequirements() {
-        natureRune = new ItemRequirement("Nature rune", ItemID.NATURE_RUNE);
-        natureRune.setHighlightInInventory(true);
+		for (ItemRequirement item : items.values())
+		{
+			if (checkIfItemMatches(itemPlaced, item))
+			{
+				pillar.setPlacedItem(item);
+			}
+		}
+	}
 
-        flowers = new ItemRequirements(LogicType.OR, "Flowers",
-                new ItemRequirement("Assorted flowers", ItemID.ASSORTED_FLOWERS),
-                new ItemRequirement("Black flowers", ItemID.BLACK_FLOWERS),
-                new ItemRequirement("Blue flowers", ItemID.BLUE_FLOWERS),
-                new ItemRequirement("Exotic flowers", ItemID.EXOTIC_FLOWER),
-                new ItemRequirement("Marigolds", ItemID.MARIGOLDS),
-                new ItemRequirement("Mixed flowers", ItemID.MIXED_FLOWERS),
-                new ItemRequirement("Purple flowers", ItemID.PURPLE_FLOWERS),
-                new ItemRequirement("Orange flowers", ItemID.ORANGE_FLOWERS),
-                new ItemRequirement("Red flowers", ItemID.RED_FLOWERS),
-                new ItemRequirement("White flowers", ItemID.WHITE_FLOWERS),
-                new ItemRequirement("Yellow flowers", ItemID.YELLOW_FLOWERS)
-        );
+	private boolean checkIfItemMatches(String itemPlaced, ItemRequirement solutionItem)
+	{
+		if (solutionItem instanceof ItemRequirements)
+		{
+			ItemRequirements solutionItems = (ItemRequirements) solutionItem;
+			for (ItemRequirement itemRequirement : solutionItems.getItemRequirements())
+			{
+				if (checkIfItemMatches(itemPlaced, itemRequirement))
+				{
+					return true;
+				}
+			}
+		}
+		else
+		{
+			return itemPlaced.contains(solutionItem.getName());
+		}
 
-        ItemRequirement grimyIritLeaf = new ItemRequirement("Grimy irit leaf", ItemID.GRIMY_IRIT_LEAF);
-        ItemRequirement cleanIritLeaf = new ItemRequirement("Irit leaf", ItemID.IRIT_LEAF);
+		return false;
+	}
 
-        iritLeaf = new ItemRequirements(LogicType.OR, "Irit leaf", cleanIritLeaf, grimyIritLeaf);
-        iritLeaf.setDisplayMatchedItemName(true);
-        iritLeaf.setTooltip("Grimy Irit Leaf is also valid.");
+	private void setupItemRequirements()
+	{
+		natureRune = new ItemRequirement("Nature rune", ItemID.NATURERUNE);
+		natureRune.setHighlightInInventory(true);
 
-        flowersOrIrit = new ItemRequirements(LogicType.OR, "Irit leaf or a flower", iritLeaf, flowers);
-        flowersOrIrit.setHighlightInInventory(true);
+		flowers = new ItemRequirements(LogicType.OR, "Flowers",
+			new ItemRequirement("Assorted flowers", ItemID.FLOWERS_WATERFALL_QUEST),
+			new ItemRequirement("Black flowers", ItemID.FLOWERS_WATERFALL_QUEST_BLACK),
+			new ItemRequirement("Blue flowers", ItemID.FLOWERS_WATERFALL_QUEST_BLUE),
+			new ItemRequirement("Exotic flowers", ItemID.VIKING_RARE_FLOWER),
+			new ItemRequirement("Marigolds", ItemID.MARIGOLD),
+			new ItemRequirement("Mixed flowers", ItemID.FLOWERS_WATERFALL_QUEST_MIXED),
+			new ItemRequirement("Purple flowers", ItemID.FLOWERS_WATERFALL_QUEST_PURPLE),
+			new ItemRequirement("Orange flowers", ItemID.FLOWERS_WATERFALL_QUEST_ORANGE),
+			new ItemRequirement("Red flowers", ItemID.FLOWERS_WATERFALL_QUEST_RED),
+			new ItemRequirement("White flowers", ItemID.FLOWERS_WATERFALL_QUEST_WHITE),
+			new ItemRequirement("Yellow flowers", ItemID.FLOWERS_WATERFALL_QUEST_YELLOW)
+		);
 
-        adamantChainbody = new ItemRequirement("Adamant chainbody", ItemID.ADAMANT_CHAINBODY);
-        adamantChainbody.setHighlightInInventory(true);
+		ItemRequirement grimyIritLeaf = new ItemRequirement("Grimy irit leaf", ItemID.UNIDENTIFIED_IRIT);
+		ItemRequirement cleanIritLeaf = new ItemRequirement("Irit leaf", ItemID.IRIT_LEAF);
 
-        wineOfZamorak = new ItemRequirement("Wine of zamorak", ItemID.WINE_OF_ZAMORAK);
+		iritLeaf = new ItemRequirements(LogicType.OR, "Irit leaf", cleanIritLeaf, grimyIritLeaf);
+		iritLeaf.setDisplayMatchedItemName(true);
+		iritLeaf.setTooltip("Grimy Irit Leaf is also valid.");
 
-        ItemRequirement zamorakBrew1 = new ItemRequirement("Zamorak brew(1)", ItemID.ZAMORAK_BREW1);
-        ItemRequirement zamorakBrew2 = new ItemRequirement("Zamorak brew(2)", ItemID.ZAMORAK_BREW2);
-        ItemRequirement zamorakBrew3 = new ItemRequirement("Zamorak brew(3)", ItemID.ZAMORAK_BREW3);
-        ItemRequirement zamorakBrew4 = new ItemRequirement("Zamorak brew(4)", ItemID.ZAMORAK_BREW4);
+		flowersOrIrit = new ItemRequirements(LogicType.OR, "Irit leaf or a flower", iritLeaf, flowers);
+		flowersOrIrit.setHighlightInInventory(true);
 
-        zamorakBrew = new ItemRequirements("Zamorak brew", zamorakBrew1, zamorakBrew2, zamorakBrew3, zamorakBrew4);
-        zamorakBrew.setDisplayMatchedItemName(true);
+		adamantChainbody = new ItemRequirement("Adamant chainbody", ItemID.ADAMANT_CHAINBODY);
+		adamantChainbody.setHighlightInInventory(true);
 
-        wineOfZamorakOrZamorakBrew = new ItemRequirements(LogicType.OR, "Wine of zamorak or Zamorak brew", wineOfZamorak, zamorakBrew);
-        wineOfZamorakOrZamorakBrew.setHighlightInInventory(true);
+		wineOfZamorak = new ItemRequirement("Wine of zamorak", ItemID.WINE_OF_ZAMORAK);
 
-        cabbage = new ItemRequirement("Cabbage", ItemID.CABBAGE);
-        cabbage.setHighlightInInventory(true);
+		ItemRequirement zamorakBrew1 = new ItemRequirement("Zamorak brew(1)", ItemID._1DOSEPOTIONOFZAMORAK);
+		ItemRequirement zamorakBrew2 = new ItemRequirement("Zamorak brew(2)", ItemID._2DOSEPOTIONOFZAMORAK);
+		ItemRequirement zamorakBrew3 = new ItemRequirement("Zamorak brew(3)", ItemID._3DOSEPOTIONOFZAMORAK);
+		ItemRequirement zamorakBrew4 = new ItemRequirement("Zamorak brew(4)", ItemID._4DOSEPOTIONOFZAMORAK);
 
-        ItemRequirement blackKnifeClean = new ItemRequirement("Black knife", ItemID.BLACK_KNIFE);
-        ItemRequirement blackKnifeP = new ItemRequirement("Black knife(p)", ItemID.BLACK_KNIFEP);
-        ItemRequirement blackKnifePplus = new ItemRequirement("Black knife(p+)", ItemID.BLACK_KNIFEP_5658);
-        ItemRequirement blackKnifePplusPlus = new ItemRequirement("Black knife(p++)", ItemID.BLACK_KNIFEP_5665);
+		zamorakBrew = new ItemRequirements("Zamorak brew", zamorakBrew1, zamorakBrew2, zamorakBrew3, zamorakBrew4);
+		zamorakBrew.setDisplayMatchedItemName(true);
 
-        blackKnife = new ItemRequirements(LogicType.OR, "Black knife", blackKnifeClean, blackKnifeP, blackKnifePplus,
-                blackKnifePplusPlus);
-        blackKnife.setHighlightInInventory(true);
+		wineOfZamorakOrZamorakBrew = new ItemRequirements(LogicType.OR, "Wine of zamorak or Zamorak brew", wineOfZamorak, zamorakBrew);
+		wineOfZamorakOrZamorakBrew.setHighlightInInventory(true);
 
-        ItemRequirement blackDaggerClean = new ItemRequirement("Black dagger", ItemID.BLACK_DAGGER);
-        ItemRequirement blackDaggerP = new ItemRequirement("Black dagger(p)", ItemID.BLACK_DAGGERP);
-        ItemRequirement blackDaggerPplus = new ItemRequirement("Black dagger(p+)", ItemID.BLACK_DAGGERP_5682);
-        ItemRequirement blackDaggerPplusPlus = new ItemRequirement("Black dagger(p++)", ItemID.BLACK_DAGGERP_5700);
-        blackDagger = new ItemRequirements(LogicType.OR, "Black dagger", blackDaggerClean, blackDaggerP, blackDaggerPplus,
-                blackDaggerPplusPlus);
+		cabbage = new ItemRequirement("Cabbage", ItemID.CABBAGE);
+		cabbage.setHighlightInInventory(true);
 
-        blackKnifeOrDagger = new ItemRequirements(LogicType.OR, "Black knife or black dagger", blackKnife, blackDagger);
-        blackKnifeOrDagger.setHighlightInInventory(true);
-    }
+		ItemRequirement blackKnifeClean = new ItemRequirement("Black knife", ItemID.BLACK_KNIFE);
+		ItemRequirement blackKnifeP = new ItemRequirement("Black knife(p)", ItemID.BLACK_KNIFE_P);
+		ItemRequirement blackKnifePplus = new ItemRequirement("Black knife(p+)", ItemID.BLACK_KNIFE_P_);
+		ItemRequirement blackKnifePplusPlus = new ItemRequirement("Black knife(p++)", ItemID.BLACK_KNIFE_P__);
+
+		blackKnife = new ItemRequirements(LogicType.OR, "Black knife", blackKnifeClean, blackKnifeP, blackKnifePplus,
+			blackKnifePplusPlus);
+		blackKnife.setHighlightInInventory(true);
+
+		ItemRequirement blackDaggerClean = new ItemRequirement("Black dagger", ItemID.BLACK_DAGGER);
+		ItemRequirement blackDaggerP = new ItemRequirement("Black dagger(p)", ItemID.BLACK_DAGGER_P);
+		ItemRequirement blackDaggerPplus = new ItemRequirement("Black dagger(p+)", ItemID.BLACK_DAGGER_P_);
+		ItemRequirement blackDaggerPplusPlus = new ItemRequirement("Black dagger(p++)", ItemID.BLACK_DAGGER_P__);
+		blackDagger = new ItemRequirements(LogicType.OR, "Black dagger", blackDaggerClean, blackDaggerP, blackDaggerPplus,
+		blackDaggerPplusPlus);
+
+		blackKnifeOrDagger = new ItemRequirements(LogicType.OR, "Black knife or black dagger", blackKnife, blackDagger);
+		blackKnifeOrDagger.setHighlightInInventory(true);
+	}
 
 
-    @Override
-    protected void setupSteps() {
-        items = new HashMap<>();
-        pillars = new ArrayList<>();
-        unknownItems = new ArrayList<>();
-        unknownItems.addAll(Arrays.asList("1st.", "2nd.", "3rd.", "4th.", "5th.", "6th."));
+	@Override
+	protected void setupSteps()
+	{
+		items = new HashMap<>();
+		pillars = new ArrayList<>();
+		unknownItems = new ArrayList<>();
+		unknownItems.addAll(Arrays.asList("1st.", "2nd.", "3rd.", "4th.", "5th.", "6th."));
 
-        String SOUTHWEST_ID = "south west";
-        pillars.add(new BaxtorianPillar(getQuestHelper(), new WorldPoint(2600, 9909, 0), new WorldPoint(2600, 9909, 0), "I am the ", SOUTHWEST_ID));
-        String WEST_ID = "west";
-        pillars.add(new BaxtorianPillar(getQuestHelper(), new WorldPoint(2600, 9913, 0), new WorldPoint(2600, 9911, 0), "I am next to the ", WEST_ID));
-        String NORTHWEST_ID = "north west";
-        pillars.add(new BaxtorianPillar(getQuestHelper(), new WorldPoint(2607, 9913, 0), new WorldPoint(2600, 9913, 0), "I am opposite the ", NORTHWEST_ID));
-        String EAST_ID = "east";
-        pillars.add(new BaxtorianPillar(getQuestHelper(), new WorldPoint(2607, 9911, 0), new WorldPoint(2607, 9911, 0), "I am not next to the ", EAST_ID));
-        String NORTHEAST_ID = "north east";
-        pillars.add(new BaxtorianPillar(getQuestHelper(), new WorldPoint(2607, 9909, 0), new WorldPoint(2607, 9913, 0), "I am not the ", NORTHEAST_ID));
-        String SOUTHEAST_ID = "south east";
-        pillars.add(new BaxtorianPillar(getQuestHelper(), new WorldPoint(2607, 9909, 0), new WorldPoint(2607, 9909, 0), null, SOUTHEAST_ID));
+		String SOUTHWEST_ID = "south west";
+		pillars.add(new BaxtorianPillar(getQuestHelper(), new WorldPoint(2600, 9909, 0), new WorldPoint(2600, 9909, 0), "I am the ", SOUTHWEST_ID));
+		String WEST_ID = "west";
+		pillars.add(new BaxtorianPillar(getQuestHelper(), new WorldPoint(2600, 9913, 0), new WorldPoint(2600, 9911, 0),  "I am next to the ", WEST_ID));
+		String NORTHWEST_ID = "north west";
+		pillars.add(new BaxtorianPillar(getQuestHelper(), new WorldPoint(2607, 9913, 0), new WorldPoint(2600, 9913, 0), "I am opposite the ", NORTHWEST_ID));
+		String EAST_ID = "east";
+		pillars.add(new BaxtorianPillar(getQuestHelper(), new WorldPoint(2607, 9911, 0), new WorldPoint(2607, 9911, 0), "I am not next to the ", EAST_ID));
+		String NORTHEAST_ID = "north east";
+		pillars.add(new BaxtorianPillar(getQuestHelper(), new WorldPoint(2607, 9909, 0), new WorldPoint(2607, 9913, 0), "I am not the ", NORTHEAST_ID));
+		String SOUTHEAST_ID = "south east";
+		pillars.add(new BaxtorianPillar(getQuestHelper(), new WorldPoint(2607, 9909, 0), new WorldPoint(2607, 9909, 0), null, SOUTHEAST_ID));
 
-        setupItemRequirements();
+		setupItemRequirements();
 
-        items.put("1st.", natureRune);
-        items.put("2nd.", flowersOrIrit);
-        items.put("3rd.", blackKnifeOrDagger);
-        items.put("4th.", wineOfZamorakOrZamorakBrew);
-        items.put("5th.", adamantChainbody);
-        items.put("6th.", cabbage);
-    }
+		items.put("1st.", natureRune);
+		items.put("2nd.", flowersOrIrit);
+		items.put("3rd.", blackKnifeOrDagger);
+		items.put("4th.", wineOfZamorakOrZamorakBrew);
+		items.put("5th.", adamantChainbody);
+		items.put("6th.", cabbage);
+	}
 
-    @Override
-    public Collection<QuestStep> getSteps() {
-        List<QuestStep> steps = new ArrayList<>();
-        for (BaxtorianPillar pillar : pillars) {
-            steps.add(pillar.getInspectStep());
-            steps.add(pillar.getUseStep());
-        }
-        return steps;
-    }
+	@Override
+	public Collection<QuestStep> getSteps()
+	{
+		List<QuestStep> steps = new ArrayList<>();
+		for (BaxtorianPillar pillar : pillars)
+		{
+			steps.add(pillar.getInspectStep());
+			steps.add(pillar.getUseStep());
+		}
+		return steps;
+	}
 
-    @Subscribe
-    public void onWidgetLoaded(WidgetLoaded widgetLoaded) {
-        if (widgetLoaded.getGroupId() == 229) {
-            Widget hintWidget = client.getWidget(229, 1);
+	@Subscribe
+	public void onWidgetLoaded(WidgetLoaded widgetLoaded)
+	{
+		if (widgetLoaded.getGroupId() == 229)
+		{
+			Widget hintWidget = client.getWidget(InterfaceID.Messagebox.TEXT);
 
-            if (hintWidget != null) {
-                clientThread.invokeLater(() -> checkHint(hintWidget.getText()));
-            }
-        }
-    }
+			if (hintWidget != null)
+			{
+				clientThread.invokeLater(() -> checkHint(hintWidget.getText()));
+			}
+		}
+	}
 }

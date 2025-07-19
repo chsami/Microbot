@@ -25,60 +25,68 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.questhelpers;
 
-
 import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
 
 import java.util.function.Predicate;
 
-public interface QuestDetails {
-    /**
-     * Describes the difficulty of a {@link QuestHelperQuest}
-     */
-    enum Difficulty implements Predicate<QuestHelper> {
-        ALL,
-        NOVICE,
-        INTERMEDIATE,
-        EXPERIENCED,
-        MASTER,
-        GRANDMASTER,
-        MINIQUEST,
-        ACHIEVEMENT_DIARY,
-        GENERIC,
-        SKILL,
-        PLAYER_QUEST;
+public interface QuestDetails
+{
+	public static boolean showCompletedQuests(QuestHelper quest)
+	{
+		return quest.getConfig().showCompletedQuests() && quest.isCompleted() || !quest.isCompleted();
+	}
 
-        @Override
-        public boolean test(QuestHelper quest) {
-            return quest.getQuest().getDifficulty() == this || this == ALL;
-        }
-    }
+	public static boolean isNotCompleted(QuestHelper quest)
+	{
+		return !quest.isCompleted();
+	}
 
-    /**
-     * Describes if the quest is free-to-play (F2P), pay-to-play(P2P),
-     * or a miniquest.
-     */
-    enum Type implements Predicate<QuestHelper> {
-        F2P,
-        P2P,
-        MINIQUEST,
-        ACHIEVEMENT_DIARY,
-        GENERIC,
-        SKILL,
-        SKILL_F2P,
-        SKILL_P2P,
-        PLAYER_QUEST;
+	/**
+	 * Describes the difficulty of a {@link QuestHelperQuest}
+	 */
+	public enum Difficulty implements Predicate<QuestHelper>
+	{
+		ALL,
+		NOVICE,
+		INTERMEDIATE,
+		EXPERIENCED,
+		MASTER,
+		GRANDMASTER,
+		MINIQUEST,
+		ACHIEVEMENT_DIARY,
+		GENERIC,
+		SKILL,
+		PLAYER_QUEST
+		;
 
-        @Override
-        public boolean test(QuestHelper quest) {
-            return quest.getQuest().getQuestType() == this;
-        }
-    }
+		@Override
+		public boolean test(QuestHelper quest)
+		{
+			return quest.getQuest().getDifficulty() == this || this == ALL;
+		}
+	}
 
-    static boolean showCompletedQuests(QuestHelper quest) {
-        return quest.getConfig().showCompletedQuests() && quest.isCompleted() || !quest.isCompleted();
-    }
+	/**
+	 * Describes if the quest is free-to-play (F2P), pay-to-play(P2P),
+	 * or a miniquest.
+	 */
+	public enum Type implements Predicate<QuestHelper>
+	{
+		F2P,
+		P2P,
+		MINIQUEST,
+		ACHIEVEMENT_DIARY,
+		GENERIC,
+		SKILL,
+		SKILL_F2P,
+		SKILL_P2P,
+		PLAYER_QUEST
+		;
 
-    static boolean isNotCompleted(QuestHelper quest) {
-        return !quest.isCompleted();
-    }
+		@Override
+		public boolean test(QuestHelper quest)
+		{
+			return quest.getQuest().getQuestType() == this;
+		}
+	}
 }

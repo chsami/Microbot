@@ -25,9 +25,9 @@
 package net.runelite.client.plugins.microbot.questhelper.util.worldmap;
 
 import lombok.Value;
-
 @Value
-public class WorldMapAreaChanged {
-    WorldMapArea worldMapArea;
+public class WorldMapAreaChanged
+{
+	WorldMapArea worldMapArea;
 }
 

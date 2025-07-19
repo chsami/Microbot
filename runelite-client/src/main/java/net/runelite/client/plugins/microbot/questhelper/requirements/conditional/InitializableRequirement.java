@@ -26,8 +26,8 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements.conditional;
 
-import net.runelite.api.Client;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
+import net.runelite.api.Client;
 
 import javax.annotation.Nonnull;
 import java.util.List;
@@ -36,26 +36,27 @@ import java.util.List;
  * Represents a {@link Requirement} that has to be initialized before being
  * able to check it's requirement state.
  */
-public interface InitializableRequirement extends Requirement {
-    /**
-     * Load the initial state of this requirement.
-     *
-     * @param client the {@link Client}
-     */
-    void initialize(Client client);
+public interface InitializableRequirement extends Requirement
+{
+	/**
+	 * Load the initial state of this requirement.
+	 *
+	 * @param client the {@link Client}
+	 */
+	void initialize(Client client);
 
-    /**
-     * This is called when the client is loading in to a world or hopping between worlds.
-     * This is, primarily, used to update the internal state of a requirement while
-     * not resetting it entirely.
-     */
-    void updateHandler();
+	/**
+	 * This is called when the client is loading in to a world or hopping between worlds.
+	 * This is, primarily, used to update the internal state of a requirement while
+	 * not resetting it entirely.
+	 */
+	void updateHandler();
 
-    /**
-     * {@link InitializableRequirement}s can have their own requirements on top.
-     *
-     * @return a list of {@link Requirement} for this requirement. If there are no requirements, an empty list is returned.
-     */
-    @Nonnull
-    List<Requirement> getConditions();
+	/**
+	 * {@link InitializableRequirement}s can have their own requirements on top.
+	 *
+	 * @return a list of {@link Requirement} for this requirement. If there are no requirements, an empty list is returned.
+	 */
+	@Nonnull
+	List<Requirement> getConditions();
 }

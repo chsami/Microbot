@@ -147,8 +147,8 @@ public class PathfinderConfig {
         useQuetzals = ShortestPathPlugin.override("useQuetzals", config.useQuetzals());
         useSpiritTrees = ShortestPathPlugin.override("useSpiritTrees", config.useSpiritTrees());
         useTeleportationItems = ShortestPathPlugin.override("useTeleportationItems", config.useTeleportationItems());
-        useTeleportationMinigames = ShortestPathPlugin.override("useTeleportationLevers", config.useTeleportationLevers());
-        useTeleportationLevers = ShortestPathPlugin.override("useTeleportationMinigames", config.useTeleportationMinigames());
+        useTeleportationMinigames = ShortestPathPlugin.override("useTeleportationMinigames",config.useTeleportationMinigames());
+        useTeleportationLevers = ShortestPathPlugin.override("useTeleportationLevers", config.useTeleportationLevers());
         useTeleportationPortals = ShortestPathPlugin.override("useTeleportationPortals", config.useTeleportationPortals());
         useTeleportationSpells = ShortestPathPlugin.override("useTeleportationSpells", config.useTeleportationSpells());
         useWildernessObelisks = ShortestPathPlugin.override("useWildernessObelisks", config.useWildernessObelisks());

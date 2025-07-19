@@ -24,21 +24,22 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.theheartofdarkness;
 
-
-import lombok.Data;
-import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.questhelper.requirements.ManualRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
+import lombok.Data;
+import net.runelite.api.coords.WorldPoint;
 
 @Data
-public class StatueDetails {
+public class StatueDetails
+{
     Zone elementZone;
     Integer posInOrder = -1;
     ManualRequirement hasBeenInspected;
     WorldPoint statuePos;
     String elementName;
 
-    public StatueDetails(Zone zone, ManualRequirement hasBeenInspected, WorldPoint statuePos, String elementName) {
+    public StatueDetails(Zone zone, ManualRequirement hasBeenInspected, WorldPoint statuePos, String elementName)
+    {
         this.elementZone = zone;
         this.hasBeenInspected = hasBeenInspected;
         this.statuePos = statuePos;

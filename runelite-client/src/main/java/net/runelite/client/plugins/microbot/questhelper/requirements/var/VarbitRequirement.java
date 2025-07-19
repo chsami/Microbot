@@ -27,15 +27,14 @@
 
 package net.runelite.client.plugins.microbot.questhelper.requirements.var;
 
-
+import net.runelite.client.plugins.microbot.questhelper.requirements.AbstractRequirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.util.Operation;
+import net.runelite.client.plugins.microbot.questhelper.util.Utils;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.Varbits;
-import net.runelite.client.plugins.microbot.questhelper.requirements.AbstractRequirement;
-import net.runelite.client.plugins.microbot.questhelper.requirements.util.Operation;
-import net.runelite.client.plugins.microbot.questhelper.util.Utils;
 
 import javax.annotation.Nonnull;
 import java.math.BigInteger;
@@ -47,132 +46,146 @@ import java.util.Locale;
  */
 @Getter
 @Slf4j
-public class VarbitRequirement extends AbstractRequirement {
-    private final int varbitID;
-    private final Operation operation;
-    private final String displayText;
-    @Setter
-    private int requiredValue;
-    // bit positions
-    private boolean bitIsSet = false;
-    private int bitPosition = -1;
+public class VarbitRequirement extends AbstractRequirement
+{
+	private final int varbitID;
 
-    private boolean hasFiredWarning = false;
+	@Setter
+	private int requiredValue;
+	private final Operation operation;
+	private final String displayText;
 
-    /**
-     * Check if the player's varbit value meets the required level using the given
-     * {@link Operation}.
-     *
-     * @param varbitID      the {@link Varbits} id to use
-     * @param operation     the {@link Operation} to check with
-     * @param requiredValue the required varbit value to pass this requirement
-     * @param displayText   the display text
-     */
-    public VarbitRequirement(int varbitID, Operation operation, int requiredValue, String displayText) {
-        this.varbitID = varbitID;
-        this.operation = operation;
-        this.requiredValue = requiredValue;
-        this.displayText = displayText;
-        shouldCountForFilter = true;
-    }
+	// bit positions
+	private boolean bitIsSet = false;
+	private int bitPosition = -1;
 
-    /**
-     * Check if the player's varbit value meets the required level using the given
-     * {@link Operation}.
-     *
-     * @param varbitID             the {@link Varbits} id to use
-     * @param operation            the {@link Operation} to check with
-     * @param requiredValue        the required varbit value to pass this requirement
-     * @param displayText          the display text
-     * @param shouldCountForFilter if the requirement should count for quest filtering
-     */
-    public VarbitRequirement(int varbitID, Operation operation, int requiredValue, String displayText, boolean shouldCountForFilter) {
-        this.varbitID = varbitID;
-        this.operation = operation;
-        this.requiredValue = requiredValue;
-        this.displayText = displayText;
-        this.shouldCountForFilter = shouldCountForFilter;
-    }
+	private boolean hasFiredWarning = false;
 
-    /**
-     * Check if a specified varbit value is exactly the supplied value.
-     *
-     * @param varbitID the varbit id
-     * @param value    the value the varbit should be
-     */
-    public VarbitRequirement(int varbitID, int value) {
-        this(varbitID, Operation.EQUAL, value, null);
-    }
+	/**
+	 * Check if the player's varbit value meets the required level using the given
+	 * {@link Operation}.
+	 *
+	 * @param varbitID      the {@link Varbits} id to use
+	 * @param operation     the {@link Operation} to check with
+	 * @param requiredValue the required varbit value to pass this requirement
+	 * @param displayText   the display text
+	 */
+	public VarbitRequirement(int varbitID, Operation operation, int requiredValue, String displayText)
+	{
+		this.varbitID = varbitID;
+		this.operation = operation;
+		this.requiredValue = requiredValue;
+		this.displayText = displayText;
+		shouldCountForFilter = true;
+	}
 
-    /**
-     * Check the supplied varbit's value using the given {@link Operation}
-     *
-     * @param varbitID  the varbit id
-     * @param value     the value it should be
-     * @param operation the operation to check with
-     */
-    public VarbitRequirement(int varbitID, int value, Operation operation) {
-        this(varbitID, operation, value, null);
-    }
+	/**
+	 * Check if the player's varbit value meets the required level using the given
+	 * {@link Operation}.
+	 *
+	 * @param varbitID             the {@link Varbits} id to use
+	 * @param operation            the {@link Operation} to check with
+	 * @param requiredValue        the required varbit value to pass this requirement
+	 * @param displayText          the display text
+	 * @param shouldCountForFilter if the requirement should count for quest filtering
+	 */
+	public VarbitRequirement(int varbitID, Operation operation, int requiredValue, String displayText, boolean shouldCountForFilter)
+	{
+		this.varbitID = varbitID;
+		this.operation = operation;
+		this.requiredValue = requiredValue;
+		this.displayText = displayText;
+		this.shouldCountForFilter = shouldCountForFilter;
+	}
 
-    /**
-     * Checks if a specified varbit value has a specific bit position set.
-     *
-     * @param varbitID    the varbit id
-     * @param bitIsSet    if the bit should be set
-     * @param bitPosition the position of the bit in question
-     */
-    public VarbitRequirement(int varbitID, boolean bitIsSet, int bitPosition) {
-        this.varbitID = varbitID;
-        this.requiredValue = -1;
-        this.operation = Operation.EQUAL;
+	/**
+	 * Check if a specified varbit value is exactly the supplied value.
+	 *
+	 * @param varbitID the varbit id
+	 * @param value    the value the varbit should be
+	 */
+	public VarbitRequirement(int varbitID, int value)
+	{
+		this(varbitID, Operation.EQUAL, value, null);
+	}
 
-        this.bitPosition = bitPosition;
-        this.bitIsSet = bitIsSet;
-        String[] suffixes = new String[]{"th", "st", "nd", "rd", "th", "th", "th", "th", "th", "th"};
-        String text = String.valueOf(bitPosition);
-        switch (bitPosition % 100) {
-            case 11:
-            case 12:
-            case 13:
-                text += "th";
-            default:
-                text = bitPosition + suffixes[bitPosition % 10];
-        }
-        this.displayText = varbitID + " must have the " + text + " bit set.";
+	/**
+	 * Check the supplied varbit's value using the given {@link Operation}
+	 *
+	 * @param varbitID  the varbit id
+	 * @param value     the value it should be
+	 * @param operation the operation to check with
+	 */
+	public VarbitRequirement(int varbitID, int value, Operation operation)
+	{
+		this(varbitID, operation, value, null);
+	}
 
-        shouldCountForFilter = true;
-    }
+	/**
+	 * Checks if a specified varbit value has a specific bit position set.
+	 *
+	 * @param varbitID    the varbit id
+	 * @param bitIsSet    if the bit should be set
+	 * @param bitPosition the position of the bit in question
+	 */
+	public VarbitRequirement(int varbitID, boolean bitIsSet, int bitPosition)
+	{
+		this.varbitID = varbitID;
+		this.requiredValue = -1;
+		this.operation = Operation.EQUAL;
 
-    @Override
-    public boolean check(Client client) {
-        try {
-            var varbitValue = client.getVarbitValue(varbitID);
-            if (bitPosition >= 0) {
-                return bitIsSet == BigInteger.valueOf(varbitValue).testBit(bitPosition);
-            }
+		this.bitPosition = bitPosition;
+		this.bitIsSet = bitIsSet;
+		String[] suffixes = new String[]{"th", "st", "nd", "rd", "th", "th", "th", "th", "th", "th"};
+		String text = String.valueOf(bitPosition);
+		switch (bitPosition % 100)
+		{
+			case 11:
+			case 12:
+			case 13:
+				text += "th";
+			default:
+				text = bitPosition + suffixes[bitPosition % 10];
+		}
+		this.displayText = varbitID + " must have the " + text + " bit set.";
 
-            return operation.check(varbitValue, requiredValue);
-        } catch (IndexOutOfBoundsException e) {
-            if (!hasFiredWarning) {
-                var message = String.format("Error reading varbit %d, please report this in the Quest Helper discord.", varbitID);
-                log.warn(message);
-                Utils.addChatMessage(client, message);
-                hasFiredWarning = true;
-            }
-            return false;
-        }
-    }
+		shouldCountForFilter = true;
+	}
 
-    @Nonnull
-    @Override
-    public String getDisplayText() {
-        if (displayText != null) {
-            return displayText;
-        }
-        if (bitPosition >= 0) {
-            return varbitID + " must have the " + bitPosition + " bit set.";
-        }
-        return varbitID + " must be + " + operation.name().toLowerCase(Locale.ROOT) + " " + requiredValue;
-    }
+	@Override
+	public boolean check(Client client)
+	{
+		try {
+			var varbitValue = client.getVarbitValue(varbitID);
+			if (bitPosition >= 0)
+			{
+				return bitIsSet == BigInteger.valueOf(varbitValue).testBit(bitPosition);
+			}
+
+			return operation.check(varbitValue, requiredValue);
+		} catch (IndexOutOfBoundsException e) {
+			if (!hasFiredWarning) {
+				var message = String.format("Error reading varbit %d, please report this in the Quest Helper discord.", varbitID);
+				log.warn(message);
+				Utils.addChatMessage(client, message);
+				hasFiredWarning = true;
+			}
+			return false;
+		}
+	}
+
+	@Nonnull
+	@Override
+	public String getDisplayText()
+	{
+		if (displayText != null)
+		{
+			return displayText;
+		}
+		if (bitPosition >= 0)
+		{
+			return varbitID + " must have the " + bitPosition + " bit set.";
+		}
+		return varbitID + " must be + " + operation.name().toLowerCase(Locale.ROOT) + " " + requiredValue;
+	}
 }

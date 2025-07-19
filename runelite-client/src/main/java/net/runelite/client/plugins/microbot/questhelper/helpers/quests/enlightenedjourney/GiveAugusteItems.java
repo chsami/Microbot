@@ -24,69 +24,77 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.enlightenedjourney;
 
-
-import net.runelite.api.ItemID;
-import net.runelite.api.NpcID;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.GameTick;
-import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarbitRequirement;
 import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
-import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.client.eventbus.Subscribe;
 
-public class GiveAugusteItems extends NpcStep {
-    private static final ItemRequirement sandbag8 = new ItemRequirement("Sandbag", ItemID.SANDBAG, 8);
-    private static final ItemRequirement yellowDye = new ItemRequirement("Yellow dye", ItemID.YELLOW_DYE);
-    private static final ItemRequirement redDye = new ItemRequirement("Red dye", ItemID.RED_DYE);
-    private static final ItemRequirement silk10 = new ItemRequirement("Silk", ItemID.SILK, 10);
-    private static final ItemRequirement bowl = new ItemRequirement("Bowl", ItemID.BOWL);
+public class GiveAugusteItems extends NpcStep
+{
+	private static final ItemRequirement sandbag8 = new ItemRequirement("Sandbag", ItemID.ZEP_SANDBAG, 8);
+	private static final ItemRequirement yellowDye = new ItemRequirement("Yellow dye", ItemID.YELLOWDYE);
+	private static final ItemRequirement redDye = new ItemRequirement("Red dye", ItemID.REDDYE);
+	private static final ItemRequirement silk10 = new ItemRequirement("Silk", ItemID.SILK, 10);
+	private static final ItemRequirement bowl = new ItemRequirement("Bowl", ItemID.BOWL_EMPTY);
 
-    private final Requirement givenRedDye;
-    private final Requirement givenYellowDye;
-    private final Requirement givenSandbags;
-    private final Requirement givenSilk;
-    private final Requirement givenBowl;
+	private final Requirement givenRedDye;
+	private final Requirement givenYellowDye;
+	private final Requirement givenSandbags;
+	private final Requirement givenSilk;
+	private final Requirement givenBowl;
 
-    public GiveAugusteItems(QuestHelper questHelper) {
+	public GiveAugusteItems(QuestHelper questHelper)
+	{
 
-        super(questHelper, NpcID.AUGUSTE, new WorldPoint(2809, 3354, 0),
-                "Give Auguste the sandbags, silk, dyes, and bowl.", sandbag8, silk10, redDye, yellowDye, bowl);
-        givenRedDye = new VarbitRequirement(2873, 1);
-        givenYellowDye = new VarbitRequirement(2874, 1); // 2879 = 1 as well, maybe both dyes done
-        givenSandbags = new VarbitRequirement(2875, 1);
-        givenSilk = new VarbitRequirement(2876, 1);
-        givenBowl = new VarbitRequirement(2877, 1);
-    }
+		super(questHelper, NpcID.ZEP_PICCARD, new WorldPoint(2809, 3354, 0),
+			"Give Auguste the sandbags, silk, dyes, and bowl.", sandbag8, silk10, redDye, yellowDye, bowl);
+		givenRedDye = new VarbitRequirement(2873, 1);
+		givenYellowDye = new VarbitRequirement(2874, 1); // 2879 = 1 as well, maybe both dyes done
+		givenSandbags = new VarbitRequirement(2875, 1);
+		givenSilk = new VarbitRequirement(2876, 1);
+		givenBowl = new VarbitRequirement(2877, 1);
+	}
 
-    @Subscribe
-    public void onGameTick(GameTick event) {
-        updateSteps();
-    }
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		updateSteps();
+	}
 
-    protected void updateSteps() {
-        emptyRequirements();
+	protected void updateSteps()
+	{
+		emptyRequirements();
 
-        if (!givenRedDye.check(client)) {
-            requirements.add(redDye);
-        }
+		if (!givenRedDye.check(client))
+		{
+			requirements.add(redDye);
+		}
 
-        if (!givenYellowDye.check(client)) {
-            requirements.add(yellowDye);
-        }
+		if (!givenYellowDye.check(client))
+		{
+			requirements.add(yellowDye);
+		}
 
-        if (!givenBowl.check(client)) {
-            requirements.add(bowl);
-        }
+		if (!givenBowl.check(client))
+		{
+			requirements.add(bowl);
+		}
 
-        if (!givenSandbags.check(client)) {
-            requirements.add(sandbag8);
-        }
+		if (!givenSandbags.check(client))
+		{
+			requirements.add(sandbag8);
+		}
 
-        if (!givenSilk.check(client)) {
-            requirements.add(silk10);
-        }
-    }
+		if (!givenSilk.check(client))
+		{
+			requirements.add(silk10);
+		}
+	}
 }
 

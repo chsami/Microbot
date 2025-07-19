@@ -24,69 +24,73 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.config;
 
-import net.runelite.client.config.ConfigManager;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
+import net.runelite.client.config.ConfigManager;
 
-public class AssistanceLevel {
-    public static final String ASSISTANCE_LEVEL_KEY = "assistanceLevel";
+public class AssistanceLevel
+{
+	public static final String ASSISTANCE_LEVEL_KEY = "assistanceLevel";
 
-    public static void setToMinimumAssistance(ConfigManager configManager) {
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "autoStartQuests", true);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "autoOpenSidebar", true);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showOverlayPanel", false);
+	public static void setToMinimumAssistance(ConfigManager configManager)
+	{
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "autoStartQuests", true);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "autoOpenSidebar", true);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showOverlayPanel", false);
 
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showTextHighlight", false);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showSymbolOverlay", false);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleNpcs", QuestHelperConfig.NpcHighlightStyle.NONE);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleObjects", QuestHelperConfig.ObjectHighlightStyle.NONE);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleGroundItems", QuestHelperConfig.GroundItemHighlightStyle.NONE);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showTextHighlight", false);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showSymbolOverlay", false);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleNpcs", QuestHelperConfig.NpcHighlightStyle.NONE);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleObjects", QuestHelperConfig.ObjectHighlightStyle.NONE);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleGroundItems", QuestHelperConfig.GroundItemHighlightStyle.NONE);
 
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleInventoryItems", QuestHelperConfig.InventoryItemHighlightStyle.NONE);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showMiniMapArrow", false);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showWorldLines", false);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showWidgetHints", false);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "solvePuzzles", false);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleInventoryItems", QuestHelperConfig.InventoryItemHighlightStyle.NONE);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showMiniMapArrow", false);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showWorldLines", false);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showWidgetHints", false);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "solvePuzzles", false);
 
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, ASSISTANCE_LEVEL_KEY, "minimum");
-    }
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, ASSISTANCE_LEVEL_KEY, "minimum");
+	}
 
-    public static void setToMediumAssistance(ConfigManager configManager) {
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "autoStartQuests", true);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "autoOpenSidebar", true);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showOverlayPanel", true);
+	public static void setToMediumAssistance(ConfigManager configManager)
+	{
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "autoStartQuests", true);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "autoOpenSidebar", true);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showOverlayPanel", true);
 
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showTextHighlight", true);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showSymbolOverlay", false);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleNpcs", QuestHelperConfig.NpcHighlightStyle.NONE);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleObjects", QuestHelperConfig.ObjectHighlightStyle.NONE);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleGroundItems", QuestHelperConfig.GroundItemHighlightStyle.NONE);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showTextHighlight", true);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showSymbolOverlay", false);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleNpcs", QuestHelperConfig.NpcHighlightStyle.NONE);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleObjects", QuestHelperConfig.ObjectHighlightStyle.NONE);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleGroundItems", QuestHelperConfig.GroundItemHighlightStyle.NONE);
 
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleInventoryItems", QuestHelperConfig.InventoryItemHighlightStyle.NONE);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showMiniMapArrow", true);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showWorldLines", true);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showWidgetHints", false);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "solvePuzzles", false);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleInventoryItems", QuestHelperConfig.InventoryItemHighlightStyle.NONE);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showMiniMapArrow", true);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showWorldLines", true);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showWidgetHints", false);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "solvePuzzles", false);
 
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, ASSISTANCE_LEVEL_KEY, "medium");
-    }
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, ASSISTANCE_LEVEL_KEY, "medium");
+	}
 
-    public static void setToFullAssistance(ConfigManager configManager) {
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "autoStartQuests", true);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "autoOpenSidebar", true);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showOverlayPanel", true);
+	public static void setToFullAssistance(ConfigManager configManager)
+	{
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "autoStartQuests", true);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "autoOpenSidebar", true);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showOverlayPanel", true);
 
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showTextHighlight", true);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showSymbolOverlay", true);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleNpcs", QuestHelperConfig.NpcHighlightStyle.OUTLINE);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleObjects", QuestHelperConfig.ObjectHighlightStyle.OUTLINE);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleGroundItems", QuestHelperConfig.GroundItemHighlightStyle.OUTLINE);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showTextHighlight", true);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showSymbolOverlay", true);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleNpcs", QuestHelperConfig.NpcHighlightStyle.OUTLINE);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleObjects", QuestHelperConfig.ObjectHighlightStyle.OUTLINE);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleGroundItems", QuestHelperConfig.GroundItemHighlightStyle.OUTLINE);
 
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleInventoryItems", QuestHelperConfig.InventoryItemHighlightStyle.OUTLINE);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showMiniMapArrow", true);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showWorldLines", true);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showWidgetHints", true);
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "solvePuzzles", true);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "highlightStyleInventoryItems", QuestHelperConfig.InventoryItemHighlightStyle.OUTLINE);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showMiniMapArrow", true);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showWorldLines", true);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "showWidgetHints", true);
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, "solvePuzzles", true);
 
-        configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, ASSISTANCE_LEVEL_KEY, "full");
-    }
+		configManager.setConfiguration(QuestHelperConfig.QUEST_HELPER_GROUP, ASSISTANCE_LEVEL_KEY, "full");
+	}
 }

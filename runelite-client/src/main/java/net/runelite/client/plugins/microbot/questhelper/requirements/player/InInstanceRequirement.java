@@ -27,13 +27,14 @@
 
 package net.runelite.client.plugins.microbot.questhelper.requirements.player;
 
-
-import net.runelite.api.Client;
 import net.runelite.client.plugins.microbot.questhelper.requirements.SimpleRequirement;
+import net.runelite.api.Client;
 
-public class InInstanceRequirement extends SimpleRequirement {
-    @Override
-    public boolean check(Client client) {
-        return client.isInInstancedRegion();
-    }
+public class InInstanceRequirement extends SimpleRequirement
+{
+	@Override
+	public boolean check(Client client)
+	{
+		return client.isInInstancedRegion();
+	}
 }

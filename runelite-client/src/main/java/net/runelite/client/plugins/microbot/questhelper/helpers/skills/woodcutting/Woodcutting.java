@@ -25,130 +25,136 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.skills.woodcutting;
 
-
-import net.runelite.api.ItemID;
-import net.runelite.api.ObjectID;
-import net.runelite.api.Skill;
-import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.ComplexStateQuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.conditional.Conditions;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.player.SkillRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicType;
+import net.runelite.client.plugins.microbot.questhelper.rewards.UnlockReward;
 import net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
-import net.runelite.client.plugins.microbot.questhelper.rewards.UnlockReward;
+import net.runelite.api.Skill;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.ObjectID;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class Woodcutting extends ComplexStateQuestHelper {
-    //Items Required
-    ItemRequirement ironAxe, steelAxe, blackAxe, mithrilAxe, adamantAxe, runeAxe;
+public class Woodcutting extends ComplexStateQuestHelper
+{
+	//Items Required
+	ItemRequirement ironAxe, steelAxe, blackAxe, mithrilAxe, adamantAxe, runeAxe;
 
-    // Levels for axes
-    SkillRequirement wc6, wc11, wc21, wc31, wc41, wc61;
+	// Levels for axes
+	SkillRequirement wc6, wc11, wc21, wc31, wc41, wc61;
 
-    SkillRequirement wc15, wc30;
+	SkillRequirement wc15, wc30;
 
-    QuestStep chopNormalTree, chopOakTrees, chopWillowTrees;
+	QuestStep chopNormalTree, chopOakTrees, chopWillowTrees;
 
-    @Override
-    public QuestStep loadStep() {
-        initializeRequirements();
-        setupSteps();
+	@Override
+	public QuestStep loadStep()
+	{
+		initializeRequirements();
+		setupSteps();
 
-        ConditionalStep fullTraining = new ConditionalStep(this, chopNormalTree);
-        fullTraining.addStep(wc30, chopWillowTrees);
-        fullTraining.addStep(wc15, chopOakTrees);
+		ConditionalStep fullTraining = new ConditionalStep(this, chopNormalTree);
+		fullTraining.addStep(wc30, chopWillowTrees);
+		fullTraining.addStep(wc15, chopOakTrees);
 
-        return fullTraining;
-    }
+		return fullTraining;
+	}
 
-    @Override
-    protected void setupRequirements() {
-        wc6 = new SkillRequirement(Skill.WOODCUTTING, 6);
-        wc11 = new SkillRequirement(Skill.WOODCUTTING, 11);
-        wc21 = new SkillRequirement(Skill.WOODCUTTING, 21);
-        wc31 = new SkillRequirement(Skill.WOODCUTTING, 31);
-        wc41 = new SkillRequirement(Skill.WOODCUTTING, 41);
-        wc61 = new SkillRequirement(Skill.WOODCUTTING, 61);
+	@Override
+	protected void setupRequirements()
+	{
+		wc6 = new SkillRequirement(Skill.WOODCUTTING, 6);
+		wc11 = new SkillRequirement(Skill.WOODCUTTING, 11);
+		wc21 = new SkillRequirement(Skill.WOODCUTTING, 21);
+		wc31 = new SkillRequirement(Skill.WOODCUTTING, 31);
+		wc41 = new SkillRequirement(Skill.WOODCUTTING, 41);
+		wc61 = new SkillRequirement(Skill.WOODCUTTING, 61);
 
-        wc15 = new SkillRequirement(Skill.WOODCUTTING, 15);
-        wc30 = new SkillRequirement(Skill.WOODCUTTING, 30);
+		wc15 = new SkillRequirement(Skill.WOODCUTTING, 15);
+		wc30 = new SkillRequirement(Skill.WOODCUTTING, 30);
 
-        ironAxe = new ItemRequirement(
-                "Iron axe", ItemID.IRON_AXE).showConditioned(
-                new Conditions(LogicType.NOR, wc6)
-        ).isNotConsumed();
-        steelAxe = new ItemRequirement(
-                "Steel axe", ItemID.STEEL_AXE).showConditioned(
-                new Conditions(wc6, new Conditions(LogicType.NOR, wc11))
-        ).isNotConsumed();
-        blackAxe = new ItemRequirement(
-                "Black axe", ItemID.BLACK_AXE).showConditioned(
-                new Conditions(wc11, new Conditions(LogicType.NOR, wc21))
-        ).isNotConsumed();
-        mithrilAxe = new ItemRequirement(
-                "Mithril axe", ItemID.MITHRIL_AXE).showConditioned(
-                new Conditions(wc21, new Conditions(LogicType.NOR, wc31))
-        ).isNotConsumed();
-        adamantAxe = new ItemRequirement(
-                "Adamant axe", ItemID.ADAMANT_AXE).showConditioned(
-                new Conditions(wc31, new Conditions(LogicType.NOR, wc41))
-        ).isNotConsumed();
-        runeAxe = new ItemRequirement(
-                "Rune axe", ItemID.RUNE_AXE).showConditioned(
-                new Conditions(wc41)
-        ).isNotConsumed();
-    }
+		ironAxe = new ItemRequirement(
+			"Iron axe", ItemID.IRON_AXE).showConditioned(
+			new Conditions(LogicType.NOR, wc6)
+		).isNotConsumed();
+		steelAxe = new ItemRequirement(
+			"Steel axe", ItemID.STEEL_AXE).showConditioned(
+			new Conditions(wc6, new Conditions(LogicType.NOR, wc11))
+		).isNotConsumed();
+		blackAxe = new ItemRequirement(
+			"Black axe", ItemID.BLACK_AXE).showConditioned(
+			new Conditions(wc11, new Conditions(LogicType.NOR, wc21))
+		).isNotConsumed();
+		mithrilAxe = new ItemRequirement(
+			"Mithril axe", ItemID.MITHRIL_AXE).showConditioned(
+			new Conditions(wc21, new Conditions(LogicType.NOR, wc31))
+		).isNotConsumed();
+		adamantAxe = new ItemRequirement(
+			"Adamant axe", ItemID.ADAMANT_AXE).showConditioned(
+			new Conditions(wc31, new Conditions(LogicType.NOR, wc41))
+		).isNotConsumed();
+		runeAxe = new ItemRequirement(
+			"Rune axe", ItemID.RUNE_AXE).showConditioned(
+			new Conditions(wc41)
+		).isNotConsumed();
+	}
 
-    private void setupSteps() {
-        chopNormalTree = new ObjectStep(this, ObjectID.TREE, new WorldPoint(3192, 3223, 0),
-                "Chop normal trees around Lumbridge until 15 Woodcutting. You can choose to burn the logs as you go, drop" +
-                        " them, or bank them.", true, ironAxe, steelAxe, blackAxe
-        );
+	private void setupSteps()
+	{
+		chopNormalTree = new ObjectStep(this, ObjectID.TREE, new WorldPoint(3192, 3223, 0),
+			"Chop normal trees around Lumbridge until 15 Woodcutting. You can choose to burn the logs as you go, drop" +
+				" them, or bank them.", true, ironAxe, steelAxe, blackAxe
+		);
 
-        chopOakTrees = new ObjectStep(this, ObjectID.OAK_TREE_10820, new WorldPoint(3190, 3247, 0),
-                "Chop oak trees around Lumbridge until 30 Woodcutting. You can choose to burn the logs as you go, drop" +
-                        " them, or bank them.", true, steelAxe, blackAxe, mithrilAxe, adamantAxe
-        );
+		chopOakTrees = new ObjectStep(this, ObjectID.OAKTREE, new WorldPoint(3190, 3247, 0),
+			"Chop oak trees around Lumbridge until 30 Woodcutting. You can choose to burn the logs as you go, drop" +
+				" them, or bank them.", true, steelAxe, blackAxe, mithrilAxe, adamantAxe
+		);
 
-        chopWillowTrees = new ObjectStep(this, ObjectID.WILLOW_TREE_10819, new WorldPoint(3059, 3253, 0),
-                "Chop willow trees east of the Rusty Anchor Inn in Port Sarim until 99 Woodcutting. You can deposit them" +
-                        " at the bank deposit box just south on the docks next to the monks." +
-                        " If choose to burn the logs as you go or drop them, oak trees gives faster XP until 60 Woodcutting",
-                true, steelAxe, blackAxe, mithrilAxe, adamantAxe, runeAxe
-        );
-    }
+		chopWillowTrees = new ObjectStep(this, ObjectID.WILLOWTREE, new WorldPoint(3059, 3253, 0),
+			"Chop willow trees east of the Rusty Anchor Inn in Port Sarim until 99 Woodcutting. You can deposit them" +
+				" at the bank deposit box just south on the docks next to the monks." +
+				" If choose to burn the logs as you go or drop them, oak trees gives faster XP until 60 Woodcutting",
+			true, steelAxe, blackAxe, mithrilAxe, adamantAxe, runeAxe
+		);
+	}
 
-    @Override
-    public List<UnlockReward> getUnlockRewards() {
-        return Arrays.asList(
-                new UnlockReward("Ability to purchase Woodcutting Cape for 99k (requires membership)"),
-                new UnlockReward("Ability to travel the river lum with canoes (requires membership)"),
-                new UnlockReward("Access to the woodcutting guild at lvl 60 (requires membership)")
-        );
-    }
+	@Override
+	public List<UnlockReward> getUnlockRewards()
+	{
+		return Arrays.asList(
+			new UnlockReward("Ability to purchase Woodcutting Cape for 99k (requires membership)"),
+			new UnlockReward("Ability to travel the river lum with canoes (requires membership)"),
+			new UnlockReward("Access to the woodcutting guild at lvl 60 (requires membership)")
+		);
+	}
 
-    @Override
-    public List<ItemRequirement> getItemRequirements() {
-        return Arrays.asList(ironAxe, steelAxe, blackAxe, mithrilAxe, adamantAxe, runeAxe);
-    }
+	@Override
+	public List<ItemRequirement> getItemRequirements()
+	{
+		return Arrays.asList(ironAxe, steelAxe, blackAxe, mithrilAxe, adamantAxe, runeAxe);
+	}
 
-    @Override
-    public List<PanelDetails> getPanels() {
-        List<PanelDetails> allSteps = new ArrayList<>();
-        allSteps.add(new PanelDetails("1 - 15: Cut normal trees", Collections.singletonList(chopNormalTree),
-                ironAxe, steelAxe, blackAxe));
-        allSteps.add(new PanelDetails("15 - 30: Cut oak trees", Collections.singletonList(chopOakTrees),
-                steelAxe, blackAxe, mithrilAxe, adamantAxe));
-        allSteps.add(new PanelDetails("30 - 99: Cut willow trees", Collections.singletonList(chopWillowTrees),
-                steelAxe, blackAxe, mithrilAxe, adamantAxe, runeAxe));
-        return allSteps;
-    }
+	@Override
+	public List<PanelDetails> getPanels()
+	{
+		List<PanelDetails> allSteps = new ArrayList<>();
+		allSteps.add(new PanelDetails("1 - 15: Cut normal trees", Collections.singletonList(chopNormalTree),
+			ironAxe, steelAxe, blackAxe));
+		allSteps.add(new PanelDetails("15 - 30: Cut oak trees", Collections.singletonList(chopOakTrees),
+			steelAxe, blackAxe, mithrilAxe, adamantAxe));
+		allSteps.add(new PanelDetails("30 - 99: Cut willow trees", Collections.singletonList(chopWillowTrees),
+			steelAxe, blackAxe, mithrilAxe, adamantAxe, runeAxe));
+		return allSteps;
+	}
 }

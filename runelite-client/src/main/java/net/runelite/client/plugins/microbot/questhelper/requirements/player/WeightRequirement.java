@@ -26,53 +26,59 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements.player;
 
-
-import net.runelite.api.Client;
 import net.runelite.client.plugins.microbot.questhelper.requirements.AbstractRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.Operation;
+import net.runelite.api.Client;
 
 import javax.annotation.Nonnull;
 
 /**
  * Checks if the player meets a weight check
  */
-public class WeightRequirement extends AbstractRequirement {
-    private final int weight;
-    private final String text;
-    private final Operation operation;
+public class WeightRequirement extends AbstractRequirement
+{
+	private final int weight;
+	private final String text;
+	private final Operation operation;
 
-    /**
-     * Checks if the player meets the weight requirement.
-     *
-     * @param text      the display text
-     * @param weight    the weight required
-     * @param operation the {@link Operation} to use
-     */
-    public WeightRequirement(String text, int weight, Operation operation) {
-        this.weight = weight;
-        this.text = text;
-        this.operation = operation;
-    }
+	/**
+	 * Checks if the player meets the weight requirement.
+	 *
+	 * @param text the display text
+	 * @param weight the weight required
+	 * @param operation the {@link Operation} to use
+	 */
+	public WeightRequirement(String text, int weight, Operation operation)
+	{
+		this.weight = weight;
+		this.text = text;
+		this.operation = operation;
+	}
 
-    public WeightRequirement(int weight) {
-        this(null, weight, Operation.EQUAL);
-    }
+	public WeightRequirement(int weight)
+	{
+		this(null, weight, Operation.EQUAL);
+	}
 
-    public WeightRequirement(int weight, Operation operation) {
-        this(null, weight, operation);
-    }
+	public WeightRequirement(int weight, Operation operation)
+	{
+		this(null, weight, operation);
+	}
 
-    @Override
-    public boolean check(Client client) {
-        return operation.check(client.getWeight(), weight);
-    }
+	@Override
+	public boolean check(Client client)
+	{
+		return operation.check(client.getWeight(), weight);
+	}
 
-    @Nonnull
-    @Override
-    public String getDisplayText() {
-        if (text == null) {
-            return "Weight " + operation.getDisplayText() + " than " + weight;
-        }
-        return text;
-    }
+	@Nonnull
+	@Override
+	public String getDisplayText()
+	{
+		if (text == null)
+		{
+			return "Weight " + operation.getDisplayText() + " than " + weight;
+		}
+		return text;
+	}
 }

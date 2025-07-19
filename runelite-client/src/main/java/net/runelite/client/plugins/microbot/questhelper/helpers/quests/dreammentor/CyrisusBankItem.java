@@ -26,35 +26,37 @@ package net.runelite.client.plugins.microbot.questhelper.helpers.quests.dreammen
 
 import lombok.Getter;
 
-enum CyrisusBankItem {
-    DRAGON_CHAINBODY("Dragon chainbody", 3140, 1),
-    AHRIM_ROBETOP("Ahrim's robetop", 2, 4712),
-    KARILS_TOP("Karil's leathertop", 3, 4736),
-    DRAGON_MED_HELM("Dragon med helm", 15, 1149),
-    SPLITBARK_HELM("Splitbark helm", 16, 3385),
-    ROBIN_HOOD("Robin hood hat", 17, 2581),
-    ABYSSAL_WHIP("Abyssal whip", 19, 4151),
-    ANCIENT_STAFF("Ancient staff", 20, 4675),
-    MAGIC_SHORTBOW("Magic shortbown", 21, 861),
-    TORAG_LEG("Torag's platelegs", 26, 4970),
-    AHRIM_SKIRT("Ahrim's robeskirt", 27, 4714),
-    BLACK_CHAPS("Black d'hide chaps", 28, 2497),
-    INFINITY_BOOTS("Infinity boots", 29, 6920),
-    RANGER_BOOTS("Ranger boots", 30, 2577),
-    ADAMANT_BOOTS("Adamant boots", 31, 4129);
+enum CyrisusBankItem
+{
+	DRAGON_CHAINBODY("Dragon chainbody", 3140, 1),
+	AHRIM_ROBETOP("Ahrim's robetop", 2, 4712),
+	KARILS_TOP("Karil's leathertop", 3, 4736),
+	DRAGON_MED_HELM("Dragon med helm", 15, 1149),
+	SPLITBARK_HELM("Splitbark helm", 16, 3385),
+	ROBIN_HOOD("Robin hood hat", 17, 2581),
+	ABYSSAL_WHIP("Abyssal whip", 19, 4151),
+	ANCIENT_STAFF("Ancient staff", 20, 4675),
+	MAGIC_SHORTBOW("Magic shortbown", 21, 861),
+	TORAG_LEG("Torag's platelegs", 26, 4970),
+	AHRIM_SKIRT("Ahrim's robeskirt", 27, 4714),
+	BLACK_CHAPS("Black d'hide chaps", 28, 2497),
+	INFINITY_BOOTS("Infinity boots", 29, 6920),
+	RANGER_BOOTS("Ranger boots", 30, 2577),
+	ADAMANT_BOOTS("Adamant boots", 31, 4129);
 
-    @Getter
-    private final String name;
+	@Getter
+	private final String name;
 
-    @Getter
-    private final int varbitID;
+	@Getter
+	private final int varbitID;
 
-    @Getter
-    private final int widgetID;
+	@Getter
+	private final int widgetID;
 
-    CyrisusBankItem(String name, int varbitID, int widgetID) {
-        this.name = name;
-        this.varbitID = varbitID;
-        this.widgetID = widgetID;
-    }
+	CyrisusBankItem(String name, int varbitID, int widgetID)
+	{
+		this.name = name;
+		this.varbitID = varbitID;
+		this.widgetID = widgetID;
+	}
 }

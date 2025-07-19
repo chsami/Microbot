@@ -26,30 +26,33 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements.player;
 
-
-import net.runelite.api.Client;
 import net.runelite.client.plugins.microbot.questhelper.requirements.AbstractRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.SpecialAttack;
+import net.runelite.api.Client;
 
 import javax.annotation.Nonnull;
 
-public class SpecialAttackRequirement extends AbstractRequirement {
+public class SpecialAttackRequirement extends AbstractRequirement
+{
     private static final int SPECIALATTACK_VARP = 301;
     private final SpecialAttack specialAttack;
 
-    public SpecialAttackRequirement(SpecialAttack specialAttack) {
-        assert (specialAttack != null);
+    public SpecialAttackRequirement(SpecialAttack specialAttack)
+    {
+		assert(specialAttack != null);
         this.specialAttack = specialAttack;
     }
 
     @Override
-    public boolean check(Client client) {
+    public boolean check(Client client)
+    {
         return specialAttack.check(client, SPECIALATTACK_VARP);
     }
 
-    @Nonnull
-    @Override
-    public String getDisplayText() {
-        return "You must turn " + specialAttack.getName() + " special attack.";
+	@Nonnull
+	@Override
+	public String getDisplayText()
+	{
+		return "You must turn " + specialAttack.getName() + " special attack.";
     }
 }

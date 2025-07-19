@@ -26,7 +26,8 @@ package net.runelite.client.plugins.microbot.questhelper.rewards;
 
 import javax.annotation.Nonnull;
 
-public interface Reward {
+public interface Reward
+{
     @Nonnull
     RewardType rewardType();
 

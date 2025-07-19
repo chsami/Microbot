@@ -25,6 +25,7 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.steps.widget;
 
-public interface Spell {
-    String getSpellName();
+public interface Spell
+{
+	String getSpellName();
 }

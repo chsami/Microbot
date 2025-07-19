@@ -24,43 +24,51 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.bank.banktab;
 
+import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import lombok.Getter;
 import lombok.Setter;
-import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 
 import java.util.Collections;
 import java.util.List;
 
-public class BankTabItem {
-    @Getter
-    private final int quantity;
-    @Getter
-    private final List<Integer> itemIDs;
-    @Getter
-    private final Integer displayID;
-    @Getter
-    private final String details;
-    @Getter
-    private final ItemRequirement itemRequirement;
-    @Getter
-    @Setter
-    private String text;
+public class BankTabItem
+{
+	@Getter
+	private final int quantity;
 
-    public BankTabItem(ItemRequirement item, int displayID) {
-        this.quantity = item.getQuantity();
-        this.text = item.getName();
-        this.itemIDs = Collections.singletonList(displayID);
-        this.details = item.getTooltip();
-        this.displayID = displayID;
-        this.itemRequirement = item;
-    }
+	@Getter
+	@Setter
+	private String text;
 
-    public BankTabItem(ItemRequirement item) {
-        this.quantity = item.getQuantity();
-        this.text = item.getName();
-        this.itemIDs = Collections.singletonList(item.getId());
-        this.details = item.getTooltip();
-        this.displayID = null;
-        this.itemRequirement = item;
-    }
+	@Getter
+	private final List<Integer> itemIDs;
+
+	@Getter
+	private final Integer displayID;
+
+	@Getter
+	private final String details;
+
+	@Getter
+	private final ItemRequirement itemRequirement;
+
+	public BankTabItem(ItemRequirement item, int displayID)
+	{
+		this.quantity = item.getQuantity();
+		this.text = item.getName();
+		this.itemIDs = Collections.singletonList(displayID);
+		this.details = item.getTooltip();
+		this.displayID = displayID;
+		this.itemRequirement = item;
+	}
+
+	public BankTabItem(ItemRequirement item)
+	{
+		this.quantity = item.getQuantity();
+		this.text = item.getName();
+		this.itemIDs = Collections.singletonList(item.getId());
+		this.details = item.getTooltip();
+		this.displayID = item.getId();
+		this.itemRequirement = item;
+	}
 }

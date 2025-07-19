@@ -25,21 +25,20 @@
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.theheartofdarkness;
 
 import com.google.inject.Inject;
-import net.runelite.api.Client;
-import net.runelite.api.ItemID;
-import net.runelite.api.ObjectID;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.GameTick;
-import net.runelite.api.events.WidgetLoaded;
-import net.runelite.api.widgets.Widget;
-import net.runelite.client.eventbus.EventBus;
-import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.widget.WidgetTextRequirement;
 import net.runelite.client.plugins.microbot.questhelper.steps.*;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
-import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
-
+import net.runelite.api.Client;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.WidgetLoaded;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.widgets.Widget;
+import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.eventbus.Subscribe;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,75 +47,96 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class LockedChestPuzzle extends DetailedOwnerStep {
+public class LockedChestPuzzle extends DetailedOwnerStep
+{
+    @Inject
+    protected EventBus eventBus;
+
+    @Inject
+    protected Client client;
+
     // Potion 1
     private static final Pattern WHITE_TEXT = Pattern.compile("<col=FAF9F6>([A-Z])(.*)");
+
+    private String answer = null;
+
+    protected QuestStep currentStep;
+
+    ItemRequirement book;
+
+    Requirement inChestInterface;
+
     final String[] letter1 = new String[]{"L", "W", "A", "B", "P", "E", "M", "D", "T", "R"};
     final String[] letter2 = new String[]{"A", "P", "O", "R", "I", "L", "C", "E", "T", "N"};
     final String[] letter3 = new String[]{"W", "E", "R", "I", "L", "A", "N", "U", "T", "O"};
     final String[] letter4 = new String[]{"E", "I", "D", "A", "O", "W", "K", "N", "R", "U"};
-    @Inject
-    protected EventBus eventBus;
-    @Inject
-    protected Client client;
-    protected QuestStep currentStep;
-    ItemRequirement book;
-    Requirement inChestInterface;
-    PuzzleWrapperStep readBook;
-    PuzzleWrapperStep openChest;
-    ChestCodeStep solveChest;
-    PuzzleWrapperStep solveChestPuzzleWrapped;
-    int[] rotationPosOfAnswer = new int[4];
-    private String answer = null;
 
-    public LockedChestPuzzle(QuestHelper questHelper) {
+    PuzzleWrapperStep readBook;
+
+    PuzzleWrapperStep openChest;
+
+    ChestCodeStep solveChest;
+
+    PuzzleWrapperStep solveChestPuzzleWrapped;
+    public LockedChestPuzzle(QuestHelper questHelper)
+    {
         super(questHelper, "");
     }
 
     @Override
-    public void startUp() {
+    public void startUp()
+    {
         updateSteps();
     }
 
     @Override
-    public void shutDown() {
+    public void shutDown()
+    {
         shutDownStep();
         currentStep = null;
     }
 
     @Subscribe
-    public void onGameTick(GameTick event) {
+    public void onGameTick(GameTick event)
+    {
         updateSteps();
     }
 
     @Override
-    protected void updateSteps() {
-        if (answer == null) {
+    protected void updateSteps()
+    {
+        if (answer == null)
+        {
             startUpStep(readBook);
-        } else if (inChestInterface.check(client)) {
+        } else if (inChestInterface.check(client))
+        {
             startUpStep(solveChest);
-        } else {
+        } else
+        {
             startUpStep(openChest);
         }
     }
 
-    private void setupItemRequirements() {
-        book = new ItemRequirement("Book", ItemID.BOOK_29878);
+    private void setupItemRequirements()
+    {
+        book = new ItemRequirement("Book", ItemID.VMQ3_TOWER_TRIAL_1_BOOK);
     }
 
-    private void setupConditions() {
+    private void setupConditions()
+    {
         inChestInterface = new WidgetTextRequirement(809, 5, 9, "Confirm");
     }
 
     @Override
-    protected void setupSteps() {
-        setupItemRequirements();
-        setupConditions();
+    protected void setupSteps()
+    {
+		setupItemRequirements();
+		setupConditions();
 
         readBook = new DetailedQuestStep(getQuestHelper(), "Read the book.", book.highlighted())
                 .puzzleWrapStep()
                 .withNoHelpHiddenInSidebar(true);
-        openChest = new ObjectStep(getQuestHelper(), ObjectID.CHEST_54376, new WorldPoint(1638, 3217, 1), "Search the south-west chest.")
+        openChest = new ObjectStep(getQuestHelper(), ObjectID.VMQ3_TOWER_CHEST_LETTERS_CLOSED, new WorldPoint(1638, 3217, 1), "Search the south-west chest.")
                 .puzzleWrapStep()
                 .withNoHelpHiddenInSidebar(true);
         solveChest = new ChestCodeStep(getQuestHelper(), 10);
@@ -124,33 +144,42 @@ public class LockedChestPuzzle extends DetailedOwnerStep {
     }
 
     @Override
-    public Collection<QuestStep> getSteps() {
+    public Collection<QuestStep> getSteps()
+    {
         return Arrays.asList(readBook, openChest, solveChestPuzzleWrapped);
     }
 
+    int[] rotationPosOfAnswer = new int[4];
+
     @Subscribe
-    public void onWidgetLoaded(WidgetLoaded widgetLoaded) {
+    public void onWidgetLoaded(WidgetLoaded widgetLoaded)
+    {
         if (answer != null) return;
 
         int GROUP_ID = 392;
         List<String> tmpChars = new ArrayList<>();
         int firstLineChildId = 43;
         int maxChildId = 74;
-        if (widgetLoaded.getGroupId() == GROUP_ID) {
+        if (widgetLoaded.getGroupId() == GROUP_ID)
+        {
             Widget line;
-            for (int i = 0; i <= maxChildId - firstLineChildId; i++) {
+            for (int i = 0; i <= maxChildId - firstLineChildId; i++)
+            {
                 line = client.getWidget(GROUP_ID, firstLineChildId + i);
                 if (line == null) break;
                 Matcher matcher = WHITE_TEXT.matcher(line.getText());
-                if (matcher.find()) {
+                if (matcher.find())
+                {
                     tmpChars.add(matcher.group(1));
                 }
             }
         }
 
-        if (tmpChars.size() == 4) {
+        if (tmpChars.size() == 4)
+        {
             answer = "";
-            for (String tmpChar : tmpChars) {
+            for (String tmpChar : tmpChars)
+            {
                 answer += tmpChar;
             }
 
@@ -164,9 +193,12 @@ public class LockedChestPuzzle extends DetailedOwnerStep {
     }
 
 
-    private int getPosForLetter(String letter, String[] rotationLetters) {
-        for (int i = 0; i < rotationLetters.length; i++) {
-            if (rotationLetters[i].equals(letter)) {
+    private int getPosForLetter(String letter, String[] rotationLetters)
+    {
+        for (int i = 0; i < rotationLetters.length; i++)
+        {
+            if (rotationLetters[i].equals(letter))
+            {
                 return i;
             }
         }

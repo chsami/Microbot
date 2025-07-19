@@ -24,179 +24,206 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.lunardiplomacy;
 
-
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.tools.QuestPerspective;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.plugins.microbot.questhelper.steps.tools.QuestPerspective;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
-import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class MemoryChallenge extends DetailedQuestStep {
-    private static final int ROWS = 8;
-    private static final int COLS = 4;
-    private static final int[] LEDGE_X = {1731, 1734, 1737, 1740};
-    private static final int LEDGE_Y_START = 5108;
-    private static final int LEDGE_Y_END = 5083;
-    List<WorldPoint> wps = new ArrayList<>();
-    List<WorldPoint> currentPath = new ArrayList<>();
-    int column1, column2, column3, column4, lastPos;
+public class MemoryChallenge extends DetailedQuestStep
+{
+	List<WorldPoint> wps = new ArrayList<>();
+	List<WorldPoint> currentPath = new ArrayList<>();
+	int column1, column2, column3, column4, lastPos;
 
-    public MemoryChallenge(QuestHelper questHelper) {
-        super(questHelper, new WorldPoint(1737, 5083, 2),
-                "Work out the route across the cloud tiles through trial and error.");
-    }
+	private static final int ROWS = 8;
+	private static final int COLS = 4;
+	private static final int[] LEDGE_X = {1731, 1734, 1737, 1740};
+	private static final int LEDGE_Y_START = 5108;
+	private static final int LEDGE_Y_END = 5083;
 
-    private static boolean addNewTileToPath(int[][] grid, int row, int col, List<WorldPoint> path) {
-        // Add new tile to path, and remove, so it won't be re-considered
-        path.add(new WorldPoint(LEDGE_X[col], LEDGE_Y_START - 2 - ((ROWS - row - 1) * 3), 2));
-        grid[row][col] = 0;
+	public MemoryChallenge(QuestHelper questHelper)
+	{
+		super(questHelper, new WorldPoint(1737, 5083, 2),
+			"Work out the route across the cloud tiles through trial and error.");
+	}
 
-        // If reached end, return
-        if (row == 0) {
-            return true;
-        }
+	@Override
+	public void startUp()
+	{
+		super.startUp();
+		setupPaths();
+	}
 
-        // Check south, then east, then west
-        int[][] directions = {{-1, 0}, {0, 1}, {0, -1}};
-        for (int[] dir : directions) {
-            int newRow = row + dir[0];
-            int newCol = col + dir[1];
+	@Override
+	public void onVarbitChanged(VarbitChanged varbitChanged)
+	{
+		super.onVarbitChanged(varbitChanged);
+		setupPaths();
+	}
 
-            if (isValidNextTile(grid, newRow, newCol)) {
-                if (addNewTileToPath(grid, newRow, newCol, path)) {
-                    return true;
-                }
-            }
-        }
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		if (wps.size() == 0)
+		{
+			return;
+		}
 
-        // Remove if something went wrong
-        grid[row][col] = 1;
-        path.remove(path.size() - 1);
-        return false;
-    }
+		if (lastPos + 1 == wps.size())
+		{
+			return;
+		}
 
-    private static int[][] createGrid(int west, int middleWest, int middleEast, int east) {
-        int[][] grid = new int[ROWS][COLS];
+		// If start of path, check first point in legit path
+		if (currentPath.size() == 0)
+		{
+			checkNextTile(0);
+			return;
+		}
 
-        for (int row = 0; row < ROWS; row++) {
-            grid[ROWS - 1 - row][0] = (west >> (ROWS - 1 - row)) & 1;
-            grid[ROWS - 1 - row][1] = (middleWest >> (ROWS - 1 - row)) & 1;
-            grid[ROWS - 1 - row][2] = (middleEast >> (ROWS - 1 - row)) & 1;
-            grid[ROWS - 1 - row][3] = (east >> (ROWS - 1 - row)) & 1;
-        }
+		// If started path, check furthest we've reached in path
+		WorldPoint lastPoint = currentPath.get(currentPath.size() - 1);
 
-        return grid;
-    }
+		WorldPoint instanceWp = wps.get(lastPos);
+		if (instanceWp == null)
+		{
+			return;
+		}
 
-    private static boolean isValidNextTile(int[][] grid, int row, int col) {
-        return row >= 0 && row < ROWS && col >= 0 && col < COLS && grid[row][col] == 1;
-    }
+		if (instanceWp.distanceTo(lastPoint) == 0 && wps.get(lastPos + 1) != null)
+		{
+			checkNextTile(lastPos + 1);
+		}
+	}
 
-    @Override
-    public void startUp() {
-        super.startUp();
-        setupPaths();
-    }
+	public void checkNextTile(int wpsPos)
+	{
+		WorldPoint instanceWp = QuestPerspective.getInstanceWorldPointFromReal(client, wps.get(wpsPos));
+		if (instanceWp == null)
+		{
+			return;
+		}
 
-    @Override
-    public void onVarbitChanged(VarbitChanged varbitChanged) {
-        super.onVarbitChanged(varbitChanged);
-        setupPaths();
-    }
+		// If on same tiles as wpsPos
+		if (client.getLocalPlayer() != null &&
+			client.getLocalPlayer().getWorldLocation().distanceTo(instanceWp) == 0)
+		{
+			currentPath.add(wps.get(wpsPos));
+			lastPos = wpsPos;
+			setLinePoints(currentPath);
+		}
+	}
 
-    @Subscribe
-    public void onGameTick(GameTick event) {
-        if (wps.size() == 0) {
-            return;
-        }
+	private void setupPaths()
+	{
+		int current1 = client.getVarbitValue(2412);
+		int current2 = client.getVarbitValue(2413);
+		int current3 = client.getVarbitValue(2414);
+		int current4 = client.getVarbitValue(2415);
 
-        if (lastPos + 1 == wps.size()) {
-            return;
-        }
+		if (current1 == column1 &&
+			current2 == column2 &&
+			current3 == column3 &&
+			current4 == column4
+		)
+		{
+			return;
+		}
 
-        // If start of path, check first point in legit path
-        if (currentPath.size() == 0) {
-            checkNextTile(0);
-            return;
-        }
+		column1 = current1;
+		column2 = current2;
+		column3 = current3;
+		column4 = current4;
 
-        // If started path, check furthest we've reached in path
-        WorldPoint lastPoint = currentPath.get(currentPath.size() - 1);
+		int[][] grid = createGrid(column1, column2, column3, column4);
+		wps = findPath(grid);
+	}
 
-        WorldPoint instanceWp = wps.get(lastPos);
-        if (instanceWp == null) {
-            return;
-        }
+	private static int[][] createGrid(int west, int middleWest, int middleEast, int east)
+	{
+		int[][] grid = new int[ROWS][COLS];
 
-        if (instanceWp.distanceTo(lastPoint) == 0 && wps.get(lastPos + 1) != null) {
-            checkNextTile(lastPos + 1);
-        }
-    }
+		for (int row = 0; row < ROWS; row++)
+		{
+			grid[ROWS - 1 - row][0] = (west >> (ROWS - 1 - row)) & 1;
+			grid[ROWS - 1 - row][1] = (middleWest >> (ROWS - 1 - row)) & 1;
+			grid[ROWS - 1 - row][2] = (middleEast >> (ROWS - 1 - row)) & 1;
+			grid[ROWS - 1 - row][3] = (east >> (ROWS - 1 - row)) & 1;
+		}
 
-    public void checkNextTile(int wpsPos) {
-        WorldPoint instanceWp = QuestPerspective.getInstanceWorldPointFromReal(client, wps.get(wpsPos));
-        if (instanceWp == null) {
-            return;
-        }
+		return grid;
+	}
 
-        // If on same tiles as wpsPos
-        if (client.getLocalPlayer() != null &&
-                client.getLocalPlayer().getWorldLocation().distanceTo(instanceWp) == 0) {
-            currentPath.add(wps.get(wpsPos));
-            lastPos = wpsPos;
-            setLinePoints(currentPath);
-        }
-    }
+	public static List<WorldPoint> findPath(int[][] grid)
+	{
+		List<WorldPoint> path = new ArrayList<>();
 
-    private void setupPaths() {
-        int current1 = client.getVarbitValue(2412);
-        int current2 = client.getVarbitValue(2413);
-        int current3 = client.getVarbitValue(2414);
-        int current4 = client.getVarbitValue(2415);
+		// Find the starting point in the first row
+		int startCol = -1;
+		for (int col = 0; col < COLS; col++)
+		{
+			if (grid[ROWS - 1][col] == 1)
+			{
+				startCol = col;
+				break;
+			}
+		}
 
-        if (current1 == column1 &&
-                current2 == column2 &&
-                current3 == column3 &&
-                current4 == column4
-        ) {
-            return;
-        }
+		if (startCol == -1)
+		{
+			return new ArrayList<>();
+		}
 
-        column1 = current1;
-        column2 = current2;
-        column3 = current3;
-        column4 = current4;
+		path.add(new WorldPoint(LEDGE_X[startCol], LEDGE_Y_START, 2));
+		// Perform the pathfinding
+		addNewTileToPath(grid, ROWS - 1, startCol, path);
+		path.add(new WorldPoint(path.get(path.size() - 1).getX(), LEDGE_Y_END, 2));
 
-        int[][] grid = createGrid(column1, column2, column3, column4);
-        wps = findPath(grid);
-    }
+		return path;
+	}
 
-    public static List<WorldPoint> findPath(int[][] grid) {
-        List<WorldPoint> path = new ArrayList<>();
+	private static boolean addNewTileToPath(int[][] grid, int row, int col, List<WorldPoint> path)
+	{
+		// Add new tile to path, and remove, so it won't be re-considered
+		path.add(new WorldPoint(LEDGE_X[col], LEDGE_Y_START - 2 - ((ROWS - row - 1) * 3), 2));
+		grid[row][col] = 0;
 
-        // Find the starting point in the first row
-        int startCol = -1;
-        for (int col = 0; col < COLS; col++) {
-            if (grid[ROWS - 1][col] == 1) {
-                startCol = col;
-                break;
-            }
-        }
+		// If reached end, return
+		if (row == 0)
+		{
+			return true;
+		}
 
-        if (startCol == -1) {
-            return new ArrayList<>();
-        }
+		// Check south, then east, then west
+		int[][] directions = {{-1, 0}, {0, 1}, {0, -1}};
+		for (int[] dir : directions)
+		{
+			int newRow = row + dir[0];
+			int newCol = col + dir[1];
 
-        path.add(new WorldPoint(LEDGE_X[startCol], LEDGE_Y_START, 2));
-        // Perform the pathfinding
-        addNewTileToPath(grid, ROWS - 1, startCol, path);
-        path.add(new WorldPoint(path.get(path.size() - 1).getX(), LEDGE_Y_END, 2));
+			if (isValidNextTile(grid, newRow, newCol))
+			{
+				if (addNewTileToPath(grid, newRow, newCol, path))
+				{
+					return true;
+				}
+			}
+		}
 
-        return path;
-    }
+		// Remove if something went wrong
+		grid[row][col] = 1;
+		path.remove(path.size() - 1);
+		return false;
+	}
+
+	private static boolean isValidNextTile(int[][] grid, int row, int col)
+	{
+		return row >= 0 && row < ROWS && col >= 0 && col < COLS && grid[row][col] == 1;
+	}
 }

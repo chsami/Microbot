@@ -27,61 +27,75 @@ package net.runelite.client.plugins.microbot.questhelper.helpers.quests.dreammen
 import lombok.Getter;
 import net.runelite.api.Client;
 import net.runelite.api.Skill;
+import net.runelite.api.gameval.VarbitID;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-enum CyrisusArmourSet {
-    MELEE(0, Arrays.asList(CyrisusBankItem.DRAGON_MED_HELM, CyrisusBankItem.AHRIM_ROBETOP,
-            CyrisusBankItem.AHRIM_SKIRT, CyrisusBankItem.RANGER_BOOTS, CyrisusBankItem.ABYSSAL_WHIP)),
-    RANGED(1, Arrays.asList(CyrisusBankItem.SPLITBARK_HELM, CyrisusBankItem.KARILS_TOP,
-            CyrisusBankItem.TORAG_LEG, CyrisusBankItem.ADAMANT_BOOTS, CyrisusBankItem.MAGIC_SHORTBOW)),
-    MAGIC(2, Arrays.asList(CyrisusBankItem.ROBIN_HOOD, CyrisusBankItem.DRAGON_CHAINBODY,
-            CyrisusBankItem.BLACK_CHAPS, CyrisusBankItem.INFINITY_BOOTS, CyrisusBankItem.ANCIENT_STAFF));
+enum CyrisusArmourSet
+{
+	MELEE(0,  Arrays.asList(CyrisusBankItem.DRAGON_MED_HELM, CyrisusBankItem.AHRIM_ROBETOP,
+		CyrisusBankItem.AHRIM_SKIRT, CyrisusBankItem.RANGER_BOOTS, CyrisusBankItem.ABYSSAL_WHIP)),
+	RANGED(1, Arrays.asList(CyrisusBankItem.SPLITBARK_HELM, CyrisusBankItem.KARILS_TOP,
+		CyrisusBankItem.TORAG_LEG, CyrisusBankItem.ADAMANT_BOOTS, CyrisusBankItem.MAGIC_SHORTBOW)),
+	MAGIC(2, Arrays.asList(CyrisusBankItem.ROBIN_HOOD, CyrisusBankItem.DRAGON_CHAINBODY,
+		CyrisusBankItem.BLACK_CHAPS, CyrisusBankItem.INFINITY_BOOTS, CyrisusBankItem.ANCIENT_STAFF));
 
-    @Getter
-    private final int combatType;
+	@Getter
+	private final int combatType;
 
-    @Getter
-    private final List<CyrisusBankItem> items;
+	@Getter
+	private final List<CyrisusBankItem> items;
 
-    CyrisusArmourSet(int combatType, List<CyrisusBankItem> items) {
-        this.combatType = combatType;
-        this.items = items;
-    }
+	CyrisusArmourSet(int combatType, List<CyrisusBankItem> items)
+	{
+		this.combatType = combatType;
+		this.items = items;
+	}
 
-    public static CyrisusArmourSet getCorrectSet(Client client) {
-        float meleeCombatLevel = client.getRealSkillLevel(Skill.ATTACK) + client.getRealSkillLevel(Skill.STRENGTH);
-        float rangedCombatLevel = client.getRealSkillLevel(Skill.RANGED) * (3f / 2f);
-        float magicCombatLevel = client.getRealSkillLevel(Skill.MAGIC) * (3f / 2f);
+	public static CyrisusArmourSet getCorrectSet(Client client)
+	{
+		float meleeCombatLevel = client.getRealSkillLevel(Skill.ATTACK) + client.getRealSkillLevel(Skill.STRENGTH);
+		float rangedCombatLevel = client.getRealSkillLevel(Skill.RANGED) * (3f/2f);
+		float magicCombatLevel = client.getRealSkillLevel(Skill.MAGIC) * (3f/2f);
 
-        if (meleeCombatLevel >= rangedCombatLevel) {
-            if (meleeCombatLevel >= magicCombatLevel) {
-                return MELEE;
-            } else {
-                return MAGIC;
-            }
-        } else if (rangedCombatLevel > magicCombatLevel) {
-            return RANGED;
-        } else {
-            return MAGIC;
-        }
-    }
+		if (meleeCombatLevel >= rangedCombatLevel)
+		{
+			if (meleeCombatLevel >= magicCombatLevel)
+			{
+				return MELEE;
+			}
+			else
+			{
+				return MAGIC;
+			}
+		}
+		else if (rangedCombatLevel > magicCombatLevel)
+		{
+			return RANGED;
+		}
+		else
+		{
+			return MAGIC;
+		}
+	}
 
-    public static boolean isReady(Client client) {
-        CyrisusArmourSet armourSet = getCorrectSet(client);
-        int currentHelmet = client.getVarbitValue(3627);
-        int currentBody = client.getVarbitValue(3628);
-        int currentLegs = client.getVarbitValue(3629);
-        int currentBoots = client.getVarbitValue(3630);
-        int currentWeapon = client.getVarbitValue(3631);
-        List<Integer> currentEquipment = Arrays.asList(currentHelmet, currentBody, currentLegs, currentBoots, currentWeapon);
-        List<Integer> neededEquipment = new ArrayList<>();
-        for (CyrisusBankItem item : armourSet.getItems()) {
-            neededEquipment.add(item.getVarbitID());
-        }
-        return currentEquipment.equals(neededEquipment);
-    }
+	public static boolean isReady(Client client)
+	{
+		CyrisusArmourSet armourSet = getCorrectSet(client);
+		int currentHelmet = client.getVarbitValue(VarbitID.DREAM_ARMA_ITEM1);
+		int currentBody = client.getVarbitValue(VarbitID.DREAM_ARMA_ITEM2);
+		int currentLegs = client.getVarbitValue(VarbitID.DREAM_ARMA_ITEM3);
+		int currentBoots = client.getVarbitValue(VarbitID.DREAM_ARMA_ITEM4);
+		int currentWeapon = client.getVarbitValue(VarbitID.DREAM_ARMA_ITEM5);
+		List<Integer> currentEquipment = Arrays.asList(currentHelmet, currentBody, currentLegs, currentBoots, currentWeapon);
+		List<Integer> neededEquipment = new ArrayList<>();
+		for (CyrisusBankItem item : armourSet.getItems())
+		{
+			neededEquipment.add(item.getVarbitID());
+		}
+		return currentEquipment.equals(neededEquipment);
+	}
 }
 

@@ -25,7 +25,6 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.panel;
 
-
 import net.runelite.client.plugins.microbot.questhelper.rewards.Reward;
 import net.runelite.client.plugins.microbot.questhelper.util.Fonts;
 import net.runelite.client.ui.ColorScheme;
@@ -36,61 +35,78 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.List;
 
-public class QuestRewardsPanel extends JPanel {
-    private final JTextArea rewardsText = new JTextArea();
+public class QuestRewardsPanel extends JPanel
+{
+	private final JTextArea rewardsText = new JTextArea();
 
-    public QuestRewardsPanel() {
-        setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        setLayout(new BorderLayout());
-        setBorder(new EmptyBorder(0, 0, 10, 0));
+	public QuestRewardsPanel()
+	{
+		setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		setLayout(new BorderLayout());
+		setBorder(new EmptyBorder(0, 0, 10, 0));
 
-        var headerPanel = QuestRequirementsPanel.createHeader("Rewards:");
+		var headerPanel = QuestRequirementsPanel.createHeader("Rewards:");
 
-        add(headerPanel, BorderLayout.NORTH);
+		add(headerPanel, BorderLayout.NORTH);
 
-        var rewardsPanel = new JPanel();
-        rewardsPanel.setLayout(new DynamicPaddedGridLayout(0, 1, 0, 1));
-        rewardsPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
+		var rewardsPanel = new JPanel();
+		rewardsPanel.setLayout(new DynamicPaddedGridLayout(0, 1, 0, 1));
+		rewardsPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
 
-        rewardsText.setLineWrap(true);
-        rewardsText.setWrapStyleWord(true);
-        rewardsText.setOpaque(false);
-        rewardsText.setEditable(false);
-        rewardsText.setFocusable(false);
-        rewardsText.setBackground(UIManager.getColor("Label.background"));
-        rewardsText.setFont(Fonts.getOriginalFont());
-        rewardsText.setBorder(new EmptyBorder(0, 0, 0, 0));
+		rewardsText.setLineWrap(true);
+		rewardsText.setWrapStyleWord(true);
+		rewardsText.setOpaque(false);
+		rewardsText.setEditable(false);
+		rewardsText.setFocusable(false);
+		rewardsText.setBackground(javax.swing.UIManager.getColor("Label.background"));
+		rewardsText.setFont(Fonts.getOriginalFont());
+		rewardsText.setBorder(new EmptyBorder(0, 0, 0, 0));
 
-        add(rewardsPanel, BorderLayout.CENTER);
+		add(rewardsPanel, BorderLayout.CENTER);
 
-        rewardsPanel.add(rewardsText);
-    }
+		rewardsPanel.add(rewardsText);
+	}
 
-    public void setRewards(@Nullable List<Reward> rewards) {
-        Reward lastReward = null;
-        if (rewards != null && !rewards.isEmpty()) {
-            rewardsText.setForeground(Color.WHITE);
+	public void setRewards(@Nullable List<Reward> rewards)
+	{
+		Reward lastReward = null;
+		if (rewards != null && !rewards.isEmpty())
+		{
+			rewardsText.setForeground(Color.WHITE);
 
-            var text = new StringBuilder();
+			var text = new StringBuilder();
 
-            for (var reward : rewards) {
-                if (lastReward != null) {
-                    text.append("\n");
-                    if (lastReward.rewardType() != reward.rewardType()) {
-                        text.append("\n");
-                    }
-                }
-                lastReward = reward;
+			for (var reward : rewards)
+			{
+				if (lastReward != null)
+				{
+					text.append("\n");
+					if (lastReward.rewardType() != reward.rewardType())
+					{
+						text.append("\n");
+					}
+				}
+				lastReward = reward;
 
-                text.append(reward.getDisplayText());
-            }
+				text.append(reward.getDisplayText());
+			}
 
-            rewardsText.setText(text.toString());
-        } else {
-            rewardsText.setText("None");
-            rewardsText.setForeground(Color.GRAY);
-        }
+			rewardsText.setText(text.toString());
+		}
+		else
+		{
+			rewardsText.setText("None");
+			rewardsText.setForeground(Color.GRAY);
+		}
 
-        revalidate();
-    }
+		revalidate();
+	}
+
+	public void hideRewards()
+	{
+		rewardsText.setText("Hidden by the \"Hide quest rewards\" config");
+		rewardsText.setForeground(Color.GRAY);
+
+		revalidate();
+	}
 }

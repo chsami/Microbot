@@ -33,32 +33,35 @@ import net.runelite.api.widgets.WidgetPositionMode;
 import net.runelite.api.widgets.WidgetType;
 import net.runelite.client.game.chatbox.ChatboxPanelManager;
 
-public class PlayerChatBox extends ChatBox {
-    protected PlayerChatBox(Client client, ChatboxPanelManager chatboxPanelManager) {
-        super(client, chatboxPanelManager);
-    }
+public class PlayerChatBox extends ChatBox
+{
+	protected PlayerChatBox(Client client, ChatboxPanelManager chatboxPanelManager)
+	{
+		super(client, chatboxPanelManager);
+	}
 
-    @Override
-    protected void open() {
-        Widget container = chatboxPanelManager.getContainerWidget();
+	@Override
+	protected void open()
+	{
+		Widget container = chatboxPanelManager.getContainerWidget();
 
-        Widget npcFaceWidget = container.createChild(0, WidgetType.RECTANGLE);
-        npcFaceWidget.setType(WidgetType.MODEL);
-        npcFaceWidget.setModelId(dialog.getFaceID());
-        npcFaceWidget.setAnimationId(dialog.getAnimation());
-        npcFaceWidget.setRotationX(40);
-        npcFaceWidget.setRotationZ(166);
-        npcFaceWidget.setModelZoom(796);
-        npcFaceWidget.setOriginalX(420);
-        npcFaceWidget.setOriginalY(50);
-        npcFaceWidget.setOriginalWidth(32);
-        npcFaceWidget.setOriginalHeight(32);
-        npcFaceWidget.setXPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
-        npcFaceWidget.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
-        npcFaceWidget.setModelType(WidgetModelType.LOCAL_PLAYER_CHATHEAD);
-        npcFaceWidget.revalidate();
+		Widget npcFaceWidget = container.createChild(0, WidgetType.RECTANGLE);
+		npcFaceWidget.setType(WidgetType.MODEL);
+		npcFaceWidget.setModelId(dialog.getFaceID());
+		npcFaceWidget.setAnimationId(dialog.getAnimation());
+		npcFaceWidget.setRotationX(40);
+		npcFaceWidget.setRotationZ(166);
+		npcFaceWidget.setModelZoom(796);
+		npcFaceWidget.setOriginalX(420);
+		npcFaceWidget.setOriginalY(50);
+		npcFaceWidget.setOriginalWidth(32);
+		npcFaceWidget.setOriginalHeight(32);
+		npcFaceWidget.setXPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
+		npcFaceWidget.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
+		npcFaceWidget.setModelType(WidgetModelType.LOCAL_PLAYER_CHATHEAD);
+		npcFaceWidget.revalidate();
 
-        setupDialog(container, 5);
-    }
+		setupDialog(container, 5);
+	}
 }
 

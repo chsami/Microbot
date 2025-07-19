@@ -26,14 +26,16 @@ package net.runelite.client.plugins.microbot.questhelper.helpers.quests.templeof
 
 import net.runelite.api.coords.WorldPoint;
 
-public class RunicEnergy {
-    String name;
-    WorldPoint wp;
-    int id;
+public class RunicEnergy
+{
+	String name;
+	WorldPoint wp;
+	int id;
 
-    public RunicEnergy(String name, WorldPoint wp, int id) {
-        this.name = name;
-        this.wp = wp;
-        this.id = id;
-    }
+	public RunicEnergy(String name, WorldPoint wp, int id)
+	{
+		this.name = name;
+		this.wp = wp;
+		this.id = id;
+	}
 }

@@ -22,19 +22,21 @@
  *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.herbrun;
+package net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.farmruns;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
-import lombok.Value;
-import net.runelite.client.plugins.timetracking.farming.CropState;
-import net.runelite.client.plugins.timetracking.farming.Produce;
-
-@Value
-class PatchPrediction {
-    private final Produce produce;
-    private final CropState cropState;
-    private final long doneEstimate;
-    private final int stage;
-    private final int stages;
+@RequiredArgsConstructor
+@Getter
+public enum CropState
+{
+	HARVESTABLE(), // Ready for checking
+	UNCHECKED(),
+	STUMP(), // Cut down
+	GROWING(),
+	DISEASED(),
+	DEAD(),
+	EMPTY(),
+	FILLING();
 }
-

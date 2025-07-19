@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2021, Zoinkwiz
+ * Copyright (c) 2025, Zoinkwiz <https://github.com/Zoinkwiz>
+ * Copyright (c) 2025, pajlada <https://github.com/pajlada>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,22 +23,26 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.microbot.questhelper.panel;
+package net.runelite.client.plugins.microbot.questhelper.util;
 
-import lombok.Getter;
+import net.runelite.api.gameval.ObjectID;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
-
-public class QuestRewardWrapperPanel extends JPanel {
-    @Getter
-    private final QuestRewardPanel questRewardPanel;
-
-    public QuestRewardWrapperPanel(QuestRewardPanel questRewardPanel) {
-        setLayout(new BorderLayout());
-        setBorder(new EmptyBorder(0, 0, 0, 0));
-        add(questRewardPanel, BorderLayout.CENTER);
-        this.questRewardPanel = questRewardPanel;
-    }
+public class QHObjectID
+{
+	/**
+	 * Ladder used at the bottom floor of the Grand Tree in the Tree Gnome Stronghold
+	 */
+	public static final int GRAND_TREE_F0_LADDER = ObjectID.GRANDTREE_LADDERBOTTOM;
+	/**
+	 * Ladder used at the first floor of the Grand Tree in the Tree Gnome Stronghold
+	 */
+	public static final int GRAND_TREE_F1_LADDER = ObjectID.GRANDTREE_LADDERMIDDLE_BOTTOM;
+	/**
+	 * Ladder used at the second floor of the Grand Tree in the Tree Gnome Stronghold
+	 */
+	public static final int GRAND_TREE_F2_LADDER = ObjectID.GRANDTREE_LADDERMIDDLE_TOP;
+	/**
+	 * Ladder used at the top floor of the Grand Tree in the Tree Gnome Stronghold
+	 */
+	public static final int GRAND_TREE_F3_LADDER = ObjectID.GRANDTREE_LADDERTOP;
 }

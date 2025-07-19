@@ -24,66 +24,77 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements.npc;
 
-
+import net.runelite.client.plugins.microbot.questhelper.requirements.SimpleRequirement;
 import lombok.Setter;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.events.ChatMessage;
-import net.runelite.client.plugins.microbot.questhelper.requirements.SimpleRequirement;
+import net.runelite.client.util.Text;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class DialogRequirement extends SimpleRequirement {
-    final List<String> text = new ArrayList<>();
-    final boolean mustBeActive;
-    @Setter
-    String talkerName;
-    boolean hasSeenDialog = false;
+public class DialogRequirement extends SimpleRequirement
+{
+	@Setter
+	String talkerName;
+	final List<String> text = new ArrayList<>();
+	final boolean mustBeActive;
 
-    public DialogRequirement(String... text) {
-        this.talkerName = null;
-        this.text.addAll(Arrays.asList(text));
-        this.mustBeActive = false;
-    }
+	boolean hasSeenDialog = false;
 
-    public DialogRequirement(String talkerName, String text, boolean mustBeActive) {
-        this.talkerName = talkerName;
-        this.text.add(text);
-        this.mustBeActive = mustBeActive;
-    }
+	public DialogRequirement(String... text)
+	{
+		this.talkerName = null;
+		this.text.addAll(Arrays.asList(text));
+		this.mustBeActive = false;
+	}
+	public DialogRequirement(String talkerName, String text, boolean mustBeActive)
+	{
+		this.talkerName = talkerName;
+		this.text.add(text);
+		this.mustBeActive = mustBeActive;
+	}
 
-    public DialogRequirement(String talkerName, boolean mustBeActive, String... text) {
-        this.talkerName = talkerName;
-        this.text.addAll(List.of(text));
-        this.mustBeActive = mustBeActive;
-    }
+	public DialogRequirement(String talkerName, boolean mustBeActive, String... text)
+	{
+		this.talkerName = talkerName;
+		this.text.addAll(List.of(text));
+		this.mustBeActive = mustBeActive;
+	}
 
-    public DialogRequirement(String text) {
-        this(null, text, false);
-    }
+	public DialogRequirement(String text)
+	{
+		this(null, text, false);
+	}
 
-    @Override
-    public boolean check(Client client) {
-        return hasSeenDialog;
-    }
+	@Override
+	public boolean check(Client client)
+	{
+		return hasSeenDialog;
+	}
 
-    public void validateCondition(ChatMessage chatMessage) {
-        if (chatMessage.getType() != ChatMessageType.DIALOG) return;
+	public void validateCondition(ChatMessage chatMessage)
+	{
+		if (chatMessage.getType() != ChatMessageType.DIALOG) return;
 
-        String dialogMessage = chatMessage.getMessage();
-        if (!hasSeenDialog) {
-            hasSeenDialog = isCurrentDialogMatching(dialogMessage);
-        }
-        // If it's not the dialog,
-        else if (mustBeActive) {
-            hasSeenDialog = isCurrentDialogMatching(dialogMessage);
-        }
-    }
+		String dialogMessage = chatMessage.getMessage();
+		if (!hasSeenDialog)
+		{
+			hasSeenDialog = isCurrentDialogMatching(dialogMessage);
+		}
+		// If it's not the dialog,
+		else if (mustBeActive)
+		{
+			hasSeenDialog = isCurrentDialogMatching(dialogMessage);
+		}
+	}
 
-    private boolean isCurrentDialogMatching(String dialogMessage) {
-        if (talkerName != null && !dialogMessage.contains(talkerName + "|")) return false;
-        return text.stream().anyMatch(dialogMessage::contains);
-    }
+	private boolean isCurrentDialogMatching(String dialogMessage)
+	{
+		String sanitisedMsg = Text.sanitize(dialogMessage);
+		if (talkerName != null && !sanitisedMsg.contains(talkerName + "|")) return false;
+		return text.stream().anyMatch(sanitisedMsg::contains);
+	}
 }

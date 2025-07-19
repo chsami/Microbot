@@ -24,55 +24,67 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.shadowofthestorm;
 
-
-import net.runelite.api.NullObjectID;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.GameTick;
-import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.steps.DetailedOwnerStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.gameval.ObjectID;
+import net.runelite.client.eventbus.Subscribe;
 
 import java.util.Arrays;
 import java.util.Collection;
 
-public class SearchKilns extends DetailedOwnerStep {
-    ObjectStep searchKiln1, searchKiln2, searchKiln3, searchKiln4;
+public class SearchKilns extends DetailedOwnerStep
+{
+	ObjectStep searchKiln1, searchKiln2, searchKiln3, searchKiln4;
 
-    public SearchKilns(QuestHelper questHelper) {
-        super(questHelper, "Search the kilns in Uzer until you find a book.");
-    }
+	public SearchKilns(QuestHelper questHelper)
+	{
+		super(questHelper, "Search the kilns in Uzer until you find a book.");
+	}
 
-    @Subscribe
-    public void onGameTick(GameTick event) {
-        updateSteps();
-    }
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		updateSteps();
+	}
 
-    @Override
-    protected void updateSteps() {
-        int correctKiln = client.getVarbitValue(1378);
-        if (correctKiln == 0) {
-            startUpStep(searchKiln1);
-        } else if (correctKiln == 1) {
-            startUpStep(searchKiln2);
-        } else if (correctKiln == 2) {
-            startUpStep(searchKiln3);
-        } else if (correctKiln == 3) {
-            startUpStep(searchKiln4);
-        }
-    }
+	@Override
+	protected void updateSteps()
+	{
+		int correctKiln = client.getVarbitValue(1378);
+		if (correctKiln == 0)
+		{
+			startUpStep(searchKiln1);
+		}
+		else if (correctKiln == 1)
+		{
+			startUpStep(searchKiln2);
+		}
+		else if (correctKiln == 2)
+		{
+			startUpStep(searchKiln3);
+		}
+		else if (correctKiln == 3)
+		{
+			startUpStep(searchKiln4);
+		}
+	}
 
-    @Override
-    protected void setupSteps() {
-        searchKiln1 = new ObjectStep(getQuestHelper(), NullObjectID.NULL_10242, new WorldPoint(3468, 3124, 0), "Search the kilns in Uzer until you find a book.");
-        searchKiln2 = new ObjectStep(getQuestHelper(), NullObjectID.NULL_10243, new WorldPoint(3479, 3083, 0), "Search the kilns in Uzer until you find a book.");
-        searchKiln3 = new ObjectStep(getQuestHelper(), NullObjectID.NULL_10244, new WorldPoint(3473, 3093, 0), "Search the kilns in Uzer until you find a book.");
-        searchKiln4 = new ObjectStep(getQuestHelper(), NullObjectID.NULL_10245, new WorldPoint(3501, 3085, 0), "Search the kilns in Uzer until you find a book.");
-    }
+	@Override
+	protected void setupSteps()
+	{
+		searchKiln1 = new ObjectStep(getQuestHelper(), ObjectID.AGRITH_KILN_1, new WorldPoint(3468, 3124, 0), "Search the kilns in Uzer until you find a book.");
+		searchKiln2 = new ObjectStep(getQuestHelper(), ObjectID.AGRITH_KILN_2, new WorldPoint(3479, 3083, 0), "Search the kilns in Uzer until you find a book.");
+		searchKiln3 = new ObjectStep(getQuestHelper(), ObjectID.AGRITH_KILN_3, new WorldPoint(3473, 3093, 0), "Search the kilns in Uzer until you find a book.");
+		searchKiln4 = new ObjectStep(getQuestHelper(), ObjectID.AGRITH_KILN_4, new WorldPoint(3501, 3085, 0), "Search the kilns in Uzer until you find a book.");
+	}
 
-    @Override
-    public Collection<QuestStep> getSteps() {
-        return Arrays.asList(searchKiln1, searchKiln2, searchKiln3, searchKiln4);
-    }
+	@Override
+	public Collection<QuestStep> getSteps()
+	{
+		return Arrays.asList(searchKiln1, searchKiln2, searchKiln3, searchKiln4);
+	}
 }

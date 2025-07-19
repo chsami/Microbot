@@ -24,39 +24,43 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.runeliteobjects;
 
-
+import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
 import lombok.Getter;
 import net.runelite.client.config.ConfigManager;
-import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
 
-public class RuneliteConfigSetter {
-    @Getter
-    protected final String CONFIG_GROUP = QuestHelperConfig.QUEST_BACKGROUND_GROUP;
+public class RuneliteConfigSetter
+{
+	@Getter
+	protected final String CONFIG_GROUP = QuestHelperConfig.QUEST_BACKGROUND_GROUP;
 
-    protected final String runeliteIdentifier;
+	protected final String runeliteIdentifier;
 
-    @Getter
-    protected final String setValue;
-    protected final ConfigManager configManager;
+	@Getter
+	protected final String setValue;
+	protected final ConfigManager configManager;
 
 
-    public RuneliteConfigSetter(ConfigManager configManager, String id, String setValue) {
-        this.configManager = configManager;
-        this.runeliteIdentifier = id;
-        this.setValue = setValue;
-    }
+	public RuneliteConfigSetter(ConfigManager configManager, String id, String setValue)
+	{
+		this.configManager = configManager;
+		this.runeliteIdentifier = id;
+		this.setValue = setValue;
+	}
 
-    public String getConfigValue() {
-        return configManager.getRSProfileConfiguration(CONFIG_GROUP, runeliteIdentifier);
-    }
+	public String getConfigValue()
+	{
+		return configManager.getRSProfileConfiguration(CONFIG_GROUP, runeliteIdentifier);
+	}
 
-    public void setConfigValue() {
-        configManager.setRSProfileConfiguration(CONFIG_GROUP, runeliteIdentifier, setValue);
-    }
+	public void setConfigValue()
+	{
+		configManager.setRSProfileConfiguration(CONFIG_GROUP, runeliteIdentifier, setValue);
+	}
 
-    public boolean configExists() {
-        return configManager.getRSProfileConfiguration(CONFIG_GROUP, runeliteIdentifier) != null;
-    }
+	public boolean configExists()
+	{
+		return configManager.getRSProfileConfiguration(CONFIG_GROUP, runeliteIdentifier) != null;
+	}
 }
 
 

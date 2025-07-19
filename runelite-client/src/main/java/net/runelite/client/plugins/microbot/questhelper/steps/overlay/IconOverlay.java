@@ -24,30 +24,31 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.steps.overlay;
 
-
 import net.runelite.client.plugins.microbot.questhelper.tools.Icon;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
 
-public class IconOverlay {
-    public static BufferedImage createIconImage(BufferedImage newImage) {
-        BufferedImage iconBackground = Icon.ICON_BACKGROUND.getImage();
-        BufferedImage icon = new BufferedImage(iconBackground.getWidth(), iconBackground.getHeight(),
-                BufferedImage.TYPE_INT_ARGB);
-        Graphics tmpGraphics = icon.getGraphics();
-        tmpGraphics.drawImage(iconBackground, 0, 0, null);
+public class IconOverlay
+{
+	public static BufferedImage createIconImage(BufferedImage newImage)
+	{
+		BufferedImage iconBackground = Icon.ICON_BACKGROUND.getImage();
+		BufferedImage icon = new BufferedImage(iconBackground.getWidth(), iconBackground.getHeight(),
+			BufferedImage.TYPE_INT_ARGB);
+		Graphics tmpGraphics = icon.getGraphics();
+		tmpGraphics.drawImage(iconBackground, 0, 0, null);
 
-        float maxWidthOrHeight = Math.max(newImage.getHeight(), newImage.getWidth());
-        int imageWidthScaled = (int) (iconBackground.getWidth() * newImage.getWidth() / maxWidthOrHeight);
-        int imageHeightScaled = (int) (iconBackground.getHeight() * newImage.getHeight() / maxWidthOrHeight);
+		float maxWidthOrHeight = Math.max(newImage.getHeight(), newImage.getWidth());
+		int imageWidthScaled = (int) (iconBackground.getWidth() * newImage.getWidth() / maxWidthOrHeight);
+		int imageHeightScaled = (int) (iconBackground.getHeight() * newImage.getHeight() / maxWidthOrHeight);
 
-        int bufferWidth = iconBackground.getWidth() / 2 - imageWidthScaled / 2;
-        bufferWidth = Math.max(bufferWidth, 0);
-        int bufferHeight = iconBackground.getHeight() / 2 - imageHeightScaled / 2;
-        bufferHeight = Math.max(bufferHeight, 0);
+		int bufferWidth = iconBackground.getWidth() / 2 - imageWidthScaled / 2;
+		bufferWidth = Math.max(bufferWidth, 0);
+		int bufferHeight = iconBackground.getHeight() / 2 - imageHeightScaled / 2;
+		bufferHeight = Math.max(bufferHeight, 0);
 
-        tmpGraphics.drawImage(newImage, bufferWidth, bufferHeight, imageWidthScaled, imageHeightScaled, null);
-        return icon;
-    }
+		tmpGraphics.drawImage(newImage, bufferWidth, bufferHeight, imageWidthScaled, imageHeightScaled, null);
+		return icon;
+	}
 }

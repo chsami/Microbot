@@ -32,70 +32,75 @@ import lombok.RequiredArgsConstructor;
  */
 @RequiredArgsConstructor
 @Getter
-public enum WorldMapArea {
-    ANY("Any"),
-    GIELINOR_SURFACE("Gielinor Surface"),
-    ANCIENT_CAVERN("Ancient Cavern"),
-    ARDOUGNE_UNDERGROUND("Ardougne Underground"),
-    ASGARNIA_ICE_CAVE("Asgarnia Ice Cave"),
-    BRAINDEATH_ISLAND("Braindeath Island"),
-    DORGESH_KAAN("Dorgesh-Kaan"),
-    DWARVEN_MINES("Dwarven Mines"),
-    GOD_WARS_DUNGEON("God Wars Dungeon"),
-    KARAMJA_UNDERGROUND("Karamja Underground"),
-    KELDAGRIM("Keldagrim"),
-    LMS_WILD_VARROCK("LMS Wild Varrock"),
-    LMS_DESERT_ISLAND("LMS Desert Island"),
-    MISCELLANIA_UNDERGROUND("Miscellania Underground"),
-    MISTHALIN_UNDERGROUND("Misthalin Underground"),
-    MOLE_HOLE("Mole Hole"),
-    MORYTANIA_UNDERGROUND("Morytania Underground"),
-    MOS_LEHARMLESS_CAVE("Mos Le'Harmless Cave"),
-    OURANIA_ALTAR("Ourania Altar"),
-    RUINS_OF_CAMDOZAAL("Ruins of Camdozaal"),
-    FREMENNIK_SLAYER_CAVE("Fremennik Slayer Cave"),
-    STRONGHOLD_OF_SECURITY("Stronghold of Security"),
-    TAVERLEY_UNDERGROUND("Taverley Underground"),
-    TOLNAS_RIFT("Tolna's Rift"),
-    TROLL_STRONGHOLD("Troll Stronghold"),
-    MOR_UL_REK("Mor Ul Rek"),
-    LAIR_OF_TARN_RAZORLOR("Lair of Tarn Razorlor"),
-    WATERBIRTH_DUNGEON("Waterbirth Dungeon"),
-    WILDERNESS_DUNGEONS("Wilderness Dungeons"),
-    YANILLE_UNDERGROUND("Yanille Underground"),
-    ZANARIS("Zanaris"),
-    STRONGHOLD_UNDERGROUND("Stronghold Underground"),
-    KOUREND_UNDERGROUND("Kourend Underground"),
-    FOSSIL_ISLAND_UNDERGROUND("Fossil Island Underground"),
-    FELDIP_HILLS_UNDERGROUND("Feldip Hills Underground"),
-    KEBOS_UNDERGROUND("Kebos Underground"),
-    PRIFFDDINAS("Prifddinas"),
-    PRIFFDDINAS_UNDERGROUND("Prifddinas Underground"),
-    PRIFDDINAS_GRAND_LIBRARY("Prifddinas Grand Library"),
-    THE_ABYSS("The Abyss"),
-    KHARIDIAN_DESERT_UNDERGROUND("Kharidian Desert Underground"),
-    GHORROCK_PRISON("Ghorrock Prison"),
-    LASSAR_UNDERCITY("Lassar Undercity"),
-    VARLAMORE_UNDERGROUND("Varlamore Underground"),
-    CAM_TORUM("Cam Torum"),
-    NEYPOTZLI("Neypotzli");
+public enum WorldMapArea
+{
+	ANY("Any"),
+	GIELINOR_SURFACE("Gielinor Surface"),
+	ANCIENT_CAVERN("Ancient Cavern"),
+	ARDOUGNE_UNDERGROUND("Ardougne Underground"),
+	ASGARNIA_ICE_CAVE("Asgarnia Ice Cave"),
+	BRAINDEATH_ISLAND("Braindeath Island"),
+	DORGESH_KAAN("Dorgesh-Kaan"),
+	DWARVEN_MINES("Dwarven Mines"),
+	GOD_WARS_DUNGEON("God Wars Dungeon"),
+	KARAMJA_UNDERGROUND("Karamja Underground"),
+	KELDAGRIM("Keldagrim"),
+	LMS_WILD_VARROCK("LMS Wild Varrock"),
+	LMS_DESERT_ISLAND("LMS Desert Island"),
+	MISCELLANIA_UNDERGROUND("Miscellania Underground"),
+	MISTHALIN_UNDERGROUND("Misthalin Underground"),
+	MOLE_HOLE("Mole Hole"),
+	MORYTANIA_UNDERGROUND("Morytania Underground"),
+	MOS_LEHARMLESS_CAVE("Mos Le'Harmless Cave"),
+	OURANIA_ALTAR("Ourania Altar"),
+	RUINS_OF_CAMDOZAAL("Ruins of Camdozaal"),
+	FREMENNIK_SLAYER_CAVE("Fremennik Slayer Cave"),
+	STRONGHOLD_OF_SECURITY("Stronghold of Security"),
+	TAVERLEY_UNDERGROUND("Taverley Underground"),
+	TOLNAS_RIFT("Tolna's Rift"),
+	TROLL_STRONGHOLD("Troll Stronghold"),
+	MOR_UL_REK("Mor Ul Rek"),
+	LAIR_OF_TARN_RAZORLOR("Lair of Tarn Razorlor"),
+	WATERBIRTH_DUNGEON("Waterbirth Dungeon"),
+	WILDERNESS_DUNGEONS("Wilderness Dungeons"),
+	YANILLE_UNDERGROUND("Yanille Underground"),
+	ZANARIS("Zanaris"),
+	STRONGHOLD_UNDERGROUND("Stronghold Underground"),
+	KOUREND_UNDERGROUND("Kourend Underground"),
+	FOSSIL_ISLAND_UNDERGROUND("Fossil Island Underground"),
+	FELDIP_HILLS_UNDERGROUND("Feldip Hills Underground"),
+	KEBOS_UNDERGROUND("Kebos Underground"),
+	PRIFFDDINAS("Prifddinas"),
+	PRIFFDDINAS_UNDERGROUND("Prifddinas Underground"),
+	PRIFDDINAS_GRAND_LIBRARY("Prifddinas Grand Library"),
+	THE_ABYSS("The Abyss"),
+	KHARIDIAN_DESERT_UNDERGROUND("Kharidian Desert Underground"),
+	GHORROCK_PRISON("Ghorrock Prison"),
+	LASSAR_UNDERCITY("Lassar Undercity"),
+	VARLAMORE_UNDERGROUND("Varlamore Underground"),
+	CAM_TORUM("Cam Torum"),
+	NEYPOTZLI("Neypotzli");
 
-    private static final WorldMapArea[] AREAS = values();
+	private static final WorldMapArea[] AREAS = values();
 
-    private final String name;
+	private final String name;
 
-    public static WorldMapArea fromId(int areaId) {
-        if (areaId < 0 || areaId >= AREAS.length) return ANY;
-        return AREAS[areaId];
-    }
+	public static WorldMapArea fromId(int areaId)
+	{
+		if (areaId < 0 || areaId >= AREAS.length) return ANY;
+		return AREAS[areaId];
+	}
 
-    public static WorldMapArea fromName(String name) {
-        for (WorldMapArea area : AREAS) {
-            if (area.getName().equals(name)) {
-                return area;
-            }
-        }
+	public static WorldMapArea fromName(String name)
+	{
+		for (WorldMapArea area : AREAS)
+		{
+			if (area.getName().equals(name))
+			{
+				return area;
+			}
+		}
 
-        return ANY;
-    }
+		return ANY;
+	}
 }

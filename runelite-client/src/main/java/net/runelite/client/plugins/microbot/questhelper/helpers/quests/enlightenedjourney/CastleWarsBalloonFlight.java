@@ -24,82 +24,89 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.enlightenedjourney;
 
-
-import net.runelite.api.ItemID;
-import net.runelite.api.QuestState;
-import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.ComplexStateQuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
-import net.runelite.client.plugins.microbot.questhelper.requirements.quest.QuestRequirement;
-import net.runelite.client.plugins.microbot.questhelper.rewards.ExperienceReward;
-import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.player.SkillRequirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.quest.QuestRequirement;
+import net.runelite.client.plugins.microbot.questhelper.rewards.ExperienceReward;
 import net.runelite.client.plugins.microbot.questhelper.rewards.UnlockReward;
+import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import net.runelite.api.QuestState;
+import net.runelite.api.Skill;
+import net.runelite.api.gameval.ItemID;
 
 import java.util.*;
 
-public class CastleWarsBalloonFlight extends ComplexStateQuestHelper {
-    BalloonFlightStep fly;
+public class CastleWarsBalloonFlight extends ComplexStateQuestHelper
+{
+	BalloonFlightStep fly;
 
-    ItemRequirement yewLogs;
+	ItemRequirement yewLogs;
 
-    @Override
-    public QuestStep loadStep() {
-        initializeRequirements();
+	@Override
+	public QuestStep loadStep()
+	{
+		initializeRequirements();
 
-        HashMap<Integer, List<Integer>> sections = new HashMap<>();
-        List<Integer> section1 = Arrays.asList(5, 7, 9, 10, 10, 10, 10, 10, 10, 8, 9, 9, 9, 7, 7, 7, 8, 9, 9, 9, 9);
-        List<Integer> section2 = Arrays.asList(9, 10, 10, 10, 8, 7, 7, 7, 7, 7, 7, 7, 7, 7, 9, 9, 9, 7, 8, 7, 7);
-        List<Integer> section3 = Arrays.asList(7, 8, 8, 8, 7, 7, 7, 7, 7, 8, 6, 6, 6, 6, 6, 8, 6, 6, 6, 5);
-        sections.put(10, section1);
-        sections.put(11, section2);
-        sections.put(12, section3);
+		HashMap<Integer, List<Integer>> sections = new HashMap<>();
+		List<Integer> section1 = Arrays.asList(5, 7, 9, 10, 10, 10, 10, 10, 10, 8, 9, 9, 9, 7, 7, 7, 8, 9, 9, 9, 9);
+		List<Integer> section2 = Arrays.asList(9, 10, 10, 10, 8, 7, 7, 7, 7, 7, 7, 7, 7, 7, 9, 9, 9, 7, 8, 7, 7);
+		List<Integer> section3 = Arrays.asList(7, 8, 8, 8, 7, 7, 7, 7, 7, 8, 6, 6, 6, 6, 6, 8, 6, 6, 6, 5);
+		sections.put(10, section1);
+		sections.put(11, section2);
+		sections.put(12, section3);
 
-        fly = new BalloonFlightStep(this, "Fly the balloon on Entrana to Castle Wars.", sections, yewLogs);
-        return fly;
-    }
+		fly = new BalloonFlightStep(this, "Fly the balloon on Entrana to Castle Wars.", sections, yewLogs);
+		return fly;
+	}
 
-    @Override
-    protected void setupRequirements() {
-        yewLogs = new ItemRequirement("Yew logs", ItemID.YEW_LOGS, 10);
-    }
+	@Override
+	protected void setupRequirements()
+	{
+		yewLogs = new ItemRequirement("Yew logs", ItemID.YEW_LOGS, 10);
+	}
 
-    @Override
-    public List<ItemRequirement> getItemRequirements() {
-        return Collections.singletonList(yewLogs);
-    }
-
-
-    @Override
-    public List<Requirement> getGeneralRequirements() {
-        List<Requirement> reqs = new ArrayList<>();
-        reqs.add(new QuestRequirement(QuestHelperQuest.ENLIGHTENED_JOURNEY, QuestState.FINISHED));
-        reqs.add(new SkillRequirement(Skill.FIREMAKING, 50));
-        return reqs;
-    }
-
-    @Override
-    public List<ExperienceReward> getExperienceRewards() {
-        return Collections.singletonList(new ExperienceReward(Skill.FIREMAKING, 2000));
-    }
-
-    @Override
-    public List<UnlockReward> getUnlockRewards() {
-        return Collections.singletonList(
-                new UnlockReward("Ability to fly via balloon to Castle Wars with 1 yew log")
-        );
-    }
+	@Override
+	public List<ItemRequirement> getItemRequirements()
+	{
+		return Collections.singletonList(yewLogs);
+	}
 
 
-    @Override
-    public ArrayList<PanelDetails> getPanels() {
-        ArrayList<PanelDetails> allSteps = new ArrayList<>();
+	@Override
+	public List<Requirement> getGeneralRequirements()
+	{
+		List<Requirement> reqs = new ArrayList<>();
+		reqs.add(new QuestRequirement(QuestHelperQuest.ENLIGHTENED_JOURNEY, QuestState.FINISHED));
+		reqs.add(new SkillRequirement(Skill.FIREMAKING, 50));
+		return reqs;
+	}
 
-        allSteps.add(new PanelDetails("Flying to Castle Wars", Collections.singletonList(fly), yewLogs));
+	@Override
+	public List<ExperienceReward> getExperienceRewards()
+	{
+		return Collections.singletonList(new ExperienceReward(Skill.FIREMAKING, 2000));
+	}
 
-        return allSteps;
-    }
+	@Override
+	public List<UnlockReward> getUnlockRewards()
+	{
+		return Collections.singletonList(
+			new UnlockReward("Ability to fly via balloon to Castle Wars with 1 yew log")
+		);
+	}
+
+
+	@Override
+	public ArrayList<PanelDetails> getPanels()
+	{
+		ArrayList<PanelDetails> allSteps = new ArrayList<>();
+
+		allSteps.add(new PanelDetails("Flying to Castle Wars", Collections.singletonList(fly), yewLogs));
+
+		return allSteps;
+	}
 }

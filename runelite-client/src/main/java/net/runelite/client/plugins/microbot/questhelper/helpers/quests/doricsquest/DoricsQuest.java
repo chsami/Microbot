@@ -24,99 +24,108 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.doricsquest;
 
-
-import net.runelite.api.ItemID;
-import net.runelite.api.NpcID;
-import net.runelite.api.Skill;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.questhelper.rewards.ItemReward;
-import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
-import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.BasicQuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.player.SkillRequirement;
 import net.runelite.client.plugins.microbot.questhelper.rewards.ExperienceReward;
+import net.runelite.client.plugins.microbot.questhelper.rewards.ItemReward;
 import net.runelite.client.plugins.microbot.questhelper.rewards.QuestPointReward;
 import net.runelite.client.plugins.microbot.questhelper.rewards.UnlockReward;
+import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import net.runelite.api.Skill;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
 
 import java.util.*;
 
-public class DoricsQuest extends BasicQuestHelper {
-    //Items Required
-    ItemRequirement clay, copper, iron;
+public class DoricsQuest extends BasicQuestHelper
+{
+	//Items Required
+	ItemRequirement clay, copper, iron;
 
-    //NPC Steps
-    QuestStep talkToDoric;
+	//NPC Steps
+	QuestStep talkToDoric;
 
-    @Override
-    public Map<Integer, QuestStep> loadSteps() {
-        initializeRequirements();
-        setupSteps();
-        Map<Integer, QuestStep> steps = new HashMap<>();
+	@Override
+	public Map<Integer, QuestStep> loadSteps()
+	{
+		initializeRequirements();
+		setupSteps();
+		Map<Integer, QuestStep> steps = new HashMap<>();
 
-        steps.put(0, talkToDoric);
-        steps.put(10, talkToDoric);
+		steps.put(0, talkToDoric);
+		steps.put(10, talkToDoric);
 
-        return steps;
-    }
+		return steps;
+	}
 
-    @Override
-    protected void setupRequirements() {
-        clay = new ItemRequirement("Clay (UNNOTED)", ItemID.CLAY, 6);
-        copper = new ItemRequirement("Copper ore (UNNOTED)", ItemID.COPPER_ORE, 4);
-        iron = new ItemRequirement("Iron ore (UNNOTED)", ItemID.IRON_ORE, 2);
-    }
+	@Override
+	protected void setupRequirements()
+	{
+		clay = new ItemRequirement("Clay (UNNOTED)", ItemID.CLAY, 6);
+		copper = new ItemRequirement("Copper ore (UNNOTED)", ItemID.COPPER_ORE, 4);
+		iron = new ItemRequirement("Iron ore (UNNOTED)", ItemID.IRON_ORE, 2);
+	}
 
-    public void setupSteps() {
-        talkToDoric = new NpcStep(this, NpcID.DORIC, new WorldPoint(2951, 3451, 0), "Bring Doric north of Falador all the required items. You can mine them all in the Dwarven Mines, or buy them from the Grand Exchange.", clay, copper, iron);
-        talkToDoric.addDialogStep("I wanted to use your anvils.");
-        talkToDoric.addDialogStep("Yes.");
-        talkToDoric.addDialogStep("Yes, I will get you the materials.");
-    }
+	public void setupSteps()
+	{
+		talkToDoric = new NpcStep(this, NpcID.DORIC, new WorldPoint(2951, 3451, 0), "Bring Doric north of Falador all the required items. You can mine them all in the Dwarven Mines, or buy them from the Grand Exchange.", clay, copper, iron);
+		talkToDoric.addDialogStep("I wanted to use your anvils.");
+		talkToDoric.addDialogStep("Yes, I will get you the materials.");
+	}
 
-    @Override
-    public List<Requirement> getGeneralRecommended() {
-        ArrayList<Requirement> req = new ArrayList<>();
-        req.add(new SkillRequirement(Skill.MINING, 15, true, "15 Mining to get ores yourself"));
-        return req;
-    }
+	@Override
+	public List<Requirement> getGeneralRecommended()
+	{
+		ArrayList<Requirement> req = new ArrayList<>();
+		req.add(new SkillRequirement(Skill.MINING, 15, true, "15 Mining to get ores yourself"));
+		return req;
+	}
 
-    @Override
-    public List<ItemRequirement> getItemRequirements() {
-        ArrayList<ItemRequirement> reqs = new ArrayList<>();
-        reqs.add(clay);
-        reqs.add(copper);
-        reqs.add(iron);
-        return reqs;
-    }
+	@Override
+	public List<ItemRequirement> getItemRequirements()
+	{
+		ArrayList<ItemRequirement> reqs = new ArrayList<>();
+		reqs.add(clay);
+		reqs.add(copper);
+		reqs.add(iron);
+		return reqs;
+	}
 
-    @Override
-    public QuestPointReward getQuestPointReward() {
-        return new QuestPointReward(1);
-    }
+	@Override
+	public QuestPointReward getQuestPointReward()
+	{
+		return new QuestPointReward(1);
+	}
 
-    @Override
-    public List<ExperienceReward> getExperienceRewards() {
-        return Collections.singletonList(new ExperienceReward(Skill.MINING, 1300));
-    }
+	@Override
+	public List<ExperienceReward> getExperienceRewards()
+	{
+		return Collections.singletonList(new ExperienceReward(Skill.MINING, 1300));
+	}
 
-    @Override
-    public List<ItemReward> getItemRewards() {
-        return Collections.singletonList(new ItemReward("Coins", ItemID.COINS_995, 180));
-    }
+	@Override
+	public List<ItemReward> getItemRewards()
+	{
+		return Collections.singletonList(new ItemReward("Coins", ItemID.COINS, 180));
+	}
 
-    @Override
-    public List<UnlockReward> getUnlockRewards() {
-        return Collections.singletonList(new UnlockReward("Use of Doric's Anvil"));
-    }
+	@Override
+	public List<UnlockReward> getUnlockRewards()
+	{
+		return Collections.singletonList(new UnlockReward("Use of Doric's Anvil"));
+	}
 
-    @Override
-    public List<PanelDetails> getPanels() {
-        List<PanelDetails> allSteps = new ArrayList<>();
+	@Override
+	public List<PanelDetails> getPanels()
+	{
+		List<PanelDetails> allSteps = new ArrayList<>();
 
-        allSteps.add(new PanelDetails("Help Doric", Collections.singletonList(talkToDoric), clay, copper, iron));
-        return allSteps;
-    }
+		allSteps.add(new PanelDetails("Help Doric", Collections.singletonList(talkToDoric), clay, copper, iron));
+		return allSteps;
+	}
 }

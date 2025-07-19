@@ -24,7 +24,8 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.steps;
 
-
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.api.GameState;
 import net.runelite.api.NPC;
 import net.runelite.api.coords.WorldPoint;
@@ -32,8 +33,6 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
 import net.runelite.api.events.VarbitChanged;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
-import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,99 +42,115 @@ import java.util.List;
  * MultiNpcStep should be used over NpcStep when the NPC you're trying to track is a "MultiNPC"
  * TODO: Add some documentation for how you can know an NPC is a MultiNPC, and what resources to use to debug it (e.g. how to find out which varbit controls it, what its base ID is etc)
  */
-public class MultiNpcStep extends NpcStep {
-    /**
-     * List of NPCs matching the base composition ID, but not necessarily the exact NPC ID we're looking for
-     */
-    private final List<NPC> baseNPCs = new ArrayList<>();
+public class MultiNpcStep extends NpcStep
+{
+	/**
+	 * List of NPCs matching the base composition ID, but not necessarily the exact NPC ID we're looking for
+	 */
+	private final List<NPC> baseNPCs = new ArrayList<>();
 
-    /**
-     * Varbit that signals a change in the NPC ID, meaning we want to re-checked all suspected NPCs we've found.
-     */
-    private final int multinpcVarbit;
-    /**
-     * The base composition ID of the NPC we're looking for.
-     *
-     * @see <a href="https://static.runelite.net/api/runelite-api/net/runelite/api/NPCComposition.html#getId()">NPCComposition#getId()</a>
-     */
-    private final int npcCompositionID;
+	/**
+	 * Varbit that signals a change in the NPC ID, meaning we want to re-checked all suspected NPCs we've found.
+	 */
+	private final int multinpcVarbit;
+	/**
+	 * The base composition ID of the NPC we're looking for.
+	 * @see <a href="https://static.runelite.net/api/runelite-api/net/runelite/api/NPCComposition.html#getId()">NPCComposition#getId()</a>
+	 */
+	private final int npcCompositionID;
 
-    public MultiNpcStep(QuestHelper questHelper, int npcID, WorldPoint worldPoint, String text, int multinpcVarbit, int npcCompositionID, Requirement... requirements) {
-        super(questHelper, npcID, worldPoint, text, requirements);
-        this.multinpcVarbit = multinpcVarbit;
-        this.npcCompositionID = npcCompositionID;
-    }
+	public MultiNpcStep(QuestHelper questHelper, int npcID, WorldPoint worldPoint, String text, int multinpcVarbit, int npcCompositionID, Requirement... requirements)
+	{
+		super(questHelper, npcID, worldPoint, text, requirements);
+		this.multinpcVarbit = multinpcVarbit;
+		this.npcCompositionID = npcCompositionID;
+	}
 
-    public MultiNpcStep(QuestHelper questHelper, int npcID, WorldPoint worldPoint, String text, int multinpcVarbit, int npcCompositionID, List<Requirement> requirements) {
-        super(questHelper, npcID, worldPoint, text, requirements, new ArrayList<>());
-        this.multinpcVarbit = multinpcVarbit;
-        this.npcCompositionID = npcCompositionID;
-    }
+	public MultiNpcStep(QuestHelper questHelper, int npcID, WorldPoint worldPoint, String text, int multinpcVarbit, int npcCompositionID, List<Requirement> requirements)
+	{
+		super(questHelper, npcID, worldPoint, text, requirements, new ArrayList<>());
+		this.multinpcVarbit = multinpcVarbit;
+		this.npcCompositionID = npcCompositionID;
+	}
 
-    @Override
-    public void shutDown() {
-        super.shutDown();
-        baseNPCs.clear();
-    }
+	@Override
+	public void shutDown()
+	{
+		super.shutDown();
+		baseNPCs.clear();
+	}
 
-    @Override
-    public void onGameStateChanged(GameStateChanged event) {
-        super.onGameStateChanged(event);
-        if (event.getGameState() == GameState.HOPPING) {
-            baseNPCs.clear();
-        }
-    }
+	@Override
+	public void onGameStateChanged(GameStateChanged event)
+	{
+		super.onGameStateChanged(event);
+		if (event.getGameState() == GameState.HOPPING)
+		{
+			baseNPCs.clear();
+		}
+	}
 
-    @Override
-    public void onVarbitChanged(VarbitChanged varbitChanged) {
-        super.onVarbitChanged(varbitChanged);
+	@Override
+	public void onVarbitChanged(VarbitChanged varbitChanged)
+	{
+		super.onVarbitChanged(varbitChanged);
 
-        npcs.removeIf(npc -> npc.getId() != npcID);
+		npcs.removeIf(npc -> npc.getId() != npcID);
 
-        for (NPC foundBaseNPC : baseNPCs) {
-            if (foundBaseNPC.getId() == npcID) {
-                npcs.add(foundBaseNPC);
-            }
-        }
-    }
+		for (NPC foundBaseNPC : baseNPCs)
+		{
+			if (foundBaseNPC.getId() == npcID)
+			{
+				npcs.add(foundBaseNPC);
+			}
+		}
+	}
 
-    protected boolean npcIsCompositionMatch(NPC npc) {
-        return npcCompositionID == npc.getComposition().getId() || alternateNpcIDs.contains(npc.getComposition().getId());
-    }
+	protected boolean npcIsCompositionMatch(NPC npc)
+	{
+		return npcCompositionID == npc.getComposition().getId() || alternateNpcIDs.contains(npc.getComposition().getId());
+	}
 
-    @Override
-    public void scanForNpcs() {
-        super.scanForNpcs();
-        for (NPC npc : client.getNpcs()) {
-            addNpcToListGivenMatchingID(npc, this::npcIsCompositionMatch, baseNPCs);
-        }
-    }
+	@Override
+	public void scanForNpcs()
+	{
+		super.scanForNpcs();
+		for (NPC npc : client.getTopLevelWorldView().npcs())
+		{
+			addNpcToListGivenMatchingID(npc, this::npcIsCompositionMatch, baseNPCs);
+		}
+	}
 
-    @Override
-    public void onNpcSpawned(NpcSpawned event) {
-        super.onNpcSpawned(event);
-        addNpcToListGivenMatchingID(event.getNpc(), this::npcIsCompositionMatch, baseNPCs);
-    }
+	@Override
+	public void onNpcSpawned(NpcSpawned event)
+	{
+		super.onNpcSpawned(event);
+		addNpcToListGivenMatchingID(event.getNpc(), this::npcIsCompositionMatch, baseNPCs);
+	}
 
-    @Override
-    public void onNpcDespawned(NpcDespawned event) {
-        super.onNpcDespawned(event);
-        baseNPCs.remove(event.getNpc());
-    }
+	@Override
+	public void onNpcDespawned(NpcDespawned event)
+	{
+		super.onNpcDespawned(event);
+		baseNPCs.remove(event.getNpc());
+	}
 
-    @Override
-    public NpcStep copy() {
-        MultiNpcStep newStep = new MultiNpcStep(getQuestHelper(), npcID, worldPoint, null, multinpcVarbit, npcCompositionID, requirements);
-        if (text != null) {
-            newStep.setText(text);
-        }
-        newStep.allowMultipleHighlights = allowMultipleHighlights;
-        newStep.addAlternateNpcs(alternateNpcIDs);
-        if (mustBeFocusedOnPlayer) {
-            newStep.setMustBeFocusedOnPlayer(true);
-        }
-        newStep.setMaxRoamRange(maxRoamRange);
+	@Override
+	public NpcStep copy()
+	{
+		MultiNpcStep newStep = new MultiNpcStep(getQuestHelper(), npcID, worldPoint, null, multinpcVarbit, npcCompositionID, requirements);
+		if (text != null)
+		{
+			newStep.setText(text);
+		}
+		newStep.allowMultipleHighlights = allowMultipleHighlights;
+		newStep.addAlternateNpcs(alternateNpcIDs);
+		if (mustBeFocusedOnPlayer)
+		{
+			newStep.setMustBeFocusedOnPlayer(true);
+		}
+		newStep.setMaxRoamRange(maxRoamRange);
 
-        return newStep;
-    }
+		return newStep;
+	}
 }

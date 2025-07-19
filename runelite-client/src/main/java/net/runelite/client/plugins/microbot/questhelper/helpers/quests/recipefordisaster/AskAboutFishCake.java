@@ -24,45 +24,52 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.recipefordisaster;
 
-
-import net.runelite.api.NpcID;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.GameTick;
-import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.choice.DialogChoiceSteps;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.client.eventbus.Subscribe;
 
-public class AskAboutFishCake extends NpcStep {
-    public AskAboutFishCake(QuestHelper questHelper) {
-        super(questHelper, NpcID.COOK_4626, new WorldPoint(3209, 3215, 0),
-                "Talk to the Lumbridge Cook and ask him all the options about Pirate Pete.");
-    }
+public class AskAboutFishCake extends NpcStep
+{
+	public AskAboutFishCake(QuestHelper questHelper)
+	{
+		super(questHelper, NpcID.POH_SERVANT_COOK_WOMAN, new WorldPoint(3209, 3215, 0),
+			"Talk to the Lumbridge Cook and ask him all the options about Pirate Pete.");
+	}
 
-    @Subscribe
-    public void onGameTick(GameTick event) {
-        updateCorrectChoice();
-    }
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		updateCorrectChoice();
+	}
 
-    private void updateCorrectChoice() {
-        boolean askedAboutKelp = client.getVarbitValue(1873) == 1; // And 1874 = 1
-        boolean askedAboutCrab = client.getVarbitValue(1874) == 1;
-        boolean askedAboutBread = client.getVarbitValue(1876) == 1;
-        boolean askedAboutCod = client.getVarbitValue(1877) == 1;
+	private void updateCorrectChoice()
+	{
+		boolean askedAboutKelp = client.getVarbitValue(1873) == 1; // And 1874 = 1
+		boolean askedAboutCrab = client.getVarbitValue(1874) == 1;
+		boolean askedAboutBread = client.getVarbitValue(1876) == 1;
+		boolean askedAboutCod = client.getVarbitValue(1877) == 1;
 
-        choices = new DialogChoiceSteps();
-        addDialogStep("Protecting the Pirate");
-        if (!askedAboutCod) {
-            addDialogStep("Where do I get Ground Cod?");
-        }
-        if (!askedAboutKelp) {
-            addDialogStep("Where do I get Ground Kelp?");
-        }
-        if (!askedAboutCrab) {
-            addDialogStep("Where do I get Ground Giant Crab Meat?");
-        }
-        if (!askedAboutBread) {
-            addDialogStep("Where do I get Breadcrumbs?");
-        }
-    }
+		choices = new DialogChoiceSteps();
+		addDialogStep("Protecting the Pirate");
+		if (!askedAboutCod)
+		{
+			addDialogStep("Where do I get Ground Cod?");
+		}
+		if (!askedAboutKelp)
+		{
+			addDialogStep("Where do I get Ground Kelp?");
+		}
+		if (!askedAboutCrab)
+		{
+			addDialogStep("Where do I get Ground Giant Crab Meat?");
+		}
+		if (!askedAboutBread)
+		{
+			addDialogStep("Where do I get Breadcrumbs?");
+		}
+	}
 }

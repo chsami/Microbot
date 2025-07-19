@@ -2,16 +2,12 @@ package net.runelite.client.plugins.microbot.crafting;
 
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Client;
-import net.runelite.client.Notifier;
-import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.crafting.enums.Activities;
 import net.runelite.client.plugins.microbot.crafting.scripts.*;
-import net.runelite.client.plugins.microbot.util.mouse.VirtualMouse;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -31,6 +27,10 @@ public class CraftingPlugin extends Plugin {
     private final GlassblowingScript glassblowingScript = new GlassblowingScript();
     private final StaffScript staffScript = new StaffScript();
     private final FlaxSpinScript flaxSpinScript = new FlaxSpinScript();
+    private final DragonLeatherScript dragonLeatherScript = new DragonLeatherScript();
+
+    public ICraftingScript currentScript = null;
+
     @Inject
     private CraftingConfig config;
     @Inject
@@ -53,13 +53,20 @@ public class CraftingPlugin extends Plugin {
 //        if (config.activityType() == Activities.DEFAULT) {
 
         if (config.activityType() == Activities.GEM_CUTTING) {
+            currentScript = gemsScript;
             gemsScript.run(config);
         } else if (config.activityType() == Activities.GLASSBLOWING) {
+            currentScript = glassblowingScript;
             glassblowingScript.run(config);
         } else if (config.activityType() == Activities.STAFF_MAKING) {
+            currentScript = staffScript;
             staffScript.run(config);
         } else if (config.activityType() == Activities.FLAX_SPINNING) {
+            currentScript = flaxSpinScript;
             flaxSpinScript.run(config);
+        } else if (config.activityType() == Activities.DRAGON_LEATHER) {
+            currentScript = dragonLeatherScript;
+            dragonLeatherScript.run(config);
         }
     }
 
@@ -69,6 +76,7 @@ public class CraftingPlugin extends Plugin {
         gemsScript.shutdown();
         defaultScript.shutdown();
         flaxSpinScript.shutdown();
+        dragonLeatherScript.shutdown();
         overlayManager.remove(craftingOverlay);
     }
 }

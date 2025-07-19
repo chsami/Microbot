@@ -26,6 +26,7 @@ package net.runelite.client.plugins.microbot.questhelper.steps;
 
 import java.util.Collection;
 
-public interface OwnerStep {
-    Collection<QuestStep> getSteps();
+public interface OwnerStep
+{
+	Collection<QuestStep> getSteps();
 }

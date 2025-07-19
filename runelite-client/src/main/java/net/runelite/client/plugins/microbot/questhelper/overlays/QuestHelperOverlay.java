@@ -29,6 +29,7 @@ package net.runelite.client.plugins.microbot.questhelper.overlays;
 
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPriority;
 
@@ -36,29 +37,46 @@ import javax.inject.Inject;
 import java.awt.*;
 import java.util.ArrayList;
 
-public class QuestHelperOverlay extends OverlayPanel {
-    public static final Color TITLED_CONTENT_COLOR = new Color(190, 190, 190);
+public class QuestHelperOverlay extends OverlayPanel
+{
+	public static final Color TITLED_CONTENT_COLOR = new Color(190, 190, 190);
 
-    private final QuestHelperPlugin plugin;
+	private final QuestHelperPlugin plugin;
 
-    @Inject
-    public QuestHelperOverlay(QuestHelperPlugin plugin) {
-        this.plugin = plugin;
-        setPriority(OverlayPriority.HIGHEST);
-    }
+	@Inject
+	public QuestHelperOverlay(QuestHelperPlugin plugin)
+	{
+		this.plugin = plugin;
+		setLayer(OverlayLayer.UNDER_WIDGETS);
+		setPriority(PRIORITY_HIGHEST);
+	}
 
-    @Override
-    public Dimension render(Graphics2D graphics) {
-        if (!plugin.getConfig().showOverlay()) {
-            return super.render(graphics);
-        }
-        QuestHelper questHelper = plugin.getSelectedQuest();
+	@Override
+	public Dimension render(Graphics2D graphics)
+	{
+		if (!plugin.getConfig().showOverlay())
+		{
+			return super.render(graphics);
+		}
+		QuestHelper questHelper = plugin.getSelectedQuest();
 
-        if (questHelper == null || questHelper.getCurrentStep() == null) {
-            return null;
-        }
-        questHelper.getCurrentStep().makeOverlayHint(panelComponent, plugin, new ArrayList<>(), new ArrayList<>());
+		if (questHelper == null || questHelper.getCurrentStep() == null)
+		{
+			return null;
+		}
 
-        return super.render(graphics);
-    }
+		if (questHelper.getCurrentStep().getActiveStep().isShouldOverlayWidget() && getLayer() != OverlayLayer.ALWAYS_ON_TOP)
+		{
+			setLayer(OverlayLayer.ALWAYS_ON_TOP);
+			plugin.getQuestOverlayManager().updateOverlay();
+		}
+		else if (getLayer() != OverlayLayer.UNDER_WIDGETS)
+		{
+			setLayer(OverlayLayer.UNDER_WIDGETS);
+			plugin.getQuestOverlayManager().updateOverlay();
+		}
+		questHelper.getCurrentStep().makeOverlayHint(panelComponent, plugin, new ArrayList<>(), new ArrayList<>());
+
+		return super.render(graphics);
+	}
 }

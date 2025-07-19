@@ -26,14 +26,13 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements.widget;
 
-
+import net.runelite.client.plugins.microbot.questhelper.requirements.SimpleRequirement;
+import net.runelite.client.plugins.microbot.questhelper.util.Utils;
 import lombok.Getter;
 import lombok.Setter;
 import net.runelite.api.Client;
 import net.runelite.api.annotations.Component;
 import net.runelite.api.widgets.Widget;
-import net.runelite.client.plugins.microbot.questhelper.util.Utils;
-import net.runelite.client.plugins.microbot.questhelper.requirements.SimpleRequirement;
 
 import javax.annotation.Nonnull;
 import java.util.Arrays;

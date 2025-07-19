@@ -25,62 +25,71 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.config;
 
-import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
 import net.runelite.client.plugins.microbot.questhelper.requirements.player.SkillRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.quest.QuestRequirement;
+import net.runelite.api.Skill;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class SkillFiltering {
-    /**
-     * Recursively get all quest requirements
-     *
-     * @param questHelper the quest to be tested
-     * @return a boolean indicating if any of the quests give defense experience
-     */
-    public static boolean passesSkillFilter(QuestHelper questHelper) {
-        if (!questPassesSkillFilter(questHelper)) {
-            return false;
-        }
-        List<QuestRequirement> questRequirements = questHelper.getGeneralRequirements() != null
-                ? questHelper.getGeneralRequirements().stream()
-                .filter(QuestRequirement.class::isInstance)
-                .map(QuestRequirement.class::cast)
-                .collect(Collectors.toList())
-                : Collections.emptyList();
+public class SkillFiltering
+{
+	/**
+	 * Recursively get all quest requirements
+	 *
+	 * @param questHelper the quest to be tested
+	 * @return a boolean indicating if any of the quests give defense experience
+	 */
+	public static boolean passesSkillFilter(QuestHelper questHelper)
+	{
+		if (!questPassesSkillFilter(questHelper))
+		{
+			return false;
+		}
+		List<QuestRequirement> questRequirements = questHelper.getGeneralRequirements() != null
+			? questHelper.getGeneralRequirements().stream()
+			.filter(QuestRequirement.class::isInstance)
+			.map(QuestRequirement.class::cast)
+			.collect(Collectors.toList())
+			: Collections.emptyList();
 
-        if (questRequirements.isEmpty()) {
-            return true;
-        } else {
-            return questRequirements.stream()
-                    .map(QuestRequirement::getQuest)
-                    .map(QuestHelperQuest::getQuestHelper)
-                    .allMatch(SkillFiltering::passesSkillFilter);
-        }
-    }
+		if (questRequirements.isEmpty())
+		{
+			return true;
+		}
+		else
+		{
+			return questRequirements.stream()
+				.map(QuestRequirement::getQuest)
+				.map(QuestHelperQuest::getQuestHelper)
+				.allMatch(SkillFiltering::passesSkillFilter);
+		}
+	}
 
-    public static boolean questPassesSkillFilter(QuestHelper questHelper) {
-        List<Skill> skillsToFilterOut = Arrays.stream(Skill.values())
-                .filter(skill -> "true".equals(questHelper.getConfigManager().getConfiguration(QuestHelperConfig.QUEST_BACKGROUND_GROUP, "skillfilter" + skill.getName())))
-                .collect(Collectors.toList());
+	public static boolean questPassesSkillFilter(QuestHelper questHelper)
+	{
+		List<Skill> skillsToFilterOut = Arrays.stream(Skill.values())
+			.filter(skill -> "true".equals(questHelper.getConfigManager().getConfiguration(QuestHelperConfig.QUEST_BACKGROUND_GROUP, "skillfilter" + skill.getName())))
+			.collect(Collectors.toList());
 
-        boolean passesAll = true;
-        if (questHelper.getGeneralRequirements() != null) {
-            passesAll = questHelper.getGeneralRequirements().stream()
-                    .filter(SkillRequirement.class::isInstance)
-                    .map(SkillRequirement.class::cast)
-                    .noneMatch(req -> skillsToFilterOut.contains(req.getSkill()));
-        }
-        if (passesAll && questHelper.getExperienceRewards() != null) {
-            passesAll = questHelper.getExperienceRewards().stream()
-                    .noneMatch(req -> skillsToFilterOut.contains(req.getSkill()));
-        }
-        return passesAll;
-    }
+		boolean passesAll = true;
+		if (questHelper.getGeneralRequirements() != null)
+		{
+			passesAll = questHelper.getGeneralRequirements().stream()
+				.filter(SkillRequirement.class::isInstance)
+				.map(SkillRequirement.class::cast)
+				.noneMatch(req -> skillsToFilterOut.contains(req.getSkill()));
+		}
+		if (passesAll && questHelper.getExperienceRewards() != null)
+		{
+			passesAll = questHelper.getExperienceRewards().stream()
+				.noneMatch(req -> skillsToFilterOut.contains(req.getSkill()));
+		}
+		return passesAll;
+	}
 }

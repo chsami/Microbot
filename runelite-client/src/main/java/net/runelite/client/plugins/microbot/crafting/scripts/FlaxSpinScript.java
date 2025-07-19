@@ -9,18 +9,14 @@ import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
-import net.runelite.client.plugins.microbot.util.math.Random;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.awt.event.KeyEvent;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
-
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
 
 enum State {
     SPINNING,
@@ -28,11 +24,35 @@ enum State {
     WALKING
 }
 
-public class FlaxSpinScript extends Script {
+public class FlaxSpinScript extends Script implements ICraftingScript {
     public static double version = 1.0;
 
     State state;
     boolean init = true;
+
+    @Override
+    public String getName() {
+        return "Flax Spinner";
+    }
+
+    @Override
+    public String getVersion() {
+        return String.valueOf(version);
+    }
+
+    @Override
+    public String getState() {
+        if (state == null) {
+            return "null";
+        }
+        return state.toString();
+    }
+
+    @Override
+    public Map<String, String> getCustomProperties() {
+        return Collections.emptyMap();
+    }
+
 
     public boolean run(CraftingConfig config) {
         Microbot.enableAutoRunOn = false;
@@ -69,9 +89,9 @@ public class FlaxSpinScript extends Script {
                         if (!isBankOpen || !Rs2Bank.isOpen()) return;
 
                         Rs2Bank.depositAll(ItemID.BOW_STRING);
-                        sleep(Random.random(600, 800));
+                        sleep(Rs2Random.between(600, 800));
                         Rs2Bank.withdrawAll(ItemID.FLAX);
-                        sleep(Random.random(600, 800));
+                        sleep(Rs2Random.between(600, 800));
                         Rs2Bank.closeBank();
                         state = State.WALKING;
                         break;
@@ -80,9 +100,7 @@ public class FlaxSpinScript extends Script {
                         sleepUntilTrue(() -> isNearSpinningWheel(config, 4) && !Rs2Player.isMoving(), 600, 300000);
                         if (!isNearSpinningWheel(config, 4)) return;
                         Optional<GameObject> spinningWheel = Rs2GameObject.getGameObjects().stream()
-                                .filter(obj -> obj.getId() == config.flaxSpinLocation().getObjectID())
-                                .sorted(Comparator.comparingInt(obj -> Rs2Player.getWorldLocation().distanceTo(obj.getWorldLocation())))
-                                .findFirst();
+                                .filter(obj -> obj.getId() == config.flaxSpinLocation().getObjectID()).min(Comparator.comparingInt(obj -> Rs2Player.getWorldLocation().distanceTo(obj.getWorldLocation())));
                         if (spinningWheel.isEmpty()) {
                             Rs2Walker.walkFastCanvas(config.flaxSpinLocation().getWorldPoint());
                             return;

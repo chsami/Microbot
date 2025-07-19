@@ -26,10 +26,9 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements.npc;
 
-
-import net.runelite.api.Client;
 import net.runelite.client.plugins.microbot.questhelper.requirements.AbstractRequirement;
 import net.runelite.client.plugins.microbot.questhelper.util.Utils;
+import net.runelite.api.Client;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
@@ -37,35 +36,40 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class FollowerRequirement extends AbstractRequirement {
-    List<Integer> followers;
-    String text;
+public class FollowerRequirement extends AbstractRequirement
+{
+	List<Integer> followers;
+	String text;
 
-    public FollowerRequirement(String text, Integer... followers) {
-        assert (Utils.varargsNotNull(followers));
-        this.text = text;
-        this.followers = new ArrayList<>();
-        Collections.addAll(this.followers, followers);
-    }
+	public FollowerRequirement(String text, Integer... followers)
+	{
+		assert(Utils.varargsNotNull(followers));
+		this.text = text;
+		this.followers = new ArrayList<>();
+		Collections.addAll(this.followers, followers);
+	}
 
-    public FollowerRequirement(String text, List<Integer> followers) {
-        assert (followers.stream().noneMatch(Objects::isNull));
-        this.text = text;
-        this.followers = followers;
-    }
+	public FollowerRequirement(String text, List<Integer> followers)
+	{
+		assert(followers.stream().noneMatch(Objects::isNull));
+		this.text = text;
+		this.followers = followers;
+	}
 
-    @Override
-    public boolean check(Client client) {
-        return client.getNpcs()
-                .stream()
-                .filter(npc -> npc.getInteracting() != null) // we need this check because Client#getLocalPlayer is Nullable
-                .filter(npc -> npc.getInteracting() == client.getLocalPlayer())
-                .anyMatch(npc -> followers.contains(npc.getId()));
-    }
+	@Override
+	public boolean check(Client client)
+	{
+		return client.getTopLevelWorldView().npcs()
+			.stream()
+			.filter(npc -> npc.getInteracting() != null) // we need this check because Client#getLocalPlayer is Nullable
+			.filter(npc -> npc.getInteracting() == client.getLocalPlayer())
+			.anyMatch(npc -> followers.contains(npc.getId()));
+	}
 
-    @Nonnull
-    @Override
-    public String getDisplayText() {
-        return text;
-    }
+	@Nonnull
+	@Override
+	public String getDisplayText()
+	{
+		return text;
+	}
 }

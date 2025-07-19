@@ -11,9 +11,12 @@ import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
+import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 class ProgressiveGlassblowingModel {
@@ -22,7 +25,7 @@ class ProgressiveGlassblowingModel {
     private Glass itemToCraft;
 }
 
-public class GlassblowingScript extends Script {
+public class GlassblowingScript extends Script implements ICraftingScript {
 
     public static double version = 2.0;
     ProgressiveGlassblowingModel model = new ProgressiveGlassblowingModel();
@@ -30,6 +33,27 @@ public class GlassblowingScript extends Script {
     String moltenGlass = "molten glass";
     String glassblowingPipe = "glassblowing pipe";
     Glass itemToCraft;
+
+    @Override
+    public String getName() {
+        return "Glassblowing";
+    }
+
+    @Override
+    public String getVersion() {
+        return String.valueOf(version);
+    }
+
+    @Override
+    public String getState() {
+        return Microbot.status;
+    }
+
+    @Override
+    public Map<String, String> getCustomProperties() {
+        return Collections.emptyMap();
+    }
+
 
     public void run(CraftingConfig config) {
 
@@ -97,7 +121,7 @@ public class GlassblowingScript extends Script {
 
         Rs2Widget.sleepUntilHasWidgetText("How many do you wish to make?", 270, 5, false, 5000);
 
-        keyPress(itemToCraft.getMenuEntry());
+        Rs2Keyboard.keyPress(itemToCraft.getMenuEntry());
 
         Rs2Widget.sleepUntilHasNotWidgetText("How many do you wish to make?", 270, 5, false, 5000);
         Rs2Antiban.actionCooldown();

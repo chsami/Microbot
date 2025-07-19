@@ -28,8 +28,10 @@ package net.runelite.client.plugins.microbot.questhelper.runeliteobjects.extende
 import net.runelite.api.Client;
 import net.runelite.client.game.chatbox.ChatboxPanelManager;
 
-public class NpcChatBox extends ChatBox {
-    protected NpcChatBox(Client client, ChatboxPanelManager chatboxPanelManager) {
-        super(client, chatboxPanelManager);
-    }
+public class NpcChatBox extends ChatBox
+{
+	protected NpcChatBox(Client client, ChatboxPanelManager chatboxPanelManager)
+	{
+		super(client, chatboxPanelManager);
+	}
 }

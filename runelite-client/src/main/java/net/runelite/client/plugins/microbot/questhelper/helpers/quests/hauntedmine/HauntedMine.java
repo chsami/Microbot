@@ -24,12 +24,6 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.hauntedmine;
 
-
-import net.runelite.api.*;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
-import net.runelite.client.plugins.microbot.questhelper.requirements.zone.ZoneRequirement;
-import net.runelite.client.plugins.microbot.questhelper.steps.*;
 import net.runelite.client.plugins.microbot.questhelper.bank.banktab.BankSlotIcons;
 import net.runelite.client.plugins.microbot.questhelper.collections.ItemCollections;
 import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
@@ -46,372 +40,395 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicT
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.Operation;
 import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarbitRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarplayerRequirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
+import net.runelite.client.plugins.microbot.questhelper.requirements.zone.ZoneRequirement;
 import net.runelite.client.plugins.microbot.questhelper.rewards.ExperienceReward;
 import net.runelite.client.plugins.microbot.questhelper.rewards.QuestPointReward;
 import net.runelite.client.plugins.microbot.questhelper.rewards.UnlockReward;
-
+import net.runelite.client.plugins.microbot.questhelper.steps.*;
+import net.runelite.api.QuestState;
+import net.runelite.api.Skill;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.gameval.VarPlayerID;
 
 import java.util.*;
 
-public class HauntedMine extends BasicQuestHelper {
-    //Items Required
-    ItemRequirement zealotsKey, chisel, glowingFungus, glowingFungusHighlight, crystalMineKey, combatGear,
-            zealotsKeyHighlighted, food, emptyInvSpots;
-
-    Requirement askedAboutKey, inLevel1South, valveOpened, valveOpen, hasKeyOrOpenedValve,
-            inLiftRoom, inLevel2North, inLevel3North, inLevel2South, inLevel3South, inCartRoom, inCollectRoom, leverAWrong, leverBWrong,
-            leverCWrong, leverDWrong, leverEWrong, leverFWrong, leverGWrong, leverHWrong, fungusInCart, fungusOnOtherSide, inLevel1North,
-            inFloodedRoom, daythNearby, inDaythRoom, inCrystalRoom, inCrystalEntrance, killedDayth, inCrystalOrCrystalEntranceRoom,
-            inDarkDaythRoom, inDarkCrystalRoom;
-
-    DetailedQuestStep talkToZealot, pickpocketZealot, enterMine, goDownFromLevel1South, goDownFromLevel2North, goDownFromLevel3NorthEast,
-            useKeyOnValve, openValve, goDownLift, pickUpChisel, goUpFromLiftRoom, goUpFromCollectRoom, goDownToCollectFungus, collectFungus,
-            goDownFromLevel2South, goDownToFungusRoom, pickFungus, pullLeverA, pullLeverB, pullLeverC, pullLeverD, pullLeverE, pullLeverF,
-            pullLeverG, pullLeverH, readPanel, putFungusInCart, goUpFromFungusRoom, goUpFromLevel3South, goUpFromLevel2South, leaveLevel1South,
-            enterMineNorth, goDownLevel1North, goDownLevel2North, goDownToDayth, goDownToCrystals, tryToPickUpKey, killDayth, pickUpKey, goUpFromDayth,
-            cutCrystal, leaveCrystalRoom, goBackUpLift, leaveDarkCrystalRoom, leaveDarkDaythRoom, solvePuzzle;
-
-    //Zones
-    Zone entryRoom1, level1South, liftRoom1, liftRoom2, level2South, level2North, level2North2, level3North1, level3North2, level3North3, level3North4,
-            level3South1, level3South2, level3South3, cartRoom, collectRoom, level1North, floodedRoom, daythRoom1, daythRoom2, crystalRoom1,
-            crystalRoom2, crystalRoom3, crystalEntrance, crystalEntranceDark, daythRoomDark;
-
-    @Override
-    public Map<Integer, QuestStep> loadSteps() {
-        // TODO: Should the lever room implement PuzzleWrapper?
-        initializeRequirements();
-        setupConditions();
-        setupSteps();
-        Map<Integer, QuestStep> steps = new HashMap<>();
-
-        steps.put(0, talkToZealot);
-
-        ConditionalStep solveMineCarts = new ConditionalStep(this, readPanel);
-        solveMineCarts.addStep(leverAWrong, pullLeverA);
-        solveMineCarts.addStep(leverBWrong, pullLeverB);
-        solveMineCarts.addStep(leverCWrong, pullLeverC);
-        solveMineCarts.addStep(leverDWrong, pullLeverD);
-        solveMineCarts.addStep(leverEWrong, pullLeverE);
-        solveMineCarts.addStep(leverFWrong, pullLeverF);
-        solveMineCarts.addStep(leverGWrong, pullLeverG);
-        solveMineCarts.addStep(leverHWrong, pullLeverH);
-
-        ConditionalStep exploreMine = new ConditionalStep(this, talkToZealot);
-        exploreMine.addStep(inCrystalRoom, cutCrystal);
-        exploreMine.addStep(inDarkCrystalRoom, leaveDarkCrystalRoom);
-        exploreMine.addStep(inDarkDaythRoom, leaveDarkDaythRoom);
-        exploreMine.addStep(new Conditions(glowingFungus, inCrystalEntrance, crystalMineKey, chisel), cutCrystal);
-        exploreMine.addStep(new Conditions(glowingFungus, inFloodedRoom, crystalMineKey, chisel), goDownToCrystals);
-        exploreMine.addStep(new Conditions(inFloodedRoom, crystalMineKey), goBackUpLift);
-        exploreMine.addStep(new Conditions(inDaythRoom, crystalMineKey), goUpFromDayth);
-        exploreMine.addStep(new Conditions(inDaythRoom, killedDayth), pickUpKey);
-        exploreMine.addStep(new Conditions(daythNearby), killDayth);
-        exploreMine.addStep(new Conditions(glowingFungus, inDaythRoom), tryToPickUpKey);
-        exploreMine.addStep(new Conditions(glowingFungus, inFloodedRoom), goDownToDayth);
-        exploreMine.addStep(new Conditions(inCrystalEntrance), leaveCrystalRoom);
-        exploreMine.addStep(new Conditions(glowingFungus, inLiftRoom, valveOpen, chisel), goDownLift);
-        exploreMine.addStep(new Conditions(glowingFungus, inLiftRoom, valveOpened, chisel), openValve);
-        exploreMine.addStep(new Conditions(glowingFungus, inLiftRoom, zealotsKey, chisel), useKeyOnValve);
-        exploreMine.addStep(new Conditions(glowingFungus, inLiftRoom, hasKeyOrOpenedValve), pickUpChisel);
-        exploreMine.addStep(new Conditions(glowingFungus, inCollectRoom, hasKeyOrOpenedValve), goUpFromCollectRoom);
-        exploreMine.addStep(new Conditions(glowingFungus, inLevel3North, hasKeyOrOpenedValve), goDownFromLevel3NorthEast);
-        exploreMine.addStep(new Conditions(glowingFungus, inLevel2North, hasKeyOrOpenedValve), goDownLevel2North);
-        exploreMine.addStep(new Conditions(glowingFungus, inLevel1North, hasKeyOrOpenedValve), goDownLevel1North);
-
-        exploreMine.addStep(new Conditions(fungusOnOtherSide, inCollectRoom, hasKeyOrOpenedValve), collectFungus);
-        exploreMine.addStep(new Conditions(fungusOnOtherSide, inLevel3North, hasKeyOrOpenedValve), goDownToCollectFungus);
-        exploreMine.addStep(new Conditions(fungusOnOtherSide, inLiftRoom, hasKeyOrOpenedValve), goUpFromLiftRoom); // Wrong way catch
-        exploreMine.addStep(new Conditions(fungusOnOtherSide, inLevel2North, hasKeyOrOpenedValve), goDownLevel2North);
-        exploreMine.addStep(new Conditions(fungusOnOtherSide, inLevel1North, hasKeyOrOpenedValve), goDownLevel1North);
-        exploreMine.addStep(new Conditions(fungusOnOtherSide, inLevel1South, hasKeyOrOpenedValve), leaveLevel1South);
-        exploreMine.addStep(new Conditions(fungusOnOtherSide, inLevel2South, hasKeyOrOpenedValve), goUpFromLevel2South);
-        exploreMine.addStep(new Conditions(fungusOnOtherSide, inLevel3South, hasKeyOrOpenedValve), goUpFromLevel3South);
-        exploreMine.addStep(new Conditions(fungusOnOtherSide, inCartRoom, hasKeyOrOpenedValve), goUpFromFungusRoom);
-        exploreMine.addStep(new Conditions(fungusOnOtherSide, hasKeyOrOpenedValve), enterMineNorth);
-
-        exploreMine.addStep(new Conditions(fungusInCart, inCartRoom), solveMineCarts);
-        exploreMine.addStep(new Conditions(glowingFungus, inCartRoom), putFungusInCart);
-        exploreMine.addStep(inCartRoom, pickFungus);
-
-        exploreMine.addStep(inLevel3South, goDownToFungusRoom);
-        exploreMine.addStep(inLevel2South, goDownFromLevel2South);
-        exploreMine.addStep(inLevel1South, goDownFromLevel1South);
-        exploreMine.addStep(hasKeyOrOpenedValve, enterMine);
-        exploreMine.addStep(askedAboutKey, pickpocketZealot);
-
-        steps.put(1, exploreMine);
-        steps.put(2, exploreMine);
-        steps.put(3, exploreMine);
-        steps.put(4, exploreMine);
-        steps.put(5, exploreMine);
-        steps.put(6, exploreMine);
-        steps.put(7, exploreMine);
-        steps.put(8, exploreMine);
-        steps.put(9, exploreMine);
-        steps.put(10, exploreMine);
-        return steps;
-    }
-
-    @Override
-    protected void setupRequirements() {
-        zealotsKey = new ItemRequirement("Zealot's key", ItemID.ZEALOTS_KEY);
+public class HauntedMine extends BasicQuestHelper
+{
+	//Items Required
+	ItemRequirement zealotsKey, chisel, glowingFungus, glowingFungusHighlight, crystalMineKey, combatGear,
+	zealotsKeyHighlighted, food, emptyInvSpots;
+
+	Requirement askedAboutKey, inLevel1South, valveOpened, valveOpen, hasKeyOrOpenedValve,
+		inLiftRoom, inLevel2North, inLevel3North, inLevel2South, inLevel3South, inCartRoom, inCollectRoom, leverAWrong, leverBWrong,
+		leverCWrong, leverDWrong, leverEWrong, leverFWrong, leverGWrong, leverHWrong, fungusInCart, fungusOnOtherSide, inLevel1North,
+		inFloodedRoom, daythNearby, inDaythRoom, inCrystalRoom, inCrystalEntrance, killedDayth, inCrystalOrCrystalEntranceRoom,
+		inDarkDaythRoom, inDarkCrystalRoom;
+
+	DetailedQuestStep talkToZealot, pickpocketZealot, enterMine, goDownFromLevel1South, goDownFromLevel2North, goDownFromLevel3NorthEast,
+		useKeyOnValve, openValve, goDownLift, pickUpChisel, goUpFromLiftRoom, goUpFromCollectRoom, goDownToCollectFungus, collectFungus,
+		goDownFromLevel2South, goDownToFungusRoom, pickFungus, pullLeverA, pullLeverB, pullLeverC, pullLeverD, pullLeverE, pullLeverF,
+		pullLeverG, pullLeverH, readPanel, putFungusInCart, goUpFromFungusRoom, goUpFromLevel3South, goUpFromLevel2South, leaveLevel1South,
+		enterMineNorth, goDownLevel1North, goDownLevel2North, goDownToDayth, goDownToCrystals, tryToPickUpKey, killDayth, pickUpKey, goUpFromDayth,
+		cutCrystal, leaveCrystalRoom, goBackUpLift, leaveDarkCrystalRoom, leaveDarkDaythRoom, solvePuzzle;
+
+	//Zones
+	Zone entryRoom1, level1South, liftRoom1, liftRoom2, level2South, level2North, level2North2, level3North1, level3North2, level3North3, level3North4,
+		level3South1, level3South2, level3South3, cartRoom, collectRoom, level1North, floodedRoom, daythRoom1, daythRoom2, crystalRoom1,
+		crystalRoom2, crystalRoom3, crystalEntrance, crystalEntranceDark, daythRoomDark;
+
+	@Override
+	public Map<Integer, QuestStep> loadSteps()
+	{
+		// TODO: Should the lever room implement PuzzleWrapper?
+		initializeRequirements();
+		setupConditions();
+		setupSteps();
+		Map<Integer, QuestStep> steps = new HashMap<>();
+
+		steps.put(0, talkToZealot);
+
+		ConditionalStep solveMineCarts = new ConditionalStep(this, readPanel);
+		solveMineCarts.addStep(leverAWrong, pullLeverA);
+		solveMineCarts.addStep(leverBWrong, pullLeverB);
+		solveMineCarts.addStep(leverCWrong, pullLeverC);
+		solveMineCarts.addStep(leverDWrong, pullLeverD);
+		solveMineCarts.addStep(leverEWrong, pullLeverE);
+		solveMineCarts.addStep(leverFWrong, pullLeverF);
+		solveMineCarts.addStep(leverGWrong, pullLeverG);
+		solveMineCarts.addStep(leverHWrong, pullLeverH);
+
+		ConditionalStep exploreMine = new ConditionalStep(this, talkToZealot);
+		exploreMine.addStep(inCrystalRoom, cutCrystal);
+		exploreMine.addStep(inDarkCrystalRoom, leaveDarkCrystalRoom);
+		exploreMine.addStep(inDarkDaythRoom, leaveDarkDaythRoom);
+		exploreMine.addStep(new Conditions(glowingFungus, inCrystalEntrance, crystalMineKey, chisel), cutCrystal);
+		exploreMine.addStep(new Conditions(glowingFungus, inFloodedRoom, crystalMineKey, chisel), goDownToCrystals);
+		exploreMine.addStep(new Conditions(inFloodedRoom, crystalMineKey), goBackUpLift);
+		exploreMine.addStep(new Conditions(inDaythRoom, crystalMineKey), goUpFromDayth);
+		exploreMine.addStep(new Conditions(inDaythRoom, killedDayth), pickUpKey);
+		exploreMine.addStep(new Conditions(daythNearby), killDayth);
+		exploreMine.addStep(new Conditions(glowingFungus, inDaythRoom), tryToPickUpKey);
+		exploreMine.addStep(new Conditions(glowingFungus, inFloodedRoom), goDownToDayth);
+		exploreMine.addStep(new Conditions(inCrystalEntrance), leaveCrystalRoom);
+		exploreMine.addStep(new Conditions(glowingFungus, inLiftRoom, valveOpen, chisel), goDownLift);
+		exploreMine.addStep(new Conditions(glowingFungus, inLiftRoom, valveOpened, chisel), openValve);
+		exploreMine.addStep(new Conditions(glowingFungus, inLiftRoom, zealotsKey, chisel), useKeyOnValve);
+		exploreMine.addStep(new Conditions(glowingFungus, inLiftRoom, hasKeyOrOpenedValve), pickUpChisel);
+		exploreMine.addStep(new Conditions(glowingFungus, inCollectRoom, hasKeyOrOpenedValve), goUpFromCollectRoom);
+		exploreMine.addStep(new Conditions(glowingFungus, inLevel3North, hasKeyOrOpenedValve), goDownFromLevel3NorthEast);
+		exploreMine.addStep(new Conditions(glowingFungus, inLevel2North, hasKeyOrOpenedValve), goDownLevel2North);
+		exploreMine.addStep(new Conditions(glowingFungus, inLevel1North, hasKeyOrOpenedValve), goDownLevel1North);
+
+		exploreMine.addStep(new Conditions(fungusOnOtherSide, inCollectRoom, hasKeyOrOpenedValve), collectFungus);
+		exploreMine.addStep(new Conditions(fungusOnOtherSide, inLevel3North, hasKeyOrOpenedValve), goDownToCollectFungus);
+		exploreMine.addStep(new Conditions(fungusOnOtherSide, inLiftRoom, hasKeyOrOpenedValve), goUpFromLiftRoom); // Wrong way catch
+		exploreMine.addStep(new Conditions(fungusOnOtherSide, inLevel2North, hasKeyOrOpenedValve), goDownLevel2North);
+		exploreMine.addStep(new Conditions(fungusOnOtherSide, inLevel1North, hasKeyOrOpenedValve), goDownLevel1North);
+		exploreMine.addStep(new Conditions(fungusOnOtherSide, inLevel1South, hasKeyOrOpenedValve), leaveLevel1South);
+		exploreMine.addStep(new Conditions(fungusOnOtherSide, inLevel2South, hasKeyOrOpenedValve), goUpFromLevel2South);
+		exploreMine.addStep(new Conditions(fungusOnOtherSide, inLevel3South, hasKeyOrOpenedValve), goUpFromLevel3South);
+		exploreMine.addStep(new Conditions(fungusOnOtherSide, inCartRoom, hasKeyOrOpenedValve), goUpFromFungusRoom);
+		exploreMine.addStep(new Conditions(fungusOnOtherSide, hasKeyOrOpenedValve), enterMineNorth);
+
+		exploreMine.addStep(new Conditions(fungusInCart, inCartRoom), solveMineCarts);
+		exploreMine.addStep(new Conditions(glowingFungus, inCartRoom), putFungusInCart);
+		exploreMine.addStep(inCartRoom, pickFungus);
+
+		exploreMine.addStep(inLevel3South, goDownToFungusRoom);
+		exploreMine.addStep(inLevel2South, goDownFromLevel2South);
+		exploreMine.addStep(inLevel1South, goDownFromLevel1South);
+		exploreMine.addStep(hasKeyOrOpenedValve, enterMine);
+		exploreMine.addStep(askedAboutKey, pickpocketZealot);
+
+		steps.put(1, exploreMine);
+		steps.put(2, exploreMine);
+		steps.put(3, exploreMine);
+		steps.put(4, exploreMine);
+		steps.put(5, exploreMine);
+		steps.put(6, exploreMine);
+		steps.put(7, exploreMine);
+		steps.put(8, exploreMine);
+		steps.put(9, exploreMine);
+		steps.put(10, exploreMine);
+		return steps;
+	}
+
+	@Override
+	protected void setupRequirements()
+	{
+		zealotsKey = new ItemRequirement("Zealot's key", ItemID.HAUNTEDMINE_LIFT_KEY);
 
-        zealotsKeyHighlighted = new ItemRequirement("Zealot's key", ItemID.ZEALOTS_KEY);
-        zealotsKeyHighlighted.setHighlightInInventory(true);
+		zealotsKeyHighlighted = new ItemRequirement("Zealot's key", ItemID.HAUNTEDMINE_LIFT_KEY);
+		zealotsKeyHighlighted.setHighlightInInventory(true);
 
-        chisel = new ItemRequirement("Chisel", ItemID.CHISEL).isNotConsumed();
-        glowingFungus = new ItemRequirement("Glowing fungus", ItemID.GLOWING_FUNGUS);
-        glowingFungusHighlight = new ItemRequirement("Glowing fungus", ItemID.GLOWING_FUNGUS);
-        glowingFungusHighlight.setHighlightInInventory(true);
+		chisel = new ItemRequirement("Chisel", ItemID.CHISEL).isNotConsumed();
+		glowingFungus = new ItemRequirement("Glowing fungus", ItemID.GLOWING_FUNGUS);
+		glowingFungusHighlight = new ItemRequirement("Glowing fungus", ItemID.GLOWING_FUNGUS);
+		glowingFungusHighlight.setHighlightInInventory(true);
+
+		emptyInvSpots = new ItemRequirement("Empty Inventory Spot", -1, 3);
+
+		crystalMineKey = new ItemRequirement("Crystal-mine key", ItemID.HAUNTEDMINE_REWARD_KEY);
+
+		combatGear = new ItemRequirement("Combat gear", -1, -1).isNotConsumed();
+		combatGear.setDisplayItemId(BankSlotIcons.getCombatGear());
 
-        emptyInvSpots = new ItemRequirement("Empty Inventory Spot", -1, 3);
+		food = new ItemRequirement("Food", ItemCollections.GOOD_EATING_FOOD, -1);
+	}
 
-        crystalMineKey = new ItemRequirement("Crystal-mine key", ItemID.CRYSTALMINE_KEY);
+	@Override
+	protected void setupZones()
+	{
+		entryRoom1 = new Zone(new WorldPoint(2647, 9803, 0), new WorldPoint(2680, 9814, 0));
 
-        combatGear = new ItemRequirement("Combat gear", -1, -1).isNotConsumed();
-        combatGear.setDisplayItemId(BankSlotIcons.getCombatGear());
+		level1North = new Zone(new WorldPoint(3404, 9628, 0), new WorldPoint(3439, 9662, 0));
+		level1South = new Zone(new WorldPoint(3409, 9616, 0), new WorldPoint(3431, 9627, 0));
 
-        food = new ItemRequirement("Food", ItemCollections.GOOD_EATING_FOOD, -1);
-    }
+		level2South = new Zone(new WorldPoint(2780, 4558, 0), new WorldPoint(2815, 4576, 0));
+		level2North = new Zone(new WorldPoint(2765, 4577, 0), new WorldPoint(2814, 4605, 0));
+		level2North2 = new Zone(new WorldPoint(2770, 4575, 0), new WorldPoint(2775, 4576, 0));
 
-    @Override
-    protected void setupZones() {
-        entryRoom1 = new Zone(new WorldPoint(2647, 9803, 0), new WorldPoint(2680, 9814, 0));
+		level3North1 = new Zone(new WorldPoint(2709, 4518, 0), new WorldPoint(2744, 4543, 0));
+		level3North2 = new Zone(new WorldPoint(2693, 4496, 0), new WorldPoint(2724, 4517, 0));
+		level3North3 = new Zone(new WorldPoint(2694, 4493, 0), new WorldPoint(2698, 4495, 0));
+		level3North4 = new Zone(new WorldPoint(2721, 4492, 0), new WorldPoint(2724, 4496, 0));
 
-        level1North = new Zone(new WorldPoint(3404, 9628, 0), new WorldPoint(3439, 9662, 0));
-        level1South = new Zone(new WorldPoint(3409, 9616, 0), new WorldPoint(3431, 9627, 0));
+		level3South1 = new Zone(new WorldPoint(2725, 4485, 0), new WorldPoint(2741, 4517, 0));
+		level3South2 = new Zone(new WorldPoint(2718, 4484, 0), new WorldPoint(2729, 4490, 0));
+		level3South3 = new Zone(new WorldPoint(2710, 4491, 0), new WorldPoint(2718, 4495, 0));
 
-        level2South = new Zone(new WorldPoint(2780, 4558, 0), new WorldPoint(2815, 4576, 0));
-        level2North = new Zone(new WorldPoint(2765, 4577, 0), new WorldPoint(2814, 4605, 0));
-        level2North2 = new Zone(new WorldPoint(2770, 4575, 0), new WorldPoint(2775, 4576, 0));
+		liftRoom1 = new Zone(new WorldPoint(2798, 4489, 0), new WorldPoint(2812, 4532, 0));
+		liftRoom2 = new Zone(new WorldPoint(2794, 4524, 0), new WorldPoint(2797, 4532, 0));
+		cartRoom = new Zone(new WorldPoint(2757, 4483, 0), new WorldPoint(2795, 4545, 0));
 
-        level3North1 = new Zone(new WorldPoint(2709, 4518, 0), new WorldPoint(2744, 4543, 0));
-        level3North2 = new Zone(new WorldPoint(2693, 4496, 0), new WorldPoint(2724, 4517, 0));
-        level3North3 = new Zone(new WorldPoint(2694, 4493, 0), new WorldPoint(2698, 4495, 0));
-        level3North4 = new Zone(new WorldPoint(2721, 4492, 0), new WorldPoint(2724, 4496, 0));
+		collectRoom = new Zone(new WorldPoint(2772, 4535, 0), new WorldPoint(2776, 4542, 0));
 
-        level3South1 = new Zone(new WorldPoint(2725, 4485, 0), new WorldPoint(2741, 4517, 0));
-        level3South2 = new Zone(new WorldPoint(2718, 4484, 0), new WorldPoint(2729, 4490, 0));
-        level3South3 = new Zone(new WorldPoint(2710, 4491, 0), new WorldPoint(2718, 4495, 0));
+		floodedRoom = new Zone(new WorldPoint(2688, 4432, 0), new WorldPoint(2753, 4472, 0));
 
-        liftRoom1 = new Zone(new WorldPoint(2798, 4489, 0), new WorldPoint(2812, 4532, 0));
-        liftRoom2 = new Zone(new WorldPoint(2794, 4524, 0), new WorldPoint(2797, 4532, 0));
-        cartRoom = new Zone(new WorldPoint(2757, 4483, 0), new WorldPoint(2795, 4545, 0));
+		daythRoom1 = new Zone(new WorldPoint(2779, 4441, 0), new WorldPoint(2815, 4474, 0));
+		daythRoom2 = new Zone(new WorldPoint(2774, 4457, 0), new WorldPoint(2779, 4465, 0));
+		daythRoomDark = new Zone(new WorldPoint(2716, 4559, 0), new WorldPoint(2734, 4569, 0));
 
-        collectRoom = new Zone(new WorldPoint(2772, 4535, 0), new WorldPoint(2776, 4542, 0));
+		crystalRoom1 = new Zone(new WorldPoint(2762, 4418, 0), new WorldPoint(2780, 4449, 0));
+		crystalRoom2 = new Zone(new WorldPoint(2762, 4421, 0), new WorldPoint(2810, 4439, 0));
+		crystalRoom3 = new Zone(new WorldPoint(2797, 4440, 0), new WorldPoint(2808, 4450, 0));
 
-        floodedRoom = new Zone(new WorldPoint(2688, 4432, 0), new WorldPoint(2753, 4472, 0));
+		crystalEntrance = new Zone(new WorldPoint(2758, 4450, 0), new WorldPoint(2776, 4456, 0));
+		crystalEntranceDark = new Zone(new WorldPoint(2708, 4588, 0), new WorldPoint(2736, 5499, 0));
+	}
 
-        daythRoom1 = new Zone(new WorldPoint(2779, 4441, 0), new WorldPoint(2815, 4474, 0));
-        daythRoom2 = new Zone(new WorldPoint(2774, 4457, 0), new WorldPoint(2779, 4465, 0));
-        daythRoomDark = new Zone(new WorldPoint(2716, 4559, 0), new WorldPoint(2734, 4569, 0));
+	public void setupConditions()
+	{
+		askedAboutKey = new VarbitRequirement(2397, 1);
+		inLevel1North = new ZoneRequirement(level1North);
+		inLevel1South = new ZoneRequirement(level1South);
+		inLevel2South = new ZoneRequirement(level2South);
+		inLevel2North = new ZoneRequirement(level2North, level2North2);
 
-        crystalRoom1 = new Zone(new WorldPoint(2762, 4418, 0), new WorldPoint(2780, 4449, 0));
-        crystalRoom2 = new Zone(new WorldPoint(2762, 4421, 0), new WorldPoint(2810, 4439, 0));
-        crystalRoom3 = new Zone(new WorldPoint(2797, 4440, 0), new WorldPoint(2808, 4450, 0));
+		inLevel3South = new ZoneRequirement(level3South1, level3South2, level3South3);
+		inLevel3North = new ZoneRequirement(level3North1, level3North2, level3North3, level3North4);
+		inLiftRoom = new ZoneRequirement(liftRoom1, liftRoom2);
+		inCartRoom = new ZoneRequirement(cartRoom);
+		inCollectRoom = new ZoneRequirement(collectRoom);
+		inFloodedRoom = new ZoneRequirement(floodedRoom);
+		inDaythRoom = new ZoneRequirement(daythRoom1, daythRoom2);
+		inCrystalRoom = new ZoneRequirement(crystalRoom1, crystalRoom2, crystalRoom3);
+		inCrystalEntrance = new ZoneRequirement(crystalEntrance);
+		inCrystalOrCrystalEntranceRoom = new ZoneRequirement(crystalRoom1, crystalRoom2, crystalRoom3, crystalEntrance);
 
-        crystalEntrance = new Zone(new WorldPoint(2758, 4450, 0), new WorldPoint(2776, 4456, 0));
-        crystalEntranceDark = new Zone(new WorldPoint(2708, 4588, 0), new WorldPoint(2736, 5499, 0));
-    }
+		valveOpened = new VarbitRequirement(2393, 1);
+		valveOpen = new VarbitRequirement(2394, 1);
 
-    public void setupConditions() {
-        askedAboutKey = new VarbitRequirement(2397, 1);
-        inLevel1North = new ZoneRequirement(level1North);
-        inLevel1South = new ZoneRequirement(level1South);
-        inLevel2South = new ZoneRequirement(level2South);
-        inLevel2North = new ZoneRequirement(level2North, level2North2);
+		hasKeyOrOpenedValve = new Conditions(LogicType.OR, zealotsKey, valveOpened);
 
-        inLevel3South = new ZoneRequirement(level3South1, level3South2, level3South3);
-        inLevel3North = new ZoneRequirement(level3North1, level3North2, level3North3, level3North4);
-        inLiftRoom = new ZoneRequirement(liftRoom1, liftRoom2);
-        inCartRoom = new ZoneRequirement(cartRoom);
-        inCollectRoom = new ZoneRequirement(collectRoom);
-        inFloodedRoom = new ZoneRequirement(floodedRoom);
-        inDaythRoom = new ZoneRequirement(daythRoom1, daythRoom2);
-        inCrystalRoom = new ZoneRequirement(crystalRoom1, crystalRoom2, crystalRoom3);
-        inCrystalEntrance = new ZoneRequirement(crystalEntrance);
-        inCrystalOrCrystalEntranceRoom = new ZoneRequirement(crystalRoom1, crystalRoom2, crystalRoom3, crystalEntrance);
+		leverAWrong = new VarbitRequirement(2385, 0);
+		leverBWrong = new VarbitRequirement(2386, 0);
+		leverCWrong = new VarbitRequirement(2387, 1);
+		leverDWrong = new VarbitRequirement(2388, 1);
+		leverEWrong = new VarbitRequirement(2389, 0);
+		leverFWrong = new VarbitRequirement(2390, 0);
+		leverGWrong = new VarbitRequirement(2391, 1);
+		leverHWrong = new VarbitRequirement(2392, 1);
 
-        valveOpened = new VarbitRequirement(2393, 1);
-        valveOpen = new VarbitRequirement(2394, 1);
+		fungusInCart = new VarbitRequirement(2395, 1);
+		fungusOnOtherSide = new VarbitRequirement(2396, 1);
 
-        hasKeyOrOpenedValve = new Conditions(LogicType.OR, zealotsKey, valveOpened);
+		daythNearby = new NpcHintArrowRequirement(NpcID.HAUNTEDMINE_BOSS_GHOST, NpcID.HAUNTEDMINE_BOSS_GHOST_FADED);
 
-        leverAWrong = new VarbitRequirement(2385, 0);
-        leverBWrong = new VarbitRequirement(2386, 0);
-        leverCWrong = new VarbitRequirement(2387, 1);
-        leverDWrong = new VarbitRequirement(2388, 1);
-        leverEWrong = new VarbitRequirement(2389, 0);
-        leverFWrong = new VarbitRequirement(2390, 0);
-        leverGWrong = new VarbitRequirement(2391, 1);
-        leverHWrong = new VarbitRequirement(2392, 1);
+		killedDayth = new VarplayerRequirement(VarPlayerID.HAUNTEDMINE, 9, Operation.GREATER_EQUAL);
 
-        fungusInCart = new VarbitRequirement(2395, 1);
-        fungusOnOtherSide = new VarbitRequirement(2396, 1);
+		inDarkCrystalRoom = new ZoneRequirement(crystalEntranceDark);
+		inDarkDaythRoom = new ZoneRequirement(daythRoomDark);
+	}
 
-        daythNearby = new NpcHintArrowRequirement(NpcID.TREUS_DAYTH, NpcID.GHOST_3617);
+	public void setupSteps()
+	{
+		talkToZealot = new NpcStep(this, NpcID.SARADOMINIST_ZEALOT, new WorldPoint(3443, 3258, 0), "Talk to the Zealot outside the Abandoned Mine in south west Morytania.");
+		talkToZealot.addDialogSteps("And what sort of purpose would that be?", "Yes.", "Is there any other way into the mines?", "I come seeking challenges and quests.",
+			"I follow the path of Saradomin.", "What quest is that then?");
+		pickpocketZealot = new NpcStep(this, NpcID.SARADOMINIST_ZEALOT, new WorldPoint(3443, 3258, 0), "Pickpocket the Zealot outside the Abandoned Mine in south west Morytania.");
 
-        killedDayth = new VarplayerRequirement(382, 9, Operation.GREATER_EQUAL);
+		enterMine = new ObjectStep(this, ObjectID.HAUNTEDMINE_BACK_ENTRANCE2, new WorldPoint(3429, 3225, 0), "Enter the south cart tunnel around the back of the mine.");
 
-        inDarkCrystalRoom = new ZoneRequirement(crystalEntranceDark);
-        inDarkDaythRoom = new ZoneRequirement(daythRoomDark);
-    }
+		goDownFromLevel1South = new ObjectStep(this, ObjectID.HAUNTEDMINE_LADDERTOP, new WorldPoint(3422, 9625, 0), "Climb down the ladder to the east.");
 
-    public void setupSteps() {
-        talkToZealot = new NpcStep(this, NpcID.ZEALOT, new WorldPoint(3443, 3258, 0), "Talk to the Zealot outside the Abandoned Mine in south west Morytania.");
-        talkToZealot.addDialogSteps("And what sort of purpose would that be?", "Yes.", "Is there any other way into the mines?", "I come seeking challenges and quests.",
-                "I follow the path of Saradomin.", "What quest is that then?");
-        pickpocketZealot = new NpcStep(this, NpcID.ZEALOT, new WorldPoint(3443, 3258, 0), "Pickpocket the Zealot outside the Abandoned Mine in south west Morytania.");
+		goDownFromLevel2South = new ObjectStep(this, ObjectID.HAUNTEDMINE_LADDERTOP_1SW, new WorldPoint(2798, 4567, 0), "Climb down another ladder to the east.");
 
-        enterMine = new ObjectStep(this, ObjectID.CART_TUNNEL_4915, new WorldPoint(3429, 3225, 0), "Enter the south cart tunnel around the back of the mine.");
+		goDownFromLevel2North = new ObjectStep(this, ObjectID.HAUNTEDMINE_LADDERTOP_1SW, new WorldPoint(2797, 4599, 0), "Climb down the ladder to the north east.");
 
-        goDownFromLevel1South = new ObjectStep(this, ObjectID.LADDER_4965, new WorldPoint(3422, 9625, 0), "Climb down the ladder to the east.");
+		goDownFromLevel3NorthEast = new ObjectStep(this, ObjectID.HAUNTEDMINE_LADDERTOP_1E, new WorldPoint(2732, 4529, 0), "Climb down the ladder in the room in the north east.");
 
-        goDownFromLevel2South = new ObjectStep(this, ObjectID.LADDER_4969, new WorldPoint(2798, 4567, 0), "Climb down another ladder to the east.");
+		goDownToFungusRoom = new ObjectStep(this, ObjectID.HAUNTEDMINE_LADDERTOP_1E, new WorldPoint(2725, 4486, 0), "Go down the ladder to the south, making sure to avoid the moving mine cart.");
 
-        goDownFromLevel2North = new ObjectStep(this, ObjectID.LADDER_4969, new WorldPoint(2797, 4599, 0), "Climb down the ladder to the north east.");
+		readPanel = new ObjectStep(this, ObjectID.HAUNTEDMINE_POINTS_INFO, new WorldPoint(2770, 4522, 0), "Check the Points Settings panel in the centre of the room. Click the 'Start' button in the interface.");
 
-        goDownFromLevel3NorthEast = new ObjectStep(this, ObjectID.LADDER_4967, new WorldPoint(2732, 4529, 0), "Climb down the ladder in the room in the north east.");
+		pullLeverA = new ObjectStep(this, ObjectID.HAUNTEDMINE_POINT_LEVER1, new WorldPoint(2785, 4517, 0), "Pull the marked lever.");
+		pullLeverB = new ObjectStep(this, ObjectID.HAUNTEDMINE_POINT_LEVER2, new WorldPoint(2784, 4517, 0), "Pull the marked lever.");
+		pullLeverC = new ObjectStep(this, ObjectID.HAUNTEDMINE_POINT_LEVER3, new WorldPoint(2786, 4517, 0), "Pull the marked lever.");
+		pullLeverD = new ObjectStep(this, ObjectID.HAUNTEDMINE_POINT_LEVER4, new WorldPoint(2786, 4515, 0), "Pull the marked lever.");
+		pullLeverE = new ObjectStep(this, ObjectID.HAUNTEDMINE_POINT_LEVER5, new WorldPoint(2785, 4515, 0), "Pull the marked lever.");
 
-        goDownToFungusRoom = new ObjectStep(this, ObjectID.LADDER_4967, new WorldPoint(2725, 4486, 0), "Go down the ladder to the south, making sure to avoid the moving mine cart.");
+		pullLeverF = new ObjectStep(this, ObjectID.HAUNTEDMINE_POINT_LEVER6, new WorldPoint(2768, 4533, 0), "Pull the marked lever.");
+		pullLeverG = new ObjectStep(this, ObjectID.HAUNTEDMINE_POINT_LEVER7, new WorldPoint(2769, 4533, 0), "Pull the marked lever.");
+		pullLeverH = new ObjectStep(this, ObjectID.HAUNTEDMINE_POINT_LEVER8, new WorldPoint(2770, 4533, 0), "Pull the marked lever.");
 
-        readPanel = new ObjectStep(this, ObjectID.POINTS_SETTINGS, new WorldPoint(2770, 4522, 0), "Check the Points Settings panel in the centre of the room. Click the 'Start' button in the interface.");
+		solvePuzzle = new DetailedQuestStep(this, "Pull levers until the tracks are lined up to take the cart to the north east corner.");
+		solvePuzzle.addSubSteps(pullLeverA, pullLeverB, pullLeverC, pullLeverD, pullLeverE, pullLeverF, pullLeverG, pullLeverH);
 
-        pullLeverA = new ObjectStep(this, ObjectID.LEVER_4950, new WorldPoint(2785, 4517, 0), "Pull the marked lever.");
-        pullLeverB = new ObjectStep(this, ObjectID.LEVER_4951, new WorldPoint(2784, 4517, 0), "Pull the marked lever.");
-        pullLeverC = new ObjectStep(this, ObjectID.LEVER_4952, new WorldPoint(2786, 4517, 0), "Pull the marked lever.");
-        pullLeverD = new ObjectStep(this, ObjectID.LEVER_4953, new WorldPoint(2786, 4515, 0), "Pull the marked lever.");
-        pullLeverE = new ObjectStep(this, ObjectID.LEVER_4954, new WorldPoint(2785, 4515, 0), "Pull the marked lever.");
+		useKeyOnValve = new ObjectStep(this, ObjectID.HAUNTEDMINE_LIFT_VALVE, new WorldPoint(2808, 4496, 0),
+			"Use the Zealot's key on the water valve. Make sure you have some energy as you'll need to race to the lift afterwards.", zealotsKeyHighlighted);
+		useKeyOnValve.addIcon(ItemID.HAUNTEDMINE_LIFT_KEY);
 
-        pullLeverF = new ObjectStep(this, ObjectID.LEVER_4955, new WorldPoint(2768, 4533, 0), "Pull the marked lever.");
-        pullLeverG = new ObjectStep(this, ObjectID.LEVER_4956, new WorldPoint(2769, 4533, 0), "Pull the marked lever.");
-        pullLeverH = new ObjectStep(this, ObjectID.LEVER_4957, new WorldPoint(2770, 4533, 0), "Pull the marked lever.");
+		openValve = new ObjectStep(this, ObjectID.HAUNTEDMINE_LIFT_VALVE, new WorldPoint(2808, 4496, 0),
+			"Turn the valve. Make sure you have some energy as you'll need to race to the lift afterwards.");
 
-        solvePuzzle = new DetailedQuestStep(this, "Pull levers until the tracks are lined up to take the cart to the north east corner.");
-        solvePuzzle.addSubSteps(pullLeverA, pullLeverB, pullLeverC, pullLeverD, pullLeverE, pullLeverF, pullLeverG, pullLeverH);
+		useKeyOnValve.addSubSteps(openValve);
 
-        useKeyOnValve = new ObjectStep(this, ObjectID.WATER_VALVE, new WorldPoint(2808, 4496, 0),
-                "Use the Zealot's key on the water valve. Make sure you have some energy as you'll need to race to the lift afterwards.", zealotsKeyHighlighted);
-        useKeyOnValve.addIcon(ItemID.ZEALOTS_KEY);
+		goDownLift = new ObjectStep(this, ObjectID.LIFT_SIDE_R, new WorldPoint(2807, 4492, 0), "Race to the lift before the ghost turns off the valve.");
 
-        openValve = new ObjectStep(this, ObjectID.WATER_VALVE, new WorldPoint(2808, 4496, 0),
-                "Turn the valve. Make sure you have some energy as you'll need to race to the lift afterwards.");
+		goDownToCollectFungus = new ObjectStep(this, ObjectID.HAUNTEDMINE_LADDERTOP_1E, new WorldPoint(2710, 4540, 0), "Go down the north west ladder to collect the glowing fungus.");
+		collectFungus = new ObjectStep(this, ObjectID.HAUNTEDMINE_PUZZLE_CART, new WorldPoint(2774, 4537, 0), "Search the mine cart for the glowing fungus.");
+		collectFungus.addDialogStep("Take it.");
+		goUpFromCollectRoom = new ObjectStep(this, ObjectID.HAUNTEDMINE_LADDER_1W, new WorldPoint(2774, 4540, 0), "Take the fungus back upstairs.");
 
-        useKeyOnValve.addSubSteps(openValve);
+		pickUpChisel = new DetailedQuestStep(this, new WorldPoint(2800, 4500, 0), "Pick up the chisel nearby.", chisel);
 
-        goDownLift = new ObjectStep(this, ObjectID.LIFT_4938, new WorldPoint(2807, 4492, 0), "Race to the lift before the ghost turns off the valve.");
+		pickFungus = new ObjectStep(this, ObjectID.GLOWING_MUSHROOM2, new WorldPoint(2793, 4493, 0), "Pick a glowing fungus.");
 
-        goDownToCollectFungus = new ObjectStep(this, ObjectID.LADDER_4967, new WorldPoint(2710, 4540, 0), "Go down the north west ladder to collect the glowing fungus.");
-        collectFungus = new ObjectStep(this, ObjectID.MINE_CART_4974, new WorldPoint(2774, 4537, 0), "Search the mine cart for the glowing fungus.");
-        collectFungus.addDialogStep("Take it.");
-        goUpFromCollectRoom = new ObjectStep(this, ObjectID.LADDER_4968, new WorldPoint(2774, 4540, 0), "Take the fungus back upstairs.");
+		goUpFromLiftRoom = new ObjectStep(this, ObjectID.HAUNTEDMINE_LADDER_1W, new WorldPoint(2796, 4529, 0), "Go back up the ladder.");
 
-        pickUpChisel = new DetailedQuestStep(this, new WorldPoint(2800, 4500, 0), "Pick up the chisel nearby.", chisel);
+		putFungusInCart = new ObjectStep(this, ObjectID.HAUNTEDMINE_PUZZLE_CART, new WorldPoint(2778, 4506, 0),
+			"Put the glowing fungus into the mine cart north west of the ladder.", glowingFungusHighlight);
+		putFungusInCart.addIcon(ItemID.GLOWING_FUNGUS);
 
-        pickFungus = new ObjectStep(this, ObjectID.GLOWING_FUNGUS_4933, new WorldPoint(2793, 4493, 0), "Pick a glowing fungus.");
+		goUpFromFungusRoom = new ObjectStep(this, ObjectID.HAUNTEDMINE_LADDER_1W, new WorldPoint(2789, 4486, 0), "Climb back up to the surface.");
+		goUpFromLevel3South = new ObjectStep(this, ObjectID.HAUNTEDMINE_LADDER_1NE, new WorldPoint(2734, 4503, 0), "Climb back up to the surface.");
 
-        goUpFromLiftRoom = new ObjectStep(this, ObjectID.LADDER_4968, new WorldPoint(2796, 4529, 0), "Go back up the ladder.");
+		goUpFromLevel2South = new ObjectStep(this, ObjectID.HAUNTEDMINE_LADDER, new WorldPoint(2782, 4569, 0), "Climb back up to the surface.");
 
-        putFungusInCart = new ObjectStep(this, ObjectID.MINE_CART_4974, new WorldPoint(2778, 4506, 0),
-                "Put the glowing fungus into the mine cart north west of the ladder.", glowingFungusHighlight);
-        putFungusInCart.addIcon(ItemID.GLOWING_FUNGUS);
+		leaveLevel1South = new ObjectStep(this, ObjectID.LOTR_BACK_ENTRANCE1_INSIDE, new WorldPoint(3408, 9623, 0), "Leave through the cart tunnel.");
 
-        goUpFromFungusRoom = new ObjectStep(this, ObjectID.LADDER_4968, new WorldPoint(2789, 4486, 0), "Climb back up to the surface.");
-        goUpFromLevel3South = new ObjectStep(this, ObjectID.LADDER_4970, new WorldPoint(2734, 4503, 0), "Climb back up to the surface.");
+		goUpFromFungusRoom.addSubSteps(goUpFromLevel3South, goUpFromLevel2South, leaveLevel1South);
 
-        goUpFromLevel2South = new ObjectStep(this, ObjectID.LADDER_4966, new WorldPoint(2782, 4569, 0), "Climb back up to the surface.");
+		enterMineNorth = new ObjectStep(this, ObjectID.HAUNTEDMINE_BACK_ENTRANCE1, new WorldPoint(3430, 3233, 0),
+			"Make sure you're prepared to fight Treus Dayth (level 95), then enter the north area of the Haunted Mine.");
 
-        leaveLevel1South = new ObjectStep(this, ObjectID.CART_TUNNEL_15830, new WorldPoint(3408, 9623, 0), "Leave through the cart tunnel.");
+		goDownLevel1North = new ObjectStep(this, ObjectID.HAUNTEDMINE_LADDERTOP, new WorldPoint(3413, 9633, 0), "Climb down the west ladder.");
+		goDownLevel2North = new ObjectStep(this, ObjectID.HAUNTEDMINE_LADDERTOP_1SW, new WorldPoint(2797, 4599, 0), "Climb down the north east ladder.");
 
-        goUpFromFungusRoom.addSubSteps(goUpFromLevel3South, goUpFromLevel2South, leaveLevel1South);
+		goDownToDayth = new ObjectStep(this, ObjectID.HAUNTEDMINE_DARK_STAIRS_TOP, new WorldPoint(2748, 4437, 0), "Go down the east stairs.");
 
-        enterMineNorth = new ObjectStep(this, ObjectID.CART_TUNNEL_4914, new WorldPoint(3430, 3233, 0),
-                "Make sure you're prepared to fight Treus Dayth (level 95), then enter the north area of the Haunted Mine.");
+		goDownToCrystals = new ObjectStep(this, ObjectID.HAUNTEDMINE_DARK_STAIRS_TOP, new WorldPoint(2694, 4437, 0), "Go down the west stairs.");
 
-        goDownLevel1North = new ObjectStep(this, ObjectID.LADDER_4965, new WorldPoint(3413, 9633, 0), "Climb down the west ladder.");
-        goDownLevel2North = new ObjectStep(this, ObjectID.LADDER_4969, new WorldPoint(2797, 4599, 0), "Climb down the north east ladder.");
+		tryToPickUpKey = new NpcStep(this, NpcID.HAUNTEDMINE_BOSS_KEY, new WorldPoint(2788, 4455, 0), "Attempt to pick up the innocent-looking key. Treus Dayth (level 95) will spawn. Kill him.");
 
-        goDownToDayth = new ObjectStep(this, ObjectID.STAIRS_4971, new WorldPoint(2748, 4437, 0), "Go down the east stairs.");
+		killDayth = new NpcStep(this, NpcID.HAUNTEDMINE_BOSS_GHOST, new WorldPoint(2788, 4450, 0), "Kill Treus Dayth.");
 
-        goDownToCrystals = new ObjectStep(this, ObjectID.STAIRS_4971, new WorldPoint(2694, 4437, 0), "Go down the west stairs.");
+		tryToPickUpKey.addSubSteps(killDayth);
 
-        tryToPickUpKey = new NpcStep(this, NpcID.INNOCENTLOOKING_KEY, new WorldPoint(2788, 4455, 0), "Attempt to pick up the innocent-looking key. Treus Dayth (level 95) will spawn. Kill him.");
+		pickUpKey = new NpcStep(this, NpcID.HAUNTEDMINE_BOSS_KEY, new WorldPoint(2788, 4455, 0), "Pick up the innocent-looking key.");
 
-        killDayth = new NpcStep(this, NpcID.TREUS_DAYTH, new WorldPoint(2788, 4450, 0), "Kill Treus Dayth.");
+		goUpFromDayth = new ObjectStep(this, ObjectID.HAUNTEDMINE_LIGHT_STAIRS_BOTTOM, new WorldPoint(2813, 4454, 0), "Go back up to the flooded area.");
 
-        tryToPickUpKey.addSubSteps(killDayth);
+		cutCrystal = new ObjectStep(this, ObjectID.CRYSTALCORNER, new WorldPoint(2787, 4428, 0),
+			"Cut from a crystal outcrop with a chisel in the south room to finish the quest.", chisel);
 
-        pickUpKey = new NpcStep(this, NpcID.INNOCENTLOOKING_KEY, new WorldPoint(2788, 4455, 0), "Pick up the innocent-looking key.");
+		leaveCrystalRoom = new ObjectStep(this, ObjectID.HAUNTEDMINE_LIGHT_STAIRS_BOTTOM, new WorldPoint(2756, 4454, 0), "Go back up to the flooded area.");
 
-        goUpFromDayth = new ObjectStep(this, ObjectID.STAIRS_4973, new WorldPoint(2813, 4454, 0), "Go back up to the flooded area.");
+		goBackUpLift = new ObjectStep(this, ObjectID.LIFT_FLOODED, new WorldPoint(2726, 4456, 0), "Go back up the lift to get a chisel.");
 
-        cutCrystal = new ObjectStep(this, ObjectID.CRYSTAL_OUTCROP, new WorldPoint(2787, 4428, 0),
-                "Cut from a crystal outcrop with a chisel in the south room to finish the quest.", chisel);
+		leaveDarkCrystalRoom = new ObjectStep(this, ObjectID.HAUNTEDMINE_DARK_STAIRS_BOTTOM, new WorldPoint(2710, 4593, 0), "You need a glowing fungus. Go back up to the flooded area.");
+		leaveDarkDaythRoom = new ObjectStep(this, ObjectID.HAUNTEDMINE_DARK_STAIRS_BOTTOM, new WorldPoint(2732, 4563, 0), "You need a glowing fungus. Go back up to the flooded area.");
+	}
 
-        leaveCrystalRoom = new ObjectStep(this, ObjectID.STAIRS_4973, new WorldPoint(2756, 4454, 0), "Go back up to the flooded area.");
+	@Override
+	public List<ItemRequirement> getItemRequirements()
+	{
+		ArrayList<ItemRequirement> reqs = new ArrayList<>();
+		reqs.add(combatGear);
+		return reqs;
+	}
 
-        goBackUpLift = new ObjectStep(this, ObjectID.LIFT_4942, new WorldPoint(2726, 4456, 0), "Go back up the lift to get a chisel.");
+	@Override
+	public List<ItemRequirement> getItemRecommended()
+	{
+		return QuestUtil.toArrayList(food);
+	}
 
-        leaveDarkCrystalRoom = new ObjectStep(this, ObjectID.STAIRS_4972, new WorldPoint(2710, 4593, 0), "You need a glowing fungus. Go back up to the flooded area.");
-        leaveDarkDaythRoom = new ObjectStep(this, ObjectID.STAIRS_4972, new WorldPoint(2732, 4563, 0), "You need a glowing fungus. Go back up to the flooded area.");
-    }
+	@Override
+	public List<String> getCombatRequirements()
+	{
+		ArrayList<String> reqs = new ArrayList<>();
+		reqs.add("Treus Dayth (level 95)");
+		return reqs;
+	}
 
-    @Override
-    public List<ItemRequirement> getItemRequirements() {
-        ArrayList<ItemRequirement> reqs = new ArrayList<>();
-        reqs.add(combatGear);
-        return reqs;
-    }
+	@Override
+	public QuestPointReward getQuestPointReward()
+	{
+		return new QuestPointReward(2);
+	}
 
-    @Override
-    public List<ItemRequirement> getItemRecommended() {
-        return QuestUtil.toArrayList(food);
-    }
+	@Override
+	public List<ExperienceReward> getExperienceRewards()
+	{
+		return Collections.singletonList(new ExperienceReward(Skill.STRENGTH, 22000));
+	}
 
-    @Override
-    public List<String> getCombatRequirements() {
-        ArrayList<String> reqs = new ArrayList<>();
-        reqs.add("Treus Dayth (level 95)");
-        return reqs;
-    }
+	@Override
+	public List<UnlockReward> getUnlockRewards()
+	{
+		return Arrays.asList(
+				new UnlockReward("Ability to create the Salve Amulet"),
+				new UnlockReward("Ability to access Tarn's Lair"));
+	}
 
-    @Override
-    public QuestPointReward getQuestPointReward() {
-        return new QuestPointReward(2);
-    }
+	@Override
+	public List<PanelDetails> getPanels()
+	{
+		List<PanelDetails> allSteps = new ArrayList<>();
+		allSteps.add(new PanelDetails("Starting off", Arrays.asList(talkToZealot, pickpocketZealot),
+			combatGear, food, emptyInvSpots));
+		allSteps.add(new PanelDetails("Getting a light source",
+			Arrays.asList(enterMine, goDownFromLevel1South, goDownFromLevel2South, goDownToFungusRoom,
+				pickFungus, putFungusInCart, solvePuzzle, readPanel, goUpFromFungusRoom)));
+		allSteps.add(new PanelDetails("Getting the salve crystals",
+			Arrays.asList(enterMineNorth, goDownLevel1North, goDownLevel2North, goDownToCollectFungus,
+				collectFungus, goUpFromCollectRoom, goDownFromLevel3NorthEast, pickUpChisel, useKeyOnValve, goDownLift,
+				goDownToDayth, tryToPickUpKey, pickUpKey, goUpFromDayth, goDownToCrystals, cutCrystal)));
+		return allSteps;
+	}
 
-    @Override
-    public List<ExperienceReward> getExperienceRewards() {
-        return Collections.singletonList(new ExperienceReward(Skill.STRENGTH, 22000));
-    }
-
-    @Override
-    public List<UnlockReward> getUnlockRewards() {
-        return Arrays.asList(
-                new UnlockReward("Ability to create the Salve Amulet"),
-                new UnlockReward("Ability to access Tarn's Lair"));
-    }
-
-    @Override
-    public List<PanelDetails> getPanels() {
-        List<PanelDetails> allSteps = new ArrayList<>();
-        allSteps.add(new PanelDetails("Starting off", Arrays.asList(talkToZealot, pickpocketZealot),
-                combatGear, food, emptyInvSpots));
-        allSteps.add(new PanelDetails("Getting a light source",
-                Arrays.asList(enterMine, goDownFromLevel1South, goDownFromLevel2South, goDownToFungusRoom,
-                        pickFungus, putFungusInCart, solvePuzzle, readPanel, goUpFromFungusRoom)));
-        allSteps.add(new PanelDetails("Getting the salve crystals",
-                Arrays.asList(enterMineNorth, goDownLevel1North, goDownLevel2North, goDownToCollectFungus,
-                        collectFungus, goUpFromCollectRoom, goDownFromLevel3NorthEast, pickUpChisel, useKeyOnValve, goDownLift,
-                        goDownToDayth, tryToPickUpKey, pickUpKey, goUpFromDayth, goDownToCrystals, cutCrystal)));
-        return allSteps;
-    }
-
-    @Override
-    public List<Requirement> getGeneralRequirements() {
-        ArrayList<Requirement> req = new ArrayList<>();
-        req.add(new QuestRequirement(QuestHelperQuest.PRIEST_IN_PERIL, QuestState.FINISHED));
-        req.add(new SkillRequirement(Skill.CRAFTING, 35));
-        return req;
-    }
+	@Override
+	public List<Requirement> getGeneralRequirements()
+	{
+		ArrayList<Requirement> req = new ArrayList<>();
+		req.add(new QuestRequirement(QuestHelperQuest.PRIEST_IN_PERIL, QuestState.FINISHED));
+		req.add(new SkillRequirement(Skill.CRAFTING, 35));
+		return req;
+	}
 }

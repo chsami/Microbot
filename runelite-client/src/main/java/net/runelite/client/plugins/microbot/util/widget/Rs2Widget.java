@@ -145,6 +145,17 @@ public class Rs2Widget {
         return findWidget(text, children, false);
     }
 
+	public static boolean hasWidgetText(String text, int componentId, boolean exact) {
+		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+			Widget rootWidget = getWidget(componentId);
+			if (rootWidget == null) return false;
+
+			// Use findWidget to perform the search on all child types
+			Widget foundWidget = findWidget(text, List.of(rootWidget), exact);
+			return foundWidget != null;
+		}).orElse(false);
+	}
+
     public static boolean hasWidgetText(String text, int widgetId, int childId, boolean exact) {
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             Widget rootWidget = getWidget(widgetId, childId);

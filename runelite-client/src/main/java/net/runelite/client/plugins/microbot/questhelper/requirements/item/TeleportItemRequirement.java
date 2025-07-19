@@ -25,44 +25,51 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements.item;
 
-
 import net.runelite.client.plugins.microbot.questhelper.collections.ItemCollections;
 
 import java.util.List;
 
-public class TeleportItemRequirement extends ItemRequirement {
-    public TeleportItemRequirement(String name, int id) {
-        super(name, id);
-        setChargedItem(true);
-    }
+public class TeleportItemRequirement extends ItemRequirement
+{
+	public TeleportItemRequirement(String name, int id)
+	{
+		super(name, id);
+		setChargedItem(true);
+	}
 
-    public TeleportItemRequirement(String name, int id, int quantity) {
-        super(name, id, quantity);
-        setChargedItem(true);
-    }
+	public TeleportItemRequirement(String name, int id, int quantity)
+	{
+		super(name, id, quantity);
+		setChargedItem(true);
+	}
 
-    public TeleportItemRequirement(String name, ItemCollections itemCollection) {
-        super(name, itemCollection);
-        setChargedItem(true);
-    }
+	public TeleportItemRequirement(String name, ItemCollections itemCollection)
+	{
+		super(name, itemCollection);
+		setChargedItem(true);
+	}
 
-    public TeleportItemRequirement(String name, List<Integer> items) {
-        super(name, items);
-        setChargedItem(true);
-    }
+	public TeleportItemRequirement(String name, List<Integer> items)
+	{
+		super(name, items);
+		setChargedItem(true);
+	}
 
-    public TeleportItemRequirement(String name, List<Integer> items, int quantity) {
-        super(name, items, quantity);
-        setChargedItem(true);
-    }
+	public TeleportItemRequirement(String name, List<Integer> items, int quantity)
+	{
+		super(name, items, quantity);
+		setChargedItem(true);
+	}
 
-    public TeleportItemRequirement(String name, ItemCollections itemCollection, int quantity) {
-        super(name, itemCollection, quantity);
-        setChargedItem(true);
-    }
+	public TeleportItemRequirement(String name, ItemCollections itemCollection, int quantity)
+	{
+		super(name, itemCollection, quantity);
+		setChargedItem(true);
+	}
 
-    @Override
-    protected TeleportItemRequirement copyOfClass() {
-        return new TeleportItemRequirement(getName(), getId());
-    }
+	@Override
+	protected TeleportItemRequirement copyOfClass()
+	{
+		return new TeleportItemRequirement(getName(), getId());
+	}
 }

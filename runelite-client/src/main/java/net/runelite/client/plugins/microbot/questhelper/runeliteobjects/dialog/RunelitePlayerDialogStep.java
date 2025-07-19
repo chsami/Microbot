@@ -24,34 +24,39 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.runeliteobjects.dialog;
 
-
-import net.runelite.api.Client;
 import net.runelite.client.plugins.microbot.questhelper.runeliteobjects.RuneliteConfigSetter;
 import net.runelite.client.plugins.microbot.questhelper.runeliteobjects.extendedruneliteobjects.FaceAnimationIDs;
+import net.runelite.api.Client;
 
-public class RunelitePlayerDialogStep extends RuneliteDialogStep {
-    public RunelitePlayerDialogStep(Client client, String text, FaceAnimationIDs animation) {
-        super(client.getLocalPlayer().getName(), text, -1, animation.getAnimationID());
-        client.getLocalPlayer().getName();
-    }
+public class RunelitePlayerDialogStep extends RuneliteDialogStep
+{
+	public RunelitePlayerDialogStep(Client client, String text, FaceAnimationIDs animation)
+	{
+		super(client.getLocalPlayer().getName(), text, -1, animation.getAnimationID());
+		client.getLocalPlayer().getName();
+	}
 
-    public RunelitePlayerDialogStep(Client client, String text, int animation) {
-        super(client.getLocalPlayer().getName(), text, -1, animation);
-        client.getLocalPlayer().getName();
-    }
+	public RunelitePlayerDialogStep(Client client, String text, int animation)
+	{
+		super(client.getLocalPlayer().getName(), text, -1, animation);
+		client.getLocalPlayer().getName();
+	}
 
-    public RunelitePlayerDialogStep(Client client, String text) {
-        this(client, text, 570);
-    }
+	public RunelitePlayerDialogStep(Client client, String text)
+	{
+		this(client, text, 570);
+	}
 
-    public RunelitePlayerDialogStep(Client client, String text, RuneliteConfigSetter setter) {
-        this(client, text, 570);
-        this.setStateProgression(setter);
-    }
+	public RunelitePlayerDialogStep(Client client, String text, RuneliteConfigSetter setter)
+	{
+		this(client, text, 570);
+		this.setStateProgression(setter);
+	}
 
-    @Override
-    public boolean isPlayer() {
-        return true;
-    }
+	@Override
+	public boolean isPlayer()
+	{
+		return true;
+	}
 }
 

@@ -28,10 +28,12 @@ import net.runelite.api.Client;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.callback.ClientThread;
 
-public class FakeObject extends ExtendedRuneliteObject {
-    protected FakeObject(Client client, ClientThread clientThread, WorldPoint worldPoint, int[] model, int animation) {
-        super(client, clientThread, worldPoint, model, animation);
-        objectType = RuneliteObjectTypes.OBJECT;
-        nameColor = "00FFFF";
-    }
+public class FakeObject extends ExtendedRuneliteObject
+{
+	protected FakeObject(Client client, ClientThread clientThread, WorldPoint worldPoint, int[] model, int animation)
+	{
+		super(client, clientThread, worldPoint, model, animation);
+		objectType = RuneliteObjectTypes.OBJECT;
+		nameColor = "00FFFF";
+	}
 }

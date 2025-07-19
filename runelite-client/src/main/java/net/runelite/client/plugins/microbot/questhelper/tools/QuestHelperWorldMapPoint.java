@@ -25,12 +25,11 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.tools;
 
-
-import net.runelite.api.Point;
-import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.questhelper.util.worldmap.WorldMapArea;
 import net.runelite.client.plugins.microbot.questhelper.util.worldmap.WorldMapAreaChanged;
 import net.runelite.client.plugins.microbot.questhelper.util.worldmap.WorldPointMapper;
+import net.runelite.api.Point;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.ui.overlay.worldmap.WorldMapPoint;
 import net.runelite.client.util.ImageUtil;
 
@@ -38,80 +37,93 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.HashMap;
 
-public class QuestHelperWorldMapPoint extends WorldMapPoint {
-    private final BufferedImage questWorldImage;
-    private final Point questWorldImagePoint;
-    private final HashMap<Integer, BufferedImage> arrows = new HashMap<>();
-    private final WorldMapArea worldMapArea;
-    private BufferedImage activeQuestArrow;
+public class QuestHelperWorldMapPoint extends WorldMapPoint
+{
+	private final BufferedImage questWorldImage;
+	private final Point questWorldImagePoint;
+	private final HashMap<Integer, BufferedImage> arrows = new HashMap<>();
+	private BufferedImage activeQuestArrow;
+	private final WorldMapArea worldMapArea;
+	public QuestHelperWorldMapPoint(final WorldPoint worldPoint, BufferedImage image)
+	{
+		super(WorldPointMapper.getMapWorldPointFromRealWorldPoint(worldPoint).getWorldPoint(), null);
+		worldMapArea = WorldPointMapper.getMapWorldPointFromRealWorldPoint(worldPoint).getWorldMapArea();
 
-    public QuestHelperWorldMapPoint(final WorldPoint worldPoint, BufferedImage image) {
-        super(WorldPointMapper.getMapWorldPointFromRealWorldPoint(worldPoint).getWorldPoint(), null);
-        worldMapArea = WorldPointMapper.getMapWorldPointFromRealWorldPoint(worldPoint).getWorldMapArea();
+		BufferedImage iconBackground = ImageUtil.loadImageResource(getClass(), "/util/clue_arrow.png");
+		questWorldImage = new BufferedImage(iconBackground.getWidth(), iconBackground.getHeight(), BufferedImage.TYPE_INT_ARGB);
 
-        BufferedImage iconBackground = ImageUtil.loadImageResource(getClass(), "/util/clue_arrow.png");
-        questWorldImage = new BufferedImage(iconBackground.getWidth(), iconBackground.getHeight(), BufferedImage.TYPE_INT_ARGB);
+		Graphics graphics = questWorldImage.getGraphics();
+		graphics.drawImage(iconBackground, 0, 0, null);
+		int buffer = iconBackground.getWidth() / 2 - image.getWidth() / 2;
+		buffer = Math.max(buffer, 0);
 
-        Graphics graphics = questWorldImage.getGraphics();
-        graphics.drawImage(iconBackground, 0, 0, null);
-        int buffer = iconBackground.getWidth() / 2 - image.getWidth() / 2;
-        buffer = Math.max(buffer, 0);
+		graphics.drawImage(image, buffer, buffer, null);
 
-        graphics.drawImage(image, buffer, buffer, null);
+		questWorldImagePoint = new Point(questWorldImage.getWidth() / 2, questWorldImage.getHeight());
 
-        questWorldImagePoint = new Point(questWorldImage.getWidth() / 2, questWorldImage.getHeight());
+		arrows.put(0, Icon.QUEST_STEP_ARROW.getImage());
+		arrows.put(45, Icon.QUEST_STEP_ARROW_45.getImage());
+		arrows.put(90, Icon.QUEST_STEP_ARROW_90.getImage());
+		arrows.put(135, Icon.QUEST_STEP_ARROW_135.getImage());
+		arrows.put(180, Icon.QUEST_STEP_ARROW_180.getImage());
+		arrows.put(225, Icon.QUEST_STEP_ARROW_225.getImage());
+		arrows.put(270, Icon.QUEST_STEP_ARROW_270.getImage());
+		arrows.put(315, Icon.QUEST_STEP_ARROW_315.getImage());
 
-        arrows.put(0, Icon.QUEST_STEP_ARROW.getImage());
-        arrows.put(45, Icon.QUEST_STEP_ARROW_45.getImage());
-        arrows.put(90, Icon.QUEST_STEP_ARROW_90.getImage());
-        arrows.put(135, Icon.QUEST_STEP_ARROW_135.getImage());
-        arrows.put(180, Icon.QUEST_STEP_ARROW_180.getImage());
-        arrows.put(225, Icon.QUEST_STEP_ARROW_225.getImage());
-        arrows.put(270, Icon.QUEST_STEP_ARROW_270.getImage());
-        arrows.put(315, Icon.QUEST_STEP_ARROW_315.getImage());
+		activeQuestArrow = arrows.get(0);
 
-        activeQuestArrow = arrows.get(0);
+		this.setName("Quest Helper");
+		this.setSnapToEdge(true);
+		this.setJumpOnClick(true);
+		this.setImage(questWorldImage);
+		this.setImagePoint(questWorldImagePoint);
+	}
 
-        this.setName("Quest Helper");
-        this.setSnapToEdge(true);
-        this.setJumpOnClick(true);
-        this.setImage(questWorldImage);
-        this.setImagePoint(questWorldImagePoint);
-    }
+	public void onWorldMapAreaChanged(WorldMapAreaChanged worldMapAreaChanged)
+	{
+		if (worldMapArea != null &&
+			worldMapArea != WorldMapArea.ANY &&
+			worldMapArea != worldMapAreaChanged.getWorldMapArea())
+		{
+			this.setImage(null);
+		}
+		else
+		{
+			if (isCurrentlyEdgeSnapped())
+			{
+				onEdgeSnap();
+			}
+			else
+			{
+				onEdgeUnsnap();
+			}
+		}
+	}
 
-    public void onWorldMapAreaChanged(WorldMapAreaChanged worldMapAreaChanged) {
-        if (worldMapArea != null &&
-                worldMapArea != WorldMapArea.ANY &&
-                worldMapArea != worldMapAreaChanged.getWorldMapArea()) {
-            this.setImage(null);
-        } else {
-            if (isCurrentlyEdgeSnapped()) {
-                onEdgeSnap();
-            } else {
-                onEdgeUnsnap();
-            }
-        }
-    }
+	@Override
+	public void onEdgeSnap()
+	{
+		this.setImage(activeQuestArrow);
+		this.setImagePoint(null);
+	}
 
-    @Override
-    public void onEdgeSnap() {
-        this.setImage(activeQuestArrow);
-        this.setImagePoint(null);
-    }
+	@Override
+	public void onEdgeUnsnap()
+	{
+		this.setImage(questWorldImage);
+		this.setImagePoint(questWorldImagePoint);
+	}
 
-    @Override
-    public void onEdgeUnsnap() {
-        this.setImage(questWorldImage);
-        this.setImagePoint(questWorldImagePoint);
-    }
-
-    public void rotateArrow(int rotation) {
-        BufferedImage newArrow = arrows.get(rotation);
-        if (activeQuestArrow != newArrow) {
-            activeQuestArrow = arrows.get(rotation);
-            if (isCurrentlyEdgeSnapped()) {
-                setImage(arrows.get(rotation));
-            }
-        }
-    }
+	public void rotateArrow(int rotation)
+	{
+		BufferedImage newArrow = arrows.get(rotation);
+		if (activeQuestArrow != newArrow)
+		{
+			activeQuestArrow = arrows.get(rotation);
+			if (isCurrentlyEdgeSnapped())
+			{
+				setImage(arrows.get(rotation));
+			}
+		}
+	}
 }

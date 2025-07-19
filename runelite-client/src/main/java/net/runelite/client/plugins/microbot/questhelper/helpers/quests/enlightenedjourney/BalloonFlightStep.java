@@ -24,94 +24,111 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.enlightenedjourney;
 
-
-import net.runelite.api.NpcID;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.GameTick;
-import net.runelite.api.events.VarbitChanged;
-import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.widget.WidgetTextRequirement;
 import net.runelite.client.plugins.microbot.questhelper.steps.DetailedOwnerStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.WidgetStep;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.client.eventbus.Subscribe;
 
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
-public class BalloonFlightStep extends DetailedOwnerStep {
-    WidgetStep dropSand, burnLog, pullRope, pullRedRope, goStraight;
+public class BalloonFlightStep extends DetailedOwnerStep
+{
+	WidgetStep dropSand, burnLog, pullRope, pullRedRope, goStraight;
 
-    NpcStep startFlight;
+	NpcStep startFlight;
 
-    // Shift is to get the 'section'
-    HashMap<Integer, List<Integer>> sections;
+	// Shift is to get the 'section'
+	HashMap<Integer, List<Integer>> sections;
 
-    WidgetTextRequirement flying;
+	WidgetTextRequirement flying;
 
-    public BalloonFlightStep(QuestHelper questHelper, String text, HashMap<Integer, List<Integer>> sections, ItemRequirement... itemRequirements) {
-        super(questHelper, text, itemRequirements);
-        this.sections = sections;
-        flying = new WidgetTextRequirement(471, 1, "Balloon Controls");
-    }
+	public BalloonFlightStep(QuestHelper questHelper, String text, HashMap<Integer, List<Integer>> sections, ItemRequirement... itemRequirements)
+	{
+		super(questHelper, text, itemRequirements);
+		this.sections = sections;
+		flying = new WidgetTextRequirement(471, 1, "Balloon Controls");
+	}
 
-    @Override
-    protected void setupSteps() {
-        startFlight = new NpcStep(getQuestHelper(), NpcID.AUGUSTE, new WorldPoint(2809, 3354, 0), "");
-        dropSand = new WidgetStep(getQuestHelper(), "Drop a sandbag.", 471, 2);
-        burnLog = new WidgetStep(getQuestHelper(), "Burn a log.", 471, 3);
-        pullRope = new WidgetStep(getQuestHelper(), "Pull the brown rope.", 471, 6);
-        pullRedRope = new WidgetStep(getQuestHelper(), "Pull the red rope.", 471, 9);
-        goStraight = new WidgetStep(getQuestHelper(), "Press relax.", 471, 4);
-    }
+	@Override
+	protected void setupSteps()
+	{
+		startFlight = new NpcStep(getQuestHelper(), NpcID.ZEP_PICCARD, new WorldPoint(2809, 3354, 0), "");
+		dropSand = new WidgetStep(getQuestHelper(),  "Drop a sandbag.", 471, 2);
+		burnLog = new WidgetStep(getQuestHelper(),  "Burn a log.", 471, 3);
+		pullRope = new WidgetStep(getQuestHelper(),  "Pull the brown rope.", 471, 6);
+		pullRedRope = new WidgetStep(getQuestHelper(),  "Pull the red rope.", 471, 9);
+		goStraight = new WidgetStep(getQuestHelper(),  "Press relax.", 471, 4);
+	}
 
-    @Override
-    public void onVarbitChanged(VarbitChanged varbitChanged) {
-        super.onVarbitChanged(varbitChanged);
-        updateSteps();
-    }
+	@Override
+	public void onVarbitChanged(VarbitChanged varbitChanged)
+	{
+		super.onVarbitChanged(varbitChanged);
+		updateSteps();
+	}
 
-    @Subscribe
-    public void onGameTick(GameTick event) {
-        updateSteps();
-    }
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		updateSteps();
+	}
 
-    protected void updateSteps() {
-        if (!flying.check(client)) {
-            startUpStep(startFlight);
-            return;
-        }
+	protected void updateSteps()
+	{
+		if (!flying.check(client))
+		{
+			startUpStep(startFlight);
+			return;
+		}
 
-        int section = client.getVarbitValue(2884);
-        int xPos = client.getVarbitValue(2882);
-        int yPos = client.getVarbitValue(2883);
+		int section = client.getVarbitValue(2884);
+		int xPos = client.getVarbitValue(2882);
+		int yPos = client.getVarbitValue(2883);
 
-        if (sections.get(section) == null) return;
-        // If we've gone to next section before updating the pos, return
-        if (sections.get(section).size() <= xPos + 1) {
-            return;
-        }
-        int diffBetweenCurrentAndNextPos = sections.get(section).get(xPos + 1) - yPos;
+		if (sections.get(section) == null) return;
+		// If we've gone to next section before updating the pos, return
+		if (sections.get(section).size() <= xPos + 1)
+		{
+			return;
+		}
+		int diffBetweenCurrentAndNextPos = sections.get(section).get(xPos + 1) - yPos;
 
-        if (diffBetweenCurrentAndNextPos == 0) {
-            startUpStep(goStraight);
-        } else if (diffBetweenCurrentAndNextPos == 1) {
-            startUpStep(burnLog);
-        } else if (diffBetweenCurrentAndNextPos > 1) {
-            startUpStep(dropSand);
-        } else if (diffBetweenCurrentAndNextPos == -1) {
-            startUpStep(pullRope);
-        } else {
-            startUpStep(pullRedRope);
-        }
-    }
+		if (diffBetweenCurrentAndNextPos == 0)
+		{
+			startUpStep(goStraight);
+		}
+		else if (diffBetweenCurrentAndNextPos == 1)
+		{
+			startUpStep(burnLog);
+		}
+		else if (diffBetweenCurrentAndNextPos > 1)
+		{
+			startUpStep(dropSand);
+		}
+		else if (diffBetweenCurrentAndNextPos == -1)
+		{
+			startUpStep(pullRope);
+		}
+		else
+		{
+			startUpStep(pullRedRope);
+		}
+	}
 
-    @Override
-    public Collection<QuestStep> getSteps() {
-        return Arrays.asList(startFlight, dropSand, burnLog, pullRope, pullRedRope, goStraight);
-    }
+	@Override
+	public Collection<QuestStep> getSteps()
+	{
+		return Arrays.asList(startFlight, dropSand, burnLog, pullRope, pullRedRope, goStraight);
+	}
 }

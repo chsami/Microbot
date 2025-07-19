@@ -24,35 +24,41 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements;
 
-import net.runelite.api.Client;
-import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
 import net.runelite.client.plugins.microbot.questhelper.steps.tools.QuestPerspective;
+import net.runelite.api.Client;
+import net.runelite.api.coords.WorldPoint;
 
-public class RegionHintArrowRequirement extends SimpleRequirement {
-    private final Zone zone;
+public class RegionHintArrowRequirement extends SimpleRequirement
+{
+	private final Zone zone;
 
-    public RegionHintArrowRequirement(WorldPoint worldPoint) {
-        assert (worldPoint != null);
-        this.zone = new Zone(worldPoint, worldPoint);
-    }
+	public RegionHintArrowRequirement(WorldPoint worldPoint)
+	{
+		assert(worldPoint != null);
+		this.zone = new Zone(worldPoint, worldPoint);
+	}
 
-    public RegionHintArrowRequirement(Zone zone) {
-        assert (zone != null);
-        this.zone = zone;
-    }
+	public RegionHintArrowRequirement(Zone zone)
+	{
+		assert(zone != null);
+		this.zone = zone;
+	}
 
-    public boolean check(Client client) {
-        WorldPoint hintArrowPoint = client.getHintArrowPoint();
-        if (hintArrowPoint == null) {
-            return false;
-        }
+	public boolean check(Client client)
+	{
+		WorldPoint hintArrowPoint = client.getHintArrowPoint();
+		if (hintArrowPoint == null)
+		{
+			return false;
+		}
 
-        WorldPoint wp = QuestPerspective.getInstanceWorldPointFromReal(client, hintArrowPoint);
-        if (wp == null) {
-            return false;
-        }
+		WorldPoint wp = QuestPerspective.getInstanceWorldPointFromReal(client, hintArrowPoint);
+		if (wp == null)
+		{
+			return false;
+		}
 
-        return zone.contains(wp);
-    }
+		return zone.contains(wp);
+	}
 }

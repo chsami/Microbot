@@ -24,10 +24,9 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.steps.widget;
 
-
-import net.runelite.api.Client;
-import net.runelite.api.widgets.InterfaceID;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
+import net.runelite.api.Client;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.client.util.Text;
 
 import java.awt.*;
@@ -38,70 +37,81 @@ import java.awt.*;
  * Use this over a raw group id + child id highlight combination for spells where possible since
  * spells being moved from Jagex may change the child id
  */
-public class SpellWidgetHighlight extends AbstractWidgetHighlight {
-    /**
-     * The InterfaceID.SPELLBOOK child that contains the list of spell widgets
-     */
-    private static final int SPELLBOOK_SPELL_LIST_CHILD_ID = 3;
+public class SpellWidgetHighlight extends AbstractWidgetHighlight
+{
+	/**
+	 * The InterfaceID.SPELLBOOK child that contains the list of spell widgets
+	 */
+	private static final int SPELLBOOK_SPELL_LIST_CHILD_ID = 3;
 
-    /**
-     * The name of the spell to search for without tags (e.g. "Ardougne Teleport")
-     */
-    private final String spellName;
+	/**
+	 * The name of the spell to search for without tags (e.g. "Ardougne Teleport")
+	 */
+	private final String spellName;
 
-    /**
-     * Internal state for whether to perform a full search next time the spellbook is visible
-     */
-    private boolean redoSearch = true;
+	/**
+	 * Internal state for whether to perform a full search next time the spellbook is visible
+	 */
+	private boolean redoSearch = true;
 
-    /**
-     * The final full component ID of the spell widget
-     */
-    private Integer spellComponentId = null;
+	/**
+	 * The final full component ID of the spell widget
+	 */
+	private Integer spellComponentId = null;
 
-    public SpellWidgetHighlight(Spell spell) {
-        this.spellName = spell.getSpellName();
-    }
+	public SpellWidgetHighlight(Spell spell)
+	{
+		this.spellName = spell.getSpellName();
+	}
 
-    @Override
-    public void highlightChoices(Graphics2D graphics, Client client, QuestHelperPlugin questHelper) {
-        var spellbookWidget = client.getWidget(InterfaceID.SPELLBOOK, SpellWidgetHighlight.SPELLBOOK_SPELL_LIST_CHILD_ID);
-        if (spellbookWidget == null || spellbookWidget.isHidden()) {
-            redoSearch = true;
-            return;
-        }
+	@Override
+	public void highlightChoices(Graphics2D graphics, Client client, QuestHelperPlugin questHelper)
+	{
+		var spellbookWidget = client.getWidget(InterfaceID.MAGIC_SPELLBOOK, SpellWidgetHighlight.SPELLBOOK_SPELL_LIST_CHILD_ID);
+		if (spellbookWidget == null || spellbookWidget.isHidden())
+		{
+			redoSearch = true;
+			return;
+		}
 
-        if (redoSearch) {
-            spellComponentId = null;
-            var staticChildren = spellbookWidget.getStaticChildren();
-            if (staticChildren != null) {
-                for (var widget : staticChildren) {
-                    if (Text.removeTags(widget.getName()).equals(spellName)) {
-                        spellComponentId = widget.getId();
-                        break;
-                    }
-                }
+		if (redoSearch)
+		{
+			spellComponentId = null;
+			var staticChildren = spellbookWidget.getStaticChildren();
+			if (staticChildren != null)
+			{
+				for (var widget : staticChildren)
+				{
+					if (Text.removeTags(widget.getName()).equals(spellName))
+					{
+						spellComponentId = widget.getId();
+						break;
+					}
+				}
 
-                redoSearch = false;
-            }
-        }
+				redoSearch = false;
+			}
+		}
 
-        if (spellComponentId != null) {
-            var spellWidget = client.getWidget(spellComponentId);
-            if (spellWidget == null || spellWidget.isHidden()) {
-                // Widget is not visible
-                return;
-            }
+		if (spellComponentId != null)
+		{
+			var spellWidget = client.getWidget(spellComponentId);
+			if (spellWidget == null || spellWidget.isHidden())
+			{
+				// Widget is not visible
+				return;
+			}
 
-            // NOTE: This is overly cautious, we confirm that the widget we're about to highlight matches
-            // the spell name we're searching for. So far, this has never fired
-            if (!Text.removeTags(spellWidget.getName()).equals(spellName)) {
-                spellComponentId = null;
-                redoSearch = true;
-                return;
-            }
+			// NOTE: This is overly cautious, we confirm that the widget we're about to highlight matches
+			// the spell name we're searching for. So far, this has never fired
+			if (!Text.removeTags(spellWidget.getName()).equals(spellName))
+			{
+				spellComponentId = null;
+				redoSearch = true;
+				return;
+			}
 
-            highlightWidget(graphics, questHelper, spellWidget);
-        }
-    }
+			highlightWidget(graphics, questHelper, spellWidget);
+		}
+	}
 }

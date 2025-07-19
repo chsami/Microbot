@@ -25,7 +25,6 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.overlays;
 
-
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.ui.overlay.Overlay;
@@ -35,24 +34,28 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 import javax.inject.Inject;
 import java.awt.*;
 
-public class QuestHelperWorldArrowOverlay extends Overlay {
-    private final QuestHelperPlugin plugin;
+public class QuestHelperWorldArrowOverlay extends Overlay
+{
+	private final QuestHelperPlugin plugin;
 
-    @Inject
-    public QuestHelperWorldArrowOverlay(QuestHelperPlugin plugin) {
-        setPosition(OverlayPosition.DYNAMIC);
-        setLayer(OverlayLayer.ABOVE_SCENE);
-        this.plugin = plugin;
-    }
+	@Inject
+	public QuestHelperWorldArrowOverlay(QuestHelperPlugin plugin)
+	{
+		setPosition(OverlayPosition.DYNAMIC);
+		setLayer(OverlayLayer.ABOVE_SCENE);
+		this.plugin = plugin;
+	}
 
-    @Override
-    public Dimension render(Graphics2D graphics) {
-        QuestHelper quest = plugin.getSelectedQuest();
+	@Override
+	public Dimension render(Graphics2D graphics)
+	{
+		QuestHelper quest = plugin.getSelectedQuest();
 
-        if (quest != null && quest.getCurrentStep() != null) {
-            quest.getCurrentStep().makeWorldArrowOverlayHint(graphics, plugin);
-        }
+		if (quest != null && quest.getCurrentStep() != null)
+		{
+			quest.getCurrentStep().makeWorldArrowOverlayHint(graphics, plugin);
+		}
 
-        return null;
-    }
+		return null;
+	}
 }

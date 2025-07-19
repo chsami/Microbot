@@ -24,11 +24,11 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements.conditional;
 
+import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicType;
 import lombok.Getter;
 import lombok.Setter;
 import net.runelite.api.Client;
-import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicType;
-import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;

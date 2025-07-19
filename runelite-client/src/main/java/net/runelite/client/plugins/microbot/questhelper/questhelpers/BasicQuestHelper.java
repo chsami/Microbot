@@ -24,57 +24,80 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.questhelpers;
 
-
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
-import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
+import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public abstract class BasicQuestHelper extends QuestHelper {
-    protected Map<Integer, QuestStep> steps;
-    protected int var;
+public abstract class BasicQuestHelper extends QuestHelper
+{
+	protected Map<Integer, QuestStep> steps;
+	protected int var;
 
-    @Override
-    public void init() {
-        if (steps == null) {
-            steps = loadSteps();
-        }
-    }
+	public Map<Integer, QuestStep> getStepList() {
+		return this.steps;
+	}
 
-    @Override
-    public void startUp(QuestHelperConfig config) {
-        steps = loadSteps();
-        this.config = config;
-        instantiateSteps(steps.values());
-        var = getVar();
-        startUpStep(steps.get(var));
-    }
+	/**
+	 * Attempt to load steps from the quest if steps have not yet been loaded
+	 */
+	private void tryLoadSteps()
+	{
+		if (steps == null)
+		{
+			steps = loadSteps();
+		}
+	}
 
-    @Override
-    public void shutDown() {
-        super.shutDown();
-        shutDownStep();
-    }
+	@Override
+	public void init()
+	{
+		this.tryLoadSteps();
+	}
 
-    @Override
-    public boolean updateQuest() {
-        if (var != getVar()) {
-            var = getVar();
-            shutDownStep();
-            startUpStep(steps.get(var));
-            return true;
-        }
-        return false;
-    }
+	@Override
+	public void startUp(QuestHelperConfig config)
+	{
+		// this.tryLoadSteps();
+		// TODO: This should use `tryLoadSteps` but when it is being more careful to be initialized, it doesn't handle
+		// highlighting in sidebars properly
+		steps = loadSteps();
+		this.config = config;
+		instantiateSteps(steps.values());
+		var = getVar();
+		sidebarOrder = questHelperPlugin.loadSidebarOrder(this);
+		startUpStep(steps.get(var));
+	}
 
-    public List<PanelDetails> getPanels() {
-        List<PanelDetails> panelSteps = new ArrayList<>();
-        steps.forEach((id, step) -> panelSteps.add(new PanelDetails("", step)));
-        return panelSteps;
-    }
+	@Override
+	public void shutDown()
+	{
+		super.shutDown();
+		shutDownStep();
+	}
 
-    public abstract Map<Integer, QuestStep> loadSteps();
+	@Override
+	public boolean updateQuest()
+	{
+		if (var != getVar())
+		{
+			var = getVar();
+			shutDownStep();
+			startUpStep(steps.get(var));
+			return true;
+		}
+		return false;
+	}
+
+	public List<PanelDetails> getPanels()
+	{
+		List<PanelDetails> panelSteps = new ArrayList<>();
+		steps.forEach((id, step) -> panelSteps.add(new PanelDetails("", step)));
+		return panelSteps;
+	}
+
+	public abstract Map<Integer, QuestStep> loadSteps();
 }

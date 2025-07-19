@@ -26,127 +26,140 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements.npc;
 
-
+import net.runelite.client.plugins.microbot.questhelper.requirements.AbstractRequirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
 import lombok.Setter;
 import net.runelite.api.Client;
 import net.runelite.api.NPC;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.questhelper.requirements.AbstractRequirement;
-import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
-import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
-import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class NpcRequirement extends AbstractRequirement {
-    private final int npcID;
-    private final String npcName;
-    /**
-     * If zone is null, the check won't take any zone into account
-     */
-    private final @Nullable Zone zone;
-    private final String displayText;
-    private final boolean checkNotInZone;
-    @Setter
-    short[] npcColorOverrides;
+public class NpcRequirement extends AbstractRequirement
+{
+	private final int npcID;
+	private final String npcName;
 
-    /**
-     * Check for the existence of an NPC within your canvas.
-     *
-     * @param npcID the NPC to check for
-     */
-    public NpcRequirement(int npcID) {
-        this(String.valueOf(npcID), npcID, false, null);
-    }
+	@Setter
+	short[] npcColorOverrides;
+
+	/**
+	 * If zone is null, the check won't take any zone into account
+	 */
+	private final @Nullable Zone zone;
+	private final String displayText;
+	private final boolean checkNotInZone;
+
+	/**
+	 * Check for the existence of an NPC within your canvas.
+	 *
+	 * @param npcID the NPC to check for
+	 */
+	public NpcRequirement(int npcID)
+	{
+		this(String.valueOf(npcID), npcID, false, null);
+	}
 
 
-    /**
-     * Check for the existence of an NPC within your canvas.
-     *
-     * @param displayText the display text
-     * @param npcID       the NPC to check for
-     */
-    public NpcRequirement(String displayText, int npcID) {
-        this(displayText, npcID, false, null);
-    }
+	/**
+	 * Check for the existence of an NPC within your canvas.
+	 *
+	 * @param displayText the display text
+	 * @param npcID the NPC to check for
+	 */
+	public NpcRequirement(String displayText, int npcID)
+	{
+		this(displayText, npcID, false, null);
+	}
 
-    /**
-     * Check if a given NPC is in a specified {@link Zone}.
-     *
-     * @param displayText the display text
-     * @param npcID       the {@link NPC} to check for
-     * @param worldPoint  the location to check for the NPC
-     */
-    public NpcRequirement(String displayText, int npcID, WorldPoint worldPoint) {
-        this(displayText, npcID, false, new Zone(worldPoint));
-    }
+	/**
+	 * Check if a given NPC is in a specified {@link Zone}.
+	 *
+	 * @param displayText the display text
+	 * @param npcID the {@link NPC} to check for
+	 * @param worldPoint the location to check for the NPC
+	 */
+	public NpcRequirement(String displayText, int npcID, WorldPoint worldPoint)
+	{
+		this(displayText, npcID, false, new Zone(worldPoint));
+	}
 
-    /**
-     * Check if a given NPC is in a specified {@link Zone}.
-     *
-     * @param displayText the display text
-     * @param npcID       the {@link NPC} to check for
-     * @param zone        the zone to check.
-     */
-    public NpcRequirement(String displayText, int npcID, Zone zone) {
-        this(displayText, npcID, false, zone);
-    }
+	/**
+	 * Check if a given NPC is in a specified {@link Zone}.
+	 *
+	 * @param displayText the display text
+	 * @param npcID the {@link NPC} to check for
+	 * @param zone the zone to check.
+	 */
+	public NpcRequirement(String displayText, int npcID, Zone zone)
+	{
+		this(displayText, npcID, false, zone);
+	}
 
-    /**
-     * Check if a given NPC is in a specified {@link Zone}.
-     * <br>
-     * If {@param checkNotInZone} is true, this will check if the NPC is NOT in the zone.
-     *
-     * @param displayText    the display text
-     * @param npcID          the {@link NPC} to check for
-     * @param checkNotInZone determines whether to check if the NPC is in the zone or not
-     * @param zone           the zone to check.
-     */
-    public NpcRequirement(String displayText, int npcID, boolean checkNotInZone, Zone zone) {
-        this(displayText, npcID, null, checkNotInZone, zone);
-    }
+	/**
+	 * Check if a given NPC is in a specified {@link Zone}.
+	 * <br>
+	 * If {@param checkNotInZone} is true, this will check if the NPC is NOT in the zone.
+	 *
+	 * @param displayText the display text
+	 * @param npcID the {@link NPC} to check for
+	 * @param checkNotInZone determines whether to check if the NPC is in the zone or not
+	 * @param zone the zone to check.
+	 */
+	public NpcRequirement(String displayText, int npcID, boolean checkNotInZone, Zone zone)
+	{
+		this(displayText, npcID, null, checkNotInZone, zone);
+	}
 
-    public NpcRequirement(String displayText, int npcID, String npcName, boolean checkNotInZone, Zone zone) {
-        this.displayText = displayText;
-        this.npcName = npcName;
-        this.npcID = npcID;
-        this.zone = zone;
-        this.checkNotInZone = checkNotInZone;
-    }
+	public NpcRequirement(String displayText, int npcID, String npcName, boolean checkNotInZone, Zone zone)
+	{
+		this.displayText = displayText;
+		this.npcName = npcName;
+		this.npcID = npcID;
+		this.zone = zone;
+		this.checkNotInZone = checkNotInZone;
+	}
 
-    public NpcRequirement(int npcID, String npcName) {
-        this("DO NOT DISPLAY", npcID, npcName, false, null);
-    }
+	public NpcRequirement(int npcID, String npcName)
+	{
+		this("DO NOT DISPLAY", npcID, npcName, false, null);
+	}
 
-    @Override
-    public boolean check(Client client) {
-        List<Rs2NpcModel> found = Rs2Npc.getNpcs()
-                .filter(npc -> npc.getId() == npcID)
-                .filter(npc -> npcName == null || (npc.getName() != null && npc.getName().equals(npcName)))
-                .collect(Collectors.toList());
+	@Override
+	public boolean check(Client client)
+	{
+		List<NPC> found = client.getTopLevelWorldView().npcs().stream()
+			.filter(npc -> npc.getId() == npcID)
+			.filter(npc -> npcName == null || (npc.getName() != null && npc.getName().equals(npcName)))
+			.collect(Collectors.toList());
 
-        if (!found.isEmpty()) {
-            if (zone != null) {
-                for (NPC npc : found) {
-                    WorldPoint npcLocation = WorldPoint.fromLocalInstance(client, npc.getLocalLocation(), 2);
-                    if (npcLocation != null) {
-                        boolean inZone = zone.contains(npcLocation);
-                        return inZone && !checkNotInZone || (!inZone && checkNotInZone);
-                    }
-                }
-                return checkNotInZone;
-            }
-            return true; // the NPC exists, and we aren't checking for its location
-        }
-        return false; // npc not in scene
-    }
+		if (!found.isEmpty())
+		{
+			if (zone != null)
+			{
+				for (NPC npc : found)
+				{
+					WorldPoint npcLocation = WorldPoint.fromLocalInstance(client,  npc.getLocalLocation(), 2);
+					if (npcLocation != null)
+					{
+						boolean inZone = zone.contains(npcLocation);
+						return inZone && !checkNotInZone || (!inZone && checkNotInZone);
+					}
+				}
+				return checkNotInZone;
+			}
+			return true; // the NPC exists, and we aren't checking for its location
+		}
+		return false; // npc not in scene
+	}
 
-    @Nonnull
-    @Override
-    public String getDisplayText() {
-        return displayText;
-    }
+	@Nonnull
+	@Override
+	public String getDisplayText()
+	{
+		return displayText;
+	}
 }

@@ -24,49 +24,71 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.thepathofglouphrie.sections;
 
-
-import net.runelite.api.NpcID;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep;
-import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.thepathofglouphrie.ThePathOfGlouphrie;
+import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
+import net.runelite.client.plugins.microbot.questhelper.requirements.zone.ZoneRequirement;
+import net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.gameval.ObjectID;
 
 import java.util.List;
 
-public class StartingOff {
-    public NpcStep talkToKingBolren;
-    public NpcStep talkToKingBolrenAgain;
-    public ConditionalStep golrie;
+import static net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper.and;
 
-    public void setup(ThePathOfGlouphrie quest) {
-        /// Starting off
-        // Talk to King Bolren
-        talkToKingBolren = new NpcStep(quest, NpcID.KING_BOLREN, new WorldPoint(2542, 3169, 0), "Talk to King Bolren in the Tree Gnome Village to start the quest.");
-        talkToKingBolren.addDialogSteps("Yes.");
-        talkToKingBolren.addTeleport(quest.teleToBolren);
+public class StartingOff
+{
+	public NpcStep talkToKingBolren;
+	public NpcStep talkToKingBolrenAgain;
+	public ConditionalStep golrie;
 
-        // Talk to King Bolren again
-        talkToKingBolrenAgain = new NpcStep(quest, NpcID.KING_BOLREN, new WorldPoint(2542, 3169, 0), "Talk to King Bolren again.");
+	public void setup(ThePathOfGlouphrie quest)
+	{
+		/// Starting off
+		// Talk to King Bolren
+		talkToKingBolren = new NpcStep(quest, NpcID.KING_BOLREN, new WorldPoint(2542, 3169, 0), "Talk to King Bolren in the Tree Gnome Village to start the quest.");
+		talkToKingBolren.addDialogSteps("Yes.");
+		talkToKingBolren.addTeleport(quest.teleToBolren);
 
-        // TODO: Add step for freeing Golrie if the user hasn't started Roving Elves
+		// Talk to King Bolren again
+		talkToKingBolrenAgain = new NpcStep(quest, NpcID.KING_BOLREN, new WorldPoint(2542, 3169, 0), "Talk to King Bolren again.");
 
-        // Talk to Golrie
-        {
-            var enterTreeGnomeVillageMazeFromMiddle = quest.enterTreeGnomeVillageMazeFromMiddle.copy();
-            var climbDownIntoTreeGnomeVillageDungeon = quest.climbDownIntoTreeGnomeVillageDungeon.copy();
-            var talk = new NpcStep(quest, NpcID.GOLRIE, new WorldPoint(2580, 4450, 0), "");
-            talk.addDialogSteps("I need your help with a device.");
-            talk.addSubSteps(enterTreeGnomeVillageMazeFromMiddle, climbDownIntoTreeGnomeVillageDungeon);
-            golrie = new ConditionalStep(quest, climbDownIntoTreeGnomeVillageDungeon, "Talk to Golrie in the Tree Gnome Village dungeon.");
-            golrie.addStep(quest.inTreeGnomeVillageDungeon, talk);
-            golrie.addStep(quest.inTreeGnomeVillageMiddle, enterTreeGnomeVillageMazeFromMiddle);
-        }
-    }
+		// TODO: Add step for freeing Golrie if the user hasn't started Roving Elves
 
-    public List<QuestStep> getSteps() {
-        return List.of(
-                talkToKingBolren, talkToKingBolrenAgain, golrie
-        );
-    }
+		// Talk to Golrie
+		{
+			var enterTreeGnomeVillageMazeFromMiddle = quest.enterTreeGnomeVillageMazeFromMiddle.copy();
+			var climbDownIntoTreeGnomeVillageDungeon = quest.climbDownIntoTreeGnomeVillageDungeon.copy();
+			var talk = new NpcStep(quest, NpcID.ROVING_GOLRIE, new WorldPoint(2580, 4450, 0), "");
+			talk.addAlternateNpcs(NpcID.GOLRIE_WATERFALL_QUEST);
+			talk.addDialogSteps("I need your help with a device.");
+			talk.addSubSteps(enterTreeGnomeVillageMazeFromMiddle, climbDownIntoTreeGnomeVillageDungeon);
+			golrie = new ConditionalStep(quest, climbDownIntoTreeGnomeVillageDungeon, "Talk to Golrie in the Tree Gnome Village dungeon.");
+
+			var talkPreRovingElves = new NpcStep(quest, NpcID.ROVING_GOLRIE, new WorldPoint(2514, 9580, 0), "You'll need to talk to Golrie again after giving him the key.");
+			talkPreRovingElves.addAlternateNpcs(NpcID.GOLRIE_WATERFALL_QUEST);
+			talkPreRovingElves.addDialogSteps("I need your help with a device.");
+
+			var withGolrie = new ZoneRequirement(new Zone(new WorldPoint(2505, 9576, 0), new WorldPoint(2526, 9587, 0)));
+
+			var getKey = new ObjectStep(quest, ObjectID.GOLRIE_CRATE_WATERFALL_QUEST, new WorldPoint(2548, 9565, 0), "Get the Tree Gnome Village dungeon key from the crate to the north-east.");
+			var unlockDoor = new ObjectStep(quest, ObjectID.GOLRIE_GATE_WATERFALL_QUEST, new WorldPoint(2515, 9575, 0), "");
+
+			golrie.addStep(and(withGolrie), talkPreRovingElves);
+			golrie.addStep(and(quest.inTreeGnomeVillageDungeonPreRovingElves, quest.treeGnomeVillageDungeonKey), unlockDoor);
+			golrie.addStep(quest.inTreeGnomeVillageDungeonPreRovingElves, getKey);
+			golrie.addStep(quest.inTreeGnomeVillageDungeon, talk);
+			golrie.addStep(quest.inTreeGnomeVillageMiddle, enterTreeGnomeVillageMazeFromMiddle);
+		}
+	}
+
+	public List<QuestStep> getSteps()
+	{
+		return List.of(
+			talkToKingBolren, talkToKingBolrenAgain, golrie
+		);
+	}
 }

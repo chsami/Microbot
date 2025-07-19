@@ -24,19 +24,18 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.steps;
 
-
-import java.util.function.BiConsumer;
 import lombok.Getter;
+import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.client.plugins.microbot.questhelper.steps.widget.WidgetDetails;
 import lombok.Setter;
 import net.runelite.api.widgets.Widget;
-import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
-import net.runelite.client.plugins.microbot.questhelper.steps.widget.WidgetDetails;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.BiConsumer;
 
 public class WidgetStep extends DetailedQuestStep
 {

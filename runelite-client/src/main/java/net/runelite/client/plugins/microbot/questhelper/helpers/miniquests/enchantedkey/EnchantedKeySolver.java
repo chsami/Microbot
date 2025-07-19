@@ -45,123 +45,134 @@ import java.util.Set;
  * signals of temperatures and temperature changes are provided.
  */
 @Getter
-public class EnchantedKeySolver {
-    @Setter
-    private Set<EnchantedKeyDigLocation> possibleLocations;
-    @Nullable
-    private WorldPoint lastWorldPoint;
+public class EnchantedKeySolver
+{
+	@Setter
+	private Set<EnchantedKeyDigLocation> possibleLocations;
+	@Nullable
+	private WorldPoint lastWorldPoint;
 
-    public EnchantedKeySolver(Set<EnchantedKeyDigLocation> possibleLocations) {
-        this.possibleLocations = possibleLocations;
-    }
+	public EnchantedKeySolver(Set<EnchantedKeyDigLocation> possibleLocations)
+	{
+		this.possibleLocations = possibleLocations;
+	}
 
-    /**
-     * Process a hot-cold update given a {@link WorldPoint} where a check occurred and the resulting temperature and
-     * temperature change discovered at that point. This will filter the set of possible locations which can be the
-     * solution.
-     *
-     * @param worldPoint        The point where a hot-cold check occurred
-     * @param temperature       The temperature of the checked point
-     * @param temperatureChange The change of temperature of the checked point compared to the previously-checked point
-     * @return A set of {@link EnchantedKeyDigLocation}s which are still possible after the filtering occurs. This return value
-     * is the same as would be returned by {@code getPossibleLocations()}.
-     */
-    public Set<EnchantedKeyDigLocation> signal(@Nonnull final WorldPoint worldPoint, @Nonnull final EnchantedKeyTemperature temperature, @Nullable final EnchantedKeyTemperatureChange temperatureChange) {
-        // when the strange device reads a temperature, that means that the center of the final dig location
-        // is a range of squares away from the player's current location (Chebyshev AKA Chess-board distance)
-        int maxSquaresAway = temperature.getMaxDistance();
-        int minSquaresAway = temperature.getMinDistance();
+	/**
+	 * Process a hot-cold update given a {@link WorldPoint} where a check occurred and the resulting temperature and
+	 * temperature change discovered at that point. This will filter the set of possible locations which can be the
+	 * solution.
+	 *
+	 * @param worldPoint        The point where a hot-cold check occurred
+	 * @param temperature       The temperature of the checked point
+	 * @param temperatureChange The change of temperature of the checked point compared to the previously-checked point
+	 * @return A set of {@link EnchantedKeyDigLocation}s which are still possible after the filtering occurs. This return value
+	 *         is the same as would be returned by {@code getPossibleLocations()}.
+	 */
+	public Set<EnchantedKeyDigLocation> signal(@Nonnull final WorldPoint worldPoint, @Nonnull final EnchantedKeyTemperature temperature, @Nullable final EnchantedKeyTemperatureChange temperatureChange)
+	{
+		// when the strange device reads a temperature, that means that the center of the final dig location
+		// is a range of squares away from the player's current location (Chebyshev AKA Chess-board distance)
+		int maxSquaresAway = temperature.getMaxDistance();
+		int minSquaresAway = temperature.getMinDistance();
 
-        // maxDistanceArea encompasses all of the points that are within the max possible distance from the player
-        final Rectangle maxDistanceArea = new Rectangle(
-                worldPoint.getX() - maxSquaresAway,
-                worldPoint.getY() - maxSquaresAway,
-                2 * maxSquaresAway + 1,
-                2 * maxSquaresAway + 1);
-        // minDistanceArea encompasses all of the points that are within the min possible distance from the player
-        final Rectangle minDistanceArea = new Rectangle(
-                worldPoint.getX() - minSquaresAway,
-                worldPoint.getY() - minSquaresAway,
-                2 * minSquaresAway + 1,
-                2 * minSquaresAway + 1);
+		// maxDistanceArea encompasses all of the points that are within the max possible distance from the player
+		final Rectangle maxDistanceArea = new Rectangle(
+			worldPoint.getX() - maxSquaresAway,
+			worldPoint.getY() - maxSquaresAway,
+			2 * maxSquaresAway + 1,
+			2 * maxSquaresAway + 1);
+		// minDistanceArea encompasses all of the points that are within the min possible distance from the player
+		final Rectangle minDistanceArea = new Rectangle(
+			worldPoint.getX() - minSquaresAway,
+			worldPoint.getY() - minSquaresAway,
+			2 * minSquaresAway + 1,
+			2 * minSquaresAway + 1);
 
-        // eliminate from consideration dig spots that lie entirely within the min range or entirely outside of the max range
-        possibleLocations.removeIf(entry -> minDistanceArea.contains(entry.getRect()) || !maxDistanceArea.intersects(entry.getRect()));
+		// eliminate from consideration dig spots that lie entirely within the min range or entirely outside of the max range
+		possibleLocations.removeIf(entry -> minDistanceArea.contains(entry.getRect()) || !maxDistanceArea.intersects(entry.getRect()));
 
-        // if a previous world point has been recorded, we can consider the warmer/colder result from the strange device
-        if (lastWorldPoint != null && temperatureChange != null) {
-            switch (temperatureChange) {
-                case COLDER:
-                    // eliminate spots that are absolutely warmer
-                    possibleLocations.removeIf(entry -> isFirstPointCloserRect(worldPoint, lastWorldPoint, entry.getRect()));
-                    break;
-                case WARMER:
-                    // eliminate spots that are absolutely colder
-                    possibleLocations.removeIf(entry -> isFirstPointCloserRect(lastWorldPoint, worldPoint, entry.getRect()));
-                    break;
-                case SAME:
-                    // eliminate spots which are absolutely colder or warmer (as they would not yield a SAME temperature change)
-                    possibleLocations.removeIf(entry ->
-                            isFirstPointCloserRect(worldPoint, lastWorldPoint, entry.getRect())
-                                    || isFirstPointCloserRect(lastWorldPoint, worldPoint, entry.getRect()));
-            }
-        }
+		// if a previous world point has been recorded, we can consider the warmer/colder result from the strange device
+		if (lastWorldPoint != null && temperatureChange != null)
+		{
+			switch (temperatureChange)
+			{
+				case COLDER:
+					// eliminate spots that are absolutely warmer
+					possibleLocations.removeIf(entry -> isFirstPointCloserRect(worldPoint, lastWorldPoint, entry.getRect()));
+					break;
+				case WARMER:
+					// eliminate spots that are absolutely colder
+					possibleLocations.removeIf(entry -> isFirstPointCloserRect(lastWorldPoint, worldPoint, entry.getRect()));
+					break;
+				case SAME:
+					// eliminate spots which are absolutely colder or warmer (as they would not yield a SAME temperature change)
+					possibleLocations.removeIf(entry ->
+						isFirstPointCloserRect(worldPoint, lastWorldPoint, entry.getRect())
+							|| isFirstPointCloserRect(lastWorldPoint, worldPoint, entry.getRect()));
+			}
+		}
 
-        lastWorldPoint = worldPoint;
-        return getPossibleLocations();
-    }
+		lastWorldPoint = worldPoint;
+		return getPossibleLocations();
+	}
 
-    public void resetSolver(Set<EnchantedKeyDigLocation> possibleLocations) {
-        lastWorldPoint = null;
-        this.possibleLocations = possibleLocations;
-    }
+	public void resetSolver(Set<EnchantedKeyDigLocation> possibleLocations)
+	{
+		lastWorldPoint = null;
+		this.possibleLocations = possibleLocations;
+	}
 
-    /**
-     * Determines whether the first point passed is closer to each corner of the given rectangle than the second point.
-     *
-     * @param firstPoint  First point to test. Return result will be relating to this point's location.
-     * @param secondPoint Second point to test
-     * @param rect        Rectangle, whose corner points will be compared to the first and second points passed
-     * @return {@code true} if {@code firstPoint} is closer to each of {@code rect}'s four corner points than
-     * {@code secondPoint}, {@code false} otherwise.
-     * @see WorldPoint#distanceTo2D
-     */
-    @VisibleForTesting
-    static boolean isFirstPointCloserRect(final WorldPoint firstPoint, final WorldPoint secondPoint, final Rectangle rect) {
-        final WorldPoint nePoint = new WorldPoint((rect.x + rect.width), (rect.y + rect.height), 0);
+	/**
+	 * Determines whether the first point passed is closer to each corner of the given rectangle than the second point.
+	 *
+	 * @param firstPoint  First point to test. Return result will be relating to this point's location.
+	 * @param secondPoint Second point to test
+	 * @param rect        Rectangle, whose corner points will be compared to the first and second points passed
+	 * @return {@code true} if {@code firstPoint} is closer to each of {@code rect}'s four corner points than
+	 *         {@code secondPoint}, {@code false} otherwise.
+	 * @see WorldPoint#distanceTo2D
+	 */
+	@VisibleForTesting
+	static boolean isFirstPointCloserRect(final WorldPoint firstPoint, final WorldPoint secondPoint, final Rectangle rect)
+	{
+		final WorldPoint nePoint = new WorldPoint((rect.x + rect.width), (rect.y + rect.height), 0);
 
-        if (!isFirstPointCloser(firstPoint, secondPoint, nePoint)) {
-            return false;
-        }
+		if (!isFirstPointCloser(firstPoint, secondPoint, nePoint))
+		{
+			return false;
+		}
 
-        final WorldPoint sePoint = new WorldPoint((rect.x + rect.width), rect.y, 0);
+		final WorldPoint sePoint = new WorldPoint((rect.x + rect.width), rect.y, 0);
 
-        if (!isFirstPointCloser(firstPoint, secondPoint, sePoint)) {
-            return false;
-        }
+		if (!isFirstPointCloser(firstPoint, secondPoint, sePoint))
+		{
+			return false;
+		}
 
-        final WorldPoint nwPoint = new WorldPoint(rect.x, (rect.y + rect.height), 0);
+		final WorldPoint nwPoint = new WorldPoint(rect.x, (rect.y + rect.height), 0);
 
-        if (!isFirstPointCloser(firstPoint, secondPoint, nwPoint)) {
-            return false;
-        }
+		if (!isFirstPointCloser(firstPoint, secondPoint, nwPoint))
+		{
+			return false;
+		}
 
-        final WorldPoint swPoint = new WorldPoint(rect.x, rect.y, 0);
-        return (isFirstPointCloser(firstPoint, secondPoint, swPoint));
-    }
+		final WorldPoint swPoint = new WorldPoint(rect.x, rect.y, 0);
+		return (isFirstPointCloser(firstPoint, secondPoint, swPoint));
+	}
 
-    /**
-     * Determines whether the first point passed is closer to the given point of comparison than the second point.
-     *
-     * @param firstPoint  First point to test. Return result will be relating to this point's location.
-     * @param secondPoint Second point to test
-     * @param worldPoint  Point to compare to the first and second points passed
-     * @return {@code true} if {@code firstPoint} is closer to {@code worldPoint} than {@code secondPoint},
-     * {@code false} otherwise.
-     * @see WorldPoint#distanceTo2D
-     */
-    @VisibleForTesting
-    static boolean isFirstPointCloser(final WorldPoint firstPoint, final WorldPoint secondPoint, final WorldPoint worldPoint) {
-        return firstPoint.distanceTo2D(worldPoint) < secondPoint.distanceTo2D(worldPoint);
-    }
+	/**
+	 * Determines whether the first point passed is closer to the given point of comparison than the second point.
+	 *
+	 * @param firstPoint  First point to test. Return result will be relating to this point's location.
+	 * @param secondPoint Second point to test
+	 * @param worldPoint  Point to compare to the first and second points passed
+	 * @return {@code true} if {@code firstPoint} is closer to {@code worldPoint} than {@code secondPoint},
+	 *         {@code false} otherwise.
+	 * @see WorldPoint#distanceTo2D
+	 */
+	@VisibleForTesting
+	static boolean isFirstPointCloser(final WorldPoint firstPoint, final WorldPoint secondPoint, final WorldPoint worldPoint)
+	{
+		return firstPoint.distanceTo2D(worldPoint) < secondPoint.distanceTo2D(worldPoint);
+	}
 }

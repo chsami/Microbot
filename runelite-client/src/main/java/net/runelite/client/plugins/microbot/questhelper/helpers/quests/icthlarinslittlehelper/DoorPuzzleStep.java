@@ -24,160 +24,192 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.icthlarinslittlehelper;
 
-
-import net.runelite.api.events.GameTick;
-import net.runelite.api.widgets.Widget;
-import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.widgets.Widget;
+import net.runelite.client.eventbus.Subscribe;
 
 import java.awt.*;
 import java.util.Arrays;
 
-public class DoorPuzzleStep extends QuestStep {
-    int[] currentState = new int[20];
+public class DoorPuzzleStep extends QuestStep
+{
+	int[] currentState = new int[20];
 
-    int[] lastState = new int[20];
+	int[] lastState = new int[20];
 
-    int[] clickSquares = new int[20];
+	int[] clickSquares = new int[20];
 
-    RowSolution[] solutions =
-            {
-                    new RowSolution(new int[]{0, 0, 1, 0, 0}, new int[]{1, 0, 0, 0, 1}),
-                    new RowSolution(new int[]{1, 0, 0, 0, 1}, new int[]{0, 0, 1, 0, 0}),
-                    new RowSolution(new int[]{0, 1, 1, 1, 0}, new int[]{1, 0, 1, 1, 0}),
-                    new RowSolution(new int[]{1, 1, 0, 1, 1}, new int[]{0, 0, 0, 1, 1}),
-                    new RowSolution(new int[]{0, 1, 0, 1, 0}, new int[]{1, 0, 1, 0, 1}),
+	RowSolution[] solutions =
+		{
+			new RowSolution(new int[]{0, 0, 1, 0, 0}, new int[]{1, 0, 0, 0, 1}),
+			new RowSolution(new int[]{1, 0, 0, 0, 1}, new int[]{0, 0, 1, 0, 0}),
+			new RowSolution(new int[]{0, 1, 1, 1, 0}, new int[]{1, 0, 1, 1, 0}),
+			new RowSolution(new int[]{1, 1, 0, 1, 1}, new int[]{0, 0, 0, 1, 1}),
+			new RowSolution(new int[]{0, 1, 0, 1, 0}, new int[]{1, 0, 1, 0, 1}),
 
-                    new RowSolution(new int[]{1, 1, 0, 0, 0}, new int[]{0, 0, 0, 1, 0}),
-                    new RowSolution(new int[]{0, 0, 0, 1, 1}, new int[]{0, 1, 0, 0, 0}),
+			new RowSolution(new int[]{1, 1, 0, 0, 0}, new int[]{0, 0, 0, 1, 0}),
+			new RowSolution(new int[]{0, 0, 0, 1, 1}, new int[]{0, 1, 0, 0, 0}),
 
-                    new RowSolution(new int[]{1, 1, 1, 0, 0}, new int[]{0, 0, 0, 0, 1}),
-                    new RowSolution(new int[]{0, 0, 1, 1, 1}, new int[]{1, 0, 0, 0, 0}),
+			new RowSolution(new int[]{1, 1, 1, 0, 0}, new int[]{0, 0, 0, 0, 1}),
+			new RowSolution(new int[]{0, 0, 1, 1, 1}, new int[]{1, 0, 0, 0, 0}),
 
-                    new RowSolution(new int[]{0, 1, 1, 0, 1}, new int[]{0, 1, 1, 0, 0}),
-                    new RowSolution(new int[]{1, 0, 1, 1, 0}, new int[]{0, 0, 1, 1, 0}),
+			new RowSolution(new int[]{0, 1, 1, 0, 1}, new int[]{0, 1, 1, 0, 0}),
+			new RowSolution(new int[]{1, 0, 1, 1, 0}, new int[]{0, 0, 1, 1, 0}),
 
-                    new RowSolution(new int[]{1, 0, 0, 1, 0}, new int[]{0, 0, 1, 0, 1}),
-                    new RowSolution(new int[]{0, 1, 0, 0, 1}, new int[]{1, 0, 1, 0, 0}),
+			new RowSolution(new int[]{1, 0, 0, 1, 0}, new int[]{0, 0, 1, 0, 1}),
+			new RowSolution(new int[]{0, 1, 0, 0, 1}, new int[]{1, 0, 1, 0, 0}),
 
-                    new RowSolution(new int[]{1, 0, 1, 1, 0}, new int[]{0, 0, 1, 1, 0}),
-                    new RowSolution(new int[]{0, 1, 1, 0, 1}, new int[]{0, 1, 1, 0, 0}),
+			new RowSolution(new int[]{1, 0, 1, 1, 0}, new int[]{0, 0, 1, 1, 0}),
+			new RowSolution(new int[]{0, 1, 1, 0, 1}, new int[]{0, 1, 1, 0, 0}),
 
-                    new RowSolution(new int[]{0, 0, 0, 0, 0}, new int[]{0, 1, 0, 0, 1}),
-                    new RowSolution(new int[]{1, 1, 1, 1, 1}, new int[]{0, 0, 0, 0, 0})
-            };
+			new RowSolution(new int[]{0, 0, 0, 0, 0}, new int[]{0, 1, 0, 0, 1}),
+			new RowSolution(new int[]{1, 1, 1, 1, 1}, new int[]{0, 0, 0, 0, 0})
+		};
 
-    public DoorPuzzleStep(QuestHelper questHelper) {
-        super(questHelper, "Click the highlighted boxes to turn the squares to solve the puzzle.");
-    }
+	public DoorPuzzleStep(QuestHelper questHelper)
+	{
+		super(questHelper, "Click the highlighted boxes to turn the squares to solve the puzzle.");
+	}
 
-    @Override
-    public void startUp() {
-        updateSolvedPositionState();
-    }
+	@Override
+	public void startUp()
+	{
+		updateSolvedPositionState();
+	}
 
-    @Subscribe
-    public void onGameTick(GameTick event) {
-        updateSolvedPositionState();
-    }
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		updateSolvedPositionState();
+	}
 
-    private void updateSolvedPositionState() {
-        int START_VARBIT_ID = 420;
-        for (int i = 0; i < 20; i++) {
-            currentState[i] = (1 + client.getVarbitValue(START_VARBIT_ID + i)) % 2;
-        }
+	private void updateSolvedPositionState()
+	{
+		int START_VARBIT_ID = 420;
+		for (int i = 0; i < 20; i++)
+		{
+			currentState[i] = (1 + client.getVarbitValue(START_VARBIT_ID + i)) % 2;
+		}
 
-        if (Arrays.equals(currentState, lastState)) {
-            return;
-        } else {
-            lastState = currentState.clone();
-        }
+		if (Arrays.equals(currentState, lastState))
+		{
+			return;
+		}
+		else
+		{
+			lastState = currentState.clone();
+		}
 
-        for (int y = 0; y < 4; y++) {
-            int[] row = new int[5];
-            System.arraycopy(currentState, y * 5, row, 0, 5);
+		for (int y = 0; y < 4; y++)
+		{
+			int[] row = new int[5];
+			System.arraycopy(currentState, y * 5, row, 0, 5);
 
-            for (RowSolution solution : solutions) {
-                int[] result = solution.checkMatch(row);
-                if (result != null) {
-                    System.arraycopy(result, 0, clickSquares, y * 5, 5);
+			for (RowSolution solution : solutions)
+			{
+				int[] result = solution.checkMatch(row);
+				if (result != null)
+				{
+					System.arraycopy(result, 0, clickSquares, y * 5, 5);
 
-                    updateCurrentState(result, y + 1);
-                    break;
-                }
-            }
-        }
-    }
+					updateCurrentState(result, y + 1);
+					break;
+				}
+			}
+		}
+	}
 
-    public void updateCurrentState(int[] result, int clickY) {
-        for (int cell = 0; cell < result.length; cell++) {
-            if (result[cell] == 1) {
+	public void updateCurrentState(int[] result, int clickY)
+	{
+		for (int cell = 0; cell < result.length; cell++)
+		{
+			if (result[cell] == 1)
+			{
 
-                if (clickY <= 3) {
-                    currentState[clickY * 5 + cell] = (currentState[clickY * 5 + cell] + 1) % 2;
-                }
-                if (clickY < 3) {
-                    currentState[(clickY + 1) * 5 + cell] = (currentState[(clickY + 1) * 5 + cell] + 1) % 2;
-                }
-                if (cell != 4) {
-                    if (clickY <= 3) {
-                        currentState[clickY * 5 + cell + 1] = (currentState[clickY * 5 + cell + 1] + 1) % 2;
-                    }
-                    if (clickY < 3) {
-                        currentState[(clickY + 1) * 5 + cell + 1] = (currentState[(clickY + 1) * 5 + cell + 1] + 1) % 2;
-                    }
-                }
+				if (clickY <= 3)
+				{
+					currentState[clickY * 5 + cell] = (currentState[clickY * 5 + cell] + 1) % 2;
+				}
+				if (clickY < 3)
+				{
+					currentState[(clickY + 1) * 5 + cell] = (currentState[(clickY + 1) * 5 + cell] + 1) % 2;
+				}
+				if (cell != 4)
+				{
+					if (clickY <= 3)
+					{
+						currentState[clickY * 5 + cell + 1] = (currentState[clickY * 5 + cell + 1] + 1) % 2;
+					}
+					if (clickY < 3)
+					{
+						currentState[(clickY + 1) * 5 + cell + 1] = (currentState[(clickY + 1) * 5 + cell + 1] + 1) % 2;
+					}
+				}
 
-                if (cell != 0) {
-                    if (clickY <= 3) {
-                        currentState[clickY * 5 + cell - 1] = (currentState[clickY * 5 + cell - 1] + 1) % 2;
-                    }
-                    if (clickY < 3) {
-                        currentState[(clickY + 1) * 5 + cell - 1] = (currentState[(clickY + 1) * 5 + cell - 1] + 1) % 2;
-                    }
-                }
-            }
-        }
-    }
+				if (cell != 0)
+				{
+					if (clickY <= 3)
+					{
+						currentState[clickY * 5 + cell - 1] = (currentState[clickY * 5 + cell - 1] + 1) % 2;
+					}
+					if (clickY < 3)
+					{
+						currentState[(clickY + 1) * 5 + cell - 1] = (currentState[(clickY + 1) * 5 + cell - 1] + 1) % 2;
+					}
+				}
+			}
+		}
+	}
 
-    @Override
-    public void makeWidgetOverlayHint(Graphics2D graphics, QuestHelperPlugin plugin) {
-        super.makeWidgetOverlayHint(graphics, plugin);
-        Widget widgetWrapper = client.getWidget(147, 0);
-        if (widgetWrapper != null) {
-            for (int i = 0; i < 20; i++) {
-                if (clickSquares[i] == 1) {
-                    int START_WIDGET_ID = 9;
-                    Widget widget = client.getWidget(147, START_WIDGET_ID + i);
-                    if (widget != null) {
-                        graphics.setColor(new Color(questHelper.getConfig().targetOverlayColor().getRed(),
-                                questHelper.getConfig().targetOverlayColor().getGreen(),
-                                questHelper.getConfig().targetOverlayColor().getBlue(), 65));
-                        graphics.fill(widget.getBounds());
-                        graphics.setColor(questHelper.getConfig().targetOverlayColor());
-                        graphics.draw(widget.getBounds());
-                    }
-                }
-            }
-        }
-    }
+	@Override
+	public void makeWidgetOverlayHint(Graphics2D graphics, QuestHelperPlugin plugin)
+	{
+		super.makeWidgetOverlayHint(graphics, plugin);
+		Widget widgetWrapper = client.getWidget(InterfaceID.IcthalarinsTileGame.ROOT_RECT0);
+		if (widgetWrapper != null)
+		{
+			for (int i = 0; i < 20; i++)
+			{
+				if (clickSquares[i] == 1)
+				{
+					int START_WIDGET_ID = 9;
+					Widget widget = client.getWidget(InterfaceID.ICTHALARINS_TILE_GAME, START_WIDGET_ID + i);
+					if (widget != null)
+					{
+						graphics.setColor(new Color(questHelper.getConfig().targetOverlayColor().getRed(),
+							questHelper.getConfig().targetOverlayColor().getGreen(),
+							questHelper.getConfig().targetOverlayColor().getBlue(), 65));
+						graphics.fill(widget.getBounds());
+						graphics.setColor(questHelper.getConfig().targetOverlayColor());
+						graphics.draw(widget.getBounds());
+					}
+				}
+			}
+		}
+	}
 }
 
-class RowSolution {
-    int[] rowValue;
-    int[] solution;
+class RowSolution
+{
+	int[] rowValue;
+	int[] solution;
 
-    public RowSolution(int[] rowValue, int[] solution) {
-        this.rowValue = rowValue;
-        this.solution = solution;
-    }
+	public RowSolution(int[] rowValue, int[] solution)
+	{
+		this.rowValue = rowValue;
+		this.solution = solution;
+	}
 
-    public int[] checkMatch(int[] values) {
-        if (Arrays.equals(rowValue, values)) {
-            return solution;
-        }
-        return null;
-    }
+	public int[] checkMatch(int[] values)
+	{
+		if (Arrays.equals(rowValue, values))
+		{
+			return solution;
+		}
+		return null;
+	}
 }

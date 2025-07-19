@@ -24,33 +24,39 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements.player;
 
-
-import net.runelite.api.Client;
 import net.runelite.client.plugins.microbot.questhelper.requirements.AbstractRequirement;
 import net.runelite.client.plugins.microbot.questhelper.util.Utils;
+import net.runelite.api.Client;
 
 import javax.annotation.Nonnull;
 
-public class IronmanRequirement extends AbstractRequirement {
-    final boolean shouldBeIronman;
+public class IronmanRequirement extends AbstractRequirement
+{
+	final boolean shouldBeIronman;
 
-    public IronmanRequirement(boolean shouldBeIronman) {
-        this.shouldBeIronman = shouldBeIronman;
-    }
+	public IronmanRequirement(boolean shouldBeIronman)
+	{
+		this.shouldBeIronman = shouldBeIronman;
+	}
 
-    @Override
-    public boolean check(Client client) {
-        return client.getLocalPlayer() != null &&
-                Utils.getAccountType(client).isAnyIronman() == shouldBeIronman;
-    }
+	@Override
+	public boolean check(Client client)
+	{
+		return client.getLocalPlayer() != null &&
+			Utils.getAccountType(client).isAnyIronman() == shouldBeIronman;
+	}
 
-    @Nonnull
-    @Override
-    public String getDisplayText() {
-        if (shouldBeIronman) {
-            return "You need to be an ironman";
-        } else {
-            return "You need to not be an ironman";
-        }
-    }
+	@Nonnull
+	@Override
+	public String getDisplayText()
+	{
+		if (shouldBeIronman)
+		{
+			return "You need to be an ironman";
+		}
+		else
+		{
+			return "You need to not be an ironman";
+		}
+	}
 }

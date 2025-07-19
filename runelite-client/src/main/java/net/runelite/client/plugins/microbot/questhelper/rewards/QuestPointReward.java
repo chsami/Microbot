@@ -28,27 +28,34 @@ import lombok.Getter;
 
 import javax.annotation.Nonnull;
 
-public class QuestPointReward implements Reward {
+public class QuestPointReward implements Reward
+{
     @Getter
     private final int points;
 
-    public QuestPointReward(int points) {
+    public QuestPointReward(int points)
+    {
         this.points = points;
     }
 
     @Nonnull
     @Override
-    public RewardType rewardType() {
+    public RewardType rewardType()
+    {
         return RewardType.QUEST_POINT;
     }
 
     @Nonnull
     @Override
-    public String getDisplayText() {
-        if (points == 1) {
-            return points + " Quest Point";
-        } else {
-            return points + " Quest Points";
-        }
+    public String getDisplayText()
+    {
+		if (points == 1)
+		{
+			return points + " Quest Point";
+		}
+		else
+		{
+        	return points + " Quest Points";
+		}
     }
 }

@@ -24,118 +24,128 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.deserttreasureii;
 
-
+import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
-import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 
 import java.awt.*;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Line2D;
 
-public class GolemPuzzleStep extends QuestStep {
-    // Min is 15166, max is 15172
+public class GolemPuzzleStep extends QuestStep
+{
+	int firstTileForSwapping;
+	int secondTileForSwapping;
+	boolean completed = false;
 
-    int firstTileForSwapping;
-    int secondTileForSwapping;
-    boolean completed = false;
+	int[] goalPositions = {
+			47, 62, 5, 52, 33, 27, 10, 16
+		};
 
-    int[] goalPositions =
-            {
-                    47, 62, 5, 52, 33, 27, 10, 16
-            };
+	public GolemPuzzleStep(QuestHelper questHelper)
+	{
+		super(questHelper, "Drag the charges to the right tiles.");
+	}
 
-    public GolemPuzzleStep(QuestHelper questHelper) {
-        super(questHelper, "Drag the charges to the right tiles.");
-    }
+	@Override
+	public void startUp()
+	{
+		updateSolvedPositionState();
+	}
 
-    @Override
-    public void startUp() {
-        updateSolvedPositionState();
-    }
+	@Subscribe
+	public void onVarbitChanged(VarbitChanged varbitChanged)
+	{
+		updateSolvedPositionState();
+	}
 
-    @Subscribe
-    public void onVarbitChanged(VarbitChanged varbitChanged) {
-        updateSolvedPositionState();
-    }
+	private void updateSolvedPositionState()
+	{
+		for (int i = VarbitID.DT2_WARMIND_CELL_POS_0; i <= VarbitID.DT2_WARMIND_CELL_POS_7; i++)
+		{
+			int currentPos = client.getVarbitValue(i);
+			int goalPos = goalPositions[VarbitID.DT2_WARMIND_CELL_POS_7 - i];
+			if (currentPos != goalPos)
+			{
+				completed = false;
+				firstTileForSwapping = currentPos;
+				secondTileForSwapping = goalPos;
+				return;
+			}
+		}
 
-    private void updateSolvedPositionState() {
-        for (int i = 15165; i < 15173; i++) {
-            int currentPos = client.getVarbitValue(i);
-            int goalPos = goalPositions[15172 - i];
-            if (currentPos != goalPos) {
-                completed = false;
-                firstTileForSwapping = currentPos;
-                secondTileForSwapping = goalPos;
-                return;
-            }
-        }
+		completed = true;
+		setText("Click the power-on button to finish the puzzle.");
+	}
 
-        completed = true;
-        setText("Click the power-on button to finish the puzzle.");
-    }
+	@Override
+	public void makeWidgetOverlayHint(Graphics2D graphics, QuestHelperPlugin plugin)
+	{
+		super.makeWidgetOverlayHint(graphics, plugin);
+		Widget widgetWrapper = client.getWidget(InterfaceID.Dt2WarmindPuzzle.SQUARES);
+		if (completed)
+		{
+			Widget powerOnButton = client.getWidget(InterfaceID.Dt2WarmindPuzzle.BUTTON);
+			if (powerOnButton == null) return;
+			graphics.setColor(new Color(0, 255, 255, 65));
+			graphics.fill(powerOnButton.getBounds());
+			graphics.setColor(questHelper.getConfig().targetOverlayColor());
+			graphics.draw(powerOnButton.getBounds());
+			return;
+		}
+		if (widgetWrapper != null)
+		{
+			if (firstTileForSwapping != -1 && secondTileForSwapping != -1)
+			{
+				Widget widget1 = widgetWrapper.getChild(firstTileForSwapping);
+				Widget widget2 = widgetWrapper.getChild(secondTileForSwapping);
+				if (widget1 != null && widget2 != null)
+				{
+					Line2D.Double line = new Line2D.Double(
+						widget1.getCanvasLocation().getX() + (widget1.getWidth() / 2.0f),
+						widget1.getCanvasLocation().getY() + (widget1.getHeight() / 2.0f),
+						widget2.getCanvasLocation().getX() + (widget2.getWidth() / 2.0f),
+						widget2.getCanvasLocation().getY() + (widget2.getHeight() / 2.0f));
 
-    @Override
-    public void makeWidgetOverlayHint(Graphics2D graphics, QuestHelperPlugin plugin) {
-        super.makeWidgetOverlayHint(graphics, plugin);
-        Widget widgetWrapper = client.getWidget(838, 32);
-        if (completed) {
-            Widget powerOnButton = client.getWidget(838, 4);
-            if (powerOnButton == null) return;
-            graphics.setColor(new Color(0, 255, 255, 65));
-            graphics.fill(powerOnButton.getBounds());
-            graphics.setColor(questHelper.getConfig().targetOverlayColor());
-            graphics.draw(powerOnButton.getBounds());
-            return;
-        }
-        if (widgetWrapper != null) {
-            if (firstTileForSwapping != -1 && secondTileForSwapping != -1) {
-                Widget widget1 = widgetWrapper.getChild(firstTileForSwapping);
-                Widget widget2 = widgetWrapper.getChild(secondTileForSwapping);
-                if (widget1 != null && widget2 != null) {
-                    Line2D.Double line = new Line2D.Double(
-                            widget1.getCanvasLocation().getX() + (widget1.getWidth() / 2.0f),
-                            widget1.getCanvasLocation().getY() + (widget1.getHeight() / 2.0f),
-                            widget2.getCanvasLocation().getX() + (widget2.getWidth() / 2.0f),
-                            widget2.getCanvasLocation().getY() + (widget2.getHeight() / 2.0f));
+					graphics.setColor(new Color(0, 255, 255, 65));
+					graphics.fill(widget1.getBounds());
+					graphics.setColor(questHelper.getConfig().targetOverlayColor());
+					graphics.draw(widget1.getBounds());
 
-                    graphics.setColor(new Color(0, 255, 255, 65));
-                    graphics.fill(widget1.getBounds());
-                    graphics.setColor(questHelper.getConfig().targetOverlayColor());
-                    graphics.draw(widget1.getBounds());
+					graphics.setColor(new Color(0, 255, 255, 65));
+					graphics.fill(widget2.getBounds());
+					graphics.setColor(questHelper.getConfig().targetOverlayColor());
+					graphics.draw(widget2.getBounds());
 
-                    graphics.setColor(new Color(0, 255, 255, 65));
-                    graphics.fill(widget2.getBounds());
-                    graphics.setColor(questHelper.getConfig().targetOverlayColor());
-                    graphics.draw(widget2.getBounds());
+					graphics.setStroke(new BasicStroke(3));
+					graphics.draw(line);
+					drawArrowHead(graphics, line);
+				}
+			}
+		}
+	}
 
-                    graphics.setStroke(new BasicStroke(3));
-                    graphics.draw(line);
-                    drawArrowHead(graphics, line);
-                }
-            }
-        }
-    }
+	private void drawArrowHead(Graphics2D g2d, Line2D.Double line) {
+		AffineTransform tx = new AffineTransform();
 
-    private void drawArrowHead(Graphics2D g2d, Line2D.Double line) {
-        AffineTransform tx = new AffineTransform();
+		Polygon arrowHead = new Polygon();
+		arrowHead.addPoint( 0,4);
+		arrowHead.addPoint( -6, -5);
+		arrowHead.addPoint( 6,-5);
 
-        Polygon arrowHead = new Polygon();
-        arrowHead.addPoint(0, 4);
-        arrowHead.addPoint(-6, -5);
-        arrowHead.addPoint(6, -5);
+		tx.setToIdentity();
+		double angle = Math.atan2(line.y2-line.y1, line.x2-line.x1);
+		tx.translate(line.x2, line.y2);
+		tx.rotate((angle-Math.PI/2d));
 
-        tx.setToIdentity();
-        double angle = Math.atan2(line.y2 - line.y1, line.x2 - line.x1);
-        tx.translate(line.x2, line.y2);
-        tx.rotate((angle - Math.PI / 2d));
-
-        Graphics2D g = (Graphics2D) g2d.create();
-        g.setTransform(tx);
-        g.fill(arrowHead);
-        g.dispose();
-    }
+		Graphics2D g = (Graphics2D) g2d.create();
+		g.setTransform(tx);
+		g.fill(arrowHead);
+		g.dispose();
+	}
 }

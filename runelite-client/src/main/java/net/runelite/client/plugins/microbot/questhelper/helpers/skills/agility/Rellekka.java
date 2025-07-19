@@ -24,9 +24,6 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.skills.agility;
 
-
-import net.runelite.api.ObjectID;
-import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.conditional.Conditions;
@@ -36,99 +33,109 @@ import net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ObjectID;
 
 import java.util.Arrays;
 import java.util.Collections;
 
-public class Rellekka extends AgilityCourse {
-    QuestStep rellekkaSidebar;
-    QuestStep climbRoughWall, leapFirstGap, walkFirstRope, leapSecondGap, hurdleGap, walkSecondRope, jumpInFish;
-    Zone firstGapZone, firstRopeZone, secondGapZone, thirdGapZone, secondRopeZone, fishZone;
-    ZoneRequirement inFirstGapZone, inFirstRopeZone, inSecondGapZone, inThirdGapZone, inSecondRopeZone, inFishZone;
+public class Rellekka extends AgilityCourse
+{
+	QuestStep rellekkaSidebar;
+	QuestStep climbRoughWall, leapFirstGap, walkFirstRope, leapSecondGap, hurdleGap, walkSecondRope, jumpInFish;
+	Zone firstGapZone, firstRopeZone, secondGapZone, thirdGapZone, secondRopeZone, fishZone;
+	ZoneRequirement inFirstGapZone, inFirstRopeZone, inSecondGapZone, inThirdGapZone, inSecondRopeZone, inFishZone;
 
-    ConditionalStep rellekkaStep;
-    PanelDetails rellekkaPanels;
+	ConditionalStep rellekkaStep;
+	PanelDetails rellekkaPanels;
 
 
-    protected Rellekka(QuestHelper questHelper) {
-        super(questHelper);
-    }
+	protected Rellekka(QuestHelper questHelper)
+	{
+		super(questHelper);
+	}
 
-    @Override
-    protected ConditionalStep loadStep() {
-        setupZones();
-        setupConditions();
-        setupSteps();
-        addSteps();
+	@Override
+	protected ConditionalStep loadStep()
+	{
+		setupZones();
+		setupConditions();
+		setupSteps();
+		addSteps();
 
-        return rellekkaStep;
-    }
+		return rellekkaStep;
+	}
 
-    @Override
-    protected void setupConditions() {
-        inFirstGapZone = new ZoneRequirement(firstGapZone);
-        inFirstRopeZone = new ZoneRequirement(firstRopeZone);
-        inSecondGapZone = new ZoneRequirement(secondGapZone);
-        inThirdGapZone = new ZoneRequirement(thirdGapZone);
-        inSecondRopeZone = new ZoneRequirement(secondRopeZone);
-        inFishZone = new ZoneRequirement(fishZone);
-    }
+	@Override
+	protected void setupConditions()
+	{
+		inFirstGapZone = new ZoneRequirement(firstGapZone);
+		inFirstRopeZone = new ZoneRequirement(firstRopeZone);
+		inSecondGapZone = new ZoneRequirement(secondGapZone);
+		inThirdGapZone = new ZoneRequirement(thirdGapZone);
+		inSecondRopeZone = new ZoneRequirement(secondRopeZone);
+		inFishZone = new ZoneRequirement(fishZone);
+	}
 
-    @Override
-    protected void setupZones() {
-        firstGapZone = new Zone(new WorldPoint(2626, 3676, 3), new WorldPoint(2621, 3669, 3));
-        firstRopeZone = new Zone(new WorldPoint(2615, 3668, 3), new WorldPoint(2626, 3655, 3));
-        secondGapZone = new Zone(new WorldPoint(2626, 3651, 3), new WorldPoint(2637, 3659, 3));
-        thirdGapZone = new Zone(new WorldPoint(2638, 3649, 3), new WorldPoint(2644, 3655, 3));
-        secondRopeZone = new Zone(new WorldPoint(2643, 3656, 3), new WorldPoint(2653, 3670, 3));
-        fishZone = new Zone(new WorldPoint(2649, 3665, 3), new WorldPoint(2666, 3685, 3));
-    }
+	@Override
+	protected void setupZones()
+	{
+		firstGapZone = new Zone(new WorldPoint(2626, 3676, 3), new WorldPoint(2621, 3669, 3));
+		firstRopeZone = new Zone(new WorldPoint(2615, 3668, 3), new WorldPoint(2626, 3655, 3));
+		secondGapZone = new Zone(new WorldPoint(2626, 3651, 3), new WorldPoint(2637, 3659, 3));
+		thirdGapZone = new Zone(new WorldPoint(2638, 3649, 3), new WorldPoint(2644, 3655, 3));
+		secondRopeZone = new Zone(new WorldPoint(2643, 3656, 3), new WorldPoint(2653, 3670, 3));
+		fishZone = new Zone(new WorldPoint(2649, 3665, 3), new WorldPoint(2666, 3685, 3));
+	}
 
-    @Override
-    protected void setupSteps() {
-        //Rellekka obstacles
-        climbRoughWall = new ObjectStep(this.questHelper, ObjectID.ROUGH_WALL_14946, new WorldPoint(2625, 3677, 0),
-                "Climb the rough wall in the north-western part of Rellekka, just south of the westernmost dock.",
-                Collections.EMPTY_LIST, Arrays.asList(recommendedItems));
+	@Override
+	protected void setupSteps()
+	{
+		//Rellekka obstacles
+		climbRoughWall = new ObjectStep(this.questHelper, ObjectID.ROOFTOPS_RELLEKKA_WALLCLIMB, new WorldPoint(2625, 3677, 0),
+			"Climb the rough wall in the north-western part of Rellekka, just south of the westernmost dock.",
+			Collections.EMPTY_LIST, Arrays.asList(recommendedItems));
 
-        leapFirstGap = new ObjectStep(this.questHelper, ObjectID.GAP_14947, new WorldPoint(2622, 3670, 3),
-                "Leap across the gap.", Collections.EMPTY_LIST, Arrays.asList(recommendedItems));
+		leapFirstGap = new ObjectStep(this.questHelper, ObjectID.ROOFTOPS_RELLEKKA_GAP_1, new WorldPoint(2622, 3670, 3),
+			"Leap across the gap.", Collections.EMPTY_LIST, Arrays.asList(recommendedItems));
 
-        walkFirstRope = new ObjectStep(this.questHelper, ObjectID.TIGHTROPE_14987, new WorldPoint(2623, 3658, 3),
-                "Cross the tightrope.", Collections.EMPTY_LIST, Arrays.asList(recommendedItems));
+		walkFirstRope = new ObjectStep(this.questHelper, ObjectID.ROOFTOPS_RELLEKKA_TIGHTROPE_1, new WorldPoint(2623, 3658, 3),
+			"Cross the tightrope.", Collections.EMPTY_LIST, Arrays.asList(recommendedItems));
 
-        leapSecondGap = new ObjectStep(this.questHelper, ObjectID.GAP_14990, new WorldPoint(2630, 3656, 3),
-                "Leap across the gap.", Collections.EMPTY_LIST, Arrays.asList(recommendedItems));
+		leapSecondGap = new ObjectStep(this.questHelper, ObjectID.ROOFTOPS_RELLEKKA_GAP_2, new WorldPoint(2630, 3656, 3),
+			"Leap across the gap.", Collections.EMPTY_LIST, Arrays.asList(recommendedItems));
 
-        hurdleGap = new ObjectStep(this.questHelper, ObjectID.GAP_14991, new WorldPoint(2643, 3654, 3),
-                "Hurdle across the gap.", Collections.EMPTY_LIST, Arrays.asList(recommendedItems));
+		hurdleGap = new ObjectStep(this.questHelper, ObjectID.ROOFTOPS_RELLEKKA_GAP_3, new WorldPoint(2643, 3654, 3),
+			"Hurdle across the gap.", Collections.EMPTY_LIST, Arrays.asList(recommendedItems));
 
-        walkSecondRope = new ObjectStep(this.questHelper, ObjectID.TIGHTROPE_14992, new WorldPoint(2647, 3663, 3),
-                "Cross the tightrope.", Collections.EMPTY_LIST, Arrays.asList(recommendedItems));
+		walkSecondRope = new ObjectStep(this.questHelper, ObjectID.ROOFTOPS_RELLEKKA_TIGHTROPE_3, new WorldPoint(2647, 3663, 3),
+			"Cross the tightrope.", Collections.EMPTY_LIST, Arrays.asList(recommendedItems));
 
-        jumpInFish = new ObjectStep(this.questHelper, ObjectID.PILE_OF_FISH, new WorldPoint(2654, 3676, 3),
-                "Jump down into the pile of fish.", Collections.EMPTY_LIST, Arrays.asList(recommendedItems));
-    }
+		jumpInFish = new ObjectStep(this.questHelper, ObjectID.ROOFTOPS_RELLEKKA_DROPOFF, new WorldPoint(2654, 3676, 3),
+			"Jump down into the pile of fish.", Collections.EMPTY_LIST, Arrays.asList(recommendedItems));
+	}
 
-    @Override
-    protected void addSteps() {
-        rellekkaStep = new ConditionalStep(this.questHelper, climbRoughWall);
-        rellekkaStep.addStep(new Conditions(inFirstGapZone), leapFirstGap);
-        rellekkaStep.addStep(new Conditions(inFirstRopeZone), walkFirstRope);
-        rellekkaStep.addStep(new Conditions(inSecondGapZone), leapSecondGap);
-        rellekkaStep.addStep(new Conditions(inThirdGapZone), hurdleGap);
-        rellekkaStep.addStep(new Conditions(inSecondRopeZone), walkSecondRope);
-        rellekkaStep.addStep(new Conditions(inFishZone), jumpInFish);
+	@Override
+	protected void addSteps()
+	{
+		rellekkaStep = new ConditionalStep(this.questHelper, climbRoughWall);
+		rellekkaStep.addStep(new Conditions(inFirstGapZone), leapFirstGap);
+		rellekkaStep.addStep(new Conditions(inFirstRopeZone), walkFirstRope);
+		rellekkaStep.addStep(new Conditions(inSecondGapZone), leapSecondGap);
+		rellekkaStep.addStep(new Conditions(inThirdGapZone), hurdleGap);
+		rellekkaStep.addStep(new Conditions(inSecondRopeZone), walkSecondRope);
+		rellekkaStep.addStep(new Conditions(inFishZone), jumpInFish);
 
-        rellekkaSidebar = new DetailedQuestStep(this.questHelper, "Train agility at the Rellekka Rooftop Course, " +
-                "starting in the north-western part of Rellekka, just south of the westernmost dock.");
-        rellekkaSidebar.addSubSteps(climbRoughWall, leapFirstGap, walkFirstRope, leapSecondGap, hurdleGap, walkSecondRope, jumpInFish);
-    }
+		rellekkaSidebar = new DetailedQuestStep(this.questHelper, "Train agility at the Rellekka Rooftop Course, " +
+			"starting in the north-western part of Rellekka, just south of the westernmost dock.");
+		rellekkaSidebar.addSubSteps(climbRoughWall, leapFirstGap, walkFirstRope, leapSecondGap, hurdleGap, walkSecondRope, jumpInFish);
+	}
 
-    @Override
-    protected PanelDetails getPanelDetails() {
-        rellekkaPanels = new PanelDetails("80 - 90: Rellekka", Collections.singletonList(rellekkaSidebar)
-        );
-        return rellekkaPanels;
-    }
+	@Override
+	protected PanelDetails getPanelDetails()
+	{
+		rellekkaPanels = new PanelDetails("80 - 90: Rellekka", Collections.singletonList(rellekkaSidebar)
+		);
+		return rellekkaPanels;
+	}
 }

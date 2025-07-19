@@ -24,15 +24,16 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.dreammentor;
 
-
-import net.runelite.api.Client;
 import net.runelite.client.plugins.microbot.questhelper.requirements.SimpleRequirement;
+import net.runelite.api.Client;
 
-public class CyrisusBankConditional extends SimpleRequirement {
-    @Override
-    public boolean check(Client client) {
+public class CyrisusBankConditional extends SimpleRequirement
+{
+	@Override
+	public boolean check(Client client)
+	{
 
-        return CyrisusArmourSet.isReady(client);
-    }
+		return CyrisusArmourSet.isReady(client);
+	}
 }
 

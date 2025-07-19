@@ -24,87 +24,97 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.thepathofglouphrie.sections;
 
-
-import net.runelite.api.ObjectID;
-import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.thepathofglouphrie.MonolithPuzzle;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.thepathofglouphrie.ThePathOfGlouphrie;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.thepathofglouphrie.YewnocksPuzzle;
 import net.runelite.client.plugins.microbot.questhelper.requirements.conditional.Conditions;
 import net.runelite.client.plugins.microbot.questhelper.steps.*;
-
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ObjectID;
 
 import java.util.List;
 
-public class UnveilEvil {
-    public ConditionalStep enterStoreroom;
-    public ConditionalStep solveMonolithPuzzleStep;
-    public ConditionalStep solveYewnocksMachinePuzzleStep;
-    public ConditionalStep learnLoreStep;
-    public DetailedQuestStep watchCutscene;
-    private MonolithPuzzle solveMonolithPuzzle;
-    private ConditionalStep learnLore;
-    private PuzzleWrapperStep solveYewnocksMachinePuzzle;
+public class UnveilEvil
+{
+	public ConditionalStep enterStoreroom;
+	public ConditionalStep solveMonolithPuzzleStep;
+	public ConditionalStep solveYewnocksMachinePuzzleStep;
+	public ConditionalStep learnLoreStep;
+	public DetailedQuestStep watchCutscene;
+	private MonolithPuzzle solveMonolithPuzzle;
+	private ConditionalStep learnLore;
+	private PuzzleWrapperStep solveYewnocksMachinePuzzle;
 
-    public void setup(ThePathOfGlouphrie quest) {
-        {
-            var squeezeThroughRailing = quest.enterTreeGnomeVillageMazeFromMiddle.copy();
-            var climbIntoDungeon = quest.climbDownIntoTreeGnomeVillageDungeon.copy();
-            var enter = new ObjectStep(quest, ObjectID.TUNNEL_49620, new WorldPoint(2608, 4451, 0), "");
-            enter.addSubSteps(squeezeThroughRailing, climbIntoDungeon);
+	public void setup(ThePathOfGlouphrie quest)
+	{
+		{
+			var squeezeThroughRailing = quest.enterTreeGnomeVillageMazeFromMiddle.copy();
+			var climbIntoDungeon = quest.climbDownIntoTreeGnomeVillageDungeon.copy();
+			var enter = new ObjectStep(quest, ObjectID.POG_CAVE_WALL_ENTRANCE_GOLRIE_ROVING, new WorldPoint(2608, 4451, 0), "");
+			enter.addSubSteps(squeezeThroughRailing, climbIntoDungeon);
+			var enterStoreroomPreRovingElves = new ObjectStep(quest, ObjectID.POG_CAVE_WALL_ENTRANCE_GOLRIE_ROVING, new WorldPoint(2544, 9571, 0),
+				"");
+			enterStoreroomPreRovingElves.addAlternateObjects(ObjectID.POG_CAVE_WALL_ENTRANCE_GOLRIE_WATERFALL);
 
-            enterStoreroom = new ConditionalStep(quest, climbIntoDungeon, "Enter the storeroom to the east in the Tree Gnome Village dungeon.");
-            enterStoreroom.addStep(quest.inTreeGnomeVillageDungeon, enter);
-            enterStoreroom.addStep(quest.inTreeGnomeVillageMiddle, squeezeThroughRailing);
-        }
+			enterStoreroom = new ConditionalStep(quest, climbIntoDungeon, "Enter the storeroom to the east in the Tree Gnome Village dungeon.");
+			enterStoreroom.addStep(quest.inTreeGnomeVillageDungeonPreRovingElves, enterStoreroomPreRovingElves);
+			enterStoreroom.addStep(quest.inTreeGnomeVillageDungeon, enter);
+			enterStoreroom.addStep(quest.inTreeGnomeVillageMiddle, squeezeThroughRailing);
+		}
 
-        /// Storeroom monolith puzzle
-        solveMonolithPuzzle = new MonolithPuzzle(quest);
+		/// Storeroom monolith puzzle
+		solveMonolithPuzzle = new MonolithPuzzle(quest);
 
-        solveMonolithPuzzleStep = new ConditionalStep(quest, enterStoreroom);
-        solveMonolithPuzzleStep.addStep(quest.inStoreroom, solveMonolithPuzzle);
+		solveMonolithPuzzleStep = new ConditionalStep(quest, enterStoreroom);
+		solveMonolithPuzzleStep.addStep(quest.inStoreroom, solveMonolithPuzzle);
 
-        var clickLectern = new ObjectStep(quest, ObjectID.LECTERN_49673, YewnocksPuzzle.regionPoint(24, 28), "Click the lectern.");
-        var clickChapter1 = new WidgetStep(quest, "Click Chapter 1 to learn about the mysterious stranger.", 854, 5);
-        var clickChapter2 = new WidgetStep(quest, "Click Chapter 2 to learn about the great king's death.", 854, 9);
-        var clickChapter3 = new WidgetStep(quest, "Click Chapter 3 to learn about the old foe.", 854, 13);
+		var clickLectern = new ObjectStep(quest, ObjectID.POG_LECTURN, YewnocksPuzzle.regionPoint(24, 28), "Click the lectern.");
+		var clickChapter1 = new WidgetStep(quest, "Click Chapter 1 to learn about the mysterious stranger.", 854, 5);
+		var clickChapter2 = new WidgetStep(quest, "Click Chapter 2 to learn about the great king's death.", 854, 9);
+		var clickChapter3 = new WidgetStep(quest, "Click Chapter 3 to learn about the old foe.", 854, 13);
 
-        DetailedQuestStep watchLoreCutscene = new DetailedQuestStep(quest, "Watch the cutscene.");
-        learnLore = new ConditionalStep(quest, clickLectern, "Learn about the lore. All items left on the ground are lost.");
-        learnLore.addStep(new Conditions(quest.lecternWidgetActive, quest.learnedAboutChapter1, quest.learnedAboutChapter2), clickChapter3);
-        learnLore.addStep(new Conditions(quest.lecternWidgetActive, quest.learnedAboutChapter1), clickChapter2);
-        learnLore.addStep(quest.lecternWidgetActive, clickChapter1);
-        learnLore.addSubSteps(watchLoreCutscene);
+		DetailedQuestStep watchLoreCutscene = new DetailedQuestStep(quest, "Watch the cutscene.");
+		learnLore = new ConditionalStep(quest, clickLectern, "Learn about the lore. All items left on the ground are lost.");
+		learnLore.addStep(new Conditions(quest.lecternWidgetActive, quest.learnedAboutChapter1, quest.learnedAboutChapter2), clickChapter3);
+		learnLore.addStep(new Conditions(quest.lecternWidgetActive, quest.learnedAboutChapter1), clickChapter2);
+		learnLore.addStep(quest.lecternWidgetActive, clickChapter1);
+		learnLore.addSubSteps(watchLoreCutscene);
 
-        learnLoreStep = new ConditionalStep(quest, enterStoreroom);
-        learnLoreStep.addStep(quest.inCutscene, watchLoreCutscene);
-        learnLoreStep.addStep(quest.inStoreroom, learnLore);
+		learnLoreStep = new ConditionalStep(quest, enterStoreroom);
+		learnLoreStep.addStep(quest.inCutscene, watchLoreCutscene);
+		learnLoreStep.addStep(quest.inStoreroom, learnLore);
 
-        {
-            var squeezeThroughRailing = quest.enterTreeGnomeVillageMazeFromMiddle.copy();
-            squeezeThroughRailing.setText("Squeeze through the loose railing.");
-            var climbIntoDungeon = quest.climbDownIntoTreeGnomeVillageDungeon.copy();
-            climbIntoDungeon.setText("Climb down the ladder to the Tree Gnome Village dungeon.");
-            var enterStoreroom = new ObjectStep(quest, ObjectID.TUNNEL_49620, new WorldPoint(2608, 4451, 0),
-                    "Enter the storeroom to the east in the Tree Gnome Village dungeon.");
+		{
+			var squeezeThroughRailing = quest.enterTreeGnomeVillageMazeFromMiddle.copy();
+			squeezeThroughRailing.setText("Squeeze through the loose railing.");
+			var climbIntoDungeon = quest.climbDownIntoTreeGnomeVillageDungeon.copy();
+			climbIntoDungeon.setText("Climb down the ladder to the Tree Gnome Village dungeon.");
+			var enterStoreroom = new ObjectStep(quest, ObjectID.POG_CAVE_WALL_ENTRANCE_GOLRIE_ROVING, new WorldPoint(2608, 4451, 0),
+				"Enter the storeroom to the east in the Tree Gnome Village dungeon.");
+			enterStoreroom.addAlternateObjects(ObjectID.POG_CAVE_WALL_ENTRANCE_GOLRIE_WATERFALL);
+			var enterStoreroomPreRovingElves = new ObjectStep(quest, ObjectID.POG_CAVE_WALL_ENTRANCE_GOLRIE_ROVING, new WorldPoint(2544, 9571, 0),
+				"Enter the storeroom to the east in the Tree Gnome Village dungeon.");
+			enterStoreroomPreRovingElves.addAlternateObjects(ObjectID.POG_CAVE_WALL_ENTRANCE_GOLRIE_WATERFALL);
 
-            var enterStoreroomPuzzle = new ConditionalStep(quest, climbIntoDungeon, "Get to Yewnock's storeroom.");
-            enterStoreroomPuzzle.addStep(quest.inTreeGnomeVillageDungeon, enterStoreroom);
-            enterStoreroomPuzzle.addStep(quest.inTreeGnomeVillageMiddle, squeezeThroughRailing);
-            solveYewnocksMachinePuzzle = new PuzzleWrapperStep(quest, new YewnocksPuzzle(quest), "Solve the disc puzzle.");
-            solveYewnocksMachinePuzzle.addSubSteps(enterStoreroomPuzzle);
-            solveYewnocksMachinePuzzle.addSubSteps(enterStoreroomPuzzle.getSteps());
+			var enterStoreroomPuzzle = new ConditionalStep(quest, climbIntoDungeon, "Get to Yewnock's storeroom.");
+			enterStoreroomPuzzle.addStep(quest.inTreeGnomeVillageDungeonPreRovingElves, enterStoreroomPreRovingElves);
+			enterStoreroomPuzzle.addStep(quest.inTreeGnomeVillageDungeon, enterStoreroom);
+			enterStoreroomPuzzle.addStep(quest.inTreeGnomeVillageMiddle, squeezeThroughRailing);
+			solveYewnocksMachinePuzzle = new PuzzleWrapperStep(quest, new YewnocksPuzzle(quest), "Solve the disc puzzle.");
+			solveYewnocksMachinePuzzle.addSubSteps(enterStoreroomPuzzle);
+			solveYewnocksMachinePuzzle.addSubSteps(enterStoreroomPuzzle.getSteps());
 
-            solveYewnocksMachinePuzzleStep = new ConditionalStep(quest, enterStoreroomPuzzle);
-            solveYewnocksMachinePuzzleStep.addStep(quest.inStoreroom, solveYewnocksMachinePuzzle);
-        }
+			solveYewnocksMachinePuzzleStep = new ConditionalStep(quest, enterStoreroomPuzzle);
+			solveYewnocksMachinePuzzleStep.addStep(quest.inStoreroom, solveYewnocksMachinePuzzle);
+		}
 
-        watchCutscene = new DetailedQuestStep(quest, "Watch the cutscene.");
-    }
+		watchCutscene = new DetailedQuestStep(quest, "Watch the cutscene.");
+	}
 
-    public List<QuestStep> getSteps() {
-        return List.of(
-                enterStoreroom, solveMonolithPuzzle, learnLore, solveYewnocksMachinePuzzle, watchCutscene
-        );
-    }
+	public List<QuestStep> getSteps()
+	{
+		return List.of(
+			enterStoreroom, solveMonolithPuzzle, learnLore, solveYewnocksMachinePuzzle, watchCutscene
+		);
+	}
 }

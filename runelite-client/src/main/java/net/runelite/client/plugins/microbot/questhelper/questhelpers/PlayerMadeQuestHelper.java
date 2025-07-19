@@ -24,37 +24,43 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.questhelpers;
 
+import net.runelite.client.plugins.microbot.questhelper.runeliteobjects.extendedruneliteobjects.QuestCompletedWidget;
 import lombok.Getter;
 import net.runelite.api.QuestState;
-import net.runelite.client.plugins.microbot.questhelper.runeliteobjects.extendedruneliteobjects.QuestCompletedWidget;
 
 import javax.inject.Inject;
 
-public abstract class PlayerMadeQuestHelper extends ComplexStateQuestHelper {
-    @Getter
-    protected int itemWidget = -1;
-    @Getter
-    protected int rotationX = 0;
-    @Getter
-    protected int rotationY = 0;
-    @Getter
-    protected int rotationZ = 0;
-    @Getter
-    protected int zoom = 0;
-    @Inject
-    QuestCompletedWidget questCompletedWidget;
+public abstract class PlayerMadeQuestHelper extends ComplexStateQuestHelper
+{
+	@Inject
+	QuestCompletedWidget questCompletedWidget;
 
-    @Override
-    public void init() {
-        super.init();
-    }
+	@Getter
+	protected int itemWidget = -1;
 
-    @Override
-    public void shutDown() {
-        super.shutDown();
-        if (getQuest().getState(client, configManager) == QuestState.FINISHED) {
-            runeliteObjectManager.createChatboxMessage("Quest completed!");
-            questCompletedWidget.createWidget(client, getQuest().getName(), getQuestRewardsText(), getItemWidget(), rotationX, rotationY, rotationZ, zoom);
-        }
-    }
+	@Getter
+	protected int rotationX = 0;
+	@Getter
+	protected int rotationY = 0;
+	@Getter
+	protected int rotationZ = 0;
+	@Getter
+	protected int zoom = 0;
+
+	@Override
+	public void init()
+	{
+		super.init();
+	}
+
+	@Override
+	public void shutDown()
+	{
+		super.shutDown();
+		if (getQuest().getState(client, configManager) == QuestState.FINISHED)
+		{
+			runeliteObjectManager.createChatboxMessage("Quest completed!");
+			questCompletedWidget.createWidget(client, getQuest().getName(), getQuestRewardsText(), getItemWidget(), rotationX, rotationY, rotationZ, zoom);
+		}
+	}
 }

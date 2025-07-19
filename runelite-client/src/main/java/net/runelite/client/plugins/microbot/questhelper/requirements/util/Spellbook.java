@@ -32,16 +32,18 @@ import net.runelite.api.Client;
 
 @AllArgsConstructor
 @Getter
-public enum Spellbook {
-    NORMAL(0, "Normal"),
-    ANCIENT(1, "Ancient"),
-    LUNAR(2, "Lunar"),
-    ARCEUUS(3, "Arceuus");
+public enum Spellbook
+{
+	NORMAL(0, "Normal"),
+	ANCIENT(1, "Ancient"),
+	LUNAR(2, "Lunar"),
+	ARCEUUS(3, "Arceuus");
 
-    private final int id;
-    private final String name;
+	private final int id;
+	private final String name;
 
-    public boolean check(Client client, int varbit) {
-        return client.getVarbitValue(varbit) == this.getId();
-    }
+	public boolean check(Client client, int varbit)
+	{
+		return client.getVarbitValue(varbit) == this.getId();
+	}
 }

@@ -29,27 +29,32 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SkillTabGroup extends JPanel {
-    /* The panel on which the content tab's content will be displayed on. */
-    private final JPanel display;
-    /* A list of all the tabs contained in this group. */
-    private final List<SkillIconButton> tabs = new ArrayList<>();
+public class SkillTabGroup extends JPanel
+{
+	/* The panel on which the content tab's content will be displayed on. */
+	private final JPanel display;
+	/* A list of all the tabs contained in this group. */
+	private final List<SkillIconButton> tabs = new ArrayList<>();
 
-    public SkillTabGroup(JPanel display) {
-        this.display = display;
-        if (display != null) {
-            this.display.setLayout(new BorderLayout());
-        }
-        setLayout(new FlowLayout(FlowLayout.CENTER, 8, 0));
-        setOpaque(false);
-    }
+	public SkillTabGroup(JPanel display)
+	{
+		this.display = display;
+		if (display != null)
+		{
+			this.display.setLayout(new BorderLayout());
+		}
+		setLayout(new FlowLayout(FlowLayout.CENTER, 8, 0));
+		setOpaque(false);
+	}
 
-    public SkillTabGroup() {
-        this(null);
-    }
+	public SkillTabGroup()
+	{
+		this(null);
+	}
 
-    public void addTab(SkillIconButton tab) {
-        tabs.add(tab);
-        add(tab, BorderLayout.NORTH);
-    }
+	public void addTab(SkillIconButton tab)
+	{
+		tabs.add(tab);
+		add(tab, BorderLayout.NORTH);
+	}
 }

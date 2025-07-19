@@ -24,84 +24,91 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.enlightenedjourney;
 
-
-import net.runelite.api.ItemID;
-import net.runelite.api.QuestState;
-import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.ComplexStateQuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
-import net.runelite.client.plugins.microbot.questhelper.requirements.quest.QuestRequirement;
-import net.runelite.client.plugins.microbot.questhelper.rewards.ExperienceReward;
-import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.player.SkillRequirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.quest.QuestRequirement;
+import net.runelite.client.plugins.microbot.questhelper.rewards.ExperienceReward;
 import net.runelite.client.plugins.microbot.questhelper.rewards.UnlockReward;
+import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import net.runelite.api.QuestState;
+import net.runelite.api.Skill;
+import net.runelite.api.gameval.ItemID;
 
 import java.util.*;
 
-public class VarrockBalloonFlight extends ComplexStateQuestHelper {
-    BalloonFlightStep fly;
+public class VarrockBalloonFlight extends ComplexStateQuestHelper
+{
+	BalloonFlightStep fly;
 
 
-    ItemRequirement willowLogs;
+	ItemRequirement willowLogs;
 
-    @Override
-    public QuestStep loadStep() {
-        initializeRequirements();
+	@Override
+	public QuestStep loadStep()
+	{
+		initializeRequirements();
 
-        HashMap<Integer, List<Integer>> sections = new HashMap<>();
-        List<Integer> section1 = Arrays.asList(6, 7, 8, 9, 10, 10, 10, 9, 8, 7, 7, 7, 6, 7, 7, 7, 6, 7, 8, 8, 8);
-        List<Integer> section2 = Arrays.asList(8, 8, 8, 8, 8, 8, 8, 8, 9, 10, 10, 8, 6, 6, 6, 6, 8, 8, 8, 8, 8);
-        List<Integer> section3 = Arrays.asList(8, 8, 8, 8, 8, 10, 10, 9, 8, 10, 10, 9, 8, 10, 10, 8, 8, 8, 6, 5);
-        sections.put(13, section1);
-        sections.put(14, section2);
-        sections.put(15, section3);
+		HashMap<Integer, List<Integer>> sections = new HashMap<>();
+		List<Integer> section1 = Arrays.asList(6, 7, 8, 9, 10, 10, 10, 9, 8,  7,  7, 7, 6, 7, 7, 7, 6, 7, 8, 8, 8);
+		List<Integer> section2 = Arrays.asList(8, 8, 8, 8, 8, 8,  8,  8,  9, 10, 10, 8, 6, 6, 6, 6, 8, 8, 8, 8, 8);
+		List<Integer> section3 = Arrays.asList(8, 8, 8, 8, 8, 10, 10, 9, 8, 10, 10, 9, 8, 10, 10, 8, 8, 8, 6, 5);
+		sections.put(13, section1);
+		sections.put(14, section2);
+		sections.put(15, section3);
 
-        fly = new BalloonFlightStep(this, "Navigate the balloon on Entrana to Varrock.", sections, willowLogs);
+		fly = new BalloonFlightStep(this, "Navigate the balloon on Entrana to Varrock.", sections, willowLogs);
 
-        return fly;
-    }
+		return fly;
+	}
 
-    @Override
-    protected void setupRequirements() {
-        willowLogs = new ItemRequirement("Willow logs", ItemID.WILLOW_LOGS, 10);
-    }
+	@Override
+	protected void setupRequirements()
+	{
+		willowLogs = new ItemRequirement("Willow logs", ItemID.WILLOW_LOGS, 10);
+	}
 
-    @Override
-    public List<ItemRequirement> getItemRequirements() {
-        return Collections.singletonList(willowLogs);
-    }
-
-
-    @Override
-    public List<Requirement> getGeneralRequirements() {
-        List<Requirement> reqs = new ArrayList<>();
-        reqs.add(new QuestRequirement(QuestHelperQuest.ENLIGHTENED_JOURNEY, QuestState.FINISHED));
-        reqs.add(new SkillRequirement(Skill.FIREMAKING, 40));
-        return reqs;
-    }
-
-    @Override
-    public List<ExperienceReward> getExperienceRewards() {
-        return Collections.singletonList(new ExperienceReward(Skill.FIREMAKING, 2000));
-    }
-
-    @Override
-    public List<UnlockReward> getUnlockRewards() {
-        return Collections.singletonList(
-                new UnlockReward("Ability to fly via balloon to Varrock with 1 willow log")
-        );
-    }
+	@Override
+	public List<ItemRequirement> getItemRequirements()
+	{
+		return Collections.singletonList(willowLogs);
+	}
 
 
-    @Override
-    public ArrayList<PanelDetails> getPanels() {
-        ArrayList<PanelDetails> allSteps = new ArrayList<>();
+	@Override
+	public List<Requirement> getGeneralRequirements()
+	{
+		List<Requirement> reqs = new ArrayList<>();
+		reqs.add(new QuestRequirement(QuestHelperQuest.ENLIGHTENED_JOURNEY, QuestState.FINISHED));
+		reqs.add(new SkillRequirement(Skill.FIREMAKING, 40));
+		return reqs;
+	}
 
-        allSteps.add(new PanelDetails("Flying to Varrock", Collections.singletonList(fly), willowLogs));
+	@Override
+	public List<ExperienceReward> getExperienceRewards()
+	{
+		return Collections.singletonList(new ExperienceReward(Skill.FIREMAKING, 2000));
+	}
 
-        return allSteps;
-    }
+	@Override
+	public List<UnlockReward> getUnlockRewards()
+	{
+		return Collections.singletonList(
+			new UnlockReward("Ability to fly via balloon to Varrock with 1 willow log")
+		);
+	}
+
+
+	@Override
+	public ArrayList<PanelDetails> getPanels()
+	{
+		ArrayList<PanelDetails> allSteps = new ArrayList<>();
+
+		allSteps.add(new PanelDetails("Flying to Varrock", Collections.singletonList(fly), willowLogs));
+
+		return allSteps;
+	}
 }

@@ -24,90 +24,99 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.miniquests.enchantedkey;
 
-
-import net.runelite.api.ItemID;
-import net.runelite.api.QuestState;
-import net.runelite.client.plugins.microbot.questhelper.collections.KeyringCollection;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.BasicQuestHelper;
-import net.runelite.client.plugins.microbot.questhelper.rewards.ItemReward;
-import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.client.plugins.microbot.questhelper.collections.ItemCollections;
+import net.runelite.client.plugins.microbot.questhelper.collections.KeyringCollection;
 import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.BasicQuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.KeyringRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.quest.QuestRequirement;
+import net.runelite.client.plugins.microbot.questhelper.rewards.ItemReward;
+import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import net.runelite.api.QuestState;
+import net.runelite.api.gameval.ItemID;
 
 import java.util.*;
 
-public class EnchantedKey extends BasicQuestHelper {
-    //Items Required
-    ItemRequirement spade, key;
+public class EnchantedKey extends BasicQuestHelper
+{
+	//Items Required
+	ItemRequirement spade, key;
 
-    //Items Recommended
-    ItemRequirement rellekkaTeleports, varrockTeleports, ardougneTeleports, lumbridgeTeleports, passage;
+	//Items Recommended
+	ItemRequirement rellekkaTeleports, varrockTeleports, ardougneTeleports, lumbridgeTeleports, passage;
 
-    QuestStep solvePuzzle;
+	QuestStep solvePuzzle;
 
-    @Override
-    public Map<Integer, QuestStep> loadSteps() {
-        initializeRequirements();
-        setupSteps();
+	@Override
+	public Map<Integer, QuestStep> loadSteps()
+	{
+		initializeRequirements();
+		setupSteps();
 
-        Map<Integer, QuestStep> steps = new HashMap<>();
+		Map<Integer, QuestStep> steps = new HashMap<>();
 
-        for (int i = 0; i < 2047; i++) {
-            steps.put(i, solvePuzzle);
-        }
+		for (int i = 0; i < 2047; i++)
+		{
+			steps.put(i, solvePuzzle);
+		}
 
-        return steps;
-    }
+		return steps;
+	}
 
-    @Override
-    protected void setupRequirements() {
-        spade = new ItemRequirement("Spade", ItemID.SPADE).isNotConsumed();
-        key = new KeyringRequirement("Enchanted key", configManager, KeyringCollection.ENCHANTED_KEY);
-        varrockTeleports = new ItemRequirement("Varrock teleports", ItemID.VARROCK_TELEPORT);
-        ardougneTeleports = new ItemRequirement("Ardougne teleports", ItemID.ARDOUGNE_TELEPORT);
-        rellekkaTeleports = new ItemRequirement("Rellekka teleport", ItemID.RELLEKKA_TELEPORT);
-        lumbridgeTeleports = new ItemRequirement("Lumbridge teleports", ItemID.LUMBRIDGE_TELEPORT);
-        passage = new ItemRequirement("Necklace of passage", ItemCollections.NECKLACE_OF_PASSAGES);
-    }
+	@Override
+	protected void setupRequirements()
+	{
+		spade = new ItemRequirement("Spade", ItemID.SPADE).isNotConsumed();
+		key = new KeyringRequirement("Enchanted key", configManager, KeyringCollection.ENCHANTED_KEY);
+		varrockTeleports = new ItemRequirement("Varrock teleports", ItemID.POH_TABLET_VARROCKTELEPORT);
+		ardougneTeleports = new ItemRequirement("Ardougne teleports", ItemID.POH_TABLET_ARDOUGNETELEPORT);
+		rellekkaTeleports = new ItemRequirement("Rellekka teleport", ItemID.NZONE_TELETAB_RELLEKKA);
+		lumbridgeTeleports = new ItemRequirement("Lumbridge teleports", ItemID.POH_TABLET_LUMBRIDGETELEPORT);
+		passage = new ItemRequirement("Necklace of passage", ItemCollections.NECKLACE_OF_PASSAGES);
+	}
 
-    private void setupSteps() {
-        solvePuzzle = new EnchantedKeyDigStep(this, key, spade);
-    }
+	private void setupSteps()
+	{
+		solvePuzzle = new EnchantedKeyDigStep(this, key, spade);
+	}
 
-    @Override
-    public List<ItemRequirement> getItemRequirements() {
-        return Arrays.asList(key, spade);
-    }
+	@Override
+	public List<ItemRequirement> getItemRequirements()
+	{
+		return Arrays.asList(key, spade);
+	}
 
-    @Override
-    public List<ItemRequirement> getItemRecommended() {
-        return Arrays.asList(rellekkaTeleports, varrockTeleports, ardougneTeleports, lumbridgeTeleports, passage);
-    }
+	@Override
+	public List<ItemRequirement> getItemRecommended()
+	{
+		return Arrays.asList(rellekkaTeleports, varrockTeleports, ardougneTeleports, lumbridgeTeleports, passage);
+	}
 
-    @Override
-    public List<ItemReward> getItemRewards() {
-        return Arrays.asList(
-                new ItemReward("Saradomin Mjolnir", ItemID.SARADOMIN_MJOLNIR, 1),
-                new ItemReward("Guthix Mjolnir", ItemID.GUTHIX_MJOLNIR, 1),
-                new ItemReward("Zamorak Mjolnir", ItemID.ZAMORAK_MJOLNIR, 1));
-    }
+	@Override
+	public List<ItemReward> getItemRewards()
+	{
+		return Arrays.asList(
+				new ItemReward("Saradomin Mjolnir", ItemID.MAKINGHISTORY_SARADOMIN_POLESTAFF, 1),
+				new ItemReward("Guthix Mjolnir", ItemID.MAKINGHISTORY_GUTHIX_POLESTAFF, 1),
+				new ItemReward("Zamorak Mjolnir", ItemID.MAKINGHISTORY_ZAMORAK_POLESTAFF, 1));
+	}
 
-    @Override
-    public List<PanelDetails> getPanels() {
-        List<PanelDetails> allSteps = new ArrayList<>();
-        allSteps.add(new PanelDetails("Dig for treasure", Collections.singletonList(solvePuzzle), key, spade));
-        return allSteps;
-    }
+	@Override
+	public List<PanelDetails> getPanels()
+	{
+		List<PanelDetails> allSteps = new ArrayList<>();
+		allSteps.add(new PanelDetails("Dig for treasure", Collections.singletonList(solvePuzzle), key, spade));
+		return allSteps;
+	}
 
-    @Override
-    public List<Requirement> getGeneralRequirements() {
-        ArrayList<Requirement> req = new ArrayList<>();
-        req.add(new QuestRequirement(QuestHelperQuest.MAKING_HISTORY, QuestState.FINISHED));
-        return req;
-    }
+	@Override
+	public List<Requirement> getGeneralRequirements()
+	{
+		ArrayList<Requirement> req = new ArrayList<>();
+		req.add(new QuestRequirement(QuestHelperQuest.MAKING_HISTORY, QuestState.FINISHED));
+		return req;
+	}
 }

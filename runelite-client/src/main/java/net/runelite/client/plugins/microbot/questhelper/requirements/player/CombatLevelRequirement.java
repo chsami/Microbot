@@ -27,52 +27,56 @@
 
 package net.runelite.client.plugins.microbot.questhelper.requirements.player;
 
-
-import net.runelite.api.Client;
-import net.runelite.api.Player;
 import net.runelite.client.plugins.microbot.questhelper.requirements.AbstractRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.Operation;
+import net.runelite.api.Client;
+import net.runelite.api.Player;
 
 import javax.annotation.Nonnull;
 
 /**
  * Checks if the player's combat level meets the required level
  */
-public class CombatLevelRequirement extends AbstractRequirement {
-    private final int requiredLevel;
-    private final Operation operation;
+public class CombatLevelRequirement extends AbstractRequirement
+{
+	private final int requiredLevel;
+	private final Operation operation;
 
-    /**
-     * Checks if the player's combat level meets the required level using the given
-     * {@link Operation}
-     *
-     * @param operation     the {@link Operation} to use
-     * @param requiredLevel the required combat level
-     */
-    public CombatLevelRequirement(Operation operation, int requiredLevel) {
-        this.operation = operation;
-        this.requiredLevel = requiredLevel;
-        shouldCountForFilter = true;
-    }
+	/**
+	 * Checks if the player's combat level meets the required level using the given
+	 * {@link Operation}
+	 *
+	 * @param operation the {@link Operation} to use
+	 * @param requiredLevel the required combat level
+	 */
+	public CombatLevelRequirement(Operation operation, int requiredLevel)
+	{
+		this.operation = operation;
+		this.requiredLevel = requiredLevel;
+		shouldCountForFilter = true;
+	}
 
-    /**
-     * Check if the player has the required combat level using {@link Operation#GREATER_EQUAL}
-     *
-     * @param requiredLevel the required combat level
-     */
-    public CombatLevelRequirement(int requiredLevel) {
-        this(Operation.GREATER_EQUAL, requiredLevel);
-    }
+	/**
+	 * Check if the player has the required combat level using {@link Operation#GREATER_EQUAL}
+	 *
+	 * @param requiredLevel the required combat level
+	 */
+	public CombatLevelRequirement(int requiredLevel)
+	{
+		this(Operation.GREATER_EQUAL, requiredLevel);
+	}
 
-    @Override
-    public boolean check(Client client) {
-        Player player = client.getLocalPlayer();
-        return player != null && operation.check(player.getCombatLevel(), requiredLevel);
-    }
+	@Override
+	public boolean check(Client client)
+	{
+		Player player = client.getLocalPlayer();
+		return player != null && operation.check(player.getCombatLevel(), requiredLevel);
+	}
 
-    @Nonnull
-    @Override
-    public String getDisplayText() {
-        return "Combat Level " + requiredLevel;
-    }
+	@Nonnull
+	@Override
+	public String getDisplayText()
+	{
+		return "Combat Level " + requiredLevel;
+	}
 }

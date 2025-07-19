@@ -24,7 +24,8 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.rewards;
 
-public enum RewardType {
+public enum RewardType
+{
     EXPERIENCE,
     UNLOCK,
     QUEST_POINT,

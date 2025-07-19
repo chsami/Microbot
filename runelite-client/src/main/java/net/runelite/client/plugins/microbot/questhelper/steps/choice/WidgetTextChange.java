@@ -24,44 +24,53 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.steps.choice;
 
-
+import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
 import net.runelite.api.Client;
 import net.runelite.api.widgets.Widget;
-import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
 
-public class WidgetTextChange extends WidgetChoiceStep {
-    private final String textChange;
+public class WidgetTextChange extends WidgetChoiceStep
+{
+	private final String textChange;
 
-    public WidgetTextChange(QuestHelperConfig config, String choice, int groupId, int childId, String textChange) {
-        super(config, choice, groupId, childId);
-        this.textChange = textChange;
-    }
+	public WidgetTextChange(QuestHelperConfig config, String choice, int groupId, int childId, String textChange)
+	{
+		super(config, choice, groupId, childId);
+		this.textChange = textChange;
+	}
 
-    @Override
-    public void highlightChoice(Client client) {
-        Widget exclusionDialogChoice = client.getWidget(excludedGroupId, excludedChildId);
-        if (exclusionDialogChoice != null) {
-            Widget[] exclusionChoices = exclusionDialogChoice.getChildren();
-            if (exclusionChoices != null) {
-                for (Widget currentExclusionChoice : exclusionChoices) {
-                    if (excludedStrings.contains(currentExclusionChoice.getText())) {
-                        return;
-                    }
-                }
-            }
-        }
-        Widget dialogChoice = client.getWidget(groupId, childId);
-        if (dialogChoice != null) {
-            highlightText(dialogChoice, -1);
-        }
-    }
+	@Override
+	public void highlightChoice(Client client)
+	{
+		Widget exclusionDialogChoice = client.getWidget(excludedGroupId, excludedChildId);
+		if (exclusionDialogChoice != null)
+		{
+			Widget[] exclusionChoices = exclusionDialogChoice.getChildren();
+			if (exclusionChoices != null)
+			{
+				for (Widget currentExclusionChoice : exclusionChoices)
+				{
+					if (excludedStrings.contains(currentExclusionChoice.getText()))
+					{
+						return;
+					}
+				}
+			}
+		}
+		Widget dialogChoice = client.getWidget(groupId, childId);
+		if (dialogChoice != null)
+		{
+			highlightText(dialogChoice, -1);
+		}
+	}
 
-    @Override
-    protected void highlightText(Widget text, int option) {
-        if (!config.showTextHighlight()) {
-            return;
-        }
+	@Override
+	protected void highlightText(Widget text, int option)
+	{
+		if (!config.showTextHighlight())
+		{
+			return;
+		}
 
-        text.setText(textChange);
-    }
+		text.setText(textChange);
+	}
 }

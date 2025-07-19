@@ -26,27 +26,29 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements.npc;
 
-
-import net.runelite.api.Client;
 import net.runelite.client.plugins.microbot.questhelper.requirements.SimpleRequirement;
+import net.runelite.api.Client;
 
 import java.util.List;
 
-public class NpcInteractingWithNpcRequirement extends SimpleRequirement {
-    final Integer npcID;
-    final List<String> npcNames;
+public class NpcInteractingWithNpcRequirement extends SimpleRequirement
+{
+	final Integer npcID;
+	final List<String> npcNames;
 
-    public NpcInteractingWithNpcRequirement(Integer npcID, String... npcNames) {
-        assert (npcID != null);
-        this.npcID = npcID;
-        this.npcNames = List.of(npcNames);
-    }
+	public NpcInteractingWithNpcRequirement(Integer npcID, String... npcNames)
+	{
+		assert(npcID != null);
+		this.npcID = npcID;
+		this.npcNames = List.of(npcNames);
+	}
 
-    @Override
-    public boolean check(Client client) {
-        return client.getNpcs().stream()
-                .filter(npc -> npc.getInteracting() != null)
-                .filter(npc -> npcNames.contains(npc.getInteracting().getName()))
-                .anyMatch(npc -> npc.getInteracting().getInteracting() == npc);
-    }
+	@Override
+	public boolean check(Client client)
+	{
+		return client.getTopLevelWorldView().npcs().stream()
+			.filter(npc -> npc.getInteracting() != null)
+			.filter(npc -> npcNames.contains(npc.getInteracting().getName()))
+			.anyMatch(npc -> npc.getInteracting().getInteracting() == npc);
+	}
 }

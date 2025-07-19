@@ -32,44 +32,53 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 // This is used where you need multiple chatMessageRequirements to checked together, where one alone isn't enough context
-public class MultiChatMessageRequirement extends ChatMessageRequirement {
-    Map<ChatMessageRequirement, Integer> requiredMessages;
+public class MultiChatMessageRequirement extends ChatMessageRequirement
+{
+	Map<ChatMessageRequirement, Integer> requiredMessages;
 
-    int maxTicksDiff = 2;
+	int maxTicksDiff = 2;
 
-    public MultiChatMessageRequirement(ChatMessageRequirement... requiredMessages) {
-        this.requiredMessages = new HashMap<>();
-        for (ChatMessageRequirement requirement : requiredMessages) {
-            this.requiredMessages.put(requirement, -1);
-        }
-    }
+	public MultiChatMessageRequirement(ChatMessageRequirement... requiredMessages)
+	{
+		this.requiredMessages = new HashMap<>();
+		for (ChatMessageRequirement requirement : requiredMessages)
+		{
+			this.requiredMessages.put(requirement, -1);
+		}
+	}
 
-    // TODO: Currently this wouldn't allow for re-checking should an invalidateCondition occur for a sub-condition
-    @Override
-    public boolean validateCondition(Client client, ChatMessage chatMessage) {
-        if (hasReceivedChatMessage) return true;
-        AtomicInteger minTime = new AtomicInteger(Integer.MAX_VALUE);
-        AtomicInteger maxTime = new AtomicInteger(Integer.MIN_VALUE);
-        requiredMessages.forEach((requirement, lastSeenTime) -> {
-            if (requirement.validateCondition(client, chatMessage)) {
-                requiredMessages.put(requirement, chatMessage.getTimestamp());
-            }
-            if (minTime.get() > requiredMessages.get(requirement)) {
-                minTime.set(requiredMessages.get(requirement));
-            }
+	// TODO: Currently this wouldn't allow for re-checking should an invalidateCondition occur for a sub-condition
+	@Override
+	public boolean validateCondition(Client client, ChatMessage chatMessage)
+	{
+		if (hasReceivedChatMessage) return true;
+		AtomicInteger minTime = new AtomicInteger(Integer.MAX_VALUE);
+		AtomicInteger maxTime = new AtomicInteger(Integer.MIN_VALUE);
+		requiredMessages.forEach((requirement, lastSeenTime) -> {
+			if (requirement.validateCondition(client, chatMessage))
+			{
+				requiredMessages.put(requirement, chatMessage.getTimestamp());
+			}
+			if (minTime.get() > requiredMessages.get(requirement))
+			{
+				minTime.set(requiredMessages.get(requirement));
+			}
 
-            if (maxTime.get() < requiredMessages.get(requirement)) {
-                maxTime.set(requiredMessages.get(requirement));
-            }
-        });
-        if (minTime.get() != -1 && maxTime.get() != -1 && maxTime.get() - minTime.get() < maxTicksDiff * 600) {
-            hasReceivedChatMessage = true;
-        }
-        return hasReceivedChatMessage;
-    }
+			if (maxTime.get() < requiredMessages.get(requirement))
+			{
+				maxTime.set(requiredMessages.get(requirement));
+			}
+		});
+		if (minTime.get() != -1 && maxTime.get() != -1 && maxTime.get() - minTime.get() < maxTicksDiff * 600)
+		{
+			hasReceivedChatMessage = true;
+		}
+		return hasReceivedChatMessage;
+	}
 
-    @Override
-    public boolean check(Client client) {
-        return hasReceivedChatMessage;
-    }
+	@Override
+	public boolean check(Client client)
+	{
+		return hasReceivedChatMessage;
+	}
 }

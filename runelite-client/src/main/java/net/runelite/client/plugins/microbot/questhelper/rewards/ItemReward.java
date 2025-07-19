@@ -26,41 +26,48 @@ package net.runelite.client.plugins.microbot.questhelper.rewards;
 
 import javax.annotation.Nonnull;
 
-public class ItemReward implements Reward {
-    private final String name;
-    private final int itemID;
-    private final int quantity;
+public class ItemReward implements Reward
+{
+	private final String name;
+	private final int itemID;
+	private final int quantity;
 
-    public ItemReward(String name, int itemID, int quantity) {
-        this.name = name;
-        this.itemID = itemID;
-        this.quantity = quantity;
-    }
+	public ItemReward(String name, int itemID, int quantity)
+	{
+		this.name = name;
+		this.itemID = itemID;
+		this.quantity = quantity;
+	}
 
-    public ItemReward(String name, int itemID) {
-        this.name = name;
-        this.itemID = itemID;
-        this.quantity = 1;
-    }
+	public ItemReward(String name, int itemID)
+	{
+		this.name = name;
+		this.itemID = itemID;
+		this.quantity = 1;
+	}
 
-    public String getName() {
-        return name;
-    }
+	public String getName()
+	{
+		return name;
+	}
 
-    @Nonnull
-    @Override
-    public RewardType rewardType() {
-        return RewardType.ITEM;
-    }
+	@Nonnull
+	@Override
+	public RewardType rewardType()
+	{
+		return RewardType.ITEM;
+	}
 
-    @Nonnull
-    @Override
-    public String getDisplayText() {
-        String text = "";
-        if (quantity > 1) {
-            text = quantity + " x ";
-        }
-        text += getName();
-        return text;
-    }
+	@Nonnull
+	@Override
+	public String getDisplayText()
+	{
+		String text = "";
+		if (quantity > 1)
+		{
+			text = quantity + " x ";
+		}
+		text += getName();
+		return text;
+	}
 }

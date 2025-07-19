@@ -24,147 +24,156 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.recipefordisaster;
 
-
-import net.runelite.api.ItemID;
-import net.runelite.api.NpcID;
-import net.runelite.api.ObjectID;
-import net.runelite.api.Varbits;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.GameTick;
-import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.microbot.questhelper.collections.ItemCollections;
-import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
-import net.runelite.client.plugins.microbot.questhelper.requirements.zone.ZoneRequirement;
-import net.runelite.client.plugins.microbot.questhelper.steps.*;
 import net.runelite.client.plugins.microbot.questhelper.collections.NpcCollections;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.FollowerItemRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
-
+import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
+import net.runelite.client.plugins.microbot.questhelper.requirements.zone.ZoneRequirement;
+import net.runelite.client.plugins.microbot.questhelper.steps.*;
+import net.runelite.api.Varbits;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.gameval.ObjectID;
+import net.runelite.client.eventbus.Subscribe;
 
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-public class MakeEvilStew extends DetailedOwnerStep {
+public class MakeEvilStew extends DetailedOwnerStep
+{
 
-    DetailedQuestStep catchRats, enterBasement, useStewOnEvilDave, restart;
+	DetailedQuestStep catchRats, enterBasement, useStewOnEvilDave, restart;
 
-    Requirement inEvilDaveRoom;
+	Requirement inEvilDaveRoom;
 
-    Zone evilDaveRoom;
+	Zone evilDaveRoom;
 
-    ItemRequirement redSpice, orangeSpice, brownSpice, yellowSpice, evilStewHighlighted, evilStew, stew;
+	ItemRequirement redSpice, orangeSpice, brownSpice, yellowSpice, evilStewHighlighted, evilStew, stew;
 
-    Requirement cat;
+	Requirement cat;
 
-    public MakeEvilStew(QuestHelper questHelper) {
-        super(questHelper);
-    }
+	public MakeEvilStew(QuestHelper questHelper)
+	{
+		super(questHelper);
+	}
 
-    @Subscribe
-    public void onGameTick(GameTick event) {
-        updateSteps();
-    }
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		updateSteps();
+	}
 
-    @Override
-    protected void updateSteps() {
-        int redNeeded = client.getVarbitValue(1883);
-        int yellowNeeded = client.getVarbitValue(1884);
-        int brownNeeded = client.getVarbitValue(1885);
-        int orangeNeeded = client.getVarbitValue(1886);
+	@Override
+	protected void updateSteps()
+	{
+		int redNeeded = client.getVarbitValue(1883);
+		int yellowNeeded = client.getVarbitValue(1884);
+		int brownNeeded = client.getVarbitValue(1885);
+		int orangeNeeded = client.getVarbitValue(1886);
 
-        int redInStew = client.getVarbitValue(Varbits.SPICY_STEW_RED_SPICES);
-        int yellowInStew = client.getVarbitValue(Varbits.SPICY_STEW_YELLOW_SPICES);
-        int brownInStew = client.getVarbitValue(Varbits.SPICY_STEW_BROWN_SPICES);
-        int orangeInStew = client.getVarbitValue(Varbits.SPICY_STEW_ORANGE_SPICES);
+		int redInStew = client.getVarbitValue(Varbits.SPICY_STEW_RED_SPICES);
+		int yellowInStew = client.getVarbitValue(Varbits.SPICY_STEW_YELLOW_SPICES);
+		int brownInStew = client.getVarbitValue(Varbits.SPICY_STEW_BROWN_SPICES);
+		int orangeInStew = client.getVarbitValue(Varbits.SPICY_STEW_ORANGE_SPICES);
 
-        int numRedStillNeeded = redNeeded - redInStew;
-        int numOrangeStillNeeded = orangeNeeded - orangeInStew;
-        int numBrownStillNeeded = brownNeeded - brownInStew;
-        int numYellowStillNeeded = yellowNeeded - yellowInStew;
+		int numRedStillNeeded = redNeeded - redInStew;
+		int numOrangeStillNeeded = orangeNeeded - orangeInStew;
+		int numBrownStillNeeded = brownNeeded - brownInStew;
+		int numYellowStillNeeded = yellowNeeded - yellowInStew;
 
-        if (!inEvilDaveRoom.check(client)) {
-            startUpStep(enterBasement);
-        }
+		if (!inEvilDaveRoom.check(client))
+		{
+			startUpStep(enterBasement);
+		}
 
-        catchRats.setRequirements(Collections.singletonList(cat));
-        catchRats.setText("Have your cat catch Hell-Rats for spices, and add them " +
-                "to your stew. You will need to add a random number between 1-3 of each spice (red/orange/yellow/brown). " +
-                "Try adding 1 of a spice to a stew, then using the stew on Evil Dave to see if it's right. If not, try " +
-                "with 2 and then 3. " +
-                "Rinse and repeat until you know the right quantity of each spice, then use the perfect stew combination " +
-                "on Evil Dave.");
+		catchRats.setRequirements(Collections.singletonList(cat));
+		catchRats.setText("Have your cat catch Hell-Rats for spices, and add them " +
+			"to your stew. You will need to add a random number between 1-3 of each spice (red/orange/yellow/brown). " +
+			"Try adding 1 of a spice to a stew, then using the stew on Evil Dave to see if it's right. If not, try " +
+			"with 2 and then 3. " +
+			"Rinse and repeat until you know the right quantity of each spice, then use the perfect stew combination " +
+			"on Evil Dave.");
 
-        startUpStep(catchRats);
+		startUpStep(catchRats);
 
-    }
+	}
 
-    @Override
-    protected void setupSteps() {
-        setupRequirements();
-        setupZones();
-        setupConditions();
+	@Override
+	protected void setupSteps()
+	{
+		setupRequirements();
+		setupZones();
+		setupConditions();
 
-        catchRats = new DetailedQuestStep(getQuestHelper(), "Have your cat catch Hell-Rats for spices, and add them " +
-                "to your stew to match the required quantities.");
+		catchRats = new DetailedQuestStep(getQuestHelper(), "Have your cat catch Hell-Rats for spices, and add them " +
+			"to your stew to match the required quantities.");
 
-        restart = new DetailedQuestStep(getQuestHelper(), "You've added too much of a spice. Eat your spicy stew and " +
-                "start again.", evilStewHighlighted);
+		restart = new DetailedQuestStep(getQuestHelper(), "You've added too much of a spice. Eat your spicy stew and " +
+			"start again.", evilStewHighlighted);
 
-        enterBasement = new ObjectStep(getQuestHelper(), ObjectID.TRAPDOOR_12267, new WorldPoint(3077, 3493, 0),
-                "Go back down to Evil Dave.");
-        ((ObjectStep) enterBasement).addAlternateObjects(ObjectID.OPEN_TRAPDOOR);
+		enterBasement = new ObjectStep(getQuestHelper(), ObjectID._100_DAVE_CELLER_TRAPDOOR_CLOSED, new WorldPoint(3077, 3493, 0),
+			"Go back down to Evil Dave.");
+		((ObjectStep) enterBasement).addAlternateObjects(ObjectID._100_DAVE_CELLER_TRAPDOOR_OPEN);
 
-        useStewOnEvilDave = new NpcStep(getQuestHelper(), NpcID.EVIL_DAVE_4806, new WorldPoint(3080, 9889, 0),
-                "Use the spicy stew on Evil Dave.", evilStewHighlighted);
-    }
+		useStewOnEvilDave = new NpcStep(getQuestHelper(), NpcID.HUNDRED_EVIL_DAVE, new WorldPoint(3080, 9889, 0),
+			"Use the spicy stew on Evil Dave.", evilStewHighlighted);
+	}
 
-    protected void setupRequirements() {
-        redSpice = new ItemRequirement("Red spice", ItemID.RED_SPICE_1);
-        redSpice.addAlternates(ItemID.RED_SPICE_2, ItemID.RED_SPICE_3, ItemID.RED_SPICE_4);
-        redSpice.setHighlightInInventory(true);
+	protected void setupRequirements()
+	{
+		redSpice = new ItemRequirement("Red spice", ItemID.HUNDRED_DAVE_SPICE_RED_1);
+		redSpice.addAlternates(ItemID.HUNDRED_DAVE_SPICE_RED_2, ItemID.HUNDRED_DAVE_SPICE_RED_3, ItemID.HUNDRED_DAVE_SPICE_RED_4);
+		redSpice.setHighlightInInventory(true);
 
-        orangeSpice = new ItemRequirement("Orange spice", ItemID.ORANGE_SPICE_1);
-        orangeSpice.addAlternates(ItemID.ORANGE_SPICE_2, ItemID.ORANGE_SPICE_3, ItemID.ORANGE_SPICE_4);
-        orangeSpice.setHighlightInInventory(true);
+		orangeSpice = new ItemRequirement("Orange spice", ItemID.HUNDRED_DAVE_SPICE_ORANGE_1);
+		orangeSpice.addAlternates(ItemID.HUNDRED_DAVE_SPICE_ORANGE_2, ItemID.HUNDRED_DAVE_SPICE_ORANGE_3, ItemID.HUNDRED_DAVE_SPICE_ORANGE_4);
+		orangeSpice.setHighlightInInventory(true);
 
-        yellowSpice = new ItemRequirement("Yellow spice", ItemID.YELLOW_SPICE_1);
-        yellowSpice.addAlternates(ItemID.YELLOW_SPICE_2, ItemID.YELLOW_SPICE_3, ItemID.YELLOW_SPICE_4);
-        yellowSpice.setHighlightInInventory(true);
+		yellowSpice = new ItemRequirement("Yellow spice", ItemID.HUNDRED_DAVE_SPICE_YELLOW_1);
+		yellowSpice.addAlternates(ItemID.HUNDRED_DAVE_SPICE_YELLOW_2, ItemID.HUNDRED_DAVE_SPICE_YELLOW_3, ItemID.HUNDRED_DAVE_SPICE_YELLOW_4);
+		yellowSpice.setHighlightInInventory(true);
 
-        brownSpice = new ItemRequirement("Brown spice", ItemID.BROWN_SPICE_1);
-        brownSpice.addAlternates(ItemID.BROWN_SPICE_2, ItemID.BROWN_SPICE_3, ItemID.BROWN_SPICE_4);
-        brownSpice.setHighlightInInventory(true);
+		brownSpice = new ItemRequirement("Brown spice", ItemID.HUNDRED_DAVE_SPICE_BROWN_1);
+		brownSpice.addAlternates(ItemID.HUNDRED_DAVE_SPICE_BROWN_2, ItemID.HUNDRED_DAVE_SPICE_BROWN_3, ItemID.HUNDRED_DAVE_SPICE_BROWN_4);
+		brownSpice.setHighlightInInventory(true);
 
-        evilStew = new ItemRequirement("Spicy stew", ItemID.SPICY_STEW);
-        evilStewHighlighted = new ItemRequirement("Spicy stew", ItemID.SPICY_STEW);
-        evilStewHighlighted.setHighlightInInventory(true);
+		evilStew = new ItemRequirement("Spicy stew", ItemID.HUNDRED_DAVE_STEW);
+		evilStewHighlighted = new ItemRequirement("Spicy stew", ItemID.HUNDRED_DAVE_STEW);
+		evilStewHighlighted.setHighlightInInventory(true);
 
-        stew = new ItemRequirement("Stew", ItemID.STEW);
-        stew.setHighlightInInventory(true);
+		stew = new ItemRequirement("Stew", ItemID.STEW);
+		stew.setHighlightInInventory(true);
 
-        cat = new FollowerItemRequirement("A non-overgrown cat for catching rats",
-                ItemCollections.HUNTING_CATS,
-                NpcCollections.getHuntingCats());
-    }
+		cat = new FollowerItemRequirement("A non-overgrown cat for catching rats",
+			ItemCollections.HUNTING_CATS,
+			NpcCollections.getHuntingCats());
+	}
 
-    public void setupZones() {
-        evilDaveRoom = new Zone(new WorldPoint(3068, 9874, 0), new WorldPoint(3086, 9904, 0));
-    }
+	public void setupZones()
+	{
+		evilDaveRoom = new Zone(new WorldPoint(3068, 9874, 0), new WorldPoint(3086, 9904, 0));
+	}
 
-    public void setupConditions() {
-        inEvilDaveRoom = new ZoneRequirement(evilDaveRoom);
-    }
+	public void setupConditions()
+	{
+		inEvilDaveRoom = new ZoneRequirement(evilDaveRoom);
+	}
 
-    @Override
-    public Collection<QuestStep> getSteps() {
-        return Arrays.asList(catchRats, enterBasement, useStewOnEvilDave);
-    }
+	@Override
+	public Collection<QuestStep> getSteps()
+	{
+		return Arrays.asList(catchRats, enterBasement, useStewOnEvilDave);
+	}
 
-    public List<QuestStep> getDisplaySteps() {
-        return Arrays.asList(catchRats, useStewOnEvilDave);
-    }
+	public List<QuestStep> getDisplaySteps()
+	{
+		return Arrays.asList(catchRats, useStewOnEvilDave);
+	}
 }

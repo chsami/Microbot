@@ -35,42 +35,46 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 
 @Singleton
-public class SkillFilterPanel extends JPanel {
-    private final SkillIconManager iconManager;
-    private final SkillTabGroup tabGroup;
+public class SkillFilterPanel extends JPanel
+{
+	private final SkillIconManager iconManager;
+	private final SkillTabGroup tabGroup;
 
-    private final ConfigManager configManager;
+	private final ConfigManager configManager;
 
-    public SkillFilterPanel(SkillIconManager iconManager, ConfigManager configManager) {
-        super();
+	public SkillFilterPanel(SkillIconManager iconManager, ConfigManager configManager)
+	{
+		super();
 
-        this.iconManager = iconManager;
-        this.configManager = configManager;
+		this.iconManager = iconManager;
+		this.configManager = configManager;
 
-        setBorder(new EmptyBorder(10, 10, 10, 10));
-        setLayout(new GridBagLayout());
+		setBorder(new EmptyBorder(10, 10, 10, 10));
+		setLayout(new GridBagLayout());
 
-        GridBagConstraints c = new GridBagConstraints();
-        c.fill = GridBagConstraints.HORIZONTAL;
-        c.weightx = 1;
-        c.gridx = 0;
-        c.gridy = 0;
+		GridBagConstraints c = new GridBagConstraints();
+		c.fill = GridBagConstraints.HORIZONTAL;
+		c.weightx = 1;
+		c.gridx = 0;
+		c.gridy = 0;
 
-        tabGroup = new SkillTabGroup();
-        tabGroup.setLayout(new GridLayout(0, 6, 7, 7));
+		tabGroup = new SkillTabGroup();
+		tabGroup.setLayout(new GridLayout(0, 6, 7, 7));
 
-        addSkillIcons();
+		addSkillIcons();
 
-        add(tabGroup, c);
-        c.gridy++;
-    }
+		add(tabGroup, c);
+		c.gridy++;
+	}
 
-    private void addSkillIcons() {
-        for (Skill skill : Skill.values()) {
-            ImageIcon icon = new ImageIcon(iconManager.getSkillImage(skill, true));
-            SkillIconButton tab = new SkillIconButton(icon, configManager, skill.getName());
+	private void addSkillIcons()
+	{
+		for (Skill skill : Skill.values())
+		{
+			ImageIcon icon = new ImageIcon(iconManager.getSkillImage(skill, true));
+			SkillIconButton tab = new SkillIconButton(icon, configManager, skill.getName());
 
-            tabGroup.addTab(tab);
-        }
-    }
+			tabGroup.addTab(tab);
+		}
+	}
 }

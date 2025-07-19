@@ -29,25 +29,30 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 @AllArgsConstructor
-public enum EnchantedKeyTemperatureChange {
-    WARMER("and warmer than"),
-    SAME("and the same temperature as"),
-    COLDER("but colder than");
+public enum EnchantedKeyTemperatureChange
+{
+	WARMER("and warmer than"),
+	SAME("and the same temperature as"),
+	COLDER("but colder than");
 
-    @Getter
-    private final String text;
+	@Getter
+	private final String text;
 
-    public static EnchantedKeyTemperatureChange of(final String message) {
-        if (!message.endsWith(" last time")) {
-            return null;
-        }
+	public static EnchantedKeyTemperatureChange of(final String message)
+	{
+		if (!message.endsWith(" last time"))
+		{
+			return null;
+		}
 
-        for (final EnchantedKeyTemperatureChange change : values()) {
-            if (message.contains(change.text)) {
-                return change;
-            }
-        }
+		for (final EnchantedKeyTemperatureChange change : values())
+		{
+			if (message.contains(change.text))
+			{
+				return change;
+			}
+		}
 
-        return null;
-    }
+		return null;
+	}
 }

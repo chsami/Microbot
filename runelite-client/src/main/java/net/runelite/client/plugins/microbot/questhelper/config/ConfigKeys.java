@@ -26,44 +26,46 @@ package net.runelite.client.plugins.microbot.questhelper.config;
 
 import lombok.Getter;
 
-public enum ConfigKeys {
-    // Barbarian Training Enums
-    BARBARIAN_TRAINING_STARTED_FISHING("barbariantrainingstartedfishing"),
-    BARBARIAN_TRAINING_STARTED_HARPOON("barbariantrainingstartedharpoon"),
-    BARBARIAN_TRAINING_STARTED_SEED_PLANTING("barbariantrainingstartedseedplanting"),
-    BARBARIAN_TRAINING_STARTED_POT_SMASHING("barbariantrainingstartedpotsmashing"),
-    BARBARIAN_TRAINING_STARTED_FIREMAKING("barbariantrainingstartedfiremaking"),
-    BARBARIAN_TRAINING_STARTED_PYREMAKING("barbariantrainingstartedpyremaking"),
-    BARBARIAN_TRAINING_STARTED_HERBLORE("barbariantrainingstartedherblore"),
-    BARBARIAN_TRAINING_STARTED_SPEAR("barbariantrainingstartedspear"),
-    BARBARIAN_TRAINING_STARTED_HASTA("barbariantrainingstartedhasta"),
+public enum ConfigKeys
+{
+	// Barbarian Training Enums
+	BARBARIAN_TRAINING_STARTED_FISHING("barbariantrainingstartedfishing"),
+	BARBARIAN_TRAINING_STARTED_HARPOON("barbariantrainingstartedharpoon"),
+	BARBARIAN_TRAINING_STARTED_SEED_PLANTING("barbariantrainingstartedseedplanting"),
+	BARBARIAN_TRAINING_STARTED_POT_SMASHING("barbariantrainingstartedpotsmashing"),
+	BARBARIAN_TRAINING_STARTED_FIREMAKING("barbariantrainingstartedfiremaking"),
+	BARBARIAN_TRAINING_STARTED_PYREMAKING("barbariantrainingstartedpyremaking"),
+	BARBARIAN_TRAINING_STARTED_HERBLORE("barbariantrainingstartedherblore"),
+	BARBARIAN_TRAINING_STARTED_SPEAR("barbariantrainingstartedspear"),
+	BARBARIAN_TRAINING_STARTED_HASTA("barbariantrainingstartedhasta"),
 
-    // Finished Barbarian Training Enums
-    BARBARIAN_TRAINING_FINISHED_FISHING("barbariantrainingfinishedfishing"),
-    BARBARIAN_TRAINING_FINISHED_HARPOON("barbariantrainingfinishedharpoon"),
-    BARBARIAN_TRAINING_FINISHED_SEED_PLANTING("barbariantrainingfinishedseedplanting"),
-    BARBARIAN_TRAINING_FINISHED_POT_SMASHING("barbariantrainingfinishedpotsmashing"),
-    BARBARIAN_TRAINING_FINISHED_FIREMAKING("barbariantrainingfinishedfiremaking"),
-    BARBARIAN_TRAINING_FINISHED_PYREMAKING("barbariantrainingfinishedpyremaking"),
-    BARBARIAN_TRAINING_FINISHED_SPEAR("barbariantrainingfinishedspear"),
-    BARBARIAN_TRAINING_FINISHED_HASTA("barbariantrainingfinishedhasta"),
-    BARBARIAN_TRAINING_FINISHED_HERBLORE("barbariantrainingfinishedherblore"),
+	// Finished Barbarian Training Enums
+	BARBARIAN_TRAINING_FINISHED_FISHING("barbariantrainingfinishedfishing"),
+	BARBARIAN_TRAINING_FINISHED_HARPOON("barbariantrainingfinishedharpoon"),
+	BARBARIAN_TRAINING_FINISHED_SEED_PLANTING("barbariantrainingfinishedseedplanting"),
+	BARBARIAN_TRAINING_FINISHED_POT_SMASHING("barbariantrainingfinishedpotsmashing"),
+	BARBARIAN_TRAINING_FINISHED_FIREMAKING("barbariantrainingfinishedfiremaking"),
+	BARBARIAN_TRAINING_FINISHED_PYREMAKING("barbariantrainingfinishedpyremaking"),
+	BARBARIAN_TRAINING_FINISHED_SPEAR("barbariantrainingfinishedspear"),
+	BARBARIAN_TRAINING_FINISHED_HASTA("barbariantrainingfinishedhasta"),
+	BARBARIAN_TRAINING_FINISHED_HERBLORE("barbariantrainingfinishedherblore"),
 
-    // Mid-conditions
-    BARBARIAN_TRAINING_PLANTED_SEED("barbariantrainingplantedseed"),
-    BARBARIAN_TRAINING_SMASHED_POT("barbariantrainingsmashedpot"),
-    BARBARIAN_TRAINING_BOW_FIRE("barbariantrainingbowfire"),
-    BARBARIAN_TRAINING_PYRE_MADE("barbariantrainingpyremade"),
-    BARBARIAN_TRAINING_BARBFISHED("barbariantrainingbarbfished"),
-    BARBARIAN_TRAINING_HARPOONED_FISH("barbariantrainingharpoonedfish"),
-    BARBARIAN_TRAINING_MADE_POTION("barbariantrainingmadepotion"),
-    BARBARIAN_TRAINING_MADE_SPEAR("barbariantrainingmadespear"),
-    BARBARIAN_TRAINING_MADE_HASTA("barbariantrainingmadehasta");
+	// Mid-conditions
+	BARBARIAN_TRAINING_PLANTED_SEED("barbariantrainingplantedseed"),
+	BARBARIAN_TRAINING_SMASHED_POT("barbariantrainingsmashedpot"),
+	BARBARIAN_TRAINING_BOW_FIRE("barbariantrainingbowfire"),
+	BARBARIAN_TRAINING_PYRE_MADE("barbariantrainingpyremade"),
+	BARBARIAN_TRAINING_BARBFISHED("barbariantrainingbarbfished"),
+	BARBARIAN_TRAINING_HARPOONED_FISH("barbariantrainingharpoonedfish"),
+	BARBARIAN_TRAINING_MADE_POTION("barbariantrainingmadepotion"),
+	BARBARIAN_TRAINING_MADE_SPEAR("barbariantrainingmadespear"),
+	BARBARIAN_TRAINING_MADE_HASTA("barbariantrainingmadehasta");
 
-    @Getter
-    final String key;
+	@Getter
+	final String key;
 
-    ConfigKeys(String key) {
-        this.key = key;
-    }
+	ConfigKeys(String key)
+	{
+		this.key = key;
+	}
 }

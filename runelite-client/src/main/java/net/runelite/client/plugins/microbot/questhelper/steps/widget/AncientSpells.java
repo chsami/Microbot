@@ -25,42 +25,45 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.steps.widget;
 
-public enum AncientSpells implements Spell {
-    EDGEVILLE_HOME_TELEPORT("Edgeville Home Teleport"),
-    SMOKE_RUSH("Smoke Rush"),
-    SHADOW_RUSH("Shadow Rush"),
-    PADDEWWA_TELEPORT("Paddewwa Teleport"),
-    BLOOD_RUSH("Blood Rush"),
-    ICE_RUSH("Ice Rush"),
-    SENNTISTEN_TELEPORT("Senntisten Teleport"),
-    SMOKE_BURST("Smoke Burst"),
-    SHADOW_BURST("Shadow Burst"),
-    KHARYRLL_TELEPORT("Kharyrll Teleport"),
-    BLOOD_BURST("Blood Burst"),
-    ICE_BURST("Ice Burst"),
-    LASSAR_TELEPORT("Lassar Teleport"),
-    SMOKE_BLITZ("Smoke Blitz"),
-    SHADOW_BLITZ("Shadow Blitz"),
-    DAREEYAK_TELEPORT("Dareeyak Teleport"),
-    BLOOD_BLITZ("Blood Blitz"),
-    ICE_BLITZ("Ice Blitz"),
-    CARRALLANGER_TELEPORT("Carrallanger Teleport"),
-    TELEPORT_TO_TARGET("Teleport to Target"),
-    SMOKE_BARRAGE("Smoke Barrage"),
-    SHADOW_BARRAGE("Shadow Barrage"),
-    ANNAKARL_TELEPORT("Annakarl Teleport"),
-    BLOOD_BARRAGE("Blood Barrage"),
-    ICE_BARRAGE("Ice Barrage"),
-    GHORROCK_TELEPORT("Ghorrock Teleport");
+public enum AncientSpells implements Spell
+{
+	EDGEVILLE_HOME_TELEPORT("Edgeville Home Teleport"),
+	SMOKE_RUSH("Smoke Rush"),
+	SHADOW_RUSH("Shadow Rush"),
+	PADDEWWA_TELEPORT("Paddewwa Teleport"),
+	BLOOD_RUSH("Blood Rush"),
+	ICE_RUSH("Ice Rush"),
+	SENNTISTEN_TELEPORT("Senntisten Teleport"),
+	SMOKE_BURST("Smoke Burst"),
+	SHADOW_BURST("Shadow Burst"),
+	KHARYRLL_TELEPORT("Kharyrll Teleport"),
+	BLOOD_BURST("Blood Burst"),
+	ICE_BURST("Ice Burst"),
+	LASSAR_TELEPORT("Lassar Teleport"),
+	SMOKE_BLITZ("Smoke Blitz"),
+	SHADOW_BLITZ("Shadow Blitz"),
+	DAREEYAK_TELEPORT("Dareeyak Teleport"),
+	BLOOD_BLITZ("Blood Blitz"),
+	ICE_BLITZ("Ice Blitz"),
+	CARRALLANGER_TELEPORT("Carrallanger Teleport"),
+	TELEPORT_TO_TARGET("Teleport to Target"),
+	SMOKE_BARRAGE("Smoke Barrage"),
+	SHADOW_BARRAGE("Shadow Barrage"),
+	ANNAKARL_TELEPORT("Annakarl Teleport"),
+	BLOOD_BARRAGE("Blood Barrage"),
+	ICE_BARRAGE("Ice Barrage"),
+	GHORROCK_TELEPORT("Ghorrock Teleport");
 
-    private final String spellName;
+	private final String spellName;
 
-    AncientSpells(String spellName) {
-        this.spellName = spellName;
-    }
+	AncientSpells(String spellName)
+	{
+		this.spellName = spellName;
+	}
 
-    @Override
-    public String getSpellName() {
-        return spellName;
-    }
+	@Override
+	public String getSpellName()
+	{
+		return spellName;
+	}
 }

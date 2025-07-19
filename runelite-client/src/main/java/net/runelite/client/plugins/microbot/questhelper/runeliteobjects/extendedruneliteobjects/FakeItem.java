@@ -24,43 +24,46 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.runeliteobjects.extendedruneliteobjects;
 
-
+import net.runelite.client.plugins.microbot.questhelper.runeliteobjects.RuneliteConfigSetter;
 import net.runelite.api.AnimationID;
 import net.runelite.api.Client;
 import net.runelite.api.Player;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.callback.ClientThread;
-import net.runelite.client.plugins.microbot.questhelper.runeliteobjects.RuneliteConfigSetter;
 
-public class FakeItem extends ExtendedRuneliteObject {
-    protected FakeItem(Client client, ClientThread clientThread, WorldPoint worldPoint, int[] model, int animation) {
-        super(client, clientThread, worldPoint, model, animation);
-        objectType = RuneliteObjectTypes.ITEM;
-        nameColor = "FFA07A";
-    }
+public class FakeItem extends ExtendedRuneliteObject
+{
+	protected FakeItem(Client client, ClientThread clientThread, WorldPoint worldPoint, int[] model, int animation)
+	{
+		super(client, clientThread, worldPoint, model, animation);
+		objectType = RuneliteObjectTypes.ITEM;
+		nameColor = "FFA07A";
+	}
 
-    public void addTakeAction(RuneliteObjectManager runeliteObjectManager, RuneliteConfigSetter stateChange, String actionText) {
-        setReplaceWalkActionText("Pick");
-        setReplaceWalkAction(menuEntry -> {
-            // Bend down and pick up the item
-            setPendingAction(() -> {
-                // Kinda needs to be a 'last interacted object'
-                Player player = client.getLocalPlayer();
-                // TODO: Won't work in instances?
-                if (player.getWorldLocation().distanceTo(getWorldPoint()) <= 1) {
-                    runeliteObjectManager.createChatboxMessage(actionText);
-                    player.setAnimation(AnimationID.BURYING_BONES);
-                    player.setAnimationFrame(0);
+	public void addTakeAction(RuneliteObjectManager runeliteObjectManager, RuneliteConfigSetter stateChange, String actionText)
+	{
+		setReplaceWalkActionText("Pick");
+		setReplaceWalkAction(menuEntry -> {
+			// Bend down and pick up the item
+			setPendingAction(() -> {
+				// Kinda needs to be a 'last interacted object'
+				Player player = client.getLocalPlayer();
+				// TODO: Won't work in instances?
+				if (player.getWorldLocation().distanceTo(getWorldPoint()) <= 1)
+				{
+					runeliteObjectManager.createChatboxMessage(actionText);
+					player.setAnimation(AnimationID.BURYING_BONES);
+					player.setAnimationFrame(0);
 
-                    // Set variable
-                    stateChange.setConfigValue();
-                    this.activate();
+					// Set variable
+					stateChange.setConfigValue();
+					this.activate();
 
-                    return true;
-                }
-                return false;
-            });
-        });
+					return true;
+				}
+				return false;
+			});
+		});
 
-    }
+	}
 }

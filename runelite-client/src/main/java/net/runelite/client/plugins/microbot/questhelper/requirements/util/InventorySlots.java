@@ -27,7 +27,7 @@
 package net.runelite.client.plugins.microbot.questhelper.requirements.util;
 
 import net.runelite.api.Client;
-import net.runelite.api.InventoryID;
+import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 
@@ -40,59 +40,57 @@ import java.util.stream.Stream;
  * Represent the inventories that a client can have.
  * This is not for actual slots in those inventories.
  */
-public enum InventorySlots {
-    /**
-     * Represents the equipment slots of a player
-     */
-    EQUIPMENT_SLOTS(InventoryID.EQUIPMENT),
-    /**
-     * Represents the inventory slots of a player
-     */
-    INVENTORY_SLOTS(InventoryID.INVENTORY),
-    /**
-     * Represents both equipment and inventory slots of a player
-     */
-    EQUIPMENT_AND_INVENTORY_SLOTS(InventoryID.INVENTORY, InventoryID.EQUIPMENT),
-    BANK(InventoryID.BANK),
-    ;
+public enum InventorySlots
+{
+	/** Represents the equipment slots of a player */
+	EQUIPMENT_SLOTS(InventoryID.WORN),
+	/** Represents the inventory slots of a player */
+	INVENTORY_SLOTS(InventoryID.INV),
+	/** Represents both equipment and inventory slots of a player */
+	EQUIPMENT_AND_INVENTORY_SLOTS(InventoryID.INV, InventoryID.WORN),
+	BANK(InventoryID.BANK),
+	;
 
-    private final InventoryID[] inventoryID;
+	private final int[] inventoryID;
 
-    InventorySlots(InventoryID... inventoryID) {
-        this.inventoryID = inventoryID;
-    }
+	InventorySlots(int... inventoryID)
+	{
+		this.inventoryID = inventoryID;
+	}
 
-    /**
-     * Checks that all the {@link Item}s in a client's {@link ItemContainer} match the given predicate.
-     *
-     * @param client    the {@link Client} to check
-     * @param predicate the predicate to use
-     * @return true if ALL the items match the predicate via {@link Stream#allMatch(Predicate)}
-     */
-    public boolean checkInventory(Client client, Predicate<Item> predicate) {
-        return Arrays.stream(inventoryID)
-                .map(client::getItemContainer)
-                .filter(Objects::nonNull)
-                .map(ItemContainer::getItems)
-                .flatMap(Arrays::stream)
-                .filter((item -> item.getId() != -1))
-                .allMatch(predicate);
-    }
+	/**
+	 * Checks that all the {@link Item}s in a client's {@link ItemContainer} match the given predicate.
+	 * 
+	 * @param client the {@link Client} to check
+	 * @param predicate the predicate to use
+	 * @return true if ALL the items match the predicate via {@link Stream#allMatch(Predicate)}
+	 */
+	public boolean checkInventory(Client client, Predicate<Item> predicate)
+	{
+		return Arrays.stream(inventoryID)
+			.mapToObj(client::getItemContainer)
+			.filter(Objects::nonNull)
+			.map(ItemContainer::getItems)
+			.flatMap(Arrays::stream)
+			.filter((item -> item.getId() != -1))
+			.allMatch(predicate);
+	}
 
-    /**
-     * Check if any of the {@link Item} in a client's {@link ItemContainer} match
-     * the given predicate.
-     *
-     * @param client    the {@link Client} to check
-     * @param predicate the predicate to use
-     * @return true if ANY of the items match the predicate
-     */
-    public boolean contains(Client client, Predicate<Item> predicate) {
-        return Arrays.stream(inventoryID)
-                .map(client::getItemContainer)
-                .filter(Objects::nonNull)
-                .map(ItemContainer::getItems)
-                .flatMap(Arrays::stream)
-                .anyMatch(predicate);
-    }
+	/**
+	 * Check if any of the {@link Item} in a client's {@link ItemContainer} match
+	 * the given predicate.
+	 *
+	 * @param client the {@link Client} to check
+	 * @param predicate the predicate to use
+	 * @return true if ANY of the items match the predicate
+	 */
+	public boolean contains(Client client, Predicate<Item> predicate)
+	{
+		return Arrays.stream(inventoryID)
+			.mapToObj(client::getItemContainer)
+			.filter(Objects::nonNull)
+			.map(ItemContainer::getItems)
+			.flatMap(Arrays::stream)
+			.anyMatch(predicate);
+	}
 }

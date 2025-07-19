@@ -24,51 +24,62 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements.runelite;
 
-
-import net.runelite.api.Client;
-import net.runelite.client.config.ConfigManager;
 import net.runelite.client.plugins.microbot.questhelper.questinfo.PlayerQuests;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.Operation;
 import net.runelite.client.plugins.microbot.questhelper.runeliteobjects.RuneliteConfigSetter;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Client;
+import net.runelite.client.config.ConfigManager;
 
-public class PlayerQuestStateRequirement extends RuneliteRequirement {
-    private final int expectedIntValue;
-    private final PlayerQuests runeliteConfigIdentifier;
-    private Operation operation;
+@Slf4j
+public class PlayerQuestStateRequirement extends RuneliteRequirement
+{
+	private final int expectedIntValue;
+	private Operation operation;
 
-    public PlayerQuestStateRequirement(ConfigManager configManager, PlayerQuests runeliteIdentifier, int expectedValue) {
-        super(configManager, runeliteIdentifier.getConfigValue(), Integer.toString(expectedValue));
-        expectedIntValue = expectedValue;
-        runeliteConfigIdentifier = runeliteIdentifier;
-    }
+	private final PlayerQuests runeliteConfigIdentifier;
 
-    public PlayerQuestStateRequirement(ConfigManager configManager, PlayerQuests runeliteIdentifier, int expectedValue, Operation operation) {
-        super(configManager, runeliteIdentifier.getConfigValue(), Integer.toString(expectedValue));
-        this.operation = operation;
-        expectedIntValue = expectedValue;
-        runeliteConfigIdentifier = runeliteIdentifier;
-    }
+	public PlayerQuestStateRequirement(ConfigManager configManager, PlayerQuests runeliteIdentifier, int expectedValue)
+	{
+		super(configManager, runeliteIdentifier.getConfigValue(), Integer.toString(expectedValue));
+		expectedIntValue = expectedValue;
+		runeliteConfigIdentifier = runeliteIdentifier;
+	}
 
-    public PlayerQuestStateRequirement getNewState(int incrementedStateQuantity) {
-        return new PlayerQuestStateRequirement(configManager, runeliteConfigIdentifier, expectedIntValue + incrementedStateQuantity);
-    }
+	public PlayerQuestStateRequirement(ConfigManager configManager, PlayerQuests runeliteIdentifier, int expectedValue, Operation operation)
+	{
+		super(configManager, runeliteIdentifier.getConfigValue(), Integer.toString(expectedValue));
+		this.operation = operation;
+		expectedIntValue = expectedValue;
+		runeliteConfigIdentifier = runeliteIdentifier;
+	}
 
-    @Override
-    public boolean check(Client client) {
-        String value = getConfigValue();
-        if (operation == null) return expectedValue.equals(value);
+	public PlayerQuestStateRequirement getNewState(int incrementedStateQuantity)
+	{
+		return new PlayerQuestStateRequirement(configManager, runeliteConfigIdentifier, expectedIntValue + incrementedStateQuantity);
+	}
 
-        try {
-            int intValue;
-            intValue = Integer.parseInt(value);
-            return operation.check(intValue, expectedIntValue);
-        } catch (NumberFormatException err) {
-            System.out.println(err.getMessage());
-            return false;
-        }
-    }
+	@Override
+	public boolean check(Client client)
+	{
+		String value = getConfigValue();
+		if (operation == null) return expectedValue.equals(value);
 
-    public RuneliteConfigSetter getSetter() {
-        return new RuneliteConfigSetter(configManager, runeliteIdentifier, expectedValue);
-    }
+		try
+		{
+			int intValue;
+			intValue = Integer.parseInt(value);
+			return operation.check(intValue, expectedIntValue);
+		}
+		catch (NumberFormatException err)
+		{
+			log.error(err.getMessage());
+			return false;
+		}
+	}
+
+	public RuneliteConfigSetter getSetter()
+	{
+		return new RuneliteConfigSetter(configManager, runeliteIdentifier, expectedValue);
+	}
 }

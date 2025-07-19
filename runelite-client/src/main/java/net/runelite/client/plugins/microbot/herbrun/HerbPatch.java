@@ -2,12 +2,11 @@ package net.runelite.client.plugins.microbot.herbrun;
 
 import lombok.Getter;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.herbrun.FarmingHandler;
-import net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.herbrun.FarmingPatch;
-import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.farmruns.FarmingHandler;
+import net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.farmruns.FarmingPatch;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.enums.Herbs;
-import net.runelite.client.plugins.timetracking.farming.CropState;
+import net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.farmruns.CropState;
 
 import java.util.HashMap;
 import java.util.Objects;

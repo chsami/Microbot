@@ -24,47 +24,53 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.tools;
 
-public enum QuestWidgets {
-    QUESTLIST_SCROLLBAR(399, 5),
-    QUESTLIST_CONTAINER(399, 6),
-    QUEST_CONTAINER(399, 7);
+public enum QuestWidgets
+{
+	QUESTLIST_SCROLLBAR(399, 5),
+	QUESTLIST_CONTAINER(399, 6),
+	QUEST_CONTAINER(399, 7);
 
-    private final int groupId;
-    private final int childId;
+	private final int groupId;
+	private final int childId;
 
-    QuestWidgets(int groupId, int childId) {
-        this.groupId = groupId;
-        this.childId = childId;
-    }
+	QuestWidgets(int groupId, int childId)
+	{
+		this.groupId = groupId;
+		this.childId = childId;
+	}
 
-    public int getId() {
-        return groupId << 16 | childId;
-    }
+	public int getId()
+	{
+		return groupId << 16 | childId;
+	}
 
-    /**
-     * Gets the group ID of the pair.
-     *
-     * @return the group ID
-     */
-    public int getGroupId() {
-        return groupId;
-    }
+	/**
+	 * Gets the group ID of the pair.
+	 *
+	 * @return the group ID
+	 */
+	public int getGroupId()
+	{
+		return groupId;
+	}
 
-    /**
-     * Gets the ID of the child in the group.
-     *
-     * @return the child ID
-     */
-    public int getChildId() {
-        return childId;
-    }
+	/**
+	 * Gets the ID of the child in the group.
+	 *
+	 * @return the child ID
+	 */
+	public int getChildId()
+	{
+		return childId;
+	}
 
-    /**
-     * Gets the packed widget ID.
-     *
-     * @return the packed ID
-     */
-    public int getPackedId() {
-        return groupId << 16 | childId;
-    }
+	/**
+	 * Gets the packed widget ID.
+	 *
+	 * @return the packed ID
+	 */
+	public int getPackedId()
+	{
+		return groupId << 16 | childId;
+	}
 }

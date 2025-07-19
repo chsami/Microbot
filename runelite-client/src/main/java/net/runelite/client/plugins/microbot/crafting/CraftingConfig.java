@@ -56,6 +56,14 @@ public interface CraftingConfig extends Config {
     )
     String flaxSpinSection = "flaxspin";
 
+    @ConfigSection(
+            name = "Dragon Leather",
+            description = "Configure settings for Dragon Leather activity",
+            position = 4,
+            closedByDefault = true
+    )
+    String dragonLeatherSection = "dragonLeather";
+
     @ConfigItem(
             keyName = "Activity",
             name = "Activity",
@@ -70,7 +78,7 @@ public interface CraftingConfig extends Config {
     @ConfigItem(
             keyName = "Afk",
             name = "Random AFKs",
-            description = "Randomy afks between 3 and 60 seconds",
+            description = "Randomly afks between 3 and 60 seconds",
             position = 1,
             section = generalSection
     )
@@ -121,4 +129,13 @@ public interface CraftingConfig extends Config {
     default FlaxSpinLocations flaxSpinLocation() {
         return FlaxSpinLocations.NONE;
     }
+
+    @ConfigItem(
+            name = "Armour",
+            description = "Choose type of dragon leather armour",
+            keyName = "dragonLeatherArmour",
+            position = 0,
+            section = dragonLeatherSection
+    )
+    default DragonLeatherArmour dragonLeatherType() { return DragonLeatherArmour.NONE; }
 }

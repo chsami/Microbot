@@ -23,7 +23,7 @@ public class MicrobotApi {
     private final OkHttpClient client;
     private final Gson gson;
 
-    private final String microbotApiUrl = "https://microbot-api.azurewebsites.net/api";
+    private final String microbotApiUrl = "https://microbot.cloud/api";
     @Inject
     MicrobotApi(OkHttpClient client, Gson gson) {
         this.client = client;

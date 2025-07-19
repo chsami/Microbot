@@ -24,15 +24,14 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.bank.banktab;
 
-
-import net.runelite.api.InventoryID;
-import net.runelite.api.ItemContainer;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
-import net.runelite.client.plugins.microbot.questhelper.bank.QuestBank;
 import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirements;
+import net.runelite.client.plugins.microbot.questhelper.requirements.item.KeyringRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicType;
+import net.runelite.api.Client;
+import net.runelite.api.gameval.ItemID;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -43,145 +42,225 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Singleton
-public class QuestHelperBankTagService {
-    @Inject
-    private QuestHelperPlugin plugin;
+public class QuestHelperBankTagService
+{
+	@Inject
+	private QuestHelperPlugin plugin;
 
-    @Inject
-    private QuestBank questBank;
+	@Inject
+	private Client client;
 
-    public ArrayList<Integer> itemsToTag() {
-        ArrayList<BankTabItems> sortedItems = getPluginBankTagItemsForSections(true);
+	ArrayList<Integer> taggedItems;
 
-        if (sortedItems == null) {
-            return null;
-        }
+	ArrayList<Integer> taggedItemsForBank;
 
-        ArrayList<Integer> flattenedList = new ArrayList<>();
+	int lastTickUpdated = 0;
 
-        sortedItems.stream()
-                .map(BankTabItems::getItems)
-                .flatMap(Collection::stream)
-                .map(BankTabItem::getItemIDs)
-                .flatMap(Collection::stream)
-                .filter(Objects::nonNull) // filter non-null just in case any Integer get in the list
-                .filter(id -> !flattenedList.contains(id))
-                .forEach(flattenedList::add);
-        return flattenedList;
-    }
+	private final String RECOMMENDED_TAB_NAME = "Recommended items";
 
-    public ArrayList<BankTabItems> getPluginBankTagItemsForSections(boolean onlyGetMissingItems) {
-        ArrayList<BankTabItems> newList = new ArrayList<>();
+	public ArrayList<Integer> itemsToTag()
+	{
+		if (client.getTickCount() <= lastTickUpdated)
+		{
+			return taggedItems;
+		}
 
-        List<PanelDetails> questSections = plugin.getSelectedQuest().getPanels();
+		lastTickUpdated = client.getTickCount();
 
-        if (questSections == null || questSections.isEmpty()) {
-            return newList;
-        }
+		return getItemsFromTabs();
+	}
 
-        List<ItemRequirement> recommendedItems = plugin.getSelectedQuest().getItemRecommended();
-        if (recommendedItems != null) {
-            recommendedItems = recommendedItems.stream()
-                    .filter(Objects::nonNull)
-                    .filter(i -> (!onlyGetMissingItems
-                            || !i.check(plugin.getClient(), false, questBank.getBankItems()))
-                            && i.shouldDisplayText(plugin.getClient()))
-                    .collect(Collectors.toList());
-        }
+	private ArrayList<Integer> getItemsFromTabs()
+	{
+		ArrayList<BankTabItems> sortedItems = getPluginBankTagItemsForSections(true);
 
-        if (recommendedItems != null && !recommendedItems.isEmpty()) {
-            BankTabItems pluginItems = new BankTabItems("Recommended items");
-            // Here we specify getItems so as to avoid a double 'Recommended' title
-            recommendedItems.forEach(item -> getItemsFromRequirement(pluginItems.getItems(), item, item));
-            newList.add(pluginItems);
-        }
+		if (sortedItems == null)
+		{
+			return null;
+		}
 
-        List<PanelDetails> shouldShowSections = questSections.stream()
-                .filter(panelDetail -> panelDetail.getHideCondition() == null ||
-                        !panelDetail.getHideCondition().check(plugin.getClient()))
-                .collect(Collectors.toList());
+		taggedItemsForBank = new ArrayList<>();
 
-        for (PanelDetails questSection : shouldShowSections) {
-            List<ItemRequirement> items = new ArrayList<>();
-            if (questSection.getRequirements() != null) {
-                items = questSection.getRequirements()
-                        .stream()
-                        .filter(ItemRequirement.class::isInstance)
-                        .map(ItemRequirement.class::cast)
-                        .filter(i -> (!onlyGetMissingItems
-                                || !i.check(plugin.getClient(), false, questBank.getBankItems()))
-                                && i.shouldDisplayText(plugin.getClient()))
-                        .collect(Collectors.toList());
-            }
-            List<ItemRequirement> recommendedItemsForSection = new ArrayList<>();
-            if (questSection.getRecommended() != null) {
-                recommendedItemsForSection = questSection.getRecommended()
-                        .stream()
-                        .filter(ItemRequirement.class::isInstance)
-                        .map(ItemRequirement.class::cast)
-                        .filter(i -> (!onlyGetMissingItems
-                                || !i.check(plugin.getClient(), false, questBank.getBankItems()))
-                                && i.shouldDisplayText(plugin.getClient()))
-                        .collect(Collectors.toList());
-            }
+		sortedItems.stream()
+				.map(BankTabItems::getItems)
+				.flatMap(Collection::stream)
+				.map(BankTabItem::getItemIDs)
+				.flatMap(Collection::stream)
+				.filter(Objects::nonNull) // filter non-null just in case any Integer get in the list
+				.filter(id -> !taggedItemsForBank.contains(id))
+				.forEach(taggedItemsForBank::add);
+		return taggedItemsForBank;
+	}
 
-            BankTabItems pluginItems = new BankTabItems(questSection.getHeader());
-            items.forEach(item -> getItemsFromRequirement(pluginItems.getItems(), item, item));
-            recommendedItemsForSection.forEach(item -> getItemsFromRequirement(pluginItems.getRecommendedItems(), item, item));
-            // We don't add the recommended items as they're already used
-            newList.add(pluginItems);
-        }
+	public ArrayList<BankTabItems> getPluginBankTagItemsForSections(boolean onlyGetMissingItems)
+	{
+		ArrayList<BankTabItems> newList = new ArrayList<>();
 
-        return newList;
-    }
+		List<PanelDetails> questSections = plugin.getSelectedQuest().getPanels();
 
-    private void getItemsFromRequirement(List<BankTabItem> pluginItems, ItemRequirement itemRequirement, ItemRequirement realItem) {
-        if (itemRequirement instanceof ItemRequirements) {
-            ItemRequirements itemRequirements = (ItemRequirements) itemRequirement;
-            LogicType logicType = itemRequirements.getLogicType();
-            ArrayList<ItemRequirement> requirements = itemRequirements.getItemRequirements();
-            if (logicType == LogicType.AND) {
-                requirements.forEach(req -> getItemsFromRequirement(pluginItems, req, req));
-            }
-            if (logicType == LogicType.OR) {
-                List<ItemRequirement> itemsWhichPassReq = requirements.stream()
-                        .filter(r -> r.shouldDisplayText(plugin.getClient()))
-                        .collect(Collectors.toList());
+		if (questSections == null || questSections.isEmpty())
+		{
+			return newList;
+		}
 
-                if (itemsWhichPassReq.isEmpty()) {
-                    getItemsFromRequirement(pluginItems, requirements.get(0).named(itemRequirements.getName()), requirements.get(0));
-                } else {
-                    ItemRequirement match = itemsWhichPassReq.stream()
-                            .filter(r -> r.checkBank(plugin.getClient()))
-                            .findFirst()
-                            .orElse(itemsWhichPassReq.get(0).named(itemRequirements.getName()));
+		List<ItemRequirement> recommendedItems = plugin.getSelectedQuest().getItemRecommended();
+		if (recommendedItems != null)
+		{
+			recommendedItems = recommendedItems.stream()
+				.filter(Objects::nonNull)
+				.filter(i -> (!onlyGetMissingItems || !i.checkWithAllContainers()) && i.shouldDisplayText(plugin.getClient()))
+				.collect(Collectors.toList());
+		}
 
-                    getItemsFromRequirement(pluginItems, match, match);
-                }
-            }
-        } else {
-            if (itemRequirement.getDisplayItemId() != null) {
-                pluginItems.add(new BankTabItem(realItem));
-            } else if (!itemRequirement.getDisplayItemIds().contains(-1)) {
-                pluginItems.add(makeBankTabItem(realItem));
-            }
-        }
-    }
+		if (recommendedItems != null && !recommendedItems.isEmpty())
+		{
+			BankTabItems pluginItems = new BankTabItems(RECOMMENDED_TAB_NAME);
+			// Here we specify getItems to avoid a double 'Recommended' title
+			recommendedItems.forEach(item -> getItemsFromRequirement(pluginItems.getItems(), item, item));
+			newList.add(pluginItems);
+		}
 
-    private BankTabItem makeBankTabItem(ItemRequirement item) {
-        List<Integer> itemIds = item.getDisplayItemIds();
+		List<PanelDetails> shouldShowSections = questSections.stream()
+			.filter(panelDetail -> panelDetail.getHideCondition() == null ||
+				!panelDetail.getHideCondition().check(plugin.getClient()))
+			.collect(Collectors.toList());
 
-        Integer displayId = itemIds.stream().filter(this::hasItemInBank).findFirst().orElse(itemIds.get(0));
+		for (PanelDetails questSection : shouldShowSections)
+		{
+			List<ItemRequirement> items = new ArrayList<>();
+			if (questSection.getRequirements() != null)
+			{
+				items = questSection.getRequirements()
+					.stream()
+					.filter(ItemRequirement.class::isInstance)
+					.map(ItemRequirement.class::cast)
+					.filter(i -> (!onlyGetMissingItems
+						|| !i.checkWithAllContainers())
+						&& i.shouldDisplayText(plugin.getClient()))
+					.collect(Collectors.toList());
+			}
+			List<ItemRequirement> recommendedItemsForSection = new ArrayList<>();
+			if (questSection.getRecommended() != null)
+			{
+				recommendedItemsForSection = questSection.getRecommended()
+					.stream()
+					.filter(ItemRequirement.class::isInstance)
+					.map(ItemRequirement.class::cast)
+					.filter(i -> (!onlyGetMissingItems
+						|| !i.checkWithAllContainers())
+						&& i.shouldDisplayText(plugin.getClient()))
+					.collect(Collectors.toList());
+			}
 
-        return new BankTabItem(item, displayId);
-    }
+			BankTabItems pluginItems = new BankTabItems(questSection.getHeader());
+			items.forEach(item -> getItemsFromRequirement(pluginItems.getItems(), item, item));
+			recommendedItemsForSection.forEach(item -> getItemsFromRequirement(pluginItems.getRecommendedItems(), item, item));
+			// We don't add the recommended items as they're already used
+			if (items.size() > 0)
+			{
+				newList.add(pluginItems);
+			}
+		}
 
-    public boolean hasItemInBank(int itemID) {
-        ItemContainer bankContainer = plugin.getClient().getItemContainer(InventoryID.BANK);
-        if (bankContainer == null) {
-            return false;
-        }
+		// If none of the sections have anything in it, create a generic require items section
+		if (newList.size() == 0 || (newList.size() == 1 && newList.get(0).getName().equals(RECOMMENDED_TAB_NAME)))
+		{
+			BankTabItems allRequiredItems = new BankTabItems("Required items");
+			List<ItemRequirement> allRequired = plugin.getSelectedQuest().getItemRequirements();
+			List<ItemRequirement> items;
+			if (allRequired != null && allRequired.size() > 0)
+			{
+				items = allRequired.stream()
+					.filter(Objects::nonNull)
+					.map(ItemRequirement.class::cast)
+					.filter(i -> (!onlyGetMissingItems
+				   || !i.check(plugin.getClient()))
+				   && i.shouldDisplayText(plugin.getClient()))
+					.collect(Collectors.toList());
 
-        return bankContainer.contains(itemID);
-    }
+				items.forEach(item -> getItemsFromRequirement(allRequiredItems.getItems(), item, item));
+			}
+			newList.add(allRequiredItems);
+		}
+
+		return newList;
+	}
+
+	private void getItemsFromRequirement(List<BankTabItem> pluginItems, ItemRequirement itemRequirement, ItemRequirement realItem)
+	{
+		if (itemRequirement instanceof ItemRequirements)
+		{
+			ItemRequirements itemRequirements = (ItemRequirements) itemRequirement;
+			LogicType logicType = itemRequirements.getLogicType();
+			ArrayList<ItemRequirement> requirements = itemRequirements.getItemRequirements();
+			if (logicType == LogicType.AND)
+			{
+				requirements.forEach(req -> getItemsFromRequirement(pluginItems, req, req));
+			}
+			if (logicType == LogicType.OR)
+			{
+				List<ItemRequirement> itemsWhichPassReq = requirements.stream()
+					.filter(r -> r.shouldDisplayText(plugin.getClient()))
+					.collect(Collectors.toList());
+
+				if (itemsWhichPassReq.isEmpty())
+				{
+					getItemsFromRequirement(pluginItems, requirements.get(0).named(itemRequirements.getName()), requirements.get(0));
+				}
+				else
+				{
+					ItemRequirement match = itemsWhichPassReq.stream()
+						.filter(ItemRequirement::checkWithAllContainers)
+						.findFirst()
+						.orElse(itemsWhichPassReq.get(0).named(itemRequirements.getName()));
+
+					getItemsFromRequirement(pluginItems, match, match);
+				}
+			}
+		}
+		else if (itemRequirement instanceof KeyringRequirement)
+		{
+			KeyringRequirement keyringRequirement = (KeyringRequirement) itemRequirement;
+			KeyringRequirement fakeRequirement = new KeyringRequirement(keyringRequirement.getName(), plugin.getConfigManager(),
+					keyringRequirement.getKeyringCollection());
+			if (keyringRequirement.hasKeyOnKeyRing())
+			{
+				fakeRequirement.addAlternates(ItemID.FAVOUR_KEY_RING);
+			}
+			pluginItems.add(makeBankTabItem(fakeRequirement));
+
+		}
+		else
+		{
+			if (itemRequirement.getDisplayItemId() != null || !itemRequirement.getDisplayItemIds().contains(-1))
+			{
+				pluginItems.add(makeBankTabItem(realItem));
+			}
+		}
+	}
+
+	private BankTabItem makeBankTabItem(ItemRequirement item)
+	{
+		List<Integer> itemIds = item.getDisplayItemIds();
+		Integer displayId = itemIds.stream()
+				.filter(this::hasItemInBankOrPotionStorage)
+				.findFirst()
+				.orElse(item.getAllIds().stream()
+						.filter(this::hasItemInBankOrPotionStorage)
+						.findFirst()
+						.orElse(item.getAllIds().get(0))
+				);
+		if (displayId == -1 && item.getDisplayItemId() != -1)
+		{
+			displayId = item.getDisplayItemId();
+		}
+
+		return new BankTabItem(item, displayId);
+	}
+
+	public boolean hasItemInBankOrPotionStorage(int itemID)
+	{
+		ItemRequirement tmpReq = new ItemRequirement("tmp", itemID);
+		return tmpReq.checkWithAllContainers();
+	}
 }

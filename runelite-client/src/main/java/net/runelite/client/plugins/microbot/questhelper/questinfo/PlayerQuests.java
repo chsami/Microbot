@@ -26,15 +26,16 @@ package net.runelite.client.plugins.microbot.questhelper.questinfo;
 
 import lombok.Getter;
 
-public enum PlayerQuests {
+public enum PlayerQuests
+{
 
-    COOKS_HELPER("cooks_helper"),
-    BIKE_SHEDDER("bike_shedder");
+	COOKS_HELPER("cooks_helper"),
+	BIKE_SHEDDER("bike_shedder");
 
-    @Getter
-    private final String configValue;
-
-    PlayerQuests(String configValue) {
-        this.configValue = configValue;
-    }
+	@Getter
+	private final String configValue;
+	PlayerQuests(String configValue)
+	{
+		this.configValue = configValue;
+	}
 }

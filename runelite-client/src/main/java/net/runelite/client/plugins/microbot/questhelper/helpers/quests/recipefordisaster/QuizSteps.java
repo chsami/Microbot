@@ -24,102 +24,115 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.recipefordisaster;
 
-
-import net.runelite.api.ItemID;
-import net.runelite.api.NpcID;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.GameTick;
-import net.runelite.api.widgets.ComponentID;
-import net.runelite.api.widgets.Widget;
-import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
-import net.runelite.client.plugins.microbot.questhelper.steps.DetailedOwnerStep;
-import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
-import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
+import net.runelite.client.plugins.microbot.questhelper.steps.DetailedOwnerStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.widgets.Widget;
+import net.runelite.client.eventbus.Subscribe;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 
-public class QuizSteps extends DetailedOwnerStep {
+public class QuizSteps extends DetailedOwnerStep
+{
 
-    DetailedQuestStep answerQuestions, answerWeaponQuestion, answerRuneQuestion;
+	DetailedQuestStep answerQuestions, answerWeaponQuestion, answerRuneQuestion;
 
-    ItemRequirement milk = new ItemRequirement("Bucket of milk", ItemID.BUCKET_OF_MILK);
-    ItemRequirement flour = new ItemRequirement("Pot of flour", ItemID.POT_OF_FLOUR);
-    ItemRequirement egg = new ItemRequirement("Egg", ItemID.EGG);
+	ItemRequirement milk = new ItemRequirement("Bucket of milk", ItemID.BUCKET_MILK);
+	ItemRequirement flour = new ItemRequirement("Pot of flour", ItemID.POT_FLOUR);
+	ItemRequirement egg = new ItemRequirement("Egg", ItemID.EGG);
 
-    String weaponChoice = "How many weapons were you shown?";
-    String runeChoice = "How many types of rune were there?";
+	String weaponChoice = "How many weapons were you shown?";
+	String runeChoice = "How many types of rune were there?";
 
 
-    public QuizSteps(QuestHelper questHelper) {
-        super(questHelper, "Talk to Traiborn and complete his tests to enchant the ingredients.");
-    }
+	public QuizSteps(QuestHelper questHelper)
+	{
+		super(questHelper, "Talk to Traiborn and complete his tests to enchant the ingredients.");
+	}
 
-    @Subscribe
-    public void onGameTick(GameTick event) {
-        updateSteps();
-    }
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		updateSteps();
+	}
 
-    @Override
-    protected void updateSteps() {
-        boolean eggEnchanted = client.getVarbitValue(1894) == 1;
-        boolean flourEnchanted = client.getVarbitValue(1897) == 1;
-        boolean milkEnchanted = client.getVarbitValue(1898) == 1;
+	@Override
+	protected void updateSteps()
+	{
+		boolean eggEnchanted = client.getVarbitValue(1894) == 1;
+		boolean flourEnchanted = client.getVarbitValue(1897) == 1;
+		boolean milkEnchanted = client.getVarbitValue(1898) == 1;
 
-        ArrayList<Requirement> items = new ArrayList<>();
-        if (!eggEnchanted) {
-            items.add(egg);
-        }
-        if (!milkEnchanted) {
-            items.add(milk);
-        }
-        if (!flourEnchanted) {
-            items.add(flour);
-        }
+		ArrayList<Requirement> items = new ArrayList<>();
+		if (!eggEnchanted)
+		{
+			items.add(egg);
+		}
+		if (!milkEnchanted)
+		{
+			items.add(milk);
+		}
+		if (!flourEnchanted)
+		{
+			items.add(flour);
+		}
 
-        Widget currentDialog = client.getWidget(ComponentID.DIALOG_NPC_TEXT);
+		Widget currentDialog = client.getWidget(InterfaceID.ChatLeft.TEXT);
 
-        if (currentDialog != null) {
-            if (currentDialog.getText() != null) {
-                if (currentDialog.getText().equals(weaponChoice)) {
-                    answerWeaponQuestion.setRequirements(items);
-                    startUpStep(answerWeaponQuestion);
-                    return;
-                } else if (currentDialog.getText().equals(runeChoice)) {
-                    answerRuneQuestion.setRequirements(items);
-                    startUpStep(answerRuneQuestion);
-                    return;
-                }
-            }
-        }
+		if (currentDialog != null)
+		{
+			if (currentDialog.getText() != null)
+			{
+				if (currentDialog.getText().equals(weaponChoice))
+				{
+					answerWeaponQuestion.setRequirements(items);
+					startUpStep(answerWeaponQuestion);
+					return;
+				}
+				else if (currentDialog.getText().equals(runeChoice))
+				{
+					answerRuneQuestion.setRequirements(items);
+					startUpStep(answerRuneQuestion);
+					return;
+				}
+			}
+		}
 
-        answerQuestions.setRequirements(items);
-        startUpStep(answerQuestions);
-    }
+		answerQuestions.setRequirements(items);
+		startUpStep(answerQuestions);
+	}
 
-    @Override
-    protected void setupSteps() {
-        answerQuestions = new NpcStep(getQuestHelper(), NpcID.WIZARD_TRAIBORN, new WorldPoint(3112, 3162, 1), "Talk to Traiborn.");
-        answerQuestions.addDialogSteps("Ask about helping the Lumbridge Guide.", "Okay. Let's start!", "Okay. I'm ready!", "Quiz me!");
-        answerQuestions.addDialogSteps("Unferth", "Gertrude", "King Lathas", "Pirate Pete", "Islwyn", "Hetty", "Professor Gronigen", "Ali Morrisane", "Velorina", "Reldo");
-        answerQuestions.addDialogSteps("Bandit camp", "Flour, Eggs and milk", "20", "Sand, bucket, soda ash, glass blowing pipe", "16", "North to South", "46", "2", "Keep Le Faye", "Dark Wizards'", "Catherby", "Legends'");
-        answerQuestions.addDialogSteps("Trout", "Mind Talisman", "Guthix Prayer Book, Magic Logs, Pike");
-        answerQuestions.addDialogStep(1, "10"); // Answer to bribe question
-        answerQuestions.addDialogStep(3, "10"); // Answer to Fire runes question
+	@Override
+	protected void setupSteps()
+	{
+		answerQuestions = new NpcStep(getQuestHelper(), NpcID.TRAIBORN, new WorldPoint(3112, 3162, 1), "Talk to Traiborn.");
+		answerQuestions.addDialogSteps("Ask about helping the Lumbridge Guide.", "Okay. Let's start!", "Okay. I'm ready!", "Quiz me!");
+		answerQuestions.addDialogSteps("Unferth", "Gertrude", "King Lathas", "Pirate Pete", "Islwyn", "Hetty", "Observatory Professor Gronigen", "Ali Morrisane", "Velorina", "Reldo");
+		answerQuestions.addDialogSteps("Bandit camp", "Flour, Eggs and milk", "20", "Sand, bucket, soda ash, glass blowing pipe", "16", "North to South", "46", "2", "Keep Le Faye", "Dark Wizards'", "Catherby", "Legends'");
+		answerQuestions.addDialogSteps("Trout", "Mind Talisman", "Guthix Prayer Book, Magic Logs, Pike");
+		answerQuestions.addDialogStep(1, "10"); // Answer to bribe question
+		answerQuestions.addDialogStep(3, "10"); // Answer to Fire runes question
 
-        answerWeaponQuestion = new NpcStep(getQuestHelper(), NpcID.WIZARD_TRAIBORN, new WorldPoint(3112, 3162, 1), "Talk to Traiborn.");
-        answerWeaponQuestion.addDialogStep("Three");
-        answerRuneQuestion = new NpcStep(getQuestHelper(), NpcID.WIZARD_TRAIBORN, new WorldPoint(3112, 3162, 1), "Talk to Traiborn.");
-        answerRuneQuestion.addDialogStep("Two");
-    }
+		answerWeaponQuestion = new NpcStep(getQuestHelper(), NpcID.TRAIBORN, new WorldPoint(3112, 3162, 1), "Talk to Traiborn.");
+		answerWeaponQuestion.addDialogStep("Three");
+		answerRuneQuestion = new NpcStep(getQuestHelper(), NpcID.TRAIBORN, new WorldPoint(3112, 3162, 1), "Talk to Traiborn.");
+		answerRuneQuestion.addDialogStep("Two");
+	}
 
-    @Override
-    public Collection<QuestStep> getSteps() {
-        return Arrays.asList(answerQuestions, answerRuneQuestion, answerWeaponQuestion);
-    }
+	@Override
+	public Collection<QuestStep> getSteps()
+	{
+		return Arrays.asList(answerQuestions, answerRuneQuestion, answerWeaponQuestion);
+	}
 }

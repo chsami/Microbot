@@ -24,114 +24,131 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.demonslayer;
 
-
-import net.runelite.api.events.WidgetLoaded;
-import net.runelite.api.widgets.InterfaceID;
-import net.runelite.api.widgets.Widget;
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.api.events.WidgetLoaded;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.VarbitID;
+import net.runelite.api.widgets.Widget;
 
 import java.util.HashMap;
 
-public class IncantationStep extends ConditionalStep {
-    private final HashMap<Integer, String> words = new HashMap<Integer, String>() {{
-        put(0, "Carlem");
-        put(1, "Aber");
-        put(2, "Camerinthum");
-        put(3, "Purchai");
-        put(4, "Gabindo");
-    }};
+public class IncantationStep extends ConditionalStep
+{
+	private final HashMap<Integer, String> words = new HashMap<Integer, String>()
+	{{
+		put(0, "Carlem");
+		put(1, "Aber");
+		put(2, "Camerinthum");
+		put(3, "Purchai");
+		put(4, "Gabindo");
+	}};
 
-    private final String RESET_INCANTATION_TEXT = "Now what was that incantation again?";
-    private String[] incantationOrder;
-    private int incantationPosition = 0;
-    private final QuestStep incantationStep;
+	private String[] incantationOrder;
+	private int incantationPosition = 0;
+	private final QuestStep incantationStep;
 
-    public IncantationStep(QuestHelper questHelper, QuestStep incantationStep) {
-        super(questHelper, incantationStep);
-        this.incantationStep = incantationStep;
-        this.steps.get(null).getText().add("Incantation is currently unknown.");
-    }
+	public IncantationStep(QuestHelper questHelper, QuestStep incantationStep)
+	{
+		super(questHelper, incantationStep);
+		this.incantationStep = incantationStep;
+		this.steps.get(null).getText().add("Incantation is currently unknown.");
+	}
 
-    @Override
-    /**
-     * {@inheritDoc}
-     */
-    public void onWidgetLoaded(WidgetLoaded event) {
-        int groupId = event.getGroupId();
-        if (groupId == InterfaceID.DIALOG_PLAYER) {
-            clientThread.invokeLater(this::resetIncarnationIfRequired);
-        } else if (groupId == InterfaceID.DIALOG_OPTION) {
-            clientThread.invokeLater(this::updateChoiceIfRequired);
-        }
+	@Override
+	/**
+	 * {@inheritDoc}
+	 */
+	public void onWidgetLoaded(WidgetLoaded event)
+	{
+		int groupId = event.getGroupId();
+		if (groupId == InterfaceID.CHAT_RIGHT)
+		{
+			clientThread.invokeLater(this::resetIncarnationIfRequired);
+		}
+		else if (groupId == InterfaceID.CHATMENU)
+		{
+			clientThread.invokeLater(this::updateChoiceIfRequired);
+		}
 
-        super.onWidgetLoaded(event);
-    }
+		super.onWidgetLoaded(event);
+	}
 
-    /**
-     * This checks for the first dialog for banishing Delrith and resets if required.
-     * As a player can cancel the chat by clicking off and have start the whole incantation again.
-     */
-    private void resetIncarnationIfRequired() {
-        Widget widget = client.getWidget(InterfaceID.DIALOG_PLAYER, 4);
-        if (widget == null) {
-            return;
-        }
-        String text = widget.getText();
-        if (RESET_INCANTATION_TEXT.equals(text)) {
-            incantationPosition = 0;
-        }
-    }
+	/**
+	 * This checks for the first dialog for banishing Delrith and resets if required.
+	 * As a player can cancel the chat by clicking off and have start the whole incantation again.
+	 */
+	private void resetIncarnationIfRequired()
+	{
+		Widget widget = client.getWidget(InterfaceID.ChatRight.TEXT);
+		if (widget == null)
+		{
+			return;
+		}
+		String text = widget.getText();
+		String RESET_INCANTATION_TEXT = "Now what was that incantation again?";
+		if (RESET_INCANTATION_TEXT.equals(text))
+		{
+			incantationPosition = 0;
+		}
+	}
 
-    /**
-     * Updates the choices highlighted as the incantation progresses.
-     */
-    private void updateChoiceIfRequired() {
-        if (!shouldUpdateChoice()) {
-            return;
-        }
+	/**
+	 * Updates the choices highlighted as the incantation progresses.
+	 */
+	private void updateChoiceIfRequired()
+	{
+		if (!shouldUpdateChoice())
+		{
+			return;
+		}
 
-        // As the incantation have all the same dialogs we want to reset the choices after each dialog
-        // as we want only the correct one to be highlighted
-        choices.resetChoices();
-        addDialogStep(incantationOrder[incantationPosition]);
-        incantationPosition++;
-    }
+		// As the incantation have all the same dialogs we want to reset the choices after each dialog
+		// as we want only the correct one to be highlighted
+		choices.resetChoices();
+		addDialogStep(incantationOrder[incantationPosition]);
+		incantationPosition++;
+	}
 
-    private boolean shouldUpdateChoice() {
-        Widget widget = client.getWidget(InterfaceID.DIALOG_OPTION, 1);
-        if (widget == null) {
-            return false;
-        }
+	private boolean shouldUpdateChoice()
+	{
+		Widget widget = client.getWidget(InterfaceID.CHATMENU, 1);
+		if (widget == null)
+		{
+			return false;
+		}
 
-        Widget[] children = widget.getChildren();
-        if (children == null || children.length < 3) {
-            return false;
-        }
+		Widget[] children = widget.getChildren();
+		if (children == null || children.length < 3)
+		{
+			return false;
+		}
 
-        Widget childWidget = widget.getChild(2);
-        return childWidget != null && "Aber".equals(childWidget.getText());
-    }
+		Widget childWidget = widget.getChild(2);
+		return childWidget != null && "Aber".equals(childWidget.getText());
+	}
 
-    @Override
-    /**
-     * {@inheritDoc}
-     */
-    protected void updateSteps() {
-        if (incantationOrder != null || (client.getVarbitValue(2562) == 0 && client.getVarbitValue(2563) == 0)) {
-            startUpStep(incantationStep);
-            return;
-        }
-        incantationOrder = new String[]{
-                words.get(client.getVarbitValue(2562)),
-                words.get(client.getVarbitValue(2563)),
-                words.get(client.getVarbitValue(2564)),
-                words.get(client.getVarbitValue(2565)),
-                words.get(client.getVarbitValue(2566)),
-        };
-        String incantString = "Say the following in order: " + String.join(", ", incantationOrder);
-        steps.get(null).getText().set(1, incantString);
-        startUpStep(incantationStep);
-    }
+	@Override
+	/**
+	 * {@inheritDoc}
+	 */
+	protected void updateSteps()
+	{
+		if (incantationOrder != null || (client.getVarbitValue(VarbitID.DELRITH_INCANTATION_1) == 0 && client.getVarbitValue(VarbitID.DELRITH_INCANTATION_2) == 0))
+		{
+			startUpStep(incantationStep);
+			return;
+		}
+		incantationOrder = new String[]{
+			words.get(client.getVarbitValue(VarbitID.DELRITH_INCANTATION_1)),
+			words.get(client.getVarbitValue(VarbitID.DELRITH_INCANTATION_2)),
+			words.get(client.getVarbitValue(VarbitID.DELRITH_INCANTATION_3)),
+			words.get(client.getVarbitValue(VarbitID.DELRITH_INCANTATION_4)),
+			words.get(client.getVarbitValue(VarbitID.DELRITH_INCANTATION_5)),
+		};
+		String incantString = "Say the following in order: " + String.join(", ", incantationOrder);
+		steps.get(null).getText().set(1, incantString);
+		startUpStep(incantationStep);
+	}
 }

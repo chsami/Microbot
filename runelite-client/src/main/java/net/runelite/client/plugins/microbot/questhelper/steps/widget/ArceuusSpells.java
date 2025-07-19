@@ -25,60 +25,63 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.steps.widget;
 
-public enum ArceuusSpells implements Spell {
-    ARCEUUS_HOME_TELEPORT("Arceuus Home Teleport"),
-    ARCEUUS_LIBRARY_TELEPORT("Arceuus Library Teleport"),
-    BASIC_REANIMATION("Basic Reanimation"),
-    DRAYNOR_MANOR_TELEPORT("Draynor Manor Teleport"),
-    BATTLEFRONT_TELEPORT("Battlefront Teleport"),
-    MIND_ALTAR_TELEPORT("Mind Altar Teleport"),
-    RESPAWN_TELEPORT("Respawn Teleport"),
-    GHOSTLY_GRASP("Ghostly Grasp"),
-    RESURRECT_LESSER_GHOST("Resurrect Lesser Ghost"),
-    RESURRECT_LESSER_SKELETON("Resurrect Lesser Skeleton"),
-    RESURRECT_LESSER_ZOMBIE("Resurrect Lesser Zombie"),
-    SALVE_GRAVEYARD_TELEPORT("Salve Graveyard Teleport"),
-    ADEPT_REANIMATION("Adept Reanimation"),
-    INFERIOR_DEMONBANE("Inferior Demonbane"),
-    SHADOW_VEIL("Shadow Veil"),
-    FENKENSTRAINS_CASTLE_TELEPORT("Fenkenstrain's Castle Teleport"),
-    DARK_LURE("Dark Lure"),
-    SKELETAL_GRASP("Skeletal Grasp"),
-    RESURRECT_SUPERIOR_GHOST("Resurrect Superior Ghost"),
-    RESURRECT_SUPERIOR_SKELETON("Resurrect Superior Skeleton"),
-    RESURRECT_SUPERIOR_ZOMBIE("Resurrect Superior Zombie"),
-    MARK_OF_DARKNESS("Mark of Darkness"),
-    WEST_ARDOUGNE_TELEPORT("West Ardougne Teleport"),
-    SUPERIOR_DEMONBANE("Superior Demonbane"),
-    LESSER_CORRUPTION("Lesser Corruption"),
-    HARMONY_ISLAND_TELEPORT("Harmony Island Teleport"),
-    VILE_VIGOUR("Vile Vigour"),
-    DEGRIME("Degrime"),
-    CEMETERY_TELEPORT("Cemetery Teleport"),
-    EXPERT_REANIMATION("Expert Reanimation"),
-    WARD_OF_ARCEUUS("Ward of Arceuus"),
-    RESURRECT_GREATER_GHOST("Resurrect Greater Ghost"),
-    RESURRECT_GREATER_SKELETON("Resurrect Greater Skeleton"),
-    RESURRECT_GREATER_ZOMBIE("Resurrect Greater Zombie"),
-    RESURRECT_CROPS("Resurrect Crops"),
-    UNDEAD_GRASP("Undead Grasp"),
-    DEATH_CHARGE("Death Charge"),
-    DARK_DEMONBANE("Dark Demonbane"),
-    BARROWS_TELEPORT("Barrows Teleport"),
-    DEMONIC_OFFERING("Demonic Offering"),
-    GREATER_CORRUPTION("Greater Corruption"),
-    MASTER_REANIMATION("Master Reanimation"),
-    APE_ATOLL_TELEPORT("Ape Atoll Teleport"),
-    SINISTER_OFFERING("Sinister Offering");
+public enum ArceuusSpells implements Spell
+{
+	ARCEUUS_HOME_TELEPORT("Arceuus Home Teleport"),
+	ARCEUUS_LIBRARY_TELEPORT("Arceuus Library Teleport"),
+	BASIC_REANIMATION("Basic Reanimation"),
+	DRAYNOR_MANOR_TELEPORT("Draynor Manor Teleport"),
+	BATTLEFRONT_TELEPORT("Battlefront Teleport"),
+	MIND_ALTAR_TELEPORT("Mind Altar Teleport"),
+	RESPAWN_TELEPORT("Respawn Teleport"),
+	GHOSTLY_GRASP("Ghostly Grasp"),
+	RESURRECT_LESSER_GHOST("Resurrect Lesser Ghost"),
+	RESURRECT_LESSER_SKELETON("Resurrect Lesser Skeleton"),
+	RESURRECT_LESSER_ZOMBIE("Resurrect Lesser Zombie"),
+	SALVE_GRAVEYARD_TELEPORT("Salve Graveyard Teleport"),
+	ADEPT_REANIMATION("Adept Reanimation"),
+	INFERIOR_DEMONBANE("Inferior Demonbane"),
+	SHADOW_VEIL("Shadow Veil"),
+	FENKENSTRAINS_CASTLE_TELEPORT("Fenkenstrain's Castle Teleport"),
+	DARK_LURE("Dark Lure"),
+	SKELETAL_GRASP("Skeletal Grasp"),
+	RESURRECT_SUPERIOR_GHOST("Resurrect Superior Ghost"),
+	RESURRECT_SUPERIOR_SKELETON("Resurrect Superior Skeleton"),
+	RESURRECT_SUPERIOR_ZOMBIE("Resurrect Superior Zombie"),
+	MARK_OF_DARKNESS("Mark of Darkness"),
+	WEST_ARDOUGNE_TELEPORT("West Ardougne Teleport"),
+	SUPERIOR_DEMONBANE("Superior Demonbane"),
+	LESSER_CORRUPTION("Lesser Corruption"),
+	HARMONY_ISLAND_TELEPORT("Harmony Island Teleport"),
+	VILE_VIGOUR("Vile Vigour"),
+	DEGRIME("Degrime"),
+	CEMETERY_TELEPORT("Cemetery Teleport"),
+	EXPERT_REANIMATION("Expert Reanimation"),
+	WARD_OF_ARCEUUS("Ward of Arceuus"),
+	RESURRECT_GREATER_GHOST("Resurrect Greater Ghost"),
+	RESURRECT_GREATER_SKELETON("Resurrect Greater Skeleton"),
+	RESURRECT_GREATER_ZOMBIE("Resurrect Greater Zombie"),
+	RESURRECT_CROPS("Resurrect Crops"),
+	UNDEAD_GRASP("Undead Grasp"),
+	DEATH_CHARGE("Death Charge"),
+	DARK_DEMONBANE("Dark Demonbane"),
+	BARROWS_TELEPORT("Barrows Teleport"),
+	DEMONIC_OFFERING("Demonic Offering"),
+	GREATER_CORRUPTION("Greater Corruption"),
+	MASTER_REANIMATION("Master Reanimation"),
+	APE_ATOLL_TELEPORT("Ape Atoll Teleport"),
+	SINISTER_OFFERING("Sinister Offering");
 
-    private final String spellName;
+	private final String spellName;
 
-    ArceuusSpells(String spellName) {
-        this.spellName = spellName;
-    }
+	ArceuusSpells(String spellName)
+	{
+		this.spellName = spellName;
+	}
 
-    @Override
-    public String getSpellName() {
-        return spellName;
-    }
+	@Override
+	public String getSpellName()
+	{
+		return spellName;
+	}
 }

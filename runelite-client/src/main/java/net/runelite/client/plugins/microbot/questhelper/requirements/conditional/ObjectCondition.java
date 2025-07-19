@@ -24,16 +24,16 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements.conditional;
 
-
-import java.util.Objects;
-import java.util.Set;
+import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
 import lombok.Setter;
 import net.runelite.api.Client;
 import net.runelite.api.GameObject;
 import net.runelite.api.Tile;
 import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
+
+import java.util.Objects;
+import java.util.Set;
 
 import static net.runelite.api.Perspective.SCENE_SIZE;
 

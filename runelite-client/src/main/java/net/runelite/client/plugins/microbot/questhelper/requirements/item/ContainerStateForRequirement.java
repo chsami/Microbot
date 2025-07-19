@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Zoinkwiz
+ * Copyright (c) 2024, Zoinkwiz <https://github.com/Zoinkwiz>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,22 +22,22 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.microbot.questhelper.panel;
+package net.runelite.client.plugins.microbot.questhelper.requirements.item;
+
 
 import lombok.Getter;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
-
-public class QuestRequirementWrapperPanel extends JPanel {
+public class ContainerStateForRequirement
+{
     @Getter
-    private final QuestRequirementPanel questRequirementPanel;
+    private int matchesFound;
 
-    public QuestRequirementWrapperPanel(QuestRequirementPanel questRequirementPanel) {
-        setLayout(new BorderLayout());
-        setBorder(new EmptyBorder(0, 0, 0, 0));
-        add(questRequirementPanel, BorderLayout.CENTER);
-        this.questRequirementPanel = questRequirementPanel;
+    @Getter
+    private int lastCheckedTick = -2;
+
+    public void set(int matchesFound, int currentTick)
+    {
+        this.matchesFound = matchesFound;
+        this.lastCheckedTick = currentTick;
     }
 }

@@ -24,47 +24,55 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.bank.banktab;
 
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestUtil;
 import lombok.Getter;
 import lombok.Setter;
-import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestUtil;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class BankTabItems {
-    @Getter
-    private final List<BankTabItem> items;
-    @Getter
-    private final List<BankTabItem> recommendedItems;
-    @Getter
-    @Setter
+public class BankTabItems
+{
+	@Getter
+	@Setter
 
-    private String name;
+	private String name;
 
-    public BankTabItems(String name, BankTabItem... items) {
-        this.name = name;
-        this.items = QuestUtil.toArrayList(items);
-        this.recommendedItems = new ArrayList<>();
-    }
+	@Getter
+	private final List<BankTabItem> items;
 
-    public BankTabItems(String name, List<BankTabItem> items) {
-        this.name = name;
-        this.items = items;
-        this.recommendedItems = new ArrayList<>();
-    }
+	@Getter
+	private final List<BankTabItem> recommendedItems;
 
-    public BankTabItems(String name, List<BankTabItem> items, List<BankTabItem> recommendedItems) {
-        this.name = name;
-        this.items = items;
-        this.recommendedItems = recommendedItems;
-    }
+	public BankTabItems(String name, BankTabItem... items)
+	{
+		this.name = name;
+		this.items = QuestUtil.toArrayList(items);
+		this.recommendedItems = new ArrayList<>();
+	}
 
-    public void addItems(BankTabItem... items) {
-        this.items.addAll(Arrays.asList(items));
-    }
+	public BankTabItems(String name, List<BankTabItem> items)
+	{
+		this.name = name;
+		this.items = items;
+		this.recommendedItems = new ArrayList<>();
+	}
 
-    public void addRecommendedItems(BankTabItem... items) {
-        this.recommendedItems.addAll(Arrays.asList(items));
-    }
+	public BankTabItems(String name, List<BankTabItem> items, List<BankTabItem> recommendedItems)
+	{
+		this.name = name;
+		this.items = items;
+		this.recommendedItems = recommendedItems;
+	}
+
+	public void addItems(BankTabItem... items)
+	{
+		this.items.addAll(Arrays.asList(items));
+	}
+
+	public void addRecommendedItems(BankTabItem... items)
+	{
+		this.recommendedItems.addAll(Arrays.asList(items));
+	}
 }

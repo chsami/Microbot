@@ -24,28 +24,33 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements.util;
 
-
-import net.runelite.client.plugins.microbot.questhelper.requirements.conditional.Conditions;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
+import net.runelite.client.plugins.microbot.questhelper.requirements.conditional.Conditions;
 
-public class LogicHelper {
-    public static Conditions nor(Requirement... condition) {
-        return new Conditions(LogicType.NOR, condition);
-    }
+public class LogicHelper
+{
+	public static Conditions nor(Requirement... condition)
+	{
+		return new Conditions(LogicType.NOR, condition);
+	}
 
-    public static Conditions not(Requirement condition) {
-        return new Conditions(LogicType.NOR, condition);
-    }
+	public static Conditions not(Requirement condition)
+	{
+		return new Conditions(LogicType.NOR, condition);
+	}
 
-    public static Conditions nand(Requirement... condition) {
-        return new Conditions(LogicType.NAND, condition);
-    }
+	public static Conditions nand(Requirement... condition)
+	{
+		return new Conditions(LogicType.NAND, condition);
+	}
 
-    public static Conditions or(Requirement... condition) {
-        return new Conditions(LogicType.OR, condition);
-    }
+	public static Conditions or(Requirement... condition)
+	{
+		return new Conditions(LogicType.OR, condition);
+	}
 
-    public static Conditions and(Requirement... condition) {
-        return new Conditions(LogicType.AND, condition);
-    }
+	public static Conditions and(Requirement... condition)
+	{
+		return new Conditions(LogicType.AND, condition);
+	}
 }

@@ -26,61 +26,76 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements;
 
+import net.runelite.client.plugins.microbot.questhelper.requirements.conditional.ConditionForStep;
 import lombok.Setter;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.events.ChatMessage;
-import net.runelite.client.plugins.microbot.questhelper.requirements.conditional.ConditionForStep;
 
 import java.util.Arrays;
 import java.util.List;
 
-public class ChatMessageRequirement extends ConditionForStep {
-    protected final List<String> messages;
-    @Setter
-    protected boolean hasReceivedChatMessage = false;
-    protected Requirement condition;
-    @Setter
-    protected ChatMessageRequirement invalidateRequirement;
+public class ChatMessageRequirement extends ConditionForStep
+{
+	@Setter
+	protected boolean hasReceivedChatMessage = false;
 
-    public ChatMessageRequirement(String... message) {
-        this.messages = Arrays.asList(message);
-    }
+	protected Requirement condition;
 
-    public ChatMessageRequirement(Requirement condition, String... message) {
-        assert (condition != null);
-        this.condition = condition;
-        this.messages = Arrays.asList(message);
-    }
+	@Setter
+	protected ChatMessageRequirement invalidateRequirement;
 
-    @Override
-    public boolean check(Client client) {
-        return hasReceivedChatMessage;
-    }
+	protected final List<String> messages;
 
-    public boolean validateCondition(Client client, ChatMessage chatMessage) {
-        // TODO: Thing worked with MesBox?!?!
-        if (chatMessage.getType() != ChatMessageType.GAMEMESSAGE
-                && chatMessage.getType() != ChatMessageType.ENGINE
-                && chatMessage.getType() != ChatMessageType.SPAM) {
-            return false;
-        }
+	public ChatMessageRequirement(String... message)
+	{
+		this.messages = Arrays.asList(message);
+	}
 
-        if (!hasReceivedChatMessage) {
-            if (messages.stream().anyMatch(chatMessage.getMessage()::contains)) {
-                if (condition == null || condition.check(client)) {
-                    hasReceivedChatMessage = true;
-                    return true;
-                }
-            }
-        } else if (invalidateRequirement != null) {
-            invalidateRequirement.validateCondition(client, chatMessage);
-            if (invalidateRequirement.check(client)) {
-                invalidateRequirement.setHasReceivedChatMessage(false);
-                setHasReceivedChatMessage(false);
-            }
-        }
+	public ChatMessageRequirement(Requirement condition, String... message)
+	{
+		assert(condition != null);
+		this.condition = condition;
+		this.messages = Arrays.asList(message);
+	}
 
-        return false;
-    }
+	@Override
+	public boolean check(Client client)
+	{
+		return hasReceivedChatMessage;
+	}
+
+	public boolean validateCondition(Client client, ChatMessage chatMessage)
+	{
+		// TODO: Thing worked with MesBox?!?!
+		if (chatMessage.getType() != ChatMessageType.GAMEMESSAGE
+			&& chatMessage.getType() != ChatMessageType.ENGINE
+			&& chatMessage.getType() != ChatMessageType.SPAM)
+		{
+			return false;
+		}
+
+		if (!hasReceivedChatMessage)
+		{
+			if (messages.stream().anyMatch(chatMessage.getMessage()::contains))
+			{
+				if (condition == null || condition.check(client))
+				{
+					hasReceivedChatMessage = true;
+					return true;
+				}
+			}
+		}
+		else if (invalidateRequirement != null)
+		{
+			invalidateRequirement.validateCondition(client, chatMessage);
+			if (invalidateRequirement.check(client))
+			{
+				invalidateRequirement.setHasReceivedChatMessage(false);
+				setHasReceivedChatMessage(false);
+			}
+		}
+
+		return false;
+	}
 }

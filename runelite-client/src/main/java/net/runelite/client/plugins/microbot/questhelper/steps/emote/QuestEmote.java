@@ -29,28 +29,30 @@ import lombok.Getter;
 import static net.runelite.api.SpriteID.*;
 
 @Getter
-public enum QuestEmote {
-    SKILL_CAPE("Skill Cape", EMOTE_SKILLCAPE),
-    FLEX("Flex", 2426),
-    CLAP("Clap", EMOTE_CLAP),
-    CRY("Cry", EMOTE_CRY),
-    BOW("Bow", EMOTE_BOW),
-    DANCE("Dance", EMOTE_DANCE),
-    WAVE("Wave", EMOTE_WAVE),
-    THINK("Think", EMOTE_THINK),
-    GOBLIN_BOW("Goblin bow", EMOTE_GOBLIN_BOW),
-    BLOW_KISS("Blow Kiss", EMOTE_BLOW_KISS),
-    IDEA("Idea", 732),
-    STAMP("Stamp", 730),
-    FLAP("Flap", 731),
-    SLAP_HEAD("Slap Head", 729),
-    SPIN("Spin", EMOTE_SPIN);
+public enum QuestEmote
+{
+	SKILL_CAPE("Skill Cape", EMOTE_SKILLCAPE),
+	FLEX("Flex", 2426),
+	CLAP("Clap", EMOTE_CLAP),
+	CRY("Cry", EMOTE_CRY),
+	BOW("Bow", EMOTE_BOW),
+	DANCE("Dance", EMOTE_DANCE),
+	WAVE("Wave", EMOTE_WAVE),
+	THINK("Think", EMOTE_THINK),
+	GOBLIN_BOW("Goblin bow", EMOTE_GOBLIN_BOW),
+	BLOW_KISS("Blow Kiss", EMOTE_BLOW_KISS),
+	IDEA("Idea", 732),
+	STAMP("Stamp", 730),
+	FLAP("Flap", 731),
+	SLAP_HEAD("Slap Head", 729),
+	SPIN("Spin", EMOTE_SPIN);
 
-    private final String name;
-    private final int spriteId;
+	private String name;
+	private int spriteId;
 
-    QuestEmote(String name, int spriteId) {
-        this.name = name;
-        this.spriteId = spriteId;
-    }
+	QuestEmote(String name, int spriteId)
+	{
+		this.name = name;
+		this.spriteId = spriteId;
+	}
 }

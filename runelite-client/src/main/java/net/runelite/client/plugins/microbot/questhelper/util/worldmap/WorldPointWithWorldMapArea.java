@@ -31,9 +31,10 @@ import net.runelite.api.coords.WorldPoint;
  * This class is useful for dealing with the world map, where the viewed area is relevant to the placement of a {@link WorldPoint}.
  */
 @Value
-public class WorldPointWithWorldMapArea {
-    WorldPoint worldPoint;
+public class WorldPointWithWorldMapArea
+{
+	WorldPoint worldPoint;
 
-    WorldMapArea worldMapArea;
+	WorldMapArea worldMapArea;
 }
 

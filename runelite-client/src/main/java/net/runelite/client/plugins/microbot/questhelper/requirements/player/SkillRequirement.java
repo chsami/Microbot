@@ -27,158 +27,187 @@
 
 package net.runelite.client.plugins.microbot.questhelper.requirements.player;
 
-
-import lombok.Getter;
-import net.runelite.api.Client;
-import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.requirements.AbstractRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.Operation;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Client;
+import net.runelite.api.Skill;
 
 import javax.annotation.Nonnull;
 import java.awt.*;
-
-import static net.runelite.api.Skill.THIEVING;
+import java.util.Arrays;
 
 /**
  * Requirement that checks if a player meets a certain skill level.
  */
 @Getter
-public class SkillRequirement extends AbstractRequirement {
-    private final Skill skill;
-    private final int requiredLevel;
-    private final Operation operation;
-    private boolean canBeBoosted;
-    private String displayText;
-    private Boosts boosts;
-    private QuestHelperPlugin questHelperPlugin;
-    private Boosts selectedSkill;
-    private int currentSkill;
-    private int highestBoost;
+@Slf4j
+public class SkillRequirement extends AbstractRequirement
+{
+	private final Skill skill;
+	private final int requiredLevel;
+	private final Operation operation;
+	private boolean canBeBoosted;
+	private String displayText;
+	private QuestHelperPlugin questHelperPlugin;
 
-    /**
-     * Check if a player has a certain skill level
-     *
-     * @param skill         the {@link Skill} to check
-     * @param requiredLevel the required level for this Requirement to pass
-     * @param operation     what type of check we're making on the stat
-     */
-    public SkillRequirement(Skill skill, int requiredLevel, Operation operation) {
-        assert (skill != null);
-        this.skill = skill;
-        this.requiredLevel = requiredLevel;
-        this.displayText = getDisplayText();
-        this.operation = operation;
-        shouldCountForFilter = true;
-    }
+	/**
+	 * Check if a player has a certain skill level
+	 *
+	 * @param skill the {@link Skill} to check
+	 * @param requiredLevel the required level for this Requirement to pass
+	 * @param operation what type of check we're making on the stat
+	 */
+	public SkillRequirement(Skill skill, int requiredLevel, Operation operation)
+	{
+		assert(skill != null);
+		this.skill = skill;
+		this.requiredLevel = requiredLevel;
+		this.displayText = getDisplayText();
+		this.operation = operation;
+		shouldCountForFilter = true;
+	}
 
-    /**
-     * Check if a player has a certain skill level
-     *
-     * @param skill         the {@link Skill} to check
-     * @param requiredLevel the required level for this Requirement to pass
-     */
-    public SkillRequirement(Skill skill, int requiredLevel) {
-        this(skill, requiredLevel, Operation.GREATER_EQUAL);
-    }
+	/**
+	 * Check if a player has a certain skill level
+	 *
+	 * @param skill the {@link Skill} to check
+	 * @param requiredLevel the required level for this Requirement to pass
+	 */
+	public SkillRequirement(Skill skill, int requiredLevel)
+	{
+		this(skill, requiredLevel, Operation.GREATER_EQUAL);
+	}
 
-    /**
-     * Check if a player has a certain skill level
-     *
-     * @param skill         the {@link Skill} to check
-     * @param requiredLevel the required level for this Requirement to pass
-     * @param canBeBoosted  if the skill can be boosted to meet this requirement
-     */
-    public SkillRequirement(Skill skill, int requiredLevel, boolean canBeBoosted) {
-        this(skill, requiredLevel);
-        this.canBeBoosted = canBeBoosted;
-    }
+	/**
+	 * Check if a player has a certain skill level
+	 *
+	 * @param skill the {@link Skill} to check
+	 * @param requiredLevel the required level for this Requirement to pass
+	 * @param canBeBoosted if the skill can be boosted to meet this requirement
+	 */
+	public SkillRequirement(Skill skill, int requiredLevel, boolean canBeBoosted)
+	{
+		this(skill, requiredLevel);
+		this.canBeBoosted = canBeBoosted;
+	}
 
-    /**
-     * Check if a player has a certain skill level
-     *
-     * @param skill         the {@link Skill} to check
-     * @param requiredLevel the required level for this Requirement to pass
-     * @param canBeBoosted  if this skill check can be boosted to meet this requirement
-     * @param displayText   the display text
-     */
-    public SkillRequirement(Skill skill, int requiredLevel, boolean canBeBoosted, String displayText) {
-        this(skill, requiredLevel, canBeBoosted);
-        this.displayText = displayText;
-    }
+	/**
+	 * Check if a player has a certain skill level
+	 *
+	 * @param skill the {@link Skill} to check
+	 * @param requiredLevel the required level for this Requirement to pass
+	 * @param canBeBoosted if this skill check can be boosted to meet this requirement
+	 * @param displayText the display text
+	 */
+	public SkillRequirement(Skill skill, int requiredLevel, boolean canBeBoosted, String displayText)
+	{
+		this(skill, requiredLevel, canBeBoosted);
+		this.displayText = displayText;
+	}
 
-    @Override
-    public boolean check(Client client) {
-        int skillLevel = canBeBoosted ? Math.max(client.getBoostedSkillLevel(skill), client.getRealSkillLevel(skill)) :
-                client.getRealSkillLevel(skill);
-        return skillLevel >= requiredLevel;
-    }
+	@Override
+	public boolean check(Client client)
+	{
+		int skillLevel = canBeBoosted ? Math.max(client.getBoostedSkillLevel(skill), client.getRealSkillLevel(skill)) :
+			client.getRealSkillLevel(skill);
+		return skillLevel >= requiredLevel;
+	}
 
-    public boolean checkRange(Skill skill, int requiredLevel, Client client, QuestHelperConfig config) {
-        for (Boosts boostSkills : Boosts.values()) {
-            if (skill.getName().equals(boostSkills.getName())) {
-                selectedSkill = boostSkills;
-            }
-        }
+	/**
+	 * Same as check, but takes the highest possible boost into consideration and returns whether
+	 * the requirement could be passed with a boost or not
+	 */
+	BoostStatus checkBoosted(Client client, QuestHelperConfig config)
+	{
 
-        currentSkill = Math.max(client.getBoostedSkillLevel(skill), client.getRealSkillLevel(skill));
-        highestBoost = selectedSkill.getHighestBoost();
+		if (canBeBoosted)
+		{
+			var realLevel = client.getRealSkillLevel(skill);
+			var boostedLevel = Math.max(client.getBoostedSkillLevel(skill), realLevel);
+			if (boostedLevel >= requiredLevel)
+			{
+				// User passes the requirement either based on their boost or their real skill level
+				return BoostStatus.Pass;
+			}
 
-        if (config.stewBoosts() && highestBoost < 5) {
-            highestBoost = 5;
-        } else if (skill == THIEVING) {
-            //player only has access to Summer sq'irk juice at level 65 thieving which is the default boost value for thieving, currently that's blind to player current skill level
-            if (client.getRealSkillLevel(skill) < 65) {
-                highestBoost = 2; //autumn sq'irk
-            } else if (client.getRealSkillLevel(skill) < 45) {
-                highestBoost = 1;  //spring sq'irk
-            }
-        }
+			// Find boosts for this skill
+			var skillName = skill.getName();
+			var oSelectedBoost = Arrays.stream(Boosts.values()).filter(b -> skillName.equals(b.getName())).findAny();
+			if (oSelectedBoost.isEmpty())
+			{
+				log.warn("No boosts found for {}", skillName);
+				return BoostStatus.Fail;
+			}
+			var selectedBoost = oSelectedBoost.get();
 
-        return requiredLevel - highestBoost <= currentSkill;
-    }
 
-    public int checkBoosted(Client client, QuestHelperConfig config) {
-        int skillLevel = canBeBoosted ? Math.max(client.getBoostedSkillLevel(skill), client.getRealSkillLevel(skill)) :
-                client.getRealSkillLevel(skill);
+			var highestBoost = selectedBoost.getHighestBoost(config.stewBoosts(), realLevel);
 
-        if (skillLevel >= requiredLevel) {
-            return 1;
-        } else if (canBeBoosted && checkRange(skill, requiredLevel, client, config)) {
-            return 2;
-        } else {
-            return 3;
-        }
-    }
+			if (realLevel + highestBoost >= requiredLevel)
+			{
+				return BoostStatus.CanPassWithBoost;
+			}
+		}
+		else
+		{
+			if (check(client))
+			{
+				return BoostStatus.Pass;
+			}
+			else
+			{
+				return BoostStatus.Fail;
+			}
+		}
 
-    @Nonnull
-    @Override
-    public String getDisplayText() {
-        String returnText;
-        if (displayText != null) {
-            returnText = displayText;
-        } else {
-            returnText = requiredLevel + " " + skill.getName();
-        }
+		return BoostStatus.Fail;
+	}
 
-        if (canBeBoosted) {
-            returnText += " (boostable)";
-        }
+	@Nonnull
+	@Override
+	public String getDisplayText()
+	{
+		String returnText;
+		if (displayText != null)
+		{
+			returnText = displayText;
+		}
+		else
+		{
+			returnText = requiredLevel + " " + skill.getName();
+		}
 
-        return returnText;
-    }
+		if (canBeBoosted)
+		{
+			returnText += " (boostable)";
+		}
 
-    @Override
-    public Color getColor(Client client, QuestHelperConfig config) {
-        switch (checkBoosted(client, config)) {
-            case 1:
-                return config.passColour();
-            case 2:
-                return config.boostColour();
-            case 3:
-                return config.failColour();
-        }
-        return config.failColour();
-    }
+		return returnText;
+	}
+
+	@Override
+	public Color getColor(Client client, QuestHelperConfig config)
+	{
+		switch (checkBoosted(client, config))
+		{
+			case Pass:
+				return config.passColour();
+			case CanPassWithBoost:
+				return config.boostColour();
+			case Fail:
+				return config.failColour();
+		}
+		return config.failColour();
+	}
+
+	enum BoostStatus
+	{
+		Pass,
+		CanPassWithBoost,
+		Fail,
+	}
 }

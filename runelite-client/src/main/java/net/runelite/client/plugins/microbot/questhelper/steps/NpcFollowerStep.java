@@ -24,25 +24,28 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.steps;
 
-
-import net.runelite.api.NPC;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
+import net.runelite.api.NPC;
 
-public class NpcFollowerStep extends NpcStep {
-    public NpcFollowerStep(QuestHelper questHelper, int npcID, String text, Requirement... requirements) {
-        super(questHelper, npcID, text, requirements);
-    }
+public class NpcFollowerStep extends NpcStep
+{
+	public NpcFollowerStep(QuestHelper questHelper, int npcID, String text, Requirement... requirements)
+	{
+		super(questHelper, npcID, text, requirements);
+	}
 
-    @Override
-    protected boolean npcPassesChecks(NPC npc) {
-        boolean passesBaseCheck = super.npcPassesChecks(npc);
-        if (!passesBaseCheck) {
-            return false;
-        }
+	@Override
+	protected boolean npcPassesChecks(NPC npc)
+	{
+		boolean passesBaseCheck = super.npcPassesChecks(npc);
+		if (!passesBaseCheck)
+		{
+			return false;
+		}
 
-        int followerVarp = client.getVarpValue(447);
-        int followerID = followerVarp & 0x0000FFFF;
-        return followerID == npc.getIndex();
-    }
+		int followerVarp = client.getVarpValue(447);
+		int followerID = followerVarp & 0x0000FFFF;
+		return followerID == npc.getIndex();
+	}
 }

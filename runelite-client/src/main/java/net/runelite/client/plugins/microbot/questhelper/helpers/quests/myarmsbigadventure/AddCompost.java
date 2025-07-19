@@ -24,38 +24,41 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.quests.myarmsbigadventure;
 
-
-import net.runelite.api.ItemID;
-import net.runelite.api.NullObjectID;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.GameTick;
-import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
+import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.ObjectID;
+import net.runelite.client.eventbus.Subscribe;
 
 import java.util.Arrays;
 
-public class AddCompost extends ObjectStep {
-    ItemRequirement compost = new ItemRequirement("Supercompost", ItemID.SUPERCOMPOST, 7);
-    ItemRequirement spade = new ItemRequirement("Spade", ItemID.SPADE);
+public class AddCompost extends ObjectStep
+{
+	ItemRequirement compost = new ItemRequirement("Supercompost",ItemID.BUCKET_SUPERCOMPOST, 7);
+	ItemRequirement spade = new ItemRequirement("Spade", ItemID.SPADE);
 
-    public AddCompost(QuestHelper questHelper) {
-        super(questHelper, NullObjectID.NULL_18867, new WorldPoint(2831, 3696, 0),
-                "Add 7 supercompost on My Arm's soil patch.");
-        this.addIcon(ItemID.SUPERCOMPOST);
-        compost.setHighlightInInventory(true);
-    }
+	public AddCompost(QuestHelper questHelper)
+	{
+		super(questHelper, ObjectID.MYARM_FAKEFARMINGPATCH, new WorldPoint(2831, 3696, 0),
+			"Add 7 supercompost on My Arm's soil patch.");
+		this.addIcon(ItemID.BUCKET_SUPERCOMPOST);
+		compost.setHighlightInInventory(true);
+	}
 
-    @Subscribe
-    public void onGameTick(GameTick event) {
-        updateSteps();
-    }
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		updateSteps();
+	}
 
-    protected void updateSteps() {
-        int numCompToAdd = 7 - client.getVarbitValue(2792);
-        compost.setQuantity(numCompToAdd);
-        this.setRequirements(Arrays.asList(compost, spade));
-        this.setText("Add " + numCompToAdd + " supercompost on My Arm's soil patch.");
-    }
+	protected void updateSteps()
+	{
+		int numCompToAdd = 7 - client.getVarbitValue(2792);
+		compost.setQuantity(numCompToAdd);
+		this.setRequirements(Arrays.asList(compost, spade));
+		this.setText("Add " + numCompToAdd + " supercompost on My Arm's soil patch.");
+	}
 }
