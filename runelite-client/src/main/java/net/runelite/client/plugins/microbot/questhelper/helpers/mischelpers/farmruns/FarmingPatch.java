@@ -24,11 +24,14 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.farmruns;
 
+import java.awt.Polygon;
+import java.awt.Shape;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 import net.runelite.api.annotations.Varbit;
+import net.runelite.api.coords.WorldPoint;
 
 @Getter
 @ToString(onlyExplicitlyIncluded = true)
@@ -45,25 +48,35 @@ public class FarmingPatch
 	private final PatchImplementation implementation;
 	private int farmer = -1;
 	private final int patchNumber;
+	@Getter
+	private final WorldPoint location;
+	@Getter
+	private final Shape patchArea;
 
-	FarmingPatch(String name, @Varbit int varbit, PatchImplementation implementation)
+	FarmingPatch(String name, @Varbit int varbit, PatchImplementation implementation, WorldPoint location)
 	{
-		this(name, varbit, implementation, -1);
+		this(name, varbit, implementation, location, new Polygon(), -1);
 	}
 
-
-	FarmingPatch(String name, @Varbit int varbit, PatchImplementation implementation, int farmer)
+	FarmingPatch(String name, @Varbit int varbit, PatchImplementation implementation, WorldPoint location, Shape patchArea)
 	{
-		this(name, varbit, implementation, farmer, -1);
+		this(name, varbit, implementation, location, patchArea, -1, -1);
 	}
 
-	FarmingPatch(String name, @Varbit int varbit, PatchImplementation implementation, int farmer, int patchNumber)
+	FarmingPatch(String name, @Varbit int varbit, PatchImplementation implementation, WorldPoint location, Shape patchArea, int farmer)
+	{
+		this(name, varbit, implementation, location, patchArea, farmer, -1);
+	}
+
+	FarmingPatch(String name, @Varbit int varbit, PatchImplementation implementation, WorldPoint location, Shape patchArea, int farmer, int patchNumber)
 	{
 		this.name = name;
 		this.varbit = varbit;
 		this.implementation = implementation;
 		this.farmer = farmer;
 		this.patchNumber = patchNumber;
+		this.location = location;
+		this.patchArea = patchArea;
 	}
 
 	String configKey()

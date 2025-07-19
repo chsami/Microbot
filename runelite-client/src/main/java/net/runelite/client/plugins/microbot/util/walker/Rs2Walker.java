@@ -5,12 +5,26 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.EquipmentInventorySlot;
+import net.runelite.api.GameObject;
+import net.runelite.api.GroundObject;
+import net.runelite.api.MenuAction;
+import net.runelite.api.ObjectComposition;
+import net.runelite.api.Perspective;
+import net.runelite.api.Player;
 import net.runelite.api.Point;
-import net.runelite.api.*;
+import net.runelite.api.Skill;
+import net.runelite.api.Tile;
+import net.runelite.api.TileObject;
+import net.runelite.api.WallObject;
 import net.runelite.api.annotations.Component;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.devtools.MovementFlag;
@@ -872,10 +886,10 @@ public class Rs2Walker {
                 .peek(t -> {
                     // Set fairy ring requirements if not already set
                     if (t.getType() == TransportType.FAIRY_RING && 
-                        ((t.getItemIdRequirements() == null || t.getItemIdRequirements().isEmpty()) ) &&  Microbot.getVarbitValue(Varbits.DIARY_LUMBRIDGE_ELITE)  != 1) {
+                        ((t.getItemIdRequirements() == null || t.getItemIdRequirements().isEmpty()) ) &&  Microbot.getVarbitValue(VarbitID.LUMBRIDGE_DIARY_ELITE_COMPLETE)  != 1) {
                         t.setItemIdRequirements(Set.of(Set.of(
-                            ItemID.DRAMEN_STAFF, 
-                            ItemID.LUNAR_STAFF
+							ItemID.DRAMEN_STAFF,
+                            ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF
                         )));
                     }
                     
@@ -948,7 +962,7 @@ public class Rs2Walker {
 
             if (object == null) continue;
 
-            if (object.getId() == ObjectID.ROCKFALL || object.getId() == ObjectID.ROCKFALL_26680) {
+            if (object.getId() == ObjectID.MOTHERLODE_ROCKFALL_1 || object.getId() == ObjectID.MOTHERLODE_ROCKFALL_2) {
                 Rs2GameObject.interact(object, "mine");
                 return sleepUntil(() -> Rs2GameObject.getGameObject(point) == null);
             }
@@ -1469,7 +1483,8 @@ public class Rs2Walker {
                             break;
                         }
                     }
-                    
+
+					if (transport.getObjectId() <= 0) break;
 
 					List<TileObject> objects = Rs2GameObject.getAll(o -> o.getId() == transport.getObjectId(), transport.getOrigin(), 10).stream()
 						.sorted(Comparator.comparingInt(o -> o.getWorldLocation().distanceTo(transport.getOrigin())))
@@ -1530,16 +1545,16 @@ public class Rs2Walker {
 
     private static boolean handleObjectExceptions(Transport transport, TileObject tileObject) {
         //Al kharid broken wall will animate once and then stop and then animate again
-        if (tileObject.getId() == ObjectID.BROKEN_WALL_33344 || tileObject.getId() == ObjectID.BIG_WINDOW) {
+        if (tileObject.getId() == ObjectID.KHARID_POSHWALL_TOPLESS || tileObject.getId() == ObjectID.KHARID_BIGWINDOW) {
             Rs2Player.waitForAnimation();
             Rs2Player.waitForAnimation();
             return true;
         }
         // Handle Leaves Traps in Isafdar Forest
-        if (tileObject.getId() == ObjectID.LEAVES_3925) {
+        if (tileObject.getId() == ObjectID.REGICIDE_PITFALL_SIDE) {
             Rs2Player.waitForAnimation(1200);
             if (Rs2Player.getWorldLocation().getY() > 6400) {
-                Rs2GameObject.interact(ObjectID.PROTRUDING_ROCKS_3927);
+                Rs2GameObject.interact(ObjectID.REGICIDE_TRAP_HAND_HOLDS);
                 sleepUntil(() -> Rs2Player.getWorldLocation().getY() < 6400);
             } else {
                 sleepUntil(() -> !Rs2Player.isMoving() && !Rs2Player.isAnimating());
@@ -1547,7 +1562,7 @@ public class Rs2Walker {
             return true;
         }
         // Handle Ferox Encalve Barrier
-        if (tileObject.getId() == ObjectID.BARRIER_39652 || tileObject.getId() == ObjectID.BARRIER_39653) {
+        if (tileObject.getId() == ObjectID.WILDY_HUB_ENTRY_BARRIER || tileObject.getId() == ObjectID.WILDY_HUB_ENTRY_BARRIER_M) {
             if (Rs2Dialogue.isInDialogue()) {
                 if (Rs2Dialogue.getDialogueText() == null) return false;
                 if (Rs2Dialogue.getDialogueText().contains("When returning to the Enclave")) {
@@ -1560,13 +1575,13 @@ public class Rs2Walker {
             }
         }
         // Handle Cobwebs blocking path
-        if (tileObject.getId() == ObjectID.WEB) {
+        if (tileObject.getId() == ObjectID.BIGWEB_SLASHABLE) {
             sleepUntil(() -> !Rs2Player.isMoving() && !Rs2Player.isAnimating(1200));
 			final WorldPoint webLocation = tileObject.getWorldLocation();
 			final WorldPoint currentPlayerPoint = Microbot.getClient().getLocalPlayer().getWorldLocation();
-			boolean doesWebStillExist = Rs2GameObject.getAll(o -> Objects.equals(webLocation, o.getWorldLocation()) && o.getId() == ObjectID.WEB).stream().findFirst().isPresent();
+			boolean doesWebStillExist = Rs2GameObject.getAll(o -> Objects.equals(webLocation, o.getWorldLocation()) && o.getId() == ObjectID.BIGWEB_SLASHABLE).stream().findFirst().isPresent();
 			if (doesWebStillExist) {
-				sleepUntil(() -> Rs2GameObject.getAll(o -> Objects.equals(webLocation, o.getWorldLocation()) && o.getId() == ObjectID.WEB).stream().findFirst().isEmpty(),
+				sleepUntil(() -> Rs2GameObject.getAll(o -> Objects.equals(webLocation, o.getWorldLocation()) && o.getId() == ObjectID.BIGWEB_SLASHABLE).stream().findFirst().isEmpty(),
 				() -> {
 					Rs2GameObject.interact(tileObject, "slash");
 					Rs2Player.waitForAnimation();
@@ -1587,13 +1602,13 @@ public class Rs2Walker {
             return true;
         }
         // Handle Brimhaven Dungeon Stepping Stones
-        if (tileObject.getId() == ObjectID.STEPPING_STONE_21738 || tileObject.getId() == ObjectID.STEPPING_STONE_21739) {
+        if (tileObject.getId() == ObjectID.KARAM_DUNGEON_STONE1 || tileObject.getId() == ObjectID.KARAM_DUNGEON_STONE2) {
             Rs2Player.waitForAnimation(600 * 7);
             return true;
         }
         
         // Handle Morte Myre Cave Agility Shortcut
-        if (tileObject.getId() == ObjectID.CAVE_ENTRANCE_16308) {
+        if (tileObject.getId() == ObjectID.FAIRY2_ROUTE_CAVEWALLTUNNEL) {
             Rs2Player.waitForAnimation((600 * 4 ) + 300);
             return true;
         }
@@ -1609,12 +1624,12 @@ public class Rs2Walker {
         }
         
         // Handle Cave Entrance inside of Asgarnia Ice Caves
-        if (tileObject.getId() == ObjectID.TUNNEL_55988 || tileObject.getId() == ObjectID.TUNNEL_55989) {
+        if (tileObject.getId() == ObjectID.CAVEWALL_SHORTCUT_ROYAL_TITANS_EAST || tileObject.getId() == ObjectID.CAVEWALL_SHORTCUT_ROYAL_TITANS_WEST) {
             Rs2Player.waitForAnimation();
         }
 
         // Handle Rev Cave Dialogue
-        if (tileObject.getId() == ObjectID.CAVERN_31555) {
+        if (tileObject.getId() == ObjectID.WILD_CAVE_ENTRANCE_LOW) {
             if (Rs2Player.isMoving()) {
                 Rs2Player.waitForWalking();
             }
@@ -1628,7 +1643,7 @@ public class Rs2Walker {
             return true;
         }
 
-        if (tileObject.getId() == ObjectID.ROCK_SLIDE) {
+        if (tileObject.getId() == ObjectID.HEROROCKSLIDE) {
             Rs2Player.waitForAnimation(600 * 4);
             return true;
         }
@@ -1644,7 +1659,7 @@ public class Rs2Walker {
 		}
 
 		// Handle door/gate near wilderness agility course
-		if (tileObject.getId() == ObjectID.DOOR_23555 || tileObject.getId() == ObjectID.GATE_23554 || tileObject.getId() == ObjectID.GATE_23552) {
+		if (tileObject.getId() == ObjectID.BALANCEGATE52A || tileObject.getId() == ObjectID.BALANCEGATE52B_RIGHT || tileObject.getId() == ObjectID.BALANCEGATE52B_LEFT) {
 			Rs2Player.waitForAnimation(600 * 4);
 			return true;
 		}
@@ -1754,7 +1769,7 @@ public class Rs2Walker {
 
         if (!hasMenuOption) {
             if (Rs2Inventory.interact(itemId, itemAction)) {
-                if (itemAction.equalsIgnoreCase("rub") && (itemId == ItemID.XERICS_TALISMAN || transport.getDisplayInfo().toLowerCase().contains("skills necklace"))) {
+                if (itemAction.equalsIgnoreCase("rub") && (itemId == ItemID.XERIC_TALISMAN || transport.getDisplayInfo().toLowerCase().contains("skills necklace"))) {
                     return interactWithAdventureLog(transport);
                 }
 
@@ -1770,7 +1785,7 @@ public class Rs2Walker {
                     Rs2Dialogue.clickOption("Yes, teleport me now");
                 }
 
-				if (itemAction.equalsIgnoreCase("break") && itemId == ItemID.ICE_PLATEAU_TELEPORT) {
+				if (itemAction.equalsIgnoreCase("break") && itemId == ItemID.LUNAR_TABLET_ICE_PLATEAU_TELEPORT) {
 					Rs2Dialogue.sleepUntilHasQuestion("Teleport into the DEEP wilderness?");
 					Rs2Dialogue.clickOption("Yes");
 				}
@@ -2129,7 +2144,7 @@ public class Rs2Walker {
         String displayInfo = transport.getDisplayInfo();
         if (displayInfo == null || displayInfo.isEmpty()) return false;
 
-        Rs2NpcModel renu = Rs2Npc.getNpc(NpcID.RENU_13350);
+        Rs2NpcModel renu = Rs2Npc.getNpc(NpcID.QUETZAL_CHILD_GREEN);
 
         if (Rs2Npc.canWalkTo(renu, 20) && Rs2Npc.interact(renu, "travel")) {
             Rs2Player.waitForWalking();
@@ -2354,7 +2369,7 @@ public class Rs2Walker {
 
 		if (!Rs2GameObject.canWalkTo(fairyRingObject, 25)) return false;
 
-		boolean hasLumbridgeElite = Microbot.getVarbitValue(Varbits.DIARY_LUMBRIDGE_ELITE) == 1;
+		boolean hasLumbridgeElite = Microbot.getVarbitValue(VarbitID.LUMBRIDGE_DIARY_ELITE_COMPLETE) == 1;
 
 		if (!hasLumbridgeElite) {
 			if (Rs2Equipment.isWearing(EquipmentInventorySlot.WEAPON)) {
@@ -2490,7 +2505,7 @@ public class Rs2Walker {
 
 		// Items that are not included in transports
 		teleportItemIds.add(ItemID.DRAMEN_STAFF);
-		teleportItemIds.add(ItemID.LUNAR_STAFF);
+		teleportItemIds.add(ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF);
 
 		return teleportItemIds.contains(itemId);
 	}
@@ -2671,8 +2686,8 @@ public class Rs2Walker {
         if (transport.getType() == TransportType.FAIRY_RING) {
             return Rs2Inventory.hasItem(ItemID.DRAMEN_STAFF) ||
                     Rs2Equipment.isWearing(ItemID.DRAMEN_STAFF) ||
-                    Rs2Inventory.hasItem(ItemID.LUNAR_STAFF) ||
-                    Rs2Equipment.isWearing(ItemID.LUNAR_STAFF) ||  Microbot.getVarbitValue(Varbits.DIARY_LUMBRIDGE_ELITE)  == 1;
+                    Rs2Inventory.hasItem(ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF) ||
+                    Rs2Equipment.isWearing(ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF) ||  Microbot.getVarbitValue(VarbitID.LUMBRIDGE_DIARY_ELITE_COMPLETE)  == 1;
         } else if (transport.getType() == TransportType.TELEPORTATION_ITEM || 
                              transport.getType() == TransportType.TELEPORTATION_SPELL || transport.getType() == TransportType.CANOE ||
                              transport.getType() == TransportType.BOAT || transport.getType() == TransportType.CHARTER_SHIP ||
@@ -2905,7 +2920,7 @@ public class Rs2Walker {
         String currency = currencyName.trim().toLowerCase();
         switch (currency) {
             case "coins":
-                return ItemID.COINS_995;
+                return ItemID.COINS;
             case "ecto-token":
                 return ItemID.ECTOTOKEN;
             // Add more currencies as needed
@@ -2933,7 +2948,6 @@ public class Rs2Walker {
      * 
      * @param target The target destination
      * @param startPoint Starting location (null to use current player location)
-     * @param useBankItems Whether to consider bank items in pathfinding
      * @return TransportRouteAnalysis containing the analysis of both routes
      */
     public static TransportRouteAnalysis compareRoutes(WorldPoint startPoint,WorldPoint target) {
@@ -3094,7 +3108,6 @@ public class Rs2Walker {
      * Analyzes whether to go directly or via bank first for transport items.
      * 
      * @param target The destination to travel to
-     * @param useBankItems Whether to consider bank items for transport pathfinding
      * @param forceBanking If true, forces banking route regardless of efficiency
      * @return true if travel was successful, false otherwise
      */
@@ -3182,8 +3195,7 @@ public class Rs2Walker {
     /**
      * Handles the complete banking workflow using walkWithState: walk to bank, open, withdraw items, close, continue to target.
      * Enhanced version that accepts a map of item IDs with their required quantities and returns WalkerState.
-     * 
-     * @param comparison The transport route analysis result containing banking route information
+     *
      * @param missingItemsWithQuantities Map of item IDs and their required quantities
      * @param finalTarget The final destination after banking
      * @return WalkerState indicating the result of the banking workflow

@@ -82,10 +82,21 @@ public interface ThievingConfig extends Config {
     }
 
     @ConfigItem(
+        keyName = "eatFullHpBank",
+        name = "Eat Until Full Life (Bank)",
+        description = "Eat until full life during bank, before stealing again.",
+        position = 1,
+        section = foodSection
+    )
+    default boolean eatFullHpBank() {
+        return false;
+    }
+
+    @ConfigItem(
             keyName = "Hitpoints",
             name = "Eat Below HP %",
             description = "Eat food when HP falls below this percent.",
-            position = 1,
+            position = 2,
             section = foodSection
     )
     default int hitpoints() {
@@ -96,7 +107,7 @@ public interface ThievingConfig extends Config {
             keyName = "Food",
             name = "Food Type",
             description = "Type of food to use.",
-            position = 2,
+            position = 3,
             section = foodSection
     )
     default Rs2Food food() {
@@ -107,7 +118,7 @@ public interface ThievingConfig extends Config {
             keyName = "FoodAmount",
             name = "Food Amount",
             description = "Amount of food to withdraw from bank.",
-            position = 3,
+            position = 4,
             section = foodSection
     )
     default int foodAmount() {

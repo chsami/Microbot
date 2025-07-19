@@ -19,9 +19,12 @@ public class DemonicGorillaLooterScript extends Script {
     public boolean run(DemonicGorillaConfig config) {
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
+                if (DemonicGorillaScript.BOT_STATUS.equals(DemonicGorillaScript.State.BANKING) || DemonicGorillaScript.BOT_STATUS.equals(DemonicGorillaScript.State.TRAVEL_TO_GORILLAS)) {
+                    Microbot.pauseAllScripts.compareAndSet(true,  false);
+                    return;
+                }
                 if (!super.run()) return;
                 if (!Microbot.isLoggedIn()) return;
-                if (DemonicGorillaScript.BOT_STATUS.equals(DemonicGorillaScript.State.BANKING) || DemonicGorillaScript.BOT_STATUS.equals(DemonicGorillaScript.State.TRAVEL_TO_GORILLAS)) return;
                 if (Rs2Inventory.isFull() || Rs2Inventory.getEmptySlots() <= minFreeSlots) return;
                 lootItemsOnName(config);
                 if (config.scatterAshes()) {

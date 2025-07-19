@@ -7,6 +7,8 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
+import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
@@ -21,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class FishingTrawlerScript extends Script {
     public static boolean tentacle = false;
-    public static boolean lootnet = false;
+    public static boolean wasInsideBoat = false;
 
     private static final int WIDGET_GANGPLANK_CONTINUE = 15007746;
     private static final int WIDGET_CONTRIBUTION = 23986189;
@@ -35,10 +37,9 @@ public class FishingTrawlerScript extends Script {
 
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
-                if (!Microbot.isLoggedIn() || !super.run()) return;
+                if (!Microbot.isLoggedIn() || !super.run() || BreakHandlerScript.isBreakActive()) return;
 
                 long startTime = System.currentTimeMillis();
-
                 if (!Rs2Inventory.hasItem("axe", false) && !Rs2Equipment.isWearing("axe", false)) {
                     Microbot.showMessage("You need an axe in your inventory or equipped.");
                     shutdown();
@@ -46,18 +47,26 @@ public class FishingTrawlerScript extends Script {
                 }
 
                 if (Rs2GameObject.exists(OBJECT_TRAWLERNET)) {
-                    if (lootnet) {
+                    if (wasInsideBoat) {
                         Microbot.log("Looting Rewards");
+                        Microbot.status = "Looting Rewards";
                         Rs2GameObject.interact(OBJECT_TRAWLERNET, "inspect");
                         Rs2Player.waitForWalking();
                         sleep(Rs2Random.randomGaussian(600, 300));
                         Rs2Widget.clickWidget("Bank-all");
                         sleep(Rs2Random.randomGaussian(600, 300));
-                        lootnet = false;
+                        wasInsideBoat = false;
+                        BreakHandlerScript.setLockState(false);
+                        if (BreakHandlerScript.isBreakActive()) {
+                            Microbot.log("Break time, waiting...");
+                            return;
+                        }
                     }
 
+                    BreakHandlerScript.setLockState(true);
+
                     if (Rs2GameObject.interact(new WorldPoint(2675, 3170, 0), "Cross")) {
-                        Microbot.log("Crossing GangPlank");
+                        Microbot.log("Crossing Gangplank");
                         Rs2Player.waitForWalking(10000);
                     }
                 } else if (Rs2GameObject.exists(OBJECT_DAISIES) && Rs2Player.getWorldLocation().getPlane() == 0) {
@@ -72,9 +81,8 @@ public class FishingTrawlerScript extends Script {
                 String contributionText = contributionWidget != null ? contributionWidget.getText() : null;
 
                 if (gangplankMessage != null && gangplankMessage.contains("continue")) {
-                    if (gangplankWidget != null) {
                         Rs2Widget.clickWidget(WIDGET_GANGPLANK_CONTINUE);
-                    }
+                        Microbot.status = "Waiting inside the boat";
                 }
 
                 int contributionValue = 0;
@@ -90,7 +98,7 @@ public class FishingTrawlerScript extends Script {
 
                 if (Rs2Player.getWorldLocation().getPlane() == 0 && Rs2GameObject.exists(OBJECT_SHIPSLADDER)) {
                     Microbot.log("In minigame — heading up ladder");
-                    lootnet = true;
+                    wasInsideBoat = true;
                     Rs2GameObject.interact(new WorldPoint(1884, 4826, 0), "Climb-up");
                     Rs2Player.waitForWalking();
                     Rs2Player.waitForAnimation();
@@ -105,12 +113,17 @@ public class FishingTrawlerScript extends Script {
                     NPC tentacleNpc = Rs2Npc.getNpc("Enormous Tentacle");
 
                     if (tentacleNpc != null) {
-                        awaitExecutionUntil(() -> {
-                            Rs2Npc.interact("Enormous Tentacle", "Chop");
-                            tentacle = true;
-                            lootnet = true;
-                            Rs2Player.waitForAnimation();
-                        }, () -> tentacleNpc.getAnimation() == 8953, 100);
+                        if (!tentacle) {
+                            Microbot.log("Tentacle found, chopping it down");
+                            Rs2Camera.turnTo(tentacleNpc);
+                        }
+                        sleepUntil(() -> tentacleNpc.getAnimation() == 8953, 10000);
+                        Rs2Npc.interact("Enormous Tentacle", "Chop");
+                        sleepUntilTick(2);
+                        if (!Rs2Player.isInteracting()) Rs2Npc.interact("Enormous Tentacle", "Chop");
+                        tentacle = true;
+                        wasInsideBoat = true;
+                        sleepUntil(() -> !Rs2Player.isInteracting());
                     } else if (tentacle) {
                         GameObject ladderObject = Rs2GameObject.getGameObject(OBJECT_TENTACLE_LADDER);
                         if (ladderObject != null) {
@@ -146,5 +159,7 @@ public class FishingTrawlerScript extends Script {
     @Override
     public void shutdown() {
         super.shutdown();
+        wasInsideBoat = false;
+        tentacle = false;
     }
 }

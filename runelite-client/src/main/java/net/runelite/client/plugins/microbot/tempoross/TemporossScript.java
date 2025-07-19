@@ -77,6 +77,7 @@ public class TemporossScript extends Script {
             try {
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
+                if (BreakHandlerScript.isBreakActive()) return;
 
                 if (!isInMinigame()) {
                     handleEnterMinigame();
@@ -126,7 +127,7 @@ public class TemporossScript extends Script {
     }
 
     private boolean hasHarpoon() {
-        return Rs2Inventory.contains(harpoonType.getId()) || Rs2Equipment.hasEquipped(harpoonType.getId());
+        return Rs2Inventory.contains(harpoonType.getId()) || Rs2Equipment.isWearing(harpoonType.getId());
     }
 
     private void determineWorkArea() {
@@ -167,6 +168,7 @@ public class TemporossScript extends Script {
             if (Rs2Npc.interact(exitNpc, "Leave")) {
                 reset();
                 sleepUntil(() -> !isInMinigame(), 15000);
+                BreakHandlerScript.setLockState(false);
                 Rs2Antiban.takeMicroBreakByChance();
             }
         }
@@ -185,7 +187,6 @@ public class TemporossScript extends Script {
         TemporossPlugin.fireClouds = 0;
         TemporossPlugin.waves = 0;
         state = State.INITIAL_CATCH;
-        BreakHandlerScript.setLockState(false);
     }
 
     public void handleForfeit() {
@@ -195,6 +196,7 @@ public class TemporossScript extends Script {
                 if (Rs2Npc.interact(forfeitNpc, "Forfeit")) {
                     sleepUntil(() -> !isInMinigame(), 15000);
                     reset();
+                    BreakHandlerScript.setLockState(false);
                 }
             }
         }
@@ -206,6 +208,7 @@ public class TemporossScript extends Script {
             if (Rs2Npc.interact(forfeitNpc, "Forfeit")) {
                 sleepUntil(() -> !isInMinigame(), 15000);
                 reset();
+                BreakHandlerScript.setLockState(false);
             }
         }
     }
@@ -594,14 +597,26 @@ public class TemporossScript extends Script {
             TemporossScript.state = TemporossScript.state.next;
         }
 
-        if(TemporossScript.ENERGY < 30 && State.getAllFish() > 6 && !temporossConfig.solo() && TemporossScript.state != State.ATTACK_TEMPOROSS) {
-            TemporossScript.state = State.EMERGENCY_FILL;
-        }
-        if (TemporossScript.ENERGY == 0 && !temporossConfig.solo() && TemporossScript.state != State.ATTACK_TEMPOROSS && TemporossScript.state != State.INITIAL_CATCH) {
+        if ((TemporossScript.state == State.THIRD_CATCH || TemporossScript.state == State.EMERGENCY_FILL)
+            && TemporossScript.ENERGY <= ( isFilling ? 0 : 5)
+            && !temporossConfig.solo()) {
+            log("Very low energy, better wait on Tempoross pool");
             TemporossScript.state = State.ATTACK_TEMPOROSS;
+            return;
         }
+
         if (temporossPool != null && TemporossScript.state != State.SECOND_FILL && TemporossScript.state != State.ATTACK_TEMPOROSS && TemporossScript.ENERGY < 94) {
+            log("Tempoross pool detected, attacking Tempoross");
             TemporossScript.state = State.ATTACK_TEMPOROSS;
+            return;
+        }
+
+        if (((TemporossScript.ENERGY < 30 && State.getAllFish() > 6)
+            || (TemporossScript.ENERGY < 50 && State.getAllFish() >= State.getTotalAvailableFishSlots()))
+            && !temporossConfig.solo()
+            && TemporossScript.state != State.ATTACK_TEMPOROSS) {
+            log("Low energy, going for emergency fill");
+            TemporossScript.state = State.EMERGENCY_FILL;
         }
 
     }
@@ -670,7 +685,7 @@ public class TemporossScript extends Script {
             case THIRD_COOK:
                 isFilling = false;
                 int rawFishCount = Rs2Inventory.count(ItemID.RAW_HARPOONFISH);
-                TileObject range = workArea.getRange();
+                TileObject range = workArea != null ? workArea.getRange() : null;
                 if (range != null && rawFishCount > 0) {
                     if(Rs2Player.isInteracting()) {
                         if (Objects.equals(Rs2Player.getInteracting(), range))
@@ -696,7 +711,7 @@ public class TemporossScript extends Script {
             case INITIAL_FILL:
                 List<Rs2NpcModel> ammoCrates = Rs2Npc
                         .getNpcs()
-                        .filter(npc -> Arrays.asList(npc.getComposition().getActions()).contains("Fill"))
+                        .filter(npc -> npc.getComposition() != null && npc.getComposition().getActions() != null && Arrays.asList(npc.getComposition().getActions()).contains("Fill"))
                         .filter(npc -> npc.getWorldLocation().distanceTo(workArea.mastPoint) <= 4)
                         .filter(npc -> !inCloud(npc.getWorldLocation(),1))
                         .map(Rs2NpcModel::new)
@@ -749,7 +764,7 @@ public class TemporossScript extends Script {
                 Rs2Camera.turnTo(ammoCrate.getActor());
                 Rs2Npc.interact(ammoCrate, "Fill");
                 log("Interacting with ammo crate");
-                sleepUntil(Rs2Player::isAnimating, 5000);
+                Rs2Inventory.waitForInventoryChanges(5000);
                 isFilling = true;
                 break;
 
@@ -767,7 +782,7 @@ public class TemporossScript extends Script {
                     log("Attacking Tempoross");
                     Rs2Player.waitForWalking(2000);
                 } else {
-                    if (ENERGY > 0) {
+                    if (ENERGY > 5) {
                         state = null;
                         return;
                     }
@@ -882,6 +897,7 @@ public class TemporossScript extends Script {
     public void shutdown() {
         super.shutdown();
         reset();
+        BreakHandlerScript.setLockState(false);
         // Any cleanup code here
     }
 }

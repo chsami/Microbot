@@ -90,12 +90,12 @@ public class StaffScript extends Script implements ICraftingScript {
         Rs2Bank.depositAll(itemToCraft.getItemName());
         sleepUntilOnClientThread(() -> !Rs2Inventory.hasItem(itemToCraft.getItemName()));
 
-        Rs2Bank.withdrawX(true, battleStaff, 14);
+        Rs2Bank.withdrawDeficit(battleStaff, 14);
         sleepUntilOnClientThread(() -> Rs2Inventory.hasItem(battleStaff));
 
         verifyItemInBank(itemToCraft.getOrb());
 
-        Rs2Bank.withdrawX(true, itemToCraft.getOrb(), 14);
+        Rs2Bank.withdrawDeficit(itemToCraft.getOrb(), 14);
         sleepUntilOnClientThread(() -> Rs2Inventory.hasItem(itemToCraft.getOrb()));
 
         sleep(600, 3000);
@@ -124,14 +124,14 @@ public class StaffScript extends Script implements ICraftingScript {
     }
 
     public ProgressiveStaffmakingModel calculateItemToCraft() {
-        int craftinglvl = Microbot.getClient().getRealSkillLevel(Skill.CRAFTING);
-        if (craftinglvl < Staffs.EARTH_BATTLESTAFF.getLevelRequired()) {
+        int craftingLvl = Microbot.getClient().getRealSkillLevel(Skill.CRAFTING);
+        if (craftingLvl < Staffs.EARTH_BATTLESTAFF.getLevelRequired()) {
             model.setItemToCraft(Staffs.WATER_BATTLESTAFF);
-        } else if (craftinglvl < Staffs.FIRE_BATTLESTAFF.getLevelRequired()) {
+        } else if (craftingLvl < Staffs.FIRE_BATTLESTAFF.getLevelRequired()) {
             model.setItemToCraft(Staffs.EARTH_BATTLESTAFF);
-        } else if (craftinglvl < Staffs.AIR_BATTLESTAFF.getLevelRequired()) {
+        } else if (craftingLvl < Staffs.AIR_BATTLESTAFF.getLevelRequired()) {
             model.setItemToCraft(Staffs.FIRE_BATTLESTAFF);
-        } else if (craftinglvl < 99) {
+        } else if (craftingLvl < 99) {
             model.setItemToCraft(Staffs.AIR_BATTLESTAFF);
         }
         return model;

@@ -35,7 +35,6 @@ public class ThievingPlugin extends Plugin {
     private OverlayManager overlayManager;
     @Inject
     private ThievingOverlay thievingOverlay;
-
     @Inject
     private ThievingScript thievingScript;
 
@@ -77,8 +76,11 @@ public class ThievingPlugin extends Plugin {
 		}
 	}
 
-	public Duration getRunTime()
-	{
+	public Duration getRunTime() {
 		return thievingScript.getRunTime();
 	}
+
+    public String getState() {
+        return String.valueOf(thievingScript.currentState);
+    }
 }

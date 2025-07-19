@@ -1,11 +1,7 @@
 package net.runelite.client.plugins.microbot.breakhandler;
-
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LockCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.util.SchedulerPluginUtil;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.events.PluginPauseEvent;
@@ -13,9 +9,7 @@ import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.ui.ClientUI;
-
 import java.time.Duration;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 /**
@@ -57,8 +51,11 @@ public class BreakHandlerScript extends Script {
     
     public static AtomicBoolean lockState = new AtomicBoolean(false);
     public static void setLockState(boolean state) {
-        log .info("\n\t-Setting lock state to: " + state+"\n\t-current state: " + BreakHandlerScript.lockState.get());
-        BreakHandlerScript.lockState.set(state);
+        boolean currentState = BreakHandlerScript.lockState.get();
+        if (currentState != state) {
+            log.info("\n\t-Setting lock state to: " + state + "\n\t-previous state: " + currentState);
+            BreakHandlerScript.lockState.set(state);
+        }
     }
     private String title = "";
     private BreakHandlerConfig config;

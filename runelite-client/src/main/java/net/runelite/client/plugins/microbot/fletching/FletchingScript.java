@@ -147,7 +147,7 @@ public class FletchingScript extends Script {
 
         // Withdraw the primary item if not already in the inventory
         if (!Rs2Inventory.hasItem(primaryItemToFletch)) {
-            Rs2Bank.withdrawX(true, primaryItemToFletch, fletchingMode.getAmount(), true);
+            Rs2Bank.withdrawX(primaryItemToFletch, fletchingMode.getAmount(), true);
         }
 
         // Check if the secondary item is available
@@ -167,7 +167,7 @@ public class FletchingScript extends Script {
         // Withdraw the secondary item if not already in the inventory
         if (!Rs2Inventory.hasItem(secondaryItemToFletch)) {
             if (fletchingMode == FletchingMode.STRUNG) {
-                Rs2Bank.withdrawX(true, secondaryItemToFletch, fletchingMode.getAmount());
+                Rs2Bank.withdrawDeficit(secondaryItemToFletch, fletchingMode.getAmount());
             } else {
                 Rs2Bank.withdrawAll(secondaryItemToFletch);
             }

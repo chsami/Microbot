@@ -47,9 +47,16 @@ public class FarmingRegion
 		}
 	}
 
+	/**
+	 * Check if the given WorldPoint is within this farming region
+	 * Primarily checks if the point is in the same region ID
+	 *
+	 * @param loc The WorldPoint to check
+	 * @return true if the point is within this farming region
+	 */
 	public boolean isInBounds(WorldPoint loc)
 	{
-		return true;
+		return loc.getRegionID() == regionID;
 	}
 
 	@Override
@@ -58,4 +65,3 @@ public class FarmingRegion
 		return name;
 	}
 }
-

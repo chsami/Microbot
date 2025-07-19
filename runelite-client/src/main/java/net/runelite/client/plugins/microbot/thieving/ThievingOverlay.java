@@ -38,21 +38,21 @@ public class ThievingOverlay extends OverlayPanel {
 
             panelComponent.getChildren().add(
                     LineComponent.builder()
-                            .left("XP")
+                            .left("XP:")
                             .right(String.valueOf(plugin.xpGained()))
                             .build()
             );
 
             panelComponent.getChildren().add(
                     LineComponent.builder()
-                            .left("STATE")
-                            .right(Microbot.status)
+                            .left("STATE:")
+                            .right(plugin.getState())
                             .build()
             );
-            
+
             panelComponent.getChildren().add(
                     LineComponent.builder()
-                            .left("RUNTIME")
+                            .left("RUNTIME:")
                             .right(getFormattedDuration(plugin.getRunTime()))
                             .build()
             );

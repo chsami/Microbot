@@ -175,7 +175,7 @@ public class AutoWoodcuttingScript extends Script {
     private void resetInventory(AutoWoodcuttingConfig config) {
         switch (config.resetOptions()) {
             case DROP:
-                Rs2Inventory.dropAllExcept(false, config.interactOrder(), "axe", "tinderbox");
+                Rs2Inventory.dropAllExcept(false, config.interactOrder(), "axe", "tinderbox", "crystal shard");
                 state = State.WOODCUTTING;
                 break;
             case BANK:

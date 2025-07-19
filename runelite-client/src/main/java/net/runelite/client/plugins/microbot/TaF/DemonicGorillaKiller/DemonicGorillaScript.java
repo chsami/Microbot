@@ -6,15 +6,15 @@ import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.qualityoflife.QoLPlugin;
+import net.runelite.client.plugins.microbot.qualityoflife.QoLScript;
 import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
-import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Potion;
-import net.runelite.client.plugins.microbot.util.models.RS2Item;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -23,7 +23,6 @@ import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
 import net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
-import org.apache.commons.lang3.tuple.Pair;
 
 import java.time.Instant;
 import java.util.*;
@@ -35,7 +34,7 @@ import static net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIn
 // Script heavily inspired by Tormented Demon script
 public class DemonicGorillaScript extends Script {
 
-    public static final double VERSION = 1.0;
+    public static final double VERSION = 1.1;
     public static final int DEMONIC_GORILLA_PRAYER_SWITCH = 7224;
     public static final int DEMONIC_GORILLA_MAGIC_ATTACK = 7225;
     public static final int DEMONIC_GORILLA_MELEE_ATTACK = 7226;
@@ -45,8 +44,6 @@ public class DemonicGorillaScript extends Script {
     // Behind rope in the entrance of the cave
     private static final WorldPoint SAFE_LOCATION = new WorldPoint(2465, 3494, 0);
     private static final WorldPoint GORILLA_LOCATION = new WorldPoint(2100, 5643, 0);
-    public static final int FENCE_ID = 28807;
-    public static final int CAVE_ID = 28686;
     public static int killCount = 0;
     public static int currentTripKillCount = 0;
     public static Rs2PrayerEnum currentDefensivePrayer = null;
@@ -61,7 +58,6 @@ public class DemonicGorillaScript extends Script {
     public static int gameTickCount = 0;
     public static boolean playerMoved;
     public static ArmorEquiped currentGear = ArmorEquiped.MELEE;
-    public static int TotalLootValue;
     public LocalPoint demonicGorillaRockPosition = null;
     public int demonicGorillaRockLifeCycle = -1;
     private Rs2PrayerEnum currentOffensivePrayer = null;
@@ -97,23 +93,15 @@ public class DemonicGorillaScript extends Script {
         Rs2Antiban.setActivityIntensity(EXTREME);
     }
 
-    private static void UpdateTotalLoot(RS2Item item) {
-        var gePrice = Rs2GrandExchange.getPrice(item.getItem().getId());
-        TotalLootValue += (gePrice == -1 ? item.getItem().getPrice() : gePrice) * item.getTileItem().getQuantity();
-    }
-    private int count = 0;
     public boolean run(DemonicGorillaConfig config) {
         bankingStep = BankingStep.BANK;
         travelStep = TravelStep.GNOME_STRONGHOLD;
         isRunning = true;
         Microbot.enableAutoRunOn = false;
-
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!Microbot.isLoggedIn() || !super.run()) return;
-                rangeGear = new Rs2InventorySetup(config.rangeGear(), mainScheduledFuture);
-                magicGear = new Rs2InventorySetup(config.magicGear(), mainScheduledFuture);
-                meleeGear = new Rs2InventorySetup(config.meleeGear(), mainScheduledFuture);
+                preflightChecks(config);
                 switch (BOT_STATUS) {
                     case BANKING:
                         handleBanking(config);
@@ -134,7 +122,42 @@ public class DemonicGorillaScript extends Script {
         return true;
     }
 
+    private void preflightChecks(DemonicGorillaConfig config) {
+        if (config.useMagicStyle() && config.magicGear() == null) {
+            Microbot.showMessage("You've selected magic combatstyle, but your magic inventory setup is null. Please set it in the config. If you already have one selected. Select another inventory setup and then select your magic setup again.");
+            shutdown();
+            return;
+        }
+        if (config.useRangeStyle() && config.rangeGear() == null) {
+            Microbot.showMessage("You've selected ranged combatstyle, but your range inventory setup is null. Please set it in the config. If you already have one selected. Select another inventory setup and then select your range setup again.");
+            shutdown();
+            return;
+        }
+        if (config.useMeleeStyle() && config.meleeGear() == null) {
+            Microbot.showMessage("You've selected melee combatstyle, but your melee inventory setup is null. Please set it in the config. If you already have one selected. Select another inventory setup and then select your melee setup again.");
+            shutdown();
+            return;
+        }
+        if (config.gearSetup() == null) {
+            Microbot.showMessage("Your banking gear setup is null. Please set it in the config. If you already have one selected. Select another inventory setup and then select your gear setup again.");
+            shutdown();
+            return;
+        }
+        rangeGear = new Rs2InventorySetup(config.rangeGear(), mainScheduledFuture);
+        magicGear = new Rs2InventorySetup(config.magicGear(), mainScheduledFuture);
+        meleeGear = new Rs2InventorySetup(config.meleeGear(), mainScheduledFuture);
+        var isQoLEnabled = Microbot.getActiveScripts().stream().anyMatch(x -> x instanceof QoLScript);
+        if (isQoLEnabled) {
+            Microbot.log("QoL script interferes with banking when using inventory setups, disabling QoL.");
+            Microbot.stopPlugin(QoLPlugin.class);
+        }
+    }
+
     private void handleTravel(DemonicGorillaConfig config) {
+        if (Rs2Player.distanceTo(GORILLA_LOCATION) < 5) {
+            BOT_STATUS = State.FIGHTING;
+            return;
+        }
         if (Rs2Walker.walkTo(GORILLA_LOCATION)) {
             BOT_STATUS = State.FIGHTING;
         }
@@ -165,13 +188,16 @@ public class DemonicGorillaScript extends Script {
                     var ate = false;
                     boolean ateFood = false;
                     boolean drankPrayerPot = false;
-
                     while (Rs2Player.getHealthPercentage() < 70 || ateFood || drankPrayerPot) {
                         ateFood = Rs2Player.eatAt(80);
                         drankPrayerPot = Rs2Player.drinkPrayerPotionAt(config.minEatPercent());
                         ate = true;
                         sleep(1200);
                         if (!isRunning || !this.isRunning()) {
+                            break;
+                        }
+                        Microbot.log("Eating food or drinking prayer potion before going to gorillas.");
+                        if (Rs2Player.getHealthPercentage() > 70) {
                             break;
                         }
                     }

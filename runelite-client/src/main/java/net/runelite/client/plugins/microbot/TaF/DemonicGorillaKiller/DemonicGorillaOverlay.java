@@ -38,7 +38,11 @@ public class DemonicGorillaOverlay extends OverlayPanel {
                     .build());
             var state = DemonicGorillaScript.BOT_STATUS == DemonicGorillaScript.State.TRAVEL_TO_GORILLAS ? DemonicGorillaScript.travelStep : DemonicGorillaScript.BOT_STATUS;
             panelComponent.getChildren().add(LineComponent.builder()
-                    .left("Status: " + state)
+                    .left("Script status: " + state)
+                    .leftColor(Color.WHITE)
+                    .build());
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Microbot status: " + Microbot.status)
                     .leftColor(Color.WHITE)
                     .build());
             panelComponent.getChildren().add(LineComponent.builder()

@@ -100,29 +100,36 @@ public class BankerScript extends Script {
         }
 
         for (ItemToKeep item : ItemToKeep.values()) {
-            if (item.isEnabled(config)) {
-                int count = item.getIds().stream().mapToInt(Rs2Inventory::count).sum();
-                log.info("Item: {} Count: {}", item.name(), count);
-                if (count < item.getValue(config)) {
-                    log.info("Withdrawing {} {}(s)", item.getValue(config) - count, item.name());
-                    if (item.name().equals("FOOD")) {
-                        for (Rs2Food food : Arrays.stream(Rs2Food.values()).sorted(Comparator.comparingInt(Rs2Food::getHeal).reversed()).collect(Collectors.toList())) {
-                            log.info("Checking bank for food: {}", food.getName());
-                            if (Rs2Bank.hasBankItem(food.getId(), item.getValue(config) - count)) {
-                                Rs2Bank.withdrawX(true, food.getId(), item.getValue(config) - count);
-                                break;
-                            }
-                        }
-                    } else {
-                        ArrayList<Integer> ids = new ArrayList<>(item.getIds());
-                        Collections.reverse(ids);
-                        for (int id : ids) {
-                            log.info("Checking bank for item: {}", id);
-                            if (Rs2Bank.hasBankItem(id, item.getValue(config) - count)) {
-                                Rs2Bank.withdrawX(true, id, item.getValue(config) - count);
-                                break;
-                            }
-                        }
+            if (!item.isEnabled(config)) continue;
+
+            final int count = item.getIds().stream().mapToInt(Rs2Inventory::count).sum();
+            log.info("Item: {} Count: {}", item.name(), count);
+
+            final int missing = item.getValue(config) - count;
+            if (missing == 0) continue;
+
+            log.info("Withdrawing {} {}(s)", missing, item.name());
+            if (item == ItemToKeep.FOOD) {
+                final OptionalInt foodId = Arrays.stream(Rs2Food.values())
+                        .sorted(Comparator.comparingInt(Rs2Food::getHeal).reversed())
+                        .mapToInt(Rs2Food::getId)
+                        .filter(id -> Rs2Bank.hasBankItem(id, missing))
+                        .findFirst();
+                if (foodId.isPresent()) {
+                    log.info("Withdrawing food from bank. Id={}", foodId.getAsInt());
+                    Rs2Bank.withdrawX(foodId.getAsInt(), missing);
+                    break;
+                } else {
+                    log.info("Found no food in bank.");
+                }
+            } else {
+                ArrayList<Integer> ids = new ArrayList<>(item.getIds());
+                Collections.reverse(ids);
+                for (int id : ids) {
+                    log.info("Checking bank for item: {}", id);
+                    if (Rs2Bank.hasBankItem(id, missing)) {
+                        Rs2Bank.withdrawX(id, missing);
+                        break;
                     }
                 }
             }

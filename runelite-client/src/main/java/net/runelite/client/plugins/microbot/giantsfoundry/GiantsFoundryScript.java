@@ -160,15 +160,15 @@ public class GiantsFoundryScript extends Script {
 
         if (!Rs2Inventory.hasItemAmount(config.FirstBar().getName(), config.firstBarAmount())
                 && !Rs2Inventory.hasItemAmount(config.SecondBar().getName(), config.secondBarAmount()) && !canPour()) {
-            Rs2Bank.useBank();
+            Rs2Bank.openBank();
             //check if inv is empty and deposit all inv items
             if(Rs2Bank.count(config.FirstBar().getName()) < config.firstBarAmount() || Rs2Bank.count(config.SecondBar().getName()) < config.secondBarAmount()) {
                 Microbot.log("Insufficient bars in bank to continue");
                 this.shutdown();
                 return;
             }
-            Rs2Bank.withdrawX(true, config.FirstBar().getName(), config.firstBarAmount());
-            Rs2Bank.withdrawX(true, config.SecondBar().getName(), config.secondBarAmount());
+            Rs2Bank.withdrawDeficit(config.FirstBar().getName(), config.firstBarAmount());
+            Rs2Bank.withdrawDeficit(config.SecondBar().getName(), config.secondBarAmount());
             Rs2Bank.closeBank();
             return;
         }
@@ -222,12 +222,12 @@ public class GiantsFoundryScript extends Script {
     boolean doAction = false;
 
     public void setState(State state) {
-        if (this.state == state) return;
+        if (GiantsFoundryScript.state == state) return;
         setState(state, true);
     }
 
     public void setState(State state, boolean doAction) {
-        this.state = state;
+        GiantsFoundryScript.state = state;
         this.doAction = doAction;
     }
 

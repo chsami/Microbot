@@ -52,7 +52,9 @@ public class TemporossOverlay extends Overlay {
 
     @Override
     public Dimension render(Graphics2D graphics) {
-
+        if (!TemporossScript.isInMinigame()){
+            return null;
+        }
         // Render NPC overlays if the list is not null
         if (npcList != null) {
             for (Rs2NpcModel npc : npcList) {
