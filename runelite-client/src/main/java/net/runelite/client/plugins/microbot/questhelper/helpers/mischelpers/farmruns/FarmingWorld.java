@@ -174,19 +174,7 @@ public class FarmingWorld
 					4
 				)),
 			new FarmingPatch("", VarbitID.FARMING_TRANSMIT_E, PatchImplementation.COMPOST, new WorldPoint(2805, 3464, 0))
-		)
-		{
-			@Override
-			public boolean isInBounds(WorldPoint loc)
-			{
-				if (loc.getX() >= 2816 && loc.getY() < 3456)
-				{
-					//Upstairs sends different varbits
-					return loc.getX() < 2840 && loc.getY() >= 3440 && loc.getPlane() == 0;
-				}
-				return true;
-			}
-		});
+		));
 		add(new FarmingRegion("Catherby", 11317, false,
 			new FarmingPatch("", VarbitID.FARMING_TRANSMIT_A, PatchImplementation.FRUIT_TREE, new WorldPoint(2860, 3432, 0),
 				new Polygon(
@@ -195,15 +183,7 @@ public class FarmingWorld
 					4
 				),
 				NpcID.FARMING_GARDENER_FRUIT_4)
-		)
-		{
-			//The fruit tree patch is always sent when upstairs in 11317
-			@Override
-			public boolean isInBounds(WorldPoint loc)
-			{
-				return loc.getX() >= 2840 || loc.getY() < 3440 || loc.getPlane() == 1;
-			}
-		});
+		));
 
 		add(new FarmingRegion("Civitas illa Fortis", 6192, false, Set.of(6447, 6448, 6449, 6191, 6193),
 			new FarmingPatch("North", VarbitID.FARMING_TRANSMIT_A, PatchImplementation.ALLOTMENT, new WorldPoint(1586, 3102, 0),
@@ -318,15 +298,7 @@ public class FarmingWorld
 					4
 				)),
 			new FarmingPatch("", VarbitID.FARMING_TRANSMIT_E, PatchImplementation.COMPOST, new WorldPoint(3056, 3311, 0))
-		)
-		{
-			@Override
-			public boolean isInBounds(WorldPoint loc)
-			{
-				//Not on region boundary due to Port Sarim Spirit Tree patch
-				return loc.getY() >= 3272;
-			}
-		});
+		));
 
 		add(new FarmingRegion("Fossil Island", 14651, false, Set.of(14907, 14908, 15164, 14652, 14906, 14650, 15162, 15163),
 			new FarmingPatch("East", VarbitID.FARMING_TRANSMIT_A, PatchImplementation.HARDWOOD_TREE, new WorldPoint(3713, 3835, 0),
@@ -350,30 +322,7 @@ public class FarmingWorld
 					4
 				),
 				NpcID.FOSSIL_SQUIRREL_GARDENER3)
-		)
-		{
-			@Override
-			public boolean isInBounds(WorldPoint loc)
-			{
-				//Hardwood tree varbits are sent anywhere on plane 0 of fossil island.
-				//Varbits get sent 1 tick earlier than expected when climbing certain ladders and stairs
-
-				//Stairs to house on the hill
-				if (loc.getX() == 3753 && loc.getY() >= 3868 && loc.getY() <= 3870)
-				{
-					return false;
-				}
-
-				//East and west ladders to rope bridge
-				if ((loc.getX() == 3729 || loc.getX() == 3728 || loc.getX() == 3747 || loc.getX() == 3746)
-					&& loc.getY() <= 3832 && loc.getY() >= 3830)
-				{
-					return false;
-				}
-
-				return loc.getPlane() == 0;
-			}
-		});
+		));
 		add(new FarmingRegion("Seaweed", 15008, false,
 			new FarmingPatch("North", VarbitID.FARMING_TRANSMIT_A, PatchImplementation.SEAWEED, new WorldPoint(3733, 10272, 1),
 				new Polygon(
@@ -554,14 +503,7 @@ public class FarmingWorld
 					4
 				),
 				NpcID.FARMING_GARDENER_SPIRIT_TREE_1)
-		)
-		{
-			@Override
-			public boolean isInBounds(WorldPoint loc)
-			{
-				return loc.getY() < 3272;
-			}
-		});
+		));
 
 		add(new FarmingRegion("Rimmington", 11570, false, Set.of(11826),
 			new FarmingPatch("", VarbitID.FARMING_TRANSMIT_A, PatchImplementation.BUSH, new WorldPoint(2940, 3223, 0),

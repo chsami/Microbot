@@ -171,7 +171,8 @@ public class FarmingPlugin extends Plugin implements SchedulablePlugin
 
 	@Schedule(
 		period = 100,
-		unit = ChronoUnit.MILLIS
+		unit = ChronoUnit.MILLIS,
+		asynchronous = true
 	)
 	public void update()
 	{
@@ -180,12 +181,9 @@ public class FarmingPlugin extends Plugin implements SchedulablePlugin
 		{
 			log.debug("Patch state map is empty, refreshing states");
 
-			patchStateMap = fetchPatchStateMap();
+			patchStateMap = Microbot.getClientThread().runOnClientThreadOptional(this::fetchPatchStateMap).orElse(new LinkedHashMap<>());
 
-			Microbot.getClientThread().runOnSeperateThread(() -> {
-				sortPatchMap(Microbot.getClient().getLocalPlayer().getWorldLocation());
-				return null;
-			});
+			sortPatchMap(Microbot.getClient().getLocalPlayer().getWorldLocation());
 		}
 	}
 
@@ -527,6 +525,19 @@ public class FarmingPlugin extends Plugin implements SchedulablePlugin
 
 		while (!unvisited.isEmpty())
 		{
+			final WorldPoint _current = current;
+
+			FarmingRegion currentRegion = unvisited.stream()
+				.filter(region -> region.isInBounds(_current))
+				.findFirst()
+				.orElse(null);
+
+			if (currentRegion != null) {
+				ordered.add(currentRegion);
+				unvisited.remove(currentRegion);
+				continue;
+			}
+
 			Set<WorldPoint> targets = unvisited.stream()
 				.map(region -> regionToRepPatch.get(region).getLocation())
 				.collect(Collectors.toSet());
@@ -536,37 +547,21 @@ public class FarmingPlugin extends Plugin implements SchedulablePlugin
 				ShortestPathPlugin.getPathfinderConfig().refresh();
 			}
 
-			Pathfinder pathfinder = new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), current, targets);
+			Pathfinder pathfinder = new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), _current, targets);
 			pathfinder.run();
 			List<WorldPoint> path = pathfinder.getPath();
-			if (path == null || path.isEmpty())
-			{
-				break;
-			}
-
+			if (path == null || path.isEmpty()) break;
 
 			WorldPoint closestPoint = path.get(path.size() - 1);
-			FarmingRegion closestRegion;
+			WorldArea closestArea = new WorldArea(closestPoint, 2, 2);
 
-			closestRegion = unvisited.stream()
-				.filter(region -> region.isInBounds(closestPoint))
+			FarmingRegion closestRegion = unvisited.stream()
+				.filter(region -> regionToPatches.getOrDefault(region, List.of()).stream()
+					.anyMatch(patch -> closestArea.intersectsWith2D(new WorldArea(patch.getLocation(), 2, 2))))
 				.findFirst()
 				.orElse(null);
 
-			if (closestRegion == null)
-			{
-				WorldArea closestArea = new WorldArea(closestPoint, 2, 2);
-				closestRegion = unvisited.stream()
-					.filter(region -> regionToPatches.getOrDefault(region, List.of()).stream()
-						.anyMatch(patch -> closestArea.intersectsWith2D(new WorldArea(patch.getLocation(), 2, 2))))
-					.findFirst()
-					.orElse(null);
-			}
-
-			if (closestRegion == null)
-			{
-				break;
-			}
+			if (closestRegion == null) break;
 
 			ordered.add(closestRegion);
 			unvisited.remove(closestRegion);
