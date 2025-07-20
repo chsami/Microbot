@@ -169,11 +169,6 @@ public class FarmingPlugin extends Plugin implements SchedulablePlugin
 		patchStateMap.clear();
 	}
 
-	@Schedule(
-		period = 100,
-		unit = ChronoUnit.MILLIS,
-		asynchronous = true
-	)
 	public void update()
 	{
 		if (!Microbot.isLoggedIn()) return;

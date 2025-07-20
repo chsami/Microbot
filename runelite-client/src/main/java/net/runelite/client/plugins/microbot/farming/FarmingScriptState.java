@@ -26,8 +26,20 @@ package net.runelite.client.plugins.microbot.farming;
 
 public enum FarmingScriptState
 {
+	/* Initial starting logic, moving to seed vault and prepare for a farm run
+	*  Setting up The players inventorysetup and getting ready for the farm run
+	*/
 	START,
+	/*
+	* If we ever need to bank, to restock items or prepare to visit different farming patches
+	*/
 	BANK,
+	/*
+	* When we need to perform any travelling between farming patches
+	 */
 	TRAVEL,
+	/*
+	* Anytime we're at farming patches and need to either prepare the patch, plant seeds, or harvest crops
+	 */
 	FARM,
 }

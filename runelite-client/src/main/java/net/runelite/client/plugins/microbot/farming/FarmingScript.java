@@ -33,9 +33,10 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.GameObject;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
-import net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.farmruns.FarmingHandler;
 import net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.farmruns.FarmingPatch;
-import net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.farmruns.FarmingWorld;
+import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 
 @Slf4j
@@ -43,6 +44,8 @@ public class FarmingScript extends Script
 {
 	private final FarmingPlugin plugin;
 	private final FarmingConfig config;
+	private Rs2InventorySetup farmingInventorySetup;
+	private FarmingPatch currentFarmingPatch;
 
 	@Getter
 	FarmingScriptState state;
@@ -59,6 +62,25 @@ public class FarmingScript extends Script
 			try {
 				if (!super.run()) return;
 				if (!Microbot.isLoggedIn()) return;
+				preFlightChecks();
+				switch (state) {
+					case START:
+						if (!canWeFarm()) return;
+						state = FarmingScriptState.TRAVEL;
+						break;
+
+					case BANK:
+						break;
+
+					case TRAVEL:
+						// TODO: Implement shortest patch logic to get to the next patch
+						// TODO: Travel should ensure that we set currentFarmingPatch to the next patch we need to farm
+						break;
+
+					case FARM:
+						farmCurrentPatch();
+						break;
+				}
 
 
 			} catch (Exception e) {
@@ -66,6 +88,62 @@ public class FarmingScript extends Script
 			}
 		}, 0, 100, TimeUnit.MILLISECONDS);
 		return true;
+	}
+
+	private void farmCurrentPatch() {
+		var patchObject = getPatchObject(currentFarmingPatch);
+		if (patchObject == null) {
+			log.error("No patch object found for the current farming patch.");
+			shutdown(); // TODO: Stop the script gracefully
+			return;
+		}
+		log.debug("Found patch object: {}", currentFarmingPatch.getName());
+		var currentPatchState = currentFarmingPatch.getImplementation();
+	}
+
+	private boolean canWeFarm() {
+		if (config.useSeedVault()) {
+			Rs2Bank.walkToBank(BankLocation.FARMING_GUILD);
+			// TODO handle seed vault logic
+		} else {
+			Rs2Bank.walkToBank();
+			Rs2Bank.openBank();
+			sleepUntil(Rs2Bank::isOpen,2500);
+			var loadedEquipment = farmingInventorySetup.loadEquipment();
+			var loadedInventory = farmingInventorySetup.loadInventory();
+			if (!loadedEquipment || !loadedInventory) {
+				log.error("Failed to load inventory or equipment setup. Please check your configuration.");
+				shutdown();
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Performs pre-flight checks to ensure the script can run properly.
+	 * 1. Inventory setup check
+	 * 2. Farming patch availability check
+	 */
+	private void preFlightChecks() {
+		// Inventory setup check
+		if (config.inventorySetup() == null) {
+			log.error("InventorySetup is null. Please ensure that you have configured your inventory setup in the plugin settings. If a value is set, try to reselect it.");
+			shutdown(); //TODO: Stop the script gracefully
+			return;
+		}
+		farmingInventorySetup = new Rs2InventorySetup(config.inventorySetup(), mainScheduledFuture);
+		log.debug("Farming inventory setup has been successfully initialized.");
+
+		// Farming patch availability check
+		plugin.update();
+		var patchesToVisit = plugin.getPatchesNeedingAttention();
+		if (patchesToVisit.isEmpty()) {
+			log.error("No farming patches available for farming.");
+			shutdown(); //TODO: Stop the script gracefully
+			return;
+		}
+		log.debug("Found {} farming patches needing attention.", patchesToVisit.size());
 	}
 
 	/**
