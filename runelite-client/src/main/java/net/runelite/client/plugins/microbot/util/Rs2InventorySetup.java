@@ -237,6 +237,10 @@ public class Rs2InventorySetup {
 			}
 		} else {
 			if (useName) {
+				if (isBarrowsItem(item.getName())) {
+					item.setName(item.getName().replaceAll("\\s+[1-9]\\d*$", ""));
+				}
+
 				Rs2Bank.withdrawItem((String) identifier);
 			} else {
 				Rs2Bank.withdrawItem((int) identifier);
