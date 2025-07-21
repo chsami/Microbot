@@ -14,6 +14,7 @@ public enum SchedulerState {
     READY("Ready", "Ready to run scheduled plugins", new Color(0, 150, 255)),
     SCHEDULING("SCHEDULING", "Scheduler is running and monitoring", new Color(76, 175, 80)),
     STARTING_PLUGIN("Starting Plugin", "Starting a scheduled plugin", new Color(200, 230, 0)),
+    WALKING_TO_COORDINATES("Walking to Coordinates", "Walking to specified coordinates before plugin starts", new Color(255, 165, 0)),
     RUNNING_PLUGIN("Running Plugin", "Scheduled plugin is running", new Color(0, 200, 83)),
     RUNNING_PLUGIN_PAUSED("Plugin Paused", "Current plugin execution is paused", new Color(255, 140, 0)),
     SCHEDULER_PAUSED("Scheduler Paused", "All scheduler activities are paused", new Color(255, 165, 0)),
@@ -67,7 +68,7 @@ public enum SchedulerState {
                (this == SchedulerState.RUNNING_PLUGIN);
     }
     public boolean isAboutStarting() {
-        return this == SchedulerState.STARTING_PLUGIN || this== SchedulerState.WAITING_FOR_STOP_CONDITION ||
+        return this == SchedulerState.STARTING_PLUGIN || this == SchedulerState.WALKING_TO_COORDINATES || this== SchedulerState.WAITING_FOR_STOP_CONDITION ||
                this == SchedulerState.WAITING_FOR_LOGIN;
     }
 

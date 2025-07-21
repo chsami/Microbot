@@ -88,6 +88,11 @@ public class PluginScheduleEntryAdapter implements JsonSerializer<PluginSchedule
         // Serialize priority and default flag
         result.addProperty("priority", src.getPriority());
         result.addProperty("isDefault", src.isDefault());
+        result.addProperty("schedulerX", src.getSchedulerX());
+        result.addProperty("schedulerY", src.getSchedulerY());
+        result.addProperty("schedulerZ", src.getSchedulerZ());
+        result.addProperty("useSchedulerCoordinates", src.isUseSchedulerCoordinates());
+        
         ConfigDescriptor configDescriptor = src.getConfigScheduleEntryDescriptor() != null ? src.getConfigScheduleEntryDescriptor(): null;
         if (configDescriptor != null) {
             result.add("configDescriptor", context.serialize(configDescriptor));
@@ -256,9 +261,26 @@ public class PluginScheduleEntryAdapter implements JsonSerializer<PluginSchedule
         if (jsonObject.has("isDefault")) {
             entry.setDefault(jsonObject.get("isDefault").getAsBoolean());
         }
+        
+        if (jsonObject.has("schedulerX")) {
+            entry.setSchedulerX(jsonObject.get("schedulerX").getAsInt());
+        }
+
+        if (jsonObject.has("schedulerY")) {
+            entry.setSchedulerY(jsonObject.get("schedulerY").getAsInt());
+        }
+
+        if (jsonObject.has("schedulerZ")) {
+            entry.setSchedulerZ(jsonObject.get("schedulerZ").getAsInt());
+        }
+
+        if (jsonObject.has("useSchedulerCoordinates")) {
+            entry.setUseSchedulerCoordinates(jsonObject.get("useSchedulerCoordinates").getAsBoolean());
+        }
+        
         if (jsonObject.has("needsStopCondition")) {
             entry.setNeedsStopCondition(jsonObject.get("needsStopCondition").getAsBoolean());
-        }else{
+        } else {
             entry.setNeedsStopCondition(false);
         }
         //entry.registerPluginConditions();

@@ -147,6 +147,12 @@ public class PluginScheduleEntry implements AutoCloseable {
     private int priority = 0; // Higher numbers = higher priority
     private boolean isDefault = false; // Flag to indicate if this is a default plugin        
 
+    // coordinate override fields
+    private int schedulerX = 0;
+    private int schedulerY = 0;
+    private int schedulerZ = 0;
+    private boolean useSchedulerCoordinates = false;
+
     /**
      * Functional interface for handling successful plugin stop events
      */
@@ -2662,6 +2668,39 @@ public class PluginScheduleEntry implements AutoCloseable {
     public void setDefault(boolean isDefault) {        
         this.isDefault = isDefault;
     }
+    
+    public int getSchedulerX() {
+        return schedulerX;
+    }
+    
+    public void setSchedulerX(int schedulerX) {
+        this.schedulerX = schedulerX;
+    }
+    
+    public int getSchedulerY() {
+        return schedulerY;
+    }
+    
+    public void setSchedulerY(int schedulerY) {
+        this.schedulerY = schedulerY;
+    }
+    
+    public int getSchedulerZ() {
+        return schedulerZ;
+    }
+    
+    public void setSchedulerZ(int schedulerZ) {
+        this.schedulerZ = schedulerZ;
+    }
+    
+    public boolean isUseSchedulerCoordinates() {
+        return useSchedulerCoordinates;
+    }
+    
+    public void setUseSchedulerCoordinates(boolean useSchedulerCoordinates) {
+        this.useSchedulerCoordinates = useSchedulerCoordinates;
+    }
+    
     /**
     * Generic helper method to build condition diagnostics for both start and stop conditions
     * 
@@ -3152,3 +3191,4 @@ public class PluginScheduleEntry implements AutoCloseable {
         }
     }
 }
+
