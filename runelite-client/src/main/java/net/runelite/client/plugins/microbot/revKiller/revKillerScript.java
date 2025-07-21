@@ -181,6 +181,8 @@ public class revKillerScript extends Script {
     }
 
     public void EatFood(){
+        drinkStamPotion();
+
         if(Rs2Player.getHealthPercentage() <= generateRandomNumber(70,80)){
             if(Rs2Inventory.contains(ItemID.SHARK)){
                 if(Rs2Inventory.interact(ItemID.SHARK, "Eat")){
@@ -270,8 +272,6 @@ public class revKillerScript extends Script {
         }
 
         if(playerCheck()){return;}
-
-        drinkStamPotion();
 
         if(Rs2GroundItem.isItemBasedOnValueOnGround(500,10)){
             return;
@@ -448,7 +448,6 @@ public class revKillerScript extends Script {
     }
 
     public void WalkToRevs(){
-        drinkStamPotion();
         if(!WeAreInTheCaves()){
             //we must walk to the cave entrence
             if(Rs2Player.getWorldLocation().distanceTo(cave) > 6){
