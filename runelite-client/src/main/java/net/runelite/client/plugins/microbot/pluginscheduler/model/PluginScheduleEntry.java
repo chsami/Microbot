@@ -151,6 +151,7 @@ public class PluginScheduleEntry implements AutoCloseable {
     private int schedulerX = 0;
     private int schedulerY = 0;
     private int schedulerZ = 0;
+    private int arrivalRange = 3;
     private boolean useSchedulerCoordinates = false;
 
     /**
@@ -2691,6 +2692,14 @@ public class PluginScheduleEntry implements AutoCloseable {
     
     public void setSchedulerZ(int schedulerZ) {
         this.schedulerZ = schedulerZ;
+    }
+    
+    public int getArrivalRange() {
+        return arrivalRange;
+    }
+
+    public void setArrivalRange(int arrivalRange) {
+        this.arrivalRange = arrivalRange;
     }
     
     public boolean isUseSchedulerCoordinates() {

@@ -2875,7 +2875,7 @@ public class SchedulerPlugin extends Plugin {
             targetLocation.getX(), targetLocation.getY(), targetLocation.getPlane(), 
             scheduledPlugin.getCleanName());
             
-        if (Rs2Player.getWorldLocation().distanceTo(targetLocation) <= 3) {
+        if (Rs2Player.getWorldLocation().distanceTo(targetLocation) <= scheduledPlugin.getArrivalRange()) {
             Microbot.log("Already at target location, proceeding to start plugin: {}", scheduledPlugin.getCleanName());
             setState(SchedulerState.STARTING_PLUGIN);
             continueStartingPluginScheduleEntry(scheduledPlugin, true);
@@ -2936,14 +2936,14 @@ public class SchedulerPlugin extends Plugin {
                     }
                     
                     WorldPoint currentLocation = Rs2Player.getWorldLocation();
-                    if (currentLocation != null && currentLocation.distanceTo(targetLocation) <= 3) {
+                    if (currentLocation != null && currentLocation.distanceTo(targetLocation) <= scheduledPlugin.getArrivalRange()) {
                         arrived = true;
                         Microbot.log("Arrived at target location: " + currentLocation);
                         break;
                     }
                     
                     if (ShortestPathPlugin.getPathfinder() != null && ShortestPathPlugin.getPathfinder().isDone()) {
-                        if (currentLocation != null && currentLocation.distanceTo(targetLocation) <= 3) {
+                        if (currentLocation != null && currentLocation.distanceTo(targetLocation) <= scheduledPlugin.getArrivalRange()) {
                             Microbot.log("Pathfinder completed and arrived at target location: " + currentLocation);
                             arrived = true;
                             break;
