@@ -50,9 +50,9 @@ public class ScheduleFormPanel extends JPanel {
     private JCheckBox defaultPluginCheckbox;
 
     private JCheckBox useCustomCoordinatesCheckbox;
-    private JTextField xCoordinateField;
-    private JTextField yCoordinateField;
-    private JTextField zCoordinateField;
+    private JSpinner xCoordinateField;
+    private JSpinner yCoordinateField;
+    private JSpinner zCoordinateField;
 
     // New panel for editing plugin properties when one is selected
     private JPanel pluginPropertiesPanel;
@@ -919,9 +919,9 @@ public class ScheduleFormPanel extends JPanel {
             selectedPluginTimeStopCheckbox.setSelected(entry.isNeedsStopCondition());
             selectedPluginAllowContinueCheckbox.setSelected(entry.isAllowContinue());
             
-            xCoordinateField.setText(String.valueOf(entry.getSchedulerX()));
-            yCoordinateField.setText(String.valueOf(entry.getSchedulerY()));
-            zCoordinateField.setText(String.valueOf(entry.getSchedulerZ()));
+            xCoordinateField.setValue(entry.getSchedulerX());
+            yCoordinateField.setValue(entry.getSchedulerY());
+            zCoordinateField.setValue(entry.getSchedulerZ());
             useCustomCoordinatesCheckbox.setSelected(entry.isUseSchedulerCoordinates()); 
             
             // Update statistics
@@ -972,9 +972,9 @@ public PluginScheduleEntry getPluginFromForm(PluginScheduleEntry existingPlugin)
 
     if (useCustomCoordinates) {
         try {
-            coordinateX = Integer.parseInt(xCoordinateField.getText().trim());
-            coordinateY = Integer.parseInt(yCoordinateField.getText().trim());
-            coordinateZ = Integer.parseInt(zCoordinateField.getText().trim());
+            coordinateX = (Integer) xCoordinateField.getValue();
+            coordinateY = (Integer) yCoordinateField.getValue();
+            coordinateZ = (Integer) zCoordinateField.getValue();
             arrivalRange = (Integer) distanceSpinner.getValue();
         } catch (NumberFormatException e) {
             log.warn("Invalid coordinate values, using defaults (0,0,0)");
@@ -1062,9 +1062,9 @@ public PluginScheduleEntry getPluginFromForm(PluginScheduleEntry existingPlugin)
         defaultPluginCheckbox.setSelected(entry.isDefault());
         
         useCustomCoordinatesCheckbox.setSelected(entry.isUseSchedulerCoordinates());
-        xCoordinateField.setText(String.valueOf(entry.getSchedulerX()));
-        yCoordinateField.setText(String.valueOf(entry.getSchedulerY()));
-        zCoordinateField.setText(String.valueOf(entry.getSchedulerZ()));
+        xCoordinateField.setValue(entry.getSchedulerX());
+        yCoordinateField.setValue(entry.getSchedulerY());
+        zCoordinateField.setValue(entry.getSchedulerZ());
         distanceSpinner.setValue(entry.getArrivalRange());
         
         updatePropertiesPanel(entry);
@@ -1092,10 +1092,10 @@ public PluginScheduleEntry getPluginFromForm(PluginScheduleEntry existingPlugin)
         selectedPlugin.setAllowContinue(allowContinue);
         selectedPlugin.setPriority(priority);
         selectedPlugin.setDefault(isDefault);
-        
-        selectedPlugin.setSchedulerX(Integer.parseInt(xCoordinateField.getText()));
-        selectedPlugin.setSchedulerY(Integer.parseInt(yCoordinateField.getText()));
-        selectedPlugin.setSchedulerZ(Integer.parseInt(zCoordinateField.getText()));
+       
+        selectedPlugin.setSchedulerX((Integer) (xCoordinateField.getValue()));
+        selectedPlugin.setSchedulerY((Integer) (yCoordinateField.getValue()));
+        selectedPlugin.setSchedulerZ((Integer) (zCoordinateField.getValue()));
         selectedPlugin.setUseSchedulerCoordinates(useCustomCoordinatesCheckbox.isSelected()); 
         selectedPlugin.setArrivalRange((Integer) distanceSpinner.getValue()); 
 
@@ -1227,6 +1227,7 @@ public PluginScheduleEntry getPluginFromForm(PluginScheduleEntry existingPlugin)
      */
     private JPanel createCoordinateInputPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
+        // JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         panel.setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createLineBorder(ColorScheme.MEDIUM_GRAY_COLOR),
@@ -1252,7 +1253,7 @@ public PluginScheduleEntry getPluginFromForm(PluginScheduleEntry existingPlugin)
         gbc.gridwidth = 3;
         panel.add(useCustomCoordinatesCheckbox, gbc);
 
-        gbc.gridwidth = 2;
+        gbc.gridwidth = 1;
         gbc.gridy = 1;
 
         // X 
@@ -1262,7 +1263,8 @@ public PluginScheduleEntry getPluginFromForm(PluginScheduleEntry existingPlugin)
         panel.add(xLabel, gbc);
 
         gbc.gridx = 1;
-        xCoordinateField = new JTextField("0", 4);
+        SpinnerNumberModel xCoordinateModel = new SpinnerNumberModel(3000, 0, 20000, 1);
+        xCoordinateField = new JSpinner(xCoordinateModel);
         panel.add(xCoordinateField, gbc);
 
         // Y 
@@ -1272,7 +1274,8 @@ public PluginScheduleEntry getPluginFromForm(PluginScheduleEntry existingPlugin)
         panel.add(yLabel, gbc);
 
         gbc.gridx = 3;
-        yCoordinateField = new JTextField("0", 4);
+        SpinnerNumberModel yCoordinateModel = new SpinnerNumberModel(3000, 0, 20000, 1);
+        yCoordinateField = new JSpinner(yCoordinateModel);
         panel.add(yCoordinateField, gbc);
 
         // Z 
@@ -1282,32 +1285,32 @@ public PluginScheduleEntry getPluginFromForm(PluginScheduleEntry existingPlugin)
         panel.add(zLabel, gbc);
 
         gbc.gridx = 5;
-        zCoordinateField = new JTextField("0", 4); 
+        SpinnerNumberModel zCoordinatModel = new SpinnerNumberModel(0, 0, 3, 1);
+        zCoordinateField = new JSpinner(zCoordinatModel);
         panel.add(zCoordinateField, gbc);
-                
-        gbc.gridy = 2;
+
+        gbc.gridx = 6;
+
         JPanel distancePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         distancePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
-        gbc.gridx = 0;
         JLabel distanceLabel = new JLabel("Max Distance (tiles):");
         distanceLabel.setForeground(Color.WHITE);
         distancePanel.add(distanceLabel);
-        
+               
         SpinnerNumberModel distanceModel = new SpinnerNumberModel(5, 0, 104, 1);
         distanceSpinner = new JSpinner(distanceModel);
+        distanceSpinner.setToolTipText("0 = exact position");
         distancePanel.add(distanceSpinner);
-
         
-        gbc.gridx = 1;
-        JLabel exactLabel = new JLabel("(0 = exact position)");
-        exactLabel.setForeground(Color.LIGHT_GRAY);
-        distancePanel.add(exactLabel);
+        // JLabel exactLabel = new JLabel("(0 = exact position)");
+        // exactLabel.setForeground(Color.LIGHT_GRAY);
+        // distancePanel.add(exactLabel);
         
         panel.add(distancePanel, gbc);
-
-        gbc.gridy = 3;
+        
         gbc.gridx = 0;
+        gbc.gridy = 2;
         gbc.gridwidth = 2;
         
         JPanel utilityPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
@@ -1334,9 +1337,9 @@ public PluginScheduleEntry getPluginFromForm(PluginScheduleEntry existingPlugin)
             }
             WorldPoint currentPoint = Rs2Player.getWorldLocation();
             if (currentPoint != null) {
-                xCoordinateField.setText(String.valueOf(currentPoint.getX()));
-                yCoordinateField.setText(String.valueOf(currentPoint.getY()));
-                zCoordinateField.setText(String.valueOf(currentPoint.getPlane()));
+                xCoordinateField.setValue(currentPoint.getX());
+                yCoordinateField.setValue(currentPoint.getY());
+                zCoordinateField.setValue(currentPoint.getPlane());
                 useCustomCoordinatesCheckbox.setSelected(true);
                 toggleFields.actionPerformed(null);
             }
