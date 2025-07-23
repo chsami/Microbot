@@ -1252,7 +1252,7 @@ public PluginScheduleEntry getPluginFromForm(PluginScheduleEntry existingPlugin)
         gbc.gridwidth = 3;
         panel.add(useCustomCoordinatesCheckbox, gbc);
 
-        gbc.gridwidth = 1;
+        gbc.gridwidth = 2;
         gbc.gridy = 1;
 
         // X 
@@ -1262,7 +1262,7 @@ public PluginScheduleEntry getPluginFromForm(PluginScheduleEntry existingPlugin)
         panel.add(xLabel, gbc);
 
         gbc.gridx = 1;
-        xCoordinateField = new JTextField("0", 8);
+        xCoordinateField = new JTextField("0", 4);
         panel.add(xCoordinateField, gbc);
 
         // Y 
@@ -1272,7 +1272,7 @@ public PluginScheduleEntry getPluginFromForm(PluginScheduleEntry existingPlugin)
         panel.add(yLabel, gbc);
 
         gbc.gridx = 3;
-        yCoordinateField = new JTextField("0", 8);
+        yCoordinateField = new JTextField("0", 4);
         panel.add(yCoordinateField, gbc);
 
         // Z 
@@ -1282,7 +1282,7 @@ public PluginScheduleEntry getPluginFromForm(PluginScheduleEntry existingPlugin)
         panel.add(zLabel, gbc);
 
         gbc.gridx = 5;
-        zCoordinateField = new JTextField("0", 8);
+        zCoordinateField = new JTextField("0", 4); 
         panel.add(zCoordinateField, gbc);
                 
         gbc.gridy = 2;
