@@ -29,6 +29,7 @@ import lombok.Getter;
 import lombok.Setter;
 import net.runelite.client.game.ItemStats;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
 
 @AllArgsConstructor
 public class InventorySetupsItem
@@ -80,7 +81,12 @@ public class InventorySetupsItem
 
 	public String getName() {
 		if (isFuzzy()) {
-			String[] splitItemName = name.split("\\(\\d+\\)$");
+			String[] splitItemName;
+			if(isBarrowsItem(name.toLowerCase())){
+				splitItemName = name.split("\\\\s+[1-9]\\\\d*$");
+			} else {
+				splitItemName = name.split("\\(\\d+\\)$");
+			}
 			String itemName = "";
 			if (splitItemName.length == 0) {
 				itemName = name;
@@ -90,6 +96,16 @@ public class InventorySetupsItem
 			return itemName;
 		}
 		return name;
+	}
+
+	private static boolean isBarrowsItem(String lowerCaseName) {
+		boolean isBarrowsItem = !lowerCaseName.endsWith(" 0") &&  (lowerCaseName.contains("dharok's")
+				|| lowerCaseName.contains("ahrim's")
+				|| lowerCaseName.contains("guthan's")
+				|| lowerCaseName.contains("torag's")
+				|| lowerCaseName.contains("verac's")
+				|| lowerCaseName.contains("karil's"));
+		return isBarrowsItem;
 	}
 
 }
