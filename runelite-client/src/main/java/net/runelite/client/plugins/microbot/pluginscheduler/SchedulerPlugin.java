@@ -1148,7 +1148,6 @@ public class SchedulerPlugin extends Plugin {
         // checks if walking to coordinates is necessary before running plugins
         // added the correctLocation boolean check to break the loop if the the location has been reached
         if (currentState.equals(SchedulerState.STARTING_PLUGIN) && scheduledPlugin.isUseSchedulerCoordinates() && !correctLocation) {
-            Microbot.log("retriggering the startWalkingToCoordinates for plugin: " + scheduledPlugin.getCleanName());
             startWalkingToCoordinates(scheduledPlugin);
             return;
         }
@@ -1171,8 +1170,9 @@ public class SchedulerPlugin extends Plugin {
                 return false;
             }
           
-            Microbot.getClientThread().invokeLater( ()->{
-               continueStartingPluginScheduleEntry(scheduledPlugin, false);
+            // Schedule continuation on a separate thread to avoid invokeAndWait issues
+            SwingUtilities.invokeLater(() -> {
+                continueStartingPluginScheduleEntry(scheduledPlugin, false);
             });
             return false;
             
@@ -2907,7 +2907,7 @@ public class SchedulerPlugin extends Plugin {
                 
                 if (initialState == WalkerState.ARRIVED) {
                     log.info("Already at target coordinates, starting plugin: {}", scheduledPlugin.getCleanName());
-                    Microbot.getClientThread().invokeLater(() -> {
+                    SwingUtilities.invokeLater(() -> {
                         Microbot.log("WalkerState is ARRIVED, starting plugin: ",
                          currentState.isSchedulerActive(),
                          currentState == SchedulerState.WALKING_TO_COORDINATES);
@@ -2929,7 +2929,6 @@ public class SchedulerPlugin extends Plugin {
                 while (!arrived && attempts < maxAttempts && !Thread.currentThread().isInterrupted()) {
                     Thread.sleep(1000);
                     attempts++;
-                    Microbot.log("attampt: " + attempts + " of " + maxAttempts);
                     if (!currentState.isSchedulerActive() || currentState != SchedulerState.WALKING_TO_COORDINATES) {
                         log.info("Scheduler state changed during walking, stopping walk monitor");
                         return;
