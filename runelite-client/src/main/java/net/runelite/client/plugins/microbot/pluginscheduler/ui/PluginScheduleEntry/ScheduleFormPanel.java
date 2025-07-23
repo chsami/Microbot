@@ -1227,7 +1227,6 @@ public PluginScheduleEntry getPluginFromForm(PluginScheduleEntry existingPlugin)
      */
     private JPanel createCoordinateInputPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
-        // JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         panel.setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createLineBorder(ColorScheme.MEDIUM_GRAY_COLOR),
@@ -1241,8 +1240,8 @@ public PluginScheduleEntry getPluginFromForm(PluginScheduleEntry existingPlugin)
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5, 5, 5, 5);
         gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.WEST;
 
-        // Main checkbox to enable coordinate walking
         useCustomCoordinatesCheckbox = new JCheckBox("Walk to coordinates before plugin starts");
         useCustomCoordinatesCheckbox.setForeground(Color.WHITE);
         useCustomCoordinatesCheckbox.setBackground(ColorScheme.DARKER_GRAY_COLOR);
@@ -1250,87 +1249,84 @@ public PluginScheduleEntry getPluginFromForm(PluginScheduleEntry existingPlugin)
 
         gbc.gridx = 0;
         gbc.gridy = 0;
-        gbc.gridwidth = 3;
+        gbc.gridwidth = 4;
         panel.add(useCustomCoordinatesCheckbox, gbc);
 
-        gbc.gridwidth = 1;
-        gbc.gridy = 1;
+        JPanel positionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
+        positionPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
-        // X 
-        gbc.gridx = 0;
-        JLabel xLabel = new JLabel("X:");
-        xLabel.setForeground(Color.WHITE);
-        panel.add(xLabel, gbc);
+        JLabel positionLabel = new JLabel("Target position:");
+        positionLabel.setForeground(Color.WHITE);
+        positionPanel.add(positionLabel);
 
-        gbc.gridx = 1;
         SpinnerNumberModel xCoordinateModel = new SpinnerNumberModel(3000, 0, 20000, 1);
         xCoordinateField = new JSpinner(xCoordinateModel);
-        panel.add(xCoordinateField, gbc);
+        xCoordinateField.setPreferredSize(new Dimension(80, 28));
+        positionPanel.add(xCoordinateField);
 
-        // Y 
-        gbc.gridx = 2;
-        JLabel yLabel = new JLabel("Y:");
-        yLabel.setForeground(Color.WHITE);
-        panel.add(yLabel, gbc);
+        JLabel xLabel = new JLabel("X");
+        xLabel.setForeground(Color.WHITE);
+        positionPanel.add(xLabel);
 
-        gbc.gridx = 3;
         SpinnerNumberModel yCoordinateModel = new SpinnerNumberModel(3000, 0, 20000, 1);
         yCoordinateField = new JSpinner(yCoordinateModel);
-        panel.add(yCoordinateField, gbc);
+        yCoordinateField.setPreferredSize(new Dimension(80, 28));
+        positionPanel.add(yCoordinateField);
 
-        // Z 
-        gbc.gridx = 4;
-        JLabel zLabel = new JLabel("Plane:");
+        JLabel yLabel = new JLabel("Y");
+        yLabel.setForeground(Color.WHITE);
+        positionPanel.add(yLabel);
+
+        SpinnerNumberModel zCoordinateModel = new SpinnerNumberModel(0, 0, 3, 1);
+        zCoordinateField = new JSpinner(zCoordinateModel);
+        zCoordinateField.setPreferredSize(new Dimension(50, 28));
+        positionPanel.add(zCoordinateField);
+
+        JLabel zLabel = new JLabel("Plane");
         zLabel.setForeground(Color.WHITE);
-        panel.add(zLabel, gbc);
+        positionPanel.add(zLabel);
 
-        gbc.gridx = 5;
-        SpinnerNumberModel zCoordinatModel = new SpinnerNumberModel(0, 0, 3, 1);
-        zCoordinateField = new JSpinner(zCoordinatModel);
-        panel.add(zCoordinateField, gbc);
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.gridwidth = 4;
+        panel.add(positionPanel, gbc);
 
-        gbc.gridx = 6;
-
-        JPanel distancePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JPanel distancePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
         distancePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
         JLabel distanceLabel = new JLabel("Max Distance (tiles):");
         distanceLabel.setForeground(Color.WHITE);
         distancePanel.add(distanceLabel);
-               
+
         SpinnerNumberModel distanceModel = new SpinnerNumberModel(5, 0, 104, 1);
         distanceSpinner = new JSpinner(distanceModel);
         distanceSpinner.setToolTipText("0 = exact position");
+        distanceSpinner.setPreferredSize(new Dimension(60, 28));
         distancePanel.add(distanceSpinner);
-        
-        // JLabel exactLabel = new JLabel("(0 = exact position)");
-        // exactLabel.setForeground(Color.LIGHT_GRAY);
-        // distancePanel.add(exactLabel);
-        
-        panel.add(distancePanel, gbc);
-        
+
         gbc.gridx = 0;
         gbc.gridy = 2;
-        gbc.gridwidth = 2;
-        
+        gbc.gridwidth = 4;
+        panel.add(distancePanel, gbc);
+
         JPanel utilityPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         utilityPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        
+
         JButton useCurrentLocationButton = new JButton("Use Current Location");
         useCurrentLocationButton.setBackground(ColorScheme.BRAND_ORANGE);
         useCurrentLocationButton.setForeground(Color.WHITE);
         useCurrentLocationButton.setFocusPainted(false);
         useCurrentLocationButton.setToolTipText("Fill coordinates with your character's current position");
-        
+
         ActionListener toggleFields = e -> {
             boolean enabled = useCustomCoordinatesCheckbox.isSelected();
             xCoordinateField.setEnabled(enabled);
             yCoordinateField.setEnabled(enabled);
             zCoordinateField.setEnabled(enabled);
+            distanceSpinner.setEnabled(enabled);
             useCurrentLocationButton.setEnabled(enabled);
-
         };
-        
+
         useCurrentLocationButton.addActionListener(e -> {
             if (!Microbot.isLoggedIn() || Microbot.getClient() == null || Microbot.getClient().getLocalPlayer() == null) {
                 return;
@@ -1344,12 +1340,15 @@ public PluginScheduleEntry getPluginFromForm(PluginScheduleEntry existingPlugin)
                 toggleFields.actionPerformed(null);
             }
         });
+
         utilityPanel.add(useCurrentLocationButton);
-        
+
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        gbc.gridwidth = 4;
         panel.add(utilityPanel, gbc);
 
         useCustomCoordinatesCheckbox.addActionListener(toggleFields);
-        
         toggleFields.actionPerformed(null);
 
         return panel;
