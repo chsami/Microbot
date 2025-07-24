@@ -9,11 +9,13 @@ import ch.qos.logback.core.filter.Filter;
 import ch.qos.logback.core.spi.FilterReply;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+@Slf4j
 public class GameChatAppender extends AppenderBase<ILoggingEvent> {
     private final PatternLayout layout = new PatternLayout();
     
@@ -22,14 +24,11 @@ public class GameChatAppender extends AppenderBase<ILoggingEvent> {
     private final List<String> whitelist = new CopyOnWriteArrayList<>();
     @Getter
     private final List<String> blacklist = new CopyOnWriteArrayList<>();
-    private static volatile boolean loggingEnabled = true;
     private static volatile Level minimumLevel = Level.WARN;
-    private static volatile boolean onlyMicrobotLogging = true;
 
     public GameChatAppender(String pattern) {
         // Order matters! Level filter should run first to deny based on log level
         addFilter(new GameChatLevelFilter());
-        addFilter(new OnlyMicrobotLoggingFilter());
         addFilter(new PathFilter(whitelist, FilterReply.NEUTRAL, FilterReply.DENY));
         addFilter(new PathFilter(blacklist, FilterReply.DENY, FilterReply.NEUTRAL));
         layout.setPattern(pattern);
@@ -49,12 +48,14 @@ public class GameChatAppender extends AppenderBase<ILoggingEvent> {
     public void start() {
         layout.start();
         super.start();
+        log.info("Started GameChat Appender");
     }
 
     @Override
     public void stop() {
         super.stop();
         layout.stop();
+        log.info("Stopped GameChat Appender");
     }
 
     public void setPattern(String pattern) {
@@ -67,10 +68,8 @@ public class GameChatAppender extends AppenderBase<ILoggingEvent> {
     /**
      * Updates the cached configuration for filtering
      */
-    public static void updateConfiguration(boolean enabled, Level level, boolean microbotOnly) {
-        loggingEnabled = enabled;
+    public static void updateConfiguration(Level level) {
         minimumLevel = level;
-        onlyMicrobotLogging = microbotOnly;
     }
 
     @Override
@@ -90,11 +89,6 @@ public class GameChatAppender extends AppenderBase<ILoggingEvent> {
     private static class GameChatLevelFilter extends Filter<ILoggingEvent> {
         @Override
         public FilterReply decide(ILoggingEvent event) {
-            // Check if logging is enabled
-            if (!loggingEnabled) {
-                return FilterReply.DENY;
-            }
-            
             // In debug mode, show all levels (overrides configuration)
             if (Microbot.isDebug()) {
                 return FilterReply.NEUTRAL;
@@ -115,19 +109,6 @@ public class GameChatAppender extends AppenderBase<ILoggingEvent> {
         public FilterReply decide(ILoggingEvent event) {
             if (list.isEmpty()) return FilterReply.NEUTRAL;
             return list.stream().anyMatch(path -> event.getLoggerName().startsWith(path)) ? match : noMatch;
-        }
-    }
-
-    private static class OnlyMicrobotLoggingFilter extends Filter<ILoggingEvent> {
-        @Override
-        public FilterReply decide(ILoggingEvent event) {
-            // If only microbot logging is disabled, accept all logs
-            if (!onlyMicrobotLogging) {
-                return FilterReply.NEUTRAL;
-            }
-            
-            // Otherwise, only accept microbot logs
-            return event.getLoggerName().startsWith("net.runelite.client.plugins.microbot") ? FilterReply.NEUTRAL : FilterReply.DENY;
         }
     }
 }

@@ -128,9 +128,7 @@ public class MicrobotPlugin extends Plugin
 		
 		// Initialize the cached configuration in GameChatAppender
 		GameChatAppender.updateConfiguration(
-			microbotConfig.enableGameChatLogging(),
-			microbotConfig.getGameChatLogLevel().getLevel(),
-			microbotConfig.onlyMicrobotLogging()
+			microbotConfig.getGameChatLogLevel().getLevel()
 		);
 
 		Microbot.pauseAllScripts.set(false);
@@ -362,30 +360,22 @@ public class MicrobotPlugin extends Plugin
 		if (ev.getGroup().equals(MicrobotConfig.configGroup)) {
 			switch (ev.getKey()) {
 				case MicrobotConfig.keyEnableGameChatLogging:
-				case MicrobotConfig.keyGameChatLogPattern:
-				case MicrobotConfig.keyGameChatLogLevel:
-				case MicrobotConfig.keyOnlyMicrobotLogging:
-					// Handle any logging-related configuration changes
-					final boolean shouldBeStarted = microbotConfig.enableGameChatLogging();
-
-					// Update the cached configuration in GameChatAppender
-					GameChatAppender.updateConfiguration(
-							microbotConfig.enableGameChatLogging(),
-							microbotConfig.getGameChatLogLevel().getLevel(),
-							microbotConfig.onlyMicrobotLogging()
-					);
-
-					if (shouldBeStarted) {
-						// Update pattern if needed
-						String pattern = microbotConfig.getGameChatLogPattern().getPattern();
-						gameChatAppender.setPattern(pattern);
-
+					if (microbotConfig.enableGameChatLogging()) {
 						if (!gameChatAppender.isStarted()) {
 							gameChatAppender.start();
 						}
 					} else if (gameChatAppender.isStarted()) {
 						gameChatAppender.stop();
 					}
+					break;
+				case MicrobotConfig.keyGameChatLogPattern:
+					// Update pattern if needed
+					String pattern = microbotConfig.getGameChatLogPattern().getPattern();
+					gameChatAppender.setPattern(pattern);
+					break;
+				case MicrobotConfig.keyGameChatLogLevel:
+					// Update the cached configuration in GameChatAppender
+					GameChatAppender.updateConfiguration(microbotConfig.getGameChatLogLevel().getLevel());
 					break;
 				case MicrobotConfig.whitelistLogging:
 					gameChatAppender.getWhitelist().clear();

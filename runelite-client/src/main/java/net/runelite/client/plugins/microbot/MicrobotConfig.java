@@ -67,24 +67,12 @@ public interface MicrobotConfig extends Config
 		return GameChatLogPattern.SIMPLE;
 	}
 
-	String keyOnlyMicrobotLogging = "onlyMicrobotLogging";
-	@ConfigItem(
-		keyName = keyOnlyMicrobotLogging,
-		name = "Only Microbot Logs",
-		description = "Show only Microbot plugin logs in game chat (filters out other RuneLite logs)",
-		position = 3,
-		section = loggingSection
-	)
-	default boolean onlyMicrobotLogging() {
-		return false;
-	}
-
 	String keyEnableMenuEntryLogging = "enableMenuEntryLogging";
 	@ConfigItem(
 			keyName = keyEnableMenuEntryLogging,
 			name = "Enable Menu Entry Logging",
 			description = "Enable or disable logging menu entry clicked",
-			position = 4,
+			position = 3,
 			section = loggingSection
 	)
 	default boolean enableMenuEntryLogging() {
@@ -96,7 +84,7 @@ public interface MicrobotConfig extends Config
 			keyName = whitelistLogging,
 			name = "Path Whitelist",
 			description = "Whitelist specific paths for logging. This is a 'starts with' check.",
-			position = 5,
+			position = 4,
 			section = loggingSection
 	)
 	default String getLoggingWhitelist() {
@@ -108,7 +96,7 @@ public interface MicrobotConfig extends Config
 			keyName = blacklistLogging,
 			name = "Path Blacklist",
 			description = "Blacklist specific paths from logging. This is a 'starts with' check.",
-			position = 6,
+			position = 5,
 			section = loggingSection
 	)
 	default String getLoggingBlacklist() {
