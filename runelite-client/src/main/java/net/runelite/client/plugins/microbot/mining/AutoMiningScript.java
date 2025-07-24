@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.mining;
 
 import net.runelite.api.GameObject;
+import net.runelite.api.WallObject;
 import net.runelite.api.gameval.NpcID;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
@@ -102,15 +103,28 @@ public class AutoMiningScript extends Script {
                             return;
                         }
 
-                        GameObject rock = Rs2GameObject.findReachableObject(config.ORE().getName(), true, config.distanceToStray(), initialPlayerLocation);
-
-                        if (rock != null) {
-                            if (Rs2GameObject.interact(rock)) {
-                                Rs2Player.waitForXpDrop(Skill.MINING, true);
-                                Rs2Antiban.actionCooldown();
-                                Rs2Antiban.takeMicroBreakByChance();
+                        if (Rocks.BARRONITE == config.ORE()) {
+                            WallObject rock = Rs2GameObject.getWallObject(config.ORE().getName(), true, initialPlayerLocation, config.distanceToStray());
+                            if (rock != null) {
+                                if (Rs2GameObject.interact(rock)) {
+                                    Rs2Player.waitForXpDrop(Skill.MINING, true);
+                                    Rs2Antiban.actionCooldown();
+                                    Rs2Antiban.takeMicroBreakByChance();
+                                }
                             }
                         }
+                        else {
+                            GameObject rock = Rs2GameObject.findReachableObject(config.ORE().getName(), true, config.distanceToStray(), initialPlayerLocation);
+
+                            if (rock != null) {
+                                if (Rs2GameObject.interact(rock)) {
+                                    Rs2Player.waitForXpDrop(Skill.MINING, true);
+                                    Rs2Antiban.actionCooldown();
+                                    Rs2Antiban.takeMicroBreakByChance();
+                                }
+                            }
+                        }
+
                         break;
                     case RESETTING:
                         List<String> itemNames = Arrays.stream(config.itemsToBank().split(",")).map(String::toLowerCase).collect(Collectors.toList());
@@ -132,6 +146,7 @@ public class AutoMiningScript extends Script {
                                     Rs2Inventory.useItemOnNpc(ItemID.BASALT, NpcID.MY2ARM_SNOWFLAKE);
                                     Rs2Walker.walkTo(2841,10339,0);
                                 }
+
                             } else {
                                 if (!Rs2Bank.bankItemsAndWalkBackToOriginalPosition(itemNames, initialPlayerLocation, 0, config.distanceToStray()))
                                     return;
