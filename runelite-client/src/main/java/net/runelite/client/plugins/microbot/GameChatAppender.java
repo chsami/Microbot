@@ -7,12 +7,21 @@ import ch.qos.logback.core.AppenderBase;
 import ch.qos.logback.core.Context;
 import ch.qos.logback.core.filter.Filter;
 import ch.qos.logback.core.spi.FilterReply;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import net.runelite.api.ChatMessageType;
+
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class GameChatAppender extends AppenderBase<ILoggingEvent> {
     private final PatternLayout layout = new PatternLayout();
     
     // Cache the current configuration to avoid config lookups during filtering
+    @Getter
+    private final List<String> whitelist = new CopyOnWriteArrayList<>();
+    @Getter
+    private final List<String> blacklist = new CopyOnWriteArrayList<>();
     private static volatile boolean loggingEnabled = true;
     private static volatile Level minimumLevel = Level.WARN;
     private static volatile boolean onlyMicrobotLogging = true;
@@ -21,6 +30,8 @@ public class GameChatAppender extends AppenderBase<ILoggingEvent> {
         // Order matters! Level filter should run first to deny based on log level
         addFilter(new GameChatLevelFilter());
         addFilter(new OnlyMicrobotLoggingFilter());
+        addFilter(new PathFilter(whitelist, FilterReply.NEUTRAL, FilterReply.DENY));
+        addFilter(new PathFilter(blacklist, FilterReply.DENY, FilterReply.NEUTRAL));
         layout.setPattern(pattern);
     }
 
@@ -91,6 +102,19 @@ public class GameChatAppender extends AppenderBase<ILoggingEvent> {
             
             // Use cached minimum level to filter (includes DEBUG if configured)
             return event.getLevel().isGreaterOrEqual(minimumLevel) ? FilterReply.NEUTRAL : FilterReply.DENY;
+        }
+    }
+
+    @AllArgsConstructor
+    private static class PathFilter extends Filter<ILoggingEvent> {
+        private final List<String> list;
+        private final FilterReply match;
+        private final FilterReply noMatch;
+
+        @Override
+        public FilterReply decide(ILoggingEvent event) {
+            if (list.isEmpty()) return FilterReply.NEUTRAL;
+            return list.stream().anyMatch(path -> event.getLoggerName().startsWith(path)) ? match : noMatch;
         }
     }
 

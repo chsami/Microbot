@@ -91,6 +91,30 @@ public interface MicrobotConfig extends Config
 		return false;
 	}
 
+	String whitelistLogging = "whiteListLogging";
+	@ConfigItem(
+			keyName = whitelistLogging,
+			name = "Path Whitelist",
+			description = "Whitelist specific paths for logging. This is a 'starts with' check.",
+			position = 5,
+			section = loggingSection
+	)
+	default String getLoggingWhitelist() {
+		return "";
+	}
+
+	String blacklistLogging = "blacklistLogging";
+	@ConfigItem(
+			keyName = blacklistLogging,
+			name = "Path Blacklist",
+			description = "Blacklist specific paths from logging. This is a 'starts with' check.",
+			position = 6,
+			section = loggingSection
+	)
+	default String getLoggingBlacklist() {
+		return "";
+	}
+
 	@AllArgsConstructor
 	enum GameChatLogLevel {
 		ERROR("Error", Level.ERROR),

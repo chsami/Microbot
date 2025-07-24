@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot;
 
 import ch.qos.logback.classic.LoggerContext;
+import com.google.common.base.Strings;
 import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
 import java.lang.reflect.Field;
@@ -46,6 +47,8 @@ import java.awt.*;
 import java.util.List;
 import java.lang.reflect.InvocationTargetException;
 import java.time.Instant;
+import java.util.function.Consumer;
+
 import net.runelite.client.util.ImageUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,6 +114,12 @@ public class MicrobotPlugin extends Plugin
 		final LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
 		gameChatAppender.setContext(context);
 		context.getLogger(Logger.ROOT_LOGGER_NAME).addAppender(gameChatAppender);
+
+		gameChatAppender.getWhitelist().clear();
+		splitCleanAdd(microbotConfig.getLoggingWhitelist(), gameChatAppender.getWhitelist()::add);
+
+		gameChatAppender.getBlacklist().clear();
+		splitCleanAdd(microbotConfig.getLoggingBlacklist(), gameChatAppender.getBlacklist()::add);
 
 		// Start appender if logging is enabled
 		if (microbotConfig.enableGameChatLogging()) {
@@ -340,6 +349,13 @@ public class MicrobotPlugin extends Plugin
 		Rs2Gembag.onChatMessage(event);
 	}
 
+	private static void splitCleanAdd(String string, Consumer<String> consumer) {
+		Arrays.stream(string.split(","))
+				.map(String::strip)
+				.filter(str -> !Strings.isNullOrEmpty(str))
+				.forEachOrdered(consumer);
+	}
+
 	@Subscribe
 	public void onConfigChanged(ConfigChanged ev)
 	{
@@ -370,6 +386,16 @@ public class MicrobotPlugin extends Plugin
 					} else if (gameChatAppender.isStarted()) {
 						gameChatAppender.stop();
 					}
+					break;
+				case MicrobotConfig.whitelistLogging:
+					gameChatAppender.getWhitelist().clear();
+					splitCleanAdd(microbotConfig.getLoggingWhitelist(), gameChatAppender.getWhitelist()::add);
+					log.info("Updated Logging Whitelist={}", gameChatAppender.getWhitelist().toString());
+					break;
+				case MicrobotConfig.blacklistLogging:
+					gameChatAppender.getBlacklist().clear();
+					splitCleanAdd(microbotConfig.getLoggingBlacklist(), gameChatAppender.getBlacklist()::add);
+					log.info("Updated Logging Blacklist={}", gameChatAppender.getBlacklist().toString());
 					break;
 				default:
 					break;
