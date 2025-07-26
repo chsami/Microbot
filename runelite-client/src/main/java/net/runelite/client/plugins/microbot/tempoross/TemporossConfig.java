@@ -117,4 +117,14 @@ public interface TemporossConfig extends Config {
         return HarpoonType.INFERNAL_HARPOON;
     }
 
+    @ConfigItem(
+            keyName = "enableHarpoonSpec",
+            name = "Use Harpoon Special",
+            description = "Use the harpoon's special attack when attacking Tempoross.",
+            position = 2,
+            section = harpoonSection
+    )
+    default boolean enableHarpoonSpec() {
+        return true;
+    }
 }
