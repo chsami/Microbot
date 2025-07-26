@@ -1,15 +1,18 @@
 package net.runelite.client.plugins.microbot.woodcutting;
 
-import net.runelite.client.config.Config;
-import net.runelite.client.config.ConfigGroup;
-import net.runelite.client.config.ConfigItem;
-import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.*;
 import net.runelite.client.plugins.microbot.util.inventory.InteractOrder;
 import net.runelite.client.plugins.microbot.woodcutting.enums.WoodcuttingResetOptions;
 import net.runelite.client.plugins.microbot.woodcutting.enums.WoodcuttingTree;
 import net.runelite.client.plugins.microbot.woodcutting.enums.WoodcuttingWalkBack;
 
 @ConfigGroup("Woodcutting")
+@ConfigInformation(
+        "<html>" +
+                "<p>This script automatically cuts trees and handles the logs based on your settings.</p>" +
+                "<p>Forestry support implemented by TaF</p>" +
+                "<p>If forestry is enabled, remember to use one of the forestry worlds for best results</p>" +
+                "</html>")
 public interface AutoWoodcuttingConfig extends Config {
     @ConfigSection(
             name = "General",
@@ -17,6 +20,12 @@ public interface AutoWoodcuttingConfig extends Config {
             position = 0
     )
     String generalSection = "general";
+    @ConfigSection(
+            name = "Reset",
+            description = "Options for clearing logs from inventory",
+            position = 1
+    )
+    String resetSection = "reset";
 
     @ConfigItem(
             keyName = "Tree",
@@ -25,8 +34,7 @@ public interface AutoWoodcuttingConfig extends Config {
             position = 0,
             section = generalSection
     )
-    default WoodcuttingTree TREE()
-    {
+    default WoodcuttingTree TREE() {
         return WoodcuttingTree.TREE;
     }
 
@@ -37,8 +45,7 @@ public interface AutoWoodcuttingConfig extends Config {
             position = 1,
             section = generalSection
     )
-    default int distanceToStray()
-    {
+    default int distanceToStray() {
         return 20;
     }
 
@@ -49,8 +56,18 @@ public interface AutoWoodcuttingConfig extends Config {
             position = 2,
             section = generalSection
     )
-    default boolean hopWhenPlayerDetected()
-    {
+    default boolean hopWhenPlayerDetected() {
+        return false;
+    }
+
+    @ConfigItem(
+            keyName = "enableForestry",
+            name = "Enable forestry",
+            description = "Enable forestry features",
+            position = 3,
+            section = generalSection
+    )
+    default boolean enableForestry() {
         return false;
     }
 
@@ -58,21 +75,23 @@ public interface AutoWoodcuttingConfig extends Config {
             keyName = "Firemake",
             name = "Firemake only",
             description = "Turns into an Auto Firemaker only mode , start plugin initially at desired firemaking starting position , tested only at GE - North East ",
-            position = 3,
+            position = 4,
             section = generalSection
     )
-    default boolean firemakeOnly()
-    {
+    default boolean firemakeOnly() {
         return false;
     }
 
-
-    @ConfigSection(
-            name = "Reset",
-            description = "Options for clearing logs from inventory",
-            position = 1
+    @ConfigItem(
+            keyName = "HardwoodTreePatch",
+            name = "Woodcut at Hardwood Tree Patch",
+            description = "Woodcut at Hardwood Tree Patch",
+            position = 5,
+            section = generalSection
     )
-    String resetSection = "reset";
+    default boolean HardwoodTreePatch() {
+        return false;
+    }
 
     @ConfigItem(
             keyName = "ItemAction",
@@ -81,8 +100,7 @@ public interface AutoWoodcuttingConfig extends Config {
             position = 0,
             section = resetSection
     )
-    default WoodcuttingResetOptions resetOptions()
-    {
+    default WoodcuttingResetOptions resetOptions() {
         return WoodcuttingResetOptions.DROP;
     }
 
@@ -94,9 +112,9 @@ public interface AutoWoodcuttingConfig extends Config {
             section = resetSection
     )
     default String itemsToBank() {
-        return "logs";
+        return "logs,sturdy beehive parts,petal garland,golden pheasant egg,pheasant tail feathers,fox whistle";
     }
-    
+
     @ConfigItem(
             keyName = "dropOrder",
             name = "Drop Order",
@@ -105,7 +123,7 @@ public interface AutoWoodcuttingConfig extends Config {
             section = resetSection
     )
     default InteractOrder interactOrder() {
-        return InteractOrder.STANDARD; 
+        return InteractOrder.STANDARD;
     }
 
     @ConfigItem(
@@ -115,8 +133,7 @@ public interface AutoWoodcuttingConfig extends Config {
             position = 3,
             section = resetSection
     )
-    default WoodcuttingWalkBack walkBack()
-    {
+    default WoodcuttingWalkBack walkBack() {
         return WoodcuttingWalkBack.LAST_LOCATION;
     }
 }
