@@ -209,9 +209,22 @@ public class Rs2GrandExchange
 				}
 				Rs2Keyboard.typeString(request.getItemName());
 
-				if (!Rs2Widget.sleepUntilHasWidgetText(searchName, 162, 43, request.isExact(), 5000)) break;
+				if (!Rs2Widget.sleepUntilHasWidgetText(searchName, 162, 43, false, 5000)) break;
 
-				sleep(1800); // TODO: make this conditional.
+				sleepUntil(() -> {
+					Widget widget = Rs2Widget.getWidget(162, 51);
+					if (widget == null) return false;
+
+					Widget[] children = widget.getDynamicChildren();
+					if (children == null || children.length == 0 || children[0] == null || !children[0].getText().isEmpty()) return false;
+
+					String text = Rs2UiHelper.stripColTags(children[0].getName());
+					if (text == null || text.isEmpty()) return false;
+
+					String itemName = request.getItemName();
+					return text.toLowerCase().contains(itemName.toLowerCase()) || text.equalsIgnoreCase(itemName);
+				}, 2200);
+
 
 				Pair<Widget, Integer> itemResult = getSearchResultWidget(request.getItemName(), request.isExact());
 				if (itemResult == null) break;

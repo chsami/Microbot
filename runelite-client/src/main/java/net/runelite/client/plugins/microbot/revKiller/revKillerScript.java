@@ -286,6 +286,7 @@ public class revKillerScript extends Script {
                 if(!super.isRunning()){break;}
                 if(isPkerAround()){break;}
                 if(!WeAreInTheCaves()){break;}
+                if(!Microbot.isLoggedIn()){return;}
 
                 moveCameraToTile(startTile);
 
@@ -310,6 +311,7 @@ public class revKillerScript extends Script {
                 if(!super.isRunning()){break;}
                 if(isPkerAround()){break;}
                 if(!WeAreInTheCaves()){break;}
+                if(!Microbot.isLoggedIn()){return;}
 
                 moveCameraToTile(secondTile);
 
@@ -329,6 +331,7 @@ public class revKillerScript extends Script {
                         if(isPkerAround()){break;}
                         if(!WeAreInTheCaves()){break;}
                         if(io > tries){break;}
+                        if(!Microbot.isLoggedIn()){return;}
                         if(Rs2Npc.getNpc("Revenant knight").getWorldLocation().distanceTo(Rs2Player.getWorldLocation())<=1 && !Rs2Npc.getNpc("Revenant knight").getWorldLocation().equals(thirdTile)){
                             Microbot.log("Rev is on a bad tile breaking loop");
                             return;
@@ -355,6 +358,7 @@ public class revKillerScript extends Script {
                     if(!super.isRunning()){break;}
                     if(isPkerAround()){break;}
                     if(!WeAreInTheCaves()){break;}
+                    if(!Microbot.isLoggedIn()){return;}
                     moveCameraToTile(fifthTile);
                     Rs2Walker.walkCanvas(fifthTile);
                     sleepUntil(() -> Rs2Player.isMoving(), Rs2Random.between(1000, 3000));

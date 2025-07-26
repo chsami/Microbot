@@ -8,6 +8,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginSchedule
 import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
+import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldArea;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
@@ -20,6 +21,7 @@ import net.runelite.client.plugins.microbot.util.magic.Rs2CombatSpells;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Food;
+import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -440,6 +442,13 @@ public class BarrowsScript extends Script {
                     if(Rs2Player.getWorldLocation().distanceTo(Chest)==5){
                         //too close for the walker to engage but too far to want to click the chest.
                         stopFutureWalker();
+
+                        TileObject chest = Rs2GameObject.findObjectById(20973);
+
+                        if(!Rs2UiHelper.isRectangleWithinCanvas(chest.getClickbox().getBounds())){
+                            rotateToObject(chest);
+                        }
+
                         //stop the walker and future
                         Microbot.log("Walking on screen to the chest");
                         Rs2Walker.walkCanvas(Chest);
@@ -716,6 +725,10 @@ public class BarrowsScript extends Script {
             }
         }, 0, scriptDelay, TimeUnit.MILLISECONDS);
         return true;
+    }
+
+    public void rotateToObject(TileObject object){
+        Rs2Camera.turnTo(object);
     }
 
     public void checkForWorldMap(){
