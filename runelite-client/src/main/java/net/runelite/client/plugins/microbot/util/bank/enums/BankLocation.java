@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.util.bank.enums;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
@@ -13,8 +14,11 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
+import java.util.Arrays;
+
 @Getter
 @RequiredArgsConstructor
+@Slf4j
 public enum BankLocation {
     ALDARIN(new WorldPoint(1398, 2927, 0), true),
     AL_KHARID(new WorldPoint(3270, 3166, 0), false),
@@ -258,5 +262,14 @@ public enum BankLocation {
             default:
                 return true;
         }
+    }
+
+    private static final BankLocation[] EMPTY_ARRAY = new BankLocation[0];
+
+    public static BankLocation[] values(boolean hasRequirements) {
+        if (!hasRequirements) return values();
+        return Microbot.getClientThread().runOnClientThreadOptional(
+                () -> Arrays.stream(values()).filter(BankLocation::hasRequirements).toArray(BankLocation[]::new)
+        ).orElse(EMPTY_ARRAY);
     }
 }

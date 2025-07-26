@@ -1525,6 +1525,12 @@ public class Rs2Bank {
         return result != null ? result.getValue() : null;
     }
 
+    private static BankLocation getQuickDistanceBank(WorldPoint worldPoint) {
+        return Arrays.stream(BankLocation.values())
+                .min(Comparator.comparingInt(b -> Rs2WorldPoint.quickDistance(worldPoint, b.getWorldPoint())))
+                .orElseThrow();
+    }
+
     /**
      * Private helper method that finds both the path and bank location to the nearest accessible bank.
      *
@@ -1535,43 +1541,30 @@ public class Rs2Bank {
     private static AbstractMap.SimpleEntry<List<WorldPoint>, BankLocation> getPathAndBankToNearestBank(WorldPoint worldPoint, int maxObjectSearchRadius) {
         Microbot.log("Finding nearest bank...");
                      
-        Set<BankLocation> allBanks = Arrays.stream(BankLocation.values())
-                .collect(Collectors.toSet());                             
+        final Set<BankLocation> allBanks = Set.of(BankLocation.values());
         if (Objects.equals(Microbot.getClient().getLocalPlayer().getWorldLocation(), worldPoint)) {
-            List<TileObject> bankObjs = Stream.concat(
+            final List<TileObject> bankObjs = Stream.concat(
                             Stream.of(Rs2GameObject.findBank(maxObjectSearchRadius)),
                             Stream.of(Rs2GameObject.findGrandExchangeBooth(maxObjectSearchRadius))
                     )
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
+                    .filter(Objects::nonNull).collect(Collectors.toList());
 
-            Optional<BankLocation> byObject = bankObjs.stream()
-                    .map(obj -> {
-                        BankLocation closestBank = allBanks.stream()
-                                .min(Comparator.comparingInt(b -> Rs2WorldPoint.quickDistance(obj.getWorldLocation(), b.getWorldPoint())))
-                                .orElse(null);
+            final BankLocation byObject = bankObjs.stream()
+                    .sorted(Comparator.comparingInt(obj -> obj.getWorldLocation().distanceTo(worldPoint)))
+                    .map(obj -> getQuickDistanceBank(obj.getWorldLocation()))
+                    .distinct().filter(BankLocation::hasRequirements)
+                    .findFirst().orElse(null);
 
-                        assert closestBank != null;
-                        int dist = obj.getWorldLocation().distanceTo(closestBank.getWorldPoint());
-
-                        return new AbstractMap.SimpleEntry<>(closestBank, dist);
-                    })
-                    .filter(e -> e.getKey() != null && e.getValue() <= maxObjectSearchRadius)
-                    .min(Comparator.comparingInt(Map.Entry::getValue))
-                    .map(Map.Entry::getKey);                        
-            if (byObject.isPresent() && byObject.get().hasRequirements()) {                
-                Microbot.log("Found nearest bank (object): " + byObject.get());
-                BankLocation returnBankLocation = byObject.get();
-                List<WorldPoint> path = new ArrayList<>(Collections.singletonList(byObject.get().getWorldPoint()));
-                return new AbstractMap.SimpleEntry<>(path, returnBankLocation);
+            if (byObject != null) {
+                Microbot.log("Found nearest bank (object): " + byObject);
+                List<WorldPoint> path = new ArrayList<>(Collections.singleton(byObject.getWorldPoint()));
+                return new AbstractMap.SimpleEntry<>(path, byObject);
             }
         }
 
-        // Measure accessible banks filtering performance, expensive operation takes up to 2500 ms
+        // Measure accessible banks filtering performance, expensive operation takes up to 2500 ms - (fixed) takes under 20ms for me
         long accessibleBanksStart = System.nanoTime();
-        Set<BankLocation> accessibleBanks = allBanks.stream()
-                .filter(BankLocation::hasRequirements)
-                .collect(Collectors.toSet());
+        Set<BankLocation> accessibleBanks = Set.of(BankLocation.values(true));
         long accessibleBanksTime = System.nanoTime() - accessibleBanksStart;
         log.info("Accessible banks filtering performance: {}ms, Found {} accessible banks out of {} total", 
                  accessibleBanksTime / 1_000_000.0, accessibleBanks.size(), BankLocation.values().length);
