@@ -133,6 +133,10 @@ public class PlankRunnerScript extends Script {
 
                         var sawmillOperator = Rs2Npc.getNpc(NpcID.POH_SAWMILL_OPP);
                         if (sawmillOperator == null) {
+                            sawmillOperator = Rs2Npc.getNpc(NpcID.AUBURN_SAWMILL_OPERATOR);
+                        }
+
+                        if (sawmillOperator == null) {
                             Microbot.showMessage("Unable to find Sawmill Operator!");
                             shutdown();
                             return;
