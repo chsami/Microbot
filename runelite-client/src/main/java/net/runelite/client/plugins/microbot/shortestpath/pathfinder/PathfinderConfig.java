@@ -8,6 +8,7 @@ import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.itemcharges.ItemChargeConfig;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.shortestpath.*;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.cache.Rs2SpiritTreeCache;
@@ -172,7 +173,7 @@ public class PathfinderConfig {
             
             // Do not switch back to inventory tab if we are inside of the telekinetic room in Mage Training Arena
             if (Rs2Player.getWorldLocation().getRegionID() != 13463) {
-                Rs2Tab.switchToInventoryTab();
+                Rs2Tab.switchTo(InterfaceTab.INVENTORY);
             }
             //END microbot variables
         }
@@ -359,13 +360,10 @@ public class PathfinderConfig {
         }
 
         for (Restriction entry : allRestrictions) {
-            boolean restrictionApplies = false;
+            boolean restrictionApplies = entry.getQuests().isEmpty() && entry.getVarbits().isEmpty() && entry.getVarplayers().isEmpty() && !entry.isMembers() && Arrays.stream(entry.getSkillLevels()).allMatch(level -> level == 0) && entry.getItemIdRequirements().isEmpty();
 
             // Check if there are no quests, varbits, varplayers, doesn't require a members world or skills, used for explicit restrictions
-            if (entry.getQuests().isEmpty() && entry.getVarbits().isEmpty() && entry.getVarplayers().isEmpty() && !entry.isMembers() && Arrays.stream(entry.getSkillLevels()).allMatch(level -> level == 0) && entry.getItemIdRequirements().isEmpty()) {
-                restrictionApplies = true;
-            }
-            
+
             // Members World Check
             if (!restrictionApplies) {
                 if (entry.isMembers() && !client.getWorldType().contains(WorldType.MEMBERS)) {
@@ -694,7 +692,7 @@ public class PathfinderConfig {
 
     /** Checks if the Chronicle has charges */
     private boolean hasChronicleCharges() {
-        if (!Rs2Equipment.hasEquipped(ItemID.CHRONICLE)) {
+        if (!Rs2Equipment.isWearing(ItemID.CHRONICLE)) {
             if (!Rs2Inventory.hasItem(ItemID.CHRONICLE))
                 return false;
         }
@@ -706,7 +704,7 @@ public class PathfinderConfig {
         if (charges == null || charges.isEmpty()) {
             if (Rs2Inventory.hasItem(ItemID.CHRONICLE)) {
                 Rs2Inventory.interact(ItemID.CHRONICLE, "Check charges");
-            } else if (Rs2Equipment.hasEquipped(ItemID.CHRONICLE)) {
+            } else if (Rs2Equipment.isWearing(ItemID.CHRONICLE)) {
                 Rs2Equipment.interact(ItemID.CHRONICLE, "Check charges");
             }
             charges = Microbot.getConfigManager().getRSProfileConfiguration(ItemChargeConfig.GROUP, ItemChargeConfig.KEY_CHRONICLE);

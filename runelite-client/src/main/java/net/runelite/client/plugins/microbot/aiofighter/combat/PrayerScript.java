@@ -4,11 +4,15 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.aiofighter.AIOFighterConfig;
+import net.runelite.client.plugins.microbot.aiofighter.enums.AttackStyle;
+import net.runelite.client.plugins.microbot.aiofighter.enums.AttackStyleMapper;
 import net.runelite.client.plugins.microbot.aiofighter.enums.PrayerStyle;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcManager;
+import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer;
+import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
 
 import java.util.concurrent.TimeUnit;
 
@@ -37,14 +41,39 @@ public class PrayerScript extends Script {
         if (!Microbot.isLoggedIn() || !config.togglePrayer()) return;
         if (config.prayerStyle() != PrayerStyle.CONTINUOUS && config.prayerStyle() != PrayerStyle.ALWAYS_ON) return;
         if (config.prayerStyle() == PrayerStyle.CONTINUOUS) {
-            boolean underAttack = Rs2Npc.getNpcsForPlayer().findAny().isPresent() || Rs2Combat.inCombat();
-            Rs2Prayer.toggleQuickPrayer(underAttack);
+            boolean underAttack = Rs2Npc.getNpcsForPlayer(npc -> !npc.isDead() && npc.getCombatLevel() > 1).findAny().isPresent() || Rs2Combat.inCombat();
+            if(!underAttack) {
+                Rs2Prayer.disableAllPrayers();
+                return;
+            }
+
+            Rs2NpcModel npc = Rs2Npc.getNpcsForPlayer(n -> !n.isDead() && n.getCombatLevel() > 1).findAny().orElse(null);
+            if (!config.toggleQuickPray()) {
+                assert npc != null;
+                AttackStyle attackStyle = AttackStyleMapper
+                        .mapToAttackStyle(Rs2NpcManager.getAttackStyle(npc.getId()));
+                if (attackStyle != null) {
+                    switch (attackStyle) {
+                        case MAGE:
+                            Rs2Prayer.toggle(Rs2PrayerEnum.PROTECT_MAGIC, true);
+                            break;
+                        case MELEE:
+                            Rs2Prayer.toggle(Rs2PrayerEnum.PROTECT_MELEE, true);
+                            break;
+                        case RANGED:
+                            Rs2Prayer.toggle(Rs2PrayerEnum.PROTECT_RANGE, true);
+                            break;
+                    }
+                }
+            } else {
+                Rs2Prayer.toggleQuickPrayer(true);
+            }
         } else {
 			Rs2Prayer.toggleQuickPrayer(config.prayerStyle() == PrayerStyle.ALWAYS_ON);
         }
     }
 
-
+    @Override
     public void shutdown() {
         super.shutdown();
     }

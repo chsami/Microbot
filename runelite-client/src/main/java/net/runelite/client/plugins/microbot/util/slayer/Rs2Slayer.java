@@ -1,10 +1,9 @@
 package net.runelite.client.plugins.microbot.util.slayer;
 
-import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.EnumID;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.VarPlayerID;
-import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
@@ -19,14 +18,12 @@ import net.runelite.client.plugins.microbot.util.slayer.enums.SlayerMaster;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.slayer.Task;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.event.Level;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * The type Rs 2 slayer.
- */
-@Slf4j
+
 public class Rs2Slayer {
 
     /**
@@ -99,12 +96,9 @@ public class Rs2Slayer {
      */
     public static MonsterLocation getSlayerTaskLocation(int minClustering, boolean avoidWilderness) {
         List<String> names = getSlayerMonsters();
-        if (names == null) {
+        if (names == null || names.isEmpty()) {
+            Microbot.log(Level.DEBUG,"No Slayer task found or no monsters available for the task.");
             return null;
-        }
-        // Check if the monster is blacklisted and remove it from the list
-        if (blacklistedSlayerMonsters != null) {
-            names.removeAll(blacklistedSlayerMonsters);
         }
 
         MonsterLocation monsterLocation = Rs2NpcManager.getClosestLocation(names.get(0),minClustering,avoidWilderness);
@@ -253,7 +247,7 @@ public class Rs2Slayer {
         ShortestPathPlugin.getPathfinderConfig().setUseBankItems(false);
 
         transports
-                .forEach(t -> log.info("Item required: " + t));
+                .forEach(t -> Microbot.log(Level.DEBUG,"Item required: " + t));
 
         return getMissingItemTransports(transports);
     }

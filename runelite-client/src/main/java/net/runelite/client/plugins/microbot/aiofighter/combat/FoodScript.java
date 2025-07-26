@@ -8,8 +8,8 @@ import net.runelite.client.plugins.microbot.aiofighter.AIOFighterConfig;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment.get;
@@ -34,8 +34,6 @@ public class FoodScript extends Script {
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
                 if (!config.toggleFood()) return;
-                if (Rs2Inventory.hasItem("empty vial"))
-                    Rs2Inventory.drop("empty vial");
                 double treshHold = (double) (Microbot.getClient().getBoostedSkillLevel(Skill.HITPOINTS) * 100) / Microbot.getClient().getRealSkillLevel(Skill.HITPOINTS);
                 if (Rs2Equipment.isWearingFullGuthan()) {
                     if (treshHold > 80) //only unequip guthans if we have more than 80% hp
@@ -46,20 +44,10 @@ public class FoodScript extends Script {
                         return;
                 }
 
-                List<Rs2ItemModel> foods = Rs2Inventory.getInventoryFood();
-
-                if (foods == null || foods.isEmpty()) {
                     if (!equipFullGuthans()) {
-                        Microbot.showMessage("No more food left & no guthans available. Please teleport");
-                        sleep(5000);
+                        Rs2Player.eatAt(50);
                     }
-                    return;
-                }
-                for (Rs2ItemModel food : foods) {
-                    Rs2Inventory.interact(food, "eat");
-                    sleep(1200, 2000);
-                    break;
-                }
+
             } catch(Exception ex) {
                 Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
             }

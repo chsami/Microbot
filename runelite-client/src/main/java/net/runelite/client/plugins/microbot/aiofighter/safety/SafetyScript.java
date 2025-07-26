@@ -53,4 +53,9 @@ public class SafetyScript extends Script {
             Microbot.stopPlugin(PlayerAssistPlugin);
         }
     }
+
+    @Override
+    public void shutdown() {
+        super.shutdown();
+    }
 }
