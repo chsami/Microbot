@@ -23,6 +23,7 @@ public enum BankLocation {
     ARDOUGNE_SOUTH(new WorldPoint(2655, 3283, 0), true),
 	AUBURNVALE(new WorldPoint(1416, 3350, 0), true),
     BARBARIAN_OUTPOST(new WorldPoint(2536, 3574, 0), true),
+    BARRONITE_BANK(new WorldPoint(2978,5798,0), true),
     BLAST_FURNACE_BANK(new WorldPoint(1948, 4957, 0), true),
     BLAST_MINE(new WorldPoint(1502, 3856, 0), true),
     BURGH_DE_ROTT(new WorldPoint(3495, 3212, 0), true),
@@ -112,6 +113,7 @@ public enum BankLocation {
     YANILLE(new WorldPoint(2613, 3093, 0), true),
     ZANARIS(new WorldPoint(2383, 4458, 0), true),
     ZEAH_SAND_BANK(new WorldPoint(1719, 3465, 0), true);
+
 
     private final WorldPoint worldPoint;
     private final boolean members;

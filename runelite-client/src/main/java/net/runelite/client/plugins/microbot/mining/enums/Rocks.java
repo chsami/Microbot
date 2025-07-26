@@ -11,6 +11,9 @@ public enum Rocks {
     TIN("tin rocks", 1),
     COPPER("copper rocks", 1),
     CLAY("clay rocks", 1),
+
+    BARRONITE("Barronite rocks", 14),
+
     IRON("iron rocks", 15),
     SILVER("silver rocks", 20),
     COAL("coal rocks", 30),
@@ -23,6 +26,8 @@ public enum Rocks {
     EFH_SALT("Efh salt rocks", 72),
     TE_SALT("Te salt rocks", 72),
     RUNITE("runite rocks", 85);
+
+
 
     private final String name;
     private final int miningLevel;
