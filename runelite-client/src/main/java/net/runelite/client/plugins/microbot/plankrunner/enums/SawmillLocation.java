@@ -9,7 +9,8 @@ import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 @RequiredArgsConstructor
 public enum SawmillLocation {
     VARROCK(new WorldPoint(3302, 3491, 0), BankLocation.VARROCK_EAST),
-    WOODCUTTING_GUILD(new WorldPoint(1624, 3500, 0), BankLocation.WOODCUTTING_GUILD);
+    WOODCUTTING_GUILD(new WorldPoint(1624, 3500, 0), BankLocation.WOODCUTTING_GUILD),
+    AUBURNVALE(new WorldPoint(1395, 3368, 0), BankLocation.AUBURNVALE);
     
     private final WorldPoint worldPoint;
     private final BankLocation bankLocation;

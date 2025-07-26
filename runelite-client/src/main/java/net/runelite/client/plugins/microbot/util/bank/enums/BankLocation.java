@@ -21,7 +21,7 @@ public enum BankLocation {
     ARCEUUS(new WorldPoint(1624, 3745, 0), true),
     ARDOUGNE_NORTH(new WorldPoint(2616, 3332, 0), true),
     ARDOUGNE_SOUTH(new WorldPoint(2655, 3283, 0), true),
-	AUBURNVALE(new WorldPoint(1416, 3350, 0), true),
+	AUBURNVALE(new WorldPoint(1413, 3353, 0), true),
     BARBARIAN_OUTPOST(new WorldPoint(2536, 3574, 0), true),
     BLAST_FURNACE_BANK(new WorldPoint(1948, 4957, 0), true),
     BLAST_MINE(new WorldPoint(1502, 3856, 0), true),
