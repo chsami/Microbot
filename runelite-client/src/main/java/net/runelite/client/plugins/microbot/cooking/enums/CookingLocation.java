@@ -20,6 +20,7 @@ import java.util.Map;
 public enum CookingLocation {
 
     CATHERBY(new WorldPoint(2817, 3443, 0), CookingAreaType.RANGE, ObjectID.RANGE_26181),
+    FISHING_GUILD(new WorldPoint(2616, 3396, 0), CookingAreaType.RANGE, ObjectID.RANGE_26181),
     SEERS_VILLAGE(new WorldPoint(2715, 3477, 0), CookingAreaType.RANGE, ObjectID.RANGE_26181),
     EAST_ARDOUGNE_FARM(new WorldPoint(2642, 3356, 0), CookingAreaType.RANGE, ObjectID.RANGE_26181),
     EAST_ARDOUGNE_SOUTH(new WorldPoint(2647, 3298, 0), CookingAreaType.RANGE, ObjectID.RANGE_26181),
@@ -43,6 +44,7 @@ public enum CookingLocation {
     HOSIDIUS_KITCHEN(new WorldPoint(1677, 3621, 0), CookingAreaType.RANGE, ObjectID.CLAY_OVEN_21302),
     NARDAH(new WorldPoint(3434, 2887, 0), CookingAreaType.RANGE, ObjectID.CLAY_OVEN),
     LANDS_END(new WorldPoint(1515, 3442, 0), CookingAreaType.RANGE, ObjectID.RANGE_7183);
+
 
     private final WorldPoint cookingObjectWorldPoint;
     private final CookingAreaType cookingAreaType;
