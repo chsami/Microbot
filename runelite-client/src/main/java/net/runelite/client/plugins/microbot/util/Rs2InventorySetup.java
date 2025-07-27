@@ -186,9 +186,6 @@ public class Rs2InventorySetup {
 		String itemName = setupItem.getName().toLowerCase();
 		boolean isFuzzy = setupItem.isFuzzy();
 
-		Rs2ItemModel rs2Item = Rs2Inventory.get(itemId);
-		boolean isStackable = rs2Item != null && rs2Item.isStackable();
-
 		int desiredQuantity = setupItems.stream()
 			.mapToInt(InventorySetupsItem::getQuantity)
 			.sum();
@@ -200,6 +197,8 @@ public class Rs2InventorySetup {
 		if (currentQuantity >= desiredQuantity) {
 			return 0;
 		}
+
+		boolean isStackable = (setupItems.size() == 1) && (desiredQuantity > 1);
 
 		if (!isStackable) {
 			long alreadyPresent = isFuzzy

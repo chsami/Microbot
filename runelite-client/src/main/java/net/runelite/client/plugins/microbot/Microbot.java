@@ -66,7 +66,8 @@ import net.runelite.client.plugins.microbot.qualityoflife.scripts.pouch.PouchScr
 import static net.runelite.client.plugins.microbot.util.Global.sleep;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntilNotNull;
-
+import net.runelite.client.plugins.microbot.util.cache.Rs2VarbitCache;
+import net.runelite.client.plugins.microbot.util.cache.Rs2VarPlayerCache;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.item.Rs2ItemManager;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
@@ -170,6 +171,19 @@ public class Microbot {
 	@Getter
 	@Inject
 	private static PouchScript pouchScript;
+	/**
+	 * Tracks the last known map regions for login/region change detection.
+	 */
+	@Getter
+	@Setter
+	private static int[] lastKnownRegions = null;
+
+	/**
+	 * Tracks the last GameState for login/region change detection.
+	 */
+	@Getter
+	@Setter
+	private static GameState lastGameState = null;
 
 	public static boolean cantReachTarget = false;
 	public static boolean cantHopWorld = false;
@@ -221,12 +235,12 @@ public class Microbot {
 
 	public static int getVarbitValue(@Varbit int varbit)
 	{
-		return getClientThread().runOnClientThreadOptional(() -> getClient().getVarbitValue(varbit)).orElse(0);
+		return Rs2VarbitCache.getVarbitValue(varbit);//getClientThread().runOnClientThreadOptional(() -> getClient().getVarbitValue(varbit)).orElse(0);
 	}
 
 	public static int getVarbitPlayerValue(@Varp int varpId)
 	{
-		return getClientThread().runOnClientThreadOptional(() -> getClient().getVarpValue(varpId)).orElse(0);
+		return Rs2VarPlayerCache.getVarPlayerValue(varpId);
 	}
 
 	public static EnumComposition getEnum(int id)
@@ -424,7 +438,7 @@ public class Microbot {
 		if (plugin == null) return false;
 		final AtomicBoolean success = new AtomicBoolean(false);
 		Runnable runnable = () -> {
-        	try {
+			try {
 				getPluginManager().setPluginEnabled(plugin, enable);
 				if (enable) {
 					success.set(getPluginManager().startPlugin(plugin));

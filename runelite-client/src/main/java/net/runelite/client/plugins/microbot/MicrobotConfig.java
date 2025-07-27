@@ -17,7 +17,7 @@ public interface MicrobotConfig extends Config
 		name = "General",
 		description = "The overall global settings for microbot",
 		position = 0
-    )
+	)
 	String generalSection = "generalSection";
 
 	@ConfigSection(
@@ -126,4 +126,17 @@ public interface MicrobotConfig extends Config
 			return displayName;
 		}
     }
+
+	@ConfigItem(
+		keyName = "showCacheInfo",
+		name = "Show Cache Information",
+		description = "Display cache statistics and management button in overlays",
+		position = 2,
+		section = generalSection
+	)
+	default boolean showCacheInfo() {
+		return false;
+	}
+
+
 }

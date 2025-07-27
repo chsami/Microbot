@@ -13,6 +13,8 @@ import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.VarbitValues;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
+import net.runelite.client.plugins.microbot.util.cache.Rs2QuestCache;
+import net.runelite.client.plugins.microbot.util.cache.Rs2SkillCache;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
@@ -1115,10 +1117,113 @@ public class Rs2Player {
      * @param worldPoint The {@link WorldPoint} to check proximity to.
      * @param distance   The radius (in tiles) around the {@code worldPoint} to check.
      * @return {@code true} if the player is within the specified distance, {@code false} otherwise.
+     * @deprecated Since 1.9.6, use {@link #isInArea(WorldPoint, int)} for better naming consistency.
      */
-    public static boolean isNearArea(WorldPoint worldPoint, int distance) {
-        WorldArea worldArea = new WorldArea(worldPoint, distance, distance);
-        return worldArea.contains(getWorldLocation());
+    @Deprecated(since = "1.9.6", forRemoval = true)
+    public static boolean isNearArea(WorldPoint worldPoint, int radius) {
+        return isInArea(worldPoint, radius);
+    }
+
+    /**
+     * Checks if the player is within a specified distance of a given {@link WorldPoint}.
+     *
+     * @param worldPoint The {@link WorldPoint} to check proximity to.
+     * @param distance   The radius (in tiles) around the {@code worldPoint} to check.
+     * @return {@code true} if the player is within the specified distance, {@code false} otherwise.
+     */
+    public static boolean isInArea(WorldPoint worldPoint, int radius) {
+        return isInArea(worldPoint, radius, radius);
+    }
+
+    /**
+     * Checks if the player is within a specified area around a given {@link WorldPoint}.
+     *
+     * @param worldPoint The {@link WorldPoint} to check proximity to.
+     * @param xRadius    The horizontal radius (in tiles) around the {@code worldPoint}.
+     * @param yRadius    The vertical radius (in tiles) around the {@code worldPoint}.
+     * @return {@code true} if the player is within the specified area, {@code false} otherwise.
+     */
+    public static boolean isInArea(WorldPoint worldPoint, int xRadius, int yRadius) {
+        // Null check for world point
+        if (worldPoint == null) {
+            return false;
+        }
+        
+        // Validate radius parameters (should be non-negative)
+        if (xRadius < 0 || yRadius < 0) {
+            return false;
+        }
+        
+        WorldPoint playerLocation = getWorldLocation();
+        
+        // Null check for player location
+        if (playerLocation == null) {
+            return false;
+        }
+        
+        // Ensure both points are on the same plane
+        if (worldPoint.getPlane() != playerLocation.getPlane()) {
+            return false;
+        }
+        
+        // Simple distance check - check if player is within the rectangular radius
+        int deltaX = Math.abs(playerLocation.getX() - worldPoint.getX());
+        int deltaY = Math.abs(playerLocation.getY() - worldPoint.getY());
+        
+        return deltaX <= xRadius && deltaY <= yRadius;
+    }
+
+    /**
+     * Checks if two areas intersect - one centered on the player and another on a target {@link WorldPoint}.
+     *
+     * @param targetPoint    The {@link WorldPoint} to check intersection with.
+     * @param targetXSpan    The total width (in tiles) of the area around the {@code targetPoint}.
+     * @param targetYSpan    The total height (in tiles) of the area around the {@code targetPoint}.
+     * @param playerXSpan    The total width (in tiles) of the area around the player's position.
+     * @param playerYSpan    The total height (in tiles) of the area around the player's position.
+     * @return {@code true} if the player's area intersects with the target area, {@code false} otherwise.
+     */
+    public static boolean isPlayerAreaIntersecting(WorldPoint targetPoint, int targetXSpan, int targetYSpan, 
+                                             int playerXSpan, int playerYSpan) {
+        // Null check for target point
+        if (targetPoint == null) {
+            return false;
+        }
+        
+        // Validate span parameters (should be non-negative)
+        if (targetXSpan < 0 || targetYSpan < 0 || playerXSpan < 0 || playerYSpan < 0) {
+            return false;
+        }
+        
+        WorldPoint playerLocation = getWorldLocation();
+        
+        // Null check for player location
+        if (playerLocation == null) {
+            return false;
+        }
+        
+        // Ensure both points are on the same plane
+        if (targetPoint.getPlane() != playerLocation.getPlane()) {
+            return false;
+        }
+        
+        // Create target area centered on targetPoint
+        WorldPoint targetSouthWest = new WorldPoint(
+            targetPoint.getX() - (targetXSpan /2), 
+            targetPoint.getY() - (targetYSpan / 2), 
+            targetPoint.getPlane()
+        );
+        WorldArea targetArea = new WorldArea(targetSouthWest, targetXSpan, targetYSpan);
+        
+        // Create player area centered on player location
+        WorldPoint playerSouthWest = new WorldPoint(
+            playerLocation.getX() - (playerXSpan / 2), 
+            playerLocation.getY() - (playerYSpan / 2), 
+            playerLocation.getPlane()
+        );
+        WorldArea playerArea = new WorldArea(playerSouthWest, playerXSpan, playerYSpan);
+        
+        return targetArea.intersectsWith2D(playerArea);
     }
 
     /**
@@ -1474,8 +1579,7 @@ public class Rs2Player {
      * @return The {@link QuestState} representing the player's progress in the quest.
      */
     public static QuestState getQuestState(Quest quest) {
-        Client client = Microbot.getClient();
-        return Microbot.getClientThread().runOnClientThreadOptional(() -> quest.getState(client)).orElse(null);
+        return Rs2QuestCache.getQuestState(quest);
     }
 
     /**
@@ -1485,7 +1589,7 @@ public class Rs2Player {
      * @return The player's real level for the specified skill.
      */
     public static int getRealSkillLevel(Skill skill) {
-        return Microbot.getClient().getRealSkillLevel(skill);
+        return Rs2SkillCache.getRealSkillLevel(skill);
     }
 
     /**
@@ -1494,8 +1598,8 @@ public class Rs2Player {
      * @param skill The {@link Skill} to check.
      * @return The player's boosted level for the specified skill.
      */
-    public static int getBoostedSkillLevel(Skill skill) {
-        return Microbot.getClient().getBoostedSkillLevel(skill);
+    public static int getBoostedSkillLevel(Skill skill) {        
+        return Rs2SkillCache.getBoostedSkillLevel(skill);
     }
 
     /**

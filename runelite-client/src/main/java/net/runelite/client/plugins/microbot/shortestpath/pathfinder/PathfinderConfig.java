@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.shortestpath.pathfinder;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
@@ -9,6 +10,7 @@ import net.runelite.client.plugins.itemcharges.ItemChargeConfig;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.*;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.cache.Rs2SpiritTreeCache;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
@@ -25,7 +27,7 @@ import java.util.stream.Stream;
 
 import static net.runelite.client.plugins.microbot.shortestpath.TransportType.TELEPORTATION_ITEM;
 import static net.runelite.client.plugins.microbot.shortestpath.TransportType.TELEPORTATION_SPELL;
-
+@Slf4j
 public class PathfinderConfig {
     private static final WorldArea WILDERNESS_ABOVE_GROUND = new WorldArea(2944, 3523, 448, 448, 0);
     private static final WorldArea WILDERNESS_ABOVE_GROUND_LEVEL_19 = new WorldArea(2944, 3672, 448, 448, 0);
@@ -132,7 +134,7 @@ public class PathfinderConfig {
         return map.get();
     }
 
-    public void refresh() {
+    public void refresh(WorldPoint target) {
         calculationCutoffMillis = config.calculationCutoff() * Constants.GAME_TICK_LENGTH;
         avoidWilderness = ShortestPathPlugin.override("avoidWilderness", config.avoidWilderness());
         useAgilityShortcuts = ShortestPathPlugin.override("useAgilityShortcuts", config.useAgilityShortcuts());
@@ -164,7 +166,7 @@ public class PathfinderConfig {
                 boostedLevels[i] = client.getBoostedSkillLevel(Skill.values()[i]);
             }
 
-            refreshTransports();
+            refreshTransports(target);
             //START microbot variables
             refreshRestrictionData();
             
@@ -223,8 +225,14 @@ public class PathfinderConfig {
             filteredTargets.clear();
         }
     }
-
-    private void refreshTransports() {
+    
+    
+    /**
+     * Refreshes transport data with optional target-based optimization.
+     * 
+     * @param target Optional target destination for optimized filtering (null for standard filtering)
+     */
+    private void refreshTransports(WorldPoint target) {
         useFairyRings &= !QuestState.NOT_STARTED.equals(Rs2Player.getQuestState(Quest.FAIRYTALE_II__CURE_A_QUEEN))
                 && (Rs2Inventory.contains(ItemID.DRAMEN_STAFF, ItemID.LUNAR_STAFF)
                 || Rs2Equipment.isWearing(ItemID.DRAMEN_STAFF)
@@ -238,7 +246,12 @@ public class PathfinderConfig {
         transports.clear();
         transportsPacked.clear();
         usableTeleports.clear();
-         Microbot.getClientThread().runOnClientThreadOptional(() -> {
+         // Check spirit tree farming states for farmable spirit trees
+
+        Rs2SpiritTreeCache.getInstance().update();       
+        //Rs2SpiritTreeCache.logAllTreeStates();             
+        //log.info("useSpiritTrees: {}", useSpiritTrees);
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
             for (Map.Entry<WorldPoint, Set<Transport>> entry : allTransports.entrySet()) {
                 for (Transport transport : entry.getValue()) {
                     for (Quest quest : transport.getQuests()) {
@@ -261,6 +274,8 @@ public class PathfinderConfig {
                     for (TransportVarPlayer varplayerCheck : transport.getVarplayers()) {
                         varplayerValues.put(varplayerCheck.getVarplayerId(), Microbot.getVarbitPlayerValue(varplayerCheck.getVarplayerId()));
                     }
+                    
+                   
                 }
             }
             return true;
@@ -283,6 +298,21 @@ public class PathfinderConfig {
                 transportsPacked.put(WorldPointUtil.packWorldPoint(point), usableTransports);
             }
         }
+        
+        // Filter similar transports based on distance when walk with banked transports is enabled
+        if (useBankItems && config.maxSimilarTransportDistance() > 0) {            
+            filterSimilarTransports(target);                                    
+        }
+    }
+
+    /**
+     * Refreshes transport data with target-based optimization for filtering similar transports.
+     * This variant enables more intelligent filtering by considering the target destination.
+     * 
+     * @param target Target destination for optimized transport filtering
+     */
+    public void refresh() {
+        refresh(null);        
     }
 
     private void refreshRestrictionData() {
@@ -488,6 +518,8 @@ public class PathfinderConfig {
         if (!hasRequiredLevels(transport)) return false;
         // If the transport has quest requirements & the quest haven't been completed
         if (transport.isQuestLocked() && !completedQuests(transport)) return false;
+        // Check Spirit Tree specific requirements (farming state for farmable trees)
+        if (transport.getType() == TransportType.SPIRIT_TREE) return isSpiritTreeUsable(transport);
         // If the transport has varbit requirements & the varbits do not match
         if (!varbitChecks(transport)) return false;
         // If the transport has varplayer requirements & the varplayers do not match
@@ -505,6 +537,7 @@ public class PathfinderConfig {
         if (transport.getType() == TELEPORTATION_SPELL) return isTeleportationSpellUsable(transport);
         // Used for Generic Item Requirements
         if (!transport.getItemIdRequirements().isEmpty()) return hasRequiredItems(transport);
+        
 
         return true;
     }
@@ -697,9 +730,295 @@ public class PathfinderConfig {
 
         return progressionOrder.indexOf(newState) > progressionOrder.indexOf(currentState);
     }
+
+    /**
+     * Check if a spirit tree transport is usable
+     * This method integrates with the farming system to determine if farmable spirit trees
+     * are planted and healthy enough for transportation
+     * 
+     * @param transport The spirit tree transport to check
+     * @return true if the spirit tree is available for travel
+     */
+    private boolean isSpiritTreeUsable(Transport transport) {
+        // Use the Rs2SpiritTreeCache directly for better performance and consistency
+        return Rs2SpiritTreeCache.isSpiritTreeTransportAvailable(transport);
+    }
     
     @Deprecated(since = "1.6.2 - Add Restrictions to restrictions.tsv", forRemoval = true)
     public void setRestrictedTiles(Restriction... restrictions){
         this.customRestrictions = List.of(restrictions);
     }
+
+    
+    /**
+     * Filters similar transports based on distance, removing consumable transport items when
+     * better non-consumable alternatives exist within the configured distance.
+     * 
+     * @param target Optional target destination for distance-based filtering optimization
+     */
+    private void filterSimilarTransports(WorldPoint target) {
+        int maxDistance = config.maxSimilarTransportDistance();
+        if (maxDistance <= 0) {
+            return;
+        }
+
+        StringBuilder filteringSummary = new StringBuilder();
+        filteringSummary.append("\n=== Transport Filtering Summary ===\n");
+        filteringSummary.append("\tMax similar transport distance: ").append(maxDistance).append(" tiles\n");
+        if (target != null) {
+            filteringSummary.append("\tTarget-based filtering enabled for: ").append(target).append("\n");
+        }
+        filteringSummary.append("\tFiltering Rule: Remove consumable transport items when similar non-consumable alternatives exist\n");
+
+        // Track removed transports by category
+        Map<String, Integer> removedByCategory = new HashMap<>();
+        Set<Transport> allRemovedTransports = new HashSet<>();
+
+        // IMPORTANT: Create a copy of the current teleports to avoid modifying the original set while iterating
+        Set<Transport> teleportsToFilter = new HashSet<>(usableTeleports);
+
+        // Filter usable teleports (null origin)
+        filteringSummary.append("\n\t--- Processing Usable Teleports ---\n");
+        boolean preferTransports = config.preferTransportToTarget();
+        HashMap<WorldPoint, Set<Transport>> allUsableTransports;
+
+        if (preferTransports) {            
+            allUsableTransports = new HashMap<>(transports);                                                    
+        } else {
+            allUsableTransports = new HashMap<>();
+        }
+        // Call the optimized filter method - now with safeguards against removing critical transports
+        TransportFilterResult usableTeleportsResult = filterConsumableTeleports(teleportsToFilter,
+                        allUsableTransports,
+                        maxDistance, target);          
+        // Apply the results
+        filteringSummary.append(usableTeleportsResult.filterDetails);
+
+        // Only remove consumable teleportation items - never remove staircases or other non-teleport transports
+        Set<Transport> transportsToPurge = new HashSet<>();
+        for (Transport transport : usableTeleportsResult.removedTransports) {
+            // Double-check that we're only removing consumable teleportation items
+            if (transport.getType() == TransportType.TELEPORTATION_ITEM && transport.isConsumable()) {
+                transportsToPurge.add(transport);
+            }
+        }
+
+        // Only now apply the filtered changes
+        usableTeleports.removeAll(transportsToPurge);
+        allRemovedTransports.addAll(transportsToPurge);
+        removedByCategory.putAll(usableTeleportsResult.removedByCategory);
+
+        // Generate final summary
+        filteringSummary.append("--- Filtering Results ---");
+        int totalRemoved = allRemovedTransports.size();
+        if (totalRemoved > 0) {
+            filteringSummary.append("\n\tTotal consumable transport items removed: ").append(totalRemoved).append("\n");
+        } else {
+            filteringSummary.append("\tNo consumable transport items were filtered.");
+        }
+        filteringSummary.append("\n=== End Transport Filtering Summary ===\n");
+
+        if (totalRemoved > 0) {
+            log.debug(filteringSummary.toString());
+        } else {
+            log.debug(filteringSummary.toString());
+        }
+    }
+
+    /**
+     * Container for transport filtering results
+     */
+    private static class TransportFilterResult {
+        private final Set<Transport> removedTransports = new HashSet<>();
+        private final Map<String, Integer> removedByCategory = new HashMap<>();
+        private final StringBuilder filterDetails = new StringBuilder();
+        
+        public void addRemovedTransport(Transport transport, Transport alternative, 
+                                      String categoryName, int distance, boolean isTargetBased) {
+            removedTransports.add(transport);
+            
+            // Track removal by category
+            String category = categoryName + " over Consumable Item (" + 
+                    (isTargetBased ? "target-based" : "destination-based") + ", distance: " + distance + " tiles)";
+            removedByCategory.merge(category, 1, Integer::sum);
+            
+            // Log detailed removal information
+            filterDetails.append("\t\tRemoved: '").append(transport.getDisplayInfo())
+                   .append("' (Consumable Item) due to similar '").append(alternative.getDisplayInfo())
+                   .append("' (").append(categoryName)
+                   .append(") - Distance: ").append(distance).append(" tiles (")
+                   .append(isTargetBased ? "target-based" : "destination-based").append(")\n");
+        }
+    }
+    
+    /**
+     * Filters consumable transport items when similar non-consumable alternatives exist.
+     * 
+     * @param teleports The set of teleports to filter
+     * @param allUsableTransports Map of all usable transports by location
+     * @param maxDistance Maximum distance for considering transports similar
+     * @param target Optional target destination for optimization
+     * @return Result containing transports to remove and filtering details
+     */
+    private TransportFilterResult filterConsumableTeleports(Set<Transport> teleports, 
+                                                            HashMap<WorldPoint, Set<Transport>> allUsableTransports,
+                                                            int maxDistance, WorldPoint target) {
+        TransportFilterResult result = new TransportFilterResult();
+        
+        // Skip processing if no filtering is needed
+        if (maxDistance <= 0) {
+            return result;
+        }
+        
+        // Fast early exit if there are no teleports to filter
+        if (teleports == null || teleports.isEmpty()) {
+            return result;
+        }
+        
+        // Separate consumable transport items from other transports (using streams for better performance)
+        List<Transport> consumableItems = new ArrayList<>();
+        List<Transport> nonConsumableTeleports = new ArrayList<>();
+        
+        // First pass: separate the teleports into appropriate lists
+        teleports.forEach(teleport -> {
+            if (teleport.getType() == TransportType.TELEPORTATION_ITEM && teleport.isConsumable()) {
+                consumableItems.add(teleport);
+            } else {
+                nonConsumableTeleports.add(teleport);
+            }
+        });
+        
+        // Nothing to filter if no consumable items or no alternatives
+        if (consumableItems.isEmpty() || nonConsumableTeleports.isEmpty()) {
+            return result;
+        }
+        
+        // Add transportation network transports (like fairy rings, spirit trees) to the non-consumable list
+        if (allUsableTransports != null && !allUsableTransports.isEmpty()) {
+            allUsableTransports.values().stream()
+                .flatMap(Set::stream)
+                .filter(transport -> 
+                    transport.getType() == TransportType.FAIRY_RING || 
+                    transport.getType() == TransportType.GNOME_GLIDER ||
+                    transport.getType() == TransportType.SPIRIT_TREE || 
+                    transport.getType() == TransportType.QUETZAL)
+                .forEach(nonConsumableTeleports::add);
+        }
+        
+        // Check each consumable item against all non-consumable alternatives
+        // Using a more optimized approach to avoid unnecessary calculations
+        for (Transport consumableItem : consumableItems) {
+            WorldPoint consumableDestination = consumableItem.getDestination();
+            if (consumableDestination == null) continue;
+            
+            Transport bestAlternative = null;
+            int shortestDistance = Integer.MAX_VALUE;
+            boolean isTargetBased = false;
+            
+            // First determine if we can use target-based comparison
+            boolean useTargetComparison = target != null && target.getPlane() == consumableDestination.getPlane();
+            
+            // Pre-calculate target distance for the consumable item if needed
+            int consumableToTarget = useTargetComparison ? consumableDestination.distanceTo2D(target) : 0;
+            
+            // Process all non-consumable alternatives
+            for (Transport nonConsumableTeleport : nonConsumableTeleports) {
+                WorldPoint nonConsumableDestination = nonConsumableTeleport.getDestination();
+                if (nonConsumableDestination == null) continue;
+                
+                // Ensure we're comparing points on the same plane
+                if (consumableDestination.getPlane() != nonConsumableDestination.getPlane()) {
+                    continue;
+                }
+                
+                int distance;
+                
+                if (useTargetComparison) {
+                    // Target-based comparison (optimized)
+                    WorldPoint referencePoint = calculateReferencePoint(target, consumableDestination, nonConsumableDestination);
+                    int nonConsumableToReference = nonConsumableDestination.distanceTo2D(referencePoint);
+                    int consumableToReference = consumableDestination.distanceTo2D(referencePoint);
+                    
+                    // Only consider alternatives that get us at least as close to the target
+                    // This prevents removing consumable items that are better positioned
+                    if (nonConsumableToReference > consumableToReference) {
+                        continue;
+                    }
+                    
+                    // Calculate distance between the transports
+                    distance = nonConsumableToReference;
+                    isTargetBased = true;
+                } else {
+                    // Simple destination-based comparison
+                    distance = consumableDestination.distanceTo2D(nonConsumableDestination);
+                    isTargetBased = false;
+                }
+                
+                // Keep track of the best alternative (shortest distance)
+                if (distance <= maxDistance && distance < shortestDistance) {
+                    shortestDistance = distance;
+                    bestAlternative = nonConsumableTeleport;
+                    break; // Found a suitable alternative, no need to check further
+                }
+            }
+            
+            // If we found a suitable alternative, remove the consumable item
+            if (bestAlternative != null) {
+                result.addRemovedTransport(
+                    consumableItem,
+                    bestAlternative,
+                    getTransportTypeName(bestAlternative),
+                    shortestDistance,
+                    isTargetBased
+                );
+            }
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Calculates a reference point based on the triangle formed by three world points.
+     * This reference point is the centroid (average of the three points) which provides
+     * a point of reference for comparing relative positions.
+     * 
+     * @param p1 First point (typically the target)
+     * @param p2 Second point (typically consumable destination)
+     * @param p3 Third point (typically non-consumable destination)
+     * @return The calculated reference point (centroid of the triangle)
+     */
+    private WorldPoint calculateReferencePoint(WorldPoint p1, WorldPoint p2, WorldPoint p3) {
+        // Calculate the centroid (average of the three points)
+        int x = (p1.getX() + p2.getX() + p3.getX()) / 3;
+        int y = (p1.getY() + p2.getY() + p3.getY()) / 3;
+        int plane = p1.getPlane(); // All points should be on the same plane at this point
+        
+        return new WorldPoint(x, y, plane);
+    }
+
+    /**
+     * Gets a human-readable name for a transport type.
+     * 
+     * @param transport The transport to evaluate
+     * @return Human-readable transport type name
+     */
+    private String getTransportTypeName(Transport transport) {
+        if (transport.getType() == TransportType.TELEPORTATION_SPELL) {
+            return "Teleportation Spell";
+        } else if (transport.getType() == TransportType.TELEPORTATION_ITEM && !transport.isConsumable()) {
+            return "Non-consumable Item";
+        } else if (transport.getType() == TransportType.TELEPORTATION_PORTAL) {
+            return "Teleportation Portal";
+        } else if (transport.getType() == TransportType.SHIP) {
+            return "Ship";
+        } else if (transport.getType() == TransportType.CANOE) {
+            return "Canoe";
+        } else if (transport.getType() == TransportType.NPC) {
+            return "NPC";
+        } else if (transport.getType() == TransportType.TRANSPORT) {
+            return "Transport";
+        } else {
+            return transport.getType().toString();
+        }
+    }   
 }

@@ -14,7 +14,7 @@ public enum AnvilItem {
     CHAIN_BODY("Chain body", 19, 3),
     PLATE_LEGS("Plate legs", 20, 3),
     PLATE_SKIRT("Plate skirt", 21, 3),
-    PLATE_BODY("Playe body", 22, 5),
+    PLATE_BODY("Plate body", 22, 5),
     NAILS("Nails", 23, 1),
     MEDIUM_HELM("Medium helm", 24, 1),
     FULL_HELM("Full helm", 25, 2),
@@ -27,7 +27,8 @@ public enum AnvilItem {
     OIL_LAMP("Oil lamp", 28, 1),
     IRON_SPIT("Iron spit", 32, 1),
     BULLSEYE_LAMP("Bullseye lamp", 28, 1),
-    STEEL_STUDS("Studs", 32, 1);
+    STEEL_STUDS("Studs", 32, 1),
+    BOLTS("Bolts (unf)", 34, 1);
 
     private final String itemName;
     private final int childId;

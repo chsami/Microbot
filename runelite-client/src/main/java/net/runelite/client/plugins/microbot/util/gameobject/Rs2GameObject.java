@@ -197,8 +197,21 @@ public class Rs2GameObject {
 		List<WorldPoint> path = Rs2Player.getRs2WorldPoint().pathTo(target, true);
 		if (path == null || path.isEmpty()) return false;
 
-		WorldArea pathArea = new WorldArea(path.get(path.size() - 1), pathSizeX, pathSizeY);
-		WorldArea objectArea = new WorldArea(target, objectSizeX + 2, objectSizeY + 2);
+		// Create centered WorldAreas instead of using corner-based construction
+		WorldPoint pathEndpoint = path.get(path.size() - 1);
+		WorldPoint pathSouthWest = new WorldPoint(
+			pathEndpoint.getX() - pathSizeX / 2, 
+			pathEndpoint.getY() - pathSizeY / 2, 
+			pathEndpoint.getPlane()
+		);
+		WorldArea pathArea = new WorldArea(pathSouthWest, pathSizeX, pathSizeY);
+		
+		WorldPoint objectSouthWest = new WorldPoint(
+			target.getX() - (objectSizeX + 2) / 2, 
+			target.getY() - (objectSizeY + 2) / 2, 
+			target.getPlane()
+		);
+		WorldArea objectArea = new WorldArea(objectSouthWest, objectSizeX + 2, objectSizeY + 2);
 
 		return pathArea.intersectsWith2D(objectArea);
 	}
@@ -1924,7 +1937,11 @@ public class Rs2GameObject {
      * @return boolean
      */
     public static boolean isReachable(GameObject tileObject) {
-        Rs2WorldArea gameObjectArea = new Rs2WorldArea(Objects.requireNonNull(getWorldArea(tileObject)));
+        WorldArea worldArea = getWorldArea(tileObject);
+        if (worldArea == null) {
+            return false;
+        }
+        Rs2WorldArea gameObjectArea = new Rs2WorldArea(worldArea);
         List<WorldPoint> interactablePoints = gameObjectArea.getInteractable();
 
         if (interactablePoints.isEmpty()) {

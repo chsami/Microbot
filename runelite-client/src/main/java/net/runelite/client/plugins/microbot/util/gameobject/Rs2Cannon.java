@@ -20,7 +20,13 @@ public class Rs2Cannon {
 
         if (brokenCannon == null) return false;
 
-        WorldArea cannonLocation = new WorldArea(brokenCannon.getWorldLocation().getX() - 1, brokenCannon.getWorldLocation().getY() - 1, 3, 3, brokenCannon.getWorldLocation().getPlane());
+        // Create centered WorldArea (3x3 area with cannon at center)
+        WorldArea cannonLocation = new WorldArea(
+            brokenCannon.getWorldLocation().getX() - 1, 
+            brokenCannon.getWorldLocation().getY() - 1, 
+            3, 3, 
+            brokenCannon.getWorldLocation().getPlane()
+        );
         if (!cannonLocation.toWorldPoint().equals(CannonPlugin.getCannonPosition().toWorldPoint())) return false;
 
         Microbot.status = "Repairing Cannon";
@@ -48,7 +54,13 @@ public class Rs2Cannon {
         TileObject cannon = Rs2GameObject.findObject(new Integer[]{ObjectID.DWARF_MULTICANNON, ObjectID.DWARF_MULTICANNON_43027});
         if (cannon == null) return false;
 
-        WorldArea cannonLocation = new WorldArea(cannon.getWorldLocation().getX() - 1, cannon.getWorldLocation().getY() - 1, 3, 3, cannon.getWorldLocation().getPlane());
+        // Create centered WorldArea (3x3 area with cannon at center)
+        WorldArea cannonLocation = new WorldArea(
+            cannon.getWorldLocation().getX() - 1, 
+            cannon.getWorldLocation().getY() - 1, 
+            3, 3, 
+            cannon.getWorldLocation().getPlane()
+        );
         if (!cannonLocation.toWorldPoint().equals(CannonPlugin.getCannonPosition().toWorldPoint())) return false;
 		Microbot.pauseAllScripts.compareAndSet(false, true);
         Rs2GameObject.interact(cannon, "Fire");

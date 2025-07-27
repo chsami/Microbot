@@ -147,7 +147,7 @@ public class Pathfinder implements Runnable {
                     wildernessLevel = 19;
                     update = true;
                 }
-                if (wildernessLevel > 0 && !config.isInWilderness(node.packedPosition)) {
+                if (wildernessLevel > 0 && !PathfinderConfig.isInWilderness(node.packedPosition)) {
                     wildernessLevel = 0;
                     update = true;
                 }

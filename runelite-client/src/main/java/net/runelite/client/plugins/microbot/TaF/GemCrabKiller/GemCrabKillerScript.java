@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.TaF.GemCrabKiller;
 
+import net.runelite.api.ItemID;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -10,8 +11,11 @@ import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer;
+import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import java.time.Instant;
@@ -46,7 +50,7 @@ public class GemCrabKillerScript extends Script {
                         break;
                     case FIGHTING:
                         handlePotions(config);
-                        handleSafety();
+                        handleSafety(config);
                         handleFighting(config);
                         break;
                     case BANKING:
@@ -65,8 +69,30 @@ public class GemCrabKillerScript extends Script {
         return true;
     }
 
-    private void handleSafety() {
-        Rs2Player.eatAt(50);
+    private void handleSafety(GemCrabKillerConfig config) {
+        if (config.dharokMode()) {
+            int currentHP = Microbot.getClient().getBoostedSkillLevel(Skill.HITPOINTS);
+            if (currentHP > 10) {
+                if (Rs2Inventory.hasItem(ItemID.LOCATOR_ORB)) {
+                    Rs2Inventory.interact(ItemID.LOCATOR_ORB, "feel");
+                } else if (Rs2Inventory.hasItem(ItemID.DWARVEN_ROCK_CAKE_7510)) {
+                    Rs2Inventory.interact(ItemID.DWARVEN_ROCK_CAKE_7510, "guzzle");
+                }
+            }
+            if (currentHP <= 2) {
+                Rs2Player.eatAt(100);
+            }
+            int prayerLevel = Microbot.getClient().getRealSkillLevel(Skill.PRAYER);
+            if (prayerLevel >= 25) {
+                if (Rs2Random.between(1, 50) > 4) {
+                    Rs2Prayer.toggle(Rs2PrayerEnum.RAPID_HEAL, true);
+                    sleep(300, 600);
+                    Rs2Prayer.toggle(Rs2PrayerEnum.RAPID_HEAL, false);
+                }
+            }
+        } else {
+            Rs2Player.eatAt(50);
+        }
         var hasFood = !Rs2Inventory.getInventoryFood().isEmpty();
         var healthPercentage = Rs2Player.getHealthPercentage();
         if (!hasFood && healthPercentage < 25d) {

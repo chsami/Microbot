@@ -49,23 +49,8 @@ public class Rs2ItemModel {
     public Rs2ItemModel(Item item, ItemComposition itemComposition, int slot) {
         this.id = item.getId();
         this.quantity = item.getQuantity();
-        this.name = itemComposition.getName();
         this.slot = slot;
-        this.isStackable = itemComposition.isStackable();
-        this.isNoted = itemComposition.getNote() == 799;
-        // This is to ensure the item is linked correctly if it's noted
-        if (this.isNoted) {
-            Microbot.getClientThread().runOnClientThreadOptional(() ->
-                    Microbot.getClient().getItemDefinition(itemComposition.getLinkedNoteId())).ifPresent(itemDefinition -> this.isTradeable = itemDefinition.isTradeable());
-        } else {
-            this.isTradeable = itemComposition.isTradeable();
-        }
-        this.inventoryActions = itemComposition.getInventoryActions();
-        this.itemComposition = itemComposition;
-        Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            addEquipmentActions(itemComposition);
-       	    return true;
-        });
+        initializeFromComposition(itemComposition);
     }
 
     /**
@@ -79,26 +64,39 @@ public class Rs2ItemModel {
      * @return Rs2ItemModel with basic data, ItemComposition loaded lazily
      */
     public static Rs2ItemModel createFromCache(int id, int quantity, int slot) {
-        return new Rs2ItemModel(id, quantity, slot);
+        return new Rs2ItemModel(id, quantity, slot, null);
     }
 
+
+    /**
+     * Constructor for creating Rs2ItemModel with explicit ItemComposition.     
+     */
+    public Rs2ItemModel(int id, int quantity, int slot, ItemComposition itemComposition) {
+        this.id = id;
+        this.quantity = quantity;
+        this.slot = slot;        
+        if (itemComposition == null) {
+            //lazy loading will handle this
+            initializeDefaults();
+        } else {
+            initializeFromComposition(itemComposition);
+        }
+    }
     /**
      * Private constructor for creating Rs2ItemModel from cached data.
      * ItemComposition will be loaded lazily when needed.
      */
-    private Rs2ItemModel(int id, int quantity, int slot) {
+    public Rs2ItemModel(int id, int quantity, int slot) {
         this.id = id;
         this.quantity = quantity;
         this.slot = slot;
-        
-        // Initialize with defaults - will be loaded lazily
-        this.name = null;
-        this.isStackable = false;
-        this.isNoted = false;
-        this.isTradeable = false;
-        this.inventoryActions = new String[0];
-        this.itemComposition = null;
-        this.equipmentActions = new ArrayList<>();
+        ItemComposition itemComposition = Microbot.getClientThread().runOnClientThreadOptional(() ->
+                        Microbot.getClient().getItemDefinition(id)).orElse(null);
+        if (itemComposition == null) {            
+            initializeDefaults();
+        }else{
+            initializeFromComposition(itemComposition);
+        }        
     }
 
     /**
@@ -333,5 +331,44 @@ public class Rs2ItemModel {
 
     public static Predicate<Rs2ItemModel> matches(EquipmentInventorySlot... slots) {
         return matches(slots, (item, slot) -> item.getSlot() == slot.getSlotIdx());
+    }
+    
+    /**
+     * Initialize default values when ItemComposition is not available.
+     */
+    private void initializeDefaults() {
+        this.name = "Unknown Item";
+        this.isStackable = false;
+        this.isNoted = false;
+        this.isTradeable = false;
+        this.inventoryActions = new String[0];
+        this.itemComposition = null;
+    }
+    
+    /**
+     * Initialize item properties from ItemComposition.
+     */
+    private void initializeFromComposition(ItemComposition itemComposition) {
+        this.name = itemComposition.getName();
+        this.isStackable = itemComposition.isStackable();
+        this.isNoted = itemComposition.getNote() == 799;
+        
+        // Handle noted item tradeable status
+        if (this.isNoted) {
+            Microbot.getClientThread().runOnClientThreadOptional(() ->
+                    Microbot.getClient().getItemDefinition(itemComposition.getLinkedNoteId())
+            ).ifPresent(itemDefinition -> this.isTradeable = itemDefinition.isTradeable());
+        } else {
+            this.isTradeable = itemComposition.isTradeable();
+        }
+        
+        this.inventoryActions = itemComposition.getInventoryActions();
+        this.itemComposition = itemComposition;
+        
+        // Add equipment actions asynchronously
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            addEquipmentActions(itemComposition);
+            return true;
+        });
     }
 }

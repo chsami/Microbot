@@ -50,6 +50,15 @@ public interface GemCrabKillerConfig extends Config {
     }
 
     @ConfigItem(
+            keyName = "dharokMode",
+            name = "Dharok mode?",
+            description = "When enabled, the bot will stay below 10hp",
+            position = 4
+    )
+    default boolean dharokMode() {
+        return false;
+    }
+    @ConfigItem(
             keyName = "overrideState",
             name = "Override state?",
             description = "Enable to override script starting state",
