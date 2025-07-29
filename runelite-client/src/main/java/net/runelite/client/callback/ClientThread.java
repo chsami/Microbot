@@ -31,6 +31,7 @@ import net.runelite.api.Client;
 import net.runelite.client.plugins.microbot.Microbot;
 
 import javax.inject.Singleton;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Optional;
 import java.util.concurrent.*;
@@ -93,9 +94,17 @@ public class ClientThread
 	 * @return
 	 * @param <T>
 	 */
-	@SneakyThrows
 	public <T> Optional<T> runOnClientThreadOptional(Callable<T> method) {
+		return runOnClientThreadOptional(method, false);
+	}
+
+
+	@SneakyThrows
+	public <T> Optional<T> runOnClientThreadOptional(Callable<T> method, boolean requireInvokeLater) {
 		if (client.isClientThread()) {
+            if (requireInvokeLater && Arrays.stream(Thread.currentThread().getStackTrace())
+                    .noneMatch(element -> element.getMethodName().contains("invokeLater")))
+				throw new RejectedExecutionException("This would cause a deadlock!");
 			try {
 				return Optional.ofNullable(method.call());
 			} catch (Exception e) {
@@ -105,8 +114,9 @@ public class ClientThread
 				return Optional.empty();
 			}
 		}
+		// this is equivalent to before since we just checked we aren't on the client thread
 		final FutureTask<T> task = new FutureTask<>(method);
-		invoke(task);
+		invokeLater(task);
 		try {
 			return Optional.ofNullable(task.get(10000, TimeUnit.MILLISECONDS));
 		} catch (InterruptedException | TimeoutException | ExecutionException e) {

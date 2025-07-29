@@ -204,7 +204,7 @@ public class Rs2QuestCache extends Rs2Cache<Quest, QuestState> implements CacheS
             }
             
             QuestState state = Microbot.getClientThread().runOnClientThreadOptional(() -> 
-                quest.getState(Microbot.getClient())).orElse(QuestState.NOT_STARTED);
+                quest.getState(Microbot.getClient()), true).orElse(QuestState.NOT_STARTED);
             
             log.trace("Loaded quest state from client: {} = {}", quest, state);
             return state;
@@ -292,40 +292,40 @@ public class Rs2QuestCache extends Rs2Cache<Quest, QuestState> implements CacheS
      */
     @Override
     public void update() {
-        log.debug("Updating all cached quests from client...");
-        
-        if (Microbot.getClient() == null) {
-            log.warn("Cannot update quests - client is null");
-            return;
-        }
-        
-        int beforeSize = size();
-        int updatedCount = 0;
-        
-        // Get all currently cached quest keys and update them
-        java.util.Set<Quest> cachedQuests = entryStream()
-            .map(java.util.Map.Entry::getKey)
-            .collect(java.util.stream.Collectors.toSet());
-        
-        for (Quest quest : cachedQuests) {
-            try {
-                // Refresh the quest state from client using the private method
-                QuestState freshState = loadQuestStateFromClient(quest);
-                if (freshState != null) {
-                    put(quest, freshState);
-                    updatedCount++;
-                    log.debug("Updated quest {} with fresh state: {}", quest.getName(), freshState);
-                }
-            } catch (Exception e) {
-                log.warn("Failed to update quest {}: {}", quest.getName(), e.getMessage());
+        Microbot.getClientThread().invokeLater(() -> {
+            log.debug("Updating all cached quests from client...");
+
+            if (Microbot.getClient() == null) {
+                log.warn("Cannot update quests - client is null");
+                return;
             }
-        }
-        
-        log.info("Updated {} quests from client (cache had {} entries total)", 
-                updatedCount, beforeSize);
+
+            int beforeSize = size();
+            int updatedCount = 0;
+
+            // Get all currently cached quest keys and update them
+            java.util.Set<Quest> cachedQuests = entryStream()
+                    .map(java.util.Map.Entry::getKey)
+                    .collect(java.util.stream.Collectors.toSet());
+
+            for (Quest quest : cachedQuests) {
+                try {
+                    // Refresh the quest state from client using the private method
+                    QuestState freshState = loadQuestStateFromClient(quest);
+                    if (freshState != null) {
+                        put(quest, freshState);
+                        updatedCount++;
+                        log.debug("Updated quest {} with fresh state: {}", quest.getName(), freshState);
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to update quest {}: {}", quest.getName(), e.getMessage());
+                }
+            }
+
+            log.info("Updated {} quests from client (cache had {} entries total)",
+                    updatedCount, beforeSize);
+        });
     }
-    
-   
     
     /**
      * Event handler registration for the unified cache.
@@ -334,27 +334,27 @@ public class Rs2QuestCache extends Rs2Cache<Quest, QuestState> implements CacheS
         
     @Subscribe
     public void onVarbitChanged(VarbitChanged event) {
-        try {
-            getInstance().handleEvent(event);
-            
-            // Check for quest progression using tracked quest or find one
-            Quest questToCheck = trackedQuest != null ? trackedQuest : getCurrentlyActiveQuest();
-            if (questToCheck != null) {
-                // Use clientThread to check and update state
-                Microbot.getClientThread().invokeLater(() -> {
+        Microbot.getClientThread().invokeLater(() -> {
+            try {
+                getInstance().handleEvent(event);
+
+                // Check for quest progression using tracked quest or find one
+                Quest questToCheck = trackedQuest != null ? trackedQuest : getCurrentlyActiveQuest();
+                if (questToCheck != null) {
+                    // Use clientThread to check and update state
                     try {
                         if (Microbot.getClient() == null) {
                             return;
                         }
-                        
+
                         QuestState oldState = getQuestState(questToCheck);
                         QuestState newState = questToCheck.getState(Microbot.getClient());
-                        
+
                         if (oldState != newState) {
-                            log.info("VarbitChanged - Quest state changed for {}: {} to {}", 
+                            log.info("VarbitChanged - Quest state changed for {}: {} to {}",
                                     questToCheck.getName(), oldState, newState);
                             updateQuestState(questToCheck, newState);
-                            
+
                             // If quest is now complete, clear it from tracked quest
                             if (newState == QuestState.FINISHED && trackedQuest == questToCheck) {
                                 log.info("VarbitChanged - Quest completed: {}", questToCheck.getName());
@@ -364,13 +364,11 @@ public class Rs2QuestCache extends Rs2Cache<Quest, QuestState> implements CacheS
                     } catch (Exception e) {
                         log.error("Error checking quest state in VarbitChanged: {}", e.getMessage());
                     }
-                });
-            }
-            
-            // Since a varbit changed, check if we need to find a new active quest 
-            // in case this varbit is related to a quest starting
-            if (trackedQuest == null) {
-                Microbot.getClientThread().invokeLater(() -> {
+                }
+
+                // Since a varbit changed, check if we need to find a new active quest
+                // in case this varbit is related to a quest starting
+                if (trackedQuest == null) {
                     try {
                         for (Quest quest : Quest.values()) {
                             QuestState state = quest.getState(Microbot.getClient());
@@ -384,11 +382,11 @@ public class Rs2QuestCache extends Rs2Cache<Quest, QuestState> implements CacheS
                     } catch (Exception e) {
                         log.error("Error detecting quest changes in VarbitChanged: {}", e.getMessage());
                     }
-                });
+                }
+            } catch (Exception e) {
+                log.error("Error handling VarbitChanged event: {}", e.getMessage(), e);
             }
-        } catch (Exception e) {
-            log.error("Error handling VarbitChanged event: {}", e.getMessage(), e);
-        }
+        });
     }
     
     @Subscribe
