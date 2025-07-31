@@ -12,16 +12,18 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.shop.Rs2Shop;
 
+import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 
 enum ShopperState {
     SHOPPING,
     BANKING,
+    HOPPING
 }
 
 public class BanksShopperScript extends Script {
 
-    public static String version = "1.3.0";
+    public static String version = "1.4.0";
 
     private final BanksShopperPlugin plugin;
     private ShopperState state = ShopperState.SHOPPING;
@@ -36,24 +38,13 @@ public class BanksShopperScript extends Script {
         initialPlayerLocation = null;
         Rs2Antiban.resetAntibanSettings();
         Rs2AntibanSettings.naturalMouse = true;
+
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
-                if (!super.run()) return;
-                if (!Microbot.isLoggedIn()) return;
-                if (Rs2AntibanSettings.actionCooldownActive) return;
+                if (!super.run() || !Microbot.isLoggedIn() || Rs2AntibanSettings.actionCooldownActive) return;
 
                 if (initialPlayerLocation == null) {
                     initialPlayerLocation = Rs2Player.getWorldLocation();
-                }
-
-                if (hasStateChanged()) {
-                    state = updateState();
-                }
-
-                if (state == null) {
-                    Microbot.showMessage("Unable to determine state!");
-                    shutdown();
-                    return;
                 }
 
                 switch (state) {
@@ -67,45 +58,57 @@ public class BanksShopperScript extends Script {
                             return;
                         }
 
-                        Rs2Shop.openShop(plugin.getNpcName(), plugin.isUseExactNaming());
-                        Rs2Random.waitEx(1800, 300); // this wait is required ensure that Rs2Shop.shopItems has been updated before we proceed.
+                        sleepUntil(() -> Rs2Shop.openShop(plugin.getNpcName(), plugin.isUseExactNaming()), 5000);
 
-                        boolean allOutOfStock = true;
                         boolean successfullAction = false;
 
                         if (Rs2Shop.isOpen()) {
                             for (String itemName : plugin.getItemNames()) {
                                 if (!isRunning() || Microbot.pauseAllScripts.get()) break;
+                                if (itemName.length() <= 1) continue;
 
                                 switch (plugin.getSelectedAction()) {
                                     case BUY:
-                                        if (!Rs2Shop.hasMinimumStock(itemName, plugin.getMinStock())) continue;
-                                        successfullAction = processBuyAction(itemName, plugin.getSelectedQuantity().toString());
+                                        // Check if name is purely numeric or alphanumeric
+                                        if (itemName.matches("\\d+")) {
+                                            if (!Rs2Shop.hasMinimumStock(Integer.parseInt(itemName), plugin.getMinStock())) continue;
+                                            successfullAction = processBuyAction(Integer.parseInt(itemName), plugin.getSelectedQuantity().toString());
+                                        } else {
+                                            if (!Rs2Shop.hasMinimumStock(itemName, plugin.getMinStock())) continue;
+                                            successfullAction = processBuyAction(itemName, plugin.getSelectedQuantity().toString());
+                                        }
                                         break;
                                     case SELL:
                                         if (Rs2Shop.isFull()) continue;
-                                        if (Rs2Shop.hasMinimumStock(itemName, plugin.getMinStock())) continue;
-                                        successfullAction = processSellAction(itemName, plugin.getSelectedQuantity().toString());
+                                        // Check if name is purely numeric or alphanumeric
+                                        if (itemName.matches("\\d+")) {
+                                            if (Rs2Shop.hasMinimumStock(Integer.parseInt(itemName), plugin.getMinStock())) continue;
+                                            successfullAction = processSellAction(Integer.parseInt(itemName), plugin.getSelectedQuantity().toString());
+                                        } else {
+                                            if (Rs2Shop.hasMinimumStock(itemName, plugin.getMinStock())) continue;
+                                            successfullAction = processSellAction(itemName, plugin.getSelectedQuantity().toString());
+                                        }
                                         break;
                                     default:
                                         System.out.println("Invalid action specified in config.");
                                 }
-
-                                if (successfullAction) {
-                                    allOutOfStock = false;
-                                    Rs2Random.waitEx(900, 300);
-                                }
                             }
 
-                            // If no successful actions occurred, trigger a world hop
-                            if (allOutOfStock) {
-                                hopWorld();
+                            Rs2Shop.closeShop();
+                            if (successfullAction) {
+                                state = ShopperState.HOPPING;
+                                return;
                             }
                         }
                         break;
                     case BANKING:
                         if (!Rs2Bank.bankItemsAndWalkBackToOriginalPosition(plugin.getItemNames(), initialPlayerLocation))
                             return;
+                        state = ShopperState.SHOPPING;
+                        break;
+                    case HOPPING:
+                        hopWorld();
+                        state = ShopperState.SHOPPING;
                         break;
                 }
             } catch (Exception ex) {
@@ -125,63 +128,100 @@ public class BanksShopperScript extends Script {
             Rs2Player.logout();
         }
 
+        state = ShopperState.SHOPPING; // Reset state to SHOPPING for next run
+        initialPlayerLocation = null; // Reset initial player location
+
         Rs2Antiban.resetAntibanSettings();
         super.shutdown();
-    }
-
-
-    private boolean hasStateChanged() {
-        if (state == ShopperState.SHOPPING && plugin.getSelectedAction() == Actions.BUY && Rs2Inventory.isFull())
-            return true;
-        return state == ShopperState.BANKING && plugin.getSelectedAction() == Actions.BUY && Rs2Player.distanceTo(initialPlayerLocation) < 6;
-    }
-
-    private ShopperState updateState() {
-        if (state == ShopperState.SHOPPING && plugin.getSelectedAction() == Actions.BUY && Rs2Inventory.isFull())
-            return ShopperState.BANKING;
-        if (state == ShopperState.BANKING && plugin.getSelectedAction() == Actions.BUY && (Rs2Player.distanceTo(initialPlayerLocation) < 6))
-            return ShopperState.SHOPPING;
-        return null;
     }
 
     /**
      * Hops to a new world
      */
     private void hopWorld() {
-        // Stock level dropped below minimum, pause or stop execution
-        System.out.println("Stock level dropped below minimum threshold.");
-        Rs2Shop.closeShop();
+        System.out.println("Hopping worlds...");
         Rs2Random.waitEx(3200, 800); // this sleep is required to avoid the message: please finish what you're doing before using the world switcher.
-        // This is where we need to hop worlds.
+
         int world = plugin.isUseNextWorld() ? Login.getNextWorld(Rs2Player.isMember()) : Login.getRandomWorld(Rs2Player.isMember());
-        boolean isHopped = Microbot.hopToWorld(world);
-        if (!isHopped) return;
-        sleepUntil(() -> Microbot.getClient().getGameState() == GameState.HOPPING);
-        sleepUntil(() -> Microbot.getClient().getGameState() == GameState.LOGGED_IN);
+        sleepUntil(() -> Microbot.hopToWorld(world), 15000);
+        System.out.println("Successfully hopped to world: " + world);
     }
 
 
+    /**
+     * Processes the buy action for the specified item.
+     * @param itemName The name of the item to buy.
+     * @param quantity The quantity of the item to buy.
+     * @return true if bought successfully, false otherwise.
+     */
     private boolean processBuyAction(String itemName, String quantity) {
         if (Rs2Inventory.isFull()) {
             System.out.println("Avoid buying item - Inventory is full");
             return false;
         }
-        if (Rs2Shop.hasStock(itemName)) {
-            boolean boughtItem = Rs2Shop.buyItem(itemName, quantity);
-            System.out.println(boughtItem ? "Successfully bought " + quantity + " " + itemName : "Failed to buy " + quantity + " " + itemName);
-            return boughtItem;
+
+        boolean boughtItem = Rs2Shop.buyItem(itemName, quantity);
+
+        if (boughtItem){
+            Rs2Inventory.waitForInventoryChanges(3000);
         }
-        System.out.println(itemName + " is not in stock");
-        return false;
+
+        System.out.println(boughtItem ? "Successfully bought " + quantity + " item: " + itemName : "Failed to buy " + quantity + " item ID: " + itemName);
+        return boughtItem;
     }
 
+
+    /**
+     * Processes the buy action for the specified item.
+     * @param itemID The ID of the item to buy.
+     * @param quantity The quantity of the item to buy.
+     * @return true if bought successfully, false otherwise.
+     */
+    private boolean processBuyAction(int itemID, String quantity) {
+        if (Rs2Inventory.isFull()) {
+            System.out.println("Avoid buying item - Inventory is full");
+            return false;
+        }
+
+        boolean boughtItem = Rs2Shop.buyItem(itemID, quantity);
+
+        if (boughtItem){
+            Rs2Inventory.waitForInventoryChanges(3000);
+        }
+
+        System.out.println(boughtItem ? "Successfully bought " + quantity + " item ID: " + itemID : "Failed to buy " + quantity + " item ID: " + itemID);
+        return boughtItem;
+    }
+
+    /**
+     * Processes the sell action for the specified item.
+     * @param itemName The name of the item to sell.
+     * @param quantity The quantity of the item to sell.
+     * @return true if sold successfully, false otherwise.
+     */
     private boolean processSellAction(String itemName, String quantity) {
-        if (Rs2Inventory.hasItem(itemName, quantity)) {
+        if (Rs2Inventory.hasItem(itemName)) {
             boolean soldItem = Rs2Inventory.sellItem(itemName, quantity);
             System.out.println(soldItem ? "Successfully sold " + quantity + " " + itemName : "Failed to sell " + quantity + " " + itemName);
             return soldItem;
         }
         System.out.println("Item " + itemName + " not found in inventory.");
+        return false;
+    }
+
+    /**
+     * Processes the sell action for the specified item.
+     * @param itemID The name of the item to sell.
+     * @param quantity The quantity of the item to sell.
+     * @return true if sold successfully, false otherwise.
+     */
+    private boolean processSellAction(int itemID, String quantity) {
+        if (Rs2Inventory.hasItem(itemID)) {
+            boolean soldItem = Rs2Inventory.sellItem(itemID, quantity);
+            System.out.println(soldItem ? "Successfully sold " + quantity + ", item ID:" + itemID : "Failed to sell " + quantity + ", item ID: " + itemID);
+            return soldItem;
+        }
+        System.out.println("Item ID" + itemID + " not found in inventory.");
         return false;
     }
 }
