@@ -6,6 +6,7 @@ import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
@@ -34,7 +35,7 @@ public class Rs2Shop {
         Microbot.status = "Closing Shop";
         if (!isOpen()) return;
         Rs2Widget.clickChildWidget(19660801, 11);
-        sleepUntilOnClientThread(() -> Rs2Widget.getWidget(19660800) == null);
+        sleepUntilOnClientThread(() -> !isOpen() );
     }
 
     /**
@@ -48,9 +49,9 @@ public class Rs2Shop {
     }
 
     /**
-     * Opens the shop
+     * Opens the shop interface by interacting with the specified NPC.
      *
-     * @return
+     * @return true if the shop is successfully opened, false otherwise.
      */
     public static boolean openShop(String NPC, boolean exact) {
         Microbot.status = "Opening Shop";
@@ -74,7 +75,9 @@ public class Rs2Shop {
     /**
      * Buy Item from the shop
      *
-     * @return
+     * @param itemName The name of the item to buy
+     * @param quantity The quantity to buy
+     * @return true if successful, false otherwise
      */
     public static boolean buyItem(String itemName, String quantity) {
         Microbot.status = "Buying " + quantity + " " + itemName;
@@ -87,6 +90,35 @@ public class Rs2Shop {
             // Check if the item is in stock
             if (hasStock(itemName)) {
                 System.out.println("We Have Stock of " + itemName);
+                invokeMenu(rs2Item, actionAndQuantity);
+            } else {
+                return false;
+            }
+
+        } catch (Exception ex) {
+            Microbot.logStackTrace("Rs2Shop", ex);
+        }
+        return true;
+    }
+
+    /**
+     * Buy Item from the shop
+     *
+     * @param itemId The ID of the item to buy
+     * @param quantity The quantity to buy
+     * @return true if successful, false otherwise
+     */
+    public static boolean buyItem(int itemId, String quantity) {
+        Microbot.status = "Buying " + quantity + " item with ID " + itemId;
+        try {
+            Rs2ItemModel rs2Item = shopItems.stream()
+                    .filter(item -> item.getId() == itemId)
+                    .findFirst().orElse(null);
+            String actionAndQuantity = "Buy " + quantity;
+            System.out.println(actionAndQuantity);
+            // Check if the item is in stock
+            if (hasStock(itemId)) {
+                System.out.println("We Have Stock of item with ID " + itemId);
                 invokeMenu(rs2Item, actionAndQuantity);
             } else {
                 return false;
@@ -138,14 +170,39 @@ public class Rs2Shop {
      */
     public static boolean hasStock(String itemName) {
         // Iterate through the shop items to find the specified item
+        System.out.println("Checking if item " + itemName + " is in stock in the shop");
+        System.out.println("Amount of items in the shop: " + shopItems.size());
+
+        // Check if the item ID matches the specified item ID
         for (Rs2ItemModel item : shopItems) {
-            // Check if the item name matches the specified item name
-            if (item.getName().equalsIgnoreCase(itemName)) {
-                // System.out.println(item.name + " is in stock. Quantity: " + item.quantity + ", Slot: " + item.getSlot());
+            if (item.getName().equalsIgnoreCase(itemName) && item.getQuantity() > 0) {
                 return true; // Item found in stock
             }
         }
         System.out.println(itemName + " isn't in stock in the shop");
+        return false; // Item not found in stock
+    }
+
+    /**
+     * Checks if the specified item is in stock in the shop. **Note** if the item has stock 0 this will still return true.
+     *
+     * @param itemId The ID of the item to check.
+     *
+     * @return true if the item is in stock, false otherwise.
+     */
+    public static boolean hasStock(int itemId) {
+        // Iterate through the shop items to find the specified item
+        System.out.println("Checking if item with ID " + itemId + " is in stock in the shop");
+        System.out.println("Amount of items in the shop: " + shopItems.size());
+
+        for (Rs2ItemModel item : shopItems) {
+            // Check if the item ID matches the specified item ID
+            if (item.getId() == itemId && item.getQuantity() > 0) {
+                System.out.println("Item with ID " + itemId + " is in stock. Quantity: " + item.getQuantity() + ", Slot: " + item.getSlot());
+                return true; // Item found in stock
+            }
+        }
+        System.out.println("Item with ID " + itemId + " isn't in stock in the shop");
         return false; // Item not found in stock
     }
 
@@ -158,7 +215,6 @@ public class Rs2Shop {
      * @return true if the item is in stock with quantity >= minimumQuantity, false otherwise.
      */
     public static boolean hasMinimumStock(String itemName, int minimumQuantity) {
-        
         // Iterate through the shop items to find the specified item
         for (Rs2ItemModel item : shopItems) {
             // Check if the item name matches the specified item name and quantity is >= minimumQuantity
@@ -170,6 +226,33 @@ public class Rs2Shop {
         return false; // Item not found in stock or with sufficient quantity
     }
 
+    /**
+     * Checks if the specified item is in stock in the shop with quantity >= minimumQuantity.
+     *
+     * @param itemId          The ID of the item to check.
+     * @param minimumQuantity The minimum quantity required.
+     *
+     * @return true if the item is in stock with quantity >= minimumQuantity, false otherwise.
+     */
+    public static boolean hasMinimumStock(int itemId, int minimumQuantity) {
+        System.out.println("Checking if item with ID " + itemId + " is in stock in the shop");
+
+        if (shopItems == null || shopItems.isEmpty()) {
+            System.out.println("Shop items list is empty or null, cannot check stock for item with ID " + itemId);
+            return false; // No items in the shop to check
+        }
+
+        // Iterate through the shop items to find the specified item
+        for (Rs2ItemModel item : shopItems) {
+            // Check if the item ID matches the specified item ID and quantity is >= minimumQuantity
+            if (item.getId() == itemId && item.getQuantity() >= minimumQuantity) {
+                return true; // Item found in stock with sufficient quantity
+            }
+        }
+
+        System.out.println("Item with ID " + itemId + " isn't in stock in the shop with minimum quantity of " + minimumQuantity);
+        return false; // Item not found in stock or with sufficient quantity
+    }
 
     /**
      * Updates the shop items in memory based on the provided event.
@@ -284,6 +367,27 @@ public class Rs2Shop {
     }
 
     /**
+     * Waits for the shop to change by comparing the current items with the cached values.
+     *
+     * @return true if the shop has changed, false if it remains the same.
+     */
+    public static boolean waitForShopChanges() {
+        final List<Rs2ItemModel> initialShopItems = shopItems;
+
+        return Global.sleepUntil(() -> hasShopChanged(initialShopItems));
+    }
+
+    /**
+     * Checks if the shop has changed since the initial items were stored.
+     *
+     * @param initialShopItems The initial list of shop items to compare against.
+     * @return true if the shop has changed, false otherwise.
+     */
+    private static boolean hasShopChanged(List<Rs2ItemModel> initialShopItems) {
+        return shopItems != initialShopItems;
+    }
+
+    /**
      * Method to get the bounds of the item
      *
      * @param rs2Item Current item to interact with
@@ -294,4 +398,3 @@ public class Rs2Shop {
         return Rs2Widget.getWidget(19660816).getDynamicChildren()[getSlot(rs2Item.getName())+1].getBounds();
     }
 }
-
