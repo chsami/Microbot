@@ -1898,8 +1898,8 @@ public class Rs2Inventory {
     /**
      * Sell item to the shop
      *
-     * @param itemName item to sell
-     * @param quantity STRING quantity of items to sell
+     * @param itemName name of the item to sell
+     * @param quantity string quantity of items to sell
      *
      * @return true if the item was successfully sold, false otherwise
      */
@@ -1911,6 +1911,26 @@ public class Rs2Inventory {
             return false;
         }
         invokeMenu(item, "Sell " + quantity);
+        return true;
+    }
+
+    /**
+     * Sell item to the shop
+     *
+     * @param itemID ID of the item to sell
+     * @param quantity string quantity of items to sell
+     *
+     * @return true if the item was successfully sold, false otherwise
+     */
+    public static boolean sellItem(int itemID, String quantity) {
+        assert Set.of("1","5","10","50").contains(quantity); // I think these should be all valid quantities
+        final Rs2ItemModel item = get(itemID);
+        if (item == null) {
+            Microbot.log("Item not found in inventory.");
+            return false;
+        }
+        invokeMenu(item, "Sell " + quantity);
+        Rs2Shop.waitForShopChanges();
         return true;
     }
 
