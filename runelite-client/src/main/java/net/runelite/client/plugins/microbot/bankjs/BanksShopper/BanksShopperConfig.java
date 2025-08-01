@@ -96,8 +96,8 @@ public interface BanksShopperConfig extends Config {
 
     @ConfigItem(
             keyName = itemNames,
-            name = "Item Name(s)",
-            description = "Sets Item to Buy or Sell. Supports comma seperated values (item1, item2)",
+            name = "Item Name(s)/ID(s)",
+            description = "Items to buy or sell, supports comma separated values e.g., Blood Rune,564,Soda Ash",
             position = 0,
             section = itemSection
     )
@@ -109,7 +109,7 @@ public interface BanksShopperConfig extends Config {
     @ConfigItem(
             keyName = minStock,
             name = "Minimum Stock",
-            description = "Sets Minimum Stock level, Will not buy anymore stock past this value.",
+            description = "Minimum stock to maintain. Won't buy below or sell above this value.",
             position = 1,
             section = itemSection
     )
@@ -121,7 +121,7 @@ public interface BanksShopperConfig extends Config {
     @ConfigItem(
             keyName = npcName,
             name = "NPC Name",
-            description = "Sets NPC to trade with",
+            description = "Name of the NPC to trade with",
             position = 0,
             section = shopSection
     )
