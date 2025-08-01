@@ -61,7 +61,7 @@ public class BanksShopperScript extends Script {
                         if (missingAllRequiredItems && plugin.getSelectedAction() == Actions.SELL) {
                             Microbot.status = "[Shutting down] - Reason: Not enough supplies.";
                             Microbot.showMessage(Microbot.status);
-                            shutdown();
+                            Microbot.stopPlugin(plugin);
                             return;
                         }
 
