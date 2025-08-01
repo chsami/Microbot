@@ -68,7 +68,7 @@ public class BanksShopperScript extends Script {
                         sleepUntil(() -> Rs2Shop.openShop(plugin.getNpcName(), plugin.isUseExactNaming()), 5000);
 
                         boolean successfullAction = false;
-
+                        boolean outOfStock = false;
                         if (Rs2Shop.isOpen()) {
                             for (String itemName : plugin.getItemNames()) {
                                 if (!isRunning() || Microbot.pauseAllScripts.get()) break;
@@ -78,11 +78,19 @@ public class BanksShopperScript extends Script {
                                     case BUY:
                                         // Check if name is purely numeric or alphanumeric
                                         if (itemName.matches("\\d+")) {
-                                            if (!Rs2Shop.hasMinimumStock(Integer.parseInt(itemName), plugin.getMinStock())) continue;
+                                            outOfStock = !Rs2Shop.hasMinimumStock(Integer.parseInt(itemName), plugin.getMinStock());
+                                            if (outOfStock) continue;
                                             successfullAction = processBuyAction(Integer.parseInt(itemName), plugin.getSelectedQuantity().toString());
                                         } else {
-                                            if (!Rs2Shop.hasMinimumStock(itemName, plugin.getMinStock())) continue;
+                                            outOfStock = !Rs2Shop.hasMinimumStock(itemName, plugin.getMinStock());
+                                            if (outOfStock) continue;
                                             successfullAction = processBuyAction(itemName, plugin.getSelectedQuantity().toString());
+                                        }
+                                        if (Rs2Inventory.isFull()){
+                                            System.out.println("Inventory is full, stopping buy action to bank.");
+                                            Rs2Shop.closeShop();
+                                            state = ShopperState.BANKING;
+                                            return;
                                         }
                                         break;
                                     case SELL:
@@ -112,9 +120,12 @@ public class BanksShopperScript extends Script {
                                         System.out.println("Invalid action specified in config.");
                                 }
                             }
-
                             Rs2Shop.closeShop();
                             if (successfullAction) {
+                                state = ShopperState.HOPPING;
+                                return;
+                            }else if (outOfStock){
+                                System.out.println("Out of stock for all items, hopping worlds...");
                                 state = ShopperState.HOPPING;
                                 return;
                             }
