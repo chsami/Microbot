@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.GameObject;
 import net.runelite.api.Skill;
+import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -39,6 +40,8 @@ public class ArceuusRcScript extends Script {
 
     private static final String DARK_ALTAR = "Dark altar";
     private static final String STR_DENSE_RUNESTONE = "Dense runestone";
+
+    private static final WorldArea ARCEUUS_RC_AREA = new WorldArea(1672, 3819, 171, 93, 0);
 
     public static final WorldPoint ARCEUUS_BLOOD_ALTAR = new WorldPoint(1720, 3828, 0);
     public static final WorldPoint ARCEUUS_SOUL_ALTAR = new WorldPoint(1815, 3856, 0);
@@ -120,6 +123,16 @@ public class ArceuusRcScript extends Script {
         }
 
         // user or walker error if we end up here
+        if (ARCEUUS_RC_AREA.contains(myLocation)) {
+            log.warn("Detected script error attempting recovery");
+            if (Rs2Inventory.isFull()) {
+                if (Rs2Inventory.hasItem(DENSE_ESSENCE_BLOCK)) return State.GO_TO_DARK_ALTAR;
+                if (Rs2Inventory.hasItem(DARK_ESSENCE_BLOCK) && !Rs2Inventory.hasItem(DARK_ESSENCE_FRAGMENTS))
+                    return State.CHIP_ESSENCE;
+                return State.GO_TO_ALTAR;
+            }
+            return State.GO_TO_RUNESTONE;
+        }
         log.error("We are not near anything - Please walk to the starting location");
         return State.UNKNOWN;
     }
