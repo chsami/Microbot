@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 public class ArceuusRcScript extends Script {
-    public static String version = "1.0.2";
+    public static String version = "1.0.6";
     public static int darkAltarTripCount = 0;
 
     private static ArceuusRcConfig config;
@@ -133,7 +133,17 @@ public class ArceuusRcScript extends Script {
             }
             return State.GO_TO_RUNESTONE;
         }
-        log.error("We are not near anything - Please walk to the starting location");
+
+        // wait for user to navigate to area
+        while (!ARCEUUS_RC_AREA.contains(Rs2Player.getWorldLocation())) {
+            log.error("We are not near anything - Please walk to the starting location");
+            sleepUntil(() -> ARCEUUS_RC_AREA.contains(Rs2Player.getWorldLocation()), () -> {}, 60_000, 1_000);
+        }
+        int resumeSeconds = 4;
+        while (resumeSeconds-- > 0) {
+            log.info("Arceuus RC taking over in {}", resumeSeconds);
+            sleep(1_000);
+        }
         return State.UNKNOWN;
     }
 
