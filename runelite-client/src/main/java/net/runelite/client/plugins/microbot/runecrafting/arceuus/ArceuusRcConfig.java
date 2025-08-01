@@ -26,9 +26,19 @@ public interface ArceuusRcConfig extends Config {
             keyName = "chipEssenceFast",
             name = "Chip Essence Fast",
             description = "Should the Chisel & Essence be repeatably combined",
-            position = 1
+            position = 2
     )
     default boolean getChipEssenceFast() {
         return false;
+    }
+
+    @ConfigItem(
+            keyName = "updateMessage",
+            name = "Show Update Message",
+            description = "Whether the update message should be shown",
+            position = 3
+    )
+    default boolean showUpdateMessage() {
+        return true;
     }
 }
