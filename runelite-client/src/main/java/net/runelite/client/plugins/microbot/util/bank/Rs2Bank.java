@@ -2023,7 +2023,7 @@ public class Rs2Bank {
     /**
      * Banks at specific bank location if your inventory does not have enough emptyslots (0 emptyslots being full). Will walk back to the initialplayerlocation passed as param
      *
-     * @param itemNames the item names
+     * @param itemNames The item names, which can be either item names or item IDs as strings.
      * @param exactItemNames
      * @param initialPlayerLocation
      * @param bankLocation
@@ -2036,7 +2036,11 @@ public class Rs2Bank {
             boolean isBankOpen = Rs2Bank.walkToBankAndUseBank(bankLocation);
             if (isBankOpen) {
                 for (String itemName : itemNames) {
-                    depositAll(itemName,false);
+                    if (itemName.matches("\\d+")) {
+                        depositAll(Integer.parseInt(itemName));
+                    } else {
+                        depositAll(itemName, false);
+                    }
                     //Rs2Bank.depositAll(x -> x.name.toLowerCase().contains(itemName));
                 }
             }
