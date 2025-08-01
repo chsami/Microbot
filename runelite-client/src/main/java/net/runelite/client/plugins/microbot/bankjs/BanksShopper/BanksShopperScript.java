@@ -49,7 +49,14 @@ public class BanksShopperScript extends Script {
 
                 switch (state) {
                     case SHOPPING:
-                        boolean missingAllRequiredItems = plugin.getItemNames().stream().noneMatch(Rs2Inventory::hasItem);
+                        boolean missingAllRequiredItems = plugin.getItemNames().stream().noneMatch((itemName) -> {
+                            if (itemName == null || itemName.isEmpty()) return false;
+                            if (itemName.matches("\\d+")) {
+                                return Rs2Inventory.hasItem(Integer.parseInt(itemName));
+                            } else {
+                                return Rs2Inventory.hasItem(itemName);
+                            }
+                        });
 
                         if (missingAllRequiredItems && plugin.getSelectedAction() == Actions.SELL) {
                             Microbot.status = "[Shutting down] - Reason: Not enough supplies.";
@@ -82,11 +89,23 @@ public class BanksShopperScript extends Script {
                                         if (Rs2Shop.isFull()) continue;
                                         // Check if name is purely numeric or alphanumeric
                                         if (itemName.matches("\\d+")) {
-                                            if (Rs2Shop.hasMinimumStock(Integer.parseInt(itemName), plugin.getMinStock())) continue;
-                                            successfullAction = processSellAction(Integer.parseInt(itemName), plugin.getSelectedQuantity().toString());
+                                            while(processSellAction(Integer.parseInt(itemName), plugin.getSelectedQuantity().toString()) || !isRunning()){
+                                                sleepGaussian(200, 40);
+                                                if (Rs2Shop.hasMinimumStock(Integer.parseInt(itemName), plugin.getMinStock())){
+                                                    System.out.println("Stop selling over the minimum stock for item: " + itemName);
+                                                    successfullAction = true;
+                                                    break;
+                                                }
+                                            }
                                         } else {
-                                            if (Rs2Shop.hasMinimumStock(itemName, plugin.getMinStock())) continue;
-                                            successfullAction = processSellAction(itemName, plugin.getSelectedQuantity().toString());
+                                            while(processSellAction(itemName, plugin.getSelectedQuantity().toString()) || !isRunning()){
+                                                sleepGaussian(200, 40);
+                                                if (Rs2Shop.hasMinimumStock(itemName, plugin.getMinStock())){
+                                                    System.out.println("Stop selling over the minimum stock for item: " + itemName);
+                                                    successfullAction = true;
+                                                    break;
+                                                }
+                                            }
                                         }
                                         break;
                                     default:
