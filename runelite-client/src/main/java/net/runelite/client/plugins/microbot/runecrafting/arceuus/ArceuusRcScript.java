@@ -8,6 +8,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
@@ -135,13 +136,19 @@ public class ArceuusRcScript extends Script {
             this.state = String.format("(%s) %s", getAltarName(), state);
             switch (state) {
                 case GO_TO_RUNESTONE:
+                    BreakHandlerScript.setLockState(true);
                     Rs2Walker.walkTo(DENSE_RUNESTONE, REACHED_DISTANCE);
+                    BreakHandlerScript.setLockState(false);
                     break;
                 case GO_TO_DARK_ALTAR:
+                    BreakHandlerScript.setLockState(true);
                     Rs2Walker.walkTo(ARCEUUS_DARK_ALTAR, REACHED_DISTANCE);
+                    BreakHandlerScript.setLockState(false);
                     break;
                 case GO_TO_ALTAR:
+                    BreakHandlerScript.setLockState(true);
                     Rs2Walker.walkTo(getAltarWorldPoint(), REACHED_DISTANCE);
+                    BreakHandlerScript.setLockState(false);
                     break;
                 case MINE_ESSENCE:
                     mineEssence();
