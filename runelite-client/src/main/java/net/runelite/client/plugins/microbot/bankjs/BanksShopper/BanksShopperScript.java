@@ -89,7 +89,7 @@ public class BanksShopperScript extends Script {
                                         if (Rs2Shop.isFull()) continue;
                                         // Check if name is purely numeric or alphanumeric
                                         if (itemName.matches("\\d+")) {
-                                            while(processSellAction(Integer.parseInt(itemName), plugin.getSelectedQuantity().toString()) || !isRunning()){
+                                            while(isRunning() && processSellAction(Integer.parseInt(itemName), plugin.getSelectedQuantity().toString())){
                                                 sleepGaussian(200, 40);
                                                 if (Rs2Shop.hasMinimumStock(Integer.parseInt(itemName), plugin.getMinStock())){
                                                     System.out.println("Stop selling over the minimum stock for item: " + itemName);
@@ -98,7 +98,7 @@ public class BanksShopperScript extends Script {
                                                 }
                                             }
                                         } else {
-                                            while(processSellAction(itemName, plugin.getSelectedQuantity().toString()) || !isRunning()){
+                                            while(isRunning() && processSellAction(itemName, plugin.getSelectedQuantity().toString())){
                                                 sleepGaussian(200, 40);
                                                 if (Rs2Shop.hasMinimumStock(itemName, plugin.getMinStock())){
                                                     System.out.println("Stop selling over the minimum stock for item: " + itemName);
