@@ -302,6 +302,7 @@ public class PathfinderConfig {
                 if (entry.getQuests().isEmpty() && entry.getVarbits().isEmpty() && entry.getVarplayers().isEmpty() && !entry.isMembers() && Arrays.stream(entry.getSkillLevels()).allMatch(level -> level == 0) && entry.getItemIdRequirements().isEmpty()) {
                     return true;
                 }
+
                 // Members world check
                 if (entry.isMembers() && !client.getWorldType().contains(WorldType.MEMBERS)) {
                     return true;

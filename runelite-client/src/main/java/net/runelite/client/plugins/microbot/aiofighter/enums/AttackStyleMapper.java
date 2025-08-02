@@ -1,49 +1,49 @@
 package net.runelite.client.plugins.microbot.aiofighter.enums;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 /**
  * This class provides a utility method for mapping a string representation of an attack style to an AttackStyle enum.
+ * If the style string contains a comma, it will split it into multiple attack styles and only prioritize the first one.
  */
 public class AttackStyleMapper {
+
     /**
      * Maps a string representation of an attack style to an AttackStyle enum.
-     * The mapping is case-insensitive and can handle multiple attack styles separated by a comma.
+     * The mapping is case-insensitive. If multiple attack styles are provided (separated by commas),
+     * only the first attack style is considered.
+     *
      * @param style The string representation of the attack style.
      * @return The corresponding AttackStyle enum.
+     * @throws IllegalArgumentException if the provided style does not match any recognized attack style.
      */
     public static AttackStyle mapToAttackStyle(String style) {
-        // Convert style to lowercase for case-insensitive matching
-        String lowerCaseStyle = style.toLowerCase();
-
-        // Check if the style contains multiple attack styles separated by a comma
-        if (lowerCaseStyle.contains(",")) {
-            return AttackStyle.MIXED;
+        if (style == null || style.isEmpty()) {
+            log.error("Attack style is null or empty, defaulting to MELEE.");
+            return AttackStyle.MELEE; // Default to MELEE if no style is provided.
         }
 
-        // Check for presence of melee sub-styles
-        boolean hasMelee = lowerCaseStyle.contains("melee") ||
-                lowerCaseStyle.contains("crush") ||
-                lowerCaseStyle.contains("slash") ||
-                lowerCaseStyle.contains("stab");
+        // Convert to lowercase for case-insensitive matching.
+        String lowerCaseStyle = style.toLowerCase();
 
-        // Check for presence of magic-related styles
-        boolean hasMagic = lowerCaseStyle.contains("magic");
+        // If multiple attack styles are provided, only consider the first one.
+        if (lowerCaseStyle.contains(",")) {
+            String[] styles = lowerCaseStyle.split(",");
+            lowerCaseStyle = styles[0].trim();
+        }
 
-        // Check for presence of ranged-related styles
-        boolean hasRanged = lowerCaseStyle.contains("ranged");
-
-        // Determine the appropriate AttackStyle based on the presence of different styles
-        if (hasMelee && hasMagic && hasRanged) {
-            return AttackStyle.MIXED;
-        } else if ((hasMelee && hasMagic) || (hasMelee && hasRanged) || (hasMagic && hasRanged)) {
-            return AttackStyle.MIXED;
-        } else if (hasMelee) {
+        // Determine the attack style based on keywords.
+        if (lowerCaseStyle.contains("melee") || lowerCaseStyle.contains("crush") ||
+                lowerCaseStyle.contains("slash") || lowerCaseStyle.contains("stab")) {
             return AttackStyle.MELEE;
-        } else if (hasMagic) {
+        } else if (lowerCaseStyle.contains("magic")) {
             return AttackStyle.MAGE;
-        } else if (hasRanged) {
+        } else if (lowerCaseStyle.contains("ranged")) {
             return AttackStyle.RANGED;
         } else {
-            return AttackStyle.MIXED;  // Default case if style does not match any category.
+            log.error("Unrecognized attack style: " + style);
+            return AttackStyle.MELEE; // Default to MELEE if unrecognized.
         }
     }
 }

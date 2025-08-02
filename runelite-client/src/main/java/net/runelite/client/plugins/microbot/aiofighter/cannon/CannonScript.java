@@ -27,4 +27,9 @@ public class CannonScript extends Script {
         }, 0, 2000, TimeUnit.MILLISECONDS);
         return true;
     }
+
+    @Override
+    public void shutdown() {
+        super.shutdown();
+    }
 }

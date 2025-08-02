@@ -7,10 +7,10 @@ import net.runelite.client.plugins.microbot.aiofighter.AIOFighterConfig;
 import net.runelite.client.plugins.microbot.aiofighter.AIOFighterPlugin;
 import net.runelite.client.plugins.microbot.aiofighter.enums.DefaultLooterStyle;
 import net.runelite.client.plugins.microbot.aiofighter.enums.State;
-import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.grounditem.LootingParameters;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 import java.util.concurrent.TimeUnit;
 
@@ -31,10 +31,8 @@ public class LootScript extends Script {
                 if (!super.run()) return;
                 if (!Microbot.isLoggedIn()) return;
                 if (AIOFighterPlugin.getState().equals(State.BANKING) || AIOFighterPlugin.getState().equals(State.WALKING)) return;
-                if (Rs2Inventory.isFull() || Rs2Inventory.getEmptySlots() <= minFreeSlots || (Rs2Combat.inCombat() && !config.toggleForceLoot()))
+                if (Rs2Inventory.isFull() || Rs2Inventory.getEmptySlots() <= minFreeSlots || (Rs2Player.isInCombat() && !config.toggleForceLoot()))
                     return;
-
-
 
                 if (!config.toggleLootItems()) return;
                 if (config.looterStyle().equals(DefaultLooterStyle.MIXED) || config.looterStyle().equals(DefaultLooterStyle.ITEM_LIST)) {
@@ -146,7 +144,7 @@ public class LootScript extends Script {
         }
     }
 
-    // loot untreadable items
+    // loot untradeable items
     private void lootUntradeableItems(AIOFighterConfig config) {
         if (config.toggleLootUntradables()) {
             LootingParameters untradeableItemsParams = new LootingParameters(

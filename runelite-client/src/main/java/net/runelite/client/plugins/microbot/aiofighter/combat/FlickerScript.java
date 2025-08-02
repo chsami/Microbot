@@ -9,6 +9,7 @@ import net.runelite.client.plugins.microbot.aiofighter.enums.AttackStyle;
 import net.runelite.client.plugins.microbot.aiofighter.enums.AttackStyleMapper;
 import net.runelite.client.plugins.microbot.aiofighter.enums.PrayerStyle;
 import net.runelite.client.plugins.microbot.aiofighter.model.Monster;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcManager;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
@@ -23,74 +24,78 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-/**
- * This class is responsible for handling the flicker script in the game.
- * It extends the Script class and overrides its methods to provide the functionality needed.
- */
 @Slf4j
 public class FlickerScript extends Script {
-    public static final AtomicReference<List<Monster>> currentMonstersAttackingUs = new AtomicReference<>(new ArrayList<>());
-    private final AtomicReference<List<Rs2NpcModel>> npcs = new AtomicReference<>(new ArrayList<>());
+    // Atomic references for thread-safe list access and updates
+    public static final AtomicReference<List<Monster>> currentMonstersAttackingUsRef = new AtomicReference<>(new ArrayList<>());
+    private final AtomicReference<List<Rs2NpcModel>> npcsRef = new AtomicReference<>(new ArrayList<>());
 
-    AttackStyle prayFlickAttackStyle = null;
-    boolean usePrayer = false;
-    boolean flickQuickPrayer = false;
+    private AttackStyle prayFlickAttackStyle = null;
+    private boolean usePrayer = false;
+    private boolean flickQuickPrayer = false;
 
-    int lastPrayerTick;
-    int currentTick;
-    int tickToFlick = 0;
+    private int lastPrayerTick;
+    private int currentTick;
+    private int tickToFlick = 0;
 
-    /**
-     * This method is responsible for running the flicker script.
-     * It schedules a task to be run at a fixed delay.
-     * @param config The configuration for the player assist.
-     * @return true if the script is successfully started, false otherwise.
-     */
     public boolean run(AIOFighterConfig config) {
         try {
             Rs2NpcManager.loadJson();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
-                if (!Microbot.isLoggedIn() || !config.togglePrayer()) return;
-                if (config.prayerStyle() != PrayerStyle.LAZY_FLICK && config.prayerStyle() != PrayerStyle.PERFECT_LAZY_FLICK) return;
+                if (!Microbot.isLoggedIn() || !config.togglePrayer()) {
+                    return;
+                }
+                if (config.prayerStyle() != PrayerStyle.LAZY_FLICK &&
+                        config.prayerStyle() != PrayerStyle.PERFECT_LAZY_FLICK &&
+                        config.prayerStyle() != PrayerStyle.MIXED_LAZY_FLICK) {
+                    return;
+                }
 
-                tickToFlick = config.prayerStyle() == PrayerStyle.PERFECT_LAZY_FLICK ? 0 : 1;
+                // Determine flick timing
+                switch (config.prayerStyle()) {
+                    case LAZY_FLICK:
+                        tickToFlick = 1;
+                        break;
+                    case PERFECT_LAZY_FLICK:
+                        tickToFlick = 0;
+                        break;
+                    case MIXED_LAZY_FLICK:
+                        tickToFlick = Rs2Random.betweenInclusive(0, 1);
+                        break;
+                }
 
-                npcs.set(Rs2Npc.getNpcsForPlayer().collect(Collectors.toList()));
+                // Atomically update NPC snapshot
+                npcsRef.set(Rs2Npc.getNpcsForPlayer().collect(Collectors.toList()));
 
                 usePrayer = config.togglePrayer();
                 flickQuickPrayer = config.toggleQuickPray();
                 currentTick = Microbot.getClient().getTickCount();
 
-                currentMonstersAttackingUs.updateAndGet(oldList -> {
-                    List<Monster> updated = new ArrayList<>(oldList);
-
-                    for (Monster m : updated) {
-                        boolean stillThere = npcs.get().stream().anyMatch(npc -> npc.getIndex() == m.npc.getIndex());
-                        if (!stillThere) {
-                            m.delete = true;
-                        }
-                    }
-
-                    updated.removeIf(m -> m.delete);
+                // Remove monsters that no longer exist
+                currentMonstersAttackingUsRef.updateAndGet(monsters -> {
+                    List<Monster> updated = new ArrayList<>(monsters);
+                    updated.removeIf(monster ->
+                            npcsRef.get().stream().noneMatch(npc -> npc.getIndex() == monster.npc.getIndex())
+                    );
                     return updated;
                 });
-
-                List<Monster> snapshot = currentMonstersAttackingUs.get();
 
                 if (prayFlickAttackStyle != null) {
                     handlePrayerFlick();
                 }
 
-                if (snapshot.isEmpty()
-                        && !Rs2Player.isInteracting()
-                        && (Rs2Prayer.isPrayerActive(Rs2PrayerEnum.PROTECT_MELEE)
-                        || Rs2Prayer.isPrayerActive(Rs2PrayerEnum.PROTECT_MAGIC)
-                        || Rs2Prayer.isPrayerActive(Rs2PrayerEnum.PROTECT_RANGE)
-                        || Rs2Prayer.isQuickPrayerEnabled())) {
+                // Disable prayers if no monsters attacking
+                if (currentMonstersAttackingUsRef.get().isEmpty() &&
+                        !Rs2Player.isInteracting() &&
+                        (Rs2Prayer.isPrayerActive(Rs2PrayerEnum.PROTECT_MELEE) ||
+                                Rs2Prayer.isPrayerActive(Rs2PrayerEnum.PROTECT_MAGIC) ||
+                                Rs2Prayer.isPrayerActive(Rs2PrayerEnum.PROTECT_RANGE) ||
+                                Rs2Prayer.isQuickPrayerEnabled())) {
                     Rs2Prayer.disableAllPrayers();
                 }
 
@@ -98,13 +103,10 @@ public class FlickerScript extends Script {
                 Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
             }
         }, 0, 200, TimeUnit.MILLISECONDS);
+
         return true;
     }
 
-    /**
-     * This method is responsible for handling the prayer flick.
-     * It toggles the prayer based on the attack style.
-     */
     private void handlePrayerFlick() {
         lastPrayerTick = currentTick;
         Rs2PrayerEnum prayerToToggle;
@@ -123,7 +125,6 @@ public class FlickerScript extends Script {
                 Rs2Prayer.toggleQuickPrayer(true);
                 return;
         }
-
         prayFlickAttackStyle = null;
         Rs2Prayer.toggle(prayerToToggle, true);
     }
@@ -133,86 +134,67 @@ public class FlickerScript extends Script {
         super.shutdown();
     }
 
-    /**
-     * This method is called on every game tick.
-     * It handles the prayer flick for each monster attacking the player.
-     */
     public void onGameTick() {
-        if (!usePrayer) return;
+        if (!usePrayer) {
+            return;
+        }
 
-        List<Monster> snapshot = currentMonstersAttackingUs.get();
-        if (!snapshot.isEmpty()) {
-            for (Monster m : snapshot) {
-                m.lastAttack--;
-                if (m.lastAttack == tickToFlick && !m.npc.isDead()) {
-                    prayFlickAttackStyle = flickQuickPrayer ? AttackStyle.MIXED : m.attackStyle;
-                }
+        for (Monster monster : currentMonstersAttackingUsRef.get()) {
+            monster.lastAttack--;
+            if (monster.lastAttack == tickToFlick && !monster.npc.isDead()) {
+                prayFlickAttackStyle = flickQuickPrayer ? AttackStyle.MIXED : monster.attackStyle;
             }
-            resetLastAttack();
+            resetLastAttack(false);
         }
     }
 
-    /**
-     * This method is called when an NPC despawns.
-     * It removes the despawned NPC from the list of monsters attacking the player.
-     * @param npcDespawned The despawned NPC.
-     */
     public void onNpcDespawned(NpcDespawned npcDespawned) {
-        currentMonstersAttackingUs.updateAndGet(oldList -> {
-            List<Monster> updated = new ArrayList<>(oldList);
-            updated.removeIf(m -> m.npc.getIndex() == npcDespawned.getNpc().getIndex());
-            return updated;
-        });
+        int idx = npcDespawned.getNpc().getIndex();
+        currentMonstersAttackingUsRef.updateAndGet(monsters ->
+                monsters.stream()
+                        .filter(m -> m.npc.getIndex() != idx)
+                        .collect(Collectors.toList())
+        );
     }
 
-    /**
-     * This method is responsible for resetting the last attack of each NPC.
-     * It also handles the addition and removal of monsters from the list of monsters attacking the player.
-     */
     public void resetLastAttack(boolean forceReset) {
-        currentMonstersAttackingUs.updateAndGet(oldList -> {
-            List<Monster> updated = new ArrayList<>(oldList);
-
-            for (Rs2NpcModel npc : npcs.get()) {
-                Monster existing = updated.stream()
-                        .filter(m -> m.npc.getIndex() == npc.getIndex())
+        List<Rs2NpcModel> npcs = npcsRef.get();
+        currentMonstersAttackingUsRef.updateAndGet(monsters -> {
+            List<Monster> updated = new ArrayList<>(monsters);
+            for (Rs2NpcModel npc : npcs) {
+                Monster m = updated.stream()
+                        .filter(x -> x.npc.getIndex() == npc.getIndex())
                         .findFirst()
                         .orElse(null);
-
                 String style = Rs2NpcManager.getAttackStyle(npc.getId());
-                if (style == null) continue;
+                if (style == null) {
+                    continue;
+                }
                 AttackStyle attackStyle = AttackStyleMapper.mapToAttackStyle(style);
 
-                if (existing != null) {
-                    if (forceReset && existing.lastAttack <= 0) {
-                        existing.lastAttack = existing.rs2NpcStats.getAttackSpeed();
+                if (m != null) {
+                    if (forceReset && m.lastAttack <= 0) {
+                        m.lastAttack = m.rs2NpcStats.getAttackSpeed();
                     }
-                    if ((!npc.isDead() && existing.lastAttack <= 0) || (!npc.isDead() && npc.getGraphic() != -1)) {
-                        if (npc.getGraphic() != -1 && attackStyle != AttackStyle.MELEE) {
-                            existing.lastAttack = existing.rs2NpcStats.getAttackSpeed() - 2 + tickToFlick;
-                        } else {
-                            existing.lastAttack = existing.rs2NpcStats.getAttackSpeed();
-                        }
+                    if ((!npc.isDead() && m.lastAttack <= 0) ||
+                            (!npc.isDead() && npc.getGraphic() != -1)) {
+                        m.lastAttack = (npc.getGraphic() != -1 && attackStyle != AttackStyle.MELEE)
+                                ? m.rs2NpcStats.getAttackSpeed() - 2 + tickToFlick
+                                : m.rs2NpcStats.getAttackSpeed();
                     }
-
-                    if (existing.lastAttack <= -existing.rs2NpcStats.getAttackSpeed() / 2) {
-                        updated.remove(existing);
+                    if (m.lastAttack <= -m.rs2NpcStats.getAttackSpeed() / 2) {
+                        updated.remove(m);
                     }
-
-                } else {
-                    if (!npc.isDead()) {
-                        Monster toAdd = new Monster(npc, Objects.requireNonNull(Rs2NpcManager.getStats(npc.getId())));
-                        toAdd.attackStyle = attackStyle;
-                        updated.add(toAdd);
-                    }
+                } else if (!npc.isDead()) {
+                    Monster toAdd = new Monster(npc, Objects.requireNonNull(Rs2NpcManager.getStats(npc.getId())));
+                    toAdd.attackStyle = attackStyle;
+                    updated.add(toAdd);
                 }
             }
-
             return updated;
         });
     }
 
-    // overload
     public void resetLastAttack() {
         resetLastAttack(false);
     }

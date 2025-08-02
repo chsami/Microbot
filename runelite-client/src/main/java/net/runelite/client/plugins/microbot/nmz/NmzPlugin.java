@@ -10,14 +10,12 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.aiofighter.combat.PrayerPotionScript;
 import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.AndCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
-import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -103,9 +101,9 @@ public class NmzPlugin extends Plugin implements SchedulablePlugin{
             }
         }
     }
-    @Override     
+    @Override
     public LogicalCondition getStopCondition() {
-        // Create a new stop condition        
+        // Create a new stop condition
         return this.stopCondition;
     }
 

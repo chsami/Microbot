@@ -2,12 +2,11 @@ package net.runelite.client.plugins.microbot.util.grandexchange;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import java.util.Objects;
-import java.util.function.Predicate;
 import net.runelite.api.GrandExchangeOffer;
 import net.runelite.api.GrandExchangeOfferState;
 import net.runelite.api.MenuAction;
 import net.runelite.api.VarClientStr;
+import net.runelite.api.annotations.Component;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
@@ -25,7 +24,6 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.security.Encryption;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
-import net.runelite.api.annotations.Component;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -37,11 +35,14 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static net.runelite.client.plugins.microbot.util.Global.*;
+import static net.runelite.client.plugins.microbot.util.Global.sleep;
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
 public class Rs2GrandExchange
 {
@@ -1128,5 +1129,17 @@ public class Rs2GrandExchange
 		return Arrays.stream(GrandExchangeSlots.values())
 			.limit(maxSlots)
 			.filter(Rs2GrandExchange::isSlotAvailable).toArray(GrandExchangeSlots[]::new);
+	}
+
+	/**
+	 * Returns the count of currently available Grand Exchange slots.
+	 * <p>
+	 * This method counts the number of slots that are available for new offers.
+	 *
+	 * @return the number of available Grand Exchange slots
+	 */
+	public static int getAvailableSlotsCount()
+	{
+		return (int) Arrays.stream(getAvailableSlots()).count();
 	}
 }

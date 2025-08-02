@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.util.npc;
 
 import lombok.Data;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.aiofighter.model.PointClusterer;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -62,6 +63,16 @@ public class MonsterLocation
             }
         }
         return closest;
+    }
+
+    public WorldPoint getBestClusterCenter() {
+        if (coords.isEmpty()) {
+            return null;
+        }
+
+        PointClusterer clusterer = new PointClusterer(coords);
+
+        return clusterer.getClosestToDenseCenterAdaptive();
     }
 
     public WorldPoint getClosestToCenterParallel() {

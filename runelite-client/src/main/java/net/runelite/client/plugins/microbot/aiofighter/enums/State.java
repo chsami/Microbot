@@ -5,7 +5,9 @@ public enum State {
     WALKING,
     BANKING,
     COMBAT,
+    GETTING_TASK,
     DEATH,
     MISC,
+    INITIALIZING,
     UNKNOWN
 }

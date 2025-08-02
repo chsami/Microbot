@@ -1,9 +1,13 @@
 package net.runelite.client.plugins.microbot.aiofighter.combat;
 
 import net.runelite.api.Skill;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.aiofighter.AIOFighterConfig;
+import net.runelite.client.plugins.microbot.aiofighter.AIOFighterPlugin;
+import net.runelite.client.plugins.microbot.aiofighter.enums.State;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 import java.util.concurrent.TimeUnit;
@@ -14,6 +18,7 @@ public class PotionManagerScript extends Script {
             try {
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
+                if(AIOFighterPlugin.getState() == State.GETTING_TASK) return;
 
                 // Always attempt to drink anti-poison
                 if (Rs2Player.drinkAntiPoisonPotion()) {
@@ -26,7 +31,9 @@ public class PotionManagerScript extends Script {
                 }
 
                 // Always attempt to drink prayer potion
-                Rs2Player.drinkPrayerPotion();
+                if (Rs2Player.drinkPrayerPotion()) {
+                    Rs2Player.waitForAnimation();
+                }
 
                 // Always attempt to drink ranging potion
                 if (Rs2Player.drinkCombatPotionAt(Skill.RANGED, false)) {
@@ -54,11 +61,23 @@ public class PotionManagerScript extends Script {
                     Rs2Player.waitForAnimation();
                 }
 
+                if(Rs2Inventory.hasItem(ItemID.VIAL_EMPTY)) {
+                    Rs2Inventory.dropAll(ItemID.VIAL_EMPTY);
+                    Rs2Inventory.waitForInventoryChanges(1000);
+                }
+
             } catch (Exception ex) {
                 Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
             }
         }, 0, 600, TimeUnit.MILLISECONDS);
         return true;
+    }
+
+
+    // shutdown
+    @Override
+    public void shutdown() {
+        super.shutdown();
     }
 
 }
