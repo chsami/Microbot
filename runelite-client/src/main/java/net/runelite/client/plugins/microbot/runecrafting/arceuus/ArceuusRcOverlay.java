@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.runecrafting.arceuus;
 
 
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
@@ -42,10 +43,20 @@ public class ArceuusRcOverlay extends OverlayPanel {
                 panelComponent.getChildren().add(LineComponent.builder()
                         .left("State: " + plugin.getArceuusRcScript().getState()).build()
                 );
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Dense/Dark/Frags: " + getDenseDarkFragCountString()).build()
+                );
             }
         } catch (Exception ex) {
             Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
         }
         return super.render(graphics);
+    }
+
+    private String getDenseDarkFragCountString() {
+        return Rs2Inventory.count(ArceuusRcScript.DENSE_ESSENCE_BLOCK) + "/" +
+                Rs2Inventory.count(ArceuusRcScript.DARK_ESSENCE_BLOCK) + "/" +
+                Rs2Inventory.itemQuantity(ArceuusRcScript.DARK_ESSENCE_FRAGMENTS);
+
     }
 }
