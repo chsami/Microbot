@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.construction;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigInformation;
+import net.runelite.client.config.ConfigItem;
 
 @ConfigGroup(ConstructionConfig.GROUP)
 @ConfigInformation(ConstructionConfig.INFORMATION)
@@ -16,7 +17,7 @@ public interface ConstructionConfig extends Config {
             "<br />" +
             "2. Saw" +
             "<br />" +
-            "3. Demon butler" +
+            "3. Demon butler OR GP in Inventory for Phials" +
             "<br />" +
             "4. 24 empty spaces OR 8/16/24 unnoted oak planks" +
             "<br />" +
@@ -31,4 +32,15 @@ public interface ConstructionConfig extends Config {
             "<br /> " +
             "<br />" +
             "Config by offline";
+    @ConfigItem(
+            keyName = "usePhials",
+            name = "Use Phials",
+            description = "Allows you to use Phials outside to unnote your planks.",
+            position = 1
+    )
+    default boolean usePhials()
+    {
+        return false;
+    }
+
 }
