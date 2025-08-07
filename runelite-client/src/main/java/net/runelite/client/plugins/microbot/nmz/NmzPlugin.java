@@ -54,7 +54,7 @@ public class NmzPlugin extends Plugin implements SchedulablePlugin{
             overlayManager.add(nmzOverlay);
         }
         nmzScript.run();
-        if (config.togglePrayerPotions()) {
+        if (config.togglePrayProtect() || (config.togglePrayPiety()) ) {
             prayerPotionScript.run(config);
         }
     }
