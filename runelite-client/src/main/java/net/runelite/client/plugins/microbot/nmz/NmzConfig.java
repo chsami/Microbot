@@ -107,21 +107,33 @@ public interface NmzConfig extends Config {
         return false;
     }
     @ConfigItem(
-            keyName = "Auto Prayer Potion",
-            name = "Auto drink prayer potion",
-            description = "Automatically drinks prayer potions",
+            keyName = "Auto Pray",
+            name = "Auto drink prayer potion and pray",
+            description = "Automatically drinks prayer potions and protects",
             position = 5,
             section = generalSection
     )
-    default boolean togglePrayerPotions()
+    default boolean togglePrayProtect()
     {
         return false;
     }
     @ConfigItem(
+            keyName = "Piety",
+            name = "Auto drink prayer potion and piety",
+            description = "Automatically drinks prayer potions and piety",
+            position = 6,
+            section = generalSection
+    )
+    default boolean togglePrayPiety()
+    {
+        return false;
+    }
+
+    @ConfigItem(
             keyName = "Random Mouse Movements",
             name = "Random Mouse Movements",
             description = "Random Mouse Movements",
-            position = 6,
+            position = 7,
             section = generalSection
     )
     default boolean randomMouseMovements()
@@ -132,7 +144,7 @@ public interface NmzConfig extends Config {
             keyName = "Walk to center",
             name = "Walk to center",
             description = "Walk to center of nmz",
-            position = 7,
+            position = 8,
             section = generalSection
     )
     default boolean walkToCenter()
@@ -143,7 +155,7 @@ public interface NmzConfig extends Config {
             keyName = "Randomly trigger rapid heal",
             name = "Randomly trigger rapid heal",
             description = "Will randomly trigger rapid heal",
-            position = 8,
+            position = 9,
             section = generalSection
     )
     default boolean randomlyTriggerRapidHeal()
