@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.blastoisefurnace;
 
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
@@ -17,6 +18,7 @@ import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
@@ -24,46 +26,45 @@ import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
+import net.runelite.client.plugins.microbot.util.misc.Rs2Potion;
+import net.runelite.api.gameval.ItemID;
 
 import java.awt.event.KeyEvent;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Optional;
+import java.util.regex.Matcher;
 import java.util.concurrent.TimeUnit;
 
 import static net.runelite.api.gameval.ItemID.*;
 import static net.runelite.api.gameval.ObjectID.*;
 import static net.runelite.api.gameval.VarbitID.*;
+import static net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper.ITEM_NAME_SUFFIX_PATTERN;
 
 @Slf4j
 public class BlastoiseFurnaceScript extends Script {
     static final int coalBag = 12019;
     private static final int MAX_ORE_PER_INTERACTION = 27;
     private static final int MAX_ORE_PER_HYBRID_INTERACTION = 26;
-    public static double version = 1.0;
-    public static State state;
-    static int staminaTimer;
+    public static double version = 1.1;
+    public static State state = State.BANKING;
     static boolean coalBagEmpty;
     static boolean primaryOreEmpty;
     static boolean secondaryOreEmpty;
     private boolean init = false;
 
-    static {
-        state = State.BANKING;
-    }
-
     private BlastoiseFurnaceConfig config;
 
     private boolean hasRequiredOresForSmithing() {
-        int primaryOre = this.config.getBars().getPrimaryOre();
-        int secondaryOre = this.config.getBars().getSecondaryOre() == null ? -1 : this.config.getBars().getSecondaryOre();
+        int primaryOre = config.getBars().getPrimaryOre();
+        int secondaryOre = config.getBars().getSecondaryOre() == null ? -1 : config.getBars().getSecondaryOre();
         boolean hasPrimaryOre = Rs2Bank.hasItem(primaryOre);
         boolean hasSecondaryOre = secondaryOre != -1 && Rs2Bank.hasItem(secondaryOre);
         return hasPrimaryOre && hasSecondaryOre;
     }
 
     public boolean run(BlastoiseFurnaceConfig config) {
-        staminaTimer = 0;
         this.config = config;
         Microbot.enableAutoRunOn = false;
         state = State.BANKING;
@@ -72,7 +73,7 @@ public class BlastoiseFurnaceScript extends Script {
         Rs2Antiban.resetAntibanSettings();
         applyAntiBanSettings();
 
-        this.mainScheduledFuture = this.scheduledExecutorService.scheduleWithFixedDelay(() -> {
+        mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!Microbot.isLoggedIn()) {
                     return;
@@ -112,7 +113,6 @@ public class BlastoiseFurnaceScript extends Script {
                     case BANKING:
                         Microbot.status = "Banking";
                         if (!Rs2Bank.isOpen()) {
-                            Microbot.log("Opening bank");
                             Rs2Bank.openBank();
                             sleepUntil(Rs2Bank::isOpen, 20000);
                         }
@@ -120,7 +120,7 @@ public class BlastoiseFurnaceScript extends Script {
                         if (config.getBars().isRequiresCoalBag() && !Rs2Inventory.contains(coalBag)) {
                             if (!Rs2Bank.hasItem(coalBag)) {
                                 Microbot.showMessage("No coal bag found in inventory and bank.");
-                                this.shutdown();
+                                shutdown();
                                 return;
                             }
 
@@ -132,7 +132,7 @@ public class BlastoiseFurnaceScript extends Script {
                             if (!hasGauntlets) {
                                 if (!Rs2Bank.hasItem(GAUNTLETS_OF_GOLDSMITHING)) {
                                     Microbot.showMessage("No goldsmith gauntlets found.");
-                                    this.shutdown();
+                                    shutdown();
                                     return;
                                 }
 
@@ -144,15 +144,15 @@ public class BlastoiseFurnaceScript extends Script {
                             Rs2Bank.depositAllExcept(coalBag, GAUNTLETS_OF_GOLDSMITHING, ICE_GLOVES, SMITHING_UNIFORM_GLOVES_ICE);
                         }
 
-                        if (!this.hasRequiredOresForSmithing()) {
-                            Microbot.log("Out of ores. Walking you out for coffer safety");
+                        if (!hasRequiredOresForSmithing()) {
+                            log.warn("Out of ores. Walking you out for coffer safety");
                             Rs2Walker.walkTo(new WorldPoint(2930, 10196, 0));
                             Rs2Player.logout();
-                            this.shutdown();
+                            shutdown();
                         }
 
                         if (!Rs2Player.hasStaminaBuffActive() && Microbot.getClient().getEnergy() < 8100) {
-                            this.useStaminaPotions();
+                            useStaminaPotions();
                         }
 
                         // Check here if dispenser contains bars. If so we need to clean-up
@@ -161,7 +161,7 @@ public class BlastoiseFurnaceScript extends Script {
                             handleDispenserLooting();
                             return;
                         }else {
-                            this.retrieveItemsForCurrentFurnaceInteraction();
+                            retrieveItemsForCurrentFurnaceInteraction();
                             state = State.SMITHING;
                         }
                         break;
@@ -176,8 +176,7 @@ public class BlastoiseFurnaceScript extends Script {
                         break;
                 }
             } catch (Exception ex) {
-
-                Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
+                log.trace("Error in main loop: {} - ", ex.getMessage(), ex);
             }
 
         }, 0, 200, TimeUnit.MILLISECONDS);
@@ -185,9 +184,8 @@ public class BlastoiseFurnaceScript extends Script {
     }
 
     private void handleTax() {
-        Microbot.log("Paying noob smithing tax");
+        log.info("Paying noob smithing tax");
         if (!Rs2Bank.isOpen()) {
-            Microbot.log("Opening bank");
             Rs2Bank.openBank();
             sleepUntil(Rs2Bank::isOpen, 20000);
         }
@@ -223,7 +221,7 @@ public class BlastoiseFurnaceScript extends Script {
                 if (!equipped) {
                     Microbot.showMessage("Ice gloves or smith gloves required to loot the hot bars.");
                     Rs2Player.logout();
-                    this.shutdown();
+                    shutdown();
                     return;
                 }
             }
@@ -327,7 +325,7 @@ public class BlastoiseFurnaceScript extends Script {
                 if (!equipped) {
                     Microbot.showMessage("Ice gloves or smith gloves required to loot the hot bars.");
                     Rs2Player.logout();
-                    this.shutdown();
+                    shutdown();
                     return;
                 }
             }
@@ -406,58 +404,61 @@ public class BlastoiseFurnaceScript extends Script {
     }
 
     private void useStaminaPotions() {
+        if (!Rs2Bank.isOpen()) return;
+        if (Microbot.getClient().getEnergy() > 8100) return;
 
-        boolean usedPotion = false;
+        boolean hasStaminaPotion = Rs2Bank.hasItem(Rs2Potion.getStaminaPotion());
+        boolean hasEnergyPotion = Rs2Bank.hasItem(Rs2Potion.getRestoreEnergyPotionsVariants());
 
-        // Step 1: Keep using Energy potions until energy is above 71%
-        while (Microbot.getClient().getEnergy() < 6900) {
-            usedPotion = usePotionIfNeeded("Energy potion", 6900);
-            if (!usedPotion) {
-                break; // Exit if no Energy potion is available
+        if ((Rs2Player.hasStaminaBuffActive() && hasEnergyPotion) || (!hasStaminaPotion && hasEnergyPotion)) {
+            String potionName = getLowestDosePotionName(Rs2Potion.getRestoreEnergyPotionsVariants());
+            if (potionName != null) {
+                withdrawAndDrink(potionName);
+            }
+        } else if (hasStaminaPotion) {
+            String potionName = getLowestDosePotionName(List.of(Rs2Potion.getStaminaPotion()));
+            if (potionName != null) {
+                withdrawAndDrink(potionName);
             }
         }
-
-        // Step 2: If energy is above 71% but below 81%, use Stamina potion if no stamina buff is active
-        if (Microbot.getClient().getEnergy() < 8100 && !Rs2Player.hasStaminaBuffActive()) {
-            usedPotion = usePotionIfNeeded("Stamina potion", 8100);
-        }
-
-        // Sleep after using a potion
-        if (usedPotion) {
-            sleep(161, 197);
-        }
     }
 
-    private boolean usePotionIfNeeded(String potionName, int energyThreshold) {
-        if (Microbot.getClient().getEnergy() < energyThreshold) {
-            if (withdrawPotion(potionName)) {
-                if (drinkPotion(potionName)) {
-                    depositItems(potionName);
-                    return true; // Potion was successfully used
-                }
-            }
+    private String getLowestDosePotionName(List<String> variants) {
+        return Rs2Bank.getAll(item -> variants.stream().anyMatch(variant -> item.getName().toLowerCase().contains(variant.toLowerCase())))
+                .min(Comparator.comparingInt(item -> getDoseFromName(item.getName())))
+                .map(Rs2ItemModel::getName)
+                .orElse(null);
+    }
+
+    private int getDoseFromName(String potionItemName) {
+        Matcher matcher = ITEM_NAME_SUFFIX_PATTERN.matcher(potionItemName);
+        if (matcher.find()) {
+            return Integer.parseInt(matcher.group(2));
         }
-        return false; // Potion was not used
+        return 0;
     }
 
-    private boolean withdrawPotion(String potionName) {
-        Rs2Bank.withdrawOne(potionName);
-        sleep(900);
-        return true;
-    }
-
-    private boolean drinkPotion(String potionName) {
-        Rs2Inventory.interact(potionName, "Drink");
-        sleep(900);
-        return true;
-    }
-
-    private void depositItems(String potionName) {
-        if (Rs2Inventory.hasItem(potionName)) {
-            Rs2Bank.depositOne(potionName);
+    private String getBaseName(String itemName) {
+        Matcher matcher = ITEM_NAME_SUFFIX_PATTERN.matcher(itemName);
+        if (matcher.find()) {
+            return matcher.group(1).trim();
         }
-        if (Rs2Inventory.hasItem(VIAL_EMPTY)) {
-            Rs2Bank.depositOne(VIAL_EMPTY);
+        return itemName;
+    }
+
+    private void withdrawAndDrink(String potionItemName) {
+        String baseName = getBaseName(potionItemName);
+        Rs2Bank.withdrawOne(potionItemName);
+        Rs2Inventory.waitForInventoryChanges(1800);
+        Rs2Inventory.interact(potionItemName, "drink");
+        Rs2Inventory.waitForInventoryChanges(1800);
+        if (Rs2Inventory.hasItem(baseName)) {
+            Rs2Bank.depositOne(baseName);
+            Rs2Inventory.waitForInventoryChanges(1800);
+        }
+        if (Rs2Inventory.hasItem(ItemID.VIAL_EMPTY)) {
+            Rs2Bank.depositOne(ItemID.VIAL_EMPTY);
+            Rs2Inventory.waitForInventoryChanges(1800);
         }
     }
 
@@ -486,12 +487,12 @@ public class BlastoiseFurnaceScript extends Script {
 
     private void depositOre() {
         putOreOnConveyorBelt();
-        if (this.config.getBars().isRequiresCoalBag()) {
+        if (config.getBars().isRequiresCoalBag()) {
             if (Rs2Inventory.interact(coalBag, "Empty")) Rs2Inventory.waitForInventoryChanges(3_000);
             else log.error("Failed to empty coal bag 1");
             putOreOnConveyorBelt();
         }
-        if (this.config.getBars().isRequiresCoalBag() &&
+        if (config.getBars().isRequiresCoalBag() &&
                 (Rs2Inventory.hasItem(SMITHING_UNIFORM_GLOVES_ICE)
                         || Rs2Inventory.hasItem(GAUNTLETS_OF_GOLDSMITHING)
                         || Rs2Inventory.hasItem(ICE_GLOVES))) {
@@ -658,7 +659,7 @@ public class BlastoiseFurnaceScript extends Script {
                 Rs2Bank.depositAllExcept(coalBag, GAUNTLETS_OF_GOLDSMITHING, ICE_GLOVES, SMITHING_UNIFORM_GLOVES_ICE);
             }
         } else {
-            Microbot.log("Unexpected coffer dialogue state. delta = " + delta);
+            log.warn("Unexpected coffer dialogue state. delta = {}", delta);
             Rs2Dialogue.clickContinue();
         }
     }
@@ -668,3 +669,4 @@ public class BlastoiseFurnaceScript extends Script {
         return coffer == 1;
     }
 }
+

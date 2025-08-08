@@ -50,12 +50,6 @@ public class BlastoiseFurnacePlugin extends Plugin {
         }
         blastoiseFurnaceScript.run(config);
     }
-    @Subscribe
-    public void onVarbitChanged(VarbitChanged event) {
-        if (event.getVarbitId() == VarbitID.STAMINA_DURATION) {
-            staminaTimer = event.getValue();
-        }
-    }
 
     @Subscribe
     public void onChatMessage(ChatMessage chatMessage) {

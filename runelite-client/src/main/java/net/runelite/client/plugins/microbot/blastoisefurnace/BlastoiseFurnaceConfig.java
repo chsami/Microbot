@@ -23,7 +23,6 @@ public interface BlastoiseFurnaceConfig extends Config {
     }
 
 
-
     @ConfigItem(
             keyName = "Bars",
             name = "Bars",
