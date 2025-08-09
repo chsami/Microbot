@@ -6,5 +6,6 @@ public enum ConstructionState {
     Butler,
     Idle,
     Stopped,
-    Starting
+    Starting,
+    Phials
 }
