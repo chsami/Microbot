@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.VoxPlugins.schedulable.example;
 
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -16,15 +17,16 @@ import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.d
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.collection.LootRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.SpellbookRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.ShopRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.models.ShopOperation;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.ShopItemRequirement;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.ShopOperation;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
 import net.runelite.client.plugins.microbot.util.shop.models.Rs2ShopItem;
 import net.runelite.client.plugins.microbot.util.shop.models.Rs2ShopType;
+import net.runelite.client.plugins.microbot.util.shop.StoreLocations;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.grandexchange.models.TimeSeriesInterval;
@@ -47,20 +49,22 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
     private final SchedulableExampleConfig config;
     
     public SchedulableExamplePrePostScheduleRequirements(SchedulableExampleConfig config) {        
-        super("SchedulableExample", "Testing", false);
-        
-        this.config = config;
-        // Initialize requirements based on configuration                
-        if (config.enablePrePostRequirements()) {
-            initializeConfigurableRequirements();
-            initializeRequirements();
-        }
+        super("SchedulableExample", "Testing", false);        
+        this.config = config;              
+        initializeRequirements();// must be called becasue in the constroctor the requirements can not be initialized, because we have not set the config yet
     }
     
     /**
      * Initialize requirements based on configuration settings.
      */
-    private void initializeConfigurableRequirements() {
+    private boolean initializeConfigurableRequirements() {
+        if (config == null) {            
+            return false; // Ensure config is initialized before proceeding
+        }
+        if (!config.enablePrePostRequirements()) {            
+            return true; // Skip requirements if disabled
+        }
+        boolean success = true;
         this.clearFulfillmentState();
         this.getRegistry().clear();
         // Configure spellbook requirements based on dropdown selection
@@ -383,6 +387,82 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
              this.register(buyMapleBowsRequirement);
              this.register(sellMapleBowsRequirement);
          }
+         
+         // Custom Shop Requirement - Hammer and Bucket from nearest General Store
+         if (config.externalRequirements()) {
+             // Find the nearest general store that has both hammer and bucket
+             StoreLocations nearestStore = StoreLocations.getNearestStoreWithAllItems(ItemID.HAMMER, ItemID.BUCKET_EMPTY);
+             log.info("Nearest general store with hammer and bucket: {}", nearestStore != null ? nearestStore.getName() : "None found");
+             if (nearestStore != null) {
+                 // Create shop items for hammer and bucket from the nearest general store
+                 WorldArea storeArea = new WorldArea(
+                     nearestStore.getLocation().getX() - 3, 
+                     nearestStore.getLocation().getY() - 3, 
+                     6, 6, 
+                     nearestStore.getLocation().getPlane()
+                 );
+                 
+                 Rs2ShopItem hammerShopItem = new Rs2ShopItem(
+                     ItemID.HAMMER,
+                     nearestStore.getNpcName(),
+                     storeArea,
+                     nearestStore.getShopType(),
+                     nearestStore.getSellRate(), // Standard sell rate for general stores
+                     nearestStore.getBuyRate(),
+                     nearestStore.getChangePercent(),
+                     nearestStore.getQuestRequirements(),
+                     nearestStore.isMembers(),
+                     "Hammer from " + nearestStore.getName(),
+                     Duration.ofMinutes(5),
+                     10 // Base stock for hammers
+                 );
+                 
+                 Rs2ShopItem bucketShopItem = new Rs2ShopItem(
+                     ItemID.BUCKET_EMPTY,
+                     nearestStore.getNpcName(),
+                     storeArea,
+                     nearestStore.getShopType(),
+                     nearestStore.getSellRate(), // Standard sell rate for general stores
+                     nearestStore.getBuyRate(),
+                     nearestStore.getChangePercent(),
+                     nearestStore.getQuestRequirements(),
+                     nearestStore.isMembers(),
+                     "Empty bucket from " + nearestStore.getName(),
+                     Duration.ofMinutes(5),
+                     10 // Base stock for buckets
+                 );
+                 
+                 // Create shop item requirements
+                 ShopItemRequirement hammerRequirement = new ShopItemRequirement(hammerShopItem, 1, 0);
+                 ShopItemRequirement bucketRequirement = new ShopItemRequirement(bucketShopItem, 1, 0);
+                 
+                 // Create the unified shop requirement for buying both items
+                 Map<Rs2ShopItem, ShopItemRequirement> shopItems = new LinkedHashMap<>();
+                 shopItems.put(hammerShopItem, hammerRequirement);
+                 shopItems.put(bucketShopItem, bucketRequirement);
+                 
+                 ShopRequirement buyToolsRequirement = new ShopRequirement(
+                     shopItems,
+                     ShopOperation.BUY,
+                     RequirementType.INVENTORY,
+                     Priority.MANDATORY,
+                     7,
+                     "Buy hammer and bucket from nearest general store (" + nearestStore.getName() + ")",
+                     ScheduleContext.PRE_SCHEDULE
+                 );
+                 
+                 // Add as custom requirement to test external requirement fulfillment (step 7)
+                 this.addCustomRequirement(buyToolsRequirement, ScheduleContext.PRE_SCHEDULE);
+                 
+                 log.info("Added custom shop requirement for hammer and bucket from: {}", nearestStore.getName());
+             } else {
+                 log.warn("No general store found with both hammer and bucket items");
+                 this.getRegistry().clear();
+                 success = false; // Mark as failure if no store found
+             }
+         }
+        
+         return success; // Return true if all requirements initialized successfully
     }
 
     
@@ -392,19 +472,19 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
      * This demonstrates basic equipment and inventory requirements.
      */
     @Override
-    protected void initializeRequirements() {
+    protected boolean initializeRequirements() {
         if (config == null){
-            log.error("SchedulableExampleConfig is not initialized. Cannot proceed with requirements setup.");
-            return; // Ensure config is initialized before proceeding
+            return false; // Ensure config is initialized before proceeding
         }
-        initializeConfigurableRequirements();
+        this.setInitialized (initializeConfigurableRequirements());
+        return this.isInitialized(); // Return the initialization status
     }
     
     /**
      * Gets a display string showing which requirements are currently enabled.
      * Useful for debugging and logging.
      */
-    public String getEnabledRequirementsDisplay() {
+    public String getDetailedDisplay() {
         StringBuilder sb = new StringBuilder();
         sb.append("SchedulableExample Requirements Status:\n");
         sb.append("  Pre/Post Requirements: ").append(config.enablePrePostRequirements() ? "ENABLED" : "DISABLED").append("\n");
@@ -420,21 +500,9 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
             sb.append("  - Loot Requirement: ").append(config.enableLootRequirement() ? "ENABLED (Coins at Lumbridge)" : "DISABLED").append("\n");
             sb.append("  - Equipment Requirement: ").append(config.enableEquipmentRequirement() ? "ENABLED (Staff of Air)" : "DISABLED").append("\n");
             sb.append("  - Inventory Requirement: ").append(config.enableInventoryRequirement() ? "ENABLED (10k Coins)" : "DISABLED").append("\n");
+            sb.append("  - Shop Requirement: ").append(config.enableShopRequirement() ? "ENABLED (Hammer & Bucket from nearest general store)" : "DISABLED").append("\n");
         }
-        
-        sb.append("Total Pre\\Post Requirements Registered: ").append(getRegistry().getAllRequirements().size()).append("\n");
-        sb.append(" Pre Requirements Registered: ").append(getRequirements(ScheduleContext.PRE_SCHEDULE).size()).append("\n");
-        sb.append("    - Spellbook Requirements: ").append(getRequirements(SpellbookRequirement.class,ScheduleContext.PRE_SCHEDULE).size()).append("\n");
-        sb.append("    - Location Requirements: ").append(getRequirements(LocationRequirement.class, ScheduleContext.PRE_SCHEDULE).size()).append("\n");
-        sb.append("    - Loot Requirements: ").append(getRequirements(LootRequirement.class, ScheduleContext.PRE_SCHEDULE).size()).append("\n");
-        sb.append("    - Equipment Requirements: ").append(getRequirements(ItemRequirement.class, ScheduleContext.PRE_SCHEDULE).size()).append("\n");
-        sb.append("    - Shop Requirements: ").append(getRequirements(ShopRequirement.class, ScheduleContext.PRE_SCHEDULE).size()).append("\n");
-        sb.append(" Post Requirements Registered: ").append(getRequirements(ScheduleContext.POST_SCHEDULE).size()).append("\n");
-        sb.append("    - Spellbook Requirements: ").append(getRequirements(SpellbookRequirement.class, ScheduleContext.POST_SCHEDULE).size()).append("\n");
-        sb.append("    - Location Requirements: ").append(getRequirements(LocationRequirement.class, ScheduleContext.POST_SCHEDULE).size()).append("\n");
-        sb.append("    - Loot Requirements: ").append(getRequirements(LootRequirement.class, ScheduleContext.POST_SCHEDULE).size()).append("\n");
-        sb.append("    - Equipment Requirements: ").append(getRequirements(ItemRequirement.class, ScheduleContext.POST_SCHEDULE).size()).append("\n");
-        sb.append("    - Shop Requirements: ").append(getRequirements(ShopRequirement.class, ScheduleContext.POST_SCHEDULE).size()).append("\n");
+        sb.append(super.getDetailedDisplay());
         
         return sb.toString();
     }

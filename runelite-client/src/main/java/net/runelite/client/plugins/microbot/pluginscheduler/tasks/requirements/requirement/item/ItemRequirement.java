@@ -24,7 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.CompletableFuture;
 
 import org.slf4j.event.Level;
 
@@ -733,7 +733,7 @@ public class ItemRequirement extends Requirement {
      * 
      * @return true if successfully withdrawn, false otherwise
      */
-    private boolean withdrawFromBank() {
+    private boolean withdrawFromBank(CompletableFuture<Boolean> scheduledFuture) {
         if (Microbot.getClient().isClientThread()) {
             Microbot.log("Please run withdrawFromBank() on a non-client thread.", Level.ERROR);
             return false;
@@ -764,14 +764,16 @@ public class ItemRequirement extends Requirement {
         
         // Handle charged items with preference logic - since we now only have one item, check if it's charged
         int itemId = getId();
-        return tryWithdrawItem(itemId);
+        return tryWithdrawItem(itemId, scheduledFuture);
     }
     
     
     /**
      * Helper method to attempt withdrawing a specific item.
      */
-    private boolean tryWithdrawItem(Integer itemId) {
+    private boolean tryWithdrawItem(Integer itemId, CompletableFuture<Boolean> scheduledFuture) {
+      
+        
         if (Rs2Bank.hasItem(itemId)) {
             int quantity = getOptimalQuantity(itemId);
             if (quantity > 0) {
@@ -1068,7 +1070,7 @@ public class ItemRequirement extends Requirement {
      * @return true if the requirement was successfully fulfilled, false otherwise
      */
     @Override
-    public boolean fulfillRequirement(ScheduledExecutorService executorService) {
+    public boolean fulfillRequirement(CompletableFuture<Boolean> scheduledFuture) {
         try {
             if (Microbot.getClient().isClientThread()) {
                 Microbot.log("Please run fulfillRequirement() on a non-client thread.", Level.ERROR);
@@ -1097,14 +1099,14 @@ public class ItemRequirement extends Requirement {
             
             // Handle equipment requirements
             if (requirementType == RequirementType.EQUIPMENT || requirementType == RequirementType.EITHER) {
-                if (!fulfillEquipmentRequirement()) {
+                if (!fulfillEquipmentRequirement(scheduledFuture)) {
                     return !isMandatory(); // Return false only for mandatory requirements
                 }
             }
             
             // Handle inventory requirements
             if (requirementType == RequirementType.INVENTORY || requirementType == RequirementType.EITHER) {
-                if (!fulfillInventoryRequirement()) {
+                if (!fulfillInventoryRequirement(scheduledFuture)) {
                     return !isMandatory(); // Return false only for mandatory requirements
                 }
             }
@@ -1149,9 +1151,11 @@ public class ItemRequirement extends Requirement {
     /**
      * Attempts to fulfill an equipment requirement by equipping the required item.
      * 
+     * @param scheduledFuture The CompletableFuture to monitor for cancellation
      * @return true if the equipment requirement was fulfilled, false otherwise
      */
-    private boolean fulfillEquipmentRequirement() {
+    private boolean fulfillEquipmentRequirement(CompletableFuture<Boolean> scheduledFuture) {
+      
         return equip();
     }
     
@@ -1159,13 +1163,15 @@ public class ItemRequirement extends Requirement {
      * Attempts to fulfill an inventory requirement by ensuring the required item is in inventory.
      * Handles specific slot requirements and proper quantity management.
      * 
+     * @param scheduledFuture The CompletableFuture to monitor for cancellation
      * @return true if the inventory requirement was fulfilled, false otherwise
      */
-    private boolean fulfillInventoryRequirement() {
+    private boolean fulfillInventoryRequirement(CompletableFuture<Boolean> scheduledFuture) {
+       
         if (hasSpecificInventorySlot()) {
-            return withdrawAndPlaceInSpecificSlot();
+            return withdrawAndPlaceInSpecificSlot(scheduledFuture);
         } else {
-            return withdrawFromBank();
+            return withdrawFromBank(scheduledFuture);
         }
     }
     
@@ -1173,9 +1179,10 @@ public class ItemRequirement extends Requirement {
      * Withdraws the item and places it in the specific inventory slot if required.
      * Creates a proper copy of the requirement with the target slot.
      * 
+     * @param scheduledFuture The CompletableFuture to monitor for cancellation
      * @return true if successfully placed in the specific slot, false otherwise
      */
-    private boolean withdrawAndPlaceInSpecificSlot() {
+    private boolean withdrawAndPlaceInSpecificSlot(CompletableFuture<Boolean> scheduledFuture) {
         if (Microbot.getClient().isClientThread()) {
             Microbot.log("Please run withdrawAndPlaceInSpecificSlot() on a non-client thread.", Level.ERROR);
             return false;
@@ -1283,7 +1290,7 @@ public class ItemRequirement extends Requirement {
     private boolean hasRequiredItemEquipped() {
         int itemId = getId();
         if (equipmentSlot != null) {
-            return Rs2Equipment.isEquipped(itemId, equipmentSlot);
+            return Rs2Equipment.isWearing(itemId);
         } else {
             return Rs2Equipment.isWearing(itemId);
         }
@@ -1403,7 +1410,7 @@ public class ItemRequirement extends Requirement {
      * @return true if the item can be placed in inventory, false if not enough slots
      */
     public boolean canFitInInventory() {
-        return canFitInInventory(Rs2Inventory.getEmptySlots());
+        return canFitInInventory(Rs2Inventory.emptySlotCount());
     }
     
     /**

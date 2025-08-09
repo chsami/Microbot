@@ -1109,6 +1109,9 @@ public class Rs2Player {
             LocalPoint l = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), Microbot.getClient().getLocalPlayer().getWorldLocation());
             return WorldPoint.fromLocalInstance(Microbot.getClient(), l);
         } else {
+            if (Microbot.getClient().getLocalPlayer() == null) {
+                return null; // Handle case where local player is not available
+            }
             return Microbot.getClient().getLocalPlayer().getWorldLocation();
         }
     }

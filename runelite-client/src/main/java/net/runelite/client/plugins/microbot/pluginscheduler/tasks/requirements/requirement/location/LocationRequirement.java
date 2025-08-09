@@ -13,11 +13,15 @@ import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.e
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
+import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.TransportRouteAnalysis;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -52,48 +56,111 @@ public class LocationRequirement extends Requirement {
         private final String name;
         private final Map<Quest, QuestState> requiredQuests;
         private final Map<Skill, Integer> requiredSkills;
+        private final Map<Integer,Integer> requiredVarbits;
+        private final Map<Integer,Integer> requiredVarplayer;
+        private final Map<Integer,Integer> requiredItems; //id key ,and amount value
+
+        
         
         public LocationOption(WorldPoint worldPoint, String name) {
-            this(worldPoint, name, new HashMap<>(), new HashMap<>());
+            this(worldPoint, name, new HashMap<>(), new HashMap<>(),new HashMap<>(),new HashMap<>(),new HashMap<>());
         }
         
         public LocationOption(WorldPoint worldPoint, String name, 
                             Map<Quest, QuestState> requiredQuests, 
-                            Map<Skill, Integer> requiredSkills) {
+                            Map<Skill, Integer> requiredSkills,
+                            Map <Integer,Integer> requiredVarbits,
+                            Map <Integer,Integer> requiredVarplayer,
+                            Map <Integer,Integer> requiredItems
+                            ) {
             this.worldPoint = worldPoint;
             this.name = name;
             this.requiredQuests = requiredQuests != null ? new HashMap<>(requiredQuests) : new HashMap<>();
             this.requiredSkills = requiredSkills != null ? new HashMap<>(requiredSkills) : new HashMap<>();
+            this.requiredVarbits = requiredVarbits != null ? new HashMap<>(requiredVarbits) : new HashMap<>();
+            this.requiredVarplayer = requiredVarplayer != null ? new HashMap<>(requiredVarplayer) : new HashMap<>();
+            this.requiredItems = requiredItems != null ? new HashMap<>(requiredItems) : new HashMap<>();
+            
         }
         
         /**
          * Checks if the player meets all requirements for this location.
+         * Improved implementation using streams for better performance and readability.
          */
         public boolean hasRequirements() {
-            // Check quest requirements
-            for (Map.Entry<Quest, QuestState> questReq : requiredQuests.entrySet()) {
-                QuestState currentState = Rs2Player.getQuestState(questReq.getKey());
-                QuestState requiredState = questReq.getValue();
-                
-                // If required state is FINISHED, player must have finished
-                if (requiredState == QuestState.FINISHED && currentState != QuestState.FINISHED) {
-                    return false;
-                }
-                // If required state is IN_PROGRESS, player must have started (IN_PROGRESS or FINISHED)
-                if (requiredState == QuestState.IN_PROGRESS && 
-                    currentState != QuestState.IN_PROGRESS && currentState != QuestState.FINISHED) {
-                    return false;
-                }
+            if (Microbot.getClient() == null) {
+                log.warn("LocationRequirement hasRequirements called outside client thread");
+                return false;
+            }
+            if(!Microbot.isLoggedIn()){
+                log.warn("Player is not logged in, cannot check location requirements");
+                return false;
+            }
+            // Check quest requirements using streams
+            boolean questRequirementsMet = requiredQuests.entrySet().stream()
+                    .allMatch(questReq -> {
+                        QuestState currentState = Rs2Player.getQuestState(questReq.getKey());
+                        QuestState requiredState = questReq.getValue();
+                        
+                        // If required state is FINISHED, player must have finished
+                        if (requiredState == QuestState.FINISHED) {
+                            return currentState == QuestState.FINISHED;
+                        }
+                        // If required state is IN_PROGRESS, player must have started (IN_PROGRESS or FINISHED)
+                        if (requiredState == QuestState.IN_PROGRESS) {
+                            return currentState == QuestState.IN_PROGRESS || currentState == QuestState.FINISHED;
+                        }
+                        return true;
+                    });
+            
+            if (!questRequirementsMet) {
+                return false;
             }
             
-            // Check skill requirements
-            for (Map.Entry<Skill, Integer> skillReq : requiredSkills.entrySet()) {
-                if (!Rs2Player.getSkillRequirement(skillReq.getKey(), skillReq.getValue())) {
-                    return false;
-                }
+            // Check skill requirements using streams
+            boolean skillRequirementsMet = requiredSkills.entrySet().stream()
+                    .allMatch(skillReq -> Rs2Player.getSkillRequirement(skillReq.getKey(), skillReq.getValue()));
+            
+            if (!skillRequirementsMet) {
+                return false;
             }
             
-            return true;
+            // Check varbit requirements using streams
+            boolean varbitRequirementsMet = requiredVarbits.entrySet().stream()
+                    .allMatch(varbitReq -> Microbot.getVarbitValue(varbitReq.getKey()) == varbitReq.getValue());
+            
+            if (!varbitRequirementsMet) {
+                return false;
+            }
+            
+            // Check varplayer requirements using streams
+            boolean varplayerRequirementsMet = requiredVarplayer.entrySet().stream()
+                    .allMatch(varplayerReq -> Microbot.getVarbitPlayerValue(varplayerReq.getKey()) == varplayerReq.getValue());
+            
+            if (!varplayerRequirementsMet) {
+                return false;
+            }
+            
+            // Check item requirements using streams
+            boolean itemRequirementsMet = requiredItems.entrySet().stream()
+                    .allMatch(itemReq -> {
+                        int itemId = itemReq.getKey();
+                        int requiredAmount = itemReq.getValue();
+                        
+                        int numberOfItems = Rs2Inventory.count(itemId) + 
+                                          (Rs2Equipment.isWearing(itemId) ? 1 : 0); //TODO we must check if we are checking for stackable items..
+                        // todo check rune pouches ? when the ids runes..,
+                        // bolt ammo slot ? when the ids is any ammo
+                        
+                        if (numberOfItems < requiredAmount) {
+                            log.warn("Missing required item: {} x{} (have {})", itemId, requiredAmount, numberOfItems);
+                            Microbot.log("Missing required item: " + itemId + " x" + requiredAmount + " (have " + numberOfItems + ")");
+                            return false;
+                        }
+                        return true;
+                    });
+            
+            return itemRequirementsMet;
         }
         
         @Override
@@ -412,16 +479,21 @@ public class LocationRequirement extends Requirement {
      * @return true if the requirement was successfully fulfilled, false otherwise
      */
     @Override
-    public boolean fulfillRequirement(ScheduledExecutorService executorService) {
+    public boolean fulfillRequirement(CompletableFuture<Boolean> scheduledFuture) {
         try {
             if (Microbot.getClient() == null || Microbot.getClient().isClientThread()) {
                 log.info("Cannot fulfill location requirement outside client thread");
                 return false; // Cannot fulfill outside client thread
             }
+            
+          
+            
             // Check if the requirement is already fulfilled
             if (isAtRequiredLocation()) {
                 return true;
             }
+            
+          
             
             // Check if the location is reachable
             if (!isLocationReachable()) {
@@ -433,9 +505,10 @@ public class LocationRequirement extends Requirement {
                     return true; // Non-mandatory requirements return true if location isn't reachable
                 }
             }
+
             
             // Attempt to travel to the location
-            boolean success = travelToLocation(executorService);
+            boolean success = travelToLocation(scheduledFuture);
             
             if (!success && isMandatory()) {
                 Microbot.log("MANDATORY location requirement failed: " + getName());
@@ -452,15 +525,17 @@ public class LocationRequirement extends Requirement {
     
     /**
      * Attempts to travel to the best available target location using Rs2Walker with movement watchdog.
+     * Creates its own executor service for the watchdog that gets cleaned up when done.
      * 
-     * @param executorService The ScheduledExecutorService to run the watchdog on
+     * @param scheduledFuture The CompletableFuture to monitor for cancellation
      * @return true if the travel was successful, false otherwise
      */
-    private boolean travelToLocation(ScheduledExecutorService executorService) {
+    private boolean travelToLocation(CompletableFuture<Boolean> scheduledFuture) {
+        ScheduledExecutorService travelExecutorService = null;
         ScheduledFuture<?> watchdogFuture = null;
         AtomicBoolean watchdogTriggered = new AtomicBoolean(false);
         
-        try {
+        try {          
             LocationOption bestLocation = getBestAvailableLocation();
             if (bestLocation == null) {
                 log.warn("No available location found for requirement: {}", getName());
@@ -469,11 +544,17 @@ public class LocationRequirement extends Requirement {
             
             WorldPoint targetLocation = bestLocation.getWorldPoint();
             
-            // Start movement watchdog if executor service is available
-            if (executorService != null && !executorService.isShutdown()) {
-                watchdogFuture = startMovementWatchdog(executorService, watchdogTriggered);
-            }
+            // Create a dedicated executor service for this travel operation
+            travelExecutorService = Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread thread = new Thread(r, "LocationRequirement-Travel-" + getName());
+                thread.setDaemon(true); // Daemon thread so it doesn't prevent JVM shutdown
+                return thread;
+            });
             
+            // Start movement watchdog with our own executor service
+            watchdogFuture = startMovementWatchdog(travelExecutorService, scheduledFuture, watchdogTriggered);
+          
+
             // Check if we need to get transport items from bank
             boolean walkResult = false;
             if (useTransports) {
@@ -485,6 +566,8 @@ public class LocationRequirement extends Requirement {
                 walkResult = Rs2Walker.walkTo(targetLocation);
             }
             
+
+            
             if (walkResult && !watchdogTriggered.get()) {           
                 return isAtRequiredLocation() && !watchdogTriggered.get();
             }
@@ -495,9 +578,28 @@ public class LocationRequirement extends Requirement {
             Microbot.log("Error traveling to location " + getName() + ": " + e.getMessage());
             return false;
         } finally {
-            // Always clean up the watchdog
+            // Always clean up the watchdog first
             if (watchdogFuture != null && !watchdogFuture.isDone()) {
                 watchdogFuture.cancel(true);
+            }
+            
+            // Then shutdown the executor service
+            if (travelExecutorService != null) {
+                travelExecutorService.shutdown();
+                try {
+                    // Wait a bit for graceful shutdown
+                    if (!travelExecutorService.awaitTermination(2, TimeUnit.SECONDS)) {
+                        // Force shutdown if tasks don't complete quickly
+                        travelExecutorService.shutdownNow();
+                        if (!travelExecutorService.awaitTermination(1, TimeUnit.SECONDS)) {
+                            log.warn("Travel executor service did not terminate cleanly for {}", getName());
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    // Restore interrupted status and force shutdown
+                    Thread.currentThread().interrupt();
+                    travelExecutorService.shutdownNow();
+                }
             }
         }
     }
@@ -506,15 +608,24 @@ public class LocationRequirement extends Requirement {
      * Starts a movement watchdog that monitors player position and stops walking if no movement is detected.
      * 
      * @param executorService The executor service to run the watchdog on
+     * @param scheduledFuture The future to monitor for cancellation
      * @param watchdogTriggered Atomic boolean to signal when watchdog triggers
      * @return The scheduled future for the watchdog task
      */
-    private ScheduledFuture<?> startMovementWatchdog(ScheduledExecutorService executorService, AtomicBoolean watchdogTriggered) {
+    private ScheduledFuture<?> startMovementWatchdog(ScheduledExecutorService executorService, CompletableFuture<Boolean> scheduledFuture, AtomicBoolean watchdogTriggered) {
         AtomicReference<WorldPoint> lastPosition = new AtomicReference<>(Rs2Player.getWorldLocation());
         AtomicReference<Long> lastMovementTime = new AtomicReference<>(System.currentTimeMillis());
         
         return executorService.scheduleAtFixedRate(() -> {
             try {
+                // Check for cancellation first
+                if (scheduledFuture != null && scheduledFuture.isCancelled()) {
+                    log.info("Movement watchdog cancelled for: {}", getName());
+                    watchdogTriggered.set(true);
+                    Rs2Walker.setTarget(null);
+                    throw new RuntimeException("Watchdog cancelled - stopping task");
+                }
+                
                 WorldPoint currentPosition = Rs2Player.getWorldLocation();
                 if (currentPosition == null) {
                     return; // Skip if position unavailable
@@ -566,6 +677,7 @@ public class LocationRequirement extends Requirement {
      * @param areaRadius The radius of the area to check
      * @return true if the player has moved significantly outside the area
      */
+    @SuppressWarnings("unused")
     private boolean hasMovedOutOfArea(WorldPoint lastPosition, WorldPoint currentPosition, int areaRadius) {
         if (lastPosition == null || currentPosition == null) {
             return false;

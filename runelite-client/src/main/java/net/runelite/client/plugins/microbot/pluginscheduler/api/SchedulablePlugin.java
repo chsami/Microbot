@@ -8,11 +8,18 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.Lo
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryFinishedEvent;
 import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryPreScheduleTaskEvent;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryPreScheduleTaskFinishedEvent;
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.AbstractPrePostScheduleTasks;
-import net.runelite.client.plugins.microbot.pluginscheduler.ui.util.SchedulerUIUtils;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.util.SchedulerPluginUtil;
+import okhttp3.Call;
 
+import org.lwjgl.system.Callback;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
 import net.runelite.client.config.ConfigDescriptor;
 import net.runelite.client.plugins.Plugin;
@@ -25,7 +32,6 @@ import java.util.List;
 import java.util.Optional;
 
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 
 
 
@@ -37,6 +43,8 @@ import javax.swing.border.EmptyBorder;
 
 
 public interface SchedulablePlugin {
+
+    Logger log = LoggerFactory.getLogger(SchedulablePlugin.class);
 
        
     default LogicalCondition getStartCondition() {
@@ -103,7 +111,90 @@ public interface SchedulablePlugin {
     
     public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event);
     
-    
+    /**
+     * Handles the {@link PluginScheduleEntryPreScheduleTaskEvent} posted by the scheduler when a plugin should start pre-schedule tasks.
+     * <p>
+     * This event handler is called when the scheduler wants to trigger pre-schedule tasks for a plugin. 
+     * The default implementation will run pre-schedule tasks (if available) and then execute the provided script callback.
+     * <p>
+     * The plugin should respond with a {@link PluginScheduleEntryPreScheduleTaskFinishedEvent} when pre-schedule tasks are complete.
+     * <p>
+     * Note: This is an EventBus subscriber method and requires the implementing
+     * plugin to be registered with the EventBus for it to be called.
+     *
+     * @param event The pre-schedule task event containing the plugin reference that should start pre-schedule tasks
+     * @param scriptSetupAndStartCallback Callback to execute after pre-schedule tasks complete (typically script setup and start)
+     */
+    default public void executePreScheduleTasks(Runnable postTaskCallback) {         
+      
+        
+        AbstractPrePostScheduleTasks prePostTasks = getPrePostScheduleTasks();        
+        if (prePostTasks != null) {
+            // Plugin has pre/post tasks and is under scheduler control
+            log.info("Plugin {} starting with pre-schedule tasks", this.getClass().getSimpleName());
+            
+            try {
+                // Execute pre-schedule tasks with callback to start main script
+                prePostTasks.executePreScheduleTasks(() -> {
+                    log.info("Pre-Schedule Tasks completed successfully for {}", this.getClass().getSimpleName());
+                    if (postTaskCallback != null) {
+                        postTaskCallback.run(); // Execute script setup and start
+                    }
+                    // Report pre-schedule task completion - the scheduler will transition to RUNNING_PLUGIN state
+                    Microbot.getEventBus().post(new PluginScheduleEntryPreScheduleTaskFinishedEvent(
+                        (Plugin) this, true, "Pre-schedule tasks completed successfully"));
+                });
+            } catch (Exception e) {
+                log.error("Error during Pre-Schedule Tasks for {}", this.getClass().getSimpleName(), e);
+                // Report pre-schedule task failure
+                Microbot.getEventBus().post(new PluginScheduleEntryPreScheduleTaskFinishedEvent(
+                    (Plugin) this, false, "Pre-schedule tasks failed: " + e.getMessage()));
+            }
+        } else {
+            // No pre-schedule tasks or not under scheduler control - execute callback immediately
+            log.info("Plugin {} has no pre-schedule tasks - executing callback immediately", this.getClass().getSimpleName());
+            
+            if (postTaskCallback != null) {
+                postTaskCallback.run(); // Execute script setup,etc, post pre schedule tasks action
+            }
+            
+            // Report completion immediately
+            Microbot.getEventBus().post(new PluginScheduleEntryPreScheduleTaskFinishedEvent(
+                (Plugin) this, true, "No pre-schedule tasks - callback executed successfully"));
+        }
+    }
+
+
+      /**
+     * Tests only the post-schedule tasks functionality.
+     * This method demonstrates how post-schedule tasks work and logs the results.
+     */
+    default public void executePostScheduleTasks(Runnable postTaskExecutionCallback) {
+        log.info("Post-Schedule Tasks execution...");
+        AbstractPrePostScheduleTasks prePostScheduleTasks = getPrePostScheduleTasks();
+        if (prePostScheduleTasks == null) {
+            log.warn("PrePostScheduleTasks not initialized - cannot test");
+            if(postTaskExecutionCallback!= null) postTaskExecutionCallback.run();            
+            reportFinished("Post-Schedule Tasks executed successfully", true);
+            return;
+        }
+        
+        try {
+            if (prePostScheduleTasks.isPostScheduleRunning()) {
+                log.warn("Post-Schedule Tasks are already running. Cannot start again.");
+                return;
+            }
+            // Execute only post-schedule tasks using the public API
+            prePostScheduleTasks.executePostScheduleTasks(() -> {
+                log.info("Post-Schedule Tasks completed successfully");
+                if(postTaskExecutionCallback!= null) postTaskExecutionCallback.run();
+                reportFinished("Post-Schedule Tasks executed successfully and Script stopped", true);
+            });
+        } catch (Exception e) {
+            log.error("Error during Post-Schedule Tasks test", e);
+            reportFinished("Post-Schedule Tasks execution failed with exception: " + e.getMessage(), false);
+        }
+    }
     
     /**
      * Allows a plugin to report that it has finished its task and is ready to be stopped.
@@ -353,6 +444,32 @@ public interface SchedulablePlugin {
      */
     default AbstractPrePostScheduleTasks getPrePostScheduleTasks() {
         return null; // Default implementation returns null, subclasses can override to provide tasks
+    }
+    
+    /**
+     * Allows external registration of custom requirements to this plugin's pre/post schedule tasks.
+     * Plugin developers can control whether and how to integrate external requirements.
+     * 
+     * @param requirement The requirement to add
+     * @param scheduleContext The context in which this requirement should be fulfilled (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @return true if the requirement was accepted and registered, false if rejected
+     */
+    default boolean addCustomRequirement(Requirement requirement, 
+                                      ScheduleContext scheduleContext) {
+        AbstractPrePostScheduleTasks tasks = getPrePostScheduleTasks();
+        if (tasks != null) {
+            return tasks.addCustomRequirement(requirement, scheduleContext);
+        }
+        return false; // No pre/post tasks available, cannot register custom requirements
+    }
+    
+    /**
+     * Checks if this plugin supports external custom requirement registration.
+     * 
+     * @return true if custom requirements can be added, false otherwise
+     */
+    default boolean supportsCustomRequirements() {
+        return getPrePostScheduleTasks() != null;
     }
     
 }

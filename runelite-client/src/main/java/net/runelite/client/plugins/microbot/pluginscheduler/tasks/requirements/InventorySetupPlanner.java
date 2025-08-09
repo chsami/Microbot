@@ -12,6 +12,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
@@ -541,7 +542,7 @@ public class InventorySetupPlanner {
      * 
      * @return true if banking was successful, false otherwise
      */
-    public boolean bankItemsNotInPlan() {
+    public boolean bankItemsNotInPlan(CompletableFuture<Boolean> scheduledFuture) {
         try {
             log.info("Analyzing current equipment and inventory state...");
             
@@ -574,6 +575,10 @@ public class InventorySetupPlanner {
             // Step 1: Bank equipped items not in the plan
             log.info("Banking equipped items not in planned loadout...");
             for (EquipmentInventorySlot equipmentSlot : EquipmentInventorySlot.values()) {
+                if (scheduledFuture!=null && scheduledFuture.isCancelled()) {
+                    log.info("Banking task cancelled, stopping equipment cleanup.");
+                    return false;
+                }
                 // Check if this slot is planned to have an item
                 ItemRequirement plannedItem = equipmentAssignments.get(equipmentSlot);
                 
@@ -729,7 +734,7 @@ public class InventorySetupPlanner {
      * 
      * @return true if execution was successful
      */
-    public boolean executePlan() {
+    public boolean executePlan(CompletableFuture<Boolean> scheduledFuture) {
         try {
             log.info("\n--- Executing Inventory and Equipment Layout Plan ---");
             
@@ -748,6 +753,10 @@ public class InventorySetupPlanner {
             if (!equipmentAssignments.isEmpty()) {
                 log.info("Executing equipment assignments ({} items)...", equipmentAssignments.size());
                 for (Map.Entry<EquipmentInventorySlot, ItemRequirement> entry : equipmentAssignments.entrySet()) {
+                    if (scheduledFuture != null && scheduledFuture.isCancelled()) {
+                        log.info("Plan execution cancelled, stopping equipment assignments.");
+                        return false;
+                    }
                     EquipmentInventorySlot slot = entry.getKey();
                     ItemRequirement item = entry.getValue();
                     
@@ -764,7 +773,10 @@ public class InventorySetupPlanner {
                 for (Map.Entry<Integer, ItemRequirement> entry : inventorySlotAssignments.entrySet()) {
                     Integer slot = entry.getKey();
                     ItemRequirement item = entry.getValue();
-                    
+                    if (scheduledFuture != null && scheduledFuture.isCancelled()) {
+                        log.info("Plan execution cancelled, stopping inventory slot assignments.");
+                        return false;
+                    }
                     if (!handleInventorySlotAssignment(slot, item)) {
                         log.error("Failed to fulfill inventory slot assignment: slot {} -> {}", slot, item.getName());
                         success = false;
@@ -776,6 +788,10 @@ public class InventorySetupPlanner {
             if (!flexibleInventoryItems.isEmpty()) {
                 log.info("Executing flexible inventory items ({} items)...", flexibleInventoryItems.size());
                 for (ItemRequirement item : flexibleInventoryItems) {
+                    if (scheduledFuture != null && scheduledFuture.isCancelled()) {
+                        log.info("Plan execution cancelled, stopping flexible inventory items.");
+                        return false;
+                    }
                     if (!handleFlexibleInventoryItem(item)) {
                         log.error("Failed to fulfill flexible inventory item: {}", item.getName());
                         // Don't mark as failed for optional items

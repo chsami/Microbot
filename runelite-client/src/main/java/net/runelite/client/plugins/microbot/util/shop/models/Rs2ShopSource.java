@@ -36,6 +36,10 @@ public class Rs2ShopSource {
     final private boolean members;
     @Getter 
     final private Map<Quest,QuestState> quests; // Quests required to access the shop, with progress state
+    @Getter 
+    final private Map<Integer,Integer> varbitReq; // Varbit requirements for the shop, with progress state
+    @Getter 
+    final private Map<Integer,Integer> varPlayerReq; // Varbit requirements for the shop, with progress state
     @Getter    
     final private Rs2ShopType shopType;        
     @Getter
@@ -62,7 +66,7 @@ public class Rs2ShopSource {
         double percentageBoughtAt,
         double changePercent,
         boolean members ) {
-        this( shopName, locationArea, shopType, percentageSoldAt, percentageBoughtAt, changePercent ,Map.of(),members, "");
+        this( shopName, locationArea, shopType, percentageSoldAt, percentageBoughtAt, changePercent ,Map.of(),Map.of(),Map.of(), members, "");
     }
     public Rs2ShopSource(
             String shopName,            
@@ -72,6 +76,8 @@ public class Rs2ShopSource {
             double percentageBoughtAt, 
             double changePercent,
             Map <Quest, QuestState> quests,
+            Map <Integer, Integer> varbitReq,
+            Map <Integer, Integer> varPlayerReq,
             boolean members, 
             String notes) {        
         this.shopNpcName = shopName;
@@ -82,6 +88,8 @@ public class Rs2ShopSource {
         this.percentageBoughtAt = percentageBoughtAt;
         this.changePercent = changePercent;      
         this.quests = quests != null ? quests : Map.of();
+        this.varbitReq = varbitReq != null ? varbitReq : Map.of();
+        this.varPlayerReq = varPlayerReq != null ? varPlayerReq : Map.of();
         this.notes = notes;
     }
 
@@ -132,7 +140,11 @@ public class Rs2ShopSource {
     }
 
     public WorldPoint getLocation() {
-        return locationArea.toWorldPoint();
+        return new WorldPoint(
+            locationArea.getX() + locationArea.getWidth() / 2,
+            locationArea.getY() + locationArea.getHeight() / 2,
+            locationArea.getPlane()
+        );
     }
 
     public Rs2NpcModel getShopNPC() {

@@ -59,7 +59,7 @@ public class SchedulableExamplePrePostScheduleTasks extends AbstractPrePostSched
             
             // Log the current requirements status
             logBuilder.append("  Requirements Status:\n");
-            logBuilder.append("    ").append(requirements.getEnabledRequirementsDisplay().replace("\n", "\n    ")).append("\n");
+            logBuilder.append("    ").append(requirements.getDetailedDisplay().replace("\n", "\n    ")).append("\n");
             
             // Validate mandatory requirements
             logBuilder.append("  Validating mandatory requirements...\n");
@@ -188,22 +188,6 @@ public class SchedulableExamplePrePostScheduleTasks extends AbstractPrePostSched
         }
     }
     
-    /**
-     * Determines if the plugin is currently running under scheduler control.
-     * This affects whether pre/post schedule tasks should be executed.
-     * 
-     * @return true if running under scheduler control, false otherwise
-     */
-    @Override
-    protected boolean isScheduleMode() {
-        // For the example plugin, we can check if it's being controlled by the scheduler
-        // This could be determined by checking if scheduler-specific conditions are active
-        // or if the plugin was started through scheduler mechanisms
-        
-        // For testing purposes, we'll check if any scheduler conditions are configured
-        return (examplePlugin.getConfig().enablePrePostRequirements() && 
-               (examplePlugin.getStartCondition() != null || examplePlugin.getStopCondition() != null)) || (super.isScheduleMode());
-    }
 
     /**
      * Determines if the plugin is currently running under scheduler control.
@@ -236,36 +220,4 @@ public class SchedulableExamplePrePostScheduleTasks extends AbstractPrePostSched
         return examplePlugin.getConfig();
     }
     
-    /**
-     * Gets a reference to the requirements collection.
-     * 
-     * @return The SchedulableExamplePrePostScheduleRequirements instance
-     */
-    public SchedulableExamplePrePostScheduleRequirements getRequirements() {
-        return requirements;
-    }
-    
-    /**
-     * Convenience method to execute pre-schedule tasks with default settings.
-     * This method demonstrates the proper way to trigger pre-schedule tasks through
-     * the threading infrastructure.
-     * 
-     * @param callback The callback to execute when preparation is finished
-     */
-    public void executePreScheduleTasksWithDefaults(Runnable callback) {
-        // Use the proper public API that ensures threading safety
-        executePreScheduleTasks(callback, null, 60, TimeUnit.SECONDS);
-    }
-    
-    /**
-     * Convenience method to execute post-schedule tasks with default settings.
-     * This method demonstrates the proper way to trigger post-schedule tasks through
-     * the threading infrastructure.
-     * 
-     * @param callback The callback to execute when cleanup is finished
-     */
-    public void executePostScheduleTasksWithDefaults(Runnable callback) {
-        // Use the proper public API that ensures threading safety
-        executePostScheduleTasks(callback, null, 30, TimeUnit.SECONDS);
-    }
 }

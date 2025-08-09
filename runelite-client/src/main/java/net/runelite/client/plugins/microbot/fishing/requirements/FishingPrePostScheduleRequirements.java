@@ -8,7 +8,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.P
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.data.ItemRequirementCollection;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 
 /**
@@ -16,53 +16,69 @@ import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
  * Demonstrates the new standardized approach to equipment and outfit requirements.
  */
 public class FishingPrePostScheduleRequirements extends PrePostScheduleRequirements {
-    
+    final MinnowsConfig minnowsConfig;
+    final EelFishingConfig eelFishingConfig;
+    final BarbarianFishingConfig barbarianFishingConfig;
+    final AerialFishingConfig aerialFishingConfig;
     public FishingPrePostScheduleRequirements(MinnowsConfig config) {
         super("Fishing", "Fishing", false);
         // TODO Set location pre schedule requirements - near fishing spots of minnows
-
-        // Set location requirements - near fishing spots or bank      make a enums for the fish, add location requirements for each fish type
-        this.register(new LocationRequirement(BankLocation.GRAND_EXCHANGE, true,ScheduleContext.POST_SCHEDULE, Priority.OPTIONAL));
-        
+        this.minnowsConfig = config;
+        this.eelFishingConfig = null;
+        this.barbarianFishingConfig = null;
+        this.aerialFishingConfig = null;
+       
         // TODO based on the config, register specific fishing rods, nets, or harpoons
         initializeRequirements();
     }
     public FishingPrePostScheduleRequirements(EelFishingConfig config) {
         super("Fishing", "Fishing", false);
         //  TODO set location pre schedule requirements - near fishing spots  of eals 
-        
-        this.register(new LocationRequirement(BankLocation.GRAND_EXCHANGE, true,ScheduleContext.POST_SCHEDULE, Priority.OPTIONAL));
+        this.eelFishingConfig = config;
+        this.minnowsConfig = null;
+        this.barbarianFishingConfig = null;
+        this.aerialFishingConfig = null;    
         // TODO based on the config, register specific fishing rods, nets, or harpoons
         initializeRequirements();
         
     }
     public FishingPrePostScheduleRequirements(BarbarianFishingConfig config) {
+        
         super("Fishing", "Fishing", false);
         // TODO Set location pre schedule requirements - near fishing spots of barbarian fishing
+        this.barbarianFishingConfig = config;
+        this.minnowsConfig = null;
+        this.eelFishingConfig = null;
+        this.aerialFishingConfig = null;
 
-        // Set location requirements - near fishing spots or bank        
-        this.register(new LocationRequirement(BankLocation.GRAND_EXCHANGE, true,ScheduleContext.POST_SCHEDULE, Priority.OPTIONAL));
         // TODO based on the config, register specific fishing rods, nets, or harpoons
         initializeRequirements();
     }
     public FishingPrePostScheduleRequirements(AerialFishingConfig config) {
         super("Fishing", "Fishing", false);
         // Set location pre schedule requirements - near fishing spots of aerial fishing
-
-        // Set location requirements - near fishing spots or bank        
-        this.register(new LocationRequirement(BankLocation.GRAND_EXCHANGE, true,ScheduleContext.POST_SCHEDULE, Priority.OPTIONAL));
-        // TODO based on the config, register specific fishing rods, nets, or harpoons
+        this.aerialFishingConfig = config;
+        this.minnowsConfig = null;
+        this.eelFishingConfig = null;
+        this.barbarianFishingConfig = null;
         initializeRequirements();
     }
 
     
     @Override
-    protected void initializeRequirements() {
+    protected boolean initializeRequirements() {
+        if (minnowsConfig == null && eelFishingConfig == null && barbarianFishingConfig == null && aerialFishingConfig == null) {            
+            return false; // Ensure at least one config is initialized before proceeding
+        }
+        this.getRegistry().clear();
+        //set location post-schedule requirements - go to grand exchange after mining
+        this.register(new LocationRequirement(BankLocation.GRAND_EXCHANGE,true, ScheduleContext.POST_SCHEDULE, Priority.MANDATORY));
         // Register complete outfit and equipment collections using ItemRequirementCollection
         
         // Angler outfit - provides XP bonus for fishing (including Spirit Angler variants)
         // Example: Skip boots if using graceful boots for run energy
         // TODO: Update ItemRequirementCollection.registerAnglerOutfit to accept ScheduleContext
         ItemRequirementCollection.registerAnglerOutfit(this, Priority.RECOMMENDED, 10,ScheduleContext.PRE_SCHEDULE,false, false, false, true);       
+        return true; // Indicate successful initialization
     }
 }

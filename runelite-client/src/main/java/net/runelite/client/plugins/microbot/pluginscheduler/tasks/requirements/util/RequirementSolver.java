@@ -3,8 +3,10 @@ package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementMode;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.registry.RequirementRegistry;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.ShopRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.SpellbookRequirement;
@@ -13,11 +15,17 @@ import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.r
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.logical.LogicalRequirement;
 import org.slf4j.event.Level;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Utility class for solving different types of requirements with common patterns.
  * Provides reusable fulfillment logic and error handling patterns.
+ * 
+ * This is the unified fulfillment system that handles both standard and external requirements
+ * using the same logic patterns and error handling.
  */
 @Slf4j
 public class RequirementSolver {
@@ -30,7 +38,7 @@ public class RequirementSolver {
      * @param context The schedule context (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      * @return true if all shop requirements were fulfilled successfully, false otherwise
      */
-    public static boolean fulfillShopRequirements(List<ShopRequirement> shopRequirements, ScheduleContext context) {
+    public static boolean fulfillShopRequirements(CompletableFuture<Boolean> scheduledFuture,List<ShopRequirement> shopRequirements, ScheduleContext context) {
         List<ShopRequirement> contextReqs = shopRequirements.stream()
             .filter(req -> req.getScheduleContext() == context || req.getScheduleContext() == ScheduleContext.BOTH)
             .collect(java.util.stream.Collectors.toList());
@@ -48,7 +56,7 @@ public class RequirementSolver {
             
             try {
                 log.info("Processing shop requirement {}/{}: {}", i + 1, contextReqs.size(), requirement.getName());
-                boolean requirementFulfilled = requirement.fulfillRequirement();
+                boolean requirementFulfilled = requirement.fulfillRequirement(scheduledFuture);
                 
                 if (requirementFulfilled) {
                     fulfilled++;
@@ -81,7 +89,7 @@ public class RequirementSolver {
      * @param context The schedule context (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      * @return true if all loot requirements were fulfilled successfully, false otherwise
      */
-    public static boolean fulfillLootRequirements(List<LogicalRequirement> lootLogical, ScheduleContext context) {
+    public static boolean fulfillLootRequirements(CompletableFuture<Boolean> scheduledFuture, List<LogicalRequirement> lootLogical, ScheduleContext context) {
         List<LogicalRequirement> contextReqs = LogicalRequirement.filterByContext(lootLogical, context);
             
         if (contextReqs.isEmpty()) {
@@ -89,7 +97,7 @@ public class RequirementSolver {
             return true;
         }
         
-        return LogicalRequirement.fulfillLogicalRequirements(contextReqs, "loot");
+        return LogicalRequirement.fulfillLogicalRequirements(scheduledFuture,contextReqs, "loot");
     }
     
     /**
@@ -100,7 +108,7 @@ public class RequirementSolver {
      * @param context The schedule context (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      * @return true if all location requirements were fulfilled successfully, false otherwise
      */
-    public static boolean fulfillLocationRequirements(List<LocationRequirement> locationReqs, ScheduleContext context) {
+    public static boolean fulfillLocationRequirements(CompletableFuture<Boolean> scheduledFuture, List<LocationRequirement> locationReqs, ScheduleContext context) {
         List<LocationRequirement> contextReqs = locationReqs.stream()
             .filter(req -> req.getScheduleContext() == context || req.getScheduleContext() == ScheduleContext.BOTH)
             .collect(java.util.stream.Collectors.toList());
@@ -115,10 +123,13 @@ public class RequirementSolver {
         
         for (int i = 0; i < contextReqs.size(); i++) {
             LocationRequirement requirement = contextReqs.get(i);
-            
+            if (scheduledFuture != null && scheduledFuture.isCancelled()) {
+                log.warn("Scheduled future is cancelled, skipping location requirement fulfillment: {}", requirement.getName());
+                return false; // Skip if scheduled future is cancelled
+            }
             try {
                 log.debug("Processing location requirement {}/{}: {}", i + 1, contextReqs.size(), requirement.getName());
-                boolean requirementFulfilled = requirement.fulfillRequirement();
+                boolean requirementFulfilled = requirement.fulfillRequirement(scheduledFuture);
                 
                 if (requirementFulfilled) {
                     fulfilled++;
@@ -151,7 +162,7 @@ public class RequirementSolver {
      * @param saveCurrentSpellbook Whether to save the current spellbook before switching
      * @return true if all spellbook requirements were fulfilled successfully, false otherwise
      */
-    public static boolean fulfillSpellbookRequirements(List<SpellbookRequirement> spellbookReqs, 
+    public static boolean fulfillSpellbookRequirements(CompletableFuture<Boolean> scheduledFuture, List<SpellbookRequirement> spellbookReqs, 
                                                      ScheduleContext context, 
                                                      boolean saveCurrentSpellbook) {
         List<SpellbookRequirement> contextReqs = spellbookReqs.stream()
@@ -178,7 +189,7 @@ public class RequirementSolver {
                     log.debug("Spellbook saving requested (handled by caller)");
                 }
                 
-                boolean requirementFulfilled = requirement.fulfillRequirement();
+                boolean requirementFulfilled = requirement.fulfillRequirement(scheduledFuture);
                 
                 if (requirementFulfilled) {
                     fulfilled++;
@@ -211,7 +222,8 @@ public class RequirementSolver {
      * @param context The schedule context (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      * @return true if all conditional requirements were fulfilled successfully, false otherwise
      */
-    public static boolean fulfillConditionalRequirements(List<ConditionalRequirement> conditionalReqs,
+    public static boolean fulfillConditionalRequirements(CompletableFuture<Boolean> scheduledFuture
+                                                        ,List<ConditionalRequirement> conditionalReqs,
                                                         List<OrderedRequirement> orderedReqs,
                                                         ScheduleContext context) {
         List<ConditionalRequirement> contextConditionalReqs = conditionalReqs.stream()
@@ -235,7 +247,7 @@ public class RequirementSolver {
         for (ConditionalRequirement requirement : contextConditionalReqs) {
             try {
                 log.debug("Processing conditional requirement {}/{}: {}", ++currentIndex, totalReqs, requirement.getName());
-                boolean fulfilled = requirement.fulfillRequirement();
+                boolean fulfilled = requirement.fulfillRequirement(scheduledFuture);
                 if (!fulfilled && requirement.getPriority() == Priority.MANDATORY) {
                     Microbot.log("Failed to fulfill mandatory conditional requirement: " + requirement.getName(), Level.ERROR);
                     success = false;
@@ -255,7 +267,7 @@ public class RequirementSolver {
         for (OrderedRequirement requirement : contextOrderedReqs) {
             try {
                 log.debug("Processing ordered requirement {}/{}: {}", ++currentIndex, totalReqs, requirement.getName());
-                boolean fulfilled = requirement.fulfillRequirement();
+                boolean fulfilled = requirement.fulfillRequirement(scheduledFuture);
                 if (!fulfilled && requirement.getPriority() == Priority.MANDATORY) {
                     Microbot.log("Failed to fulfill mandatory ordered requirement: " + requirement.getName(), Level.ERROR);
                     success = false;
@@ -284,7 +296,8 @@ public class RequirementSolver {
      * @param <T> The requirement type
      * @return true if all mandatory requirements were fulfilled successfully
      */
-    public static <T extends Requirement> boolean fulfillRequirements(List<T> requirements, 
+    public static <T extends Requirement> boolean fulfillRequirements( CompletableFuture<Boolean> scheduledFuture,
+                                                                        List<T> requirements, 
                                                                      String requirementTypeName,
                                                                      ScheduleContext context) {
         List<T> contextReqs = requirements.stream()
@@ -304,7 +317,7 @@ public class RequirementSolver {
             
             try {
                 log.debug("Processing {} requirement {}/{}: {}", requirementTypeName, i + 1, contextReqs.size(), requirement.getName());
-                boolean requirementFulfilled = requirement.fulfillRequirement();
+                boolean requirementFulfilled = requirement.fulfillRequirement(scheduledFuture);
                 
                 if (requirementFulfilled) {
                     fulfilled++;

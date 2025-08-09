@@ -7,7 +7,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.e
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.collection.LootRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.ShopRequirement;
@@ -70,22 +70,25 @@ public class RequirementRegistry {
         }
     }
     
-    // Central storage - this is the single source of truth
+    // Central storage - this is the single source of truth for standard requirements
     private final Map<RequirementKey, Requirement> requirements = new ConcurrentHashMap<>();
     
-    // Slot-based inventory requirements (index 0-27, or -1 for any slot, -2 only for equipment)
-    @Getter
-    private volatile Map<Integer, LinkedHashSet<LogicalRequirement>> inventorySlotRequirementsCache = new HashMap<>();
+    // Separate storage for externally added requirements to prevent mixing
+    private final Map<RequirementKey, Requirement> externalRequirements = new ConcurrentHashMap<>();
     
-    // Cached views for efficient access (rebuilt when requirements change)
-    @Getter
+    // Standard requirements cached views for efficient access (rebuilt when requirements change)
+    private volatile Map<Integer, LinkedHashSet<LogicalRequirement>> inventorySlotRequirementsCache = new HashMap<>();
     private volatile Map<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> equipmentItemsCache = new HashMap<>();
-    @Getter
     private volatile LinkedHashSet<LogicalRequirement> shopRequirementsCache = new LinkedHashSet<>();
-    @Getter
     private volatile LinkedHashSet<LogicalRequirement> lootRequirementsCache = new LinkedHashSet<>();
-    @Getter
     private volatile LinkedHashSet<LogicalRequirement> conditionalRequirementsCache = new LinkedHashSet<>();
+    
+    // External requirements cached views for efficient access (rebuilt when external requirements change)
+    private volatile Map<Integer, LinkedHashSet<LogicalRequirement>> externalInventorySlotRequirementsCache = new HashMap<>();
+    private volatile Map<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> externalEquipmentItemsCache = new HashMap<>();
+    private volatile LinkedHashSet<LogicalRequirement> externalShopRequirementsCache = new LinkedHashSet<>();
+    private volatile LinkedHashSet<LogicalRequirement> externalLootRequirementsCache = new LinkedHashSet<>();
+    private volatile LinkedHashSet<LogicalRequirement> externalConditionalRequirementsCache = new LinkedHashSet<>();
     
     // Single-instance requirements (enforced by registry)
     @Getter
@@ -98,6 +101,7 @@ public class RequirementRegistry {
     private volatile LocationRequirement postScheduleLocationRequirement = null;
     
     private volatile boolean cacheValid = false;
+    private volatile boolean externalCacheValid = false;
     
     /**
      * Registers a requirement in the registry.
@@ -154,6 +158,47 @@ public class RequirementRegistry {
             log.debug("Added new requirement: {}", requirement);
             return true;
         }
+    }
+    
+    /**
+     * Registers an externally added requirement in the registry.
+     * These requirements are tracked separately and fulfilled after all standard requirements.
+     * 
+     * @param requirement The externally added requirement to register
+     * @return true if the requirement was added (new), false if it replaced an existing one
+     */
+    public boolean registerExternal(Requirement requirement) {
+        if (requirement == null) {
+            log.warn("Attempted to register null external requirement");
+            return false;
+        }
+        
+        RequirementKey key = new RequirementKey(requirement);
+        
+        // Store directly in external requirements map
+        Requirement previous = externalRequirements.put(key, requirement);
+        invalidateExternalCache();
+        
+        if (previous != null) {
+            log.debug("Replaced external requirement: {} -> {}", previous.getDescription(), requirement.getDescription());
+            return false;
+        } else {
+            log.debug("Registered new external requirement: {}", requirement.getDescription());
+            return true;
+        }
+    }
+    
+    /**
+     * Gets all externally added requirements for a specific schedule context.
+     * These requirements should be fulfilled after all standard requirements.
+     * 
+     * @param context The schedule context to filter by
+     * @return List of externally added requirements for the given context
+     */
+    public List<Requirement> getExternalRequirements(ScheduleContext context) {
+        return externalRequirements.values().stream()
+            .filter(req -> req.getScheduleContext() == context || req.getScheduleContext() == ScheduleContext.BOTH)
+            .collect(Collectors.toList());
     }
     
     private boolean registerSpellbookRequirement(SpellbookRequirement requirement, RequirementKey key) {
@@ -310,6 +355,20 @@ public class RequirementRegistry {
     }
     
     /**
+     * Gets all standard (non-external) requirements of a specific type for a specific schedule context.
+     * This excludes externally added requirements to prevent double processing.
+     */
+    @SuppressWarnings("unchecked")
+    public <T extends Requirement> List<T> getStandardRequirements(Class<T> clazz, ScheduleContext context) {
+        return requirements.values().stream()
+                .filter(clazz::isInstance)
+                .filter(req -> req.hasScheduleContext() && 
+                        (req.getScheduleContext() == context || req.getScheduleContext() == ScheduleContext.BOTH))
+                .map(req -> (T) req)
+                .collect(Collectors.toList());
+    }
+    
+    /**
      * Gets all requirements in the registry.
      */
     public LinkedHashSet<Requirement> getAllRequirements() {
@@ -350,6 +409,13 @@ public class RequirementRegistry {
      */
     private void invalidateCache() {
         cacheValid = false;
+    }
+    
+    /**
+     * Invalidates external cached views, forcing them to be rebuilt on next access.
+     */
+    private void invalidateExternalCache() {
+        externalCacheValid = false;
     }
     
     /**
@@ -414,6 +480,7 @@ public class RequirementRegistry {
                     case SHOP:
                     case CONDITIONAL:
                     case LOOT:
+                    case CUSTOM:
                         // These types are not expected for ItemRequirement
                         log.warn("Unexpected requirement type for ItemRequirement: {}", itemReq.getRequirementType());
                         break;
@@ -496,6 +563,7 @@ public class RequirementRegistry {
                     case SHOP:
                     case CONDITIONAL:
                     case LOOT:
+                    case CUSTOM:
                         // These types are not expected for ItemRequirement
                         log.warn("Unexpected requirement type for ItemRequirement in logical: {}", item.getRequirementType());
                         break;
@@ -694,6 +762,30 @@ public class RequirementRegistry {
     }
     
     /**
+     * Gets standard (non-external) equipment logical requirements cache, rebuilding if necessary.
+     * This excludes externally added requirements to prevent double processing.
+     */
+    public Map<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> getStandardEquipmentLogicalRequirements() {
+        if (!cacheValid) {
+            rebuildCache();
+        }
+        
+        Map<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> standardEquipment = new HashMap<>();
+        for (Map.Entry<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> entry : equipmentItemsCache.entrySet()) {
+            LinkedHashSet<LogicalRequirement> standardSlotReqs = new LinkedHashSet<>();
+            for (LogicalRequirement logical : entry.getValue()) {
+                if (isStandardLogicalRequirement(logical)) {
+                    standardSlotReqs.add(logical);
+                }
+            }
+            if (!standardSlotReqs.isEmpty()) {
+                standardEquipment.put(entry.getKey(), standardSlotReqs);
+            }
+        }
+        return standardEquipment;
+    }
+    
+    /**
      * Gets equipment items cache, rebuilding if necessary.
      * @deprecated Use getEquipmentLogicalRequirements() instead
      */
@@ -723,6 +815,27 @@ public class RequirementRegistry {
             rebuildCache();
         }
         return inventorySlotRequirementsCache.getOrDefault(-1, new LinkedHashSet<>());
+    }
+    
+    /**
+     * Gets standard (non-external) inventory logical requirements cache, rebuilding if necessary.
+     * This excludes externally added requirements to prevent double processing.
+     * Returns requirements that can be placed in any inventory slot.
+     */
+    public LinkedHashSet<LogicalRequirement> getStandardInventoryLogicalRequirements() {
+        if (!cacheValid) {
+            rebuildCache();
+        }
+        
+        LinkedHashSet<LogicalRequirement> standardInventory = new LinkedHashSet<>();
+        LinkedHashSet<LogicalRequirement> allInventoryReqs = inventorySlotRequirementsCache.getOrDefault(-1, new LinkedHashSet<>());
+        
+        for (LogicalRequirement logical : allInventoryReqs) {
+            if (isStandardLogicalRequirement(logical)) {
+                standardInventory.add(logical);
+            }
+        }
+        return standardInventory;
     }
     
     /**
@@ -773,6 +886,46 @@ public class RequirementRegistry {
     }
     
     /**
+     * Gets standard (non-external) shop logical requirements cache, rebuilding if necessary.
+     * This excludes externally added requirements to prevent double processing.
+     */
+    public LinkedHashSet<LogicalRequirement> getStandardShopLogicalRequirements() {
+        if (!cacheValid) {
+            rebuildCache();
+        }
+        
+        LinkedHashSet<LogicalRequirement> standardShops = new LinkedHashSet<>();
+        for (LogicalRequirement logical : shopRequirementsCache) {
+            if (isStandardLogicalRequirement(logical)) {
+                standardShops.add(logical);
+            }
+        }
+        return standardShops;
+    }
+    
+    /**
+     * Checks if a logical requirement contains only standard (non-external) child requirements.
+     * 
+     * @param logical The logical requirement to check
+     * @return true if all child requirements are standard, false if any are external
+     */
+    private boolean isStandardLogicalRequirement(LogicalRequirement logical) {
+        for (Requirement child : logical.getChildRequirements()) {
+            RequirementKey childKey = new RequirementKey(child);
+            if (externalRequirements.containsKey(childKey)) {
+                return false; // Contains external requirement
+            }
+            // For nested logical requirements, check recursively
+            if (child instanceof LogicalRequirement) {
+                if (!isStandardLogicalRequirement((LogicalRequirement) child)) {
+                    return false;
+                }
+            }
+        }
+        return true; // All child requirements are standard
+    }
+    
+    /**
      * Gets shop requirements cache, rebuilding if necessary.
      * @deprecated Use getShopLogicalRequirements() instead
      */
@@ -793,6 +946,24 @@ public class RequirementRegistry {
             rebuildCache();
         }
         return lootRequirementsCache;
+    }
+    
+    /**
+     * Gets standard (non-external) loot logical requirements cache, rebuilding if necessary.
+     * This excludes externally added requirements to prevent double processing.
+     */
+    public LinkedHashSet<LogicalRequirement> getStandardLootLogicalRequirements() {
+        if (!cacheValid) {
+            rebuildCache();
+        }
+        
+        LinkedHashSet<LogicalRequirement> standardLoots = new LinkedHashSet<>();
+        for (LogicalRequirement logical : lootRequirementsCache) {
+            if (isStandardLogicalRequirement(logical)) {
+                standardLoots.add(logical);
+            }
+        }
+        return standardLoots;
     }
     
     /**
@@ -942,6 +1113,32 @@ public class RequirementRegistry {
             rebuildCache();
         }
         return new HashMap<>(inventorySlotRequirementsCache);
+    }
+    
+    /**
+     * Gets all standard (non-external) inventory slot requirements.
+     * This excludes externally added requirements to prevent double processing.
+     * 
+     * @return Map of slot to standard logical requirements
+     */
+    public Map<Integer, LinkedHashSet<LogicalRequirement>> getStandardAllInventorySlotRequirements() {
+        if (!cacheValid) {
+            rebuildCache();
+        }
+        
+        Map<Integer, LinkedHashSet<LogicalRequirement>> standardInventorySlots = new HashMap<>();
+        for (Map.Entry<Integer, LinkedHashSet<LogicalRequirement>> entry : inventorySlotRequirementsCache.entrySet()) {
+            LinkedHashSet<LogicalRequirement> standardSlotReqs = new LinkedHashSet<>();
+            for (LogicalRequirement logical : entry.getValue()) {
+                if (isStandardLogicalRequirement(logical)) {
+                    standardSlotReqs.add(logical);
+                }
+            }
+            if (!standardSlotReqs.isEmpty()) {
+                standardInventorySlots.put(entry.getKey(), standardSlotReqs);
+            }
+        }
+        return standardInventorySlots;
     }
     
     /**
@@ -1186,5 +1383,154 @@ public class RequirementRegistry {
         if (!cacheValid) {
             rebuildCache();
         }
+    }
+    
+    /**
+     * Ensures the external cache is valid, rebuilding if necessary.
+     */
+    private void ensureExternalCacheValid() {
+        if (!externalCacheValid) {
+            rebuildExternalCache();
+        }
+    }
+    
+    // ===============================
+    // GETTER METHODS FOR CACHES
+    // ===============================
+    
+    public Map<Integer, LinkedHashSet<LogicalRequirement>> getInventorySlotRequirementsCache() {
+        return inventorySlotRequirementsCache;
+    }
+    
+    public LinkedHashSet<LogicalRequirement> getShopRequirementsCache() {
+        return shopRequirementsCache;
+    }
+    
+    public LinkedHashSet<LogicalRequirement> getLootRequirementsCache() {
+        return lootRequirementsCache;
+    }
+    
+    public LinkedHashSet<LogicalRequirement> getConditionalRequirementsCache() {
+        return conditionalRequirementsCache;
+    }
+    
+    // ===============================
+    // EXTERNAL REQUIREMENTS METHODS
+    // ===============================
+    
+    /**
+     * Gets all external requirements of a specific type for a specific schedule context.
+     */
+    @SuppressWarnings("unchecked")
+    public <T extends Requirement> List<T> getExternalRequirements(Class<T> clazz, ScheduleContext context) {
+        return externalRequirements.values().stream()
+                .filter(clazz::isInstance)
+                .filter(req -> req.getScheduleContext() == context || req.getScheduleContext() == ScheduleContext.BOTH)
+                .map(req -> (T) req)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Gets external equipment logical requirements cache, rebuilding if necessary.
+     */
+    public Map<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> getExternalEquipmentLogicalRequirements() {
+        ensureExternalCacheValid();
+        return externalEquipmentItemsCache;
+    }
+    
+    /**
+     * Gets external inventory logical requirements cache, rebuilding if necessary.
+     */
+    public LinkedHashSet<LogicalRequirement> getExternalInventoryLogicalRequirements() {
+        ensureExternalCacheValid();
+        return externalInventorySlotRequirementsCache.getOrDefault(-1, new LinkedHashSet<>());
+    }
+    
+    /**
+     * Gets external shop logical requirements cache, rebuilding if necessary.
+     */
+    public LinkedHashSet<LogicalRequirement> getExternalShopLogicalRequirements() {
+        ensureExternalCacheValid();
+        return externalShopRequirementsCache;
+    }
+    
+    /**
+     * Gets external loot logical requirements cache, rebuilding if necessary.
+     */
+    public LinkedHashSet<LogicalRequirement> getExternalLootLogicalRequirements() {
+        ensureExternalCacheValid();
+        return externalLootRequirementsCache;
+    }
+    
+    /**
+     * Rebuilds external requirement caches from the external requirements storage.
+     */
+    private synchronized void rebuildExternalCache() {
+        if (externalCacheValid) {
+            return; // Another thread already rebuilt the cache
+        }
+        
+        log.debug("Rebuilding external requirement caches...");
+        
+        // New external caches
+        Map<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> newExternalEquipmentCache = new HashMap<>();
+        LinkedHashSet<LogicalRequirement> newExternalShopCache = new LinkedHashSet<>();
+        LinkedHashSet<LogicalRequirement> newExternalLootCache = new LinkedHashSet<>();
+        Map<Integer, LinkedHashSet<LogicalRequirement>> newExternalInventorySlotCache = new HashMap<>();
+        
+        // Group external requirements by type for logical grouping
+        Map<EquipmentInventorySlot, List<ItemRequirement>> equipmentBySlot = new HashMap<>();
+        List<ItemRequirement> inventoryItems = new ArrayList<>();
+        List<ItemRequirement> eitherItems = new ArrayList<>();
+        List<ShopRequirement> shopReqs = new ArrayList<>();
+        List<LootRequirement> lootReqs = new ArrayList<>();
+        
+        // Process external requirements
+        for (Requirement requirement : externalRequirements.values()) {
+            if (requirement instanceof LogicalRequirement) {
+                addLogicalRequirementToCache((LogicalRequirement) requirement, newExternalEquipmentCache, 
+                        newExternalShopCache, newExternalLootCache, newExternalInventorySlotCache);
+            } else if (requirement instanceof ItemRequirement) {
+                ItemRequirement item = (ItemRequirement) requirement;
+                switch (item.getRequirementType()) {
+                    case EQUIPMENT:
+                        if (item.getEquipmentSlot() != null) {
+                            equipmentBySlot.computeIfAbsent(item.getEquipmentSlot(), k -> new ArrayList<>()).add(item);
+                        }
+                        break;
+                    case INVENTORY:
+                        inventoryItems.add(item);
+                        break;
+                    case EITHER:
+                        eitherItems.add(item);
+                        break;
+                    default:
+                        // For non-item types, treat as inventory by default
+                        inventoryItems.add(item);
+                        break;
+                }
+            } else if (requirement instanceof ShopRequirement) {
+                shopReqs.add((ShopRequirement) requirement);
+            } else if (requirement instanceof LootRequirement) {
+                lootReqs.add((LootRequirement) requirement);
+            }
+        }
+        
+        // Create logical requirements from grouped external items
+        createLogicalRequirementsFromGroups(equipmentBySlot, inventoryItems, eitherItems, 
+                shopReqs, lootReqs, newExternalEquipmentCache, 
+                newExternalShopCache, newExternalLootCache, newExternalInventorySlotCache);
+        
+        // Sort all external caches
+        sortAllCaches(newExternalEquipmentCache, newExternalShopCache, newExternalLootCache, newExternalInventorySlotCache);
+        
+        // Atomically update external caches
+        externalEquipmentItemsCache = newExternalEquipmentCache;
+        externalShopRequirementsCache = newExternalShopCache;
+        externalLootRequirementsCache = newExternalLootCache;
+        externalInventorySlotRequirementsCache = newExternalInventorySlotCache;
+        
+        externalCacheValid = true;
+        log.debug("Rebuilt external requirement caches with {} external requirements", externalRequirements.size());
     }
 }

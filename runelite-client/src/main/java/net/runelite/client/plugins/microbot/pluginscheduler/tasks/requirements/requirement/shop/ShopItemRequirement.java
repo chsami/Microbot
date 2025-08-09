@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.models.ShopOperation;
 import net.runelite.client.plugins.microbot.util.grandexchange.models.TimeSeriesInterval;
 import net.runelite.client.plugins.microbot.util.shop.models.Rs2ShopItem;
 import net.runelite.client.plugins.microbot.util.shop.models.Rs2ShopType;

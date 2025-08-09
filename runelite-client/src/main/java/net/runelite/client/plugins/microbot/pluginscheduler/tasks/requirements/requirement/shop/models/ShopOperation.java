@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop;
+package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.models;
 
 /**
  * Enum defining the type of shop operation.

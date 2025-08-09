@@ -78,6 +78,20 @@ public class TaskExecutionState {
     @Getter
     private volatile int totalRequirementsInStep = 0; // Total requirements in current step
     
+    // Execution phase completion tracking - prevents multiple executions
+    @Getter
+    private volatile boolean hasPreTaskStarted = false;
+    @Getter
+    private volatile boolean hasPreTaskCompleted = false;
+    @Getter
+    private volatile boolean hasMainTaskStarted = false;
+    @Getter
+    private volatile boolean hasMainTaskCompleted = false;
+    @Getter
+    private volatile boolean hasPostTaskStarted = false;
+    @Getter
+    private volatile boolean hasPostTaskCompleted = false;
+    
     /**
      * Updates the current execution phase and resets step tracking
      */
@@ -90,6 +104,21 @@ public class TaskExecutionState {
         this.errorMessage = null;
         this.currentStepNumber = 0;
         this.totalSteps = 0;
+        
+        // Mark phase as started
+        switch (phase) {
+            case PRE_SCHEDULE:
+                this.hasPreTaskStarted = true;
+                break;
+            case MAIN_EXECUTION:
+                this.hasMainTaskStarted = true;
+                break;
+            case POST_SCHEDULE:
+                this.hasPostTaskStarted = true;
+                break;
+            default:
+                break;
+        }
         
         log.debug("Execution phase updated to: {}", phase.getDisplayName());
     }
@@ -104,6 +133,21 @@ public class TaskExecutionState {
         if (state == ExecutionState.ERROR || state == ExecutionState.FAILED) {
             this.hasError = true;
             this.errorMessage = details;
+        } else if (state == ExecutionState.COMPLETED) {
+            // Mark current phase as completed
+            switch (currentPhase) {
+                case PRE_SCHEDULE:
+                    this.hasPreTaskCompleted = true;
+                    break;
+                case MAIN_EXECUTION:
+                    this.hasMainTaskCompleted = true;
+                    break;
+                case POST_SCHEDULE:
+                    this.hasPostTaskCompleted = true;
+                    break;
+                default:
+                    break;
+            }
         }
         
         log.debug("Execution state updated to: {} - {}", state.getDisplayName(), details);
@@ -220,6 +264,26 @@ public class TaskExecutionState {
     }
     
     /**
+     * Resets all execution tracking to allow tasks to be run again.
+     * This clears the completion flags but keeps current state if still executing.
+     */
+    public synchronized void reset() {
+        this.hasPreTaskStarted = false;
+        this.hasPreTaskCompleted = false;
+        this.hasMainTaskStarted = false;
+        this.hasMainTaskCompleted = false;
+        this.hasPostTaskStarted = false;
+        this.hasPostTaskCompleted = false;
+        
+        // Only clear current state if we're not actively executing
+        if (currentPhase == ExecutionPhase.IDLE || hasError) {
+            clear();
+        }
+        
+        log.info("Task execution state reset - tasks can now be executed again");
+    }
+    
+    /**
      * Gets a concise status string for overlay display
      * @return A formatted status string, or null if idle
      */
@@ -299,5 +363,77 @@ public class TaskExecutionState {
             return 0;
         }
         return (int) ((double) currentStepNumber / totalSteps * 100);
+    }
+    
+    // Convenience methods for checking task completion and execution states
+    
+    /**
+     * Checks if pre-schedule tasks can be executed (not started or already completed)
+     */
+    public boolean canExecutePreTasks() {
+        return !hasPreTaskStarted || hasPreTaskCompleted;
+    }
+    
+    /**
+     * Checks if main task can be executed (pre-tasks completed, main not started or already completed)
+     */
+    public boolean canExecuteMainTask() {
+        return hasPreTaskCompleted && (!hasMainTaskStarted || hasMainTaskCompleted);
+    }
+    
+    /**
+     * Checks if post-schedule tasks can be executed (main task completed, post not started or already completed)
+     */
+    public boolean canExecutePostTasks() {
+        return hasMainTaskCompleted && (!hasPostTaskStarted || hasPostTaskCompleted);
+    }
+    
+    /**
+     * Checks if pre-schedule tasks are currently running
+     */
+    public boolean isPreTaskRunning() {
+        return hasPreTaskStarted && !hasPreTaskCompleted && currentPhase == ExecutionPhase.PRE_SCHEDULE;
+    }
+    
+    /**
+     * Checks if main task is currently running
+     */
+    public boolean isMainTaskRunning() {
+        return hasMainTaskStarted && !hasMainTaskCompleted && currentPhase == ExecutionPhase.MAIN_EXECUTION;
+    }
+    
+    /**
+     * Checks if post-schedule tasks are currently running
+     */
+    public boolean isPostTaskRunning() {
+        return hasPostTaskStarted && !hasPostTaskCompleted && currentPhase == ExecutionPhase.POST_SCHEDULE;
+    }
+    
+    /**
+     * Checks if pre-schedule tasks are completed
+     */
+    public boolean isPreTaskComplete() {
+        return hasPreTaskCompleted;
+    }
+    
+    /**
+     * Checks if main task is completed
+     */
+    public boolean isMainTaskComplete() {
+        return hasMainTaskCompleted;
+    }
+    
+    /**
+     * Checks if post-schedule tasks are completed
+     */
+    public boolean isPostTaskComplete() {
+        return hasPostTaskCompleted;
+    }
+    
+    /**
+     * Checks if all tasks (pre, main, post) are completed
+     */
+    public boolean areAllTasksComplete() {
+        return hasPreTaskCompleted && hasMainTaskCompleted && hasPostTaskCompleted;
     }
 }

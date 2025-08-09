@@ -17,7 +17,7 @@ import net.runelite.client.plugins.microbot.util.walker.TransportRouteAnalysis;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.CompletableFuture;
 
 import org.slf4j.event.Level;
 
@@ -302,7 +302,7 @@ public class SpellbookRequirement extends Requirement {
      * @return true if the requirement was successfully fulfilled, false otherwise
      */
     @Override
-    public boolean fulfillRequirement(ScheduledExecutorService executorService) {
+    public boolean fulfillRequirement(CompletableFuture<Boolean> scheduledFuture) {
         try {
             if (Microbot.getClient() == null || Microbot.getClient().isClientThread()) {
                 Microbot.log("fulfillRequirement Not running on the client thread.", Level.ERROR);

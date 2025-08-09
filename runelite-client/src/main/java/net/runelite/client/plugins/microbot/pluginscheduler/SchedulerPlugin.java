@@ -13,12 +13,10 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -58,8 +56,12 @@ import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugi
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryFinishedEvent;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryPreScheduleTaskFinishedEvent;
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry.StopReason;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.AbstractPrePostScheduleTasks;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.state.TaskExecutionState;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.state.TaskExecutionState.ExecutionPhase;
 import net.runelite.client.plugins.microbot.pluginscheduler.ui.SchedulerPanel;
 import net.runelite.client.plugins.microbot.pluginscheduler.ui.SchedulerWindow;
 import net.runelite.client.plugins.microbot.pluginscheduler.ui.Antiban.AntibanDialogWindow;
@@ -1119,8 +1121,31 @@ public class SchedulerPlugin extends Plugin {
         }
         Microbot.getClientThread().runOnClientThreadOptional(() -> {
             if (scheduledPlugin.isRunning()) {
-                log.info("\n\tPlugin started successfully: " + scheduledPlugin.getCleanName());    
-                setState(SchedulerState.RUNNING_PLUGIN);
+                log.info("\n\tPlugin started successfully: " + scheduledPlugin.getCleanName());
+                
+                // Check if plugin implements SchedulablePlugin and trigger pre-schedule tasks
+                Plugin plugin = scheduledPlugin.getPlugin();
+                if (plugin instanceof SchedulablePlugin) {
+                    log.info("Plugin '{}' implements SchedulablePlugin - triggering pre-schedule tasks", scheduledPlugin.getCleanName());
+                    
+                    // Trigger pre-schedule tasks after a short delay to ensure plugin is fully subscribed to EventBus
+                    Microbot.getClientThread().invokeLater(() -> {
+                        boolean triggered = scheduledPlugin.triggerPreScheduleTasks();
+                        if (triggered) {
+                            log.info("Pre-schedule tasks triggered successfully for plugin '{}'", scheduledPlugin.getCleanName());
+                        } else {
+                            log.info("No pre-schedule tasks to trigger for plugin '{}' - proceeding to running state", scheduledPlugin.getCleanName());
+                            setState(SchedulerState.RUNNING_PLUGIN);
+                        }
+                        return true;
+                    });
+                } else {
+                    // For non-SchedulablePlugin implementations, proceed directly to running state
+                    setState(SchedulerState.RUNNING_PLUGIN);
+                }
+                
+                // Check if the plugin has started executing pre-schedule tasks
+                monitorPrePostTaskState();
                 return true;
             }
             if (!Microbot.isLoggedIn()) {
@@ -1699,6 +1724,9 @@ public class SchedulerPlugin extends Plugin {
             return;
             //throw new IllegalStateException("No current plugin is running");                        
         }
+
+        // Monitor pre/post task state changes and update scheduler state accordingly
+        monitorPrePostTaskState();
 
         // Call the update hook if the plugin is a condition provider
         Plugin runningPlugin = currentPlugin.getPlugin();
@@ -2326,6 +2354,24 @@ public class SchedulerPlugin extends Plugin {
                             currentPlugin != null ? "Starting " + currentPlugin.getCleanName() : "Starting plugin");
                     break;
 
+                case EXECUTING_PRE_SCHEDULE_TASKS:
+                    String preTaskInfo = getPrePostTaskStateInfo();
+                    newState.setStateInformation(
+                            currentPlugin != null ? 
+                                "Executing pre-schedule tasks for " + currentPlugin.getCleanName() + 
+                                (preTaskInfo != null ? "\n" + preTaskInfo : "") :
+                                "Executing pre-schedule tasks");
+                    break;
+
+                case EXECUTING_POST_SCHEDULE_TASKS:
+                    String postTaskInfo = getPrePostTaskStateInfo();
+                    newState.setStateInformation(
+                            currentPlugin != null ? 
+                                "Executing post-schedule tasks for " + currentPlugin.getCleanName() + 
+                                (postTaskInfo != null ? "\n" + postTaskInfo : "") :
+                                "Executing post-schedule tasks");
+                    break;
+
                 case BREAK:
                     PluginScheduleEntry nextPlugin = getUpComingPlugin();                    
                     if (nextPlugin != null) {
@@ -2449,6 +2495,39 @@ public class SchedulerPlugin extends Plugin {
                 "Plugin reported completion but indicated an unsuccessful run:\n" + formattedReason;
                 
             currentPlugin.stop(event.isSuccess(), StopReason.PLUGIN_FINISHED, reasonMessage);
+        }
+    }
+
+    @Subscribe
+    public void onPluginScheduleEntryPreScheduleTaskFinishedEvent(PluginScheduleEntryPreScheduleTaskFinishedEvent event) {
+        if (currentPlugin != null && event.getPlugin() == currentPlugin.getPlugin()) {
+            log.info("Plugin '{}' startup completed: {} (Success: {})",
+                    currentPlugin.getCleanName(),
+                    event.getMessage(),
+                    event.isSuccess());
+            
+            if (event.isSuccess()) {
+                if (currentState == SchedulerState.STARTING_PLUGIN) {
+                    // Plugin startup successful - transition to running state
+                    setState(SchedulerState.RUNNING_PLUGIN);
+                    log.info("Plugin '{}' started successfully and is now running", currentPlugin.getCleanName());
+                }
+            } else {
+                // Plugin startup failed - stop the plugin and return to scheduling
+                log.error("Plugin '{}' startup failed: {}", currentPlugin.getCleanName(), event.getMessage());
+                
+                if (config.notificationsOn()) {
+                    notifier.notify(Notification.ON, 
+                        "Plugin '" + currentPlugin.getCleanName() + "' startup failed: " + event.getMessage());
+                }
+                
+                // Clean up and return to scheduling
+                currentPlugin.setLastStopReason("Startup failed: " + event.getMessage());
+                currentPlugin.setLastRunSuccessful(false);
+                currentPlugin.setLastStopReasonType(PluginScheduleEntry.StopReason.ERROR);
+                currentPlugin = null;
+                setState(SchedulerState.SCHEDULING);
+            }
         }
     }
 
@@ -3123,4 +3202,148 @@ public class SchedulerPlugin extends Plugin {
             return String.format("Next plugin estimated in ~%d days", days);
         }
     }    
+    
+    /**
+     * Gets the pre/post schedule tasks for the current plugin if available.
+     * 
+     * @return The AbstractPrePostScheduleTasks instance, or null if current plugin doesn't have tasks
+     */
+    public AbstractPrePostScheduleTasks getCurrentPluginPrePostTasks() {
+        if (currentPlugin == null) {
+            return null;
+        }
+        
+        Plugin plugin = currentPlugin.getPlugin();
+        if (plugin instanceof SchedulablePlugin) {
+            SchedulablePlugin schedulablePlugin = 
+                (SchedulablePlugin) plugin;
+            return schedulablePlugin.getPrePostScheduleTasks();
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Gets the task execution state for the current plugin's pre/post schedule tasks.
+     * 
+     * @return The TaskExecutionState, or null if no tasks are available
+     */
+    public TaskExecutionState getCurrentPluginTaskExecutionState() {
+        AbstractPrePostScheduleTasks tasks = getCurrentPluginPrePostTasks();
+        return tasks != null ? tasks.getExecutionState() : null;
+    }
+    
+    /**
+     * Checks if the current plugin has pre/post schedule tasks configured.
+     * 
+     * @return true if the current plugin has pre/post schedule tasks, false otherwise
+     */
+    public boolean currentPluginHasPrePostTasks() {
+        return getCurrentPluginPrePostTasks() != null;
+    }
+    
+    /**
+     * Checks if the current plugin's pre/post schedule tasks are currently executing.
+     * 
+     * @return true if tasks are executing, false otherwise
+     */
+    public boolean currentPluginTasksAreExecuting() {
+        TaskExecutionState state = getCurrentPluginTaskExecutionState();
+        return state != null && state.isExecuting();
+    }
+    
+    /**
+     * Gets the current execution phase of the current plugin's tasks.
+     * 
+     * @return The ExecutionPhase, or IDLE if no tasks are executing
+     */
+    public ExecutionPhase getCurrentPluginTaskPhase() {
+        TaskExecutionState state = getCurrentPluginTaskExecutionState();
+        return state != null ? state.getCurrentPhase() : ExecutionPhase.IDLE;
+    }
+    
+    /**
+     * Gets detailed information about the current pre/post task execution state.
+     * 
+     * @return A formatted string with current task state information, or null if no tasks are executing
+     */
+    private String getPrePostTaskStateInfo() {
+        TaskExecutionState state = getCurrentPluginTaskExecutionState();
+        if (state == null || state.getCurrentPhase() == ExecutionPhase.IDLE) {
+            return null;
+        }
+        
+        StringBuilder info = new StringBuilder();
+        info.append("State: ").append(state.getCurrentState().getDisplayName());
+        
+        if (state.getCurrentDetails() != null && !state.getCurrentDetails().isEmpty()) {
+            info.append("\nDetails: ").append(state.getCurrentDetails());
+        }
+        
+        if (state.getTotalSteps() > 0) {
+            info.append("\nProgress: ").append(state.getCurrentStepNumber()).append("/").append(state.getTotalSteps()).append(" steps");
+        }
+        
+        if (state.getCurrentRequirementName() != null && !state.getCurrentRequirementName().isEmpty()) {
+            info.append("\nCurrent: ").append(state.getCurrentRequirementName());
+        }
+        
+        return info.toString();
+    }
+    
+    /**
+     * Previous task execution phase for state change detection
+     */
+    private TaskExecutionState.ExecutionPhase previousTaskPhase = TaskExecutionState.ExecutionPhase.IDLE;
+    
+    /**
+     * Monitors pre/post task state changes and updates scheduler state accordingly.
+     * This method efficiently detects state transitions rather than continuously checking.
+     */
+    private void monitorPrePostTaskState() {
+        if (!currentPluginHasPrePostTasks()) {
+            // Reset previous state if no tasks are available
+            if (previousTaskPhase != TaskExecutionState.ExecutionPhase.IDLE) {
+                previousTaskPhase = TaskExecutionState.ExecutionPhase.IDLE;
+                // If we were in a task state but now have no tasks, ensure we're in proper running state
+                if (currentState == SchedulerState.EXECUTING_PRE_SCHEDULE_TASKS || 
+                    currentState == SchedulerState.EXECUTING_POST_SCHEDULE_TASKS) {
+                    setState(SchedulerState.RUNNING_PLUGIN);
+                }
+            }
+            return;
+        }
+        
+        TaskExecutionState.ExecutionPhase currentPhase = getCurrentPluginTaskPhase();
+        
+        // Only update state if there's been a phase change
+        if (currentPhase != previousTaskPhase) {
+            switch (currentPhase) {
+                case PRE_SCHEDULE:
+                    setState(SchedulerState.EXECUTING_PRE_SCHEDULE_TASKS);
+                    break;
+                case POST_SCHEDULE:
+                    setState(SchedulerState.EXECUTING_POST_SCHEDULE_TASKS);
+                    break;
+                case MAIN_EXECUTION:
+                    // Plugin is running but not in pre/post tasks
+                    if (currentState == SchedulerState.EXECUTING_PRE_SCHEDULE_TASKS || 
+                        currentState == SchedulerState.EXECUTING_POST_SCHEDULE_TASKS) {
+                        setState(SchedulerState.RUNNING_PLUGIN);
+                    }
+                    break;
+                case IDLE:
+                    // Tasks have finished - return to appropriate running state
+                    if (currentState == SchedulerState.EXECUTING_PRE_SCHEDULE_TASKS || 
+                        currentState == SchedulerState.EXECUTING_POST_SCHEDULE_TASKS) {
+                        setState(SchedulerState.RUNNING_PLUGIN);
+                    }
+                    break;
+            }
+            
+            previousTaskPhase = currentPhase;
+        }
+    }
+    
+    
 }

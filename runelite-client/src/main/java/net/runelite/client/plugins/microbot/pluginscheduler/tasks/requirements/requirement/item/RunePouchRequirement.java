@@ -14,6 +14,7 @@ import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
 
@@ -137,12 +138,12 @@ public class RunePouchRequirement extends ItemRequirement {
      * @return true if successfully fulfilled, false otherwise
      */
     @Override
-    public boolean fulfillRequirement(ScheduledExecutorService executorService) {
+    public boolean fulfillRequirement(CompletableFuture<Boolean> scheduledFuture) {
         try {
             // Check if we already have any rune pouch
             if (!hasAnyRunePouch()) {
                 // Try to get a rune pouch using parent logic (will try to get the first type)
-                if (!super.fulfillRequirement(executorService)) {
+                if (!super.fulfillRequirement(scheduledFuture)) {
                     Microbot.log("Failed to obtain rune pouch");
                     return false;
                 }

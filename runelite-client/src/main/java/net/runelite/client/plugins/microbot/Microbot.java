@@ -303,19 +303,23 @@ public class Microbot {
 		}
 		if (Microbot.isHopping())
 		{
+			log.error("Already hopping world");
 			return true;
 		}
 		if (Microbot.cantHopWorld)
 		{
+			log.error("Can't hop world, already trying to hop");
 			return false;
 		}
 		boolean isHopping = Microbot.getClientThread().runOnClientThreadOptional(() -> {
 			if (Microbot.getClient().getLocalPlayer() != null && Microbot.getClient().getLocalPlayer().isInteracting())
 			{
+				log.error("Local player is interacting, cannot hop worlds");
 				return false;
 			}
 			if (quickHopTargetWorld != null || Microbot.getClient().getGameState() != GameState.LOGGED_IN)
 			{
+				log.error("Quick hop target world is not null or game state is not logged in");
 				return false;
 			}
 			if (Microbot.getClient().getWorld() == worldNumber)
@@ -344,14 +348,19 @@ public class Microbot {
 			Microbot.getClient().hopToWorld(rsWorld);
 			quickHopTargetWorld = null;
 			sleep(600);
-			sleepUntil(() -> Microbot.isHopping() || Rs2Widget.getWidget(193, 0) != null, 2000);
+			sleepUntil(() -> Microbot.isHopping() || Rs2Widget.getWidget(193, 0) != null, 2000);			
 			return Microbot.isHopping();
 		}).orElse(false);
 		if (!isHopping && Rs2Widget.getWidget(193, 0) != null)
 		{
+			
 			List<Widget> areYouSureToSwitchWorldWidget = Arrays.stream(Rs2Widget.getWidget(193, 0).getDynamicChildren()).collect(Collectors.toList());
 			Widget switchWorldWidget = sleepUntilNotNull(() -> Rs2Widget.findWidget("Switch world", areYouSureToSwitchWorldWidget, true), 2000);
 			return Rs2Widget.clickWidget(switchWorldWidget);
+		}
+		if (!isHopping)
+		{
+			log.error("Failed to hop to world {}", worldNumber);						
 		}
 		return false;
 	}

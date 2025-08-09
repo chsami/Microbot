@@ -1,21 +1,28 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.tasks;
 
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.pluginscheduler.SchedulerPlugin;
 import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LockCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.PrePostScheduleRequirements;
-
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.state.TaskExecutionState;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
+import java.awt.event.KeyEvent;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.input.KeyListener;
+import net.runelite.client.input.KeyManager;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 /**
  * Abstract base class for managing pre and post schedule tasks for plugins operating under scheduler control.
@@ -27,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
  *   <li>Thread-safe shutdown procedures</li>
  *   <li>Common error handling patterns</li>
  *   <li>AutoCloseable implementation for resource cleanup</li>
+ *   <li>Emergency cancel hotkey (Ctrl+C) for aborting all tasks</li>
  * </ul>
  * <p>
  * Concrete implementations must provide:
@@ -40,7 +48,7 @@ import lombok.extern.slf4j.Slf4j;
  * @since 1.0.0
  */
 @Slf4j
-public abstract class AbstractPrePostScheduleTasks implements AutoCloseable {
+public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, KeyListener {
     
     // TODO: Consider adding configuration for default timeout values
     // TODO: Add metrics collection for task execution times and success rates
@@ -54,6 +62,9 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable {
     private ScheduledExecutorService preExecutorService;
     private CompletableFuture<Boolean> preScheduledFuture;
     private CompletableFuture<Boolean> postScheduledFuture;
+    
+    // Emergency cancel hotkey support (injected via plugin)
+    private KeyManager keyManager;
     
     // Centralized state tracking
     @Getter
@@ -70,6 +81,27 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable {
     }
     
     /**
+     * Initializes the emergency cancel hotkey functionality.
+     * This method should be called after the plugin's KeyManager is available.
+     * 
+     * @param keyManager The KeyManager instance from the plugin
+     */
+    public final void initializeEmergencyCancel(KeyManager keyManager) {
+        this.keyManager = keyManager;
+        
+        // Register emergency cancel hotkey if KeyManager is available
+        try {
+            if (keyManager != null) {
+                keyManager.registerKeyListener(this);
+                log.debug("Registered emergency cancel hotkey (Ctrl+C) for plugin: {}", plugin.getClass().getSimpleName());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to register emergency cancel hotkey for plugin {}: {}", 
+                    plugin.getClass().getSimpleName(), e.getMessage());
+        }
+    }
+    
+    /**
      * Executes pre-schedule preparation tasks on a separate thread.
      * This method runs preparation tasks asynchronously and calls the provided callback when complete.
      * 
@@ -78,23 +110,24 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable {
      * @param timeUnit The time unit for the timeout
      */
     public final void executePreScheduleTasks(Runnable callback, LockCondition lockCondition, int timeout, TimeUnit timeUnit) {
-        if (postScheduledFuture != null && !postScheduledFuture.isDone()) {
-            log.warn("Post-schedule task is still running, cannot execute pre-schedule tasks yet");
-            return; // Cannot run pre-schedule tasks while post-schedule is still running
-        }
-        if (!isScheduleMode()) {
-            log.info("Plugin {} is not in schedule mode, skipping pre-schedule tasks", plugin.getClass().getSimpleName());
-            // Not in schedule mode, execute callback immediately
-            if (callback != null) {
-                callback.run();
-            }
+        // Check state before execution
+        if (!executionState.canExecutePreTasks()) {
+            log.warn("Pre-schedule tasks cannot be executed - already started and not completed. Use reset() to allow re-execution.");
             return;
         }
         
+        if (postScheduledFuture != null && !postScheduledFuture.isDone()) {
+            log.warn("Post-schedule task is still running, cannot execute pre-schedule tasks yet");
+            return; // Cannot run pre-schedule tasks while post-schedule is still running
+        }              
         if (preScheduledFuture != null && !preScheduledFuture.isDone()) {
             log.warn("Pre-schedule task already running, skipping duplicate execution");
             return; // Pre-schedule task already running, skip
         }
+        
+        // Update state to indicate pre-schedule tasks are starting
+        executionState.updatePhase(TaskExecutionState.ExecutionPhase.PRE_SCHEDULE);
+        
         // Initialize executor service for pre-actions
         if (preExecutorService == null || preExecutorService.isShutdown()) {
             preExecutorService = Executors.newScheduledThreadPool(2, r -> {
@@ -114,17 +147,20 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable {
                 
                 if (success) {
                     log.info("\n\tPre-schedule preparation completed successfully - executing callback");
+                    executionState.updateState(TaskExecutionState.ExecutionState.COMPLETED, "Pre-schedule tasks completed successfully");
                     if (callback != null) {
                         callback.run();
                     }
                 } else {
                     log.warn("\n\tPre-schedule preparation failed - stopping plugin");
+                    executionState.updateState(TaskExecutionState.ExecutionState.FAILED, "Pre-schedule preparation failed");
                     plugin.reportFinished("Pre-schedule preparation failed", false);
                 }
                 
                 return success;
             } catch (Exception e) {
                 log.error("Error during pre-schedule preparation: {}", e.getMessage(), e);
+                executionState.updateState(TaskExecutionState.ExecutionState.ERROR, "Pre-schedule preparation error: " + e.getMessage());
                 plugin.reportFinished("Pre-schedule preparation error: " + e.getMessage(), false);
                 return false;
             }
@@ -135,12 +171,10 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable {
             preScheduledFuture.orTimeout(timeout, timeUnit)
                 .whenComplete((result, throwable) -> {
                     handlePreTaskCompletion(result, throwable);
-                    shutdownExecutorService(preExecutorService, "pre-schedule");
                 });
         } else {
             preScheduledFuture.whenComplete((result, throwable) -> {
                 handlePreTaskCompletion(result, throwable);
-                shutdownExecutorService(preExecutorService, "pre-schedule");
             });
         }
     }
@@ -179,16 +213,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable {
         if( preScheduledFuture != null && !preScheduledFuture.isDone()) {
             log.warn("Pre-schedule task is still running, cannot execute post-schedule tasks yet");
             return; // Cannot run post-schedule tasks while pre-schedule is still running
-        }
-        if (!isScheduleMode()) {
-            // Not in schedule mode, execute callback immediately
-            if (callback != null) {
-                callback.run();
-            }
-            log.info("Plugin {} is not in schedule mode, skipping post-schedule tasks", plugin.getClass().getSimpleName());
-            return; // Not in schedule mode, no post-actions needed
-        }
-        
+        }               
         if (postScheduledFuture != null && !postScheduledFuture.isDone()) {
             log.warn("Post-schedule task already running, skipping duplicate execution");
             return;
@@ -418,7 +443,28 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable {
      * 
      * @return true if scheduleMode flag is set, false otherwise
      */    
-    protected boolean isScheduleMode() {
+    public boolean isScheduleMode() {
+
+        SchedulerPlugin schedulablePlugin =  (SchedulerPlugin) Microbot.getPlugin(SchedulerPlugin.class.getName());
+        
+        if (schedulablePlugin == null) {
+            log.info("SchedulerPlugin is not running, cannot  can not be in schedule mode");
+            return false; // SchedulerPlugin is not running, cannot determine schedule mode
+        }else{
+            PluginScheduleEntry currentPlugin =  schedulablePlugin.getCurrentPlugin();            
+            if (currentPlugin == null) {
+                log.info("No current plugin is running by the Scheduler Plugin, so it also can be the plugin is start in scheduler mode");
+                
+            }else{
+                if (currentPlugin.isRunning() && currentPlugin.getPlugin() != null && !currentPlugin.getPlugin().equals(this.plugin)) {
+                    log.info("Current plugin {} is running, but it is not the same as the pluginScheduleEntry {}, so it can not be in schedule mode", 
+                        currentPlugin.getPlugin().getClass().getSimpleName(),
+                        this.plugin.getClass().getSimpleName());
+                    return false; // Current plugin is running, but it's not the same as the pluginSchedule
+                    
+                }
+            }
+        }
         try {
             String configGroupName = getConfigGroupName();
             if (configGroupName == null || configGroupName.isEmpty()) {
@@ -463,6 +509,47 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable {
     protected abstract PrePostScheduleRequirements getPrePostScheduleRequirements();
     
     /**
+     * Public accessor for the pre/post schedule requirements.
+     * This allows external components (like UI panels) to access requirement information.
+     * 
+     * @return The PrePostScheduleRequirements instance, or null if not implemented
+     */
+    public final PrePostScheduleRequirements getRequirements() {
+        return getPrePostScheduleRequirements();
+    }
+    
+    /**
+     * Adds a custom requirement to this plugin's pre/post schedule requirements.
+     * Custom requirements are marked as CUSTOM type and are fulfilled after all standard requirements.
+     * 
+     * @param requirement The requirement to add
+     * @param scheduleContext The context in which this requirement should be fulfilled
+     * @return true if the requirement was successfully added, false otherwise
+     */
+    public boolean addCustomRequirement(Requirement requirement, 
+                                      ScheduleContext scheduleContext) {
+        PrePostScheduleRequirements requirements = getPrePostScheduleRequirements();
+        if (requirements == null) {
+            log.warn("Cannot add custom requirement: No pre/post schedule requirements defined for this plugin");
+            return false;
+        }
+        
+        // Mark this requirement as a custom requirement by creating a wrapper
+        // We'll modify the requirement to ensure it's recognized as custom
+        boolean success = requirements.addCustomRequirement(requirement, scheduleContext);
+        
+        if (success) {
+            log.info("Successfully added custom requirement: {} for context: {}", 
+                requirement.getDescription(), scheduleContext);
+        } else {
+            log.warn("Failed to add custom requirement: {} for context: {}", 
+                requirement.getDescription(), scheduleContext);
+        }
+        
+        return success;
+    }
+    
+    /**
      * Default implementation for fulfilling pre-schedule requirements.
      * This method attempts to fulfill all pre-schedule requirements including:
      * - Location requirements (travel to pre-schedule location)
@@ -486,7 +573,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable {
             log.info("Fulfilling pre-schedule requirements for {}", requirements.getActivityType());
             
             // Use the unified fulfillment method that handles all requirement types including conditional requirements
-            boolean fulfilled = requirements.fulfillPreScheduleRequirements(preExecutorService, true); // Pass executor service
+            boolean fulfilled = requirements.fulfillPreScheduleRequirements(preScheduledFuture, true); // Pass executor service
             
             if (!fulfilled) {
                 log.error("Failed to fulfill pre-schedule requirements");
@@ -526,7 +613,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable {
             log.info("Fulfilling post-schedule requirements for {}", requirements.getActivityType());
             
             // Use the unified fulfillment method that handles all requirement types including conditional requirements
-            boolean fulfilled = requirements.fulfillPostScheduleRequirements(postExecutorService, true); // Pass executor service
+            boolean fulfilled = requirements.fulfillPostScheduleRequirements(postScheduledFuture, true); // Pass executor service
             
             if (!fulfilled) {
                 log.error("Failed to fulfill all post-schedule requirements");
@@ -650,6 +737,17 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable {
      */
     @Override
     public void close() {
+        // Unregister emergency cancel hotkey
+        try {
+            if (keyManager != null) {
+                keyManager.unregisterKeyListener(this);
+                log.debug("Unregistered emergency cancel hotkey for plugin: {}", plugin.getClass().getSimpleName());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to unregister emergency cancel hotkey for plugin {}: {}", 
+                    plugin.getClass().getSimpleName(), e.getMessage());
+        }
+        
         // Cancel any running futures
         if (preScheduledFuture != null && !preScheduledFuture.isDone()) {
             preScheduledFuture.cancel(true);
@@ -660,6 +758,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable {
             postScheduledFuture.cancel(true);
             postScheduledFuture = null;
         }
+        executionState.reset();
         
         // Shutdown executor services
         shutdownExecutorService(preExecutorService, "pre-schedule");
@@ -669,6 +768,25 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable {
         postExecutorService = null;
         disableScheduleMode(); // Reset schedule mode
         log.info("Closed {} pre-post Schedule task task manager", getClass().getSimpleName());
+    }
+    public void cancelPreScheduleTasks() {
+        if (preScheduledFuture != null && !preScheduledFuture.isDone()) {
+            preScheduledFuture.cancel(true);
+            preScheduledFuture = null;
+            log.info("Cancelled pre-schedule tasks for plugin: {}", plugin.getClass().getSimpleName());
+        } else {
+            log.warn("No pre-schedule tasks to cancel for plugin: {}", plugin.getClass().getSimpleName());
+        }
+    }
+    
+    public void cancelPostScheduleTasks() {
+        if (postScheduledFuture != null && !postScheduledFuture.isDone()) {
+            postScheduledFuture.cancel(true);
+            postScheduledFuture = null;
+            log.info("Cancelled post-schedule tasks for plugin: {}", plugin.getClass().getSimpleName());
+        } else {
+            log.warn("No post-schedule tasks to cancel for plugin: {}", plugin.getClass().getSimpleName());
+        }
     }
     
     /**
@@ -773,6 +891,92 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable {
     }
     
     /**
+     * Resets the task execution state and cancels any running tasks.
+     * This allows pre/post schedule tasks to be executed again.
+     * 
+     * WARNING: This will forcibly cancel any currently running tasks.
+     */
+    public synchronized void reset() {
+        log.info("Resetting pre/post schedule tasks for plugin: {}", plugin.getClass().getSimpleName());
+        
+        // Cancel and cleanup running futures
+        if (preScheduledFuture != null && !preScheduledFuture.isDone()) {
+            log.info("Cancelling running pre-schedule task");
+            preScheduledFuture.cancel(true);
+            preScheduledFuture = null;
+        }
+        
+        if (postScheduledFuture != null && !postScheduledFuture.isDone()) {
+            log.info("Cancelling running post-schedule task");
+            postScheduledFuture.cancel(true);
+            postScheduledFuture = null;
+        }
+        
+        // Shutdown executor services
+        shutdownExecutorService(preExecutorService, "Pre-schedule");
+        shutdownExecutorService(postExecutorService, "Post-schedule");
+        
+        preExecutorService = null;
+        postExecutorService = null;
+        
+        // Reset execution state
+        executionState.reset();
+        
+        log.info("Reset completed - pre/post schedule tasks can now be executed again");
+    }
+    
+    // Convenience methods for checking task states
+    
+    /**
+     * Checks if pre-schedule tasks are completed
+     */
+    public boolean isPreTaskComplete() {
+        return executionState.isPreTaskComplete();
+    }
+    
+    /**
+     * Checks if main task is running
+     */
+    public boolean isMainTaskRunning() {
+        return executionState.isMainTaskRunning();
+    }
+    
+    /**
+     * Checks if main task is completed  
+     */
+    public boolean isMainTaskComplete() {
+        return executionState.isMainTaskComplete();
+    }
+    
+    /**
+     * Checks if post-schedule tasks are completed
+     */
+    public boolean isPostTaskComplete() {
+        return executionState.isPostTaskComplete();
+    }
+    
+    /**
+     * Checks if pre-schedule tasks are currently running
+     */
+    public boolean isPreTaskRunning() {
+        return executionState.isPreTaskRunning();
+    }
+    
+    /**
+     * Checks if post-schedule tasks are currently running
+     */
+    public boolean isPostTaskRunning() {
+        return executionState.isPostTaskRunning();
+    }
+    
+    /**
+     * Gets a detailed status string for debugging
+     */
+    public String getDetailedExecutionStatus() {
+        return executionState.getDetailedStatus();
+    }
+    
+    /**
      * Schedules clearing of the task state after a delay
      * @param delayMs Delay in milliseconds before clearing the state
      */
@@ -785,5 +989,99 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable {
                 Thread.currentThread().interrupt();
             }
         }).start();
+    }
+    
+    /**
+     * Emergency cancellation method for aborting all tasks and operations.
+     * This method will:
+     * 1. Cancel all pre and post schedule futures
+     * 2. Shutdown all executor services
+     * 3. Clear Rs2Walker target
+     * 4. Reset task execution state
+     * 
+     * This is used by the Ctrl+C hotkey for emergency stops.
+     */
+    public final void emergencyCancel() {
+        try {
+            log.warn("\n=== EMERGENCY CANCELLATION TRIGGERED ===");
+            log.warn("Plugin: {}", plugin.getClass().getSimpleName());
+            
+            // Cancel all futures immediately
+            if (preScheduledFuture != null && !preScheduledFuture.isDone()) {
+                log.info("  • Cancelling pre-schedule future");
+                preScheduledFuture.cancel(true);
+                preScheduledFuture = null;
+            }
+            
+            if (postScheduledFuture != null && !postScheduledFuture.isDone()) {
+                log.info("  • Cancelling post-schedule future");
+                postScheduledFuture.cancel(true);
+                postScheduledFuture = null;
+            }
+            
+            // Shutdown executor services immediately
+            if (preExecutorService != null && !preExecutorService.isShutdown()) {
+                log.info("  • Shutting down pre-schedule executor service");
+                preExecutorService.shutdownNow();
+                preExecutorService = null;
+            }
+            
+            if (postExecutorService != null && !postExecutorService.isShutdown()) {
+                log.info("  • Shutting down post-schedule executor service");
+                postExecutorService.shutdownNow();
+                postExecutorService = null;
+            }
+            
+            // Clear Rs2Walker target to stop any walking operations
+            try {
+                log.info("  • Clearing Rs2Walker target");
+                Rs2Walker.setTarget(null);
+            } catch (Exception e) {
+                log.warn("Failed to clear Rs2Walker target: {}", e.getMessage());
+            }
+            
+            // Reset task execution state
+            log.info("  • Resetting task execution state");
+            executionState.reset();
+            
+            // Report plugin finished if it's the main plugin
+            try {
+                plugin.reportFinished("Emergency cancellation triggered via Ctrl+C", false);
+            } catch (Exception e) {
+                log.warn("Failed to report plugin finished: {}", e.getMessage());
+            }
+            
+            log.warn("=== EMERGENCY CANCELLATION COMPLETED ===\n");
+            
+        } catch (Exception e) {
+            log.error("Error during emergency cancellation: {}", e.getMessage(), e);
+        }
+    }
+    
+    // ==================== KeyListener Interface Methods ====================
+    
+    @Override
+    public void keyTyped(KeyEvent e) {
+        // Not needed for hotkey detection
+    }
+    
+    @Override
+    public void keyPressed(KeyEvent e) {
+        // Check for Ctrl+C hotkey combination
+        if (e.isControlDown() && e.getKeyCode() == KeyEvent.VK_C) {
+            log.info("Emergency cancel hotkey (Ctrl+C) detected for plugin: {}", plugin.getClass().getSimpleName());
+            
+            // Only trigger if we have running tasks
+            if (isRunning()) {
+                emergencyCancel();
+            } else {
+                log.info("No tasks currently running - emergency cancel not needed");
+            }
+        }
+    }
+    
+    @Override
+    public void keyReleased(KeyEvent e) {
+        // Not needed for hotkey detection
     }
 }

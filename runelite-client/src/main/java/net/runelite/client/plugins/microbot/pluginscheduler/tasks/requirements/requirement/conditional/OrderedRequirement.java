@@ -10,6 +10,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.r
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 
 /**
@@ -66,10 +67,10 @@ public class OrderedRequirement extends Requirement {
          * @param executorService The ScheduledExecutorService on which fulfillment is running
          * @return true if successfully fulfilled, false otherwise
          */
-        public boolean execute(ScheduledExecutorService executorService) {
+        public boolean execute(CompletableFuture<Boolean> scheduledFuture) {
             try {
                 log.debug("Executing ordered step: {}", description);
-                return requirement.fulfillRequirement(executorService);
+                return requirement.fulfillRequirement(scheduledFuture);
             } catch (Exception e) {
                 log.error("Error executing ordered step '{}': {}", description, e.getMessage());
                 return !isMandatory; // Optional steps return true on error, mandatory steps return false
@@ -178,7 +179,7 @@ public class OrderedRequirement extends Requirement {
     }
     
     @Override
-    public boolean fulfillRequirement(ScheduledExecutorService executorService) {
+    public boolean fulfillRequirement(CompletableFuture<Boolean> scheduledFuture) {
         log.debug("Starting ordered requirement fulfillment: {}", getName());
         
         // Determine starting point
@@ -199,11 +200,15 @@ public class OrderedRequirement extends Requirement {
         
         // Execute steps in strict order starting from determined index
         for (int i = startIndex; i < steps.size(); i++) {
+            if( scheduledFuture!= null && scheduledFuture.isCancelled() || scheduledFuture.isDone()) {
+                log.warn("Ordered requirement execution cancelled or completed prematurely: {}", getName());
+                return false; // Stop if the scheduled future is cancelled or done
+            }
             currentStepIndex = i;
             OrderedStep step = steps.get(i);
             
             log.debug("Executing ordered step {}: {}", i, step.getDescription());
-            boolean success = step.execute(executorService);
+            boolean success = step.execute(scheduledFuture);
             
             if (success) {
                 lastCompletedStep = i;

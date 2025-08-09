@@ -51,6 +51,8 @@ public class Rs2ShopItem extends Rs2ShopSource{
                 percentageBoughtAt,
                 changePercent,
                 quests,
+                Map.of(), // varbitReq is not used in Rs2ShopItem
+                Map.of(), // varPlayerReq is not used in Rs2ShopItem
                 members,
                 notes
                 );        

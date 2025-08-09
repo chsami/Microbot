@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 
 import org.slf4j.event.Level;
@@ -257,8 +258,9 @@ public class LootRequirement extends Requirement {
      * @param clusterProximity The maximum distance between spawn locations to be considered part of the same cluster
      * @return true if the required amount was successfully collected, false otherwise
      */
-    private boolean collectLootItems() {
+    private boolean collectLootItems(CompletableFuture<Boolean> scheduledFuture) {
 
+       
         if (isFulfilled()) {            
             return true;
         }
@@ -285,7 +287,7 @@ public class LootRequirement extends Requirement {
             }
             
             // Collect items from the cluster
-            return collectFromCluster(bestCluster);
+            return collectFromCluster(scheduledFuture, bestCluster);
             
         } catch (Exception e) {
             Microbot.logStackTrace("LootItemRequirement.collectLootItems", e);
@@ -380,13 +382,16 @@ public class LootRequirement extends Requirement {
     /**
      * Collects items from the cluster with proper banking and respawn handling.
      */
-    private boolean collectFromCluster(SpawnCluster cluster) {
+    private boolean collectFromCluster(CompletableFuture<Boolean> scheduledFuture,SpawnCluster cluster) {
         long startTime = System.currentTimeMillis();              
         long lastItemFoundTime = System.currentTimeMillis();
                 
         while (!isFulfilled() && 
                (System.currentTimeMillis() - startTime) < timeout.toMillis()) {            
-          
+            if (scheduledFuture != null && scheduledFuture.isCancelled() || scheduledFuture.isDone()) {
+                Microbot.log("Loot collection cancelled or completed prematurely: " + getName());
+                return false; // Stop if the scheduled future is cancelled or done
+            }
             // Check inventory space and bank if needed
             if (Rs2Inventory.isFull() && !Rs2Inventory.contains(getItemIds().get(0))) {
                 if (!handleBanking(cluster.center)) {
@@ -535,7 +540,7 @@ public class LootRequirement extends Requirement {
      * @return true if the requirement was successfully fulfilled, false otherwise
      */
     @Override
-    public boolean fulfillRequirement(ScheduledExecutorService executorService) {
+    public boolean fulfillRequirement(CompletableFuture<Boolean> scheduledFuture) {
         if (Microbot.getClient().isClientThread()) {
             Microbot.log("Please run fulfillRequirement() on a non-client thread.", Level.ERROR);
             return false;
@@ -547,7 +552,7 @@ public class LootRequirement extends Requirement {
             }
                        
             // Attempt to collect the required items
-            boolean success = collectLootItems();
+            boolean success = collectLootItems(scheduledFuture);
             
             if (!success && isMandatory()) {
                 Microbot.log("MANDATORY loot requirement failed: " + getName());

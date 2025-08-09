@@ -6,6 +6,7 @@ import lombok.EqualsAndHashCode;
 import net.runelite.api.Constants;
 import net.runelite.api.GameState;
 import net.runelite.api.GrandExchangeOffer;
+import net.runelite.api.GrandExchangeOfferState;
 import net.runelite.api.NPC;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
@@ -15,6 +16,10 @@ import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.e
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.models.CancelledOfferState;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.models.MultiItemConfig;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.models.ShopOperation;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.models.WorldHoppingConfig;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
@@ -33,6 +38,7 @@ import net.runelite.client.plugins.microbot.util.shop.models.Rs2ShopType;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -56,6 +62,9 @@ public class ShopRequirement extends Requirement {
     
     // Pattern to detect charged items with numbers in parentheses, e.g., "Amulet of glory(6)"
     protected static final Pattern CHARGED_ITEM_PATTERN = Pattern.compile(".*\\((\\d+)\\)$");
+    
+    // Track cancelled offers for recovery
+    private final List<CancelledOfferState> cancelledOffers = new ArrayList<>();
     
     /**
      * Map of shop items to their individual requirements and settings.
@@ -100,7 +109,7 @@ public class ShopRequirement extends Requirement {
     private boolean enableBanking = true;
     
     @Setter
-    private int timeout = 60000; // Default timeout for shop operations
+    private int timeout = 120000; // Default timeout for shop operations
     
     /**
      * Configuration for world hopping behavior with exponential backoff and retry limits.
@@ -278,71 +287,6 @@ public class ShopRequirement extends Requirement {
         return shopItemRequirements.values().stream()
                 .allMatch(ShopItemRequirement::isCompleted);
     }
-   
-    
-    /**
-     * Enhanced shopping method with BanksShopper patterns.
-     * Includes world hopping, stock tracking, quantity management, and banking.
-     * Now properly distinguishes between Grand Exchange and regular shop operations.
-     * 
-     * @return true if the purchase was successful, false otherwise
-     */
-    private boolean buyFromShop() {
-        return buyFromShop("Purchasing " + getName() + " from " + primaryShopItem.getShopNpcName());
-    }
-    
-    /**
-     * Enhanced shopping method with custom status message.
-     * Implements BanksShopper patterns for optimal shopping experience.
-     * Handles both Grand Exchange and regular shop operations appropriately.
-     * 
-     * @param customBuyMessage Custom message to display during purchase
-     * @return true if the purchase was successful, false otherwise
-     */
-    private boolean buyFromShop(String customBuyMessage) {
-        if (primaryShopItem == null || shopItemRequirements.isEmpty() || true) {
-            Microbot.log("No shop source specified for " + getName());
-            return false;
-        }
-        
-        try {
-            Microbot.status = customBuyMessage;
-            
-            // Check if we already have enough of all items
-            if (isAllItemsCompleted()) {
-                Microbot.status = "Already have all required items";
-                return true;
-            }
-            
-            // Handle Grand Exchange differently from regular shops
-            if (primaryShopItem.getShopType() == Rs2ShopType.GRAND_EXCHANGE) {
-                return buyFromGrandExchange();
-            } else {
-                return buyFromRegularShop();
-            }
-            
-        } catch (Exception e) {
-            Microbot.logStackTrace("ShopRequirement.buyFromShop", e);
-            return false;
-        }
-    }
-    
-    /**
-     * Gets the primary item ID for legacy compatibility.
-     */
-    private int getPrimaryItemId() {
-        return primaryShopItem.getItemId();
-    }
-    
-    /**
-     * Checks if we have sufficient inventory or bank items for a specific shop item requirement.
-     */
-    private boolean hasSufficientItems(ShopItemRequirement itemReq) {
-        int currentCount = Rs2Inventory.itemQuantity(itemReq.getShopItem().getItemId()) + 
-                          Rs2Bank.count(itemReq.getShopItem().getItemId());
-        return currentCount >= itemReq.getAmount();
-    }
-    
     /**
      * Collects all completed Grand Exchange offers and updates item requirements accordingly.
      * This method handles offers from previous sessions and cancelled offers with partial fills.
@@ -413,7 +357,7 @@ public class ShopRequirement extends Requirement {
      * 
      * @return true if the purchase was successful, false otherwise
      */
-    private boolean buyFromGrandExchange() {
+    private boolean buyFromGrandExchange(CompletableFuture<Boolean> scheduledFuture) {
         try {
             Microbot.status = "Buying " + getName() + " from Grand Exchange";
             WorldArea locationArea = primaryShopItem.getLocationArea();
@@ -434,12 +378,11 @@ public class ShopRequirement extends Requirement {
                 return false;
             }            
             
-            // Wait for interface to stabilize and ensure GE is properly open
-            if (!sleepUntil(() -> Rs2GrandExchange.isOpen(), 5000)) {
+            // Wait for interface to stabilize with proper game state checking
+            if (!sleepUntil(() -> Rs2GrandExchange.isOpen() && Microbot.getClient().getGameState() == GameState.LOGGED_IN, 8000)) {
                 Microbot.status = "Grand Exchange interface failed to open properly";
                 return false;
             }
-            sleep(600, 1200); // Allow interface to fully load
             
             // First, collect any existing completed offers from previous sessions
             collectExistingCompletedOffers();
@@ -488,38 +431,9 @@ public class ShopRequirement extends Requirement {
                     break;
                 }
                 
-                // Calculate offer price using time-series data if enabled, fallback to traditional GE price
-                int offerPrice;
+                // Calculate offer price using enhanced pricing method
                 int itemId = itemReq.getShopItem().getItemId();
-                
-                if (itemReq.shouldUseTimeSeriesPricing()) {
-                    // Use time-series average price for more intelligent buying
-                    TimeSeriesAnalysis analysis = Rs2GrandExchange.getTimeSeriesData(
-                        itemId, itemReq.getRecommendedTimeSeriesInterval());
-                    
-                    if (analysis.averagePrice > 0) {
-                        // Use recommended buy price from time-series analysis
-                        offerPrice = analysis.getRecommendedBuyPrice();
-                        log.info("Using time-series buy price for {}: {} (avg: {}, high: {})", 
-                                itemReq.getItemName(), offerPrice, analysis.averagePrice, analysis.averageHighPrice);
-                    } else {
-                        // Fallback to intelligent pricing with current market data
-                        offerPrice = Rs2GrandExchange.getAdaptiveBuyPrice(itemId, itemReq.getShopItem().getPercentageBoughtAt(), 0);
-                        log.info("Time-series unavailable for {}, using adaptive pricing: {}", 
-                                itemReq.getItemName(), offerPrice);
-                    }
-                } else {
-                    // Traditional pricing method
-                    int gePrice = Microbot.getRs2ItemManager().getGEPrice(itemReq.getItemName());
-                    offerPrice = Math.max((int) (gePrice * 1.1), (int) itemReq.getShopItem().getInitialPriceBuyAt());
-                    log.debug("Using traditional buy price for {}: {} (GE: {})", 
-                            itemReq.getItemName(), offerPrice, gePrice);
-                }
-                int initialPrice = (int)itemReq.getShopItem().getInitialPriceBuyAt();                
-                log.info("using offer price for {}:\n\toffer price:{}, intial Price: {}", itemReq.getItemName(), offerPrice,initialPrice);
-                // Ensure minimum price from shop item configuration
-                offerPrice = Math.min(offerPrice, (int) itemReq.getShopItem().getInitialPriceBuyAt());
-                
+                int offerPrice = calculateOfferPrice(itemReq);
                 int remainingAmount = itemReq.getRemainingAmount();
                 
                 // Check for duplicate offers before placing new ones
@@ -573,9 +487,24 @@ public class ShopRequirement extends Requirement {
                 long startTime = System.currentTimeMillis();
                 long maxWaitTime = 120000; // 2 minutes total wait time for all offers
                 
-                // Wait for offers to complete and collect as they do
-                while (!pendingItemIds.isEmpty() && System.currentTimeMillis() - startTime < maxWaitTime) {
-                    // Check each pending item
+                // Wait for offers to complete using proper game state checking
+                while ((!pendingItemIds.isEmpty() && System.currentTimeMillis() - startTime < maxWaitTime)
+                     && scheduledFuture != null && !scheduledFuture.isDone() && !scheduledFuture.isCancelled()
+                ) {
+                    // Use sleepUntil to wait for any offers to complete, with shorter intervals
+                    boolean hasCompletedOffer = sleepUntil(() -> {
+                        return pendingItemIds.stream().anyMatch(itemId -> {
+                            GrandExchangeSlots slot = itemToSlotMap.get(itemId);
+                            return slot != null && Rs2GrandExchange.hasBoughtOffer(slot) && !scheduledFuture.isDone() && !scheduledFuture.isCancelled();
+                        });
+                    }, 5000); // Check every 5 seconds
+                    
+                    if (!hasCompletedOffer && System.currentTimeMillis() - startTime >= maxWaitTime) {
+                        log.info("Timeout reached while waiting for offers");
+                        break;
+                    }
+                    
+                    // Check each pending item for completion
                     for (Iterator<Integer> it = pendingItemIds.iterator(); it.hasNext();) {
                         int itemId = it.next();
                         ShopItemRequirement itemReq = activeOffers.get(itemId);
@@ -584,12 +513,8 @@ public class ShopRequirement extends Requirement {
                         // Check if this offer has completed
                         boolean slotHasCompletedOffer = (slot != null) && Rs2GrandExchange.hasBoughtOffer(slot);
                         
-                        // Also check if the item count has increased
-                        int initialCount = initialItemCounts.get(itemId);
-                        int currentCount = Rs2Inventory.itemQuantity(itemId) + Rs2Bank.count(itemId);                        
-                        
-                        // If either condition is met, consider the offer complete
-                        if (slotHasCompletedOffer ) {
+                        // If offer completed, collect it
+                        if (slotHasCompletedOffer) {
                             Microbot.status = "Offer completed for: " + itemReq.getItemName();
                             
                             // Use the enhanced collection method to get exact quantity
@@ -605,7 +530,7 @@ public class ShopRequirement extends Requirement {
                                 itemReq.addCompletedAmount(itemsPurchased);
                                 log.info("Updated completed amount for {}: purchased {} items, new total: {}/{}",
                                         itemReq.getItemName(), itemsPurchased, itemReq.getCompletedAmount(), itemReq.getAmount());
-                            }else {
+                            } else {
                                 log.warn("No items collected from offer for {}", itemReq.getItemName());
                                 return false; // If we couldn't collect, return false
                             }
@@ -617,7 +542,6 @@ public class ShopRequirement extends Requirement {
                             sleep(Constants.GAME_TICK_LENGTH);
                         }
                     }
-                    sleepUntil(()->Rs2GrandExchange.hasBoughtOffer(), (int)maxWaitTime/10 ); // Refresh state                    
                 }
                 
                 // Handle any remaining pendingItemIds as unsuccessful
@@ -628,6 +552,13 @@ public class ShopRequirement extends Requirement {
                     for (int itemId : pendingItemIds) {
                         ShopItemRequirement itemReq = activeOffers.get(itemId);
                         log.warn("Offer timeout for: {}", itemReq.getItemName());
+                    }
+                    
+                    // Enhanced timeout handling: If timeout > 0 and we placed offers successfully,
+                    // consider this a partial success rather than complete failure
+                    if (timeout > 0 && placedOffers > 0) {
+                        log.info("Timeout reached but {} offers were placed successfully - treating as partial success", placedOffers);
+                        Microbot.status = "Grand Exchange orders placed but timed out waiting - continuing";
                     }
                 }
             }
@@ -690,12 +621,30 @@ public class ShopRequirement extends Requirement {
                 }
             }
             
+            // Attempt to restore any cancelled offers before checking final completion
+            int restoredOffers = restoreCancelledOffers();
+            if (restoredOffers > 0) {
+                log.info("Restored {} previously cancelled offers after Grand Exchange buy operation", restoredOffers);
+            }
+            
             // Final completion check - items should already be updated during collection
-            if (isAllItemsCompleted()) {
+            boolean allCompleted = isAllItemsCompleted();
+            boolean partialSuccess = timeout > 0 && placedOffers > 0;
+            
+            if (allCompleted) {
                 Microbot.status = "Successfully purchased all items from Grand Exchange";
                 log.info("Successfully purchased all items from Grand Exchange");
                 return true;
-            } else{              
+            } else if (partialSuccess) {
+                Microbot.status = "Grand Exchange orders placed successfully (some may still be pending)";                
+                log.info("Partial success: {} offers placed, timeout reached but treating as success", placedOffers);
+                log.warn("Remaining items: {}", 
+                        shopItemRequirements.values().stream()
+                            .filter(itemReq -> !itemReq.isCompleted())
+                            .map(ShopItemRequirement::getItemName)
+                            .collect(Collectors.joining(", ")));
+                return true;
+            } else {              
                 Microbot.status = "Some Grand Exchange purchases failed";
                 log.warn("Some Grand Exchange purchases failed, remaining items: {}", 
                         shopItemRequirements.values().stream()
@@ -707,9 +656,63 @@ public class ShopRequirement extends Requirement {
             
         } catch (Exception e) {
             Microbot.logStackTrace("ShopRequirement.buyFromGrandExchange", e);
-            // No need to clear allocations - using simplified approach
-            // clearGrandExchangeSlotAllocations();
+            // Clear tracked offers on error to prevent stale state
+            clearCancelledOffers();
             return false;
+        }
+    }
+    
+    /**
+     * Calculates the optimal offer price for an item using time-series data or fallback methods.
+     * Uses intelligent pricing patterns from Rs2GrandExchange for better market interaction.
+     * 
+     * @param itemReq The item requirement to calculate price for
+     * @return The calculated offer price
+     */
+    private int calculateOfferPrice(ShopItemRequirement itemReq) {
+        try {
+            int itemId = itemReq.getShopItem().getItemId();
+            int offerPrice;
+            
+            if (itemReq.shouldUseTimeSeriesPricing()) {
+                // Use time-series average price for more intelligent buying
+                TimeSeriesAnalysis analysis = Rs2GrandExchange.getTimeSeriesData(
+                    itemId, itemReq.getRecommendedTimeSeriesInterval());
+                
+                if (analysis.averagePrice > 0) {
+                    // Use recommended buy price from time-series analysis
+                    offerPrice = analysis.getRecommendedBuyPrice();
+                    log.info("Using time-series buy price for {}: {} (avg: {}, high: {})", 
+                            itemReq.getItemName(), offerPrice, analysis.averagePrice, analysis.averageHighPrice);
+                } else {
+                    // Fallback to intelligent pricing with current market data
+                    offerPrice = Rs2GrandExchange.getAdaptiveBuyPrice(itemId, itemReq.getShopItem().getPercentageBoughtAt(), 0);
+                    log.info("Time-series unavailable for {}, using adaptive pricing: {}", 
+                            itemReq.getItemName(), offerPrice);
+                }
+            } else {
+                // Traditional pricing method
+                int gePrice = Microbot.getRs2ItemManager().getGEPrice(itemReq.getItemName());
+                offerPrice = Math.max((int) (gePrice * 1.1), (int) itemReq.getShopItem().getInitialPriceBuyAt());
+                log.debug("Using traditional buy price for {}: {} (GE: {})", 
+                        itemReq.getItemName(), offerPrice, gePrice);
+            }
+            
+            // Ensure price respects the maximum limit from shop item configuration
+            int maxPrice = (int) itemReq.getShopItem().getInitialPriceBuyAt();
+            offerPrice = Math.min(offerPrice, maxPrice);
+            
+            log.info("Final offer price for {}: {} (max allowed: {})", 
+                   itemReq.getItemName(), offerPrice, maxPrice);
+            
+            return offerPrice;
+            
+        } catch (Exception e) {
+            log.warn("Error calculating offer price for {}, using fallback: {}", 
+                   itemReq.getItemName(), e.getMessage());
+            
+            // Fallback to shop item's initial price
+            return (int) itemReq.getShopItem().getInitialPriceBuyAt();
         }
     }
     
@@ -890,8 +893,8 @@ public class ShopRequirement extends Requirement {
                 
                 // Start time for timeout calculations
                 long startTime = System.currentTimeMillis();
-                long maxWaitTime = 120000; // 2 minutes total wait time for all offers
-                
+                long maxWaitTime = timeout; // 2 minutes total wait time for all offers
+
                 // Wait for offers to complete and collect as they do
                 while (!pendingItemIds.isEmpty() && System.currentTimeMillis() - startTime < maxWaitTime) {
                     // Check each pending item
@@ -955,9 +958,15 @@ public class ShopRequirement extends Requirement {
                     
                     // List the items that didn't complete in time
                     for (int itemId : pendingItemIds) {
-
                         ShopItemRequirement itemReq = activeOffers.get(itemId);
                         log.warn("Sell offer timeout for: {}", itemReq.getItemName());
+                    }
+                    
+                    // Enhanced timeout handling: If timeout > 0 and we placed offers successfully,
+                    // consider this a partial success rather than complete failure
+                    if (timeout > 0 && placedOffers > 0) {
+                        log.info("Timeout reached but {} sell offers were placed successfully - treating as partial success", placedOffers);
+                        Microbot.status = "Grand Exchange sell orders placed but timed out waiting - continuing";
                     }
                 }
             }
@@ -977,9 +986,23 @@ public class ShopRequirement extends Requirement {
                 }
             }
             
-            if (isAllItemsCompleted()) {
+            // Attempt to restore any cancelled offers before checking final completion
+            int restoredOffers = restoreCancelledOffers();
+            if (restoredOffers > 0) {
+                log.info("Restored {} previously cancelled offers after Grand Exchange sell operation", restoredOffers);
+            }
+            
+            // Final completion check with enhanced timeout handling
+            boolean allCompleted = isAllItemsCompleted();
+            boolean partialSuccess = timeout > 0 && placedOffers > 0;
+            
+            if (allCompleted) {
                 Microbot.status = "Successfully sold all items to Grand Exchange";
                 log.info("Successfully sold all items to Grand Exchange");  
+                return true;
+            } else if (partialSuccess) {
+                Microbot.status = "Grand Exchange sell orders placed successfully (some may still be pending)";
+                log.info("Partial success: {} sell offers placed, timeout reached but treating as success", placedOffers);
                 return true;
             } else {
                 Microbot.status = "Some Grand Exchange sales failed";
@@ -993,8 +1016,21 @@ public class ShopRequirement extends Requirement {
             
         } catch (Exception e) {
             Microbot.logStackTrace("ShopRequirement.sellToGrandExchange", e);
+            // Clear tracked offers on error to prevent stale state
+            clearCancelledOffers();
             return false;
         }
+    }
+    /**
+     * Opens the shop interface by interacting with the specified NPC.
+     *
+     * @param npcName The name of the shop NPC to interact with
+     * @param exact   Whether to match the name exactly or allow partial matches
+     * @return true if the shop is successfully opened, false otherwise.
+     */
+    public static boolean openShop(String npcName, boolean exact) {
+        // Delegate to Rs2Shop utility which now handles finding nearest shop NPC with Trade action
+        return Rs2Shop.openShop(npcName, exact);
     }
     
     /**
@@ -1003,34 +1039,43 @@ public class ShopRequirement extends Requirement {
      * 
      * @return true if the purchase was successful, false otherwise
      */
-    private boolean buyFromRegularShop() {
+    private boolean buyFromRegularShop(CompletableFuture<?> scheduledFuture) {
         try {
             Microbot.status = "Buying items from " + primaryShopItem.getShopNpcName();
             
             int maxAttempts = enableWorldHopping ? 10 : 3; // More attempts if world hopping is enabled
             int attempts = 0;
+            int succeededHopsWithoutBuying = 0;
             boolean allItemsCompleted = false;
-            
+            log.info("walking to shop location: x: {}, y: {}", primaryShopItem.getLocation().getX(), primaryShopItem.getLocation().getY());
+        
             while (!allItemsCompleted && attempts < maxAttempts) {
                 attempts++;
-                
-                // Walk to the shop
-                if (!Rs2Walker.walkTo(primaryShopItem.getLocation())) {
-                    Microbot.status = "Failed to walk to shop";
-                    log.error("Failed to walk to shop: " + primaryShopItem.getLocation());
-                    sleep(1000, 2000);
-                    continue;
+                if (scheduledFuture != null && scheduledFuture.isCancelled()) {
+                    Microbot.status = "Task cancelled, stopping shop purchases";
+                    log.info("Shop purchase task cancelled, exiting");
+                    return false; // Exit if task was cancelled
                 }
+             
+                // Walk to the shop
+                if (!Rs2Walker.isNear(primaryShopItem.getLocation() ) && !Rs2Walker.walkTo(primaryShopItem.getLocation(),4)) {
+                    Microbot.status = "Failed to walk to shop";
+                    log.error("Failed to walk to shop: " + primaryShopItem.getLocation());                
+                    return false; // Exit if walking to shop failed
+                }
+                
                 
                 // Open shop interface
-                if (!Rs2Shop.openShop(primaryShopItem.getShopNpcName())) {
-                    Microbot.status = "Failed to open shop";
-                    log.error("Failed to open shop: " + primaryShopItem.getShopNpcName());
-                    sleep(1000, 2000);
-                    continue;
+                if (!Rs2Shop.isOpen()){
+                    if (!Rs2Shop.openShop(primaryShopItem.getShopNpcName())) {
+                        Microbot.status = "Failed to open shop";
+                        log.error("\n\tFailed to open shop: \"{}\"", primaryShopItem.getShopNpcName());
+                        sleep(1000, 2000);// Wait before retrying
+                        continue;
+                    }
                 }
                 
-                sleepUntil(() -> Rs2Shop.isOpen(), Constants.GAME_TICK_LENGTH * 3); // Ensure shop is open
+                //sleepUntil(() -> Rs2Shop.isOpen(), Constants.GAME_TICK_LENGTH * 3); // Ensure shop is open
                 if (!Rs2Shop.isOpen()) {
                     Microbot.status = "Shop interface not open";
                     log.error("Shop interface failed to open for " + primaryShopItem.getShopNpcName());
@@ -1049,9 +1094,16 @@ public class ShopRequirement extends Requirement {
                 }
                 
                 boolean needWorldHop = false;
+                boolean needBanking = false;
                 boolean purchasedAnything = false;
-                
+
+                int currentStock = 0;
                 for (ShopItemRequirement itemReq : pendingItems) {
+                    if ( scheduledFuture != null && scheduledFuture.isCancelled()) {
+                        Microbot.status = "Task cancelled, stopping shop purchases";
+                        log.info("Shop purchase task cancelled, exiting");
+                        return false; // Exit if task was cancelled
+                    }
                     // Track initial inventory count before attempting purchase
                     int initialItemCount = Rs2Inventory.itemQuantity(itemReq.getShopItem().getItemId());
                     
@@ -1060,7 +1112,7 @@ public class ShopRequirement extends Requirement {
                     }
                     
                     // Get current stock level from the shop interface (real-time check)
-                    int currentStock = getShopStock(itemReq.getItemName());
+                    currentStock = getShopStock(itemReq.getItemName());
                     if (currentStock == -1) {
                         Microbot.status = itemReq.getItemName() + " not found in shop";
                         log.error("Shop item not found: " + itemReq.getItemName());
@@ -1093,16 +1145,15 @@ public class ShopRequirement extends Requirement {
                     }
                     
                     if (quantityThisVisit <= 0) {
+                        needBanking = true;
                         if (!isStackable && Rs2Inventory.count() >= 28) {
                             Microbot.status = "Inventory full - banking non-stackable items";
-                            Rs2Shop.closeShop();
-                            
+                            Rs2Shop.closeShop();                            
                             if (enableBanking && bankItems()) {
-                                attempts--; // Don't count banking as failed attempt
                                 break; // Restart the shop visit after banking
                             }
                             return false;
-                        }
+                        }                        
                         continue; // Can't buy this item right now, check next
                     }
                     
@@ -1146,8 +1197,19 @@ public class ShopRequirement extends Requirement {
                 
                 // Handle world hopping if needed
                 if (needWorldHop && !purchasedAnything && enableWorldHopping && primaryShopItem.getShopType().supportsWorldHopping()) {
-                    if (hopWorld()) {
-                        attempts--; // Don't count world hop as failed attempt
+                    log.info("World hopping due to insufficient stock in shop");
+                    if (hopWorld(scheduledFuture)) {
+                        log.info("World hop successful after insufficient stock in shop");                        
+                        if (purchasedAnything) {
+                            succeededHopsWithoutBuying = 0; // Reset counter if we successfully purchased items
+                        } else {
+                            succeededHopsWithoutBuying++;
+                            if (succeededHopsWithoutBuying >= 3) {
+                                Microbot.status = "Failed to purchase items after multiple world hops - stopping";
+                                log.warn("Failed to purchase items after multiple world hops, stopping");
+                                return false; // Exit if we can't buy after several hops
+                            }
+                        }
                         continue;
                     } else {
                         Microbot.status = "Failed to hop worlds - insufficient stock";
@@ -1156,12 +1218,17 @@ public class ShopRequirement extends Requirement {
                 }
                 
                 // Check if we should bank items
-                if (enableBanking && Rs2Inventory.count() > 20) {
+                if (needBanking && enableBanking && Rs2Inventory.count() > 20) {
                     if (!bankItems()) {
                         Microbot.status = "Failed to bank items - continuing without banking";
                     }
+                    continue; // Restart shop visit after banking
                 }
-                
+                if (!needBanking && !needWorldHop  && !purchasedAnything) {
+                    Microbot.status = "No items purchased this visit - checking next item";
+                    log.info("No items purchased this visit, checking next item");
+                    break; // No items purchased, check next item
+                }
                 // Update completion status for all items
                 allItemsCompleted = isAllItemsCompleted();
                 
@@ -1190,7 +1257,7 @@ public class ShopRequirement extends Requirement {
      * 
      * @return true if the sale was successful, false otherwise
      */
-    private boolean sellToRegularShop() {
+    private boolean sellToRegularShop(CompletableFuture<?> scheduledFuture) {
         try {
             Microbot.status = "Selling items to " + primaryShopItem.getShopNpcName();
             
@@ -1202,7 +1269,7 @@ public class ShopRequirement extends Requirement {
                 attempts++;
                 
                 // Walk to the shop
-                if (!Rs2Walker.walkTo(primaryShopItem.getLocation())) {
+                if (!Rs2Walker.isInArea(primaryShopItem.getLocationArea().toWorldPointList().toArray(new WorldPoint[0])) && !Rs2Walker.walkTo(primaryShopItem.getLocation())) {
                     Microbot.status = "Failed to walk to shop for selling";
                     sleep(1000, 2000);
                     continue;
@@ -1301,7 +1368,7 @@ public class ShopRequirement extends Requirement {
                 
                 // Handle world hopping if needed
                 if (needWorldHop && !soldAnything && enableWorldHopping && primaryShopItem.getShopType().supportsWorldHopping()) {
-                    if (hopWorld()) {
+                    if (hopWorld(scheduledFuture)) {
                         attempts--; // Don't count world hop as failed attempt
                         continue;
                     } else {
@@ -1339,7 +1406,7 @@ public class ShopRequirement extends Requirement {
      * 
      * @return true if world hop was successful, false otherwise
      */
-    private boolean hopWorld() {
+    private boolean hopWorld( CompletableFuture<?> scheduledFuture) {
         try {
             Microbot.status = "Stock level inadequate - hopping worlds with smart retry logic";
             Rs2Shop.closeShop();
@@ -1349,43 +1416,45 @@ public class ShopRequirement extends Requirement {
             
             int attempts = 0;
             int maxAttempts = worldHoppingConfig.getMaxWorldHops();
-            
+            // Get next world using configured strategy
+            int world = useNextWorld || worldHoppingConfig.isUseSequentialWorlds() ? 
+            Login.getNextWorld(Rs2Player.isMember()) : 
+            Login.getRandomWorld(Rs2Player.isMember());
             while (attempts < maxAttempts) {
                 attempts++;
-                
-                // Get next world using configured strategy
-                int world = useNextWorld || worldHoppingConfig.isUseSequentialWorlds() ? 
-                    Login.getNextWorld(Rs2Player.isMember()) : 
-                    Login.getRandomWorld(Rs2Player.isMember());
+                if (scheduledFuture != null && scheduledFuture.isCancelled()) {
+                    Microbot.status = "Task cancelled, stopping world hopping";
+                    log.info("World hop task cancelled, exiting");
+                    return false; // Exit if task was cancelled
+                }
+              
                 
                 Microbot.status = "Attempting world hop " + attempts + "/" + maxAttempts + " to world " + world;
-                
+                log.info("Attempting world hop {} to world {}", attempts, world);
                 boolean hopped = Microbot.hopToWorld(world);
-                if (!hopped) {
+                boolean hopCompleted = sleepUntil(() -> Microbot.getClient().getGameState() == GameState.HOPPING, 5000);
+                if (!hopCompleted) {
                     Microbot.status = "Failed to hop to world " + world + " (attempt " + attempts + ")";
-                    
+                    log.warn("World hop attempt {} to world {} failed", attempts, world);
                     // Use exponential backoff delay from WorldHoppingConfig
                     long retryDelay = worldHoppingConfig.getHopDelay(attempts);
                     Microbot.status = "Retrying in " + retryDelay + "ms with exponential backoff";
                     sleep((int) retryDelay, (int) (retryDelay * 0.1)); // 10% variance
                     continue;
-                }
-                
-                // Wait for hop to complete with proper state checking
-                boolean hopCompleted = sleepUntil(() -> Microbot.getClient().getGameState() == GameState.HOPPING, 5000);
-                if (hopCompleted) {
-                    hopCompleted = sleepUntil(() -> Microbot.getClient().getGameState() == GameState.LOGGED_IN, 15000);
-                }
-                
-                if (!hopCompleted) {
-                    Microbot.status = "World hop to " + world + " failed to complete (attempt " + attempts + ")";
+                }                
+                // Wait for hop to complete with proper state checking                                
+                hopCompleted = sleepUntil(() -> Microbot.getClient().getGameState() == GameState.LOGGED_IN, 15000);                                
+                if ( Rs2Player.getWorld() != world){                    
+                    Microbot.status = "World hop to " + world + " failed (current world: " + Rs2Player.getWorld() + ")";
+                    log.warn("World hop to {} failed, current world is {}", world, Rs2Player.getWorld());
                     long retryDelay = worldHoppingConfig.getHopDelay(attempts);
                     sleep((int) retryDelay, (int) (retryDelay * 0.1));
                     continue;
                 }
+               
                 
                 Microbot.status = "Successfully hopped to world " + world + " (attempt " + attempts + ")";
-                
+                log.info("Successfully hopped to world {} after {} attempts", world, attempts);
                 // Additional wait for world to stabilize (base delay)
                 sleep(worldHoppingConfig.getBaseHopDelay(), worldHoppingConfig.getBaseHopDelay() / 3);
                 
@@ -1552,7 +1621,7 @@ public class ShopRequirement extends Requirement {
      * @return true if the requirement was successfully fulfilled, false otherwise
      */
     @Override
-    public boolean fulfillRequirement(ScheduledExecutorService executorService) {
+    public boolean fulfillRequirement(CompletableFuture<Boolean> scheduledFuture) {
         try {
             if (Microbot.getClient().isClientThread()) {
                 Microbot.log("Please run fulfillRequirement() on a non-client thread.", Level.ERROR);
@@ -1577,10 +1646,10 @@ public class ShopRequirement extends Requirement {
             }
             switch (operation) {
                 case BUY:
-                    success = handleBuyOperation();
+                    success = handleBuyOperation(scheduledFuture);
                     break;
                 case SELL:
-                    success = handleSellOperation();
+                    success = handleSellOperation(scheduledFuture);
                     break;
                 default:
                     Microbot.log("Unknown shop operation: " + operation);
@@ -1605,7 +1674,7 @@ public class ShopRequirement extends Requirement {
      * 
      * @return true if the buy operation was successful, false otherwise
      */
-    private boolean handleBuyOperation() {
+    private boolean handleBuyOperation(CompletableFuture<Boolean> scheduledFuture) {
         try {
             // Check if we already have enough items
             if (isAllItemsCompleted()) {
@@ -1616,9 +1685,10 @@ public class ShopRequirement extends Requirement {
             // Handle Grand Exchange vs Regular Shop differently
             if (primaryShopItem.getShopType() == Rs2ShopType.GRAND_EXCHANGE) {
                 log.info("Handling Grand Exchange buy operation for shop requirement: " + getName());
-                return handleGrandExchangeBuyOperation();
+                return handleGrandExchangeBuyOperation(scheduledFuture);
             } else {
-                return handleRegularShopBuyOperation();
+                log.info("Handling regular shop buy operation for shop requirement: " + getName());
+                return handleRegularShopBuyOperation(scheduledFuture);
             }
             
         } catch (Exception e) {
@@ -1630,7 +1700,7 @@ public class ShopRequirement extends Requirement {
     /**
      * Handles buying multiple items from Grand Exchange - must wait for offers to complete.
      */
-    private boolean handleGrandExchangeBuyOperation() {
+    private boolean handleGrandExchangeBuyOperation(CompletableFuture<Boolean> scheduledFuture) {
         try {
             Microbot.status = "Buying items from Grand Exchange";
             
@@ -1657,8 +1727,8 @@ public class ShopRequirement extends Requirement {
             }
             
             // Use the enhanced buyFromGrandExchange method that handles multiple items
-            return buyFromGrandExchange();
-            
+            return buyFromGrandExchange(scheduledFuture);
+
         } catch (Exception e) {
             Microbot.log("Error in Grand Exchange buy operation: " + e.getMessage());
             return false;
@@ -1668,7 +1738,7 @@ public class ShopRequirement extends Requirement {
     /**
      * Handles buying multiple items from regular shops with stock management and world hopping.
      */
-    private boolean handleRegularShopBuyOperation() {
+    private boolean handleRegularShopBuyOperation(CompletableFuture<Boolean> scheduledFuture) {
         try {
             // Get coins from bank if needed
             if (enableBanking && !ensureSufficientCoins()) {
@@ -1677,7 +1747,7 @@ public class ShopRequirement extends Requirement {
             }
             
             // For multi-item regular shop purchases, use the enhanced buyFromRegularShop method
-            return buyFromRegularShop();
+            return buyFromRegularShop(scheduledFuture);
             
         } catch (Exception e) {
             Microbot.log("Error in regular shop buy operation: " + e.getMessage());
@@ -1690,7 +1760,7 @@ public class ShopRequirement extends Requirement {
      * 
      * @return true if the sell operation was successful, false otherwise
      */
-    private boolean handleSellOperation() {
+    private boolean handleSellOperation( CompletableFuture<Boolean> scheduledFuture) {
         try {
          
             
@@ -1698,7 +1768,7 @@ public class ShopRequirement extends Requirement {
             if (primaryShopItem.getShopType() == Rs2ShopType.GRAND_EXCHANGE) {
                 return handleGrandExchangeSellOperation();
             } else {
-                return handleRegularShopSellOperation();
+                return handleRegularShopSellOperation(scheduledFuture);
             }
             
         } catch (Exception e) {
@@ -1717,7 +1787,7 @@ public class ShopRequirement extends Requirement {
     /**
      * Handles selling to regular shops with stock management and world hopping.
      */
-    private boolean handleRegularShopSellOperation() {
+    private boolean handleRegularShopSellOperation(CompletableFuture<Boolean> scheduledFuture) {
         try {
             // Get items from bank at the beginning if banking is enabled
             if (enableBanking) {
@@ -1756,7 +1826,7 @@ public class ShopRequirement extends Requirement {
             }
             
             // Perform the sale to regular shop
-            boolean sellSuccess = sellToRegularShop();
+            boolean sellSuccess = sellToRegularShop(scheduledFuture);
             
             // After selling, bank coins if banking is enabled
             if (sellSuccess && enableBanking) {
@@ -1935,151 +2005,7 @@ public class ShopRequirement extends Requirement {
             return false;
         }
     }
-    
-    /**
-     * Purchases a specific batch size of items from the shop with proper stock management.
-     * Ensures we don't buy more than available stock and respects shop economics.
-     * NOTE: This method is deprecated in favor of the enhanced buyFromRegularShop method.
-     * 
-     * @param batchSize The number of items to buy in this batch
-     * @return true if the batch purchase was successful, false otherwise
-     */
-    @Deprecated
-    private boolean buyFromShopBatch(int batchSize) {
-        try {
-            Microbot.log("buyFromShopBatch is deprecated - use enhanced buyFromRegularShop instead");
-            
-            // Walk to the shop
-            if (!Rs2Walker.walkTo(primaryShopItem.getLocation())) {
-                Microbot.status = "Failed to walk to shop for batch purchase";
-                return false;
-            }
-            
-            // Open shop interface
-            if (!Rs2Shop.openShop(primaryShopItem.getShopNpcName())) {
-                Microbot.status = "Failed to open shop for batch purchase";
-                return false;
-            }
-            
-            // Wait for shop data to update - check if shop is properly loaded
-            if (!sleepUntil(() -> Rs2Shop.isOpen(), 3000)) {
-                Microbot.status = "Shop interface failed to stabilize for batch purchase";
-                Rs2Shop.closeShop();
-                return false;
-            }
-            
-            // Just purchase the primary item for compatibility
-            String itemName = primaryShopItem.getItemName();
-            
-            // Get current stock level from the shop interface (real-time check)
-            int currentStock = getShopStock(itemName);
-            if (currentStock == -1) {
-                Microbot.status = itemName + " not found in shop";
-                Rs2Shop.closeShop();
-                return false;
-            }
-            
-            // Use minimum stock from first item requirement for compatibility
-            int minimumStock = shopItemRequirements.values().iterator().next().getMinimumStock();
-            
-            // Check if stock is sufficient for our minimum requirements
-            if (currentStock < minimumStock) {
-                Microbot.status = "Insufficient stock for " + itemName + " (current: " + currentStock + ", minimum: " + minimumStock + ")";
-                Rs2Shop.closeShop();
-                
-                if (enableWorldHopping && primaryShopItem.getShopType().supportsWorldHopping()) {
-                    return hopToWorldWithStock(minimumStock);
-                } else {
-                    return false;
-                }
-            }
-            
-            // Use max quantity from first item requirement for compatibility
-            int maxQuantityPerVisit = shopItemRequirements.values().iterator().next().getMaxQuantityPerVisit();
-            
-            // CRITICAL: Don't buy more than we should to avoid price manipulation
-            int maxSafeToBuy = Math.min(currentStock - minimumStock, maxQuantityPerVisit);
-            int actualBatchSize = Math.min(batchSize, maxSafeToBuy);
-            
-            if (actualBatchSize <= 0) {
-                Microbot.status = "Cannot buy any " + itemName + " without affecting stock/price negatively";
-                Rs2Shop.closeShop();
-                
-                if (enableWorldHopping) {
-                    return hopToWorldWithStock(minimumStock);
-                } else {
-                    return false;
-                }
-            }
-            
-            Microbot.log("Buying " + actualBatchSize + " " + itemName + " (stock: " + currentStock + ", max safe: " + maxSafeToBuy + ")");
-            
-            int hasItemAmountBefore = Rs2Inventory.itemQuantity(itemName);
-            
-            // Perform the purchase with safe amount
-            boolean success = Rs2Shop.buyItem(itemName, String.valueOf(actualBatchSize));
-            if (!success) {
-                Microbot.status = "Failed to initiate purchase of " + itemName;
-                Rs2Shop.closeShop();
-                return false;
-            }
-            
-            // Wait for purchase to complete
-            boolean purchaseCompleted = sleepUntil(() -> 
-                Rs2Inventory.itemQuantity(itemName) >= hasItemAmountBefore + actualBatchSize, 5000);
-                
-            Rs2Shop.closeShop();
-            
-            if (!purchaseCompleted) {
-                Microbot.status = "Purchase timed out for " + itemName;
-                return false;
-            }
-            
-            int actualPurchased = Rs2Inventory.itemQuantity(itemName) - hasItemAmountBefore;
-            Microbot.status = "Successfully purchased " + actualPurchased + "x " + itemName;
-            
-            return actualPurchased > 0;
-            
-        } catch (Exception e) {
-            Microbot.log("Error in batch purchase: " + e.getMessage());
-            Rs2Shop.closeShop();
-            return false;
-        }
-    }
-    
-    /**
-     * Banks purchased items and returns to the shop location for multiple items.
-     * 
-     * @return true if banking was successful, false otherwise
-     */
-    private boolean bankPurchasedItems() {
-        try {
-            Microbot.status = "Banking purchased items";
-            
-            // Get all item names from our shop requirements
-            List<String> itemNames = shopItemRequirements.keySet().stream()
-                    .map(Rs2ShopItem::getItemName)
-                    .collect(Collectors.toList());
-            
-            // Use Rs2Bank utility for banking with return to original position
-            boolean success = Rs2Bank.bankItemsAndWalkBackToOriginalPosition(
-                itemNames, 
-                primaryShopItem.getLocation()
-            );
-            
-            if (success) {
-                Microbot.status = "Successfully banked purchased items";
-            } else {
-                Microbot.status = "Failed to bank purchased items";
-            }
-            
-            return success;
-            
-        } catch (Exception e) {
-            Microbot.logStackTrace("ShopRequirement.bankPurchasedItems", e);
-            return false;
-        }
-    }
+  
     
     /**
      * Unnotes items for selling if they are noted and shop doesn't accept noted items.
@@ -2224,59 +2150,7 @@ public class ShopRequirement extends Requirement {
         return new ShopRequirement(shopItems, operation, requirementType, priority, rating, description, scheduleContext);
     }
     
-    /**
-     * Enhanced configuration class for individual items in a multi-item requirement.
-     * Updated to use the unified stock management system.
-     */
-    public static class MultiItemConfig {
-        public final int amount;
-        public final int stockTolerance; // **UNIFIED SYSTEM**: Replaces minimumStock + maxQuantityPerVisit
-        
-        /**
-         * Creates a new MultiItemConfig with unified stock management.
-         * 
-         * @param amount Total amount needed for this item
-         * @param stockTolerance Stock tolerance around baseStock (affects both min stock and max per visit)
-         */
-        public MultiItemConfig(int amount, int stockTolerance) {
-            this.amount = amount;
-            this.stockTolerance = stockTolerance;
-        }
-        
-        /**
-         * Creates a new MultiItemConfig with default stock tolerance.
-         * 
-         * @param amount Total amount needed for this item
-         */
-        public MultiItemConfig(int amount) {
-            this(amount, 10); // Default tolerance of 10
-        }
-        
-        /**
-         * Legacy constructor for backward compatibility.
-         * Converts old minimumStock/maxQuantityPerVisit to unified stockTolerance.
-         * 
-         * @param amount Total amount needed
-         * @param minimumStock Legacy minimum stock (ignored in new system)
-         * @param maxQuantityPerVisit Legacy max per visit (used as stockTolerance)
-         */
-        @Deprecated
-        public MultiItemConfig(int amount, int minimumStock, int maxQuantityPerVisit) {
-            this.amount = amount;
-            this.stockTolerance = maxQuantityPerVisit; // Use maxQuantityPerVisit as tolerance
-            
-            // Log the conversion for debugging
-            if (minimumStock != 5) { // 5 was the old default
-                Microbot.log("MultiItemConfig: Converting legacy minimumStock=" + minimumStock + 
-                           " to unified stockTolerance=" + this.stockTolerance);
-            }
-        }
-        
-        @Override
-        public String toString() {
-            return String.format("MultiItemConfig{amount=%d, stockTolerance=%d}", amount, stockTolerance);
-        }
-    }
+    
    
      /**
      * Checks if the player has enough coins to buy all required shop items.
@@ -2348,106 +2222,25 @@ public class ShopRequirement extends Requirement {
         return -1;
     }
     
-    /**
-     * Attempts to hop to a world that has adequate stock for the items.
-     * For buying: finds a world with at least minimumStock available
-     * For selling: finds a world where shop isn't oversaturated (below baseStock + maxQuantityPerVisit)
-     * 
-     * @param minimumStock The minimum stock required for buying, or space available for selling
-     * @return true if successfully hopped to a world with adequate stock/space
-     */
-    @SuppressWarnings("unused")
-    private boolean hopToWorldWithStock(int minimumStock) {
-        if (!enableWorldHopping || primaryShopItem.getShopType() == Rs2ShopType.GRAND_EXCHANGE) {
-            return false; // No hopping needed for GE or if disabled
-        }
-        
-        int maxWorldsToCheck = 5; // Limit world checks to avoid infinite loops
-        int worldsChecked = 0;
-        
-        while (worldsChecked < maxWorldsToCheck) {
-            // Hop to next world
-            if (!hopWorld()) {
-                Microbot.log("Failed to hop world, attempt " + (worldsChecked + 1));
-                return false;
-            }
-            
-            worldsChecked++;
-            
-            // Walk to shop location after hopping
-            if (!Rs2Walker.walkTo(primaryShopItem.getLocation())) {
-                Microbot.log("Failed to walk to shop after world hop");
-                continue;
-            }
-            
-            // Open shop to check stock
-            if (!Rs2Shop.openShop(primaryShopItem.getShopNpcName())) {
-                Microbot.log("Failed to open shop after world hop");
-                continue;
-            }
-            
-            // Wait for shop data to load - ensure shop is ready
-            if (!sleepUntil(() -> Rs2Shop.isOpen(), 3000)) {
-                Microbot.log("Shop interface failed to stabilize after world hop");
-                Rs2Shop.closeShop();
-                continue;
-            }
-            
-            // Check stock for all items and see if this world is suitable
-            boolean worldIsSuitable = true;
-            
-            for (ShopItemRequirement itemReq : shopItemRequirements.values()) {
-                if (itemReq.isCompleted()) {
-                    continue; // Skip completed items
-                }
-                
-                int currentStock = getShopStock(itemReq.getItemName());
-                if (currentStock == -1) {
-                    worldIsSuitable = false;
-                    break; // Item not found in shop, try next world
-                }
-                
-                if (operation == ShopOperation.BUY) {
-                    // For buying: need at least minimumStock available for this item
-                    if (currentStock < itemReq.getMinimumStockForBuying()) {
-                        worldIsSuitable = false;
-                        break;
-                    }
-                } else if (operation == ShopOperation.SELL) {
-                    // For selling: check if shop isn't oversaturated for this item
-                    int maxDesiredStock = itemReq.getShopItem().getBaseStock() + itemReq.getMaxQuantityPerVisit();
-                    if (currentStock > maxDesiredStock) {
-                        worldIsSuitable = false;
-                        break;
-                    }
-                }
-            }
-            
-            if (worldIsSuitable) {
-                Microbot.log("Found suitable world with good stock/space after " + worldsChecked + " hops");
-                Rs2Shop.closeShop();
-                return true;
-            }
-            
-            Rs2Shop.closeShop();
-            Microbot.log("World " + worldsChecked + " doesn't have suitable stock for all items, continuing search...");
-        }
-        
-        Microbot.log("Failed to find suitable world after checking " + maxWorldsToCheck + " worlds");
-        return false;
-    }
+    
     
     // ===== GRAND EXCHANGE SLOT MANAGEMENT =====
     
     /**
-     * Ensures sufficient Grand Exchange slots are available for the required operations.
-     * Implements proper slot allocation to prevent exceeding the 8-slot limit.
+     * Enhanced Grand Exchange slot management with state tracking and recovery.
+     * Only clears the minimum number of slots needed and tracks cancelled offers for restoration.
+     * Uses proper game state checking and sleepUntil patterns for reliability.
      * 
      * @param requiredSlots Number of slots needed for pending operations
      * @return true if sufficient slots can be made available, false otherwise
      */
     private boolean ensureGrandExchangeSlots(int requiredSlots) {
         try {
+            if (!Rs2GrandExchange.isOpen()) {
+                Microbot.status = "Grand Exchange not open, cannot manage slots";
+                return false;
+            }
+
             // Check current slot availability
             int availableSlots = Rs2GrandExchange.getAvailableSlotsCount();
             
@@ -2456,38 +2249,226 @@ public class ShopRequirement extends Requirement {
                 return true;
             }
             
-            Microbot.status = "Need " + requiredSlots + " slots, have " + availableSlots + " - freeing slots";
+            Microbot.status = "Need " + requiredSlots + " slots, have " + availableSlots + " - optimizing slot usage";
             
-            // Try to collect completed offers first (most efficient)
+            // Step 1: Try to collect completed offers first (most efficient approach)
             if (Rs2GrandExchange.hasBoughtOffer() || Rs2GrandExchange.hasSoldOffer()) {
+                Microbot.status = "Collecting completed offers to free slots";
                 Rs2GrandExchange.collectAll(enableBanking);
-                sleepUntil(() -> Rs2GrandExchange.getAvailableSlotsCount() >= requiredSlots, 5000);
                 
-                if (Rs2GrandExchange.getAvailableSlotsCount() >= requiredSlots) {
-                    Microbot.status = "Freed sufficient slots by collecting offers";
+                // Wait for collection to complete and slots to update
+                boolean collectionSuccess = sleepUntil(() -> {
+                    return Rs2GrandExchange.getAvailableSlotsCount() >= requiredSlots;
+                }, 8000);
+                
+                if (collectionSuccess) {
+                    Microbot.status = "Freed sufficient slots by collecting completed offers";
                     return true;
                 }
             }
             
-            // If still insufficient, abort pending offers as last resort
-            if (Rs2GrandExchange.getAvailableSlotsCount() < requiredSlots) {
-                Microbot.status = "Aborting pending offers to free slots";
-                Rs2GrandExchange.abortAllOffers(enableBanking);
-                sleepUntil(() -> Rs2GrandExchange.getAvailableSlotsCount() >= requiredSlots, 8000);
+            // Step 2: If still insufficient, selectively cancel offers with least progress
+            int currentAvailable = Rs2GrandExchange.getAvailableSlotsCount();
+            int slotsStillNeeded = requiredSlots - currentAvailable;
+            
+            if (slotsStillNeeded > 0) {
+                Microbot.status = "Selectively cancelling " + slotsStillNeeded + " offers with least progress";
+                
+                // Get active offers sorted by progress (least progress first)
+                List<GrandExchangeSlots> activeSlots = Rs2GrandExchange.getActiveOfferSlotsByProgress();
+                
+                if (activeSlots.size() < slotsStillNeeded) {
+                    log.warn("Not enough active offers to cancel ({} available, need {})", 
+                           activeSlots.size(), slotsStillNeeded);
+                    return false;
+                }
+                
+                // Cancel only the required number of slots with least progress
+                List<GrandExchangeSlots> slotsToCancel = activeSlots.subList(0, slotsStillNeeded);
+                List<Map<String, Object>> cancelledDetails = Rs2GrandExchange.cancelSpecificOffers(slotsToCancel, enableBanking);
+                
+                // Track cancelled offers for potential recovery
+                trackCancelledOffers(cancelledDetails);
+                
+                // Wait for cancellations to complete and slots to become available
+                boolean cancellationSuccess = sleepUntil(() -> {
+                    return Rs2GrandExchange.getAvailableSlotsCount() >= requiredSlots;
+                }, 12000);
+                
+                if (!cancellationSuccess) {
+                    log.warn("Timeout waiting for slot cancellations to complete");
+                    return false;
+                }
             }
             
+            // Final verification
             int finalAvailable = Rs2GrandExchange.getAvailableSlotsCount();
-            if (finalAvailable >= requiredSlots) {
-                Microbot.status = "Successfully freed " + finalAvailable + " GE slots";
-                return true;
+            boolean success = finalAvailable >= requiredSlots;
+            
+            if (success) {
+                Microbot.status = "Successfully allocated " + finalAvailable + " GE slots";
+                if (!cancelledOffers.isEmpty()) {
+                    log.info("Cancelled {} offers for slot allocation", cancelledOffers.size());
+                }
             } else {
-                Microbot.status = "Failed to free sufficient GE slots: need " + requiredSlots + ", have " + finalAvailable;
-                return false;
+                log.error("Failed to allocate sufficient GE slots: need {}, have {}", 
+                        requiredSlots, finalAvailable);
             }
+            
+            return success;
             
         } catch (Exception e) {
+            log.error("Error in ensureGrandExchangeSlots: {}", e.getMessage());
             Microbot.logStackTrace("ShopRequirement.ensureGrandExchangeSlots", e);
             return false;
+        }
+    }
+    
+    /**
+     * Tracks cancelled offers for potential restoration.
+     * Only tracks offers that were actively BUYING or SELLING (not empty or completed).
+     * Converts from Rs2GrandExchange format to our CancelledOfferState objects.
+     * 
+     * @param cancelledDetails List of cancelled offer details from Rs2GrandExchange
+     */
+    private void trackCancelledOffers(List<Map<String, Object>> cancelledDetails) {
+        for (Map<String, Object> details : cancelledDetails) {
+            try {
+                int itemId = (Integer) details.get("itemId");
+                String itemName = details.containsKey("itemName") 
+                    ? (String) details.get("itemName")
+                    : Microbot.getClient().getItemDefinition(itemId).getName();
+                    
+                int totalQuantity = (Integer) details.get("totalQuantity");
+                int remainingQuantity = (Integer) details.get("remainingQuantity");
+                int price = (Integer) details.get("price");
+                boolean isBuyOffer = (Boolean) details.get("isBuyOffer");
+                GrandExchangeSlots originalSlot = (GrandExchangeSlots) details.get("slot");
+                
+                // Verify this was an active offer worth tracking
+                if (remainingQuantity > 0 && price > 0 && itemId > 0) {
+                    CancelledOfferState cancelledOffer = new CancelledOfferState(
+                        itemId, itemName, totalQuantity, remainingQuantity, 
+                        price, isBuyOffer, originalSlot
+                    );
+                    
+                    cancelledOffers.add(cancelledOffer);
+                    log.info("Tracked cancelled {} offer for recovery: {} ({} items remaining at {} gp)", 
+                           isBuyOffer ? "BUY" : "SELL", itemName, remainingQuantity, price);
+                } else {
+                    log.debug("Skipping tracking of empty/invalid offer: itemId={}, remaining={}, price={}", 
+                            itemId, remainingQuantity, price);
+                }
+                
+            } catch (Exception e) {
+                log.warn("Failed to track cancelled offer details: {}", e.getMessage());
+            }
+        }
+    }
+    
+    /**
+     * Attempts to restore previously cancelled Grand Exchange offers.
+     * This should be called after completing buy/sell operations.
+     * Uses proper game state checking and sleepUntil patterns.
+     * 
+     * @return Number of offers successfully restored
+     */
+    private int restoreCancelledOffers() {
+        if (cancelledOffers.isEmpty()) {
+            return 0;
+        }
+        
+        try {
+            if (!Rs2GrandExchange.isOpen()) {
+                log.warn("Grand Exchange not open, cannot restore cancelled offers");
+                return 0;
+            }
+            
+            Microbot.status = "Attempting to restore " + cancelledOffers.size() + " cancelled GE offers";
+            log.info("Attempting to restore {} cancelled offers", cancelledOffers.size());
+            
+            int restoredCount = 0;
+            Iterator<CancelledOfferState> iterator = cancelledOffers.iterator();
+            
+            while (iterator.hasNext()) {
+                CancelledOfferState cancelledOffer = iterator.next();
+                
+                // Skip offers that are no longer worth restoring
+                if (!cancelledOffer.isWorthRestoring()) {
+                    log.debug("Skipping offer not worth restoring: {}", cancelledOffer);
+                    iterator.remove();
+                    continue;
+                }
+                
+                // Check if we have available slots
+                if (Rs2GrandExchange.getAvailableSlotsCount() == 0) {
+                    log.info("No available slots for restoration, stopping here");
+                    break;
+                }
+                
+                // Convert to the map format expected by restoreOffer
+                Map<String, Object> offerDetails = new HashMap<>();
+                offerDetails.put("itemId", cancelledOffer.getItemId());
+                offerDetails.put("itemName", cancelledOffer.getItemName());
+                offerDetails.put("remainingQuantity", cancelledOffer.getRemainingQuantity());
+                offerDetails.put("price", cancelledOffer.getPrice());
+                offerDetails.put("isBuyOffer", cancelledOffer.isBuyOffer());
+                
+                // Check if original slot is available, otherwise use any available slot
+                GrandExchangeSlots targetSlot = Rs2GrandExchange.isSlotAvailable(cancelledOffer.getOriginalSlot()) 
+                    ? cancelledOffer.getOriginalSlot() : null;
+                
+                Microbot.status = "Restoring " + cancelledOffer.getOperationType() + " offer for " + cancelledOffer.getItemName();
+                
+                // Attempt to restore the offer
+                boolean restored = Rs2GrandExchange.restoreOffer(offerDetails, targetSlot);
+                
+                if (restored) {
+                    // Wait for offer to be placed successfully
+                    boolean offerPlaced = sleepUntil(() -> {
+                        return Rs2GrandExchange.getAvailableSlotsCount() < Rs2GrandExchange.getAvailableSlotsCount() + 1;
+                    }, 5000);
+                    
+                    if (offerPlaced) {
+                        restoredCount++;
+                        iterator.remove(); // Remove from our tracking list
+                        log.info("Successfully restored offer: {}", cancelledOffer);
+                    } else {
+                        log.warn("Offer restoration timed out: {}", cancelledOffer);
+                    }
+                    
+                    // Brief pause between restorations to avoid interface conflicts
+                    sleep(Constants.GAME_TICK_LENGTH);
+                } else {
+                    log.warn("Failed to restore offer: {}", cancelledOffer);
+                    // Don't remove from list immediately, might retry later
+                }
+            }
+            
+            if (restoredCount > 0) {
+                Microbot.status = "Restored " + restoredCount + " cancelled GE offers";
+                log.info("Successfully restored {} out of {} cancelled offers", 
+                       restoredCount, restoredCount + cancelledOffers.size());
+            } else if (!cancelledOffers.isEmpty()) {
+                log.info("No offers could be restored, {} offers remain tracked", cancelledOffers.size());
+            }
+            
+            return restoredCount;
+            
+        } catch (Exception e) {
+            log.error("Error during offer restoration: {}", e.getMessage());
+            Microbot.logStackTrace("ShopRequirement.restoreCancelledOffers", e);
+            return 0;
+        }
+    }
+    
+    /**
+     * Clears all tracked cancelled offers (called when giving up on restoration).
+     */
+    private void clearCancelledOffers() {
+        if (!cancelledOffers.isEmpty()) {
+            log.info("Clearing {} tracked cancelled offers", cancelledOffers.size());
+            cancelledOffers.clear();
         }
     }
     
@@ -2499,13 +2480,19 @@ public class ShopRequirement extends Requirement {
      */
     /**
      * Cancels any existing Grand Exchange offers for the specified item ID to prevent duplicates.
-     * This ensures we don't place multiple offers for the same item accidentally.
+     * Only cancels offers that are actively BUYING or SELLING (not completed or empty).
+     * Uses proper game state checking and sleepUntil patterns.
      * 
      * @param itemId The item ID to check for existing offers
      * @param itemName The item name for logging purposes
      * @return true if any offers were cancelled, false otherwise
      */
     private boolean cancelDuplicateOffers(int itemId, String itemName) {
+        if (!Rs2GrandExchange.isOpen()) {
+            log.warn("Grand Exchange not open, cannot cancel duplicate offers");
+            return false;
+        }
+        
         boolean cancelledAny = false;
         
         try {
@@ -2520,31 +2507,72 @@ public class ShopRequirement extends Requirement {
                     continue;
                 }
                 
-                // Check if this offer is for our item
+                // Check if this offer is for our item AND is actively buying/selling
                 if (offer.getItemId() == itemId) {
-                    GrandExchangeSlots slot = GrandExchangeSlots.values()[slotIndex];
-                    Microbot.status = "Cancelling existing offer for " + itemName + " in slot " + slot.ordinal();
+                    // Only cancel offers that are actively BUYING or SELLING
+                    // Following the pattern from Rs2GrandExchange.java
+                    boolean isActiveBuyOffer = offer.getState() == GrandExchangeOfferState.BUYING;
+                    boolean isActiveSellOffer = offer.getState() == GrandExchangeOfferState.SELLING;
                     
-                    // Cancel the offer using item name (abortOffer method signature)
-                    Rs2GrandExchange.abortOffer(itemName, enableBanking);
-                    sleepUntil(() -> {
-                        GrandExchangeOffer[] updatedOffers = Microbot.getClient().getGrandExchangeOffers();
-                        return updatedOffers[finalSlotIndex] == null || updatedOffers[finalSlotIndex].getItemId() == 0;
-                    }, 3000);
-                    
-                    cancelledAny = true;
-                    sleep(Constants.GAME_TICK_LENGTH); // Brief pause between cancellations
+                    if (isActiveBuyOffer || isActiveSellOffer) {
+                        GrandExchangeSlots slot = GrandExchangeSlots.values()[slotIndex];
+                        String offerType = isActiveBuyOffer ? "BUY" : "SELL";
+                        
+                        Microbot.status = "Cancelling duplicate " + offerType + " offer for " + itemName + " in slot " + (slot.ordinal() + 1);
+                        log.info("Cancelling duplicate {} offer for {} in slot {} (state: {})", 
+                               offerType, itemName, slot.ordinal() + 1, offer.getState());
+                        
+                        // Cancel the offer using Rs2GrandExchange utility
+                        Rs2GrandExchange.abortOffer(itemName, enableBanking);
+                        
+                        // Wait for cancellation to complete with proper game state checking
+                        boolean cancellationSuccess = sleepUntil(() -> {
+                            GrandExchangeOffer[] updatedOffers = Microbot.getClient().getGrandExchangeOffers();
+                            if (finalSlotIndex >= updatedOffers.length) return false;
+                            
+                            GrandExchangeOffer updatedOffer = updatedOffers[finalSlotIndex];
+                            return updatedOffer == null || 
+                                   updatedOffer.getItemId() == 0 ||
+                                   updatedOffer.getItemId() != itemId ||
+                                   (updatedOffer.getState() != GrandExchangeOfferState.BUYING && 
+                                    updatedOffer.getState() != GrandExchangeOfferState.SELLING);
+                        }, 5000);
+                        
+                        if (cancellationSuccess) {
+                            cancelledAny = true;
+                            log.info("Successfully cancelled duplicate {} offer for {}", offerType, itemName);
+                        } else {
+                            log.warn("Timeout waiting for duplicate {} offer cancellation for {}", offerType, itemName);
+                        }
+                        
+                        // Brief pause between cancellations to avoid interface conflicts
+                        sleep(Constants.GAME_TICK_LENGTH);
+                    } else {
+                        log.debug("Found offer for {} in slot {} but it's not active (state: {})", 
+                                itemName, slotIndex + 1, offer.getState());
+                    }
                 }
             }
             
+            // If any offers were cancelled, collect them and wait for interface to update
             if (cancelledAny) {
-                // Wait a moment for the interface to update after cancellations
+                // Allow time for cancellations to be processed
                 sleep(Constants.GAME_TICK_LENGTH * 2);
-                Rs2GrandExchange.collectAllToBank(); // Collect any cancelled offers to bank
+                
+                // Collect cancelled offers to clear the interface
+                if (Rs2GrandExchange.hasBoughtOffer() || Rs2GrandExchange.hasSoldOffer()) {
+                    Rs2GrandExchange.collectAll(enableBanking);
+                    
+                    // Wait for collection to complete
+                    sleepUntil(() -> {
+                        return !Rs2GrandExchange.hasBoughtOffer() && !Rs2GrandExchange.hasSoldOffer();
+                    }, 5000);
+                }
             }
             
         } catch (Exception e) {
-            log.warn("Error checking for duplicate offers for {}: {}", itemName, e.getMessage());
+            log.error("Error checking for duplicate offers for {}: {}", itemName, e.getMessage());
+            Microbot.logStackTrace("ShopRequirement.cancelDuplicateOffers", e);
         }
         
         return cancelledAny;

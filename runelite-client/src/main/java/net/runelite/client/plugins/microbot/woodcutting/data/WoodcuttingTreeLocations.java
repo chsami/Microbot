@@ -7,12 +7,14 @@ import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.woodcutting.enums.WoodcuttingTree;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Contains location data for different woodcutting trees.
@@ -54,6 +56,41 @@ public class WoodcuttingTreeLocations {
             default:
                 return new ArrayList<>();
         }
+    }
+    
+    /**
+     * Gets accessible locations for a specific tree type - filters out locations 
+     * the player cannot access based on quest and skill requirements.
+     * Uses streams for efficient filtering.
+     */
+    public static List<LocationRequirement.LocationOption> getAccessibleLocationsForTree(WoodcuttingTree tree) {
+        return getLocationsForTree(tree).stream()
+                .filter(LocationRequirement.LocationOption::hasRequirements)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Gets the best accessible location for a tree type based on player position.
+     * Returns null if no accessible locations are found.
+     */
+    public static LocationRequirement.LocationOption getBestAccessibleLocation(WoodcuttingTree tree) {
+        List<LocationRequirement.LocationOption> accessibleLocations = getAccessibleLocationsForTree(tree);
+        
+        if (accessibleLocations.isEmpty()) {
+            return null;
+        }
+        
+        WorldPoint playerLocation = Rs2Player.getWorldLocation();
+        if (playerLocation != null) {
+            return accessibleLocations.stream()
+                    .min((loc1, loc2) -> Integer.compare(
+                            playerLocation.distanceTo(loc1.getWorldPoint()),
+                            playerLocation.distanceTo(loc2.getWorldPoint())
+                    ))
+                    .orElse(accessibleLocations.get(0));
+        }
+        
+        return accessibleLocations.get(0);
     }
     
     private static List<LocationRequirement.LocationOption> getRegularTreeLocations() {
@@ -150,6 +187,9 @@ public class WoodcuttingTreeLocations {
                 new WorldPoint(2774, 2697, 0), 
                 "Ape Atoll Teak Trees",
                 apeAtollQuests,
+                new HashMap<>(),
+                new HashMap<>(),
+                new HashMap<>(),
                 new HashMap<>()
         ));
         
@@ -160,6 +200,9 @@ public class WoodcuttingTreeLocations {
                 new WorldPoint(3832, 3067, 0), 
                 "Mos Le'Harmless Teak Trees",
                 mosLeHarmlessQuests,
+                new HashMap<>(),
+                new HashMap<>(),
+                new HashMap<>(),
                 new HashMap<>()
         ));
         
@@ -194,6 +237,9 @@ public class WoodcuttingTreeLocations {
                 new WorldPoint(2716, 2710, 0), 
                 "Ape Atoll Mahogany Trees",
                 apeAtollQuests,
+                new HashMap<>(),
+                new HashMap<>(),
+                new HashMap<>(),
                 new HashMap<>()
         ));
         
@@ -204,6 +250,9 @@ public class WoodcuttingTreeLocations {
                 new WorldPoint(3824, 3053, 0), 
                 "Mos Le'Harmless Mahogany Trees",
                 mosLeHarmlessQuests,
+              new HashMap<>(),
+                new HashMap<>(),
+                new HashMap<>(),
                 new HashMap<>()
         ));
         
@@ -220,7 +269,11 @@ public class WoodcuttingTreeLocations {
                 new WorldPoint(1591, 3483, 0), 
                 "Woodcutting Guild Yew Trees",
                 new HashMap<>(),
-                wcGuildSkills
+                wcGuildSkills,
+                new HashMap<>(),
+                new HashMap<>(),
+                new HashMap<>()
+                
         ));
         
         // Falador
@@ -254,6 +307,9 @@ public class WoodcuttingTreeLocations {
                 new WorldPoint(3631, 3362, 0), 
                 "Darkmeyer Blisterwood Trees",
                 darkmeberQuests,
+                  new HashMap<>(),
+                new HashMap<>(),
+                new HashMap<>(),
                 new HashMap<>()
         ));
         
@@ -270,7 +326,10 @@ public class WoodcuttingTreeLocations {
                 new WorldPoint(1610, 3443, 0), 
                 "Woodcutting Guild Magic Trees",
                 new HashMap<>(),
-                wcGuildSkills
+                wcGuildSkills,
+                new HashMap<>(),
+                new HashMap<>(),
+                new HashMap<>()
         ));
         
         // Sorcerer's Tower
@@ -298,7 +357,10 @@ public class WoodcuttingTreeLocations {
                 new WorldPoint(1569, 3493, 0), 
                 "Woodcutting Guild Redwood Trees",
                 new HashMap<>(),
-                wcGuildSkills
+                wcGuildSkills,
+                new HashMap<>(),
+                new HashMap<>(),
+                new HashMap<>()
         ));
         
         return locations;

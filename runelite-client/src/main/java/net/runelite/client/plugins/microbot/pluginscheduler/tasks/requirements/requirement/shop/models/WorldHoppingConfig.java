@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop;
+package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.models;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -21,7 +21,7 @@ public class WorldHoppingConfig {
      * Maximum number of world hops before giving up
      */
     @Builder.Default
-    private final int maxWorldHops = 10;
+    private final int maxWorldHops = 5;
     
     /**
      * Maximum number of failed attempts per world before hopping

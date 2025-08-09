@@ -54,5 +54,11 @@ public enum RequirementType {
     /**
      * Loot requirement - looting specific items from the ground or activities
      */
-    LOOT
+    LOOT,
+    
+    /**
+     * Custom requirement - externally added requirements that should be fulfilled last
+     * These are added by plugins through the custom requirement registration system
+     */
+    CUSTOM
 }

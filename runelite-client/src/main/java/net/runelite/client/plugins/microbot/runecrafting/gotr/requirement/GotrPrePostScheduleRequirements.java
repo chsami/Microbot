@@ -10,7 +10,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.P
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.data.ItemRequirementCollection;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.SpellbookRequirement;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Spellbook;
@@ -22,25 +22,7 @@ public class GotrPrePostScheduleRequirements extends PrePostScheduleRequirements
     public GotrPrePostScheduleRequirements() {
         super("GOTR", "Runecrafting", false);
         
-        // Initialize the optional Lunar spellbook requirement
-        SpellbookRequirement lunarSpellbookRequirement = new SpellbookRequirement(
-                Rs2Spellbook.LUNAR,
-                // Only needed before the schedule starts, for NPC Contact spell
-                // Apply to both pre and post schedule ->  when both we are not swtiching back to the current. whe a post schedule se
-                ScheduleContext.PRE_SCHEDULE,   
-                Priority.OPTIONAL,
-                8,     // Rating 8/10 - very useful but not mandatory
-                "Lunar spellbook for NPC Contact spell to repair pouches during GOTR minigame"
-        );
-        // Capture spellbook requirement in the collection
-        register(lunarSpellbookRequirement);
-        
-        // Set location requirements
-        // Pre-schedule: GOTR bank for optimal setup and preparation
-        this.register(new LocationRequirement(BankLocation.GUARDIANS_OF_THE_RIFT, true,ScheduleContext.PRE_SCHEDULE, Priority.MANDATORY));             
-        // Post-schedule: Guardians of the Rift bank for returning after minigame
-        this.register(new LocationRequirement(BankLocation.GUARDIANS_OF_THE_RIFT,true, ScheduleContext.POST_SCHEDULE, Priority.OPTIONAL));
-        
+       
         initializeRequirements();
     }
     
@@ -50,7 +32,28 @@ public class GotrPrePostScheduleRequirements extends PrePostScheduleRequirements
      * Now uses ItemRequirementCollection for standardized outfit and equipment registration.
      */
     @Override
-    protected void initializeRequirements() {        
+    protected boolean initializeRequirements() {      
+        this.getRegistry().clear(); // Clear previous requirements to avoid duplicates 
+        // Initialize the optional Lunar spellbook requirement
+
+        SpellbookRequirement lunarSpellbookRequirement = new SpellbookRequirement(
+                Rs2Spellbook.LUNAR,
+                // Only needed before the schedule starts, for NPC Contact spell
+                // Apply to both pre and post schedule ->  when both we are not swtiching back to the current. whe a post schedule se
+                ScheduleContext.PRE_SCHEDULE,   
+                Priority.OPTIONAL,
+                8,     // Rating 8/10 - very useful but not mandatory
+                "Lunar spellbook for NPC Contact spell to repair pouches during GOTR minigame"
+        );
+       
+         // Capture spellbook requirement in the collection
+        register(lunarSpellbookRequirement);
+        
+        // Set location requirements
+        // Pre-schedule: GOTR bank for optimal setup and preparation
+        this.register(new LocationRequirement(BankLocation.GUARDIANS_OF_THE_RIFT, true,ScheduleContext.PRE_SCHEDULE, Priority.MANDATORY));             
+        
+        
         // Register complete outfit collections using the new ItemRequirementCollection utility
         
         // Runecrafting outfit (Robes of the Eye) - highest priority for GOTR
@@ -110,5 +113,12 @@ public class GotrPrePostScheduleRequirements extends PrePostScheduleRequirements
             Arrays.asList(ItemID.IKOV_BOOTSOFLIGHTNESS, ItemID.IKOV_BOOTSOFLIGHTNESSWORN),
             EquipmentInventorySlot.BOOTS, Priority.OPTIONAL, 4, "Boots of lightness (for weight reduction)", ScheduleContext.PRE_SCHEDULE
         ));
+
+        //set location post-schedule requirements - go to grand exchange after GOTR
+        this.register(new LocationRequirement(BankLocation.GRAND_EXCHANGE,true, ScheduleContext.POST_SCHEDULE, Priority.MANDATORY));
+        // Post-schedule: Guardians of the Rift bank for returning after minigame
+        //this.register(new LocationRequirement(BankLocation.GUARDIANS_OF_THE_RIFT,true, ScheduleContext.POST_SCHEDULE, Priority.OPTIONAL));
+        this.setInitialized(true); // Mark requirements as initialized
+        return true; // Return true to indicate successful initialization
     }
 }

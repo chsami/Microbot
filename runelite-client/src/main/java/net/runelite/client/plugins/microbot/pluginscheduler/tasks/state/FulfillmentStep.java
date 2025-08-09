@@ -13,7 +13,8 @@ public enum FulfillmentStep {
     SHOP(2, "Shop", "Purchasing required shop items"),
     ITEMS(3, "Items", "Preparing inventory and equipment"),
     SPELLBOOK(4, "Spellbook", "Switching to required spellbook"),
-    LOCATION(5, "Location", "Moving to required location");
+    LOCATION(5, "Location", "Moving to required location"),
+    EXTERNAL_REQUIREMENTS(6, "External", "Fulfilling externally added requirements");
     
     private final int order;
     private final String displayName;

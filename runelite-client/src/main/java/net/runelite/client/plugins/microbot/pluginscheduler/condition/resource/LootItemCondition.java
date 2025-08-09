@@ -825,9 +825,7 @@ public class LootItemCondition extends ResourceCondition {
             return;
         }
         // Get all items on the ground
-        RS2Item[] groundItems = Microbot.getClientThread().runOnClientThreadOptional(() ->
-                Rs2GroundItem.getAll(scanRange)
-        ).orElse(new RS2Item[] {});
+        RS2Item[] groundItems = Rs2GroundItem.getAll(scanRange);
         
         if (Microbot.isDebug()) {
             log.info("Scanning for existing ground items - found {} total items", groundItems.length);

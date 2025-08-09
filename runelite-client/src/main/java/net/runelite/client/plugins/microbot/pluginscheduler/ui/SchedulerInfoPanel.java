@@ -3,7 +3,9 @@ package net.runelite.client.plugins.microbot.pluginscheduler.ui;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.SchedulerPlugin;
 import net.runelite.client.plugins.microbot.pluginscheduler.SchedulerState;
+import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.ui.PrePostScheduleTasksInfoPanel;
 import net.runelite.client.plugins.microbot.pluginscheduler.ui.util.UIUtils;
 import net.runelite.client.plugins.microbot.util.antiban.enums.Activity;
 import net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity;
@@ -73,6 +75,9 @@ public class SchedulerInfoPanel extends JPanel {
     private final JLabel breakStatusLabel;
     private final JLabel nextBreakLabel;
     private final JLabel breakDurationLabel;    
+
+    // Pre/Post Schedule Tasks components
+    private final PrePostScheduleTasksInfoPanel prePostTasksInfoPanel;
 
     // State tracking for optimized updates
     private PluginScheduleEntry lastTrackedCurrentPlugin;
@@ -258,7 +263,16 @@ public class SchedulerInfoPanel extends JPanel {
         // Create compact plugin information panel
         pluginInfoPanel = createDynamicPluginInfoPanel();
         add(pluginInfoPanel);
-        // Removed rigid area spacing for tighter layout
+        
+        // Add spacing before pre/post schedule tasks panel
+        add(Box.createRigidArea(new Dimension(0, 5)));
+        
+        // Create pre/post schedule tasks info panel
+        prePostTasksInfoPanel = new PrePostScheduleTasksInfoPanel();
+        add(prePostTasksInfoPanel);
+        
+        // Add spacing after pre/post schedule tasks panel for better layout
+        add(Box.createRigidArea(new Dimension(0, 5)));
        
         // Initial refresh
         refresh();
@@ -433,6 +447,9 @@ public class SchedulerInfoPanel extends JPanel {
             // Always update time display for next plugin since countdown changes every second
             updateNextUpComingPluginTimeDisplay(nextUpComingPlugin);
         }
+        
+        // Update pre/post schedule tasks info for current plugin
+        updatePrePostTasksInfo();
     }
     
     /**
@@ -1384,5 +1401,30 @@ public class SchedulerInfoPanel extends JPanel {
         long seconds = duration.toSecondsPart();
         
         return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+    }
+    
+    /**
+     * Updates the pre/post schedule tasks information panel
+     */
+    private void updatePrePostTasksInfo() {
+        PluginScheduleEntry currentPlugin = plugin.getCurrentPlugin();
+        
+        if (currentPlugin != null) {
+            // Get the schedulable plugin interface
+            net.runelite.client.plugins.Plugin pluginInstance = currentPlugin.getPlugin();
+            
+            if (pluginInstance instanceof SchedulablePlugin) {
+                SchedulablePlugin schedulablePlugin = (SchedulablePlugin) pluginInstance;
+                
+                // Update the pre/post tasks panel with the current plugin
+                prePostTasksInfoPanel.updatePlugin(schedulablePlugin);
+            } else {
+                // Plugin doesn't implement SchedulablePlugin, clear the panel
+                prePostTasksInfoPanel.clear();
+            }
+        } else {
+            // No current plugin, clear the panel
+            prePostTasksInfoPanel.clear();
+        }
     }
 }

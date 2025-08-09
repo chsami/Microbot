@@ -1,7 +1,9 @@
 package net.runelite.client.plugins.microbot.util.shop;
 
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.MenuAction;
+import net.runelite.api.NPCComposition;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.WidgetInfo;
@@ -16,12 +18,14 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static net.runelite.client.plugins.microbot.Microbot.updateItemContainer;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntilOnClientThread;
 
+@Slf4j
 public class Rs2Shop {
     public static final int SHOP_INVENTORY_ITEM_CONTAINER = 19660800;
     public static final int SHOP_CLOSE_BUTTON = 196960801;
@@ -51,15 +55,22 @@ public class Rs2Shop {
     /**
      * Opens the shop interface by interacting with the specified NPC.
      *
+     * @param npcName The name of the shop NPC to interact with
+     * @param exact   Whether to match the name exactly or allow partial matches
      * @return true if the shop is successfully opened, false otherwise.
      */
-    public static boolean openShop(String NPC, boolean exact) {
+    public static boolean openShop(String npcName, boolean exact) {
         Microbot.status = "Opening Shop";
         try {
             if (isOpen()) return true;
-            Rs2NpcModel npc = Rs2Npc.getNpc(NPC, exact);
-            if (npc == null) return false;
-            Rs2Npc.interact(npc, "Trade");
+            
+            Rs2NpcModel shopNpc = getNearestShopNpc(npcName, exact);
+            if (shopNpc == null) {
+                log.warn("No shop NPC found with name '{}' and Trade action", npcName);
+                return false;
+            }
+            
+            Rs2Npc.interact(shopNpc, "Trade");
             sleepUntil(Rs2Shop::isOpen, 5000);
             return true;
         } catch (Exception ex) {
@@ -70,6 +81,58 @@ public class Rs2Shop {
 
     public static boolean openShop(String npc) {
         return openShop(npc, false);
+    }
+
+    /**
+     * Finds the nearest shop NPC with the specified name and "Trade" action.
+     *
+     * @param npcName The name of the shop NPC to find
+     * @param exact   Whether to match the name exactly or allow partial matches
+     * @return The nearest shop NPC with "Trade" action, or null if not found
+     */
+    public static Rs2NpcModel getNearestShopNpc(String npcName, boolean exact) {
+        return Rs2Npc.getNpcs(npcName, exact)
+                .filter(npc -> {
+                    // Check if NPC has "Trade" action
+                    try {
+                        NPCComposition composition = npc.getComposition();
+                        if (composition == null) return false;
+                        
+                        String[] actions = composition.getActions();
+                        if (actions == null) return false;
+                        
+                        // Check both base and transformed compositions for "Trade" action
+                        boolean hasTradeAction = Arrays.stream(actions)
+                                .anyMatch(action -> action != null && action.equals("Trade"));
+                        
+                        // Also check transformed composition if available
+                        if (!hasTradeAction) {
+                            NPCComposition transformedComposition = npc.getTransformedComposition();
+                            if (transformedComposition != null && transformedComposition.getActions() != null) {
+                                hasTradeAction = Arrays.stream(transformedComposition.getActions())
+                                        .anyMatch(action -> action != null && action.equals("Trade"));
+                            }
+                        }
+                        
+                        return hasTradeAction;
+                    } catch (Exception e) {
+                        log.error("Error checking NPC actions for {}: {}", npc.getName(), e.getMessage());
+                        return false;
+                    }
+                })
+                .sorted((npc1, npc2) -> Integer.compare(npc1.getDistanceFromPlayer(), npc2.getDistanceFromPlayer()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * Finds the nearest shop NPC with the specified name and "Trade" action (partial name matching).
+     *
+     * @param npcName The name of the shop NPC to find
+     * @return The nearest shop NPC with "Trade" action, or null if not found
+     */
+    public static Rs2NpcModel getNearestShopNpc(String npcName) {
+        return getNearestShopNpc(npcName, false);
     }
 
     /**

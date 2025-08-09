@@ -5,7 +5,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.P
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.data.ItemRequirementCollection;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.woodcutting.AutoWoodcuttingConfig;
 import net.runelite.client.plugins.microbot.woodcutting.data.WoodcuttingTreeLocations;
@@ -25,16 +25,8 @@ public class WoodcuttingPrePostScheduleRequirements extends PrePostScheduleRequi
     private final AutoWoodcuttingConfig config;
     
     public WoodcuttingPrePostScheduleRequirements(AutoWoodcuttingConfig config) {
-        super("Woodcutting", "Woodcutting", false);
-        
-        this.config = config;
-        
-        // Register location requirements based on selected tree
-        registerTreeLocationRequirements();
-        
-        // Set post-schedule location requirements - go to bank after woodcutting
-        this.register(new LocationRequirement(BankLocation.GRAND_EXCHANGE, true, ScheduleContext.POST_SCHEDULE, Priority.OPTIONAL));
-        
+        super("Woodcutting", "Woodcutting", false);        
+        this.config = config;    
         initializeRequirements();
     }
     
@@ -42,11 +34,12 @@ public class WoodcuttingPrePostScheduleRequirements extends PrePostScheduleRequi
      * Registers location requirements based on the selected tree type.
      * Uses the WoodcuttingTreeLocations data to provide optimal locations with requirements.
      */
-    private void registerTreeLocationRequirements() {
+    private boolean registerTreeLocationRequirements() {
         WoodcuttingTree selectedTree = config.TREE();
-        
+         
+        boolean success = true; // Mark as failure if no store found
         // Get the locations for the selected tree type
-        List<LocationRequirement.LocationOption> treeLocations = WoodcuttingTreeLocations.getLocationsForTree(selectedTree);
+        List<LocationRequirement.LocationOption> treeLocations = WoodcuttingTreeLocations.getAccessibleLocationsForTree(selectedTree);
         
         if (!treeLocations.isEmpty()) {
             // Create a location requirement with all available locations for this tree type
@@ -72,11 +65,18 @@ public class WoodcuttingPrePostScheduleRequirements extends PrePostScheduleRequi
             }
         } else {
             log.warn("No locations found for tree type: {}", selectedTree);
+            this.getRegistry().clear();
+            success = false; // Mark as failure if no store found
         }
+        return success;
     }
     
     @Override
-    protected void initializeRequirements() {
+    protected boolean initializeRequirements() {
+        if (config == null) {
+            return false; // Ensure config is initialized before proceeding
+        }
+        this.getRegistry().clear();
         // Register complete outfit and equipment collections using ItemRequirementCollection        
         // Woodcutting axes - progression-based from bronze to crystal/3rd age
         ItemRequirementCollection.registerWoodcuttingAxes(this, Priority.MANDATORY, ScheduleContext.PRE_SCHEDULE, -1);  // -1 for no inventory slot means the axe can be placed in any inventory slot, and also be equipped, -2 would mean it can only be equipped      
@@ -84,6 +84,20 @@ public class WoodcuttingPrePostScheduleRequirements extends PrePostScheduleRequi
         // Lumberjack outfit - provides XP bonus for woodcutting
         // Example: Skip head slot if user prefers to wear something else (like slayer helmet)
         ItemRequirementCollection.registerLumberjackOutfit(this, Priority.RECOMMENDED, 10, ScheduleContext.PRE_SCHEDULE, false, false, false, false);        
+
+            
+        // Register location requirements based on selected tree
+        boolean successTreeLocationReq = registerTreeLocationRequirements();
+        if (!successTreeLocationReq) {
+            this.setInitialized(successTreeLocationReq);
+            log.error("Failed to register tree location requirements. No locations available for selected tree.");
+            return false; // Initialization failed
+        }
+        
+        // Set post-schedule location requirements - go to bank after woodcutting
+        this.register(new LocationRequirement(BankLocation.GRAND_EXCHANGE, true, ScheduleContext.POST_SCHEDULE, Priority.OPTIONAL));
+        this.setInitialized(true);
+        return this.isInitialized();
     }
     
     /**

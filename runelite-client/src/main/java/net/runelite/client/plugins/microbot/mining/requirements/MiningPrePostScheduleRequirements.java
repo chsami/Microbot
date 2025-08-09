@@ -3,72 +3,92 @@ package net.runelite.client.plugins.microbot.mining.requirements;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.mining.AutoMiningConfig;
 import net.runelite.client.plugins.microbot.mining.amethyst.AmethystMiningConfig;
+import net.runelite.client.plugins.microbot.mining.data.MiningRockLocations;
+import net.runelite.client.plugins.microbot.mining.enums.Rocks;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.PrePostScheduleRequirements;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.data.ItemRequirementCollection;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 
+import java.util.List;
+
 /**
- * Example implementation showing how to use ItemRequirementCollection for a mining plugin.
- * Demonstrates the new standardized approach to equipment and outfit requirements,
- * including Varrock diary armour and prospector outfit variants.
+ * Enhanced implementation showing how to use ItemRequirementCollection for a mining plugin.
+ * Demonstrates the new standardized approach to equipment, outfit requirements, and location requirements.
+ * 
+ * Now includes dynamic location requirements based on the selected ore type with quest and skill requirements.
  */
 @Slf4j
 public class MiningPrePostScheduleRequirements extends PrePostScheduleRequirements {
+    final AmethystMiningConfig amethystMiningConfig;
+    final AutoMiningConfig autoMiningConfig;
+    
     public MiningPrePostScheduleRequirements(AmethystMiningConfig config) {
         super("Mining", "Mining", false);
+        this.amethystMiningConfig = config;
+        this.autoMiningConfig = null;
         //TODO Set location pre-schedule requirements - near mining spots for amethyst
 
-        //set location post-schedule requirements - near bank for amethyst, make a enums for the ores, add location requirements for each ore type
-        this.register(new LocationRequirement(BankLocation.GRAND_EXCHANGE,true, ScheduleContext.PRE_SCHEDULE, Priority.MANDATORY));
-        initializeRequirements();
-    }
-    public MiningPrePostScheduleRequirements(AutoMiningConfig config) {
-        super("Mining", "Mining", false);
-        // Set location pre-schedule requirements - near mining spots 
-        // TODO: Register specific tree locations based on the selected rock type, check wiki for locations, 
-        // enchance the  enum to include locations or use a separate mapping
-        // also we must check if accessable -> via  qeust unlocked    Rs2Player.getQuestState ->  if a optimal resourse have a
-        switch (config.ORE()) {
-            case TIN:
-               
-                break;
-            case COPPER:
-               
-                break;
-            case IRON:
-               
-                break;
-            case COAL:
-               
-                break;
-            case GOLD:
-               
-                break;
-            case MITHRIL:
-               
-                break;
-            case ADAMANTITE:
-               
-                break;
-            case RUNITE:
-                
-                break;
-            default:
-                log.error("Unsupported ore type: " + config.ORE());
-        }
-        // Set location requirements - near mining spots or bank
-        this.register(new LocationRequirement(BankLocation.GRAND_EXCHANGE, true,ScheduleContext.POST_SCHEDULE, Priority.OPTIONAL));
         
         initializeRequirements();
     }
     
-    @Override
-    protected void initializeRequirements() {
-        // Register complete outfit and equipment collections using ItemRequirementCollection
+    public MiningPrePostScheduleRequirements(AutoMiningConfig config) {
+        super("Mining", "Mining", false);
+        this.amethystMiningConfig = null;
+        this.autoMiningConfig = config;
+        initializeRequirements();
+    }
+    
+    /**
+     * Registers location requirements based on the selected ore type.
+     * Uses the MiningRockLocations data to provide optimal locations with requirements.
+     */
+    private boolean registerRockLocationRequirements() {
+        Rocks selectedRock = autoMiningConfig.ORE();
+         
+        boolean success = true; // Mark as failure if no locations found
+        // Get the locations for the selected rock type
+        List<LocationRequirement.LocationOption> rockLocations = MiningRockLocations.getAccessibleLocationsForRock(selectedRock);
         
+        if (!rockLocations.isEmpty()) {
+            // Create a location requirement with all available locations for this rock type
+            LocationRequirement rockLocationRequirement = new LocationRequirement(
+                rockLocations,
+                10, // Acceptable distance from mining areas
+                true, // Use transports for efficient travel                
+                ScheduleContext.PRE_SCHEDULE,
+                Priority.MANDATORY,
+                9, // High rating since location is critical for mining
+                "Must be at a suitable " + selectedRock.name() + " mining location to begin mining"
+            );
+            
+            this.register(rockLocationRequirement);
+            
+            log.info("Registered {} location options for {} rocks", 
+                     rockLocations.size(), selectedRock.name());
+            
+            // Log available locations for debugging
+            for (LocationRequirement.LocationOption location : rockLocations) {
+                log.debug("Available location: {} - Accessible: {}", 
+                         location.getName(), location.hasRequirements());
+            }
+        } else {
+            log.warn("No locations found for rock type: {}", selectedRock);
+            this.getRegistry().clear();
+            success = false; // Mark as failure if no locations found
+        }
+        return success;
+    }
+    
+    @Override
+    protected boolean initializeRequirements() {
+        this.getRegistry().clear();
+        // Register complete outfit and equipment collections using ItemRequirementCollection
+        //set location post-schedule requirements - go to grand exchange after mining
+        this.register(new LocationRequirement(BankLocation.GRAND_EXCHANGE,true, ScheduleContext.POST_SCHEDULE, Priority.MANDATORY));
         // Mining pickaxes - progression-based from bronze to crystal
         ItemRequirementCollection.registerPickAxes(this,Priority.MANDATORY, ScheduleContext.PRE_SCHEDULE);
         
@@ -81,6 +101,66 @@ public class MiningPrePostScheduleRequirements extends PrePostScheduleRequiremen
         // TODO: Update ItemRequirementCollection.registerVarrockDiaryArmour to accept ScheduleContext
         ItemRequirementCollection.registerVarrockDiaryArmour(this, Priority.RECOMMENDED, ScheduleContext.PRE_SCHEDULE);
         
+        if (autoMiningConfig != null) {
+            // Register location requirements based on selected rock type
+            boolean successRockLocationReq = registerRockLocationRequirements();
+            if (!successRockLocationReq) {
+                this.setInitialized(successRockLocationReq);
+                log.error("Failed to register rock location requirements. No locations available for selected rock.");
+                return false; // Initialization failed
+            }
+            
+            // Set post-schedule location requirements - go to bank after mining
+            this.register(new LocationRequirement(BankLocation.GRAND_EXCHANGE, true, ScheduleContext.POST_SCHEDULE, Priority.OPTIONAL));
+        }                
+        this.setInitialized(true);
+        return this.isInitialized();
+    }
+    
+    /**
+     * Gets information about the current rock location requirements.
+     * Useful for debugging and user interface display.
+     */
+    public String getLocationRequirementInfo() {
+        if (autoMiningConfig == null) {
+            return "No auto mining config available";
+        }
         
+        Rocks selectedRock = autoMiningConfig.ORE();
+        List<LocationRequirement.LocationOption> rockLocations = MiningRockLocations.getLocationsForRock(selectedRock);
+        
+        StringBuilder info = new StringBuilder();
+        info.append("Rock Type: ").append(selectedRock.name()).append("\n");
+        info.append("Available Locations: ").append(rockLocations.size()).append("\n");
+        
+        long accessibleCount = rockLocations.stream()
+                .mapToLong(location -> location.hasRequirements() ? 1 : 0)
+                .sum();
+        
+        info.append("Accessible Locations: ").append(accessibleCount).append("\n");
+        
+        if (accessibleCount == 0) {
+            info.append("WARNING: No accessible locations! Check quest/skill requirements.\n");
+        }
+        
+        for (LocationRequirement.LocationOption location : rockLocations) {
+            info.append("  - ").append(location.getName());
+            if (!location.hasRequirements()) {
+                info.append(" (INACCESSIBLE)");
+                if (!location.getRequiredQuests().isEmpty()) {
+                    info.append(" - Requires quests: ");
+                    location.getRequiredQuests().forEach((quest, state) -> 
+                        info.append(quest.name()).append(" (").append(state.name()).append(") "));
+                }
+                if (!location.getRequiredSkills().isEmpty()) {
+                    info.append(" - Requires skills: ");
+                    location.getRequiredSkills().forEach((skill, level) -> 
+                        info.append(skill.name()).append(" ").append(level).append(" "));
+                }
+            }
+            info.append("\n");
+        }
+        
+        return info.toString();
     }
 }

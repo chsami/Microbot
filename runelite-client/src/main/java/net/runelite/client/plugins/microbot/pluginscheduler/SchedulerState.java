@@ -14,8 +14,10 @@ public enum SchedulerState {
     READY("Ready", "Ready to run scheduled plugins", new Color(0, 150, 255)),
     SCHEDULING("SCHEDULING", "Scheduler is running and monitoring", new Color(76, 175, 80)),
     STARTING_PLUGIN("Starting Plugin", "Starting a scheduled plugin", new Color(200, 230, 0)),
+    EXECUTING_PRE_SCHEDULE_TASKS("Pre-Schedule Tasks", "Executing pre-schedule preparation tasks", new Color(173, 216, 230)),
     RUNNING_PLUGIN("Running Plugin", "Scheduled plugin is running", new Color(0, 200, 83)),
     RUNNING_PLUGIN_PAUSED("Plugin Paused", "Current plugin execution is paused", new Color(255, 140, 0)),
+    EXECUTING_POST_SCHEDULE_TASKS("Post-Schedule Tasks", "Executing post-schedule cleanup tasks", new Color(255, 182, 193)),
     SCHEDULER_PAUSED("Scheduler Paused", "All scheduler activities are paused", new Color(255, 165, 0)),
     WAITING_FOR_LOGIN("Waiting for Login", "Waiting for user to log in", new Color(255, 215, 0)),
     HARD_STOPPING_PLUGIN("Hard Stopping Plugin", "Stopping the current plugin", new Color(255, 120, 0)),
@@ -60,11 +62,22 @@ public enum SchedulerState {
     }
 
     /**
-     * Determines if the scheduler is actively running a plugin or about to run one
+     * Determines if the scheduler is actively running a plugin or about to run one.
+     * This includes pre/post schedule task execution as part of plugin running.
      */
     public boolean isPluginRunning() {
         return isSchedulerActive() && 
-               (this == SchedulerState.RUNNING_PLUGIN);
+               (this == SchedulerState.RUNNING_PLUGIN || 
+                this == SchedulerState.EXECUTING_PRE_SCHEDULE_TASKS ||
+                this == SchedulerState.EXECUTING_POST_SCHEDULE_TASKS);
+    }
+    
+    /**
+     * Determines if the scheduler is executing pre/post schedule tasks
+     */
+    public boolean isExecutingPrePostTasks() {
+        return this == SchedulerState.EXECUTING_PRE_SCHEDULE_TASKS || 
+               this == SchedulerState.EXECUTING_POST_SCHEDULE_TASKS;
     }
     public boolean isAboutStarting() {
         return this == SchedulerState.STARTING_PLUGIN || this== SchedulerState.WAITING_FOR_STOP_CONDITION ||

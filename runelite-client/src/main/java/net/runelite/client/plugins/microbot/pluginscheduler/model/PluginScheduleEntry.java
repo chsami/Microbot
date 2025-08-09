@@ -14,9 +14,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 import java.util.function.Supplier;
-
-import org.lwjgl.opencl.CL;
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.Getter;
@@ -38,9 +35,10 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeC
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeWindowCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.enums.RepeatCycle;
 import net.runelite.client.plugins.microbot.pluginscheduler.config.ScheduleEntryConfigManager;
+import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
 import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryPreScheduleTaskEvent;
 import net.runelite.client.plugins.microbot.pluginscheduler.serialization.ScheduledSerializer;
-
 @Data
 @AllArgsConstructor
 @Getter
@@ -476,13 +474,22 @@ public class PluginScheduleEntry implements AutoCloseable {
                 logBuilder.append(" - Set \"scheduleMode\" in config of the plugin\n");
             }
             
+            // Check if plugin implements SchedulablePlugin and use event-driven startup
+            Plugin plugin = getPlugin();
+            if (plugin instanceof SchedulablePlugin) {
+                logBuilder.append(" - Plugin implements SchedulablePlugin\n");
+            } else {
+                logBuilder.append(" - Plugin does not implement SchedulablePlugin\n");
+            }
+            
+            // Start the plugin directly - it will handle scheduler mode detection in its startUp() method
             Microbot.getClientThread().runOnSeperateThread(() -> {
-                Plugin plugin = getPlugin();
-                if (plugin == null) {
+                Plugin pluginToStart = getPlugin();
+                if (pluginToStart == null) {
                     log.error("Plugin '{}' not found -> can't start plugin", name);
                     return false;
                 }                
-                Microbot.startPlugin(plugin);
+                Microbot.startPlugin(pluginToStart);
                 return false;
             });
             
@@ -504,6 +511,49 @@ public class PluginScheduleEntry implements AutoCloseable {
             return true;
         } catch (Exception e) {
             log.error("Error starting plugin '{}': {}", name, e.getMessage(), e);
+            return false;
+        }
+    }
+    
+    /**
+     * Triggers pre-schedule tasks for a SchedulablePlugin.
+     * This method should be called after the plugin has started and is subscribed to EventBus.
+     * 
+     * @return true if the trigger was successful, false otherwise
+     */
+    public boolean triggerPreScheduleTasks() {
+        try {
+            Plugin plugin = getPlugin();
+            if (!(plugin instanceof SchedulablePlugin)) {
+                log.warn("Plugin '{}' does not implement SchedulablePlugin - cannot trigger pre-schedule tasks", name);
+                return false;
+            }
+            
+            SchedulablePlugin schedulablePlugin = (SchedulablePlugin) plugin;
+            if (schedulablePlugin.getPrePostScheduleTasks() == null) {
+                log.debug("Plugin '{}' has no pre/post schedule tasks configured", name);
+                return false;
+            }
+            
+            // Check if pre-schedule tasks are already running or completed
+            if (schedulablePlugin.getPrePostScheduleTasks().isPreScheduleRunning()) {
+                log.warn("Pre-schedule tasks are already running for plugin '{}' - cannot trigger again", name);
+                return false;
+            }
+            
+            if (schedulablePlugin.getPrePostScheduleTasks().isPreTaskComplete()) {
+                log.debug("Pre-schedule tasks already completed for plugin '{}' - skipping trigger", name);
+                return false;
+            }
+            
+            log.info("Triggering pre-schedule tasks for plugin '{}'", name);
+            
+            // Send start event to the running plugin
+            Microbot.getEventBus().post(new PluginScheduleEntryPreScheduleTaskEvent(plugin, true));
+            
+            return true;
+        } catch (Exception e) {
+            log.error("Error triggering pre-schedule tasks for plugin '{}': {}", name, e.getMessage(), e);
             return false;
         }
     }

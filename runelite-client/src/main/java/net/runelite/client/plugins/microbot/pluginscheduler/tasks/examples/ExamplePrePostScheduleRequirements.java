@@ -11,7 +11,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.e
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.PrePostScheduleRequirements;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.SpellbookRequirement;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Spellbook;
@@ -30,7 +30,20 @@ public class ExamplePrePostScheduleRequirements extends PrePostScheduleRequireme
     
     public ExamplePrePostScheduleRequirements() {
         super("Example", "General", false);
-        
+       
+        initializeRequirements();
+    }
+    
+    /**
+     * Initializes the item requirement collection with example items.
+     * This demonstrates typical patterns for different equipment slots and priorities.
+     */
+    @Override
+    protected boolean initializeRequirements() {
+        this.getRegistry().clear(); // Clear previous requirements if any
+
+
+         
         // Example: Optional teleport spellbook for faster travel
         SpellbookRequirement normalSpellbookRequirement = new SpellbookRequirement(
                 Rs2Spellbook.MODERN,
@@ -47,15 +60,6 @@ public class ExamplePrePostScheduleRequirements extends PrePostScheduleRequireme
         // Post-schedule: Return to Grand Exchange for selling/organizing items
         this.register(new LocationRequirement(BankLocation.GRAND_EXCHANGE, true,ScheduleContext.POST_SCHEDULE, Priority.RECOMMENDED));
         
-        initializeRequirements();
-    }
-    
-    /**
-     * Initializes the item requirement collection with example items.
-     * This demonstrates typical patterns for different equipment slots and priorities.
-     */
-    @Override
-    protected void initializeRequirements() {
         ScheduleContext scheduleContext = ScheduleContext.PRE_SCHEDULE; // Default to pre-schedule context
         // HEAD - Example progression: best to worst
         this.register(new ItemRequirement(
@@ -143,8 +147,8 @@ public class ExamplePrePostScheduleRequirements extends PrePostScheduleRequireme
             Arrays.asList(ItemID.LOBSTER, ItemID.SWORDFISH, ItemID.TUNA), 1, null,-1,
             Priority.OPTIONAL, 5, "Food for healing if needed",scheduleContext
         ));
-         
-        
+        setInitialized(true);
+        return true; // Initialization successful
         // EITHER ITEMS - Items that can be equipped or kept in inventory
         
     }

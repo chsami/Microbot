@@ -10,6 +10,7 @@ import lombok.EqualsAndHashCode;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 
 /**
@@ -75,18 +76,8 @@ public abstract class Requirement implements Comparable<Requirement> {
      * @param executorService The ScheduledExecutorService on which this requirement fulfillment is running
      * @return true if the requirement was fulfilled successfully, false otherwise
      */
-    public abstract boolean fulfillRequirement(ScheduledExecutorService executorService);
-    
-    /**
-     * Backward compatibility method to fulfill this requirement without executor service.
-     * This delegates to the main fulfillRequirement method with a null executor service.
-     * 
-     * @return true if the requirement was fulfilled successfully, false otherwise
-     */
-    public final boolean fulfillRequirement() {
-        return fulfillRequirement(null);
-    }
-    
+    public abstract boolean fulfillRequirement(CompletableFuture<Boolean> scheduledFuture);
+            
     /**
      * Checks if this requirement is currently fulfilled.
      * This is a convenience method that calls fulfillRequirement() for consistency

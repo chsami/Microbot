@@ -609,22 +609,13 @@ public interface SchedulableExampleConfig extends Config {
   
        
     
-    @ConfigItem(
-        keyName = "enableLootRequirement",
-        name = "Enable Loot Requirement",
-        description = "Enable loot requirement for coins near Lumbridge",
-        position = 3,
-        section = prePostScheduleRequirementsSection
-    )
-    default boolean enableLootRequirement() {
-        return false;
-    }
+  
     
     @ConfigItem(
         keyName = "enableEquipmentRequirement",
         name = "Enable Equipment Requirement",
         description = "Enable equipment requirement",
-        position = 4,
+        position = 5,
         section = prePostScheduleRequirementsSection
     )
     default boolean enableEquipmentRequirement() {
@@ -635,22 +626,44 @@ public interface SchedulableExampleConfig extends Config {
         keyName = "enableInventoryRequirement",
         name = "Enable Inventory Requirement",
         description = "Enable inventory requirement",
-        position = 5,
+        position = 6,
         section = prePostScheduleRequirementsSection
     )
     default boolean enableInventoryRequirement() {
         return false;
     }
       @ConfigItem(
+        keyName = "enableLootRequirement",
+        name = "Enable Loot Requirement",
+        description = "Enable loot requirement for coins near Lumbridge",
+        position = 7,
+        section = prePostScheduleRequirementsSection
+    )
+    default boolean enableLootRequirement() {
+        return false;
+    }
+      @ConfigItem(
         keyName = "enableShopRequirement",
         name = "Enable Shop Requirement",
         description = "Enable shop maple longbow, buy from grand exchange as pre-schedule and sell at store on post-schedule",
-        position = 5,
+        position = 8,
         section = prePostScheduleRequirementsSection
     )
     default boolean enableShopRequirement() {
         return false;
     }
+
+    @ConfigItem(
+        keyName = "externalRequirements",
+        name = "Enable External Requirements",
+        description = "Enable external requirements test for pre and post schedule tasks",
+        position = 8,
+        section = prePostScheduleRequirementsSection
+    )
+    default boolean externalRequirements() {
+        return false;
+    }
+
 
 
     @ConfigSection(
@@ -847,6 +860,17 @@ public interface SchedulableExampleConfig extends Config {
         section = debugSection
     )
     default Keybind testPostScheduleTasksHotkey() {
+        return Keybind.NOT_SET;
+    }
+    
+    @ConfigItem(
+        keyName = "cancelTasksHotkey",
+        name = "Cancel & Reset Tasks Hotkey", 
+        description = "Press this hotkey to cancel any running pre/post schedule tasks and reset execution state",
+        position = 8,
+        section = debugSection
+    )
+    default Keybind cancelTasksHotkey() {
         return Keybind.NOT_SET;
     }
 }

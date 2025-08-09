@@ -5,7 +5,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.tasks.AbstractPrePos
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.PrePostScheduleRequirements;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.collection.LootRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.SpellbookRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.state.TaskExecutionState;
@@ -407,6 +407,68 @@ public class PrePostScheduleTasksOverlayComponents {
         if (requirements != null && tasks != null && (tasks.isExecuting() || requirements.isFulfilling())) {
             // Show only the current requirement being processed
             components.addAll(createCurrentRequirementComponents(requirements));
+        }
+        
+        return components;
+    }
+    
+    /**
+     * Creates concise summary components for main overlay display.
+     * Shows only essential information to avoid clutter.
+     * 
+     * @param pluginName The name of the plugin
+     * @param tasks The task manager instance
+     * @param requirements The requirements instance
+     * @return List of overlay components for concise display
+     */
+    public static List<Object> createConciseComponents(String pluginName, AbstractPrePostScheduleTasks tasks, PrePostScheduleRequirements requirements) {
+        List<Object> components = new ArrayList<>();
+        
+        // Only show title and execution status for concise view
+        if (tasks != null && tasks.isExecuting()) {
+            TaskExecutionState state = tasks.getExecutionState();
+            
+            // Concise title with status
+            String titleText = pluginName + " Tasks";
+            Color titleColor = ACTIVE_COLOR;
+            
+            if (state.isInErrorState()) {
+                titleColor = ERROR_COLOR;
+                titleText += " (ERROR)";
+            } else if (state.isExecuting()) {
+                titleColor = ACTIVE_COLOR;
+                titleText += " (ACTIVE)";
+            }
+            
+            components.add(TitleComponent.builder()
+                .text(titleText)
+                .color(titleColor)
+                .build());
+                
+            // Show only current phase and progress
+            String phase = state.getCurrentPhase() != null ? state.getCurrentPhase().toString() : "UNKNOWN";
+            int progress = state.getProgressPercentage();
+            String progressText = progress > 0 ? progress + "%" : "Working...";
+            
+            components.add(LineComponent.builder()
+                .left(phase + ":")
+                .right(progressText)
+                .leftColor(INFO_COLOR)
+                .rightColor(ACTIVE_COLOR)
+                .build());
+        } else {
+            // Show status when not executing
+            components.add(TitleComponent.builder()
+                .text(pluginName + " Tasks")
+                .color(INFO_COLOR)
+                .build());
+                
+            components.add(LineComponent.builder()
+                .left("Status:")
+                .right("Ready")
+                .leftColor(INFO_COLOR)
+                .rightColor(SUCCESS_COLOR)
+                .build());
         }
         
         return components;

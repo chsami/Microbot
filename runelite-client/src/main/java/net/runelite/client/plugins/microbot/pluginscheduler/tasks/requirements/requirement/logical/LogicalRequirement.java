@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
 
@@ -180,13 +181,13 @@ public abstract class LogicalRequirement extends Requirement {
      * @return true if the logical requirement is fulfilled, false otherwise
      */
     @Override
-    public boolean fulfillRequirement(ScheduledExecutorService executorService) {
+    public boolean fulfillRequirement(CompletableFuture<Boolean> scheduledFuture) {
         log.debug("Attempting to fulfill logical requirement: {}", getName());
         
         // For logical requirements, we don't directly fulfill them
         // Instead, we check if they are already fulfilled by their children
 
-        boolean fulfilled = fulfillLogicalRequirement();
+        boolean fulfilled = fulfillLogicalRequirement(scheduledFuture);
         
         if (fulfilled) {
             log.debug("Logical requirement {} is already fulfilled", getName());
@@ -315,11 +316,11 @@ public abstract class LogicalRequirement extends Requirement {
      * @param preferEquipment If true, prefer equipping items; if false, prefer inventory
      * @return true if the logical requirement was fulfilled
      */
-    private boolean fulfillLogicalRequirement() {
+    private boolean fulfillLogicalRequirement(CompletableFuture<Boolean> scheduledFuture) {
         // If already fulfilled, nothing to do
 
         if (this instanceof OrRequirement) {
-            return fulfillOrRequirement((OrRequirement) this);
+            return fulfillOrRequirement((OrRequirement) this,scheduledFuture);
         } else {
 
             log.warn("Unknown logical requirement type: {}", this.getClass().getSimpleName());
@@ -336,7 +337,7 @@ public abstract class LogicalRequirement extends Requirement {
      * @param preferEquipment If true, prefer equipping items; if false, prefer inventory
      * @return true if at least one child requirement was fulfilled
      */
-    private boolean fulfillOrRequirement(OrRequirement orReq) {
+    private boolean fulfillOrRequirement(OrRequirement orReq, CompletableFuture<Boolean> scheduledFuture) {
         // Sort child requirements by rating (highest first), then by priority
         List<Requirement> sortedRequirements = orReq.getChildRequirements().stream()
                 .sorted((r1, r2) -> {
@@ -352,15 +353,19 @@ public abstract class LogicalRequirement extends Requirement {
         boolean foundFulfilled = false;
         // Try to fulfill all requirements in order of rating (highest first), but only need one to succeed
         for (Requirement childReq : sortedRequirements) {
+            if(scheduledFuture.isCancelled() || scheduledFuture.isDone()) { 
+                log.info("Scheduled future was cancelled or completed, stopping OR requirement fulfillment.");
+                return foundFulfilled; // Stop if future is cancelled or done
+            }
             if (childReq instanceof LogicalRequirement) {
-                if (childReq.fulfillRequirement()) {
+                if (childReq.fulfillRequirement(scheduledFuture)) {
                     log.info("Fulfilled OR requirement using logical child: {} (rating: {})", 
                             childReq.getDescription(), childReq.getRating());
                     foundFulfilled = true; 
                 }
             } else if (childReq instanceof ItemRequirement) {
                 ItemRequirement itemReq = (ItemRequirement) childReq;                
-                itemReq.fulfillRequirement();
+                itemReq.fulfillRequirement(scheduledFuture);
                 
                 if (orReq.isFulfilled() || itemReq.isFulfilled()) {
                     log.info("Fulfilled OR requirement using item: {} (rating: {})", 
@@ -370,7 +375,7 @@ public abstract class LogicalRequirement extends Requirement {
             } else if (childReq instanceof ShopRequirement) {
                 ShopRequirement shopReq = (ShopRequirement) childReq;
                 try {
-                    if (shopReq.fulfillRequirement()) {
+                    if (shopReq.fulfillRequirement(scheduledFuture)) {
                         log.info("Fulfilled shop OR requirement: {} (rating: {})", 
                                 shopReq.getName(), shopReq.getRating());
                         foundFulfilled = true; 
@@ -381,7 +386,7 @@ public abstract class LogicalRequirement extends Requirement {
             } else if (childReq instanceof LootRequirement) {
                 LootRequirement lootReq = (LootRequirement) childReq;
                 try {
-                    if (lootReq.fulfillRequirement()) {
+                    if (lootReq.fulfillRequirement(scheduledFuture)) {
                         log.debug("Fulfilled loot OR requirement: {} (rating: {})", 
                                 lootReq.getName(), lootReq.getRating());
                         foundFulfilled = true; 
@@ -504,7 +509,7 @@ public abstract class LogicalRequirement extends Requirement {
      * @param requirementType Description of the requirement type for logging
      * @return true if all mandatory requirements were fulfilled, false otherwise
      */
-    public static boolean fulfillLogicalRequirements(List<LogicalRequirement> logicalReqs, String requirementType) {
+    public static boolean fulfillLogicalRequirements(CompletableFuture<Boolean> scheduledFuture, List<LogicalRequirement> logicalReqs, String requirementType) {
         if (logicalReqs.isEmpty()) {
             log.debug("No {} requirements to fulfill", requirementType);
             return true;
@@ -525,7 +530,7 @@ public abstract class LogicalRequirement extends Requirement {
                     continue;
                 }
                 
-                boolean requirementFulfilled = logicalReq.fulfillRequirement();
+                boolean requirementFulfilled = logicalReq.fulfillRequirement(scheduledFuture);
                 
                 if (requirementFulfilled) {
                     fulfilled++;
