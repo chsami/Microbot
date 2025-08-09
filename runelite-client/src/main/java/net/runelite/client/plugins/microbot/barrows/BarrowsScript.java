@@ -42,7 +42,7 @@ public class BarrowsScript extends Script {
     public static boolean test = false;
     public static boolean inTunnels = false;
     public static String WhoisTun = "Unknown";
-    private String neededRune = "unknown";
+    public String neededRune = "unknown";
     private boolean shouldBank = false;
     private boolean shouldAttackSkeleton = false;
     private boolean varbitCheckEnabled = true;
@@ -155,14 +155,11 @@ public class BarrowsScript extends Script {
                             return;
                         }
 
-
-
-
                         stopFutureWalker();
                         closeBank();
 
                         if(!usingPoweredStaffs){
-                            selectAutoCast();
+                            setAutoCast();
                         }
 
                         Microbot.log("Checking mound for: " + brother.getName());
@@ -229,8 +226,6 @@ public class BarrowsScript extends Script {
                         //Enter mound
                         if (Rs2Player.getWorldLocation().getPlane() != 3) {
                             Microbot.log("Entering the mound");
-
-                            checkForWorldMap();
 
                             handlePOH(config);
 
@@ -416,7 +411,7 @@ public class BarrowsScript extends Script {
                 }
 
 
-                if(inTunnels && shouldBank == false) {
+                if(inTunnels && !shouldBank) {
                     Microbot.log("In the tunnels");
                     if(!varbitCheckEnabled){
                         varbitCheckEnabled=true;
@@ -429,12 +424,9 @@ public class BarrowsScript extends Script {
                     outOfSupplies(config);
                     gainRP(config);
 
-                    //threaded walk because the brother could appear, the puzzle door could be there.
                     if(!Rs2Player.isMoving()) {
                         startWalkingToTheChest();
                     }
-                    //threaded walk because the brother could appear, the puzzle door could be there.
-                    //Moved Rs2Walker.setTarget(null); inside the puzzle solver and bother check.
 
                     solvePuzzle();
                     checkForBrother(config);
@@ -481,16 +473,13 @@ public class BarrowsScript extends Script {
                             } else {
                                 if(config.selectedToBarrowsTPMethod().getToBarrowsTPMethodItemID() == ItemID.BARROWS_TELEPORT){
                                     Rs2Inventory.interact("Barrows teleport", "Break");
-                                    sleepUntil(() -> Rs2Player.getAnimation() == 4069, Rs2Random.between(2000, 4000));
-                                    sleepUntil(() -> !Rs2Player.isAnimating(), Rs2Random.between(6000, 10000));
+                                    sleepUntil(() -> Rs2Player.getWorldLocation().getY() < 9600 || Rs2Player.getWorldLocation().getY() > 9730, Rs2Random.between(6000, 10000));
                                     ChestsOpened++;
                                     WhoisTun = "Unknown";
                                     inTunnels = false;
                                 } else {
                                     Rs2Inventory.interact("Teleport to house", "Inside");
-                                    sleepUntil(() -> Rs2Player.getAnimation() == 4069, Rs2Random.between(2000, 4000));
-                                    sleepUntil(() -> !Rs2Player.isAnimating(), Rs2Random.between(6000, 10000));
-                                    sleepUntil(() -> Rs2GameObject.getGameObject(4525) != null, Rs2Random.between(6000, 10000));
+                                    sleepUntil(() -> Rs2Player.getWorldLocation().getY() < 9600 || Rs2Player.getWorldLocation().getY() > 9730, Rs2Random.between(6000, 10000));
                                     ChestsOpened++;
                                     WhoisTun = "Unknown";
                                     inTunnels = false;
@@ -544,10 +533,16 @@ public class BarrowsScript extends Script {
                                                 String therune = neededRune;
                                                 sleepUntil(() -> Rs2Inventory.get(therune).getQuantity() > config.minRuneAmount(), Rs2Random.between(2000, 4000));
                                             }
-                                        } else {
-                                            Microbot.log("We're out of " + neededRune + "s. stopping...");
-                                            super.shutdown();
                                         }
+                                    } else {
+                                        if(neededRune.equals("Wrath rune")){
+                                            if(Rs2Bank.hasItem("Blood rune") && Rs2Bank.count("Blood rune") > config.minRuneAmount()){
+                                                neededRune = "Blood rune";
+                                                return;
+                                            }
+                                        }
+                                        Microbot.log("We're out of " + neededRune + "s. stopping...");
+                                        super.shutdown();
                                     }
                                 }
                             }
@@ -712,10 +707,6 @@ public class BarrowsScript extends Script {
         return true;
     }
 
-    public void rotateToObject(TileObject object){
-        Rs2Camera.turnTo(object);
-    }
-
     public void checkForWorldMap(){
         if(Rs2Widget.getWidget(38993938) != null){
             if(Rs2Widget.getWidget(38993938).getText().contains("Key")){
@@ -813,6 +804,7 @@ public class BarrowsScript extends Script {
 
     public void digIntoTheMound(Rs2WorldArea moundArea){
         while (moundArea.contains(Rs2Player.getWorldLocation()) && Rs2Player.getWorldLocation().getPlane() != 3) {
+            checkForWorldMap();
 
             if (!super.isRunning()) {
                 break;
@@ -839,6 +831,7 @@ public class BarrowsScript extends Script {
 
     public void goToTheMound(Rs2WorldArea moundArea){
         while (!moundArea.contains(Rs2Player.getWorldLocation())) {
+            checkForWorldMap();
             int totalTiles = moundArea.toWorldPointList().size();
             WorldPoint randomMoundTile;
             if (!super.isRunning()) {
@@ -1076,48 +1069,40 @@ public class BarrowsScript extends Script {
     }
 
     public void gettheRune(){
+        if(!neededRune.equals("unknown")) return;
+
         neededRune = "unknown";
         int magicLvl = Rs2Player.getRealSkillLevel(Skill.MAGIC);
 
         if(magicLvl >= 41 && magicLvl < 62){
             neededRune = "Death rune";
-            if (Rs2Magic.getCurrentAutoCastSpell() != Rs2CombatSpells.WIND_BLAST) {
-                Rs2Combat.setAutoCastSpell(Rs2CombatSpells.WIND_BLAST, false);
-            }
         }
 
-        if(magicLvl >= 62 && magicLvl < 81 || Rs2Equipment.get(EquipmentInventorySlot.WEAPON).getName().equals("Twinflame staff")){
+        if(magicLvl >= 62 && magicLvl < 81){
             neededRune = "Blood rune";
-            if (Rs2Magic.getCurrentAutoCastSpell() != Rs2CombatSpells.WIND_WAVE) {
-                Rs2Combat.setAutoCastSpell(Rs2CombatSpells.WIND_WAVE, false);
-            }
         }
 
-        if(magicLvl >= 81 && !Rs2Equipment.get(EquipmentInventorySlot.WEAPON).getName().equals("Twinflame staff")){
+        if(magicLvl >= 81){
             neededRune = "Wrath rune";
-            if (Rs2Magic.getCurrentAutoCastSpell() != Rs2CombatSpells.WIND_SURGE) {
-                Rs2Combat.setAutoCastSpell(Rs2CombatSpells.WIND_SURGE, false);
-            }
         }
     }
 
-    public void selectAutoCast(){
-        int magicLvl = Rs2Player.getRealSkillLevel(Skill.MAGIC);
-        if(magicLvl >= 41 && magicLvl < 62){
-            if (Rs2Magic.getCurrentAutoCastSpell() != Rs2CombatSpells.WIND_BLAST) {
-                Rs2Combat.setAutoCastSpell(Rs2CombatSpells.WIND_BLAST, false);
+    public void setAutoCast(){
+        if(neededRune == "Wrath rune"){
+            if (Rs2Magic.getCurrentAutoCastSpell() != Rs2CombatSpells.WIND_SURGE) {
+                Rs2Combat.setAutoCastSpell(Rs2CombatSpells.WIND_SURGE, false);
             }
         }
 
-        if(magicLvl >= 62 && magicLvl < 81 || Rs2Equipment.get(EquipmentInventorySlot.WEAPON).getName().equals("Twinflame staff")){
+        if(neededRune == "Blood rune"){
             if (Rs2Magic.getCurrentAutoCastSpell() != Rs2CombatSpells.WIND_WAVE) {
                 Rs2Combat.setAutoCastSpell(Rs2CombatSpells.WIND_WAVE, false);
             }
         }
 
-        if(magicLvl >= 81 && !Rs2Equipment.get(EquipmentInventorySlot.WEAPON).getName().equals("Twinflame staff")){
-            if (Rs2Magic.getCurrentAutoCastSpell() != Rs2CombatSpells.WIND_SURGE) {
-                Rs2Combat.setAutoCastSpell(Rs2CombatSpells.WIND_SURGE, false);
+        if(neededRune == "Death rune"){
+            if (Rs2Magic.getCurrentAutoCastSpell() != Rs2CombatSpells.WIND_BLAST) {
+                Rs2Combat.setAutoCastSpell(Rs2CombatSpells.WIND_BLAST, false);
             }
         }
     }
@@ -1229,15 +1214,23 @@ public class BarrowsScript extends Script {
         }
     }
     public void drinkPrayerPot(){
-        if(Rs2Player.getBoostedSkillLevel(Skill.PRAYER) <= Rs2Random.between(9,15)){
-            if(Rs2Inventory.contains(it->it!=null&&it.getName().contains("Prayer potion")||it.getName().contains("moth mix")||it.getName().contains("Moonlight moth"))){
-                Rs2ItemModel prayerpotion = Rs2Inventory.get(it->it!=null&&it.getName().contains("Prayer potion")||it.getName().contains("moth mix")||it.getName().contains("Moonlight moth"));
-                String action = "Drink";
-                if(prayerpotion.getName().equals("Moonlight moth")){
-                    action = "Release";
-                }
-                if(Rs2Inventory.interact(prayerpotion, action)){
-                    sleep(0,750);
+        boolean skipThePot = false;
+        NPC hintArrow = Microbot.getClient().getHintArrowNpc();
+        Rs2NpcModel currentBrother = null;
+        if(hintArrow != null)  currentBrother = new Rs2NpcModel(hintArrow);
+        if(currentBrother != null && !currentBrother.getName().contains("Dharok") && currentBrother.getHealthPercentage() < Rs2Random.between(35,42)) skipThePot = true;
+
+        if(!skipThePot) {
+            if (Rs2Player.getBoostedSkillLevel(Skill.PRAYER) <= Rs2Random.between(8, 15)) {
+                if (Rs2Inventory.contains(it -> it != null && it.getName().contains("Prayer potion") || it.getName().contains("moth mix") || it.getName().contains("Moonlight moth"))) {
+                    Rs2ItemModel prayerpotion = Rs2Inventory.get(it -> it != null && it.getName().contains("Prayer potion") || it.getName().contains("moth mix") || it.getName().contains("Moonlight moth"));
+                    String action = "Drink";
+                    if (prayerpotion.getName().equals("Moonlight moth")) {
+                        action = "Release";
+                    }
+                    if (Rs2Inventory.interact(prayerpotion, action)) {
+                        sleep(0, 750);
+                    }
                 }
             }
         }
@@ -1396,42 +1389,27 @@ public class BarrowsScript extends Script {
         }
     }
     public void solvePuzzle(){
-
         //correct model ids are  6725, 6731, 6713, 6719
         //widget ids are 1638413, 1638415,1638417
-        if(Rs2Widget.getWidget(1638413)!=null){
-            stopFutureWalker();
-            if(Rs2Widget.getWidget(1638413).getModelId() == 6725 || Rs2Widget.getWidget(1638413).getModelId() == 6731
-            ||Rs2Widget.getWidget(1638413).getModelId() == 6713||Rs2Widget.getWidget(1638413).getModelId() == 6719){
-                Microbot.log("Solution found");
-                if(Rs2Widget.getWidget(1638413)!=null) {
-                    Rs2Widget.clickWidget(1638413);
-                    sleep(500, 1500);
-                }
-            }
-        }
 
-        if(Rs2Widget.getWidget(1638415)!=null){
-            stopFutureWalker();
-            if(Rs2Widget.getWidget(1638415).getModelId() == 6725 || Rs2Widget.getWidget(1638415).getModelId() == 6731
-                    ||Rs2Widget.getWidget(1638415).getModelId() == 6713||Rs2Widget.getWidget(1638415).getModelId() == 6719){
-                Microbot.log("Solution found");
-                if(Rs2Widget.getWidget(1638415)!=null) {
-                    Rs2Widget.clickWidget(1638415);
-                    sleep(500, 1500);
-                }
-            }
-        }
+        int widgets[] = {1638413, 1638415, 1638417};
+        int modelIDs[] = {6725, 6731, 6713, 6719};
 
-        if(Rs2Widget.getWidget(1638417)!=null){
-            stopFutureWalker();
-            if(Rs2Widget.getWidget(1638417).getModelId() == 6725 || Rs2Widget.getWidget(1638417).getModelId() == 6731
-                    ||Rs2Widget.getWidget(1638417).getModelId() == 6713||Rs2Widget.getWidget(1638417).getModelId() == 6719){
-                Microbot.log("Solution found");
-                if(Rs2Widget.getWidget(1638417)!=null) {
-                    Rs2Widget.clickWidget(1638417);
-                    sleep(500, 1500);
+        for (int widget : widgets) {
+            if(!super.isRunning()) break;
+
+            if(Rs2Widget.getWidget(widget)!=null){
+                for (int modelID : modelIDs) {
+                    if(!super.isRunning()) break;
+
+                    if(Rs2Widget.getWidget(widget).getModelId() == modelID){
+                        Microbot.log("Solution found");
+                        stopFutureWalker();
+                        Rs2Widget.clickWidget(widget);
+                    }
                 }
+            } else {
+                break;
             }
         }
 

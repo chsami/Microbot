@@ -8,9 +8,16 @@ import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Skill;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.agility.courses.AgilityCourseHandler;
+import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.AndCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LockCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -24,7 +31,7 @@ import net.runelite.client.ui.overlay.OverlayManager;
 	enabledByDefault = false
 )
 @Slf4j
-public class MicroAgilityPlugin extends Plugin
+public class MicroAgilityPlugin extends Plugin implements SchedulablePlugin
 {
 	@Inject
 	private MicroAgilityConfig config;
@@ -34,6 +41,9 @@ public class MicroAgilityPlugin extends Plugin
 	private MicroAgilityOverlay agilityOverlay;
 	@Inject
 	private AgilityScript agilityScript;
+
+	private LockCondition lockCondition;
+	private LogicalCondition stopCondition = null;
 
 	@Provides
 	MicroAgilityConfig provideConfig(ConfigManager configManager)
@@ -56,6 +66,28 @@ public class MicroAgilityPlugin extends Plugin
 	{
 		overlayManager.remove(agilityOverlay);
 		agilityScript.shutdown();
+	}
+
+	@Subscribe
+	public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
+		try{
+			if (event.getPlugin() == this) {
+				Microbot.stopPlugin(this);
+			}
+		} catch (Exception e) {
+			log.error("Error stopping plugin: ", e);
+		}
+	}
+
+	@Override
+	public LogicalCondition getStopCondition() {
+		if (this.stopCondition == null) {
+			this.lockCondition = new LockCondition("Agility in critical operation");
+			AndCondition andCondition = new AndCondition();
+			andCondition.addCondition(lockCondition);
+			this.stopCondition = andCondition;
+		}
+		return this.stopCondition;
 	}
 
 	public AgilityCourseHandler getCourseHandler()

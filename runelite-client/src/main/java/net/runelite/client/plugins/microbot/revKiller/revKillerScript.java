@@ -298,6 +298,7 @@ public class revKillerScript extends Script {
 
         if(Rs2Player.getWorldLocation().equals(startTile)){
             if(playerCheck()){return;}
+            if(Rs2Npc.getNpc("Revenant knight") == null) return;
 
             if(Rs2Npc.attack("Revenant knight")){
                 Microbot.log("We attacked the knight");

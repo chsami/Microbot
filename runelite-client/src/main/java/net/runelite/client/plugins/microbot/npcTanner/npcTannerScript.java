@@ -174,6 +174,10 @@ public class npcTannerScript extends Script {
                     tries++;
                 }
                 if((!Rs2Inventory.contains("Coins"))||(Rs2Inventory.get("Coins").getQuantity()<=80)||(Rs2Inventory.count(whattotan)==0)){
+                    if(Rs2Inventory.count(whattotan)==0){
+                        whattotan = "Unset";
+                        return;
+                    }
                     Microbot.log("Out of Coins or "+whattotan);
                     shutdown();
                 }
@@ -307,6 +311,10 @@ public class npcTannerScript extends Script {
                         if(Rs2Bank.count("Black dragonhide") > 10){
                             whattotan = "Black dragonhide";
                             product = "Black dragon leather";
+                        }
+                        if(whattotan.equals("Unset")){
+                            Microbot.log("We have nothing to tan! "+whattotan);
+                            shutdown();
                         }
                     }
                 }

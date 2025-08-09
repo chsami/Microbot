@@ -78,6 +78,7 @@ public class BarrowsPlugin extends Plugin implements SchedulablePlugin {
     protected void shutDown() {
         Rs2Antiban.resetAntibanSettings();
         Rs2Antiban.deactivateAntiban();
+        barrowsScript.neededRune = "unknown";
         barrowsScript.shutdown();
         overlayManager.remove(barrowsOverlay);
     }

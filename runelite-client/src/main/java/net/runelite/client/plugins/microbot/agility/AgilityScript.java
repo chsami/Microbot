@@ -11,6 +11,7 @@ import net.runelite.api.TileObject;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
+import net.runelite.client.config.Config;
 import net.runelite.client.plugins.agility.AgilityPlugin;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
@@ -83,6 +84,14 @@ public class AgilityScript extends Script
 					Microbot.showMessage("Agility course: " + config.agilityCourse().getTooltip() + " is not supported.");
 					sleep(10000);
 					return;
+				}
+
+				// If we're at the start of the course
+				if(config.agilityCourse().getHandler().getCurrentObstacle().equals(config.agilityCourse().getHandler().getObstacles().get(0)))
+				{
+					unlockTheScript(plugin); //unlock the plugin, the bot will click the first obstacle then return, re-locking.
+				} else {
+					lockTheScript(plugin);
 				}
 
 				final WorldPoint playerWorldLocation = Microbot.getClient().getLocalPlayer().getWorldLocation();
@@ -290,5 +299,19 @@ public class AgilityScript extends Script
 			Rs2Inventory.dropAll(ItemID.PIEDISH);
 		}
 		return true;
+	}
+
+	private void lockTheScript(MicroAgilityPlugin plugin)
+	{
+		if (plugin.getLockCondition(plugin.getStopCondition()) != null) {
+			plugin.getLockCondition(plugin.getStopCondition()).lock();
+		}
+	}
+
+	private void unlockTheScript(MicroAgilityPlugin plugin)
+	{
+		if (plugin.getLockCondition(plugin.getStopCondition()) != null) {
+			plugin.getLockCondition(plugin.getStopCondition()).unlock();
+		}
 	}
 }
