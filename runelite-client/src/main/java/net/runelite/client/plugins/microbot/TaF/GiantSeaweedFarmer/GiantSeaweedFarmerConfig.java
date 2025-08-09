@@ -34,4 +34,14 @@ public interface GiantSeaweedFarmerConfig extends Config {
         BOTTOMLESS_COMPOST_BUCKET,
 
     }
+    
+    @ConfigItem(
+            keyName = "lootSeaweedSpores",
+            name = "Loot seaweed spores",
+            description = "Pick up seaweed spores when they spawn on the ground",
+            position = 3
+    )
+    default boolean lootSeaweedSpores() {
+        return true;
+    }
 }
