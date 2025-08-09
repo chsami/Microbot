@@ -513,16 +513,16 @@ public class QoLPlugin extends Plugin {
     }
 
     private void addLoadoutMenuEntries(MenuEntryAdded event, String target) {
-        if (config.displaySetup1()) {
+        if (config.displaySetup1() && config.Setup1() != null) {
             addLoadoutMenuEntry(event, "<col=FFA500>Equip: " + config.Setup1().getName() + "</col>", target, e -> customLoadoutOnClicked(e, config.Setup1()));
         }
-        if (config.displaySetup2()) {
+        if (config.displaySetup2() && config.Setup2() != null) {
             addLoadoutMenuEntry(event, "<col=FFA500>Equip: " + config.Setup2().getName() + "</col>", target, e -> customLoadoutOnClicked(e, config.Setup2()));
         }
-        if (config.displaySetup3()) {
+        if (config.displaySetup3() && config.Setup3() != null) {
             addLoadoutMenuEntry(event, "<col=FFA500>Equip: " + config.Setup3().getName() + "</col>", target, e -> customLoadoutOnClicked(e, config.Setup3()));
         }
-        if (config.displaySetup4()) {
+        if (config.displaySetup4() && config.Setup4() != null) {
             addLoadoutMenuEntry(event, "<col=FFA500>Equip: " + config.Setup4().getName() + "</col>", target, e -> customLoadoutOnClicked(e, config.Setup4()));
         }
     }

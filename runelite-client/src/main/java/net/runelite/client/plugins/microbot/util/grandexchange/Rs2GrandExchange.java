@@ -1,7 +1,10 @@
 package net.runelite.client.plugins.microbot.util.grandexchange;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.GrandExchangeOffer;
 import net.runelite.api.GrandExchangeOfferState;
 import net.runelite.api.MenuAction;
@@ -14,6 +17,12 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
+import net.runelite.client.plugins.microbot.util.grandexchange.models.GrandExchangeOfferDetails;
+import net.runelite.client.plugins.microbot.util.grandexchange.models.ItemMappingData;
+import net.runelite.client.plugins.microbot.util.grandexchange.models.TimeSeriesAnalysis;
+import net.runelite.client.plugins.microbot.util.grandexchange.models.TimeSeriesDataPoint;
+import net.runelite.client.plugins.microbot.util.grandexchange.models.TimeSeriesInterval;
+import net.runelite.client.plugins.microbot.util.grandexchange.models.WikiPrice;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
@@ -33,8 +42,11 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -43,7 +55,7 @@ import java.util.stream.IntStream;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleep;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
-
+@Slf4j
 public class Rs2GrandExchange
 {
 	@Component
@@ -51,7 +63,17 @@ public class Rs2GrandExchange
 	@Component
 	private static final int GE_FRAME = InterfaceID.GeOffers.FRAME;
 	private static final String GE_TRACKER_API_URL = "https://www.ge-tracker.com/api/items/";
-
+	
+	// Wiki API for real-time prices (Alternative source)
+	private static final String WIKI_API_URL = "https://prices.runescape.wiki/api/v1/osrs/latest?id=";
+	private static final String WIKI_TIMESERIES_URL = "https://prices.runescape.wiki/api/v1/osrs/timeseries";
+	private static final String WIKI_MAPPING_URL = "https://prices.runescape.wiki/api/v1/osrs/mapping";
+	
+	// Caches for different data types
+	private static final Map<Integer, WikiPrice> priceCache = new HashMap<>();
+	private static final Map<Integer, ItemMappingData> mappingCache = new HashMap<>();
+	private static final long PRICE_CACHE_DURATION = 60000; // 1 minutes
+	
 	/**
 	 * close the grand exchange interface
 	 */
@@ -340,13 +362,18 @@ public class Rs2GrandExchange
 	{
 
 		assert isOfferScreenOpen() : "Offer screen is not open, cannot collect offer.";
-
+		if(!isOfferScreenOpen())
+		{
+			log.info("Grand Exchange offer screen is not open, cannot collect offer.");
+			return false;
+		}
 		Widget[] children = GrandExchangeWidget.getCollectButtons();
 		String desiredAction;
 		int identifier;
 		int param0;
 		if (children.length == 0)
 		{
+			log.info("No collect buttons found on the offer screen.");
 			return false;
 		}
 
@@ -618,7 +645,7 @@ public class Rs2GrandExchange
 		}
 		if (Rs2Inventory.isFull())
 		{
-			if (Rs2Bank.useBank())
+			if (Rs2Bank.openBank())
 			{
 				Rs2Bank.depositAll();
 			}
@@ -940,6 +967,187 @@ public class Rs2GrandExchange
 	{
 		return Rs2Player.isMember() ? 8 : 3;
 	}
+	
+	/**
+	 * Gets the index (0-7) of the slot in the GE interface.
+	 *
+	 * @param slot the GrandExchangeSlots enum value
+	 * @return the index of the slot (0-7)
+	 */
+	public static int getSlotIndex(GrandExchangeSlots slot) {
+		return slot.ordinal();
+	}
+	
+	/**
+	 * Checks if a specific Grand Exchange slot has a completed buy offer ready to collect.
+	 *
+	 * @param slot The GrandExchangeSlots to check for a completed buy offer
+	 * @return true if the specified slot has a completed buy offer, false otherwise
+	 */
+	public static boolean hasBoughtOffer(GrandExchangeSlots slot) {
+		if (slot == null) {
+			return false;
+		}
+		
+		// Get the GrandExchangeOffer for this slot from the client
+		GrandExchangeOffer offer = Microbot.getClient().getGrandExchangeOffers()[slot.ordinal()];
+		
+		// Check if the offer exists and is in BOUGHT state
+		return offer != null && offer.getState() == GrandExchangeOfferState.BOUGHT;
+	}
+
+	/**
+	 * Checks if a specific Grand Exchange slot has a completed sell offer ready to collect.
+	 *
+	 * @param slot The GrandExchangeSlots to check for a completed sell offer
+	 * @return true if the specified slot has a completed sell offer, false otherwise
+	 */
+	public static boolean hasSoldOffer(GrandExchangeSlots slot) {
+		if (slot == null) {
+			return false;
+		}
+		
+		// Get the GrandExchangeOffer for this slot from the client
+		GrandExchangeOffer offer = Microbot.getClient().getGrandExchangeOffers()[slot.ordinal()];
+		
+		// Check if the offer exists and is in SOLD state
+		return offer != null && offer.getState() == GrandExchangeOfferState.SOLD;
+	}
+	
+	/**
+	 * Finds the Grand Exchange slot currently holding an offer for the specified item.
+	 *
+	 * @param itemId The ID of the item to find in the Grand Exchange offers
+	 * @param isSelling true to look for a sell offer, false for a buy offer
+	 * @return The GrandExchangeSlots containing the item, or null if not found
+	 */
+	public static GrandExchangeSlots findSlotForItem(int itemId, boolean isSelling) {
+		GrandExchangeOffer[] offers = Microbot.getClient().getGrandExchangeOffers();
+		
+		for (int i = 0; i < offers.length; i++) {
+			GrandExchangeOffer offer = offers[i];
+			
+			// Skip empty slots
+			if (offer == null || offer.getItemId() == 0) {
+				continue;
+			}
+			
+			// Check if this is a selling or buying offer based on state
+			boolean offerIsSelling = offer.getState() == GrandExchangeOfferState.SELLING || 
+								     offer.getState() == GrandExchangeOfferState.SOLD;
+								     
+			// Skip if the selling state doesn't match what we're looking for
+			if (offerIsSelling != isSelling) {
+				continue;
+			}
+			
+			// Check if this offer contains our item
+			if (offer.getItemId() == itemId) {
+				return GrandExchangeSlots.values()[i];
+			}
+		}
+		
+		return null;
+	}
+
+	/**
+	 * Finds the Grand Exchange slot currently holding an offer for the specified item name.
+	 * This is a convenience method that looks up the item ID by name first.
+	 *
+	 * @param itemName The name of the item to find in the Grand Exchange offers
+	 * @param isSelling true to look for a sell offer, false for a buy offer
+	 * @return The GrandExchangeSlots containing the item, or null if not found
+	 */
+	public static GrandExchangeSlots findSlotForItem(String itemName, boolean isSelling) {
+		int itemId = Microbot.getRs2ItemManager().getItemId(itemName);
+		if (itemId == -1) {
+			return null;
+		}
+		
+		return findSlotForItem(itemId, isSelling);
+	}
+	
+	/**
+	 * Gets detailed information about a Grand Exchange offer in the specified slot.
+	 *
+	 * @param slot The GrandExchangeSlots to check
+	 * @return A GrandExchangeOfferDetails object with comprehensive offer information, or null if no offer exists
+	 */
+	public static GrandExchangeOfferDetails getOfferDetails(GrandExchangeSlots slot) {
+		if (slot == null) {
+			return null;
+		}
+		
+		GrandExchangeOffer offer = Microbot.getClient().getGrandExchangeOffers()[slot.ordinal()];
+		if (offer == null || offer.getItemId() == 0) {
+			return null;
+		}
+		
+		// Determine if selling based on state
+		boolean isSelling = offer.getState() == GrandExchangeOfferState.SELLING || 
+						    offer.getState() == GrandExchangeOfferState.SOLD;
+		
+		return new GrandExchangeOfferDetails(
+			offer.getItemId(),
+			offer.getQuantitySold(),
+			offer.getTotalQuantity(),
+			offer.getPrice(),
+			offer.getSpent(),
+			offer.getState(),
+			isSelling
+		);
+	}
+
+	
+	
+	/**
+	 * Collects items from a specific Grand Exchange slot.
+	 *
+	 * @param slot The GrandExchangeSlots to collect from
+	 * @param toBank true to send items directly to the bank, false for inventory
+	 * @return true if collection was successful, false otherwise
+	 */
+	public static boolean collectOffer(GrandExchangeSlots slot, boolean toBank) {
+		if (slot == null) {
+			log.info("Slot is null, cannot collect offer.");
+			return false;
+		}
+		
+		Widget slotWidget = GrandExchangeWidget.getSlot(slot);
+		if (slotWidget == null) {
+			log.info("Slot widget not found for slot: " + slot);
+			return false;
+		}
+		Widget itemNameWidget = slotWidget.getChild(19);
+		if (itemNameWidget == null || itemNameWidget.getText() == null) {
+			log.error("has no item name widget for slot: " + slot);
+			return false;
+		}
+		String currentItemName = itemNameWidget.getText();
+		log.info("Collecting offer for item: " + currentItemName + " in slot: " + slot);
+
+		viewOffer(slotWidget);
+		if (!sleepUntil(Rs2GrandExchange::isOfferScreenOpen, 3000)) {
+			log.info("Failed to open offer screen for slot: " + slot);
+			return false;
+		}
+		
+		// Now collect using the existing private collectOffer method
+		return collectOffer(toBank);
+	}		
+	
+	/**
+	 * Helper method to get a GrandExchangeSlots enum value from its index.
+	 * 
+	 * @param index The index of the slot (0-7)
+	 * @return The corresponding GrandExchangeSlots enum value, or null if the index is out of range
+	 */
+	public static GrandExchangeSlots getSlotFromIndex(int index) {
+		if (index < 0 || index >= GrandExchangeSlots.values().length) {
+			return null;
+		}
+		return GrandExchangeSlots.values()[index];
+	}
 
 	public static boolean walkToGrandExchange()
 	{
@@ -973,6 +1181,375 @@ public class Rs2GrandExchange
 		}
 	}
 
+	/**
+	 * Gets real-time price data with caching from OSRS Wiki API (primary) or GE Tracker (fallback).
+	 * This provides the most current market prices for better trading decisions.
+	 * 
+	 * @param itemId The item ID to get prices for
+	 * @return CachedPrice object with buy/sell prices and volume, or null if unavailable
+	 */
+	public static WikiPrice getRealTimePrices(int itemId) {
+		// Check cache first
+		WikiPrice cached = priceCache.get(itemId);
+		if (cached != null && !cached.isExpired(PRICE_CACHE_DURATION)) {
+			return cached;
+		}
+		
+		// Try Wiki API first (more reliable and current)
+		WikiPrice wikiPrice = getWikiPrices(itemId);
+		if (wikiPrice != null) {
+			priceCache.put(itemId, wikiPrice);
+			return wikiPrice;
+		}
+		
+		// Fallback to GE Tracker
+		try {
+			int buyPrice = getPrice(itemId);
+			int sellPrice = getSellPrice(itemId);
+			int volume = getBuyingVolume(itemId);
+			
+			if (buyPrice > 0 && sellPrice > 0) {
+				WikiPrice price = new WikiPrice(buyPrice, sellPrice, volume);
+				priceCache.put(itemId, price);
+				return price;
+			}
+		} catch (Exception e) {
+			// Log but don't fail completely
+		}
+		
+		return null;
+	}
+	
+	/**
+	 * Gets price data from OSRS Wiki API (real-time market data).
+	 * 
+	 * @param itemId The item ID
+	 * @return CachedPrice with current market prices or null if failed
+	 */
+	private static WikiPrice getWikiPrices(int itemId) {
+		try {
+			HttpClient httpClient = HttpClient.newHttpClient();
+			HttpRequest request = HttpRequest.newBuilder()
+				.uri(URI.create(WIKI_API_URL + itemId))
+				.header("User-Agent", "OSRS - Price Fetcher")
+				.build();
+
+			String jsonResponse = httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+				.thenApply(HttpResponse::body)
+				.join();
+
+			JsonParser parser = new JsonParser();
+			JsonObject jsonElement = parser.parse(new StringReader(jsonResponse)).getAsJsonObject();
+			JsonObject data = jsonElement.getAsJsonObject("data");
+			
+			if (data != null && data.has(String.valueOf(itemId))) {
+				JsonObject itemData = data.getAsJsonObject(String.valueOf(itemId));
+				
+				int buyPrice = itemData.has("high") ? itemData.get("high").getAsInt() : -1;
+				int sellPrice = itemData.has("low") ? itemData.get("low").getAsInt() : -1;
+				int volume = itemData.has("highVolume") ? itemData.get("highVolume").getAsInt() : 0;
+				
+				if (buyPrice > 0 && sellPrice > 0) {
+					return new WikiPrice(buyPrice, sellPrice, volume);
+				}
+			}else{
+				log.warn("No price data found for item ID: " + itemId);
+			}
+
+		} catch (Exception e) {
+			log.error("Failed to fetch prices from OSRS Wiki API for item ID: " + itemId, e);
+			// Wiki API failed, will fall back to GE Tracker
+		}
+		
+		return null;
+	}
+	
+	/**
+	 * Calculates an intelligent buy price based on market conditions and retry attempts.
+	 * Increases price aggressively on retries to ensure successful purchases.
+	 * 
+	 * @param itemId The item ID
+	 * @param basePercentage Base percentage multiplier (e.g., 1.1 for 110%)
+	 * @param retryAttempt Number of previous failed attempts (0 for first attempt)
+	 * @return Calculated buy price
+	 */
+	public static int getAdaptiveBuyPrice(int itemId, double basePercentage, int retryAttempt) {
+		WikiPrice priceData = getRealTimePrices(itemId);
+		
+		if (priceData != null) {
+			// Use real-time high price as base
+			int basePrice = priceData.buyPrice;
+			
+			// Adjust based on retry attempts - get more aggressive each time
+			double retryMultiplier = 1.0 + (retryAttempt * 0.05); // +5% per retry
+			double finalMultiplier = basePercentage * retryMultiplier;
+			
+			// Consider market volume for additional adjustment
+			if (priceData.volume < 100) {
+				finalMultiplier *= 1.1; // +10% for low volume items
+			}
+			
+			return (int) Math.ceil(basePrice * finalMultiplier);
+		}
+		
+		// Fallback to old method if price data unavailable
+		int gePrice = getPrice(itemId);
+		if (gePrice > 0) {
+			double retryMultiplier = 1.0 + (retryAttempt * 0.05);
+			return (int) Math.ceil(gePrice * basePercentage * retryMultiplier);
+		}
+		
+		return -1;
+	}
+	
+	/**
+	 * Calculates an intelligent sell price based on market conditions and retry attempts.
+	 * Decreases price on retries to ensure successful sales.
+	 * 
+	 * @param itemId The item ID
+	 * @param basePercentage Base percentage multiplier (e.g., 0.9 for 90%)
+	 * @param retryAttempt Number of previous failed attempts (0 for first attempt)
+	 * @return Calculated sell price
+	 */
+	public static int getAdaptiveSellPrice(int itemId, double basePercentage, int retryAttempt) {
+		WikiPrice priceData = getRealTimePrices(itemId);
+		
+		if (priceData != null) {
+			// Use real-time low price as base
+			int basePrice = priceData.sellPrice;
+			
+			// Adjust based on retry attempts - get more aggressive each time
+			double retryMultiplier = 1.0 - (retryAttempt * 0.05); // -5% per retry
+			double finalMultiplier = basePercentage * retryMultiplier;
+			
+			// Consider market volume for additional adjustment
+			if (priceData.volume < 100) {
+				finalMultiplier *= 0.95; // -5% for low volume items
+			}
+			
+			return (int) Math.floor(basePrice * finalMultiplier);
+		}
+		
+		// Fallback to old method if price data unavailable
+		int gePrice = getSellPrice(itemId);
+		if (gePrice > 0) {
+			double retryMultiplier = 1.0 - (retryAttempt * 0.05);
+			return (int) Math.floor(gePrice * basePercentage * retryMultiplier);
+		}
+		
+		return -1;
+	}
+
+	
+	/**
+	 * Gets time-series price data from OSRS Wiki API.
+	 * Retrieves historical price data at specified intervals.
+	 * 
+	 * @param itemId The item ID to get time-series data for
+	 * @param interval The time interval for data points
+	 * @param fromTimestamp Optional timestamp to start from (null for current time)
+	 * @return TimeSeriesAnalysis with historical price data and averages
+	 */
+	public static TimeSeriesAnalysis getTimeSeriesData(int itemId, TimeSeriesInterval interval, Long fromTimestamp) {
+		try {
+			// Build the URL with parameters
+			StringBuilder urlBuilder = new StringBuilder(WIKI_TIMESERIES_URL);
+			urlBuilder.append("?id=").append(itemId);
+			urlBuilder.append("&timestep=").append(interval.getApiValue());
+			
+			// Add timestamp parameter if specified
+			if (fromTimestamp != null) {
+				urlBuilder.append("&timestamp=").append(fromTimestamp);
+			}
+			
+			HttpClient httpClient = HttpClient.newHttpClient();
+			String finalUrl = urlBuilder.toString();
+			HttpRequest request = HttpRequest.newBuilder()
+					.uri(URI.create(finalUrl))
+					.header("User-Agent", "Time Series Price Analysis")
+					.build();
+			
+			HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+			
+			if (response.statusCode() == 200) {
+				JsonParser parser = new JsonParser();
+				JsonObject root = parser.parse(response.body()).getAsJsonObject();
+				
+				if (root.has("data")) {
+					JsonArray itemDataArray = root.getAsJsonArray("data");
+					List<TimeSeriesDataPoint> dataPoints = new ArrayList<>();
+					
+					for (int i = 0; i < itemDataArray.size(); i++) {
+						JsonObject dataPoint = itemDataArray.get(i).getAsJsonObject();
+						
+						long timestamp = dataPoint.has("timestamp") ? dataPoint.get("timestamp").getAsLong() : 0;
+						
+						// Handle null values in JSON response
+						int highPrice = 0;
+						int lowPrice = 0;
+						int highPriceVolume = 0;
+						int lowPriceVolume = 0;
+						
+						if (dataPoint.has("avgHighPrice") && !dataPoint.get("avgHighPrice").isJsonNull()) {
+							highPrice = dataPoint.get("avgHighPrice").getAsInt();
+						}
+						
+						if (dataPoint.has("avgLowPrice") && !dataPoint.get("avgLowPrice").isJsonNull()) {
+							lowPrice = dataPoint.get("avgLowPrice").getAsInt();
+						}
+						
+						if (dataPoint.has("highPriceVolume") && !dataPoint.get("highPriceVolume").isJsonNull()) {
+							highPriceVolume = dataPoint.get("highPriceVolume").getAsInt();
+						}
+						
+						if (dataPoint.has("lowPriceVolume") && !dataPoint.get("lowPriceVolume").isJsonNull()) {
+							lowPriceVolume = dataPoint.get("lowPriceVolume").getAsInt();
+						}
+						
+						log.debug("Time series data point: timestamp={}, highPrice={}, lowPrice={}, highVol={}, lowVol={}", 
+								timestamp, highPrice, lowPrice, highPriceVolume, lowPriceVolume);
+						if (highPrice > 0 && lowPrice > 0) {
+							dataPoints.add(new TimeSeriesDataPoint(timestamp, highPrice, lowPrice, highPriceVolume, lowPriceVolume));
+						}
+					}
+					
+					return new TimeSeriesAnalysis(dataPoints, interval);
+				}
+			}else{
+				log.warn("Failed to fetch time-series data for item {}: HTTP {} - URL: {}", 
+						itemId, response.statusCode(), finalUrl);
+				log.debug("Response body: {}", response.body());
+			}
+		} catch (Exception e) {
+			log.error("Failed to fetch time-series data for item {}: {}", itemId, e.getMessage(), e);
+		}
+		
+		// Return empty analysis if failed
+		return new TimeSeriesAnalysis(new ArrayList<>(), interval);
+	}
+	
+	/**
+	 * Gets time-series data starting from current time going back.
+	 * This is a convenience method for the most common use case.
+	 * 
+	 * @param itemId The item ID
+	 * @param interval The time interval
+	 * @return TimeSeriesAnalysis with recent historical data
+	 */
+	public static TimeSeriesAnalysis getTimeSeriesData(int itemId, TimeSeriesInterval interval) {
+		return getTimeSeriesData(itemId, interval, null);
+	}
+	
+	/**
+	 * Gets average price over a specific time period using time-series data.
+	 * This provides more accurate pricing than single-point GE prices.
+	 * 
+	 * @param itemId The item ID
+	 * @param interval The time interval for historical data (default: 1 hour)
+	 * @return Average price over the time period, or -1 if unavailable
+	 */
+	public static int getAveragePrice(int itemId, TimeSeriesInterval interval) {
+		TimeSeriesAnalysis analysis = getTimeSeriesData(itemId, interval);
+		return analysis.averagePrice > 0 ? analysis.averagePrice : -1;
+	}
+	
+	/**
+	 * Gets average price with default 1-hour interval.
+	 * 
+	 * @param itemId The item ID
+	 * @return Average price over the last hour, or -1 if unavailable
+	 */
+	public static int getAveragePrice(int itemId) {
+		return getAveragePrice(itemId, TimeSeriesInterval.ONE_HOUR);
+	}
+	
+	/**
+	 * Gets item mapping data including trade limits from OSRS Wiki API.
+	 * 
+	 * @param itemId The item ID to get mapping data for
+	 * @return ItemMappingData with trade limits and metadata, or null if unavailable
+	 */
+	public static ItemMappingData getItemMappingData(int itemId) {
+		// Check cache first
+		ItemMappingData cached = mappingCache.get(itemId);
+		if (cached != null && !isMappingExpired(cached)) {
+			return cached;
+		}
+		
+		// Fetch from Wiki API
+		ItemMappingData mappingData = fetchItemMappingData(itemId);
+		if (mappingData != null) {
+			mappingCache.put(itemId, mappingData);
+		}
+		
+		return mappingData;
+	}
+	
+	/**
+	 * Fetches item mapping data from OSRS Wiki API.
+	 * 
+	 * @param itemId The item ID
+	 * @return ItemMappingData or null if failed
+	 */
+	private static ItemMappingData fetchItemMappingData(int itemId) {
+		try {
+			HttpClient httpClient = HttpClient.newHttpClient();
+			HttpRequest request = HttpRequest.newBuilder()
+				.uri(URI.create(WIKI_MAPPING_URL))
+				.header("User-Agent", "OSRS Item Mapping Fetcher")
+				.build();
+
+			HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+			if (response.statusCode() == 200) {
+				JsonParser parser = new JsonParser();
+				JsonArray mappingArray = parser.parse(response.body()).getAsJsonArray();
+				
+				// Find the item in the mapping array
+				for (int i = 0; i < mappingArray.size(); i++) {
+					JsonObject item = mappingArray.get(i).getAsJsonObject();
+					
+					if (item.has("id") && item.get("id").getAsInt() == itemId) {
+						// Extract data with null checks
+						String name = item.has("name") && !item.get("name").isJsonNull() ? 
+							item.get("name").getAsString() : "";
+						String examine = item.has("examine") && !item.get("examine").isJsonNull() ? 
+							item.get("examine").getAsString() : "";
+						boolean members = item.has("members") && item.get("members").getAsBoolean();
+						int limit = item.has("limit") && !item.get("limit").isJsonNull() ? 
+							item.get("limit").getAsInt() : -1;
+						int value = item.has("value") && !item.get("value").isJsonNull() ? 
+							item.get("value").getAsInt() : 0;
+						int lowalch = item.has("lowalch") && !item.get("lowalch").isJsonNull() ? 
+							item.get("lowalch").getAsInt() : 0;
+						int highalch = item.has("highalch") && !item.get("highalch").isJsonNull() ? 
+							item.get("highalch").getAsInt() : 0;
+						String icon = item.has("icon") && !item.get("icon").isJsonNull() ? 
+							item.get("icon").getAsString() : "";
+						
+						return new ItemMappingData(itemId, name, examine, members, limit, value, lowalch, highalch, icon);
+					}
+				}
+			} else {
+				log.warn("Failed to fetch item mapping data: HTTP {} for URL: {}", 
+						response.statusCode(), WIKI_MAPPING_URL);
+			}
+		} catch (Exception e) {
+			log.error("Failed to fetch item mapping data for item {}: {}", itemId, e.getMessage(), e);
+		}
+		
+		return null;
+	}
+	
+	/**
+	 * Checks if mapping data is expired (items mapping rarely changes).
+	 */
+	private static boolean isMappingExpired(ItemMappingData mappingData) {
+		// For simplicity, assume mapping data never expires during a session
+		// In a real implementation, you might want to add a timestamp to ItemMappingData
+		return false;
+	}
+	
 	public static int getSellPrice(int itemId)
 	{
 		HttpClient httpClient = HttpClient.newHttpClient();
@@ -1014,8 +1591,17 @@ public class Rs2GrandExchange
 
 			JsonParser parser = new JsonParser();
 			JsonObject jsonElement = parser.parse(new StringReader(jsonResponse)).getAsJsonObject();
+			if (!jsonElement.has("data"))
+			{
+				log.debug("No data found for item ID: " + itemId);
+				return -1;
+			}
 			JsonObject data = jsonElement.getAsJsonObject("data");
-
+			if (!data.has("overall"))
+			{
+				log.debug("No overall price found for item ID: " + itemId);
+				return -1;
+			}
 			return data.get("overall").getAsInt();
 		}
 		catch (Exception e)
@@ -1142,4 +1728,159 @@ public class Rs2GrandExchange
 	{
 		return (int) Arrays.stream(getAvailableSlots()).count();
 	}
+	
+	/**
+	 * Gets the exact number of items bought from a specific Grand Exchange slot offer.
+	 * This method extracts the actual quantity purchased from the offer's current state.
+	 *
+	 * @param slot The GrandExchangeSlots to check for bought items
+	 * @return The number of items actually bought (quantitySold for buy offers), or 0 if no items bought
+	 */
+	public static int getItemsBoughtFromOffer(GrandExchangeSlots slot) {
+		if (slot == null) {
+			return 0;
+		}
+		
+		GrandExchangeOffer offer = Microbot.getClient().getGrandExchangeOffers()[slot.ordinal()];
+		if (offer == null || offer.getItemId() == 0) {
+			return 0;
+		}
+		
+		// For buy offers, quantitySold actually represents items purchased
+		// Only count for buying states (BUYING, BOUGHT, CANCELLED_BUY)
+		boolean isBuyOffer = offer.getState() == GrandExchangeOfferState.BUYING || 
+							 offer.getState() == GrandExchangeOfferState.BOUGHT ||
+							 offer.getState() == GrandExchangeOfferState.CANCELLED_BUY;
+		
+		if (isBuyOffer) {
+			return offer.getQuantitySold(); // This is actually items bought for buy offers
+		}
+		
+		return 0;
+	}
+	
+	/**
+	 * Gets the exact number of items sold from a specific Grand Exchange slot offer.
+	 * This method extracts the actual quantity sold from the offer's current state.
+	 *
+	 * @param slot The GrandExchangeSlots to check for sold items
+	 * @return The number of items actually sold, or 0 if no items sold
+	 */
+	public static int getItemsSoldFromOffer(GrandExchangeSlots slot) {
+		if (slot == null) {
+			return 0;
+		}
+		
+		GrandExchangeOffer offer = Microbot.getClient().getGrandExchangeOffers()[slot.ordinal()];
+		if (offer == null || offer.getItemId() == 0) {
+			return 0;
+		}
+		
+		// For sell offers, quantitySold represents items sold
+		// Only count for selling states (SELLING, SOLD, CANCELLED_SELL)
+		boolean isSellOffer = offer.getState() == GrandExchangeOfferState.SELLING || 
+							  offer.getState() == GrandExchangeOfferState.SOLD ||
+							  offer.getState() == GrandExchangeOfferState.CANCELLED_SELL;
+		
+		if (isSellOffer) {
+			return offer.getQuantitySold();
+		}
+		
+		return 0;
+	}
+	
+	/**
+	 * Collects a specific offer and returns the exact number of items obtained.
+	 * This is a wrapper around collectOffer that tracks the actual quantity collected.
+	 *
+	 * @param slot The GrandExchangeSlots to collect from
+	 * @param toBank true to send items directly to the bank, false for inventory
+	 * @param itemId The ID of the item being collected (for tracking purposes)
+	 * @return The number of items actually collected, or 0 if collection failed
+	 */
+	public static int collectOfferAndGetQuantity(GrandExchangeSlots slot, boolean toBank, int itemId) {
+		if (slot == null || itemId == 0) {
+			log.error("Invalid slot or item ID for collecting offer");
+			return 0;
+		}
+		
+		// Get the offer details before collection
+		GrandExchangeOfferDetails details = getOfferDetails(slot);
+		if (details == null) {
+			log.error("No offer details found for slot: " + slot);
+			return 0;
+		}						
+
+		
+		
+		// Collect the offer
+		boolean collected = collectOffer(slot, toBank);
+		if (!collected) {
+			log.info("is offerScreenOpen: " + isOfferScreenOpen()+ ", hasBoughtOffer: " + hasBoughtOffer(slot) + 
+					", itemId: " + itemId + ", slot: " + slot);
+			log.error("Failed to collect offer for slot: " + slot + ", item ID: " + itemId);
+			return 0;
+		}				
+		return details.getQuantitySold(); // Return the quantity sold from the offer details
+	}
+	
+	/**
+	 * Finds and returns all slots that have completed offers ready for collection.
+	 * This includes both bought and sold offers that need to be collected.
+	 *
+	 * @return Map of GrandExchangeSlots to their corresponding offer details for completed offers
+	 */
+	public static Map<GrandExchangeSlots, GrandExchangeOfferDetails> getCompletedOffers() {
+		Map<GrandExchangeSlots, GrandExchangeOfferDetails> completedOffers = new HashMap<>();
+		
+		GrandExchangeOffer[] offers = Microbot.getClient().getGrandExchangeOffers();
+		for (int i = 0; i < offers.length; i++) {
+			GrandExchangeOffer offer = offers[i];
+			
+			if (offer == null || offer.getItemId() == 0) {
+				continue;
+			}
+			
+			// Check if offer is completed (bought, sold, or cancelled with items)
+			boolean isCompleted = offer.getState() == GrandExchangeOfferState.BOUGHT ||
+								  offer.getState() == GrandExchangeOfferState.SOLD ||
+								  (offer.getState() == GrandExchangeOfferState.CANCELLED_BUY && offer.getQuantitySold() > 0) ||
+								  (offer.getState() == GrandExchangeOfferState.CANCELLED_SELL && offer.getQuantitySold() > 0);
+			
+			if (isCompleted) {
+				GrandExchangeSlots slot = GrandExchangeSlots.values()[i];
+				GrandExchangeOfferDetails details = getOfferDetails(slot);
+				if (details != null) {
+					completedOffers.put(slot, details);
+				}
+			}
+		}
+		
+		return completedOffers;
+	}
+	
+	/**
+	 * Checks if an offer was cancelled and still has items that can be collected.
+	 * This is important for tracking partial purchases/sales from cancelled offers.
+	 *
+	 * @param slot The GrandExchangeSlots to check
+	 * @return true if the offer was cancelled but still has collectable items
+	 */
+	public static boolean isCancelledOfferWithItems(GrandExchangeSlots slot) {
+		if (slot == null) {
+			return false;
+		}
+		
+		GrandExchangeOffer offer = Microbot.getClient().getGrandExchangeOffers()[slot.ordinal()];
+		if (offer == null || offer.getItemId() == 0) {
+			return false;
+		}
+		
+		boolean isCancelled = offer.getState() == GrandExchangeOfferState.CANCELLED_BUY ||
+							  offer.getState() == GrandExchangeOfferState.CANCELLED_SELL;
+		
+		return isCancelled && offer.getQuantitySold() > 0;
+	}
+	
+
 }
