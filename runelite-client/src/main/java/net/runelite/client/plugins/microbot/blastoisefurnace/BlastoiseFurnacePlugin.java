@@ -48,7 +48,7 @@ public class BlastoiseFurnacePlugin extends Plugin {
         if (overlayManager != null) {
             overlayManager.add(blastoiseFurnaceOverlay);
         }
-        blastoiseFurnaceScript.run(config);
+        blastoiseFurnaceScript.run();
     }
 
     @Subscribe

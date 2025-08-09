@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.blastoisefurnace;
 
 import java.util.List;
+import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
@@ -54,7 +55,8 @@ public class BlastoiseFurnaceScript extends Script {
     static boolean secondaryOreEmpty;
     private boolean init = false;
 
-    private BlastoiseFurnaceConfig config;
+	private final BlastoiseFurnacePlugin plugin;
+    private final BlastoiseFurnaceConfig config;
 
     private boolean hasRequiredOresForSmithing() {
         int primaryOre = config.getBars().getPrimaryOre();
@@ -64,8 +66,13 @@ public class BlastoiseFurnaceScript extends Script {
         return hasPrimaryOre && hasSecondaryOre;
     }
 
-    public boolean run(BlastoiseFurnaceConfig config) {
-        this.config = config;
+	@Inject
+	public BlastoiseFurnaceScript(BlastoiseFurnacePlugin plugin, BlastoiseFurnaceConfig config) {
+		this.plugin = plugin;
+		this.config = config;
+	}
+
+    public boolean run() {
         Microbot.enableAutoRunOn = false;
         state = State.BANKING;
         primaryOreEmpty = !Rs2Inventory.hasItem(config.getBars().getPrimaryOre());
@@ -120,7 +127,7 @@ public class BlastoiseFurnaceScript extends Script {
                         if (config.getBars().isRequiresCoalBag() && !Rs2Inventory.contains(coalBag)) {
                             if (!Rs2Bank.hasItem(coalBag)) {
                                 Microbot.showMessage("No coal bag found in inventory and bank.");
-                                shutdown();
+                                Microbot.stopPlugin(plugin);
                                 return;
                             }
 
@@ -132,7 +139,7 @@ public class BlastoiseFurnaceScript extends Script {
                             if (!hasGauntlets) {
                                 if (!Rs2Bank.hasItem(GAUNTLETS_OF_GOLDSMITHING)) {
                                     Microbot.showMessage("No goldsmith gauntlets found.");
-                                    shutdown();
+                                    Microbot.stopPlugin(plugin);
                                     return;
                                 }
 
@@ -148,7 +155,7 @@ public class BlastoiseFurnaceScript extends Script {
                             log.warn("Out of ores. Walking you out for coffer safety");
                             Rs2Walker.walkTo(new WorldPoint(2930, 10196, 0));
                             Rs2Player.logout();
-                            shutdown();
+                            Microbot.stopPlugin(plugin);
                         }
 
                         if (Microbot.getClient().getEnergy() < 8100) {
@@ -220,7 +227,7 @@ public class BlastoiseFurnaceScript extends Script {
                 if (!equipped) {
                     Microbot.showMessage("Ice gloves or smith gloves required to loot the hot bars.");
                     Rs2Player.logout();
-                    shutdown();
+                    Microbot.stopPlugin(plugin);
                     return;
                 }
             }
@@ -324,7 +331,7 @@ public class BlastoiseFurnaceScript extends Script {
                 if (!equipped) {
                     Microbot.showMessage("Ice gloves or smith gloves required to loot the hot bars.");
                     Rs2Player.logout();
-                    shutdown();
+                    Microbot.stopPlugin(plugin);
                     return;
                 }
             }
@@ -626,7 +633,7 @@ public class BlastoiseFurnaceScript extends Script {
             }
 
             if (!Rs2Bank.hasBankItem(COINS, amount)) {
-                shutdown();
+                Microbot.stopPlugin(plugin);
                 return;
             }
 
