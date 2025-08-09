@@ -48,13 +48,7 @@ public class BlastoiseFurnacePlugin extends Plugin {
         if (overlayManager != null) {
             overlayManager.add(blastoiseFurnaceOverlay);
         }
-        blastoiseFurnaceScript.run(config);
-    }
-    @Subscribe
-    public void onVarbitChanged(VarbitChanged event) {
-        if (event.getVarbitId() == VarbitID.STAMINA_DURATION) {
-            staminaTimer = event.getValue();
-        }
+        blastoiseFurnaceScript.run();
     }
 
     @Subscribe
