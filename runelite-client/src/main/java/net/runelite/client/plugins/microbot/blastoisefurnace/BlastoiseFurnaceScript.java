@@ -95,7 +95,7 @@ public class BlastoiseFurnaceScript extends Script {
                 if (!init) {
                     int inCoffer = Microbot.getVarbitValue(BLAST_FURNACE_COFFER);
                     int req      = evaluateCofferDeposit();
-                    if (inCoffer == req) {
+                    if (inCoffer >= req) {
                         init = true;
                         return;
                     }
@@ -151,7 +151,7 @@ public class BlastoiseFurnaceScript extends Script {
                             shutdown();
                         }
 
-                        if (!Rs2Player.hasStaminaBuffActive() && Microbot.getClient().getEnergy() < 8100) {
+                        if (Microbot.getClient().getEnergy() < 8100) {
                             useStaminaPotions();
                         }
 
@@ -160,14 +160,13 @@ public class BlastoiseFurnaceScript extends Script {
                             Rs2Bank.depositAllExcept(coalBag, GAUNTLETS_OF_GOLDSMITHING, ICE_GLOVES, SMITHING_UNIFORM_GLOVES_ICE);
                             handleDispenserLooting();
                             return;
-                        }else {
+                        } else {
                             retrieveItemsForCurrentFurnaceInteraction();
                             state = State.SMITHING;
                         }
                         break;
                     case SMITHING:
-                        System.out.println("clicking conveyor");
-
+						log.info("clicking conveyor");
                         if (barsInDispenser(config.getBars()) > 0) {
                             handleDispenserLooting();
                         }
@@ -405,7 +404,6 @@ public class BlastoiseFurnaceScript extends Script {
 
     private void useStaminaPotions() {
         if (!Rs2Bank.isOpen()) return;
-        if (Microbot.getClient().getEnergy() > 8100) return;
 
         boolean hasStaminaPotion = Rs2Bank.hasItem(Rs2Potion.getStaminaPotion());
         boolean hasEnergyPotion = Rs2Bank.hasItem(Rs2Potion.getRestoreEnergyPotionsVariants());
