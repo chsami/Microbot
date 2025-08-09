@@ -10,6 +10,7 @@ import net.runelite.client.config.Notification;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.birdhouseruns.FornBirdhouseRunsInfo.states;
+import net.runelite.client.plugins.microbot.sticktothescript.common.enums.LogType;
 import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
@@ -19,6 +20,7 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import javax.inject.Inject;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -58,24 +60,34 @@ public class FornBirdhouseRunsScript extends Script {
                     }
                     initialized = true;
                     
-                    boolean hasInventorySetup =  config.inventorySetup()!= null && Rs2InventorySetup.isInventorySetup(config.inventorySetup().getName());
-                    if (hasInventorySetup) {
-                        var inventorySetup = new Rs2InventorySetup(config.inventorySetup(), mainScheduledFuture);
-                        if (!inventorySetup.doesInventoryMatch() || !inventorySetup.doesEquipmentMatch()) {
-                            Rs2Walker.walkTo(Rs2Bank.getNearestBank().getWorldPoint(), 20);
-                            if (!inventorySetup.loadEquipment() || !inventorySetup.loadInventory()) {
-                                Microbot.log("Failed to load inventory setup");
-                                plugin.reportFinished("Birdhouse run failed to load inventory setup",false);                                                        
-                                this.shutdown();
-                                return;
+                    if (config.useInventorySetup()) {
+                        boolean hasInventorySetup = config.inventorySetup() != null && Rs2InventorySetup.isInventorySetup(config.inventorySetup().getName());
+                        if (hasInventorySetup) {
+                            var inventorySetup = new Rs2InventorySetup(config.inventorySetup(), mainScheduledFuture);
+                            if (!inventorySetup.doesInventoryMatch() || !inventorySetup.doesEquipmentMatch()) {
+                                Rs2Walker.walkTo(Rs2Bank.getNearestBank().getWorldPoint(), 20);
+                                if (!inventorySetup.loadEquipment() || !inventorySetup.loadInventory()) {
+                                    Microbot.log("Failed to load inventory setup");
+                                    plugin.reportFinished("Birdhouse run failed to load inventory setup",false);
+                                    this.shutdown();
+                                    return;
+                                }
+                                if (Rs2Bank.isOpen()) Rs2Bank.closeBank();
                             }
-                            if (Rs2Bank.isOpen()) Rs2Bank.closeBank();
+                        } else {
+                            Microbot.log("Failed to load inventory, inventory setup not found: " + config.inventorySetup());
+                            plugin.reportFinished("Birdhouse run failed to load inventory setup",false);
+                            this.shutdown();
+                            return;
                         }
-                    }else{
-                        Microbot.log("Failed to load inventory, inventory setup not found:"+ config.inventorySetup());
-                        plugin.reportFinished("Birdhouse run failed to load inventory setup",false);                                                        
-                        this.shutdown();
-                        return;
+                    } else {
+                        // Manual bank withdrawal
+                        if (!setupManualInventory()) {
+                            Microbot.log("Failed to setup inventory manually");
+                            plugin.reportFinished("Birdhouse run failed to setup inventory manually",false);
+                            this.shutdown();
+                            return;
+                        }
                     }
                     botStatus = states.TELEPORTING;
                 }
@@ -215,5 +227,100 @@ public class FornBirdhouseRunsScript extends Script {
         Rs2GameObject.interact(itemId, "Empty");
         Rs2Player.waitForXpDrop(Skill.HUNTER);
         botStatus = status;
+    }
+
+    private boolean setupManualInventory() {
+        // Walk to nearest bank
+        Rs2Walker.walkTo(Rs2Bank.getNearestBank().getWorldPoint(), 20);
+        
+        // Open bank
+        if (!Rs2Bank.openBank()) {
+            Microbot.log("Failed to open bank");
+            return false;
+        }
+        sleepUntil(Rs2Bank::isOpen);
+        
+        // Deposit all
+        Rs2Bank.depositAll();
+        Rs2Inventory.waitForInventoryChanges(5000);
+        
+        // Withdraw chisel
+        if (!Rs2Bank.withdrawX(ItemID.CHISEL, 1)) {
+            Microbot.log("Failed to withdraw chisel");
+            return false;
+        }
+        
+        // Withdraw hammer
+        if (!Rs2Bank.withdrawX(ItemID.HAMMER, 1)) {
+            Microbot.log("Failed to withdraw hammer");
+            return false;
+        }
+        
+        // Withdraw digsite pendant (prefer lower charges)
+        boolean pendantWithdrawn = false;
+        List<Integer> pendantIds = Arrays.asList(
+            ItemID.NECKLACE_OF_DIGSITE_1,
+            ItemID.NECKLACE_OF_DIGSITE_2,
+            ItemID.NECKLACE_OF_DIGSITE_3,
+            ItemID.NECKLACE_OF_DIGSITE_4,
+            ItemID.NECKLACE_OF_DIGSITE_5
+        );
+        
+        for (int pendantId : pendantIds) {
+            if (!isRunning()) break;
+            if (Rs2Bank.withdrawX(pendantId, 1)) {
+                pendantWithdrawn = true;
+                break;
+            }
+        }
+        
+        if (!pendantWithdrawn) {
+            Microbot.log("Failed to withdraw digsite pendant");
+            return false;
+        }
+        
+        // Withdraw logs
+        LogType selectedLogType = config.logType();
+        if (!Rs2Bank.withdrawX(selectedLogType.getLogID(), 4)) {
+            Microbot.log("Failed to withdraw " + selectedLogType.getLogName());
+            return false;
+        }
+        
+        // Withdraw seeds (smart selection)
+        boolean seedsWithdrawn = withdrawSeeds();
+        if (!seedsWithdrawn) {
+            Microbot.log("Failed to withdraw seeds");
+            return false;
+        }
+        
+        // Close bank
+        Rs2Bank.closeBank();
+        sleepUntil(() -> !Rs2Bank.isOpen());
+        
+        return true;
+    }
+
+    private boolean withdrawSeeds() {
+        // Priority list of seeds for birdhouses
+        List<Integer> seedIds = Arrays.asList(
+            ItemID.POTATO_SEED,
+            ItemID.ONION_SEED,
+            ItemID.CABBAGE_SEED,
+            ItemID.TOMATO_SEED,
+            ItemID.BARLEY_SEED,
+            ItemID.HAMMERSTONE_HOP_SEED,
+            ItemID.YANILLIAN_HOP_SEED,
+            ItemID.KRANDORIAN_HOP_SEED
+        );
+        
+        for (int seedId : seedIds) {
+            if (!isRunning()) break;
+            if (Rs2Bank.withdrawX(seedId, 40)) {
+                Microbot.log("Withdrew 40 of seed ID: " + seedId);
+                return true;
+            }
+        }
+        
+        return false;
     }
 }
