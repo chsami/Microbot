@@ -1,15 +1,17 @@
-package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement;
+package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.collection;
 
 import lombok.Getter;
 import lombok.EqualsAndHashCode;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.VoxPlugins.util.models.sources.SpawnLocation;
+
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
+import net.runelite.client.plugins.microbot.util.grounditem.models.Rs2SpawnLocation;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -21,9 +23,12 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ScheduledExecutorService;
 
 import org.slf4j.event.Level;
 
@@ -39,12 +44,13 @@ public class LootRequirement extends Requirement {
      * Default item count for this requirement.
      * This can be overridden if the plugin requires a specific count.
      */
-    private final int amount;
+    private final Map<Integer,Integer> amounts;
+    private Map<Integer,Integer> collectedAmounts; 
     
     /**
      * The spawn locations for this item requirement.
      */
-    private final SpawnLocation spawnLocation;
+    private final Rs2SpawnLocation spawnLocation;
     
     
     /**
@@ -111,7 +117,8 @@ public class LootRequirement extends Requirement {
         sb.append("Type:\t\t\t").append(getRequirementType().name()).append("\n");
         sb.append("Priority:\t\t").append(getPriority().name()).append("\n");
         sb.append("Rating:\t\t\t").append(getRating()).append("/10\n");
-        sb.append("Amount:\t\t\t").append(amount).append("\n");
+        sb.append("Amounts per id:\t\t\t").append(amounts).append("\n");
+        sb.append("Amounts Collected per id:\t").append(collectedAmounts).append("\n");
         sb.append("Item IDs:\t\t").append(getIds().toString()).append("\n");
         sb.append("clusterProximity:\t").append(clusterProximity).append(" tiles\n");
         sb.append("Timeout:\t\t").append(timeout.toSeconds()).append(" seconds\n");
@@ -140,14 +147,20 @@ public class LootRequirement extends Requirement {
             int rating,
             String description,
             ScheduleContext scheduleContext,
-            SpawnLocation spawnLocation,
+            Rs2SpawnLocation spawnLocation,
             int clusterProximity,
             Duration timeout) {
         
         super(RequirementType.INVENTORY, priority, rating, description, 
               itemIds, scheduleContext);
         
-        this.amount = amount;
+        // Create amounts map with the same amount for all item IDs
+        Map<Integer, Integer> amountsBuilder = new HashMap<>();
+        for (Integer itemId : itemIds) {
+            amountsBuilder.put(itemId, amount);
+            collectedAmounts.put(itemId, 0); // Initialize collected amounts to 0
+        }
+        this.amounts = Map.copyOf(amountsBuilder);
         this.spawnLocation = spawnLocation;
         this.clusterProximity = clusterProximity;
         this.timeout = timeout;
@@ -163,14 +176,20 @@ public class LootRequirement extends Requirement {
             Priority priority,
             int rating,
             String description,
-            SpawnLocation spawnLocation,
+            Rs2SpawnLocation spawnLocation,
             int clusterProximity,
             Duration timeout) {
         
         super(RequirementType.INVENTORY, priority, rating, description, 
               itemIds, ScheduleContext.BOTH); // Default to BOTH for backwards compatibility
         
-        this.amount = amount;
+        // Create amounts map with the same amount for all item IDs
+        Map<Integer, Integer> amountsBuilder = new HashMap<>();
+        for (Integer itemId : itemIds) {
+            amountsBuilder.put(itemId, amount);
+            collectedAmounts.put(itemId, 0); // Initialize collected amounts to 0
+        }
+        this.amounts = Map.copyOf(amountsBuilder);
         this.spawnLocation = spawnLocation;
         this.clusterProximity = clusterProximity;
         this.timeout = timeout;
@@ -183,7 +202,7 @@ public class LootRequirement extends Requirement {
             int itemId,
             int amount,
             String description,
-            SpawnLocation spawnLocation) {
+            Rs2SpawnLocation spawnLocation) {
         this(
             Arrays.asList(itemId),
             amount,
@@ -240,10 +259,7 @@ public class LootRequirement extends Requirement {
      */
     private boolean collectLootItems() {
 
-        // Check if we already have the required amount
-        int currentCount = countItemsInPossession();
-        if (currentCount >= getAmount()) {
-            Microbot.status = "Already have " + getAmount() + "x " + getName();
+        if (isFulfilled()) {            
             return true;
         }
         
@@ -365,22 +381,12 @@ public class LootRequirement extends Requirement {
      * Collects items from the cluster with proper banking and respawn handling.
      */
     private boolean collectFromCluster(SpawnCluster cluster) {
-        long startTime = System.currentTimeMillis();
-        int requiredAmount = getAmount();
-        int collectedCount = 0;
+        long startTime = System.currentTimeMillis();              
         long lastItemFoundTime = System.currentTimeMillis();
-        
-        
-        
-        while (collectedCount < requiredAmount && 
+                
+        while (!isFulfilled() && 
                (System.currentTimeMillis() - startTime) < timeout.toMillis()) {            
-            Microbot.status = "Collecting " + getName() + " from cluster (" + collectedCount + "/" + requiredAmount + ")";    
-            // Check if we have enough
-            if (collectedCount >= requiredAmount) {
-                Microbot.status = "Successfully collected " + requiredAmount + "x " + getName();
-                return true;
-            }
-            
+          
             // Check inventory space and bank if needed
             if (Rs2Inventory.isFull() && !Rs2Inventory.contains(getItemIds().get(0))) {
                 if (!handleBanking(cluster.center)) {
@@ -395,6 +401,15 @@ public class LootRequirement extends Requirement {
             // Try to loot items in the cluster area
             boolean itemFound = false;
             for (int itemId : getItemIds()) {
+                int requiredAmount = amounts.get(itemId);
+                int collectedAmout = collectedAmounts.get(itemId);
+                  Microbot.status = "Collecting " + itemId + " from cluster (" + collectedAmout + "/" + amounts.get(itemId) + ")";    
+                 // Check if we have enough
+                if (collectedAmout >= requiredAmount) {
+                    Microbot.status = "Successfully collected " + requiredAmount + "x " + getName();
+                    return true;
+                }
+            
                 // Check for items within the cluster area
                 if (Rs2GroundItem.exists(itemId, 25)) {
                     if (Rs2GroundItem.loot(itemId, 25)) {
@@ -402,11 +417,12 @@ public class LootRequirement extends Requirement {
                         lastItemFoundTime = System.currentTimeMillis();
                         
                         // Wait for inventory update
-                        int finalCurrentCount = collectedCount;
-                        sleepUntil(() -> countItemsInPossession() > finalCurrentCount, 3000);
+                        int finalCurrentCount = collectedAmout;
+                        sleepUntil(() -> Rs2Inventory.itemQuantity(itemId)> finalCurrentCount, 3000);
                         
-                        collectedCount += 1; // Increment count after successful loot
-                        Microbot.status = "Collecting " + getName() + " (" + collectedCount + "/" + requiredAmount + ")";
+                        collectedAmout += Rs2Inventory.itemQuantity(itemId)-  finalCurrentCount; // Increment count after successful loot
+                        Microbot.status = "Collecting " + getName() + " (" + collectedAmout + "/" + requiredAmount + ")";
+                        collectedAmounts.put(itemId, collectedAmout);
                         break;
                     }
                 }
@@ -450,7 +466,7 @@ public class LootRequirement extends Requirement {
         }
         
         // Final check
-        return collectedCount >= requiredAmount;
+        return isFulfilled();
     }
     
     /**
@@ -483,20 +499,7 @@ public class LootRequirement extends Requirement {
         }
     }
     
-    /**
-     * Counts total items in possession (inventory + bank if accessible).
-     */
-    private int countItemsInPossession() {
-        int inventoryCount = Rs2Inventory.count(getName());
-        
-        // If we can access bank, count those too
-        if (Rs2Bank.isOpen()) {//when we are at the bank, we also count the bank items
-            int bankCount = Rs2Bank.count(getName());
-            return inventoryCount + bankCount;
-        }
-        // If bank is not open, just return inventory count , we only consider inventory items
-        return inventoryCount;
-    }
+   
     
     /**
      * Checks if this item is currently available to loot.
@@ -528,17 +531,18 @@ public class LootRequirement extends Requirement {
      * Implements the abstract fulfillRequirement method from the base Requirement class.
      * Attempts to fulfill this loot requirement by collecting items from spawn locations.
      * 
+     * @param executorService The ScheduledExecutorService on which fulfillment is running
      * @return true if the requirement was successfully fulfilled, false otherwise
      */
     @Override
-    public boolean fulfillRequirement() {
+    public boolean fulfillRequirement(ScheduledExecutorService executorService) {
         if (Microbot.getClient().isClientThread()) {
             Microbot.log("Please run fulfillRequirement() on a non-client thread.", Level.ERROR);
             return false;
         }
         try {
             // Check if the requirement is already fulfilled
-            if (hasRequiredAmount()) {
+            if (isFulfilled()) {
                 return true;
             }
                        
@@ -563,11 +567,12 @@ public class LootRequirement extends Requirement {
      * 
      * @return true if we have enough items, false otherwise
      */
-    private boolean hasRequiredAmount() {
-        for (Integer itemId : ids) {
-            if (Rs2Inventory.count(itemId) >= amount) {
-                return true;
-            }
+    public boolean isFulfilled() {
+        boolean hasRequiredAmount = collectedAmounts.entrySet().stream()
+            .allMatch(entry -> entry.getValue() >= amounts.getOrDefault(entry.getKey(), 0));
+        if (hasRequiredAmount) {
+            Microbot.status = "Already have all required items for " + getName();
+            return true;
         }
         return false;
     }

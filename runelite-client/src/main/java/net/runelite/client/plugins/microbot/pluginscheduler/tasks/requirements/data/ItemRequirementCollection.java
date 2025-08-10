@@ -9,13 +9,13 @@ import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.PrePostScheduleRequirements;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.ItemRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.logical.OrRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.conditional.ConditionalRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.conditional.OrderedRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.RunePouchRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.util.ConditionalRequirementBuilder;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.LocationRequirement;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.RunePouchRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.SpellbookRequirement;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Spellbook;
@@ -29,7 +29,7 @@ import net.runelite.client.plugins.microbot.util.misc.Rs2Food;
  * This class provides standardized requirement collections that can be registered
  * with PrePostScheduleRequirements instances to ensure consistency across plugins.
  */
-public class RequirementCollections {
+public class ItemRequirementCollection {
     
     /**
      * Registers basic mining equipment requirements for the plugin scheduler.

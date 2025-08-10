@@ -4,9 +4,9 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.LocationRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.ShopRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.ShopRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.SpellbookRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.conditional.ConditionalRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.conditional.OrderedRequirement;
@@ -47,7 +47,7 @@ public class RequirementSolver {
             ShopRequirement requirement = contextReqs.get(i);
             
             try {
-                log.debug("Processing shop requirement {}/{}: {}", i + 1, contextReqs.size(), requirement.getName());
+                log.info("Processing shop requirement {}/{}: {}", i + 1, contextReqs.size(), requirement.getName());
                 boolean requirementFulfilled = requirement.fulfillRequirement();
                 
                 if (requirementFulfilled) {
@@ -69,7 +69,7 @@ public class RequirementSolver {
             }
         }
         
-        log.debug("Shop requirements fulfillment completed. Success: {}, Fulfilled: {}/{}", success, fulfilled, contextReqs.size());
+        log.info("Shop requirements fulfillment completed. Success: {}, Fulfilled: {}/{}", success, fulfilled, contextReqs.size());
         return success;
     }
     

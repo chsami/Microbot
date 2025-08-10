@@ -1,25 +1,37 @@
-package net.runelite.client.plugins.microbot.VoxPlugins.util.models.sources;
+package net.runelite.client.plugins.microbot.util.combat.models;
 
 import lombok.Getter;
 import lombok.Setter;
+import net.runelite.api.ItemComposition;
+import net.runelite.client.plugins.microbot.Microbot;
 
 @Getter
 @Setter
-public class DropSource {
-    final String itemName;
-    private String sourceName;
+public class Rs2DropSource {
+    final private int itemId;
+    final private String sourceName;    
     private int sourceLevel;    
     private int minQuantity;
     private int maxQuantity;    
     private double dropRate;
     private String notes;
-    public DropSource(String itemName, String sourceName, 
+    private ItemComposition itemComposition;
+
+    private ItemComposition getItemComposition() {
+        if (itemComposition == null) {
+            itemComposition =  Microbot.getClientThread().runOnClientThreadOptional(() -> 
+            Microbot.getItemManager().getItemComposition(itemId)).orElse(null);
+        }
+        return itemComposition;
+    }  
+
+    public Rs2DropSource(int itemId, String sourceName, 
                     int sourceLevel,                     
                     int minQuantity, 
                     int maxQuantity, 
                     double dropRate, 
                     String notes) {
-        this.itemName = itemName;
+        this.itemId = itemId;
         this.sourceName = sourceName;
         this.sourceLevel = sourceLevel;        
         this.minQuantity = minQuantity;
@@ -44,6 +56,8 @@ public class DropSource {
     @Override
     public String toString() {
         return "DropSource{" +
+            "itemId=" + itemId +
+            ", itemName='" + getItemComposition().getName() + '\'' +
             "sourceName='" + sourceName + '\'' +
             ", sourceLevel=" + sourceLevel +
             ", minQuantity=" + minQuantity +

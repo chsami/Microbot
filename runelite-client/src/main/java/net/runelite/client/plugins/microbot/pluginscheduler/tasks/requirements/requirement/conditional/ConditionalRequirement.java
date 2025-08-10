@@ -10,6 +10,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.r
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.BooleanSupplier;
 
 /**
@@ -84,12 +85,13 @@ public class ConditionalRequirement extends Requirement {
         /**
          * Executes this step's requirement.
          * 
+         * @param executorService The ScheduledExecutorService on which fulfillment is running
          * @return true if successfully fulfilled, false otherwise
          */
-        public boolean execute() {
+        public boolean execute(ScheduledExecutorService executorService) {
             try {
                 log.debug("Executing conditional step: {}", description);
-                return requirement.fulfillRequirement();
+                return requirement.fulfillRequirement(executorService);
             } catch (Exception e) {
                 log.error("Error executing conditional step '{}': {}", description, e.getMessage());
                 return isOptional; // Optional steps return true on error, mandatory steps return false
@@ -200,7 +202,7 @@ public class ConditionalRequirement extends Requirement {
     }
     
     @Override
-    public boolean fulfillRequirement() {
+    public boolean fulfillRequirement(ScheduledExecutorService executorService) {
         log.debug("Starting conditional requirement fulfillment: {}", getName());
         
         // Reset state
@@ -226,7 +228,7 @@ public class ConditionalRequirement extends Requirement {
             
             // Execute the step
             log.debug("Executing step {}: {}", i, step.getDescription());
-            boolean success = step.execute();
+            boolean success = step.execute(executorService);
             
             if (!success) {
                 lastFailureReason = "Step " + i + " failed: " + step.getDescription();

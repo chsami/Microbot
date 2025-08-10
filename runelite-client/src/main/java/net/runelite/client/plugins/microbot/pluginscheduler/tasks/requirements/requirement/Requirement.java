@@ -10,6 +10,7 @@ import lombok.EqualsAndHashCode;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ScheduledExecutorService;
 
 /**
  * Abstract base class for all requirement types in the plugin scheduler system.
@@ -71,9 +72,20 @@ public abstract class Requirement implements Comparable<Requirement> {
      * Abstract method to fulfill this requirement.
      * Each requirement type implements its own fulfillment logic.
      * 
+     * @param executorService The ScheduledExecutorService on which this requirement fulfillment is running
      * @return true if the requirement was fulfilled successfully, false otherwise
      */
-    public abstract boolean fulfillRequirement();
+    public abstract boolean fulfillRequirement(ScheduledExecutorService executorService);
+    
+    /**
+     * Backward compatibility method to fulfill this requirement without executor service.
+     * This delegates to the main fulfillRequirement method with a null executor service.
+     * 
+     * @return true if the requirement was fulfilled successfully, false otherwise
+     */
+    public final boolean fulfillRequirement() {
+        return fulfillRequirement(null);
+    }
     
     /**
      * Checks if this requirement is currently fulfilled.
@@ -82,9 +94,8 @@ public abstract class Requirement implements Comparable<Requirement> {
      * 
      * @return true if the requirement is fulfilled, false otherwise
      */
-    public boolean isFulfilled() {
-        return fulfillRequirement();
-    }
+    public abstract boolean isFulfilled();
+    
     
     /**
      * Compare requirements based on priority first, then rating.

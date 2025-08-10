@@ -8,9 +8,9 @@ import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.PrePostScheduleRequirements;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.data.RequirementCollections;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.ItemRequirement;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.LocationRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.data.ItemRequirementCollection;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.SpellbookRequirement;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Spellbook;
@@ -47,32 +47,32 @@ public class GotrPrePostScheduleRequirements extends PrePostScheduleRequirements
     /**
      * Initializes the item requirement collection for Guardians of the Rift minigame.
      * Based on OSRS Wiki strategies and best-in-slot items for runecrafting.
-     * Now uses RequirementCollections for standardized outfit and equipment registration.
+     * Now uses ItemRequirementCollection for standardized outfit and equipment registration.
      */
     @Override
     protected void initializeRequirements() {        
-        // Register complete outfit collections using the new RequirementCollections utility
+        // Register complete outfit collections using the new ItemRequirementCollection utility
         
         // Runecrafting outfit (Robes of the Eye) - highest priority for GOTR
-        RequirementCollections.registerRunecraftingOutfit(this, Priority.RECOMMENDED, ScheduleContext.PRE_SCHEDULE);
+        ItemRequirementCollection.registerRunecraftingOutfit(this, Priority.RECOMMENDED, ScheduleContext.PRE_SCHEDULE);
         
         // Graceful outfit - weight reduction and run energy restoration
-        RequirementCollections.registerGracefulOutfit(this, Priority.OPTIONAL, ScheduleContext.PRE_SCHEDULE);
+        ItemRequirementCollection.registerGracefulOutfit(this, Priority.OPTIONAL, ScheduleContext.PRE_SCHEDULE);
         
         // Basic mining equipment for mining fragments in GOTR
-        RequirementCollections.registerPickAxes(this,Priority.MANDATORY,  ScheduleContext.PRE_SCHEDULE);
+        ItemRequirementCollection.registerPickAxes(this,Priority.MANDATORY,  ScheduleContext.PRE_SCHEDULE);
         
         // Rune pouches for efficient essence carrying
-        // TODO: Update RequirementCollections.registerRunePouches to accept ScheduleContext
-        // RequirementCollections.registerRunePouches(this, Priority.RECOMMENDED, ScheduleContext.PRE_SCHEDULE);
+        // TODO: Update ItemRequirementCollection.registerRunePouches to accept ScheduleContext
+        // ItemRequirementCollection.registerRunePouches(this, Priority.RECOMMENDED, ScheduleContext.PRE_SCHEDULE);
         
         // Runes for NPC Contact spell (pouch repair)
-        // TODO: Update RequirementCollections.registerRunesForNPCContact to accept ScheduleContext
-        // RequirementCollections.registerRunesForNPCContact(this, Priority.OPTIONAL, 6, ScheduleContext.PRE_SCHEDULE);
+        // TODO: Update ItemRequirementCollection.registerRunesForNPCContact to accept ScheduleContext
+        // ItemRequirementCollection.registerRunesForNPCContact(this, Priority.OPTIONAL, 6, ScheduleContext.PRE_SCHEDULE);
         
         
         // Additional GOTR-specific items that aren't in the standard collections
-        RequirementCollections.registerProspectorOutfit(this, Priority.OPTIONAL,6, ScheduleContext.PRE_SCHEDULE);
+        ItemRequirementCollection.registerProspectorOutfit(this, Priority.OPTIONAL,6, ScheduleContext.PRE_SCHEDULE);
         
         
         // Skill capes for additional benefits
@@ -92,7 +92,7 @@ public class GotrPrePostScheduleRequirements extends PrePostScheduleRequirements
             ItemID.MAGIC_EMERALD_NECKLACE,
             EquipmentInventorySlot.AMULET, Priority.RECOMMENDED, 8, "Binding necklace (essential for combination runes)", ScheduleContext.PRE_SCHEDULE
         ));
-        RequirementCollections.registerAmuletOfGlory(this, Priority.OPTIONAL, 6, ScheduleContext.PRE_SCHEDULE,true);              
+        ItemRequirementCollection.registerAmuletOfGlory(this, Priority.OPTIONAL, 6, ScheduleContext.PRE_SCHEDULE,true);              
         // Varrock armour for mining fragments
         this.register(ItemRequirement.createOrRequirement(
             Arrays.asList(ItemID.VARROCK_ARMOUR_EASY, ItemID.VARROCK_ARMOUR_MEDIUM, ItemID.VARROCK_ARMOUR_HARD, ItemID.VARROCK_ARMOUR_ELITE),

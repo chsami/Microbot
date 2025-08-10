@@ -1,22 +1,34 @@
-package net.runelite.client.plugins.microbot.VoxPlugins.util.models.sources;
+package net.runelite.client.plugins.microbot.util.grounditem.models;
 
 import lombok.Getter;
+import net.runelite.api.ItemComposition;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
-
 import java.util.List;
 import java.time.Duration;
-import java.util.ArrayList;
 
 @Getter
-public class SpawnLocation {
-    final private String itemName;
+public class Rs2SpawnLocation {
+    final private int itemID;
     final private String name;
     final private String subName;    
     final private List<WorldPoint> locations;
     final private boolean members;    
     final private int mapID;
     final private Duration respawnTime; // Optional respawn time for the spawn location, can be null if not applicable
+    private ItemComposition itemComposition;
+
+    private ItemComposition getItemComposition() {
+        if (itemComposition == null) {
+            itemComposition =  Microbot.getClientThread().runOnClientThreadOptional(() -> 
+            Microbot.getItemManager().getItemComposition(itemID)).orElse(null);
+        }
+        return itemComposition;
+    }  
+    public String getItemName() {
+        return getItemComposition() != null ? getItemComposition().getName() : "Unknown Item";
+    }   
     /**
      * Constructor for a spawn location with all parameters.
      * 
@@ -27,31 +39,23 @@ public class SpawnLocation {
      * @param members Whether the spawn location is members-only.
      * @param mapID The map ID for the spawn location, e.g., 0 for Lumbridge Castle -> floor.
      */
-    public SpawnLocation(String itemName, String name, String subName, List<WorldPoint> locations, boolean members, int mapID){
+    public Rs2SpawnLocation(int id, String name, String subName, List<WorldPoint> locations, boolean members, int mapID){
+        this.itemID = id;
         this.locations = locations;
         this.members = members;        
         this.mapID = mapID; // Map ID for the spawn location, e.g., 0 for Lumbridge Castle -> floor 
         this.subName = subName; // Sub-name of the spawn location, e.g., "Lumbridge Castle - Ground Floor"
         this.name = name; // Name of the spawn location, e.g., "Lumbridge Castle"
-        this.itemName = itemName;
         this.respawnTime = null; // Optional respawn time, can be null if not applicable
     }
-    public SpawnLocation(String itemName){ 
-        this.locations = new ArrayList<>();
-        this.itemName = itemName;
-        this.members = false;        
-        this.mapID = -1;
-        this.subName = null;
-        this.name = null;
-        this.respawnTime = null; // Optional respawn time, can be null if not applicable
-    }
-    public SpawnLocation(String itemName, String name, String subName, List<WorldPoint> locations, boolean members, int mapID, Duration respawnTime){
+   
+    public Rs2SpawnLocation(int id, String name, String subName, List<WorldPoint> locations, boolean members, int mapID, Duration respawnTime){
+        this.itemID = id; // ID of the item that spawns here
         this.locations = locations;
         this.members = members;        
         this.mapID = mapID; // Map ID for the spawn location, e.g., 0 for Lumbridge Castle -> floor 
         this.subName = subName; // Sub-name of the spawn location, e.g., "Lumbridge Castle - Ground Floor"
         this.name = name; // Name of the spawn location, e.g., "Lumbridge Castle"
-        this.itemName = itemName;
         this.respawnTime = respawnTime; // Optional respawn time
     }
     /**
@@ -89,7 +93,7 @@ public class SpawnLocation {
     public String displayString() {
         StringBuilder sb = new StringBuilder();
         sb.append("=== Spawn Location Details ===\n");
-        sb.append("Item Name:\t\t").append(itemName != null ? itemName : "Unknown Item").append("\n");
+        sb.append("Item Name:\t\t").append(getItemName()).append("\n");
         sb.append("Location Name:\t\t").append(name != null ? name : "Unknown Location").append("\n");
         sb.append("Sub-Location:\t\t").append(subName != null ? subName : "No sub-location").append("\n");
         sb.append("Map ID:\t\t\t").append(mapID != -1 ? mapID : "Unknown").append("\n");

@@ -7,12 +7,12 @@ import net.runelite.client.plugins.microbot.fishing.minnows.MinnowsConfig;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.PrePostScheduleRequirements;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.data.RequirementCollections;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.LocationRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.data.ItemRequirementCollection;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 
 /**
- * Example implementation showing how to use RequirementCollections for a fishing plugin.
+ * Example implementation showing how to use ItemRequirementCollection for a fishing plugin.
  * Demonstrates the new standardized approach to equipment and outfit requirements.
  */
 public class FishingPrePostScheduleRequirements extends PrePostScheduleRequirements {
@@ -58,13 +58,11 @@ public class FishingPrePostScheduleRequirements extends PrePostScheduleRequireme
     
     @Override
     protected void initializeRequirements() {
-        // Register complete outfit and equipment collections using RequirementCollections
+        // Register complete outfit and equipment collections using ItemRequirementCollection
         
         // Angler outfit - provides XP bonus for fishing (including Spirit Angler variants)
         // Example: Skip boots if using graceful boots for run energy
-        // TODO: Update RequirementCollections.registerAnglerOutfit to accept ScheduleContext
-        RequirementCollections.registerAnglerOutfit(this, Priority.RECOMMENDED, 10,ScheduleContext.PRE_SCHEDULE,false, false, false, true);
-                
-       
+        // TODO: Update ItemRequirementCollection.registerAnglerOutfit to accept ScheduleContext
+        ItemRequirementCollection.registerAnglerOutfit(this, Priority.RECOMMENDED, 10,ScheduleContext.PRE_SCHEDULE,false, false, false, true);       
     }
 }

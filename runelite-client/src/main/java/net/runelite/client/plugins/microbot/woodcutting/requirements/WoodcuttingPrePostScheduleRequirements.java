@@ -4,8 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.PrePostScheduleRequirements;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.data.RequirementCollections;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.LocationRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.data.ItemRequirementCollection;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.woodcutting.AutoWoodcuttingConfig;
 import net.runelite.client.plugins.microbot.woodcutting.data.WoodcuttingTreeLocations;
@@ -14,7 +14,7 @@ import net.runelite.client.plugins.microbot.woodcutting.enums.WoodcuttingTree;
 import java.util.List;
 
 /**
- * Enhanced implementation showing how to use RequirementCollections for a woodcutting plugin.
+ * Enhanced implementation showing how to use ItemRequirementCollection for a woodcutting plugin.
  * Demonstrates the new standardized approach to equipment, outfit requirements, and location requirements.
  * 
  * Now includes dynamic location requirements based on the selected tree type with quest and skill requirements.
@@ -53,8 +53,7 @@ public class WoodcuttingPrePostScheduleRequirements extends PrePostScheduleRequi
             LocationRequirement treeLocationRequirement = new LocationRequirement(
                 treeLocations,
                 10, // Acceptable distance from tree areas
-                true, // Use transports for efficient travel
-                selectedTree.getName() + " Location",
+                true, // Use transports for efficient travel                
                 ScheduleContext.PRE_SCHEDULE,
                 Priority.MANDATORY,
                 9, // High rating since location is critical for woodcutting
@@ -78,13 +77,13 @@ public class WoodcuttingPrePostScheduleRequirements extends PrePostScheduleRequi
     
     @Override
     protected void initializeRequirements() {
-        // Register complete outfit and equipment collections using RequirementCollections        
+        // Register complete outfit and equipment collections using ItemRequirementCollection        
         // Woodcutting axes - progression-based from bronze to crystal/3rd age
-        RequirementCollections.registerWoodcuttingAxes(this, Priority.MANDATORY, ScheduleContext.PRE_SCHEDULE, -1);  // -1 for no inventory slot means the axe can be placed in any inventory slot, and also be equipped, -2 would mean it can only be equipped      
+        ItemRequirementCollection.registerWoodcuttingAxes(this, Priority.MANDATORY, ScheduleContext.PRE_SCHEDULE, -1);  // -1 for no inventory slot means the axe can be placed in any inventory slot, and also be equipped, -2 would mean it can only be equipped      
         
         // Lumberjack outfit - provides XP bonus for woodcutting
         // Example: Skip head slot if user prefers to wear something else (like slayer helmet)
-        RequirementCollections.registerLumberjackOutfit(this, Priority.RECOMMENDED, 10, ScheduleContext.PRE_SCHEDULE, false, false, false, false);        
+        ItemRequirementCollection.registerLumberjackOutfit(this, Priority.RECOMMENDED, 10, ScheduleContext.PRE_SCHEDULE, false, false, false, false);        
     }
     
     /**

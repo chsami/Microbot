@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement;
+package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item;
 
 import lombok.Getter;
 import lombok.EqualsAndHashCode;
@@ -11,7 +11,10 @@ import net.runelite.client.plugins.microbot.util.inventory.RunePouchType;
 import net.runelite.client.plugins.microbot.util.magic.Runes;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
 
 /**
@@ -130,15 +133,16 @@ public class RunePouchRequirement extends ItemRequirement {
     /**
      * Attempts to fulfill this rune pouch requirement.
      * 
+     * @param executorService The ScheduledExecutorService on which fulfillment is running
      * @return true if successfully fulfilled, false otherwise
      */
     @Override
-    public boolean fulfillRequirement() {
+    public boolean fulfillRequirement(ScheduledExecutorService executorService) {
         try {
             // Check if we already have any rune pouch
             if (!hasAnyRunePouch()) {
                 // Try to get a rune pouch using parent logic (will try to get the first type)
-                if (!super.fulfillRequirement()) {
+                if (!super.fulfillRequirement(executorService)) {
                     Microbot.log("Failed to obtain rune pouch");
                     return false;
                 }
@@ -202,7 +206,10 @@ public class RunePouchRequirement extends ItemRequirement {
             if (allowCombinationRunes) {
                 // Add combination runes that can provide this base rune
                 for (Runes combinationRune : Runes.values()) {
-                    if (combinationRune.getBaseRunes().contains(rune)) {
+                    
+                    // Convert base runes array to a list for easier contains check
+                    List<Runes> baseRunesList =Arrays.asList(combinationRune.getBaseRunes());
+                    if (baseRunesList.contains(rune)) {
                         totalAvailable += Rs2Inventory.count(combinationRune.getItemId());
                         totalAvailable += Rs2Bank.count(combinationRune.getItemId());
                         totalAvailable += Rs2RunePouch.getQuantity(combinationRune);

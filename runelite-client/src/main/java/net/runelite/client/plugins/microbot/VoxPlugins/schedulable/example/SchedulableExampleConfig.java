@@ -641,6 +641,17 @@ public interface SchedulableExampleConfig extends Config {
     default boolean enableInventoryRequirement() {
         return false;
     }
+      @ConfigItem(
+        keyName = "enableShopRequirement",
+        name = "Enable Shop Requirement",
+        description = "Enable shop maple longbow, buy from grand exchange as pre-schedule and sell at store on post-schedule",
+        position = 5,
+        section = prePostScheduleRequirementsSection
+    )
+    default boolean enableShopRequirement() {
+        return false;
+    }
+
 
     @ConfigSection(
         name = "Antiban Testing",

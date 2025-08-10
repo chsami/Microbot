@@ -10,6 +10,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.r
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ScheduledExecutorService;
 
 /**
  * An ordered requirement that executes requirements in strict sequence.
@@ -62,12 +63,13 @@ public class OrderedRequirement extends Requirement {
         /**
          * Executes this step's requirement.
          * 
+         * @param executorService The ScheduledExecutorService on which fulfillment is running
          * @return true if successfully fulfilled, false otherwise
          */
-        public boolean execute() {
+        public boolean execute(ScheduledExecutorService executorService) {
             try {
                 log.debug("Executing ordered step: {}", description);
-                return requirement.fulfillRequirement();
+                return requirement.fulfillRequirement(executorService);
             } catch (Exception e) {
                 log.error("Error executing ordered step '{}': {}", description, e.getMessage());
                 return !isMandatory; // Optional steps return true on error, mandatory steps return false
@@ -176,7 +178,7 @@ public class OrderedRequirement extends Requirement {
     }
     
     @Override
-    public boolean fulfillRequirement() {
+    public boolean fulfillRequirement(ScheduledExecutorService executorService) {
         log.debug("Starting ordered requirement fulfillment: {}", getName());
         
         // Determine starting point
@@ -201,7 +203,7 @@ public class OrderedRequirement extends Requirement {
             OrderedStep step = steps.get(i);
             
             log.debug("Executing ordered step {}: {}", i, step.getDescription());
-            boolean success = step.execute();
+            boolean success = step.execute(executorService);
             
             if (success) {
                 lastCompletedStep = i;

@@ -90,9 +90,9 @@ public class SchedulableExamplePrePostScheduleTasks extends AbstractPrePostSched
             
             if(requirements.getRegistry().getPreScheduleLocationRequirement() != null) {
             logBuilder.append("    ✓ Pre-Schedule Location Requirement: ")
-                .append(requirements.getRegistry().getPreScheduleLocationRequirement().getLocationName())
+                .append(requirements.getRegistry().getPreScheduleLocationRequirement().getName())
                 .append(" at ")
-                .append(requirements.getRegistry().getPreScheduleLocationRequirement().getTargetLocation())
+                .append(requirements.getRegistry().getPreScheduleLocationRequirement().getBestAvailableLocation())
                 .append("\n");
             }
             
@@ -151,9 +151,9 @@ public class SchedulableExamplePrePostScheduleTasks extends AbstractPrePostSched
            
             if(requirements.getRegistry().getPostScheduleLocationRequirement() != null) {
             logBuilder.append("    ✓ Post-schedule location: ")
-                .append(requirements.getRegistry().getPostScheduleLocationRequirement().getLocationName())
+                .append(requirements.getRegistry().getPostScheduleLocationRequirement().getName())
                 .append(" at ")
-                .append(requirements.getRegistry().getPostScheduleLocationRequirement().getTargetLocation())
+                .append(requirements.getRegistry().getPostScheduleLocationRequirement().getBestAvailableLocation())
                 .append(" (handled by standard requirements)\n");
             }
           

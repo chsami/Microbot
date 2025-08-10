@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.VoxPlugins.schedulable.example;
 
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.overlay.PrePostScheduleTasksOverlayComponents;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.state.TaskExecutionState;
+import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.ComponentConstants;
@@ -27,6 +28,9 @@ public class SchedulableExampleOverlay extends OverlayPanel {
         this.plugin = plugin;
         setPosition(OverlayPosition.TOP_LEFT);
         setPreferredSize(new Dimension(ComponentConstants.STANDARD_WIDTH, 200));
+        setNaughty();
+        setDragTargetable(true);
+        setLayer(OverlayLayer.UNDER_WIDGETS);
     }
     
     @Override
@@ -35,7 +39,7 @@ public class SchedulableExampleOverlay extends OverlayPanel {
         panelComponent.getChildren().clear();
         
         // Get the task manager and requirements
-        SchedulableExamplePrePostScheduleTasks tasks = plugin.getPrePostScheduleTasks();
+        SchedulableExamplePrePostScheduleTasks tasks = (SchedulableExamplePrePostScheduleTasks)plugin.getPrePostScheduleTasks();
         SchedulableExamplePrePostScheduleRequirements requirements = plugin.getPrePostScheduleRequirements();
         
         // Only show overlay if pre/post requirements are enabled or tasks are running

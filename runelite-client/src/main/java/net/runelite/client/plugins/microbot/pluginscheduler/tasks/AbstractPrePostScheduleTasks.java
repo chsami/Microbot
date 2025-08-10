@@ -97,7 +97,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable {
         }
         // Initialize executor service for pre-actions
         if (preExecutorService == null || preExecutorService.isShutdown()) {
-            preExecutorService = Executors.newSingleThreadScheduledExecutor(r -> {
+            preExecutorService = Executors.newScheduledThreadPool(2, r -> {
                 Thread t = new Thread(r, getClass().getSimpleName() + "-PreSchedule");
                 t.setDaemon(true);
                 return t;
@@ -486,7 +486,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable {
             log.info("Fulfilling pre-schedule requirements for {}", requirements.getActivityType());
             
             // Use the unified fulfillment method that handles all requirement types including conditional requirements
-            boolean fulfilled = requirements.fulfillPreScheduleRequirements( true); // Default proximity and save spellbook
+            boolean fulfilled = requirements.fulfillPreScheduleRequirements(preExecutorService, true); // Pass executor service
             
             if (!fulfilled) {
                 log.error("Failed to fulfill pre-schedule requirements");
@@ -526,7 +526,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable {
             log.info("Fulfilling post-schedule requirements for {}", requirements.getActivityType());
             
             // Use the unified fulfillment method that handles all requirement types including conditional requirements
-            boolean fulfilled = requirements.fulfillPostScheduleRequirements(true); // Default proximity and save spellbook
+            boolean fulfilled = requirements.fulfillPostScheduleRequirements(postExecutorService, true); // Pass executor service
             
             if (!fulfilled) {
                 log.error("Failed to fulfill all post-schedule requirements");
@@ -603,7 +603,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable {
      */
     private void initializePostExecutorService() {
         if (postExecutorService == null || postExecutorService.isShutdown()) {
-            postExecutorService = Executors.newSingleThreadScheduledExecutor(r -> {
+            postExecutorService = Executors.newScheduledThreadPool(2, r -> {
                 Thread t = new Thread(r, getClass().getSimpleName() + "-PostSchedule");
                 t.setDaemon(true);
                 return t;
@@ -621,6 +621,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable {
         if (executorService != null && !executorService.isShutdown()) {
             try {
                 executorService.shutdown();
+                
                 if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
                     log.warn("Executor service for {} tasks did not terminate gracefully, forcing shutdown", taskType);
                     executorService.shutdownNow();

@@ -15,16 +15,11 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 // import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
-
 import lombok.extern.slf4j.Slf4j;
-import lombok.extern.slf4j.Slf4j;
-
-@Slf4j
 @Slf4j
 public class SchedulableExampleScript extends Script {
     private SchedulableExampleConfig config;

@@ -16,16 +16,18 @@ import org.slf4j.event.Level;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
 import java.util.*;
+import java.util.concurrent.ScheduledExecutorService;
 
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.PrePostScheduleRequirements;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.ItemRequirement;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.LocationRequirement;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.LootRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.registry.RequirementRegistry;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.collection.LootRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.ShopRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.ShopRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.SpellbookRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.conditional.ConditionalRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.conditional.OrderedRequirement;
@@ -49,6 +51,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public abstract class PrePostScheduleRequirements  {    
   
+    
     @Getter
     private final String collectionName;
     @Getter
@@ -353,7 +356,7 @@ public abstract class PrePostScheduleRequirements  {
         }
         
         // Update state tracking for this specific requirement
-        updateFulfillmentStep(FulfillmentStep.LOCATION, "Traveling to " + preScheduleLocationRequirement.getLocationName(), 1);
+        updateFulfillmentStep(FulfillmentStep.LOCATION, "Traveling to " + preScheduleLocationRequirement.getName(), 1);
         updateCurrentRequirement(preScheduleLocationRequirement, 1);
         log.debug("Processing pre-schedule location requirement: {}", preScheduleLocationRequirement.getName());
         
@@ -374,7 +377,7 @@ public abstract class PrePostScheduleRequirements  {
         }
         
         // Update state tracking for this specific requirement
-        updateFulfillmentStep(FulfillmentStep.LOCATION, "Traveling to " + postScheduleLocationRequirement.getLocationName(), 1);
+        updateFulfillmentStep(FulfillmentStep.LOCATION, "Traveling to " + postScheduleLocationRequirement.getName(), 1);
         updateCurrentRequirement(postScheduleLocationRequirement, 1);
         log.debug("Processing post-schedule location requirement: {}", postScheduleLocationRequirement.getName());
         
@@ -509,7 +512,10 @@ public abstract class PrePostScheduleRequirements  {
         if (requirement == null) {
             return;
         }
-        
+        if(registry.contains(requirement)) {
+            Microbot.log("Requirement already registered: " + requirement.getName(), Level.WARN);
+            return; // Avoid duplicate registration
+        }
         registry.register(requirement);
     }
     
@@ -581,10 +587,11 @@ public abstract class PrePostScheduleRequirements  {
      * This is a convenience method that calls all the specific fulfillment methods.
      * 
      * @param context The schedule context (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
-     * @param clusterProximity The proximity for clustering loot items (only used for loot requirements)
+     * @param executorService The ScheduledExecutorService on which fulfillment is running
+     * @param saveCurrentSpellbook Whether to save the current spellbook for restoration
      * @return true if all requirements were fulfilled successfully, false otherwise
      */
-    public boolean fulfillAllRequirements(ScheduleContext context, boolean saveCurrentSpellbook) {
+    public boolean fulfillAllRequirements(ScheduleContext context, ScheduledExecutorService executorService, boolean saveCurrentSpellbook) {
         boolean success = true;
         
         // Fulfill requirements in logical order -> we should always fulfill loot requirements first, then shop, then item, then spellbook, and finally location requirements
@@ -619,30 +626,32 @@ public abstract class PrePostScheduleRequirements  {
         List<ConditionalRequirement> conditionalReqs = getRequirements(ConditionalRequirement.class, context);
         List<OrderedRequirement> orderedReqs = getRequirements(OrderedRequirement.class, context);
         
-        log.info("\n=== STEP 0: CONDITIONAL REQUIREMENTS ===");
+        StringBuilder conditionalReqInfo = new StringBuilder();
+        conditionalReqInfo.append("\n=== STEP 0: CONDITIONAL REQUIREMENTS ===\n");
         if (conditionalReqs.isEmpty()) {
-            log.info("No conditional requirements for context: {}", context);
+            conditionalReqInfo.append(String.format("No conditional requirements for context: %s\n", context));
         } else {
-            log.info("Found {} conditional requirement(s):", conditionalReqs.size());
+            conditionalReqInfo.append(String.format("Found %d conditional requirement(s):\n", conditionalReqs.size()));
             for (int i = 0; i < conditionalReqs.size(); i++) {
-                log.info("\n--- Conditional Requirement {} ---", i + 1);
-                log.info(conditionalReqs.get(i).displayString());
+            conditionalReqInfo.append(String.format("\n--- Conditional Requirement %d ---\n", i + 1));
+            conditionalReqInfo.append(conditionalReqs.get(i).displayString()).append("\n");
             }
         }
         
-        log.info("\n=== STEP 1: ORDERED REQUIREMENTS ===");
+        conditionalReqInfo.append("\n=== STEP 1: ORDERED REQUIREMENTS ===\n");
         if (orderedReqs.isEmpty()) {
-            log.info("No ordered requirements for context: {}", context);
+            conditionalReqInfo.append(String.format("No ordered requirements for context: %s\n", context));
         } else {
-            log.info("Found {} ordered requirement(s):", orderedReqs.size());
+            conditionalReqInfo.append(String.format("Found %d ordered requirement(s):\n", orderedReqs.size()));
             for (int i = 0; i < orderedReqs.size(); i++) {
-                log.info("\n--- Ordered Requirement {} ---", i + 1);
-                log.info(orderedReqs.get(i).displayString());
+            conditionalReqInfo.append(String.format("\n--- Ordered Requirement %d ---\n", i + 1));
+            conditionalReqInfo.append(orderedReqs.get(i).displayString()).append("\n");
             }
         }
         
+        log.info(conditionalReqInfo.toString());
         executionState.updateFulfillmentStep(FulfillmentStep.CONDITIONAL, "Executing conditional and ordered requirements");
-        success &= fulfillConditionalRequirements(context);
+        success &= fulfillConditionalRequirements(context, executorService);
         
         if (!success) {
             executionState.markFailed("Failed to fulfill conditional requirements");
@@ -651,19 +660,21 @@ public abstract class PrePostScheduleRequirements  {
         
         // Step 2: Loot Requirements
         List<LootRequirement> lootReqs = getRequirements(LootRequirement.class, context);
-        log.info("\n=== STEP 2: LOOT REQUIREMENTS ===");
+        StringBuilder lootReqInfo = new StringBuilder();
+        lootReqInfo.append("\n=== STEP 2: LOOT REQUIREMENTS ===\n");
         if (lootReqs.isEmpty()) {
-            log.info("No loot requirements for context: {}", context);
+            lootReqInfo.append(String.format("No loot requirements for context: %s\n", context));
         } else {
-            log.info("Found {} loot requirement(s):", lootReqs.size());
+            lootReqInfo.append(String.format("Found %d loot requirement(s):\n", lootReqs.size()));
             for (int i = 0; i < lootReqs.size(); i++) {
-                log.info("\n--- Loot Requirement {} ---", i + 1);
-                log.info(lootReqs.get(i).displayString());
+            lootReqInfo.append(String.format("\n--- Loot Requirement %d ---\n", i + 1));
+            lootReqInfo.append(lootReqs.get(i).displayString()).append("\n");
             }
         }
         
+        log.info(lootReqInfo.toString());
         executionState.updateFulfillmentStep(FulfillmentStep.LOOT, "Collecting loot items ");
-        success &= fulfillPrePostLootRequirements(context);
+        success &= fulfillPrePostLootRequirements(context, executorService);
         
         if (!success) {
             executionState.markFailed("Failed to fulfill loot requirements");
@@ -672,19 +683,21 @@ public abstract class PrePostScheduleRequirements  {
         
         // Step 3: Shop Requirements
         List<ShopRequirement> shopReqs = getRequirements(ShopRequirement.class, context);
-        log.info("\n=== STEP 3: SHOP REQUIREMENTS ===");
+        StringBuilder shopReqInfo = new StringBuilder();
+        shopReqInfo.append("\n=== STEP 3: SHOP REQUIREMENTS ===\n");
         if (shopReqs.isEmpty()) {
-            log.info("No shop requirements for context: {}", context);
+            shopReqInfo.append(String.format("No shop requirements for context: %s\n", context));
         } else {
-            log.info("Found {} shop requirement(s):", shopReqs.size());
+            shopReqInfo.append(String.format("Found %d shop requirement(s):\n", shopReqs.size()));
             for (int i = 0; i < shopReqs.size(); i++) {
-                log.info("\n--- Shop Requirement {} ---", i + 1);
-                log.info(shopReqs.get(i).displayString());
+            shopReqInfo.append(String.format("\n--- Shop Requirement %d ---\n", i + 1));
+            shopReqInfo.append(shopReqs.get(i).displayString()).append("\n");
             }
         }
         
+        log.info(shopReqInfo.toString());
         executionState.updateFulfillmentStep(FulfillmentStep.SHOP, "Purchasing shop items");
-        success &= fulfillPrePostShopRequirements(context);
+        success &= fulfillPrePostShopRequirements(context, executorService);
         
         if (!success) {
             executionState.markFailed("Failed to fulfill shop requirements");
@@ -692,48 +705,55 @@ public abstract class PrePostScheduleRequirements  {
         }
         
         // Step 4: Item Requirements
+        StringBuilder itemReqInfo = new StringBuilder();
         List<ItemRequirement> itemReqs = getRequirements(ItemRequirement.class, context);
-        log.info("\n=== STEP 4: ITEM REQUIREMENTS ===");
+        itemReqInfo.append("\n=== STEP 4: ITEM REQUIREMENTS ===\n");
         if (itemReqs.isEmpty()) {
-            log.info("No item requirements for context: {}", context);
-        } else {
-            log.info("Found {} item requirement(s):", itemReqs.size());
+             itemReqInfo.append(String.format("No item requirements for context: %s\n", context));
+        } else {            
+            itemReqInfo.append(String.format("Found %d item requirement(s):\n", itemReqs.size()));
+            
             for (int i = 0; i < itemReqs.size(); i++) {
-                log.info("\n--- Item Requirement {} ---", i + 1);
-                log.info(itemReqs.get(i).displayString());
+            itemReqInfo.append(String.format("--- Item Requirement %d ---\n", i + 1));
+            itemReqInfo.append(itemReqs.get(i).displayString()).append("\n");
             }
             
             // Display detailed equipment and inventory cache information
-            log.info("\n--- Equipment Items Cache by Slot ---");
+            itemReqInfo.append("--- Equipment Items Cache by Slot ---\n");
             Map<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> equipmentCache = registry.getEquipmentLogicalRequirements();
             if (equipmentCache.isEmpty()) {
-                log.info("No equipment items in cache");
+            itemReqInfo.append("No equipment items in cache\n");
             } else {
-                for (Map.Entry<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> entry : equipmentCache.entrySet()) {
-                    log.info("{}: {} logical requirement(s)", entry.getKey().name(), entry.getValue().size());
-                    for (LogicalRequirement logicalReq : entry.getValue()) {
-                        log.info("\t- {}", logicalReq.getStatusInfo());
-                    }
-                }
+            for (Map.Entry<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> entry : equipmentCache.entrySet()) {
+            itemReqInfo.append(String.format("%s: %d logical requirement(s)\n", 
+                entry.getKey().name(), entry.getValue().size()));
+            for (LogicalRequirement logicalReq : entry.getValue()) {
+            itemReqInfo.append(String.format("\t- %s\n", logicalReq.getStatusInfo()));
+            }
+            }
             }
             
-            log.info("\n--- Inventory Slot Requirements Cache ---");
+            itemReqInfo.append("--- Inventory Slot Requirements Cache ---\n");
             Map<Integer, LinkedHashSet<LogicalRequirement>> inventorySlotCache = registry.getInventorySlotRequirementsCache();
             if (inventorySlotCache.isEmpty()) {
-                log.info("No specific inventory slot requirements in cache");
+            itemReqInfo.append("No specific inventory slot requirements in cache\n");
             } else {
-                for (Map.Entry<Integer, LinkedHashSet<LogicalRequirement>> entry : inventorySlotCache.entrySet()) {
-                    String slotName = entry.getKey() == -1 ? "ANY_SLOT" : "SLOT_" + entry.getKey();
-                    log.info("{}: {} logical requirement(s)", slotName, entry.getValue().size());
-                    for (LogicalRequirement logicalReq : entry.getValue()) {
-                        log.info("\t- {}", logicalReq.getStatusInfo());
-                    }
-                }
+            for (Map.Entry<Integer, LinkedHashSet<LogicalRequirement>> entry : inventorySlotCache.entrySet()) {
+            String slotName = entry.getKey() == -1 ? "ANY_SLOT" : "SLOT_" + entry.getKey();
+            itemReqInfo.append(String.format("%s: %d logical requirement(s)\n", 
+                slotName, entry.getValue().size()));
+            for (LogicalRequirement logicalReq : entry.getValue()) {
+            itemReqInfo.append(String.format("\t- %s\n", logicalReq.getStatusInfo()));
             }
+            }
+            }
+            
+            
         }
         
+        log.info(itemReqInfo.toString());
         executionState.updateFulfillmentStep(FulfillmentStep.ITEMS, "Preparing inventory and equipment");
-        success &= fulfillPrePostItemRequirements(context);
+        success &= fulfillPrePostItemRequirements(context, executorService);
         
         if (!success) {
             executionState.markFailed("Failed to fulfill item requirements");
@@ -742,17 +762,19 @@ public abstract class PrePostScheduleRequirements  {
         
         // Step 5: Spellbook Requirements
         List<SpellbookRequirement> spellbookReqs = getRequirements(SpellbookRequirement.class, context);
-        log.info("\n=== STEP 5: SPELLBOOK REQUIREMENTS ===");
+        StringBuilder spellbookReqInfo = new StringBuilder();
+        spellbookReqInfo.append("\n=== STEP 5: SPELLBOOK REQUIREMENTS ===\n");
         if (spellbookReqs.isEmpty()) {
-            log.info("No spellbook requirements for context: {}", context);
+            spellbookReqInfo.append(String.format("No spellbook requirements for context: %s\n", context));
         } else {
-            log.info("Found {} spellbook requirement(s):", spellbookReqs.size());
+            spellbookReqInfo.append(String.format("Found %d spellbook requirement(s):\n", spellbookReqs.size()));
             for (int i = 0; i < spellbookReqs.size(); i++) {
-                log.info("\n--- Spellbook Requirement {} ---", i + 1);
-                log.info(spellbookReqs.get(i).displayString());
+            spellbookReqInfo.append(String.format("\n--- Spellbook Requirement %d ---\n", i + 1));
+            spellbookReqInfo.append(spellbookReqs.get(i).displayString()).append("\n");
             }
         }
         
+        log.info(spellbookReqInfo.toString());
         executionState.updateFulfillmentStep(FulfillmentStep.SPELLBOOK, "Switching spellbook");
         success &= fulfillPrePostSpellbookRequirements(context, saveCurrentSpellbook);
         
@@ -763,30 +785,28 @@ public abstract class PrePostScheduleRequirements  {
         
         // Step 6: Location Requirements (always fulfill location requirements last)
         List<LocationRequirement> locationReqs = getRequirements(LocationRequirement.class, context);
-        log.info("\n=== STEP 6: LOCATION REQUIREMENTS ===");
+        StringBuilder locationReqInfo = new StringBuilder();
+        locationReqInfo.append("\n=== STEP 6: LOCATION REQUIREMENTS ===\n");
         if (locationReqs.isEmpty()) {
-            log.info("No location requirements for context: {}", context);
+            locationReqInfo.append(String.format("No location requirements for context: %s\n", context));
         } else {
-            log.info("Found {} location requirement(s):", locationReqs.size());
+            locationReqInfo.append(String.format("Found %d location requirement(s):\n", locationReqs.size()));
             for (int i = 0; i < locationReqs.size(); i++) {
-                log.info("\n--- Location Requirement {} ---", i + 1);
-                log.info(locationReqs.get(i).displayString());
+            locationReqInfo.append(String.format("\n--- Location Requirement %d ---\n", i + 1));
+            locationReqInfo.append(locationReqs.get(i).displayString()).append("\n");
             }
         }
         
+        log.info(locationReqInfo.toString());
         executionState.updateFulfillmentStep(FulfillmentStep.LOCATION, "Moving to required location");
-        success &= fulfillPrePostLocationRequirements(context);
+        success &= fulfillPrePostLocationRequirements(context, executorService);
         
         if (success) {
-            executionState.updateState(TaskExecutionState.ExecutionState.COMPLETED, "All requirements fulfilled successfully");
-            log.info("\n" + "=".repeat(80));
-            log.info("ALL REQUIREMENTS FULFILLED SUCCESSFULLY FOR CONTEXT: {}", context);
-            log.info("=".repeat(80));
+            executionState.updateState(TaskExecutionState.ExecutionState.COMPLETED, "All requirements fulfilled successfully");            
+            log.info("\n" + "=".repeat(80)+"\nALL REQUIREMENTS FULFILLED SUCCESSFULLY FOR CONTEXT: {}\n"+"=".repeat(80), context);            
         } else {
             executionState.markFailed("Failed to fulfill location requirements");
-            log.error("\n" + "=".repeat(80));
-            log.error("FAILED TO FULFILL REQUIREMENTS FOR CONTEXT: {}", context);
-            log.error("=".repeat(80));
+            log.error("\n" + "=".repeat(80)+"\nFAILED TO FULFILL REQUIREMENTS FOR CONTEXT: {}\n"+ "=".repeat(80), context);
         }
         
         return success;
@@ -795,21 +815,43 @@ public abstract class PrePostScheduleRequirements  {
     /**
      * Convenience method to fulfill all pre-schedule requirements.
      * 
-     * @param clusterProximity The proximity for clustering loot items
+     * @param executorService The ScheduledExecutorService on which fulfillment is running
+     * @param saveCurrentSpellbook Whether to save current spellbook for restoration
      * @return true if all pre-schedule requirements were fulfilled successfully, false otherwise
      */
-    public boolean fulfillPreScheduleRequirements( boolean saveCurrentSpellbook) {
-        return fulfillAllRequirements(ScheduleContext.PRE_SCHEDULE, saveCurrentSpellbook);
+    public boolean fulfillPreScheduleRequirements(ScheduledExecutorService executorService, boolean saveCurrentSpellbook) {
+        return fulfillAllRequirements(ScheduleContext.PRE_SCHEDULE, executorService, saveCurrentSpellbook);
+    }
+    
+    /**
+     * Backward compatibility method to fulfill all pre-schedule requirements without executor service.
+     * 
+     * @param saveCurrentSpellbook Whether to save current spellbook for restoration
+     * @return true if all pre-schedule requirements were fulfilled successfully, false otherwise
+     */
+    public boolean fulfillPreScheduleRequirements(boolean saveCurrentSpellbook) {
+        return fulfillAllRequirements(ScheduleContext.PRE_SCHEDULE, null, saveCurrentSpellbook);
     }
     
     /**
      * Convenience method to fulfill all post-schedule requirements.
      * 
-     * @param clusterProximity The proximity for clustering loot items
+     * @param executorService The ScheduledExecutorService on which fulfillment is running
+     * @param saveCurrentSpellbook Whether to save current spellbook for restoration
      * @return true if all post-schedule requirements were fulfilled successfully, false otherwise
      */
-    public boolean fulfillPostScheduleRequirements( boolean saveCurrentSpellbook) {
-        return fulfillAllRequirements(ScheduleContext.POST_SCHEDULE, saveCurrentSpellbook);
+    public boolean fulfillPostScheduleRequirements(ScheduledExecutorService executorService, boolean saveCurrentSpellbook) {
+        return fulfillAllRequirements(ScheduleContext.POST_SCHEDULE, executorService, saveCurrentSpellbook);
+    }
+    
+    /**
+     * Backward compatibility method to fulfill all post-schedule requirements without executor service.
+     * 
+     * @param saveCurrentSpellbook Whether to save current spellbook for restoration
+     * @return true if all post-schedule requirements were fulfilled successfully, false otherwise
+     */
+    public boolean fulfillPostScheduleRequirements(boolean saveCurrentSpellbook) {
+        return fulfillAllRequirements(ScheduleContext.POST_SCHEDULE, null, saveCurrentSpellbook);
     }
     
 
@@ -820,9 +862,10 @@ public abstract class PrePostScheduleRequirements  {
      * Fulfills all item requirements (equipment, inventory, either) for the specified schedule context.
      * 
      * @param context The schedule context (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param executorService The ScheduledExecutorService on which fulfillment is running
      * @return true if all item requirements were fulfilled successfully, false otherwise
      */
-    public boolean fulfillPrePostItemRequirements(ScheduleContext context) {
+    public boolean fulfillPrePostItemRequirements(ScheduleContext context, ScheduledExecutorService executorService) {
         // Get all logical requirements for this context
         List<LogicalRequirement> logicalReqs = getLogicalRequirements(context);
         
@@ -835,7 +878,7 @@ public abstract class PrePostScheduleRequirements  {
         updateFulfillmentStep(FulfillmentStep.ITEMS, "Processing item requirements", logicalReqs.size());
         
         boolean success = true;
-        success = fulfillOptimalInventoryAndEquipmentLayout(context);
+        success = fulfillOptimalInventoryAndEquipmentLayout(context, executorService);
         
         
         log.debug("Item requirements fulfillment completed. Success: {}", success);
@@ -843,13 +886,24 @@ public abstract class PrePostScheduleRequirements  {
     }
     
     /**
+     * Backward compatibility method to fulfill item requirements without executor service.
+     * 
+     * @param context The schedule context (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @return true if all item requirements were fulfilled successfully, false otherwise
+     */
+    public boolean fulfillPrePostItemRequirements(ScheduleContext context) {
+        return fulfillPrePostItemRequirements(context, null);
+    }
+    
+    /**
      * Fulfills shop requirements for the specified schedule context.
      * Uses the unified filtering system to automatically handle pre/post schedule requirements.
      * 
      * @param context The schedule context (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param executorService The ScheduledExecutorService on which fulfillment is running
      * @return true if all shop requirements were fulfilled successfully, false otherwise
      */
-    public boolean fulfillPrePostShopRequirements(ScheduleContext context) {
+    public boolean fulfillPrePostShopRequirements(ScheduleContext context, ScheduledExecutorService executorService) {
         LinkedHashSet<LogicalRequirement> shopLogical = registry.getShopLogicalRequirements();
         
         if (shopLogical.isEmpty()) {
@@ -860,9 +914,19 @@ public abstract class PrePostScheduleRequirements  {
         // Initialize step tracking
         List<LogicalRequirement> contextReqs = LogicalRequirement.filterByContext(new ArrayList<>(shopLogical), context);
         updateFulfillmentStep(FulfillmentStep.SHOP, "Processing shop requirements", contextReqs.size());
-        
+        log.info("Processing shop requirements for context: {} number of  req.", context, contextReqs.size());
         // Use the utility class for fulfillment
         return LogicalRequirement.fulfillLogicalRequirements(contextReqs, "shop");
+    }
+    
+    /**
+     * Backward compatibility method to fulfill shop requirements without executor service.
+     * 
+     * @param context The schedule context (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @return true if all shop requirements were fulfilled successfully, false otherwise
+     */
+    public boolean fulfillPrePostShopRequirements(ScheduleContext context) {
+        return fulfillPrePostShopRequirements(context, null);
     }
     
     /**
@@ -870,9 +934,10 @@ public abstract class PrePostScheduleRequirements  {
      * Uses the unified filtering system to automatically handle pre/post schedule requirements.
      * 
      * @param context The schedule context (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param executorService The ScheduledExecutorService on which fulfillment is running
      * @return true if all loot requirements were fulfilled successfully, false otherwise
      */
-    public boolean fulfillPrePostLootRequirements(ScheduleContext context) {
+    public boolean fulfillPrePostLootRequirements(ScheduleContext context, ScheduledExecutorService executorService) {
         LinkedHashSet<LogicalRequirement> lootLogical = registry.getLootLogicalRequirements();
         
         if (lootLogical.isEmpty()) {
@@ -891,13 +956,24 @@ public abstract class PrePostScheduleRequirements  {
     }
     
     /**
+     * Backward compatibility method to fulfill loot requirements without executor service.
+     * 
+     * @param context The schedule context (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @return true if all loot requirements were fulfilled successfully, false otherwise
+     */
+    public boolean fulfillPrePostLootRequirements(ScheduleContext context) {
+        return fulfillPrePostLootRequirements(context, null);
+    }
+    
+    /**
      * Fulfills location requirements for the specified schedule context.
      * Uses the unified filtering system to automatically handle pre/post schedule requirements.
      * 
      * @param context The schedule context (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param executorService The ScheduledExecutorService on which fulfillment is running
      * @return true if all location requirements were fulfilled successfully, false otherwise
      */
-    public boolean fulfillPrePostLocationRequirements(ScheduleContext context) {
+    public boolean fulfillPrePostLocationRequirements(ScheduleContext context, ScheduledExecutorService executorService) {
         List<LocationRequirement> locationReqs = getRequirements(LocationRequirement.class, context);
         
         if (locationReqs.isEmpty()) {
@@ -923,7 +999,7 @@ public abstract class PrePostScheduleRequirements  {
             
             try {
                 log.debug("Processing location requirement {}/{}: {}", i + 1, locationReqs.size(), requirement.getName());
-                boolean fulfilled = requirement.fulfillRequirement();
+                boolean fulfilled = requirement.fulfillRequirement(executorService);
                 if (!fulfilled && requirement.isMandatory()) {
                     Microbot.log("Failed to fulfill mandatory location requirement: " + requirement.getName());
                     success = false;
@@ -940,6 +1016,16 @@ public abstract class PrePostScheduleRequirements  {
         
         log.debug("Location requirements fulfillment completed. Success: {}", success);
         return success;
+    }
+    
+    /**
+     * Backward compatibility method to fulfill location requirements without executor service.
+     * 
+     * @param context The schedule context (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @return true if all location requirements were fulfilled successfully, false otherwise
+     */
+    public boolean fulfillPrePostLocationRequirements(ScheduleContext context) {
+        return fulfillPrePostLocationRequirements(context, null);
     }
     
     /**
@@ -1018,9 +1104,10 @@ public abstract class PrePostScheduleRequirements  {
      * These requirements are processed first as they may contain prerequisites for other requirements.
      * 
      * @param context The schedule context (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param executorService The ScheduledExecutorService on which fulfillment is running
      * @return true if all conditional requirements were fulfilled successfully, false otherwise
      */
-    public boolean fulfillConditionalRequirements(ScheduleContext context) {
+    public boolean fulfillConditionalRequirements(ScheduleContext context, ScheduledExecutorService executorService) {
         List<ConditionalRequirement> conditionalReqs = getRequirements(ConditionalRequirement.class, context);
         List<OrderedRequirement> orderedReqs = getRequirements(OrderedRequirement.class, context);
         
@@ -1032,6 +1119,16 @@ public abstract class PrePostScheduleRequirements  {
         // Use the utility class for fulfillment
         return RequirementSolver.fulfillConditionalRequirements(conditionalReqs, orderedReqs, context);
               
+    }
+    
+    /**
+     * Backward compatibility method to fulfill conditional requirements without executor service.
+     * 
+     * @param context The schedule context (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @return true if all conditional requirements were fulfilled successfully, false otherwise
+     */
+    public boolean fulfillConditionalRequirements(ScheduleContext context) {
+        return fulfillConditionalRequirements(context, null);
     }
     
     
@@ -1128,9 +1225,10 @@ public abstract class PrePostScheduleRequirements  {
      * considering slot constraints, priority levels, and availability.
      * 
      * @param context The schedule context
+     * @param executorService The ScheduledExecutorService on which fulfillment is running
      * @return true if all mandatory requirements can be fulfilled
      */
-    private boolean fulfillOptimalInventoryAndEquipmentLayout(ScheduleContext context) {
+    private boolean fulfillOptimalInventoryAndEquipmentLayout(ScheduleContext context, ScheduledExecutorService executorService) {
         try {
             log.info("\n" + "=".repeat(60));
             log.info("OPTIMAL INVENTORY AND EQUIPMENT LAYOUT PLANNING");

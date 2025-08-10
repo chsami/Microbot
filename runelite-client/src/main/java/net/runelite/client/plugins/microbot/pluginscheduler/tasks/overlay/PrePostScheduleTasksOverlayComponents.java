@@ -4,9 +4,9 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.AbstractPrePostScheduleTasks;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.PrePostScheduleRequirements;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.ItemRequirement;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.LocationRequirement;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.LootRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.collection.LootRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.SpellbookRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.state.TaskExecutionState;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -179,7 +179,7 @@ public class PrePostScheduleTasksOverlayComponents {
         }
         
         LocationRequirement locationReq = locationReqs.get(0); // Take first one
-        WorldPoint targetLocation = locationReq.getTargetLocation();
+        WorldPoint targetLocation = locationReq.getBestAvailableLocation().getWorldPoint();
         WorldPoint currentLocation = Rs2Player.getWorldLocation();
         
         // Calculate distance
@@ -190,7 +190,7 @@ public class PrePostScheduleTasksOverlayComponents {
         
         components.add(LineComponent.builder()
             .left(contextLabel + ":")
-            .right(locationReq.getLocationName())
+            .right(locationReq.getName())
             .leftColor(INFO_COLOR)
             .rightColor(distance <= 10 ? SUCCESS_COLOR : ACTIVE_COLOR)
             .build());
@@ -261,9 +261,14 @@ public class PrePostScheduleTasksOverlayComponents {
         String contextLabel = context == ScheduleContext.PRE_SCHEDULE ? "Pre-Loot" : "Post-Loot";
         
         for (LootRequirement lootReq : lootReqs) {
+            // Calculate total amount from the loot requirements map
+            int totalAmount = lootReq.getAmounts().values().stream()
+                .mapToInt(Integer::intValue)
+                .sum();
+            
             components.add(LineComponent.builder()
                 .left(contextLabel + ":")
-                .right(lootReq.getName() + " (" + lootReq.getAmount() + ")")
+                .right(lootReq.getName() + " (" + totalAmount + ")")
                 .leftColor(INFO_COLOR)
                 .rightColor(ACTIVE_COLOR)
                 .build());

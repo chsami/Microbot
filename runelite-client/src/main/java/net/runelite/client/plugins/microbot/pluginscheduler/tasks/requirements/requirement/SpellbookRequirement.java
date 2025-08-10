@@ -17,6 +17,7 @@ import net.runelite.client.plugins.microbot.util.walker.TransportRouteAnalysis;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ScheduledExecutorService;
 
 import org.slf4j.event.Level;
 
@@ -141,6 +142,10 @@ public class SpellbookRequirement extends Requirement {
         
         return Rs2Spellbook.getCurrentSpellbook() == requiredSpellbook;
     }
+    public boolean isFulfilled() {
+        // Check if the required spellbook is currently active
+        return hasRequiredSpellbook();
+    }   
     
     /**
      * Checks if the required spellbook is available to the player (unlocked).
@@ -293,10 +298,11 @@ public class SpellbookRequirement extends Requirement {
      * Implements the abstract fulfillRequirement method from the base Requirement class.
      * Attempts to fulfill this spellbook requirement by switching spellbooks as needed.
      * 
+     * @param executorService The ScheduledExecutorService on which fulfillment is running
      * @return true if the requirement was successfully fulfilled, false otherwise
      */
     @Override
-    public boolean fulfillRequirement() {
+    public boolean fulfillRequirement(ScheduledExecutorService executorService) {
         try {
             if (Microbot.getClient() == null || Microbot.getClient().isClientThread()) {
                 Microbot.log("fulfillRequirement Not running on the client thread.", Level.ERROR);

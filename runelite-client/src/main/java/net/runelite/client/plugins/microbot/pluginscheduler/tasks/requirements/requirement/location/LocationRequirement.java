@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement;
+package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -11,19 +11,23 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.TransportRouteAnalysis;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.stream.Collectors;
-
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
 /**
  * Represents a location requirement for pre and post schedule tasks.
@@ -115,25 +119,25 @@ public class LocationRequirement extends Requirement {
      */
     private final boolean useTransports;
     
-    /**
-     * Custom name for this location requirement (optional).
-     * If not provided, will use coordinates as name.
-     */
-    private final String locationName;
+
     
     @Override
     public String getName() {
-        if (locationName != null && !locationName.isEmpty()) {
-            return locationName;
-        }
-        if (targetLocations.size() == 1) {
-            LocationOption location = targetLocations.get(0);
-            return String.format("Location (%d, %d, %d)", 
+        LocationOption location = getBestAvailableLocation();
+        String bestLocationString = location != null ? String.format("Location %s (%d, %d, %d)", location.getName(),
                                location.getWorldPoint().getX(), 
                                location.getWorldPoint().getY(), 
-                               location.getWorldPoint().getPlane());
+                               location.getWorldPoint().getPlane()) : "Unknown Location";
+        
+        
+        if (targetLocations.size() == 1) {
+            
+        
+            
+            return String.format("Single Location: %s", bestLocationString);
         } else {
-            return String.format("Multi-Location (%d options)", targetLocations.size());
+
+            return String.format("Multi-Location (%d options), best location: %s", targetLocations.size(), bestLocationString);
         }
     }
     
@@ -214,10 +218,9 @@ public class LocationRequirement extends Requirement {
      * @param description Human-readable description
      */
     public LocationRequirement(
-            List<LocationOption> targetLocations,
+            List<LocationOption> targetLocations,            
             int acceptableDistance,
-            boolean useTransports,            
-            String locationName,
+            boolean useTransports,                        
             ScheduleContext scheduleContext,
             Priority priority,
             int rating,
@@ -232,8 +235,7 @@ public class LocationRequirement extends Requirement {
         
         this.targetLocations = new ArrayList<>(targetLocations);
         this.acceptableDistance = acceptableDistance;
-        this.useTransports = useTransports;
-        this.locationName = locationName;
+        this.useTransports = useTransports;        
     }
     
     /**
@@ -250,15 +252,15 @@ public class LocationRequirement extends Requirement {
      */
     public LocationRequirement(
             WorldPoint targetLocation,
-            int acceptableDistance,
-            boolean useTransports,            
             String locationName,
+            int acceptableDistance,
+            boolean useTransports,                        
             ScheduleContext scheduleContext,
             Priority priority,
             int rating,
             String description) {
-        this(Arrays.asList(new LocationOption(targetLocation, locationName != null ? locationName : "Location")),
-             acceptableDistance, useTransports, locationName, scheduleContext, priority, rating, description);
+        this(Arrays.asList(new LocationOption(targetLocation,locationName)),
+             acceptableDistance, useTransports, scheduleContext, priority, rating, description);
     }
     
     /**
@@ -272,11 +274,11 @@ public class LocationRequirement extends Requirement {
      */
     public LocationRequirement(
             WorldPoint targetLocation,
-            boolean useTransports, 
             String locationName,
+            boolean useTransports,            
             ScheduleContext scheduleContext,
             Priority priority) {
-        this(targetLocation, 5, useTransports, locationName, scheduleContext, priority, 8, null);
+        this(targetLocation,locationName, 5, useTransports , scheduleContext, priority, 8, null);
     }
     
     /**
@@ -289,10 +291,10 @@ public class LocationRequirement extends Requirement {
      */
     public LocationRequirement(
             WorldPoint targetLocation,
-            boolean useTransports, 
             String locationName,
+            boolean useTransports,             
             ScheduleContext scheduleContext) {
-        this(targetLocation, useTransports, locationName, scheduleContext, Priority.MANDATORY);
+        this(targetLocation, locationName,useTransports, scheduleContext, Priority.MANDATORY);
     }
     
     /**
@@ -309,8 +311,8 @@ public class LocationRequirement extends Requirement {
             ScheduleContext scheduleContext,
             Priority priority) {
         this(bankLocation.getWorldPoint(), 
-             useTransports,
-             bankLocation.toString(), 
+            bankLocation.toString(), 
+             useTransports,             
              scheduleContext, 
              priority);
     }
@@ -397,15 +399,20 @@ public class LocationRequirement extends Requirement {
         
         return false;
     }
+    public boolean isFulfilled() {
+        // Check if the player is at any of the required locations
+        return isAtRequiredLocation();
+    }
     
     /**
      * Implements the abstract fulfillRequirement method from the base Requirement class.
      * Attempts to fulfill this location requirement by traveling to the target location.
      * 
+     * @param executorService The ScheduledExecutorService on which this requirement fulfillment is running
      * @return true if the requirement was successfully fulfilled, false otherwise
      */
     @Override
-    public boolean fulfillRequirement() {
+    public boolean fulfillRequirement(ScheduledExecutorService executorService) {
         try {
             if (Microbot.getClient() == null || Microbot.getClient().isClientThread()) {
                 log.info("Cannot fulfill location requirement outside client thread");
@@ -428,7 +435,7 @@ public class LocationRequirement extends Requirement {
             }
             
             // Attempt to travel to the location
-            boolean success = travelToLocation();
+            boolean success = travelToLocation(executorService);
             
             if (!success && isMandatory()) {
                 Microbot.log("MANDATORY location requirement failed: " + getName());
@@ -444,11 +451,15 @@ public class LocationRequirement extends Requirement {
     }
     
     /**
-     * Attempts to travel to the best available target location using Rs2Walker.
+     * Attempts to travel to the best available target location using Rs2Walker with movement watchdog.
      * 
+     * @param executorService The ScheduledExecutorService to run the watchdog on
      * @return true if the travel was successful, false otherwise
      */
-    private boolean travelToLocation() {
+    private boolean travelToLocation(ScheduledExecutorService executorService) {
+        ScheduledFuture<?> watchdogFuture = null;
+        AtomicBoolean watchdogTriggered = new AtomicBoolean(false);
+        
         try {
             LocationOption bestLocation = getBestAvailableLocation();
             if (bestLocation == null) {
@@ -457,6 +468,11 @@ public class LocationRequirement extends Requirement {
             }
             
             WorldPoint targetLocation = bestLocation.getWorldPoint();
+            
+            // Start movement watchdog if executor service is available
+            if (executorService != null && !executorService.isShutdown()) {
+                watchdogFuture = startMovementWatchdog(executorService, watchdogTriggered);
+            }
             
             // Check if we need to get transport items from bank
             boolean walkResult = false;
@@ -469,18 +485,95 @@ public class LocationRequirement extends Requirement {
                 walkResult = Rs2Walker.walkTo(targetLocation);
             }
             
-            if (walkResult) {
-                // Wait for arrival with timeout
-                sleepUntil(this::isAtRequiredLocation, 30000);
-                return isAtRequiredLocation();
+            if (walkResult && !watchdogTriggered.get()) {           
+                return isAtRequiredLocation() && !watchdogTriggered.get();
             }
             
             return false;
             
         } catch (Exception e) {
-            Microbot.log("Error traveling to location " + locationName + ": " + e.getMessage());
+            Microbot.log("Error traveling to location " + getName() + ": " + e.getMessage());
+            return false;
+        } finally {
+            // Always clean up the watchdog
+            if (watchdogFuture != null && !watchdogFuture.isDone()) {
+                watchdogFuture.cancel(true);
+            }
+        }
+    }
+    
+    /**
+     * Starts a movement watchdog that monitors player position and stops walking if no movement is detected.
+     * 
+     * @param executorService The executor service to run the watchdog on
+     * @param watchdogTriggered Atomic boolean to signal when watchdog triggers
+     * @return The scheduled future for the watchdog task
+     */
+    private ScheduledFuture<?> startMovementWatchdog(ScheduledExecutorService executorService, AtomicBoolean watchdogTriggered) {
+        AtomicReference<WorldPoint> lastPosition = new AtomicReference<>(Rs2Player.getWorldLocation());
+        AtomicReference<Long> lastMovementTime = new AtomicReference<>(System.currentTimeMillis());
+        
+        return executorService.scheduleAtFixedRate(() -> {
+            try {
+                WorldPoint currentPosition = Rs2Player.getWorldLocation();
+                if (currentPosition == null) {
+                    return; // Skip if position unavailable
+                }
+                
+                WorldPoint lastPos = lastPosition.get();
+                if (lastPos == null) {
+                    lastPosition.set(currentPosition);
+                    lastMovementTime.set(System.currentTimeMillis());
+                    return;
+                }
+                
+                // Check if player has moved significantly (using area detection for robustness)
+                boolean hasMovedSignificantly = hasMovedOutOfArea(lastPos, currentPosition, 2);
+                
+                if (hasMovedSignificantly) {
+                    // Player has moved, update last movement time and position
+                    lastPosition.set(currentPosition);
+                    lastMovementTime.set(System.currentTimeMillis());
+                } else {
+                    // Player hasn't moved significantly, check timeout
+                    long timeSinceLastMovement = System.currentTimeMillis() - lastMovementTime.get();
+                    if (timeSinceLastMovement > 60000) { // 1 minute timeout
+                        log.warn("Movement watchdog triggered - no significant movement detected for 1 minute");
+                        watchdogTriggered.set(true);
+                        
+                        // Stop walking by clearing the target
+                        Rs2Walker.setTarget(null);
+                        
+                        // Cancel this watchdog
+                        throw new RuntimeException("Watchdog triggered - stopping task");
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Watchdog error: {}", e.getMessage());
+                watchdogTriggered.set(true);
+                Rs2Walker.setTarget(null);
+                throw e; // Re-throw to stop the scheduled task
+            }
+        }, 5, 5, TimeUnit.SECONDS); // Check every 5 seconds
+    }
+    
+    /**
+     * Checks if the player has moved out of a defined area around the last position.
+     * This is more robust than checking single coordinates as it accounts for small movements.
+     * 
+     * @param lastPosition The last recorded position
+     * @param currentPosition The current position
+     * @param areaRadius The radius of the area to check
+     * @return true if the player has moved significantly outside the area
+     */
+    private boolean hasMovedOutOfArea(WorldPoint lastPosition, WorldPoint currentPosition, int areaRadius) {
+        if (lastPosition == null || currentPosition == null) {
             return false;
         }
+        
+        // Calculate distance between positions
+        int distance = lastPosition.distanceTo(currentPosition);
+        return distance > areaRadius;
     }
     
     /**

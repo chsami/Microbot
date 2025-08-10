@@ -157,7 +157,9 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
                 }
                 
                 // Test only pre-schedule tasks
-                SchedulableExamplePlugin.this.testPreScheduleTasksOnly();
+                SchedulableExamplePlugin.this.runPreScheduleTasks();
+
+
             } else {
                 log.info("Pre/Post Schedule Requirements are disabled in configuration");
             }
@@ -180,7 +182,7 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
                 }
                 
                 // Test only post-schedule tasks
-                SchedulableExamplePlugin.this.testPostScheduleTasksOnly();
+                SchedulableExamplePlugin.this.runPostScheduleTasks();
             } else {
                 log.info("Pre/Post Schedule Requirements are disabled in configuration");
             }
@@ -190,8 +192,8 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
     @Override
     protected void startUp() {
         loadLastLocation();
-        script = new SchedulableExampleScript();
-        script.run(config, lastLocation);
+        this.script = new SchedulableExampleScript();
+        
         
         // Initialize Pre/Post Schedule Requirements and Tasks
         if (config.enablePrePostRequirements()) {
@@ -216,7 +218,7 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
         keyManager.registerKeyListener(testPostScheduleTasksHotkeyListener);
         
         // Add the overlay
-        overlayManager.add(overlay);
+        //overlayManager.add(overlay);
         boolean scheduleMode = Microbot.getConfigManager().getConfiguration(
                                     "SchedulableExample", 
                                     "scheduleMode", 
@@ -409,18 +411,26 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
      * Tests only the pre-schedule tasks functionality.
      * This method demonstrates how pre-schedule tasks work and logs the results.
      */
-    private void testPreScheduleTasksOnly() {
+    private void runPreScheduleTasks() {
         log.info("Testing Pre-Schedule Tasks functionality...");
         
         if (prePostScheduleTasks == null) {
             log.warn("PrePostScheduleTasks not initialized - cannot test");
             return;
         }
+        if (this.script == null) {
+            this.script = new SchedulableExampleScript();
+        }
+        if( this. script.isRunning()){
+            this.script.shutdown();
+        }
         
         try {
             // Execute only pre-schedule tasks using the public API
             prePostScheduleTasks.executePreScheduleTasks(() -> {
                 log.info("Pre-Schedule Tasks completed successfully");
+                // Start the actual script after pre-schedule tasks are done
+                this.script.run(config, lastLocation);
             });
         } catch (Exception e) {
             log.error("Error during Pre-Schedule Tasks test", e);
@@ -431,7 +441,7 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
      * Tests only the post-schedule tasks functionality.
      * This method demonstrates how post-schedule tasks work and logs the results.
      */
-    private void testPostScheduleTasksOnly() {
+    private void runPostScheduleTasks() {
         log.info("Testing Post-Schedule Tasks functionality...");
         
         if (prePostScheduleTasks == null) {
@@ -443,6 +453,10 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
             // Execute only post-schedule tasks using the public API
             prePostScheduleTasks.executePostScheduleTasks(() -> {
                 log.info("Post-Schedule Tasks completed successfully");
+                if( this.script != null && this.script.isRunning()) {
+                    this.script.shutdown();
+                }
+                reportFinished("Post-Schedule Tasks executed successfully and Script stopped", true);
             });
         } catch (Exception e) {
             log.error("Error during Post-Schedule Tasks test", e);

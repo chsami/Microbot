@@ -6,15 +6,16 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.ItemRequirement;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.LootRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.collection.LootRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.ShopRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.ShopRequirement;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
 
 /**
@@ -175,10 +176,11 @@ public abstract class LogicalRequirement extends Requirement {
      * Checks if this logical requirement is fulfilled.
      * This method is required by the Requirement base class.
      * 
+     * @param executorService The ScheduledExecutorService on which fulfillment is running
      * @return true if the logical requirement is fulfilled, false otherwise
      */
     @Override
-    public boolean fulfillRequirement() {
+    public boolean fulfillRequirement(ScheduledExecutorService executorService) {
         log.debug("Attempting to fulfill logical requirement: {}", getName());
         
         // For logical requirements, we don't directly fulfill them
@@ -315,13 +317,11 @@ public abstract class LogicalRequirement extends Requirement {
      */
     private boolean fulfillLogicalRequirement() {
         // If already fulfilled, nothing to do
-        if (this.isLogicallyFulfilled()) {
-            return true;
-        }
 
         if (this instanceof OrRequirement) {
             return fulfillOrRequirement((OrRequirement) this);
         } else {
+
             log.warn("Unknown logical requirement type: {}", this.getClass().getSimpleName());
             return false;
         }
@@ -349,34 +349,34 @@ public abstract class LogicalRequirement extends Requirement {
                     return r1.getPriority().compareTo(r2.getPriority());
                 })
                 .collect(Collectors.toList());
-        
-        // Try to fulfill requirements in order of rating (highest first)
+        boolean foundFulfilled = false;
+        // Try to fulfill all requirements in order of rating (highest first), but only need one to succeed
         for (Requirement childReq : sortedRequirements) {
             if (childReq instanceof LogicalRequirement) {
                 if (childReq.fulfillRequirement()) {
-                    log.debug("Fulfilled OR requirement using logical child: {} (rating: {})", 
+                    log.info("Fulfilled OR requirement using logical child: {} (rating: {})", 
                             childReq.getDescription(), childReq.getRating());
-                    return true; // Only fulfill ONE requirement for OR logic
+                    foundFulfilled = true; 
                 }
             } else if (childReq instanceof ItemRequirement) {
                 ItemRequirement itemReq = (ItemRequirement) childReq;                
                 itemReq.fulfillRequirement();
                 
                 if (orReq.isFulfilled() || itemReq.isFulfilled()) {
-                    log.debug("Fulfilled OR requirement using item: {} (rating: {})", 
+                    log.info("Fulfilled OR requirement using item: {} (rating: {})", 
                             itemReq.getName(), itemReq.getRating());
-                    return true; // Only fulfill ONE requirement for OR logic
+                    foundFulfilled = true; 
                 }
             } else if (childReq instanceof ShopRequirement) {
                 ShopRequirement shopReq = (ShopRequirement) childReq;
                 try {
                     if (shopReq.fulfillRequirement()) {
-                        log.debug("Fulfilled shop OR requirement: {} (rating: {})", 
+                        log.info("Fulfilled shop OR requirement: {} (rating: {})", 
                                 shopReq.getName(), shopReq.getRating());
-                        return true; // Only fulfill ONE requirement for OR logic
+                        foundFulfilled = true; 
                     }
                 } catch (Exception e) {
-                    log.debug("Failed to fulfill shop requirement {}: {}", shopReq.getName(), e.getMessage());
+                    log.info("Failed to fulfill shop requirement {}: {}", shopReq.getName(), e.getMessage());
                 }
             } else if (childReq instanceof LootRequirement) {
                 LootRequirement lootReq = (LootRequirement) childReq;
@@ -384,7 +384,7 @@ public abstract class LogicalRequirement extends Requirement {
                     if (lootReq.fulfillRequirement()) {
                         log.debug("Fulfilled loot OR requirement: {} (rating: {})", 
                                 lootReq.getName(), lootReq.getRating());
-                        return true; // Only fulfill ONE requirement for OR logic
+                        foundFulfilled = true; 
                     }
                 } catch (Exception e) {
                     log.debug("Failed to fulfill loot requirement {}: {}", lootReq.getName(), e.getMessage());
@@ -392,9 +392,9 @@ public abstract class LogicalRequirement extends Requirement {
             }
         }
         
-        log.debug("Failed to fulfill any child requirement in OR group with {} alternatives", 
-                sortedRequirements.size());
-        return orReq.isLogicallyFulfilled();
+        log.info("OR requirement {} fulfilled: {}", 
+                orReq.getDescription(), foundFulfilled);
+        return foundFulfilled; // No child requirements were fulfilled
     }
     
     // ========== STATIC UTILITY METHODS FOR LOGICAL REQUIREMENT PROCESSING ==========

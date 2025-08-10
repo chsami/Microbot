@@ -1,13 +1,15 @@
-package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement;
+package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item;
 
 import net.runelite.api.EquipmentInventorySlot;
-
+import net.runelite.api.ItemComposition;
 import net.runelite.api.Skill;
+import net.runelite.client.game.ItemEquipmentStats;
+import net.runelite.client.game.ItemStats;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.VoxPlugins.util.VoxSylvaeUtil;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.logical.OrRequirement;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
@@ -22,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.concurrent.ScheduledExecutorService;
 
 import org.slf4j.event.Level;
 
@@ -96,12 +99,8 @@ public class ItemRequirement extends Requirement {
      * Uses InventorySetupsVariationMapping under the hood to map between equivalent item IDs.
      */
     private final boolean fuzzy;
-    
-    @Override
-    public String getName() {
-        // Use the single item ID as the name
-        return VoxSylvaeUtil.getItemName(getId());
-    }
+    private ItemComposition itemComposition = null; // Cached item composition for performance
+   
     /**
      * Full constructor for item requirement with schedule context and inventory slot support.
      * The RequirementType is automatically inferred from the slot parameters:
@@ -234,6 +233,20 @@ public class ItemRequirement extends Requirement {
              scheduleContext, null, null, null, null, false);
     }
 
+     @Override
+    public String getName() {
+        if (this.itemComposition == null) {
+            // Lazy load item composition if not already set
+            setItemComp(getId());
+        }
+        // Use the single item ID as the name
+        return this.itemComposition != null ? this.itemComposition.getName() : "Unknown Item";
+    }
+    private void setItemComp(int itemId) {
+        this.itemComposition = Microbot.getClientThread().runOnClientThreadOptional(() -> 
+            Microbot.getItemManager().getItemComposition(itemId))    .orElse(null);
+    }
+
  /**
      * Checks if this is a dummy item requirement.
      * Dummy item requirements have ID of -1 and are used to block inventory/equipment slots.
@@ -364,7 +377,8 @@ public class ItemRequirement extends Requirement {
         ItemRequirement[] requirements = new ItemRequirement[itemIds.size()];
         for (int i = 0; i < itemIds.size(); i++) {
             int itemId = itemIds.get(i);
-            String itemName = VoxSylvaeUtil.getItemName(itemId);
+            String itemName = Microbot.getClientThread().runOnClientThreadOptional(() -> 
+                Microbot.getItemManager().getItemComposition(itemId).getName()).orElse("Unknown Item");
             String itemDescription = description + " (" + itemName + ")";
             
             requirements[i] = new ItemRequirement(
@@ -1050,10 +1064,11 @@ public class ItemRequirement extends Requirement {
      * Implements the abstract fulfillRequirement method from the base Requirement class.
      * Attempts to fulfill this item requirement by checking availability and managing inventory/equipment.
      * 
+     * @param executorService The ScheduledExecutorService on which fulfillment is running
      * @return true if the requirement was successfully fulfilled, false otherwise
      */
     @Override
-    public boolean fulfillRequirement() {
+    public boolean fulfillRequirement(ScheduledExecutorService executorService) {
         try {
             if (Microbot.getClient().isClientThread()) {
                 Microbot.log("Please run fulfillRequirement() on a non-client thread.", Level.ERROR);
@@ -1319,15 +1334,18 @@ public class ItemRequirement extends Requirement {
     }
     
     /**
-     * Checks if this item is stackable.
-     * Uses VoxSylvaeUtil.isStackableOnClientThread with proper thread handling.
+     * Checks if this item is stackable.     
      * 
      * @return true if this item is stackable, false otherwise
      */
     public boolean isStackable() {
         int itemId = getId();
+        
         try {
-            return VoxSylvaeUtil.isStackableOnClientThread(itemId);
+            if (itemComposition == null) {
+                this.setItemComp(itemId);
+            }
+            return  itemComposition !=null ? itemComposition.isStackable(): false;
         } catch (Exception e) {
             Microbot.log("Error checking if item " + itemId + " is stackable: " + e.getMessage());
             return false;
@@ -1336,7 +1354,23 @@ public class ItemRequirement extends Requirement {
     public boolean isEquipment() {
         int itemId = getId();
         try {
-            return VoxSylvaeUtil.getEquipmentStats(itemId)!= null;
+            if (itemComposition == null) {
+                this.setItemComp(itemId);
+            }
+
+            final ItemStats itemStats =  Microbot.getClientThread().runOnClientThreadOptional(() -> 
+                Microbot.getItemManager().getItemStats(itemId)
+                ).orElse(null);
+
+            if (itemStats == null || !itemStats.isEquipable()) {
+                return false;
+            }
+            final ItemEquipmentStats equipmentStats = itemStats.getEquipment();
+            if (equipmentStats == null) {
+                return false;
+            }        
+            return true;
+
         } catch (Exception e) {
             Microbot.log("Error checking if item " + itemId + " is equipped: " + e.getMessage());
             return false;

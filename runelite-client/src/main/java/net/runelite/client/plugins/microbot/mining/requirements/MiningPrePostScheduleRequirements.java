@@ -6,12 +6,12 @@ import net.runelite.client.plugins.microbot.mining.amethyst.AmethystMiningConfig
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.PrePostScheduleRequirements;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.data.RequirementCollections;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.LocationRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.data.ItemRequirementCollection;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 
 /**
- * Example implementation showing how to use RequirementCollections for a mining plugin.
+ * Example implementation showing how to use ItemRequirementCollection for a mining plugin.
  * Demonstrates the new standardized approach to equipment and outfit requirements,
  * including Varrock diary armour and prospector outfit variants.
  */
@@ -67,19 +67,19 @@ public class MiningPrePostScheduleRequirements extends PrePostScheduleRequiremen
     
     @Override
     protected void initializeRequirements() {
-        // Register complete outfit and equipment collections using RequirementCollections
+        // Register complete outfit and equipment collections using ItemRequirementCollection
         
         // Mining pickaxes - progression-based from bronze to crystal
-        RequirementCollections.registerPickAxes(this,Priority.MANDATORY, ScheduleContext.PRE_SCHEDULE);
+        ItemRequirementCollection.registerPickAxes(this,Priority.MANDATORY, ScheduleContext.PRE_SCHEDULE);
         
         // Prospector/Motherlode Mine outfit - provides XP bonus for mining (includes all variants)
         // we must ensure we equip the varrock armour if available ?  becasue of the bonus or is the motherlode outfit also providing the same bonus? ->  check wiki
-        // TODO: Update RequirementCollections.registerProspectorOutfit to accept ScheduleContext
-         RequirementCollections.registerProspectorOutfit(this, Priority.RECOMMENDED,8, ScheduleContext.PRE_SCHEDULE, false, false, false, false);
+        // TODO: Update ItemRequirementCollection.registerProspectorOutfit to accept ScheduleContext
+         ItemRequirementCollection.registerProspectorOutfit(this, Priority.RECOMMENDED,8, ScheduleContext.PRE_SCHEDULE, false, false, false, false);
         
         // Varrock diary armour - provides benefits like chance of smelting ore while mining
-        // TODO: Update RequirementCollections.registerVarrockDiaryArmour to accept ScheduleContext
-        RequirementCollections.registerVarrockDiaryArmour(this, Priority.RECOMMENDED, ScheduleContext.PRE_SCHEDULE);
+        // TODO: Update ItemRequirementCollection.registerVarrockDiaryArmour to accept ScheduleContext
+        ItemRequirementCollection.registerVarrockDiaryArmour(this, Priority.RECOMMENDED, ScheduleContext.PRE_SCHEDULE);
         
         
     }

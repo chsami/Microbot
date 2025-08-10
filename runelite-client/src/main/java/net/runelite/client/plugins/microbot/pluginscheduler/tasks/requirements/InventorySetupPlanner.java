@@ -1,7 +1,7 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements;
 
 import net.runelite.api.EquipmentInventorySlot;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.ItemRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.logical.LogicalRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.util.RequirementSelector;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;

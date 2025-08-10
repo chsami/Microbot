@@ -1,12 +1,13 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.logical;
 
 import lombok.EqualsAndHashCode;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.ItemRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
 import net.runelite.client.plugins.microbot.Microbot;
 
@@ -28,6 +29,7 @@ import java.util.regex.Pattern;
  * Similar to OrCondition but adapted for the requirement system.
  */
 @EqualsAndHashCode(callSuper = true)
+@Slf4j
 public class OrRequirement extends LogicalRequirement {
     
     /**
@@ -68,14 +70,20 @@ public class OrRequirement extends LogicalRequirement {
         if (childRequirements.isEmpty()) {
             return true; // Empty OR is considered satisfied
         }
-        
+        log.info("checking OR requirement fulfillment with {} child requirements", childRequirements.size());
         return childRequirements.stream().anyMatch(req -> {
             if (req instanceof LogicalRequirement) {
+                log.info("Checking logical requirement: {}", req.getName());
                 return ((LogicalRequirement) req).isLogicallyFulfilled();
             } else {
+                log.info("Checking non-logical requirement: {}", req.getName());
                 return req.isFulfilled();
             }
         });
+    }
+    public boolean isFulfilled() {
+        // Check if any child requirement is fulfilled
+        return isLogicallyFulfilled();
     }
     
     /**
