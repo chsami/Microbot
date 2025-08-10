@@ -37,6 +37,12 @@ public class BreakHandlerOverlay extends OverlayPanel {
                     .left("Total breaks: " + BreakHandlerScript.totalBreaks)
                     .build());
 
+            // Display current state information
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("State: " + BreakHandlerScript.getCurrentState().toString().replace("_", " "))
+                    .leftColor(getStateColor(BreakHandlerScript.getCurrentState()))
+                    .build());
+
             // Display lock state information
             if (BreakHandlerScript.isLockState()) {
                 panelComponent.getChildren().add(LineComponent.builder()
@@ -82,5 +88,31 @@ public class BreakHandlerOverlay extends OverlayPanel {
             System.out.println(ex.getMessage());
         }
         return super.render(graphics);
+    }
+
+    /**
+     * Returns appropriate color for the current break handler state.
+     */
+    private Color getStateColor(BreakHandlerState state) {
+        switch (state) {
+            case WAITING_FOR_BREAK:
+                return Color.GREEN;
+            case BREAK_REQUESTED:
+                return Color.YELLOW;
+            case INITIATING_BREAK:
+                return Color.ORANGE;
+            case LOGOUT_REQUESTED:
+            case LOGGING_IN:
+                return Color.CYAN;
+            case LOGGED_OUT:
+            case MICRO_BREAK_ACTIVE:
+                return Color.RED;
+            case LOGIN_REQUESTED:
+                return Color.MAGENTA;
+            case BREAK_ENDING:
+                return Color.LIGHT_GRAY;
+            default:
+                return Color.WHITE;
+        }
     }
 }
