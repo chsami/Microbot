@@ -35,31 +35,53 @@ public interface AutoHerbiboarConfig extends Config {
         return false;
     }
     @ConfigSection(
-        name = "Potions to use",
-        description = "Potions to use",
+        name = "Run energy management",
+        description = "Run energy management",
         position = 1
     )
-    String POTIONS_SECTION = "potions";
+    String RUN_ENERGY_SECTION = "runenergy";
 
     @ConfigItem(
-        keyName = "useStamina",
-        name = "Stamina",
+        keyName = "useStaminaPotion",
+        name = "Stamina potion",
         description = "",
-        section = POTIONS_SECTION,
+        section = RUN_ENERGY_SECTION,
         position = 0
     )
-    default boolean useStamina() {
+    default boolean useStaminaPotion() {
         return false;
     }
 
     @ConfigItem(
-        keyName = "useSuperEnergy",
-        name = "Super energy",
+        keyName = "useSuperEnergyPotion",
+        name = "Super energy potion",
         description = "",
-        section = POTIONS_SECTION,
+        section = RUN_ENERGY_SECTION,
         position = 1
     )
-    default boolean useSuperEnergy() {
+    default boolean useSuperEnergyPotion() {
+        return false;
+    }
+
+    @ConfigItem(
+        keyName = "useEnergyPotion",
+        name = "Energy potion",
+        description = "",
+        section = RUN_ENERGY_SECTION,
+        position = 2
+    )
+    default boolean useEnergyPotion() {
+        return false;
+    }
+
+    @ConfigItem(
+        keyName = "useStrangeFruit",
+        name = "Strange fruit",
+        description = "",
+        section = RUN_ENERGY_SECTION,
+        position = 3
+    )
+    default boolean useStrangeFruit() {
         return false;
     }
 
