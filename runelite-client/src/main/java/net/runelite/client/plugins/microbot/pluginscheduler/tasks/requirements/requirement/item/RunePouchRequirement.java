@@ -3,7 +3,7 @@ package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.
 import lombok.Getter;
 import lombok.EqualsAndHashCode;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2RunePouch;
@@ -68,7 +68,7 @@ public class RunePouchRequirement extends ItemRequirement {
     public RunePouchRequirement(
             Map<Runes, Integer> requiredRunes,
             boolean allowCombinationRunes,
-            Priority priority,
+            RequirementPriority priority,
             int rating,
             String description,
             ScheduleContext scheduleContext) {
@@ -97,7 +97,7 @@ public class RunePouchRequirement extends ItemRequirement {
      */
     public RunePouchRequirement(
             Map<Runes, Integer> requiredRunes,
-            Priority priority,
+            RequirementPriority priority,
             int rating,
             String description,
             ScheduleContext scheduleContext) {

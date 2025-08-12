@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.models.ShopOperation;
 import net.runelite.client.plugins.microbot.util.grandexchange.models.TimeSeriesInterval;
 import net.runelite.client.plugins.microbot.util.shop.models.Rs2ShopItem;
@@ -20,6 +21,7 @@ import net.runelite.client.plugins.microbot.util.shop.models.Rs2ShopType;
  */
 @Getter
 @EqualsAndHashCode()
+@Slf4j
 public class ShopItemRequirement {
     private final Rs2ShopItem shopItem;
     private final int amount;
@@ -97,30 +99,30 @@ public class ShopItemRequirement {
     public int getMaximumStockForSelling() {
         return shopItem.getBaseStock() + stockTolerance;
     }
-    
-    /**
-     * Gets the maximum quantity we should process per shop visit
-     * This ensures we don't exceed stock limits or inventory capacity
-     */
-    public int getMaxQuantityPerVisit() {
-        return stockTolerance; // Use stockTolerance as max quantity per visit
+    public int allowedToBuy(int currentStock){
+        return Math.max(0, currentStock - getMinimumStockForBuying() + 1);
     }
+    public int allowedToSell(int currentStock){
+        return Math.max(0, getMaximumStockForSelling() - currentStock );
+    }
+    
+ 
     
     /**
      * Calculates how many items we can safely buy/sell in current shop stock situation
      */
-    public int getQuantityForCurrentVisit(int currentShopStock, ShopOperation operation) {
-        int maxPerVisit = getMaxQuantityPerVisit();
-        int remaining = getRemainingAmount();
-        
+    public int getQuantityForCurrentVisit(int currentShopStock, ShopOperation operation) {        
+        int remaining = getRemainingAmount();       
         if (operation == ShopOperation.BUY) {
             // Can't buy more than available stock
-            int availableStock = Math.max(0, currentShopStock - getMinimumStockForBuying());
-            return Math.min(Math.min(maxPerVisit, remaining), availableStock);
+            int availableStockForBuying =allowedToBuy(currentShopStock);
+            log.info(" Remaing {}  to buy -- Available stock for buying {}: {}",remaining, shopItem.getItemName(), availableStockForBuying);
+    
+            return Math.min(remaining, availableStockForBuying);
         } else { // SELL
             // Can't sell more than shop can accept
-            int shopCapacity = Math.max(0, getMaximumStockForSelling() - currentShopStock);
-            return Math.min(Math.min(maxPerVisit, remaining), shopCapacity);
+            int shopCapacityForSelling =allowedToSell(currentShopStock);
+            return Math.min( remaining, shopCapacityForSelling);
         }
     }
     

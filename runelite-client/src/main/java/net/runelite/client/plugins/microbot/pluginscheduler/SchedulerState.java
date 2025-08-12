@@ -102,7 +102,7 @@ public enum SchedulerState {
     }
     public boolean isStopping() {
         return this == SchedulerState.SOFT_STOPPING_PLUGIN ||
-        this == SchedulerState.HARD_STOPPING_PLUGIN;
+        this == SchedulerState.HARD_STOPPING_PLUGIN || this == SchedulerState.EXECUTING_POST_SCHEDULE_TASKS;
     }
     public boolean isPaused() {
             return this == SchedulerState.SCHEDULER_PAUSED ||

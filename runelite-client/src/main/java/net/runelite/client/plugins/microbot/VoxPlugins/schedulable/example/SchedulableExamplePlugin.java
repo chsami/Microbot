@@ -42,7 +42,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.resource.G
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.resource.LootItemCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.resource.ProcessItemCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.IntervalCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryPostScheduleTaskEvent;
 import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryPreScheduleTaskEvent;
 import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryPreScheduleTaskFinishedEvent;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.AbstractPrePostScheduleTasks;
@@ -118,7 +118,7 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
         }
     };
     
-    // HotkeyListener for testing PluginScheduleEntryFinishedEvent
+    // HotkeyListener for testing PluginScheduleEntryMainTaskFinishedEvent
     private final HotkeyListener finishPluginSuccessHotkeyListener = new HotkeyListener(() -> config.finishPluginSuccessfulHotkey()) {
         @Override
         public void hotkeyPressed() {
@@ -128,7 +128,7 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
             Microbot.getClientThread().invokeLater( () ->  {reportFinished(reason, success); return true;});
         }
     };
-     // HotkeyListener for testing PluginScheduleEntryFinishedEvent
+     // HotkeyListener for testing PluginScheduleEntryMainTaskFinishedEvent
     private final HotkeyListener finishPluginNotSuccessHotkeyListener = new HotkeyListener(() -> config.finishPluginNotSuccessfulHotkey()) {
         @Override
         public void hotkeyPressed() {
@@ -242,7 +242,7 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
                                     "SchedulableExample", 
                                     "scheduleMode", 
                                 Boolean.class
-                                );        log.info("\n\tSchedulable Example plugin started\n\t -In SchedulerMode:{}\n\t -Press {} to test the PluginScheduleEntryFinishedEvent successfully\n\t -Press {} to test the PluginScheduleEntryFinishedEvent unsuccessfully\n\t -Use {} to toggle the lock condition (prevents the plugin from being stopped)\n\t -Use {} to test Pre-Schedule Tasks functionality\n\t -Use {} to test Post-Schedule Tasks functionality\n\t -Use {} to cancel running pre/post schedule tasks",
+                                );        log.info("\n\tSchedulable Example plugin started\n\t -In SchedulerMode:{}\n\t -Press {} to test the PluginScheduleEntryMainTaskFinishedEvent successfully\n\t -Press {} to test the PluginScheduleEntryMainTaskFinishedEvent unsuccessfully\n\t -Use {} to toggle the lock condition (prevents the plugin from being stopped)\n\t -Use {} to test Pre-Schedule Tasks functionality\n\t -Use {} to test Post-Schedule Tasks functionality\n\t -Use {} to cancel running pre/post schedule tasks",
                 scheduleMode,
                 config.finishPluginSuccessfulHotkey(),
                 config.finishPluginNotSuccessfulHotkey(),
@@ -443,26 +443,32 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
      * This method demonstrates how pre-schedule tasks work and logs the results.
      */
     private void runPreScheduleTasks() {
-       executePreScheduleTasks(() -> {
-                    log.info("Pre-Schedule Tasks completed successfully for SchedulableExample");
-                    // Ensure script is initialized
-                    if (this.script == null) {
-                        this.script = new SchedulableExampleScript();
-                    }
-                    if (this.script.isRunning()) {
-                        this.script.shutdown();
-                    }
-                    // Start the actual script after pre-schedule tasks are done
-                    this.script.run(config, lastLocation);
-                });
+         if (prePostScheduleTasks != null && !prePostScheduleTasks.isPreTaskRunning() && !prePostScheduleTasks.isPreTaskComplete()) {
+            executePreScheduleTasks(() -> {
+                            log.info("Pre-Schedule Tasks completed successfully for SchedulableExample");
+                            // Ensure script is initialized
+                            if (this.script == null) {
+                                this.script = new SchedulableExampleScript();
+                            }
+                            if (this.script.isRunning()) {
+                                this.script.shutdown();
+                            }
+                            // Start the actual script after pre-schedule tasks are done
+                            this.script.run(config, lastLocation);
+                        });
+        }
+
     }
     private void runPostScheduleTasks( ){
-        executePostScheduleTasks(()->{
-                if( this.script != null && this.script.isRunning()) {
-                    this.script.shutdown();
-            }
-
-        });
+        if (prePostScheduleTasks != null && !prePostScheduleTasks.isPostScheduleRunning() && !prePostScheduleTasks.isPostTaskComplete()) {        
+            executePostScheduleTasks(()->{
+                    if( this.script != null && this.script.isRunning()) {
+                        this.script.shutdown();
+                    }              
+            });
+        }else {
+            log.info("Post-Schedule Tasks already completed or running for SchedulableExample");
+        }
 
 
     }
@@ -546,9 +552,9 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
         if (prePostScheduleRequirements == null || prePostScheduleTasks == null) {
             log.info("Initializing Pre/Post Schedule Requirements and Tasks...");
             this.prePostScheduleRequirements = new SchedulableExamplePrePostScheduleRequirements(config);
-            this.prePostScheduleTasks = new SchedulableExamplePrePostScheduleTasks(this, prePostScheduleRequirements);            
+            this.prePostScheduleTasks = new SchedulableExamplePrePostScheduleTasks(this, keyManager,prePostScheduleRequirements);            
             // Log the requirements status
-            log.info("PrePostScheduleRequirements initialized:\n{}", prePostScheduleRequirements.getDetailedDisplay());
+            log.info("\nPrePostScheduleRequirements initialized:\n{}", prePostScheduleRequirements.getDetailedDisplay());
         }
         if (!prePostScheduleRequirements.isInitialized()){
             log.error("Failed to initialize Pre/Post Schedule Requirements. Cannot proceed with tasks.");
@@ -890,13 +896,12 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
                 log.info("Plugin is running in normal mode");
             }
         }else if (event.getGameState() == GameState.LOGIN_SCREEN) {
-            prePostScheduleRequirements = null;
-            prePostScheduleTasks = null;
+            
         }
     }
     @Override
     @Subscribe
-    public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
+    public void onPluginScheduleEntryPostScheduleTaskEvent(PluginScheduleEntryPostScheduleTaskEvent event) {
         // Save location before stopping
         if (event.getPlugin() == this) {
             WorldPoint currentLocation = null;

@@ -4,17 +4,17 @@ import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.client.config.ConfigDescriptor;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.barrows.BarrowsScript;
 import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.AndCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LockCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryPostScheduleTaskEvent;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -59,7 +59,7 @@ public class ChaosAltarPlugin extends Plugin implements SchedulablePlugin {
     }
 
     @Subscribe
-    public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
+    public void onPluginScheduleEntryPostScheduleTaskEvent(PluginScheduleEntryPostScheduleTaskEvent event) {
         try{
             if (event.getPlugin() == this) {
                 Microbot.stopPlugin(this);
@@ -93,6 +93,15 @@ public class ChaosAltarPlugin extends Plugin implements SchedulablePlugin {
         }
 
 
+    }
+
+    @Override
+    public ConfigDescriptor getConfigDescriptor() {
+        if (Microbot.getConfigManager() == null) {
+            return null;
+        }
+        ChaosAltarConfig conf = Microbot.getConfigManager().getConfig(ChaosAltarConfig.class);
+        return Microbot.getConfigManager().getConfigDescriptor(conf);
     }
 
 }

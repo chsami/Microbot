@@ -34,6 +34,7 @@ public class SchedulerInfoPanel extends JPanel {
     // Scheduler status components
     private final JLabel statusLabel;
     private final JLabel runtimeLabel;
+    private final JLabel currentPluginInStatusLabel; // New field for current plugin in status section
     private ZonedDateTime schedulerStartTime;
     
     // Control buttons
@@ -108,6 +109,14 @@ public class SchedulerInfoPanel extends JPanel {
         runtimeLabel = UIUtils.createValueLabel("00:00:00");
         statusPanel.add(runtimeLabel, gbc);
         
+        // Add current plugin field to status panel
+        gbc.gridx = 0;
+        gbc.gridy++;
+        statusPanel.add(new JLabel("Current Plugin:"), gbc);
+        gbc.gridx++;
+        currentPluginInStatusLabel = UIUtils.createValueLabel("None");
+        statusPanel.add(currentPluginInStatusLabel, gbc);
+        
         // Create control buttons panel
         gbc.gridx = 0;
         gbc.gridy++;
@@ -165,7 +174,7 @@ public class SchedulerInfoPanel extends JPanel {
                     pauseResumePluginButton.setBackground(new Color(0, 188, 212)); // Cyan color
                 }
             }
-            updateCurrentPluginInfo();
+            // updateCurrentPluginInfo(); // Commented out - moved to status section
             updateButtonStates();            
         });
         buttonPanel.add(pauseResumePluginButton);
@@ -191,7 +200,7 @@ public class SchedulerInfoPanel extends JPanel {
             }
             
             // Update UI
-            updateCurrentPluginInfo();
+            // updateCurrentPluginInfo(); // Commented out - moved to status section
             updateButtonStates();
         });
         buttonPanel.add(pauseResumeSchedulerButton);
@@ -280,26 +289,23 @@ public class SchedulerInfoPanel extends JPanel {
     
     /**
      * Creates a dynamic, responsive plugin info panel that adapts to content and window size
-     * This layout automatically adjusts based on text length and available space
-     * Now uses the modular UIUtils for better maintainability
+     * Now shows only previous and next plugin information (current plugin moved to status section)
      */
     private JPanel createDynamicPluginInfoPanel() {
-        // Create sections using utility methods
+        // Create sections using utility methods - removed current section
         JPanel prevSection = UIUtils.createAdaptiveSection("Previous");
-        JPanel currentSection = UIUtils.createAdaptiveSection("Current");
         JPanel nextSection = UIUtils.createAdaptiveSection("Next");
 
         // Add content to sections using utility methods
         addPreviousPluginContentWithUtils(prevSection);
-        addCurrentPluginContentWithUtils(currentSection);
         addNextPluginContentWithUtils(nextSection);
 
         // Create bottom panel for progress and stop reason
         JPanel bottomPanel = createDynamicBottomPanelWithUtils();
 
-        // Create the main panel using utility
-        JPanel[] sections = {prevSection, currentSection, nextSection};
-        return UIUtils.createDynamicInfoPanel("Plugin Information", sections, bottomPanel);
+        // Create the main panel using utility - only previous and next sections
+        JPanel[] sections = {prevSection, nextSection};
+        return UIUtils.createDynamicInfoPanel("Previous & Next Plugins", sections, bottomPanel);
     }
 
     /**
@@ -321,7 +327,9 @@ public class SchedulerInfoPanel extends JPanel {
 
     /**
      * Adds content to the current plugin section using utility methods
+     * Currently commented out since current plugin info moved to status section
      */
+    /*
     private void addCurrentPluginContentWithUtils(JPanel section) {
         currentPluginNameLabel = UIUtils.createAdaptiveValueLabel("None");
         currentPluginRuntimeLabel = UIUtils.createAdaptiveValueLabel("00:00:00");
@@ -336,6 +344,7 @@ public class SchedulerInfoPanel extends JPanel {
 
         UIUtils.addContentToSection(section, rows);
     }
+    */
 
     /**
      * Adds content to the next plugin section using utility methods
@@ -348,7 +357,7 @@ public class SchedulerInfoPanel extends JPanel {
         UIUtils.LabelValuePair[] rows = {
             new UIUtils.LabelValuePair("Name:", nextUpComingPluginNameLabel),
             new UIUtils.LabelValuePair("Time:", nextUpComingPluginTimeLabel),
-            new UIUtils.LabelValuePair("Type:", nextUpComingPluginScheduleLabel)
+            new UIUtils.LabelValuePair("Schedule:", nextUpComingPluginScheduleLabel)
         };
 
         UIUtils.addContentToSection(section, rows);
@@ -425,8 +434,9 @@ public class SchedulerInfoPanel extends JPanel {
         PluginScheduleEntry nextUpComingPlugin = plugin.getUpComingPlugin();
         
         // Update current plugin info if it changed or is running (for runtime updates)
+        // Note: Current plugin display moved to status section, keeping runtime-only updates
         if (currentPlugin != lastTrackedCurrentPlugin) {
-            updateCurrentPluginInfo();
+            // updateCurrentPluginInfo(); // Commented out - moved to status section
             lastTrackedCurrentPlugin = currentPlugin;
         } else if (currentPlugin != null && currentPlugin.isRunning()) {
             // Always update runtime for running plugins even if plugin object hasn't changed
@@ -460,7 +470,7 @@ public class SchedulerInfoPanel extends JPanel {
         lastTrackedCurrentPlugin = null;
         lastTrackedPreviousPlugin = null;
         lastTrackedNextUpComingPlugin = null;
-        updateCurrentPluginInfo();
+        // updateCurrentPluginInfo(); // Commented out - moved to status section
         updatePreviousPluginInfo(); 
         updateNextUpComingPluginInfo();
     }
@@ -579,6 +589,9 @@ public class SchedulerInfoPanel extends JPanel {
         statusLabel.setText(state.getDisplayName());
         statusLabel.setForeground(state.getColor());
         
+        // Update current plugin in status section
+        updateCurrentPluginInStatusSection(state);
+        
         // Update runtime if active
         if (plugin.getCurrentState().isSchedulerActive()) {
             if (schedulerStartTime == null) {
@@ -599,8 +612,35 @@ public class SchedulerInfoPanel extends JPanel {
     }
     
     /**
-     * Updates information about the currently running plugin
+     * Updates the current plugin display in the status section
      */
+    private void updateCurrentPluginInStatusSection(SchedulerState state) {
+        PluginScheduleEntry currentPlugin = plugin.getCurrentPlugin();
+        
+        // Only show current plugin name when in specific states
+        if (currentPlugin != null && (state.isPluginRunning() || state.isStopping() || state.isPaused())) {
+            String displayName = currentPlugin.getCleanName();
+            
+            // Add pause indicator if plugin is paused
+            if (currentPlugin.isPaused()) {
+                displayName += " (PAUSED)";
+                currentPluginInStatusLabel.setForeground(new Color(255, 152, 0)); // Orange
+            } else {
+                currentPluginInStatusLabel.setForeground(Color.WHITE);
+            }
+            
+            currentPluginInStatusLabel.setText(displayName);
+        } else {
+            currentPluginInStatusLabel.setText("None");
+            currentPluginInStatusLabel.setForeground(Color.LIGHT_GRAY);
+        }
+    }
+    
+    /**
+     * Updates information about the currently running plugin
+     * NOTE: This method is commented out because current plugin display moved to status section
+     */
+    /*
     private void updateCurrentPluginInfo() {
         PluginScheduleEntry currentPlugin = plugin.getCurrentPlugin();
         
@@ -694,6 +734,7 @@ public class SchedulerInfoPanel extends JPanel {
             currentPluginStartTime = null;
         }
     }
+    */
     
     /**
      * Updates information about the next scheduled plugin

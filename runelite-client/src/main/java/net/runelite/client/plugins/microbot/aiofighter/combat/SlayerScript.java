@@ -13,7 +13,7 @@ import net.runelite.client.plugins.microbot.util.npc.MonsterLocation;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcManager;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
-import net.runelite.client.plugins.microbot.util.slayer.Rs2Slayer;
+import net.runelite.client.plugins.microbot.util.skills.slayer.Rs2Slayer;
 
 import java.util.Arrays;
 import java.util.List;

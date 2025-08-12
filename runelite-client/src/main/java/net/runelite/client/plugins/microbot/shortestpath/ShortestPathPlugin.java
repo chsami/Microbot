@@ -82,7 +82,7 @@ import java.util.regex.Pattern;
         alwaysOn = true
 )
 public class ShortestPathPlugin extends Plugin implements KeyListener {
-    protected static final String CONFIG_GROUP = "shortestpath";
+    public static final String CONFIG_GROUP = "shortestpath";
     private static final String PLUGIN_MESSAGE_PATH = "path";
     private static final String PLUGIN_MESSAGE_CLEAR = "clear";
     private static final String PLUGIN_MESSAGE_START = "start";

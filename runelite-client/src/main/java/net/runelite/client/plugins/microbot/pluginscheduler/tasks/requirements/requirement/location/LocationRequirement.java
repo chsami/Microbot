@@ -1,23 +1,25 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location;
 
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.EqualsAndHashCode;
-import net.runelite.api.Quest;
-import net.runelite.api.QuestState;
-import net.runelite.api.Skill;
+
+
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
+import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
-import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+
 import net.runelite.client.plugins.microbot.util.walker.TransportRouteAnalysis;
+
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.models.WorldHoppingConfig;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -26,9 +28,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.Map;
-import java.util.HashMap;
+
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -47,127 +49,7 @@ import java.util.stream.Collectors;
 @EqualsAndHashCode(callSuper = true)
 public class LocationRequirement extends Requirement {
     
-    /**
-     * Container class for location data with requirements.
-     */
-    @Getter
-    public static class LocationOption {
-        private final WorldPoint worldPoint;
-        private final String name;
-        private final Map<Quest, QuestState> requiredQuests;
-        private final Map<Skill, Integer> requiredSkills;
-        private final Map<Integer,Integer> requiredVarbits;
-        private final Map<Integer,Integer> requiredVarplayer;
-        private final Map<Integer,Integer> requiredItems; //id key ,and amount value
-
-        
-        
-        public LocationOption(WorldPoint worldPoint, String name) {
-            this(worldPoint, name, new HashMap<>(), new HashMap<>(),new HashMap<>(),new HashMap<>(),new HashMap<>());
-        }
-        
-        public LocationOption(WorldPoint worldPoint, String name, 
-                            Map<Quest, QuestState> requiredQuests, 
-                            Map<Skill, Integer> requiredSkills,
-                            Map <Integer,Integer> requiredVarbits,
-                            Map <Integer,Integer> requiredVarplayer,
-                            Map <Integer,Integer> requiredItems
-                            ) {
-            this.worldPoint = worldPoint;
-            this.name = name;
-            this.requiredQuests = requiredQuests != null ? new HashMap<>(requiredQuests) : new HashMap<>();
-            this.requiredSkills = requiredSkills != null ? new HashMap<>(requiredSkills) : new HashMap<>();
-            this.requiredVarbits = requiredVarbits != null ? new HashMap<>(requiredVarbits) : new HashMap<>();
-            this.requiredVarplayer = requiredVarplayer != null ? new HashMap<>(requiredVarplayer) : new HashMap<>();
-            this.requiredItems = requiredItems != null ? new HashMap<>(requiredItems) : new HashMap<>();
-            
-        }
-        
-        /**
-         * Checks if the player meets all requirements for this location.
-         * Improved implementation using streams for better performance and readability.
-         */
-        public boolean hasRequirements() {
-            if (Microbot.getClient() == null) {
-                log.warn("LocationRequirement hasRequirements called outside client thread");
-                return false;
-            }
-            if(!Microbot.isLoggedIn()){
-                log.warn("Player is not logged in, cannot check location requirements");
-                return false;
-            }
-            // Check quest requirements using streams
-            boolean questRequirementsMet = requiredQuests.entrySet().stream()
-                    .allMatch(questReq -> {
-                        QuestState currentState = Rs2Player.getQuestState(questReq.getKey());
-                        QuestState requiredState = questReq.getValue();
-                        
-                        // If required state is FINISHED, player must have finished
-                        if (requiredState == QuestState.FINISHED) {
-                            return currentState == QuestState.FINISHED;
-                        }
-                        // If required state is IN_PROGRESS, player must have started (IN_PROGRESS or FINISHED)
-                        if (requiredState == QuestState.IN_PROGRESS) {
-                            return currentState == QuestState.IN_PROGRESS || currentState == QuestState.FINISHED;
-                        }
-                        return true;
-                    });
-            
-            if (!questRequirementsMet) {
-                return false;
-            }
-            
-            // Check skill requirements using streams
-            boolean skillRequirementsMet = requiredSkills.entrySet().stream()
-                    .allMatch(skillReq -> Rs2Player.getSkillRequirement(skillReq.getKey(), skillReq.getValue()));
-            
-            if (!skillRequirementsMet) {
-                return false;
-            }
-            
-            // Check varbit requirements using streams
-            boolean varbitRequirementsMet = requiredVarbits.entrySet().stream()
-                    .allMatch(varbitReq -> Microbot.getVarbitValue(varbitReq.getKey()) == varbitReq.getValue());
-            
-            if (!varbitRequirementsMet) {
-                return false;
-            }
-            
-            // Check varplayer requirements using streams
-            boolean varplayerRequirementsMet = requiredVarplayer.entrySet().stream()
-                    .allMatch(varplayerReq -> Microbot.getVarbitPlayerValue(varplayerReq.getKey()) == varplayerReq.getValue());
-            
-            if (!varplayerRequirementsMet) {
-                return false;
-            }
-            
-            // Check item requirements using streams
-            boolean itemRequirementsMet = requiredItems.entrySet().stream()
-                    .allMatch(itemReq -> {
-                        int itemId = itemReq.getKey();
-                        int requiredAmount = itemReq.getValue();
-                        
-                        int numberOfItems = Rs2Inventory.count(itemId) + 
-                                          (Rs2Equipment.isWearing(itemId) ? 1 : 0); //TODO we must check if we are checking for stackable items..
-                        // todo check rune pouches ? when the ids runes..,
-                        // bolt ammo slot ? when the ids is any ammo
-                        
-                        if (numberOfItems < requiredAmount) {
-                            log.warn("Missing required item: {} x{} (have {})", itemId, requiredAmount, numberOfItems);
-                            Microbot.log("Missing required item: " + itemId + " x" + requiredAmount + " (have " + numberOfItems + ")");
-                            return false;
-                        }
-                        return true;
-                    });
-            
-            return itemRequirementsMet;
-        }
-        
-        @Override
-        public String toString() {
-            return name + " (" + worldPoint.getX() + ", " + worldPoint.getY() + ", " + worldPoint.getPlane() + ")";
-        }
-    }
+    
     
     /**
      * List of possible target locations for this requirement.
@@ -185,9 +67,16 @@ public class LocationRequirement extends Requirement {
      * Default is true for efficient travel.
      */
     private final boolean useTransports;
-    
-
-    
+    /**  -1 indicate not a spefic world
+     *  The world hop to the targeted game world if specified.
+     * 
+    */
+    private final int world;
+     /**
+     * Configuration for world hopping behavior with exponential backoff and retry limits.
+     */
+    @Setter
+    private WorldHoppingConfig worldHoppingConfig = WorldHoppingConfig.createDefault();
     @Override
     public String getName() {
         LocationOption location = getBestAvailableLocation();
@@ -288,21 +177,23 @@ public class LocationRequirement extends Requirement {
             List<LocationOption> targetLocations,            
             int acceptableDistance,
             boolean useTransports,                        
+            int world,
             ScheduleContext scheduleContext,
-            Priority priority,
+            RequirementPriority priority,
             int rating,
             String description) {
         
         super(RequirementType.PLAYER_STATE, 
               priority, 
               rating, 
-              description != null ? description : generateDefaultDescription(targetLocations, scheduleContext),
+              description != null ? description : LocationRequirementUtil.generateDefaultDescription(targetLocations, scheduleContext),
               Collections.emptyList(), // Location requirements don't use item IDs
               scheduleContext);
         
         this.targetLocations = new ArrayList<>(targetLocations);
         this.acceptableDistance = acceptableDistance;
-        this.useTransports = useTransports;        
+        this.useTransports = useTransports;  
+        this.world = world; // Default to no specific world      
     }
     
     /**
@@ -320,14 +211,16 @@ public class LocationRequirement extends Requirement {
     public LocationRequirement(
             WorldPoint targetLocation,
             String locationName,
+            boolean membersOnly,
             int acceptableDistance,
             boolean useTransports,                        
+            int world,
             ScheduleContext scheduleContext,
-            Priority priority,
+            RequirementPriority priority,
             int rating,
             String description) {
-        this(Arrays.asList(new LocationOption(targetLocation,locationName)),
-             acceptableDistance, useTransports, scheduleContext, priority, rating, description);
+        this(Arrays.asList(new LocationOption(targetLocation,locationName, membersOnly)), // Default to non-members for single location
+             acceptableDistance, useTransports, world,scheduleContext, priority, rating, description);
     }
     
     /**
@@ -342,10 +235,13 @@ public class LocationRequirement extends Requirement {
     public LocationRequirement(
             WorldPoint targetLocation,
             String locationName,
-            boolean useTransports,            
+            boolean membersOnly,
+            int acceptableDistance,
+            boolean useTransports, 
+            int world,           
             ScheduleContext scheduleContext,
-            Priority priority) {
-        this(targetLocation,locationName, 5, useTransports , scheduleContext, priority, 8, null);
+            RequirementPriority priority) {
+        this(targetLocation,locationName, membersOnly,acceptableDistance, useTransports ,world, scheduleContext, priority, 8, null);
     }
     
     /**
@@ -359,56 +255,43 @@ public class LocationRequirement extends Requirement {
     public LocationRequirement(
             WorldPoint targetLocation,
             String locationName,
-            boolean useTransports,             
+            boolean membersOnly,
+            int acceptableDistance, 
+            boolean useTransports,  
+            int world,           
             ScheduleContext scheduleContext) {
-        this(targetLocation, locationName,useTransports, scheduleContext, Priority.MANDATORY);
+        this(targetLocation, locationName,membersOnly,acceptableDistance,useTransports, world,scheduleContext, RequirementPriority.MANDATORY);
     }
     
     /**
      * Constructor for bank locations using existing bank infrastructure.
      * 
      * @param bankLocation The bank location to use as target
+     * @param acceptableDistance Distance tolerance for considering requirement fulfilled
      * @param useTransports Whether to use teleports and other transport methods
      * @param scheduleContext When this requirement should be fulfilled
      * @param priority Priority level of this requirement
      */
     public LocationRequirement(
             BankLocation bankLocation,
+            int acceptableDistance,
             boolean useTransports,
+            int world,
             ScheduleContext scheduleContext,
-            Priority priority) {
-        this(bankLocation.getWorldPoint(), 
-            bankLocation.toString(), 
-             useTransports,             
-             scheduleContext, 
-             priority);
-    }
-
-    /**
-     * Generates a default description based on the target locations and context.
-     * 
-     * @param locations The target locations
-     * @param context When the requirement should be fulfilled
-     * @return A descriptive string explaining the requirement
-     */
-    private static String generateDefaultDescription(List<LocationOption> locations, ScheduleContext context) {
-        String contextStr = context == ScheduleContext.PRE_SCHEDULE ? "before script execution" : 
-                           context == ScheduleContext.POST_SCHEDULE ? "after script completion" : 
-                           "during script execution";
-        
-        if (locations.size() == 1) {
-            LocationOption location = locations.get(0);
-            return String.format("Must be at location (%d, %d, %d) %s", 
-                               location.getWorldPoint().getX(), 
-                               location.getWorldPoint().getY(), 
-                               location.getWorldPoint().getPlane(), 
-                               contextStr);
-        } else {
-            return String.format("Must be at one of %d possible locations %s", 
-                               locations.size(), contextStr);
+            RequirementPriority priority) {
+            this(Arrays.asList(new LocationOption(bankLocation.getWorldPoint(),
+                                                    bankLocation.toString(),
+                                                    bankLocation.isMembers())),
+                acceptableDistance, useTransports, world,scheduleContext, priority, 5, bankLocation.getClass().getSimpleName() + " Bank Location Requirement");             
         }
-    }
-    
+    public LocationRequirement(
+            BankLocation bankLocation,            
+            boolean useTransports,
+            int world,
+            ScheduleContext scheduleContext,
+            RequirementPriority priority) {
+                this(bankLocation, 15, useTransports, world,scheduleContext, priority);
+            }
     /**
      * Checks if the player is currently at any of the required locations.
      * 
@@ -420,13 +303,22 @@ public class LocationRequirement extends Requirement {
             return false;
         }
         
+        if (world != -1 && isWorldHopRequired()){
+            log.info("Player is not in the required world: {} (current: {})", world, Rs2Player.getWorld());
+            return false; // Player is not in the required world
+        }
         // Check if player is at any accessible location
         for (LocationOption location : targetLocations) {
             if (location.hasRequirements() && 
                 currentLocation.distanceTo(location.getWorldPoint()) <= acceptableDistance) {
+                log.info("Player is at required location: {} (distance: {})", location.getName(), currentLocation.distanceTo(location.getWorldPoint()));
                 return true;
             }
         }
+        List<Integer> distanceIntegers = targetLocations.stream()
+                .map(loc -> loc.getWorldPoint().distanceTo(currentLocation))
+                .collect(Collectors.toList());
+        log.info("Player is not at any required location.\n\tCurrent location: {},\n\t Required locations: {}\n\t distances to each location: {}", currentLocation, targetLocations,  distanceIntegers);
         
         return false;
     }
@@ -466,6 +358,7 @@ public class LocationRequirement extends Requirement {
         
         return false;
     }
+    @Override
     public boolean isFulfilled() {
         // Check if the player is at any of the required locations
         return isAtRequiredLocation();
@@ -480,6 +373,8 @@ public class LocationRequirement extends Requirement {
      */
     @Override
     public boolean fulfillRequirement(CompletableFuture<Boolean> scheduledFuture) {
+        boolean currentUseWithBankedItems = Microbot.getConfigManager().getConfiguration(ShortestPathPlugin.CONFIG_GROUP, "walkWithBankedTransports", Boolean.class);
+        Microbot.getConfigManager().setConfiguration(ShortestPathPlugin.CONFIG_GROUP, "walkWithBankedTransports", useTransports);
         try {
             if (Microbot.getClient() == null || Microbot.getClient().isClientThread()) {
                 log.info("Cannot fulfill location requirement outside client thread");
@@ -520,6 +415,9 @@ public class LocationRequirement extends Requirement {
         } catch (Exception e) {
             Microbot.log("Error fulfilling location requirement " + getName() + ": " + e.getMessage());
             return !isMandatory(); // Don't fail mandatory requirements due to exceptions
+        }finally {
+            // Restore the original setting for banked transports
+            Microbot.getConfigManager().setConfiguration(ShortestPathPlugin.CONFIG_GROUP, "walkWithBankedTransports", currentUseWithBankedItems);
         }
     }
     
@@ -534,7 +432,17 @@ public class LocationRequirement extends Requirement {
         ScheduledExecutorService travelExecutorService = null;
         ScheduledFuture<?> watchdogFuture = null;
         AtomicBoolean watchdogTriggered = new AtomicBoolean(false);
-        
+        if (world !=-1 && !LocationRequirementUtil.canAccessWorld(world)){
+            log.warn("Cannot access world {} for requirement: {}", world, getName());
+            return false; // Cannot proceed if world is not accessible
+        }
+        if( world != -1 && isWorldHopRequired()){
+            boolean successWorldHop = LocationRequirementUtil.hopWorld(scheduledFuture, world, 1, worldHoppingConfig);
+            if (!successWorldHop) {
+                log.warn("World hop failed for requirement: {}", getName());
+                return false; // World hop failed, cannot proceed
+            }   
+        }
         try {          
             LocationOption bestLocation = getBestAvailableLocation();
             if (bestLocation == null) {
@@ -552,23 +460,31 @@ public class LocationRequirement extends Requirement {
             });
             
             // Start movement watchdog with our own executor service
-            watchdogFuture = startMovementWatchdog(travelExecutorService, scheduledFuture, watchdogTriggered);
-          
+            watchdogFuture = LocationRequirementUtil.startMovementWatchdog(travelExecutorService, scheduledFuture, watchdogTriggered, getName());
+            if (watchdogFuture != null && !watchdogFuture.isDone()) {
+                log.info("Movement watchdog started for location: {}", getName());
+            
+                
+            }
 
             // Check if we need to get transport items from bank
             boolean walkResult = false;
             if (useTransports) {
                 // This would be enhanced to check for specific transport items
                 // For now, just ensure we have access to basic travel
-                walkResult = Rs2Walker.walkWithBankedTransports(targetLocation);
+                walkResult = Rs2Walker.walkWithBankedTransports(targetLocation,acceptableDistance,false);
             } else {
                 // Use Rs2Walker to travel to the location
-                walkResult = Rs2Walker.walkTo(targetLocation);
+                walkResult = Rs2Walker.walkTo(targetLocation,acceptableDistance);
             }
             
-
+            if(isAtRequiredLocation()) {
+                log.info("Successfully reached required location: {}", getName());
+                return true; // Already at the required location
+            }
             
-            if (walkResult && !watchdogTriggered.get()) {           
+            if (walkResult && !watchdogTriggered.get()) {       
+                sleepUntil(()-> !Rs2Player.isMoving() , 5000);
                 return isAtRequiredLocation() && !watchdogTriggered.get();
             }
             
@@ -605,90 +521,6 @@ public class LocationRequirement extends Requirement {
     }
     
     /**
-     * Starts a movement watchdog that monitors player position and stops walking if no movement is detected.
-     * 
-     * @param executorService The executor service to run the watchdog on
-     * @param scheduledFuture The future to monitor for cancellation
-     * @param watchdogTriggered Atomic boolean to signal when watchdog triggers
-     * @return The scheduled future for the watchdog task
-     */
-    private ScheduledFuture<?> startMovementWatchdog(ScheduledExecutorService executorService, CompletableFuture<Boolean> scheduledFuture, AtomicBoolean watchdogTriggered) {
-        AtomicReference<WorldPoint> lastPosition = new AtomicReference<>(Rs2Player.getWorldLocation());
-        AtomicReference<Long> lastMovementTime = new AtomicReference<>(System.currentTimeMillis());
-        
-        return executorService.scheduleAtFixedRate(() -> {
-            try {
-                // Check for cancellation first
-                if (scheduledFuture != null && scheduledFuture.isCancelled()) {
-                    log.info("Movement watchdog cancelled for: {}", getName());
-                    watchdogTriggered.set(true);
-                    Rs2Walker.setTarget(null);
-                    throw new RuntimeException("Watchdog cancelled - stopping task");
-                }
-                
-                WorldPoint currentPosition = Rs2Player.getWorldLocation();
-                if (currentPosition == null) {
-                    return; // Skip if position unavailable
-                }
-                
-                WorldPoint lastPos = lastPosition.get();
-                if (lastPos == null) {
-                    lastPosition.set(currentPosition);
-                    lastMovementTime.set(System.currentTimeMillis());
-                    return;
-                }
-                
-                // Check if player has moved significantly (using area detection for robustness)
-                boolean hasMovedSignificantly = hasMovedOutOfArea(lastPos, currentPosition, 2);
-                
-                if (hasMovedSignificantly) {
-                    // Player has moved, update last movement time and position
-                    lastPosition.set(currentPosition);
-                    lastMovementTime.set(System.currentTimeMillis());
-                } else {
-                    // Player hasn't moved significantly, check timeout
-                    long timeSinceLastMovement = System.currentTimeMillis() - lastMovementTime.get();
-                    if (timeSinceLastMovement > 60000) { // 1 minute timeout
-                        log.warn("Movement watchdog triggered - no significant movement detected for 1 minute");
-                        watchdogTriggered.set(true);
-                        
-                        // Stop walking by clearing the target
-                        Rs2Walker.setTarget(null);
-                        
-                        // Cancel this watchdog
-                        throw new RuntimeException("Watchdog triggered - stopping task");
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("Watchdog error: {}", e.getMessage());
-                watchdogTriggered.set(true);
-                Rs2Walker.setTarget(null);
-                throw e; // Re-throw to stop the scheduled task
-            }
-        }, 5, 5, TimeUnit.SECONDS); // Check every 5 seconds
-    }
-    
-    /**
-     * Checks if the player has moved out of a defined area around the last position.
-     * This is more robust than checking single coordinates as it accounts for small movements.
-     * 
-     * @param lastPosition The last recorded position
-     * @param currentPosition The current position
-     * @param areaRadius The radius of the area to check
-     * @return true if the player has moved significantly outside the area
-     */
-    @SuppressWarnings("unused")
-    private boolean hasMovedOutOfArea(WorldPoint lastPosition, WorldPoint currentPosition, int areaRadius) {
-        if (lastPosition == null || currentPosition == null) {
-            return false;
-        }
-        
-        // Calculate distance between positions
-        int distance = lastPosition.distanceTo(currentPosition);
-        return distance > areaRadius;
-    }
-    
-    /**
      * Gets the estimated travel time to the best available location in game ticks.
      * This is a rough estimate based on distance and available transport methods.
      * 
@@ -718,6 +550,16 @@ public class LocationRequirement extends Requirement {
         // Walking only, slower travel
         return (distance / 2); // when running we can move 2 tiles per game tick, so 2 tiles per Constants.GAME_TICK
     }
+    private boolean isWorldHopRequired() {
+        // If world is -1, no specific world hop is required
+        if (world == -1) {
+            return false;
+        }
+        
+        // Check if the current world matches the target world
+        return Rs2Player.getWorld() != world;
+    }
+  
     
     /**
      * Returns a detailed display string with location requirement information.
@@ -735,6 +577,8 @@ public class LocationRequirement extends Requirement {
         sb.append("Schedule Context:\t").append(scheduleContext.name()).append("\n");
         sb.append("Acceptable Distance:\t").append(acceptableDistance).append(" tiles\n");
         sb.append("Use Transports:\t\t").append(useTransports ? "Yes" : "No").append("\n");
+        sb.append("World:\t\t\t").append(world != -1 ? world : "Any world").append("\n");
+        sb.append("canAccessWorld:\t").append(LocationRequirementUtil.canAccessWorld(world) ? "Yes" : "No").append("\n");
         sb.append("Description:\t\t").append(getDescription() != null ? getDescription() : "No description").append("\n");
         
         // Add location details

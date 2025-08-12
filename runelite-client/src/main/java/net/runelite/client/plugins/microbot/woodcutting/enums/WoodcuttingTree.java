@@ -4,9 +4,11 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.Skill;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationOption;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.ResourceLocationOption;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
-import net.runelite.client.plugins.microbot.woodcutting.data.WoodcuttingTreeLocations;
+import net.runelite.client.plugins.microbot.util.skills.woodcutting.data.WoodcuttingTreeLocations;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -47,7 +49,7 @@ public enum WoodcuttingTree {
      * Gets all available locations for this tree type.
      * @return List of LocationOption objects containing location data with requirements
      */
-    public List<LocationRequirement.LocationOption> getLocations() {
+    public List<ResourceLocationOption> getLocations() {
         return WoodcuttingTreeLocations.getLocationsForTree(this);
     }
     
@@ -55,9 +57,9 @@ public enum WoodcuttingTree {
      * Gets all accessible locations for this tree type based on current player requirements.
      * @return List of LocationOption objects that the player can access
      */
-    public List<LocationRequirement.LocationOption> getAccessibleLocations() {
+    public List<ResourceLocationOption> getAccessibleLocations() {
         return getLocations().stream()
-                .filter(LocationRequirement.LocationOption::hasRequirements)
+                .filter(LocationOption::hasRequirements)
                 .collect(Collectors.toList());
     }
     
@@ -66,11 +68,11 @@ public enum WoodcuttingTree {
      * Prioritizes locations with no requirements, then closest accessible location.
      * @return The optimal LocationOption for this tree type, or null if none accessible
      */
-    public LocationRequirement.LocationOption getBestLocation() {
-        List<LocationRequirement.LocationOption> locations = getLocations();
+    public ResourceLocationOption getBestLocation() {
+        List<ResourceLocationOption> locations = getLocations();
         
         // First try to find locations with no requirements
-        LocationRequirement.LocationOption noReqLocation = locations.stream()
+        ResourceLocationOption noReqLocation = locations.stream()
                 .filter(loc -> loc.getRequiredQuests().isEmpty() && loc.getRequiredSkills().isEmpty())
                 .findFirst()
                 .orElse(null);
@@ -81,7 +83,7 @@ public enum WoodcuttingTree {
         
         // If no unrestricted locations, return first accessible one
         return locations.stream()
-                .filter(LocationRequirement.LocationOption::hasRequirements)
+                .filter(LocationOption::hasRequirements)
                 .findFirst()
                 .orElse(null);
     }
@@ -92,7 +94,7 @@ public enum WoodcuttingTree {
      */
     public boolean hasAccessibleLocation() {
         return getLocations().stream()
-                .anyMatch(LocationRequirement.LocationOption::hasRequirements);
+                .anyMatch(LocationOption::hasRequirements);
     }
     
     /**
@@ -101,7 +103,7 @@ public enum WoodcuttingTree {
      * @return String containing location accessibility information
      */
     public String getLocationSummary() {
-        List<LocationRequirement.LocationOption> allLocations = getLocations();
+        List<ResourceLocationOption> allLocations = getLocations();
         long accessibleCount = allLocations.stream()
                 .mapToLong(loc -> loc.hasRequirements() ? 1 : 0)
                 .sum();

@@ -3,7 +3,7 @@ package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.
 import net.runelite.api.Skill;
 import net.runelite.api.ItemID;
 import net.runelite.api.EquipmentInventorySlot;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;
@@ -39,14 +39,14 @@ public class ConditionalRequirementBuilder {
      * @return ConditionalRequirement for spellbook switching
      */
     public static ConditionalRequirement createSpellbookSwitcher(Rs2Spellbook targetSpellbook, int requiredLevel, 
-                                                               Priority priority, ScheduleContext scheduleContext) {
+                                                               RequirementPriority priority, ScheduleContext scheduleContext) {
         ConditionalRequirement spellbookSwitcher = new ConditionalRequirement(
                 priority, 8, "Smart Spellbook Switching", scheduleContext, false
         );
         
         // Only switch if we have the level and don't already have the spellbook
         BooleanSupplier needsSpellbookSwitch = () -> 
-                Rs2Player.getRealSkillLevel(Skill.MAGIC) >= requiredLevel && !isCurrentSpellbook(targetSpellbook);
+                Rs2Player.getRealSkillLevel(Skill.MAGIC) >= requiredLevel && ! Rs2Magic.isSpellbook(targetSpellbook);
         
         SpellbookRequirement spellbookReq = new SpellbookRequirement(
                 targetSpellbook, scheduleContext, priority, 8,
@@ -74,7 +74,7 @@ public class ConditionalRequirementBuilder {
      */
     public static ConditionalRequirement createEquipmentUpgrader(int[] basicItemIds, int[] upgradeItemIds,
                                                                int minGpRequired, EquipmentInventorySlot equipmentSlot,
-                                                               String description, Priority priority, 
+                                                               String description, RequirementPriority priority, 
                                                                ScheduleContext scheduleContext) {
         ConditionalRequirement equipmentUpgrader = new ConditionalRequirement(
                 priority, 7, "Smart Equipment Upgrading: " + description, scheduleContext, false
@@ -96,7 +96,7 @@ public class ConditionalRequirementBuilder {
         if (upgradeItemIds.length > 0 && minGpRequired > 0) {
             OrRequirement upgradeEquipment = ItemRequirement.createOrRequirement(
                     Arrays.stream(upgradeItemIds).boxed().collect(Collectors.toList()),  equipmentSlot,
-                    Priority.OPTIONAL, 9, "Upgraded " + description, scheduleContext
+                    RequirementPriority.RECOMMENDED, 9, "Upgraded " + description, scheduleContext
             );
             
             equipmentUpgrader.addStep(
@@ -123,7 +123,7 @@ public class ConditionalRequirementBuilder {
      * @return OrderedRequirement for shop-then-equip workflow
      */
     public static OrderedRequirement createShopThenEquip(BankLocation shopLocation, int[] itemIds, 
-                                                        String itemName, int quantity, Priority priority, 
+                                                        String itemName, int quantity, RequirementPriority priority, 
                                                         ScheduleContext scheduleContext) {
         OrderedRequirement shopThenEquip = new OrderedRequirement(
                 priority, 8, "Shop and Equip: " + itemName, scheduleContext
@@ -131,7 +131,7 @@ public class ConditionalRequirementBuilder {
         
         // Step 1: Go to shop location
         LocationRequirement location = new LocationRequirement(
-                shopLocation, true, scheduleContext, priority
+                shopLocation, true,-1, scheduleContext, priority
         );
         shopThenEquip.addStep(location, "Travel to " + shopLocation.name() + " for shopping");
         
@@ -161,14 +161,14 @@ public class ConditionalRequirementBuilder {
      * @return OrderedRequirement for bank preparation
      */
     public static OrderedRequirement createBankPreparation(BankLocation bankLocation, ItemRequirement[] withdrawItems,
-                                                          Priority priority, ScheduleContext scheduleContext) {
+                                                          RequirementPriority priority, ScheduleContext scheduleContext) {
         OrderedRequirement bankPrep = new OrderedRequirement(
                 priority, 9, "Bank Preparation", scheduleContext
         );
         
         // Step 1: Go to bank
         LocationRequirement bankLocationReq = new LocationRequirement(
-                bankLocation, true, scheduleContext, priority
+                bankLocation, true, -1,scheduleContext, priority
         );
         bankPrep.addStep(bankLocationReq, "Travel to " + bankLocation.name() + " bank");
         
@@ -199,7 +199,7 @@ public class ConditionalRequirementBuilder {
      */
     public static ConditionalRequirement createLevelBasedRequirement(Skill skill, int requiredLevel, 
                                                                    Requirement requirement, String description,
-                                                                   Priority priority, ScheduleContext scheduleContext) {
+                                                                   RequirementPriority priority, ScheduleContext scheduleContext) {
         ConditionalRequirement levelBased = new ConditionalRequirement(
                 priority, 8, "Level-based: " + description, scheduleContext, false
         );

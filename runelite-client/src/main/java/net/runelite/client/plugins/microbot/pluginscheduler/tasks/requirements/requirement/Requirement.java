@@ -2,7 +2,7 @@ package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.
 
 import lombok.Getter;
 import lombok.Setter;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import lombok.AllArgsConstructor;
@@ -30,7 +30,7 @@ public abstract class Requirement implements Comparable<Requirement> {
     /**
      * Priority level of this requirement for plugin functionality.
      */
-    protected final Priority priority;
+    protected final RequirementPriority priority;
     
     /**
      * Effectiveness rating from 1-10 (10 being most effective).
@@ -114,7 +114,7 @@ public abstract class Requirement implements Comparable<Requirement> {
      * @return true if this requirement has MANDATORY priority, false otherwise
      */
     public boolean isMandatory() {
-        return priority == Priority.MANDATORY;
+        return priority == RequirementPriority.MANDATORY;
     }
     
     /**
@@ -123,7 +123,7 @@ public abstract class Requirement implements Comparable<Requirement> {
      * @return true if this requirement has RECOMMENDED priority, false otherwise
      */
     public boolean isRecommended() {
-        return priority == Priority.RECOMMENDED;
+        return priority == RequirementPriority.RECOMMENDED;
     }
     
     /**
@@ -132,7 +132,7 @@ public abstract class Requirement implements Comparable<Requirement> {
      * @return true if this requirement has OPTIONAL priority, false otherwise
      */
     public boolean isOptional() {
-        return priority == Priority.OPTIONAL;
+        return priority == RequirementPriority.RECOMMENDED;
     }
     
     /**

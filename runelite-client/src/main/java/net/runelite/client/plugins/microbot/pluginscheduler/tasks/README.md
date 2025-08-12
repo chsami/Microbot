@@ -1,11 +1,5 @@
 # Pre and Post Schedule Tasks Infrastructure
 
-
-the  "prepareOptimalSetup" can be done at any bank ! #file:Rs2Bank.java -walk to nearst bank for example
-start to implent the location Requirement, add it to PrePostScheduleRequirements.
-than at to GotrPrePostScheduleRequirements
-next step is than to generatlize the current #sym:executePostScheduleTask(LockCondition)  and #sym:executePostScheduleTask(LockCondition)  in #file:AbstractPrePostScheduleTasks.java  provide defualt implentationt -> try to full fill all the #file:PrePostScheduleRequirements.java a child  provides via a new function protected abstract PrePostScheduleRequirements getPrePostScheduleRequirements
-
 ## Overview
 
 The Pre and Post Schedule Tasks infrastructure provides a standardized way for Microbot plugins to handle preparation and cleanup when operating under scheduler control. This system ensures consistent resource management, proper plugin lifecycle handling, and graceful startup/shutdown procedures.
@@ -98,7 +92,7 @@ public class YourPlugin extends Plugin implements SchedulablePlugin {
     }
     
     @Subscribe
-    public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
+    public void onPluginScheduleEntryPostScheduleTaskEvent(PluginScheduleEntryPostScheduleTaskEvent event) {
         if (event.getPlugin() == this && prePostTasks != null) {
             // Execute post-schedule cleanup
             prePostTasks.executePostScheduleTasks(lockCondition);
@@ -252,5 +246,9 @@ See the following implementations for reference:
 6. **Test both modes**: Ensure your plugin works both with and without scheduler control
 
 
-
-we also have to consider better fullfillment porcces and definining #file:ItemRequirement.java becasue when a #file:ItemRequirement.java is a Equipiment req. we have the in equipment solt set. for the inventory item not. a inventroy item must not have a inventroy solt assigen but it could be an option ? should we make #file:ItemRequirement.java a abstract base class and implement a 
+Design note: 
+Further improvemnts: We should improve the requirement fulfillment flow and clarify ItemRequirement semantics. Equipment requirements target a specific EquipmentInventorySlot; inventory requirements should not. To avoid overloading a single type with sentinel values (e.g., null slot), consider:
+- Making ItemRequirement an abstract base type.
+- Introduce EquipmentRequirement (has a non-null EquipmentInventorySlot).
+- Introduce InventoryRequirement (no slot; optional quantity/stack rules).
+This separation will eliminate magic values, reduce null checks, and make the fulfillment process simpler and safer.

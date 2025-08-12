@@ -241,8 +241,12 @@ public class TimeWindowCondition extends TimeCondition {
                 log.warn("Unsupported repeat cycle: {}", repeatCycle);
                 break;
         }
-        log.info(this.getDetailedDescription());
-        if(Microbot.isDebug() ) log.info("After calculate new cycle window : \n" +  this,Level.INFO);
+        
+        if(Microbot.isDebug() ) 
+        {
+            log.info(this.getDetailedDescription());
+            log.info("After calculate new cycle window : \n" +  this);
+        }
         // Apply randomization if enabled
         
         // Only check end date bounds if not unlimited

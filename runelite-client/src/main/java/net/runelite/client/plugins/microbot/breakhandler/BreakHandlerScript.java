@@ -707,9 +707,9 @@ public class BreakHandlerScript extends Script {
         } else if (isBreakActive()) {
             log.info("Attempting to end break gracefully");
             transitionToState(BreakHandlerState.BREAK_ENDING);
-        }
-        
+        }        
         resetWindowTitle();
+        resumeFromBreak();
         super.shutdown();
     }
 

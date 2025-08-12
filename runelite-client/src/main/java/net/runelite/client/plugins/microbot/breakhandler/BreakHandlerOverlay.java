@@ -2,8 +2,10 @@ package net.runelite.client.plugins.microbot.breakhandler;
 
 import net.runelite.client.plugins.microbot.pluginscheduler.util.SchedulerPluginUtil;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
+import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
+import net.runelite.client.ui.overlay.components.ComponentConstants;
 import net.runelite.client.ui.overlay.components.LineComponent;
 import net.runelite.client.ui.overlay.components.TitleComponent;
 
@@ -20,12 +22,15 @@ public class BreakHandlerOverlay extends OverlayPanel {
         super(plugin);
         this.config = config;
         setPosition(OverlayPosition.TOP_LEFT);
+        setPreferredSize(new Dimension(ComponentConstants.STANDARD_WIDTH, 180));
         setNaughty();
+        setDragTargetable(true);
+        setLayer(OverlayLayer.UNDER_WIDGETS);        
     }
     @Override
     public Dimension render(Graphics2D graphics) {
         try {
-            panelComponent.setPreferredSize(new Dimension(200, 300));
+            panelComponent.setPreferredSize(new Dimension(180, 280));
             panelComponent.getChildren().add(TitleComponent.builder()
                     .text("BreakHandler V" + BreakHandlerScript.version)
                     .color(Color.GREEN)

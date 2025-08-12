@@ -1,14 +1,17 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.tasks;
 
+import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.SchedulerPlugin;
 import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LockCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryMainTaskFinishedEvent;
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.PrePostScheduleRequirements;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.state.TaskExecutionState;
+import net.runelite.client.plugins.microbot.util.events.PluginPauseEvent;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import java.awt.event.KeyEvent;
@@ -17,6 +20,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
+import com.google.inject.Inject;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -64,11 +69,14 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
     private CompletableFuture<Boolean> postScheduledFuture;
     
     // Emergency cancel hotkey support (injected via plugin)
-    private KeyManager keyManager;
+    
+    private final KeyManager keyManager;
     
     // Centralized state tracking
     @Getter
     private final TaskExecutionState executionState = new TaskExecutionState();
+
+    private final LockCondition prePostScheduleTaskLock = new LockCondition("Pre/Post Schedule Task Lock");
 
     /**
      * Constructor for AbstractPrePostScheduleTasks.
@@ -76,8 +84,11 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
      * 
      * @param plugin The SchedulablePlugin instance to manage
      */
-    protected AbstractPrePostScheduleTasks(SchedulablePlugin plugin) {
+    protected AbstractPrePostScheduleTasks(SchedulablePlugin plugin, KeyManager keyManager) {
         this.plugin = plugin;
+        this.keyManager = keyManager;
+        initializeCancel();
+        log.info("Initialized pre/post schedule task manager for plugin: {}", plugin.getClass().getSimpleName());
     }
     
     /**
@@ -86,14 +97,15 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
      * 
      * @param keyManager The KeyManager instance from the plugin
      */
-    public final void initializeEmergencyCancel(KeyManager keyManager) {
-        this.keyManager = keyManager;
+    public final void initializeCancel() {        
         
         // Register emergency cancel hotkey if KeyManager is available
         try {
             if (keyManager != null) {
                 keyManager.registerKeyListener(this);
-                log.debug("Registered emergency cancel hotkey (Ctrl+C) for plugin: {}", plugin.getClass().getSimpleName());
+                log.info("Registered emergency cancel hotkey (Ctrl+C) for plugin: {}", plugin.getClass().getSimpleName());
+            }else{
+                log.warn("KeyManager is not available, cannot register emergency cancel hotkey for plugin: {}", plugin.getClass().getSimpleName());
             }
         } catch (Exception e) {
             log.warn("Failed to register emergency cancel hotkey for plugin {}: {}", 
@@ -136,7 +148,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
                 return t;
             });
         }
-        
+        look();      
         preScheduledFuture = CompletableFuture.supplyAsync(() -> {
             try {
                 log.info("\n --> Starting pre-schedule preparation on separate thread for plugin: \n\t\t{}", 
@@ -153,16 +165,14 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
                     }
                 } else {
                     log.warn("\n\tPre-schedule preparation failed - stopping plugin");
-                    executionState.updateState(TaskExecutionState.ExecutionState.FAILED, "Pre-schedule preparation failed");
-                    plugin.reportFinished("Pre-schedule preparation failed", false);
+                    executionState.updateState(TaskExecutionState.ExecutionState.FAILED, "Pre-schedule preparation failed");                                                        
                 }
                 
                 return success;
             } catch (Exception e) {
                 log.error("Error during pre-schedule preparation: {}", e.getMessage(), e);
-                executionState.updateState(TaskExecutionState.ExecutionState.ERROR, "Pre-schedule preparation error: " + e.getMessage());
-                plugin.reportFinished("Pre-schedule preparation error: " + e.getMessage(), false);
-                return false;
+                executionState.updateState(TaskExecutionState.ExecutionState.ERROR, "Pre-schedule preparation error: " + e.getMessage());                                
+                throw new RuntimeException("Pre-schedule preparation failed", e);
             }
         }, preExecutorService);
 
@@ -177,6 +187,14 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
                 handlePreTaskCompletion(result, throwable);
             });
         }
+    }
+    private void look(){
+        PluginPauseEvent.setPaused(true);
+        prePostScheduleTaskLock.lock();
+    }
+    private void unlock() {
+        PluginPauseEvent.setPaused(false);
+        prePostScheduleTaskLock.unlock();
     }
     
     /**
@@ -220,7 +238,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
         }
         
         initializePostExecutorService();
-        
+        look();
         postScheduledFuture = CompletableFuture.supplyAsync(() -> {
             try {
                 if (lockCondition != null && lockCondition.isLocked()) {
@@ -250,20 +268,17 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
                         callback.run();
                     }
                 } else {
-                    log.warn("Post-schedule cleanup failed - stopping plugin");
-                    plugin.reportFinished("Post-schedule cleanup failed", false);
+                    log.warn("Post-schedule cleanup failed - stopping plugin");                    
                 }
                 
                 return success;
                 
             } catch (Exception ex) {
-                log.error("Error during post-schedule cleanup: {}", ex.getMessage(), ex);
-                plugin.reportFinished("Post-schedule cleanup error: " + ex.getMessage(), false);
-                
-                return false;
+                log.error("Error during post-schedule cleanup: {}", ex.getMessage(), ex);                
+                throw new RuntimeException("Post-schedule cleanup failed", ex);                
             }
         }, postExecutorService);
-
+        
         // Handle timeout and completion
         if (timeout > 0) {
             postScheduledFuture.orTimeout(timeout, timeUnit)
@@ -329,7 +344,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
             // Execute any custom pre-schedule logic from the child class
             updateTaskState("PRE_SCHEDULE", "Custom Tasks", "Executing plugin-specific preparation");
             log.debug("Executing custom pre-schedule tasks");
-            boolean customTasksSuccessful = executeCustomPreScheduleTask(lockCondition);
+            boolean customTasksSuccessful = executeCustomPreScheduleTask(preScheduledFuture,lockCondition);
             
             // Clear state when finished
             if (standardRequirementsFulfilled && customTasksSuccessful) {
@@ -372,7 +387,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
             // Execute any custom post-schedule logic from the child class first
             // This allows plugins to handle their specific cleanup (like stopping scripts)
             updateTaskState("POST_SCHEDULE", "Custom Tasks", "Executing plugin-specific cleanup");
-            boolean customTasksSuccessful = executeCustomPostScheduleTask(lockCondition);
+            boolean customTasksSuccessful = executeCustomPostScheduleTask(postScheduledFuture, lockCondition);
             
             if (!customTasksSuccessful) {
                 log.warn("Custom post-schedule tasks failed, but continuing with standard cleanup");
@@ -416,7 +431,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
      * @param lockCondition The lock condition to prevent interruption during critical operations
      * @return true if custom preparation was successful, false otherwise
      */
-    protected abstract boolean executeCustomPreScheduleTask(LockCondition lockCondition);
+    protected abstract boolean executeCustomPreScheduleTask(CompletableFuture<Boolean> preScheduledFuture,LockCondition lockCondition);
     
     /**
      * Abstract method that concrete implementations must provide for custom post-schedule logic.
@@ -429,7 +444,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
      * @param lockCondition The lock condition to prevent interruption during critical operations
      * @return true if custom cleanup was successful, false otherwise
      */
-    protected abstract boolean executeCustomPostScheduleTask(LockCondition lockCondition);
+    protected abstract boolean executeCustomPostScheduleTask(CompletableFuture<Boolean> postScheduledFuture, LockCondition lockCondition);
     
     /**
      * Abstract method to determine if the plugin is running in schedule mode.
@@ -438,46 +453,58 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
      * @return true if the plugin is running under scheduler control, false otherwise
      */
     protected abstract String getConfigGroupName();
-         /**
+    
+    public boolean isScheduleMode() {
+        // Check if the plugin is running in schedule mode
+        if (plugin == null) {
+            log.warn("Plugin instance is null, cannot determine schedule mode");
+            return false; // Cannot determine schedule mode without plugin instance
+        }
+        
+        // Check if the plugin is running in schedule mode
+        return isScheduleMode(this.plugin, getConfigGroupName());
+
+    }
+    /**
      * Checks if the plugin is running in schedule mode by checking the GOTR configuration.
      * 
      * @return true if scheduleMode flag is set, false otherwise
      */    
-    public boolean isScheduleMode() {
+    public static boolean isScheduleMode( SchedulablePlugin plugin, String configGroupName) {
 
         SchedulerPlugin schedulablePlugin =  (SchedulerPlugin) Microbot.getPlugin(SchedulerPlugin.class.getName());
-        
-        if (schedulablePlugin == null) {
-            log.info("SchedulerPlugin is not running, cannot  can not be in schedule mode");
-            return false; // SchedulerPlugin is not running, cannot determine schedule mode
-        }else{
-            PluginScheduleEntry currentPlugin =  schedulablePlugin.getCurrentPlugin();            
-            if (currentPlugin == null) {
-                log.info("No current plugin is running by the Scheduler Plugin, so it also can be the plugin is start in scheduler mode");
-                
-            }else{
-                if (currentPlugin.isRunning() && currentPlugin.getPlugin() != null && !currentPlugin.getPlugin().equals(this.plugin)) {
-                    log.info("Current plugin {} is running, but it is not the same as the pluginScheduleEntry {}, so it can not be in schedule mode", 
-                        currentPlugin.getPlugin().getClass().getSimpleName(),
-                        this.plugin.getClass().getSimpleName());
-                    return false; // Current plugin is running, but it's not the same as the pluginSchedule
-                    
-                }
-            }
-        }
+        Boolean scheduleModeConfig = null;
+        Boolean scheduleModeDetect = false;
         try {
-            String configGroupName = getConfigGroupName();
-            if (configGroupName == null || configGroupName.isEmpty()) {
-                log.warn("Config group name is not set, cannot determine schedule mode");
-                return false; // Cannot determine schedule mode without config group
-            }
-            Boolean scheduleMode = Microbot.getConfigManager().getConfiguration(
+            scheduleModeConfig = Microbot.getConfigManager().getConfiguration(
                 configGroupName, "scheduleMode", Boolean.class);
-            return scheduleMode != null && scheduleMode;
         } catch (Exception e) {
             log.error("Failed to check schedule mode: {}", e.getMessage());
             return false;
         }
+        if (schedulablePlugin == null) {
+            log.info("SchedulerPlugin is not running, cannot  can not be in schedule mode");
+            scheduleModeDetect =  false; // SchedulerPlugin is not running, cannot determine schedule mode, so we dont run in schedule mode
+        }else{
+            PluginScheduleEntry currentPlugin =  schedulablePlugin.getCurrentPlugin();            
+            if (currentPlugin == null) {
+                log.info("No current plugin is running by the Scheduler Plugin, so it also can be the plugin is start in scheduler mode");
+                scheduleModeDetect =  false; // No current plugin is running, so it can not be in schedule mode
+            }else{
+                if (currentPlugin.isRunning() && currentPlugin.getPlugin() != null && !currentPlugin.getPlugin().equals(plugin)) {
+                    log.info("Current plugin {} is running, but it is not the same as the pluginScheduleEntry {}, so it can not be in schedule mode", 
+                        currentPlugin.getPlugin().getClass().getSimpleName(),
+                        plugin.getClass().getSimpleName());
+                    scheduleModeDetect = false; // Current plugin is running, but it's not the same as the pluginSchedule
+                    
+                }else{
+                    scheduleModeDetect = true;
+                }
+            }
+        }      
+        Microbot.getConfigManager().setConfiguration(configGroupName, "scheduleMode", scheduleModeDetect);                   
+        return scheduleModeDetect != null && scheduleModeDetect;
+      
     }
     private void setScheduleMode(boolean scheduleMode) {
         try {
@@ -646,19 +673,23 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
      * @param throwable Any exception that occurred during execution
      */
     private void handlePreTaskCompletion(Boolean result, Throwable throwable) {
+        unlock();
         if (throwable != null) {
             if (throwable instanceof TimeoutException) {
                 log.warn("Pre-schedule task timed out for plugin: {}", plugin.getClass().getSimpleName());
-                plugin.reportFinished("Pre-schedule task timed out", false);
+                plugin.reportPreScheduleTaskFinished("Pre-schedule task timed out", false);
             } else {
                 log.error("Pre-schedule task failed for plugin: {} - {}", 
                     plugin.getClass().getSimpleName(), throwable.getMessage());
-                plugin.reportFinished("Pre-schedule task failed: " + throwable.getMessage(), false);
+                plugin.reportPreScheduleTaskFinished("Pre-schedule task failed: " + throwable.getMessage(), false);
             }
         } else if (result != null && result) {
             log.info("Pre-schedule task completed successfully for plugin: {}", plugin.getClass().getSimpleName());
-
+            plugin.reportPreScheduleTaskFinished("Pre-schedule preparation completed successfully", true);
+        }else{
+            plugin.reportPreScheduleTaskFinished("\n\tPre-schedule preparation was not successfull", false);
         }
+
     }
     
     /**
@@ -668,20 +699,24 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
      * @param throwable Any exception that occurred during execution
      */
     private void handlePostTaskCompletion(Boolean result, Throwable throwable) {
+        unlock();
         if (throwable != null) {
             if (throwable instanceof TimeoutException) {
-                log.warn("Post-schedule task timed out for plugin: {}", plugin.getClass().getSimpleName());
-                // Force stop the plugin if post-task times out
-                Microbot.getClientThread().invokeLater(() -> {
-                    Microbot.stopPlugin((net.runelite.client.plugins.Plugin) plugin);
-                    return true;
-                });
+                log.warn("Post-schedule task timed out for plugin: {}", plugin.getClass().getSimpleName());             
+                plugin.reportPostScheduleTaskFinished("Post-schedule task timed out", false);
             } else {
                 log.error("Post-schedule task failed for plugin: {} - {}", 
                     plugin.getClass().getSimpleName(), throwable.getMessage());
+                plugin.reportPostScheduleTaskFinished("Post-schedule task failed: " + throwable.getMessage(), false);
             }
         } else if (result != null && result) {
             log.debug("Post-schedule task completed successfully for plugin: {}", plugin.getClass().getSimpleName());
+            plugin.reportPostScheduleTaskFinished("\\n" + //
+                                "\\tPost-schedule task completed successfully", true);
+        }else{
+            plugin.reportPostScheduleTaskFinished("\n\tPost-schedule task was not successfull", false);
+            
+
         }
     }
     
@@ -747,7 +782,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
             log.warn("Failed to unregister emergency cancel hotkey for plugin {}: {}", 
                     plugin.getClass().getSimpleName(), e.getMessage());
         }
-        
+        unlock();
         // Cancel any running futures
         if (preScheduledFuture != null && !preScheduledFuture.isDone()) {
             preScheduledFuture.cancel(true);
@@ -898,7 +933,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
      */
     public synchronized void reset() {
         log.info("Resetting pre/post schedule tasks for plugin: {}", plugin.getClass().getSimpleName());
-        
+        unlock();  
         // Cancel and cleanup running futures
         if (preScheduledFuture != null && !preScheduledFuture.isDone()) {
             log.info("Cancelling running pre-schedule task");
@@ -1042,15 +1077,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
             
             // Reset task execution state
             log.info("  • Resetting task execution state");
-            executionState.reset();
-            
-            // Report plugin finished if it's the main plugin
-            try {
-                plugin.reportFinished("Emergency cancellation triggered via Ctrl+C", false);
-            } catch (Exception e) {
-                log.warn("Failed to report plugin finished: {}", e.getMessage());
-            }
-            
+            executionState.reset();                        
             log.warn("=== EMERGENCY CANCELLATION COMPLETED ===\n");
             
         } catch (Exception e) {

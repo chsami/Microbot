@@ -5,7 +5,7 @@ import lombok.EqualsAndHashCode;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
@@ -144,7 +144,7 @@ public class LootRequirement extends Requirement {
     public LootRequirement(
             List<Integer> itemIds,
             int amount,
-            Priority priority,
+            RequirementPriority priority,
             int rating,
             String description,
             ScheduleContext scheduleContext,
@@ -174,7 +174,7 @@ public class LootRequirement extends Requirement {
     public LootRequirement(
             List<Integer> itemIds,
             int amount,
-            Priority priority,
+            RequirementPriority priority,
             int rating,
             String description,
             Rs2SpawnLocation spawnLocation,
@@ -207,7 +207,7 @@ public class LootRequirement extends Requirement {
         this(
             Arrays.asList(itemId),
             amount,
-            Priority.MANDATORY,
+            RequirementPriority.MANDATORY,
             5,
             description,
             spawnLocation,

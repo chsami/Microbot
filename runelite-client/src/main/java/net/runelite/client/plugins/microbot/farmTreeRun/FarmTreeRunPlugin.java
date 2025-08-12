@@ -12,7 +12,7 @@ import net.runelite.client.plugins.microbot.blastoisefurnace.BlastoiseFurnaceScr
 import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.AndCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryPostScheduleTaskEvent;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.ui.overlay.OverlayManager;
 
@@ -53,7 +53,7 @@ public class FarmTreeRunPlugin extends Plugin implements SchedulablePlugin {
     }
 
     @Subscribe
-    public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
+    public void onPluginScheduleEntryPostScheduleTaskEvent(PluginScheduleEntryPostScheduleTaskEvent event) {
         if (event.getPlugin() == this) {
             if (FarmTreeRunScript != null && FarmTreeRunScript.isRunning()) {
                 FarmTreeRunScript.shutdown();

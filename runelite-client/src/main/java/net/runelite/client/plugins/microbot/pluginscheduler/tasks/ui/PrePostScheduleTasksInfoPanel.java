@@ -174,9 +174,9 @@ public class PrePostScheduleTasksInfoPanel extends JPanel {
                 }
             }
             
-            // Update requirements panel - always show if tasks exist
+            // Update requirements panel with execution state for enhanced progress tracking
             PrePostScheduleRequirements requirements = tasks.getRequirements();
-            requirementsPanel.updateRequirements(requirements);
+            requirementsPanel.updateRequirements(requirements, executionState);
             
         } else {
             // No tasks available at all - hide everything
@@ -248,6 +248,9 @@ public class PrePostScheduleTasksInfoPanel extends JPanel {
                 postTaskStatePanel.updateState(executionState);
                 postTaskStatePanel.setVisible(true);
             }
+            
+            // Update requirements panel with execution state
+            requirementsPanel.updateRequirements(lastTrackedTasks.getRequirements(), executionState);
             
             repaint();
         }

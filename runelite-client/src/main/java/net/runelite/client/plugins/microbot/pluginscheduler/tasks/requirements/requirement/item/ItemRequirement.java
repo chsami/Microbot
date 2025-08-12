@@ -6,7 +6,7 @@ import net.runelite.api.Skill;
 import net.runelite.client.game.ItemEquipmentStats;
 import net.runelite.client.game.ItemStats;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
@@ -113,7 +113,7 @@ public class ItemRequirement extends Requirement {
             int amount,
             EquipmentInventorySlot equipmentSlot,
             Integer inventorySlot,
-            Priority priority,
+            RequirementPriority priority,
             int rating,
             String description,
             ScheduleContext scheduleContext,
@@ -126,8 +126,10 @@ public class ItemRequirement extends Requirement {
         // Call super constructor with inferred RequirementType and single item ID
         super(inferRequirementType(equipmentSlot, inventorySlot), priority, rating, description, 
               Arrays.asList(itemId), scheduleContext);
-        if (equipmentSlot != EquipmentInventorySlot.AMMO){
-            amount = 1; // For equipment items, amount is typically 1
+        
+        // Only override amount for equipment items (not inventory or ammo)
+        if (equipmentSlot != null && equipmentSlot != EquipmentInventorySlot.AMMO) {
+            amount = 1; // For non-ammo equipment items, amount is typically 1
         }
         this.amount = amount;
         this.equipmentSlot = equipmentSlot;
@@ -148,7 +150,7 @@ public class ItemRequirement extends Requirement {
      * Constructor for single item ID with equipment requirement.
      */
     public ItemRequirement(int itemId, int amount, EquipmentInventorySlot equipmentSlot, 
-                        Priority priority, int rating, String description, ScheduleContext scheduleContext) {
+                        RequirementPriority priority, int rating, String description, ScheduleContext scheduleContext) {
         this(itemId, amount, equipmentSlot, -2, priority, rating, description, 
              scheduleContext, null, null, null, null, false);
     }
@@ -157,7 +159,7 @@ public class ItemRequirement extends Requirement {
      * Constructor for single item ID with equipment requirement with default amount of 1.
      */
     public ItemRequirement(int itemId, EquipmentInventorySlot equipmentSlot, 
-                        Priority priority, int rating, String description, ScheduleContext scheduleContext) {
+                        RequirementPriority priority, int rating, String description, ScheduleContext scheduleContext) {
         this(itemId, 1, equipmentSlot, -2, priority, rating, description, 
              scheduleContext, null, null, null, null, false);
     }
@@ -166,7 +168,7 @@ public class ItemRequirement extends Requirement {
      * Constructor for single item ID with equipment requirement and skill requirements for use only.
      */
     public ItemRequirement(int itemId, int amount, EquipmentInventorySlot equipmentSlot, Integer inventorySlot,
-                        Priority priority, int rating, String description, ScheduleContext scheduleContext, 
+                        RequirementPriority priority, int rating, String description, ScheduleContext scheduleContext, 
                         Skill skillToUse, Integer minimumLevelToUse) {
         this(itemId, amount, equipmentSlot, inventorySlot, priority, rating, description,
              scheduleContext, skillToUse, minimumLevelToUse, null, null, false);
@@ -176,7 +178,7 @@ public class ItemRequirement extends Requirement {
      * Constructor for single item ID with equipment requirement and skill requirements for use only.
     */
     public ItemRequirement(int itemId, int amount, EquipmentInventorySlot equipmentSlot,
-                        Priority priority, int rating, String description, ScheduleContext scheduleContext, 
+                        RequirementPriority priority, int rating, String description, ScheduleContext scheduleContext, 
                         Skill skillToUse, Integer minimumLevelToUse) {
         this(itemId, amount, equipmentSlot, -2, priority, rating, description,
              scheduleContext, skillToUse, minimumLevelToUse, null, null, false);
@@ -186,7 +188,7 @@ public class ItemRequirement extends Requirement {
      * Constructor for single item ID with equipment requirement and both skill requirements (use and equip).
      */
     public ItemRequirement(int itemId, int amount, EquipmentInventorySlot equipmentSlot, Integer inventorySlot,
-                        Priority priority, int rating, String description, ScheduleContext scheduleContext,
+                        RequirementPriority priority, int rating, String description, ScheduleContext scheduleContext,
                         Skill skillToUse, Integer minimumLevelToUse, Skill skillToEquip, Integer minimumLevelToEquip) {
         this(itemId, amount, equipmentSlot, inventorySlot, priority, rating, description,
              scheduleContext, skillToUse, minimumLevelToUse, skillToEquip, minimumLevelToEquip, false);
@@ -196,7 +198,7 @@ public class ItemRequirement extends Requirement {
      * Constructor for single item ID with equipment requirement and both skill requirements (use and equip).
      */
     public ItemRequirement(int itemId, int amount, EquipmentInventorySlot equipmentSlot,
-                        Priority priority, int rating, String description, ScheduleContext scheduleContext,
+                        RequirementPriority priority, int rating, String description, ScheduleContext scheduleContext,
                         Skill skillToUse, Integer minimumLevelToUse, Skill skillToEquip, Integer minimumLevelToEquip) {
         this(itemId, amount, equipmentSlot, -2, priority, rating, description,
              scheduleContext, skillToUse, minimumLevelToUse, skillToEquip, minimumLevelToEquip, false);
@@ -206,7 +208,7 @@ public class ItemRequirement extends Requirement {
      * Constructor for single item ID with fuzzy option.
      */
     public ItemRequirement(int itemId, EquipmentInventorySlot equipmentSlot,
-                        Priority priority, int rating, String description, ScheduleContext scheduleContext, boolean fuzzy) {
+                        RequirementPriority priority, int rating, String description, ScheduleContext scheduleContext, boolean fuzzy) {
         this(itemId, 1, equipmentSlot, -2, priority, rating, description,
              scheduleContext, null, null, null, null, fuzzy);
     }
@@ -219,7 +221,7 @@ public class ItemRequirement extends Requirement {
      * Constructor for single item ID with specific inventory slot.
      */
     public ItemRequirement(int itemId, int amount, Integer inventorySlot,
-                        Priority priority, int rating, String description, ScheduleContext scheduleContext) {
+                        RequirementPriority priority, int rating, String description, ScheduleContext scheduleContext) {
         this(itemId, amount, null, inventorySlot, priority, rating, description, 
              scheduleContext, null, null, null, null, false);
     }
@@ -228,7 +230,7 @@ public class ItemRequirement extends Requirement {
      * Constructor for EITHER requirement with both equipment and inventory slot specification.
      */
     public ItemRequirement(int itemId, int amount, EquipmentInventorySlot equipmentSlot, Integer inventorySlot,
-                        Priority priority, int rating, String description, ScheduleContext scheduleContext) {
+                        RequirementPriority priority, int rating, String description, ScheduleContext scheduleContext) {
         this(itemId, amount, equipmentSlot, inventorySlot, priority, rating, description, 
              scheduleContext, null, null, null, null, false);
     }
@@ -285,7 +287,7 @@ public class ItemRequirement extends Requirement {
             -1,  // dummy amount
             equipmentSlot,
             -2,  // equipment-only slot indicator
-            Priority.MANDATORY,
+            RequirementPriority.MANDATORY,
             10,  // rating
             description,
             scheduleContext,
@@ -321,7 +323,7 @@ public class ItemRequirement extends Requirement {
             -1,  // dummy amount
             null,  // equipmentSlot
             inventorySlot,
-            Priority.MANDATORY,
+            RequirementPriority.MANDATORY,
             10,  // rating
             description,
             scheduleContext,
@@ -359,7 +361,7 @@ public class ItemRequirement extends Requirement {
             int amount,
             EquipmentInventorySlot equipmentSlot,
             Integer inventorySlot,
-            Priority priority,
+            RequirementPriority priority,
             int rating,
             String description,
             ScheduleContext scheduleContext,
@@ -398,7 +400,7 @@ public class ItemRequirement extends Requirement {
     public static OrRequirement createOrRequirement(
             List<Integer> itemIds,
             EquipmentInventorySlot equipmentSlot,
-            Priority priority,
+            RequirementPriority priority,
             int rating,
             String description,
             ScheduleContext scheduleContext) {
@@ -412,7 +414,7 @@ public class ItemRequirement extends Requirement {
             List<Integer> itemIds,
             int amount,            
             Integer inventorySlot,
-            Priority priority,
+            RequirementPriority priority,
             int rating,
             String description,
             ScheduleContext scheduleContext) {
@@ -427,7 +429,7 @@ public class ItemRequirement extends Requirement {
             int amount,
             EquipmentInventorySlot equipmentSlot,
             Integer inventorySlot,
-            Priority priority,
+            RequirementPriority priority,
             int rating,
             String description,
             ScheduleContext scheduleContext) {
@@ -444,7 +446,7 @@ public class ItemRequirement extends Requirement {
             int amount,
             EquipmentInventorySlot equipmentSlot,
             Integer inventorySlot,
-            Priority priority,
+            RequirementPriority priority,
             int rating,
             String description,
             ScheduleContext scheduleContext,
@@ -973,7 +975,7 @@ public class ItemRequirement extends Requirement {
             int playerLevel = Rs2Player.getRealSkillLevel(item.getSkillToEquip());
             
             if (playerLevel < item.getMinimumLevelToEquip()) {
-                Microbot.log("Player " + item.getSkillToEquip().getName() + " level (" + playerLevel + 
+                log.debug("Player " + item.getSkillToEquip().getName() + " level (" + playerLevel + 
                            ") insufficient to equip item requiring level " + item.getMinimumLevelToEquip());
                 return false;
             }
@@ -995,7 +997,7 @@ public class ItemRequirement extends Requirement {
             int playerLevel = Rs2Player.getRealSkillLevel(item.getSkillToUse());
             
             if (playerLevel < item.getMinimumLevelToUse()) {
-                Microbot.log("Player " + item.getSkillToUse().getName() + " level (" + playerLevel + 
+                log.debug("Player " + item.getSkillToUse().getName() + " level (" + playerLevel + 
                            ") insufficient to use item requiring level " + item.getMinimumLevelToUse());
                 return false;
             }
@@ -1013,39 +1015,39 @@ public class ItemRequirement extends Requirement {
     public String displayString() {
         StringBuilder sb = new StringBuilder();
         sb.append("=== Item Requirement Details ===\n");
-        sb.append("Name:\t\t\t").append(getName()).append("\n");
-        sb.append("Type:\t\t\t").append(getRequirementType().name()).append("\n");
-        sb.append("Priority:\t\t").append(getPriority().name()).append("\n");
-        sb.append("Rating:\t\t\t").append(getRating()).append("/10\n");
-        sb.append("Description:\t").append(getDescription()).append("\n");
-        sb.append("Schedule Context:\t").append(getScheduleContext().name()).append("\n");
-        sb.append("Item ID:\t\t").append(getId()).append("\n");
-        sb.append("Amount:\t\t\t").append(amount).append("\n");
+        sb.append("  -Name:\t\t\t").append(getName()).append("\n");
+        sb.append("  -Type:\t\t\t").append(getRequirementType().name()).append("\n");
+        sb.append("  -Priority:\t\t").append(getPriority().name()).append("\n");
+        sb.append("  -Rating:\t\t\t").append(getRating()).append("/10\n");
+        sb.append("  -Description:\t").append(getDescription()).append("\n");
+        sb.append("  -Schedule Context:\t").append(getScheduleContext().name()).append("\n");
+        sb.append("  -Item ID:\t\t").append(getId()).append("\n");
+        sb.append("  -Amount:\t\t\t").append(amount).append("\n");
         
         if (equipmentSlot != null) {
-            sb.append("Equipment Slot:\t").append(equipmentSlot.name()).append("\n");
+            sb.append("  -Equipment Slot:\t").append(equipmentSlot.name()).append("\n");
         }
         
         if (inventorySlot != null && inventorySlot >= 0) {
-            sb.append("Inventory Slot:\t").append(inventorySlot).append("\n");
+            sb.append("  -Inventory Slot:\t").append(inventorySlot).append("\n");
         }
         
         if (skillToUse != null) {
-            sb.append("Skill to Use:\t").append(skillToUse.getName()).append("\n");
-            sb.append("Min Level to Use:\t").append(minimumLevelToUse != null ? minimumLevelToUse : "N/A").append("\n");
+            sb.append("  -Skill to Use:\t").append(skillToUse.getName()).append("\n");
+            sb.append("  -Min Level to Use:\t").append(minimumLevelToUse != null ? minimumLevelToUse : "N/A").append("\n");
         }
         
-        if (skillToEquip != null) sb.append("Skill to Equip:\t").append(skillToEquip.getName()).append("\n");
-        if (minimumLevelToEquip != null) sb.append("Min Level to Equip:\t").append(minimumLevelToEquip).append("\n");
+        if (skillToEquip != null) sb.append("  -Skill to Equip:\t").append(skillToEquip.getName()).append("\n");
+        if (minimumLevelToEquip != null) sb.append("  -Min Level to Equip:\t").append(minimumLevelToEquip).append("\n");
         
-        sb.append("Fuzzy Charge:\t").append(fuzzy).append("\n");
-        sb.append("Available in Inventory:\t").append(isAvailableInInventory()).append("\n");
-        sb.append("Available in Bank:\t").append(isAvailableInBank()).append("\n");
-        sb.append("Total Available:\t").append(getTotalAvailableCount()).append("\n");
-        sb.append("Can be Used:\t\t").append(canBeUsed()).append("\n");
-        sb.append("Can be Equipped:\t").append(canBeEquipped()).append("\n");
-        sb.append("Meets Skill Req.:\t").append(meetsSkillRequirements()).append("\n");
-        sb.append("Dummy Item:\t\t").append(isDummyItemRequirement()).append("\n");
+        sb.append("  -Fuzzy Charge:\t").append(fuzzy).append("\n");
+        sb.append("  -Available in Inventory:\t").append(isAvailableInInventory()).append("\n");
+        sb.append("  -Available in Bank:\t").append(isAvailableInBank()).append("\n");
+        sb.append("  -Total Available:\t").append(getTotalAvailableCount()).append("\n");
+        sb.append("  -Can be Used:\t\t").append(canBeUsed()).append("\n");
+        sb.append("  -Can be Equipped:\t").append(canBeEquipped()).append("\n");
+        sb.append("  -Meets Skill Req.:\t").append(meetsSkillRequirements()).append("\n");
+        sb.append("  -Dummy Item:\t\t").append(isDummyItemRequirement()).append("\n");
         
         return sb.toString();
     }
@@ -1311,14 +1313,14 @@ public class ItemRequirement extends Requirement {
      */
     private void validateSlotAssignments() {
         // Validate inventory slot range
-        if (inventorySlot < -1 || inventorySlot > 27) {
+        if (inventorySlot < -2 || inventorySlot > 27) {
             throw new IllegalArgumentException("Inventory slot must be between -1 (any slot) and 27, got: " + inventorySlot);
         }
         
         // Validate requirement type and slot consistency
         switch (requirementType) {
             case EQUIPMENT:
-                if (equipmentSlot == null) {
+                if (equipmentSlot == null || inventorySlot!= -2) {
                     throw new IllegalArgumentException("EQUIPMENT requirement must specify an equipment slot");
                 }
                 break;
@@ -1333,6 +1335,9 @@ public class ItemRequirement extends Requirement {
                 }
                 break;
             case EITHER:
+                if ( !(equipmentSlot != null || inventorySlot>=-1) ) {
+                    throw new IllegalArgumentException("EITHER requirement must specify at least one of equipment or inventory slot");
+                }
                 // EITHER requirements can have equipment slot specified (preferred) and optional inventory slot
                 break;
             default:

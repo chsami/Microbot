@@ -14,6 +14,10 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
+import java.util.concurrent.CompletableFuture;
+
+import javax.net.ssl.KeyManager;
+
 /**
  * Example implementation showing how to extend {@link AbstractPrePostScheduleTasks}
  * for a generic plugin with basic banking and equipment management.
@@ -38,7 +42,7 @@ public class ExamplePrePostScheduleTasks extends AbstractPrePostScheduleTasks {
      * @param plugin The SchedulablePlugin instance to manage
      */
     public ExamplePrePostScheduleTasks(SchedulablePlugin plugin) {
-        super(plugin);
+        super(plugin,null);
         this.exampleRequirements = new ExamplePrePostScheduleRequirements();
     }
     
@@ -60,7 +64,7 @@ public class ExamplePrePostScheduleTasks extends AbstractPrePostScheduleTasks {
      * @return true if preparation was successful, false otherwise
      */
     @Override
-    protected boolean executeCustomPreScheduleTask(LockCondition lockCondition) {
+    protected boolean executeCustomPreScheduleTask(CompletableFuture<Boolean> preScheduledFuture, LockCondition lockCondition) {
         try {
             if (lockCondition != null) {
                 lockCondition.lock();
@@ -101,7 +105,7 @@ public class ExamplePrePostScheduleTasks extends AbstractPrePostScheduleTasks {
      * @return true if cleanup was successful, false otherwise
      */
     @Override
-    protected boolean executeCustomPostScheduleTask(LockCondition lockCondition) {
+    protected boolean executeCustomPostScheduleTask(CompletableFuture<Boolean> postScheduledFuturem, LockCondition lockCondition) {
         try {
             log.info("Starting example plugin post-schedule cleanup...");
             

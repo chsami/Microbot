@@ -173,7 +173,7 @@ public class PrePostScheduleTasksOverlayComponents {
             return components;
         }
         
-        List<LocationRequirement> locationReqs = requirements.getRequirements(LocationRequirement.class, context);
+        List<LocationRequirement> locationReqs = requirements.getRegistry().getStandardRequirements(LocationRequirement.class, context);
         if (locationReqs.isEmpty()) {
             return components;
         }
@@ -221,7 +221,7 @@ public class PrePostScheduleTasksOverlayComponents {
             return components;
         }
         
-        List<SpellbookRequirement> spellbookReqs = requirements.getRequirements(SpellbookRequirement.class, context);
+        List<SpellbookRequirement> spellbookReqs = requirements.getRegistry().getStandardRequirements(SpellbookRequirement.class, context);
         if (spellbookReqs.isEmpty()) {
             return components;
         }
@@ -253,7 +253,7 @@ public class PrePostScheduleTasksOverlayComponents {
             return components;
         }
         
-        List<LootRequirement> lootReqs = requirements.getRequirements(LootRequirement.class, context);
+        List<LootRequirement> lootReqs = requirements.getRegistry().getStandardRequirements(LootRequirement.class, context);
         if (lootReqs.isEmpty()) {
             return components;
         }
@@ -292,7 +292,7 @@ public class PrePostScheduleTasksOverlayComponents {
             return components;
         }
         
-        List<ItemRequirement> itemReqs = requirements.getRequirements(ItemRequirement.class, context);
+        List<ItemRequirement> itemReqs = requirements.getRegistry().getStandardRequirements(ItemRequirement.class, context);
         if (itemReqs.isEmpty()) {
             return components;
         }

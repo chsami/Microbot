@@ -264,5 +264,6 @@ public abstract class LocationCondition implements Condition {
     @Override
     public void resume() {
        
-    }    
+    }
+    
 }

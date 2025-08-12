@@ -2,7 +2,7 @@ package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementMode;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.registry.RequirementRegistry;
@@ -248,7 +248,7 @@ public class RequirementSolver {
             try {
                 log.debug("Processing conditional requirement {}/{}: {}", ++currentIndex, totalReqs, requirement.getName());
                 boolean fulfilled = requirement.fulfillRequirement(scheduledFuture);
-                if (!fulfilled && requirement.getPriority() == Priority.MANDATORY) {
+                if (!fulfilled && requirement.getPriority() == RequirementPriority.MANDATORY) {
                     Microbot.log("Failed to fulfill mandatory conditional requirement: " + requirement.getName(), Level.ERROR);
                     success = false;
                 } else if (!fulfilled) {
@@ -257,7 +257,7 @@ public class RequirementSolver {
             } catch (Exception e) {
                 log.error("Error fulfilling conditional requirement '{}': {}", requirement.getName(), e.getMessage(), e);
                 Microbot.log("Error fulfilling conditional requirement " + requirement.getName() + ": " + e.getMessage(), Level.ERROR);
-                if (requirement.getPriority() == Priority.MANDATORY) {
+                if (requirement.getPriority() == RequirementPriority.MANDATORY) {
                     success = false;
                 }
             }
@@ -268,7 +268,7 @@ public class RequirementSolver {
             try {
                 log.debug("Processing ordered requirement {}/{}: {}", ++currentIndex, totalReqs, requirement.getName());
                 boolean fulfilled = requirement.fulfillRequirement(scheduledFuture);
-                if (!fulfilled && requirement.getPriority() == Priority.MANDATORY) {
+                if (!fulfilled && requirement.getPriority() == RequirementPriority.MANDATORY) {
                     Microbot.log("Failed to fulfill mandatory ordered requirement: " + requirement.getName(), Level.ERROR);
                     success = false;
                 } else if (!fulfilled) {
@@ -277,7 +277,7 @@ public class RequirementSolver {
             } catch (Exception e) {
                 log.error("Error fulfilling ordered requirement '{}': {}", requirement.getName(), e.getMessage(), e);
                 Microbot.log("Error fulfilling ordered requirement " + requirement.getName() + ": " + e.getMessage(), Level.ERROR);
-                if (requirement.getPriority() == Priority.MANDATORY) {
+                if (requirement.getPriority() == RequirementPriority.MANDATORY) {
                     success = false;
                 }
             }

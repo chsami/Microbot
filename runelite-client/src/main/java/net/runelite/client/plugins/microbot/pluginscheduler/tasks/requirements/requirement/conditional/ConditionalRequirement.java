@@ -3,20 +3,21 @@ package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.logical.LogicalRequirement;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.BooleanSupplier;
 
 /**
  * A conditional requirement that executes requirements in sequence based on conditions.
- * This addresses the real-world OSRS preparation workflows where order matters:
+ * This addresses the preparation workflows where order matters:
  * 
  * Examples:
  * - "If we don't have lunar spellbook AND magic level >= 65, switch to lunar"
@@ -123,7 +124,7 @@ public class ConditionalRequirement extends Requirement {
      * @param scheduleContext When this requirement should be fulfilled
      * @param stopOnFirstFailure Whether to stop execution on first failure
      */
-    public ConditionalRequirement(Priority priority, int rating, String description, 
+    public ConditionalRequirement(RequirementPriority priority, int rating, String description, 
                                 ScheduleContext scheduleContext, boolean stopOnFirstFailure) {
         this(priority, rating, description, scheduleContext, stopOnFirstFailure, false);
     }
@@ -138,7 +139,7 @@ public class ConditionalRequirement extends Requirement {
      * @param stopOnFirstFailure Whether to stop execution on first failure
      * @param allowParallelExecution Whether steps can be executed in parallel (when conditions don't depend on each other)
      */
-    public ConditionalRequirement(Priority priority, int rating, String description, 
+    public ConditionalRequirement(RequirementPriority priority, int rating, String description, 
                                 ScheduleContext scheduleContext, boolean stopOnFirstFailure, 
                                 boolean allowParallelExecution) {
         super(RequirementType.CONDITIONAL, priority, rating, description, List.of(), scheduleContext);
@@ -218,7 +219,7 @@ public class ConditionalRequirement extends Requirement {
         
         // Execute steps in sequence
         for (int i = 0; i < steps.size(); i++) {
-            if( scheduledFuture != null && scheduledFuture.isCancelled() || scheduledFuture.isDone()) {
+            if( scheduledFuture != null && (scheduledFuture.isCancelled() || scheduledFuture.isDone())) {
                 log.warn("Conditional requirement execution cancelled or completed prematurely: {}", getName());
                 return false; // Stop if the scheduled future is cancelled or done
             }
@@ -294,6 +295,98 @@ public class ConditionalRequirement extends Requirement {
             return steps.get(currentStepIndex);
         }
         return null;
+    }
+    /**
+     * Gets all requirements that are currently active and need to be fulfilled. 
+     * 
+     * This method is crucial for the @InventorySetupPlanner integration. For example, we have a 
+     * conditional requirement with 2 steps, but only one of the steps is relevant at any given time.
+     * 
+     * Example use case: Items for alching - we need either fire runes in inventory OR any kind of fire staff 
+     * (normal, lava, battlestaff, mystic) equipped or in inventory.
+     * 
+     * Setup:
+     * - Step 1: ItemRequirement for fire runes, with condition: 
+     *   () -> (!Rs2Equipment.hasFireStaff() && !Rs2Inventory.hasFireStaff() && !Rs2Bank.hasFireStaff())
+     *   This step is active when we don't have any fire staff available
+     * 
+     * - Step 2: OrRequirement with multiple ItemRequirements for different fire staffs,
+     *   with condition: () -> Rs2Equipment.hasFireStaff() || Rs2Inventory.hasFireStaff() || Rs2Bank.hasFireStaff()
+     *   This step is active when we have a fire staff available
+     * 
+     * The RequirementRegistry caching system should:
+     * 1. Detect ConditionalRequirements that have only ItemRequirement steps (or LogicalRequirements composed of ItemRequirements)
+     * 2. Create separate cache entries for ConditionalRequirements to enable efficient active requirement lookup
+     * 3. Use containsOnlyItemRequirements() method from LogicalRequirement to validate cache compatibility
+     * 4. Save the allowed child type information to enable type-safe caching optimizations
+     * 
+     * TODO: Implement ConditionalRequirement handling in:
+     * - RequirementSelector (to process active requirements)
+     * - RequirementRegistry (separate cache for conditional requirements with type tracking)
+     * - InventorySetupPlanner (to use getActiveRequirements() for planning)
+     * 
+     * @return List of requirements that are currently active and need fulfillment
+     */
+    public List<Requirement> getActiveRequirements() {
+        List<Requirement> activeRequirements = new ArrayList<>();
+        for (ConditionalStep step : steps) {
+            if (step.needsExecution()) {
+                activeRequirements.add(step.getRequirement());
+            }
+        }
+        return activeRequirements;
+    }
+    
+    /**
+     * Checks if this conditional requirement contains only ItemRequirements (or LogicalRequirements that contain only ItemRequirements).
+     * This is useful for RequirementRegistry caching to identify conditional requirements that can be processed
+     * alongside other item-based requirements for inventory planning.
+     * 
+     * @return true if all steps in this conditional requirement contain only ItemRequirements
+     */
+    public boolean containsOnlyItemRequirements() {
+        for (ConditionalStep step : steps) {
+            Requirement stepRequirement = step.getRequirement();
+            
+            if (stepRequirement instanceof ItemRequirement) {
+                // ItemRequirement is allowed
+                continue;
+            } else if (stepRequirement instanceof LogicalRequirement) {
+                // Check if LogicalRequirement contains only ItemRequirements
+                LogicalRequirement logicalReq = (LogicalRequirement) stepRequirement;
+                if (!logicalReq.containsOnlyItemRequirements()) {
+                    return false;
+                }
+            } else {
+                // Any other requirement type means this is not an item-only conditional
+                return false;
+            }
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Gets all ItemRequirements from all steps in this conditional requirement, flattening any nested logical requirements.
+     * This is useful for RequirementRegistry to extract all potential item requirements for caching purposes.
+     * 
+     * @return List of all ItemRequirements across all steps
+     */
+    public List<ItemRequirement> getAllItemRequirements() {
+        List<ItemRequirement> allItemRequirements = new ArrayList<>();
+        
+        for (ConditionalStep step : steps) {
+            Requirement stepRequirement = step.getRequirement();
+            
+            if (stepRequirement instanceof ItemRequirement) {
+                allItemRequirements.add((ItemRequirement) stepRequirement);
+            } else if (stepRequirement instanceof LogicalRequirement) {
+                LogicalRequirement logicalReq = (LogicalRequirement) stepRequirement;
+                allItemRequirements.addAll(logicalReq.getAllItemRequirements());
+            }
+        }
+        
+        return allItemRequirements;
     }
     
     /**

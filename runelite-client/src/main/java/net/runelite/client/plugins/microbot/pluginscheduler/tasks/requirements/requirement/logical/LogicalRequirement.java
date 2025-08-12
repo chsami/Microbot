@@ -1,9 +1,10 @@
+    
 package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.logical;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
@@ -16,12 +17,16 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
 
 /**
  * Abstract base class for logical combinations of requirements.
  * Provides common functionality for AND and OR requirement combinations.
+ * 
+ * Logical requirements enforce type homogeneity - all child requirements must be of the same type.
+ * This prevents mixing different requirement types (e.g., SpellbookRequirement with ItemRequirement)
+ * which would make caching and optimization difficult. Complex mixed requirements should use
+ * ConditionalRequirement instead.
  * 
  * Similar to LogicalCondition but adapted for the requirement system.
  * Logical requirements can contain other requirements (including other logical requirements)
@@ -37,6 +42,14 @@ public abstract class LogicalRequirement extends Requirement {
     protected final List<Requirement> childRequirements = new ArrayList<>();
     
     /**
+     * The allowed requirement type for child requirements in this logical group.
+     * All child requirements must be of this type or be LogicalRequirements that also
+     * enforce the same child type. This enables efficient caching and type-safe operations.
+     */
+    @Getter
+    protected final Class<? extends Requirement> allowedChildType;
+    
+    /**
      * Protected constructor for logical requirements.
      * Child classes must call this constructor and provide their own requirement type.
      * 
@@ -45,25 +58,101 @@ public abstract class LogicalRequirement extends Requirement {
      * @param rating Effectiveness rating (1-10)
      * @param description Human-readable description
      * @param scheduleContext When this requirement should be fulfilled
+     * @param allowedChildType The class type that child requirements must be (or null to infer from first requirement)
      * @param requirements Child requirements to combine logically
      */
-    protected LogicalRequirement(RequirementType requirementType, Priority priority, int rating, 
+    protected LogicalRequirement(RequirementType requirementType, RequirementPriority priority, int rating, 
                                String description, ScheduleContext scheduleContext, 
+                               Class<? extends Requirement> allowedChildType,
                                Requirement... requirements) {
         super(requirementType, priority, rating, description, List.of(), scheduleContext);
-        this.childRequirements.addAll(Arrays.asList(requirements));
+        
+        // Determine allowed child type
+        if (allowedChildType != null) {
+            this.allowedChildType = allowedChildType;
+        } else if (requirements.length > 0) {
+            // Infer from first requirement
+            Requirement firstReq = requirements[0];
+            if (firstReq instanceof LogicalRequirement) {
+                this.allowedChildType = ((LogicalRequirement) firstReq).getAllowedChildType();
+            } else {
+                this.allowedChildType = firstReq.getClass();
+            }
+        } else {
+            // Default to Requirement if no children and no explicit type
+            this.allowedChildType = Requirement.class;
+        }
+        
+        // Validate and add requirements
+        for (Requirement requirement : requirements) {
+            validateAndAddRequirement(requirement);
+        }
     }
     
     /**
-     * Adds a child requirement to this logical requirement.
+     * Validates that a requirement is compatible with this logical requirement's type constraints.
+     * 
+     * @param requirement The requirement to validate
+     * @throws IllegalArgumentException if the requirement is not compatible
+     */
+    private void validateRequirement(Requirement requirement) {
+        if (requirement == null) {
+            throw new IllegalArgumentException("Child requirement cannot be null");
+        }
+        
+        // Check if it's a LogicalRequirement with compatible child type
+        if (requirement instanceof LogicalRequirement) {
+            LogicalRequirement logicalReq = (LogicalRequirement) requirement;
+            if (!allowedChildType.isAssignableFrom(logicalReq.getAllowedChildType()) && 
+                !logicalReq.getAllowedChildType().isAssignableFrom(allowedChildType)) {
+                throw new IllegalArgumentException(String.format(
+                    "Logical requirement child type %s is not compatible with required type %s", 
+                    logicalReq.getAllowedChildType().getSimpleName(), 
+                    allowedChildType.getSimpleName()));
+            }
+        } else {
+            // Check if it's assignable to our allowed type
+            if (!allowedChildType.isAssignableFrom(requirement.getClass())) {
+                throw new IllegalArgumentException(String.format(
+                    "Requirement type %s is not compatible with required type %s", 
+                    requirement.getClass().getSimpleName(), 
+                    allowedChildType.getSimpleName()));
+            }
+        }
+        
+        // Validate schedule context compatibility
+        if (this.getScheduleContext() != null && requirement.getScheduleContext() != null) {
+            if (this.getScheduleContext() != requirement.getScheduleContext() && 
+                this.getScheduleContext() != ScheduleContext.BOTH && 
+                requirement.getScheduleContext() != ScheduleContext.BOTH) {
+                throw new IllegalArgumentException(String.format(
+                    "Schedule context mismatch: logical requirement has %s but child has %s", 
+                    this.getScheduleContext(), requirement.getScheduleContext()));
+            }
+        }
+    }
+    
+    /**
+     * Validates and adds a requirement to this logical requirement.
+     * 
+     * @param requirement The requirement to validate and add
+     */
+    private void validateAndAddRequirement(Requirement requirement) {
+        validateRequirement(requirement);
+        if (!childRequirements.contains(requirement)) {
+            childRequirements.add(requirement);
+        }
+    }
+    
+    /**
+     * Adds a child requirement to this logical requirement with type validation.
      * 
      * @param requirement The requirement to add
      * @return This logical requirement for method chaining
+     * @throws IllegalArgumentException if the requirement type is not compatible
      */
     public LogicalRequirement addRequirement(Requirement requirement) {
-        if (requirement != null && !childRequirements.contains(requirement)) {
-            childRequirements.add(requirement);
-        }
+        validateAndAddRequirement(requirement);
         return this;
     }
     
@@ -299,12 +388,60 @@ public abstract class LogicalRequirement extends Requirement {
         return sb.toString();
     }
     
+    /**
+     * Checks if this logical requirement contains only ItemRequirements (or LogicalRequirements that contain only ItemRequirements).
+     * This is useful for RequirementRegistry caching to identify logical requirements that can be processed
+     * alongside ConditionalRequirements with ItemRequirement steps.
+     * 
+     * @return true if this logical requirement and all nested logical requirements contain only ItemRequirements
+     */
+    public boolean containsOnlyItemRequirements() {
+        // Check if our allowed child type is ItemRequirement
+        if (!ItemRequirement.class.isAssignableFrom(allowedChildType) && allowedChildType != ItemRequirement.class) {
+            return false;
+        }
+        
+        // Recursively check all child requirements
+        for (Requirement child : childRequirements) {
+            if (child instanceof LogicalRequirement) {
+                if (!((LogicalRequirement) child).containsOnlyItemRequirements()) {
+                    return false;
+                }
+            } else if (!(child instanceof ItemRequirement)) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Gets all ItemRequirements from this logical structure, flattening any nested logical requirements.
+     * This is useful for RequirementRegistry to extract all item requirements for caching purposes.
+     * 
+     * @return List of all ItemRequirements in this logical structure
+     */
+    public List<ItemRequirement> getAllItemRequirements() {
+        List<ItemRequirement> itemRequirements = new ArrayList<>();
+        
+        for (Requirement child : childRequirements) {
+            if (child instanceof LogicalRequirement) {
+                itemRequirements.addAll(((LogicalRequirement) child).getAllItemRequirements());
+            } else if (child instanceof ItemRequirement) {
+                itemRequirements.add((ItemRequirement) child);
+            }
+        }
+        
+        return itemRequirements;
+    }
+    
     @Override
     public String toString() {
-        return String.format("%s[%s children, %s]", 
+        return String.format("%s[%s children, %s, type: %s]", 
                 getClass().getSimpleName(), 
                 childRequirements.size(),
-                isLogicallyFulfilled() ? "FULFILLED" : "NOT FULFILLED");
+                isLogicallyFulfilled() ? "FULFILLED" : "NOT FULFILLED",
+                allowedChildType.getSimpleName());
     }
 
 
@@ -626,6 +763,66 @@ public abstract class LogicalRequirement extends Requirement {
         }
         
         return loots;
+    }
+
+
+
+    /**
+     * Breaks down all ItemRequirements in a logical requirement tree by the slot(s) they occupy.
+     * Equipment items are grouped by EquipmentInventorySlot name.
+     * Inventory items are grouped by inventory slot ("inventory:X") or "inventory:any" for -1.
+     * EITHER items are grouped in both equipment and inventory as appropriate.
+     *
+     * @param logicalReq The logical requirement to analyze
+     * @return Map of slot key to list of ItemRequirements occupying that slot
+     */
+    public static java.util.Map<String, java.util.List<ItemRequirement>> breakdownItemRequirementsBySlot(LogicalRequirement logicalReq) {
+        java.util.List<ItemRequirement> allItems = extractItemRequirementsFromLogical(logicalReq);
+        java.util.Map<String, java.util.List<ItemRequirement>> slotMap = new java.util.HashMap<>();
+        for (ItemRequirement item : allItems) {
+            boolean slotted = false;
+            if (item.getEquipmentSlot() != null) {
+                String key = "equipment:" + item.getEquipmentSlot().name();
+                slotMap.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(item);
+                slotted = true;
+            }
+            if (item.getInventorySlot() != null) {
+                if (item.getInventorySlot() >= 0) {
+                    String key = "inventory:" + item.getInventorySlot();
+                    slotMap.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(item);
+                    slotted = true;
+                } else if (item.getInventorySlot() == -1) {
+                    String key = "inventory:any";
+                    slotMap.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(item);
+                    slotted = true;
+                }
+            }
+            // If neither slot is set, group under "unslotted"
+            if (!slotted) {
+                slotMap.computeIfAbsent("unslotted", k -> new java.util.ArrayList<>()).add(item);
+            }
+        }
+        return slotMap;
+    }
+
+    /**
+     * Pretty-prints the slot breakdown for all ItemRequirements in a logical requirement.
+     *
+     * @param logicalReq The logical requirement to analyze
+     * @return A formatted string showing the breakdown per slot
+     */
+    public static String itemSlotBreakdown(LogicalRequirement logicalReq) {
+        java.util.Map<String, java.util.List<ItemRequirement>> slotMap = breakdownItemRequirementsBySlot(logicalReq);
+        StringBuilder sb = new StringBuilder();
+        sb.append("Slot Breakdown for LogicalRequirement: ").append(logicalReq.getName()).append("\n");
+        for (String slot : slotMap.keySet()) {
+            sb.append("  [").append(slot).append("] ").append(slotMap.get(slot).size()).append(" item(s):\n");
+            for (ItemRequirement item : slotMap.get(slot)) {
+                sb.append("    - ").append(item.getName())
+                  .append(" (id:").append(item.getId()).append(", amt:").append(item.getAmount()).append(")\n");
+            }
+        }
+        return sb.toString();
     }
     //     private String formatLogicalRequirement(LogicalRequirement logicalReq) {
 //         if (logicalReq instanceof OrRequirement) {

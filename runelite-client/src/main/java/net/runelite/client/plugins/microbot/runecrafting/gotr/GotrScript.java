@@ -763,7 +763,7 @@ public class GotrScript extends Script {
         }        
         Rs2GameObject.interact(ObjectID.BARRIER_43700, "quick-pass");
         Rs2Player.waitForWalking();
-        sleepUntil( ()-> {return !(!isOutsideBarrier() && isInMainRegion());});
+        sleepUntil( ()-> {return !(!isOutsideBarrier() && isInMainRegion());}, 200);
         GotrScript.isInMiniGame  = !isOutsideBarrier() && isInMainRegion();
         return !GotrScript.isInMiniGame;// Successfully left the minigame
     }

@@ -3,7 +3,7 @@ package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
@@ -117,7 +117,7 @@ public class OrderedRequirement extends Requirement {
      * @param allowSkipOptional Whether optional steps can be skipped on failure
      * @param resumeFromLastFailed Whether to resume from the last failed step or restart
      */
-    public OrderedRequirement(Priority priority, int rating, String description, 
+    public OrderedRequirement(RequirementPriority priority, int rating, String description, 
                             ScheduleContext scheduleContext, boolean allowSkipOptional, 
                             boolean resumeFromLastFailed) {
         super(RequirementType.CONDITIONAL, priority, rating, description, List.of(), scheduleContext);
@@ -133,7 +133,7 @@ public class OrderedRequirement extends Requirement {
      * @param description Human-readable description
      * @param scheduleContext When this requirement should be fulfilled
      */
-    public OrderedRequirement(Priority priority, int rating, String description, ScheduleContext scheduleContext) {
+    public OrderedRequirement(RequirementPriority priority, int rating, String description, ScheduleContext scheduleContext) {
         this(priority, rating, description, scheduleContext, true, true);
     }
     

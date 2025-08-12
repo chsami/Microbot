@@ -608,14 +608,23 @@ public interface SchedulableExampleConfig extends Config {
     
   
        
-    
+    @ConfigItem(
+        keyName = "enableConditionalItemRequirement",
+        name = "Enable Alch Conditional Requirement based on Fire Staff/Rune",
+        description = "Enable the fire staff/fire rune conditional requirement for alching in pre-schedule tasks.",
+        position = 5,
+        section = prePostScheduleRequirementsSection
+    )
+    default boolean enableConditionalItemRequirement() {
+        return false;
+    }
   
     
     @ConfigItem(
         keyName = "enableEquipmentRequirement",
         name = "Enable Equipment Requirement",
         description = "Enable equipment requirement",
-        position = 5,
+        position = 6,
         section = prePostScheduleRequirementsSection
     )
     default boolean enableEquipmentRequirement() {
@@ -626,7 +635,7 @@ public interface SchedulableExampleConfig extends Config {
         keyName = "enableInventoryRequirement",
         name = "Enable Inventory Requirement",
         description = "Enable inventory requirement",
-        position = 6,
+        position = 7,
         section = prePostScheduleRequirementsSection
     )
     default boolean enableInventoryRequirement() {
@@ -636,7 +645,7 @@ public interface SchedulableExampleConfig extends Config {
         keyName = "enableLootRequirement",
         name = "Enable Loot Requirement",
         description = "Enable loot requirement for coins near Lumbridge",
-        position = 7,
+        position = 8,
         section = prePostScheduleRequirementsSection
     )
     default boolean enableLootRequirement() {
@@ -646,7 +655,7 @@ public interface SchedulableExampleConfig extends Config {
         keyName = "enableShopRequirement",
         name = "Enable Shop Requirement",
         description = "Enable shop maple longbow, buy from grand exchange as pre-schedule and sell at store on post-schedule",
-        position = 8,
+        position = 9,
         section = prePostScheduleRequirementsSection
     )
     default boolean enableShopRequirement() {
@@ -657,7 +666,7 @@ public interface SchedulableExampleConfig extends Config {
         keyName = "externalRequirements",
         name = "Enable External Requirements",
         description = "Enable external requirements test for pre and post schedule tasks",
-        position = 8,
+        position = 10,
         section = prePostScheduleRequirementsSection
     )
     default boolean externalRequirements() {
@@ -788,7 +797,7 @@ public interface SchedulableExampleConfig extends Config {
     @ConfigItem(
         keyName = "finishPluginNotSuccessfulHotkey",
         name = "Finish Plugin Not-Successful Hotkey",
-        description = "Press this hotkey to manually trigger the PluginScheduleEntryFinishedEvent for testing not successful completion",
+        description = "Press this hotkey to manually trigger the PluginScheduleEntryMainTaskFinishedEvent for testing not successful completion",
         position = 1,
         section = debugSection
     )
@@ -799,7 +808,7 @@ public interface SchedulableExampleConfig extends Config {
     @ConfigItem(
         keyName = "finishPluginSuccessfulHotkey",
         name = "Finish Plugin Hotkey",
-        description = "Press this hotkey to manually trigger the PluginScheduleEntryFinishedEvent for testing successful completion",
+        description = "Press this hotkey to manually trigger the PluginScheduleEntryMainTaskFinishedEvent for testing successful completion",
         position = 2,
         section = debugSection
     )
@@ -873,4 +882,13 @@ public interface SchedulableExampleConfig extends Config {
     default Keybind cancelTasksHotkey() {
         return Keybind.NOT_SET;
     }
+    
+    @ConfigSection(
+        name = "Pre/Post Scheduler Example",
+        description = "Example toggles for Pre/Post Scheduler",
+        position = 100
+    )
+    String prePostSchedulerSection = "prePostSchedulerSection";
+
+   
 }

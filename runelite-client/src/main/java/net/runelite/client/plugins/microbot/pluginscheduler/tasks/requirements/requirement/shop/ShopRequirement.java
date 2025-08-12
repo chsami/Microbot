@@ -1,8 +1,26 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop;
+import static net.runelite.client.plugins.microbot.util.Global.sleep;
+import static net.runelite.client.plugins.microbot.util.Global.sleepGaussian;
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import org.slf4j.event.Level;
+
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import lombok.EqualsAndHashCode;
 import net.runelite.api.Constants;
 import net.runelite.api.GameState;
 import net.runelite.api.GrandExchangeOffer;
@@ -12,41 +30,31 @@ import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirementUtil;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.models.CancelledOfferState;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.models.MultiItemConfig;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.models.ShopOperation;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.models.WorldHoppingConfig;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
+import net.runelite.client.plugins.microbot.util.grandexchange.GrandExchangeSlots;
+import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
+import net.runelite.client.plugins.microbot.util.grandexchange.models.GrandExchangeOfferDetails;
+import net.runelite.client.plugins.microbot.util.grandexchange.models.TimeSeriesAnalysis;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.security.Login;
-import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
-import net.runelite.client.plugins.microbot.util.grandexchange.models.TimeSeriesAnalysis;
-import net.runelite.client.plugins.microbot.util.grandexchange.models.GrandExchangeOfferDetails;
-import net.runelite.client.plugins.microbot.util.grandexchange.GrandExchangeSlots;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.shop.Rs2Shop;
 import net.runelite.client.plugins.microbot.util.shop.models.Rs2ShopItem;
 import net.runelite.client.plugins.microbot.util.shop.models.Rs2ShopType;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
-
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
-import org.slf4j.event.Level;
-
-import static net.runelite.client.plugins.microbot.util.Global.sleep;
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
 /**
  * Represents a requirement to buy or sell multiple items from/to the same shop.
@@ -160,7 +168,8 @@ public class ShopRequirement extends Requirement {
             sb.append("  Amount: ").append(itemReq.getAmount()).append(" (completed: ").append(itemReq.getCompletedAmount()).append(")\n");
             sb.append("  Base Stock: ").append(itemReq.getBaseStock()).append(" items\n");
             sb.append("  Stock Tolerance: ").append(itemReq.getStockTolerance()).append(" items\n");
-            sb.append("  Max Per Visit: ").append(itemReq.getMaxQuantityPerVisit()).append(" items\n");
+            sb.append("  max sell stock: ").append(itemReq.getMaximumStockForSelling()).append(" items\n");
+            sb.append("  min buy stock: ").append(itemReq.getMinimumStockForBuying()).append(" items\n");
             sb.append("  Status: ").append(itemReq.isCompleted() ? "COMPLETED" : "PENDING").append("\n");
         }
         
@@ -189,7 +198,7 @@ public class ShopRequirement extends Requirement {
             Map<Rs2ShopItem, ShopItemRequirement> shopItems,
             ShopOperation operation,
             RequirementType requirementType,
-            Priority priority,
+            RequirementPriority priority,
             int rating,
             String description,
             ScheduleContext scheduleContext
@@ -217,7 +226,7 @@ public class ShopRequirement extends Requirement {
             int amount,
             ShopOperation operation,
             RequirementType requirementType,
-            Priority priority,
+            RequirementPriority priority,
             int rating,
             String description,
             ScheduleContext scheduleContext
@@ -947,8 +956,7 @@ public class ShopRequirement extends Requirement {
                         }
                     }
                     sleepUntil(() -> Rs2GrandExchange.hasSoldOffer(), (int)maxWaitTime); // Refresh state
-                    // Brief pause before next check to avoid CPU thrashing
-                    sleep(1000);
+                    
                 }
                 
                 // Handle any remaining pendingItemIds as unsuccessful
@@ -1043,14 +1051,11 @@ public class ShopRequirement extends Requirement {
         try {
             Microbot.status = "Buying items from " + primaryShopItem.getShopNpcName();
             
-            int maxAttempts = enableWorldHopping ? 10 : 3; // More attempts if world hopping is enabled
-            int attempts = 0;
-            int succeededHopsWithoutBuying = 0;
-            boolean allItemsCompleted = false;
+            int maxAttempts = enableWorldHopping ? worldHoppingConfig.getMaxWorldHops (): 0; // More attempts if world hopping is enabled            
+            int successiveWorldHopAttempts = 0;            
             log.info("walking to shop location: x: {}, y: {}", primaryShopItem.getLocation().getX(), primaryShopItem.getLocation().getY());
-        
-            while (!allItemsCompleted && attempts < maxAttempts) {
-                attempts++;
+
+            while (!isAllItemsCompleted() && successiveWorldHopAttempts < maxAttempts) {                
                 if (scheduledFuture != null && scheduledFuture.isCancelled()) {
                     Microbot.status = "Task cancelled, stopping shop purchases";
                     log.info("Shop purchase task cancelled, exiting");
@@ -1058,7 +1063,8 @@ public class ShopRequirement extends Requirement {
                 }
              
                 // Walk to the shop
-                if (!Rs2Walker.isNear(primaryShopItem.getLocation() ) && !Rs2Walker.walkTo(primaryShopItem.getLocation(),4)) {
+                
+                if (!Rs2Walker.isInArea(primaryShopItem.getLocationArea().toWorldPointList().toArray(new WorldPoint[0])) && !Rs2Walker.walkTo(primaryShopItem.getLocation(),4)) {
                     Microbot.status = "Failed to walk to shop";
                     log.error("Failed to walk to shop: " + primaryShopItem.getLocation());                
                     return false; // Exit if walking to shop failed
@@ -1070,7 +1076,6 @@ public class ShopRequirement extends Requirement {
                     if (!Rs2Shop.openShop(primaryShopItem.getShopNpcName())) {
                         Microbot.status = "Failed to open shop";
                         log.error("\n\tFailed to open shop: \"{}\"", primaryShopItem.getShopNpcName());
-                        sleep(1000, 2000);// Wait before retrying
                         continue;
                     }
                 }
@@ -1087,8 +1092,7 @@ public class ShopRequirement extends Requirement {
                         .filter(itemReq -> !itemReq.isCompleted())
                         .collect(Collectors.toList());
                 
-                if (pendingItems.isEmpty()) {
-                    allItemsCompleted = true;
+                if (pendingItems.isEmpty()) {                    
                     Rs2Shop.closeShop();
                     break;
                 }
@@ -1108,18 +1112,24 @@ public class ShopRequirement extends Requirement {
                     int initialItemCount = Rs2Inventory.itemQuantity(itemReq.getShopItem().getItemId());
                     
                     if (itemReq.isCompleted()) {
+                        log.info("Skipping completed item: " + itemReq.getItemName());
                         continue; // Skip completed items
                     }
                     
+                    
                     // Get current stock level from the shop interface (real-time check)
                     currentStock = getShopStock(itemReq.getItemName());
+                    
                     if (currentStock == -1) {
                         Microbot.status = itemReq.getItemName() + " not found in shop";
                         log.error("Shop item not found: " + itemReq.getItemName());
                         Rs2Shop.closeShop();
                         return false;
                     }
-                    
+                    if (itemReq.allowedToBuy(currentStock) ==0){
+                        log.error("We can't fulfill  buy operation,when minimum stock requirement is zero, we cant buy items when the minium stock is zero for: " + itemReq.getItemName());
+                        return false; // Skip items with zero minimum stock requirement
+                    }
                     // Check if stock is sufficient using new unified logic
                     if (!itemReq.canProcessInShop(currentStock, ShopOperation.BUY)) {
                         Microbot.status = "Insufficient stock for " + itemReq.getItemName() + 
@@ -1131,8 +1141,9 @@ public class ShopRequirement extends Requirement {
                         continue; // Check other items
                     }
                     
-                    // **STOCK MANAGEMENT FIX**: Calculate quantity using unified logic
+                    // **STOCK MANAGEMENT**: Calculate quantity using unified logic
                     int quantityThisVisit = itemReq.getQuantityForCurrentVisit(currentStock, ShopOperation.BUY);
+                    log.info("  Calculated quantity to buy for \n\t{}: {}", itemReq.getItemName(), quantityThisVisit);
                     quantityThisVisit = Math.min(quantityThisVisit, currentStock);
                     
                     // Check if item is stackable to determine inventory limit
@@ -1149,9 +1160,12 @@ public class ShopRequirement extends Requirement {
                         if (!isStackable && Rs2Inventory.count() >= 28) {
                             Microbot.status = "Inventory full - banking non-stackable items";
                             Rs2Shop.closeShop();                            
-                            if (enableBanking && bankItems()) {
+                            if (enableBanking) {
+                                log.info( "Banking items to make space for more purchases");
                                 break; // Restart the shop visit after banking
                             }
+                            log.error("would not be able to buy " + itemReq.getItemName() + 
+                                      " due to insufficient inventory space, banking not enabled");
                             return false;
                         }                        
                         continue; // Can't buy this item right now, check next
@@ -1176,10 +1190,13 @@ public class ShopRequirement extends Requirement {
                             itemReq.addCompletedAmount(itemsPurchased);
                             purchasedAnything = true;
                             
-                            log.debug("Purchased {} items of {}, new completion: {}/{}",
+                            log.info("Purchased {} items of {}, new completion: {}/{}",
                                     itemsPurchased, itemReq.getItemName(), itemReq.getCompletedAmount(), itemReq.getAmount());
                             
                             Microbot.status = "Successfully purchased " + itemsPurchased + "x " + itemReq.getItemName();
+                        }else {
+                            Microbot.status = "Failed to purchase " + itemReq.getItemName();
+                            log.error("Purchase failed for " + itemReq.getItemName());
                         }
                         
                     } catch (Exception e) {
@@ -1189,30 +1206,29 @@ public class ShopRequirement extends Requirement {
                     
                     // Brief pause between item purchases
                     if (purchaseSuccessful) {
-                        sleep(900, 300);
+                        sleepGaussian(Constants.GAME_TICK_LENGTH, 300);
                     }
                 }
                 
                 Rs2Shop.closeShop();
+                if (purchasedAnything) {
+                    successiveWorldHopAttempts  = successiveWorldHopAttempts > 0 ? successiveWorldHopAttempts-1 : 0; // Reset counter if we successfully purchased items
+                } else {
+                    successiveWorldHopAttempts++;                    
+                }
                 
                 // Handle world hopping if needed
-                if (needWorldHop && !purchasedAnything && enableWorldHopping && primaryShopItem.getShopType().supportsWorldHopping()) {
+                if (needWorldHop &&  enableWorldHopping && primaryShopItem.getShopType().supportsWorldHopping()) {
                     log.info("World hopping due to insufficient stock in shop");
-                    if (hopWorld(scheduledFuture)) {
-                        log.info("World hop successful after insufficient stock in shop");                        
-                        if (purchasedAnything) {
-                            succeededHopsWithoutBuying = 0; // Reset counter if we successfully purchased items
-                        } else {
-                            succeededHopsWithoutBuying++;
-                            if (succeededHopsWithoutBuying >= 3) {
-                                Microbot.status = "Failed to purchase items after multiple world hops - stopping";
-                                log.warn("Failed to purchase items after multiple world hops, stopping");
-                                return false; // Exit if we can't buy after several hops
-                            }
-                        }
+                    // Get next world using configured strategy
+                    int world = useNextWorld || worldHoppingConfig.isUseSequentialWorlds() ? 
+                        Login.getNextWorld(Rs2Player.isMember()) : 
+                        Login.getRandomWorld(Rs2Player.isMember());
+                    if (LocationRequirementUtil.hopWorld(scheduledFuture, world, successiveWorldHopAttempts, worldHoppingConfig)) {
+                        log.info("World hop successful after insufficient stock in shop");                                               
                         continue;
-                    } else {
-                        Microbot.status = "Failed to hop worlds - insufficient stock";
+                    } else {                        
+                        log.error("Failed to hop to a new world after insufficient stock in shop");
                         return false;
                     }
                 }
@@ -1221,29 +1237,33 @@ public class ShopRequirement extends Requirement {
                 if (needBanking && enableBanking && Rs2Inventory.count() > 20) {
                     if (!bankItems()) {
                         Microbot.status = "Failed to bank items - continuing without banking";
+                        log.error("Failed to bank items, we can not make space for more items");
+                        return false; // Exit if banking failed
                     }
                     continue; // Restart shop visit after banking
                 }
                 if (!needBanking && !needWorldHop  && !purchasedAnything) {
                     Microbot.status = "No items purchased this visit - checking next item";
-                    log.info("No items purchased this visit, checking next item");
+                    log.info("No items purchased this visit, we cant hop worlds or bank items, checking next item");
                     break; // No items purchased, check next item
-                }
-                // Update completion status for all items
-                allItemsCompleted = isAllItemsCompleted();
-                
+                }                                
                 // Brief pause between shop visits
-                sleep(1000, 2000);
+                sleepGaussian(Constants.GAME_TICK_LENGTH*3, Constants.GAME_TICK_LENGTH);
             }
             
             // Final status update
-            if (allItemsCompleted) {
-                Microbot.status = "Successfully completed purchase of all items from regular shop";
-            } else {
-                Microbot.status = "Purchase incomplete after " + attempts + " attempts";
+            if (isAllItemsCompleted()) {                
+                log.info("Successfully completed purchase of all items from regular shop");
+            } else {                
+                log.warn("Purchase incomplete after {} attempts, remaining items: {}", 
+                        successiveWorldHopAttempts, 
+                        shopItemRequirements.values().stream()
+                            .filter(itemReq -> !itemReq.isCompleted())
+                            .map(ShopItemRequirement::getItemName)
+                            .collect(Collectors.joining(", ")));
             }
             
-            return allItemsCompleted;
+            return isAllItemsCompleted();
             
         } catch (Exception e) {
             Microbot.logStackTrace("ShopRequirement.buyFromRegularShop", e);
@@ -1261,32 +1281,35 @@ public class ShopRequirement extends Requirement {
         try {
             Microbot.status = "Selling items to " + primaryShopItem.getShopNpcName();
             
-            int maxAttempts = enableWorldHopping ? 10 : 3; // More attempts if world hopping is enabled
-            int attempts = 0;
-            boolean allItemsCompleted = false;
+            int maxAttempts = enableWorldHopping ? worldHoppingConfig.getMaxWorldHops() : 0; // More attempts if world hopping is enabled
+            int successiveWorldHopAttempts = 0; 
             
-            while (!allItemsCompleted && attempts < maxAttempts) {
-                attempts++;
+            
+            while (!isAllItemsCompleted() && successiveWorldHopAttempts < maxAttempts) {
+                if (scheduledFuture != null && scheduledFuture.isCancelled()) {
+                    Microbot.status = "Task cancelled, stopping shop sales";
+                    log.info("Shop sale task cancelled, exiting");
+                    return false; // Exit if task was cancelled
+                }
                 
                 // Walk to the shop
-                if (!Rs2Walker.isInArea(primaryShopItem.getLocationArea().toWorldPointList().toArray(new WorldPoint[0])) && !Rs2Walker.walkTo(primaryShopItem.getLocation())) {
-                    Microbot.status = "Failed to walk to shop for selling";
-                    sleep(1000, 2000);
-                    continue;
+                if (!Rs2Walker.isInArea(primaryShopItem.getLocationArea().toWorldPointList().toArray(new WorldPoint[0])) 
+                        && !Rs2Walker.walkTo(primaryShopItem.getLocation())) {
+                    log.error("\n\tFailed to walk to shop: " + primaryShopItem.getLocation());
+                    return false; // Exit if walking to shop failed
                 }
                 
                 // Open shop interface
-                if (!Rs2Shop.openShop(primaryShopItem.getShopNpcName())) {
-                    Microbot.status = "Failed to open shop for selling";
-                    sleep(1000, 2000);
-                    continue;
+                if (!Rs2Shop.openShop(primaryShopItem.getShopNpcName())) {                     
+                    log.error("\n\tFailed to open shop for selling: " + primaryShopItem.getShopNpcName());
+                    return false; // Exit if shop interface failed to open
                 }
                 
                 // Wait for shop data to update - check if shop is properly loaded
-                if (!sleepUntil(() -> Rs2Shop.isOpen(), 3000)) {
-                    Microbot.status = "Shop interface failed to stabilize for selling";
+                if (!sleepUntil(() -> Rs2Shop.isOpen(), 3000)) {                    
+                    log.error("\n\tShop interface failed to stabilize for selling: " + primaryShopItem.getShopNpcName());
                     Rs2Shop.closeShop();
-                    continue;
+                    return false; // Exit if shop interface failed to open
                 }
                 
                 // Process each item that still needs to be sold
@@ -1298,8 +1321,7 @@ public class ShopRequirement extends Requirement {
                         })
                         .collect(Collectors.toList());
                 
-                if (pendingItems.isEmpty()) {
-                    allItemsCompleted = true;
+                if (pendingItems.isEmpty()) {                    
                     Rs2Shop.closeShop();
                     break;
                 }
@@ -1308,6 +1330,9 @@ public class ShopRequirement extends Requirement {
                 boolean soldAnything = false;
                 
                 for (ShopItemRequirement itemReq : pendingItems) {
+                    if(itemReq.isCompleted()){ 
+                        continue; // Skip completed items
+                    }
                     // Check if we still have items to sell
                     int currentInventoryCount = Rs2Inventory.itemQuantity(itemReq.getShopItem().getItemId());
                     if (currentInventoryCount == 0) {
@@ -1317,20 +1342,20 @@ public class ShopRequirement extends Requirement {
                     // Get current shop stock and check if we can sell safely using unified API
                     int currentStock = getShopStock(itemReq.getItemName());
                     if (currentStock == -1) {
-                        Microbot.status = itemReq.getItemName() + " not found in shop for selling";
+                        log.error("\n\tShop item not found: " + itemReq.getItemName());
                         Rs2Shop.closeShop();
                         return false;
                     }
                     
-                    // **STOCK MANAGEMENT FIX**: Use unified stock validation
+                    // **STOCK MANAGEMENT**: Use unified stock validation
                     if (!itemReq.canProcessInShop(currentStock, operation)) {
                         Microbot.status = "Shop stock too high for " + itemReq.getItemName() + 
                                          " (current: " + currentStock + ") - cannot sell";
                         needWorldHop = true;
-                        continue; // Check other items
+                        continue; // Check other items, which may have lower stock, and we can sell
                     }
                     
-                    // **STOCK MANAGEMENT FIX**: Use unified quantity calculation
+                    // **STOCK MANAGEMENT**: Use unified quantity calculation
                     int quantityThisVisit = itemReq.getQuantityForCurrentVisit(currentStock, ShopOperation.SELL);
                     quantityThisVisit = Math.min(quantityThisVisit, currentInventoryCount);
                     
@@ -1351,6 +1376,8 @@ public class ShopRequirement extends Requirement {
                             
                             soldAnything = true;
                             Microbot.status = "Successfully sold " + quantityThisVisit + "x " + itemReq.getItemName();
+                            int slotItems = currentInventoryCount - Rs2Inventory.itemQuantity(itemReq.getShopItem().getItemId());
+                            itemReq.addCompletedAmount(slotItems);
                         }
                         
                     } catch (Exception e) {
@@ -1360,112 +1387,51 @@ public class ShopRequirement extends Requirement {
                     
                     // Brief pause between item sales
                     if (sellSuccessful) {
-                        sleep(900, 300);
+                        sleepGaussian(900, 300);
                     }
                 }
                 
                 Rs2Shop.closeShop();
-                
+                if (soldAnything){
+                    successiveWorldHopAttempts = successiveWorldHopAttempts >0 ? 0 : successiveWorldHopAttempts-1; // Reset if we sold items
+                }else{
+                    successiveWorldHopAttempts++; // Increment if no items sold
+                }
                 // Handle world hopping if needed
-                if (needWorldHop && !soldAnything && enableWorldHopping && primaryShopItem.getShopType().supportsWorldHopping()) {
-                    if (hopWorld(scheduledFuture)) {
-                        attempts--; // Don't count world hop as failed attempt
+                if (needWorldHop && enableWorldHopping && primaryShopItem.getShopType().supportsWorldHopping()) {
+                    // Get next world using configured strategy
+                    int world = useNextWorld || worldHoppingConfig.isUseSequentialWorlds() ? 
+                        Login.getNextWorld(Rs2Player.isMember()) : 
+                        Login.getRandomWorld(Rs2Player.isMember());
+                    if (LocationRequirementUtil.hopWorld(scheduledFuture, world, successiveWorldHopAttempts, worldHoppingConfig)) {
+                        
                         continue;
                     } else {
                         Microbot.status = "Failed to hop worlds - shop stock too high";
                         return false;
                     }
-                }
-                
-                // Update completion status for all items
-                allItemsCompleted = shopItemRequirements.values().stream()
-                        .allMatch(itemReq -> Rs2Inventory.itemQuantity(itemReq.getShopItem().getItemId()) == 0);
-                
+                }                                                
                 // Brief pause between shop visits
                 sleep(1000, 2000);
             }
             
             // Final status update
-            if (allItemsCompleted) {
-                Microbot.status = "Successfully completed sale of all items to regular shop";
-            } else {
-                Microbot.status = "Sale incomplete after " + attempts + " attempts";
+            if (isAllItemsCompleted()) {
+                log.info("Successfully completed sale of all items to regular shop");
+            } else {                
+                log.warn("Sale incomplete after {} attempts, remaining items: {}", 
+                        successiveWorldHopAttempts, 
+                        shopItemRequirements.values().stream()
+                            .filter(itemReq -> !itemReq.isCompleted())
+                            .map(ShopItemRequirement::getItemName)
+                            .collect(Collectors.joining(", ")));
+                
             }
             
-            return allItemsCompleted;
+            return isAllItemsCompleted();
             
         } catch (Exception e) {
             Microbot.logStackTrace("ShopRequirement.sellToRegularShop", e);
-            return false;
-        }
-    }
-    
-    /**
-     * Enhanced world hopping using WorldHoppingConfig patterns with exponential backoff.
-     * Integrates with the sophisticated world hopping system for better reliability.
-     * 
-     * @return true if world hop was successful, false otherwise
-     */
-    private boolean hopWorld( CompletableFuture<?> scheduledFuture) {
-        try {
-            Microbot.status = "Stock level inadequate - hopping worlds with smart retry logic";
-            Rs2Shop.closeShop();
-            
-            // Wait to avoid "finish what you're doing" message - ensure player is ready
-            sleep(3200, 800); // Standard pre-hop delay
-            
-            int attempts = 0;
-            int maxAttempts = worldHoppingConfig.getMaxWorldHops();
-            // Get next world using configured strategy
-            int world = useNextWorld || worldHoppingConfig.isUseSequentialWorlds() ? 
-            Login.getNextWorld(Rs2Player.isMember()) : 
-            Login.getRandomWorld(Rs2Player.isMember());
-            while (attempts < maxAttempts) {
-                attempts++;
-                if (scheduledFuture != null && scheduledFuture.isCancelled()) {
-                    Microbot.status = "Task cancelled, stopping world hopping";
-                    log.info("World hop task cancelled, exiting");
-                    return false; // Exit if task was cancelled
-                }
-              
-                
-                Microbot.status = "Attempting world hop " + attempts + "/" + maxAttempts + " to world " + world;
-                log.info("Attempting world hop {} to world {}", attempts, world);
-                boolean hopped = Microbot.hopToWorld(world);
-                boolean hopCompleted = sleepUntil(() -> Microbot.getClient().getGameState() == GameState.HOPPING, 5000);
-                if (!hopCompleted) {
-                    Microbot.status = "Failed to hop to world " + world + " (attempt " + attempts + ")";
-                    log.warn("World hop attempt {} to world {} failed", attempts, world);
-                    // Use exponential backoff delay from WorldHoppingConfig
-                    long retryDelay = worldHoppingConfig.getHopDelay(attempts);
-                    Microbot.status = "Retrying in " + retryDelay + "ms with exponential backoff";
-                    sleep((int) retryDelay, (int) (retryDelay * 0.1)); // 10% variance
-                    continue;
-                }                
-                // Wait for hop to complete with proper state checking                                
-                hopCompleted = sleepUntil(() -> Microbot.getClient().getGameState() == GameState.LOGGED_IN, 15000);                                
-                if ( Rs2Player.getWorld() != world){                    
-                    Microbot.status = "World hop to " + world + " failed (current world: " + Rs2Player.getWorld() + ")";
-                    log.warn("World hop to {} failed, current world is {}", world, Rs2Player.getWorld());
-                    long retryDelay = worldHoppingConfig.getHopDelay(attempts);
-                    sleep((int) retryDelay, (int) (retryDelay * 0.1));
-                    continue;
-                }
-               
-                
-                Microbot.status = "Successfully hopped to world " + world + " (attempt " + attempts + ")";
-                log.info("Successfully hopped to world {} after {} attempts", world, attempts);
-                // Additional wait for world to stabilize (base delay)
-                sleep(worldHoppingConfig.getBaseHopDelay(), worldHoppingConfig.getBaseHopDelay() / 3);
-                
-                return true;
-            }
-            
-            Microbot.status = "Failed to hop worlds after " + maxAttempts + " attempts";
-            return false;
-            
-        } catch (Exception e) {
-            Microbot.logStackTrace("ShopRequirement.hopWorld", e);
             return false;
         }
     }
@@ -1577,38 +1543,7 @@ public class ShopRequirement extends Requirement {
      * Estimates the number of world hops needed based on stock levels and requirements for multiple items.
      * 
      * @return Estimated world hops needed, or -1 if cannot estimate
-     */
-    @SuppressWarnings("unused")
-    private int estimateWorldHopsNeeded() {
-        try {
-            int maxWorldHopsNeeded = 0;
-            
-            for (ShopItemRequirement itemReq : shopItemRequirements.values()) {
-                if (itemReq.isCompleted()) {
-                    continue; // Skip completed items
-                }
-                
-                if (itemReq.getShopItem().getBaseStock() <= 0) {
-                    return -1; // Cannot estimate for items with no base stock
-                }
-                
-                int remainingToBuy = itemReq.getRemainingAmount();
-                int availablePerWorld = Math.max(itemReq.getShopItem().getBaseStock() - itemReq.getMinimumStockForBuying(), 0);
-                
-                if (availablePerWorld <= 0) {
-                    return -1; // Insufficient stock per world for this item
-                }
-                
-                int worldHopsForThisItem = (int) Math.ceil((double) remainingToBuy / Math.min(availablePerWorld, itemReq.getMaxQuantityPerVisit()));
-                maxWorldHopsNeeded = Math.max(maxWorldHopsNeeded, worldHopsForThisItem);
-            }
-            
-            return maxWorldHopsNeeded;
-        } catch (Exception e) {
-            Microbot.logStackTrace("ShopRequirement.estimateWorldHopsNeeded", e);
-            return -1;
-        }
-    }
+     */       
     public boolean isFulfilled() {
         // Check if all items are completed
         return shopItemRequirements.values().stream().allMatch(ShopItemRequirement::isCompleted);
@@ -2129,7 +2064,7 @@ public class ShopRequirement extends Requirement {
             Map<Rs2ShopItem, MultiItemConfig> itemRequirements,
             ShopOperation operation,
             RequirementType requirementType,
-            Priority priority,
+            RequirementPriority priority,
             int rating,
             String description,
             ScheduleContext scheduleContext) {

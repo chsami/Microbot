@@ -35,8 +35,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeC
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeWindowCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.enums.RepeatCycle;
 import net.runelite.client.plugins.microbot.pluginscheduler.config.ScheduleEntryConfigManager;
-import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
-import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryPostScheduleTaskEvent;
 import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryPreScheduleTaskEvent;
 import net.runelite.client.plugins.microbot.pluginscheduler.serialization.ScheduledSerializer;
 @Data
@@ -99,7 +98,8 @@ public class PluginScheduleEntry implements AutoCloseable {
         ERROR("Error"),
         SCHEDULED_STOP("Scheduled Stop"),
         INTERRUPTED("Interrupted"),
-        HARD_STOP("Hard Stop"),
+        HARD_STOP("Hard Stop executed"),
+        PREPOST_SCHEDULE_STOP("Hard Stop executed after post-schedule tasks"),
         CLIENT_SHUTDOWN("Client Shutdown");
         
         private final String description;
@@ -559,9 +559,49 @@ public class PluginScheduleEntry implements AutoCloseable {
     }
     
     /**
+     * Triggers post-schedule tasks for a plugin that implements SchedulablePlugin.
+     * <p>
+     * This method should be called after the plugin has been stopped.
+     * 
+     * @param successful Whether the plugin run was successful
+     * @return true if the trigger was successful, false otherwise
+     */
+    public boolean triggerPostScheduleTasks(boolean successful) {
+        try {
+            Plugin plugin = getPlugin();
+            if (!(plugin instanceof SchedulablePlugin)) {
+                log.warn("Plugin '{}' does not implement SchedulablePlugin - cannot trigger post-schedule tasks", name);
+                return false;
+            }
+            
+            SchedulablePlugin schedulablePlugin = (SchedulablePlugin) plugin;
+            if (schedulablePlugin.getPrePostScheduleTasks() == null ||  !isRunning()) {
+                log.debug("Plugin '{}' has no pre/post schedule tasks configured", name);
+                return false;
+            }
+            
+            // Check if post-schedule tasks are already running
+            if (schedulablePlugin.getPrePostScheduleTasks().isPostScheduleRunning()) {
+                log.warn("Post-schedule tasks are already running for plugin '{}' - cannot trigger again", name);
+                return false;
+            }
+            
+            log.info("Triggering post-schedule tasks for plugin '{}' (successful: {})", name, successful);
+            
+            // Send post-schedule task event to the plugin
+            Microbot.getEventBus().post(new PluginScheduleEntryPostScheduleTaskEvent(plugin,ZonedDateTime.now(ZoneId.systemDefault())));
+            
+            return true;
+        } catch (Exception e) {
+            log.error("Error triggering post-schedule tasks for plugin '{}': {}", name, e.getMessage(), e);
+            return false;
+        }
+    }
+    
+    /**
      * Initiates a graceful (soft) stop of the plugin.
      * <p>
-     * This method notifies the plugin that it should stop via a {@link PluginScheduleEntrySoftStopEvent},
+     * This method notifies the plugin that it should stop via a {@link PluginScheduleEntryPostScheduleTaskEvent},
      * allowing the plugin to finish critical operations before shutting down. It also:
      * <ul>
      *   <li>Resets and re-registers start condition monitors</li>
@@ -586,7 +626,7 @@ public class PluginScheduleEntry implements AutoCloseable {
             
             Microbot.getClientThread().runOnClientThreadOptional(() -> {
                 ZonedDateTime current_time = ZonedDateTime.now(ZoneId.systemDefault());
-                Microbot.getEventBus().post(new PluginScheduleEntrySoftStopEvent(plugin, current_time));
+                Microbot.getEventBus().post(new PluginScheduleEntryPostScheduleTaskEvent(plugin, current_time));
                 return true;                
             });
             if(!stopInitiated){
@@ -631,7 +671,7 @@ public class PluginScheduleEntry implements AutoCloseable {
 
         try {
             Microbot.getClientThread().runOnSeperateThread(() -> {
-                log.info("Hard stopping plugin '{}'", name);
+                log.info("Hard stopping plugin '{}' - successfulRun {}", name, successfulRun);
                 Plugin stopPlugin = Microbot.getPlugin(plugin.getClass().getName());
                 Microbot.stopPlugin(stopPlugin);
                 return false;
@@ -735,6 +775,7 @@ public class PluginScheduleEntry implements AutoCloseable {
                 log.info(logMsg.toString());
                 logStopConditionsWithDetails();                
                 // Reset stop state
+                isMonitoringStop = false; // Reset the monitoring flag
                 stopInitiated = false;
                 hasStarted = false;
                 stopInitiatedTime = null;
@@ -749,6 +790,7 @@ public class PluginScheduleEntry implements AutoCloseable {
                     }
                 }               
                 log.info("Stop monitoring thread exited for plugin '" + name + "'");
+                
             }
         });
         
@@ -759,11 +801,8 @@ public class PluginScheduleEntry implements AutoCloseable {
     }
     public void cancelStop(){  
         log.info ("Cancelling stop for plugin '{}'", name);
-        if (isMonitoringStop && stopMonitorThread != null) {
-            stopMonitorThread.interrupt(); // Interrupt the monitoring thread
-            stopMonitorThread = null; // Clear the reference
-        }
-        
+        stopMonitoringThread(); // Stop the monitoring thread if it's running
+        isMonitoringStop = false; // Reset the monitoring flag
         stopInitiated = false;        
         stopInitiatedTime = null;
         lastStopAttemptTime = null;
@@ -1924,7 +1963,7 @@ public class PluginScheduleEntry implements AutoCloseable {
     public boolean stop(boolean successfulRun, StopReason reason) {
         ZonedDateTime now = ZonedDateTime.now();
         // Initial stop attempt
-        if (allowedToBeStop() || reason == StopReason.HARD_STOP || reason == StopReason.PLUGIN_FINISHED ){
+        if (allowedToBeStop() || reason == StopReason.HARD_STOP || reason == StopReason.PREPOST_SCHEDULE_STOP || reason == StopReason.PLUGIN_FINISHED ){
             if(!stopInitiated){
                 if (stopInitiatedTime == null) {
                     stopInitiatedTime = now;
@@ -1952,9 +1991,9 @@ public class PluginScheduleEntry implements AutoCloseable {
             logMsg.append("\n\t---user stop conditions satisfied: ").append(areUserDefinedStopConditionsMet());   
             log.info(logMsg.toString());
             logStopConditionsWithDetails();
-            if (!stopInitiated  && reason != StopReason.HARD_STOP) {                                                                                            
+            if (!stopInitiated  && reason != StopReason.HARD_STOP && reason != StopReason.PREPOST_SCHEDULE_STOP) {                                                                                            
                 this.softStop(successfulRun); // This will start the monitoring thread
-            }else if (reason == StopReason.HARD_STOP) {
+            }else if (reason == StopReason.HARD_STOP || reason == StopReason.PREPOST_SCHEDULE_STOP) {
                 // If we are already stopping and the reason is hard stop, just log it                
                 this.hardStop(successfulRun); // frist try soft stop, then hard stop if needed
             }          
@@ -1999,6 +2038,10 @@ public class PluginScheduleEntry implements AutoCloseable {
                         name, timeSinceFirstAttempt.toSeconds());
                 stopMonitoringThread();
                 this.setLastStopReasonType(StopReason.HARD_STOP);
+                this.hardStop(successfulRun);
+            }else if (getLastStopReasonType() == StopReason.PREPOST_SCHEDULE_STOP){
+                stopMonitoringThread();
+                this.setLastStopReasonType(StopReason.PREPOST_SCHEDULE_STOP);
                 this.hardStop(successfulRun);
             }
             // Retry soft stop at configured intervals
@@ -2045,7 +2088,9 @@ public class PluginScheduleEntry implements AutoCloseable {
     public boolean checkConditionsAndStop(boolean successfulRun) {        
         
         if (shouldBeStopped()) {
-            this.stopInitiated = this.stop(successfulRun,StopReason.SCHEDULED_STOP);
+            if (!this.stopInitiated){
+                this.stopInitiated = this.stop(successfulRun,StopReason.SCHEDULED_STOP);
+            }
             // Monitor thread will handle the successful stop case
         }
         // Reset stop tracking if conditions no longer require stopping

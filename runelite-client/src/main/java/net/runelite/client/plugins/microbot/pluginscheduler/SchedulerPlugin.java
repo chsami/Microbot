@@ -55,7 +55,8 @@ import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
 import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryFinishedEvent;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryMainTaskFinishedEvent;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryPostScheduleTaskFinishedEvent;
 import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryPreScheduleTaskFinishedEvent;
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry.StopReason;
@@ -304,6 +305,7 @@ public class SchedulerPlugin extends Plugin {
         overlayManager.remove(overlay);
         forceStopCurrentPluginScheduleEntry(true);
         interruptBreak();
+        PluginPauseEvent.setPaused(false);
         for (PluginScheduleEntry entry : scheduledPlugins) {
             entry.close();
         }
@@ -362,6 +364,10 @@ public class SchedulerPlugin extends Plugin {
             if (!currentState.isSchedulerActive()) {
                 return false; // Already stopped
             }
+            if (isOnBreak()) {
+                log.info("Stopping scheduler while on break, interrupting break");
+                interruptBreak();
+            }
             setState(SchedulerState.HOLD);
             log.info("Stopping scheduler...");
             if (currentPlugin != null) {
@@ -392,12 +398,11 @@ public class SchedulerPlugin extends Plugin {
             if (hasDisabledQoLPlugin){
                 SchedulerPluginUtil.enablePlugin(QoLPlugin.class);
             }
-
-            interruptBreak();
+            
             setState(SchedulerState.HOLD);
             if(config.autoLogOutOnStop()){
                 logout();
-            }
+            }            
 
             log.info("Scheduler stopped - status: {}", currentState);
             return false;
@@ -461,6 +466,9 @@ public class SchedulerPlugin extends Plugin {
                 currentState == SchedulerState.HOLD
                 // Skip if scheduler is paused
                ) { // Skip if running plugin is paused
+            if (currentPlugin != null && currentPlugin.isRunning()) {
+                monitorPrePostTaskState();
+            } 
             return;
         }
         
@@ -842,7 +850,7 @@ public class SchedulerPlugin extends Plugin {
         setState(SchedulerState.BREAK);
         logBuilder.append("\n\t\tBreak successfully started");
         
-        log.info(logBuilder.toString());
+        log.debug(logBuilder.toString());
         return true;
     }
 
@@ -1129,14 +1137,16 @@ public class SchedulerPlugin extends Plugin {
                     log.info("Plugin '{}' implements SchedulablePlugin - triggering pre-schedule tasks", scheduledPlugin.getCleanName());
                     
                     // Trigger pre-schedule tasks after a short delay to ensure plugin is fully subscribed to EventBus
-                    Microbot.getClientThread().invokeLater(() -> {
+                    Microbot.getClientThread().invokeLater(() -> {                        
                         boolean triggered = scheduledPlugin.triggerPreScheduleTasks();
                         if (triggered) {
                             log.info("Pre-schedule tasks triggered successfully for plugin '{}'", scheduledPlugin.getCleanName());
+                            setState(SchedulerState.EXECUTING_PRE_SCHEDULE_TASKS);
                         } else {
                             log.info("No pre-schedule tasks to trigger for plugin '{}' - proceeding to running state", scheduledPlugin.getCleanName());
-                            setState(SchedulerState.RUNNING_PLUGIN);
+                            setState(SchedulerState.RUNNING_PLUGIN);    
                         }
+                        
                         return true;
                     });
                 } else {
@@ -1507,7 +1517,7 @@ public class SchedulerPlugin extends Plugin {
 
                    
 
-                    log.info(logMessage.toString());
+                    log.debug(logMessage.toString());
 
                     // Log condition details at debug level
                     if (Microbot.isDebug()) {
@@ -1575,10 +1585,17 @@ public class SchedulerPlugin extends Plugin {
     }
 
     public PluginScheduleEntry getUpComingPluginWithinTime(Duration timeWindow) {
-        return getNextScheduledPlugin(false, timeWindow).orElse(null);
+        return getNextScheduledPlugin(false, timeWindow, false).orElse(null);
     }
     public PluginScheduleEntry getUpComingPlugin() {
-        return getNextScheduledPlugin(false, null).orElse(null);
+        return getNextScheduledPlugin(false, null, true).orElse(null);
+    }
+
+    /**
+     * Backward compatibility method - delegates to the main method with excludeCurrentPlugin = false
+     */
+    public Optional<PluginScheduleEntry> getNextScheduledPlugin(boolean isDueToRun, Duration timeWindow) {
+        return getNextScheduledPlugin(isDueToRun, timeWindow, false);
     }
 
     /**
@@ -1602,11 +1619,13 @@ public class SchedulerPlugin extends Plugin {
      * @param isDueToRun If true, only returns plugins that are due to run now
      * @param timeWindow If not null, limits to plugins triggered within this time
      *                   window and changes prioritization to favor priority over due-status
+     * @param excludeCurrentPlugin If true, excludes the currently running plugin from selection
      * @return Optional containing the next plugin to run, or empty if none match
      *         criteria
      */
     public Optional<PluginScheduleEntry> getNextScheduledPlugin(boolean isDueToRun, 
-                                                                Duration timeWindow) {
+                                                                Duration timeWindow,
+                                                                boolean excludeCurrentPlugin) {
 
         if (scheduledPlugins.isEmpty()) {
             return Optional.empty();
@@ -1615,6 +1634,12 @@ public class SchedulerPlugin extends Plugin {
         List<PluginScheduleEntry> filteredPlugins = scheduledPlugins.stream()
                 .filter(PluginScheduleEntry::isEnabled)
                 .filter(plugin -> {
+                    // Exclude currently running plugin if requested (for UI display purposes)
+                    if (excludeCurrentPlugin && plugin.equals(currentPlugin) && plugin.isRunning()) {
+                        log.debug("Excluding currently running plugin '{}' from upcoming selection", plugin.getCleanName());
+                        return false;
+                    }
+                    
                     // Filter by whether it's due to run now if requested
                     if (isDueToRun && !plugin.isDueToRun()) {
                         log.debug("Plugin '{}' is not due to run", plugin.getCleanName());
@@ -1754,7 +1779,11 @@ public class SchedulerPlugin extends Plugin {
 
         // Check if conditions are met
         boolean stopStarted = currentPlugin.checkConditionsAndStop(true);
-        if (currentPlugin.isRunning() && !stopStarted && currentState != SchedulerState.SOFT_STOPPING_PLUGIN && currentPlugin.isDefault()){
+        if (currentPlugin.isRunning() && !stopStarted 
+            && currentState != SchedulerState.SOFT_STOPPING_PLUGIN 
+            && currentState != SchedulerState.HARD_STOPPING_PLUGIN
+            && currentState != SchedulerState.EXECUTING_POST_SCHEDULE_TASKS
+            && currentPlugin.isDefault()){
             boolean prioritizeNonDefaultPlugins = config.prioritizeNonDefaultPlugins();
             // Use the configured look-ahead time window
             int nonDefaultPluginLookAheadMinutes = config.nonDefaultPluginLookAheadMinutes(); 
@@ -1783,17 +1812,19 @@ public class SchedulerPlugin extends Plugin {
             }
         }
         if (stopStarted) {
-            if (config.notificationsOn()){
-                String notificationMessage = "SoftStop Plugin '" + currentPlugin.getCleanName() + "' stopped because conditions were met or non-default plugin is scheduled to run soon";         
-                notifier.notify(Notification.ON, notificationMessage);
+            if (currentState != SchedulerState.EXECUTING_POST_SCHEDULE_TASKS) {
+                if (config.notificationsOn()){
+                    String notificationMessage = "SoftStop Plugin '" + currentPlugin.getCleanName() + "' stopped because conditions were met or non-default plugin is scheduled to run soon";         
+                    notifier.notify(Notification.ON, notificationMessage);
+                }
+                if (hasDisabledQoLPlugin){
+                    SchedulerPluginUtil.enablePlugin(QoLPlugin.class);
+                }
+                log.info("Plugin '{}' stopped because conditions were met",
+                        currentPlugin.getCleanName());                
+                        // Set state to indicate we're stopping the plugin
+                setState(SchedulerState.SOFT_STOPPING_PLUGIN);                                
             }
-            if (hasDisabledQoLPlugin){
-                SchedulerPluginUtil.enablePlugin(QoLPlugin.class);
-            }
-            log.info("Plugin '{}' stopped because conditions were met",
-                    currentPlugin.getCleanName());
-            // Set state to indicate we're stopping the plugin
-            setState(SchedulerState.SOFT_STOPPING_PLUGIN);
         }
         if (!currentPlugin.isRunning()) {
             log.info("Plugin '{}' stopped because conditions were met",
@@ -2464,7 +2495,7 @@ public class SchedulerPlugin extends Plugin {
     }
 
     @Subscribe
-    public void onPluginScheduleEntryFinishedEvent(PluginScheduleEntryFinishedEvent event) {
+    public void onPluginScheduleEntryMainTaskFinishedEvent(PluginScheduleEntryMainTaskFinishedEvent event) {
         if (currentPlugin != null && event.getPlugin() == currentPlugin.getPlugin()) {
             log.info("Plugin '{}' self-reported as finished: {} (Success: {})",
                     currentPlugin.getCleanName(),
@@ -2482,7 +2513,7 @@ public class SchedulerPlugin extends Plugin {
             }
             
             // Stop the plugin with the success state from the event
-            if (currentState == SchedulerState.RUNNING_PLUGIN) {
+            if (currentState == SchedulerState.RUNNING_PLUGIN ||  currentState == SchedulerState.RUNNING_PLUGIN_PAUSED) {
                 setState(SchedulerState.SOFT_STOPPING_PLUGIN);
             }
             
@@ -2495,6 +2526,7 @@ public class SchedulerPlugin extends Plugin {
                 "Plugin reported completion but indicated an unsuccessful run:\n" + formattedReason;
                 
             currentPlugin.stop(event.isSuccess(), StopReason.PLUGIN_FINISHED, reasonMessage);
+            
         }
     }
 
@@ -2507,30 +2539,82 @@ public class SchedulerPlugin extends Plugin {
                     event.isSuccess());
             
             if (event.isSuccess()) {
-                if (currentState == SchedulerState.STARTING_PLUGIN) {
+                if (currentState == SchedulerState.STARTING_PLUGIN || currentState == SchedulerState.EXECUTING_PRE_SCHEDULE_TASKS) {
                     // Plugin startup successful - transition to running state
                     setState(SchedulerState.RUNNING_PLUGIN);
                     log.info("Plugin '{}' started successfully and is now running", currentPlugin.getCleanName());
                 }
             } else {
                 // Plugin startup failed - stop the plugin and return to scheduling
-                log.error("Plugin '{}' startup failed: {}", currentPlugin.getCleanName(), event.getMessage());
+                log.error("\n\tPlugin '{}' startup failed: {}", currentPlugin.getCleanName(), event.getMessage());
                 
                 if (config.notificationsOn()) {
                     notifier.notify(Notification.ON, 
                         "Plugin '" + currentPlugin.getCleanName() + "' startup failed: " + event.getMessage());
                 }
                 
-                // Clean up and return to scheduling
-                currentPlugin.setLastStopReason("Startup failed: " + event.getMessage());
-                currentPlugin.setLastRunSuccessful(false);
-                currentPlugin.setLastStopReasonType(PluginScheduleEntry.StopReason.ERROR);
-                currentPlugin = null;
-                setState(SchedulerState.SCHEDULING);
+                // Clean up and return to scheduling                                                
+                //currentPlugin = null;
+                currentPlugin.stop(event.isSuccess(), StopReason.PREPOST_SCHEDULE_STOP,  "Startup failed: " + event.getMessage()  );
+                setState(SchedulerState.HARD_STOPPING_PLUGIN);
+                
+            }
+            
+        }
+    }
+
+    @Subscribe
+    public void onPluginScheduleEntryPostScheduleTaskFinishedEvent(PluginScheduleEntryPostScheduleTaskFinishedEvent event) {
+        if (currentPlugin != null && event.getPlugin() == currentPlugin.getPlugin()) {
+            log.info("Plugin '{}' post-schedule tasks completed: {} (Success: {})",
+                    currentPlugin.getCleanName(),
+                    event.getMessage(),
+                    event.isSuccess());
+            
+            if (event.isSuccess()) {
+                log.info("Plugin '{}' post-schedule tasks completed successfully", currentPlugin.getCleanName());
+            } else {
+                log.warn("Plugin '{}' post-schedule tasks failed: {}", currentPlugin.getCleanName(), event.getMessage());
+                
+                if (config.notificationsOn()) {
+                    notifier.notify(Notification.ON, 
+                        "Plugin '" + currentPlugin.getCleanName() + "' post-schedule cleanup failed: " + event.getMessage());
+                }
+            }
+            
+
+          
+            
+            // Format the reason message for better readability
+            String eventReason = event.getMessage() + (currentPlugin.getLastStopReasonType() == PluginScheduleEntry.StopReason.NONE ? "": currentPlugin.getLastStopReason());
+            String formattedReason = SchedulerPluginUtil.formatReasonMessage(eventReason);
+            
+            String reasonMessage = event.isSuccess() ? 
+                "Plugin completed its post task successfully:\n\t\t\t\"" + formattedReason+"\"":
+                "Plugin completed its post task not:\n\t\t\t" + formattedReason;                            
+            // Regardless of success/failure, post-schedule tasks are done
+            // The state transition will be handled by monitorPrePostTaskState when it detects IDLE phase
+            if(currentPlugin.isRunning()){
+                if (currentPlugin.isStopping()){
+                    currentPlugin.cancelStop();
+                }
+                    // Stop the plugin with the success state from the event
+                if ( currentState == SchedulerState.EXECUTING_POST_SCHEDULE_TASKS
+                    || currentState == SchedulerState.SOFT_STOPPING_PLUGIN
+                ) {
+                    currentPlugin.stop(event.isSuccess(), StopReason.PREPOST_SCHEDULE_STOP,  reasonMessage  );
+                    setState(SchedulerState.HARD_STOPPING_PLUGIN);
+                }else if( currentState == SchedulerState.RUNNING_PLUGIN || currentState == SchedulerState.RUNNING_PLUGIN_PAUSED){ 
+                    // If we were executing pre-schedule tasks, just stop the plugin
+                    currentPlugin.stop(event.isSuccess(), StopReason.PLUGIN_FINISHED, reasonMessage);
+                    setState(SchedulerState.SOFT_STOPPING_PLUGIN);
+                }                                                                         
+                
             }
         }
     }
 
+   
     @Subscribe
     public void onGameStateChanged(GameStateChanged gameStateChanged) {        
 
@@ -2656,35 +2740,50 @@ public class SchedulerPlugin extends Plugin {
 
                     // Set state to error
                     
-                } else if (currentState == SchedulerState.SOFT_STOPPING_PLUGIN) {                    
+                } else if (currentState == SchedulerState.SOFT_STOPPING_PLUGIN|| currentState == SchedulerState.EXECUTING_POST_SCHEDULE_TASKS) {                    
                     // If we were soft stopping and it completed, make sure stop reason is set
-                    if (currentPlugin.getLastStopReasonType() == PluginScheduleEntry.StopReason.NONE) {
                         // Set stop reason if it wasn't already set
-                        if (currentPlugin.getLastStopReasonType() == PluginScheduleEntry.StopReason.NONE) {                        
-                            currentPlugin.setLastStopReasonType(PluginScheduleEntry.StopReason.SCHEDULED_STOP);
-                            currentPlugin.setLastStopReason("Scheduled stop completed successfully");
-                            currentPlugin.setLastRunSuccessful(true);
-                        }
+                    if (currentPlugin.getLastStopReasonType() == PluginScheduleEntry.StopReason.NONE) {                        
+                        currentPlugin.setLastStopReasonType(PluginScheduleEntry.StopReason.SCHEDULED_STOP);
+                        currentPlugin.setLastStopReason("Scheduled stop completed successfully");
+                        currentPlugin.setLastRunSuccessful(true);
                     }
+                    
+                    
+                    
                 } else if (currentState == SchedulerState.HARD_STOPPING_PLUGIN) {                    
                     // Hard stop completed
                     if (currentPlugin.getLastStopReasonType() == PluginScheduleEntry.StopReason.NONE) {
                         currentPlugin.setLastStopReasonType(PluginScheduleEntry.StopReason.HARD_STOP);
                         currentPlugin.setLastStopReason("Plugin was forcibly stopped after timeout");
                         currentPlugin.setLastRunSuccessful(false);
-                    }
+                    }                    
+
                 }
                   
                 // Return to scheduling state regardless of stop reason
+                // BUT only after post-schedule tasks are complete (if any)
                 if (currentState != SchedulerState.HOLD) {
-                    log.info("Plugin '{}' stopped \n\t- returning to scheduling state with reason: \n\t\t\"{}\"",
-                            currentPlugin.getCleanName(),
+                    // Check if we need to wait for post-schedule tasks
+                    if (currentState == SchedulerState.EXECUTING_POST_SCHEDULE_TASKS) {
+                        log.info("Plugin '{}' stopped but post-schedule tasks are still running - the post schedule task reported finished ?", 
+                                currentPlugin.getCleanName());
+                        // Don't change state yet, let the post task completion handle it
+                    }
+
+                    log.info("\nPlugin '{}' stopped \n\t- returning to scheduling state with reason: \n\t\t\"{}\"",
+                                currentPlugin.getCleanName(),
                             currentPlugin.getLastStopReason());
-                   
+                       
                     setState(SchedulerState.SCHEDULING);
+                    currentPlugin.cancelStop();
+                    setCurrentPlugin(null);
+                    
+                } else {
+                    // In HOLD state, still clear the current plugin
+                    currentPlugin.cancelStop();
+                    setCurrentPlugin(null);
                 }
-                currentPlugin.cancelStop();
-                setCurrentPlugin(null);
                // Microbot.getClientThread().invokeLater(() -> {
                     // Check if the plugin is still stopping
                  //   checkIfStopFinished();
@@ -3315,9 +3414,19 @@ public class SchedulerPlugin extends Plugin {
         }
         
         TaskExecutionState.ExecutionPhase currentPhase = getCurrentPluginTaskPhase();
-        
+        if (currentState ==SchedulerState.EXECUTING_PRE_SCHEDULE_TASKS ){
+            if(currentPhase != TaskExecutionState.ExecutionPhase.PRE_SCHEDULE){
+                log.warn("Current phase is not PRE_SCHEDULE, but we should be in the  {} state-- try to trigger pre task execution agin", currentState);
+                if (currentPlugin != null && currentPlugin.isRunning()) {                                    
+                    // Check if plugin implements SchedulablePlugin and trigger pre-schedule tasks
+                    Plugin plugin = currentPlugin.getPlugin();
+                    boolean triggered = currentPlugin.triggerPreScheduleTasks();
+                }
+            }
+        }
         // Only update state if there's been a phase change
         if (currentPhase != previousTaskPhase) {
+            log.info("Current task phase: {} previous Phase", currentPhase, previousTaskPhase);
             switch (currentPhase) {
                 case PRE_SCHEDULE:
                     setState(SchedulerState.EXECUTING_PRE_SCHEDULE_TASKS);
@@ -3333,17 +3442,26 @@ public class SchedulerPlugin extends Plugin {
                     }
                     break;
                 case IDLE:
-                    // Tasks have finished - return to appropriate running state
-                    if (currentState == SchedulerState.EXECUTING_PRE_SCHEDULE_TASKS || 
-                        currentState == SchedulerState.EXECUTING_POST_SCHEDULE_TASKS) {
+                    // Tasks have finished - return to appropriate state
+                    if (currentState == SchedulerState.EXECUTING_PRE_SCHEDULE_TASKS) {
                         setState(SchedulerState.RUNNING_PLUGIN);
+                    } else if (currentState == SchedulerState.EXECUTING_POST_SCHEDULE_TASKS) {
+                        // Post-schedule tasks completed - return to scheduling
+                        log.info("Post-schedule tasks completed for plugin '{}' - returning to scheduling state", 
+                                currentPlugin != null ? currentPlugin.getCleanName() : "unknown");
+                        setState(SchedulerState.SOFT_STOPPING_PLUGIN);
+                        
+                        // Clear current plugin reference after post-schedule tasks complete
+                        //if (currentPlugin != null) {
+                            //currentPlugin.cancelStop();
+                            //setCurrentPlugin(null);
+                        //                        }
+                        // we must wait for report finshed !!
                     }
                     break;
             }
             
             previousTaskPhase = currentPhase;
         }
-    }
-    
-    
+    }        
 }

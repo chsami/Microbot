@@ -6,8 +6,9 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.Condition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.AndCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LockCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryFinishedEvent;
-import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryMainTaskFinishedEvent;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryPostScheduleTaskEvent;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryPostScheduleTaskFinishedEvent;
 import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryPreScheduleTaskEvent;
 import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryPreScheduleTaskFinishedEvent;
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
@@ -21,6 +22,8 @@ import org.lwjgl.system.Callback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
+
+import lombok.NonNull;
 import net.runelite.client.config.ConfigDescriptor;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -109,7 +112,7 @@ public interface SchedulablePlugin {
      * @param event The stop event containing the plugin reference that should be stopped
      */
     
-    public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event);
+    public void onPluginScheduleEntryPostScheduleTaskEvent(PluginScheduleEntryPostScheduleTaskEvent event);
     
     /**
      * Handles the {@link PluginScheduleEntryPreScheduleTaskEvent} posted by the scheduler when a plugin should start pre-schedule tasks.
@@ -174,8 +177,7 @@ public interface SchedulablePlugin {
         AbstractPrePostScheduleTasks prePostScheduleTasks = getPrePostScheduleTasks();
         if (prePostScheduleTasks == null) {
             log.warn("PrePostScheduleTasks not initialized - cannot test");
-            if(postTaskExecutionCallback!= null) postTaskExecutionCallback.run();            
-            reportFinished("Post-Schedule Tasks executed successfully", true);
+            if(postTaskExecutionCallback!= null) postTaskExecutionCallback.run();                        
             return;
         }
         
@@ -187,12 +189,10 @@ public interface SchedulablePlugin {
             // Execute only post-schedule tasks using the public API
             prePostScheduleTasks.executePostScheduleTasks(() -> {
                 log.info("Post-Schedule Tasks completed successfully");
-                if(postTaskExecutionCallback!= null) postTaskExecutionCallback.run();
-                reportFinished("Post-Schedule Tasks executed successfully and Script stopped", true);
+                if(postTaskExecutionCallback!= null) postTaskExecutionCallback.run();                
             });
         } catch (Exception e) {
-            log.error("Error during Post-Schedule Tasks test", e);
-            reportFinished("Post-Schedule Tasks execution failed with exception: " + e.getMessage(), false);
+            log.error("Error during Post-Schedule Tasks test", e);            
         }
     }
     
@@ -205,8 +205,13 @@ public interface SchedulablePlugin {
      * @param reason A description of why the plugin is finished
      * @param success Whether the task was completed successfully
      */
-    default public void reportFinished(String reason, boolean success) {
+    private String reportFinished_internal(String reason, boolean success) {
+        if ( this instanceof Plugin && !Microbot.isPluginEnabled((Plugin)this)){
+            log.warn("Plugin {} is not enabled, cannot report finished", this.getClass().getSimpleName());
+            return null;
+        };
         SchedulerPlugin schedulablePlugin =  (SchedulerPlugin) Microbot.getPlugin(SchedulerPlugin.class.getName());
+        
         boolean shouldStop = false;
         if (schedulablePlugin == null) {
             Microbot.log("\n SchedulerPlugin is not loaded. so stopping the current plugin.", Level.INFO);
@@ -215,19 +220,20 @@ public interface SchedulablePlugin {
         }else{
             PluginScheduleEntry currentPlugin =  schedulablePlugin.getCurrentPlugin();
             if (currentPlugin == null) {
-                Microbot.log("\n SchedulerPlugin is not running any plugin. so stopping the current plugin.");
+                Microbot.log("\n\t SchedulerPlugin is not running any plugin. so stopping the current plugin.");
                 shouldStop = true;
             }else{
                 if (currentPlugin.isRunning() && currentPlugin.getPlugin() != null && !currentPlugin.getPlugin().equals(this)) {
-                    Microbot.log("\n Current running plugin running by the SchedulerPlugin is not the same as the one being stopped. Stopping current plugin.");
+                    Microbot.log("\n\t Current running plugin running by the SchedulerPlugin is not the same as the one being stopped. Stopping current plugin.");
                     shouldStop = true;
                 }
             }
         }
+        boolean isSchedulerMode = AbstractPrePostScheduleTasks.isScheduleMode(this,getConfigDescriptor().getGroup().value());
+        log.info("test if plugin is in:\n\t\tscheduler mode: {} -- should stop {}", isSchedulerMode, shouldStop);
         String prefix = "Plugin [" + this.getClass().getSimpleName() + "] finished: ";
         String reasonExt= reason == null ? prefix+"No reason provided" : prefix+reason;
-        if (shouldStop){
-    
+        if (!isSchedulerMode){    
             // If plugin finished unsuccessfully, show a non-blocking notification dialog
             if (!success) {
                 Microbot.log("\nPlugin [" + this.getClass().getSimpleName() + "] stopped with error: " + reasonExt, Level.ERROR);
@@ -258,27 +264,63 @@ public interface SchedulablePlugin {
                         Microbot.log("Error displaying plugin stopped dialog: " + e.getCause().getMessage(), Level.ERROR);
                     }
                 });
-            }
-            // Capture the plugin reference explicitly to avoid timing issues
+               
+            }    
+             // Capture the plugin reference explicitly to avoid timing issues
             final Plugin pluginToStop = (Plugin) this;
             Microbot.getClientThread().invokeLater(() -> {            
                 Microbot.stopPlugin(pluginToStop);                
-            });
-            return;
+            });        
+            return reasonExt;
         }else{
             if (success) {
-                Microbot.log(reasonExt, Level.INFO);
+                log.info(reasonExt);
             } else {
-                Microbot.log(reasonExt, Level.ERROR);
-            }            
-            Microbot.getEventBus().post(new PluginScheduleEntryFinishedEvent(
+                log.error(reasonExt);
+            }                    
+            return reasonExt;
+        }
+    }
+    default public void reportFinished(String reason, boolean success) {
+
+        String  reasonExt  = reportFinished_internal(reason, success);
+        if (reasonExt == null) {
+            return; // Plugin is not enabled or scheduler is not running
+        }
+        Microbot.getEventBus().post(new PluginScheduleEntryMainTaskFinishedEvent(
                 (Plugin) this, // "this" will be the plugin instance
                 reasonExt,
                 success
-            ));
-            return;
-        }
+            )
+            );
     }
+    default public void reportPostScheduleTaskFinished(String reason, boolean success) {        
+        String  reasonExt  = reportFinished_internal(reason, success);
+        if (reasonExt == null) {
+            return; // Plugin is not enabled or scheduler is not running
+        }
+        Microbot.getEventBus().post(new PluginScheduleEntryPostScheduleTaskFinishedEvent(
+                (Plugin) this, // "this" will be the plugin instance
+                success,
+                reasonExt
+            )
+        );
+    }
+    default public void reportPreScheduleTaskFinished(String reason, boolean success) {
+        if (!success){
+            reason  = reportFinished_internal(reason, success);
+        }
+        if (reason == null) {
+            return; // Plugin is not enabled or scheduler is not running
+        }
+        Microbot.getEventBus().post(new PluginScheduleEntryPreScheduleTaskFinishedEvent(
+                (Plugin) this, // "this" will be the plugin instance
+                success,
+                reason
+            )
+            );
+    }
+
     
     /**
      * Determines if this plugin can be forcibly terminated by the scheduler through a hard stop.
@@ -387,9 +429,56 @@ public interface SchedulablePlugin {
         }
         return null;
     }
+    
+        /**
+     * Provides the configuration descriptor for scheduler integration and per-entry configuration management.
+     * <p>
+     * <strong>Purpose:</strong> Enables the {@link SchedulerPlugin} to manage separate configuration instances
+     * for each {@link net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry}.
+     * <p>
+     * <strong>Schedule Mode Detection:</strong> {@link AbstractPrePostScheduleTasks} uses this method:
+     * <ul>
+     *   <li>Non-null return → Scheduler mode (managed by SchedulerPlugin)</li>
+     *   <li>Null return → Manual mode (direct plugin execution)</li>
+     * </ul>
+     * <p>
+     * <strong>Benefits:</strong> Same plugin, different configurations per schedule slot; centralized management through scheduler UI.
+     *
+     * @return The configuration descriptor for per-entry configuration, or null if not supported
+     * @see net.runelite.client.config.ConfigDescriptor
+     * @see SchedulerPlugin
+     * @see AbstractPrePostScheduleTasks#isScheduleMode()
+     */
     default public ConfigDescriptor getConfigDescriptor(){
+        // Default implementation returns null, subclasses should override if they support configuration
         return null;
     }
+
+    /**
+     * Returns the pre/post schedule tasks instance for scheduler integration.
+     * <p>
+     * <strong>Purpose:</strong> Provides setup/cleanup tasks and schedule mode detection for the {@link SchedulerPlugin}.
+     * <p>
+     * <strong>Integration:</strong> SchedulerPlugin uses this to:
+     * <ul>
+     *   <li>Execute pre-schedule tasks before plugin start</li>
+     *   <li>Execute post-schedule tasks during plugin shutdown</li>
+     *   <li>Detect scheduler vs manual operation mode</li>
+     * </ul>
+     * <p>
+     * <strong>Schedule Mode Detection:</strong> Uses {@link #getConfigDescriptor()} and event context
+     * to determine if plugin is under scheduler control.
+     *
+     * @return The pre/post schedule tasks instance, or null if not supported
+     * @see AbstractPrePostScheduleTasks
+     * @see AbstractPrePostScheduleTasks#isScheduleMode()
+     * @see SchedulerPlugin
+     */
+    default public AbstractPrePostScheduleTasks getPrePostScheduleTasks(){
+        // Default implementation returns null, subclasses should override if they support pre/post tasks
+        return null;
+    }
+        
     /**
      * Gets the time until the next scheduled plugin will run.
      * This method checks the SchedulerPlugin for the upcoming plugin and calculates
@@ -439,13 +528,6 @@ public interface SchedulablePlugin {
             return Optional.empty();
         }
     }
-    /** 
-     * Returns the pre/post schedule tasks for this plugin.
-     */
-    default AbstractPrePostScheduleTasks getPrePostScheduleTasks() {
-        return null; // Default implementation returns null, subclasses can override to provide tasks
-    }
-    
     /**
      * Allows external registration of custom requirements to this plugin's pre/post schedule tasks.
      * Plugin developers can control whether and how to integrate external requirements.

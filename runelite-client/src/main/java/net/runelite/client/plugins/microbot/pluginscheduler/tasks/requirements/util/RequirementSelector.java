@@ -2,12 +2,10 @@ package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.EquipmentInventorySlot;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.InventorySetupPlanner;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.InventorySetupPlanner;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.logical.LogicalRequirement;
-import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 
 import java.util.HashMap;
 import java.util.List;
@@ -27,7 +25,7 @@ public class RequirementSelector {
      * @param logicalReqs List of logical requirements to evaluate
      * @return The best available ItemRequirement, or null if none found
      */
-    public static ItemRequirement findBestAvailableItem(List<LogicalRequirement> logicalReqs) {
+    public static ItemRequirement findBestAvailableItemForInventory(List<LogicalRequirement> logicalReqs, int inventorySlot) {
         log.debug("Finding best available item from {} logical requirements", logicalReqs.size());
         
         for (LogicalRequirement logicalReq : logicalReqs) {
@@ -35,7 +33,7 @@ public class RequirementSelector {
             log.debug("Checking {} items in logical requirement: {}", items.size(), logicalReq.displayString());
             
             for (ItemRequirement item : items) {
-                if (isItemAvailable(item)) {
+                if (isItemAvailable(item) && canPlayerUse(item)) {
                     log.debug("Found available item: {}", item.displayString());
                     return item;
                 }
@@ -53,7 +51,7 @@ public class RequirementSelector {
      * @param plan Current inventory setup plan
      * @return The best available ItemRequirement not already planned, or null if none found
      */
-    public static ItemRequirement findBestAvailableItemNotAlreadyPlanned(List<LogicalRequirement> logicalReqs, InventorySetupPlanner plan) {
+    public static ItemRequirement findBestAvailableItemNotAlreadyPlannedForInventory(List<LogicalRequirement> logicalReqs, InventorySetupPlanner plan) {
         log.debug("Finding best available item not already planned from {} logical requirements", logicalReqs.size());
         
         for (LogicalRequirement logicalReq : logicalReqs) {
@@ -61,7 +59,9 @@ public class RequirementSelector {
             log.debug("Checking {} items in logical requirement: {}", items.size(), logicalReq.displayString());
             
             for (ItemRequirement item : items) {
-                if (isItemAvailable(item) && !isItemAlreadyPlanned(item, plan)) {
+                if (isItemAvailable(item) && 
+                    canPlayerUse(item) && 
+                    !isItemAlreadyPlanned(item, plan)) {
                     log.debug("Found available item not already planned: {}", item.displayString());
                     return item;
                 }
@@ -72,34 +72,7 @@ public class RequirementSelector {
         return null;
     }
 
-    /**
-     * Finds the best available item for a specific slot from logical requirements.
-     * 
-     * @param logicalReqs List of logical requirements to evaluate
-     * @param slot Target slot number
-     * @param plan Current inventory setup plan
-     * @return The best available ItemRequirement for the slot, or null if none found
-     */
-    public static ItemRequirement findBestAvailableItemForSlot(List<LogicalRequirement> logicalReqs, int slot, InventorySetupPlanner plan) {
-        log.debug("Finding best available item for slot {} from {} logical requirements", slot, logicalReqs.size());
-        
-        for (LogicalRequirement logicalReq : logicalReqs) {
-            List<ItemRequirement> items = LogicalRequirement.extractItemRequirementsFromLogical(logicalReq);
-            log.debug("Checking {} items in logical requirement: {}", items.size(), logicalReq.displayString());
-            
-            for (ItemRequirement item : items) {
-                if (isItemAvailable(item) && 
-                    canAssignToSpecificSlot(item, slot) && 
-                    !isItemAlreadyPlanned(item, plan)) {
-                    log.debug("Found available item for slot {}: {}", slot, item.displayString());
-                    return item;
-                }
-            }
-        }
-        
-        log.debug("No available items found for slot {}", slot);
-        return null;
-    }
+    
     
     /**
      * Enhanced method for finding the best available item for a specific equipment slot.
@@ -142,9 +115,9 @@ public class RequirementSelector {
                     continue;
                 }
                 
-                // Critical: Validate that this item can actually be equipped in the target slot
-                if (!item.canBeEquipped()) {
-                    log.debug("Item {} cannot be equipped in slot {}, skipping", 
+                // Validate that this item can be assigned to the target equipment slot and meets skill requirements
+                if (!canAssignToEquipmentSlot(item, targetEquipmentSlot)) {
+                    log.debug("Item {} cannot be assigned to equipment slot {}, skipping", 
                              item.getName(), targetEquipmentSlot.name());
                     continue;
                 }
@@ -217,33 +190,7 @@ public class RequirementSelector {
         return multiPurposeMap;
     }
     
-    /**
-     * Selects the optimal item from a collection considering priority, availability, and multi-purpose utility.
-     * 
-     * @param logicalReqs The logical requirements to choose from
-     * @param alreadyPlanned Items already planned to avoid conflicts
-     * @param favorMultiPurpose Whether to favor items that satisfy multiple requirements
-     * @return The optimal item selection, or null if none available
-     */
-    public static ItemRequirement selectOptimalItem(List<LogicalRequirement> logicalReqs, 
-                                                  Set<ItemRequirement> alreadyPlanned, 
-                                                  boolean favorMultiPurpose) {
-        if (favorMultiPurpose) {
-            Map<ItemRequirement, Integer> multiPurposeItems = findMultiPurposeItems(logicalReqs);
-            
-            // First try to find a multi-purpose item that's available
-            for (Map.Entry<ItemRequirement, Integer> entry : multiPurposeItems.entrySet()) {
-                ItemRequirement item = entry.getKey();
-                if (!alreadyPlanned.contains(item) && 
-                    ((Rs2Inventory.hasItem(item.getId())) || Rs2Bank.hasItem(item.getId()))) {
-                    return item;
-                }
-            }
-        }
-        
-        // Fall back to regular selection
-        return findBestAvailableItemNotAlreadyPlanned(logicalReqs, null);
-    }
+    
 
     /**
      * Checks if an item is currently available (in inventory, equipment, or bank).
@@ -264,27 +211,67 @@ public class RequirementSelector {
     }
 
     /**
-     * Checks if an item can be assigned to a specific slot.
-     * Dummy items can always be assigned since they're just slot placeholders.
+     * Validates if the player can use or equip an item based on skill requirements.
+     * Checks both equipment and usage skill requirements.
      * 
-     * @param item ItemRequirement to check
-     * @param slot Target slot number
-     * @return true if the item can be assigned to the slot
+     * @param item ItemRequirement to validate
+     * @return true if player meets all skill requirements for the item
      */
-    private static boolean canAssignToSpecificSlot(ItemRequirement item, int slot) {
-        // Dummy items can always be assigned since they're just slot placeholders
+    public static boolean canPlayerUse(ItemRequirement item) {
+        // Dummy items can always be used
+        if (item.isDummyItemRequirement()) {
+            return true;
+        }                        
+        // For all items, check usage requirements if specified
+        if (!ItemRequirement.canPlayerUseItem(item)) {
+            log.debug("Player cannot use item {} due to skill requirements", item.getName());
+            return false;
+        }
+        
+        return true;
+    }
+
+    /**
+     * Validates if an item can be assigned to a specific equipment slot and meets skill requirements.
+     * 
+     * @param item ItemRequirement to validate
+     * @param targetEquipmentSlot Target equipment slot
+     * @return true if item can be assigned to the slot and player meets requirements
+     */
+    public static boolean canAssignToEquipmentSlot(ItemRequirement item, EquipmentInventorySlot targetEquipmentSlot) {
+        // Dummy items can always be assigned
         if (item.isDummyItemRequirement()) {
             return true;
         }
         
-        // For inventory slots (0-27), check if it's a valid inventory item
-        if (slot >= 0 && slot <= 27) {
-            return item.getRequirementType() == RequirementType.INVENTORY || 
-                   item.getRequirementType() == RequirementType.EITHER;
+        // Item must be able to be equipped
+        if (!item.canBeEquipped()) {
+            log.debug("Item {} cannot be equipped", item.getName());
+            return false;
         }
-        // For equipment slots, check if the item can be equipped
-        return item.canBeEquipped();
+        
+        // Check if item matches the equipment slot
+        if (item.getEquipmentSlot() != null && item.getEquipmentSlot() != targetEquipmentSlot) {
+            log.debug("Item {} equipment slot mismatch: expected {}, actual {}", 
+                     item.getName(), targetEquipmentSlot, item.getEquipmentSlot());
+            return false;
+        }
+        
+        // Check skill requirements for equipping
+        if (!ItemRequirement.canPlayerEquipItem(item)) {
+            log.debug("Player cannot equip item {} due to skill requirements", item.getName());
+            return false;
+        }
+          // Check skill requirements for equipping
+        if (!ItemRequirement.canPlayerUseItem(item)) {
+            log.debug("Player cannot use item {} due to skill requirements", item.getName());
+            return false;
+        }
+        
+        return true;
     }
+
+   
 
     /**
      * Checks if an item is already planned for use in the current plan.

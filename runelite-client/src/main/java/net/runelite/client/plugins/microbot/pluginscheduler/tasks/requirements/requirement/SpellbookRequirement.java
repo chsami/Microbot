@@ -6,7 +6,7 @@ import lombok.EqualsAndHashCode;
 import net.runelite.api.Quest;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.Priority;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
@@ -55,7 +55,7 @@ public class SpellbookRequirement extends Requirement {
     public SpellbookRequirement(
             Rs2Spellbook requiredSpellbook,
             ScheduleContext scheduleContext,
-            Priority priority,
+            RequirementPriority priority,
             int rating,
             String description) {
         
@@ -77,7 +77,7 @@ public class SpellbookRequirement extends Requirement {
      * @param priority Priority level of this requirement
      * @param rating Effectiveness rating (1-10)
      */
-    public SpellbookRequirement(Rs2Spellbook requiredSpellbook, ScheduleContext scheduleContext, Priority priority, int rating) {
+    public SpellbookRequirement(Rs2Spellbook requiredSpellbook, ScheduleContext scheduleContext, RequirementPriority priority, int rating) {
         this(requiredSpellbook, scheduleContext, priority, rating, null);
     }
     
@@ -88,7 +88,7 @@ public class SpellbookRequirement extends Requirement {
      * @param scheduleContext When this requirement should be applied
      */
     public SpellbookRequirement(Rs2Spellbook requiredSpellbook, ScheduleContext scheduleContext) {
-        this(requiredSpellbook, scheduleContext, Priority.MANDATORY, 10, null);
+        this(requiredSpellbook, scheduleContext, RequirementPriority.MANDATORY, 10, null);
     }
     
 
