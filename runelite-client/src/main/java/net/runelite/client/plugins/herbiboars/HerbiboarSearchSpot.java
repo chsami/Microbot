@@ -37,7 +37,7 @@ import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.gameval.VarbitID;
 
 @Getter
-enum HerbiboarSearchSpot
+public enum HerbiboarSearchSpot
 {
 	// Wiki A location
 	A_MUSHROOM(Group.A, new WorldPoint(3670, 3889, 0),

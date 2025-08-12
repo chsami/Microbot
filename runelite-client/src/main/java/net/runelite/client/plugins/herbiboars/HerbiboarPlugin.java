@@ -377,7 +377,7 @@ public class HerbiboarPlugin extends Plugin
 		return false;
 	}
 
-	List<WorldPoint> getEndLocations()
+	public List<WorldPoint> getEndLocations()
 	{
 		return END_LOCATIONS;
 	}
