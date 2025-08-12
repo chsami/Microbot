@@ -4,7 +4,8 @@ import com.google.inject.Provides;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-
+import net.runelite.client.plugins.PluginManager;
+import net.runelite.client.plugins.herbiboars.HerbiboarPlugin;
 import javax.inject.Inject;
 import java.awt.AWTException;
 
@@ -20,9 +21,18 @@ public class AutoHerbiboarPlugin extends Plugin {
     @Provides
     AutoHerbiboarConfig provideConfig(ConfigManager configManager) { return configManager.getConfig(AutoHerbiboarConfig.class); }
     @Inject
+    private PluginManager pluginManager;
+    private HerbiboarPlugin herbiboarPlugin;
+    @Inject
     private AutoHerbiboarScript script;
     @Override
-    protected void startUp() throws AWTException { script.run(config); }
+    protected void startUp() throws AWTException {
+        herbiboarPlugin = pluginManager.getPlugins().stream().filter(HerbiboarPlugin.class::isInstance).map(HerbiboarPlugin.class::cast).findFirst().orElse(null);
+        if (herbiboarPlugin != null && !pluginManager.isPluginEnabled(herbiboarPlugin)) pluginManager.setPluginEnabled(herbiboarPlugin, true);
+        if (herbiboarPlugin != null && !pluginManager.getActivePlugins().contains(herbiboarPlugin)) try { pluginManager.startPlugin(herbiboarPlugin); } catch (Exception ignored) {}
+        script.setHerbiboarPlugin(herbiboarPlugin);
+        script.run(config);
+    }
     @Override
     protected void shutDown() { script.shutdown(); }
 }

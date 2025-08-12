@@ -1,10 +1,15 @@
 package net.runelite.client.plugins.microbot.bga.autoherbiboar;
 
+import lombok.Setter;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.herbiboars.HerbiboarPlugin;
 import java.util.concurrent.TimeUnit;
 
+@Setter
 public class AutoHerbiboarScript extends Script {
+    private HerbiboarPlugin herbiboarPlugin;
+
     public boolean run(AutoHerbiboarConfig config) {
         Microbot.enableAutoRunOn = false;
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
