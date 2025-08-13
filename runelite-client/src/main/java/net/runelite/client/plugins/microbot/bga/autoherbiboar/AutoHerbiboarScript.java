@@ -33,6 +33,11 @@ public class AutoHerbiboarScript extends Script {
         return state;
     }
     
+    public void handleConfusionMessage() {
+        state = AutoHerbiboarState.START;
+        attackedTunnel = false;
+    }
+    
     
     private boolean isNearBank() {
         return Rs2Player.getWorldLocation().distanceTo(BANK_LOCATION) <= 5;
@@ -97,6 +102,9 @@ public class AutoHerbiboarScript extends Script {
     }
     
     private void dropConfiguredItems(AutoHerbiboarConfig config) {
+        if (config.dropEmptyVials()) {
+            dropIfPresent(ItemID.VIAL_EMPTY);
+        }
         if (config.dropSmallFossil()) {
             dropIfPresent(ItemID.FOSSIL_SMALL_UNID, ItemID.FOSSIL_SMALL_1, ItemID.FOSSIL_SMALL_2, 
                          ItemID.FOSSIL_SMALL_3, ItemID.FOSSIL_SMALL_4, ItemID.FOSSIL_SMALL_5);
@@ -238,7 +246,9 @@ public class AutoHerbiboarScript extends Script {
                     case START:
                         Microbot.status = "Finding start location";
                         if (herbiboarPlugin.getCurrentGroup() == null) {
-                            TileObject start = herbiboarPlugin.getStarts().values().stream().findFirst().orElse(null);
+                            TileObject start = herbiboarPlugin.getStarts().values().stream()
+                                .min(java.util.Comparator.comparing(s -> Rs2Player.getWorldLocation().distanceTo(s.getWorldLocation())))
+                                .orElse(null);
                             if (start != null) {
                                 WorldPoint loc = start.getWorldLocation();
                                 LocalPoint localPoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), loc);
@@ -312,7 +322,9 @@ public class AutoHerbiboarScript extends Script {
                                 Rs2Npc.interact(herb, "Harvest");
                                 Rs2Player.waitForAnimation();
                                 sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isInteracting());
-                                TileObject start = herbiboarPlugin.getStarts().values().stream().findFirst().orElse(null);
+                                TileObject start = herbiboarPlugin.getStarts().values().stream()
+                                    .min(java.util.Comparator.comparing(s -> Rs2Player.getWorldLocation().distanceTo(s.getWorldLocation())))
+                                    .orElse(null);
                                 if (start != null) {
                                     WorldPoint startLoc = start.getWorldLocation();
                                     LocalPoint localPoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), startLoc);

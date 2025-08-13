@@ -71,6 +71,17 @@ public interface AutoHerbiboarConfig extends Config {
         return RunEnergyOption.NONE;
     }
 
+    @ConfigItem(
+        keyName = "dropEmptyVials",
+        name = "Drop empty vials",
+        description = "Drop empty vials from drinking potions",
+        section = RUN_ENERGY_SECTION,
+        position = 1
+    )
+    default boolean dropEmptyVials() {
+        return false;
+    }
+
     @ConfigSection(
         name = "Fossils to drop",
         description = "Fossils you don't want to keep",
