@@ -30,7 +30,6 @@ import com.google.common.graph.GraphBuilder;
 import com.google.common.graph.Graphs;
 import com.google.common.graph.MutableGraph;
 import com.google.common.io.Files;
-import com.google.common.reflect.ClassPath;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.google.inject.Binder;
@@ -298,13 +297,23 @@ public class MicrobotPluginManager
 
                 try
                 {
-                    MicrobotPluginClassLoader classLoader = new MicrobotPluginClassLoader(f, getClass().getClassLoader());
+                    byte[] fileBytes = Files.toByteArray(f);
 
-                    List<Class<?>> plugins = ClassPath.from(classLoader)
-                            .getAllClasses()
-                            .stream()
-                            .map(ClassPath.ClassInfo::load)
-                            .collect(Collectors.toList());
+                    List<Class<?>> plugins = new ArrayList<>();
+
+                    MicrobotPluginClassLoader classLoader = new MicrobotPluginClassLoader(fileBytes, getClass().getClassLoader());
+
+                    // Assuming you know the class names you want to load
+                    Set<String> classNamesToLoad = classLoader.getLoadedClassNames();
+
+                    for (String className : classNamesToLoad) {
+                        try {
+                            Class<?> clazz = classLoader.loadClass(className);
+                            plugins.add(clazz);
+                        } catch (ClassNotFoundException e) {
+                            e.printStackTrace();
+                        }
+                    }
 
                     loadPlugins(plugins, null);
 
