@@ -6,6 +6,7 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.herbiboars.HerbiboarPlugin;
+import net.runelite.client.ui.overlay.OverlayManager;
 import javax.inject.Inject;
 import java.awt.AWTException;
 
@@ -22,6 +23,10 @@ public class AutoHerbiboarPlugin extends Plugin {
     AutoHerbiboarConfig provideConfig(ConfigManager configManager) { return configManager.getConfig(AutoHerbiboarConfig.class); }
     @Inject
     private PluginManager pluginManager;
+    @Inject
+    private OverlayManager overlayManager;
+    @Inject
+    private AutoHerbiboarOverlay overlay;
     private HerbiboarPlugin herbiboarPlugin;
     @Inject
     private AutoHerbiboarScript script;
@@ -31,8 +36,12 @@ public class AutoHerbiboarPlugin extends Plugin {
         if (herbiboarPlugin != null && !pluginManager.isPluginEnabled(herbiboarPlugin)) pluginManager.setPluginEnabled(herbiboarPlugin, true);
         if (herbiboarPlugin != null && !pluginManager.getActivePlugins().contains(herbiboarPlugin)) try { pluginManager.startPlugin(herbiboarPlugin); } catch (Exception ignored) {}
         script.setHerbiboarPlugin(herbiboarPlugin);
+        overlayManager.add(overlay);
         script.run(config);
     }
     @Override
-    protected void shutDown() { script.shutdown(); }
+    protected void shutDown() { 
+        overlayManager.remove(overlay);
+        script.shutdown(); 
+    }
 }

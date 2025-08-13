@@ -7,6 +7,25 @@ import net.runelite.client.config.ConfigSection;
 
 @ConfigGroup("AutoHerbiboar")
 public interface AutoHerbiboarConfig extends Config {
+    
+    enum RunEnergyOption {
+        NONE("None"),
+        STAMINA_POTION("Stamina potion"),
+        SUPER_ENERGY_POTION("Super energy potion"),
+        ENERGY_POTION("Energy potion"),
+        STRANGE_FRUIT("Strange fruit");
+        
+        private final String name;
+        
+        RunEnergyOption(String name) {
+            this.name = name;
+        }
+        
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
     @ConfigSection(
             name = "Optionals to use",
             description = "Optionals to use",
@@ -42,47 +61,14 @@ public interface AutoHerbiboarConfig extends Config {
     String RUN_ENERGY_SECTION = "runenergy";
 
     @ConfigItem(
-        keyName = "useStaminaPotion",
-        name = "Stamina potion",
-        description = "",
+        keyName = "runEnergyOption",
+        name = "Restore with",
+        description = "Select which item to use to restore run energy",
         section = RUN_ENERGY_SECTION,
         position = 0
     )
-    default boolean useStaminaPotion() {
-        return false;
-    }
-
-    @ConfigItem(
-        keyName = "useSuperEnergyPotion",
-        name = "Super energy potion",
-        description = "",
-        section = RUN_ENERGY_SECTION,
-        position = 1
-    )
-    default boolean useSuperEnergyPotion() {
-        return false;
-    }
-
-    @ConfigItem(
-        keyName = "useEnergyPotion",
-        name = "Energy potion",
-        description = "",
-        section = RUN_ENERGY_SECTION,
-        position = 2
-    )
-    default boolean useEnergyPotion() {
-        return false;
-    }
-
-    @ConfigItem(
-        keyName = "useStrangeFruit",
-        name = "Strange fruit",
-        description = "",
-        section = RUN_ENERGY_SECTION,
-        position = 3
-    )
-    default boolean useStrangeFruit() {
-        return false;
+    default RunEnergyOption runEnergyOption() {
+        return RunEnergyOption.NONE;
     }
 
     @ConfigSection(
@@ -191,11 +177,20 @@ public interface AutoHerbiboarConfig extends Config {
     default boolean dropRanarr() { return false; }
 
     @ConfigItem(
+        keyName = "dropToadflax",
+        name = "Toadflax",
+        description = "",
+        section = HERBS_SECTION,
+        position = 5
+    )
+    default boolean dropToadflax() { return false; }
+
+    @ConfigItem(
         keyName = "dropIrit",
         name = "Irit",
         description = "",
         section = HERBS_SECTION,
-        position = 5
+        position = 6
     )
     default boolean dropIrit() { return false; }
 
@@ -204,7 +199,7 @@ public interface AutoHerbiboarConfig extends Config {
         name = "Avantoe",
         description = "",
         section = HERBS_SECTION,
-        position = 6
+        position = 7
     )
     default boolean dropAvantoe() { return false; }
 
@@ -213,7 +208,7 @@ public interface AutoHerbiboarConfig extends Config {
         name = "Kwuarm",
         description = "",
         section = HERBS_SECTION,
-        position = 7
+        position = 8
     )
     default boolean dropKwuarm() { return false; }
 
@@ -222,7 +217,7 @@ public interface AutoHerbiboarConfig extends Config {
         name = "Snapdragon",
         description = "",
         section = HERBS_SECTION,
-        position = 8
+        position = 9
     )
     default boolean dropSnapdragon() { return false; }
 
@@ -231,7 +226,7 @@ public interface AutoHerbiboarConfig extends Config {
         name = "Cadantine",
         description = "",
         section = HERBS_SECTION,
-        position = 9
+        position = 10
     )
     default boolean dropCadantine() { return false; }
 
@@ -240,7 +235,7 @@ public interface AutoHerbiboarConfig extends Config {
         name = "Lantadyme",
         description = "",
         section = HERBS_SECTION,
-        position = 10
+        position = 11
     )
     default boolean dropLantadyme() { return false; }
 
@@ -249,7 +244,7 @@ public interface AutoHerbiboarConfig extends Config {
         name = "Dwarf weed",
         description = "",
         section = HERBS_SECTION,
-        position = 11
+        position = 12
     )
     default boolean dropDwarfWeed() { return false; }
 
@@ -258,7 +253,7 @@ public interface AutoHerbiboarConfig extends Config {
         name = "Torstol",
         description = "",
         section = HERBS_SECTION,
-        position = 12
+        position = 13
     )
     default boolean dropTorstol() { return false; }
 }
