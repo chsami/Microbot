@@ -27,7 +27,7 @@ jobs:
         run: |
           COMMIT_SHA=$(git rev-parse --short HEAD)
           mvn clean package -Dmicrobot.commit.sha=$COMMIT_SHA
-          
+
 
       - name: Read microbot.version from POM
         id: version
@@ -46,9 +46,9 @@ jobs:
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "$version"
+          automatic_release_tag: "${{ steps.version.outputs.version }}"
           prerelease: false
-          title: "Release $version"
+          title: "Release ${{ steps.version.outputs.version }}"
           files: |
             /home/runner/work/Microbot/Microbot/runelite-client/target/microbot-*.jar
 
@@ -80,3 +80,20 @@ jobs:
       - name: Deploy to Nexus
         run: mvn deploy:deploy-file -DgroupId=com.microbot -DartifactId=client -Dversion=${{ steps.version.outputs.version }} -Dpackaging=jar -Dfile=runelite-client/target/microbot-${{ steps.version.outputs.version }}.jar -DrepositoryId=microbot-release -Durl=https://nexus.microbot.cloud/repository/microbot-release/
 
+      - name: Get Auth Token
+        id: auth
+        run: |
+          RESPONSE=$(curl -X POST \
+            -H "Content-Type: application/json" \
+            -d "{\"email\":\"${{ secrets.API_EMAIL }}\",\"password\":\"${{ secrets.API_PASSWORD }}\"}" \
+            https://microbot.cloud/api/auth/login)
+          TOKEN=$(echo $RESPONSE | jq -r '.token')
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+
+      - name: Update API Version
+        run: |
+          curl -X PUT \
+            -H "Authorization: Bearer ${{ steps.auth.outputs.token }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"version\":\"${{ steps.version.outputs.version }}\"}" \
+            https://microbot.cloud/api/version/client
