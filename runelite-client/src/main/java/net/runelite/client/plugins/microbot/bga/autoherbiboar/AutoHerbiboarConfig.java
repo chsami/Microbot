@@ -27,8 +27,8 @@ public interface AutoHerbiboarConfig extends Config {
         }
     }
     @ConfigSection(
-            name = "Optionals to use",
-            description = "Optionals to use",
+            name = "Optionals",
+            description = "Optionals",
             position = 0
     )
     String OPTIONALS_SECTION = "optionals";

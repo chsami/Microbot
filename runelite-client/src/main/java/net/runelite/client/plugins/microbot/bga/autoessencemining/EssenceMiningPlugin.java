@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.bga.autoessencemining.autoessencemining;
+package net.runelite.client.plugins.microbot.bga.autoessencemining;
 
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
