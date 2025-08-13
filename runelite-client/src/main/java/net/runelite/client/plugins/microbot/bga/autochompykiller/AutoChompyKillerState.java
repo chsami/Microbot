@@ -5,5 +5,6 @@ public enum AutoChompyKillerState {
     FILLING_BELLOWS,
     WAIT_FOR_BELLOWS,
     INFLATING,
+    ATTACKING,
     PLUCKING
 }

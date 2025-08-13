@@ -71,6 +71,10 @@ public class AutoChompyKillerPlugin extends Plugin {
         if (message.contains("your bow isn't powerful enough for those arrows")) {
             autoChompyKillerScript.handleBowNotPowerfulEnough();
         }
+        if (config.stopOnChompyChickPet() && (message.contains("you have a funny feeling like you're being followed") || 
+            message.contains("you feel something weird sneaking into your backpack"))) {
+            autoChompyKillerScript.handlePetReceived(config.logoutOnCompletion());
+        }
     }
 
     int ticks = 10;
