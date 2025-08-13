@@ -34,7 +34,7 @@ public class TemporossProgressionOverlay extends OverlayPanel {
             if (currentState != null) {
                 // Set up the panel's visual properties
                 panelComponent.setPreferredSize(new Dimension(300, 150));
-                panelComponent.setBackgroundColor(new Color(60, 60, 60, 180)); // Semi-transparent background
+                panelComponent.setBackgroundColor(new Color(173, 216, 230, 40)); // Semi-transparent background
 
                 // Title component
                 panelComponent.getChildren().add(TitleComponent.builder()
@@ -89,10 +89,7 @@ public class TemporossProgressionOverlay extends OverlayPanel {
                         .right(Rs2Player.getInteracting() != null ? Text.removeTags(Rs2Player.getInteracting().getName()) : "None")
                         .build());
 
-                if(currentState.isComplete()){
-                    TemporossScript.isFilling = false;
-                    TemporossScript.state = currentState.next == null ? State.THIRD_CATCH : currentState.next;
-                }
+                // State transition logic moved to TemporossScript
 
                 // Add progression bar
                 double progression = calculateProgression(currentState);
@@ -165,6 +162,12 @@ public class TemporossProgressionOverlay extends OverlayPanel {
                         Math.min((double) rawFishInitialCatch / 7.0, 1.0),
                         Math.min((double) allFishInitialCatch / 10.0, 1.0)
                 );
+                
+            case EMERGENCY_CATCH:
+                // Progression based on raw fish count reaching the target determined by energy level
+                int rawFishEmergencyCatch = State.getRawFish();
+                int targetFish = EnergyStateManager.getTargetFishCount();
+                return Math.min((double) rawFishEmergencyCatch / targetFish, 1.0);
 
             default:
                 return 0.0;
