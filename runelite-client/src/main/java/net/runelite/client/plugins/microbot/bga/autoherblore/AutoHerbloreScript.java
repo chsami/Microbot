@@ -18,7 +18,12 @@ import java.util.concurrent.TimeUnit;
 
 public class AutoHerbloreScript extends Script {
 
-    private enum State { BANK, CLEAN, MAKE_UNFINISHED, MAKE_FINISHED }
+    private enum State {
+        BANK,
+        CLEAN,
+        MAKE_UNFINISHED,
+        MAKE_FINISHED
+    }
     private State state;
     private Herb current;
     private Herb currentHerbForUnfinished;
@@ -26,6 +31,29 @@ public class AutoHerbloreScript extends Script {
     private boolean currentlyMakingPotions;
     private int withdrawnAmount;
     private AutoHerbloreConfig config;
+
+    private boolean usesStackableSecondary(HerblorePotion potion) {
+        return getStackableSecondaryRatio(potion) > 1;
+    }
+
+    private int getStackableSecondaryRatio(HerblorePotion potion) {
+        if (potion.secondary == ItemID.PRIF_CRYSTAL_SHARD_CRUSHED) {
+            return 4;
+        } else if (potion.secondary == ItemID.SNAKEBOSS_SCALE) {
+            return 20;
+        } else if (potion.secondary == ItemID.LAVA_SHARD) {
+            return 4;
+        } else if (potion.secondary == ItemID.AMYLASE) {
+            return 4;
+        } else if (potion.secondary == ItemID.ARAXYTE_VENOM_SACK) {
+            return 1; // Need to verify the correct ratio for this
+        }
+        return 1;
+    }
+
+    private boolean isSuperCombat(HerblorePotion potion) {
+        return potion == HerblorePotion.SUPER_COMBAT;
+    }
     public boolean run(AutoHerbloreConfig config) {
         this.config = config;
         Rs2Antiban.resetAntibanSettings();
@@ -74,7 +102,7 @@ public class AutoHerbloreScript extends Script {
                         int herbCount = Rs2Bank.count(currentHerbForUnfinished.clean);
                         int vialCount = Rs2Bank.count(ItemID.VIAL_WATER);
                         withdrawnAmount = Math.min(Math.min(herbCount, vialCount), 14);
-                        
+
                         Rs2Bank.withdrawX(currentHerbForUnfinished.clean, withdrawnAmount);
                         Rs2Bank.withdrawX(ItemID.VIAL_WATER, withdrawnAmount);
                         Rs2Inventory.waitForInventoryChanges(1800);
@@ -93,10 +121,45 @@ public class AutoHerbloreScript extends Script {
                         }
                         int unfinishedCount = Rs2Bank.count(currentPotion.unfinished);
                         int secondaryCount = Rs2Bank.count(currentPotion.secondary);
-                        withdrawnAmount = Math.min(Math.min(unfinishedCount, secondaryCount), 14);
-                        
-                        Rs2Bank.withdrawX(currentPotion.unfinished, withdrawnAmount);
-                        Rs2Bank.withdrawX(currentPotion.secondary, withdrawnAmount);
+
+                        if (isSuperCombat(currentPotion)) {
+                            int torstolCount = Rs2Bank.count(ItemID.TORSTOL);
+                            int superAttackCount = Rs2Bank.count(ItemID._4DOSE2ATTACK);
+                            int superStrengthCount = Rs2Bank.count(ItemID._4DOSE2STRENGTH);
+                            int superDefenceCount = Rs2Bank.count(ItemID._4DOSE2DEFENSE);
+
+                            withdrawnAmount = Math.min(Math.min(Math.min(Math.min(torstolCount, superAttackCount), superStrengthCount), superDefenceCount), 7);
+
+                            Rs2Bank.withdrawX(ItemID.TORSTOL, withdrawnAmount);
+                            Rs2Bank.withdrawX(ItemID._4DOSE2ATTACK, withdrawnAmount);
+                            Rs2Bank.withdrawX(ItemID._4DOSE2STRENGTH, withdrawnAmount);
+                            Rs2Bank.withdrawX(ItemID._4DOSE2DEFENSE, withdrawnAmount);
+                        } else if (usesStackableSecondary(currentPotion)) {
+                            int secondaryRatio = getStackableSecondaryRatio(currentPotion);
+                            withdrawnAmount = Math.min(unfinishedCount, 27);
+                            int secondaryNeeded = withdrawnAmount * secondaryRatio;
+
+                            Microbot.log("Stackable secondary detected - Potion: " + currentPotion.name() + 
+                                        ", Ratio: " + secondaryRatio + " per potion" +
+                                        ", Potions to make: " + withdrawnAmount + 
+                                        ", Total secondary needed: " + secondaryNeeded +
+                                        ", Available secondary: " + secondaryCount);
+
+                            if (secondaryCount < secondaryNeeded) {
+                                withdrawnAmount = secondaryCount / secondaryRatio;
+                                secondaryNeeded = withdrawnAmount * secondaryRatio;
+                                Microbot.log("Adjusted due to insufficient secondary - New potion count: " + withdrawnAmount + 
+                                           ", New secondary needed: " + secondaryNeeded);
+                            }
+
+                            Rs2Bank.withdrawX(currentPotion.unfinished, withdrawnAmount);
+                            Rs2Bank.withdrawX(currentPotion.secondary, secondaryNeeded);
+                        } else {
+                            withdrawnAmount = Math.min(Math.min(unfinishedCount, secondaryCount), 14);
+
+                            Rs2Bank.withdrawX(currentPotion.unfinished, withdrawnAmount);
+                            Rs2Bank.withdrawX(currentPotion.secondary, withdrawnAmount);
+                        }
                         Rs2Inventory.waitForInventoryChanges(1800);
                         Rs2Bank.closeBank();
                         state = State.MAKE_FINISHED;
@@ -120,11 +183,10 @@ public class AutoHerbloreScript extends Script {
                         }
                         return;
                     }
-                    
+
                     if (Rs2Inventory.hasItem(currentHerbForUnfinished.clean) && Rs2Inventory.hasItem(ItemID.VIAL_WATER)) {
                         if (Rs2Inventory.combine(currentHerbForUnfinished.clean, ItemID.VIAL_WATER)) {
                             sleep(600, 800);
-                            // Only press 1 if we're making more than 1 potion
                             if (withdrawnAmount > 1) {
                                 Rs2Keyboard.keyPress('1');
                             }
@@ -136,18 +198,43 @@ public class AutoHerbloreScript extends Script {
                 }
                 if (config.mode() == Mode.FINISHED_POTIONS && state == State.MAKE_FINISHED) {
                     if (currentlyMakingPotions) {
-                        if (!Rs2Inventory.hasItem(currentPotion.unfinished) && !Rs2Inventory.hasItem(currentPotion.secondary)) {
-                            currentlyMakingPotions = false;
-                            state = State.BANK;
-                            return;
+                        if (isSuperCombat(currentPotion)) {
+                            if (!Rs2Inventory.hasItem(ItemID.TORSTOL) || !Rs2Inventory.hasItem(ItemID._4DOSE2ATTACK) ||
+                                    !Rs2Inventory.hasItem(ItemID._4DOSE2STRENGTH) || !Rs2Inventory.hasItem(ItemID._4DOSE2DEFENSE)) {
+                                currentlyMakingPotions = false;
+                                state = State.BANK;
+                                return;
+                            }
+                        } else if (usesStackableSecondary(currentPotion)) {
+                            if (!Rs2Inventory.hasItem(currentPotion.unfinished)) {
+                                currentlyMakingPotions = false;
+                                state = State.BANK;
+                                return;
+                            }
+                        } else {
+                            if (!Rs2Inventory.hasItem(currentPotion.unfinished) && !Rs2Inventory.hasItem(currentPotion.secondary)) {
+                                currentlyMakingPotions = false;
+                                state = State.BANK;
+                                return;
+                            }
                         }
                         return;
                     }
-                    
-                    if (Rs2Inventory.hasItem(currentPotion.unfinished) && Rs2Inventory.hasItem(currentPotion.secondary)) {
+
+                    if (isSuperCombat(currentPotion)) {
+                        if (Rs2Inventory.hasItem(ItemID.TORSTOL) && Rs2Inventory.hasItem(ItemID._4DOSE2ATTACK)) {
+                            if (Rs2Inventory.combine(ItemID.TORSTOL, ItemID._4DOSE2ATTACK)) {
+                                sleep(600, 800);
+                                if (withdrawnAmount > 1) {
+                                    Rs2Keyboard.keyPress('1');
+                                }
+                                currentlyMakingPotions = true;
+                                return;
+                            }
+                        }
+                    } else if (Rs2Inventory.hasItem(currentPotion.unfinished) && Rs2Inventory.hasItem(currentPotion.secondary)) {
                         if (Rs2Inventory.combine(currentPotion.unfinished, currentPotion.secondary)) {
                             sleep(600, 800);
-                            // Only press 1 if we're making more than 1 potion
                             if (withdrawnAmount > 1) {
                                 Rs2Keyboard.keyPress('1');
                             }
@@ -165,12 +252,15 @@ public class AutoHerbloreScript extends Script {
     }
     private Herb findHerb() {
         int level = Rs2Player.getRealSkillLevel(Skill.HERBLORE);
-        for (Herb h : Herb.values()) if (level >= h.level && Rs2Bank.hasItem(h.grimy)) return h;
+        for (Herb h : Herb.values()) {
+            if (level >= h.level && Rs2Bank.hasItem(h.grimy)) {
+                return h;
+            }
+        }
         return null;
     }
     private Herb findHerbForUnfinished() {
         int level = Rs2Player.getRealSkillLevel(Skill.HERBLORE);
-        // Find any herb we can make unfinished potions with, starting from the lowest level herb
         for (Herb h : Herb.values()) {
             if (level >= h.level && Rs2Bank.hasItem(h.clean) && Rs2Bank.hasItem(ItemID.VIAL_WATER)) {
                 return h;
@@ -181,8 +271,24 @@ public class AutoHerbloreScript extends Script {
     private HerblorePotion findPotion() {
         int level = Rs2Player.getRealSkillLevel(Skill.HERBLORE);
         HerblorePotion selectedPotion = config.potion();
-        if (selectedPotion != null && level >= selectedPotion.level && Rs2Bank.hasItem(selectedPotion.unfinished) && Rs2Bank.hasItem(selectedPotion.secondary)) {
-            return selectedPotion;
+        if (selectedPotion != null) {
+            
+            if (level >= selectedPotion.level) {
+                if (isSuperCombat(selectedPotion)) {
+                    boolean hasTorstol = Rs2Bank.hasItem(ItemID.TORSTOL);
+                    boolean hasSuperAttack = Rs2Bank.hasItem(ItemID._4DOSE2ATTACK);
+                    boolean hasSuperStrength = Rs2Bank.hasItem(ItemID._4DOSE2STRENGTH);
+                    boolean hasSuperDefence = Rs2Bank.hasItem(ItemID._4DOSE2DEFENSE);
+
+                    if (hasTorstol && hasSuperAttack && hasSuperStrength && hasSuperDefence) {
+                        return selectedPotion;
+                    }
+                } else {
+                    if (Rs2Bank.hasItem(selectedPotion.unfinished) && Rs2Bank.hasItem(selectedPotion.secondary)) {
+                        return selectedPotion;
+                    }
+                }
+            }
         }
         return null;
     }

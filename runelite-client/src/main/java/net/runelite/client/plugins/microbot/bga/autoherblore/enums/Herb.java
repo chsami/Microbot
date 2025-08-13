@@ -17,10 +17,12 @@ public enum Herb {
     LANTADYME(67, ItemID.UNIDENTIFIED_LANTADYME, ItemID.LANTADYME, ItemID.LANTADYMEVIAL),
     DWARF(70, ItemID.UNIDENTIFIED_DWARF_WEED, ItemID.DWARF_WEED, ItemID.DWARFWEEDVIAL),
     TORSTOL(75, ItemID.UNIDENTIFIED_TORSTOL, ItemID.TORSTOL, ItemID.TORSTOLVIAL);
+
     public final int level;
     public final int grimy;
     public final int clean;
     public final int unfinished;
+
     Herb(int level, int grimy, int clean, int unfinished) {
         this.level = level;
         this.grimy = grimy;

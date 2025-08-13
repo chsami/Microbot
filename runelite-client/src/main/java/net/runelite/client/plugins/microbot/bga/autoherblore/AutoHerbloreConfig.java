@@ -22,7 +22,9 @@ public interface AutoHerbloreConfig extends Config {
         description = "Select mode",
         section = MODE_SECTION
     )
-    default Mode mode() { return Mode.CLEAN_HERBS; }
+    default Mode mode() {
+        return Mode.CLEAN_HERBS;
+    }
 
     @ConfigSection(
         name = "Finished Potion Type",
@@ -37,6 +39,8 @@ public interface AutoHerbloreConfig extends Config {
         description = "Select potion",
         section = POTION_SECTION
     )
-    default HerblorePotion potion() { return HerblorePotion.ATTACK; }
+    default HerblorePotion potion() {
+        return HerblorePotion.ATTACK;
+    }
 }
 
