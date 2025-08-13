@@ -29,6 +29,7 @@ public class DragonLeatherScript extends Script implements ICraftingScript {
     private long lastCraftingXp = -1;
     private final int needle = ItemID.NEEDLE;
     private final int thread = ItemID.THREAD;
+    private final int costumeNeedle = ItemID.COSTUMENEEDLE;
 
     @Override
     public String getName() {
@@ -116,36 +117,61 @@ public class DragonLeatherScript extends Script implements ICraftingScript {
             leatherRequired = 2;
         }
 
-        return Rs2Inventory.hasItem(needle) &&
-                Rs2Inventory.hasItem(thread) &&
-                Rs2Inventory.hasItemAmount(armour.getLeatherId(), leatherRequired);
+        // Check for tools based on costume needle setting
+        boolean hasTools;
+        if (config.useCostumeNeedle()) {
+            hasTools = Rs2Inventory.hasItem(costumeNeedle);
+        } else {
+            hasTools = Rs2Inventory.hasItem(needle) && Rs2Inventory.hasItem(thread);
+        }
+
+        return hasTools && Rs2Inventory.hasItemAmount(armour.getLeatherId(), leatherRequired);
     }
 
     private void handleBanking() {
         Microbot.status = "Banking";
         if (Rs2Bank.isOpen()) {
-            if (!Rs2Inventory.hasItem(needle) ||
-                    !Rs2Inventory.hasItem(thread))
-            {
-                if (!Rs2Bank.hasAllItems(new int[]{needle, thread}))
-                {
-                    Microbot.showMessage("You've run out of materials!");
-                    state = CraftingState.STOPPED;
-                    shutdown();
+            if (config.useCostumeNeedle()) {
+                if (!Rs2Inventory.hasItem(costumeNeedle)) {
+                    if (!Rs2Bank.hasItem(costumeNeedle)) {
+                        Microbot.showMessage("You don't have a costume needle!");
+                        state = CraftingState.STOPPED;
+                        shutdown();
+                        return;
+                    }
+                    if (Rs2Inventory.emptySlotCount() < 1) { 
+                        Rs2Bank.depositAll(); 
+                    }
+                    Rs2Bank.withdrawItem(true, costumeNeedle);
                 }
-
-                if (Rs2Inventory.emptySlotCount() < 2) { Rs2Bank.depositAll(); }
-                Rs2Bank.withdrawItem(true, needle);
-                Rs2Bank.withdrawAll(thread);
+                
+                DragonLeatherArmour armour = config.dragonLeatherType();
+                Rs2Bank.depositAllExcept(costumeNeedle, armour.getLeatherId());
+            } else {
+                if (!Rs2Inventory.hasItem(needle) || !Rs2Inventory.hasItem(thread)) {
+                    if (!Rs2Bank.hasAllItems(new int[]{needle, thread})) {
+                        Microbot.showMessage("You've run out of materials!");
+                        state = CraftingState.STOPPED;
+                        shutdown();
+                        return;
+                    }
+                    if (Rs2Inventory.emptySlotCount() < 2) { 
+                        Rs2Bank.depositAll(); 
+                    }
+                    Rs2Bank.withdrawItem(true, needle);
+                    Rs2Bank.withdrawAll(thread);
+                }
+                
+                DragonLeatherArmour armour = config.dragonLeatherType();
+                Rs2Bank.depositAllExcept(needle, thread, armour.getLeatherId());
             }
 
             DragonLeatherArmour armour = config.dragonLeatherType();
-            Rs2Bank.depositAllExcept(needle, thread, armour.getLeatherId());
-
             if (!Rs2Bank.hasItem(armour.getLeatherId())) {
                 Microbot.showMessage("You've run out of leather!");
                 state = CraftingState.STOPPED;
                 shutdown();
+                return;
             }
 
             Rs2Bank.withdrawAll(armour.getLeatherId());
@@ -169,7 +195,11 @@ public class DragonLeatherScript extends Script implements ICraftingScript {
             lastCraftingXp = Microbot.getClient().getSkillExperience(Skill.CRAFTING);
         }
 
-        Rs2Inventory.use(needle);
+        if (config.useCostumeNeedle()) {
+            Rs2Inventory.use(costumeNeedle);
+        } else {
+            Rs2Inventory.use(needle);
+        }
         Rs2Inventory.use(armour.getLeatherId());
 
         if (sleepUntil(() -> Rs2Widget.getWidget(17694733) != null, 5000)) {

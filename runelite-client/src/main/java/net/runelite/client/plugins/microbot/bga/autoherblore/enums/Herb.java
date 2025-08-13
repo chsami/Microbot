@@ -1,0 +1,30 @@
+package net.runelite.client.plugins.microbot.bga.autoherblore.enums;
+
+import net.runelite.api.gameval.ItemID;
+
+public enum Herb {
+    GUAM(1, ItemID.UNIDENTIFIED_GUAM, ItemID.GUAM_LEAF, ItemID.GUAMVIAL),
+    MARRENTILL(5, ItemID.UNIDENTIFIED_MARENTILL, ItemID.MARENTILL, ItemID.MARRENTILLVIAL),
+    TARROMIN(11, ItemID.UNIDENTIFIED_TARROMIN, ItemID.TARROMIN, ItemID.TARROMINVIAL),
+    HARRALANDER(20, ItemID.UNIDENTIFIED_HARRALANDER, ItemID.HARRALANDER, ItemID.HARRALANDERVIAL),
+    RANARR(25, ItemID.UNIDENTIFIED_RANARR, ItemID.RANARR_WEED, ItemID.RANARRVIAL),
+    TOADFLAX(30, ItemID.UNIDENTIFIED_TOADFLAX, ItemID.TOADFLAX, ItemID.TOADFLAXVIAL),
+    IRIT(40, ItemID.UNIDENTIFIED_IRIT, ItemID.IRIT_LEAF, ItemID.IRITVIAL),
+    AVANTOE(48, ItemID.UNIDENTIFIED_AVANTOE, ItemID.AVANTOE, ItemID.AVANTOEVIAL),
+    KWUARM(54, ItemID.UNIDENTIFIED_KWUARM, ItemID.KWUARM, ItemID.KWUARMVIAL),
+    SNAPDRAGON(59, ItemID.UNIDENTIFIED_SNAPDRAGON, ItemID.SNAPDRAGON, ItemID.SNAPDRAGONVIAL),
+    CADANTINE(65, ItemID.UNIDENTIFIED_CADANTINE, ItemID.CADANTINE, ItemID.CADANTINEVIAL),
+    LANTADYME(67, ItemID.UNIDENTIFIED_LANTADYME, ItemID.LANTADYME, ItemID.LANTADYMEVIAL),
+    DWARF(70, ItemID.UNIDENTIFIED_DWARF_WEED, ItemID.DWARF_WEED, ItemID.DWARFWEEDVIAL),
+    TORSTOL(75, ItemID.UNIDENTIFIED_TORSTOL, ItemID.TORSTOL, ItemID.TORSTOLVIAL);
+    public final int level;
+    public final int grimy;
+    public final int clean;
+    public final int unfinished;
+    Herb(int level, int grimy, int clean, int unfinished) {
+        this.level = level;
+        this.grimy = grimy;
+        this.clean = clean;
+        this.unfinished = unfinished;
+    }
+}

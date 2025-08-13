@@ -138,4 +138,13 @@ public interface CraftingConfig extends Config {
             section = dragonLeatherSection
     )
     default DragonLeatherArmour dragonLeatherType() { return DragonLeatherArmour.NONE; }
+
+    @ConfigItem(
+            name = "Use Costume Needle",
+            description = "Use costume needle instead of regular needle + thread (saves inventory slot)",
+            keyName = "useCostumeNeedle",
+            position = 1,
+            section = dragonLeatherSection
+    )
+    default boolean useCostumeNeedle() { return false; }
 }

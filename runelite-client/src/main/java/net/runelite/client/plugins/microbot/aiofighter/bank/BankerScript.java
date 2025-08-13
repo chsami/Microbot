@@ -107,7 +107,12 @@ public class BankerScript extends Script {
      */
     public boolean needBanking() {
         if(config.currentInventorySetup() == null){
-            AIOFighterPlugin.setCurrentSlayerInventorySetup(config.defaultInventorySetup());
+            if(config.defaultInventorySetup() != null) {
+                AIOFighterPlugin.setCurrentSlayerInventorySetup(config.defaultInventorySetup());
+            } else {
+                Microbot.log("No inventory setup configured, skipping banking.");
+                return false;
+            }
         }        
         if(!config.bank()){
             return false;
@@ -131,14 +136,29 @@ public class BankerScript extends Script {
             bankingTriggered = true;
             return true;
         }
-        if (config.currentInventorySetup() ==null ){
+        
+        // Double-check if inventory setup is still valid
+        if (config.currentInventorySetup() == null){
             return false; // No current inventory setup, and also no default setup, so no need to bank because of the inventory setup
         }
 
-        Rs2InventorySetup inventorySetup = new Rs2InventorySetup(
-                config.slayerMode() ? config.currentInventorySetup().getName() : config.inventorySetup().getName(),
-                mainScheduledFuture
-        );
+        String setupName = null;
+        if (config.slayerMode()) {
+            if (config.currentInventorySetup() != null) {
+                setupName = config.currentInventorySetup().getName();
+            }
+        } else {
+            if (config.inventorySetup() != null) {
+                setupName = config.inventorySetup().getName();
+            }
+        }
+        
+        if (setupName == null) {
+            Microbot.log("Invalid inventory setup name, skipping banking.");
+            return false;
+        }
+
+        Rs2InventorySetup inventorySetup = new Rs2InventorySetup(setupName, mainScheduledFuture);
 
         // (3) If food is required but not available
         if (needsFood(inventorySetup)) {
@@ -336,12 +356,28 @@ public class BankerScript extends Script {
 
     public void withdrawUpkeepItems(AIOFighterConfig config) {
         if (config.useInventorySetup() || config.slayerMode()) {
-            Rs2InventorySetup inventorySetup = new Rs2InventorySetup(config.slayerMode() ? config.currentInventorySetup().getName() : config.inventorySetup().getName(), mainScheduledFuture);
+            String setupName = null;
+            if (config.slayerMode() && config.currentInventorySetup() != null) {
+                setupName = config.currentInventorySetup().getName();
+            } else if (!config.slayerMode() && config.inventorySetup() != null) {
+                setupName = config.inventorySetup().getName();
+            }
+            
+            if (setupName == null) {
+                Microbot.log("Cannot load inventory setup - null setup name");
+                return;
+            }
+            
+            Rs2InventorySetup inventorySetup = new Rs2InventorySetup(setupName, mainScheduledFuture);
             if (!Rs2Bank.isOpen()) {
                 Microbot.log("Bank didn't open, returning.");
                 return;
             }
-            Microbot.log("Loading equipment for: " + config.currentInventorySetup().getName());
+            if (config.currentInventorySetup() != null) {
+                Microbot.log("Loading equipment for: " + config.currentInventorySetup().getName());
+            } else {
+                Microbot.log("Loading equipment for unknown setup (null)");
+            }
             inventorySetup.loadEquipment();
             inventorySetup.loadInventory();
 

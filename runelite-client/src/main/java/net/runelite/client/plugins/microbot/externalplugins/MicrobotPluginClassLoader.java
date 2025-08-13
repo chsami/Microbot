@@ -20,6 +20,11 @@ public class MicrobotPluginClassLoader extends URLClassLoader {
 
     @Override
     public Class<?> loadClass(String name) throws ClassNotFoundException {
+
+        if (name.startsWith("net.runelite.client.plugins.microbot.pluginscheduler")) {
+            return parent.loadClass(name);
+        }
+
         try {
             return super.loadClass(name);
         } catch (ClassNotFoundException ex) {
