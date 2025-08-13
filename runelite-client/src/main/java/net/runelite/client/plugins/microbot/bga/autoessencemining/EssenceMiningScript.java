@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.bga.autoessencemining.autoessencemining;
+package net.runelite.client.plugins.microbot.bga.autoessencemining;
 
 import net.runelite.api.GameObject;
 import net.runelite.api.Skill;

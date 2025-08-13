@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.bga.autoessencemining.autoessencemining;
+package net.runelite.client.plugins.microbot.bga.autoessencemining;
 
 public enum EssenceMiningState {
     WALKING_TO_AUBURY,

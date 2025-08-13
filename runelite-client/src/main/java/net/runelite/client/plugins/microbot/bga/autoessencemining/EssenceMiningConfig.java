@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.bga.autoessencemining.autoessencemining;
+package net.runelite.client.plugins.microbot.bga.autoessencemining;
 
 import net.runelite.client.config.*;
 

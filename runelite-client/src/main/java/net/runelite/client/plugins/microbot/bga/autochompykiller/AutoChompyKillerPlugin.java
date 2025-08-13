@@ -1,12 +1,10 @@
-package net.runelite.client.plugins.microbot.chompy;
+package net.runelite.client.plugins.microbot.bga.autochompykiller;
 
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameTick;
-import net.runelite.api.events.NpcDespawned;
-import net.runelite.api.events.NpcSpawned;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
@@ -17,74 +15,72 @@ import javax.inject.Inject;
 import java.awt.*;
 
 @PluginDescriptor(
-        name = PluginDescriptor.Default + "Chompy",
-        description = "Chompy Hunt plugin - start near some toads with bow and arrows equipped. ",
-        tags = {"Chompy", "microbot"},
+        name = "[bga] Auto Chompy Killer",
+        description = "Automated chompy bird hunting plugin...",
+        tags = {"chompy", "combat"},
         enabledByDefault = false
 )
 @Slf4j
-public class ChompyPlugin extends Plugin {
+public class AutoChompyKillerPlugin extends Plugin {
     @Inject
-    private ChompyConfig config;
+    private AutoChompyKillerConfig config;
+
     @Provides
-    ChompyConfig provideConfig(ConfigManager configManager) {
-        return configManager.getConfig(ChompyConfig.class);
+    AutoChompyKillerConfig provideConfig(ConfigManager configManager) {
+        return configManager.getConfig(AutoChompyKillerConfig.class);
     }
 
     @Inject
     private OverlayManager overlayManager;
     @Inject
-    private ChompyOverlay chompyOverlay;
+    private AutoChompyKillerOverlay autoChompyKillerOverlay;
 
     @Inject
-    ChompyScript chompyScript;
-
+    AutoChompyKillerScript autoChompyKillerScript;
 
     @Override
     protected void startUp() throws AWTException {
         if (overlayManager != null) {
-            overlayManager.add(chompyOverlay);
+            overlayManager.add(autoChompyKillerOverlay);
         }
-        chompyScript.startup();
-        chompyScript.run(config);
+        autoChompyKillerScript.startup();
+        autoChompyKillerScript.run(config);
     }
 
     protected void shutDown() {
-        chompyScript.shutdown();
-        overlayManager.remove(chompyOverlay);
+        autoChompyKillerScript.shutdown();
+        overlayManager.remove(autoChompyKillerOverlay);
     }
 
     @Subscribe
     public void onChatMessage(ChatMessage chatMessage) {
-        if (!((chatMessage.getType() == ChatMessageType.SPAM) || (chatMessage.getType() == ChatMessageType.GAMEMESSAGE)|| (chatMessage.getType() == ChatMessageType.ENGINE))) {
+        if (!((chatMessage.getType() == ChatMessageType.SPAM) || (chatMessage.getType() == ChatMessageType.GAMEMESSAGE) || (chatMessage.getType() == ChatMessageType.ENGINE))) {
             return;
         }
 
         String message = chatMessage.getMessage().toLowerCase();
-        System.out.println(message);
         if (message.contains("you scratch a notch on your bow for the chompy bird kill")) {
-            chompyScript.chompy_notch();
+            autoChompyKillerScript.incrementChompyKills();
         }
         if (message.contains("This is not your Chompy Bird to shoot".toLowerCase())) {
-            chompyScript.not_my_chompy();
+            autoChompyKillerScript.handleNotMyChompy();
         }
         if (message.contains("can't reach that")) {
-            chompyScript.cant_reach();
+            autoChompyKillerScript.handleCantReachBubbles();
+        }
+        if (message.contains("your bow isn't powerful enough for those arrows")) {
+            autoChompyKillerScript.handleBowNotPowerfulEnough();
         }
     }
 
     int ticks = 10;
-    @Subscribe
-    public void onGameTick(GameTick tick)
-    {
-        //System.out.println(getName().chars().mapToObj(i -> (char)(i + 3)).map(String::valueOf).collect(Collectors.joining()));
 
+    @Subscribe
+    public void onGameTick(GameTick tick) {
         if (ticks > 0) {
             ticks--;
         } else {
             ticks = 10;
         }
-
     }
-
 }
