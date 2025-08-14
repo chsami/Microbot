@@ -7,38 +7,112 @@ import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 
-@ConfigInformation("This plugin will run the herb run.\n" +
-        "Setup an appropriate inventory setup with seeds, \n" +
-        "teleports for the enabled locations, \n" +
-        "rake, spade, seed dibber \n" +
-        "and ultracompost or bottomless compost.\n" +
+@ConfigInformation("Automated Herb Runs across all patches<br/><br/>" +
+        "<b>Two Setup Options:</b><br/>" +
+        "1. Inventory Setup: Use your custom inventory configuration<br/>" +
+        "2. Auto Banking: Let the plugin handle everything!<br/><br/>" +
+        "<b>Auto Banking withdraws:</b><br/>" +
+        "• Farming tools (rake, spade, seed dibber, magic secateurs)<br/>" +
+        "• Teleportation runes (law, air, earth, fire, water)<br/>" +
+        "• Your selected herb seeds<br/>" +
+        "• Your selected compost type<br/>" +
+        "• Ectophial (if Morytania is enabled)<br/><br/>" +
         "Credits to liftedmango and See1Duck")
 @ConfigGroup("Herbrun")
 public interface HerbrunConfig extends Config {
 
     @ConfigSection(
-            name = "Settings",
-            description = "Settings",
+            name = "Inventory Setup Method",
+            description = "Choose between inventory setup or auto banking",
             position = 0
     )
-    String settingsSection = "Settings";
+    String inventorySection = "inventory";
+
+    @ConfigItem(
+            keyName = "useInventorySetup",
+            name = "Use Inventory Setup",
+            description = "Enable to use RuneLite inventory setups | Disable for automatic banking",
+            section = inventorySection,
+            position = 0
+    )
+    default boolean useInventorySetup() {
+        return false;
+    }
 
     @ConfigItem(
             keyName = "inventorySetup",
-            name = "Inventory Setup",
-            description = "Inventory setup to use",
-            position = 1,
-            section = settingsSection
+            name = "Inventory Setup Name",
+            description = "Select your pre-configured inventory setup",
+            section = inventorySection,
+            position = 1
     )
     default InventorySetup inventorySetup() {
         return null;
     }
 
+    @ConfigSection(
+            name = "Auto Banking Settings",
+            description = "Configure automatic banking options",
+            position = 1
+    )
+    String autoSection = "autobanking";
+
+    @ConfigItem(
+            keyName = "herbSeedType",
+            name = "Herb Seed Type",
+            description = "Choose which herb seeds to plant",
+            section = autoSection,
+            position = 0
+    )
+    default HerbSeedType herbSeedType() {
+        return HerbSeedType.RANARR;
+    }
+
+    @ConfigItem(
+            keyName = "useCompost",
+            name = "Use Compost",
+            description = "Whether to apply compost to patches",
+            section = autoSection,
+            position = 1
+    )
+    default boolean useCompost() {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "compostType",
+            name = "Compost Type",
+            description = "Type of compost to use (if enabled)",
+            section = autoSection,
+            position = 2
+    )
+    default CompostType compostType() {
+        return CompostType.ULTRA;
+    }
+
+    @ConfigItem(
+            keyName = "dropEmptyBuckets",
+            name = "Drop Empty Buckets",
+            description = "Drop empty buckets after applying compost to patches",
+            section = autoSection,
+            position = 3
+    )
+    default boolean dropEmptyBuckets() {
+        return true;
+    }
+
+    @ConfigSection(
+            name = "General Settings",
+            description = "General plugin settings",
+            position = 2
+    )
+    String settingsSection = "settings";
+
     @ConfigItem(
             keyName = "goToBank",
-            name = "Go to bank",
-            description = "Go to closest bank after run",
-            position = 2,
+            name = "Bank After Run",
+            description = "Go to closest bank after completing the herb run",
+            position = 0,
             section = settingsSection
     )
     default boolean goToBank() {
@@ -157,7 +231,7 @@ public interface HerbrunConfig extends Config {
     @ConfigSection(
             name = "Location toggles",
             description = "Location toggles",
-            position = 1
+            position = 3
     )
     String locationSection = "Location";
 
