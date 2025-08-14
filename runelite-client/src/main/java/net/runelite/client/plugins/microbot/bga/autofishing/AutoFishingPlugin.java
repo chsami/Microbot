@@ -8,7 +8,8 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.bga.autofishing.enums.AutoFishingState;
-import net.runelite.client.plugins.microbot.bga.autofishing.managers.SpecialAttackManager;
+import net.runelite.client.plugins.microbot.bga.autofishing.enums.HarpoonType;
+import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -37,9 +38,6 @@ public class AutoFishingPlugin extends Plugin {
 
     @Inject
     private AutoFishingScript fishingScript;
-    
-    @Inject 
-    private SpecialAttackManager specialAttackManager;
 
     @Override
     protected void startUp() throws AWTException {
@@ -57,8 +55,9 @@ public class AutoFishingPlugin extends Plugin {
     @Subscribe
     public void onGameTick(GameTick tick) {
         if (fishingScript.isRunning() && fishingScript.getCurrentState() == AutoFishingState.FISHING) {
-            if (specialAttackManager.shouldActivateSpec(fishingScript.getSelectedHarpoon())) {
-                specialAttackManager.activateSpecialAttack(fishingScript.getSelectedHarpoon());
+            HarpoonType selectedHarpoon = fishingScript.getSelectedHarpoon();
+            if (selectedHarpoon != null && selectedHarpoon != HarpoonType.NONE && Rs2Combat.getSpecEnergy() >= 100) {
+                Rs2Combat.setSpecState(true, 1000);
             }
         }
     }

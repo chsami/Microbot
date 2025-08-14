@@ -22,7 +22,7 @@ public class AutoFishingOverlay extends OverlayPanel {
     @Override
     public Dimension render(Graphics2D graphics) {
         try {
-            panelComponent.setPreferredSize(new Dimension(275, 700));
+            panelComponent.setPreferredSize(new Dimension(200, 300));
             panelComponent.getChildren().add(TitleComponent.builder()
                     .text("Auto Fishing " + AutoFishingScript.version)
                     .color(Color.ORANGE)

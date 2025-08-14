@@ -1,68 +1,55 @@
 package net.runelite.client.plugins.microbot.bga.autofishing;
 
 import lombok.Getter;
-import net.runelite.api.gameval.ItemID;
+import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.bga.autofishing.enums.AutoFishingState;
 import net.runelite.client.plugins.microbot.bga.autofishing.enums.Fish;
 import net.runelite.client.plugins.microbot.bga.autofishing.enums.HarpoonType;
-import net.runelite.client.plugins.microbot.bga.autofishing.managers.EquipmentManager;
-import net.runelite.client.plugins.microbot.bga.autofishing.managers.InventoryManager;
-import net.runelite.client.plugins.microbot.bga.autofishing.managers.LocationManager;
-import net.runelite.client.plugins.microbot.bga.autofishing.managers.SpecialAttackManager;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
-import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
+import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.depositbox.Rs2DepositBox;
+import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.worldmap.FishingSpotLocation;
+import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 
-import javax.inject.Inject;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-
-import static net.runelite.client.plugins.microbot.util.npc.Rs2Npc.validateInteractable;
-
 
 public class AutoFishingScript extends Script {
 
     public static String version = "1.0";
     
-    @Inject
-    private EquipmentManager equipmentManager;
-    
-    @Inject
-    private LocationManager locationManager;
-    
-    @Inject
-    private InventoryManager inventoryManager;
-    
-    @Inject
-    private SpecialAttackManager specialAttackManager;
-
-
-    @Getter
-    private AutoFishingState currentState;
-    private AutoFishingFlags flags;
+    private AutoFishingState state = AutoFishingState.INITIALIZING;
     private AutoFishingConfig config;
     private Fish selectedFish;
-
     @Getter
     private HarpoonType selectedHarpoon;
+    private WorldPoint fishingLocation;
+    private BankLocation closestBank;
+    private FishingSpotLocation selectedSpotLocation;
+    private int currentLocationIndex = 0;
     private String fishAction = "";
+    
+    public AutoFishingState getCurrentState() {
+        return state;
+    }
 
     public boolean run(AutoFishingConfig config) {
         this.config = config;
-        this.selectedFish = config.fish();
+        this.selectedFish = config.fishToCatch();
         this.selectedHarpoon = config.harpoonSpec();
-        this.flags = new AutoFishingFlags();
-        this.currentState = AutoFishingState.INITIALIZING;
         
         Rs2Antiban.resetAntibanSettings();
         Rs2Antiban.antibanSetupTemplates.applyFishingSetup();
@@ -73,163 +60,245 @@ public class AutoFishingScript extends Script {
                 if (!Microbot.isLoggedIn()) return;
                 if (Rs2AntibanSettings.actionCooldownActive) return;
 
-                executeStateMachine();
-                
+                if (Rs2Player.isMoving() || Rs2Player.isAnimating()) return;
+
+                if (needsToBank()) {
+                    state = AutoFishingState.DEPOSITING;
+                } else if (state == AutoFishingState.DEPOSITING || state == AutoFishingState.RETURNING) {
+                    if (isAtFishingLocation()) {
+                        state = AutoFishingState.FISHING;
+                    } else {
+                        state = AutoFishingState.TRAVELING;
+                    }
+                } else if (!hasRequiredGear()) {
+                    state = AutoFishingState.GETTING_GEAR;
+                } else if (!isAtFishingLocation() && state != AutoFishingState.GETTING_GEAR) {
+                    state = AutoFishingState.TRAVELING;
+                }
+
+                switch (state) {
+                    case INITIALIZING:
+                        handleInitializing();
+                        break;
+                    case CHECKING_GEAR:
+                        handleCheckingGear();
+                        break;
+                    case GETTING_GEAR:
+                        handleGettingGear();
+                        break;
+                    case TRAVELING:
+                        handleTraveling();
+                        break;
+                    case FISHING:
+                        handleFishing();
+                        break;
+                    case MANAGING_SPEC:
+                        handleManagingSpec();
+                        break;
+                    case INVENTORY_FULL:
+                        handleInventoryFull();
+                        break;
+                    case DEPOSITING:
+                        handleDepositing();
+                        break;
+                    case RETURNING:
+                        handleReturning();
+                        break;
+                    case ERROR_RECOVERY:
+                        handleErrorRecovery();
+                        break;
+                }
             } catch (Exception ex) {
-                handleError(ex);
             }
-        }, 0, getDynamicLoopInterval(), TimeUnit.MILLISECONDS);
+        }, 0, 600, TimeUnit.MILLISECONDS);
         
         return true;
     }
 
-    private void executeStateMachine() {
-        updateFlags();
-        
-        AutoFishingState nextState = executeCurrentState();
-        
-        if (nextState != currentState) {
-            transitionToState(nextState);
-        }
+    private boolean needsToBank() {
+        if (!config.useBank()) return false;
+        return Rs2Inventory.isFull();
     }
 
-    private AutoFishingState executeCurrentState() {
-        switch (currentState) {
-            case INITIALIZING:
-                return handleInitializing();
-            case CHECKING_GEAR:
-                return handleCheckingGear();
-            case GETTING_GEAR:
-                return handleGettingGear();
-            case TRAVELING:
-                return handleTraveling();
-            case FISHING:
-                return handleFishing();
-            case MANAGING_SPEC:
-                return handleManagingSpec();
-            case INVENTORY_FULL:
-                return handleInventoryFull();
-            case DEPOSITING:
-                return handleDepositing();
-            case RETURNING:
-                return handleReturning();
-            case ERROR_RECOVERY:
-                return handleErrorRecovery();
-            default:
-                return AutoFishingState.ERROR_RECOVERY;
+    private boolean hasRequiredGear() {
+        if (!selectedFish.getMethod().getRequiredItems().isEmpty()) {
+            boolean hasTool = selectedFish.getMethod().getRequiredItems().stream()
+                    .anyMatch(tool -> Rs2Equipment.isWearing(tool) || Rs2Inventory.contains(tool));
+            if (!hasTool) return false;
         }
+        
+        if (selectedHarpoon != HarpoonType.NONE) {
+            return Rs2Equipment.isWearing(selectedHarpoon.getName()) || 
+                   Rs2Inventory.contains(selectedHarpoon.getName());
+        }
+        
+        return true;
     }
 
-    private AutoFishingState handleInitializing() {
+    private boolean isAtFishingLocation() {
+        if (fishingLocation == null) return false;
+        return Rs2Player.getWorldLocation().distanceTo(fishingLocation) <= 5;
+    }
+
+    private Rs2NpcModel getFishingSpot() {
+        WorldPoint playerLocation = Rs2Player.getWorldLocation();
+        return Arrays.stream(selectedFish.getFishingSpot())
+                .mapToObj(Rs2Npc::getNpc)
+                .filter(Objects::nonNull)
+                .filter(npc -> npc.getWorldLocation().distanceTo(playerLocation) <= 10)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private void handleInitializing() {
         Microbot.status = "Initializing...";
-        
-        locationManager.initializeFishingLocation();
-        
-        flags.setBankingEnabled(config.useBank());
-        flags.setPreferDepositBox(true);
-        
-        flags.reset();
-        flags.markStateStart();
-
-        return AutoFishingState.CHECKING_GEAR;
+        state = AutoFishingState.CHECKING_GEAR;
     }
 
-    private AutoFishingState handleCheckingGear() {
+    private void handleCheckingGear() {
         Microbot.status = "Checking equipment...";
         
-        boolean hasGear = equipmentManager.validateFishingGear(selectedFish, selectedHarpoon);
-        flags.setHasRequiredGear(hasGear);
-        
-        if (!hasGear) {
-            return AutoFishingState.GETTING_GEAR;
+        if (!hasRequiredGear()) {
+            state = AutoFishingState.GETTING_GEAR;
+            return;
         }
         
-        if (!locationManager.isAtFishingLocation()) {
-            return AutoFishingState.TRAVELING;
+        if (fishingLocation == null) {
+            setupFishingSpotLocation();
+            WorldPoint selectedLocation = getCurrentFishingLocation();
+            if (selectedLocation != null) {
+                fishingLocation = selectedLocation;
+            } else {
+                WorldPoint playerLocation = Rs2Player.getWorldLocation();
+                WorldPoint closestLocation = selectedFish.getClosestLocation(playerLocation);
+                if (closestLocation != null) {
+                    fishingLocation = closestLocation;
+                } else {
+                    fishingLocation = selectedFish.getClosestLocation(playerLocation);
+                }
+            }
         }
         
-        return AutoFishingState.FISHING;
+        if (!isAtFishingLocation()) {
+            state = AutoFishingState.TRAVELING;
+            return;
+        }
+        
+        state = AutoFishingState.FISHING;
     }
 
-    private AutoFishingState handleGettingGear() {
+    private void handleGettingGear() {
         Microbot.status = "Getting equipment from bank...";
         
         if (!Rs2Bank.isOpen()) {
-            if (!locationManager.walkToBankAndOpen()) {
-                flags.incrementRetry();
-                return AutoFishingState.ERROR_RECOVERY;
+            if (!Rs2Bank.walkToBankAndUseBank()) {
+                state = AutoFishingState.ERROR_RECOVERY;
+                return;
             }
-            return currentState;
+            return;
         }
         
-        if (!equipmentManager.withdrawGear(selectedFish, selectedHarpoon)) {
-            flags.incrementRetry();
-            return AutoFishingState.ERROR_RECOVERY;
+        if (!selectedFish.getMethod().getRequiredItems().isEmpty()) {
+            for (String tool : selectedFish.getMethod().getRequiredItems()) {
+                if (!Rs2Equipment.isWearing(tool) && !Rs2Inventory.contains(tool)) {
+                    if (Rs2Bank.hasItem(tool)) {
+                        Rs2Bank.withdrawOne(tool);
+                        sleep(600);
+                        break;
+                    }
+                }
+            }
         }
         
-        equipmentManager.equipTools(selectedHarpoon);
+        if (selectedHarpoon != HarpoonType.NONE) {
+            if (!Rs2Equipment.isWearing(selectedHarpoon.getName()) && !Rs2Inventory.contains(selectedHarpoon.getName())) {
+                if (Rs2Bank.hasItem(selectedHarpoon.getName())) {
+                    Rs2Bank.withdrawOne(selectedHarpoon.getName());
+                    sleep(600);
+                }
+            }
+        }
         
         Rs2Bank.closeBank();
         
-        flags.resetRetries();
-        return AutoFishingState.CHECKING_GEAR;
+        for (String tool : selectedFish.getMethod().getRequiredItems()) {
+            if (Rs2Inventory.contains(tool)) {
+                Rs2Inventory.wield(tool);
+                sleep(600);
+            }
+        }
+        
+        if (selectedHarpoon != HarpoonType.NONE && Rs2Inventory.contains(selectedHarpoon.getName())) {
+            Rs2Inventory.wield(selectedHarpoon.getName());
+            sleep(600);
+        }
+        
+        state = AutoFishingState.CHECKING_GEAR;
     }
 
-    private AutoFishingState handleTraveling() {
+    private void handleTraveling() {
         Microbot.status = "Traveling to fishing location...";
         
-        if (Rs2Player.isMoving()) {
-            return currentState;
+        if (fishingLocation == null) {
+            setupFishingSpotLocation();
+            WorldPoint selectedLocation = getCurrentFishingLocation();
+            if (selectedLocation != null) {
+                fishingLocation = selectedLocation;
+            } else {
+                WorldPoint playerLocation = Rs2Player.getWorldLocation();
+                WorldPoint closestLocation = selectedFish.getClosestLocation(playerLocation);
+                if (closestLocation != null) {
+                    fishingLocation = closestLocation;
+                } else {
+                    fishingLocation = selectedFish.getClosestLocation(playerLocation);
+                }
+            }
         }
         
-        if (locationManager.isAtFishingLocation()) {
-            flags.setAtFishingLocation(true);
-            return AutoFishingState.FISHING;
+        if (isAtFishingLocation()) {
+            state = AutoFishingState.FISHING;
+            return;
         }
         
-        WorldPoint fishingSpot = locationManager.findOptimalFishingSpot(selectedFish);
-        if (fishingSpot == null) {
-            flags.incrementRetry();
-            return AutoFishingState.ERROR_RECOVERY;
-        }
-        
-        if (!locationManager.walkToLocation(fishingSpot)) {
-            flags.incrementRetry();
-            return AutoFishingState.ERROR_RECOVERY;
-        }
-        
-        return currentState;
+        Rs2Walker.walkTo(fishingLocation);
     }
 
-    private AutoFishingState handleFishing() {
+    private void handleFishing() {
         Microbot.status = "Fishing " + selectedFish.getName() + "...";
-
-        if (inventoryManager.isInventoryFull()) {
-            return AutoFishingState.INVENTORY_FULL;
+        
+        if (Rs2Inventory.isFull()) {
+            state = AutoFishingState.INVENTORY_FULL;
+            return;
         }
         
         if (Rs2Player.isAnimating()) {
-            Microbot.status = "Currently fishing...";
-            Rs2Player.waitForAnimation();
-            return currentState;
+            return;
         }
-
-        Rs2NpcModel fishingSpot = getFishingSpot(selectedFish);
+        
+        Rs2NpcModel fishingSpot = getFishingSpot();
         if (fishingSpot == null) {
-            sleepUntil(() -> getFishingSpot(selectedFish) != null, 2000);
-            return currentState;
+            if (selectedSpotLocation != null && selectedSpotLocation.getLocations().length > 1) {
+                cycleToNextLocation();
+                WorldPoint playerLocation = Rs2Player.getWorldLocation();
+                if (fishingLocation != null && playerLocation.distanceTo(fishingLocation) <= 50) {
+                    Rs2Walker.walkTo(fishingLocation);
+                    return;
+                } else {
+                    state = AutoFishingState.TRAVELING;
+                    return;
+                }
+            } else {
+                state = AutoFishingState.TRAVELING;
+                return;
+            }
         }
         
         if (fishAction.isEmpty()) {
             fishAction = Rs2Npc.getAvailableAction(fishingSpot, selectedFish.getActions());
             if (fishAction.isEmpty()) {
-                flags.incrementRetry();
-                return AutoFishingState.ERROR_RECOVERY;
+                state = AutoFishingState.ERROR_RECOVERY;
+                return;
             }
-        }
-        
-        if (!Rs2Camera.isTileOnScreen(fishingSpot.getLocalLocation())) {
-            validateInteractable(fishingSpot);
         }
         
         if (selectedFish.equals(Fish.KARAMBWAN)) {
@@ -237,129 +306,92 @@ public class AutoFishingScript extends Script {
         }
         
         if (Rs2Npc.interact(fishingSpot, fishAction)) {
-            flags.markAction();
+            Rs2Player.waitForXpDrop(Skill.FISHING, true);
             Rs2Antiban.actionCooldown();
             Rs2Antiban.takeMicroBreakByChance();
-            
-            Rs2Player.waitForAnimation();
         }
-        
-        return currentState;
     }
 
-    private AutoFishingState handleManagingSpec() {
+    private void handleManagingSpec() {
         Microbot.status = "Activating special attack...";
         
-        if (specialAttackManager.activateSpecialAttack(selectedHarpoon)) {
+        if (selectedHarpoon != HarpoonType.NONE && Rs2Combat.getSpecEnergy() >= 100) {
+            Rs2Combat.setSpecState(true, 1000);
             sleep(1000);
         }
         
-        return AutoFishingState.FISHING;
+        state = AutoFishingState.FISHING;
     }
 
-    private AutoFishingState handleInventoryFull() {
+    private void handleInventoryFull() {
         Microbot.status = "Inventory full, managing items...";
         
-        if (flags.isBankingEnabled()) {
-            return AutoFishingState.DEPOSITING;
+        if (config.useBank()) {
+            WorldPoint currentLocation = Rs2Player.getWorldLocation();
+            closestBank = Rs2Bank.getNearestBank(currentLocation);
+            if (closestBank == null) {
+                state = AutoFishingState.ERROR_RECOVERY;
+                return;
+            }
+            state = AutoFishingState.DEPOSITING;
         } else {
-            if (inventoryManager.dropFish()) {
-                return AutoFishingState.FISHING;
+            if (Rs2Inventory.dropAll(selectedFish.getRawNames().toArray(new String[0]))) {
+                state = AutoFishingState.FISHING;
             } else {
-                flags.incrementRetry();
-                return AutoFishingState.ERROR_RECOVERY;
+                state = AutoFishingState.ERROR_RECOVERY;
             }
         }
     }
 
-    private AutoFishingState handleDepositing() {
+    private void handleDepositing() {
         Microbot.status = "Depositing items...";
         
-        if (flags.isPreferDepositBox() && locationManager.isDepositBoxNearby()) {
-            return handleDepositBoxDeposit();
-        } else {
-            return handleBankDeposit();
-        }
-    }
-
-    private AutoFishingState handleDepositBoxDeposit() {
-        if (!Rs2DepositBox.isOpen()) {
-            if (!locationManager.walkToDepositBoxAndOpen()) {
-                return handleBankDeposit();
-            }
-            return currentState;
-        }
-        
-        boolean success = true;
-        success &= inventoryManager.depositFish();
-        success &= inventoryManager.depositTreasures(config);
-        
-        Rs2DepositBox.closeDepositBox();
-        
-        if (success && inventoryManager.validateDepositSuccess()) {
-            return AutoFishingState.RETURNING;
-        } else {
-            flags.incrementRetry();
-            return AutoFishingState.ERROR_RECOVERY;
-        }
-    }
-
-    private AutoFishingState handleBankDeposit() {
         if (!Rs2Bank.isOpen()) {
-            if (!locationManager.walkToBankAndOpen()) {
-                flags.incrementRetry();
-                return AutoFishingState.ERROR_RECOVERY;
+            if (closestBank != null) {
+                if (!Rs2Bank.walkToBankAndUseBank(closestBank)) {
+                    state = AutoFishingState.ERROR_RECOVERY;
+                    return;
+                }
+            } else {
+                if (!Rs2Bank.walkToBankAndUseBank()) {
+                    state = AutoFishingState.ERROR_RECOVERY;
+                    return;
+                }
             }
-            return currentState;
+            return;
         }
         
-        boolean success = true;
-        success &= inventoryManager.depositFish();
-        success &= inventoryManager.depositTreasures(config);
+        for (String fishName : selectedFish.getRawNames()) {
+            if (Rs2Inventory.contains(fishName)) {
+                Rs2Bank.depositAll(fishName);
+                sleep(300);
+            }
+        }
         
         Rs2Bank.closeBank();
-        
-        if (success && inventoryManager.validateDepositSuccess()) {
-            return AutoFishingState.RETURNING;
-        } else {
-            flags.incrementRetry();
-            return AutoFishingState.ERROR_RECOVERY;
-        }
+        closestBank = null;
+        state = AutoFishingState.RETURNING;
     }
 
-    private AutoFishingState handleReturning() {
+    private void handleReturning() {
         Microbot.status = "Returning to fishing location...";
         
-        if (Rs2Player.isMoving()) {
-            return currentState;
+        if (fishingLocation == null) {
+            state = AutoFishingState.TRAVELING;
+            return;
         }
         
-        if (locationManager.isAtFishingLocation()) {
-            flags.setAtFishingLocation(true);
-            return AutoFishingState.FISHING;
+        if (isAtFishingLocation()) {
+            state = AutoFishingState.FISHING;
+            return;
         }
         
-        if (!locationManager.returnToFishingLocation()) {
-            flags.incrementRetry();
-            return AutoFishingState.ERROR_RECOVERY;
-        }
-        
-        return currentState;
+        Rs2Walker.walkTo(fishingLocation);
     }
 
-    private AutoFishingState handleErrorRecovery() {
+    private void handleErrorRecovery() {
         Microbot.status = "Recovering from error...";
         
-        if (flags.maxRetriesExceeded()) {
-            shutdown();
-            return currentState;
-        }
-        
-        if (!flags.canRetry()) {
-            return currentState;
-        }
-        
-
         if (Rs2Bank.isOpen()) {
             Rs2Bank.closeBank();
         }
@@ -368,64 +400,124 @@ public class AutoFishingScript extends Script {
         }
         
         fishAction = "";
+        sleep(2000);
         
-        flags.resetRetries();
-        return AutoFishingState.CHECKING_GEAR;
-    }
-
-    private void updateFlags() {
-        flags.setAtFishingLocation(locationManager.isAtFishingLocation());
-        flags.setInventoryFull(inventoryManager.isInventoryFull());
-        flags.setHasRoomForFish(inventoryManager.hasInventorySpace());
-        flags.setSpecWeaponEquipped(specialAttackManager.hasSpecWeaponEquipped(selectedHarpoon));
-        flags.setHasFullSpecEnergy(specialAttackManager.hasFullSpecEnergy());
-        flags.setShouldUseSpec(specialAttackManager.shouldActivateSpec(selectedHarpoon));
-
-    }
-
-    private void transitionToState(AutoFishingState newState) {
-        currentState = newState;
-        flags.markStateStart();
+        state = AutoFishingState.CHECKING_GEAR;
     }
 
     private void handleKarambwanLogic() {
-        if (Rs2Inventory.hasItem(ItemID.TBWT_RAW_KARAMBWANJI)) {
-            if (Rs2Inventory.hasItem(ItemID.TBWT_KARAMBWAN_VESSEL)) {
-                Rs2Inventory.waitForInventoryChanges(() -> 
-                    Rs2Inventory.combineClosest(ItemID.TBWT_RAW_KARAMBWANJI, ItemID.TBWT_KARAMBWAN_VESSEL), 
-                    600, 5000);
-            }
+        if (Rs2Inventory.hasItem(ItemID.TBWT_RAW_KARAMBWANJI) && Rs2Inventory.hasItem(ItemID.TBWT_KARAMBWAN_VESSEL)) {
+            Rs2Inventory.combineClosest(ItemID.TBWT_RAW_KARAMBWANJI, ItemID.TBWT_KARAMBWAN_VESSEL);
+            sleep(600);
         }
     }
 
-    private Rs2NpcModel getFishingSpot(Fish fish) {
-        return Arrays.stream(fish.getFishingSpot())
-                .mapToObj(Rs2Npc::getNpc)
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElse(null);
+    private void setupFishingSpotLocation() {
+        selectedSpotLocation = null;
+        currentLocationIndex = 0;
+        
+        switch (selectedFish) {
+            case SHRIMP:
+                var shrimpLoc = config.shrimpLocation();
+                if (shrimpLoc != AutoFishingConfig.ShrimpLocation.AUTO) {
+                    selectedSpotLocation = shrimpLoc.toFishingSpotLocation();
+                }
+                break;
+            case ANCHOVIES:
+                var anchoviesLoc = config.anchoviesLocation();
+                if (anchoviesLoc != AutoFishingConfig.AnchoviesLocation.AUTO) {
+                    selectedSpotLocation = anchoviesLoc.toFishingSpotLocation();
+                }
+                break;
+            case HERRING:
+                var herringLoc = config.herringLocation();
+                if (herringLoc != AutoFishingConfig.HerringLocation.AUTO) {
+                    selectedSpotLocation = herringLoc.toFishingSpotLocation();
+                }
+                break;
+            case LOBSTER:
+                var lobsterLoc = config.lobsterLocation();
+                if (lobsterLoc != AutoFishingConfig.LobsterLocation.AUTO) {
+                    selectedSpotLocation = lobsterLoc.toFishingSpotLocation();
+                }
+                break;
+            case SHARK:
+                var sharkLoc = config.sharkLocation();
+                if (sharkLoc != AutoFishingConfig.SharkLocation.AUTO) {
+                    selectedSpotLocation = sharkLoc.toFishingSpotLocation();
+                }
+                break;
+            case SALMON:
+                var salmonLoc = config.salmonLocation();
+                if (salmonLoc != AutoFishingConfig.SalmonLocation.AUTO) {
+                    selectedSpotLocation = salmonLoc.toFishingSpotLocation();
+                }
+                break;
+            case TROUT:
+                var troutLoc = config.troutLocation();
+                if (troutLoc != AutoFishingConfig.TroutLocation.AUTO) {
+                    selectedSpotLocation = troutLoc.toFishingSpotLocation();
+                }
+                break;
+            case MONKFISH:
+                var monkfishLoc = config.monkfishLocation();
+                if (monkfishLoc != AutoFishingConfig.MonkfishLocation.AUTO) {
+                    selectedSpotLocation = monkfishLoc.toFishingSpotLocation();
+                }
+                break;
+            case KARAMBWAN:
+                var karambwanLoc = config.karambwanLocation();
+                if (karambwanLoc != AutoFishingConfig.KarambwanLocation.AUTO) {
+                    selectedSpotLocation = karambwanLoc.toFishingSpotLocation();
+                }
+                break;
+            case KARAMBWANJI:
+                var karambwanjiLoc = config.karambwanjiLocation();
+                if (karambwanjiLoc != AutoFishingConfig.KarambwanjiLocation.AUTO) {
+                    selectedSpotLocation = karambwanjiLoc.toFishingSpotLocation();
+                }
+                break;
+            case LAVA_EEL:
+                var lavaEelLoc = config.lavaEelLocation();
+                if (lavaEelLoc != AutoFishingConfig.LavaEelLocation.AUTO) {
+                    selectedSpotLocation = lavaEelLoc.toFishingSpotLocation();
+                }
+                break;
+            case CAVE_EEL:
+                var caveEelLoc = config.caveEelLocation();
+                if (caveEelLoc != AutoFishingConfig.CaveEelLocation.AUTO) {
+                    selectedSpotLocation = caveEelLoc.toFishingSpotLocation();
+                }
+                break;
+            case BARBARIAN_FISH:
+                var barbarianFishLoc = config.barbarianFishLocation();
+                if (barbarianFishLoc != AutoFishingConfig.BarbarianFishLocation.AUTO) {
+                    selectedSpotLocation = barbarianFishLoc.toFishingSpotLocation();
+                }
+                break;
+            case ANGLERFISH:
+                var anglerfishLoc = config.anglerfishLocation();
+                if (anglerfishLoc != AutoFishingConfig.AnglerfishLocation.AUTO) {
+                    selectedSpotLocation = anglerfishLoc.toFishingSpotLocation();
+                }
+                break;
+        }
     }
 
-    private void handleError(Exception ex) {
-        flags.setInErrorState(true);
-        flags.incrementRetry();
-        currentState = AutoFishingState.ERROR_RECOVERY;
+    private WorldPoint getCurrentFishingLocation() {
+        if (selectedSpotLocation != null && selectedSpotLocation.getLocations().length > 0) {
+            if (currentLocationIndex >= selectedSpotLocation.getLocations().length) {
+                currentLocationIndex = 0;
+            }
+            return selectedSpotLocation.getLocations()[currentLocationIndex];
+        }
+        return null;
     }
 
-    private long getDynamicLoopInterval() {
-        switch (currentState) {
-            case FISHING:
-                return 600;
-            case TRAVELING:
-            case RETURNING:
-                return 1000;
-            case GETTING_GEAR:
-            case DEPOSITING:
-                return 800;
-            case ERROR_RECOVERY:
-                return 2000;
-            default:
-                return 1000;
+    private void cycleToNextLocation() {
+        if (selectedSpotLocation != null && selectedSpotLocation.getLocations().length > 1) {
+            currentLocationIndex = (currentLocationIndex + 1) % selectedSpotLocation.getLocations().length;
+            fishingLocation = getCurrentFishingLocation();
         }
     }
 
@@ -440,6 +532,11 @@ public class AutoFishingScript extends Script {
         if (Rs2DepositBox.isOpen()) {
             Rs2DepositBox.closeDepositBox();
         }
-
+        
+        closestBank = null;
+        fishingLocation = null;
+        selectedSpotLocation = null;
+        currentLocationIndex = 0;
+        fishAction = "";
     }
 }
