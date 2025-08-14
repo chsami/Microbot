@@ -10,7 +10,7 @@ import java.util.function.BooleanSupplier;
 public enum State {
     ATTACK_TEMPOROSS(() -> TemporossScript.ENERGY >= 98, null),
     SECOND_FILL(() -> isSolo() ? getAllFish() == 0 : getCookedFish() == 0, ATTACK_TEMPOROSS),
-    THIRD_COOK(() -> getCookedFish() == ((isSolo() && TemporossScript.ESSENCE > 30) ? 19 : getAllFish()) || TemporossScript.INTENSITY >= 93 || (TemporossScript.ENERGY < 50 && getAllFish() > 16 && !isSolo()), SECOND_FILL),
+    THIRD_COOK(() -> getCookedFish() == ((isSolo() && TemporossScript.ESSENCE > 30) ? 19 : getAllFish()) || TemporossScript.INTENSITY >= 92 || (TemporossScript.ENERGY < 50 && getAllFish() > 16 && !isSolo()), SECOND_FILL),
     THIRD_CATCH(() -> {
         // Original logic - only catch 19 fish if ESSENCE is > 31
         // This is the intended behavior as per requirements
