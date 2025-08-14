@@ -15,16 +15,14 @@ import net.runelite.client.plugins.microbot.tempoross.enums.HarpoonType;
 )
 
 public interface TemporossConfig extends Config {
-    //sections
-    // Solo
+    // Mode
     // Inventory
     // Equipment
-    // Tools
     // Overlay
 
     @ConfigSection(
-        name = "Solo",
-        description = "Solo settings",
+        name = "Mode",
+        description = "Mode settings",
         position = 1,
         closedByDefault = true
     )
@@ -46,18 +44,11 @@ public interface TemporossConfig extends Config {
     )
     String equipmentSection = "Equipment";
 
-    @ConfigSection(
-        name = "Harpoon",
-        description = "Harpoon settings",
-        position = 4,
-        closedByDefault = true
-    )
-    String harpoonSection = "Harpoon";
     
     @ConfigSection(
         name = "Overlay",
         description = "Overlay settings",
-        position = 5,
+        position = 4,
         closedByDefault = true
     )
     String overlaySection = "Overlay";
@@ -148,8 +139,8 @@ public interface TemporossConfig extends Config {
         keyName = "harpoonType",
         name = "Harpoon",
         description = "Harpoon type to use",
-        position = 1,
-        section = harpoonSection
+        position = 3,
+        section = equipmentSection
     )
     default HarpoonType harpoonType() {
         return HarpoonType.INFERNAL_HARPOON;
@@ -159,8 +150,8 @@ public interface TemporossConfig extends Config {
             keyName = "enableHarpoonSpec",
             name = "Use Harpoon Special",
             description = "Use the harpoon's special attack when attacking Tempoross.",
-            position = 2,
-            section = harpoonSection
+            position = 4,
+            section = equipmentSection
     )
     default boolean enableHarpoonSpec() {
         return false;
