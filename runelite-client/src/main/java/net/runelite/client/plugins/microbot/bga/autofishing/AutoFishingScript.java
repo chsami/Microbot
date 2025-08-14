@@ -32,7 +32,7 @@ import static net.runelite.client.plugins.microbot.util.npc.Rs2Npc.validateInter
 
 public class AutoFishingScript extends Script {
 
-    public static String version = "1.0.0";
+    public static String version = "1.0";
     
     @Inject
     private EquipmentManager equipmentManager;
