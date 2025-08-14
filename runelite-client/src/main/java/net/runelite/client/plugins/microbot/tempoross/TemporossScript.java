@@ -913,7 +913,13 @@ public class TemporossScript extends Script {
                 Rs2Walker.walkTo(breakPoint);
                 sleepUntil(() -> !Rs2Player.isInteracting(), 2000);
             }
-
+            
+           // Check if player is still tethered - cannot repair while tethered
+            if (TemporossPlugin.isTethered) {
+                log("Cannot repair mast while tethered - waiting for full untethering");
+                return;
+            }
+            
             sleep(300);
             if (Rs2GameObject.interact(damagedMast, "Repair")) {
                 log("Prioritizing mast repair (after fire cleared)");
@@ -952,7 +958,13 @@ public class TemporossScript extends Script {
                 Rs2Walker.walkTo(breakPoint);
                 sleepUntil(() -> !Rs2Player.isInteracting(), 2000);
             }
-
+            
+           // Check if player is still tethered - cannot repair while tethered
+            if (TemporossPlugin.isTethered) {
+                log("Cannot repair totem while tethered - waiting for full untethering");
+                return;
+            }
+            
             sleep(300);
             if (Rs2GameObject.interact(damagedTotem, "Repair")) {
                 log("Prioritizing totem repair");
