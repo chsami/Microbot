@@ -672,7 +672,7 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
     public void refresh() {
         tablePanel.refreshTable();
         if (formPanel != null) {
-            formPanel.updateControlButton();
+            formPanel.refresh();
         }
         if (stopConditionPanel != null) {
             stopConditionPanel.refreshConditions();            

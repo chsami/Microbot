@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.models;
+package net.runelite.client.plugins.microbot.util.world;
 
 import java.util.Map;
 

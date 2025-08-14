@@ -4,11 +4,12 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementMode;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.registry.RequirementRegistry;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.ShopRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.state.TaskExecutionState;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.SpellbookRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.conditional.ConditionalRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.conditional.OrderedRequirement;
@@ -38,9 +39,9 @@ public class RequirementSolver {
      * @param context The schedule context (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      * @return true if all shop requirements were fulfilled successfully, false otherwise
      */
-    public static boolean fulfillShopRequirements(CompletableFuture<Boolean> scheduledFuture,List<ShopRequirement> shopRequirements, ScheduleContext context) {
+    public static boolean fulfillShopRequirements(CompletableFuture<Boolean> scheduledFuture,List<ShopRequirement> shopRequirements, TaskContext context) {
         List<ShopRequirement> contextReqs = shopRequirements.stream()
-            .filter(req -> req.getScheduleContext() == context || req.getScheduleContext() == ScheduleContext.BOTH)
+            .filter(req -> req.getTaskContext() == context || req.getTaskContext() == TaskContext.BOTH)
             .collect(java.util.stream.Collectors.toList());
             
         if (contextReqs.isEmpty()) {
@@ -89,7 +90,7 @@ public class RequirementSolver {
      * @param context The schedule context (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      * @return true if all loot requirements were fulfilled successfully, false otherwise
      */
-    public static boolean fulfillLootRequirements(CompletableFuture<Boolean> scheduledFuture, List<LogicalRequirement> lootLogical, ScheduleContext context) {
+    public static boolean fulfillLootRequirements(CompletableFuture<Boolean> scheduledFuture, List<LogicalRequirement> lootLogical, TaskContext context) {
         List<LogicalRequirement> contextReqs = LogicalRequirement.filterByContext(lootLogical, context);
             
         if (contextReqs.isEmpty()) {
@@ -108,9 +109,9 @@ public class RequirementSolver {
      * @param context The schedule context (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      * @return true if all location requirements were fulfilled successfully, false otherwise
      */
-    public static boolean fulfillLocationRequirements(CompletableFuture<Boolean> scheduledFuture, List<LocationRequirement> locationReqs, ScheduleContext context) {
+    public static boolean fulfillLocationRequirements(CompletableFuture<Boolean> scheduledFuture, List<LocationRequirement> locationReqs, TaskContext context) {
         List<LocationRequirement> contextReqs = locationReqs.stream()
-            .filter(req -> req.getScheduleContext() == context || req.getScheduleContext() == ScheduleContext.BOTH)
+            .filter(req -> req.getTaskContext() == context || req.getTaskContext() == TaskContext.BOTH)
             .collect(java.util.stream.Collectors.toList());
             
         if (contextReqs.isEmpty()) {
@@ -163,10 +164,10 @@ public class RequirementSolver {
      * @return true if all spellbook requirements were fulfilled successfully, false otherwise
      */
     public static boolean fulfillSpellbookRequirements(CompletableFuture<Boolean> scheduledFuture, List<SpellbookRequirement> spellbookReqs, 
-                                                     ScheduleContext context, 
+                                                     TaskContext context, 
                                                      boolean saveCurrentSpellbook) {
         List<SpellbookRequirement> contextReqs = spellbookReqs.stream()
-            .filter(req -> req.getScheduleContext() == context || req.getScheduleContext() == ScheduleContext.BOTH)
+            .filter(req -> req.getTaskContext() == context || req.getTaskContext() == TaskContext.BOTH)
             .collect(java.util.stream.Collectors.toList());
             
         if (contextReqs.isEmpty()) {
@@ -222,16 +223,17 @@ public class RequirementSolver {
      * @param context The schedule context (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      * @return true if all conditional requirements were fulfilled successfully, false otherwise
      */
-    public static boolean fulfillConditionalRequirements(CompletableFuture<Boolean> scheduledFuture
-                                                        ,List<ConditionalRequirement> conditionalReqs,
+    public static boolean fulfillConditionalRequirements(CompletableFuture<Boolean> scheduledFuture,
+                                                        TaskExecutionState executionState,
+                                                        List<ConditionalRequirement> conditionalReqs,
                                                         List<OrderedRequirement> orderedReqs,
-                                                        ScheduleContext context) {
+                                                        TaskContext context) {
         List<ConditionalRequirement> contextConditionalReqs = conditionalReqs.stream()
-            .filter(req -> req.getScheduleContext() == context || req.getScheduleContext() == ScheduleContext.BOTH)
+            .filter(req -> req.getTaskContext() == context || req.getTaskContext() == TaskContext.BOTH)
             .collect(java.util.stream.Collectors.toList());
             
         List<OrderedRequirement> contextOrderedReqs = orderedReqs.stream()
-            .filter(req -> req.getScheduleContext() == context || req.getScheduleContext() == ScheduleContext.BOTH)
+            .filter(req -> req.getTaskContext() == context || req.getTaskContext() == TaskContext.BOTH)
             .collect(java.util.stream.Collectors.toList());
         
         if (contextConditionalReqs.isEmpty() && contextOrderedReqs.isEmpty()) {
@@ -299,9 +301,9 @@ public class RequirementSolver {
     public static <T extends Requirement> boolean fulfillRequirements( CompletableFuture<Boolean> scheduledFuture,
                                                                         List<T> requirements, 
                                                                      String requirementTypeName,
-                                                                     ScheduleContext context) {
+                                                                     TaskContext context) {
         List<T> contextReqs = requirements.stream()
-            .filter(req -> req.getScheduleContext() == context || req.getScheduleContext() == ScheduleContext.BOTH)
+            .filter(req -> req.getTaskContext() == context || req.getTaskContext() == TaskContext.BOTH)
             .collect(java.util.stream.Collectors.toList());
             
         if (contextReqs.isEmpty()) {

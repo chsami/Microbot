@@ -4,7 +4,7 @@ import lombok.Getter;
 import lombok.EqualsAndHashCode;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2RunePouch;
 import net.runelite.client.plugins.microbot.util.inventory.RunePouchType;
@@ -63,7 +63,7 @@ public class RunePouchRequirement extends ItemRequirement {
      * @param priority Priority level for this requirement
      * @param rating Rating/importance (1-10)
      * @param description Human-readable description
-     * @param scheduleContext When this requirement applies (PRE_SCHEDULE, POST_SCHEDULE, BOTH)
+     * @param TaskContext When this requirement applies (PRE_SCHEDULE, POST_SCHEDULE, BOTH)
      */
     public RunePouchRequirement(
             Map<Runes, Integer> requiredRunes,
@@ -71,7 +71,7 @@ public class RunePouchRequirement extends ItemRequirement {
             RequirementPriority priority,
             int rating,
             String description,
-            ScheduleContext scheduleContext) {
+            TaskContext taskContext) {
         
         // Call parent constructor with first rune pouch ID - we'll handle multiple IDs in our override methods
         super(RunePouchType.values()[0].getItemId(), // Use first pouch ID as primary
@@ -80,7 +80,7 @@ public class RunePouchRequirement extends ItemRequirement {
               priority,
               rating,
               description,
-              scheduleContext);
+              taskContext);
         
         this.requiredRunes = requiredRunes;
         this.allowCombinationRunes = allowCombinationRunes;
@@ -93,15 +93,15 @@ public class RunePouchRequirement extends ItemRequirement {
      * @param priority Priority level for this requirement
      * @param rating Rating/importance (1-10)
      * @param description Human-readable description
-     * @param scheduleContext When this requirement applies
+     * @param TaskContext When this requirement applies
      */
     public RunePouchRequirement(
             Map<Runes, Integer> requiredRunes,
             RequirementPriority priority,
             int rating,
             String description,
-            ScheduleContext scheduleContext) {
-        this(requiredRunes, false, priority, rating, description, scheduleContext);
+            TaskContext taskContext) {
+        this(requiredRunes, false, priority, rating, description, taskContext);
     }
     
     @Override
@@ -284,7 +284,7 @@ public class RunePouchRequirement extends ItemRequirement {
         sb.append("Type:\t\t\t").append(getRequirementType().name()).append("\n");
         sb.append("Priority:\t\t").append(getPriority().name()).append("\n");
         sb.append("Rating:\t\t\t").append(getRating()).append("/10\n");
-        sb.append("Schedule Context:\t").append(getScheduleContext().name()).append("\n");
+        sb.append("Schedule Context:\t").append(getTaskContext().name()).append("\n");
         sb.append("Allow Combination Runes:\t").append(allowCombinationRunes).append("\n");
         sb.append("Description:\t\t").append(getDescription() != null ? getDescription() : "No description").append("\n");
         

@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot;
 
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.util.events.*;
 import net.runelite.client.ui.SplashScreen;
 import org.slf4j.event.Level;
@@ -11,7 +12,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-
+@Slf4j
 public class BlockingEventManager
 {
     private static final int MAX_QUEUE_SIZE = 10;
@@ -102,15 +103,16 @@ public class BlockingEventManager
         for (BlockingEvent event : blockingEvents)
         {
             try
-            {
+            {              
                 if (event.validate())
                 {
+                    
                     // only enqueue if it wasn't already pending
                     if (pendingEvents.add(event))
-                    {
+                    {     
                         // offer; if the queue is full, drop and remove from pending
                         if (!eventQueue.offer(event))
-                        {
+                        {                            
                             pendingEvents.remove(event);
                         }
                     }
@@ -137,7 +139,7 @@ public class BlockingEventManager
             return true;
         }
 
-        BlockingEvent event = eventQueue.poll();
+        BlockingEvent event = eventQueue.poll();    
         if (event == null)
         {
             return false;
@@ -151,9 +153,10 @@ public class BlockingEventManager
         }
 
         blockingExecutor.execute(() -> {
+            boolean executedSuccess = false;
             try
             {
-                event.execute();
+                executedSuccess = event.execute();
             }
             catch (Exception ex)
             {
@@ -164,7 +167,17 @@ public class BlockingEventManager
             }
             finally
             {
-                pendingEvents.remove(event);
+                if (executedSuccess){
+                    log.debug("BlockingEvent {} executed successfully", event.getName());                    
+                    pendingEvents.remove(event);
+                }else{
+                    //queue it back if execution failed
+                    log.debug("BlockingEvent {} execution failed, re-queuing", event.getName());
+                    if (!eventQueue.offer(event)){
+                        log.debug("BlockingEvent queue is full, dropping event: {}", event.getName());
+                        pendingEvents.remove(event);
+                    }
+                }
                 isRunning.set(false);
             }
         });

@@ -132,8 +132,13 @@ public void onGameStateChanged(GameStateChanged event) {
 @Override
 public AbstractPrePostScheduleTasks getPrePostScheduleTasks() {
     if (prePostScheduleRequirements == null || prePostScheduleTasks == null) {
+        if(Microbot.getClient().getGameState() != GameState.LOGGED_IN) {
+               log.debug("My Plugin - Cannot return pre/post schedule tasks - not logged in");
+                return null; // Return null if not logged in
+        }
         this.prePostScheduleRequirements = new MyPluginRequirements(config);
         this.prePostScheduleTasks = new MyPluginTasks(this, keyManager, prePostScheduleRequirements);
+        if (prePostScheduleRequirements.isInitialized()){log.info("My Plugin PrePostScheduleRequirements initialized:\n{}", prePostScheduleRequirements.getDetailedDisplay());}
     }
     
     // Critical: Validate initialization success

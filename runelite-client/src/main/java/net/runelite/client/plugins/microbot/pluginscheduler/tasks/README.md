@@ -167,12 +167,12 @@ private boolean walkToLocation() {
 
 ```java
 @Override
-protected boolean executePreScheduleTask(LockCondition lockCondition) {
+protected boolean executeCustomPreScheduleTask(CompletableFuture<Boolean> preScheduledFuture, LockCondition lockCondition) {
+    if (lockCondition != null) {
+        lockCondition.lock(); // Prevent interruption during setup
+    }
+    
     try {
-        if (lockCondition != null) {
-            lockCondition.lock(); // Prevent interruption during setup
-        }
-        
         // Perform critical setup operations
         return performSetup();
         
@@ -200,18 +200,19 @@ protected boolean executePreScheduleTask(LockCondition lockCondition) {
 
 #### Abstract Methods (Must Implement)
 
-- `executePreScheduleTask(LockCondition lockCondition)` - Plugin-specific preparation logic
-- `executePostScheduleTask(LockCondition lockCondition)` - Plugin-specific cleanup logic
-- `isScheduleMode()` - Determine if plugin is under scheduler control
+- `executeCustomPreScheduleTask(CompletableFuture<Boolean> preScheduledFuture, LockCondition lockCondition)` - Plugin-specific preparation logic
+- `executeCustomPostScheduleTask(CompletableFuture<Boolean> postScheduledFuture, LockCondition lockCondition)` - Plugin-specific cleanup logic
+- `getPrePostScheduleRequirements()` - Return the requirements instance for this plugin
 
 ## Error Handling
 
-The infrastructure provides comprehensive error handling:
+The infrastructure provides comprehensive error handling through centralized try-catch blocks in the base class:
 
-1. **Timeout Handling**: Tasks that exceed their timeout are automatically cancelled
-2. **Exception Logging**: All exceptions are logged with appropriate detail levels
-3. **Graceful Degradation**: Failed pre-tasks report plugin failure; failed post-tasks still attempt plugin shutdown
+1. **Centralized Exception Handling**: All exceptions from custom task methods are caught and logged by the parent class
+2. **Timeout Handling**: Tasks that exceed their timeout are automatically cancelled
+3. **Proper Error Reporting**: Failures are reported to the scheduler with appropriate ExecutionResult values
 4. **Resource Cleanup**: Resources are always cleaned up, even when errors occur
+5. **No Redundant Error Handling**: Custom task methods should NOT include try-catch blocks - let errors bubble up to the centralized handlers
 
 ## TODO Items for Future Enhancement
 
@@ -240,14 +241,19 @@ See the following implementations for reference:
 
 1. **Always check isScheduleMode()**: Only perform schedule-specific logic when actually running under scheduler
 2. **Use lock conditions**: Prevent interruption during critical operations like minigame participation
-3. **Handle failures gracefully**: Return false from task methods to indicate failure, but avoid throwing exceptions
+3. **Handle failures gracefully**: Return false from task methods to indicate failure - exceptions will be handled by the parent class
 4. **Log appropriately**: Use structured logging with appropriate log levels
-5. **Clean up resources**: Always implement proper resource cleanup in your task methods
-6. **Test both modes**: Ensure your plugin works both with and without scheduler control
+5. **Avoid redundant error handling**: Do not add try-catch blocks in custom task methods - the parent class provides centralized error handling
+6. **Clean up resources**: Always implement proper resource cleanup in your task methods
+7. **Test both modes**: Ensure your plugin works both with and without scheduler control
 
 
+<<<<<<< HEAD
 Design note: 
 Further improvemnts: We should improve the requirement fulfillment flow and clarify ItemRequirement semantics. Equipment requirements target a specific EquipmentInventorySlot; inventory requirements should not. To avoid overloading a single type with sentinel values (e.g., null slot), consider:
+=======
+Design note: We should improve the requirement fulfillment flow and clarify ItemRequirement semantics. Equipment requirements target a specific EquipmentInventorySlot; inventory requirements should not. To avoid overloading a single type with sentinel values (e.g., null slot), consider:
+>>>>>>> ff36783985 ((feat,bugfixes,core): cache architecture overhaul and comprehensive pre/post schedule tasks system)
 - Making ItemRequirement an abstract base type.
 - Introduce EquipmentRequirement (has a non-null EquipmentInventorySlot).
 - Introduce InventoryRequirement (no slot; optional quantity/stack rules).

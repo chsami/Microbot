@@ -55,7 +55,7 @@ public class GatheredResourceCondition extends ResourceCondition {
     private transient Map<String, Integer> gatheredItemCounts = new HashMap<>();
     private transient int currentTargetCount;
     private transient int currentGatheredCount;
-    private transient boolean satisfied = false;
+    private transient volatile boolean satisfied = false;
         
     // Pause-related fields for cumulative tracking
     private transient Map<String, Integer> pausedItemCounts = new HashMap<>();

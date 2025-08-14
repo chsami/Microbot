@@ -11,6 +11,7 @@ import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.antiban.enums.Activity;
 import net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
+import net.runelite.client.plugins.microbot.util.events.PluginPauseEvent;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -122,15 +123,16 @@ public class SchedulableExampleScript extends Script {
             try {
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
-                
+                log.info("aliveCounter: {}", aliveCounter);
                 // Call the main method with antiban testing
                 main(config);                                               
                 // Increment counter and check if we should report alive
                 aliveCounter++;
-                int reportThreshold = (config.aliveReportTimeout() * 1000) / 800; // Convert seconds to iterations
-                
+                // Compute iterations from milliseconds, clamp to at least 1
+                final long periodMs = Constants.GAME_TICK_LENGTH * 2L;
+                final long timeoutMs = Math.max(0L, (long) config.aliveReportTimeout()*1000L);
+                final int reportThreshold = (int) Math.max(1L, (long) Math.ceil(timeoutMs / (double) periodMs));
                 if (aliveCounter >= reportThreshold) {
-                    Microbot.log("SchedulableExampleScript is alive and running!");
                     Rs2ItemModel oneDosePrayerRegeneration= Rs2ItemModel.createFromCache(ItemID._1DOSE1PRAYER_REGENERATION,1,1);
                     List<String> equipmentActions =oneDosePrayerRegeneration.getEquipmentActions();
                     boolean isTradeable = oneDosePrayerRegeneration.isTradeable();
@@ -139,6 +141,7 @@ public class SchedulableExampleScript extends Script {
                     List<String> graceFullHelmActions = graceFullHelm.getEquipmentActions();
                     boolean isGraceFullHelmTradeable = graceFullHelm.isTradeable();
                     log.info("{}",graceFullHelm.toString() );
+                    log.info("SchedulableExampleScript is alive! \n- PauseEvent {} (valid),pauseAllScripts: {}, BreakHanlderLook: {}", PluginPauseEvent.isPaused(), Microbot.pauseAllScripts.get(), BreakHandlerScript.lockState.get());
                     aliveCounter = 0; // Reset counter
                 }
                 

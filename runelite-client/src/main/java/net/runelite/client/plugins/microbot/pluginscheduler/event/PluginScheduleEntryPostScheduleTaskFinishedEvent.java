@@ -13,7 +13,7 @@ import net.runelite.client.plugins.Plugin;
 public class PluginScheduleEntryPostScheduleTaskFinishedEvent {
     private final Plugin plugin;
     private final ZonedDateTime finishDateTime;
-    private final boolean success;
+    private final ExecutionResult result;
     private final String message;
     
     /**
@@ -21,13 +21,13 @@ public class PluginScheduleEntryPostScheduleTaskFinishedEvent {
      *
      * @param plugin The plugin that finished post-schedule tasks
      * @param finishDateTime The time when the plugin finished
-     * @param success Whether the post-schedule tasks completed successfully
+     * @param result The execution result (SUCCESS, SOFT_FAILURE, or HARD_FAILURE)
      * @param message Optional message describing the completion
      */
-    public PluginScheduleEntryPostScheduleTaskFinishedEvent(Plugin plugin, ZonedDateTime finishDateTime, boolean success, String message) {
+    public PluginScheduleEntryPostScheduleTaskFinishedEvent(Plugin plugin, ZonedDateTime finishDateTime, ExecutionResult result, String message) {
         this.plugin = plugin;
         this.finishDateTime = finishDateTime;
-        this.success = success;
+        this.result = result;
         this.message = message;
     }
     
@@ -35,10 +35,19 @@ public class PluginScheduleEntryPostScheduleTaskFinishedEvent {
      * Creates a new plugin post-schedule task finished event with current time
      *
      * @param plugin The plugin that finished post-schedule tasks
-     * @param success Whether the post-schedule tasks completed successfully
+     * @param result The execution result (SUCCESS, SOFT_FAILURE, or HARD_FAILURE)
      * @param message Optional message describing the completion
      */
-    public PluginScheduleEntryPostScheduleTaskFinishedEvent(Plugin plugin, boolean success, String message) {
-        this(plugin, ZonedDateTime.now(), success, message);
+    public PluginScheduleEntryPostScheduleTaskFinishedEvent(Plugin plugin, ExecutionResult result, String message) {
+        this(plugin, ZonedDateTime.now(), result, message);
+    }
+    
+    /**
+     * @deprecated Use {@link #getResult()} instead for more granular result information
+     * @return true if the result indicates success
+     */
+    @Deprecated
+    public boolean isSuccess() {
+        return result.isSuccess();
     }
 }

@@ -16,7 +16,7 @@ public class PluginScheduleEntryMainTaskFinishedEvent {
     private final Plugin plugin;
     private final ZonedDateTime finishDateTime;
     private final String reason;
-    private final boolean success;
+    private final ExecutionResult result;
     
     /**
      * Creates a new plugin finished event
@@ -24,13 +24,13 @@ public class PluginScheduleEntryMainTaskFinishedEvent {
      * @param plugin The plugin that has finished
      * @param finishDateTime The time when the plugin finished
      * @param reason A description of why the plugin finished
-     * @param success Whether the plugin completed successfully
+     * @param result The execution result (SUCCESS, SOFT_FAILURE, or HARD_FAILURE)
      */
-    public PluginScheduleEntryMainTaskFinishedEvent(Plugin plugin, ZonedDateTime finishDateTime, String reason, boolean success) {
+    public PluginScheduleEntryMainTaskFinishedEvent(Plugin plugin, ZonedDateTime finishDateTime, String reason, ExecutionResult result) {
         this.plugin = plugin;
         this.finishDateTime = finishDateTime;
         this.reason = reason;
-        this.success = success;
+        this.result = result;
     }
     
     /**
@@ -38,9 +38,18 @@ public class PluginScheduleEntryMainTaskFinishedEvent {
      *
      * @param plugin The plugin that has finished
      * @param reason A description of why the plugin finished
-     * @param success Whether the plugin completed successfully
+     * @param result The execution result (SUCCESS, SOFT_FAILURE, or HARD_FAILURE)
      */
-    public PluginScheduleEntryMainTaskFinishedEvent(Plugin plugin, String reason, boolean success) {
-        this(plugin, ZonedDateTime.now(), reason, success);
+    public PluginScheduleEntryMainTaskFinishedEvent(Plugin plugin, String reason, ExecutionResult result) {
+        this(plugin, ZonedDateTime.now(), reason, result);
+    }
+    
+    /**
+     * @deprecated Use {@link #getResult()} instead for more granular result information
+     * @return true if the result indicates success
+     */
+    @Deprecated
+    public boolean isSuccess() {
+        return result.isSuccess();
     }
 }

@@ -8,7 +8,7 @@ import net.runelite.client.game.ItemStats;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.logical.OrRequirement;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -25,9 +25,6 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
-
-import org.slf4j.event.Level;
-
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
 /**
@@ -98,7 +95,7 @@ public class ItemRequirement extends Requirement {
      * or different variants of the same item (graceful pieces in different colors).
      * Uses InventorySetupsVariationMapping under the hood to map between equivalent item IDs.
      */
-    private final boolean fuzzy;
+    private final boolean fuzzy;    
     private ItemComposition itemComposition = null; // Cached item composition for performance
    
     /**
@@ -116,16 +113,16 @@ public class ItemRequirement extends Requirement {
             RequirementPriority priority,
             int rating,
             String description,
-            ScheduleContext scheduleContext,
+            TaskContext taskContext,
             Skill skillToUse,
             Integer minimumLevelToUse,
             Skill skillToEquip,
             Integer minimumLevelToEquip,
             boolean fuzzy) {
         
-        // Call super constructor with inferred RequirementType and single item ID
+        // Call super constructor with inferred RequirementType and resolved item ID
         super(inferRequirementType(equipmentSlot, inventorySlot), priority, rating, description, 
-              Arrays.asList(itemId), scheduleContext);
+              Arrays.asList(resolveOptimalItemId(itemId, amount)), taskContext);
         
         // Only override amount for equipment items (not inventory or ammo)
         if (equipmentSlot != null && equipmentSlot != EquipmentInventorySlot.AMMO) {
@@ -138,7 +135,13 @@ public class ItemRequirement extends Requirement {
         this.minimumLevelToUse = minimumLevelToUse;
         this.skillToEquip = skillToEquip;
         this.minimumLevelToEquip = minimumLevelToEquip;
-        this.fuzzy = fuzzy;
+        if (isNoted()){
+            this.fuzzy = true;
+        }else if(Rs2FuzzyItem.isChargedItem(itemId)){
+            this.fuzzy = fuzzy; // it can be desired to use the exact item.. 
+        }else{
+            this.fuzzy = fuzzy;
+        }
         
         // Validate slot assignments
         validateSlotAssignments();
@@ -150,67 +153,67 @@ public class ItemRequirement extends Requirement {
      * Constructor for single item ID with equipment requirement.
      */
     public ItemRequirement(int itemId, int amount, EquipmentInventorySlot equipmentSlot, 
-                        RequirementPriority priority, int rating, String description, ScheduleContext scheduleContext) {
+                        RequirementPriority priority, int rating, String description, TaskContext taskContext) {
         this(itemId, amount, equipmentSlot, -2, priority, rating, description, 
-             scheduleContext, null, null, null, null, false);
+             taskContext, null, null, null, null, false);
     }
     
     /**
      * Constructor for single item ID with equipment requirement with default amount of 1.
      */
     public ItemRequirement(int itemId, EquipmentInventorySlot equipmentSlot, 
-                        RequirementPriority priority, int rating, String description, ScheduleContext scheduleContext) {
+                        RequirementPriority priority, int rating, String description, TaskContext taskContext) {
         this(itemId, 1, equipmentSlot, -2, priority, rating, description, 
-             scheduleContext, null, null, null, null, false);
+             taskContext, null, null, null, null, false);
     }
     
     /**
      * Constructor for single item ID with equipment requirement and skill requirements for use only.
      */
     public ItemRequirement(int itemId, int amount, EquipmentInventorySlot equipmentSlot, Integer inventorySlot,
-                        RequirementPriority priority, int rating, String description, ScheduleContext scheduleContext, 
+                        RequirementPriority priority, int rating, String description, TaskContext taskContext, 
                         Skill skillToUse, Integer minimumLevelToUse) {
         this(itemId, amount, equipmentSlot, inventorySlot, priority, rating, description,
-             scheduleContext, skillToUse, minimumLevelToUse, null, null, false);
+             taskContext, skillToUse, minimumLevelToUse, null, null, false);
     }
 
     /**
      * Constructor for single item ID with equipment requirement and skill requirements for use only.
     */
     public ItemRequirement(int itemId, int amount, EquipmentInventorySlot equipmentSlot,
-                        RequirementPriority priority, int rating, String description, ScheduleContext scheduleContext, 
+                        RequirementPriority priority, int rating, String description, TaskContext taskContext, 
                         Skill skillToUse, Integer minimumLevelToUse) {
         this(itemId, amount, equipmentSlot, -2, priority, rating, description,
-             scheduleContext, skillToUse, minimumLevelToUse, null, null, false);
+             taskContext, skillToUse, minimumLevelToUse, null, null, false);
     }
     
     /**
      * Constructor for single item ID with equipment requirement and both skill requirements (use and equip).
      */
     public ItemRequirement(int itemId, int amount, EquipmentInventorySlot equipmentSlot, Integer inventorySlot,
-                        RequirementPriority priority, int rating, String description, ScheduleContext scheduleContext,
+                        RequirementPriority priority, int rating, String description, TaskContext taskContext,
                         Skill skillToUse, Integer minimumLevelToUse, Skill skillToEquip, Integer minimumLevelToEquip) {
         this(itemId, amount, equipmentSlot, inventorySlot, priority, rating, description,
-             scheduleContext, skillToUse, minimumLevelToUse, skillToEquip, minimumLevelToEquip, false);
+             taskContext, skillToUse, minimumLevelToUse, skillToEquip, minimumLevelToEquip, false);
     }
 
      /**
      * Constructor for single item ID with equipment requirement and both skill requirements (use and equip).
      */
     public ItemRequirement(int itemId, int amount, EquipmentInventorySlot equipmentSlot,
-                        RequirementPriority priority, int rating, String description, ScheduleContext scheduleContext,
+                        RequirementPriority priority, int rating, String description, TaskContext taskContext,
                         Skill skillToUse, Integer minimumLevelToUse, Skill skillToEquip, Integer minimumLevelToEquip) {
         this(itemId, amount, equipmentSlot, -2, priority, rating, description,
-             scheduleContext, skillToUse, minimumLevelToUse, skillToEquip, minimumLevelToEquip, false);
+             taskContext, skillToUse, minimumLevelToUse, skillToEquip, minimumLevelToEquip, false);
     }
     
     /**
      * Constructor for single item ID with fuzzy option.
      */
     public ItemRequirement(int itemId, EquipmentInventorySlot equipmentSlot,
-                        RequirementPriority priority, int rating, String description, ScheduleContext scheduleContext, boolean fuzzy) {
+                        RequirementPriority priority, int rating, String description, TaskContext taskContext, boolean fuzzy) {
         this(itemId, 1, equipmentSlot, -2, priority, rating, description,
-             scheduleContext, null, null, null, null, fuzzy);
+             taskContext, null, null, null, null, fuzzy);
     }
     
     /**
@@ -221,18 +224,18 @@ public class ItemRequirement extends Requirement {
      * Constructor for single item ID with specific inventory slot.
      */
     public ItemRequirement(int itemId, int amount, Integer inventorySlot,
-                        RequirementPriority priority, int rating, String description, ScheduleContext scheduleContext) {
+                        RequirementPriority priority, int rating, String description, TaskContext taskContext) {
         this(itemId, amount, null, inventorySlot, priority, rating, description, 
-             scheduleContext, null, null, null, null, false);
+             taskContext, null, null, null, null, false);
     }
     
     /**
      * Constructor for EITHER requirement with both equipment and inventory slot specification.
      */
     public ItemRequirement(int itemId, int amount, EquipmentInventorySlot equipmentSlot, Integer inventorySlot,
-                        RequirementPriority priority, int rating, String description, ScheduleContext scheduleContext) {
+                        RequirementPriority priority, int rating, String description, TaskContext taskContext) {
         this(itemId, amount, equipmentSlot, inventorySlot, priority, rating, description, 
-             scheduleContext, null, null, null, null, false);
+             taskContext, null, null, null, null, false);
     }
 
      @Override
@@ -240,6 +243,18 @@ public class ItemRequirement extends Requirement {
         if (this.itemComposition == null) {
             // Lazy load item composition if not already set
             setItemComp(getId());
+        }
+        if(isFuzzy()){
+            if(this.itemComposition != null){
+                boolean isCharged = Rs2FuzzyItem.isChargedItem(getId());
+                if(isCharged){
+                    return Rs2FuzzyItem.getBaseItemNameFromString( this.itemComposition.getName());
+                }
+                return this.itemComposition.getName();
+            }else{
+                return "Unknown Item (Fuzzy)";
+            }
+
         }
         // Use the single item ID as the name
         return this.itemComposition != null ? this.itemComposition.getName() : "Unknown Item";
@@ -270,13 +285,13 @@ public class ItemRequirement extends Requirement {
      * They are used to reserve slots without specifying actual items.
      * 
      * @param equipmentSlot The equipment slot to block
-     * @param scheduleContext When this requirement applies
+     * @param TaskContext When this requirement applies
      * @param description Description for the dummy requirement
      * @return A dummy ItemRequirement for the specified equipment slot
      */
     public static ItemRequirement createDummyEquipmentRequirement(
             EquipmentInventorySlot equipmentSlot,
-            ScheduleContext scheduleContext,
+            TaskContext taskContext,
             String description) {
         if (equipmentSlot == null) {
             throw new IllegalArgumentException("Equipment slot cannot be null for dummy equipment requirement");
@@ -290,7 +305,7 @@ public class ItemRequirement extends Requirement {
             RequirementPriority.MANDATORY,
             10,  // rating
             description,
-            scheduleContext,
+            taskContext,
             null,  // skillToUse
             -1,    // minimumLevelToUse
             null,  // skillToEquip
@@ -305,14 +320,14 @@ public class ItemRequirement extends Requirement {
      * They are used to reserve slots without specifying actual items.
      * 
      * @param inventorySlot The inventory slot to block (0-27)
-     * @param scheduleContext When this requirement applies
+     * @param TaskContext When this requirement applies
      * @param description Description for the dummy requirement
      * @return A dummy ItemRequirement for the specified inventory slot
      * @throws IllegalArgumentException if inventorySlot is not between 0 and 27
      */
     public static ItemRequirement createDummyInventoryRequirement(
             int inventorySlot,
-            ScheduleContext scheduleContext,
+            TaskContext taskContext,
             String description) {
         if (inventorySlot < 0 || inventorySlot > 27) {
             throw new IllegalArgumentException("Inventory slot must be between 0 and 27, got: " + inventorySlot);
@@ -326,7 +341,7 @@ public class ItemRequirement extends Requirement {
             RequirementPriority.MANDATORY,
             10,  // rating
             description,
-            scheduleContext,
+            taskContext,
             null,  // skillToUse
             -1,    // minimumLevelToUse
             null,  // skillToEquip
@@ -348,7 +363,7 @@ public class ItemRequirement extends Requirement {
      * @param priority Priority level
      * @param rating Effectiveness rating
      * @param description Description for the OR requirement
-     * @param scheduleContext When to fulfill this requirement
+     * @param TaskContext When to fulfill this requirement
      * @param skillToUse Skill required to use the items
      * @param minimumLevelToUse Minimum level to use
      * @param skillToEquip Skill required to equip
@@ -364,7 +379,7 @@ public class ItemRequirement extends Requirement {
             RequirementPriority priority,
             int rating,
             String description,
-            ScheduleContext scheduleContext,
+            TaskContext taskContext,
             Skill skillToUse,
             Integer minimumLevelToUse,
             Skill skillToEquip,
@@ -385,13 +400,13 @@ public class ItemRequirement extends Requirement {
             
             requirements[i] = new ItemRequirement(
                 itemId, amount, equipmentSlot, inventorySlot,
-                priority, rating, itemDescription, scheduleContext,
+                priority, rating, itemDescription, taskContext,
                 skillToUse, minimumLevelToUse, skillToEquip, minimumLevelToEquip,
                 fuzzy
             );
         }
         
-        return new OrRequirement(priority, rating, description, scheduleContext, requirements);
+        return new OrRequirement(priority, rating, description, taskContext, ItemRequirement.class,requirements);
     }
     
     /**
@@ -403,9 +418,9 @@ public class ItemRequirement extends Requirement {
             RequirementPriority priority,
             int rating,
             String description,
-            ScheduleContext scheduleContext) {
+            TaskContext taskContext) {
         return createOrRequirement(itemIds, 1, equipmentSlot, -2, priority, rating, description, 
-                                 scheduleContext, null, null, null, null, false);
+                                 taskContext, null, null, null, null, false);
     }
     /**
      * Factory method for inventory OR requirements with default parameters.
@@ -417,9 +432,9 @@ public class ItemRequirement extends Requirement {
             RequirementPriority priority,
             int rating,
             String description,
-            ScheduleContext scheduleContext) {
+            TaskContext taskContext) {
         return createOrRequirement(itemIds, amount, null, inventorySlot, priority, rating, description,
-                                 scheduleContext, null, null, null, null, false);
+                                 taskContext, null, null, null, null, false);
     }
     /**
      * Factory method for inventory OR requirements with default parameters.
@@ -432,9 +447,9 @@ public class ItemRequirement extends Requirement {
             RequirementPriority priority,
             int rating,
             String description,
-            ScheduleContext scheduleContext) {
+            TaskContext taskContext) {
         return createOrRequirement(itemIds, amount, equipmentSlot, inventorySlot, priority, rating, description,
-                                 scheduleContext, null, null, null, null, false);
+                                 taskContext, null, null, null, null, false);
     }
 
      
@@ -449,14 +464,14 @@ public class ItemRequirement extends Requirement {
             RequirementPriority priority,
             int rating,
             String description,
-            ScheduleContext scheduleContext,
+            TaskContext taskContext,
             Skill skillToUse,
             Integer minimumLevelToUse,
             Skill skillToEquip,
             Integer minimumLevelToEquip
             ) {
         return createOrRequirement(itemIds, amount, equipmentSlot, inventorySlot, priority, rating, description,
-                                 scheduleContext, skillToUse, minimumLevelToUse, skillToEquip, minimumLevelToEquip, false);
+                                 taskContext, skillToUse, minimumLevelToUse, skillToEquip, minimumLevelToEquip, false);
     }
     
     /**
@@ -479,7 +494,7 @@ public class ItemRequirement extends Requirement {
             priority,
             rating,
             description,
-            scheduleContext,
+            taskContext,
             skillToUse,
             minimumLevelToUse,
             skillToEquip,
@@ -504,7 +519,7 @@ public class ItemRequirement extends Requirement {
             priority,
             rating,
             description,
-            scheduleContext,
+            taskContext,
             skillToUse,
             minimumLevelToUse,
             skillToEquip,
@@ -514,6 +529,26 @@ public class ItemRequirement extends Requirement {
     }
     
     /**
+	 * Retrieves the wiki URL for this item based on the URL suffix or item id.
+	 *
+	 * @return the wiki URL as a {@link String}, or {@code null} if not available
+	 */
+    // TODO when implented the  wikiscrapper 
+	/**@Nullable 
+	public String getWikiUrl()
+	{
+		if (getUrlSuffix() != null) {
+			return "https://oldschool.runescape.wiki/w/" + getUrlSuffix();
+		}
+
+		if (getId() != -1) {
+			return "https://oldschool.runescape.wiki/w/Special:Lookup?type=item&id=" + getId();
+		}
+
+		return null;
+	}**/
+
+    /**
      * Infers the RequirementType from the provided slot parameters.
      * 
      * @param equipmentSlot The equipment slot (can be null)
@@ -521,7 +556,7 @@ public class ItemRequirement extends Requirement {
      * @return The inferred RequirementType
      */
     private static RequirementType inferRequirementType(EquipmentInventorySlot equipmentSlot, Integer inventorySlot) {
-        boolean hasEquipmentSlot = equipmentSlot != null; // null indicates, we dont allow to be in any equipment slot,
+        boolean hasEquipmentSlot = equipmentSlot != null; // null indicates, we dont allow the item placed into any equipment slot,
         boolean hasInventorySlot = inventorySlot != -2 || inventorySlot==null; //-2 indicates we dont allow to be in inventory, -1 indicates any slot, 0-27 indicates specific slot
         
         if (hasEquipmentSlot && hasInventorySlot) {
@@ -540,7 +575,7 @@ public class ItemRequirement extends Requirement {
      * @return true if the item is available with sufficient quantity, false otherwise
      */
     public boolean isAvailableInInventoryOrBank() {
-        return getTotalAvailableCount() >= amount;
+        return getTotalAvailableQuantity() >= amount;
     }
     
     /**
@@ -550,7 +585,7 @@ public class ItemRequirement extends Requirement {
      * @return true if the item is in inventory with sufficient quantity, false otherwise
      */
     public boolean isAvailableInInventory() {
-        return getInventoryCount() >= amount;
+        return getInventoryQuantity() >= amount;
     }
     
     /**
@@ -633,7 +668,7 @@ public class ItemRequirement extends Requirement {
      */
     private boolean equip() {
         if (Microbot.getClient().isClientThread()) {
-            Microbot.log("Please run equip() on a non-client thread.", Level.ERROR);
+            log.error("Please run equip() on a non-client thread.");
             return false;
         }
         
@@ -642,7 +677,7 @@ public class ItemRequirement extends Requirement {
         }
         
         if (!meetsSkillRequirements()) {
-            Microbot.log("Skill requirements not met for " + getDescription());
+            log.error("Skill requirements not met for " + getDescription());
             return false;
         }
         
@@ -679,7 +714,7 @@ public class ItemRequirement extends Requirement {
             }
             sleepUntil(()->Rs2Bank.isOpen(), 3000);
             if(!Rs2Bank.isOpen()) {
-                Microbot.log("Failed to open bank for equipping item: " + getDescription());
+                log.error("Failed to open bank for equipping item: " + getDescription());
                 return false;
             }
         }
@@ -737,12 +772,12 @@ public class ItemRequirement extends Requirement {
      */
     private boolean withdrawFromBank(CompletableFuture<Boolean> scheduledFuture) {
         if (Microbot.getClient().isClientThread()) {
-            Microbot.log("Please run withdrawFromBank() on a non-client thread.", Level.ERROR);
+            log.error("Please run withdrawFromBank() on a non-client thread.");
             return false;
         }
         
         if (!meetsSkillRequirements()) {
-            Microbot.log("Skill requirements not met for " + getDescription());
+            log.error("Skill requirements not met for " + getDescription());
             return false;
         }
         
@@ -753,7 +788,7 @@ public class ItemRequirement extends Requirement {
         
         // Ensure we're near and have bank open
         if (!Rs2Bank.isNearBank(6)) {
-            Microbot.log("Not near a bank, cannot withdraw item: " + getDescription());
+            log.error("Not near a bank, cannot withdraw item: " + getDescription());
             Rs2Bank.walkToBank();
         }
         
@@ -840,6 +875,16 @@ public class ItemRequirement extends Requirement {
      * 
      * @return the total available count
      */
+    public int getTotalAvailableQuantity() {
+        if (fuzzy) {
+            // For fuzzy matching, check all variations of the item
+            return getFuzzyInventoryQuantity() + getFuzzyBankCount() + getFuzzyEquippedCount();
+        } else {
+            // Exact item ID matching
+            int itemId = getId();
+            return Rs2Inventory.itemQuantity(itemId) + Rs2Bank.count(getUnNotedId()) + getEquippedCount();
+        }
+    }
     public int getTotalAvailableCount() {
         if (fuzzy) {
             // For fuzzy matching, check all variations of the item
@@ -847,9 +892,10 @@ public class ItemRequirement extends Requirement {
         } else {
             // Exact item ID matching
             int itemId = getId();
-            return Rs2Inventory.count(itemId) + Rs2Bank.count(itemId) + getEquippedCount();
+            return Rs2Inventory.count(itemId) + Rs2Bank.count(getBankCount()) + getEquippedCount();
         }
     }
+    
     
     /**
      * Gets the count of this item currently in inventory.
@@ -857,11 +903,11 @@ public class ItemRequirement extends Requirement {
      * 
      * @return the inventory count
      */
-    public int getInventoryCount() {
+    public int getInventoryQuantity() {
         if (fuzzy) {
-            return getFuzzyInventoryCount();
+            return getFuzzyInventoryQuantity();
         } else {
-            return Rs2Inventory.count(getId());
+            return Rs2Inventory.itemQuantity(getId());
         }
     }
     
@@ -875,7 +921,7 @@ public class ItemRequirement extends Requirement {
         if (fuzzy) {
             return getFuzzyBankCount();
         } else {
-            return Rs2Bank.count(getId());
+            return Rs2Bank.count(getUnNotedId());
         }
     }
     
@@ -889,6 +935,10 @@ public class ItemRequirement extends Requirement {
     private int getFuzzyInventoryCount() {
         return Rs2FuzzyItem.getFuzzyInventoryCount(getId(), true);
     }
+    private int getFuzzyInventoryQuantity() {
+        return Rs2FuzzyItem.getFuzzyInventoryQuantity(getId(), true);
+    }
+    
     
     /**
      * Gets the fuzzy count of this item in bank (includes all variations).
@@ -946,10 +996,10 @@ public class ItemRequirement extends Requirement {
      * This is usually the first ID in the list, which typically represents the best option.
      * 
     /**
-     * Gets the single item ID for this requirement.
-     * This replaces the old getPrimaryItemId() method.
+     * Gets the resolved item ID for this requirement.
+     * This returns the auto-resolved ID (potentially noted variant) that should be used for all operations.
      * 
-     * @return the item ID for this requirement
+     * @return the resolved item ID for this requirement
      */
     public int getId() {
         if (ids.isEmpty()) {
@@ -1020,8 +1070,13 @@ public class ItemRequirement extends Requirement {
         sb.append("  -Priority:\t\t").append(getPriority().name()).append("\n");
         sb.append("  -Rating:\t\t\t").append(getRating()).append("/10\n");
         sb.append("  -Description:\t").append(getDescription()).append("\n");
-        sb.append("  -Schedule Context:\t").append(getScheduleContext().name()).append("\n");
+        sb.append("  -Schedule Context:\t").append(getTaskContext().name()).append("\n");
         sb.append("  -Item ID:\t\t").append(getId()).append("\n");
+        sb.append("  -Item unnoted ID:\t\t").append(getUnNotedId()).append("\n");
+        sb.append("  -ItemModel unnoted ID:\t\t").append(Rs2ItemModel.getUnNotedId(getId())).append("\n");
+        sb.append("  -Item noted ID:\t\t").append(getNotedId()).append("\n");
+        sb.append("  -ItemModel noted ID:\t\t").append(Rs2ItemModel.getNotedId(getId())).append("\n");
+        sb.append("  -Item linked ID:\t").append( getUnNotedId()).append("\n");
         sb.append("  -Amount:\t\t\t").append(amount).append("\n");
         
         if (equipmentSlot != null) {
@@ -1041,13 +1096,16 @@ public class ItemRequirement extends Requirement {
         if (minimumLevelToEquip != null) sb.append("  -Min Level to Equip:\t").append(minimumLevelToEquip).append("\n");
         
         sb.append("  -Fuzzy Charge:\t").append(fuzzy).append("\n");
-        sb.append("  -Available in Inventory:\t").append(isAvailableInInventory()).append("\n");
-        sb.append("  -Available in Bank:\t").append(isAvailableInBank()).append("\n");
-        sb.append("  -Total Available:\t").append(getTotalAvailableCount()).append("\n");
+        sb.append("  -Is Available in Inventory:\t").append(isAvailableInInventory()).append("\n");
+        sb.append("  -Is Available in Bank:\t").append(isAvailableInBank()).append("\n");
+        sb.append("  -Total Available Count:\t").append(getTotalAvailableCount()).append("\n");
+        sb.append("      - Banked: ").append(getBankCount()).append(" Inventory:").append(getFuzzyInventoryCount()).append("\n");
+        sb.append("  -Total Available Quantity:\t").append(getTotalAvailableQuantity()).append("\n");
+        sb.append("      - Banked: ").append(getBankCount()).append(" Inventory:").append(getInventoryQuantity()).append("\n");
         sb.append("  -Can be Used:\t\t").append(canBeUsed()).append("\n");
         sb.append("  -Can be Equipped:\t").append(canBeEquipped()).append("\n");
         sb.append("  -Meets Skill Req.:\t").append(meetsSkillRequirements()).append("\n");
-        sb.append("  -Dummy Item:\t\t").append(isDummyItemRequirement()).append("\n");
+        sb.append("  -Is Dummy Item:\t\t").append(isDummyItemRequirement()).append("\n");
         
         return sb.toString();
     }
@@ -1075,7 +1133,7 @@ public class ItemRequirement extends Requirement {
     public boolean fulfillRequirement(CompletableFuture<Boolean> scheduledFuture) {
         try {
             if (Microbot.getClient().isClientThread()) {
-                Microbot.log("Please run fulfillRequirement() on a non-client thread.", Level.ERROR);
+                log.error("Please run fulfillRequirement() on a non-client thread.");
                 return false;
             }
              // Dummy items are always considered "fulfilled" since they're just slot placeholders
@@ -1091,10 +1149,10 @@ public class ItemRequirement extends Requirement {
             // Check if the item is available in inventory or bank
             if (!isAvailableInInventoryOrBank()) {
                 if (isMandatory()) {
-                    Microbot.log("MANDATORY item requirement cannot be fulfilled: " + getName() + " - Item not available");
+                    log.error("MANDATORY item requirement cannot be fulfilled: " + getName() + " - Item not available");
                     return false;
                 } else {
-                    Microbot.log("OPTIONAL/RECOMMENDED item requirement skipped: " + getName() + " - Item not available");
+                    log.error("OPTIONAL/RECOMMENDED item requirement skipped: " + getName() + " - Item not available");
                     return true; // Non-mandatory requirements return true if item isn't available
                 }
             }
@@ -1116,7 +1174,7 @@ public class ItemRequirement extends Requirement {
             return true;
             
         } catch (Exception e) {
-            Microbot.log("Error fulfilling item requirement " + getName() + ": " + e.getMessage());
+            log.error("Error fulfilling item requirement " + getName() + ": " + e.getMessage());
             return !isMandatory(); // Don't fail mandatory requirements due to exceptions
         }
     }
@@ -1186,7 +1244,7 @@ public class ItemRequirement extends Requirement {
      */
     private boolean withdrawAndPlaceInSpecificSlot(CompletableFuture<Boolean> scheduledFuture) {
         if (Microbot.getClient().isClientThread()) {
-            Microbot.log("Please run withdrawAndPlaceInSpecificSlot() on a non-client thread.", Level.ERROR);
+            log.error("Please run withdrawAndPlaceInSpecificSlot() on a non-client thread.");
             return false;
         }
         
@@ -1261,26 +1319,26 @@ public class ItemRequirement extends Requirement {
         }
         
         // Find best available item in bank
-        for (Integer itemId : ids) {
-            if (Rs2Bank.count(itemId) >= amount) {
-                // Clear target slot if needed by depositing the item there
-                Rs2ItemModel targetSlotItem = Rs2Inventory.get(inventorySlot);
-                if (targetSlotItem != null) {
-                    Rs2Bank.depositOne(targetSlotItem.getId());
-                    sleepUntil(() -> Rs2Inventory.get(inventorySlot) == null, 2000);
-                }
-                
-                // Withdraw the item (it will go to any available slot)
-                Rs2Bank.withdrawX(itemId, amount);
-                sleepUntil(() -> Rs2Inventory.count(itemId) >= amount, 3000);
-                
-                // Now move to the specific slot
-                Rs2ItemModel withdrawnItem = Rs2Inventory.get(itemId);
-                if (withdrawnItem != null) {
-                    return Rs2Inventory.moveItemToSlot(withdrawnItem, inventorySlot);
-                }
+        int itemId = getUnNotedId();
+        if (Rs2Bank.count(itemId) >= amount) {
+            // Clear target slot if needed by depositing the item there
+            Rs2ItemModel targetSlotItem = Rs2Inventory.get(inventorySlot);
+            if (targetSlotItem != null) {
+                Rs2Bank.depositOne(targetSlotItem.getId());
+                sleepUntil(() -> Rs2Inventory.get(inventorySlot) == null, 2000);
+            }
+            
+            // Withdraw the item (it will go to any available slot)
+            Rs2Bank.withdrawX(itemId, amount);
+            sleepUntil(() -> Rs2Inventory.itemQuantity(itemId) >= amount, 3000);
+            
+            // Now move to the specific slot
+            Rs2ItemModel withdrawnItem = Rs2Inventory.get(itemId);
+            if (withdrawnItem != null) {
+                return Rs2Inventory.moveItemToSlot(withdrawnItem, inventorySlot);
             }
         }
+    
         return false;
     }
     
@@ -1329,8 +1387,8 @@ public class ItemRequirement extends Requirement {
                     throw new IllegalArgumentException("INVENTORY requirement should not specify an equipment slot");
                 }
                 if( inventorySlot != -1) {
-                    if(!isStackable()  && amount > 1) {
-                        throw new IllegalArgumentException("INVENTORY requirement with non-stackable items must have inventory slot -1 (any slot) or amount 1");
+                    if(!isStackable() && amount > 1) {
+                        throw new IllegalArgumentException("INVENTORY requirement with non-stackable items must have inventory slot -1 (any slot) or amount 1. Item ID: " + getId() + ", Amount: " + amount);
                     }
                 }
                 break;
@@ -1346,7 +1404,164 @@ public class ItemRequirement extends Requirement {
     }
     
     /**
-     * Checks if this item is stackable.     
+     * Resolves the optimal item ID for the given amount, automatically detecting when noted variants should be used.
+     * This method is called during construction to auto-resolve noted items for stackable requirements.
+     * 
+     * @param originalItemId The original item ID provided to the constructor
+     * @param amount The amount required
+     * @return The optimal item ID (potentially noted variant) to use
+     */
+    private static int resolveOptimalItemId(int originalItemId, int amount) {
+        if (amount <= 1) {
+            return originalItemId; // Single items don't need noting
+        }
+        
+        try {
+            ItemComposition composition = Microbot.getClientThread().runOnClientThreadOptional(() -> 
+                Microbot.getItemManager().getItemComposition(originalItemId)
+            ).orElse(null);
+            
+            if (composition == null) {
+                log.warn("Could not get item composition for item ID: {}, using original ID", originalItemId);
+                return originalItemId;
+            }
+            
+            if (composition.isStackable()) {
+                return originalItemId; // Already stackable, no need to change
+            }
+            
+            // Check if this item has a noted variant
+            int linkedNoteId = composition.getLinkedNoteId();
+            if (linkedNoteId != originalItemId) {
+                ItemComposition notedComposition = Microbot.getClientThread().runOnClientThreadOptional(() -> 
+                    Microbot.getItemManager().getItemComposition(linkedNoteId)
+                ).orElse(null);
+                
+                if (notedComposition != null && notedComposition.isStackable()) {
+                    log.debug("Auto-resolved {} (ID: {}) to noted variant {} (ID: {}) for amount {}", 
+                            composition.getName(), originalItemId, 
+                            notedComposition.getName(), linkedNoteId, amount);
+                    return linkedNoteId; // Use noted version
+                }
+            }
+            
+            // If we reach here, item is not stackable and has no noted variant
+            log.debug("Item {} (ID: {}) with amount {} has no stackable noted variant, keeping original", 
+                    composition.getName(), originalItemId, amount);
+            return originalItemId;
+            
+        } catch (Exception e) {
+            log.error("Error resolving optimal item ID for {} with amount {}: {}", 
+                    originalItemId, amount, e.getMessage());
+            return originalItemId; // Fall back to original on error
+        }
+    }
+    
+    private  static int getNotedItemId(ItemComposition composition) {
+        try {
+            
+            if (composition == null) {                
+                return -1;
+            }
+            
+            int itemId = composition.getId();            
+            // If already stackable, return original ID
+            if (composition.isStackable()) {
+                return itemId;
+            }            
+            // Check if this item has a noted variant
+            int linkedNoteId = composition.getLinkedNoteId();
+            ItemComposition linkedComposition = Microbot.getClientThread().runOnClientThreadOptional(() -> 
+                   Microbot.getItemManager().getItemComposition(linkedNoteId)
+                ).orElse(null);
+
+            if (linkedComposition.isStackable() && !composition.isStackable()) {
+                log.debug("Found noted variant for {} (ID: {}) -> {} (ID: {})", 
+                        composition.getName(), itemId, 
+                        linkedComposition.getName(), linkedNoteId);
+                return linkedNoteId; // Use noted version                
+              
+            }
+            if (linkedComposition.isStackable() && composition.isStackable())            {
+                log.debug("Item {} (ID: {}) has only a stackable variant", 
+                        composition.getName(), itemId, 
+                        linkedComposition.getName(), linkedNoteId);
+                return linkedNoteId < itemId ? linkedNoteId : itemId; // Use noted version if it has lower ID
+            }
+            // If we reach here, item is not stackable and has no noted variant
+            log.debug("Item {} (ID: {}) has no stackable noted variant", 
+                    composition.getName(), itemId);
+            return itemId;
+            
+        } catch (Exception e) {
+            //log.error("Error getting noted item ID for {}: {}", itemId, e.getMessage());
+            return -1; // Fall back to original on error
+        }
+    }
+    private  static int getUnNotedId(ItemComposition composition) {
+        try {
+            
+              if (composition == null) {          
+                log.warn("Could not get item composition for item ID, returning original ID");      
+                return -1;
+            }
+            int itemId = composition.getId();                   
+            // Check if this item has a noted variant
+            int linkedNoteId = composition.getLinkedNoteId();
+            if (linkedNoteId == -1){
+                log.debug("Item {} (ID: {}) has no noted variant, returning original ID", 
+                        composition.getName(), itemId);
+                return itemId; // No noted variant, return original ID
+            }
+            ItemComposition linkedComposition = Microbot.getClientThread().runOnClientThreadOptional(() -> 
+                    Microbot.getItemManager().getItemComposition(linkedNoteId)
+                ).orElse(null);
+
+            if (!linkedComposition.isStackable() && composition.isStackable()) {
+                log.debug("Found unnoted variant for {} (ID: {}) -> {} (ID: {})", 
+                        composition.getName(), itemId, 
+                        linkedComposition.getName(), linkedNoteId);
+                return linkedNoteId; // Use noted version                
+              
+            }
+            if (linkedComposition.isStackable() && composition.isStackable())            {
+                log.debug("Item {} (ID: {}) has only a stackable variant", 
+                        composition.getName(), itemId, 
+                        linkedComposition.getName(), linkedNoteId);
+                
+                return linkedNoteId < itemId ? linkedNoteId : itemId; // Use noted version if it has lower ID
+            }
+            // If we reach here, item is not stackable and has no noted variant
+            log.debug("Item {} (ID: {}) has no non stackable variant", 
+                    composition.getName(), itemId);
+            return itemId;
+            
+        } catch (Exception e) {      
+            log.error("Error getting unnoted item ID:{}", e.getMessage());      
+            return -1; // Fall back to original on error
+        }
+    }
+    private  static int getLinkedItemId(ItemComposition composition) {
+        try {
+            if (composition == null) {
+                log.warn("no item composition for item ID, returning -1");
+                return -1;
+            }
+            
+        
+            // Check if this item has a noted variant
+            return  composition.getLinkedNoteId();
+            
+            
+        } catch (Exception e) {
+            log.error("Error getting linked item ID: {}",  e.getMessage());
+            return -1; // Fall back to original on error
+        }
+    }
+   
+    
+    /**
+     * Checks if this item is stackable using the resolved item ID.
      * 
      * @return true if this item is stackable, false otherwise
      */
@@ -1359,8 +1574,70 @@ public class ItemRequirement extends Requirement {
             }
             return  itemComposition !=null ? itemComposition.isStackable(): false;
         } catch (Exception e) {
-            Microbot.log("Error checking if item " + itemId + " is stackable: " + e.getMessage());
+            log.error("Error checking if item " + itemId + " is stackable: " + e.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Gets the noted variant of an item ID if it exists and is stackable.
+     * Returns the original ID if the item is already stackable or has no noted variant.
+     * Uses lazy loading pattern for ItemComposition.
+     * 
+     * @param itemId The original item ID
+     * @return The noted item ID if available and stackable, otherwise the original item ID
+     */
+    public static int getNotedId(int itemId) {      
+            ItemComposition composition = Microbot.getClientThread().runOnClientThreadOptional(() -> 
+                 Microbot.getItemManager().getItemComposition(itemId)
+            ).orElse(null);            
+            return getNotedItemId(composition);            
+    }
+    public boolean isNoted() {
+         try {
+            if (itemComposition == null) {
+                this.setItemComp(getId());
+            }
+            return itemComposition.getNote() == 799 && itemComposition.isStackable() && itemComposition.getLinkedNoteId() != -1;
+        } catch (Exception e) {
+            log.error("Error getting noted ID for item " + getId() + ": " + e.getMessage());
+            return false;
+        }
+    }
+    public int getNotedId(){
+        int itemId = getId();
+        try {
+            if (itemComposition == null) {
+                this.setItemComp(itemId);
+            }
+            return getNotedItemId( itemComposition);
+        } catch (Exception e) {
+            log.error("Error getting noted ID for item " + itemId + ": " + e.getMessage());
+            return itemId; // Fallback to original ID on error
+        }
+    }
+     public int getUnNotedId(){
+        int itemId = getId();
+        try {
+            if (itemComposition == null) {
+                this.setItemComp(itemId);
+            }
+            return getUnNotedId(itemComposition);
+        } catch (Exception e) {
+            log.error("Error getting noted ID for item " + itemId + ": " + e.getMessage());
+            return itemId; // Fallback to original ID on error
+        }
+    }
+    public int getLinkedId(){
+        int itemId = getId();
+        try {
+            if (itemComposition == null) {
+                this.setItemComp(itemId);
+            }
+            return getLinkedItemId(itemComposition);
+        } catch (Exception e) {
+            log.error("Error getting linked ID for item " + itemId + ": " + e.getMessage());
+            return itemId; // Fallback to original ID on error
         }
     }
     public boolean isEquipment() {
@@ -1384,7 +1661,7 @@ public class ItemRequirement extends Requirement {
             return true;
 
         } catch (Exception e) {
-            Microbot.log("Error checking if item " + itemId + " is equipped: " + e.getMessage());
+            log.error("Error checking if item " + itemId + " is equipped: " + e.getMessage());
             return false;
         }
     }
@@ -1607,6 +1884,9 @@ public class ItemRequirement extends Requirement {
      */
     public int getChargedInventoryCount(int minCharges, int maxCharges) {
         return Rs2FuzzyItem.getChargedInventoryCount(getId(), true, minCharges, maxCharges);
+    }
+    public int getChargedInventoryQuantity(int minCharges, int maxCharges) {
+        return Rs2FuzzyItem.getChargedInventoryQuantity(getId(), true, minCharges, maxCharges);
     }
     
     /**

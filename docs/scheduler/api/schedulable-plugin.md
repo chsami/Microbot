@@ -23,7 +23,7 @@ The interface follows these core design principles:
 
 #### `void onPluginScheduleEntryPostScheduleTaskEvent(PluginScheduleEntryPostScheduleTaskEvent event)`
 
-This is the only method without a default implementation that plugins must implement. It handles the soft stop request from the scheduler, which is triggered when stop conditions are met or when manual stop is initiated. The implementation should ensure the plugin stops gracefully, preserving state and cleaning up resources before terminating.
+This method handles the post-schedule task event from the scheduler, which is triggered when stop conditions are met or when manual stop is initiated. While the SchedulablePlugin interface provides a default no-op implementation, plugins should override this method to ensure they stop gracefully, preserving state and cleaning up resources before terminating.
 
 The implementation is expected to:
 

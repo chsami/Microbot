@@ -8,7 +8,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Spellbook;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -47,14 +47,14 @@ public class SpellbookRequirement extends Requirement {
      * Full constructor for SpellbookRequirement
      * 
      * @param requiredSpellbook The spellbook required for optimal plugin performance
-     * @param scheduleContext When this spellbook requirement should be applied (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param TaskContext When this spellbook requirement should be applied (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      * @param priority Priority level of this requirement
      * @param rating Effectiveness rating (1-10, 10 being most effective)
      * @param description Human-readable description of the requirement
      */
     public SpellbookRequirement(
             Rs2Spellbook requiredSpellbook,
-            ScheduleContext scheduleContext,
+            TaskContext taskContext,
             RequirementPriority priority,
             int rating,
             String description) {
@@ -62,9 +62,9 @@ public class SpellbookRequirement extends Requirement {
         super(RequirementType.GAME_CONFIG, 
               priority, 
               rating, 
-              description != null ? description : generateDefaultDescription(requiredSpellbook, scheduleContext),
+              description != null ? description : generateDefaultDescription(requiredSpellbook, taskContext),
               requiredSpellbook != null ? Collections.singletonList(requiredSpellbook.getValue()) : Collections.emptyList(),
-              scheduleContext);
+              taskContext);
         
         this.requiredSpellbook = requiredSpellbook;
        
@@ -77,18 +77,18 @@ public class SpellbookRequirement extends Requirement {
      * @param priority Priority level of this requirement
      * @param rating Effectiveness rating (1-10)
      */
-    public SpellbookRequirement(Rs2Spellbook requiredSpellbook, ScheduleContext scheduleContext, RequirementPriority priority, int rating) {
-        this(requiredSpellbook, scheduleContext, priority, rating, null);
+    public SpellbookRequirement(Rs2Spellbook requiredSpellbook, TaskContext taskContext, RequirementPriority priority, int rating) {
+        this(requiredSpellbook, taskContext, priority, rating, null);
     }
     
     /**
      * Constructor for specific schedule context
      * 
      * @param requiredSpellbook The spellbook required for the task
-     * @param scheduleContext When this requirement should be applied
+     * @param TaskContext When this requirement should be applied
      */
-    public SpellbookRequirement(Rs2Spellbook requiredSpellbook, ScheduleContext scheduleContext) {
-        this(requiredSpellbook, scheduleContext, RequirementPriority.MANDATORY, 10, null);
+    public SpellbookRequirement(Rs2Spellbook requiredSpellbook, TaskContext taskContext) {
+        this(requiredSpellbook, taskContext, RequirementPriority.MANDATORY, 10, null);
     }
     
 
@@ -105,7 +105,7 @@ public class SpellbookRequirement extends Requirement {
      * @param context When the requirement applies
      * @return A descriptive string explaining the requirement
      */
-    private static String generateDefaultDescription(Rs2Spellbook spellbook, ScheduleContext context) {
+    private static String generateDefaultDescription(Rs2Spellbook spellbook, TaskContext context) {
         if (spellbook == null) {
             return "No specific spellbook required";
         }
@@ -162,13 +162,12 @@ public class SpellbookRequirement extends Requirement {
     
     /**
      * Attempts to switch to the required spellbook if needed.
-     * This method should be called before starting the script if scheduleContext includes PRE_SCHEDULE.
+     * This method should be called before starting the script if TaskContext includes PRE_SCHEDULE.
      * 
      * @return true if the switch was successful or no switch was needed, false otherwise
      */
     private boolean switchToRequiredSpellbook() {
-        if (requiredSpellbook == null || 
-            (scheduleContext != ScheduleContext.PRE_SCHEDULE && scheduleContext != ScheduleContext.BOTH)) {
+        if (requiredSpellbook == null ){
             return true; // No switch needed
         }
         
@@ -176,28 +175,31 @@ public class SpellbookRequirement extends Requirement {
             return true; // Already using required spellbook
         }
         
-        if (!isRequiredSpellbookAvailable()) {
-            Microbot.status = "Required spellbook " + requiredSpellbook + " is not available (not unlocked)";
+        if (!isRequiredSpellbookAvailable()) {            
+            log.error("Required spellbook {} is not unlocked, cannot switch", requiredSpellbook.name());
             return false;
         }
-        if (!travelToSwitchLocation(requiredSpellbook)) {
-            Microbot.status = "Failed to travel to " + requiredSpellbook.name() + " spellbook switch location";
+        if (!travelToSwitchLocation(requiredSpellbook)) {            
+            log.error("Failed to travel to {} spellbook switch location at location {}", requiredSpellbook.name(), requiredSpellbook.getSwitchLocation());
             return false;
-        }
-        Microbot.status = "Switching to " + requiredSpellbook.name() + " spellbook...";
+        }        
+        log.info("Switching to required spellbook: {}....", requiredSpellbook.name());
         // Use the enhanced spellbook switching functionality
         return requiredSpellbook.switchTo();
     }
     
     /**
      * Switches the player back to their original spellbook after the script completes.
-     * This method should be called after the script finishes if scheduleContext includes POST_SCHEDULE.
+     * This method should be called after the script finishes if TaskContext includes POST_SCHEDULE.
      * 
      * @return true if the switch was successful or no switch was needed, false otherwise
      */
     public static boolean switchBackToSpellbook(Rs2Spellbook originalSpellbook) {
-         if (Microbot.getClient().isClientThread()) {
-            Microbot.log("Please run fulfillRequirement() on a non-client thread.", Level.ERROR);
+        if (Microbot.getClient() == null) {                
+            return false;
+        }
+        if (Microbot.getClient().isClientThread()) {
+            log.info("Please run fulfillRequirement() on a non-client thread.");
             return false;
         }
         if (originalSpellbook == null) {
@@ -208,14 +210,14 @@ public class SpellbookRequirement extends Requirement {
             return true; // Already using original spellbook
         }
         if (!originalSpellbook.isUnlocked()) {
-            Microbot.status = "Original spellbook " + originalSpellbook + " is not available (not unlocked)";
+            log.error("Original spellbook {} is not unlocked, cannot switch back", originalSpellbook.name());
             return false;
         }
         if (!travelToSwitchLocation(originalSpellbook)) {
-            Microbot.status = "Failed to travel to " + originalSpellbook.name() + " spellbook switch location";
+            log.error("Failed to travel to {} spellbook switch location at location {}", originalSpellbook.name(), originalSpellbook.getSwitchLocation());
             return false;
         }
-        Microbot.status = "Switching back to original spellbook: " + originalSpellbook.name() + "...";
+        log.info("Switching back to original spellbook: {}....", originalSpellbook.name());
         // Use the enhanced spellbook switching functionality
         return originalSpellbook.switchTo();
     }
@@ -304,12 +306,11 @@ public class SpellbookRequirement extends Requirement {
     @Override
     public boolean fulfillRequirement(CompletableFuture<Boolean> scheduledFuture) {
         try {
-            if (Microbot.getClient() == null || Microbot.getClient().isClientThread()) {
-                Microbot.log("fulfillRequirement Not running on the client thread.", Level.ERROR);
+            if (Microbot.getClient() == null) {                
                 return false;
             }
             if (Microbot.getClient().isClientThread()) {
-                Microbot.log("Please run fulfillRequirement() on a non-client thread.", Level.ERROR);
+                log.error("Please run fulfillRequirement() on a non-client thread.");
                 return false;
             }
             // Check if the requirement is already fulfilled
@@ -320,10 +321,10 @@ public class SpellbookRequirement extends Requirement {
             // Check if the required spellbook is available to the player
             if (!isRequiredSpellbookAvailable()) {
                 if (isMandatory()) {
-                    Microbot.log("MANDATORY spellbook requirement cannot be fulfilled: " + getName() + " - Spellbook not unlocked");
+                    log.error("MANDATORY spellbook requirement cannot be fulfilled: " + getName() + " - Spellbook not unlocked");
                     return false;
                 } else {
-                    Microbot.log("OPTIONAL/RECOMMENDED spellbook requirement skipped: " + getName() + " - Spellbook not unlocked");
+                    log.warn("RECOMMENDED spellbook requirement skipped: " + getName() + " - Spellbook not unlocked");
                     return true; // Non-mandatory requirements return true if spellbook isn't available
                 }
             }

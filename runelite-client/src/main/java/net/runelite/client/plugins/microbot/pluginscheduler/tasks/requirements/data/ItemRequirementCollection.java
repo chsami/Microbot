@@ -8,7 +8,7 @@ import net.runelite.api.Skill;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.PrePostScheduleRequirements;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.logical.OrRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.conditional.ConditionalRequirement;
@@ -36,52 +36,52 @@ public class ItemRequirementCollection {
      * This includes various pickaxes with their respective requirements.
      *
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
-     * @param scheduleContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param TaskContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      */
-    public static void registerPickAxes(PrePostScheduleRequirements requirements, RequirementPriority priority, ScheduleContext scheduleContext) {
+    public static void registerPickAxes(PrePostScheduleRequirements requirements, RequirementPriority priority, TaskContext taskContext) {
         // because all are in the same slot, these are or requirements, any of these is important
         requirements.register(new ItemRequirement(
             ItemID.CRYSTAL_PICKAXE, 1,
             EquipmentInventorySlot.WEAPON, -1,//-1 allows to be in inventory
             priority, 10, "Crystal pickaxe (best for mining fragments)",
-            scheduleContext, Skill.MINING, 71, Skill.ATTACK, 70  // Mining level 71 required to equip
+            taskContext, Skill.MINING, 71, Skill.ATTACK, 70  // Mining level 71 required to equip
         ));
         requirements.register(new ItemRequirement(
             ItemID.DRAGON_PICKAXE, 1,
             EquipmentInventorySlot.WEAPON,-1,
         
             priority, 8, "Dragon pickaxe (excellent for mining fragments)",
-            scheduleContext, Skill.MINING, 61, Skill.ATTACK, 60  // Mining level 61 required to equip
+            taskContext, Skill.MINING, 61, Skill.ATTACK, 60  // Mining level 61 required to equip
         ));
         requirements.register(new ItemRequirement(
             ItemID.RUNE_PICKAXE, 1,
             EquipmentInventorySlot.WEAPON,-1, priority, 6, "Rune pickaxe (good for mining fragments)",
-            scheduleContext, Skill.MINING, 41, Skill.ATTACK, 40  // Mining level 41 required to equip
+            taskContext, Skill.MINING, 41, Skill.ATTACK, 40  // Mining level 41 required to equip
         ));
         requirements.register(new ItemRequirement(
             ItemID.ADAMANT_PICKAXE, 1,
             EquipmentInventorySlot.WEAPON,-1, priority, 4, "Adamant pickaxe (adequate for mining fragments)",
-            scheduleContext, Skill.MINING, 31, Skill.ATTACK, 30  // Mining level 31 required to equip
+            taskContext, Skill.MINING, 31, Skill.ATTACK, 30  // Mining level 31 required to equip
         ));
         requirements.register(new ItemRequirement(
             ItemID.MITHRIL_PICKAXE, 1,
             EquipmentInventorySlot.WEAPON,-1, priority, 4, "Mithril pickaxe (adequate for mining fragments)",
-            scheduleContext, Skill.MINING, 21, Skill.ATTACK, 20  // Mining level 21 required to equip
+            taskContext, Skill.MINING, 21, Skill.ATTACK, 20  // Mining level 21 required to equip
         ));
         requirements.register(new ItemRequirement(
             ItemID.STEEL_PICKAXE, 1,
             EquipmentInventorySlot.WEAPON,-1, priority, 2, "Steel pickaxe (for mining fragments)",
-            scheduleContext, Skill.MINING, 6, Skill.ATTACK, 10  // Mining level 6 required to equip
+            taskContext, Skill.MINING, 6, Skill.ATTACK, 10  // Mining level 6 required to equip
         ));
         requirements.register(new ItemRequirement(
             ItemID.IRON_PICKAXE, 1,
             EquipmentInventorySlot.WEAPON,-1, priority, 2, "Iron pickaxe (for mining fragments)",
-            scheduleContext, Skill.MINING, 0, Skill.ATTACK, 0// Mining level 1 required to equip
+            taskContext, Skill.MINING, 0, Skill.ATTACK, 0// Mining level 1 required to equip
         ));
         requirements.register(new ItemRequirement(
             ItemID.BRONZE_PICKAXE, 1,
             EquipmentInventorySlot.WEAPON,-1, priority, 1, "Bronze pickaxe (for mining fragments, if no better option available)",
-            scheduleContext
+            taskContext
             // No skill requirement for bronze pickaxe - anyone can use it
         ));
     }
@@ -91,64 +91,64 @@ public class ItemRequirementCollection {
      * This includes all axes from bronze to crystal with their respective requirements.
      *
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
-     * @param scheduleContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param TaskContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      */
-    public static void registerWoodcuttingAxes(PrePostScheduleRequirements requirements, RequirementPriority priority, ScheduleContext scheduleContext, int inventorySlot) {
+    public static void registerWoodcuttingAxes(PrePostScheduleRequirements requirements, RequirementPriority priority, TaskContext taskContext, int inventorySlot) {
         requirements.register(new ItemRequirement(
             ItemID._3A_AXE, 1,
             EquipmentInventorySlot.WEAPON, inventorySlot, priority, 10, "3rd age axe (best woodcutting axe available)",
-            scheduleContext, Skill.WOODCUTTING, 65, Skill.ATTACK, 65  // 3rd age axe requirements
+            taskContext, Skill.WOODCUTTING, 65, Skill.ATTACK, 65  // 3rd age axe requirements
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(ItemID.CRYSTAL_AXE, ItemID.CRYSTAL_AXE_INACTIVE), 1,
             EquipmentInventorySlot.WEAPON, inventorySlot, priority, 9, "Crystal axe (excellent for woodcutting)",
-            scheduleContext, Skill.WOODCUTTING, 71, Skill.ATTACK, 70  // Crystal axe requirements
+            taskContext, Skill.WOODCUTTING, 71, Skill.ATTACK, 70  // Crystal axe requirements
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(ItemID.INFERNAL_AXE, ItemID.INFERNAL_AXE_EMPTY), 1,
             EquipmentInventorySlot.WEAPON, inventorySlot, priority, 8, "Infernal axe (burns logs automatically)",
-            scheduleContext, Skill.WOODCUTTING, 61, Skill.ATTACK, 60  // Infernal axe requirements
+            taskContext, Skill.WOODCUTTING, 61, Skill.ATTACK, 60  // Infernal axe requirements
         ));
         requirements.register(new ItemRequirement(
             ItemID.DRAGON_AXE, 1,
             EquipmentInventorySlot.WEAPON, inventorySlot,
             priority, 8, "Dragon axe (excellent for woodcutting)",
-            scheduleContext, Skill.WOODCUTTING, 61, Skill.ATTACK, 60  // Dragon axe requirements
+            taskContext, Skill.WOODCUTTING, 61, Skill.ATTACK, 60  // Dragon axe requirements
         ));
         requirements.register(new ItemRequirement(
             ItemID.RUNE_AXE, 1,
             EquipmentInventorySlot.WEAPON, inventorySlot, priority, 6, "Rune axe (good for woodcutting)",
-            scheduleContext, Skill.WOODCUTTING, 41, Skill.ATTACK, 40  // Rune axe requirements
+            taskContext, Skill.WOODCUTTING, 41, Skill.ATTACK, 40  // Rune axe requirements
         ));
         requirements.register(new ItemRequirement(
             ItemID.ADAMANT_AXE, 1,
             EquipmentInventorySlot.WEAPON, inventorySlot, priority, 4, "Adamant axe (adequate for woodcutting)",
-            scheduleContext, Skill.WOODCUTTING, 31, Skill.ATTACK, 30  // Adamant axe requirements
+            taskContext, Skill.WOODCUTTING, 31, Skill.ATTACK, 30  // Adamant axe requirements
         ));
         requirements.register(new ItemRequirement(
             ItemID.MITHRIL_AXE, 1,
             EquipmentInventorySlot.WEAPON, inventorySlot, priority, 4, "Mithril axe (adequate for woodcutting)",
-            scheduleContext, Skill.WOODCUTTING, 21, Skill.ATTACK, 20  // Mithril axe requirements
+            taskContext, Skill.WOODCUTTING, 21, Skill.ATTACK, 20  // Mithril axe requirements
         ));
         requirements.register(new ItemRequirement(
             ItemID.BLACK_AXE, 1,
             EquipmentInventorySlot.WEAPON, inventorySlot, priority, 3, "Black axe (for woodcutting)",
-            scheduleContext, Skill.WOODCUTTING, 6, Skill.ATTACK, 10  // Black axe requirements
+            taskContext, Skill.WOODCUTTING, 6, Skill.ATTACK, 10  // Black axe requirements
         ));
         requirements.register(new ItemRequirement(
             ItemID.STEEL_AXE, 1,
             EquipmentInventorySlot.WEAPON, inventorySlot, priority, 2, "Steel axe (for woodcutting)",
-            scheduleContext, Skill.WOODCUTTING, 6, Skill.ATTACK, 5  // Steel axe requirements
+            taskContext, Skill.WOODCUTTING, 6, Skill.ATTACK, 5  // Steel axe requirements
         ));
         requirements.register(new ItemRequirement(
             ItemID.IRON_AXE, 1,
             EquipmentInventorySlot.WEAPON, inventorySlot, priority, 2, "Iron axe (for woodcutting)",
-            scheduleContext, Skill.WOODCUTTING, 1, Skill.ATTACK, 1  // Iron axe requirements
+            taskContext, Skill.WOODCUTTING, 1, Skill.ATTACK, 1  // Iron axe requirements
         ));
         requirements.register(new ItemRequirement(
             ItemID.BRONZE_AXE, 1,
             EquipmentInventorySlot.WEAPON, inventorySlot, priority, 1, "Bronze axe (basic woodcutting axe)",
-            scheduleContext
+            taskContext
             // No skill requirement for bronze axe - anyone can use it
         ));
     }
@@ -159,10 +159,10 @@ public class ItemRequirementCollection {
      *
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the graceful outfit (MANDATORY, RECOMMENDED, or OPTIONAL)
-     * @param scheduleContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param TaskContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      */
-    public static void registerGracefulOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, ScheduleContext scheduleContext) {
-        registerGracefulOutfit(requirements, priority, scheduleContext, false, false, false, false, false, false);
+    public static void registerGracefulOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, TaskContext taskContext) {
+        registerGracefulOutfit(requirements, priority, taskContext, false, false, false, false, false, false);
     }
 
     /**
@@ -171,7 +171,7 @@ public class ItemRequirementCollection {
      *
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the graceful outfit (MANDATORY, RECOMMENDED, or OPTIONAL)
-     * @param scheduleContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param TaskContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      * @param skipHead Skip head slot if true
      * @param skipCape Skip cape slot if true
      * @param skipBody Skip body slot if true
@@ -179,7 +179,7 @@ public class ItemRequirementCollection {
      * @param skipGloves Skip gloves slot if true
      * @param skipBoots Skip boots slot if true
      */
-    public static void registerGracefulOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, ScheduleContext scheduleContext,
+    public static void registerGracefulOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, TaskContext taskContext,
                                             boolean skipHead, boolean skipCape, boolean skipBody, 
                                             boolean skipLegs, boolean skipGloves, boolean skipBoots) {
         // Default rating for graceful
@@ -193,7 +193,7 @@ public class ItemRequirementCollection {
                             ItemID.ZEAH_GRACEFUL_HOOD_HOSIDIUS, ItemID.ZEAH_GRACEFUL_HOOD_KOUREND), 1,
                 EquipmentInventorySlot.HEAD, -2,
                 priority, rating, "Graceful hood (weight reduction and run energy restoration)",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipCape) {
@@ -203,7 +203,7 @@ public class ItemRequirementCollection {
                             ItemID.ZEAH_GRACEFUL_CAPE_HOSIDIUS, ItemID.ZEAH_GRACEFUL_CAPE_KOUREND),
                 EquipmentInventorySlot.CAPE, 
                 priority, rating, "Graceful cape (weight reduction and run energy restoration)",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipBody) {
@@ -213,7 +213,7 @@ public class ItemRequirementCollection {
                             ItemID.ZEAH_GRACEFUL_TOP_HOSIDIUS, ItemID.ZEAH_GRACEFUL_TOP_KOUREND),
                 EquipmentInventorySlot.BODY,
                 priority, rating, "Graceful top (weight reduction and run energy restoration)",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipLegs) {
@@ -223,7 +223,7 @@ public class ItemRequirementCollection {
                             ItemID.ZEAH_GRACEFUL_LEGS_HOSIDIUS, ItemID.ZEAH_GRACEFUL_LEGS_KOUREND),
                 EquipmentInventorySlot.LEGS,
                 priority, rating, "Graceful legs (weight reduction and run energy restoration)",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipGloves) {
@@ -233,7 +233,7 @@ public class ItemRequirementCollection {
                             ItemID.ZEAH_GRACEFUL_GLOVES_HOSIDIUS, ItemID.ZEAH_GRACEFUL_GLOVES_KOUREND), 
                 EquipmentInventorySlot.GLOVES, 
                 priority, rating, "Graceful gloves (weight reduction and run energy restoration)",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipBoots) {
@@ -243,7 +243,7 @@ public class ItemRequirementCollection {
                             ItemID.ZEAH_GRACEFUL_BOOTS_HOSIDIUS, ItemID.ZEAH_GRACEFUL_BOOTS_KOUREND), 
                 EquipmentInventorySlot.BOOTS, 
                 priority, rating, "Graceful boots (weight reduction and run energy restoration)",
-                scheduleContext
+                taskContext
             ));
         }
     }
@@ -254,10 +254,10 @@ public class ItemRequirementCollection {
      *
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the runecrafting outfit
-     * @param scheduleContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param TaskContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      */
-    public static void registerRunecraftingOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, ScheduleContext scheduleContext) {
-        registerRunecraftingOutfit(requirements, priority, scheduleContext, false, false, false);
+    public static void registerRunecraftingOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, TaskContext taskContext) {
+        registerRunecraftingOutfit(requirements, priority, taskContext, false, false, false);
     }
 
     /**
@@ -266,12 +266,12 @@ public class ItemRequirementCollection {
      *
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the runecrafting outfit
-     * @param scheduleContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param TaskContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      * @param skipHead Skip head slot if true
      * @param skipBody Skip body slot if true
      * @param skipLegs Skip legs slot if true
      */
-    public static void registerRunecraftingOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, ScheduleContext scheduleContext,
+    public static void registerRunecraftingOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, TaskContext taskContext,
                                                 boolean skipHead, boolean skipBody, boolean skipLegs) {
         // Original (default) color variants - highest priority
         if (!skipHead) {
@@ -279,7 +279,7 @@ public class ItemRequirementCollection {
                 ItemID.HAT_OF_THE_EYE, 1,
                 EquipmentInventorySlot.HEAD,
                  priority, 10, "Hat of the Eye (optimal for runecrafting)",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipBody) {
@@ -287,7 +287,7 @@ public class ItemRequirementCollection {
                 ItemID.ROBE_TOP_OF_THE_EYE, 1,
                 EquipmentInventorySlot.BODY, 
                 priority, 10, "Robe top of the Eye (optimal for runecrafting)",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipLegs) {
@@ -295,7 +295,7 @@ public class ItemRequirementCollection {
                 ItemID.ROBE_BOTTOM_OF_THE_EYE, 1,
                 EquipmentInventorySlot.LEGS, 
                 priority, 10, "Robe bottoms of the Eye (optimal for runecrafting)",
-                scheduleContext
+                taskContext
             ));
         }
 
@@ -307,7 +307,7 @@ public class ItemRequirementCollection {
             Arrays.asList(ItemID.HAT_OF_THE_EYE_RED, ItemID.HAT_OF_THE_EYE_GREEN, ItemID.HAT_OF_THE_EYE_BLUE), 
                 EquipmentInventorySlot.HEAD, 
                 priority, coloredVariantRating, "Hat of the Eye (colored variants)",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipBody) {
@@ -315,7 +315,7 @@ public class ItemRequirementCollection {
             Arrays.asList(ItemID.ROBE_TOP_OF_THE_EYE_RED, ItemID.ROBE_TOP_OF_THE_EYE_GREEN, ItemID.ROBE_TOP_OF_THE_EYE_BLUE), 
                 EquipmentInventorySlot.BODY, 
                 priority, coloredVariantRating, "Robe top of the Eye (colored variants)",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipLegs) {
@@ -323,7 +323,7 @@ public class ItemRequirementCollection {
             Arrays.asList(ItemID.ROBE_BOTTOM_OF_THE_EYE_RED, ItemID.ROBE_BOTTOM_OF_THE_EYE_GREEN, ItemID.ROBE_BOTTOM_OF_THE_EYE_BLUE), 
                 EquipmentInventorySlot.LEGS, 
                 priority, coloredVariantRating, "Robe bottoms of the Eye (colored variants)",
-                scheduleContext
+                taskContext
             ));
         }
     }
@@ -334,10 +334,10 @@ public class ItemRequirementCollection {
      *
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the lumberjack outfit
-     * @param scheduleContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param TaskContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      */
-    public static void registerLumberjackOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, ScheduleContext scheduleContext) {
-        registerLumberjackOutfit(requirements, priority, rating, scheduleContext, false, false, false, false);
+    public static void registerLumberjackOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, TaskContext taskContext) {
+        registerLumberjackOutfit(requirements, priority, rating, taskContext, false, false, false, false);
     }
 
     /**
@@ -346,13 +346,13 @@ public class ItemRequirementCollection {
      *
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the lumberjack outfit
-     * @param scheduleContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param TaskContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      * @param skipHead Skip head slot if true
      * @param skipBody Skip body slot if true
      * @param skipLegs Skip legs slot if true
      * @param skipBoots Skip boots slot if true
      */
-    public static void registerLumberjackOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, ScheduleContext scheduleContext,
+    public static void registerLumberjackOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, TaskContext taskContext,
                                               boolean skipHead, boolean skipBody, boolean skipLegs, boolean skipBoots) {
         // Combined Lumberjack outfit (all variants in one requirement)
         if (!skipHead) {
@@ -360,7 +360,7 @@ public class ItemRequirementCollection {
             Arrays.asList(ItemID.FORESTRY_LUMBERJACK_HAT, ItemID.RAMBLE_LUMBERJACK_HAT), 
                 EquipmentInventorySlot.HEAD, 
                 priority, rating, "Lumberjack hat - optimal for woodcutting XP",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipBody) {
@@ -368,7 +368,7 @@ public class ItemRequirementCollection {
             Arrays.asList(ItemID.FORESTRY_LUMBERJACK_TOP, ItemID.RAMBLE_LUMBERJACK_TOP), 
                 EquipmentInventorySlot.BODY, 
                 priority, rating, "Lumberjack top - optimal for woodcutting XP",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipLegs) {
@@ -376,7 +376,7 @@ public class ItemRequirementCollection {
             Arrays.asList(ItemID.FORESTRY_LUMBERJACK_LEGS, ItemID.RAMBLE_LUMBERJACK_LEGS), 
                 EquipmentInventorySlot.LEGS, 
                 priority, rating, "Lumberjack legs - optimal for woodcutting XP",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipBoots) {
@@ -384,7 +384,7 @@ public class ItemRequirementCollection {
             Arrays.asList(ItemID.FORESTRY_LUMBERJACK_BOOTS, ItemID.RAMBLE_LUMBERJACK_BOOTS), 
                 EquipmentInventorySlot.BOOTS, 
                 priority, rating, "Lumberjack boots - optimal for woodcutting XP",
-                scheduleContext
+                taskContext
             ));
         }
     }
@@ -396,8 +396,8 @@ public class ItemRequirementCollection {
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the angler outfit
      */
-    public static void registerAnglerOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, ScheduleContext scheduleContext) {
-        registerAnglerOutfit(requirements, priority, rating, scheduleContext, false, false, false, false);
+    public static void registerAnglerOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, TaskContext taskContext) {
+        registerAnglerOutfit(requirements, priority, rating, taskContext, false, false, false, false);
     }
 
     /**
@@ -406,13 +406,13 @@ public class ItemRequirementCollection {
      *
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the angler outfit
-     * @param scheduleContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param TaskContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      * @param skipHead Skip head slot if true
      * @param skipBody Skip body slot if true
      * @param skipLegs Skip legs slot if true
      * @param skipBoots Skip boots slot if true
      */
-    public static void registerAnglerOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, ScheduleContext scheduleContext,
+    public static void registerAnglerOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, TaskContext taskContext,
                                           boolean skipHead, boolean skipBody, boolean skipLegs, boolean skipBoots) {
         // Spirit Angler outfit (enhanced version) - highest priority
         int spiritRating = rating;
@@ -421,60 +421,60 @@ public class ItemRequirementCollection {
             requirements.register(new ItemRequirement(
                 ItemID.SPIRIT_ANGLER_HAT, 1,
                 EquipmentInventorySlot.HEAD, 
-                priority, spiritRating, "Spirit angler hat - enhanced fishing XP bonus",scheduleContext
+                priority, spiritRating, "Spirit angler hat - enhanced fishing XP bonus",taskContext
             ));
         }
         if (!skipBody) {
             requirements.register(new ItemRequirement(
                 ItemID.SPIRIT_ANGLER_TOP, 1,
                 EquipmentInventorySlot.BODY,
-                 priority, spiritRating, "Spirit angler top - enhanced fishing XP bonus",scheduleContext
+                 priority, spiritRating, "Spirit angler top - enhanced fishing XP bonus",taskContext
             ));
         }
         if (!skipLegs) {
             requirements.register(new ItemRequirement(
                 ItemID.SPIRIT_ANGLER_LEGS, 1,
                 EquipmentInventorySlot.LEGS, 
-                priority, spiritRating, "Spirit angler legs - enhanced fishing XP bonus",scheduleContext
+                priority, spiritRating, "Spirit angler legs - enhanced fishing XP bonus",taskContext
             ));
         }
         if (!skipBoots) {
             requirements.register(new ItemRequirement(
                 ItemID.SPIRIT_ANGLER_BOOTS, 1,
                 EquipmentInventorySlot.BOOTS, 
-                priority, spiritRating, "Spirit angler boots - enhanced fishing XP bonus",scheduleContext
+                priority, spiritRating, "Spirit angler boots - enhanced fishing XP bonus",taskContext
             ));
         }
 
         // Regular Angler outfit (Trawler reward)
-        int regularRating = Math.min(1,spiritRating-1);
+        int regularRating = Math.max(1,spiritRating-1);
         
         if (!skipHead) {
             requirements.register(new ItemRequirement(
                 ItemID.TRAWLER_REWARD_HAT, 1,
                 EquipmentInventorySlot.HEAD, 
-                priority, regularRating, "Angler hat - provides fishing XP bonus",scheduleContext
+                priority, regularRating, "Angler hat - provides fishing XP bonus",taskContext
             ));
         }
         if (!skipBody) {
             requirements.register(new ItemRequirement(
                 ItemID.TRAWLER_REWARD_TOP, 1,
                 EquipmentInventorySlot.BODY, 
-                priority, regularRating, "Angler top - provides fishing XP bonus",scheduleContext
+                priority, regularRating, "Angler top - provides fishing XP bonus",taskContext
             ));
         }
         if (!skipLegs) {
             requirements.register(new ItemRequirement(
                 ItemID.TRAWLER_REWARD_LEGS, 1,
                 EquipmentInventorySlot.LEGS, 
-                priority, regularRating, "Angler legs - provides fishing XP bonus",scheduleContext
+                priority, regularRating, "Angler legs - provides fishing XP bonus",taskContext
             ));
         }
         if (!skipBoots) {
             requirements.register(new ItemRequirement(
                 ItemID.TRAWLER_REWARD_BOOTS, 1,
                 EquipmentInventorySlot.BOOTS,
-                 priority, regularRating, "Angler boots - provides fishing XP bonus",scheduleContext
+                 priority, regularRating, "Angler boots - provides fishing XP bonus",taskContext
             ));
         }
     }
@@ -487,31 +487,31 @@ public class ItemRequirementCollection {
      * @param priority The priority level for food items
      * @param quantity The quantity of food to require
      */
-    public static void registerHighHealingFood(PrePostScheduleRequirements requirements, RequirementPriority priority, ScheduleContext scheduleContext,int quantity) {
+    public static void registerHighHealingFood(PrePostScheduleRequirements requirements, RequirementPriority priority, TaskContext taskContext,int quantity) {
         // Register food in order of healing effectiveness (highest heal values first)
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.Dark_Crab.getId()), quantity,
-            null, -1, priority, 10, "Dark crab - heals " + Rs2Food.Dark_Crab.getHeal() + " HP (best healing food)",scheduleContext
+            null, -1, priority, 10, "Dark crab - heals " + Rs2Food.Dark_Crab.getHeal() + " HP (best healing food)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.ROCKTAIL.getId()), quantity,
-            null, -1, priority, 9, "Rocktail - heals " + Rs2Food.ROCKTAIL.getHeal() + " HP (excellent healing)",scheduleContext
+            null, -1, priority, 9, "Rocktail - heals " + Rs2Food.ROCKTAIL.getHeal() + " HP (excellent healing)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.MANTA.getId()), quantity,
-            null, -1, priority, 8, "Manta ray - heals " + Rs2Food.MANTA.getHeal() + " HP (very good healing)",scheduleContext
+            null, -1, priority, 8, "Manta ray - heals " + Rs2Food.MANTA.getHeal() + " HP (very good healing)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.SEA_TURTLE.getId()), quantity,
-            null, -1, priority, 7, "Sea turtle - heals " + Rs2Food.SEA_TURTLE.getHeal() + " HP (good healing)",scheduleContext
+            null, -1, priority, 7, "Sea turtle - heals " + Rs2Food.SEA_TURTLE.getHeal() + " HP (good healing)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.SHARK.getId()), quantity,
-            null, -1, priority, 6, "Shark - heals " + Rs2Food.SHARK.getHeal() + " HP (standard high-level food)",scheduleContext
+            null, -1, priority, 6, "Shark - heals " + Rs2Food.SHARK.getHeal() + " HP (standard high-level food)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.KARAMBWAN.getId()), quantity,
-            null, -1, priority, 5, "Cooked karambwan - heals " + Rs2Food.KARAMBWAN.getHeal() + " HP (can combo with other food)",scheduleContext
+            null, -1, priority, 5, "Cooked karambwan - heals " + Rs2Food.KARAMBWAN.getHeal() + " HP (can combo with other food)",taskContext
         ));
     }
 
@@ -523,26 +523,26 @@ public class ItemRequirementCollection {
      * @param priority The priority level for food items
      * @param quantity The quantity of food to require
      */
-    public static void registerMidTierFood(PrePostScheduleRequirements requirements, RequirementPriority priority,ScheduleContext scheduleContext ,int quantity) {
+    public static void registerMidTierFood(PrePostScheduleRequirements requirements, RequirementPriority priority,TaskContext taskContext ,int quantity) {
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.MONKFISH.getId()), quantity,
-            null, -1, priority, 8, "Monkfish - heals " + Rs2Food.MONKFISH.getHeal() + " HP (good mid-tier food)",scheduleContext
+            null, -1, priority, 8, "Monkfish - heals " + Rs2Food.MONKFISH.getHeal() + " HP (good mid-tier food)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.SWORDFISH.getId()), quantity,
-            null, -1, priority, 6, "Swordfish - heals " + Rs2Food.SWORDFISH.getHeal() + " HP (decent mid-tier food)",scheduleContext
+            null, -1, priority, 6, "Swordfish - heals " + Rs2Food.SWORDFISH.getHeal() + " HP (decent mid-tier food)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.BASS.getId()), quantity,
-            null, -1, priority, 5, "Bass - heals " + Rs2Food.BASS.getHeal() + " HP (alternative mid-tier food)",scheduleContext
+            null, -1, priority, 5, "Bass - heals " + Rs2Food.BASS.getHeal() + " HP (alternative mid-tier food)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.LOBSTER.getId()), quantity,
-            null, -1, priority, 4, "Lobster - heals " + Rs2Food.LOBSTER.getHeal() + " HP (common mid-tier food)",scheduleContext
+            null, -1, priority, 4, "Lobster - heals " + Rs2Food.LOBSTER.getHeal() + " HP (common mid-tier food)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.TUNA.getId()), quantity,
-            null, -1, priority, 3, "Tuna - heals " + Rs2Food.TUNA.getHeal() + " HP (affordable mid-tier food)",scheduleContext
+            null, -1, priority, 3, "Tuna - heals " + Rs2Food.TUNA.getHeal() + " HP (affordable mid-tier food)",taskContext
         ));
     }
 
@@ -554,34 +554,34 @@ public class ItemRequirementCollection {
      * @param priority The priority level for food items
      * @param quantity The quantity of food to require
      */
-    public static void registerFastFood(PrePostScheduleRequirements requirements, RequirementPriority priority, ScheduleContext scheduleContext,int quantity) {
+    public static void registerFastFood(PrePostScheduleRequirements requirements, RequirementPriority priority, TaskContext taskContext,int quantity) {
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.KARAMBWAN.getId()), quantity,
-            null, -1, priority, 9, "Cooked karambwan - heals " + Rs2Food.KARAMBWAN.getHeal() + " HP (1-tick food, good for combos)",scheduleContext
+            null, -1, priority, 9, "Cooked karambwan - heals " + Rs2Food.KARAMBWAN.getHeal() + " HP (1-tick food, good for combos)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.CHOCOLATE_CAKE.getId()), quantity,
-            null, -1, priority, 6, "Chocolate cake - heals " + Rs2Food.CHOCOLATE_CAKE.getHeal() + " HP (1-tick food)",scheduleContext
+            null, -1, priority, 6, "Chocolate cake - heals " + Rs2Food.CHOCOLATE_CAKE.getHeal() + " HP (1-tick food)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.CAKE.getId()), quantity,
-            null, -1, priority, 5, "Cake - heals " + Rs2Food.CAKE.getHeal() + " HP (1-tick food)",scheduleContext
+            null, -1, priority, 5, "Cake - heals " + Rs2Food.CAKE.getHeal() + " HP (1-tick food)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.PLAIN_PIZZA.getId()), quantity,
-            null, -1, priority, 4, "Plain pizza - heals " + Rs2Food.PLAIN_PIZZA.getHeal() + " HP (1-tick food)",scheduleContext
+            null, -1, priority, 4, "Plain pizza - heals " + Rs2Food.PLAIN_PIZZA.getHeal() + " HP (1-tick food)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.MEAT_PIZZA.getId()), quantity,
-            null, -1, priority, 4, "Meat pizza - heals " + Rs2Food.MEAT_PIZZA.getHeal() + " HP (1-tick food)",scheduleContext
+            null, -1, priority, 4, "Meat pizza - heals " + Rs2Food.MEAT_PIZZA.getHeal() + " HP (1-tick food)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.ANCHOVY_PIZZA.getId()), quantity,
-            null, -1, priority, 4, "Anchovy pizza - heals " + Rs2Food.ANCHOVY_PIZZA.getHeal() + " HP (1-tick food)",scheduleContext
+            null, -1, priority, 4, "Anchovy pizza - heals " + Rs2Food.ANCHOVY_PIZZA.getHeal() + " HP (1-tick food)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.PINEAPPLE_PIZZA.getId()), quantity,
-            null, -1, priority, 5, "Pineapple pizza - heals " + Rs2Food.PINEAPPLE_PIZZA.getHeal() + " HP (1-tick food)",scheduleContext
+            null, -1, priority, 5, "Pineapple pizza - heals " + Rs2Food.PINEAPPLE_PIZZA.getHeal() + " HP (1-tick food)",taskContext
         ));
     }
 
@@ -593,43 +593,39 @@ public class ItemRequirementCollection {
      * @param priority The priority level for food items
      * @param quantity The quantity of food to require
      */
-    public static void registerBasicFood(PrePostScheduleRequirements requirements, RequirementPriority priority, ScheduleContext scheduleContext,int quantity) {
+    public static void registerBasicFood(PrePostScheduleRequirements requirements, RequirementPriority priority, TaskContext taskContext,int quantity) {
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.SALMON.getId()), quantity,
-            null, -1, priority, 5, "Salmon - heals " + Rs2Food.SALMON.getHeal() + " HP (basic food)",scheduleContext
+            null, -1, priority, 5, "Salmon - heals " + Rs2Food.SALMON.getHeal() + " HP (basic food)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.TROUT.getId()), quantity,
-            null, -1, priority, 4, "Trout - heals " + Rs2Food.TROUT.getHeal() + " HP (basic food)",scheduleContext
+            null, -1, priority, 4, "Trout - heals " + Rs2Food.TROUT.getHeal() + " HP (basic food)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.PIKE.getId()), quantity,
-            null, -1, priority, 4, "Pike - heals " + Rs2Food.PIKE.getHeal() + " HP (basic food)",scheduleContext
+            null, -1, priority, 4, "Pike - heals " + Rs2Food.PIKE.getHeal() + " HP (basic food)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.COD.getId()), quantity,
-            null, -1, priority, 3, "Cod - heals " + Rs2Food.COD.getHeal() + " HP (basic food)",scheduleContext
+            null, -1, priority, 3, "Cod - heals " + Rs2Food.COD.getHeal() + " HP (basic food)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.HERRING.getId()), quantity,
-            null, -1, priority, 3, "Herring - heals " + Rs2Food.HERRING.getHeal() + " HP (basic food)",scheduleContext
+            null, -1, priority, 3, "Herring - heals " + Rs2Food.HERRING.getHeal() + " HP (basic food)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.SARDINE.getId()), quantity,
-            null, -1, priority, 2, "Sardine - heals " + Rs2Food.SARDINE.getHeal() + " HP (basic food)",scheduleContext
+            null, -1, priority, 2, "Sardine - heals " + Rs2Food.SARDINE.getHeal() + " HP (basic food)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.SHRIMPS.getId()), quantity,
-            null, -1, priority, 2, "Shrimps - heals " + Rs2Food.SHRIMPS.getHeal() + " HP (basic food)",scheduleContext
+            null, -1, priority, 2, "Shrimps - heals " + Rs2Food.SHRIMPS.getHeal() + " HP (basic food)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(Rs2Food.BREAD.getId()), quantity,
-            null, -1, priority, 2, "Bread - heals " + Rs2Food.BREAD.getHeal() + " HP (emergency food)",scheduleContext
-        ));
-        requirements.register(ItemRequirement.createOrRequirement(
-            Arrays.asList(Rs2Food.BREAD.getId()), quantity,
-            null, -1, priority, 2, "Bread - heals " + Rs2Food.BREAD.getHeal() + " HP (emergency food)",scheduleContext
-        ));
+            null, -1, priority, 2, "Bread - heals " + Rs2Food.BREAD.getHeal() + " HP (emergency food)",taskContext
+        ));       
     }
 
     /**
@@ -638,19 +634,19 @@ public class ItemRequirementCollection {
      *
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      */
-    public static void registerRunesForNPCContact(PrePostScheduleRequirements requirements, RequirementPriority priority,ScheduleContext scheduleContext, int rating) {
+    public static void registerRunesForNPCContact(PrePostScheduleRequirements requirements, RequirementPriority priority,TaskContext taskContext, int rating) {
          // NPC Contact runes for pouch repair (recommended for efficiency)
         requirements.register(new ItemRequirement(
             ItemID.COSMICRUNE,
-            1, -1, priority, rating, "Cosmic runes (for NPC Contact spell)",scheduleContext
+            1, -1, priority, rating, "Cosmic runes (for NPC Contact spell)",taskContext
         ));
         requirements.register(new ItemRequirement(
             ItemID.ASTRALRUNE,
-            1, -1, priority, rating, "Astral runes (for NPC Contact spell)",scheduleContext
+            1, -1, priority, rating, "Astral runes (for NPC Contact spell)",taskContext
         ));
         requirements.register(new ItemRequirement(
             ItemID.AIRRUNE,
-            1, -1, priority, rating, "Air runes (for NPC Contact spell)",scheduleContext
+            1, -1, priority, rating, "Air runes (for NPC Contact spell)",taskContext
         ));
     }
     
@@ -661,27 +657,27 @@ public class ItemRequirementCollection {
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the rune pouches
      */
-    public static void registerRunePouches(PrePostScheduleRequirements requirements, RequirementPriority priority,ScheduleContext scheduleContext) {
+    public static void registerRunePouches(PrePostScheduleRequirements requirements, RequirementPriority priority,TaskContext taskContext) {
         // Rune pouches for efficient rune storage
        requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(ItemID.RCU_POUCH_COLOSSAL, ItemID.RCU_POUCH_COLOSSAL_DEGRADE),1,
-            -1, priority, 10, "Colossal pouch (for maximum essence carrying)",scheduleContext
+            -1, priority, 10, "Colossal pouch (for maximum essence carrying)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(ItemID.RCU_POUCH_GIANT, ItemID.RCU_POUCH_GIANT_DEGRADE),1,
-            -1, priority, 8, "Giant pouch (for high essence carrying)",scheduleContext
+            -1, priority, 8, "Giant pouch (for high essence carrying)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(ItemID.RCU_POUCH_LARGE, ItemID.RCU_POUCH_LARGE_DEGRADE),1,
-            -1, priority, 6, "Large pouch (for good essence carrying)",scheduleContext
+            -1, priority, 6, "Large pouch (for good essence carrying)",taskContext
         ));
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(ItemID.RCU_POUCH_MEDIUM, ItemID.RCU_POUCH_MEDIUM_DEGRADE),1,
-            -1, priority, 4, "Medium pouch (for decent essence carrying)",scheduleContext
+            -1, priority, 4, "Medium pouch (for decent essence carrying)",taskContext
         ));
         requirements.register(new ItemRequirement(
             ItemID.RCU_POUCH_SMALL,
-            1, -1, priority, 2, "Small pouch (basic essence carrying)",scheduleContext
+            1, -1, priority, 2, "Small pouch (basic essence carrying)",taskContext
         ));
     }
 
@@ -692,23 +688,23 @@ public class ItemRequirementCollection {
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the Varrock armour
      */
-    public static void registerVarrockDiaryArmour(PrePostScheduleRequirements requirements, RequirementPriority priority,ScheduleContext scheduleContext) {
+    public static void registerVarrockDiaryArmour(PrePostScheduleRequirements requirements, RequirementPriority priority,TaskContext taskContext) {
         // Varrock armour progression (Elite > Hard > Medium > Easy)
         requirements.register(new ItemRequirement(
             ItemID.VARROCK_ARMOUR_ELITE, 1,
-            EquipmentInventorySlot.BODY, priority, 10, "Varrock armour 4 (Elite) - best diary armour with all benefits",scheduleContext
+            EquipmentInventorySlot.BODY, priority, 10, "Varrock armour 4 (Elite) - best diary armour with all benefits",taskContext
         ));
         requirements.register(new ItemRequirement(
             ItemID.VARROCK_ARMOUR_HARD, 1,
-            EquipmentInventorySlot.BODY, priority, 8, "Varrock armour 3 (Hard) - good diary armour",scheduleContext
+            EquipmentInventorySlot.BODY, priority, 8, "Varrock armour 3 (Hard) - good diary armour",taskContext
         ));
         requirements.register(new ItemRequirement(
             ItemID.VARROCK_ARMOUR_MEDIUM, 1,
-            EquipmentInventorySlot.BODY, priority, 6, "Varrock armour 2 (Medium) - decent diary armour",scheduleContext
+            EquipmentInventorySlot.BODY, priority, 6, "Varrock armour 2 (Medium) - decent diary armour",taskContext
         ));
         requirements.register(new ItemRequirement(
             ItemID.VARROCK_ARMOUR_EASY, 1,
-            EquipmentInventorySlot.BODY, priority, 4, "Varrock armour 1 (Easy) - basic diary armour",scheduleContext
+            EquipmentInventorySlot.BODY, priority, 4, "Varrock armour 1 (Easy) - basic diary armour",taskContext
         ));
     }
 
@@ -719,8 +715,8 @@ public class ItemRequirementCollection {
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the prospector outfit
      */
-    public static void registerProspectorOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority,int rating,ScheduleContext scheduleContext) {
-        registerProspectorOutfit(requirements, priority,rating,scheduleContext, false, false, false, false);
+    public static void registerProspectorOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority,int rating,TaskContext taskContext) {
+        registerProspectorOutfit(requirements, priority,rating,taskContext, false, false, false, false);
     }
 
     /**
@@ -734,7 +730,7 @@ public class ItemRequirementCollection {
      * @param skipLegs Skip legs slot if true
      * @param skipBoots Skip boots slot if true
      */
-    public static void registerProspectorOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority,int rating,ScheduleContext scheduleContext,
+    public static void registerProspectorOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority,int rating,TaskContext taskContext,
                                               boolean skipHead, boolean skipBody, boolean skipLegs, boolean skipBoots) {
         
         
@@ -742,46 +738,46 @@ public class ItemRequirementCollection {
         if (!skipHead) {
             requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(ItemID.MOTHERLODE_REWARD_HAT, ItemID.MOTHERLODE_REWARD_HAT_GOLD, ItemID.FOSSIL_MOTHERLODE_REWARD_HAT),
-                EquipmentInventorySlot.HEAD, priority, rating, "Prospector helmet", scheduleContext
+                EquipmentInventorySlot.HEAD, priority, rating, "Prospector helmet", taskContext
             ));
         }
         if (!skipBody) {
             requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(ItemID.MOTHERLODE_REWARD_TOP, ItemID.MOTHERLODE_REWARD_TOP_GOLD, ItemID.FOSSIL_MOTHERLODE_REWARD_TOP),
-                EquipmentInventorySlot.BODY, priority, rating, "Prospector jacket", scheduleContext
+                EquipmentInventorySlot.BODY, priority, rating, "Prospector jacket", taskContext
             ));
         }
         if (!skipLegs) {
             requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(ItemID.MOTHERLODE_REWARD_LEGS, ItemID.MOTHERLODE_REWARD_LEGS_GOLD, ItemID.FOSSIL_MOTHERLODE_REWARD_LEGS),
-                EquipmentInventorySlot.LEGS, priority, rating, "Prospector legs", scheduleContext
+                EquipmentInventorySlot.LEGS, priority, rating, "Prospector legs", taskContext
             ));
         }
         if (!skipBoots) {
             requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(ItemID.MOTHERLODE_REWARD_BOOTS, ItemID.MOTHERLODE_REWARD_BOOTS_GOLD, ItemID.FOSSIL_MOTHERLODE_REWARD_BOOTS),
-                EquipmentInventorySlot.BOOTS, priority, rating, "Prospector boots", scheduleContext
+                EquipmentInventorySlot.BOOTS, priority, rating, "Prospector boots", taskContext
             ));
         }
   
    
     }
-    public static void registerRunecraftingCape(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, ScheduleContext scheduleContext) {
+    public static void registerRunecraftingCape(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, TaskContext taskContext) {
         // Register runecrafting capes for additional benefits
         // Skill capes for additional benefits
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(ItemID.SKILLCAPE_RUNECRAFTING, ItemID.SKILLCAPE_RUNECRAFTING_TRIMMED),1,
             EquipmentInventorySlot.CAPE, -1,priority, rating, 
-            "Runecrafting cape (any variant)",scheduleContext,null,-1,
+            "Runecrafting cape (any variant)",taskContext,null,-1,
              Skill.RUNECRAFT,99        ));
         
     }
-    public static void registerMiningCape(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, ScheduleContext scheduleContext) {
+    public static void registerMiningCape(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, TaskContext taskContext) {
         // Register mining capes for additional benefits
         requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(ItemID.SKILLCAPE_MINING, ItemID.SKILLCAPE_MINING_TRIMMED),1,
             EquipmentInventorySlot.CAPE, -2,priority, rating, 
-            "Mining cape (any variant)",scheduleContext,null,-1,
+            "Mining cape (any variant)",taskContext,null,-1,
              Skill.MINING,99        ));
     }
 
@@ -792,10 +788,10 @@ public class ItemRequirementCollection {
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the pyromancer outfit
      * @param rating The rating for the pyromancer outfit  
-     * @param scheduleContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param TaskContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      */
-    public static void registerPyromancerOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, ScheduleContext scheduleContext) {
-        registerPyromancerOutfit(requirements, priority, rating, scheduleContext, false, false, false, false, false);
+    public static void registerPyromancerOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, TaskContext taskContext) {
+        registerPyromancerOutfit(requirements, priority, rating, taskContext, false, false, false, false, false);
     }
 
     /**
@@ -805,21 +801,21 @@ public class ItemRequirementCollection {
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the pyromancer outfit
      * @param rating The rating for the pyromancer outfit
-     * @param scheduleContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param TaskContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      * @param skipHead Skip head slot if true
      * @param skipBody Skip body slot if true
      * @param skipLegs Skip legs slot if true
      * @param skipBoots Skip boots slot if true
      * @param skipGloves Skip gloves slot if true
      */
-    public static void registerPyromancerOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, ScheduleContext scheduleContext,
+    public static void registerPyromancerOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, TaskContext taskContext,
                                               boolean skipHead, boolean skipBody, boolean skipLegs, boolean skipBoots, boolean skipGloves) {
         if (!skipHead) {
             requirements.register(new ItemRequirement(
                 ItemID.PYROMANCER_HOOD, 1,
                 EquipmentInventorySlot.HEAD, 
                 priority, rating, "Pyromancer hood - provides firemaking XP bonus",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipBody) {
@@ -827,7 +823,7 @@ public class ItemRequirementCollection {
                 ItemID.PYROMANCER_TOP, 1,
                 EquipmentInventorySlot.BODY, 
                 priority, rating, "Pyromancer garb - provides firemaking XP bonus",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipLegs) {
@@ -835,7 +831,7 @@ public class ItemRequirementCollection {
                 ItemID.PYROMANCER_BOTTOM, 1,
                 EquipmentInventorySlot.LEGS, 
                 priority, rating, "Pyromancer robe - provides firemaking XP bonus",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipBoots) {
@@ -843,7 +839,7 @@ public class ItemRequirementCollection {
                 ItemID.PYROMANCER_BOOTS, 1,
                 EquipmentInventorySlot.BOOTS, 
                 priority, rating, "Pyromancer boots - provides firemaking XP bonus",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipGloves) {
@@ -851,7 +847,7 @@ public class ItemRequirementCollection {
                 ItemID.PYROMANCER_GLOVES, 1,
                 EquipmentInventorySlot.GLOVES, 
                 priority, rating, "Pyromancer gloves - provides firemaking XP bonus",
-                scheduleContext
+                taskContext
             ));
         }
     }
@@ -864,10 +860,10 @@ public class ItemRequirementCollection {
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the farmer's outfit
      * @param rating The rating for the farmer's outfit
-     * @param scheduleContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param TaskContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      */
-    public static void registerFarmersOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, ScheduleContext scheduleContext) {
-        registerFarmersOutfit(requirements, priority, rating, scheduleContext, false, false, false, false);
+    public static void registerFarmersOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, TaskContext taskContext) {
+        registerFarmersOutfit(requirements, priority, rating, taskContext, false, false, false, false);
     }
 
     /**
@@ -878,20 +874,20 @@ public class ItemRequirementCollection {
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the farmer's outfit
      * @param rating The rating for the farmer's outfit
-     * @param scheduleContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param TaskContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      * @param skipHead Skip head slot if true
      * @param skipBody Skip body slot if true
      * @param skipLegs Skip legs slot if true
      * @param skipBoots Skip boots slot if true
      */
-    public static void registerFarmersOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, ScheduleContext scheduleContext,
+    public static void registerFarmersOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, TaskContext taskContext,
                                            boolean skipHead, boolean skipBody, boolean skipLegs, boolean skipBoots) {
         if (!skipHead) {
             requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(ItemID.TITHE_REWARD_HAT_MALE, ItemID.TITHE_REWARD_HAT_FEMALE),  // Farmer's strawhats
                 EquipmentInventorySlot.HEAD, 
                 priority, rating, "Farmer's strawhat - cosmetic farming item",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipBody) {
@@ -899,7 +895,7 @@ public class ItemRequirementCollection {
             Arrays.asList(ItemID.TITHE_REWARD_TORSO_MALE,ItemID.TITHE_REWARD_TORSO_FEMALE), // Farmer's jacket
                 EquipmentInventorySlot.BODY, 
                 priority, rating, "Farmer's jacket - cosmetic farming item",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipLegs) {
@@ -907,7 +903,7 @@ public class ItemRequirementCollection {
             Arrays.asList(ItemID.TITHE_REWARD_LEGS_MALE, ItemID.TITHE_REWARD_LEGS_FEMALE), // Farmer's boro trousers
                 EquipmentInventorySlot.LEGS, 
                 priority, rating, "Farmer's boro trousers - cosmetic farming item",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipBoots) {
@@ -915,7 +911,7 @@ public class ItemRequirementCollection {
             Arrays.asList(ItemID.TITHE_REWARD_FEET_MALE, ItemID.TITHE_REWARD_FEET_FEMALE),  // Farmer's boots
                 EquipmentInventorySlot.BOOTS, 
                 priority, rating, "Farmer's boots - cosmetic farming item",
-                scheduleContext
+                taskContext
             ));
         }
     }
@@ -927,10 +923,10 @@ public class ItemRequirementCollection {
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the carpenter's outfit
      * @param rating The rating for the carpenter's outfit
-     * @param scheduleContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param TaskContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      */
-    public static void registerCarpentersOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, ScheduleContext scheduleContext) {
-        registerCarpentersOutfit(requirements, priority, rating, scheduleContext, false, false, false, false);
+    public static void registerCarpentersOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, TaskContext taskContext) {
+        registerCarpentersOutfit(requirements, priority, rating, taskContext, false, false, false, false);
     }
 
     /**
@@ -940,20 +936,20 @@ public class ItemRequirementCollection {
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the carpenter's outfit
      * @param rating The rating for the carpenter's outfit
-     * @param scheduleContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param TaskContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      * @param skipHead Skip head slot if true
      * @param skipBody Skip body slot if true
      * @param skipLegs Skip legs slot if true
      * @param skipBoots Skip boots slot if true
      */
-    public static void registerCarpentersOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, ScheduleContext scheduleContext,
+    public static void registerCarpentersOutfit(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, TaskContext taskContext,
                                               boolean skipHead, boolean skipBody, boolean skipLegs, boolean skipBoots) {
         if (!skipHead) {
             requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(24872),  // Carpenter's helmet
                 EquipmentInventorySlot.HEAD, 
                 priority, rating, "Carpenter's helmet - provides construction XP bonus",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipBody) {
@@ -961,7 +957,7 @@ public class ItemRequirementCollection {
             Arrays.asList(24874),  // Carpenter's shirt
                 EquipmentInventorySlot.BODY, 
                 priority, rating, "Carpenter's shirt - provides construction XP bonus",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipLegs) {
@@ -969,7 +965,7 @@ public class ItemRequirementCollection {
             Arrays.asList(24876),  // Carpenter's trousers
                 EquipmentInventorySlot.LEGS, 
                 priority, rating, "Carpenter's trousers - provides construction XP bonus",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipBoots) {
@@ -977,7 +973,7 @@ public class ItemRequirementCollection {
             Arrays.asList(24878),  // Carpenter's boots
                 EquipmentInventorySlot.BOOTS, 
                 priority, rating, "Carpenter's boots - provides construction XP bonus",
-                scheduleContext
+                taskContext
             ));
         }
     }
@@ -989,10 +985,10 @@ public class ItemRequirementCollection {
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the zealot's robes
      * @param rating The rating for the zealot's robes
-     * @param scheduleContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param TaskContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      */
-    public static void registerZealotsRobes(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, ScheduleContext scheduleContext) {
-        registerZealotsRobes(requirements, priority, rating, scheduleContext, false, false, false, false);
+    public static void registerZealotsRobes(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, TaskContext taskContext) {
+        registerZealotsRobes(requirements, priority, rating, taskContext, false, false, false, false);
     }
 
     /**
@@ -1002,20 +998,20 @@ public class ItemRequirementCollection {
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the zealot's robes
      * @param rating The rating for the zealot's robes
-     * @param scheduleContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param TaskContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      * @param skipHead Skip head slot if true
      * @param skipBody Skip body slot if true
      * @param skipLegs Skip legs slot if true
      * @param skipBoots Skip boots slot if true
      */
-    public static void registerZealotsRobes(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, ScheduleContext scheduleContext,
+    public static void registerZealotsRobes(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, TaskContext taskContext,
                                           boolean skipHead, boolean skipBody, boolean skipLegs, boolean skipBoots) {
         if (!skipHead) {
             requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(25438),  // Zealot's helm
                 EquipmentInventorySlot.HEAD, 
                 priority, rating, "Zealot's helm - chance to save bones/ensouled heads",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipBody) {
@@ -1023,7 +1019,7 @@ public class ItemRequirementCollection {
             Arrays.asList(25434),  // Zealot's robe top
                 EquipmentInventorySlot.BODY, 
                 priority, rating, "Zealot's robe top - chance to save bones/ensouled heads",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipLegs) {
@@ -1031,7 +1027,7 @@ public class ItemRequirementCollection {
             Arrays.asList(25436),  // Zealot's robe bottom
                 EquipmentInventorySlot.LEGS, 
                 priority, rating, "Zealot's robe bottom - chance to save bones/ensouled heads",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipBoots) {
@@ -1039,7 +1035,7 @@ public class ItemRequirementCollection {
             Arrays.asList(25440),  // Zealot's boots
                 EquipmentInventorySlot.BOOTS, 
                 priority, rating, "Zealot's boots - chance to save bones/ensouled heads",
-                scheduleContext
+                taskContext
             ));
         }
     }
@@ -1051,10 +1047,10 @@ public class ItemRequirementCollection {
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the rogue equipment
      * @param rating The rating for the rogue equipment
-     * @param scheduleContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param TaskContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      */
-    public static void registerRogueEquipment(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, ScheduleContext scheduleContext) {
-        registerRogueEquipment(requirements, priority, rating, scheduleContext, false, false, false, false, false);
+    public static void registerRogueEquipment(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, TaskContext taskContext) {
+        registerRogueEquipment(requirements, priority, rating, taskContext, false, false, false, false, false);
     }
 
     /**
@@ -1064,21 +1060,21 @@ public class ItemRequirementCollection {
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the rogue equipment
      * @param rating The rating for the rogue equipment
-     * @param scheduleContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param TaskContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      * @param skipHead Skip head slot if true
      * @param skipBody Skip body slot if true
      * @param skipLegs Skip legs slot if true
      * @param skipGloves Skip gloves slot if true
      * @param skipBoots Skip boots slot if true
      */
-    public static void registerRogueEquipment(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, ScheduleContext scheduleContext,
+    public static void registerRogueEquipment(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, TaskContext taskContext,
                                             boolean skipHead, boolean skipBody, boolean skipLegs, boolean skipGloves, boolean skipBoots) {
         if (!skipHead) {
             requirements.register(ItemRequirement.createOrRequirement(
             Arrays.asList(5554),  // Rogue mask
                 EquipmentInventorySlot.HEAD, 
                 priority, rating, "Rogue mask - chance for double loot when pickpocketing",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipBody) {
@@ -1086,7 +1082,7 @@ public class ItemRequirementCollection {
             Arrays.asList(ItemID.ROGUESDEN_BODY),  // Rogue top
                 EquipmentInventorySlot.BODY, 
                 priority, rating, "Rogue top - chance for double loot when pickpocketing",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipLegs) {
@@ -1094,7 +1090,7 @@ public class ItemRequirementCollection {
             Arrays.asList(ItemID.ROGUESDEN_LEGS), // Rogue trousers
                 EquipmentInventorySlot.LEGS, 
                 priority, rating, "Rogue trousers - chance for double loot when pickpocketing",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipGloves) {
@@ -1102,7 +1098,7 @@ public class ItemRequirementCollection {
             Arrays.asList(ItemID.ROGUESDEN_GLOVES), // Rogue gloves
                 EquipmentInventorySlot.GLOVES, 
                 priority, rating, "Rogue gloves - chance for double loot when pickpocketing",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipBoots) {
@@ -1110,7 +1106,7 @@ public class ItemRequirementCollection {
             Arrays.asList(ItemID.ROGUESDEN_BOOTS),  // Rogue boots
                 EquipmentInventorySlot.BOOTS, 
                 priority, rating, "Rogue boots - chance for double loot when pickpocketing",
-                scheduleContext
+                taskContext
             ));
         }
     }
@@ -1122,10 +1118,10 @@ public class ItemRequirementCollection {
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the smith's uniform
      * @param rating The rating for the smith's uniform
-     * @param scheduleContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param TaskContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      */
-    public static void registerSmithsUniform(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, ScheduleContext scheduleContext) {
-        registerSmithsUniform(requirements, priority, rating, scheduleContext, false, false, false, false);
+    public static void registerSmithsUniform(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, TaskContext taskContext) {
+        registerSmithsUniform(requirements, priority, rating, taskContext, false, false, false, false);
     }
 
     /**
@@ -1135,20 +1131,20 @@ public class ItemRequirementCollection {
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the smith's uniform
      * @param rating The rating for the smith's uniform
-     * @param scheduleContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
+     * @param TaskContext The schedule context for these requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      * @param skipBody Skip body slot if true
      * @param skipLegs Skip legs slot if true
      * @param skipGloves Skip gloves slot if true
      * @param skipBoots Skip boots slot if true
      */
-    public static void registerSmithsUniform(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, ScheduleContext scheduleContext,
+    public static void registerSmithsUniform(PrePostScheduleRequirements requirements, RequirementPriority priority, int rating, TaskContext taskContext,
                                            boolean skipBody, boolean skipLegs, boolean skipGloves, boolean skipBoots) {
         if (!skipBody) {
             requirements.register(new ItemRequirement(
                 ItemID.SMITHING_UNIFORM_TORSO, 1,
                 EquipmentInventorySlot.BODY, 
                 priority, rating, "Smith's uniform torso - speeds up smithing actions",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipLegs) {
@@ -1156,7 +1152,7 @@ public class ItemRequirementCollection {
                 ItemID.SMITHING_UNIFORM_LEGS, 1,
                 EquipmentInventorySlot.LEGS, 
                 priority, rating, "Smith's uniform legs - speeds up smithing actions",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipGloves) {
@@ -1164,7 +1160,7 @@ public class ItemRequirementCollection {
             Arrays.asList(ItemID.SMITHING_UNIFORM_GLOVES, ItemID.SMITHING_UNIFORM_GLOVES_ICE),
                 EquipmentInventorySlot.GLOVES, 
                 priority, rating, "Smith's uniform gloves - speeds up smithing actions",
-                scheduleContext
+                taskContext
             ));
         }
         if (!skipBoots) {
@@ -1172,7 +1168,7 @@ public class ItemRequirementCollection {
                 ItemID.SMITHING_UNIFORM_BOOTS, 1,
                 EquipmentInventorySlot.BOOTS, 
                 priority, rating, "Smith's uniform boots - speeds up smithing actions",
-                scheduleContext
+                taskContext
             ));
         }
     }
@@ -1182,46 +1178,46 @@ public class ItemRequirementCollection {
      *
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for food items
-     * @param scheduleContext The schedule context for these requirements
+     * @param TaskContext The schedule context for these requirements
      * @param quantity The quantity of food to require
      */
     public static void registerMidTierFoodLogical(PrePostScheduleRequirements requirements, RequirementPriority priority, 
-                                                 ScheduleContext scheduleContext, int quantity) {
+                                                 TaskContext taskContext, int quantity) {
         // Create individual food item requirements
         ItemRequirement monkfish = new ItemRequirement(
             Rs2Food.MONKFISH.getId(), quantity,
             null, -1, priority, 8, 
-            "Monkfish - heals " + Rs2Food.MONKFISH.getHeal() + " HP (good mid-tier food)", scheduleContext
+            "Monkfish - heals " + Rs2Food.MONKFISH.getHeal() + " HP (good mid-tier food)", taskContext
         );
         
         ItemRequirement swordfish = new ItemRequirement(
             Rs2Food.SWORDFISH.getId(), quantity,
             null, -1, priority, 6, 
-            "Swordfish - heals " + Rs2Food.SWORDFISH.getHeal() + " HP (decent mid-tier food)", scheduleContext
+            "Swordfish - heals " + Rs2Food.SWORDFISH.getHeal() + " HP (decent mid-tier food)", taskContext
         );
         
         ItemRequirement bass = new ItemRequirement(
             Rs2Food.BASS.getId(), quantity,
             null, -1, priority, 5, 
-            "Bass - heals " + Rs2Food.BASS.getHeal() + " HP (alternative mid-tier food)", scheduleContext
+            "Bass - heals " + Rs2Food.BASS.getHeal() + " HP (alternative mid-tier food)", taskContext
         );
         
         ItemRequirement lobster = new ItemRequirement(
             Rs2Food.LOBSTER.getId(), quantity,
             null, -1, priority, 4, 
-            "Lobster - heals " + Rs2Food.LOBSTER.getHeal() + " HP (common mid-tier food)", scheduleContext
+            "Lobster - heals " + Rs2Food.LOBSTER.getHeal() + " HP (common mid-tier food)", taskContext
         );
         
         ItemRequirement tuna =new ItemRequirement(
             Rs2Food.TUNA.getId(), quantity,
             null, -1, priority, 3, 
-            "Tuna - heals " + Rs2Food.TUNA.getHeal() + " HP (affordable mid-tier food)", scheduleContext
+            "Tuna - heals " + Rs2Food.TUNA.getHeal() + " HP (affordable mid-tier food)", taskContext
         );
         
         // Create an OR requirement combining all food options
         // Only one of these food types needs to be available
         OrRequirement midTierFoodOptions = new OrRequirement(
-            priority, 8, "Mid-tier food options", scheduleContext,
+            priority, 8, "Mid-tier food options", taskContext,
             monkfish, swordfish, bass, lobster, tuna
         );
         
@@ -1237,17 +1233,17 @@ public class ItemRequirementCollection {
      *
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
      * @param priority The priority level for the combat setup
-     * @param scheduleContext The schedule context for these requirements
+     * @param TaskContext The schedule context for these requirements
      */
     public static void registerCombatSetupLogical(PrePostScheduleRequirements requirements, RequirementPriority priority, 
-                                                 ScheduleContext scheduleContext) {
+                                                 TaskContext taskContext) {
         // TODO: Implement combat setup requirements using ConditionalRequirement
         // Example: Create weapon and armor requirements with OR logic for each category
         // and AND logic between categories
         
     }
     public static void registerStaminaPotions(PrePostScheduleRequirements requirements,int amount, RequirementPriority priority,int rating, 
-                                                 ScheduleContext scheduleContext,boolean preferLowerCharges) {
+                                                 TaskContext taskContext,boolean preferLowerCharges) {
         requirements.register(OrRequirement.fromItemIds(
             Arrays.asList(ItemID._1DOSESTAMINA, 
                                 ItemID._2DOSESTAMINA, 
@@ -1255,24 +1251,24 @@ public class ItemRequirementCollection {
                                 ItemID._4DOSESTAMINA),amount,
             null, -1, 
             priority, rating, "Stamina potions for energy restoration",
-            scheduleContext, preferLowerCharges
+            taskContext, preferLowerCharges
         ));
     }
     public static void registerRingOfDueling(PrePostScheduleRequirements requirements, RequirementPriority priority,int rating, 
-                                                 ScheduleContext scheduleContext,boolean preferLowerCharges) {
+                                                 TaskContext taskContext,boolean preferLowerCharges) {
         requirements.register(OrRequirement.fromItemIds(
             Arrays.asList(ItemID.RING_OF_DUELING_8, ItemID.RING_OF_DUELING_7, ItemID.RING_OF_DUELING_6,
                          ItemID.RING_OF_DUELING_5, ItemID.RING_OF_DUELING_4, ItemID.RING_OF_DUELING_3,
                          ItemID.RING_OF_DUELING_2, ItemID.RING_OF_DUELING_1),1,
             EquipmentInventorySlot.RING, -1,
             priority, 
-            rating, "Ring of dueling for teleports",scheduleContext,preferLowerCharges
+            rating, "Ring of dueling for teleports",taskContext,preferLowerCharges
 
         ));
         
     }
     public static void registerAmuletOfGlory(PrePostScheduleRequirements requirements, RequirementPriority priority,int rating, 
-                                                 ScheduleContext scheduleContext,boolean preferLowerCharges) {
+                                                 TaskContext taskContext,boolean preferLowerCharges) {
 
         // AMULET - Example with charged items
         requirements.register( OrRequirement.fromItemIds(
@@ -1285,7 +1281,7 @@ public class ItemRequirementCollection {
             EquipmentInventorySlot.AMULET, -1,
             priority, rating, 
             "Amulet of glory for teleports",
-            scheduleContext, preferLowerCharges
+            taskContext, preferLowerCharges
         ));
      }
      /**
@@ -1298,9 +1294,9 @@ public class ItemRequirementCollection {
      * 3. If player has high mining level, consider dragon pickaxe
      * 
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
-     * @param scheduleContext The schedule context for these requirements
+     * @param TaskContext The schedule context for these requirements
      */
-    public static void registerSmartMiningEquipment(PrePostScheduleRequirements requirements, ScheduleContext scheduleContext) {
+    public static void registerSmartMiningEquipment(PrePostScheduleRequirements requirements, TaskContext taskContext) {
         // Create a conditional requirement for smart mining equipment management
         ConditionalRequirement smartMiningEquipment = ConditionalRequirementBuilder.createEquipmentUpgrader(
                 new int[]{ItemID.BRONZE_PICKAXE, ItemID.IRON_PICKAXE}, // Basic equipment
@@ -1309,7 +1305,7 @@ public class ItemRequirementCollection {
                 EquipmentInventorySlot.WEAPON,
                 "mining pickaxe",
                 RequirementPriority.RECOMMENDED,
-                scheduleContext
+                taskContext
         );
         
         requirements.register(smartMiningEquipment);
@@ -1328,17 +1324,17 @@ public class ItemRequirementCollection {
      * 5. Move to wilderness entry point
      * 
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
-     * @param scheduleContext The schedule context for these requirements
+     * @param TaskContext The schedule context for these requirements
      */
-    public static void registerWildernessPreparation(PrePostScheduleRequirements requirements, ScheduleContext scheduleContext) {
+    public static void registerWildernessPreparation(PrePostScheduleRequirements requirements, TaskContext taskContext) {
         OrderedRequirement wildernessPrep = new OrderedRequirement(
-                RequirementPriority.MANDATORY, 9, "Complete Wilderness Preparation", scheduleContext
+                RequirementPriority.MANDATORY, 9, "Complete Wilderness Preparation", taskContext
         );
        /*
         // Step 1: Bank valuable items first
         wildernessPrep.addStep(
                 new ItemRequirement(RequirementType.INVENTORY, Priority.MANDATORY, 8,
-                        "Bank valuable items before wilderness", Arrays.asList(), scheduleContext),
+                        "Bank valuable items before wilderness", Arrays.asList(), taskContext),
                 "Bank valuable items"
         );
         
@@ -1346,7 +1342,7 @@ public class ItemRequirementCollection {
         wildernessPrep.addStep(
                 new ItemRequirement(RequirementType.INVENTORY, Priority.MANDATORY, 9,
                         "Food for wilderness survival", 
-                        Arrays.asList(ItemID.SHARK, ItemID.KARAMBWAN, ItemID.MANTA_RAY), scheduleContext),
+                        Arrays.asList(ItemID.SHARK, ItemID.KARAMBWAN, ItemID.MANTA_RAY), taskContext),
                 "Withdraw food for wilderness"
         );
         
@@ -1354,13 +1350,13 @@ public class ItemRequirementCollection {
         wildernessPrep.addOptionalStep(
                 new ItemRequirement(RequirementType.EQUIPMENT, Priority.OPTIONAL, 6,
                         "Budget wilderness combat gear",
-                        Arrays.asList(ItemID.RUNE_SCIMITAR, ItemID.RUNE_FULL_HELM), scheduleContext),
+                        Arrays.asList(ItemID.RUNE_SCIMITAR, ItemID.RUNE_FULL_HELM), taskContext),
                 "Equip budget wilderness gear"
         ); */ 
         
         // Step 4: Final location check
         wildernessPrep.addStep(
-                new LocationRequirement(BankLocation.EDGEVILLE, true, -1, scheduleContext, RequirementPriority.MANDATORY),
+                new LocationRequirement(BankLocation.EDGEVILLE, true, -1, taskContext, RequirementPriority.MANDATORY),
                 "Move to wilderness entry point"
         );
         
@@ -1377,27 +1373,27 @@ public class ItemRequirementCollection {
      * - If Magic 65+: Consider Lunar spellbook for utility
      * 
      * @param requirements The PrePostScheduleRequirements instance to register the requirements with
-     * @param scheduleContext The schedule context for these requirements
+     * @param TaskContext The schedule context for these requirements
      */
-    public static void registerSmartSpellbookProgression(PrePostScheduleRequirements requirements, ScheduleContext scheduleContext) {
+    public static void registerSmartSpellbookProgression(PrePostScheduleRequirements requirements, TaskContext taskContext) {
         // Ancient spellbook conditional (for combat)
         ConditionalRequirement ancientSpellbook = ConditionalRequirementBuilder.createLevelBasedRequirement(
                 Skill.MAGIC, 50,
-                new SpellbookRequirement(Rs2Spellbook.ANCIENT, scheduleContext, RequirementPriority.RECOMMENDED, 7,
+                new SpellbookRequirement(Rs2Spellbook.ANCIENT, taskContext, RequirementPriority.RECOMMENDED, 7,
                         "Ancient spellbook for combat spells"),
                 "Ancient spellbook for combat (Magic 50+)",
                 RequirementPriority.RECOMMENDED,
-                scheduleContext
+                taskContext
         );
         
         // Lunar spellbook conditional (for utility)
         ConditionalRequirement lunarSpellbook = ConditionalRequirementBuilder.createLevelBasedRequirement(
                 Skill.MAGIC, 65,
-                new SpellbookRequirement(Rs2Spellbook.LUNAR, scheduleContext, RequirementPriority.RECOMMENDED, 8,
+                new SpellbookRequirement(Rs2Spellbook.LUNAR, taskContext, RequirementPriority.RECOMMENDED, 8,
                         "Lunar spellbook for utility spells"),
                 "Lunar spellbook for utility (Magic 65+)",
                 RequirementPriority.RECOMMENDED,
-                scheduleContext
+                taskContext
         );
         
         requirements.register(ancientSpellbook);
@@ -1423,7 +1419,7 @@ public class ItemRequirementCollection {
             RequirementPriority.MANDATORY,
             9, // Very high rating for essential teleportation
             "Rune pouch for essential teleportation magic",
-            ScheduleContext.PRE_SCHEDULE
+            TaskContext.PRE_SCHEDULE
         );
     }
     
@@ -1432,7 +1428,7 @@ public class ItemRequirementCollection {
      * Requires Nature runes and Fire runes for High Level Alchemy.
      */
     public static void registerAlchemyRunePouch(int runeAmount,PrePostScheduleRequirements requirements, RequirementPriority priority,int rating, 
-                                                 ScheduleContext scheduleContext) {
+                                                 TaskContext taskContext) {
         Map<Runes, Integer> requiredRunes = new HashMap<>();
         requiredRunes.put(Runes.NATURE, runeAmount); // 1000 nature runes for alchemy
         requiredRunes.put(Runes.FIRE, runeAmount*5);   // 5000 fire runes for alchemy
@@ -1443,7 +1439,7 @@ public class ItemRequirementCollection {
             priority,
             rating,
             "Rune pouch for high level alchemy training",
-            scheduleContext
+            taskContext
         );
         requirements.register(runePouchRequirement);
     }

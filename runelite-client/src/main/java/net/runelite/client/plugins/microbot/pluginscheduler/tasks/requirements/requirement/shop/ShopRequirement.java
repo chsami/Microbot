@@ -32,13 +32,13 @@ import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirementUtil;
+import net.runelite.client.plugins.microbot.util.world.Rs2WorldUtil;
+import net.runelite.client.plugins.microbot.util.world.WorldHoppingConfig;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.models.CancelledOfferState;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.models.MultiItemConfig;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.models.ShopOperation;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.shop.models.WorldHoppingConfig;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.grandexchange.GrandExchangeSlots;
@@ -125,6 +125,12 @@ public class ShopRequirement extends Requirement {
     @Setter
     private WorldHoppingConfig worldHoppingConfig = WorldHoppingConfig.createDefault();
     
+    /**
+     * Set of world IDs that have been tried and failed during this requirement session.
+     * Used to avoid repeatedly attempting the same problematic worlds.
+     */
+    private final Set<Integer> excludedWorlds = new HashSet<>();
+    
     
     public String getName() {
         if (shopItemRequirements.isEmpty()) {
@@ -192,7 +198,7 @@ public class ShopRequirement extends Requirement {
      * @param priority Priority level of this item for plugin functionality
      * @param rating Effectiveness rating from 1-10 (10 being most effective)
      * @param description Human-readable description of the item's purpose    
-     * @param scheduleContext When this requirement should be fulfilled
+     * @param TaskContext When this requirement should be fulfilled
      */
     public ShopRequirement(            
             Map<Rs2ShopItem, ShopItemRequirement> shopItems,
@@ -201,10 +207,10 @@ public class ShopRequirement extends Requirement {
             RequirementPriority priority,
             int rating,
             String description,
-            ScheduleContext scheduleContext
+            TaskContext taskContext
            ) {
         
-        super(requirementType, priority, rating, description, extractItemIds(shopItems), scheduleContext);        
+        super(requirementType, priority, rating, description, extractItemIds(shopItems), taskContext);        
         
         if (shopItems.isEmpty()) {
             throw new IllegalArgumentException("Shop items map cannot be empty");
@@ -229,9 +235,9 @@ public class ShopRequirement extends Requirement {
             RequirementPriority priority,
             int rating,
             String description,
-            ScheduleContext scheduleContext
+            TaskContext taskContext
            ) {
-        this(createSingleItemMap(shopItem, amount), operation, requirementType, priority, rating, description, scheduleContext);
+        this(createSingleItemMap(shopItem, amount), operation, requirementType, priority, rating, description, taskContext);
     }
     
     /**
@@ -287,6 +293,15 @@ public class ShopRequirement extends Requirement {
         return shopItemRequirements.values().stream()
                 .mapToInt(ShopItemRequirement::getCompletedAmount)
                 .sum();
+    }
+    
+    /**
+     * Resets the excluded worlds set. This can be called when starting a new requirement
+     * session or when you want to give previously failed worlds another chance.
+     */
+    public void resetExcludedWorlds() {
+        excludedWorlds.clear();
+        log.debug("Reset excluded worlds list for shop requirement: {}", getName());
     }
     
     /**
@@ -1220,11 +1235,30 @@ public class ShopRequirement extends Requirement {
                 // Handle world hopping if needed
                 if (needWorldHop &&  enableWorldHopping && primaryShopItem.getShopType().supportsWorldHopping()) {
                     log.info("World hopping due to insufficient stock in shop");
-                    // Get next world using configured strategy
-                    int world = useNextWorld || worldHoppingConfig.isUseSequentialWorlds() ? 
-                        Login.getNextWorld(Rs2Player.isMember()) : 
-                        Login.getRandomWorld(Rs2Player.isMember());
-                    if (LocationRequirementUtil.hopWorld(scheduledFuture, world, successiveWorldHopAttempts, worldHoppingConfig)) {
+                    
+                    // Use enhanced world hopping with retry mechanism
+                    boolean hopSuccess = false;
+                    
+                    if (useNextWorld || worldHoppingConfig.isUseSequentialWorlds()) {
+                        // Try specific world selection first
+                        int world = Login.getNextWorld(Rs2Player.isMember());
+                        if (world != -1 && !excludedWorlds.contains(world)) {
+                            hopSuccess = Rs2WorldUtil.hopWorld(scheduledFuture, world, successiveWorldHopAttempts, worldHoppingConfig);
+                            if (!hopSuccess) {
+                                excludedWorlds.add(world); // Mark this world as problematic
+                            }
+                        }
+                    }
+                    
+                    // If specific world hop failed or not using sequential, try enhanced world hopping
+                    if (!hopSuccess) {
+                        hopSuccess = Rs2WorldUtil.hopToNextBestWorld(scheduledFuture, 
+                        successiveWorldHopAttempts, 
+                        worldHoppingConfig, 
+                        excludedWorlds);
+                    }
+                    
+                    if (hopSuccess) {
                         log.info("World hop successful after insufficient stock in shop");                                               
                         continue;
                     } else {                        
@@ -1399,15 +1433,33 @@ public class ShopRequirement extends Requirement {
                 }
                 // Handle world hopping if needed
                 if (needWorldHop && enableWorldHopping && primaryShopItem.getShopType().supportsWorldHopping()) {
-                    // Get next world using configured strategy
-                    int world = useNextWorld || worldHoppingConfig.isUseSequentialWorlds() ? 
-                        Login.getNextWorld(Rs2Player.isMember()) : 
-                        Login.getRandomWorld(Rs2Player.isMember());
-                    if (LocationRequirementUtil.hopWorld(scheduledFuture, world, successiveWorldHopAttempts, worldHoppingConfig)) {
-                        
+                    log.info("World hopping due to high stock levels in shop for selling");
+                    
+                    // Use enhanced world hopping with retry mechanism
+                    boolean hopSuccess = false;
+                    
+                    if (useNextWorld || worldHoppingConfig.isUseSequentialWorlds()) {
+                        // Try specific world selection first
+                        int world = Login.getNextWorld(Rs2Player.isMember());
+                        if (world != -1 && !excludedWorlds.contains(world)) {
+                            hopSuccess = Rs2WorldUtil.hopWorld(scheduledFuture, world, successiveWorldHopAttempts, worldHoppingConfig);
+                            if (!hopSuccess) {
+                                excludedWorlds.add(world); // Mark this world as problematic
+                            }
+                        }
+                    }
+                    
+                    // If specific world hop failed or not using sequential, try enhanced world hopping
+                    if (!hopSuccess) {
+                        hopSuccess = Rs2WorldUtil.hopToNextBestWorld(scheduledFuture, successiveWorldHopAttempts, worldHoppingConfig, excludedWorlds);
+                    }
+                    
+                    if (hopSuccess) {
+                        log.info("World hop successful after high stock levels in shop");
                         continue;
                     } else {
                         Microbot.status = "Failed to hop worlds - shop stock too high";
+                        log.error("Failed to hop to a new world due to high stock levels in shop");
                         return false;
                     }
                 }                                                
@@ -1562,6 +1614,10 @@ public class ShopRequirement extends Requirement {
                 Microbot.log("Please run fulfillRequirement() on a non-client thread.", Level.ERROR);
                 return false;
             }
+            
+            // Reset excluded worlds at the start of each fulfillment attempt
+            resetExcludedWorlds();
+            
             Microbot.status = "Fulfilling shop requirement: " + operation.name() + " " + getName();            
             boolean success = false;
             if (isFulfilled()) {
@@ -2057,7 +2113,7 @@ public class ShopRequirement extends Requirement {
      * @param priority Priority level of this item for plugin functionality
      * @param rating Effectiveness rating from 1-10
      * @param description Human-readable description
-     * @param scheduleContext When this requirement should be fulfilled
+     * @param TaskContext When this requirement should be fulfilled
      */
     public static ShopRequirement createMultiItemRequirement(
             Rs2ShopItem primaryShopItem,
@@ -2067,7 +2123,7 @@ public class ShopRequirement extends Requirement {
             RequirementPriority priority,
             int rating,
             String description,
-            ScheduleContext scheduleContext) {
+            TaskContext taskContext) {
         
         Map<Rs2ShopItem, ShopItemRequirement> shopItems = new HashMap<>();
         
@@ -2082,7 +2138,7 @@ public class ShopRequirement extends Requirement {
             ));
         }
         
-        return new ShopRequirement(shopItems, operation, requirementType, priority, rating, description, scheduleContext);
+        return new ShopRequirement(shopItems, operation, requirementType, priority, rating, description, taskContext);
     }
     
     

@@ -5,11 +5,15 @@ import net.runelite.api.Perspective;
 import net.runelite.api.Point;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.cache.Rs2CacheManager;
 import net.runelite.client.plugins.microbot.util.cache.Rs2ObjectCache;
 import net.runelite.client.plugins.microbot.util.cache.util.Rs2CacheLoggingUtils;
+import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
+import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -92,6 +96,7 @@ public class MicrobotOverlay extends OverlayPanel {
                 // Pass as canvas coordinates to plugin.hasWidgetOverlapWithBounds
                 shouldShowCache = !plugin.hasWidgetOverlapWithBounds(estimatedCacheBounds);
             }
+            shouldShowCache = shouldShowCache && Microbot.isLoggedIn() && !Rs2Bank.isOpen() && !Rs2Widget.isWidgetVisible(InterfaceID.Worldmap.CLOSE) && !Rs2GrandExchange.isOpen();
         }
 
         if (shouldShowCache) {

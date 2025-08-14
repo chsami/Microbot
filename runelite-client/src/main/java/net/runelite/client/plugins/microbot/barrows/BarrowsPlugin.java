@@ -15,9 +15,6 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.An
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LockCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryPostScheduleTaskEvent;
-import net.runelite.client.plugins.microbot.runecrafting.gotr.GotrScript;
-import net.runelite.client.plugins.microbot.runecrafting.gotr.GotrState;
-import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.enums.Activity;
 import net.runelite.client.ui.overlay.OverlayManager;

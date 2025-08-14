@@ -2,24 +2,25 @@ package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ScheduledExecutorService;
-
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 /**
  * Abstract base class for all requirement types in the plugin scheduler system.
  * This class defines common properties and behaviors for all requirements.
  */
 @Getter
 @AllArgsConstructor
-@EqualsAndHashCode
+@Slf4j
 public abstract class Requirement implements Comparable<Requirement> {
     
     /**
@@ -36,7 +37,7 @@ public abstract class Requirement implements Comparable<Requirement> {
      * Effectiveness rating from 1-10 (10 being most effective).
      * Used for comparison when multiple valid options are available.
      */
-    protected final int rating;
+    protected int rating;
     
     /**
      * Human-readable description explaining the purpose and effectiveness.
@@ -50,7 +51,7 @@ public abstract class Requirement implements Comparable<Requirement> {
      * For items, this can represent multiple alternative item IDs that satisfy the same requirement.
      * Can be empty if not applicable.
      */
-    protected final List<Integer> ids;
+    protected List<Integer> ids;
     
     /**
      * Context for when this requirement should be fulfilled.
@@ -58,7 +59,7 @@ public abstract class Requirement implements Comparable<Requirement> {
      * Can be null for requirements that don't have schedule-specific behavior.
      */
     @Setter
-    protected ScheduleContext scheduleContext;
+    protected TaskContext taskContext;
     
  
     /**
@@ -77,7 +78,30 @@ public abstract class Requirement implements Comparable<Requirement> {
      * @return true if the requirement was fulfilled successfully, false otherwise
      */
     public abstract boolean fulfillRequirement(CompletableFuture<Boolean> scheduledFuture);
+    /**
+     * Executes this step's requirement with timeout support.
+     * 
+     * @param scheduledFuture The CompletableFuture for cancellation support
+     * @param timeoutSeconds Maximum time allowed for this step
+     * @return true if successfully fulfilled, false otherwise
+     */
+    public boolean fulfillRequirementWithTimeout(CompletableFuture<Boolean> scheduledFuture, long timeoutSeconds) {
+        try {
+            log.debug("Executing ordered step with {}s timeout: {}", timeoutSeconds, description);
             
+            CompletableFuture<Boolean> stepFuture = CompletableFuture.supplyAsync(() -> 
+                fulfillRequirement(scheduledFuture)
+            );
+            
+            return stepFuture.get(timeoutSeconds, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            log.error("Step '{}' timed out after {} seconds", description, timeoutSeconds);
+            return !isMandatory();
+        } catch (Exception e) {
+            log.error("Error executing ordered step '{}': {}", description, e.getMessage());
+            return !isMandatory();
+        }
+    }
     /**
      * Checks if this requirement is currently fulfilled.
      * This is a convenience method that calls fulfillRequirement() for consistency
@@ -126,14 +150,7 @@ public abstract class Requirement implements Comparable<Requirement> {
         return priority == RequirementPriority.RECOMMENDED;
     }
     
-    /**
-     * Check if this is an optional requirement.
-     * 
-     * @return true if this requirement has OPTIONAL priority, false otherwise
-     */
-    public boolean isOptional() {
-        return priority == RequirementPriority.RECOMMENDED;
-    }
+  
     
     /**
      * Check if this requirement should be fulfilled before script execution.
@@ -141,7 +158,7 @@ public abstract class Requirement implements Comparable<Requirement> {
      * @return true if this requirement has PRE_SCHEDULE or BOTH context, false otherwise
      */
     public boolean isPreSchedule() {
-        return scheduleContext == ScheduleContext.PRE_SCHEDULE || scheduleContext == ScheduleContext.BOTH;
+        return taskContext == TaskContext.PRE_SCHEDULE || taskContext == TaskContext.BOTH;
     }
     
     /**
@@ -150,17 +167,17 @@ public abstract class Requirement implements Comparable<Requirement> {
      * @return true if this requirement has POST_SCHEDULE or BOTH context, false otherwise
      */
     public boolean isPostSchedule() {
-        return scheduleContext == ScheduleContext.POST_SCHEDULE || scheduleContext == ScheduleContext.BOTH;
+        return taskContext == TaskContext.POST_SCHEDULE || taskContext == TaskContext.BOTH;
     }
     
     /**
-     * Check if this requirement has a specific schedule context.
-     * Since scheduleContext is never null (defaults to BOTH), this always returns true.
+     * Check if this requirement has a specific schedule context task set.
+     * Since TaskContext is never null (defaults to BOTH), this always returns true.
      * 
      * @return true always, as all requirements have a schedule context
      */
-    public boolean hasScheduleContext() {
-        return true;
+    public boolean hasTaskContext() {
+        return taskContext != null;
     }
     
     @Override
@@ -174,12 +191,12 @@ public abstract class Requirement implements Comparable<Requirement> {
                Objects.equals(priority, that.priority) &&
                Objects.equals(description, that.description) &&
                Objects.equals(ids, that.ids) &&
-               Objects.equals(scheduleContext, that.scheduleContext);
+               Objects.equals(taskContext, that.taskContext);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(requirementType, priority, rating, description, ids, scheduleContext);
+        return Objects.hash(requirementType, priority, rating, description, ids, taskContext);
     }
     
     /**
@@ -195,8 +212,8 @@ public abstract class Requirement implements Comparable<Requirement> {
         sb.append("Type:\t\t").append(requirementType.name()).append("\n");
         sb.append("Priority:\t").append(priority.name()).append("\n");
         sb.append("Rating:\t\t").append(rating).append("/10\n");
-        sb.append("Schedule:\t").append(scheduleContext.name()).append("\n");
-        sb.append("IDs:\t\t").append(ids.toString()).append("\n");
+        sb.append("Schedule:\t").append(taskContext.name()).append("\n");
+        sb.append("IDs:\t\t").append(ids != null ? ids.toString() : "[]").append("\n");
         sb.append("Description:\t").append(description != null ? description : "No description").append("\n");
         return sb.toString();
     }

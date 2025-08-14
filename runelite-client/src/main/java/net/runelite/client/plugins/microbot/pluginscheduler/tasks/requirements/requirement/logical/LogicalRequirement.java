@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.collection.LootRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
@@ -57,15 +57,15 @@ public abstract class LogicalRequirement extends Requirement {
      * @param priority Priority level of this logical requirement
      * @param rating Effectiveness rating (1-10)
      * @param description Human-readable description
-     * @param scheduleContext When this requirement should be fulfilled
+     * @param TaskContext When this requirement should be fulfilled
      * @param allowedChildType The class type that child requirements must be (or null to infer from first requirement)
      * @param requirements Child requirements to combine logically
      */
     protected LogicalRequirement(RequirementType requirementType, RequirementPriority priority, int rating, 
-                               String description, ScheduleContext scheduleContext, 
+                               String description, TaskContext taskContext, 
                                Class<? extends Requirement> allowedChildType,
                                Requirement... requirements) {
-        super(requirementType, priority, rating, description, List.of(), scheduleContext);
+        super(requirementType, priority, rating, description, List.of(), taskContext);
         
         // Determine allowed child type
         if (allowedChildType != null) {
@@ -85,8 +85,23 @@ public abstract class LogicalRequirement extends Requirement {
         
         // Validate and add requirements
         for (Requirement requirement : requirements) {
-            validateAndAddRequirement(requirement);
+            addRequirement(requirement);
         }
+    }
+
+    protected LogicalRequirement(RequirementType requirementType, RequirementPriority priority, int rating, 
+                               String description, TaskContext taskContext, 
+                               Class<? extends Requirement> allowedChildType) {
+        super(requirementType, priority, rating, description, List.of(), taskContext);
+        
+        // Determine allowed child type
+        if (allowedChildType != null) {
+            this.allowedChildType = allowedChildType;
+        } else {
+            // Default to Requirement if no children and no explicit type
+            this.allowedChildType = Requirement.class;
+        }
+       
     }
     
     /**
@@ -121,28 +136,18 @@ public abstract class LogicalRequirement extends Requirement {
         }
         
         // Validate schedule context compatibility
-        if (this.getScheduleContext() != null && requirement.getScheduleContext() != null) {
-            if (this.getScheduleContext() != requirement.getScheduleContext() && 
-                this.getScheduleContext() != ScheduleContext.BOTH && 
-                requirement.getScheduleContext() != ScheduleContext.BOTH) {
+        if (this.getTaskContext() != null && requirement.getTaskContext() != null) {
+            if (this.getTaskContext() != requirement.getTaskContext() && 
+                this.getTaskContext() != TaskContext.BOTH && 
+                requirement.getTaskContext() != TaskContext.BOTH) {
                 throw new IllegalArgumentException(String.format(
                     "Schedule context mismatch: logical requirement has %s but child has %s", 
-                    this.getScheduleContext(), requirement.getScheduleContext()));
+                    this.getTaskContext(), requirement.getTaskContext()));
             }
         }
     }
     
-    /**
-     * Validates and adds a requirement to this logical requirement.
-     * 
-     * @param requirement The requirement to validate and add
-     */
-    private void validateAndAddRequirement(Requirement requirement) {
-        validateRequirement(requirement);
-        if (!childRequirements.contains(requirement)) {
-            childRequirements.add(requirement);
-        }
-    }
+ 
     
     /**
      * Adds a child requirement to this logical requirement with type validation.
@@ -152,7 +157,33 @@ public abstract class LogicalRequirement extends Requirement {
      * @throws IllegalArgumentException if the requirement type is not compatible
      */
     public LogicalRequirement addRequirement(Requirement requirement) {
-        validateAndAddRequirement(requirement);
+        validateRequirement(requirement);
+        
+        // Add the requirement to the child requirements list - this was missing!
+        childRequirements.add(requirement);
+        
+        // Merge all child ids into this.ids - always create new mutable list
+        if (this.ids == null) {
+            this.ids = new java.util.ArrayList<>();
+        } else {
+            // Always create a new mutable ArrayList to avoid immutable collection issues
+            this.ids = new java.util.ArrayList<>(this.ids);
+        }
+        if (requirement.getIds() != null) {
+            for (Integer id : requirement.getIds()) {
+                if (!this.ids.contains(id)) {
+                    this.ids.add(id);
+                }
+            }
+        }
+        // Update rating to highest among all children
+        int maxRating = this.rating;
+        for (Requirement child : childRequirements) {
+            if (child.getRating() > maxRating) {
+                maxRating = child.getRating();
+            }
+        }
+        this.rating = maxRating;
         return this;
     }
     
@@ -548,9 +579,9 @@ public abstract class LogicalRequirement extends Requirement {
      * @param context The schedule context to match
      * @return List of requirements matching the context
      */
-    public static List<LogicalRequirement> filterByContext(List<LogicalRequirement> requirements, ScheduleContext context) {
+    public static List<LogicalRequirement> filterByContext(List<LogicalRequirement> requirements, TaskContext context) {
         return requirements.stream()
-            .filter(req -> req.getScheduleContext() == context || req.getScheduleContext() == ScheduleContext.BOTH)
+            .filter(req -> req.getTaskContext() == context || req.getTaskContext() == TaskContext.BOTH)
             .collect(Collectors.toList());
     }
     
@@ -841,7 +872,7 @@ public abstract class LogicalRequirement extends Requirement {
 //                     logicalReq.getName(), 
 //                     logicalReq.getPriority().name(), 
 //                     logicalReq.getRating(),
-//                     logicalReq.getScheduleContext().name());
+//                     logicalReq.getTaskContext().name());
 //         }
 //     }
 // }

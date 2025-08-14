@@ -550,20 +550,17 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
     public AbstractPrePostScheduleTasks getPrePostScheduleTasks() {
         SchedulableExampleConfig config = provideConfig(Microbot.getConfigManager());
         if (prePostScheduleRequirements == null || prePostScheduleTasks == null) {
+            if(Microbot.getClient().getGameState() != GameState.LOGGED_IN) {
+               log.debug("Schedulable Example - Cannot provide pre/post schedule tasks - not logged in");
+                return null; // Return null if not logged in
+            }
             log.info("Initializing Pre/Post Schedule Requirements and Tasks...");
             this.prePostScheduleRequirements = new SchedulableExamplePrePostScheduleRequirements(config);
             this.prePostScheduleTasks = new SchedulableExamplePrePostScheduleTasks(this, keyManager,prePostScheduleRequirements);            
             // Log the requirements status
-            log.info("\nPrePostScheduleRequirements initialized:\n{}", prePostScheduleRequirements.getDetailedDisplay());
-        }
-        if (!prePostScheduleRequirements.isInitialized()){
-            log.error("Failed to initialize Pre/Post Schedule Requirements. Cannot proceed with tasks.");
-            this.prePostScheduleRequirements = null;
-            this.prePostScheduleTasks = null;
-            return null; // Return null if requirements are not met
-        }
-        // Return the pre/post schedule tasks instance
-       
+            if (prePostScheduleRequirements.isInitialized()) log.info("\nPrePostScheduleRequirements initialized:\n{}", prePostScheduleRequirements.getDetailedDisplay());
+        }        
+        // Return the pre/post schedule tasks instance       
         return this.prePostScheduleTasks;
     }
     
@@ -862,22 +859,27 @@ public class SchedulableExamplePlugin extends Plugin implements SchedulablePlugi
     @Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
-		if (event.getGroup().equals("SchedulableExample"))
-		{
-			this.startCondition = null;
-            this.stopCondition = null;            
-            // Initialize Pre/Post Schedule Requirements and Tasks
+		final ConfigDescriptor desc = getConfigDescriptor();
+		if (desc != null && desc.getGroup() != null && event.getGroup().equals(desc.getGroup().value())) {
+			
+            this.startCondition = null;
+            this.stopCondition = null;        
+            log.info(
+				"Config change detected for {}: {}={}, config group {}",
+				getName(),
+				event.getGroup(),
+				event.getKey(),
+				desc.getGroup().value()
+			);
             if (config.enablePrePostRequirements()) {
-                log.info("Config change - -Initializing Pre/Post Schedule Requirements and Tasks...");
-                if (prePostScheduleTasks!= null) {
-                    prePostScheduleTasks.close();
+                if (prePostScheduleTasks != null && !prePostScheduleTasks.isExecuting()) {                    
+                    if (prePostScheduleRequirements != null) {
+                        prePostScheduleRequirements.setConfig(config);    
+                        prePostScheduleRequirements.reset();
+                    }
+                    // prePostScheduleTasks.reset(); when we allow reexecution of pre/post-schedule tasks on config change
+                    log.info("PrePostScheduleRequirements initialized:\n{}", prePostScheduleRequirements.getDetailedDisplay());
                 }
-                // Reset prePostScheduleTasks to null to ensure fresh initialization
-                prePostScheduleRequirements = null;
-                prePostScheduleTasks = null;
-                
-                // Log the requirements status
-                log.info("PrePostScheduleRequirements initialized:\n{}", prePostScheduleRequirements.getDetailedDisplay());
             } else {
                 log.info("Pre/Post Schedule Requirements are disabled in configuration");
             }

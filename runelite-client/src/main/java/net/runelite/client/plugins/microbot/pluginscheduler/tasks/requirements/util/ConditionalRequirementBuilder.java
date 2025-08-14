@@ -4,7 +4,7 @@ import net.runelite.api.Skill;
 import net.runelite.api.ItemID;
 import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
@@ -35,13 +35,13 @@ public class ConditionalRequirementBuilder {
      * @param targetSpellbook The spellbook to switch to
      * @param requiredLevel Minimum magic level required
      * @param priority Priority level for this requirement
-     * @param scheduleContext When to fulfill this requirement
+     * @param TaskContext When to fulfill this requirement
      * @return ConditionalRequirement for spellbook switching
      */
     public static ConditionalRequirement createSpellbookSwitcher(Rs2Spellbook targetSpellbook, int requiredLevel, 
-                                                               RequirementPriority priority, ScheduleContext scheduleContext) {
+                                                               RequirementPriority priority, TaskContext taskContext) {
         ConditionalRequirement spellbookSwitcher = new ConditionalRequirement(
-                priority, 8, "Smart Spellbook Switching", scheduleContext, false
+                priority, 8, "Smart Spellbook Switching", taskContext, false
         );
         
         // Only switch if we have the level and don't already have the spellbook
@@ -49,7 +49,7 @@ public class ConditionalRequirementBuilder {
                 Rs2Player.getRealSkillLevel(Skill.MAGIC) >= requiredLevel && ! Rs2Magic.isSpellbook(targetSpellbook);
         
         SpellbookRequirement spellbookReq = new SpellbookRequirement(
-                targetSpellbook, scheduleContext, priority, 8,
+                targetSpellbook, taskContext, priority, 8,
                 "Switch to " + targetSpellbook + " spellbook"
         );
         
@@ -69,21 +69,21 @@ public class ConditionalRequirementBuilder {
      * @param equipmentSlot Equipment slot type
      * @param description Description for the requirement
      * @param priority Priority level
-     * @param scheduleContext When to fulfill this requirement
+     * @param TaskContext When to fulfill this requirement
      * @return ConditionalRequirement for equipment upgrading
      */
     public static ConditionalRequirement createEquipmentUpgrader(int[] basicItemIds, int[] upgradeItemIds,
                                                                int minGpRequired, EquipmentInventorySlot equipmentSlot,
                                                                String description, RequirementPriority priority, 
-                                                               ScheduleContext scheduleContext) {
+                                                               TaskContext taskContext) {
         ConditionalRequirement equipmentUpgrader = new ConditionalRequirement(
-                priority, 7, "Smart Equipment Upgrading: " + description, scheduleContext, false
+                priority, 7, "Smart Equipment Upgrading: " + description, taskContext, false
         );
         
         // Step 1: Ensure we have basic equipment
         OrRequirement basicEquipment =  ItemRequirement.createOrRequirement(
                 Arrays.stream(basicItemIds).boxed().collect(Collectors.toList()),1,  equipmentSlot,-2,
-                priority, 6, "Basic " + description, scheduleContext
+                priority, 6, "Basic " + description, taskContext
         );
         
         equipmentUpgrader.addStep(
@@ -96,7 +96,7 @@ public class ConditionalRequirementBuilder {
         if (upgradeItemIds.length > 0 && minGpRequired > 0) {
             OrRequirement upgradeEquipment = ItemRequirement.createOrRequirement(
                     Arrays.stream(upgradeItemIds).boxed().collect(Collectors.toList()),  equipmentSlot,
-                    RequirementPriority.RECOMMENDED, 9, "Upgraded " + description, scheduleContext
+                    RequirementPriority.RECOMMENDED, 9, "Upgraded " + description, taskContext
             );
             
             equipmentUpgrader.addStep(
@@ -119,19 +119,19 @@ public class ConditionalRequirementBuilder {
      * @param itemName Display name for items
      * @param quantity How many to buy
      * @param priority Priority level
-     * @param scheduleContext When to fulfill this requirement
+     * @param TaskContext When to fulfill this requirement
      * @return OrderedRequirement for shop-then-equip workflow
      */
     public static OrderedRequirement createShopThenEquip(BankLocation shopLocation, int[] itemIds, 
                                                         String itemName, int quantity, RequirementPriority priority, 
-                                                        ScheduleContext scheduleContext) {
+                                                        TaskContext taskContext) {
         OrderedRequirement shopThenEquip = new OrderedRequirement(
-                priority, 8, "Shop and Equip: " + itemName, scheduleContext
+                priority, 8, "Shop and Equip: " + itemName, taskContext
         );
         
         // Step 1: Go to shop location
         LocationRequirement location = new LocationRequirement(
-                shopLocation, true,-1, scheduleContext, priority
+                shopLocation, true,-1, taskContext, priority
         );
         shopThenEquip.addStep(location, "Travel to " + shopLocation.name() + " for shopping");
         
@@ -143,7 +143,7 @@ public class ConditionalRequirementBuilder {
         // Step 3: Equip the items (Note: This is a simplified example - you may need to specify equipment slot)
 //        ItemRequirement equipmentReq = ItemRequirement.createOrRequirement(
   //              Arrays.stream(itemIds).boxed().collect(Collectors.toList()), null,null,-1,
-   //             priority, 7, "Equipped " + itemName, scheduleContext
+   //             priority, 7, "Equipped " + itemName, TaskContext
     //    );
      //   shopThenEquip.addStep(equipmentReq, "Equip " + itemName);
         
@@ -157,18 +157,18 @@ public class ConditionalRequirementBuilder {
      * @param bankLocation Preferred bank location
      * @param withdrawItems Items to withdraw from bank
      * @param priority Priority level
-     * @param scheduleContext When to fulfill this requirement
+     * @param TaskContext When to fulfill this requirement
      * @return OrderedRequirement for bank preparation
      */
     public static OrderedRequirement createBankPreparation(BankLocation bankLocation, ItemRequirement[] withdrawItems,
-                                                          RequirementPriority priority, ScheduleContext scheduleContext) {
+                                                          RequirementPriority priority, TaskContext taskContext) {
         OrderedRequirement bankPrep = new OrderedRequirement(
-                priority, 9, "Bank Preparation", scheduleContext
+                priority, 9, "Bank Preparation", taskContext
         );
         
         // Step 1: Go to bank
         LocationRequirement bankLocationReq = new LocationRequirement(
-                bankLocation, true, -1,scheduleContext, priority
+                bankLocation, true, -1,taskContext, priority
         );
         bankPrep.addStep(bankLocationReq, "Travel to " + bankLocation.name() + " bank");
         
@@ -194,14 +194,14 @@ public class ConditionalRequirementBuilder {
      * @param requirement Requirement to fulfill if level is met
      * @param description Description for this conditional
      * @param priority Priority level
-     * @param scheduleContext When to fulfill this requirement
+     * @param TaskContext When to fulfill this requirement
      * @return ConditionalRequirement based on skill level
      */
     public static ConditionalRequirement createLevelBasedRequirement(Skill skill, int requiredLevel, 
                                                                    Requirement requirement, String description,
-                                                                   RequirementPriority priority, ScheduleContext scheduleContext) {
+                                                                   RequirementPriority priority, TaskContext taskContext) {
         ConditionalRequirement levelBased = new ConditionalRequirement(
-                priority, 8, "Level-based: " + description, scheduleContext, false
+                priority, 8, "Level-based: " + description, taskContext, false
         );
         
         BooleanSupplier hasLevel = () ->Rs2Player.getRealSkillLevel(skill) >= requiredLevel;

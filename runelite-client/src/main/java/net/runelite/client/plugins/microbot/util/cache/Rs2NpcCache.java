@@ -411,7 +411,7 @@ public class Rs2NpcCache extends Rs2Cache<Integer, Rs2NpcModel> {
             String tableHeader = Rs2CacheLoggingUtils.formatTableHeader(headers, columnWidths);
           
             logContent.append("\n").append(tableHeader);
-            
+            int maxRows = outputMode == LogOutputMode.CONSOLE_ONLY ? 50 : cache.size();
             // Sort NPCs by distance (closest first)
             cache.stream()
                 .filter(npc -> {
@@ -470,7 +470,7 @@ public class Rs2NpcCache extends Rs2Cache<Integer, Rs2NpcModel> {
         
             logContent.append(tableFooter);
             
-            String limitMsg = Rs2CacheLoggingUtils.formatLimitMessage(cache.size(), 50);
+            String limitMsg = Rs2CacheLoggingUtils.formatLimitMessage(cache.size(), maxRows);
             if (!limitMsg.isEmpty()) {
                
                 logContent.append(limitMsg).append("\n");

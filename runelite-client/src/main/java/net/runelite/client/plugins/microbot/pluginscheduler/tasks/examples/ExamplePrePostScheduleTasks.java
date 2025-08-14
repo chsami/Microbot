@@ -65,11 +65,11 @@ public class ExamplePrePostScheduleTasks extends AbstractPrePostScheduleTasks {
      */
     @Override
     protected boolean executeCustomPreScheduleTask(CompletableFuture<Boolean> preScheduledFuture, LockCondition lockCondition) {
+        if (lockCondition != null) {
+            lockCondition.lock();
+        }
+        
         try {
-            if (lockCondition != null) {
-                lockCondition.lock();
-            }
-            
             log.info("Starting example plugin pre-schedule preparation...");
             
             // Example: Walk to Grand Exchange bank
@@ -87,9 +87,6 @@ public class ExamplePrePostScheduleTasks extends AbstractPrePostScheduleTasks {
             log.info("Example plugin pre-schedule preparation completed successfully");
             return true;
             
-        } catch (Exception e) {
-            log.error("Error during example plugin pre-schedule preparation: {}", e.getMessage(), e);
-            return false;
         } finally {
             if (lockCondition != null) {
                 lockCondition.unlock();
@@ -106,41 +103,23 @@ public class ExamplePrePostScheduleTasks extends AbstractPrePostScheduleTasks {
      */
     @Override
     protected boolean executeCustomPostScheduleTask(CompletableFuture<Boolean> postScheduledFuturem, LockCondition lockCondition) {
-        try {
-            log.info("Starting example plugin post-schedule cleanup...");
-            
-            // Example: Bank all items for safe shutdown
-            if (!bankAllItems()) {
-                log.warn("Warning: Failed to bank all items during post-schedule cleanup");
-            }
-            
-            log.info("Example plugin post-schedule cleanup completed - stopping plugin");
-            Microbot.getClientThread().invokeLater(() -> {
-                Microbot.stopPlugin((net.runelite.client.plugins.Plugin) plugin);
-                return true;
-            });
-            
-            return true;
-            
-        } catch (Exception ex) {
-            log.error("Error during example plugin post-schedule cleanup: {}", ex.getMessage(), ex);
-            Microbot.getClientThread().invokeLater(() -> {
-                Microbot.stopPlugin((net.runelite.client.plugins.Plugin) plugin);
-                return true;
-            });
-            return false;
+        log.info("Starting example plugin post-schedule cleanup...");
+        
+        // Example: Bank all items for safe shutdown
+        if (!bankAllItems()) {
+            log.warn("Warning: Failed to bank all items during post-schedule cleanup");
         }
+        
+        log.info("Example plugin post-schedule cleanup completed - stopping plugin");
+        Microbot.getClientThread().invokeLater(() -> {
+            Microbot.stopPlugin((net.runelite.client.plugins.Plugin) plugin);
+            return true;
+        });
+        
+        return true;
     }
     
-    /**
-     * Checks if the plugin is running in schedule mode.
-     * Customize this method to check your plugin's specific configuration.
-     * 
-     * @return true if the plugin is running under scheduler control, false otherwise
-     */    
-    protected String getConfigGroupName() {
-        return "ExampleConfig"; // TODO: Replace with your plugin's actual config group name        
-    }
+  
     
     /**
      * Example helper method: Walks to a bank location.
@@ -149,30 +128,24 @@ public class ExamplePrePostScheduleTasks extends AbstractPrePostScheduleTasks {
      * @return true if successfully reached the bank, false otherwise
      */
     private boolean walkToBank() {
-        try {
-            // Example: Walk to Grand Exchange bank
-            if (Rs2Bank.isNearBank(BankLocation.GRAND_EXCHANGE, 6)) {
-                return true;
-            }
-            
-            log.info("Walking to bank...");
-            
-            boolean walkResult = Rs2Walker.walkWithBankedTransports(
-                BankLocation.GRAND_EXCHANGE.getWorldPoint(), 
-                false   // Don't force banking route if direct is faster
-            );
-            
-            if (!walkResult) {
-                log.warn("Failed to initiate walking to bank, trying fallback method");
-                Rs2Walker.walkTo(BankLocation.GRAND_EXCHANGE.getWorldPoint(), 4);
-            }
-            
-            return sleepUntil(() -> Rs2Bank.isNearBank(BankLocation.GRAND_EXCHANGE, 6), 30000);
-            
-        } catch (Exception e) {
-            log.error("Error walking to bank: {}", e.getMessage(), e);
-            return false;
+        // Example: Walk to Grand Exchange bank
+        if (Rs2Bank.isNearBank(BankLocation.GRAND_EXCHANGE, 6)) {
+            return true;
         }
+        
+        log.info("Walking to bank...");
+        
+        boolean walkResult = Rs2Walker.walkWithBankedTransports(
+            BankLocation.GRAND_EXCHANGE.getWorldPoint(), 
+            false   // Don't force banking route if direct is faster
+        );
+        
+        if (!walkResult) {
+            log.warn("Failed to initiate walking to bank, trying fallback method");
+            Rs2Walker.walkTo(BankLocation.GRAND_EXCHANGE.getWorldPoint(), 4);
+        }
+        
+        return sleepUntil(() -> Rs2Bank.isNearBank(BankLocation.GRAND_EXCHANGE, 6), 30000);
     }
     
     /**
@@ -182,31 +155,25 @@ public class ExamplePrePostScheduleTasks extends AbstractPrePostScheduleTasks {
      * @return true if setup was successful, false otherwise
      */
     private boolean prepareBasicSetup() {
-        try {
-            if (!Rs2Bank.openBank()) {
-                log.error("Failed to open bank");
-                return false;
-            }
-            
-            // Deposit all current items
-            Rs2Bank.depositAll();
-            sleepUntil(() -> Rs2Inventory.isEmpty(), 5000);
-            Rs2Bank.depositEquipment();
-            sleepUntil(() -> Rs2Equipment.isNaked(), 5000);
-            
-            // TODO: Add your plugin's specific equipment and item withdrawal logic here
-            // Example:
-            // Rs2Bank.withdrawOne(ItemID.BRONZE_PICKAXE);
-            // Rs2Bank.withdrawX(ItemID.SALMON, 10);
-            
-            Rs2Bank.closeBank();
-            log.info("Successfully prepared basic setup");
-            return true;
-            
-        } catch (Exception e) {
-            log.error("Error preparing basic setup: {}", e.getMessage(), e);
+        if (!Rs2Bank.openBank()) {
+            log.error("Failed to open bank");
             return false;
         }
+        
+        // Deposit all current items
+        Rs2Bank.depositAll();
+        sleepUntil(() -> Rs2Inventory.isEmpty(), 5000);
+        Rs2Bank.depositEquipment();
+        sleepUntil(() -> Rs2Equipment.isNaked(), 5000);
+        
+        // TODO: Add your plugin's specific equipment and item withdrawal logic here
+        // Example:
+        // Rs2Bank.withdrawOne(ItemID.BRONZE_PICKAXE);
+        // Rs2Bank.withdrawX(ItemID.SALMON, 10);
+        
+        Rs2Bank.closeBank();
+        log.info("Successfully prepared basic setup");
+        return true;
     }
     
     /**
@@ -216,32 +183,26 @@ public class ExamplePrePostScheduleTasks extends AbstractPrePostScheduleTasks {
      * @return true if banking was successful, false otherwise
      */
     private boolean bankAllItems() {
-        try {
-            // Walk to bank if not already there
-            if (!Rs2Bank.isNearBank(6)) {
-                if (!walkToBank()) {
-                    return false;
-                }
-            }
-            
-            if (!Rs2Bank.openBank()) {
+        // Walk to bank if not already there
+        if (!Rs2Bank.isNearBank(6)) {
+            if (!walkToBank()) {
                 return false;
             }
-            
-            // Deposit all inventory items
-            Rs2Bank.depositAll();
-            sleepUntil(() -> Rs2Inventory.isEmpty(), 5000);
-            
-            // Deposit all equipment
-            Rs2Bank.depositEquipment();
-            
-            Rs2Bank.closeBank();
-            log.info("Successfully banked all items");
-            return true;
-            
-        } catch (Exception e) {
-            log.error("Error banking items: {}", e.getMessage(), e);
+        }
+        
+        if (!Rs2Bank.openBank()) {
             return false;
         }
+        
+        // Deposit all inventory items
+        Rs2Bank.depositAll();
+        sleepUntil(() -> Rs2Inventory.isEmpty(), 5000);
+        
+        // Deposit all equipment
+        Rs2Bank.depositEquipment();
+        
+        Rs2Bank.closeBank();
+        log.info("Successfully banked all items");
+        return true;
     }
 }

@@ -6,7 +6,7 @@ import net.runelite.client.plugins.microbot.mining.amethyst.AmethystMiningConfig
 import net.runelite.client.plugins.microbot.mining.enums.Rocks;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.PrePostScheduleRequirements;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.data.ItemRequirementCollection;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationOption;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;
@@ -60,7 +60,7 @@ public class MiningPrePostScheduleRequirements extends PrePostScheduleRequiremen
                 10, // Acceptable distance from mining areas
                 true, // Use transports for efficient travel                
                 -1, // No specific world required, can be any world
-                ScheduleContext.PRE_SCHEDULE,
+                TaskContext.PRE_SCHEDULE,
                 RequirementPriority.MANDATORY,
                 9, // High rating since location is critical for mining
                 "Must be at a suitable " + selectedRock.name() + " mining location to begin mining"
@@ -89,32 +89,31 @@ public class MiningPrePostScheduleRequirements extends PrePostScheduleRequiremen
         this.getRegistry().clear();
         // Register complete outfit and equipment collections using ItemRequirementCollection
         //set location post-schedule requirements - go to grand exchange after mining
-        this.register(new LocationRequirement(BankLocation.GRAND_EXCHANGE,true,-1, ScheduleContext.POST_SCHEDULE, RequirementPriority.MANDATORY));
+        this.register(new LocationRequirement(BankLocation.GRAND_EXCHANGE,true,-1, TaskContext.POST_SCHEDULE, RequirementPriority.MANDATORY));
         // Mining pickaxes - progression-based from bronze to crystal
-        ItemRequirementCollection.registerPickAxes(this,RequirementPriority.MANDATORY, ScheduleContext.PRE_SCHEDULE);
+        ItemRequirementCollection.registerPickAxes(this,RequirementPriority.MANDATORY, TaskContext.PRE_SCHEDULE);
         
         // Prospector/Motherlode Mine outfit - provides XP bonus for mining (includes all variants)
         // we must ensure we equip the varrock armour if available ?  becasue of the bonus or is the motherlode outfit also providing the same bonus? ->  check wiki
-        // TODO: Update ItemRequirementCollection.registerProspectorOutfit to accept ScheduleContext
-         ItemRequirementCollection.registerProspectorOutfit(this, RequirementPriority.RECOMMENDED,8, ScheduleContext.PRE_SCHEDULE, false, false, false, false);
+        // TODO: Update ItemRequirementCollection.registerProspectorOutfit to accept TaskContext
+         ItemRequirementCollection.registerProspectorOutfit(this, RequirementPriority.RECOMMENDED,8, TaskContext.PRE_SCHEDULE, false, false, false, false);
         
         // Varrock diary armour - provides benefits like chance of smelting ore while mining
-        // TODO: Update ItemRequirementCollection.registerVarrockDiaryArmour to accept ScheduleContext
-        ItemRequirementCollection.registerVarrockDiaryArmour(this, RequirementPriority.RECOMMENDED, ScheduleContext.PRE_SCHEDULE);
+        // TODO: Update ItemRequirementCollection.registerVarrockDiaryArmour to accept TaskContext
+        ItemRequirementCollection.registerVarrockDiaryArmour(this, RequirementPriority.RECOMMENDED, TaskContext.PRE_SCHEDULE);
         
         if (autoMiningConfig != null) {
             // Register location requirements based on selected rock type
             boolean successRockLocationReq = registerRockLocationRequirements();
             if (!successRockLocationReq) {
-                this.setInitialized(successRockLocationReq);
+
                 log.error("Failed to register rock location requirements. No locations available for selected rock.");
                 return false; // Initialization failed
             }
             
             // Set post-schedule location requirements - go to bank after mining
-            this.register(new LocationRequirement(BankLocation.GRAND_EXCHANGE, true, -1,ScheduleContext.POST_SCHEDULE, RequirementPriority.RECOMMENDED));
-        }                
-        this.setInitialized(true);
+            this.register(new LocationRequirement(BankLocation.GRAND_EXCHANGE, true, -1,TaskContext.POST_SCHEDULE, RequirementPriority.RECOMMENDED));
+        }                        
         return this.isInitialized();
     }
     
@@ -164,10 +163,5 @@ public class MiningPrePostScheduleRequirements extends PrePostScheduleRequiremen
         
         return info.toString();
     }
-    @Override
-    public void reset() {
-        this.getRegistry().clear(); // Clear the registry to remove all requirements
-        this.setInitialized(false); // Mark as uninitialized
-        initializeRequirements(); // Reinitialize requirements  
-    }
+
 }

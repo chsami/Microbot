@@ -1,14 +1,17 @@
-package net.runelite.client.plugins.microbot.runecrafting.gotr;
+package net.runelite.client.plugins.microbot.runecrafting.gotr.tasks;
 
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.GameState;
 import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.runecrafting.gotr.GotrScript;
 import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LockCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.AbstractPrePostScheduleTasks;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.PrePostScheduleRequirements;
+import net.runelite.client.plugins.microbot.runecrafting.gotr.GotrPlugin;
 import net.runelite.client.plugins.microbot.runecrafting.gotr.requirement.GotrPrePostScheduleRequirements;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
@@ -70,11 +73,11 @@ public class GotrPrePostScheduleTasks extends AbstractPrePostScheduleTasks {
      */
     @Override
     protected boolean executeCustomPreScheduleTask(CompletableFuture<Boolean>  preScheduledFuture , LockCondition lockCondition) {
+        if (lockCondition != null) {
+            lockCondition.lock();
+        }
+        
         try {
-            if (lockCondition != null) {
-                lockCondition.lock();
-            }
-            
             log.info("Executing GOTR-specific pre-schedule preparation...");
             
             // Add any GOTR-specific preparation that is not covered by standard requirements
@@ -91,9 +94,6 @@ public class GotrPrePostScheduleTasks extends AbstractPrePostScheduleTasks {
             log.info("GOTR-specific pre-schedule preparation completed successfully");
             return true;
             
-        } catch (Exception e) {
-            log.error("Error during GOTR custom pre-schedule preparation: {}", e.getMessage(), e);
-            return false;
         } finally {
             if (lockCondition != null) {
                 lockCondition.unlock();
@@ -111,76 +111,65 @@ public class GotrPrePostScheduleTasks extends AbstractPrePostScheduleTasks {
      */
     @Override
     protected boolean executeCustomPostScheduleTask(CompletableFuture<Boolean> postScheduledFuture, LockCondition lockCondition) {
-        try {
-            log.info("Executing GOTR-specific post-schedule cleanup...");
-            
-            // Validate threading context - this method should never run on client thread
-            if (Microbot.getClient().isClientThread()) {
-                log.error("executeCustomPostScheduleTask() should not run on client thread - this indicates a design violation");
-                return false;
-            }
-            
-            // Access the GOTR script for graceful shutdown
-            GotrScript gotrScript = ((GotrPlugin) plugin).gotrScript;
-            
-            // Step 1: Stop the script gracefully with timeout
-            if (gotrScript != null && gotrScript.isRunning()) {
-                log.info("Stopping GOTR script...");
-                gotrScript.shutdown();
-                if (!sleepUntil(() -> !gotrScript.isRunning(), 1800)) {
-                    log.warn("GOTR script did not stop within timeout, but continuing with cleanup");
-                }
-            }
-            
-            // Step 2: Exit minigame with enhanced retry logic (critical operation)
-            if (GotrScript.isInMiniGame) {
-                log.info("Leaving GOTR minigame...");
-                if (!handleMinigameExitWithRetry(postScheduledFuture)) {
-                    log.error("Failed to leave GOTR minigame after all retry attempts");
-                    // This is critical - if we can't leave the minigame, post-schedule requirements 
-                    // (like banking at Grand Exchange) will fail
-                    return false;
-                }
-            }
-            
-            // Step 3: Bank all items before standard post-schedule requirements
-            // This is less critical than leaving the minigame, so we don't fail on banking issues
-            if (!bankAllItems()) {
-                log.warn("Warning: Failed to bank all items during post-schedule cleanup");
-                // Don't return false here as banking issues shouldn't prevent location/spellbook cleanup
-                return false;
-            }
-            
-            log.info("GOTR-specific post-schedule cleanup completed successfully");
-            
-            /*
-             * EXECUTION ORDER EXPLANATION:
-             * 
-             * This method (executeCustomPostScheduleTask) runs BEFORE standard requirements fulfillment.
-             * See AbstractPrePostScheduleTasks#executePostScheduleTask() for execution order:
-             * 
-             * 1. Custom post-schedule tasks (this method) - Plugin-specific cleanup
-             * 2. Standard post-schedule requirements (GotrPrePostScheduleRequirements) - Generic cleanup
-             * 
-             * Standard requirements from GotrPrePostScheduleRequirements include:
-             * - Location requirement: Travel to Grand Exchange (POST_SCHEDULE context)
-             * - Spellbook restoration: Restore original spellbook if changed during pre-schedule
-             * 
-             * See PrePostScheduleRequirements#fulfillPostScheduleRequirements() for detailed fulfillment logic.
-             * 
-             * NOTE: Plugin shutdown is handled by AbstractPrePostScheduleTasks via handlePostTaskCompletion()
-             */
-            return true;
-            
-        } catch (Exception ex) {
-            log.error("Error during GOTR custom post-schedule cleanup: {}", ex.getMessage(), ex);
-            
-            /*
-             * NOTE: Plugin shutdown is handled by AbstractPrePostScheduleTasks class
-             * via handlePreTaskCompletion() + handlePostTaskCompletion() methods
-             */
+        log.info("Executing GOTR-specific post-schedule cleanup...");
+        
+        // Validate threading context - this method should never run on client thread
+        if (Microbot.getClient().isClientThread()) {
+            log.error("executeCustomPostScheduleTask() should not run on client thread - this indicates a design violation");
             return false;
         }
+        
+        // Access the GOTR script for graceful shutdown
+        GotrScript gotrScript = ((GotrPlugin) plugin).getScript();
+        
+        // Step 1: Stop the script gracefully with timeout
+        if (gotrScript != null && gotrScript.isRunning()) {
+            log.info("Stopping GOTR script...");
+            gotrScript.shutdown();
+            if (!sleepUntil(() -> !gotrScript.isRunning(), 1800)) {
+                log.warn("GOTR script did not stop within timeout, but continuing with cleanup");
+            }
+        }
+        
+        // Step 2: Exit minigame with enhanced retry logic (critical operation)
+        if (GotrScript.isInMiniGame) {
+            log.info("Leaving GOTR minigame...");
+            if (!handleMinigameExitWithRetry(postScheduledFuture)) {
+                log.error("Failed to leave GOTR minigame after all retry attempts");
+                // This is critical - if we can't leave the minigame, post-schedule requirements 
+                // (like banking at Grand Exchange) will fail
+                return false;
+            }
+        }
+        sleepUntil(() -> Microbot.getClient().getGameState() != GameState.LOADING, 5000);
+        //sleepGaussian(1200, 150);// Wait for minigame exit to stabilize, sometimes it takes a moment
+        // Step 3: Bank all items before standard post-schedule requirements
+        // This is less critical than leaving the minigame, so we don't fail on banking issues
+        if (!bankAllItems()) {
+            log.warn("Warning: Failed to bank all items during post-schedule cleanup");                
+            return false;
+        }
+        
+        log.info("GOTR-specific post-schedule cleanup completed successfully");
+        
+        /*
+         * EXECUTION ORDER EXPLANATION:
+         * 
+         * This method (executeCustomPostScheduleTask) runs BEFORE standard requirements fulfillment.
+         * See AbstractPrePostScheduleTasks#executePostScheduleTask() for execution order:
+         * 
+         * 1. Custom post-schedule tasks (this method) - Plugin-specific cleanup
+         * 2. Standard post-schedule requirements (GotrPrePostScheduleRequirements) - Generic cleanup
+         * 
+         * Standard requirements from GotrPrePostScheduleRequirements include:
+         * - Location requirement: Travel to Grand Exchange (POST_SCHEDULE context)
+         * - Spellbook restoration: Restore original spellbook if changed during pre-schedule
+         * 
+         * See PrePostScheduleRequirements#fulfillPostScheduleRequirements() for detailed fulfillment logic.
+         * 
+         * NOTE: Plugin shutdown is handled by AbstractPrePostScheduleTasks via handlePostTaskCompletion()
+         */
+        return true;
     }
 
     /**
@@ -206,36 +195,31 @@ public class GotrPrePostScheduleTasks extends AbstractPrePostScheduleTasks {
                 log.warn("Pre-scheduled future was cancelled, aborting minigame exit attempts");
                 return false; // Exit early if pre-scheduled task was cancelled
             }
-            try {
-                // Primary exit method - use GotrScript's leaveMinigame functionality
-                boolean successfully = GotrScript.leaveMinigame();
-                
-                // Calculate progressive delay (exponential backoff with cap)
-                int delay = Math.min(baseDelay * attempt, maxDelay);
-                
-                // Wait for exit to complete with reasonable timeout
-                if (successfully) {
-                    log.info("Successfully left GOTR minigame on attempt {}", attempt);
-                    return true;
-                }
-                
-                // Log attempt failure and apply progressive delay
-                log.warn("Attempt {} failed - minigame state: isInMiniGame={}, waiting {}ms before retry", 
-                        attempt, GotrScript.isInMiniGame, delay);
-                
-                if (attempt < maxRetries) { // Don't sleep on final attempt
-                    sleepGaussian(delay, 200);
-                }
-                
-                // Additional diagnostics for debugging persistent failures
-                if (attempt % 5 == 0) {
-                    log.warn("Persistent minigame exit failure - attempt {}/{}, checking game state...", attempt, maxRetries);
-                    // Could add additional state checks here if needed
-                }
-                
-            } catch (Exception e) {
-                log.error("Exception during minigame exit attempt {}: {}", attempt, e.getMessage());
-                // Continue with next attempt even if current attempt threw exception
+            
+            // Primary exit method - use GotrScript's leaveMinigame functionality
+            boolean successfully = GotrScript.leaveMinigame();
+            
+            // Calculate progressive delay (exponential backoff with cap)
+            int delay = Math.min(baseDelay * attempt, maxDelay);
+            
+            // Wait for exit to complete with reasonable timeout
+            if (successfully) {
+                log.info("Successfully left GOTR minigame on attempt {}", attempt);
+                return true;
+            }
+            
+            // Log attempt failure and apply progressive delay
+            log.warn("Attempt {} failed - minigame state: isInMiniGame={}, waiting {}ms before retry", 
+                    attempt, GotrScript.isInMiniGame, delay);
+            
+            if (attempt < maxRetries) { // Don't sleep on final attempt
+                sleepGaussian(delay, 200);
+            }
+            
+            // Additional diagnostics for debugging persistent failures
+            if (attempt % 5 == 0) {
+                log.warn("Persistent minigame exit failure - attempt {}/{}, checking game state...", attempt, maxRetries);
+                // Could add additional state checks here if needed
             }
         }
         
@@ -256,16 +240,7 @@ public class GotrPrePostScheduleTasks extends AbstractPrePostScheduleTasks {
     }
     
    
-          /**
-     * Determines if the plugin is currently running under scheduler control.
-     * This affects whether pre/post schedule tasks should be executed.
-     * 
-     * @return true if running under scheduler control, false otherwise
-     */
-    @Override
-    protected String getConfigGroupName() {
-        return "gotr";
-    }
+    
         
     /**
      * Banks all equipment and inventory items for safe shutdown.
@@ -273,32 +248,22 @@ public class GotrPrePostScheduleTasks extends AbstractPrePostScheduleTasks {
      * @return true if banking was successful, false otherwise
      */
     private boolean bankAllItems() {
-        try {
-            // Walk to bank if not already there
-            if (!Rs2Bank.isNearBank(6)) {
-                if (Rs2Bank.walkToBank()) {
-                    return false;
-                }
-            }
-            
-            if (!Rs2Bank.openBank()) {
+        // Walk to bank if not already there
+        if (!Rs2Bank.isNearBank(6)) {
+            if (Rs2Bank.walkToBank()) {
                 return false;
             }
-            
-            // Deposit all inventory items
-            Rs2Bank.depositAll();
-            sleepUntil(() -> Rs2Inventory.isEmpty(), 5000);
-            
-            // Deposit all equipment except basic items
-            Rs2Bank.depositEquipment();
-            
-            Rs2Bank.closeBank();
-            log.info("Successfully banked all items");
-            return true;
-            
-        } catch (Exception e) {
-            log.error("Error banking items: {}", e.getMessage(), e);
+        }
+        
+        if (!Rs2Bank.openBank()) {
             return false;
         }
+        
+        // Deposit all inventory items
+        Rs2Bank.depositAll();
+        sleepUntil(() -> Rs2Inventory.isEmpty(), 5000);
+                   
+        log.info("Successfully banked all items");
+        return true;
     }
 }

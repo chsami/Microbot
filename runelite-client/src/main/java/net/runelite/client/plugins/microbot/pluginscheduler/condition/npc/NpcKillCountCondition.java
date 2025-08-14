@@ -37,7 +37,7 @@ public class NpcKillCountCondition extends NpcCondition {
     private final int targetCountMax;
     private transient int currentTargetCount;
     private transient int currentKillCount;
-    private transient boolean satisfied = false;
+    private transient volatile boolean satisfied = false;
     private transient boolean registered = false;
     
     // Set to track NPCs we're currently interacting with

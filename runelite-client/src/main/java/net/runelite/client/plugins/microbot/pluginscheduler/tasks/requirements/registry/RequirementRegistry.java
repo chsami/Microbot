@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.collection.LootRequirement;
@@ -20,6 +20,8 @@ import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.r
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+
+import org.benf.cfr.reader.util.output.BytecodeDumpConsumer.Item;
 
 /**
  * Enhanced requirement registry that manages all types of requirements with automatic
@@ -41,12 +43,12 @@ public class RequirementRegistry {
      */
     public static class RequirementKey {
         private final Class<? extends Requirement> type;
-        private final ScheduleContext scheduleContext;
+        private final TaskContext taskContext;
         private final String identity; // Unique identifier from the requirement
         
         public RequirementKey(Requirement requirement) {
             this.type = requirement.getClass();
-            this.scheduleContext = requirement.hasScheduleContext() ? requirement.getScheduleContext() : null;
+            this.taskContext = requirement.hasTaskContext() ? requirement.getTaskContext() : null;
             this.identity = requirement.getUniqueIdentifier();
         }
         
@@ -56,18 +58,18 @@ public class RequirementRegistry {
             if (o == null || getClass() != o.getClass()) return false;
             RequirementKey that = (RequirementKey) o;
             return Objects.equals(type, that.type) &&
-                   Objects.equals(scheduleContext, that.scheduleContext) &&
+                   Objects.equals(taskContext, that.taskContext) &&
                    Objects.equals(identity, that.identity);
         }
         
         @Override
         public int hashCode() {
-            return Objects.hash(type, scheduleContext, identity);
+            return Objects.hash(type, taskContext, identity);
         }
         
         @Override
         public String toString() {
-            return String.format("%s[%s:%s]", type.getSimpleName(), scheduleContext, identity);
+            return String.format("%s[%s:%s]", type.getSimpleName(), taskContext, identity);
         }
     }
     
@@ -78,18 +80,20 @@ public class RequirementRegistry {
     private final Map<RequirementKey, Requirement> externalRequirements = new ConcurrentHashMap<>();
     
     // Standard requirements cached views for efficient access (rebuilt when requirements change)
-    private volatile Map<Integer, LinkedHashSet<LogicalRequirement>> inventorySlotRequirementsCache = new HashMap<>();
-    private volatile Map<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> equipmentItemsCache = new HashMap<>();
-    private volatile LinkedHashSet<LogicalRequirement> shopRequirementsCache = new LinkedHashSet<>();
-    private volatile LinkedHashSet<LogicalRequirement> lootRequirementsCache = new LinkedHashSet<>();
-    private volatile LinkedHashSet<ConditionalRequirement> conditionalItemRequirementsCache = new LinkedHashSet<>();
+    private volatile Map<TaskContext,Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>>> equipmentItemsCache = new HashMap<>();
+    private volatile Map<TaskContext,Map<Integer, LinkedHashSet<ItemRequirement>>> inventorySlotRequirementsCache = new HashMap<>();    
+    private volatile Map<TaskContext,LinkedHashSet<OrRequirement>> anyInventorySlotRequirementsCache = new HashMap<>();
+    private volatile Map<TaskContext,LinkedHashSet<OrRequirement>> shopRequirementsCache = new HashMap<>();
+    private volatile Map<TaskContext,LinkedHashSet<OrRequirement>> lootRequirementsCache = new HashMap<>();
+    private volatile Map<TaskContext,LinkedHashSet<ConditionalRequirement>> conditionalItemRequirementsCache = new HashMap<>();
     
     // External requirements cached views for efficient access (rebuilt when external requirements change)
-    private volatile Map<Integer, LinkedHashSet<LogicalRequirement>> externalInventorySlotRequirementsCache = new HashMap<>();
-    private volatile Map<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> externalEquipmentItemsCache = new HashMap<>();
-    private volatile LinkedHashSet<LogicalRequirement> externalShopRequirementsCache = new LinkedHashSet<>();
-    private volatile LinkedHashSet<LogicalRequirement> externalLootRequirementsCache = new LinkedHashSet<>();
-    private volatile LinkedHashSet<ConditionalRequirement> externalIConditionalItemRequirementsCache = new LinkedHashSet<>();
+    private volatile Map<TaskContext,Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>>> externalEquipmentItemsCache = new HashMap<>();
+    private volatile Map<TaskContext,Map<Integer, LinkedHashSet<ItemRequirement>>> externalInventorySlotRequirementsCache = new HashMap<>();
+    private volatile Map<TaskContext,LinkedHashSet<OrRequirement>> externalAnyInventorySlotRequirementsCache = new HashMap<>();    
+    private volatile Map<TaskContext,LinkedHashSet<OrRequirement>> externalShopRequirementsCache = new HashMap<>();
+    private volatile Map<TaskContext,LinkedHashSet<OrRequirement>> externalLootRequirementsCache = new HashMap<>();
+    private volatile Map<TaskContext,LinkedHashSet<ConditionalRequirement>> externalIConditionalItemRequirementsCache = new HashMap<>();
     
     // Single-instance requirements (enforced by registry)
     @Getter
@@ -196,9 +200,9 @@ public class RequirementRegistry {
      * @param context The schedule context to filter by
      * @return List of externally added requirements for the given context
      */
-    public List<Requirement> getExternalRequirements(ScheduleContext context) {
+    public List<Requirement> getExternalRequirements(TaskContext context) {
         return externalRequirements.values().stream()
-            .filter(req -> req.getScheduleContext() == context || req.getScheduleContext() == ScheduleContext.BOTH)
+            .filter(req -> req.getTaskContext() == context || req.getTaskContext() == TaskContext.BOTH)
             .collect(Collectors.toList());
     }
     
@@ -325,7 +329,7 @@ public class RequirementRegistry {
      * Gets all requirements of a specific type.
      */
     @SuppressWarnings("unchecked")
-    public <T extends Requirement> List<T> getStandardRequirements(Class<T> clazz) {
+    public <T extends Requirement> List<T> getRequirements(Class<T> clazz) {
         return requirements.values().stream()
                 .filter(clazz::isInstance)
                 .map(req -> (T) req)
@@ -335,10 +339,10 @@ public class RequirementRegistry {
     /**
      * Gets all requirements for a specific schedule context.
      */
-    public List<Requirement> getStandardRequirements(ScheduleContext context) {
+    public List<Requirement> getRequirements(TaskContext context) {
         return requirements.values().stream()
-                .filter(req -> req.hasScheduleContext() && 
-                        (req.getScheduleContext() == context || req.getScheduleContext() == ScheduleContext.BOTH))
+                .filter(req -> req.hasTaskContext() && 
+                        (req.getTaskContext() == context || req.getTaskContext() == TaskContext.BOTH))
                 .collect(Collectors.toList());
     }
     
@@ -348,11 +352,11 @@ public class RequirementRegistry {
      * This excludes externally added requirements to prevent double processing.
      */
     @SuppressWarnings("unchecked")
-    public <T extends Requirement> List<T> getStandardRequirements(Class<T> clazz, ScheduleContext context) {
+    public <T extends Requirement> List<T> getRequirements(Class<T> clazz, TaskContext context) {
         return requirements.values().stream()
                 .filter(clazz::isInstance)
-                .filter(req -> req.hasScheduleContext() && 
-                        (req.getScheduleContext() == context || req.getScheduleContext() == ScheduleContext.BOTH))
+                .filter(req -> req.hasTaskContext() && 
+                        (req.getTaskContext() == context || req.getTaskContext() == TaskContext.BOTH))
                 .map(req -> (T) req)
                 .collect(Collectors.toList());
     }
@@ -397,21 +401,24 @@ public class RequirementRegistry {
      * Helper class to hold a complete set of caches returned by the unified rebuild method.
      */
     private static class CacheSet {
-        final Map<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> equipmentCache;
-        final LinkedHashSet<LogicalRequirement> shopCache;
-        final LinkedHashSet<LogicalRequirement> lootCache;
-        final Map<Integer, LinkedHashSet<LogicalRequirement>> inventorySlotCache;
-        final LinkedHashSet<ConditionalRequirement> conditionalCache;
+        final Map<TaskContext,Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>>> equipmentCache;   
+        final Map<TaskContext,Map<Integer, LinkedHashSet<ItemRequirement>>> inventorySlotCache;
+        final Map<TaskContext, LinkedHashSet<OrRequirement>> anyInventorySlotCache;
+        final Map<TaskContext,LinkedHashSet<OrRequirement>> shopCache;
+        final Map<TaskContext,LinkedHashSet<OrRequirement>> lootCache;
+        final Map<TaskContext,LinkedHashSet<ConditionalRequirement>> conditionalCache;
         
-        CacheSet(Map<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> equipmentCache,
-                LinkedHashSet<LogicalRequirement> shopCache,
-                LinkedHashSet<LogicalRequirement> lootCache,
-                Map<Integer, LinkedHashSet<LogicalRequirement>> inventorySlotCache,
-                LinkedHashSet<ConditionalRequirement> conditionalCache) {
+        CacheSet(Map<TaskContext,Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>>> equipmentCache,              
+                Map<TaskContext,Map<Integer, LinkedHashSet<ItemRequirement>>> inventorySlotCache,
+                Map<TaskContext, LinkedHashSet<OrRequirement>> anyInventorySlotCache,
+                Map<TaskContext, LinkedHashSet<OrRequirement>> shopCache,
+                Map<TaskContext, LinkedHashSet<OrRequirement>> lootCache,
+                Map<TaskContext, LinkedHashSet<ConditionalRequirement>> conditionalCache) {
             this.equipmentCache = equipmentCache;
-            this.shopCache = shopCache;
-            this.lootCache = lootCache;
             this.inventorySlotCache = inventorySlotCache;
+            this.anyInventorySlotCache = anyInventorySlotCache;
+            this.shopCache = shopCache;
+            this.lootCache = lootCache;            
             this.conditionalCache = conditionalCache;
         }
     }
@@ -424,59 +431,179 @@ public class RequirementRegistry {
      * @param cacheType The type of cache being rebuilt ("standard" or "external") for logging
      * @return A CacheSet containing all the rebuilt caches
      */
+    /**
+     * Unified cache rebuilding logic used by both standard and external cache rebuild methods.
+     * This method groups compatible requirements into logical requirements for better organization.
+     * 
+     * @param requirementCollection The collection of requirements to process
+     * @param cacheType The type of cache being rebuilt ("standard" or "external") for logging
+     * @return A CacheSet containing all the rebuilt caches
+     */
     private CacheSet rebuildCacheUnified(Collection<Requirement> requirementCollection, String cacheType) {
-        // New caches with logical requirements
-        Map<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> newEquipmentCache = new HashMap<>();
-        LinkedHashSet<LogicalRequirement> newShopCache = new LinkedHashSet<>();
-        LinkedHashSet<LogicalRequirement> newLootCache = new LinkedHashSet<>();
-        Map<Integer, LinkedHashSet<LogicalRequirement>> newInventorySlotCache = new HashMap<>();
-        LinkedHashSet<ConditionalRequirement> newConditionalCache = new LinkedHashSet<>();
+        // New caches with logical requirements        
+    
+                
+        Map<TaskContext,LinkedHashSet<ConditionalRequirement>> newConditionalCache = new HashMap<>();
         
         // Group requirements by schedule context FIRST, then by type and slot
-        Map<ScheduleContext, Map<EquipmentInventorySlot, List<ItemRequirement>>> equipmentByContextAndSlot = new HashMap<>();
-        Map<ScheduleContext, Map<Integer, List<ItemRequirement>>> inventoryByContextAndSlot = new HashMap<>();
-        Map<ScheduleContext, List<ItemRequirement>> eitherByContext = new HashMap<>();
-        Map<ScheduleContext, List<ShopRequirement>> shopByContext = new HashMap<>();
-        Map<ScheduleContext, List<LootRequirement>> lootByContext = new HashMap<>();
-        
+        Map<TaskContext, Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>>> newEquipmentCache = new HashMap<>();
+        Map<TaskContext, Map<Integer, LinkedHashSet<ItemRequirement>>> newInventorySlotCache = new HashMap<>();        
+        Map<TaskContext, LinkedHashSet<OrRequirement>> newAnyInventorySlotCacheByContext = new HashMap<>();
+        Map<TaskContext, LinkedHashSet<OrRequirement>> newShopCache = new HashMap<>();
+        Map<TaskContext, LinkedHashSet<OrRequirement>> newLootCache = new HashMap<>();
+        /*for (TaskContext context : TaskContext.values()) {
+            newEquipmentCache.put(context, new HashMap<>());
+            newInventorySlotCache.put(context, new HashMap<>());
+            newAnyInventorySlotCacheByContext.put(context, new ArrayList<>());
+            newAnyInventorySlotCacheByContext.get(context).add(new OrRequirement(
+                RequirementPriority.MANDATORY,
+                0,
+                "default mandatory any inventory slot requirement",
+                context,
+                ItemRequirement.class
+            ));
+            newAnyInventorySlotCacheByContext.get(context).add(new OrRequirement(
+                RequirementPriority.RECOMMENDED,
+                0,
+                "default recommend any inventory slot requirement",
+                context,
+                ItemRequirement.class
+            ));
+
+            newShopCache.put(context, new ArrayList<>());
+            newShopCache.get(context).add(new OrRequirement(
+                RequirementPriority.MANDATORY,
+                0,
+                "default mandatory shop requirement",
+                context,
+                ShopRequirement.class
+            ));
+            newShopCache.get(context).add(new OrRequirement(
+                RequirementPriority.RECOMMENDED,
+                0,
+                "default recommended shop requirement",
+                context,
+                ShopRequirement.class
+            ));
+            newLootCache.put(context, new ArrayList<>());
+            newLootCache.get(context).add(new OrRequirement(
+                RequirementPriority.MANDATORY,
+                0,
+                "default mandatory loot requirement",
+                context,
+                LootRequirement.class
+            ));
+            newLootCache.get(context).add(new OrRequirement(
+                RequirementPriority.RECOMMENDED,
+                0,
+                "default recommended loot requirement",
+                context,
+                LootRequirement.class
+            ));
+            newConditionalCache.put(context, new LinkedHashSet<>());
+
+        }*/
         // First pass: collect and group requirements by schedule context, then by slot
         for (Requirement requirement : requirementCollection) {
             if (requirement instanceof LogicalRequirement) {
-                // Decompose logical requirement into child requirements for priority-based grouping
+                // Handle existing LogicalRequirement - add it directly to appropriate cache based on its child requirements
                 LogicalRequirement logical = (LogicalRequirement) requirement;
-                decomposeLogicalRequirement(logical, equipmentByContextAndSlot, inventoryByContextAndSlot, 
-                        eitherByContext, shopByContext, lootByContext);
+                TaskContext context = logical.getTaskContext();
+                
+                if (logical.containsOnlyItemRequirements()) {
+                    // Check if this is an OR requirement for flexible inventory items
+                    List<ItemRequirement> itemReqs = logical.getAllItemRequirements();
+                    if (!itemReqs.isEmpty()) {
+                        // Check if all items are flexible inventory items (slot -1)
+                        boolean allFlexible = itemReqs.stream()
+                            .allMatch(item -> item.getRequirementType() == RequirementType.INVENTORY && 
+                                           item.allowsAnyInventorySlot());
+                        
+                        if (allFlexible && logical instanceof OrRequirement) {
+                            // This is a flexible inventory OR requirement (like food) - add it directly
+                            newAnyInventorySlotCacheByContext.computeIfAbsent(context, k -> new LinkedHashSet<>())
+                                    .add((OrRequirement) logical);
+                            log.debug("Added flexible inventory OR requirement: {} with {} items", 
+                                    logical.getDescription(), itemReqs.size());
+                        } else {
+                            // Mixed types, specific slots, or not an OrRequirement - decompose it
+                            log.debug("Decomposing logical requirement: {}", logical.getDescription());
+                            decomposeLogicalRequirement(logical, newEquipmentCache, newInventorySlotCache, 
+                                    newAnyInventorySlotCacheByContext, newShopCache, newLootCache);
+                        }
+                    }
+                } else {
+                    // Non-item logical requirements - decompose them
+                    log.debug("Decomposing non-item logical requirement: {}", logical.getDescription());
+                    decomposeLogicalRequirement(logical, newEquipmentCache, newInventorySlotCache, 
+                            newAnyInventorySlotCacheByContext, newShopCache, newLootCache);
+                }
             } else if (requirement instanceof ConditionalRequirement) {
                 // Handle ConditionalRequirement - only cache if it contains only ItemRequirements
                 ConditionalRequirement conditionalReq = (ConditionalRequirement) requirement;
                 if (conditionalReq.containsOnlyItemRequirements()) {
-                    newConditionalCache.add(conditionalReq);
+                    newConditionalCache.computeIfAbsent(conditionalReq.getTaskContext(), k -> new LinkedHashSet<>())
+                        .add(conditionalReq);
+                    // Log the caching of ConditionalRequirement with only ItemRequirements
                     log.debug("Cached ConditionalRequirement with only ItemRequirements: {}", conditionalReq.getName());
                 } else {
                     log.debug("Skipped ConditionalRequirement with mixed requirement types for now: {}", conditionalReq.getName());
                 }
             } else if (requirement instanceof ItemRequirement) {
                 ItemRequirement itemReq = (ItemRequirement) requirement;
-                ScheduleContext context = itemReq.getScheduleContext();
-                
+                TaskContext context = itemReq.getTaskContext();
+                int slot = -2;
                 switch (itemReq.getRequirementType()) {
                     case EQUIPMENT:
+                        slot = itemReq.getInventorySlot();
+                        if( slot != -2) {
+                            throw new IllegalArgumentException("Equipment requirement must not specify specific inventory slot");
+                        }
                         if (itemReq.getEquipmentSlot() != null) {
-                            equipmentByContextAndSlot
+                            newEquipmentCache
                                 .computeIfAbsent(context, k -> new HashMap<>())
-                                .computeIfAbsent(itemReq.getEquipmentSlot(), k -> new ArrayList<>())
+                                .computeIfAbsent(itemReq.getEquipmentSlot(), k -> new LinkedHashSet<>())
                                 .add(itemReq);
                         }
                         break;
                     case INVENTORY:
-                        int slot = itemReq.hasSpecificInventorySlot() ? itemReq.getInventorySlot() : -1;
-                        inventoryByContextAndSlot
-                            .computeIfAbsent(context, k -> new HashMap<>())
-                            .computeIfAbsent(slot, k -> new ArrayList<>())
-                            .add(itemReq);
+                        slot = itemReq.hasSpecificInventorySlot() ? itemReq.getInventorySlot() : -1;
+                        if (slot != -1) {
+                            newInventorySlotCache
+                                .computeIfAbsent(context, k -> new HashMap<>())
+                                .computeIfAbsent(slot, k -> new LinkedHashSet<>())
+                                .add(itemReq);
+                        } else {
+                            OrRequirement orReq = new OrRequirement(itemReq.getPriority(), itemReq.getRating(), 
+                                itemReq.getName(), context, ItemRequirement.class);
+                            orReq.addRequirement(itemReq);
+                            newAnyInventorySlotCacheByContext.computeIfAbsent(context, k -> new LinkedHashSet<>())
+                                    .add(orReq);    
+
+                        }
                         break;
                     case EITHER:
-                        eitherByContext.computeIfAbsent(context, k -> new ArrayList<>()).add(itemReq);
+                        slot = itemReq.hasSpecificInventorySlot() ? itemReq.getInventorySlot() : -1;    
+                        EquipmentInventorySlot equipmentSlot = itemReq.getEquipmentSlot();
+                        if (equipmentSlot== null || slot == -2) {
+                            throw new IllegalArgumentException("Either requirement must specify either equipment slot or specific inventory slot");
+                        }
+                        if (slot != -1) {
+                            newInventorySlotCache
+                                .computeIfAbsent(context, k -> new HashMap<>())
+                                .computeIfAbsent(slot, k -> new LinkedHashSet<>())
+                                .add(itemReq);
+                        } else {
+                            LinkedHashSet<OrRequirement> contextCache = newAnyInventorySlotCacheByContext.computeIfAbsent(context, k -> new LinkedHashSet<>());
+                            OrRequirement orReq = new OrRequirement(itemReq.getPriority(), itemReq.getRating(), 
+                                        itemReq.getName(), context, ItemRequirement.class);
+                            orReq.addRequirement(itemReq);
+                            contextCache.add(orReq);
+                        }
+                        newEquipmentCache
+                                .computeIfAbsent(context, k -> new HashMap<>())
+                                .computeIfAbsent(itemReq.getEquipmentSlot(), k -> new LinkedHashSet<>())
+                                .add(itemReq);
                         break;
                     case PLAYER_STATE:
                     case LOCATION:
@@ -495,42 +622,67 @@ public class RequirementRegistry {
                         break;
                 }
             } else if (requirement instanceof ShopRequirement) {
-                ShopRequirement shopReq = (ShopRequirement) requirement;
-                shopByContext.computeIfAbsent(shopReq.getScheduleContext(), k -> new ArrayList<>()).add(shopReq);
+                ShopRequirement shopReq = (ShopRequirement) requirement;  
+                RequirementPriority priority = shopReq.getPriority();
+                TaskContext context = shopReq.getTaskContext();
+                
+                if( context == null) {
+                    log.warn("ShopRequirement without a shop context: {}", shopReq);
+                    continue; // Skip invalid shop requirements
+                }
+                
+                // Group by context and priority
+                LinkedHashSet<OrRequirement> contextCache = newShopCache.computeIfAbsent(context, k -> new LinkedHashSet<>());
+                OrRequirement orReq = new OrRequirement(priority, 0, shopReq.getName(), context, ShopRequirement.class);
+                orReq.addRequirement(shopReq);
+                contextCache.add(orReq);
+                    
             } else if (requirement instanceof LootRequirement) {
                 LootRequirement lootReq = (LootRequirement) requirement;
-                lootByContext.computeIfAbsent(lootReq.getScheduleContext(), k -> new ArrayList<>()).add(lootReq);
+                RequirementPriority priority = lootReq.getPriority();
+                TaskContext context = lootReq.getTaskContext();
+                
+                if (context == null) {
+                    log.warn("LootRequirement without a loot context: {}", lootReq);
+                    continue; // Skip invalid loot requirements
+                }
+                
+                // Group by context and priority
+                LinkedHashSet<OrRequirement> contextCache = newLootCache.computeIfAbsent(context, k -> new LinkedHashSet<>());
+                OrRequirement orReq = new OrRequirement(priority, 0, lootReq.getName(), context, LootRequirement.class);
+                orReq.addRequirement(lootReq);
+                contextCache.add(orReq);
             }
         }
         
         // Debug equipment grouping before creating logical requirements (only for standard cache)
         if ("standard".equals(cacheType)) {
-            log.info("=== EQUIPMENT GROUPING DEBUG ===");
-            for (Map.Entry<ScheduleContext, Map<EquipmentInventorySlot, List<ItemRequirement>>> contextEntry : equipmentByContextAndSlot.entrySet()) {
-                ScheduleContext context = contextEntry.getKey();
-                log.info("Schedule Context: {}", context);
-                for (Map.Entry<EquipmentInventorySlot, List<ItemRequirement>> slotEntry : contextEntry.getValue().entrySet()) {
+            log.debug("=== EQUIPMENT GROUPING DEBUG ===");
+            for (Map.Entry<TaskContext, Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>>> contextEntry : newEquipmentCache.entrySet()) {
+                TaskContext context = contextEntry.getKey();
+                log.debug("Schedule Context: {}", context);
+                for (Map.Entry<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> slotEntry : contextEntry.getValue().entrySet()) {
                     EquipmentInventorySlot slot = slotEntry.getKey();
-                    List<ItemRequirement> slotItems = slotEntry.getValue();
-                    log.info("  Slot {}: {} items", slot, slotItems.size());
+                    LinkedHashSet<ItemRequirement> slotItems = slotEntry.getValue();
+                    log.debug("  Slot {}: {} items", slot, slotItems.size());
                     for (ItemRequirement item : slotItems) {
-                        log.info("    - {} (ID: {}, Priority: {}, Rating: {})", 
+                        log.debug("    - {} (ID: {}, Priority: {}, Rating: {})", 
                             item.getName(), item.getId(), item.getPriority(), item.getRating());
                     }
                 }
             }
-            log.info("=== END EQUIPMENT GROUPING DEBUG ===");
+            log.debug("=== END EQUIPMENT GROUPING DEBUG ===");
         }
 
         // Second pass: create logical requirements from grouped items
-        createLogicalRequirementsFromGroups(equipmentByContextAndSlot, inventoryByContextAndSlot, 
-                eitherByContext, shopByContext, lootByContext, newEquipmentCache, 
-                newShopCache, newLootCache, newInventorySlotCache);
+        //createLogicalRequirementsFromGroups(equipmentByContextAndSlot, inventoryByContextAndSlot, 
+        //        eitherByContext, shopByContext, lootByContext, newEquipmentCache, 
+        //        newShopCache, newLootCache, newInventorySlotCache);
         
         // Sort all caches
-        sortAllCaches(newEquipmentCache, newShopCache, newLootCache, newInventorySlotCache);
+        //sortAllCaches(newEquipmentCache, newShopCache, newLootCache, newInventorySlotCache);
         
-        return new CacheSet(newEquipmentCache, newShopCache, newLootCache, newInventorySlotCache, newConditionalCache);
+        return new CacheSet(newEquipmentCache, newInventorySlotCache,newAnyInventorySlotCacheByContext,newShopCache, newLootCache, newConditionalCache);
     }
 
     /**
@@ -560,7 +712,29 @@ public class RequirementRegistry {
         if (cacheValid) {
             return; // Another thread already rebuilt the cache
         }
-        
+        if(requirements ==null || requirements.isEmpty()) {
+            log.debug("No requirements to rebuild cache for - initializing empty caches");
+            // Initialize empty caches when no requirements exist
+            equipmentItemsCache = new HashMap<>();
+            shopRequirementsCache = new HashMap<>();
+            lootRequirementsCache = new HashMap<>();
+            inventorySlotRequirementsCache = new HashMap<>();
+            anyInventorySlotRequirementsCache = new HashMap<>();
+            conditionalItemRequirementsCache = new HashMap<>();
+            
+            // Initialize empty collections for each context
+            for (TaskContext context : TaskContext.values()) {
+                equipmentItemsCache.put(context, new HashMap<>());
+                shopRequirementsCache.put(context, new LinkedHashSet<>());
+                lootRequirementsCache.put(context, new LinkedHashSet<>());
+                inventorySlotRequirementsCache.put(context, new HashMap<>());
+                anyInventorySlotRequirementsCache.put(context, new LinkedHashSet<>());
+                conditionalItemRequirementsCache.put(context, new LinkedHashSet<>());
+            }
+            
+            cacheValid = true;
+            return;
+        }
         log.debug("Rebuilding requirement caches...");
         
         // Use unified rebuild logic for standard requirements
@@ -571,6 +745,7 @@ public class RequirementRegistry {
         shopRequirementsCache = newCaches.shopCache;
         lootRequirementsCache = newCaches.lootCache;
         inventorySlotRequirementsCache = newCaches.inventorySlotCache;
+        anyInventorySlotRequirementsCache = newCaches.anyInventorySlotCache;
         conditionalItemRequirementsCache = newCaches.conditionalCache;
         
         cacheValid = true;
@@ -579,55 +754,201 @@ public class RequirementRegistry {
     
     /**
      * Decomposes a logical requirement into its child requirements and adds them to the appropriate maps
-     * for priority-based grouping.
+     * for priority-based grouping. This method handles LogicalRequirements that cannot be kept as-is.
      */
     private void decomposeLogicalRequirement(LogicalRequirement logical,
-            Map<ScheduleContext, Map<EquipmentInventorySlot, List<ItemRequirement>>> equipmentByContextAndSlot,
-            Map<ScheduleContext, Map<Integer, List<ItemRequirement>>> inventoryByContextAndSlot,
-            Map<ScheduleContext, List<ItemRequirement>> eitherByContext,
-            Map<ScheduleContext, List<ShopRequirement>> shopByContext,
-            Map<ScheduleContext, List<LootRequirement>> lootByContext) {
+            Map<TaskContext, Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>>> newEquipmentCache,
+            Map<TaskContext, Map<Integer, LinkedHashSet<ItemRequirement>>> newInventorySlotCache,
+            Map<TaskContext, LinkedHashSet<OrRequirement>> newAnyInventorySlotCacheByContext,
+            Map<TaskContext, LinkedHashSet<OrRequirement>> newShopCache,
+            Map<TaskContext, LinkedHashSet<OrRequirement>> newLootCache) {
         
+        // Decompose the logical requirement's child requirements into individual requirements
         for (Requirement child : logical.getChildRequirements()) {
             if (child instanceof ItemRequirement) {
                 ItemRequirement itemReq = (ItemRequirement) child;
-                ScheduleContext context = itemReq.getScheduleContext();
+                TaskContext context = itemReq.getTaskContext();
+                int slot = -2;
                 
                 switch (itemReq.getRequirementType()) {
                     case EQUIPMENT:
+                        slot = itemReq.getInventorySlot();
+                        if (slot != -2) {
+                            throw new IllegalArgumentException("Equipment requirement must not specify specific inventory slot");
+                        }
                         if (itemReq.getEquipmentSlot() != null) {
-                            equipmentByContextAndSlot
+                            newEquipmentCache
                                 .computeIfAbsent(context, k -> new HashMap<>())
-                                .computeIfAbsent(itemReq.getEquipmentSlot(), k -> new ArrayList<>())
+                                .computeIfAbsent(itemReq.getEquipmentSlot(), k -> new LinkedHashSet<>())
                                 .add(itemReq);
                         }
+                        log.debug("Decomposed EQUIPMENT requirement: {} for context {}", itemReq.getName(), context);
                         break;
                     case INVENTORY:
-                        int slot = itemReq.hasSpecificInventorySlot() ? itemReq.getInventorySlot() : -1;
-                        inventoryByContextAndSlot
-                            .computeIfAbsent(context, k -> new HashMap<>())
-                            .computeIfAbsent(slot, k -> new ArrayList<>())
-                            .add(itemReq);
+                        slot = itemReq.hasSpecificInventorySlot() ? itemReq.getInventorySlot() : -1;
+                        if (slot != -1) {
+                            newInventorySlotCache
+                                .computeIfAbsent(context, k -> new HashMap<>())
+                                .computeIfAbsent(slot, k -> new LinkedHashSet<>())
+                                .add(itemReq);
+                        } else {
+                            // Flexible inventory item - wrap in OrRequirement
+                            OrRequirement orReq = new OrRequirement(itemReq.getPriority(), itemReq.getRating(), 
+                                itemReq.getName(), context, ItemRequirement.class);
+                            orReq.addRequirement(itemReq);
+                            newAnyInventorySlotCacheByContext.computeIfAbsent(context, k -> new LinkedHashSet<>())
+                                    .add(orReq);
+                        }
                         break;
                     case EITHER:
-                        eitherByContext.computeIfAbsent(context, k -> new ArrayList<>()).add(itemReq);
+                        slot = itemReq.hasSpecificInventorySlot() ? itemReq.getInventorySlot() : -1;    
+                        EquipmentInventorySlot equipmentSlot = itemReq.getEquipmentSlot();
+                        if (equipmentSlot == null && slot == -2) {
+                            throw new IllegalArgumentException("Either requirement must specify either equipment slot or specific inventory slot");
+                        }
+                        
+                        // Add to equipment cache if equipment slot is specified
+                        if (equipmentSlot != null) {
+                            newEquipmentCache
+                                .computeIfAbsent(context, k -> new HashMap<>())
+                                .computeIfAbsent(equipmentSlot, k -> new LinkedHashSet<>())
+                                .add(itemReq);
+                        }
+                        
+                        // Add to inventory cache based on slot
+                        if (slot != -1) {
+                            newInventorySlotCache
+                                .computeIfAbsent(context, k -> new HashMap<>())
+                                .computeIfAbsent(slot, k -> new LinkedHashSet<>())
+                                .add(itemReq);
+                        } else {
+                            // Flexible EITHER requirement - wrap in OrRequirement
+                            OrRequirement orReq = new OrRequirement(itemReq.getPriority(), itemReq.getRating(), 
+                                itemReq.getName(), context, ItemRequirement.class);
+                            orReq.addRequirement(itemReq);
+                            newAnyInventorySlotCacheByContext.computeIfAbsent(context, k -> new LinkedHashSet<>())
+                                    .add(orReq);
+                        }
                         break;
                     default:
-                        // Other types don't go in these maps
+                        log.info("Skipping non-slot requirement type in decompose: {}", itemReq.getRequirementType());
                         break;
                 }
             } else if (child instanceof ShopRequirement) {
                 ShopRequirement shopReq = (ShopRequirement) child;
-                shopByContext.computeIfAbsent(shopReq.getScheduleContext(), k -> new ArrayList<>()).add(shopReq);
+                TaskContext context = shopReq.getTaskContext();
+                
+                if (context == null) {
+                    log.warn("ShopRequirement without context during decompose: {}", shopReq);
+                    continue;
+                }
+                
+                OrRequirement orReq = new OrRequirement(shopReq.getPriority(), 0, 
+                    shopReq.getName(), context, ShopRequirement.class);
+                orReq.addRequirement(shopReq);
+                newShopCache.computeIfAbsent(context, k -> new LinkedHashSet<>()).add(orReq);
             } else if (child instanceof LootRequirement) {
                 LootRequirement lootReq = (LootRequirement) child;
-                lootByContext.computeIfAbsent(lootReq.getScheduleContext(), k -> new ArrayList<>()).add(lootReq);
+                TaskContext context = lootReq.getTaskContext();
+                
+                if (context == null) {
+                    log.warn("LootRequirement without context during decompose: {}", lootReq);
+                    continue;
+                }
+                
+                OrRequirement orReq = new OrRequirement(lootReq.getPriority(), 0, 
+                    lootReq.getName(), context, LootRequirement.class);
+                orReq.addRequirement(lootReq);
+                newLootCache.computeIfAbsent(context, k -> new LinkedHashSet<>()).add(orReq);
             } else if (child instanceof LogicalRequirement) {
                 // Recursively decompose nested logical requirements
-                decomposeLogicalRequirement((LogicalRequirement) child, equipmentByContextAndSlot, 
-                        inventoryByContextAndSlot, eitherByContext, shopByContext, lootByContext);
+                decomposeLogicalRequirement((LogicalRequirement) child, newEquipmentCache, 
+                        newInventorySlotCache, newAnyInventorySlotCacheByContext, newShopCache, newLootCache);
             }
         }
+    }
+    
+    /**
+     * Checks if an OR requirement contains only ItemRequirements.
+     * OR requirements created from ItemRequirement.createOrRequirement() have "total amount" semantics
+     * that should be preserved rather than being decomposed and regrouped.
+     * 
+     * @param orReq The OR requirement to check
+     * @return true if the OR requirement contains only ItemRequirements, false otherwise
+     */
+    private boolean isItemOnlyOrRequirement(OrRequirement orReq) {
+        for (Requirement child : orReq.getChildRequirements()) {
+            if (!(child instanceof ItemRequirement)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * Adds an OR requirement directly to the appropriate cache based on the type of items it contains.
+     * This preserves the original total amount semantics for OR requirements like "5 food from any combination".
+     * 
+     * @param orReq The OR requirement to add directly to cache
+     * @param equipmentCache Equipment cache to update
+     * @param inventorySlotCache Inventory slot cache to update
+     */
+    private void addOrRequirementDirectlyToCache(OrRequirement orReq,
+            Map<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> equipmentCache,
+            Map<Integer, LinkedHashSet<LogicalRequirement>> inventorySlotCache) {
+        
+        // Determine the appropriate cache location based on the first child requirement
+        // All items in an OR requirement should target the same slot type
+        ItemRequirement firstItem = (ItemRequirement) orReq.getChildRequirements().get(0);
+        
+        switch (firstItem.getRequirementType()) {
+            case EQUIPMENT:
+                if (firstItem.getEquipmentSlot() != null) {
+                    equipmentCache.computeIfAbsent(firstItem.getEquipmentSlot(), k -> new LinkedHashSet<>()).add(orReq);
+                    log.debug("Added OR requirement directly to equipment slot {}: {}", 
+                            firstItem.getEquipmentSlot(), orReq.getName());
+                }
+                break;
+            case INVENTORY:
+                int slot = firstItem.hasSpecificInventorySlot() ? firstItem.getInventorySlot() : -1;
+                inventorySlotCache.computeIfAbsent(slot, k -> new LinkedHashSet<>()).add(orReq);
+                log.debug("Added OR requirement directly to inventory slot {}: {}", 
+                        slot == -1 ? "any" : String.valueOf(slot), orReq.getName());
+                break;
+            case EITHER:
+                // For EITHER requirements, add to both equipment and inventory slots as appropriate
+                if (firstItem.getEquipmentSlot() != null) {
+                    equipmentCache.computeIfAbsent(firstItem.getEquipmentSlot(), k -> new LinkedHashSet<>()).add(orReq);
+                    log.debug("Added EITHER OR requirement to equipment slot {}: {}", 
+                            firstItem.getEquipmentSlot(), orReq.getName());
+                }
+                int invSlot = firstItem.hasSpecificInventorySlot() ? firstItem.getInventorySlot() : -1;
+                inventorySlotCache.computeIfAbsent(invSlot, k -> new LinkedHashSet<>()).add(orReq);
+                log.debug("Added EITHER OR requirement to inventory slot {}: {}", 
+                        invSlot == -1 ? "any" : String.valueOf(invSlot), orReq.getName());
+                break;
+            default:
+                log.warn("Cannot add OR requirement to cache - unsupported requirement type: {}", 
+                        firstItem.getRequirementType());
+                break;
+        }
+    }
+    
+    /**
+     * Wraps an individual ItemRequirement in an OrRequirement for consistency with cache structure.
+     * This allows all items in the cache to be treated uniformly as logical requirements.
+     * 
+     * @param itemReq The ItemRequirement to wrap
+     * @return An OrRequirement containing the single ItemRequirement
+     */
+    private OrRequirement wrapItemRequirementInOr(ItemRequirement itemReq) {
+        return new OrRequirement(
+            itemReq.getPriority(),
+            itemReq.getRating(),
+            itemReq.getDescription(),
+            itemReq.getTaskContext(),
+            itemReq
+        );
     }
 
     /**
@@ -728,11 +1049,11 @@ public class RequirementRegistry {
      * This creates up to 2 OR requirements per slot: one for MANDATORY priority, one for RECOMMENDED priority.
      */
     private void createLogicalRequirementsFromGroups(
-            Map<ScheduleContext, Map<EquipmentInventorySlot, List<ItemRequirement>>> equipmentByContextAndSlot,
-            Map<ScheduleContext, Map<Integer, List<ItemRequirement>>> inventoryByContextAndSlot,
-            Map<ScheduleContext, List<ItemRequirement>> eitherByContext,
-            Map<ScheduleContext, List<ShopRequirement>> shopByContext,
-            Map<ScheduleContext, List<LootRequirement>> lootByContext,
+            Map<TaskContext, Map<EquipmentInventorySlot, List<ItemRequirement>>> equipmentByContextAndSlot,
+            Map<TaskContext, Map<Integer, List<ItemRequirement>>> inventoryByContextAndSlot,
+            Map<TaskContext, List<ItemRequirement>> eitherByContext,
+            Map<TaskContext, List<ShopRequirement>> shopByContext,
+            Map<TaskContext, List<LootRequirement>> lootByContext,
             Map<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> equipmentCache,
             LinkedHashSet<LogicalRequirement> shopCache,
             LinkedHashSet<LogicalRequirement> lootCache,
@@ -752,8 +1073,8 @@ public class RequirementRegistry {
      * Processes equipment slots to create up to 2 OR requirements per slot (one for each priority level).
      */
     private void processEquipmentSlots(
-            Map<ScheduleContext, Map<EquipmentInventorySlot, List<ItemRequirement>>> equipmentByContextAndSlot,
-            Map<ScheduleContext, List<ItemRequirement>> eitherByContext,
+            Map<TaskContext, Map<EquipmentInventorySlot, List<ItemRequirement>>> equipmentByContextAndSlot,
+            Map<TaskContext, List<ItemRequirement>> eitherByContext,
             Map<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> equipmentCache) {
         
         // Collect all equipment slots that have requirements
@@ -788,7 +1109,7 @@ public class RequirementRegistry {
             
             if (!mandatoryItems.isEmpty()) {
                 OrRequirement mandatoryReq = createMergedOrRequirement(mandatoryItems, 
-                    slot.name() + " equipment (MANDATORY)", determineScheduleContext(mandatoryItems));
+                    slot.name() + " equipment (MANDATORY)", determineTaskContext(mandatoryItems));
                 slotRequirements.add(mandatoryReq);
                 log.debug("Created MANDATORY equipment OR requirement for slot {}: {} with {} alternatives", 
                     slot, mandatoryReq.getName(), mandatoryItems.size());
@@ -796,7 +1117,7 @@ public class RequirementRegistry {
             
             if (!recommendedItems.isEmpty()) {
                 OrRequirement recommendedReq = createMergedOrRequirement(recommendedItems, 
-                    slot.name() + " equipment (RECOMMENDED)", determineScheduleContext(recommendedItems));
+                    slot.name() + " equipment (RECOMMENDED)", determineTaskContext(recommendedItems));
                 slotRequirements.add(recommendedReq);
                 log.debug("Created RECOMMENDED equipment OR requirement for slot {}: {} with {} alternatives", 
                     slot, recommendedReq.getName(), recommendedItems.size());
@@ -812,8 +1133,8 @@ public class RequirementRegistry {
      * Processes inventory slots to create up to 2 OR requirements per slot (one for each priority level).
      */
     private void processInventorySlots(
-            Map<ScheduleContext, Map<Integer, List<ItemRequirement>>> inventoryByContextAndSlot,
-            Map<ScheduleContext, List<ItemRequirement>> eitherByContext,
+            Map<TaskContext, Map<Integer, List<ItemRequirement>>> inventoryByContextAndSlot,
+            Map<TaskContext, List<ItemRequirement>> eitherByContext,
             Map<Integer, LinkedHashSet<LogicalRequirement>> inventorySlotCache) {
         
         // Collect all inventory slots that have requirements
@@ -848,7 +1169,7 @@ public class RequirementRegistry {
             
             if (!mandatoryItems.isEmpty()) {
                 OrRequirement mandatoryReq = createMergedOrRequirement(mandatoryItems, 
-                    slotDescription + " (MANDATORY)", determineScheduleContext(mandatoryItems));
+                    slotDescription + " (MANDATORY)", determineTaskContext(mandatoryItems));
                 slotRequirements.add(mandatoryReq);
                 log.debug("Created MANDATORY inventory OR requirement for {}: {} with {} alternatives", 
                     slotDescription, mandatoryReq.getName(), mandatoryItems.size());
@@ -856,7 +1177,7 @@ public class RequirementRegistry {
             
             if (!recommendedItems.isEmpty()) {
                 OrRequirement recommendedReq = createMergedOrRequirement(recommendedItems, 
-                    slotDescription + " (RECOMMENDED)", determineScheduleContext(recommendedItems));
+                    slotDescription + " (RECOMMENDED)", determineTaskContext(recommendedItems));
                 slotRequirements.add(recommendedReq);
                 log.debug("Created RECOMMENDED inventory OR requirement for {}: {} with {} alternatives", 
                     slotDescription, recommendedReq.getName(), recommendedItems.size());
@@ -869,8 +1190,8 @@ public class RequirementRegistry {
     }
     
     // Helper methods for collecting items
-    private void addItemsForContext(Map<ScheduleContext, Map<EquipmentInventorySlot, List<ItemRequirement>>> equipmentByContextAndSlot,
-                                   EquipmentInventorySlot slot, ScheduleContext context, List<ItemRequirement> targetList) {
+    private void addItemsForContext(Map<TaskContext, Map<EquipmentInventorySlot, List<ItemRequirement>>> equipmentByContextAndSlot,
+                                   EquipmentInventorySlot slot, TaskContext context, List<ItemRequirement> targetList) {
         Map<EquipmentInventorySlot, List<ItemRequirement>> contextMap = equipmentByContextAndSlot.get(context);
         if (contextMap != null) {
             List<ItemRequirement> items = contextMap.get(slot);
@@ -880,8 +1201,8 @@ public class RequirementRegistry {
         }
     }
     
-    private void addInventoryItemsForContext(Map<ScheduleContext, Map<Integer, List<ItemRequirement>>> inventoryByContextAndSlot,
-                                           Integer slot, ScheduleContext context, List<ItemRequirement> targetList) {
+    private void addInventoryItemsForContext(Map<TaskContext, Map<Integer, List<ItemRequirement>>> inventoryByContextAndSlot,
+                                           Integer slot, TaskContext context, List<ItemRequirement> targetList) {
         Map<Integer, List<ItemRequirement>> contextMap = inventoryByContextAndSlot.get(context);
         if (contextMap != null) {
             List<ItemRequirement> items = contextMap.get(slot);
@@ -891,8 +1212,8 @@ public class RequirementRegistry {
         }
     }
     
-    private void addEitherItemsForEquipmentSlot(Map<ScheduleContext, List<ItemRequirement>> eitherByContext,
-                                              EquipmentInventorySlot equipSlot, ScheduleContext context, List<ItemRequirement> targetList) {
+    private void addEitherItemsForEquipmentSlot(Map<TaskContext, List<ItemRequirement>> eitherByContext,
+                                              EquipmentInventorySlot equipSlot, TaskContext context, List<ItemRequirement> targetList) {
         List<ItemRequirement> eitherItems = eitherByContext.get(context);
         if (eitherItems != null) {
             for (ItemRequirement item : eitherItems) {
@@ -903,8 +1224,8 @@ public class RequirementRegistry {
         }
     }
     
-    private void addEitherItemsForInventorySlot(Map<ScheduleContext, List<ItemRequirement>> eitherByContext,
-                                              Integer invSlot, ScheduleContext context, List<ItemRequirement> targetList) {
+    private void addEitherItemsForInventorySlot(Map<TaskContext, List<ItemRequirement>> eitherByContext,
+                                              Integer invSlot, TaskContext context, List<ItemRequirement> targetList) {
         List<ItemRequirement> eitherItems = eitherByContext.get(context);
         if (eitherItems != null) {
             for (ItemRequirement item : eitherItems) {
@@ -917,7 +1238,7 @@ public class RequirementRegistry {
     }
     
     // Priority-based helper methods for collecting items
-    private void addItemsForPriority(Map<ScheduleContext, Map<EquipmentInventorySlot, List<ItemRequirement>>> equipmentByContextAndSlot,
+    private void addItemsForPriority(Map<TaskContext, Map<EquipmentInventorySlot, List<ItemRequirement>>> equipmentByContextAndSlot,
                                    EquipmentInventorySlot slot, RequirementPriority priority, List<ItemRequirement> targetList) {
         // Check all schedule contexts for items with the specified priority
         for (Map<EquipmentInventorySlot, List<ItemRequirement>> contextMap : equipmentByContextAndSlot.values()) {
@@ -932,7 +1253,7 @@ public class RequirementRegistry {
         }
     }
     
-    private void addEitherItemsForEquipmentSlotPriority(Map<ScheduleContext, List<ItemRequirement>> eitherByContext,
+    private void addEitherItemsForEquipmentSlotPriority(Map<TaskContext, List<ItemRequirement>> eitherByContext,
                                                       EquipmentInventorySlot equipSlot, RequirementPriority priority, List<ItemRequirement> targetList) {
         // Check all schedule contexts for either items with the specified priority
         for (List<ItemRequirement> eitherItems : eitherByContext.values()) {
@@ -946,13 +1267,13 @@ public class RequirementRegistry {
         }
     }
     
-    private ScheduleContext determineScheduleContext(List<ItemRequirement> items) {
-        // Determine the most appropriate ScheduleContext for a group of items
+    private TaskContext determineTaskContext(List<ItemRequirement> items) {
+        // Determine the most appropriate TaskContext for a group of items
         // Priority: PRE_SCHEDULE -> POST_SCHEDULE -> BOTH
         boolean hasPre = false, hasPost = false, hasBoth = false;
         
         for (ItemRequirement item : items) {
-            switch (item.getScheduleContext()) {
+            switch (item.getTaskContext()) {
                 case PRE_SCHEDULE:
                     hasPre = true;
                     break;
@@ -966,16 +1287,16 @@ public class RequirementRegistry {
         }
         
         // If all items have the same context, use that
-        if (hasPre && !hasPost && !hasBoth) return ScheduleContext.PRE_SCHEDULE;
-        if (hasPost && !hasPre && !hasBoth) return ScheduleContext.POST_SCHEDULE;
-        if (hasBoth && !hasPre && !hasPost) return ScheduleContext.BOTH;
+        if (hasPre && !hasPost && !hasBoth) return TaskContext.PRE_SCHEDULE;
+        if (hasPost && !hasPre && !hasBoth) return TaskContext.POST_SCHEDULE;
+        if (hasBoth && !hasPre && !hasPost) return TaskContext.BOTH;
         
         // Mixed contexts - default to BOTH (covers all cases)
-        return ScheduleContext.BOTH;
+        return TaskContext.BOTH;
     }
     
     // Priority-based helper methods for inventory items
-    private void addInventoryItemsForPriority(Map<ScheduleContext, Map<Integer, List<ItemRequirement>>> inventoryByContextAndSlot,
+    private void addInventoryItemsForPriority(Map<TaskContext, Map<Integer, List<ItemRequirement>>> inventoryByContextAndSlot,
                                             Integer slot, RequirementPriority priority, List<ItemRequirement> targetList) {
         // Check all schedule contexts for items with the specified priority
         for (Map<Integer, List<ItemRequirement>> contextMap : inventoryByContextAndSlot.values()) {
@@ -990,7 +1311,7 @@ public class RequirementRegistry {
         }
     }
     
-    private void addEitherItemsForInventorySlotPriority(Map<ScheduleContext, List<ItemRequirement>> eitherByContext,
+    private void addEitherItemsForInventorySlotPriority(Map<TaskContext, List<ItemRequirement>> eitherByContext,
                                                       Integer invSlot, RequirementPriority priority, List<ItemRequirement> targetList) {
         // Check all schedule contexts for either items with the specified priority
         for (List<ItemRequirement> eitherItems : eitherByContext.values()) {
@@ -1009,31 +1330,31 @@ public class RequirementRegistry {
      * Processes shop and loot requirements (these don't need slot-based consolidation).
      */
     private void processShopAndLootRequirements(
-            Map<ScheduleContext, List<ShopRequirement>> shopByContext,
-            Map<ScheduleContext, List<LootRequirement>> lootByContext,
+            Map<TaskContext, List<ShopRequirement>> shopByContext,
+            Map<TaskContext, List<LootRequirement>> lootByContext,
             LinkedHashSet<LogicalRequirement> shopCache,
             LinkedHashSet<LogicalRequirement> lootCache) {
         
         // Process shop requirements grouped by schedule context
-        for (Map.Entry<ScheduleContext, List<ShopRequirement>> contextEntry : shopByContext.entrySet()) {
-            ScheduleContext scheduleContext = contextEntry.getKey();
+        for (Map.Entry<TaskContext, List<ShopRequirement>> contextEntry : shopByContext.entrySet()) {
+            TaskContext taskContext = contextEntry.getKey();
             List<ShopRequirement> shopReqs = contextEntry.getValue();
             
             for (ShopRequirement shop : shopReqs) {
                 OrRequirement orReq = new OrRequirement(shop.getPriority(), shop.getRating(),
-                        shop.getDescription(), scheduleContext, shop);
+                        shop.getDescription(), taskContext, shop);
                 shopCache.add(orReq);
             }
         }
         
         // Process loot requirements grouped by schedule context
-        for (Map.Entry<ScheduleContext, List<LootRequirement>> contextEntry : lootByContext.entrySet()) {
-            ScheduleContext scheduleContext = contextEntry.getKey();
+        for (Map.Entry<TaskContext, List<LootRequirement>> contextEntry : lootByContext.entrySet()) {
+            TaskContext taskContext = contextEntry.getKey();
             List<LootRequirement> lootReqs = contextEntry.getValue();
             
             for (LootRequirement loot : lootReqs) {
                 OrRequirement orReq = new OrRequirement(loot.getPriority(), loot.getRating(),
-                        loot.getDescription(), scheduleContext, loot);
+                        loot.getDescription(), taskContext, loot);
                 lootCache.add(orReq);
             }
         }
@@ -1045,10 +1366,10 @@ public class RequirementRegistry {
      * 
      * @param items List of items competing for the same slot
      * @param slotDescription Description of the slot for the OR requirement name
-     * @param scheduleContext The schedule context (must be the same for all items)
+     * @param TaskContext The schedule context (must be the same for all items)
      * @return A merged OrRequirement with correct rating and priority
      */
-    private OrRequirement createMergedOrRequirement(List<ItemRequirement> items, String slotDescription, ScheduleContext scheduleContext) {
+    private OrRequirement createMergedOrRequirement(List<ItemRequirement> items, String slotDescription, TaskContext taskContext) {
         if (items.isEmpty()) {
             throw new IllegalArgumentException("Cannot create OR requirement from empty item list");
         }
@@ -1064,17 +1385,17 @@ public class RequirementRegistry {
         
         // Verify all items have the same schedule context
         boolean allSameContext = items.stream()
-                .map(Requirement::getScheduleContext)
-                .allMatch(context -> context == scheduleContext);
+                .map(Requirement::getTaskContext)
+                .allMatch(context -> context == taskContext);
         
         if (!allSameContext) {
-            log.warn("Items for {} have different schedule contexts, using {}", slotDescription, scheduleContext);
+            log.warn("Items for {} have different schedule contexts, using {}", slotDescription, taskContext);
         }
         
         // Create descriptive name showing alternatives count
         String name = slotDescription + " options (" + items.size() + " alternatives, rating: " + mergedRating + ")";
         
-        return new OrRequirement(mergedPriority, mergedRating, name, scheduleContext, 
+        return new OrRequirement(mergedPriority, mergedRating, name, taskContext, 
                 items.toArray(new Requirement[0]));
     }
     
@@ -1120,104 +1441,125 @@ public class RequirementRegistry {
         requirements.clear();
         requirements.addAll(sorted);
     }
-    
-    /**
+ 
+   
+      /**
      * Gets equipment logical requirements cache for a specific schedule context, rebuilding if necessary.
      * Returns only the LogicalRequirements that match the given context.
      * 
      * @param context The schedule context to filter by (PRE_SCHEDULE or POST_SCHEDULE)
      * @return Map of equipment slot to context-specific logical requirements
      */
-    public Map<EquipmentInventorySlot, LogicalRequirement> getEquipmentLogicalRequirements(ScheduleContext context) {
+    /**
+     * Gets standard (non-external) inventory slot requirements cache, rebuilding if necessary.
+     * This excludes externally added requirements to prevent double processing.
+     */
+    public Map<Integer, LinkedHashSet<ItemRequirement>> getInventoryRequirements(TaskContext context) {
         if (!cacheValid) {
             rebuildCache();
         }
-        
-        Map<EquipmentInventorySlot, LogicalRequirement> filteredCache = new HashMap<>();
-        
-        for (Map.Entry<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> entry : equipmentItemsCache.entrySet()) {
-            EquipmentInventorySlot slot = entry.getKey();
-            LinkedHashSet<LogicalRequirement> requirements = entry.getValue();
-            
-            // Find the LogicalRequirement that matches the requested context
-            for (LogicalRequirement requirement : requirements) {
-                if (requirement.getScheduleContext() == context) {
-                    filteredCache.put(slot, requirement);
-                    break; // Each slot should have exactly one requirement per context
+          
+        return inventorySlotRequirementsCache.getOrDefault(context, new LinkedHashMap<>());
+    }
+    
+    /**
+     * Gets standard (non-external) inventory slot requirements cache, rebuilding if necessary.
+     * This excludes externally added requirements to prevent double processing.
+     */
+    public Map<Integer, OrRequirement> getInventorySlotLogicalRequirements(TaskContext context) {
+        if (!cacheValid) {
+            rebuildCache();
+        }
+          
+        // Convert LinkedHashSet<ItemRequirement> to OrRequirement
+        Map<Integer, OrRequirement> result = new LinkedHashMap<>();
+        Map<Integer, LinkedHashSet<ItemRequirement>> inventory = inventorySlotRequirementsCache.getOrDefault(context, new LinkedHashMap<>());
+        for (Map.Entry<Integer, LinkedHashSet<ItemRequirement>> entry : inventory.entrySet()) {
+            if (!entry.getValue().isEmpty()) {
+                ItemRequirement first = entry.getValue().iterator().next();
+                if (entry.getValue().size() == 1) {
+                    OrRequirement orReq = new OrRequirement(first.getPriority(), first.getRating(),
+                        "Inventory slot " + entry.getKey(), context, ItemRequirement.class);
+                    orReq.addRequirement(first);
+                    result.put(entry.getKey(), orReq);
+                } else {
+                    OrRequirement orReq = new OrRequirement(first.getPriority(), first.getRating(), 
+                        "Inventory slot " + entry.getKey(), context, ItemRequirement.class);
+                    for (ItemRequirement item : entry.getValue()) {
+                        orReq.addRequirement(item);
+                    }
+                    result.put(entry.getKey(), orReq);
                 }
             }
         }
-        
-        return filteredCache;
+        return result;
     }
-   
-    
+
+    /**
+     * Gets standard (non-external) inventory slot requirements cache as raw ItemRequirement sets.
+     * This excludes externally added requirements to prevent double processing.
+     */
+    public Map<Integer, LinkedHashSet<ItemRequirement>> getInventorySlotRequirements(TaskContext context) {
+        if (!cacheValid) {
+            rebuildCache();
+        }
+          
+        return inventorySlotRequirementsCache.getOrDefault(context, new LinkedHashMap<>());
+    }
+
     /**
      * Gets standard (non-external) equipment logical requirements cache, rebuilding if necessary.
      * This excludes externally added requirements to prevent double processing.
      */
-    public Map<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> getStandardEquipmentLogicalRequirements() {
+    public Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> getEquipmentRequirements(TaskContext context) {
         if (!cacheValid) {
             rebuildCache();
         }
-        
-        Map<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> standardEquipment = new HashMap<>();
-        for (Map.Entry<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> entry : equipmentItemsCache.entrySet()) {
-            LinkedHashSet<LogicalRequirement> standardSlotReqs = new LinkedHashSet<>();
-            for (LogicalRequirement logical : entry.getValue()) {
-                if (isStandardLogicalRequirement(logical)) {
-                    standardSlotReqs.add(logical);
-                }
-            }
-            if (!standardSlotReqs.isEmpty()) {
-                standardEquipment.put(entry.getKey(), standardSlotReqs);
-            }
-        }
-        return standardEquipment;
+          
+        return  equipmentItemsCache.getOrDefault(context, new LinkedHashMap<>());
     }
     
     
     
-    /**
-     * Gets inventory logical requirements cache, rebuilding if necessary.
-     * Returns requirements that can be placed in any inventory slot.
-     */
-    /**
-     * Gets standard (non-external) inventory logical requirements for the -1 slot (any slot) for a specific context.
-     * This excludes externally added requirements to prevent double processing.
-     * Returns requirements that can be placed in any inventory slot.
-     */
-    public LinkedHashSet<LogicalRequirement> getStandardInventoryLogicalRequirements(ScheduleContext context) {
-        if (!cacheValid) {
-            rebuildCache();
-        }
-        
-        LinkedHashSet<LogicalRequirement> standardInventory = new LinkedHashSet<>();
-        LogicalRequirement anySlotReq = getAllInventorySlotRequirements(context).get(-1);
-        
-        if (anySlotReq != null && isStandardLogicalRequirement(anySlotReq)) {
-            standardInventory.add(anySlotReq);
-        }
-        
-        return standardInventory;
-    }
+   
     
     /**
      * Gets standard (non-external) shop logical requirements cache, rebuilding if necessary.
      * This excludes externally added requirements to prevent double processing.
      */
-    public LinkedHashSet<LogicalRequirement> getStandardShopLogicalRequirements() {
+    public LinkedHashSet<OrRequirement> getShopLogicalRequirements(TaskContext context) {
         if (!cacheValid) {
             rebuildCache();
         }
         
-        LinkedHashSet<LogicalRequirement> standardShops = new LinkedHashSet<>();
-        for (LogicalRequirement logical : shopRequirementsCache) {
-            if (isStandardLogicalRequirement(logical)) {
-                standardShops.add(logical);
-            }
+      
+        return shopRequirementsCache.getOrDefault(context, new LinkedHashSet<>());
+    }
+    
+    /**
+     * Gets standard (non-external) shop requirements cache for a specific context.
+     */
+    public LinkedHashSet<OrRequirement> getShopRequirements(TaskContext context) {
+        return getShopLogicalRequirements(context);
+    }
+    
+    /**
+     * Gets standard (non-external) loot logical requirements cache, rebuilding if necessary.
+     * This excludes externally added requirements to prevent double processing.
+     */
+    public LinkedHashSet<OrRequirement> getLootLogicalRequirements(TaskContext context) {
+        if (!cacheValid) {
+            rebuildCache();
         }
-        return standardShops;
+        
+        return lootRequirementsCache.getOrDefault(context, new LinkedHashSet<>());
+    }
+    
+    /**
+     * Gets standard (non-external) loot requirements cache for a specific context.
+     */
+    public LinkedHashSet<OrRequirement> getLootRequirements(TaskContext context) {
+        return getLootLogicalRequirements(context);
     }
     
     /**
@@ -1226,7 +1568,7 @@ public class RequirementRegistry {
      * @param logical The logical requirement to check
      * @return true if all child requirements are standard, false if any are external
      */
-    private boolean isStandardLogicalRequirement(LogicalRequirement logical) {
+    private boolean isLogicalRequirement(LogicalRequirement logical) {
         for (Requirement child : logical.getChildRequirements()) {
             RequirementKey childKey = new RequirementKey(child);
             if (externalRequirements.containsKey(childKey)) {
@@ -1234,7 +1576,7 @@ public class RequirementRegistry {
             }
             // For nested logical requirements, check recursively
             if (child instanceof LogicalRequirement) {
-                if (!isStandardLogicalRequirement((LogicalRequirement) child)) {
+                if (!isLogicalRequirement((LogicalRequirement) child)) {
                     return false;
                 }
             }
@@ -1244,25 +1586,6 @@ public class RequirementRegistry {
        
     
     /**
-     * Gets standard (non-external) loot logical requirements cache, rebuilding if necessary.
-     * This excludes externally added requirements to prevent double processing.
-     */
-    public LinkedHashSet<LogicalRequirement> getStandardLootLogicalRequirements() {
-        if (!cacheValid) {
-            rebuildCache();
-        }
-        
-        LinkedHashSet<LogicalRequirement> standardLoots = new LinkedHashSet<>();
-        for (LogicalRequirement logical : lootRequirementsCache) {
-            if (isStandardLogicalRequirement(logical)) {
-                standardLoots.add(logical);
-            }
-        }
-        return standardLoots;
-    }
-    
-    
-    /**
      * Validates the consistency of the registry.
      * 
      * @return true if the registry is consistent, false otherwise
@@ -1270,10 +1593,10 @@ public class RequirementRegistry {
     public boolean validateConsistency() {
         try {
             // Ensure single-instance requirements are properly referenced
-            long preSpellbookCount = getStandardRequirements(SpellbookRequirement.class, ScheduleContext.PRE_SCHEDULE).size();
-            long postSpellbookCount = getStandardRequirements(SpellbookRequirement.class, ScheduleContext.POST_SCHEDULE).size();
-            long preLocationCount = getStandardRequirements(LocationRequirement.class, ScheduleContext.PRE_SCHEDULE).size();
-            long postLocationCount = getStandardRequirements(LocationRequirement.class, ScheduleContext.POST_SCHEDULE).size();
+            long preSpellbookCount = getRequirements(SpellbookRequirement.class, TaskContext.PRE_SCHEDULE).size();
+            long postSpellbookCount = getRequirements(SpellbookRequirement.class, TaskContext.POST_SCHEDULE).size();
+            long preLocationCount = getRequirements(LocationRequirement.class, TaskContext.PRE_SCHEDULE).size();
+            long postLocationCount = getRequirements(LocationRequirement.class, TaskContext.POST_SCHEDULE).size();
             
             if (preSpellbookCount > 1 || postSpellbookCount > 1) {
                 log.error("Multiple spellbook requirements detected: pre={}, post={}", preSpellbookCount, postSpellbookCount);
@@ -1287,9 +1610,22 @@ public class RequirementRegistry {
             
             // Ensure cache consistency (if cache is valid)
             if (cacheValid) {
-                int cacheSize = equipmentItemsCache.values().stream().mapToInt(Set::size).sum() +
-                               inventorySlotRequirementsCache.values().stream().mapToInt(Set::size).sum() + 
-                               shopRequirementsCache.size() + lootRequirementsCache.size();
+                // Count equipment items across all contexts and slots
+                int equipmentSize = equipmentItemsCache.values().stream()
+                    .mapToInt(contextMap -> contextMap.values().stream().mapToInt(Set::size).sum())
+                    .sum();
+                
+                // Count inventory slot items across all contexts and slots
+                int inventorySize = inventorySlotRequirementsCache.values().stream()
+                    .mapToInt(contextMap -> contextMap.values().stream().mapToInt(Set::size).sum())
+                    .sum();
+                
+                // Count any inventory slot, shop and loot items across all contexts
+                int anySlotSize = anyInventorySlotRequirementsCache.values().stream().mapToInt(Set::size).sum();
+                int shopSize = shopRequirementsCache.values().stream().mapToInt(Set::size).sum();
+                int lootSize = lootRequirementsCache.values().stream().mapToInt(Set::size).sum();
+                
+                int cacheSize = equipmentSize + inventorySize + anySlotSize + shopSize + lootSize;
                 
                 // Note: EITHER items are now distributed to equipment and inventory caches,
                 // so we need to account for potential duplicates in the count
@@ -1341,13 +1677,13 @@ public class RequirementRegistry {
      * @param context The schedule context to filter requirements (PRE_SCHEDULE, POST_SCHEDULE, or BOTH)
      * @return A formatted string containing the validation summary
      */
-    public String getValidationSummary(ScheduleContext context) {
+    public String getValidationSummary(TaskContext context) {
         StringBuilder sb = new StringBuilder();
         sb.append("=== Requirements Validation Summary ===\n");
         
         // Get all requirements for the specified context
         List<Requirement> contextRequirements = getAllRequirements().stream()
-                .filter(req -> req.getScheduleContext() == context || req.getScheduleContext() == ScheduleContext.BOTH)
+                .filter(req -> req.getTaskContext() == context || req.getTaskContext() == TaskContext.BOTH)
                 .collect(Collectors.toList());
         
         if (contextRequirements.isEmpty()) {
@@ -1442,9 +1778,9 @@ public class RequirementRegistry {
      * @param context The schedule context to evaluate
      * @return A brief status summary string
      */
-    public String getValidationStatusSummary(ScheduleContext context) {
+    public String getValidationStatusSummary(TaskContext context) {
         List<Requirement> contextRequirements = getAllRequirements().stream()
-                .filter(req -> req.getScheduleContext() == context || req.getScheduleContext() == ScheduleContext.BOTH)
+                .filter(req -> req.getTaskContext() == context || req.getTaskContext() == TaskContext.BOTH)
                 .collect(Collectors.toList());
         
         if (contextRequirements.isEmpty()) {
@@ -1486,11 +1822,11 @@ public class RequirementRegistry {
      * @param slot The inventory slot (0-27)
      * @return Logical requirements for the specified slot
      */
-    public LinkedHashSet<LogicalRequirement> getInventorySlotRequirements(int slot) {
+    public LinkedHashSet<ItemRequirement> getInventorySlotRequirement(TaskContext context, int slot) {
         if (!cacheValid) {
             rebuildCache();
         }
-        return inventorySlotRequirementsCache.getOrDefault(slot, new LinkedHashSet<>());
+        return inventorySlotRequirementsCache.getOrDefault(context, new HashMap<>()).get(slot);
     }
     
     /**
@@ -1500,27 +1836,11 @@ public class RequirementRegistry {
      * @param context The schedule context to filter by (PRE_SCHEDULE or POST_SCHEDULE)
      * @return Map of slot to context-specific logical requirements
      */
-    public Map<Integer, LogicalRequirement> getAllInventorySlotRequirements(ScheduleContext context) {
+    public Map<Integer, LinkedHashSet<ItemRequirement>> getInventorySlotsRequirements(TaskContext context) {
         if (!cacheValid) {
             rebuildCache();
-        }
-        
-        Map<Integer, LogicalRequirement> filteredCache = new HashMap<>();
-        
-        for (Map.Entry<Integer, LinkedHashSet<LogicalRequirement>> entry : inventorySlotRequirementsCache.entrySet()) {
-            Integer slot = entry.getKey();
-            LinkedHashSet<LogicalRequirement> requirements = entry.getValue();
-            
-            // Find the LogicalRequirement that matches the requested context
-            for (LogicalRequirement requirement : requirements) {
-                if (requirement.getScheduleContext() == context) {
-                    filteredCache.put(slot, requirement);
-                    break; // Each slot should have exactly one requirement per context
-                }
-            }
-        }
-        
-        return filteredCache;
+        }                
+        return inventorySlotRequirementsCache.getOrDefault(context, new HashMap<>());
     }
     
   
@@ -1530,21 +1850,9 @@ public class RequirementRegistry {
      * 
      * @return Map of equipment slot to ItemRequirements
      */
-    public Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> getEquipmentSlotItems() {
-        Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> equipmentItems = new HashMap<>();
-        Map<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> logicalReqs = this.equipmentItemsCache;
-        
-        for (Map.Entry<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> entry : logicalReqs.entrySet()) {
-            LinkedHashSet<ItemRequirement> items = new LinkedHashSet<>();
-            for (LogicalRequirement logical : entry.getValue()) {
-                extractItemRequirements(logical, items);
-            }
-            if (!items.isEmpty()) {
-                equipmentItems.put(entry.getKey(), items);
-            }
-        }
-        
-        return equipmentItems;
+    public Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> getEquipmentSlotItems(TaskContext context) {
+        ensureCacheValid();
+        return this.equipmentItemsCache.getOrDefault(context, new HashMap<>());
     }
     
     /**
@@ -1552,45 +1860,51 @@ public class RequirementRegistry {
      * 
      * @return Set of inventory ItemRequirements (from slot -1 which represents "any slot")
      */
-    public LinkedHashSet<ItemRequirement> getInventorySlotItems() {
+    public Map<Integer,LinkedHashSet<ItemRequirement>> getInventorySlotItems(TaskContext context) {
+        ensureCacheValid();             
+        return this.inventorySlotRequirementsCache.getOrDefault(context, new HashMap<>());
+    }
+
+     /**
+     * Gets inventory items from slot-based cache, extracting ItemRequirements from LogicalRequirements.
+     * 
+     * @return Set of inventory ItemRequirements (from slot -1 which represents "any slot")
+     */
+    public LinkedHashSet<ItemRequirement> getAnyInventorySlotItems(TaskContext context) {
+        ensureCacheValid();
         LinkedHashSet<ItemRequirement> inventoryItems = new LinkedHashSet<>();
-        LinkedHashSet<LogicalRequirement> logicalReqs = getInventorySlotRequirements(-1);
+        LinkedHashSet<OrRequirement> logicalReqs = this.anyInventorySlotRequirementsCache.getOrDefault(context, new LinkedHashSet<>());
         
         for (LogicalRequirement logical : logicalReqs) {
             extractItemRequirements(logical, inventoryItems);
         }
         
-        return inventoryItems;
+        return  inventoryItems;
     }
     
     /**
-     * Gets items for a specific inventory slot.
+     * Gets any-slot logical requirements (OrRequirements) for the InventorySetupPlanner.
+     * These represent flexible inventory items that can go in any inventory slot.
      * 
-     * @param slot The inventory slot (0-27, or -1 for "any slot")
-     * @return ItemRequirements for the specified slot
+     * @param context The schedule context to filter by
+     * @return LinkedHashSet of OrRequirements for flexible inventory placement
      */
-    public LinkedHashSet<ItemRequirement> getInventorySlotItems(int slot) {
-        LinkedHashSet<ItemRequirement> slotItems = new LinkedHashSet<>();
-        LinkedHashSet<LogicalRequirement> logicalReqs = getInventorySlotRequirements(slot);
-        
-        for (LogicalRequirement logical : logicalReqs) {
-            extractItemRequirements(logical, slotItems);
-        }
-        
-        return slotItems;
+    public LinkedHashSet<OrRequirement> getAnySlotLogicalRequirements(TaskContext context) {
+        ensureCacheValid();
+        return anyInventorySlotRequirementsCache.getOrDefault(context, new LinkedHashSet<>());
     }
-    
+          
     /**
      * Gets all EITHER items by aggregating from both equipment and inventory slot caches.
      * Since EITHER requirements are now distributed across caches, we need to collect them.
      * 
      * @return Set of all EITHER ItemRequirements
      */
-    public LinkedHashSet<ItemRequirement> getAllEitherItems() {
+    public LinkedHashSet<ItemRequirement> getAllEitherItems(TaskContext context) {
         LinkedHashSet<ItemRequirement> eitherItems = new LinkedHashSet<>();
         
         // Check equipment slots for EITHER items
-        Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> equipmentItems = getEquipmentSlotItems();
+        Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> equipmentItems = getEquipmentSlotItems(context);
         for (LinkedHashSet<ItemRequirement> slotItems : equipmentItems.values()) {
             for (ItemRequirement item : slotItems) {
                 if (RequirementType.EITHER.equals(item.getRequirementType())) {
@@ -1600,8 +1914,17 @@ public class RequirementRegistry {
         }
         
         // Check inventory slot cache for EITHER items
-        LinkedHashSet<ItemRequirement> inventoryItems = getInventorySlotItems();
-        for (ItemRequirement item : inventoryItems) {
+        Map<Integer,LinkedHashSet<ItemRequirement>> inventoryItems = getInventorySlotItems(context);
+        for (LinkedHashSet<ItemRequirement> slotItems : inventoryItems.values()) {
+            for (ItemRequirement item : slotItems) {
+                if (RequirementType.EITHER.equals(item.getRequirementType())) {
+                    eitherItems.add(item);
+                }
+            }
+        }
+        // Check any inventory slot cache for EITHER items
+        LinkedHashSet<ItemRequirement> anyInventoryItems = getAnyInventorySlotItems(context);
+        for (ItemRequirement item : anyInventoryItems) {
             if (RequirementType.EITHER.equals(item.getRequirementType())) {
                 eitherItems.add(item);
             }
@@ -1619,16 +1942,33 @@ public class RequirementRegistry {
      * @param context The schedule context to filter by (PRE_SCHEDULE or POST_SCHEDULE)
      * @return List of all logical requirements for the given context
      */
-    public List<LogicalRequirement> getAllItemRequirements(ScheduleContext context) {
-        List<LogicalRequirement> allLogicalReqs = new ArrayList<>();
+    public LinkedHashSet<ItemRequirement> getAllItemRequirements(TaskContext context) {
+        LinkedHashSet<ItemRequirement> allItemReqs = new LinkedHashSet<>();
+        ensureCacheValid();
         
-        // Add equipment logical requirements (already filtered by context)
-        allLogicalReqs.addAll(getEquipmentLogicalRequirements(context).values());
+        // Add equipment requirements (flatten the LinkedHashSet<ItemRequirement> collections)
+        Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> equipmentCache = getEquipmentRequirements(context);
+        for (LinkedHashSet<ItemRequirement> itemSet : equipmentCache.values()) {
+            allItemReqs.addAll(itemSet);
+        }
         
-        // Add inventory logical requirements (already filtered by context)
-        allLogicalReqs.addAll(getAllInventorySlotRequirements(context).values());
+        // Add inventory slot requirements (flatten the LinkedHashSet<ItemRequirement> collections)
+        Map<Integer, LinkedHashSet<ItemRequirement>> inventoryCache = getInventoryRequirements(context);
+        for (LinkedHashSet<ItemRequirement> itemSet : inventoryCache.values()) {
+            allItemReqs.addAll(itemSet);
+        }
+
+        // Add any inventory slot requirements (these are OrRequirements, extract their ItemRequirements)
+        LinkedHashSet<OrRequirement> anySlotCache = anyInventorySlotRequirementsCache.getOrDefault(context, new LinkedHashSet<>());
+        for (OrRequirement orReq : anySlotCache) {
+            for (Object child : orReq.getChildRequirements()) {
+                if (child instanceof ItemRequirement) {
+                    allItemReqs.add((ItemRequirement) child);
+                }
+            }
+        }
         
-        return allLogicalReqs;
+        return allItemReqs;
     }
     
     /**
@@ -1638,8 +1978,26 @@ public class RequirementRegistry {
      * @param context The schedule context to filter by (PRE_SCHEDULE or POST_SCHEDULE)
      * @return Total count of logical requirements for the given context
      */
-    public int getItemCount(ScheduleContext context) {
-        return getEquipmentLogicalRequirements(context).size() + getAllInventorySlotRequirements(context).size();
+    public int getItemCount(TaskContext context) {
+        int count = 0;
+        // Count all equipment items per slot
+        for (LinkedHashSet<ItemRequirement> items : getEquipmentRequirements(context).values()) {
+            count += items.size();
+        }
+        // Count all inventory items per slot
+        for (LinkedHashSet<ItemRequirement> items : getInventoryRequirements(context).values()) {
+            count += items.size();
+        }
+        // Count any-slot inventory items (from OrRequirements)
+        LinkedHashSet<OrRequirement> anySlotOrs = anyInventorySlotRequirementsCache.getOrDefault(context, new LinkedHashSet<>());
+        for (OrRequirement orReq : anySlotOrs) {
+            for (Requirement req : orReq.getChildRequirements()) {
+            if (req instanceof ItemRequirement) {
+                count++;
+            }
+            }
+        }
+        return count;
     }
     
    
@@ -1672,10 +2030,10 @@ public class RequirementRegistry {
      * Gets all external requirements of a specific type for a specific schedule context.
      */
     @SuppressWarnings("unchecked")
-    public <T extends Requirement> List<T> getExternalRequirements(Class<T> clazz, ScheduleContext context) {
+    public <T extends Requirement> List<T> getExternalRequirements(Class<T> clazz, TaskContext context) {
         return externalRequirements.values().stream()
                 .filter(clazz::isInstance)
-                .filter(req -> req.getScheduleContext() == context || req.getScheduleContext() == ScheduleContext.BOTH)
+                .filter(req -> req.getTaskContext() == context || req.getTaskContext() == TaskContext.BOTH)
                 .map(req -> (T) req)
                 .collect(Collectors.toList());
     }
@@ -1683,7 +2041,7 @@ public class RequirementRegistry {
     /**
      * Gets external equipment logical requirements cache, rebuilding if necessary.
      */
-    public Map<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> getExternalEquipmentLogicalRequirements() {
+    public Map<TaskContext, Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>>> getExternalEquipmentLogicalRequirements() {
         ensureExternalCacheValid();
         return externalEquipmentItemsCache;
     }
@@ -1691,15 +2049,15 @@ public class RequirementRegistry {
     /**
      * Gets external inventory logical requirements cache, rebuilding if necessary.
      */
-    public LinkedHashSet<LogicalRequirement> getExternalInventoryLogicalRequirements() {
+    public Map<TaskContext, Map<Integer, LinkedHashSet<ItemRequirement>>> getExternalInventoryLogicalRequirements() {
         ensureExternalCacheValid();
-        return externalInventorySlotRequirementsCache.getOrDefault(-1, new LinkedHashSet<>());
+        return externalInventorySlotRequirementsCache;
     }
     
     /**
      * Gets external shop logical requirements cache, rebuilding if necessary.
      */
-    public LinkedHashSet<LogicalRequirement> getExternalShopLogicalRequirements() {
+    public Map<TaskContext, LinkedHashSet<OrRequirement>> getExternalShopLogicalRequirements() {
         ensureExternalCacheValid();
         return externalShopRequirementsCache;
     }
@@ -1707,7 +2065,7 @@ public class RequirementRegistry {
     /**
      * Gets external loot logical requirements cache, rebuilding if necessary.
      */
-    public LinkedHashSet<LogicalRequirement> getExternalLootLogicalRequirements() {
+    public Map<TaskContext, LinkedHashSet<OrRequirement>> getExternalLootLogicalRequirements() {
         ensureExternalCacheValid();
         return externalLootRequirementsCache;
     }
@@ -1715,7 +2073,7 @@ public class RequirementRegistry {
     /**
      * Gets conditional item requirements cache, rebuilding if necessary.
      */
-    public LinkedHashSet<ConditionalRequirement> getConditionalItemRequirements() {
+    public Map<TaskContext, LinkedHashSet<ConditionalRequirement>> getConditionalItemRequirements() {
         ensureCacheValid();
         return conditionalItemRequirementsCache;
     }
@@ -1723,7 +2081,7 @@ public class RequirementRegistry {
     /**
      * Gets external conditional item requirements cache, rebuilding if necessary.
      */
-    public LinkedHashSet<ConditionalRequirement> getExternalConditionalItemRequirements() {
+    public Map<TaskContext, LinkedHashSet<ConditionalRequirement>> getExternalConditionalItemRequirements() {
         ensureExternalCacheValid();
         return externalIConditionalItemRequirementsCache;
     }
@@ -1734,10 +2092,10 @@ public class RequirementRegistry {
      * @param context The schedule context to filter by
      * @return List of conditional requirements for the given context
      */
-    public List<ConditionalRequirement> getConditionalItemRequirements(ScheduleContext context) {
+    public List<ConditionalRequirement> getConditionalItemRequirements(TaskContext context) {
         ensureCacheValid();
-        return conditionalItemRequirementsCache.stream()
-                .filter(req -> req.getScheduleContext() == context || req.getScheduleContext() == ScheduleContext.BOTH)
+        return conditionalItemRequirementsCache.getOrDefault(context, new LinkedHashSet<>()).stream()
+                .filter(req -> req.getTaskContext() == context || req.getTaskContext() == TaskContext.BOTH)
                 .collect(Collectors.toList());
     }
     
@@ -1747,10 +2105,10 @@ public class RequirementRegistry {
      * @param context The schedule context to filter by
      * @return List of external conditional requirements for the given context
      */
-    public List<ConditionalRequirement> getExternalConditionalItemRequirements(ScheduleContext context) {
+    public List<ConditionalRequirement> getExternalConditionalItemRequirements(TaskContext context) {
         ensureExternalCacheValid();
-        return externalIConditionalItemRequirementsCache.stream()
-                .filter(req -> req.getScheduleContext() == context || req.getScheduleContext() == ScheduleContext.BOTH)
+        return externalIConditionalItemRequirementsCache.getOrDefault(context, new LinkedHashSet<>()).stream()
+                .filter(req -> req.getTaskContext() == context || req.getTaskContext() == TaskContext.BOTH)
                 .collect(Collectors.toList());
     }
     
@@ -1760,6 +2118,30 @@ public class RequirementRegistry {
     private synchronized void rebuildExternalCache() {
         if (externalCacheValid) {
             return; // Another thread already rebuilt the cache
+        }
+        
+        if(externalRequirements == null || externalRequirements.isEmpty()) {
+            log.debug("No external requirements to rebuild cache for - initializing empty external caches");
+            // Initialize empty external caches when no requirements exist
+            externalEquipmentItemsCache = new HashMap<>();
+            externalShopRequirementsCache = new HashMap<>();
+            externalLootRequirementsCache = new HashMap<>();
+            externalInventorySlotRequirementsCache = new HashMap<>();
+            externalAnyInventorySlotRequirementsCache = new HashMap<>();
+            externalIConditionalItemRequirementsCache = new HashMap<>();
+            
+            // Initialize empty collections for each context
+            for (TaskContext context : TaskContext.values()) {
+                externalEquipmentItemsCache.put(context, new HashMap<>());
+                externalShopRequirementsCache.put(context, new LinkedHashSet<>());
+                externalLootRequirementsCache.put(context, new LinkedHashSet<>());
+                externalInventorySlotRequirementsCache.put(context, new HashMap<>());
+                externalAnyInventorySlotRequirementsCache.put(context, new LinkedHashSet<>());
+                externalIConditionalItemRequirementsCache.put(context, new LinkedHashSet<>());
+            }
+            
+            externalCacheValid = true;
+            return;
         }
         
         log.debug("Rebuilding external requirement caches...");
@@ -1772,6 +2154,7 @@ public class RequirementRegistry {
         this.externalShopRequirementsCache = newCaches.shopCache;
         this.externalLootRequirementsCache = newCaches.lootCache;
         this.externalInventorySlotRequirementsCache = newCaches.inventorySlotCache;
+        this.externalAnyInventorySlotRequirementsCache = newCaches.anyInventorySlotCache;
         this.externalIConditionalItemRequirementsCache = newCaches.conditionalCache;
         
         externalCacheValid = true;
@@ -1786,7 +2169,7 @@ public class RequirementRegistry {
      * @param context The schedule context to filter by
      * @return A breakdown containing detailed slot-by-slot requirement analysis
      */
-    public RequirementBreakdown getItemRequirementBreakdown(ScheduleContext context) {
+    public RequirementBreakdown getItemRequirementBreakdown(TaskContext context) {
         // Ensure caches are valid
         ensureCacheValid();
         
@@ -1794,54 +2177,60 @@ public class RequirementRegistry {
         Map<Integer, Map<RequirementPriority, Integer>> inventorySlotBreakdown = new LinkedHashMap<>();
         
         // Process equipment logical requirements by slot
-        for (Map.Entry<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> entry : equipmentItemsCache.entrySet()) {
-            EquipmentInventorySlot slot = entry.getKey();
-            LinkedHashSet<LogicalRequirement> logicalReqs = entry.getValue();
-            
-            Map<RequirementPriority, Integer> slotCounts = new EnumMap<>(RequirementPriority.class);
-            slotCounts.put(RequirementPriority.MANDATORY, 0);
-            slotCounts.put(RequirementPriority.RECOMMENDED, 0);
-            slotCounts.put(RequirementPriority.RECOMMENDED, 0);
-            
-            // Count logical requirements (not individual items) by priority
-            for (LogicalRequirement logicalReq : logicalReqs) {
-                if (logicalReq.getScheduleContext() == context || logicalReq.getScheduleContext() == ScheduleContext.BOTH) {
-                    RequirementPriority priority = logicalReq.getPriority();
-                    slotCounts.put(priority, slotCounts.get(priority) + 1);
+        Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> contextEquipmentCache = equipmentItemsCache.get(context);
+        if (contextEquipmentCache != null) {
+            for (Map.Entry<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> entry : contextEquipmentCache.entrySet()) {
+                EquipmentInventorySlot slot = entry.getKey();
+                LinkedHashSet<ItemRequirement> logicalReqs = entry.getValue();
+                
+                Map<RequirementPriority, Integer> slotCounts = new EnumMap<>(RequirementPriority.class);
+                slotCounts.put(RequirementPriority.MANDATORY, 0);
+                slotCounts.put(RequirementPriority.RECOMMENDED, 0);
+                slotCounts.put(RequirementPriority.RECOMMENDED, 0);
+                
+                // Count logical requirements (not individual items) by priority
+                for (ItemRequirement logicalReq : logicalReqs) {
+                    if (logicalReq.getTaskContext() == context || logicalReq.getTaskContext() == TaskContext.BOTH) {
+                        RequirementPriority priority = logicalReq.getPriority();
+                        slotCounts.put(priority, slotCounts.get(priority) + 1);
+                    }
                 }
-            }
-            
-            // Only add slots that have requirements
-            if (slotCounts.values().stream().anyMatch(count -> count > 0)) {
-                equipmentSlotBreakdown.put(slot, slotCounts);
+                
+                // Only add slots that have requirements
+                if (slotCounts.values().stream().anyMatch(count -> count > 0)) {
+                    equipmentSlotBreakdown.put(slot, slotCounts);
+                }
             }
         }
         
         // Process inventory logical requirements by slot (EXCLUDE -1 slot for "any slot" items)
-        for (Map.Entry<Integer, LinkedHashSet<LogicalRequirement>> entry : inventorySlotRequirementsCache.entrySet()) {
-            int slot = entry.getKey();
-            LinkedHashSet<LogicalRequirement> logicalReqs = entry.getValue();
-            
-            // Skip -1 slot (any slot items) as requested
-            if (slot == -1) {
-                continue;
-            }
-            
-            Map<RequirementPriority, Integer> slotCounts = new EnumMap<>(RequirementPriority.class);
-            slotCounts.put(RequirementPriority.MANDATORY, 0);
-            slotCounts.put(RequirementPriority.RECOMMENDED, 0);            
-            
-            // Count logical requirements (not individual items) by priority
-            for (LogicalRequirement logicalReq : logicalReqs) {
-                if (logicalReq.getScheduleContext() == context || logicalReq.getScheduleContext() == ScheduleContext.BOTH) {
-                    RequirementPriority priority = logicalReq.getPriority();
-                    slotCounts.put(priority, slotCounts.get(priority) + 1);
+        Map<Integer, LinkedHashSet<ItemRequirement>> contextInventoryCache = inventorySlotRequirementsCache.get(context);
+        if (contextInventoryCache != null) {
+            for (Map.Entry<Integer, LinkedHashSet<ItemRequirement>> entry : contextInventoryCache.entrySet()) {
+                int slot = entry.getKey();
+                LinkedHashSet<ItemRequirement> logicalReqs = entry.getValue();
+                
+                // Skip -1 slot (any slot items) as requested
+                if (slot == -1) {
+                    continue;
                 }
-            }
-            
-            // Only add slots that have requirements
-            if (slotCounts.values().stream().anyMatch(count -> count > 0)) {
-                inventorySlotBreakdown.put(slot, slotCounts);
+                
+                Map<RequirementPriority, Integer> slotCounts = new EnumMap<>(RequirementPriority.class);
+                slotCounts.put(RequirementPriority.MANDATORY, 0);
+                slotCounts.put(RequirementPriority.RECOMMENDED, 0);            
+                
+                // Count logical requirements (not individual items) by priority
+                for (ItemRequirement itemReq : logicalReqs) {
+                    if (itemReq.getTaskContext() == context || itemReq.getTaskContext() == TaskContext.BOTH) {
+                        RequirementPriority priority = itemReq.getPriority();
+                        slotCounts.put(priority, slotCounts.get(priority) + 1);
+                    }
+                }
+                
+                // Only add slots that have requirements
+                if (slotCounts.values().stream().anyMatch(count -> count > 0)) {
+                    inventorySlotBreakdown.put(slot, slotCounts);
+                }
             }
         }
         
@@ -1855,8 +2244,8 @@ public class RequirementRegistry {
      * @param context The schedule context to filter by
      * @return A map of Priority to count
      */
-    public <T extends Requirement> Map<RequirementPriority, Long> countRequirementsByPriority(Class<T> clazz, ScheduleContext context) {
-        return getStandardRequirements(clazz, context).stream()
+    public <T extends Requirement> Map<RequirementPriority, Long> countRequirementsByPriority(Class<T> clazz, TaskContext context) {
+        return getRequirements(clazz, context).stream()
             .collect(Collectors.groupingBy(
                 Requirement::getPriority,
                 Collectors.counting()
@@ -2049,75 +2438,97 @@ public class RequirementRegistry {
         // Add detailed breakdown for conditional requirements just before returning
         if (!conditionalItemRequirementsCache.isEmpty()) {
             sb.append("\n=== CONDITIONAL REQUIREMENTS BREAKDOWN ===\n");
-            for (ConditionalRequirement conditionalReq : conditionalItemRequirementsCache) {
-                sb.append(formatConditionalRequirement(conditionalReq, "  ")).append("\n");
+            for (Map.Entry<TaskContext, LinkedHashSet<ConditionalRequirement>> contextEntry : conditionalItemRequirementsCache.entrySet()) {
+                if (!contextEntry.getValue().isEmpty()) {
+                    sb.append("Context: ").append(contextEntry.getKey()).append("\n");
+                    for (ConditionalRequirement conditionalReq : contextEntry.getValue()) {
+                        sb.append("  ").append(formatConditionalRequirement(conditionalReq, "    ")).append("\n");
+                    }
+                }
             }
         }
         
-        // Display Equipment Requirements by Slot
+        // Display Equipment Requirements by Slot (per context)
         sb.append("=== EQUIPMENT REQUIREMENTS BY SLOT ===\n");
-        Map<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> equipmentCache = this.equipmentItemsCache;
-        if (equipmentCache.isEmpty()) {
+        if (equipmentItemsCache.isEmpty()) {
             sb.append("\tNo equipment requirements registered.\n");
         } else {
-            for (Map.Entry<EquipmentInventorySlot, LinkedHashSet<LogicalRequirement>> entry : equipmentCache.entrySet()) {
-                sb.append("\t").append(entry.getKey().name()).append(":\n");
-                for (LogicalRequirement logicalReq : entry.getValue()) {
-                    sb.append("\t\t").append(formatLogicalRequirement(logicalReq, "\t\t")).append("\n");
+            for (Map.Entry<TaskContext, Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>>> contextEntry : equipmentItemsCache.entrySet()) {
+                if (!contextEntry.getValue().isEmpty()) {
+                    sb.append("\tContext: ").append(contextEntry.getKey()).append("\n");
+                    for (Map.Entry<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> slotEntry : contextEntry.getValue().entrySet()) {
+                        sb.append("\t\t").append(slotEntry.getKey().name()).append(":\n");
+                        for (ItemRequirement itemReq : slotEntry.getValue()) {
+                            sb.append("\t\t\t").append(itemReq.getName()).append(" (ID: ").append(itemReq.getId()).append(")\n");
+                        }
+                    }
                 }
             }
         }
         sb.append("\n");
         
         // Display Inventory Slot Requirements
-        sb.append("=== INVENTORY SLOT REQUIREMENTS ===\n");
-        Map<Integer, LinkedHashSet<LogicalRequirement>> inventorySlotCache = inventorySlotRequirementsCache;
+        sb.append("=== INVENTORY SLOT REQUIREMENTS (PRE-Schedule)===\n");
+        Map<Integer, OrRequirement> inventorySlotCache = getInventorySlotLogicalRequirements(TaskContext.PRE_SCHEDULE);
         if (inventorySlotCache.isEmpty()) {
             sb.append("\tNo specific inventory slot requirements registered.\n");
         } else {
-            for (Map.Entry<Integer, LinkedHashSet<LogicalRequirement>> entry : inventorySlotCache.entrySet()) {
+            for (Map.Entry<Integer, OrRequirement> entry : inventorySlotCache.entrySet()) {
                 String slotName = entry.getKey() == -1 ? "ANY_SLOT" : "SLOT_" + entry.getKey();
                 sb.append("\t").append(slotName).append(":\n");
-                for (LogicalRequirement logicalReq : entry.getValue()) {
-                    sb.append("\t\t").append(formatLogicalRequirement(logicalReq, "\t\t")).append("\n");
-                }
+                sb.append("\t\t").append(formatLogicalRequirement(entry.getValue(), "\t\t")).append("\n");
             }
         }
         sb.append("\n");
         
         // Display Shop Requirements
         sb.append("=== SHOP REQUIREMENTS ===\n");
-        LinkedHashSet<LogicalRequirement> shopCache = shopRequirementsCache;
-        if (shopCache.isEmpty()) {
-            sb.append("\tNo shop requirements registered.\n");
-        } else {
-            for (LogicalRequirement logicalReq : shopCache) {
-                sb.append("\t").append(formatLogicalRequirement(logicalReq, "\t")).append("\n");
+        boolean hasShop = false;
+        for (Map.Entry<TaskContext, LinkedHashSet<OrRequirement>> contextEntry : shopRequirementsCache.entrySet()) {
+            if (!contextEntry.getValue().isEmpty()) {
+                hasShop = true;
+                sb.append("\tContext: ").append(contextEntry.getKey()).append("\n");
+                for (OrRequirement orReq : contextEntry.getValue()) {
+                    sb.append("\t\t").append(formatLogicalRequirement(orReq, "\t\t")).append("\n");
+                }
             }
+        }
+        if (!hasShop) {
+            sb.append("\tNo shop requirements registered.\n");
         }
         sb.append("\n");
         
         // Display Loot Requirements
         sb.append("=== LOOT REQUIREMENTS ===\n");
-        LinkedHashSet<LogicalRequirement> lootCache = lootRequirementsCache;
-        if (lootCache.isEmpty()) {
-            sb.append("\tNo loot requirements registered.\n");
-        } else {
-            for (LogicalRequirement logicalReq : lootCache) {
-                sb.append("\t").append(formatLogicalRequirement(logicalReq, "\t")).append("\n");
+        boolean hasLoot = false;
+        for (Map.Entry<TaskContext, LinkedHashSet<OrRequirement>> contextEntry : lootRequirementsCache.entrySet()) {
+            if (!contextEntry.getValue().isEmpty()) {
+                hasLoot = true;
+                sb.append("\tContext: ").append(contextEntry.getKey()).append("\n");
+                for (OrRequirement orReq : contextEntry.getValue()) {
+                    sb.append("\t\t").append(formatLogicalRequirement(orReq, "\t\t")).append("\n");
+                }
             }
+        }
+        if (!hasLoot) {
+            sb.append("\tNo loot requirements registered.\n");
         }
         sb.append("\n");
         
         // Display Conditional Requirements
         sb.append("=== CONDITIONAL REQUIREMENTS ===\n");
-        LinkedHashSet<ConditionalRequirement> conditionalCache = conditionalItemRequirementsCache;
-        if (conditionalCache.isEmpty()) {
-            sb.append("\tNo conditional requirements registered.\n");
-        } else {
-            for (ConditionalRequirement conditionalReq : conditionalCache) {
-                sb.append(formatConditionalRequirement(conditionalReq, "\t")).append("\n");
+        boolean hasConditional = false;
+        for (Map.Entry<TaskContext, LinkedHashSet<ConditionalRequirement>> contextEntry : conditionalItemRequirementsCache.entrySet()) {
+            if (!contextEntry.getValue().isEmpty()) {
+                hasConditional = true;
+                sb.append("\tContext: ").append(contextEntry.getKey()).append("\n");
+                for (ConditionalRequirement conditionalReq : contextEntry.getValue()) {
+                    sb.append("\t\t").append(formatConditionalRequirement(conditionalReq, "\t\t")).append("\n");
+                }
             }
+        }
+        if (!hasConditional) {
+            sb.append("\tNo conditional requirements registered.\n");
         }
         sb.append("\n");
         
@@ -2148,7 +2559,7 @@ public class RequirementRegistry {
      * @param context The schedule context to display (PRE_SCHEDULE or POST_SCHEDULE)
      * @return A formatted string showing cached requirements for the context
      */
-    public String getDetailedCacheStringForContext(ScheduleContext context) {
+    public String getDetailedCacheStringForContext(TaskContext context) {
         StringBuilder sb = new StringBuilder();
         if (context == null) {
             sb.append("Invalid context provided.\n");
@@ -2165,26 +2576,28 @@ public class RequirementRegistry {
         
         // Display Equipment Requirements by Slot for this context
         sb.append("=== EQUIPMENT REQUIREMENTS BY SLOT ===\n");
-        Map<EquipmentInventorySlot, LogicalRequirement> equipmentCache = getEquipmentLogicalRequirements(context);
+        Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> equipmentCache = getEquipmentRequirements(context);
         if (equipmentCache.isEmpty()) {
             sb.append("\tNo equipment requirements for context: ").append(context.name()).append("\n");
         } else {
             hasAnyRequirements = true;
-            for (Map.Entry<EquipmentInventorySlot, LogicalRequirement> entry : equipmentCache.entrySet()) {
+            for (Map.Entry<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> entry : equipmentCache.entrySet()) {
                 sb.append("\t").append(entry.getKey().name()).append(":\n");
-                sb.append("\t\t").append(formatLogicalRequirement(entry.getValue(), "\t\t")).append("\n");
+                for (ItemRequirement itemReq : entry.getValue()) {
+                    sb.append("\t\t").append(itemReq.getName()).append(" (ID: ").append(itemReq.getId()).append(")\n");
+                }
             }
         }
         sb.append("\n");
         
         // Display Inventory Slot Requirements for this context
         sb.append("=== INVENTORY SLOT REQUIREMENTS ===\n");
-        Map<Integer, LogicalRequirement> inventorySlotCache = getAllInventorySlotRequirements(context);
+        Map<Integer, OrRequirement> inventorySlotCache = getInventorySlotLogicalRequirements(context);
         if (inventorySlotCache.isEmpty()) {
             sb.append("\tNo inventory slot requirements for context: ").append(context.name()).append("\n");
         } else {
             hasAnyRequirements = true;
-            for (Map.Entry<Integer, LogicalRequirement> entry : inventorySlotCache.entrySet()) {
+            for (Map.Entry<Integer, OrRequirement> entry : inventorySlotCache.entrySet()) {
                 String slotName = entry.getKey() == -1 ? "ANY_SLOT" : "SLOT_" + entry.getKey();
                 sb.append("\t").append(slotName).append(":\n");
                 sb.append("\t\t").append(formatLogicalRequirement(entry.getValue(), "\t\t")).append("\n");
@@ -2194,13 +2607,12 @@ public class RequirementRegistry {
         
         // Display Shop Requirements for this context
         sb.append("=== SHOP REQUIREMENTS ===\n");
-        LinkedHashSet<LogicalRequirement> shopCache = getStandardShopLogicalRequirements();
-        List<LogicalRequirement> contextShopReqs = LogicalRequirement.filterByContext(new ArrayList<>(shopCache), context);
-        if (contextShopReqs.isEmpty()) {
+        LinkedHashSet<OrRequirement> shopCache = getShopRequirements(context);
+        if (shopCache.isEmpty()) {
             sb.append("\tNo shop requirements for context: ").append(context.name()).append("\n");
         } else {
             hasAnyRequirements = true;
-            for (LogicalRequirement logicalReq : contextShopReqs) {
+            for (OrRequirement logicalReq : shopCache) {
                 sb.append("\t").append(formatLogicalRequirement(logicalReq, "\t")).append("\n");
             }
         }
@@ -2208,13 +2620,12 @@ public class RequirementRegistry {
         
         // Display Loot Requirements for this context
         sb.append("=== LOOT REQUIREMENTS ===\n");
-        LinkedHashSet<LogicalRequirement> lootCache = getStandardLootLogicalRequirements();
-        List<LogicalRequirement> contextLootReqs = LogicalRequirement.filterByContext(new ArrayList<>(lootCache), context);
-        if (contextLootReqs.isEmpty()) {
+        LinkedHashSet<OrRequirement> lootCache = getLootRequirements(context);
+        if (lootCache.isEmpty()) {
             sb.append("\tNo loot requirements for context: ").append(context.name()).append("\n");
         } else {
             hasAnyRequirements = true;
-            for (LogicalRequirement logicalReq : contextLootReqs) {
+            for (OrRequirement logicalReq : lootCache) {
                 sb.append("\t").append(formatLogicalRequirement(logicalReq, "\t")).append("\n");
             }
         }
@@ -2240,7 +2651,7 @@ public class RequirementRegistry {
         boolean hasSpellbook = false;
         boolean hasLocation = false;
         
-        if (context == ScheduleContext.PRE_SCHEDULE || context == ScheduleContext.BOTH) {
+        if (context == TaskContext.PRE_SCHEDULE || context == TaskContext.BOTH) {
             if (preScheduleSpellbookRequirement != null) {
                 sb.append("\tPre-Schedule Spellbook: ").append(preScheduleSpellbookRequirement.getName()).append("\n");
                 hasSpellbook = true;
@@ -2253,7 +2664,7 @@ public class RequirementRegistry {
             }
         }
         
-        if (context == ScheduleContext.POST_SCHEDULE || context == ScheduleContext.BOTH) {
+        if (context == TaskContext.POST_SCHEDULE || context == TaskContext.BOTH) {
             if (postScheduleSpellbookRequirement != null) {
                 sb.append("\tPost-Schedule Spellbook: ").append(postScheduleSpellbookRequirement.getName()).append("\n");
                 hasSpellbook = true;
@@ -2349,12 +2760,30 @@ public class RequirementRegistry {
                 itemReq.getAmount(),
                 itemReq.getPriority().name(), 
                 itemReq.getRating(),
-                itemReq.getScheduleContext().name());
+                itemReq.getTaskContext().name());
         }
         return String.format("%s [%s, Rating: %d] - %s", 
                 req.getName(), 
                 req.getPriority().name(), 
                 req.getRating(),
-                req.getScheduleContext().name());
+                req.getTaskContext().name());
+    }
+
+        /**
+     * Gets all ConditionalRequirements for a specific schedule context that are NOT just item requirements alone.
+     * This is used to process only 'mixed' or complex conditional requirements (not simple item wrappers).
+     *
+     * @param context The schedule context to filter by
+     * @return List of ConditionalRequirements that are not just item requirements
+     */
+    public List<ConditionalRequirement> getMixedConditionalRequirements(TaskContext context) {
+        List<ConditionalRequirement> all = getRequirements(ConditionalRequirement.class, context);
+        List<ConditionalRequirement> mixed = new ArrayList<>();
+        for (ConditionalRequirement req : all) {
+            if (!req.containsOnlyItemRequirements()) {
+                mixed.add(req);
+            }
+        }
+        return mixed;
     }
 }

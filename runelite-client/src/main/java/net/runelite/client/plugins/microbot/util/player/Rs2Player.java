@@ -392,6 +392,9 @@ public class Rs2Player {
      * @return {@code true} if the player is interacting with another entity, {@code false} otherwise.
      */
     public static boolean isInteracting() {
+        if (Microbot.getClient().getLocalPlayer() == null) {
+            return false;
+        }
         return Optional.of(Microbot.getClient().getLocalPlayer().isInteracting()).orElse(false);
     }
 

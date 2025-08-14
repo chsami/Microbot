@@ -49,52 +49,45 @@ public class SchedulableExamplePrePostScheduleTasks extends AbstractPrePostSched
         StringBuilder logBuilder = new StringBuilder();
         logBuilder.append("SchedulableExample: Executing custom pre-schedule tasks...\n");
         
-        try {
-            // Check if pre/post requirements are enabled
-            if (!examplePlugin.getConfig().enablePrePostRequirements()) {
-                logBuilder.append("  Pre/Post requirements are disabled - skipping custom pre-schedule tasks\n");
-                log.info(logBuilder.toString());
-                return true;
-            }
-            
-            // Get comprehensive validation summary from RequirementRegistry
-            logBuilder.append("\n=== PRE-SCHEDULE REQUIREMENTS VALIDATION ===\n");
-            String validationSummary = requirements.getRegistry().getValidationSummary(net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext.PRE_SCHEDULE);
-            logBuilder.append(validationSummary).append("\n");
-            
-            // Get concise status for quick reference
-            String statusSummary = requirements.getRegistry().getValidationStatusSummary(net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext.PRE_SCHEDULE);
-            logBuilder.append("Status Summary: ").append(statusSummary).append("\n\n");
-            
-            // Validate critical mandatory requirements
-            boolean allMandatoryMet = requirements.getRegistry().getAllRequirements().stream()
-                    .filter(req -> req.getPriority() == net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority.MANDATORY)
-                    .filter(req -> req.isPreSchedule())
-                    .allMatch(net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement::isFulfilled);
-            
-            if (!allMandatoryMet) {
-                logBuilder.append("⚠️  WARNING: Some mandatory pre-schedule requirements are not fulfilled\n");
-                logBuilder.append("  Continuing execution for testing purposes, but this may affect plugin performance\n");
-            } else {
-                logBuilder.append("✓ All mandatory pre-schedule requirements are properly fulfilled\n");
-            }
-            
-            // Note about standard requirements handling
-            logBuilder.append("\n--- Infrastructure Notes ---\n");
-            logBuilder.append("  Standard requirements (equipment, spellbook, location) are fulfilled by parent class\n");
-            logBuilder.append("  Custom plugin-specific preparation logic can be added here\n");
-            logBuilder.append("  Validation summary shows overall requirement status for this context\n");
-            
-            logBuilder.append("\nCustom pre-schedule tasks completed successfully");
+        // Check if pre/post requirements are enabled
+        if (!examplePlugin.getConfig().enablePrePostRequirements()) {
+            logBuilder.append("  Pre/Post requirements are disabled - skipping custom pre-schedule tasks\n");
             log.info(logBuilder.toString());
-            
             return true;
-            
-        } catch (Exception e) {
-            logBuilder.append("ERROR: Exception during custom pre-schedule tasks: ").append(e.getMessage());
-            log.error(logBuilder.toString(), e);
-            return false;
         }
+        
+        // Get comprehensive validation summary from RequirementRegistry
+        logBuilder.append("\n=== PRE-SCHEDULE REQUIREMENTS VALIDATION ===\n");
+        String validationSummary = requirements.getRegistry().getValidationSummary(net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext.PRE_SCHEDULE);
+        logBuilder.append(validationSummary).append("\n");
+        
+        // Get concise status for quick reference
+        String statusSummary = requirements.getRegistry().getValidationStatusSummary(net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext.PRE_SCHEDULE);
+        logBuilder.append("Status Summary: ").append(statusSummary).append("\n\n");
+        
+        // Validate critical mandatory requirements
+        boolean allMandatoryMet = requirements.getRegistry().getAllRequirements().stream()
+                .filter(req -> req.getPriority() == net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority.MANDATORY)
+                .filter(req -> req.isPreSchedule())
+                .allMatch(net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement::isFulfilled);
+        
+        if (!allMandatoryMet) {
+            logBuilder.append("⚠️  WARNING: Some mandatory pre-schedule requirements are not fulfilled\n");
+            logBuilder.append("  Continuing execution for testing purposes, but this may affect plugin performance\n");
+        } else {
+            logBuilder.append("✓ All mandatory pre-schedule requirements are properly fulfilled\n");
+        }
+        
+        // Note about standard requirements handling
+        logBuilder.append("\n--- Infrastructure Notes ---\n");
+        logBuilder.append("  Standard requirements (equipment, spellbook, location) are fulfilled by parent class\n");
+        logBuilder.append("  Custom plugin-specific preparation logic can be added here\n");
+        logBuilder.append("  Validation summary shows overall requirement status for this context\n");
+        
+        logBuilder.append("\nCustom pre-schedule tasks completed successfully");
+        log.info(logBuilder.toString());
+        
+        return true;
     }
     
     /**
@@ -110,82 +103,65 @@ public class SchedulableExamplePrePostScheduleTasks extends AbstractPrePostSched
         StringBuilder logBuilder = new StringBuilder();
         logBuilder.append("SchedulableExample: Executing custom post-schedule tasks...\n");
         
-        try {
-            // Check if pre/post requirements are enabled
-            if (!examplePlugin.getConfig().enablePrePostRequirements()) {
-                logBuilder.append("  Pre/Post requirements are disabled - skipping custom post-schedule tasks\n");
-                log.info(logBuilder.toString());
-                return true;
-            }
-            
-            // Get comprehensive validation summary from RequirementRegistry for post-schedule context
-            logBuilder.append("\n=== POST-SCHEDULE REQUIREMENTS VALIDATION ===\n");
-            String validationSummary = requirements.getRegistry().getValidationSummary(net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext.POST_SCHEDULE);
-            logBuilder.append(validationSummary).append("\n");
-            
-            // Get concise status for quick reference
-            String statusSummary = requirements.getRegistry().getValidationStatusSummary(net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext.POST_SCHEDULE);
-            logBuilder.append("Status Summary: ").append(statusSummary).append("\n\n");
-            
-            // Session completion summary
-            logBuilder.append("--- Session Completion Summary ---\n");
-            
-            // Overall requirements processed during the session
-            int totalRequirements = requirements.getRegistry().getAllRequirements().size();
-            int externalRequirements = requirements.getRegistry().getExternalRequirements(net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext.BOTH).size();
-            
-            logBuilder.append("  Total requirements processed: ").append(totalRequirements).append("\n");
-            if (externalRequirements > 0) {
-                logBuilder.append("  External requirements: ").append(externalRequirements).append("\n");
-            }
-            
-            // Validate post-schedule mandatory requirements
-            boolean allPostMandatoryMet = requirements.getRegistry().getAllRequirements().stream()
-                    .filter(req -> req.getPriority() == net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority.MANDATORY)
-                    .filter(req -> req.isPostSchedule())
-                    .allMatch(net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement::isFulfilled);
-            
-            if (!allPostMandatoryMet) {
-                logBuilder.append("⚠️  WARNING: Some mandatory post-schedule requirements are not fulfilled\n");
-            } else if (requirements.getRegistry().getAllRequirements().stream().anyMatch(req -> req.getPriority() == net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority.MANDATORY && req.isPostSchedule())) {
-                logBuilder.append("✓ All mandatory post-schedule requirements are properly fulfilled\n");
-            }
-            
-            // Custom cleanup operations for the example plugin
-            logBuilder.append("\n--- Custom Plugin Cleanup ---\n");
-            logBuilder.append("  ✓ Example-specific inventory cleanup completed\n");
-            logBuilder.append("  ✓ Example-specific session data saved\n");
-            logBuilder.append("  ✓ Plugin state reset to initial configuration\n");
-            
-            // Note about standard requirements handling
-            logBuilder.append("\n--- Infrastructure Notes ---\n");
-            logBuilder.append("  Standard requirements (location, spellbook restoration) will be fulfilled by parent class\n");
-            logBuilder.append("  Custom plugin-specific cleanup logic has been executed\n");
-            logBuilder.append("  Validation summary shows overall requirement status for post-schedule context\n");
-            
-            logBuilder.append("\nCustom post-schedule tasks completed successfully");
+        // Check if pre/post requirements are enabled
+        if (!examplePlugin.getConfig().enablePrePostRequirements()) {
+            logBuilder.append("  Pre/Post requirements are disabled - skipping custom post-schedule tasks\n");
             log.info(logBuilder.toString());
-            
             return true;
-            
-        } catch (Exception e) {
-            logBuilder.append("ERROR: Exception during custom post-schedule tasks: ").append(e.getMessage());
-            log.error(logBuilder.toString(), e);
-            return false;
         }
+        
+        // Get comprehensive validation summary from RequirementRegistry for post-schedule context
+        logBuilder.append("\n=== POST-SCHEDULE REQUIREMENTS VALIDATION ===\n");
+        String validationSummary = requirements.getRegistry().getValidationSummary(net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext.POST_SCHEDULE);
+        logBuilder.append(validationSummary).append("\n");
+        
+        // Get concise status for quick reference
+        String statusSummary = requirements.getRegistry().getValidationStatusSummary(net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext.POST_SCHEDULE);
+        logBuilder.append("Status Summary: ").append(statusSummary).append("\n\n");
+        
+        // Session completion summary
+        logBuilder.append("--- Session Completion Summary ---\n");
+        
+        // Overall requirements processed during the session
+        int totalRequirements = requirements.getRegistry().getAllRequirements().size();
+        int externalRequirements = requirements.getRegistry().getExternalRequirements(net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext.BOTH).size();
+        
+        logBuilder.append("  Total requirements processed: ").append(totalRequirements).append("\n");
+        if (externalRequirements > 0) {
+            logBuilder.append("  External requirements: ").append(externalRequirements).append("\n");
+        }
+        
+        // Validate post-schedule mandatory requirements
+        boolean allPostMandatoryMet = requirements.getRegistry().getAllRequirements().stream()
+                .filter(req -> req.getPriority() == net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority.MANDATORY)
+                .filter(req -> req.isPostSchedule())
+                .allMatch(net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement::isFulfilled);
+        
+        if (!allPostMandatoryMet) {
+            logBuilder.append("⚠️  WARNING: Some mandatory post-schedule requirements are not fulfilled\n");
+        } else if (requirements.getRegistry().getAllRequirements().stream().anyMatch(req -> req.getPriority() == net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority.MANDATORY && req.isPostSchedule())) {
+            logBuilder.append("✓ All mandatory post-schedule requirements are properly fulfilled\n");
+        }
+        
+        // Custom cleanup operations for the example plugin
+        logBuilder.append("\n--- Custom Plugin Cleanup ---\n");
+        logBuilder.append("  ✓ Example-specific inventory cleanup completed\n");
+        logBuilder.append("  ✓ Example-specific session data saved\n");
+        logBuilder.append("  ✓ Plugin state reset to initial configuration\n");
+        
+        // Note about standard requirements handling
+        logBuilder.append("\n--- Infrastructure Notes ---\n");
+        logBuilder.append("  Standard requirements (location, spellbook restoration) will be fulfilled by parent class\n");
+        logBuilder.append("  Custom plugin-specific cleanup logic has been executed\n");
+        logBuilder.append("  Validation summary shows overall requirement status for post-schedule context\n");
+        
+        logBuilder.append("\nCustom post-schedule tasks completed successfully");
+        log.info(logBuilder.toString());
+        
+        return true;
     }
     
 
-    /**
-     * Determines if the plugin is currently running under scheduler control.
-     * This affects whether pre/post schedule tasks should be executed.
-     * 
-     * @return true if running under scheduler control, false otherwise
-     */
-    @Override
-    protected String getConfigGroupName() {
-        return "SchedulableExample";
-    }
     
     /**
      * Implementation of the abstract method from AbstractPrePostScheduleTasks.

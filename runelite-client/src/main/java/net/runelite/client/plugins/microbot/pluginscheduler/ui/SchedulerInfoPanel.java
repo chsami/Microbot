@@ -146,9 +146,8 @@ public class SchedulerInfoPanel extends JPanel {
         // Create login button
         loginButton = createCompactButton("Login", new Color(33, 150, 243)); // Blue
         loginButton.addActionListener(e -> {            
-            // Attempt login
             SwingUtilities.invokeLater(() -> {
-                plugin.startLoginMonitoringThread();                                
+                plugin.toggleManualLogin();
             });
         });
         buttonPanel.add(loginButton);
@@ -495,11 +494,35 @@ public class SchedulerInfoPanel extends JPanel {
         stopSchedulerButton.setToolTipText(
             isActive ? "Stop the scheduler" : "Scheduler is not running");
             
-        // Login button is only enreportFinishedabled when not actively running and not waiting for login
-        loginButton.setEnabled((!isActive || 
-            (state != SchedulerState.WAITING_FOR_LOGIN && 
-             state != SchedulerState.LOGIN)) && !Microbot.isLoggedIn());
-        loginButton.setToolTipText("Log in to the game");
+        // login/logout button logic - only allow in scheduling/waiting states or manual login active
+        boolean isInManualLoginState = state == SchedulerState.MANUAL_LOGIN_ACTIVE;
+        boolean isInSchedulingState = state == SchedulerState.SCHEDULING || state == SchedulerState.WAITING_FOR_SCHEDULE;
+        boolean canUseManualLogin = isInManualLoginState || isInSchedulingState || 
+                                   state == SchedulerState.BREAK || state == SchedulerState.PLAYSCHEDULE_BREAK;
+        
+        loginButton.setEnabled(canUseManualLogin && state != SchedulerState.WAITING_FOR_LOGIN && state != SchedulerState.LOGIN);
+        
+        // update button text and tooltip based on current state
+        String buttonText;
+        String loginTooltip;
+        
+        if (isInManualLoginState) {
+            buttonText = "Logout";
+            loginTooltip = "logout and resume automatic break handling";
+        } else if (Microbot.isLoggedIn()) {
+            buttonText = "Logout";
+            loginTooltip = "logout manually (will switch to manual login mode)";
+        } else {
+            buttonText = "Login";
+            if (plugin.isOnBreak()) {
+                loginTooltip = "login manually (will interrupt break and pause break handling)";
+            } else {
+                loginTooltip = "login manually (will pause automatic break handling)";
+            }
+        }
+        
+        loginButton.setText(buttonText);
+        loginButton.setToolTipText(loginTooltip);
         
        
         

@@ -4,7 +4,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.P
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.registry.RequirementRegistry;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.state.TaskExecutionState;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
@@ -268,41 +268,41 @@ public class RequirementsStatusPanel extends JPanel {
             // Filter requirements based on current execution phase
             if (currentPhase == TaskExecutionState.ExecutionPhase.PRE_SCHEDULE) {
                 // Show PRE_SCHEDULE and BOTH requirements
-                relevantRequirements = registry.getStandardRequirements(ScheduleContext.PRE_SCHEDULE).stream()
+                relevantRequirements = registry.getRequirements(TaskContext.PRE_SCHEDULE).stream()
                     .collect(ArrayList::new, (list, req) -> {
                         if (!list.contains(req)) list.add(req);
                     }, ArrayList::addAll);
                 
-                registry.getExternalRequirements(ScheduleContext.PRE_SCHEDULE).stream()
+                registry.getExternalRequirements(TaskContext.PRE_SCHEDULE).stream()
                     .filter(req -> !relevantRequirements.contains(req))
                     .forEach(relevantRequirements::add);
                 
                 // Add BOTH requirements, excluding duplicates
-                registry.getStandardRequirements(ScheduleContext.BOTH).stream()
+                registry.getRequirements(TaskContext.BOTH).stream()
                     .filter(req -> !relevantRequirements.contains(req))
                     .forEach(relevantRequirements::add);
                     
-                registry.getExternalRequirements(ScheduleContext.BOTH).stream()
+                registry.getExternalRequirements(TaskContext.BOTH).stream()
                     .filter(req -> !relevantRequirements.contains(req))
                     .forEach(relevantRequirements::add);
                     
             } else if (currentPhase == TaskExecutionState.ExecutionPhase.POST_SCHEDULE) {
                 // Show POST_SCHEDULE and BOTH requirements
-                relevantRequirements = registry.getStandardRequirements(ScheduleContext.POST_SCHEDULE).stream()
+                relevantRequirements = registry.getRequirements(TaskContext.POST_SCHEDULE).stream()
                     .collect(ArrayList::new, (list, req) -> {
                         if (!list.contains(req)) list.add(req);
                     }, ArrayList::addAll);
                 
-                registry.getExternalRequirements(ScheduleContext.POST_SCHEDULE).stream()
+                registry.getExternalRequirements(TaskContext.POST_SCHEDULE).stream()
                     .filter(req -> !relevantRequirements.contains(req))
                     .forEach(relevantRequirements::add);
                 
                 // Add BOTH requirements, excluding duplicates
-                registry.getStandardRequirements(ScheduleContext.BOTH).stream()
+                registry.getRequirements(TaskContext.BOTH).stream()
                     .filter(req -> !relevantRequirements.contains(req))
                     .forEach(relevantRequirements::add);
                     
-                registry.getExternalRequirements(ScheduleContext.BOTH).stream()
+                registry.getExternalRequirements(TaskContext.BOTH).stream()
                     .filter(req -> !relevantRequirements.contains(req))
                     .forEach(relevantRequirements::add);
                     
@@ -314,7 +314,7 @@ public class RequirementsStatusPanel extends JPanel {
                     }, ArrayList::addAll);
                 
                 // Add external requirements for all contexts, excluding duplicates
-                java.util.Arrays.stream(ScheduleContext.values())
+                java.util.Arrays.stream(TaskContext.values())
                     .flatMap(context -> registry.getExternalRequirements(context).stream())
                     .filter(req -> !relevantRequirements.contains(req))
                     .forEach(relevantRequirements::add);
@@ -327,7 +327,7 @@ public class RequirementsStatusPanel extends JPanel {
                 }, ArrayList::addAll);
             
             // Add external requirements for all contexts, excluding duplicates
-            java.util.Arrays.stream(ScheduleContext.values())
+            java.util.Arrays.stream(TaskContext.values())
                 .flatMap(context -> registry.getExternalRequirements(context).stream())
                 .filter(req -> !relevantRequirements.contains(req))
                 .forEach(relevantRequirements::add);

@@ -20,7 +20,6 @@ public class PluginScheduleEntryPostScheduleTaskEvent {
      *
      * @param plugin The plugin that should start post-schedule tasks
      * @param stopDateTime The time when the plugin was stopped
-     * @param wasSuccessful Whether the plugin run was successful
      */
     public PluginScheduleEntryPostScheduleTaskEvent(Plugin plugin, ZonedDateTime stopDateTime) {
         this.plugin = plugin;

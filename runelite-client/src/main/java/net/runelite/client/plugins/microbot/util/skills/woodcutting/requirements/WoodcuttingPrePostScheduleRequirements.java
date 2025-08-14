@@ -8,7 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.PrePostScheduleRequirements;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.data.ItemRequirementCollection;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationOption;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.ResourceLocationOption;
@@ -57,7 +57,7 @@ public class WoodcuttingPrePostScheduleRequirements extends PrePostScheduleRequi
                 selectedTree, minTreeSpawns);
         
         if (bestLocation == null) {
-            log.warn("No accessible locations found with minimum {} tree spawns for {}", 
+            log.warn("No accessible locations found with minimum {} tree spawns for {} we select a accessible location instead", 
                      minTreeSpawns, selectedTree);
             // Fall back to any accessible location
             List<ResourceLocationOption> accessibleLocations = WoodcuttingTreeLocations.getAccessibleLocationsForTree(selectedTree);
@@ -100,7 +100,7 @@ public class WoodcuttingPrePostScheduleRequirements extends PrePostScheduleRequi
                 10, // Acceptable distance from tree location
                 true, // Use transports for efficient travel
                 -1, // No specific world required, can be any world
-                ScheduleContext.PRE_SCHEDULE,
+                TaskContext.PRE_SCHEDULE,
                 RequirementPriority.MANDATORY,
                 9, // High rating since location is critical for woodcutting
                 String.format("Must be at a suitable %s location with at least %d tree spawns", 
@@ -137,11 +137,11 @@ public class WoodcuttingPrePostScheduleRequirements extends PrePostScheduleRequi
         this.getRegistry().clear();
         // Register complete outfit and equipment collections using ItemRequirementCollection        
         // Woodcutting axes - progression-based from bronze to crystal/3rd age
-        ItemRequirementCollection.registerWoodcuttingAxes(this, RequirementPriority.MANDATORY, ScheduleContext.PRE_SCHEDULE, -1);  // -1 for no inventory slot means the axe can be placed in any inventory slot, and also be equipped, 
+        ItemRequirementCollection.registerWoodcuttingAxes(this, RequirementPriority.MANDATORY, TaskContext.PRE_SCHEDULE, -1);  // -1 for no inventory slot means the axe can be placed in any inventory slot, and also be equipped, 
         
         // Lumberjack outfit - provides XP bonus for woodcutting
         // Example: Skip head slot if user prefers to wear something else (like slayer helmet)
-        ItemRequirementCollection.registerLumberjackOutfit(this, RequirementPriority.RECOMMENDED, 10, ScheduleContext.PRE_SCHEDULE, false, false, false, false);        
+        ItemRequirementCollection.registerLumberjackOutfit(this, RequirementPriority.RECOMMENDED, 10, TaskContext.PRE_SCHEDULE, false, false, false, false);        
 
         // Two approaches for location requirements:
         
@@ -155,11 +155,9 @@ public class WoodcuttingPrePostScheduleRequirements extends PrePostScheduleRequi
         } else {
             return false; // Initialization failed if no suitable locations found
            
-        }
-        
+        }        
         // Set post-schedule location requirements - go to bank after woodcutting
-        this.register(new LocationRequirement(BankLocation.GRAND_EXCHANGE, true, -1,ScheduleContext.POST_SCHEDULE, RequirementPriority.RECOMMENDED));
-        this.setInitialized(true);
+        this.register(new LocationRequirement(BankLocation.GRAND_EXCHANGE, true, -1,TaskContext.POST_SCHEDULE, RequirementPriority.RECOMMENDED));
         return this.isInitialized();
     }
     
@@ -208,7 +206,6 @@ public class WoodcuttingPrePostScheduleRequirements extends PrePostScheduleRequi
     @Override
     public void reset() {
         this.getRegistry().clear(); // Clear the registry to remove all requirements
-        this.setInitialized(false); // Mark as uninitialized
         initializeRequirements(); // Reinitialize requirements  
     }
 }

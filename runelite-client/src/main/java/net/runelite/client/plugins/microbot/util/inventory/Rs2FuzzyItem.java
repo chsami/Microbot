@@ -81,6 +81,20 @@ public class Rs2FuzzyItem {
         
         return count;
     }
+    public static int getFuzzyInventoryQuantity(int itemId, boolean includeUncharged) {
+        int count = 0;
+        
+        // Count ID-based variations
+        Collection<Integer> variations = InventorySetupsVariationMapping.getVariations(itemId);
+        for (int variationId : variations) {
+            count += Rs2Inventory.itemQuantity(variationId);
+        }
+        
+        // Count name-based charged variants
+        count += getChargedInventoryQuantity(itemId, includeUncharged, 0, MAX_CHARGES);
+        
+        return count;
+    }
     
     /**
      * Gets the total fuzzy count of an item in bank, including all ID variations and charged variants.
@@ -134,6 +148,28 @@ public class Rs2FuzzyItem {
      * @return total count of charged items in the specified range
      */
     public static int getChargedInventoryCount(int itemId, boolean includeUncharged, int minCharges, int maxCharges) {
+        String baseName = getBaseItemName(itemId);
+        if (baseName == null || baseName.isEmpty()) {
+            return 0;
+        }
+        
+        int count = 0;
+        List<Rs2ItemModel> inventoryItems = Rs2Inventory.all();
+        
+        for (Rs2ItemModel item : inventoryItems) {
+            String itemName = item.getName();
+            if (isChargedVariant(itemName, baseName, includeUncharged)) {
+                int charges = getChargeFromName(itemName);
+                if (charges >= minCharges && charges <= maxCharges) {
+                    count += 1;
+                }
+            }
+        }
+        
+        return count;
+    }
+
+    public static int getChargedInventoryQuantity(int itemId, boolean includeUncharged, int minCharges, int maxCharges) {
         String baseName = getBaseItemName(itemId);
         if (baseName == null || baseName.isEmpty()) {
             return 0;
@@ -482,6 +518,21 @@ public class Rs2FuzzyItem {
         
         return names;
     }
+
+    /**
+     * Returns the base item name (without charges) from a fuzzy item name or already cleaned name.
+     * For example, "Amulet of glory(6)" -> "Amulet of glory", "Amulet of glory" -> "Amulet of glory"
+     *
+     * @param itemName the fuzzy or clean item name
+     * @return the base item name without charges
+     */
+    public static String getBaseItemNameFromString(String itemName) {
+        if (itemName == null || itemName.isEmpty()) {
+            return "";
+        }
+        // Remove charge information in parentheses at the end, e.g., "(6)"
+        return itemName.replaceAll("\\(\\d+\\)$", "").trim();
+    }
     
     // Helper methods
     
@@ -508,7 +559,7 @@ public class Rs2FuzzyItem {
             return "";
         }
         return Microbot.getClientThread().runOnClientThreadOptional(() -> 
-            itemManager.getItemComposition(itemId).getName()   
+            Microbot.getItemManager().getItemComposition(itemId).getName()   
         ).orElse("");
     }
     

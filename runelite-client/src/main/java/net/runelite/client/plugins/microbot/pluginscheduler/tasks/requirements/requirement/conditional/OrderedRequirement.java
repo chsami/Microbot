@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
 
 import java.util.ArrayList;
@@ -113,14 +113,14 @@ public class OrderedRequirement extends Requirement {
      * @param priority Priority level for this ordered requirement
      * @param rating Effectiveness rating (1-10)
      * @param description Human-readable description
-     * @param scheduleContext When this requirement should be fulfilled
+     * @param TaskContext When this requirement should be fulfilled
      * @param allowSkipOptional Whether optional steps can be skipped on failure
      * @param resumeFromLastFailed Whether to resume from the last failed step or restart
      */
     public OrderedRequirement(RequirementPriority priority, int rating, String description, 
-                            ScheduleContext scheduleContext, boolean allowSkipOptional, 
+                            TaskContext taskContext, boolean allowSkipOptional, 
                             boolean resumeFromLastFailed) {
-        super(RequirementType.CONDITIONAL, priority, rating, description, List.of(), scheduleContext);
+        super(RequirementType.CONDITIONAL, priority, rating, description, List.of(), taskContext);
         this.allowSkipOptional = allowSkipOptional;
         this.resumeFromLastFailed = resumeFromLastFailed;
     }
@@ -131,10 +131,10 @@ public class OrderedRequirement extends Requirement {
      * @param priority Priority level for this ordered requirement
      * @param rating Effectiveness rating (1-10)
      * @param description Human-readable description
-     * @param scheduleContext When this requirement should be fulfilled
+     * @param TaskContext When this requirement should be fulfilled
      */
-    public OrderedRequirement(RequirementPriority priority, int rating, String description, ScheduleContext scheduleContext) {
-        this(priority, rating, description, scheduleContext, true, true);
+    public OrderedRequirement(RequirementPriority priority, int rating, String description, TaskContext taskContext) {
+        this(priority, rating, description, taskContext, true, true);
     }
     
     /**
@@ -200,7 +200,7 @@ public class OrderedRequirement extends Requirement {
         
         // Execute steps in strict order starting from determined index
         for (int i = startIndex; i < steps.size(); i++) {
-            if( scheduledFuture!= null && scheduledFuture.isCancelled() || scheduledFuture.isDone()) {
+            if( scheduledFuture!= null && (scheduledFuture.isCancelled() || scheduledFuture.isDone())) {
                 log.warn("Ordered requirement execution cancelled or completed prematurely: {}", getName());
                 return false; // Stop if the scheduled future is cancelled or done
             }
@@ -381,7 +381,7 @@ public class OrderedRequirement extends Requirement {
         sb.append("Type:\t\t\t").append(getRequirementType().name()).append("\n");
         sb.append("Priority:\t\t").append(getPriority().name()).append("\n");
         sb.append("Rating:\t\t\t").append(getRating()).append("/10\n");
-        sb.append("Schedule Context:\t").append(getScheduleContext().name()).append("\n");
+        sb.append("Schedule Context:\t").append(getTaskContext().name()).append("\n");
         sb.append("Allow Skip Optional:\t").append(allowSkipOptional ? "Yes" : "No").append("\n");
         sb.append("Resume from Failed:\t").append(resumeFromLastFailed ? "Yes" : "No").append("\n");
         sb.append("Total Steps:\t\t").append(steps.size()).append("\n");

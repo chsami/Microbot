@@ -6,7 +6,7 @@ import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * OR logical requirement - at least one child requirement must be fulfilled.
@@ -41,14 +42,18 @@ public class OrRequirement extends LogicalRequirement {
      * @param priority Priority level of this logical requirement
      * @param rating Effectiveness rating (1-10)
      * @param description Human-readable description
-     * @param scheduleContext When this requirement should be fulfilled
+     * @param TaskContext When this requirement should be fulfilled
      * @param allowedChildType The class type that child requirements must be
      * @param requirements Child requirements - any one of these can fulfill the OR requirement
      */
     public OrRequirement(RequirementPriority priority, int rating, String description, 
-                        ScheduleContext scheduleContext, Class<? extends Requirement> allowedChildType,
+                        TaskContext taskContext, Class<? extends Requirement> allowedChildType,
                         Requirement... requirements) {
-        super(RequirementType.OR_LOGICAL, priority, rating, description, scheduleContext, allowedChildType, requirements);
+        super(RequirementType.OR_LOGICAL, priority, rating, description, taskContext, allowedChildType, requirements);
+    }
+     public OrRequirement(RequirementPriority priority, int rating, String description, 
+                        TaskContext taskContext, Class<? extends Requirement> allowedChildType) {
+        super(RequirementType.OR_LOGICAL, priority, rating, description, taskContext, allowedChildType);
     }
     
     /**
@@ -57,12 +62,45 @@ public class OrRequirement extends LogicalRequirement {
      * @param priority Priority level of this logical requirement
      * @param rating Effectiveness rating (1-10)
      * @param description Human-readable description
-     * @param scheduleContext When this requirement should be fulfilled
+     * @param TaskContext When this requirement should be fulfilled
      * @param requirements Child requirements - any one of these can fulfill the OR requirement
      */
     public OrRequirement(RequirementPriority priority, int rating, String description, 
-                        ScheduleContext scheduleContext, Requirement... requirements) {
-        super(RequirementType.OR_LOGICAL, priority, rating, description, scheduleContext, null, requirements);
+                        TaskContext taskContext, Requirement... requirements) {
+        super(RequirementType.OR_LOGICAL, priority, rating, description, taskContext, 
+              inferChildTypeFromRequirements(requirements), requirements);
+    }
+    
+    /**
+     * Helper method to infer the child type from the provided requirements.
+     * If all requirements are ItemRequirements, returns ItemRequirement.class.
+     * Otherwise returns the most common compatible type.
+     */
+    private static Class<? extends Requirement> inferChildTypeFromRequirements(Requirement... requirements) {
+        if (requirements.length == 0) {
+            return Requirement.class; // Default fallback
+        }
+        
+        // Check if all requirements are ItemRequirements
+        boolean allItemRequirements = true;
+        for (Requirement req : requirements) {
+            if (!(req instanceof ItemRequirement)) {
+                allItemRequirements = false;
+                break;
+            }
+        }
+        
+        if (allItemRequirements) {
+            return ItemRequirement.class;
+        }
+        
+        // Fallback to first requirement's class
+        Requirement firstReq = requirements[0];
+        if (firstReq instanceof LogicalRequirement) {
+            return ((LogicalRequirement) firstReq).getAllowedChildType();
+        } else {
+            return firstReq.getClass();
+        }
     }
     
     /**
@@ -70,12 +108,12 @@ public class OrRequirement extends LogicalRequirement {
      * 
      * @param priority Priority level of this logical requirement  
      * @param description Human-readable description
-     * @param scheduleContext When this requirement should be fulfilled
+     * @param TaskContext When this requirement should be fulfilled
      * @param requirements Child requirements - any one of these can fulfill the OR requirement
      */
-    public OrRequirement(RequirementPriority priority, String description, ScheduleContext scheduleContext, 
+    public OrRequirement(RequirementPriority priority, String description, TaskContext taskContext, 
                         Requirement... requirements) {
-        this(priority, 5, description, scheduleContext, requirements);
+        this(priority, 5, description, taskContext, requirements);
     }
     
     /**
@@ -271,6 +309,59 @@ public class OrRequirement extends LogicalRequirement {
         
         return sb.toString();
     }
+
+    
+     /**
+     * Merges this OrRequirement with another OrRequirement.
+     * Combines all child requirements, merges ids, and sets rating to highest of both.
+     *
+     * @param other The OrRequirement to merge with
+     * @return A new merged OrRequirement
+     */    
+    public static OrRequirement merge(OrRequirement first, OrRequirement other) {
+        if (!(other instanceof OrRequirement)) {
+            throw new IllegalArgumentException("Can only merge with another OrRequirement");
+        }
+        OrRequirement otherOr = (OrRequirement) other;
+        // Combine all children
+        List<Requirement> mergedChildren = new ArrayList<>(first.childRequirements);
+        for (Requirement req : otherOr.childRequirements) {
+            if (!mergedChildren.contains(req)) {
+                mergedChildren.add(req);
+            }
+        }
+        // Merge ids
+        List<Integer> mergedIds = new ArrayList<>();
+        if (first.getIds() != null) mergedIds.addAll(first.getIds());
+        if (otherOr.ids != null) {
+            for (Integer id : otherOr.ids) {
+                if (!mergedIds.contains(id)) mergedIds.add(id);
+            }
+        }
+        // Find max rating
+        int maxRating = first.getRating();
+        for (Requirement req : mergedChildren) {
+            if (req.getRating() > maxRating) {
+                maxRating = req.getRating();
+            }
+        }
+        // Use the first non-empty description, or combine
+        String desc = (first.getDescription() != null && !first.getDescription().isEmpty()) ? first.getDescription() : otherOr.description;
+        if (desc == null || desc.isEmpty()) desc = "Merged OR Requirement";
+        // Use the higher priority
+        RequirementPriority mergedPriority = first.getPriority().ordinal() < otherOr.priority.ordinal() ? first.getPriority() : otherOr.priority;
+        // Use the most general allowedChildType
+        Class<? extends Requirement> mergedType = first.allowedChildType.isAssignableFrom(otherOr.allowedChildType) ? first.allowedChildType : otherOr.allowedChildType;
+        // Create merged OrRequirement
+        OrRequirement merged = new OrRequirement(mergedPriority, maxRating, desc, first.getTaskContext(), mergedType);
+        merged.ids = mergedIds;
+        for (Requirement req : mergedChildren) {
+            merged.addRequirement(req);
+        }
+        
+        return merged;
+    }
+   
     
     // ==============================
     // Static Convenience Functions
@@ -290,7 +381,7 @@ public class OrRequirement extends LogicalRequirement {
      * @param priority Priority level of the OR requirement
      * @param baseRating Base rating for non-charged items (1-10)
      * @param description Description of the OR requirement
-     * @param scheduleContext When this requirement should be fulfilled
+     * @param TaskContext When this requirement should be fulfilled
      * @param skillToUse Skill required to use items (optional)
      * @param minimumLevelToUse Minimum level required to use items (optional)
      * @param skillToEquip Skill required to equip items (optional)
@@ -301,7 +392,7 @@ public class OrRequirement extends LogicalRequirement {
      */
     public static OrRequirement fromItemIds(List<Integer> itemIds, int amount, EquipmentInventorySlot equipmentSlot,
                                           int inventorySlot, RequirementPriority priority, int baseRating,
-                                          String description, ScheduleContext scheduleContext,
+                                          String description, TaskContext taskContext,
                                           Skill skillToUse, Integer minimumLevelToUse,
                                           Skill skillToEquip, Integer minimumLevelToEquip,
                                           boolean preferLowerCharge, boolean chargedItemsOnly) {
@@ -345,7 +436,7 @@ public class OrRequirement extends LogicalRequirement {
             // Create individual ItemRequirement for this item
             ItemRequirement itemReq = new ItemRequirement(
                 itemId, amount, equipmentSlot, inventorySlot,
-                priority, rating, itemName, scheduleContext,
+                priority, rating, itemName, taskContext,
                 skillToUse, minimumLevelToUse, skillToEquip, minimumLevelToEquip, preferLowerCharge
             );
             
@@ -355,7 +446,7 @@ public class OrRequirement extends LogicalRequirement {
         // Convert to array for constructor
         Requirement[] reqArray = itemRequirements.toArray(new Requirement[0]);
         
-        return new OrRequirement(priority, baseRating, description, scheduleContext, reqArray);
+        return new OrRequirement(priority, baseRating, description, taskContext, reqArray);
     }
     
     /**
@@ -369,15 +460,15 @@ public class OrRequirement extends LogicalRequirement {
      * @param priority Priority level of the OR requirement
      * @param baseRating Base rating for items (1-10)
      * @param description Description of the OR requirement
-     * @param scheduleContext When this requirement should be fulfilled
+     * @param TaskContext When this requirement should be fulfilled
      * @param preferLowerCharge Whether to prefer lower charge variants
      * @return OrRequirement with ItemRequirement children
      */
     public static OrRequirement fromItemIds(List<Integer> itemIds, int amount, EquipmentInventorySlot equipmentSlot,
                                           int inventorySlot, RequirementPriority priority, int baseRating,
-                                          String description, ScheduleContext scheduleContext, boolean preferLowerCharge) {
+                                          String description, TaskContext taskContext, boolean preferLowerCharge) {
         return fromItemIds(itemIds, amount, equipmentSlot, inventorySlot, priority, baseRating,
-                          description, scheduleContext, null, null, null, null, preferLowerCharge, false);
+                          description, taskContext, null, null, null, null, preferLowerCharge, false);
     }
     
     /**
@@ -389,16 +480,16 @@ public class OrRequirement extends LogicalRequirement {
      * @param priority Priority level of the OR requirement
      * @param baseRating Base rating for items (1-10)
      * @param description Description of the OR requirement
-     * @param scheduleContext When this requirement should be fulfilled
+     * @param TaskContext When this requirement should be fulfilled
      * @param preferLowerCharge Whether to prefer lower charge variants
      * @param itemIds Varargs list of item IDs
      * @return OrRequirement with ItemRequirement children
      */
     public static OrRequirement fromItemIds(int amount, EquipmentInventorySlot equipmentSlot, int inventorySlot,
                                           RequirementPriority priority, int baseRating, String description,
-                                          ScheduleContext scheduleContext, boolean preferLowerCharge, Integer... itemIds) {
+                                          TaskContext taskContext, boolean preferLowerCharge, Integer... itemIds) {
         return fromItemIds(Arrays.asList(itemIds), amount, equipmentSlot, inventorySlot, priority, baseRating,
-                          description, scheduleContext, preferLowerCharge);
+                          description, taskContext, preferLowerCharge);
     }
     
     /**

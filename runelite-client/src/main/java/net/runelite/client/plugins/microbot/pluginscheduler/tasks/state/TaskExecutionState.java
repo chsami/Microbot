@@ -53,8 +53,7 @@ public class TaskExecutionState {
     private volatile ExecutionPhase currentPhase = ExecutionPhase.IDLE;
     @Getter
     private volatile ExecutionState currentState = ExecutionState.STARTING;
-    @Getter
-    private volatile FulfillmentStep currentStep = null;
+    
     @Getter
     private volatile String currentDetails = null;
     @Getter
@@ -70,9 +69,11 @@ public class TaskExecutionState {
     
     // Individual requirement tracking within steps
     @Getter
+    private volatile FulfillmentStep currentStep = null;
+    @Getter
     private volatile Object currentRequirement = null; // The specific requirement being processed
     @Getter
-    private volatile String currentRequirementName = null; // Human-readable name of current requirement
+    private volatile String currentRequirementName = null; // readable name of current requirement
     @Getter
     private volatile int currentRequirementIndex = 0; // Current requirement index within step
     @Getter
@@ -95,26 +96,39 @@ public class TaskExecutionState {
     /**
      * Updates the current execution phase and resets step tracking
      */
-    public synchronized void updatePhase(ExecutionPhase phase) {
+    public synchronized void update(ExecutionPhase phase, ExecutionState state) {
         this.currentPhase = phase;
-        this.currentState = ExecutionState.STARTING;
-        this.currentStep = null;
-        this.currentDetails = null;
-        this.hasError = false;
-        this.errorMessage = null;
-        this.currentStepNumber = 0;
-        this.totalSteps = 0;
-        
+        this.currentState = state;        
         // Mark phase as started
         switch (phase) {
             case PRE_SCHEDULE:
                 this.hasPreTaskStarted = true;
+                if (state == ExecutionState.COMPLETED|| state == ExecutionState.FAILED || state == ExecutionState.ERROR) {
+                    this.hasPreTaskCompleted = true;
+                } else {
+                    this.hasPreTaskCompleted = false;
+                }
                 break;
             case MAIN_EXECUTION:
+                if (!hasPreTaskCompleted) {
+                    log.warn("Main execution started without pre-schedule tasks. Ensure pre-tasks are executed first.");
+                }else{
+                    hasPreTaskCompleted = true;
+                }
                 this.hasMainTaskStarted = true;
+                if (state == ExecutionState.COMPLETED|| state == ExecutionState.FAILED || state == ExecutionState.ERROR) {
+                    this.hasMainTaskCompleted = true;
+                } else {
+                    this.hasMainTaskCompleted = false;
+                }
                 break;
             case POST_SCHEDULE:
                 this.hasPostTaskStarted = true;
+                if (state == ExecutionState.COMPLETED|| state == ExecutionState.FAILED || state == ExecutionState.ERROR) {
+                    this.hasPostTaskCompleted = true;
+                } else {
+                    this.hasPostTaskCompleted = false;
+                }
                 break;
             default:
                 break;
@@ -123,35 +137,7 @@ public class TaskExecutionState {
         log.debug("Execution phase updated to: {}", phase.getDisplayName());
     }
     
-    /**
-     * Updates the current execution state within the current phase
-     */
-    public synchronized void updateState(ExecutionState state, String details) {
-        this.currentState = state;
-        this.currentDetails = details;
-        
-        if (state == ExecutionState.ERROR || state == ExecutionState.FAILED) {
-            this.hasError = true;
-            this.errorMessage = details;
-        } else if (state == ExecutionState.COMPLETED) {
-            // Mark current phase as completed
-            switch (currentPhase) {
-                case PRE_SCHEDULE:
-                    this.hasPreTaskCompleted = true;
-                    break;
-                case MAIN_EXECUTION:
-                    this.hasMainTaskCompleted = true;
-                    break;
-                case POST_SCHEDULE:
-                    this.hasPostTaskCompleted = true;
-                    break;
-                default:
-                    break;
-            }
-        }
-        
-        log.debug("Execution state updated to: {} - {}", state.getDisplayName(), details);
-    }
+  
     
     /**
      * Updates the current fulfillment step and progress
@@ -204,20 +190,7 @@ public class TaskExecutionState {
             requirementName, requirementIndex, totalRequirementsInStep);
     }
     
-    /**
-     * Marks the current step as completed and moves to the next step
-     */
-    public synchronized void completeCurrentStep() {
-        if (currentStep != null) {
-            FulfillmentStep nextStep = currentStep.getNext();
-            if (nextStep != null) {
-                updateFulfillmentStep(nextStep, "Starting " + nextStep.getDescription());
-            } else {
-                // All fulfillment steps completed
-                updateState(ExecutionState.COMPLETED, "All requirements fulfilled");
-            }
-        }
-    }
+
     
     /**
      * Marks the current execution as failed with an error message
@@ -242,7 +215,36 @@ public class TaskExecutionState {
         
         log.error("Execution marked as error: {}", errorMessage);
     }
-    
+    public synchronized void markCompleted() {
+        this.currentState = ExecutionState.COMPLETED;
+        this.hasError = false;
+        this.errorMessage = null;
+        this.currentDetails = "Execution completed successfully";
+        
+        log.info("Execution marked as completed");
+    }
+    public synchronized void markIdle() {
+        this.currentPhase = ExecutionPhase.IDLE;
+        this.currentState = ExecutionState.STARTING;
+        this.currentStep = null;
+        this.currentDetails = null;
+        this.hasError = false;
+        this.errorMessage = null;
+        this.currentStepNumber = 0;
+        this.totalSteps = 0;
+        
+        log.info("Execution state marked as idle");
+    }
+    public synchronized void clearRequirementState() {
+        // Clear individual requirement tracking
+        this.currentStep = null;
+        this.currentRequirement = null;
+        this.currentRequirementName = null;
+        this.currentRequirementIndex = 0;
+        this.totalRequirementsInStep = 0;
+        
+        log.debug("Current requirement state cleared");
+    }
     /**
      * Clears all state and returns to idle
      */
@@ -280,7 +282,7 @@ public class TaskExecutionState {
             clear();
         }
         
-        log.info("Task execution state reset - tasks can now be executed again");
+        log.debug("\n\t##Task execution state reset - tasks can now be executed again##");
     }
     
     /**
@@ -385,7 +387,7 @@ public class TaskExecutionState {
      * Checks if post-schedule tasks can be executed (main task completed, post not started or already completed)
      */
     public boolean canExecutePostTasks() {
-        return hasMainTaskCompleted && (!hasPostTaskStarted || hasPostTaskCompleted);
+        return hasMainTaskStarted && (!hasPostTaskStarted || hasPostTaskCompleted);
     }
     
     /**

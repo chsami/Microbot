@@ -10,13 +10,15 @@ import net.runelite.client.plugins.microbot.nateplugins.skilling.natefishing.Aut
 import net.runelite.client.plugins.microbot.nateplugins.skilling.natefishing.enums.Fish;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.PrePostScheduleRequirements;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.data.ItemRequirementCollection;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationOption;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.logical.OrRequirement;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.skills.fishing.data.FishingSpotLocations;
 import net.runelite.client.plugins.microbot.util.skills.fishing.enums.FishType;
 
@@ -112,7 +114,7 @@ public class FishingPrePostScheduleRequirements extends PrePostScheduleRequireme
             BankLocation.GRAND_EXCHANGE, 
             true, //use transportation ->banked items
             -1,
-            ScheduleContext.POST_SCHEDULE,
+            TaskContext.POST_SCHEDULE,
             RequirementPriority.RECOMMENDED 
             
         );
@@ -147,7 +149,7 @@ public class FishingPrePostScheduleRequirements extends PrePostScheduleRequireme
                     10, 
                     true,
                     -1,
-                    ScheduleContext.PRE_SCHEDULE,
+                    TaskContext.PRE_SCHEDULE,
                     RequirementPriority.MANDATORY,  
                     9,  
                     "Fishing location for " + fishType.name()
@@ -165,7 +167,7 @@ public class FishingPrePostScheduleRequirements extends PrePostScheduleRequireme
                 10, 
                 true,
                 -1,
-                ScheduleContext.PRE_SCHEDULE,
+                TaskContext.PRE_SCHEDULE,
                 RequirementPriority.MANDATORY,  
                 9,               
                 "Minnows fishing location"
@@ -184,7 +186,7 @@ public class FishingPrePostScheduleRequirements extends PrePostScheduleRequireme
                 10, 
                 true,
                 -1,
-                ScheduleContext.PRE_SCHEDULE,
+                TaskContext.PRE_SCHEDULE,
                 RequirementPriority.MANDATORY,  
                 9,        
                 "Cave eel fishing location"
@@ -202,7 +204,7 @@ public class FishingPrePostScheduleRequirements extends PrePostScheduleRequireme
                      10, 
                 true,
                 -1,
-                ScheduleContext.PRE_SCHEDULE,
+                TaskContext.PRE_SCHEDULE,
                 RequirementPriority.MANDATORY,  
                 9,       
                 "Barbarian fishing location"
@@ -220,7 +222,7 @@ public class FishingPrePostScheduleRequirements extends PrePostScheduleRequireme
                     10, 
                 true,
                 -1,
-                ScheduleContext.PRE_SCHEDULE,
+                TaskContext.PRE_SCHEDULE,
                 RequirementPriority.MANDATORY,  
                 9,       
                 "Aerial fishing location"
@@ -259,7 +261,7 @@ public class FishingPrePostScheduleRequirements extends PrePostScheduleRequireme
                     RequirementPriority.MANDATORY, 
                     9, // High rating for primary equipment
                     "Primary fishing equipment for " + fishType.name(),
-                    ScheduleContext.PRE_SCHEDULE,
+                    TaskContext.PRE_SCHEDULE,
                     null, // No skill to use
                     null, // No minimum level to use
                     null, // No skill to equip
@@ -272,13 +274,13 @@ public class FishingPrePostScheduleRequirements extends PrePostScheduleRequireme
                 if (fishType.getSecondaryEquipmentId() != -1) {
                     ItemRequirement baitReq = new ItemRequirement(
                         fishType.getSecondaryEquipmentId(), 
-                        50, // Reasonable amount of bait
+                        Rs2Bank.count(fishType.getSecondaryEquipmentId()) + Rs2Inventory.itemQuantity(fishType.getSecondaryEquipmentId()),
                         null, // No equipment slot - goes in inventory
                         -1, // No specific inventory slot
                         RequirementPriority.MANDATORY, 
                         8,
                         "Bait for " + fishType.name(),
-                        ScheduleContext.PRE_SCHEDULE,
+                        TaskContext.PRE_SCHEDULE,
                         null, // No skill to use
                         null, // No minimum level to use
                         null, // No skill to equip
@@ -301,7 +303,7 @@ public class FishingPrePostScheduleRequirements extends PrePostScheduleRequireme
             RequirementPriority.MANDATORY, 
             9,
             "Small fishing net for minnows",
-            ScheduleContext.PRE_SCHEDULE,
+            TaskContext.PRE_SCHEDULE,
             null, // No skill to use
             null, // No minimum level to use
             null, // No skill to equip
@@ -321,7 +323,7 @@ public class FishingPrePostScheduleRequirements extends PrePostScheduleRequireme
             RequirementPriority.MANDATORY, 
             9,
             "Fishing rod for eel fishing",
-            ScheduleContext.PRE_SCHEDULE,
+            TaskContext.PRE_SCHEDULE,
             null, // No skill to use
             null, // No minimum level to use
             null, // No skill to equip
@@ -332,13 +334,13 @@ public class FishingPrePostScheduleRequirements extends PrePostScheduleRequireme
         
         ItemRequirement baitReq = new ItemRequirement(
             ItemID.FISHING_BAIT, 
-            100, 
+            Rs2Bank.count(ItemID.FISHING_BAIT) + Rs2Inventory.itemQuantity(ItemID.FISHING_BAIT), 
             null, // No equipment slot - goes in inventory
             -1, // No specific inventory slot
             RequirementPriority.MANDATORY, 
             8,
             "Fishing bait for eel fishing",
-            ScheduleContext.PRE_SCHEDULE,
+            TaskContext.PRE_SCHEDULE,
             null, // No skill to use
             null, // No minimum level to use
             null, // No skill to equip
@@ -358,7 +360,7 @@ public class FishingPrePostScheduleRequirements extends PrePostScheduleRequireme
             RequirementPriority.MANDATORY, 
             9,
             "Barbarian fishing rod",
-            ScheduleContext.PRE_SCHEDULE,
+            TaskContext.PRE_SCHEDULE,
             null, // No skill to use
             null, // No minimum level to use
             null, // No skill to equip
@@ -370,13 +372,13 @@ public class FishingPrePostScheduleRequirements extends PrePostScheduleRequireme
         // Feathers for bait
         ItemRequirement featherReq = new ItemRequirement(
             ItemID.FEATHER, 
-            200, 
+            Rs2Bank.count(ItemID.FEATHER) + Rs2Inventory.itemQuantity(ItemID.FEATHER), 
             null, // No equipment slot - goes in inventory
             null, // No specific inventory slot
             RequirementPriority.MANDATORY, 
             8,
             "Feathers for barbarian fishing bait",
-            ScheduleContext.PRE_SCHEDULE,
+            TaskContext.PRE_SCHEDULE,
             null, // No skill to use
             null, // No minimum level to use
             null, // No skill to equip
@@ -396,7 +398,7 @@ public class FishingPrePostScheduleRequirements extends PrePostScheduleRequireme
             RequirementPriority.MANDATORY, 
             9,
             "Cormorant's glove for aerial fishing",
-            ScheduleContext.PRE_SCHEDULE,
+            TaskContext.PRE_SCHEDULE,
             null, // No skill to use
             null, // No minimum level to use
             null, // No skill to equip
@@ -413,7 +415,7 @@ public class FishingPrePostScheduleRequirements extends PrePostScheduleRequireme
             RequirementPriority.MANDATORY, 
             8,
             "Fishing rod for aerial fishing",
-            ScheduleContext.PRE_SCHEDULE,
+            TaskContext.PRE_SCHEDULE,
             null, // No skill to use
             null, // No minimum level to use
             null, // No skill to equip
@@ -431,7 +433,7 @@ public class FishingPrePostScheduleRequirements extends PrePostScheduleRequireme
             RequirementPriority.RECOMMENDED, 
             7,
             "King worms for aerial fishing bait",
-            ScheduleContext.PRE_SCHEDULE,
+            TaskContext.PRE_SCHEDULE,
             null, // No skill to use
             null, // No minimum level to use
             null, // No skill to equip
@@ -447,30 +449,13 @@ public class FishingPrePostScheduleRequirements extends PrePostScheduleRequireme
             this, 
             RequirementPriority.RECOMMENDED, 
             10, 
-            ScheduleContext.PRE_SCHEDULE, 
+            TaskContext.PRE_SCHEDULE, 
             false, // Don't skip hat
             false, // Don't skip top
             false, // Don't skip legs
             true   // Skip boots (allow graceful boots)
         );
         
-        // Food for longer fishing sessions
-        ItemRequirement foodReq = new ItemRequirement(
-            ItemID.LOBSTER, 
-            5, 
-            null, // No equipment slot - goes in inventory
-            null, // No specific inventory slot
-            RequirementPriority.RECOMMENDED, 
-            6,
-            "Food for healing during fishing",
-            ScheduleContext.PRE_SCHEDULE,
-            null, // No skill to use
-            null, // No minimum level to use
-            null, // No skill to equip
-            null, // No minimum level to equip
-            false // Not fuzzy
-        );
-        this.register(foodReq);
     }
     
     /**
@@ -513,10 +498,5 @@ public class FishingPrePostScheduleRequirements extends PrePostScheduleRequireme
         }
     }
 
-    @Override
-    public void reset() {
-        this.getRegistry().clear(); // Clear the registry to remove all requirements
-        this.setInitialized(false); // Mark as uninitialized
-        initializeRequirements(); // Reinitialize requirements  
-    }
+   
 }

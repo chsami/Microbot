@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 import io.reactivex.rxjava3.functions.BooleanSupplier;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.coords.WorldPoint;
@@ -21,7 +22,7 @@ import net.runelite.client.plugins.microbot.VoxPlugins.schedulable.example.enums
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.PrePostScheduleRequirements;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.data.ItemRequirementCollection;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.collection.LootRequirement;
@@ -55,21 +56,12 @@ import net.runelite.client.plugins.microbot.util.magic.Rs2Spellbook;
  */
 @Slf4j
 public class SchedulableExamplePrePostScheduleRequirements extends PrePostScheduleRequirements {
-    
-    private final SchedulableExampleConfig config;
+    @Setter
+    private SchedulableExampleConfig config;
     
     public SchedulableExamplePrePostScheduleRequirements(SchedulableExampleConfig config) {        
         super("SchedulableExample", "Testing", false);        
-        this.config = config;              
-        
-        // Example: Set OR requirement mode to SINGLE_TYPE for demonstration
-        // Uncomment the line below to test SINGLE_TYPE mode:
-        // setOrRequirementMode(OrRequirementMode.SINGLE_TYPE);
-        
-        // Default mode is ANY_COMBINATION (current behavior)
-        // setOrRequirementMode(OrRequirementMode.ANY_COMBINATION);
-        
-        initializeRequirements();// must be called becasue in the constroctor the requirements can not be initialized, because we have not set the config yet
+        this.config = config;                              
     }
     
     /**
@@ -83,13 +75,12 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
             return true; // Skip requirements if disabled
         }
         boolean success = true;
-        this.clearFulfillmentState();
         this.getRegistry().clear();
         // Configure spellbook requirements based on dropdown selection
         if (!config.preScheduleSpellbook().isNone()) {
             SpellbookRequirement preSpellbookRequirement = new SpellbookRequirement(
                 config.preScheduleSpellbook().getSpellbook(),
-                ScheduleContext.PRE_SCHEDULE,
+                TaskContext.PRE_SCHEDULE,
                 RequirementPriority.MANDATORY,
                 7,
                 "Pre-schedule spellbook: " + config.preScheduleSpellbook().getDisplayName()
@@ -100,7 +91,7 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
         if (!config.postScheduleSpellbook().isNone()) {
             SpellbookRequirement postSpellbookRequirement = new SpellbookRequirement(
                 config.postScheduleSpellbook().getSpellbook(),
-                ScheduleContext.POST_SCHEDULE,
+                TaskContext.POST_SCHEDULE,
                 RequirementPriority.MANDATORY,
                 7,
                 "Post-schedule spellbook: " + config.postScheduleSpellbook().getDisplayName()
@@ -121,7 +112,7 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
                         (BankLocation) config.preScheduleLocation().getOriginalLocationData(),
                         true, // use transportation
                         -1, // no specific world required
-                        ScheduleContext.PRE_SCHEDULE,
+                        TaskContext.PRE_SCHEDULE,
                         RequirementPriority.MANDATORY
                     );
                     break;
@@ -139,7 +130,7 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
                         9,
                         true, // use transportation                        
                         -1, // no specific world required
-                        ScheduleContext.PRE_SCHEDULE,
+                        TaskContext.PRE_SCHEDULE,
                         RequirementPriority.MANDATORY,
                         1,
                         "Must be at " + config.preScheduleLocation().getDisplayName() + " to begin the schedule"
@@ -161,7 +152,7 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
                         (BankLocation) config.postScheduleLocation().getOriginalLocationData(),
                         true, // use transportation
                         -1, // no specific world required
-                        ScheduleContext.POST_SCHEDULE,
+                        TaskContext.POST_SCHEDULE,
                         RequirementPriority.MANDATORY
                     );
                     break;
@@ -179,7 +170,7 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
                         10, // acceptable distance
                         true, // use transportation                
                         -1, // no specific world required        
-                        ScheduleContext.POST_SCHEDULE,
+                        TaskContext.POST_SCHEDULE,
                         RequirementPriority.MANDATORY
                     );
                     break;
@@ -222,24 +213,24 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
                 ItemID.STAFF_OF_AIR,
                 1,
                 EquipmentInventorySlot.WEAPON,
-                -1, //mus be equipped,  because equipment slot is set
+                -2, // must be equipped (equipment slot enforced)
                 RequirementPriority.MANDATORY,
                 6,
                 "Staff of Air for basic magic",
-                ScheduleContext.PRE_SCHEDULE
+                TaskContext.PRE_SCHEDULE
             ));
             ItemRequirementCollection.registerAmuletOfGlory(this, 
             RequirementPriority.MANDATORY, 4, 
-            ScheduleContext.PRE_SCHEDULE, 
+            TaskContext.PRE_SCHEDULE, 
             true);
             ItemRequirementCollection.registerRingOfDueling(this,
             RequirementPriority.MANDATORY, 4,
-            ScheduleContext.PRE_SCHEDULE,
+            TaskContext.PRE_SCHEDULE,
             true);
             ItemRequirementCollection.registerWoodcuttingAxes(this,RequirementPriority.MANDATORY,            
-            ScheduleContext.PRE_SCHEDULE,-1); // -1 for no inventory slot means the axe can be placed in a any inventory slot, and also be equipped, -2 would mean it can only be equipped
+            TaskContext.PRE_SCHEDULE,-1); // -1 for no inventory slot means the axe can be placed in a any inventory slot, and also be equipped, -2 would mean it can only be equipped
             ItemRequirementCollection.registerPickAxes(this, RequirementPriority.MANDATORY,           
-            ScheduleContext.POST_SCHEDULE);
+            TaskContext.POST_SCHEDULE);
         }
         
         // Inventory requirement - 10k coins
@@ -251,7 +242,7 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
                 RequirementPriority.RECOMMENDED,
                 8,
                 "10,000 coins for general purposes",
-                ScheduleContext.PRE_SCHEDULE
+                TaskContext.PRE_SCHEDULE
             ));
        
         
@@ -264,7 +255,7 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
                 RequirementPriority.MANDATORY,
                 5,
                 "Basic runes for magic",
-                ScheduleContext.PRE_SCHEDULE
+                TaskContext.PRE_SCHEDULE
             ));
              register( new ItemRequirement(
                 ItemID.WATERRUNE,
@@ -274,7 +265,7 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
                 RequirementPriority.RECOMMENDED,
                 5,
                 "Basic runes for magic",
-                ScheduleContext.PRE_SCHEDULE
+                TaskContext.PRE_SCHEDULE
             ));
              register( new ItemRequirement(
                 ItemID.EARTHRUNE,
@@ -284,7 +275,7 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
                 RequirementPriority.RECOMMENDED,
                 5,
                 "Basic runes for magic",
-                ScheduleContext.PRE_SCHEDULE
+                TaskContext.PRE_SCHEDULE
             ));
 
             // Basic runes for magic
@@ -295,7 +286,7 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
                 RequirementPriority.MANDATORY,
                 5,
                 "Law runes for magic",
-                ScheduleContext.PRE_SCHEDULE
+                TaskContext.PRE_SCHEDULE
             ));
             
             // ====================================================================
@@ -328,7 +319,7 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
                 RequirementPriority.MANDATORY,
                 4,
                 "Basic food for health restoration (OR requirement - any combination or single type based on mode)",
-                ScheduleContext.PRE_SCHEDULE
+                TaskContext.PRE_SCHEDULE
             ));
          }
          
@@ -412,7 +403,7 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
              RequirementPriority.MANDATORY,
              8,
              "Buy maple bows (longbow x20, shortbow x20) from Grand Exchange (pre-schedule)",
-             ScheduleContext.PRE_SCHEDULE
+             TaskContext.PRE_SCHEDULE
          );
         
          // Single multi-item SELL requirement for Brian's shop
@@ -423,7 +414,7 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
              RequirementPriority.MANDATORY,
              8,
              "Sell up to 10 maple bows per type to Brian's Archery Supplies (post-schedule)",
-             ScheduleContext.POST_SCHEDULE
+             TaskContext.POST_SCHEDULE
          );
         
          if (config.enableShopRequirement()) {
@@ -488,20 +479,19 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
                  ShopRequirement buyToolsRequirement = new ShopRequirement(
                      shopItems,
                      ShopOperation.BUY,
-                     RequirementType.INVENTORY,
+                     RequirementType.SHOP,
                      RequirementPriority.MANDATORY,
                      7,
                      "Buy hammer and bucket from nearest general store (" + nearestStore.getName() + ")",
-                     ScheduleContext.PRE_SCHEDULE
+                     TaskContext.PRE_SCHEDULE
                  );
                  
                  // Add as custom requirement to test external requirement fulfillment (step 7)
-                 this.addCustomRequirement(buyToolsRequirement, ScheduleContext.PRE_SCHEDULE);
+                 this.addCustomRequirement(buyToolsRequirement, TaskContext.PRE_SCHEDULE);
                  
                  log.info("Added custom shop requirement for hammer and bucket from: {}", nearestStore.getName());
              } else {
-                 log.warn("No general store found with both hammer and bucket items");
-                 this.getRegistry().clear();
+                 log.warn("No general store found with both hammer and bucket items");                 
                  success = false; // Mark as failure if no store found
              }
          }
@@ -520,7 +510,7 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
                     RequirementPriority.MANDATORY,
                     10,
                     staff.name() + " equipped",
-                    ScheduleContext.PRE_SCHEDULE,
+                    TaskContext.PRE_SCHEDULE,
                     null, null, null, null, false))
                 .collect(java.util.stream.Collectors.toList());
             // Helper to check if any fire staff is available in inventory or bank
@@ -528,7 +518,7 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
             OrRequirement fireStaffOrRequirement = new OrRequirement(
                 RequirementPriority.MANDATORY,
                 "Any fire staff equipped",
-                ScheduleContext.PRE_SCHEDULE,
+                TaskContext.PRE_SCHEDULE,
                 staffWithFireRunesRequirements.toArray(new ItemRequirement[0])
             );
 
@@ -539,14 +529,14 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
                 RequirementPriority.MANDATORY,
                 10,
                 "Fire runes in inventory",
-                ScheduleContext.PRE_SCHEDULE
+                TaskContext.PRE_SCHEDULE
             );
 
             ConditionalRequirement alchConditionalRequirement = new ConditionalRequirement(
                 RequirementPriority.MANDATORY,
                 10,
                 "Alching: Fire staff or fire runes",
-                ScheduleContext.PRE_SCHEDULE,
+                TaskContext.PRE_SCHEDULE,
                 false
             );
             alchConditionalRequirement
@@ -575,7 +565,7 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
 
             SpellbookRequirement normalSpellbookRequirement = new SpellbookRequirement(
                 Rs2Spellbook.MODERN,
-                ScheduleContext.PRE_SCHEDULE,
+                TaskContext.PRE_SCHEDULE,
                 RequirementPriority.MANDATORY,
                 10,
                 "Normal spellbook required for High Alchemy"
@@ -588,7 +578,7 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
                 RequirementPriority.MANDATORY,
                 10,
                 "Nature rune for alching",
-                ScheduleContext.PRE_SCHEDULE
+                TaskContext.PRE_SCHEDULE
             );
 
             this.register(alchConditionalRequirement);
@@ -617,9 +607,8 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
     protected boolean initializeRequirements() {
         if (config == null){
             return false; // Ensure config is initialized before proceeding
-        }
-        this.setInitialized (initializeConfigurableRequirements());
-        return this.isInitialized(); // Return the initialization status
+        }        
+        return initializeConfigurableRequirements();
     }
     
     /**
@@ -648,10 +637,5 @@ public class SchedulableExamplePrePostScheduleRequirements extends PrePostSchedu
         
         return sb.toString();
     }
-    @Override
-    public void reset() {
-        this.getRegistry().clear(); // Clear the registry to remove all requirements
-        this.setInitialized(false); // Mark as uninitialized
-        initializeRequirements(); // Reinitialize requirements  
-    }
+   
 }

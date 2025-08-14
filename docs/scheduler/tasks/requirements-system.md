@@ -94,7 +94,7 @@ The [`RequirementRegistry`](../../../runelite-client/src/main/java/net/runelite/
 
 ### Context Management
 
-The [`ScheduleContext`](../../../runelite-client/src/main/java/net/runelite/client/plugins/microbot/pluginscheduler/tasks/requirements/enums/ScheduleContext.java) system enables requirements to specify when they should be fulfilled:
+The [`TaskContext`](../../../runelite-client/src/main/java/net/runelite/client/plugins/microbot/pluginscheduler/tasks/requirements/enums/TaskContext.java) system enables requirements to specify when they should be fulfilled:
 
 **PRE_SCHEDULE**: Requirements fulfilled before main plugin execution begins, ensuring all prerequisites are met.
 
@@ -104,13 +104,11 @@ The [`ScheduleContext`](../../../runelite-client/src/main/java/net/runelite/clie
 
 ### Priority Framework
 
-The [`Priority`](../../../runelite-client/src/main/java/net/runelite/client/plugins/microbot/pluginscheduler/tasks/requirements/enums/Priority.java) system enables intelligent requirement prioritization:
+The [`RequirementPriority`](../../../runelite-client/src/main/java/net/runelite/client/plugins/microbot/pluginscheduler/tasks/requirements/enums/RequirementPriority.java) system enables intelligent requirement prioritization:
 
 **MANDATORY**: Requirements that must be fulfilled for plugin execution to proceed.
 
 **RECOMMENDED**: Requirements that significantly improve plugin performance but aren't essential.
-
-**OPTIONAL**: Requirements that provide quality-of-life improvements but can be skipped if unavailable.
 
 ## Advanced Features
 
@@ -118,12 +116,8 @@ The [`Priority`](../../../runelite-client/src/main/java/net/runelite/client/plug
 
 The [`OrRequirementMode`](../../../runelite-client/src/main/java/net/runelite/client/plugins/microbot/pluginscheduler/tasks/requirements/enums/OrRequirementMode.java) system provides sophisticated strategies for handling alternative requirements:
 
-**ANY_COMBINATION**: Maximum flexibility allowing any valid combination of alternatives.
-
-**BEST_AVAILABLE**: Intelligent selection of the most optimal available combination based on current resources and capabilities.
-
-**PREFER_FIRST**: Conservative approach that prefers earlier alternatives in the specification order while falling back to later options when necessary.
-
+ **ANY_COMBINATION**: The total amount can be fulfilled by any combination of items in the OR requirement. For example, if 5 food items are needed, you could have 2 lobsters + 3 swordfish.
+ **SINGLE_TYPE**: Must fulfill the entire amount with exactly one type of item from the OR requirement. For example, if 5 food items are needed, you must have exactly 5 lobsters OR 5 swordfish, but not a combination.
 ### Requirement Selection
 
 The [`RequirementSelector`](../../../runelite-client/src/main/java/net/runelite/client/plugins/microbot/pluginscheduler/tasks/requirements/util/RequirementSelector.java) provides sophisticated algorithms for choosing optimal requirement combinations when multiple options are available.

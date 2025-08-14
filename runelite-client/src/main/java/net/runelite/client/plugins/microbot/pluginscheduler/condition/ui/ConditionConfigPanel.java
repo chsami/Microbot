@@ -128,6 +128,7 @@ public class ConditionConfigPanel extends JPanel {
     private PluginScheduleEntry selectScheduledPlugin;
     // UI Controls
     private JButton resetButton;
+    private JButton resetUserConditionsButton;
     
     private JButton editButton;
     private JButton addButton;
@@ -168,12 +169,15 @@ public class ConditionConfigPanel extends JPanel {
         titleLabel.setFont(FontManager.getRunescapeBoldFont());
         titlePanel.add(titleLabel);
         
-        // Initialize reset button
+        // Initialize reset buttons
         initializeResetButton();
+        initializeResetUserConditionsButton();
         
         // Create a panel for the top buttons, aligned to the right
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         buttonPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        buttonPanel.add(resetUserConditionsButton);
+        buttonPanel.add(Box.createHorizontalStrut(5));
         buttonPanel.add(resetButton);
         
         // Add the title and buttons to the top panel
@@ -366,6 +370,52 @@ public class ConditionConfigPanel extends JPanel {
             return selectScheduledPlugin.getStartConditions();
         }
         return new ArrayList<>();
+    }
+    
+    /**
+     * Checks if the current plugin has user-defined conditions
+     * @return true if there are user-defined conditions, false otherwise
+     */
+    private boolean hasUserDefinedConditions() {
+        if (selectScheduledPlugin == null) {
+            return false;
+        }
+        
+        ConditionManager manager = getConditionManger();
+        if (manager == null) {
+            return false;
+        }
+        
+        return !manager.getUserConditions().isEmpty();
+    }
+    
+    /**
+     * Checks if conditions can be edited based on plugin state
+     * @return true if conditions can be edited, false if editing should be disabled
+     */
+    private boolean canEditConditions() {
+        if (selectScheduledPlugin == null) {
+            return false;
+        }
+        
+        // For stop conditions, disable editing when plugin is running
+        if (stopConditionPanel && selectScheduledPlugin.isRunning()) {
+            JOptionPane.showMessageDialog(this,
+                "Cannot edit stop conditions while the plugin is running.\n" +
+                "Please wait for the plugin to finish or stop it manually.",
+                "Plugin Running",
+                JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+        
+        return true;
+    }
+    // Side-effect-free variant for enablement checks
+    private boolean isEditAllowedNoDialog() {
+        if (selectScheduledPlugin == null) {
+            return false;
+        }
+        return !(stopConditionPanel && selectScheduledPlugin.isRunning());
     }
     
    
@@ -645,14 +695,28 @@ public class ConditionConfigPanel extends JPanel {
         
         // Enable/disable controls based on whether a plugin is selected
         boolean hasPlugin = (selectedPlugin != null);
+        boolean pluginRunning = hasPlugin && selectedPlugin.isRunning();
+        boolean isEditingStopConditions = stopConditionPanel;
+        boolean shouldDisableStopConditionEditing = isEditingStopConditions && pluginRunning;
         
         resetButton.setEnabled(hasPlugin);
-        editButton.setEnabled(hasPlugin);
-        addButton.setEnabled(hasPlugin);
-        removeButton.setEnabled(hasPlugin);        
-        conditionTypeComboBox.setEnabled(hasPlugin);
+        resetUserConditionsButton.setEnabled(hasPlugin && hasUserDefinedConditions());
+        
+        // Disable stop condition editing when plugin is running
+        editButton.setEnabled(hasPlugin && !shouldDisableStopConditionEditing);
+        if(addButton != null) {
+            // Only enable add button if conditions can be edited
+            addButton.setEnabled(hasPlugin && !shouldDisableStopConditionEditing);
+        }
+        if (removeButton != null) {
+            removeButton.setEnabled(hasPlugin && !shouldDisableStopConditionEditing);        
+        }
+        conditionTypeComboBox.setEnabled(hasPlugin && !shouldDisableStopConditionEditing);
         conditionList.setEnabled(hasPlugin);
         conditionTree.setEnabled(hasPlugin);
+        
+        // Update logical operation buttons based on edit restrictions
+        updateLogicalButtonStates();
         
         // Update the plugin name display
         setScheduledPluginNameLabel();
@@ -660,16 +724,21 @@ public class ConditionConfigPanel extends JPanel {
         // If a plugin is selected, load its conditions
         if (hasPlugin) {
             // Set the logic type combo box based on the plugin's condition manager
-            boolean requireAll = selectedPlugin.getStopConditionManager().requiresAll();
-            
-            // Load the conditions from the plugin
-            if (selectedPlugin.getStopConditionManager() != null) {
-                // Load conditions from the plugin's condition manager
-                loadConditions(selectedPlugin.getStopConditions(), requireAll);
+            // Safely obtain the plugin's stop-condition manager
+            ConditionManager conditionManager;
+            if (stopConditionPanel){
+                conditionManager = selectedPlugin.getStopConditionManager();// has sPlugin checks if null already
+            }else{
+                conditionManager = selectedPlugin.getStartConditionManager();
+            }
+            boolean requireAll = conditionManager != null && conditionManager.requiresAll();
+            // Load conditions using the guarded manager
+           if (conditionManager != null) {
+                loadConditions(conditionManager.getConditions(), requireAll);
             } else {
-                // Load conditions directly from the plugin
-                loadConditions(selectedPlugin.getStartConditions(), requireAll);
-            }            
+                // Fallback to empty if no manager
+                loadConditions(new ArrayList<>(), requireAll);
+            }         
         } else {
             // Clear conditions if no plugin selected
             loadConditions(new ArrayList<>(), true);
@@ -821,7 +890,7 @@ public class ConditionConfigPanel extends JPanel {
         panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         panel.setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createLineBorder(ColorScheme.MEDIUM_GRAY_COLOR),
-                "Add New Condition",
+                "Condition Editor",
                 TitledBorder.DEFAULT_JUSTIFICATION,
                 TitledBorder.DEFAULT_POSITION,
                 FontManager.getRunescapeBoldFont(),
@@ -883,16 +952,18 @@ public class ConditionConfigPanel extends JPanel {
         configScrollPane.getVerticalScrollBar().setUnitIncrement(16);
 
         // Button panel with improved spacing
-        JPanel buttonPanel = new JPanel(new GridLayout(1, 3, 5, 0));
+        JPanel buttonPanel = new JPanel(new GridLayout(1, 2, 5, 0));
         buttonPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         buttonPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
 
-        this.addButton = ConditionConfigPanelUtil.createButton("Add", ColorScheme.PROGRESS_COMPLETE_COLOR);
-        addButton.addActionListener(e -> addCurrentCondition());
-        buttonPanel.add(addButton);
-
-        this.editButton = ConditionConfigPanelUtil.createButton("Edit", ColorScheme.BRAND_ORANGE);
-        editButton.addActionListener(e -> editSelectedCondition());
+        this.editButton = ConditionConfigPanelUtil.createButton("Add", ColorScheme.PROGRESS_COMPLETE_COLOR);
+        editButton.addActionListener(e -> {
+            if ("Apply Changes".equals(editButton.getText())) {
+                editSelectedCondition();
+            } else {
+                addCurrentCondition();
+            }
+        });
         buttonPanel.add(editButton);
 
         this.removeButton = ConditionConfigPanelUtil.createButton("Remove", ColorScheme.PROGRESS_ERROR_COLOR);
@@ -937,33 +1008,57 @@ public class ConditionConfigPanel extends JPanel {
         // Group operations section
         JButton createAndButton = ConditionConfigPanelUtil.createButton("Group as AND", ColorScheme.BRAND_ORANGE);
         createAndButton.setToolTipText("Group selected conditions with AND logic");
-        createAndButton.addActionListener(e -> createLogicalGroup(true));
+        createAndButton.addActionListener(e -> {
+            if (canEditConditions()) {
+                createLogicalGroup(true);
+            }
+        });
         
         JButton createOrButton = ConditionConfigPanelUtil.createButton("Group as OR", BRAND_BLUE);
         createOrButton.setToolTipText("Group selected conditions with OR logic");
-        createOrButton.addActionListener(e -> createLogicalGroup(false));
+        createOrButton.addActionListener(e -> {
+            if (canEditConditions()) {
+                createLogicalGroup(false);
+            }
+        });
         
         // Negation button
         JButton negateButton = ConditionConfigPanelUtil.createButton("Negate", new Color(220, 50, 50));
         negateButton.setToolTipText("Negate the selected condition (toggle NOT)");
-        negateButton.addActionListener(e -> negateSelectedCondition());
+        negateButton.addActionListener(e -> {
+            if (canEditConditions()) {
+                negateSelectedCondition();
+            }
+        });
         
         
         // Convert operation buttons
         JButton convertToAndButton = ConditionConfigPanelUtil.createButton("Convert to AND", ColorScheme.BRAND_ORANGE);
         convertToAndButton.setToolTipText("Convert selected logical group to AND type");
-        convertToAndButton.addActionListener(e -> convertLogicalType(true));
+        convertToAndButton.addActionListener(e -> {
+            if (canEditConditions()) {
+                convertLogicalType(true);
+            }
+        });
         
         
         JButton convertToOrButton = ConditionConfigPanelUtil.createButton("Convert to OR", BRAND_BLUE);
         convertToOrButton.setToolTipText("Convert selected logical group to OR type");
-        convertToOrButton.addActionListener(e -> convertLogicalType(false));
+        convertToOrButton.addActionListener(e -> {
+            if (canEditConditions()) {
+                convertLogicalType(false);
+            }
+        });
         
         
         // Ungroup button
         JButton ungroupButton = ConditionConfigPanelUtil.createButton("Ungroup", ColorScheme.LIGHT_GRAY_COLOR);
         ungroupButton.setToolTipText("Remove the logical group but keep its conditions");
-        ungroupButton.addActionListener(e -> ungroupSelectedLogical());
+        ungroupButton.addActionListener(e -> {
+            if (canEditConditions()) {
+                ungroupSelectedLogical();
+            }
+        });
         
         
         // Add buttons to panel with separators
@@ -1222,15 +1317,30 @@ public class ConditionConfigPanel extends JPanel {
     
    
     private void editSelectedCondition() {
-        int selectedIndex = conditionList.getSelectedIndex();
-        if (selectedIndex < 0 || selectedIndex >= getCurrentConditions().size()) {
-            log.warn("editSelectedCondition: No condition selected or index out of bounds");
+        // Get the selected node from the tree (same as updateConditionPanelForSelectedNode)
+        DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) conditionTree.getLastSelectedPathComponent();
+        if (selectedNode == null || !(selectedNode.getUserObject() instanceof Condition)) {
+            log.warn("editSelectedCondition: No condition selected or invalid selection");
             return;
         }
         
-        // Get the selected condition and its parent logical before removal
-        List<Condition> currentConditions = getCurrentConditions();
-        Condition oldCondition = currentConditions.get(selectedIndex);
+        // Check if conditions can be edited
+        if (!canEditConditions()) {
+            return;
+        }
+        
+        // Get the selected condition from the tree node
+        Condition oldCondition = (Condition) selectedNode.getUserObject();
+        
+        // Skip logical conditions as they don't have direct UI editors
+        if (oldCondition instanceof LogicalCondition || oldCondition instanceof NotCondition) {
+            log.warn("editSelectedCondition: Cannot edit logical condition: {}", oldCondition.getDescription());
+            JOptionPane.showMessageDialog(this,
+                    "Logical conditions (AND/OR/NOT) cannot be edited directly. Edit their child conditions instead.",
+                    "Cannot Edit Logical Condition",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
         
         // Check if this is a plugin-defined condition
         ConditionManager manager = getConditionManger();
@@ -1677,25 +1787,76 @@ public class ConditionConfigPanel extends JPanel {
     
   
     private void initializeResetButton() {
-        resetButton = ConditionConfigPanelUtil.createButton("Reset Conditions", ColorScheme.PROGRESS_ERROR_COLOR);
+        resetButton = ConditionConfigPanelUtil.createButton("Reset All Conditions", ColorScheme.PROGRESS_ERROR_COLOR);
 
         resetButton.addActionListener(e -> {
             if (selectScheduledPlugin == null) return;
             
             int option = JOptionPane.showConfirmDialog(this,
-                "Are you sure you want to reset all " + (stopConditionPanel ? "stop" : "start") + " conditions?",
-                "Reset Conditions",
+                "Are you sure you want to reset all " + (stopConditionPanel ? "stop" : "start") + " conditions?\n" +
+                "This will remove both user-defined and plugin-defined conditions.",
+                "Reset All Conditions",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE);
                 
             if (option == JOptionPane.YES_OPTION) {
-                // Clear user conditions from the condition manager
+                // Clear all conditions from the condition manager
                 if (conditionUpdateCallback != null) {
                     conditionUpdateCallback.onConditionsReset(selectScheduledPlugin, stopConditionPanel);
                 }
                 
                 // Refresh the display
                 refreshDisplay();
+            }
+        });
+    }
+    
+    private void initializeResetUserConditionsButton() {
+        resetUserConditionsButton = ConditionConfigPanelUtil.createButton("Reset User Conditions", new Color(180, 120, 0));
+        resetUserConditionsButton.setToolTipText("Reset only user-defined conditions (preserves plugin conditions)");
+
+        resetUserConditionsButton.addActionListener(e -> {
+            if (selectScheduledPlugin == null) return;
+            
+            if (!hasUserDefinedConditions()) {
+                JOptionPane.showMessageDialog(this,
+                    "No user-defined conditions to reset.",
+                    "No User Conditions",
+                    JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+            
+            int option = JOptionPane.showConfirmDialog(this,
+                "Are you sure you want to reset only user-defined " + (stopConditionPanel ? "stop" : "start") + " conditions?\n" +
+                "Plugin-defined conditions will be preserved.",
+                "Reset User Conditions",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+                
+            if (option == JOptionPane.YES_OPTION) {
+                // Clear only user conditions from the condition manager
+                ConditionManager manager = getConditionManger();
+                if (manager != null) {
+                    manager.clearUserConditions();
+                    
+                    // Save changes
+                    if (conditionUpdateCallback != null) {
+                        conditionUpdateCallback.onConditionsUpdated(
+                            manager.getUserLogicalCondition(), 
+                            selectScheduledPlugin, 
+                            stopConditionPanel
+                        );
+                    }
+                }
+                
+                // Refresh the display
+                refreshDisplay();
+                
+                JOptionPane.showMessageDialog(this,
+                    "User-defined conditions have been reset.\n" +
+                    "Plugin-defined conditions remain unchanged.",
+                    "Reset Complete",
+                    JOptionPane.INFORMATION_MESSAGE);
             }
         });
     }
@@ -1862,6 +2023,12 @@ public class ConditionConfigPanel extends JPanel {
             JOptionPane.showMessageDialog(this, "No plugin selected", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
+        
+        // Check if conditions can be edited
+        if (!canEditConditions()) {
+            return;
+        }
+        
         Condition condition = getCurrentComboboxCondition();  
     
         if (condition != null) {
@@ -1985,6 +2152,11 @@ public class ConditionConfigPanel extends JPanel {
             return;
         }
         
+        // Check if conditions can be edited
+        if (!canEditConditions()) {
+            return;
+        }
+        
         Object userObject = selectedNode.getUserObject();
         if (!(userObject instanceof Condition)) {
             log.warn("Selected node is not a condition");
@@ -2081,6 +2253,11 @@ public class ConditionConfigPanel extends JPanel {
     private void updateLogicalButtonStates() {
         TreePath[] selectionPaths = conditionTree.getSelectionPaths();
         
+        // Check if we should disable editing for stop conditions when plugin is running
+        boolean pluginRunning = selectScheduledPlugin != null && selectScheduledPlugin.isRunning();
+        boolean isEditingStopConditions = stopConditionPanel;
+        boolean shouldDisableStopConditionEditing = isEditingStopConditions && pluginRunning;
+        
         // Default state - all operations disabled
         boolean canNegate = false;
         boolean canConvertToAnd = false;
@@ -2100,11 +2277,11 @@ public class ConditionConfigPanel extends JPanel {
                     getConditionManger() != null &&
                     getConditionManger().isPluginDefinedCondition(condition);
                 
-                // Can negate any condition that isn't plugin-defined
-                canNegate = !isPluginDefined;
+                // Can negate any condition that isn't plugin-defined and editing is allowed
+                canNegate = !isPluginDefined && !shouldDisableStopConditionEditing;
                 
-                // Can convert logical conditions (AND, OR) if they're not plugin-defined
-                if (condition instanceof LogicalCondition && !isPluginDefined) {
+                // Can convert logical conditions (AND, OR) if they're not plugin-defined and editing is allowed
+                if (condition instanceof LogicalCondition && !isPluginDefined && !shouldDisableStopConditionEditing) {
                     // Can convert AND to OR
                     canConvertToOr = condition instanceof AndCondition;
                     
@@ -2116,8 +2293,8 @@ public class ConditionConfigPanel extends JPanel {
                 }
             }
         }
-        // If we have multiple selections, only enable group operations
-        else if (selectionPaths != null && selectionPaths.length > 1) {
+        // If we have multiple selections, only enable group operations if editing is allowed
+        else if (selectionPaths != null && selectionPaths.length > 1 && !shouldDisableStopConditionEditing) {
             // Group operations are handled separately - don't enable other operations
         }
         
@@ -2224,14 +2401,17 @@ public class ConditionConfigPanel extends JPanel {
                                          getConditionManger()
                                             .isPluginDefinedCondition((Condition)selectedNode.getUserObject());
                 
+                // Check if editing is allowed for the current plugin state
+                boolean canEdit = isEditAllowedNoDialog();
+                
                 // Enable/disable with visual indicators for context awareness
-                configureMenuItem(negateItem, selectedNode != null && !isLogical && !isPluginDefined);
-                configureMenuItem(groupAndItem, selectedNodes.length >= 2 && !isPluginDefined);
-                configureMenuItem(groupOrItem, selectedNodes.length >= 2 && !isPluginDefined);
-                configureMenuItem(convertToAndItem, isLogical && !isAnd && !isPluginDefined);
-                configureMenuItem(convertToOrItem, isLogical && isAnd && !isPluginDefined);
-                configureMenuItem(ungroupItem, isLogical && selectedNode.getParent() != rootNode && !isPluginDefined);
-                configureMenuItem(removeItem, selectedNode != null && !isPluginDefined);
+                configureMenuItem(negateItem, selectedNode != null && !isLogical && !isPluginDefined && canEdit);
+                configureMenuItem(groupAndItem, selectedNodes.length >= 2 && !isPluginDefined && canEdit);
+                configureMenuItem(groupOrItem, selectedNodes.length >= 2 && !isPluginDefined && canEdit);
+                configureMenuItem(convertToAndItem, isLogical && !isAnd && !isPluginDefined && canEdit);
+                configureMenuItem(convertToOrItem, isLogical && isAnd && !isPluginDefined && canEdit);
+                configureMenuItem(ungroupItem, isLogical && selectedNode.getParent() != rootNode && !isPluginDefined && canEdit);
+                configureMenuItem(removeItem, selectedNode != null && !isPluginDefined && canEdit);
                 
                 // Set headers visible only if their sections have enabled items
                 boolean hasGroupOperations = groupAndItem.isEnabled() || groupOrItem.isEnabled();
@@ -2492,11 +2672,15 @@ public class ConditionConfigPanel extends JPanel {
     private void updateConditionPanelForSelectedNode() {
         DefaultMutableTreeNode node = (DefaultMutableTreeNode) conditionTree.getLastSelectedPathComponent();
         if (node == null || !(node.getUserObject() instanceof Condition)) {
+            // Reset edit button text when no valid condition is selected
+            editButton.setText("Add");
             return;
         }
         
         Condition condition = (Condition) node.getUserObject();
         if (condition instanceof LogicalCondition || condition instanceof NotCondition) {
+            // Reset edit button text for logical conditions since they can't be edited
+            editButton.setText("Add");
             return; // Skip logical conditions as they don't have direct UI editors
         }
         
@@ -2507,7 +2691,19 @@ public class ConditionConfigPanel extends JPanel {
             if (condition instanceof VarbitCondition) {
                 conditionCategoryComboBox.setSelectedItem("Varbit");
                 updateConditionTypes("Varbit");
-                conditionTypeComboBox.setSelectedItem("Varbit Value");
+                // Select a valid Varbit UI type present in the model
+                boolean varbitTypeSet = false;
+                for (int i = 0; i < conditionTypeComboBox.getItemCount(); i++) {
+                    String item = conditionTypeComboBox.getItemAt(i);
+                    if ("Collection Log - Bosses".equals(item) || "Collection Log - Minigames".equals(item)) {
+                        conditionTypeComboBox.setSelectedIndex(i);
+                        varbitTypeSet = true;
+                        break;
+                    }
+                }
+                if (!varbitTypeSet && conditionTypeComboBox.getItemCount() > 0) {
+                    conditionTypeComboBox.setSelectedIndex(0);
+                }
                 
                 updateConfigPanel();
                 JPanel localConfigPanel = (JPanel) configPanel.getClientProperty("localConditionPanel");

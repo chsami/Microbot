@@ -3,7 +3,7 @@ package net.runelite.client.plugins.microbot.pluginscheduler.tasks.overlay;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.AbstractPrePostScheduleTasks;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.PrePostScheduleRequirements;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.location.LocationRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.collection.LootRequirement;
@@ -79,9 +79,9 @@ public class PrePostScheduleTasksOverlayComponents {
         
         // Get state from either tasks or requirements (they should be synchronized)
         TaskExecutionState state = tasks.getExecutionState();
-        if (requirements != null && requirements.getExecutionState().isExecuting()) {
+        if (requirements != null && state.isExecuting()) {
             // If requirements are actively being fulfilled, use that state instead
-            state = requirements.getExecutionState();
+            state = tasks.getExecutionState();
         }
         
         String displayStatus = state.getDisplayStatus();
@@ -166,14 +166,14 @@ public class PrePostScheduleTasksOverlayComponents {
      * @param context The schedule context (PRE_SCHEDULE or POST_SCHEDULE)
      * @return List of LineComponents showing location status
      */
-    public static List<LineComponent> createLocationStatusComponents(PrePostScheduleRequirements requirements, ScheduleContext context) {
+    public static List<LineComponent> createLocationStatusComponents(PrePostScheduleRequirements requirements, TaskContext context) {
         List<LineComponent> components = new ArrayList<>();
         
         if (requirements == null) {
             return components;
         }
         
-        List<LocationRequirement> locationReqs = requirements.getRegistry().getStandardRequirements(LocationRequirement.class, context);
+        List<LocationRequirement> locationReqs = requirements.getRegistry().getRequirements(LocationRequirement.class, context);
         if (locationReqs.isEmpty()) {
             return components;
         }
@@ -186,7 +186,7 @@ public class PrePostScheduleTasksOverlayComponents {
         int distance = currentLocation != null && targetLocation != null ? 
             currentLocation.distanceTo(targetLocation) : -1;
         
-        String contextLabel = context == ScheduleContext.PRE_SCHEDULE ? "Pre-Loc" : "Post-Loc";
+        String contextLabel = context == TaskContext.PRE_SCHEDULE ? "Pre-Loc" : "Post-Loc";
         
         components.add(LineComponent.builder()
             .left(contextLabel + ":")
@@ -214,20 +214,20 @@ public class PrePostScheduleTasksOverlayComponents {
      * @param context The schedule context
      * @return List of LineComponents showing spellbook status
      */
-    public static List<LineComponent> createSpellbookStatusComponents(PrePostScheduleRequirements requirements, ScheduleContext context) {
+    public static List<LineComponent> createSpellbookStatusComponents(PrePostScheduleRequirements requirements, TaskContext context) {
         List<LineComponent> components = new ArrayList<>();
         
         if (requirements == null) {
             return components;
         }
         
-        List<SpellbookRequirement> spellbookReqs = requirements.getRegistry().getStandardRequirements(SpellbookRequirement.class, context);
+        List<SpellbookRequirement> spellbookReqs = requirements.getRegistry().getRequirements(SpellbookRequirement.class, context);
         if (spellbookReqs.isEmpty()) {
             return components;
         }
         
         SpellbookRequirement spellbookReq = spellbookReqs.get(0); // Take first one
-        String contextLabel = context == ScheduleContext.PRE_SCHEDULE ? "Pre-Spell" : "Post-Spell";
+        String contextLabel = context == TaskContext.PRE_SCHEDULE ? "Pre-Spell" : "Post-Spell";
         
         components.add(LineComponent.builder()
             .left(contextLabel + ":")
@@ -246,19 +246,19 @@ public class PrePostScheduleTasksOverlayComponents {
      * @param context The schedule context
      * @return List of LineComponents showing loot status
      */
-    public static List<LineComponent> createLootStatusComponents(PrePostScheduleRequirements requirements, ScheduleContext context) {
+    public static List<LineComponent> createLootStatusComponents(PrePostScheduleRequirements requirements, TaskContext context) {
         List<LineComponent> components = new ArrayList<>();
         
         if (requirements == null) {
             return components;
         }
         
-        List<LootRequirement> lootReqs = requirements.getRegistry().getStandardRequirements(LootRequirement.class, context);
+        List<LootRequirement> lootReqs = requirements.getRegistry().getRequirements(LootRequirement.class, context);
         if (lootReqs.isEmpty()) {
             return components;
         }
         
-        String contextLabel = context == ScheduleContext.PRE_SCHEDULE ? "Pre-Loot" : "Post-Loot";
+        String contextLabel = context == TaskContext.PRE_SCHEDULE ? "Pre-Loot" : "Post-Loot";
         
         for (LootRequirement lootReq : lootReqs) {
             // Calculate total amount from the loot requirements map
@@ -285,19 +285,19 @@ public class PrePostScheduleTasksOverlayComponents {
      * @param context The schedule context
      * @return List of LineComponents showing item status
      */
-    public static List<LineComponent> createItemStatusComponents(PrePostScheduleRequirements requirements, ScheduleContext context) {
+    public static List<LineComponent> createItemStatusComponents(PrePostScheduleRequirements requirements, TaskContext context) {
         List<LineComponent> components = new ArrayList<>();
         
         if (requirements == null) {
             return components;
         }
         
-        List<ItemRequirement> itemReqs = requirements.getRegistry().getStandardRequirements(ItemRequirement.class, context);
+        List<ItemRequirement> itemReqs = requirements.getRegistry().getRequirements(ItemRequirement.class, context);
         if (itemReqs.isEmpty()) {
             return components;
         }
         
-        String contextLabel = context == ScheduleContext.PRE_SCHEDULE ? "Pre-Items" : "Post-Items";
+        String contextLabel = context == TaskContext.PRE_SCHEDULE ? "Pre-Items" : "Post-Items";
         
         // Only show first few items to avoid clutter
         int maxItems = 3;
@@ -348,14 +348,18 @@ public class PrePostScheduleTasksOverlayComponents {
      * @param requirements The requirements instance
      * @return List of LineComponents showing current requirement details
      */
-    public static List<LineComponent> createCurrentRequirementComponents(PrePostScheduleRequirements requirements) {
+    public static List<LineComponent> createCurrentRequirementComponents(AbstractPrePostScheduleTasks tasks, PrePostScheduleRequirements requirements) {
         List<LineComponent> components = new ArrayList<>();
         
-        if (requirements == null || !requirements.isFulfilling()) {
+        if (requirements == null || tasks == null) {
+            return components;
+        }
+        TaskExecutionState state = tasks.getExecutionState();
+        if (state == null || !state.isFulfillingRequirements()) {
             return components;
         }
         
-        TaskExecutionState state = requirements.getExecutionState();
+        
         
         // Show the current step being processed
         if (state.getCurrentStep() != null) {
@@ -403,10 +407,10 @@ public class PrePostScheduleTasksOverlayComponents {
         
         // Add execution status
         components.addAll(createExecutionStatusComponents(tasks, requirements));
-        
-        if (requirements != null && tasks != null && (tasks.isExecuting() || requirements.isFulfilling())) {
+        TaskExecutionState state = tasks.getExecutionState();
+        if (requirements != null && tasks != null && (tasks.isExecuting() || state.isFulfillingRequirements())) {
             // Show only the current requirement being processed
-            components.addAll(createCurrentRequirementComponents(requirements));
+            components.addAll(createCurrentRequirementComponents(tasks,requirements));
         }
         
         return components;

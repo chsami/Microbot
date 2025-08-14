@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.
 
 import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.Skill;
+import net.runelite.client.plugins.banktags.tabs.Layout;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetupsItem;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetupsStackCompareID;
@@ -14,7 +15,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.r
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.OrRequirementMode;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.registry.RequirementRegistry;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.util.RequirementSelector;
 import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
@@ -34,6 +35,8 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
+
+import javax.swing.SwingUtilities;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
@@ -59,11 +62,11 @@ public class InventorySetupPlanner {
     private final List<ItemRequirement> missingMandatoryItems = new ArrayList<>();
     
     // Missing mandatory equipment slots
-    private final Set<EquipmentInventorySlot> missingMandatoryEquipment = new HashSet<>();
+    private final  Map<EquipmentInventorySlot, List<ItemRequirement>>  missingMandatoryEquipment = new HashMap<>();
     
     // Optional: Requirements planning support (for new planning approach)
     private RequirementRegistry registry;
-    private ScheduleContext scheduleContext;
+    private TaskContext taskContext;
     private OrRequirementMode orRequirementMode = OrRequirementMode.ANY_COMBINATION; // Default mode
     
     // Flag to control whether to log recommended/optional missing items in comprehensive analysis
@@ -80,12 +83,12 @@ public class InventorySetupPlanner {
      * Enhanced constructor for requirements-based planning.
      * 
      * @param registry The requirement registry containing all requirements
-     * @param scheduleContext The schedule context (PRE_SCHEDULE or POST_SCHEDULE)
+     * @param TaskContext The schedule context (PRE_SCHEDULE or POST_SCHEDULE)
      * @param orRequirementMode How to handle OR requirements (ANY_COMBINATION or SINGLE_TYPE)
      */
-    public InventorySetupPlanner(RequirementRegistry registry, ScheduleContext scheduleContext, OrRequirementMode orRequirementMode) {
+    public InventorySetupPlanner(RequirementRegistry registry, TaskContext taskContext, OrRequirementMode orRequirementMode) {
         this.registry = registry;
-        this.scheduleContext = scheduleContext;
+        this.taskContext = taskContext;
         this.orRequirementMode = orRequirementMode;
         this.logOptionalMissingItems = true; // Default to logging optional items
     }
@@ -94,13 +97,13 @@ public class InventorySetupPlanner {
      * Enhanced constructor for requirements-based planning with optional item logging control.
      * 
      * @param registry The requirement registry containing all requirements
-     * @param scheduleContext The schedule context (PRE_SCHEDULE or POST_SCHEDULE)
+     * @param TaskContext The schedule context (PRE_SCHEDULE or POST_SCHEDULE)
      * @param orRequirementMode How to handle OR requirements (ANY_COMBINATION or SINGLE_TYPE)
      * @param logOptionalMissingItems Whether to log recommended/optional missing items in comprehensive analysis
      */
-    public InventorySetupPlanner(RequirementRegistry registry, ScheduleContext scheduleContext, OrRequirementMode orRequirementMode, boolean logOptionalMissingItems) {
+    public InventorySetupPlanner(RequirementRegistry registry, TaskContext taskContext, OrRequirementMode orRequirementMode, boolean logOptionalMissingItems) {
         this.registry = registry;
-        this.scheduleContext = scheduleContext;
+        this.taskContext = taskContext;
         this.orRequirementMode = orRequirementMode;
         this.logOptionalMissingItems = logOptionalMissingItems;
     }
@@ -110,7 +113,7 @@ public class InventorySetupPlanner {
      */
     public void addEquipmentSlotAssignment(EquipmentInventorySlot slot, ItemRequirement item) {
         equipmentAssignments.put(slot, item);
-        log.info("Assigned {} to equipment slot {}", item.getName(), slot);
+        log.debug("Assigned {} to equipment slot {}", item.getName(), slot);
     }
     
     /**
@@ -150,7 +153,7 @@ public class InventorySetupPlanner {
         }
         
         flexibleInventoryItems.add(item);
-        log.info("Added flexible inventory item: {} (requires {} slots)", 
+        log.debug("Added flexible inventory item: {} (requires {} slots)", 
                 item.getName(), item.getRequiredInventorySlots());
     }
     
@@ -159,14 +162,14 @@ public class InventorySetupPlanner {
      */
     public void addMissingMandatoryInventoryItem(ItemRequirement item) {
         missingMandatoryItems.add(item);
-        log.info("Missing mandatory item: {}", item.getName());
+        log.debug("Missing mandatory item: {}", item.getName());
     }
     
     /**
      * Adds a missing mandatory equipment slot.
      */
-    public void addMissingMandatoryEquipment(EquipmentInventorySlot slot) {
-        missingMandatoryEquipment.add(slot);
+    public void addMissingMandatoryEquipment(EquipmentInventorySlot slot, ItemRequirement item) {
+        missingMandatoryEquipment.computeIfAbsent(slot, k -> new ArrayList<>()).add(item);
         log.warn("Missing mandatory equipment for slot: {}", slot);
     }
     
@@ -451,7 +454,9 @@ public class InventorySetupPlanner {
         
         if (!missingMandatoryEquipment.isEmpty()) {
             sb.append("Missing mandatory equipment slots: ");
-            missingMandatoryEquipment.forEach(slot -> sb.append(slot.name()).append(", "));
+            missingMandatoryEquipment.forEach((slot, items) -> sb.append("\n\t"+slot.name()+": ")
+                .append(items.stream().map(ItemRequirement::getName).collect(Collectors.joining(", ")))
+                .append(""));
             sb.append("\n");
         }
         
@@ -524,9 +529,17 @@ public class InventorySetupPlanner {
         // Missing mandatory equipment
         if (!missingMandatoryEquipment.isEmpty()) {
             sb.append("=== MISSING MANDATORY EQUIPMENT SLOTS ===\n");
-            for (EquipmentInventorySlot slot : missingMandatoryEquipment) {
-                sb.append("\t").append(slot.name()).append("\n");
-            }
+            missingMandatoryEquipment.forEach((slot, items) -> {
+                sb.append("\t").append(slot.name()).append(": ");
+                if (items != null && !items.isEmpty()) {
+                    sb.append(items.stream()
+                        .map(ItemRequirement::getName)
+                        .collect(Collectors.joining(", ")));
+                } else {
+                    sb.append("No items listed");
+                }
+                sb.append("\n");
+            });
             sb.append("\n");
         }
         
@@ -607,33 +620,33 @@ public class InventorySetupPlanner {
      * @return true if planning was successful, false if mandatory requirements could not be fulfilled
      */
     public boolean createPlanFromRequirements() {
-        if (registry == null || scheduleContext == null) {
-            throw new IllegalStateException("Cannot create plan from requirements: registry or scheduleContext is null");
+        if (registry == null || taskContext == null) {
+            throw new IllegalStateException("Cannot create plan from requirements: registry or TaskContext is null");
         }
         
         StringBuilder planningLog = new StringBuilder();
-        planningLog.append("Starting comprehensive requirement analysis for context: ").append(scheduleContext)
+        planningLog.append("Starting comprehensive requirement analysis for context: ").append(taskContext)
                    .append(" with OR mode: ").append(orRequirementMode).append("\n");
         
         // Track already planned items to avoid double-processing EITHER requirements
         Set<ItemRequirement> alreadyPlanned = new HashSet<>();
         
         // Get all requirements filtered by context using new context-aware methods
-        Map<EquipmentInventorySlot, LogicalRequirement> equipmentReqs = 
-            registry.getEquipmentLogicalRequirements(scheduleContext);
-        Map<Integer, LogicalRequirement> slotSpecificReqs = 
-            registry.getAllInventorySlotRequirements(scheduleContext);
-        
+        Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> equipmentReqs = 
+            registry.getEquipmentRequirements(taskContext);
+        Map<Integer, LinkedHashSet<ItemRequirement>> slotSpecificReqs = 
+            registry.getInventoryRequirements(taskContext);
+        LinkedHashSet<OrRequirement> anySlotReqs = registry.getAnySlotLogicalRequirements(taskContext);
         // Get conditional requirements that contain only ItemRequirements
-        List<ConditionalRequirement> conditionalReqs = registry.getConditionalItemRequirements(scheduleContext);
-        List<ConditionalRequirement> externalConditionalReqs = registry.getExternalConditionalItemRequirements(scheduleContext);
+        List<ConditionalRequirement> conditionalReqs = registry.getConditionalItemRequirements(taskContext);
+        List<ConditionalRequirement> externalConditionalReqs = registry.getExternalConditionalItemRequirements(taskContext);
         
         // Process conditional requirements to get active ItemRequirements and merge them
-        integrateConditionalRequirements(conditionalReqs, externalConditionalReqs, equipmentReqs, slotSpecificReqs);
+        integrateConditionalRequirements(conditionalReqs, externalConditionalReqs, equipmentReqs, slotSpecificReqs,anySlotReqs);
         
         // Step 1: Plan equipment slots (these have fixed positions)
         planningLog.append("\n=== STEP 1: EQUIPMENT PLANNING ===\n");
-        if (!planEquipmentSlots(equipmentReqs, alreadyPlanned)) {
+        if (!planEquipmentSlotsFromCache(equipmentReqs, alreadyPlanned)) {
             planningLog.append("FAILED: Mandatory equipment cannot be fulfilled\n");
             log.debug(planningLog.toString());
             return false; // Early exit if mandatory equipment cannot be fulfilled
@@ -658,9 +671,9 @@ public class InventorySetupPlanner {
         planningLog.append("Items in alreadyPlanned: ").append(alreadyPlanned.size()).append("\n");
         planningLog.append("Missing mandatory items so far: ").append(missingMandatoryItems.size()).append("\n");
         
-        // Step 3: Plan flexible inventory items (any slot allowed, from the -1 key)
-        planningLog.append("\n=== STEP 3: FLEXIBLE PLANNING ===\n");
-        planFlexibleInventoryItems(slotSpecificReqs, alreadyPlanned);
+        // Step 3: Plan flexible inventory items (any slot allowed, from the any-slot cache)
+        planningLog.append("\n=== STEP  3: FLEXIBLE PLANNING===\n");
+        planFlexibleInventoryItems(anySlotReqs, alreadyPlanned);
         
         // Log status after flexible planning
         planningLog.append("Flexible inventory items: ").append(flexibleInventoryItems.size()).append("\n");
@@ -674,22 +687,22 @@ public class InventorySetupPlanner {
         }
         
         // Step 4: Analyze and log comprehensive requirement status
-        logComprehensiveRequirementAnalysis();
+        planningLog.append(getComprehensiveRequirementAnalysis(true));
         
         // Step 5: Optimize and validate the entire plan
         planningLog.append("\n=== STEP 4: OPTIMIZATION AND VALIDATION ===\n");
-        boolean planValid = optimizeAndValidatePlanSilent(this);
+        boolean planValid = optimizeAndValidatePlan(this);
         
         if (!planValid) {
             planningLog.append("FAILED: Plan optimization and validation failed - see comprehensive analysis above for details\n");
-            log.debug(planningLog.toString());
+            log.error(planningLog.toString());
             return false;
         }
         
-        planningLog.append("SUCCESS: Created and validated optimal layout plan for context: ").append(scheduleContext).append("\n");
+        planningLog.append("SUCCESS: Created and validated optimal layout plan for context: ").append(taskContext).append("\n");
         
         // Output all planning logs at once
-        log.debug(planningLog.toString());
+        log.info(planningLog.toString());
         
         return true;
     }
@@ -707,20 +720,22 @@ public class InventorySetupPlanner {
     private void integrateConditionalRequirements(
             List<ConditionalRequirement> conditionalReqs,
             List<ConditionalRequirement> externalConditionalReqs,
-            Map<EquipmentInventorySlot, LogicalRequirement> equipmentReqs,
-            Map<Integer, LogicalRequirement> slotSpecificReqs) {
+            Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> equipmentReqs,
+            Map<Integer, LinkedHashSet<ItemRequirement>> slotSpecificReqs,
+            LinkedHashSet<OrRequirement> anySlotReqs
+            ) {
         
         log.debug("Integrating {} standard and {} external conditional requirements", 
                 conditionalReqs.size(), externalConditionalReqs.size());
         
         // Process standard conditional requirements
         for (ConditionalRequirement conditionalReq : conditionalReqs) {
-            processConditionalRequirement(conditionalReq, equipmentReqs, slotSpecificReqs, "standard");
+            processConditionalRequirement(conditionalReq, equipmentReqs, slotSpecificReqs, anySlotReqs,"standard");
         }
         
         // Process external conditional requirements
         for (ConditionalRequirement conditionalReq : externalConditionalReqs) {
-            processConditionalRequirement(conditionalReq, equipmentReqs, slotSpecificReqs, "external");
+            processConditionalRequirement(conditionalReq, equipmentReqs, slotSpecificReqs,anySlotReqs, "external");
         }
         
         log.debug("Completed integration of conditional requirements");
@@ -737,8 +752,9 @@ public class InventorySetupPlanner {
      */
     private void processConditionalRequirement(
             ConditionalRequirement conditionalReq,
-            Map<EquipmentInventorySlot, LogicalRequirement> equipmentReqs,
-            Map<Integer, LogicalRequirement> slotSpecificReqs,
+            Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> equipmentReqs,
+            Map<Integer, LinkedHashSet<ItemRequirement>> slotSpecificReqs,
+            LinkedHashSet<OrRequirement> anySlotReqs,
             String source) {
         
         try {
@@ -750,24 +766,26 @@ public class InventorySetupPlanner {
                 return;
             }
             
-            log.debug("Processing {} active requirements from {} conditional requirement: {}", 
+            log.info("Processing {} active requirements from {} conditional requirement: {}", 
                     activeRequirements.size(), source, conditionalReq.getName());
             
             // Process each active requirement
             for (Requirement activeReq : activeRequirements) {
                 if (activeReq instanceof ItemRequirement) {
                     ItemRequirement itemReq = (ItemRequirement) activeReq;
-                    integrateActiveItemRequirement(itemReq, equipmentReqs, slotSpecificReqs);
+                    log.debug("Integrating active ItemRequirement: {}", itemReq.getName());
+                    integrateActiveItemRequirement(itemReq, equipmentReqs, slotSpecificReqs,anySlotReqs);
                 } else if (activeReq instanceof LogicalRequirement) {
                     LogicalRequirement logicalReq = (LogicalRequirement) activeReq;
                     if (logicalReq.containsOnlyItemRequirements()) {
                         // Extract all ItemRequirements from the LogicalRequirement
                         List<ItemRequirement> itemRequirements = logicalReq.getAllItemRequirements();
                         for (ItemRequirement itemReq : itemRequirements) {
-                            integrateActiveItemRequirement(itemReq, equipmentReqs, slotSpecificReqs);
+                            log.debug("Integrating ItemRequirement from LogicalRequirement: {}", itemReq.getName());
+                            integrateActiveItemRequirement(itemReq, equipmentReqs, slotSpecificReqs,anySlotReqs);
                         }
                     } else {
-                        log.warn("Skipping LogicalRequirement with mixed requirement types in conditional: {}", 
+                        log.error("\n\tSkipping LogicalRequirement with mixed requirement types in conditional: {} - consider correct impllementation of the condtional requirement: {}", 
                                 conditionalReq.getName());
                     }
                 } else {
@@ -791,8 +809,10 @@ public class InventorySetupPlanner {
      */
     private void integrateActiveItemRequirement(
             ItemRequirement itemReq,
-            Map<EquipmentInventorySlot, LogicalRequirement> equipmentReqs,
-            Map<Integer, LogicalRequirement> slotSpecificReqs) {
+            Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> equipmentReqs,
+            Map<Integer, LinkedHashSet<ItemRequirement>> slotSpecificReqs,
+            LinkedHashSet<OrRequirement> anyslotSpecificReqs
+            ) {
         
         try {
             switch (itemReq.getRequirementType()) {
@@ -804,17 +824,34 @@ public class InventorySetupPlanner {
                     
                 case INVENTORY:
                     int slot = itemReq.hasSpecificInventorySlot() ? itemReq.getInventorySlot() : -1;
-                    integrateIntoInventorySlot(itemReq, slotSpecificReqs, slot);
+                    if  (slot!=-1){
+                        integrateIntoInventorySlot(itemReq, slotSpecificReqs, slot);
+                    }else{
+                        // Flexible inventory item, add to anyslotSpecificReqs
+                        log.debug("Adding flexible ItemRequirement '{}' to anyslotSpecificReqs", itemReq.getName());
+                        anyslotSpecificReqs.add(new OrRequirement(
+                            itemReq.getPriority(),
+                            itemReq.getRating(),
+                            "Flexible requirement for inventory. based on conditional requirement: " + itemReq.getName(),
+                            itemReq.getTaskContext(),
+                            ItemRequirement.class,
+                            itemReq
+                        ));
+                    }
                     break;
                     
                 case EITHER:
                     // For EITHER requirements, we can choose the best placement
                     // For now, prefer equipment slot if available, otherwise flexible inventory
-                    if (itemReq.getEquipmentSlot() != null) {
-                        integrateIntoEquipmentSlot(itemReq, equipmentReqs);
-                    } else {
-                        integrateIntoInventorySlot(itemReq, slotSpecificReqs, -1); // Flexible slot
-                    }
+                     OrRequirement newOrReq = new OrRequirement(
+                    itemReq.getPriority(),
+                    itemReq.getRating(),
+                    "Conditional requirement for inventory flexible",
+                    itemReq.getTaskContext(),
+                    ItemRequirement.class,
+                    itemReq
+                    );
+                    anyslotSpecificReqs.add(newOrReq);
                     break;
                     
                 default:
@@ -837,52 +874,25 @@ public class InventorySetupPlanner {
      */
     private void integrateIntoEquipmentSlot(
             ItemRequirement itemReq,
-            Map<EquipmentInventorySlot, LogicalRequirement> equipmentReqs) {
+            Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> equipmentReqs) {
         
         EquipmentInventorySlot slot = itemReq.getEquipmentSlot();
-        LogicalRequirement existingLogical = equipmentReqs.get(slot);
+        LinkedHashSet<ItemRequirement> existingLogical = equipmentReqs.getOrDefault(slot , new LinkedHashSet<>());
         
-        if (existingLogical != null) {
-            // Check if existing requirement is an OrRequirement that can accept ItemRequirements
-            if (existingLogical instanceof OrRequirement) {
-                OrRequirement existingOr = (OrRequirement) existingLogical;
-                
-                // Check if the OrRequirement allows ItemRequirement type (or is type-flexible)
-                if (existingOr.getAllowedChildType() == null || 
-                    existingOr.getAllowedChildType().isAssignableFrom(ItemRequirement.class)) {
-                    
-                    try {
-                        existingOr.addRequirement(itemReq);
-                        log.debug("Merged conditional ItemRequirement '{}' into existing OrRequirement for equipment slot {}", 
-                                itemReq.getName(), slot);
-                        return; // Successfully merged, we're done
-                    } catch (IllegalArgumentException e) {
-                        log.warn("Failed to merge conditional ItemRequirement '{}' into existing OrRequirement for slot {}: {}", 
-                                itemReq.getName(), slot, e.getMessage());
-                        // Fall through to direct addition attempt
-                    }
-                } else {
-                    log.debug("Existing OrRequirement for slot {} only accepts {} type, cannot merge ItemRequirement", 
-                            slot, existingOr.getAllowedChildType().getSimpleName());
-                    // Fall through to direct addition attempt
-                }
-            }
-            
-            // If existing is not an OrRequirement or we couldn't merge, try direct addition
-            try {
-                existingLogical.addRequirement(itemReq);
-                log.debug("Added conditional ItemRequirement '{}' to existing equipment slot {}", 
-                        itemReq.getName(), slot);
-            } catch (IllegalArgumentException e) {
-                log.error("Cannot integrate conditional ItemRequirement '{}' into equipment slot {} - incompatible types: {}", 
-                        itemReq.getName(), slot, e.getMessage());
-                // This should not happen in a well-designed system, but we log the error and continue
-                throw e; // Rethrow to indicate failure
-            }
-        } else {
-            // Create new OrRequirement for this slot
-            createNewOrRequirementForSlot(itemReq, slot, equipmentReqs);
+    
+        // If existing is not an OrRequirement or we couldn't merge, try direct addition
+        try {
+            existingLogical.add(itemReq);
+            log.debug("Added conditional ItemRequirement '{}' to existing equipment slot {}", 
+                    itemReq.getName(), slot);
+        } catch (IllegalArgumentException e) {
+            log.error("Cannot integrate conditional ItemRequirement '{}' into equipment slot {} - incompatible types: {}", 
+                    itemReq.getName(), slot, e.getMessage());
+            // This should not happen in a well-designed system, but we log the error and continue
+            throw e; // Rethrow to indicate failure
         }
+        equipmentReqs.put(slot, existingLogical);
+       
     }
     
     /**
@@ -895,40 +905,16 @@ public class InventorySetupPlanner {
      */
     private void integrateIntoInventorySlot(
             ItemRequirement itemReq,
-            Map<Integer, LogicalRequirement> slotSpecificReqs,
+            Map<Integer, LinkedHashSet<ItemRequirement>> slotSpecificReqs,
             int slot) {
         
-        LogicalRequirement existingLogical = slotSpecificReqs.get(slot);
+        LinkedHashSet<ItemRequirement> existingLogical = slotSpecificReqs.getOrDefault(slot , new LinkedHashSet<>());
         
         if (existingLogical != null) {
-            // Check if existing requirement is an OrRequirement that can accept ItemRequirements
-            if (existingLogical instanceof OrRequirement) {
-                OrRequirement existingOr = (OrRequirement) existingLogical;
-                
-                // Check if the OrRequirement allows ItemRequirement type
-                if (existingOr.getAllowedChildType() == null || 
-                    existingOr.getAllowedChildType().isAssignableFrom(ItemRequirement.class)) {
                     
-                    try {
-                        existingOr.addRequirement(itemReq);
-                        log.debug("Merged conditional ItemRequirement '{}' into existing OrRequirement for inventory slot {}", 
-                                itemReq.getName(), slot == -1 ? "flexible" : String.valueOf(slot));
-                        return; // Successfully merged, we're done
-                    } catch (IllegalArgumentException e) {
-                        log.warn("Failed to merge conditional ItemRequirement '{}' into existing OrRequirement for slot {}: {}", 
-                                itemReq.getName(), slot == -1 ? "flexible" : String.valueOf(slot), e.getMessage());
-                        // Fall through to direct addition attempt
-                    }
-                } else {
-                    log.debug("Existing OrRequirement for slot {} only accepts {} type, cannot merge ItemRequirement", 
-                            slot == -1 ? "flexible" : String.valueOf(slot), existingOr.getAllowedChildType().getSimpleName());
-                    // Fall through to direct addition attempt
-                }
-            }
-            
             // If we can't merge into existing requirement, try to add directly
             try {
-                existingLogical.addRequirement(itemReq);
+                existingLogical.add(itemReq);
                 log.debug("Added conditional ItemRequirement '{}' to existing inventory slot {}", 
                         itemReq.getName(), slot == -1 ? "flexible" : String.valueOf(slot));
             } catch (IllegalArgumentException e) {
@@ -937,116 +923,69 @@ public class InventorySetupPlanner {
                 // This should not happen in a well-designed system, but we log the error and continue
                 throw e; // Rethrow to indicate failure
             }
-        } else {
-            // Create new OrRequirement for this slot
-            createNewOrRequirementForInventorySlot(itemReq, slot, slotSpecificReqs);
+        }else {
+            throw new IllegalArgumentException("No existing logical requirement for inventory slot " +
+                    (slot == -1 ? "flexible" : String.valueOf(slot)));
         }
+        slotSpecificReqs.put(slot, existingLogical);
     }
-    
-    /**
-     * Creates a new OrRequirement for an equipment slot containing the ItemRequirement.
-     * 
-     * @param itemReq The ItemRequirement to include
-     * @param slot The equipment slot
-     * @param equipmentReqs Equipment requirements map to be updated
-     */
-    private void createNewOrRequirementForSlot(
-            ItemRequirement itemReq,
-            EquipmentInventorySlot slot,
-            Map<EquipmentInventorySlot, LogicalRequirement> equipmentReqs) {
         
-        try {
-            OrRequirement newOrReq = new OrRequirement(
-                    itemReq.getPriority(),
-                    itemReq.getRating(),
-                    "Conditional requirement for " + slot,
-                    itemReq.getScheduleContext(),
-                    ItemRequirement.class,
-                    itemReq
-            );
-            
-            equipmentReqs.put(slot, newOrReq);
-            log.debug("Created new OrRequirement for equipment slot {} with conditional ItemRequirement '{}'", 
-                    slot, itemReq.getName());
-            
-        } catch (Exception e) {
-            log.error("Error creating new OrRequirement for equipment slot {}: {}", slot, e.getMessage(), e);
-        }
-    }
-    
     /**
-     * Creates a new OrRequirement for an inventory slot containing the ItemRequirement.
+     * Plans equipment slots from the new cache structure (LinkedHashSet<ItemRequirement> per slot).
+     * Treats multiple ItemRequirements in the same slot as alternatives (OR logic).
      * 
-     * @param itemReq The ItemRequirement to include
-     * @param slot The inventory slot (-1 for flexible, 0-27 for specific)
-     * @param slotSpecificReqs Slot-specific requirements map to be updated
-     */
-    private void createNewOrRequirementForInventorySlot(
-            ItemRequirement itemReq,
-            int slot,
-            Map<Integer, LogicalRequirement> slotSpecificReqs) {
-        
-        try {
-            String slotName = slot == -1 ? "flexible" : "slot " + slot;
-            OrRequirement newOrReq = new OrRequirement(
-                    itemReq.getPriority(),
-                    itemReq.getRating(),
-                    "Conditional requirement for inventory " + slotName,
-                    itemReq.getScheduleContext(),
-                    ItemRequirement.class,
-                    itemReq
-            );
-            
-            slotSpecificReqs.put(slot, newOrReq);
-            log.debug("Created new OrRequirement for inventory {} with conditional ItemRequirement '{}'", 
-                    slotName, itemReq.getName());
-            
-        } catch (Exception e) {
-            log.error("Error creating new OrRequirement for inventory slot {}: {}", slot, e.getMessage(), e);
-        }
-    }
-    
-    /**
-     * Plans equipment slots from context-filtered logical requirements.
-     * With the new cache structure, each slot has exactly one LogicalRequirement for the given context.
-     * 
-     * @param equipmentReqs Equipment requirements by slot (one LogicalRequirement per slot)
+     * @param equipmentReqs Map of equipment slot to set of ItemRequirements (alternatives for that slot)
      * @param alreadyPlanned Set to track already planned items
      * @return true if successful, false if mandatory equipment cannot be fulfilled
      */
-    private boolean planEquipmentSlots(Map<EquipmentInventorySlot, LogicalRequirement> equipmentReqs, 
+    private boolean planEquipmentSlotsFromCache(Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> equipmentReqs, 
                                       Set<ItemRequirement> alreadyPlanned) {
-        for (Map.Entry<EquipmentInventorySlot, LogicalRequirement> entry : equipmentReqs.entrySet()) {
+        for (Map.Entry<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> entry : equipmentReqs.entrySet()) {
             EquipmentInventorySlot slot = entry.getKey();
-            LogicalRequirement logicalReq = entry.getValue();
+            LinkedHashSet<ItemRequirement> slotItems = entry.getValue();
             
-            log.debug("Planning equipment slot {}: {}", slot, logicalReq.getName());
+            if (slotItems.isEmpty()) {
+                log.debug("No requirements for equipment slot {}", slot);
+                continue;
+            }
+            
+            log.debug("Planning equipment slot {} with {} alternatives", slot, slotItems.size());
+            
+            // Convert to list for compatibility with existing selector logic
+            List<ItemRequirement> itemList = new ArrayList<>(slotItems);
             
             // Use enhanced item selection for equipment slots with proper slot and skill validation
             ItemRequirement bestItem = RequirementSelector.findBestAvailableItemForEquipmentSlot(
-                Collections.singletonList(logicalReq), slot, alreadyPlanned);
+                itemList, slot, alreadyPlanned);
                 
             if (bestItem != null) {
                 addEquipmentSlotAssignment(slot, bestItem);
-                alreadyPlanned.add(bestItem); // Mark as planned to avoid double-processing
+                alreadyPlanned.addAll(slotItems); // Mark as planned to avoid double-processing
                 
                 log.info("Assigned {} (type: {}) to equipment slot {}", 
                     bestItem.getName(), bestItem.getRequirementType(), slot);
             } else {
                 // Check if any requirement was mandatory
-                boolean hasMandatory = LogicalRequirement.extractItemRequirementsFromLogical(logicalReq).stream()
-                    .anyMatch(ItemRequirement::isMandatory);
+                boolean hasMandatory = slotItems.stream().anyMatch(ItemRequirement::isMandatory);
                 
                 if (hasMandatory) {
-                    addMissingMandatoryEquipment(slot);
+                    for (ItemRequirement item : slotItems) {
+                        if (item.isMandatory()) {
+                            addMissingMandatoryEquipment(slot, item);
+                        }
+                    }
+                    //addMissingMandatoryEquipment(slot);
                     log.warn("Cannot fulfill mandatory equipment requirement for slot {}", slot);
                     log.error("Planning failed: Missing mandatory equipment for slot {}", slot);
-                    return false; // Early exit if mandatory equipment cannot be fulfilled
+                    return false; // Early exit for mandatory equipment failure
+                } else {
+                    log.debug("Optional equipment not available for slot {}", slot);
                 }
             }
         }
-        return true;
+        return true; // All mandatory equipment successfully planned
     }
+    
     
     /**
      * Plans specific inventory slots from context-filtered logical requirements.
@@ -1055,127 +994,127 @@ public class InventorySetupPlanner {
      * @param slotSpecificReqs Slot-specific requirements (one LogicalRequirement per slot)
      * @param alreadyPlanned Set to track already planned items
      */
-    private void planSpecificInventorySlots(Map<Integer, LogicalRequirement> slotSpecificReqs, 
+    private void planSpecificInventorySlots(Map<Integer, LinkedHashSet<ItemRequirement>> slotSpecificReqs, 
                                            Set<ItemRequirement> alreadyPlanned) {
-        for (Map.Entry<Integer, LogicalRequirement> entry : slotSpecificReqs.entrySet()) {
+        for (Map.Entry<Integer, LinkedHashSet<ItemRequirement>> entry : slotSpecificReqs.entrySet()) {
             int slot = entry.getKey();
-            LogicalRequirement logicalReq = entry.getValue();
+            LinkedHashSet<ItemRequirement> itemSlotReq = entry.getValue();
             
             // Skip the "any slot" entry (-1) as we'll handle it in planFlexibleInventoryItems
             if (slot == -1) {
                 continue;
             }
             
-            log.debug("Planning specific inventory slot {}: {}", slot, logicalReq.getName());
+
             
             ItemRequirement bestItem = RequirementSelector.findBestAvailableItemNotAlreadyPlannedForInventory(
-                Collections.singletonList(logicalReq), this);
+                itemSlotReq, this);
                 
             if (bestItem != null) {
                 // Enhanced validation for slot assignment
                 if (!ItemRequirement.canAssignToSpecificSlot(bestItem, slot)) {
                     log.warn("Cannot assign item {} to slot {} due to constraints. Moving to flexible items.", 
                             bestItem.getName(), slot);
-                    
+                    throw new IllegalArgumentException(
+                        "Item " + bestItem.getName() + " cannot be assigned to specific slot " + slot);
                     // Handle the item as flexible instead
-                    handleItemAsFlexible(bestItem, this, alreadyPlanned);
+                    //handleItemAsFlexible(bestItem, this, alreadyPlanned);
                 } else {
                     // Item can be assigned to specific slot
                     ItemRequirement slotSpecificItem = bestItem.copyWithSpecificSlot(slot);
                     addInventorySlotAssignment(slot, slotSpecificItem);
-                    alreadyPlanned.add(bestItem); // Mark as planned
-                    
+                    alreadyPlanned.addAll(itemSlotReq); // Mark all alternatives as planned
+                    //for (ItemRequirement item : itemSlotReq) {
+
+                        
+                    //}
                     log.info("Assigned {} to specific slot {} (amount: {}, stackable: {})", 
                             bestItem.getName(), slot, bestItem.getAmount(), bestItem.isStackable());
                 }
             } else {
-                // Handle missing mandatory items
-                handleMissingMandatoryItem(Collections.singletonList(logicalReq), this, "inventory slot " + slot);
+                // Handle missing mandatory items - convert LinkedHashSet to OrRequirement
+                if (!itemSlotReq.isEmpty()) {
+                    ItemRequirement firstItem = itemSlotReq.iterator().next();
+                    OrRequirement slotOrRequirement = new OrRequirement(
+                        firstItem.getPriority(),
+                        firstItem.getRating(),
+                        "Slot " + slot + " requirement alternatives",
+                        firstItem.getTaskContext(),
+                        ItemRequirement.class,
+                        itemSlotReq.toArray(new ItemRequirement[0])
+                    );
+                    handleMissingMandatoryItem(Collections.singletonList(slotOrRequirement), this, "inventory slot " + slot);
+                }
             }
         }
     }
     
     /**
-     * Plans flexible inventory items from context-filtered logical requirements.
-     * With the new cache structure, there's exactly one LogicalRequirement for the -1 slot for the given context.
+     * Plans flexible inventory items from the any-slot cache (new cache structure).
+     * These items can be placed in any available inventory slot.
      * 
-     * @param slotSpecificReqs Slot-specific requirements (one LogicalRequirement per slot)
+     * @param anySlotReqs Set of OrRequirements for flexible inventory placement  
      * @param alreadyPlanned Set to track already planned items
      */
-    private void planFlexibleInventoryItems(Map<Integer, LogicalRequirement> slotSpecificReqs, 
+    private void planFlexibleInventoryItems(LinkedHashSet<OrRequirement> anySlotReqs, 
                                            Set<ItemRequirement> alreadyPlanned) {
-        // Plan flexible inventory items (any slot allowed, from the -1 key)
-        LogicalRequirement anySlotReq = slotSpecificReqs.get(-1);
+        if (anySlotReqs == null || anySlotReqs.isEmpty()) {
+            log.debug("No flexible inventory requirements to plan");
+            return;
+        }
         
-        if (anySlotReq != null) {
-            log.debug("Planning flexible inventory items: {}", anySlotReq.getName());
+        log.debug("Planning {} flexible inventory OrRequirements", anySlotReqs.size());
+        
+        for (OrRequirement orReq : anySlotReqs) {
+            log.debug("Planning flexible OR requirement: {}", orReq.getName());
             
-            // Enhanced flexible item processing with proper OR requirement handling
-            if (anySlotReq instanceof OrRequirement) {
-                // Handle OR requirements as collective alternatives
-                List<ItemRequirement> orItems = LogicalRequirement.extractItemRequirementsFromLogical(anySlotReq);
-                
-                // CRITICAL FIX: Check if this OR requirement has already been satisfied by equipment or specific slots
-                int alreadySatisfiedAmount = calculateAlreadySatisfiedAmount(orItems, alreadyPlanned);
-                int totalNeeded = orItems.get(0).getAmount(); // All items in OR should have same amount
-                
-                if (alreadySatisfiedAmount >= totalNeeded) {
-                    log.info("OR requirement already fully satisfied by equipment/specific slots: {} satisfied out of {} needed", 
-                            alreadySatisfiedAmount, totalNeeded);
-                    return; // Skip this OR requirement as it's already satisfied
-                }
-                
-                // Calculate remaining amount needed for inventory
-                int remainingAmountNeeded = totalNeeded - alreadySatisfiedAmount;
-                
-                // Plan remaining amount needed for inventory (pass remaining amount to avoid double calculation)
-                List<ItemRequirement> plannedOrItems = planOrRequirement(orItems, remainingAmountNeeded, alreadyPlanned);
-                
-                // Check if the OR requirement is fully satisfied after planning
-                int totalPlannedInventory = plannedOrItems.stream().mapToInt(ItemRequirement::getAmount).sum();
-                int totalPlanned = totalPlannedInventory + alreadySatisfiedAmount;
-                
-                if (totalPlanned < totalNeeded) {
-                    // Only add missing items if there's still a shortage AND the item is mandatory
-                    int shortage = totalNeeded - totalPlanned;
-                    ItemRequirement representativeItem = orItems.get(0).copyWithAmount(shortage);
-                    
-                    // Only add to missing items if it's mandatory
-                    if (representativeItem.isMandatory()) {
-                        addMissingMandatoryInventoryItem(representativeItem);
-                        log.info("OR requirement not fully satisfied: planned {} inventory + {} equipment/specific = {} total out of {} needed (shortage: {})", 
-                            totalPlannedInventory, alreadySatisfiedAmount, totalPlanned, totalNeeded, shortage);
-                    } else {
-                        log.info("OR requirement (non-mandatory) not fully satisfied: planned {} inventory + {} equipment/specific = {} total out of {} needed (shortage: {})", 
-                            totalPlannedInventory, alreadySatisfiedAmount, totalPlanned, totalNeeded, shortage);
-                    }
+            // Extract ItemRequirements from the OrRequirement
+            List<ItemRequirement> orItems = LogicalRequirement.extractItemRequirementsFromLogical(orReq);
+            
+            if (orItems.isEmpty()) {
+                log.warn("OrRequirement has no ItemRequirements: {}", orReq.getName());
+                continue;
+            }
+            
+            // Check if this OR requirement has already been satisfied by equipment or specific slots
+            int alreadySatisfiedAmount = calculateAlreadySatisfiedAmount(orItems, alreadyPlanned);
+            int totalNeeded = orItems.get(0).getAmount(); // All items in OR should have same amount
+            
+            if (alreadySatisfiedAmount >= totalNeeded) {
+                log.debug("OR requirement already fully satisfied by equipment/specific slots: {} satisfied out of {} needed", 
+                        alreadySatisfiedAmount, totalNeeded);
+                continue; // Skip this OR requirement as it's already satisfied
+            }
+            
+            // Calculate remaining amount needed for inventory
+            int remainingAmountNeeded = totalNeeded - alreadySatisfiedAmount;
+            log.debug("OR requirement needs additional {} items for inventory (total needed: {}, already satisfied: {})", 
+                    remainingAmountNeeded, totalNeeded, alreadySatisfiedAmount);
+            // Plan remaining amount needed for inventory (pass remaining amount to avoid double calculation)
+            List<ItemRequirement> plannedOrItems = planOrRequirement(orItems, remainingAmountNeeded, alreadyPlanned);
+            
+            // Check if the OR requirement is fully satisfied after planning
+            int totalPlannedInventory = plannedOrItems.stream().mapToInt(ItemRequirement::getAmount).sum();
+            int totalPlanned = totalPlannedInventory + alreadySatisfiedAmount;
+            
+            if (totalPlanned < totalNeeded) {
+                if (orReq.getPriority() == RequirementPriority.MANDATORY) {
+                    log.warn("Mandatory flexible OR requirement not fully satisfied: {} planned out of {} needed", 
+                            totalPlanned, totalNeeded);
+                    missingMandatoryItems.addAll(orItems);
                 } else {
-                    log.info("OR requirement fully satisfied: {} inventory + {} equipment/specific = {} total out of {} needed", 
-                        totalPlannedInventory, alreadySatisfiedAmount, totalPlanned, totalNeeded);
+                    log.debug("Optional flexible OR requirement partially satisfied: {} planned out of {} needed", 
+                            totalPlanned, totalNeeded);
                 }
             } else {
-                // Handle regular logical requirements
-                List<ItemRequirement> singleItemList = LogicalRequirement.extractItemRequirementsFromLogical(anySlotReq);
-                
-                // Check if any of these items have already been planned in equipment or specific slots
-                boolean alreadyPlannedElsewhere = singleItemList.stream()
-                    .anyMatch(item -> isItemAlreadyPlannedElsewhere(item, alreadyPlanned));
-                
-                if (alreadyPlannedElsewhere) {
-                    log.info("Regular requirement already satisfied by equipment/specific slots, skipping flexible planning");
-                    return;
-                }
-                
-                ItemRequirement bestItem = RequirementSelector.findBestAvailableItemNotAlreadyPlannedForInventory(Arrays.asList(anySlotReq), this);
-                if (bestItem != null) {
-                    handleItemAsFlexible(bestItem, this, alreadyPlanned);
-                } else {
-                    // Handle missing mandatory items
-                    handleMissingMandatoryItem(Arrays.asList(anySlotReq), this, "flexible inventory slot");
-                }
-            }
+                log.debug("Flexible OR requirement fully satisfied: {} planned (including {} already satisfied)", 
+                        totalPlanned, alreadySatisfiedAmount);
+            }                      
         }
+        
+        log.debug("Finished planning flexible inventory items. Total flexible items: {}", flexibleInventoryItems.size());
     }
+    
     
     /**
      * Plans an OR requirement by selecting the best combination of available items to fulfill the specified amount needed.
@@ -1191,7 +1130,7 @@ public class InventorySetupPlanner {
             return new ArrayList<>();
         }
         
-        log.info("Planning OR requirement: {} amount needed from {} alternatives using mode: {}", 
+        log.debug("Planning OR requirement: {} amount needed from {} alternatives using mode: {}", 
                 amountNeeded, orItems.size(), orRequirementMode);
         
         // If no amount needed, requirement is already satisfied
@@ -1207,6 +1146,7 @@ public class InventorySetupPlanner {
             default:
                 return planOrRequirementAnyCombination(orItems, amountNeeded, alreadyPlanned);
         }
+        //log.debug("OR requirement planning completed with allready planned items: {}", alreadyPlanned.size());
     }
     
     /**
@@ -1252,7 +1192,7 @@ public class InventorySetupPlanner {
                 }
             }
         }        
-        log.debug("Total satisfied amount calculated: {}", satisfiedAmount);
+        log.info("Total satisfied amount calculated: {}", satisfiedAmount);
         return satisfiedAmount;
     }
     
@@ -1312,9 +1252,9 @@ public class InventorySetupPlanner {
                 continue; // Skip already planned items
             }
             
-            int inventoryCount = Rs2Inventory.count(item.getName());
-            int bankCount = Rs2Bank.count(item.getName());
-            int totalAvailable = inventoryCount + bankCount;
+            int inventoryQuantity= Rs2Inventory.itemQuantity(item.getId());
+            int bankCount = Rs2Bank.count(item.getUnNotedId());
+            int totalAvailable = inventoryQuantity + bankCount;
             
             if (totalAvailable >= amountNeeded) {
                 availableCounts.put(item, totalAvailable);
@@ -1356,7 +1296,7 @@ public class InventorySetupPlanner {
         // Create a copy with the exact amount needed
         ItemRequirement plannedItem = chosenItem.copyWithAmount(amountNeeded);
         handleItemAsFlexible(plannedItem, this, alreadyPlanned);
-        plannedItems.add(plannedItem);
+        plannedItems.add(plannedItem); // Keep for tracking, but avoid duplicate addition later
         
         log.info("SINGLE_TYPE mode: Selected {} x{} (available: {}) for OR requirement", 
                 chosenItem.getName(), amountNeeded, bestChoice.getValue());
@@ -1390,9 +1330,9 @@ public class InventorySetupPlanner {
                 continue; // Skip already planned items
             }
             
-            int inventoryCount = Rs2Inventory.count(item.getName());
-            int bankCount = Rs2Bank.count(item.getName());
-            int totalAvailable = inventoryCount + bankCount;
+            int inventoryQuantity = Rs2Inventory.itemQuantity(item.getId());
+            int bankCount = Rs2Bank.count(item.getUnNotedId());
+            int totalAvailable = inventoryQuantity + bankCount;
             
             if (totalAvailable > 0) {
                 availableCounts.put(item, totalAvailable);
@@ -1421,7 +1361,10 @@ public class InventorySetupPlanner {
                 return Integer.compare(b.getValue(), a.getValue());
             })
             .collect(Collectors.toList());
-        
+        log.debug("ANY_COMBINATION mode: Sorted available items by preference ({} total)", sortedAvailable.size());
+        log.debug("Sorted available items: {}", sortedAvailable.stream()
+            .map(e -> String.format("%s (available: %d)", e.getKey().getName(), e.getValue()))
+            .collect(Collectors.joining(", ")));
         // Select items to fulfill the total amount needed (or as much as possible)
         int remainingNeeded = amountNeeded;
         
@@ -1438,12 +1381,12 @@ public class InventorySetupPlanner {
             ItemRequirement plannedItem = item.copyWithAmount(amountToTake);
             
             handleItemAsFlexible(plannedItem, this, alreadyPlanned);
-            plannedItems.add(plannedItem);
+            plannedItems.add(plannedItem); // Keep for tracking, but remove duplicate addition later
             
             remainingNeeded -= amountToTake;
             
-            log.info("ANY_COMBINATION mode: Planned {} x{} for OR requirement (remaining needed: {})", 
-                item.getName(), amountToTake, remainingNeeded);
+            log.debug("ANY_COMBINATION mode: Planned {} x{} for OR requirement (remaining needed: {})\n\t item: \n\t\t{}", 
+                item.getName(), amountToTake, remainingNeeded,item);
         }
         
         // Log the result
@@ -1458,21 +1401,21 @@ public class InventorySetupPlanner {
                 String shortageDescription = String.format("OR requirement shortage: need %d more from any of %d item types", 
                     remainingNeeded, orItems.size());
                 
-                ItemRequirement shortageItem = new ItemRequirement(
-                    -2, // Special shortage indicator ID
-                    remainingNeeded,
-                    firstItem.getEquipmentSlot(),
-                    firstItem.getInventorySlot(),
-                    firstItem.getPriority(),
-                    firstItem.getRating(),
-                    shortageDescription,
-                    firstItem.getScheduleContext()
-                );
+                //ItemRequirement shortageItem = new ItemRequirement(
+                //    -2, // Special shortage indicator ID
+                //    remainingNeeded,
+                 //   firstItem.getEquipmentSlot(),
+                 //   firstItem.getInventorySlot(),
+                 //   firstItem.getPriority(),
+                 //   firstItem.getRating(),
+                 //   shortageDescription,
+                 //   firstItem.getTaskContext()
+                //);
                 
-                addMissingMandatoryInventoryItem(shortageItem);
+                //addMissingMandatoryInventoryItem(shortageItem);
             }
         } else {
-            log.info("ANY_COMBINATION mode: Successfully planned OR requirement: {} items from {} alternatives", 
+            log.debug("ANY_COMBINATION mode: Successfully planned OR requirement: {} items from {} alternatives", 
                 amountNeeded, plannedItems.size());
         }
         
@@ -1499,10 +1442,10 @@ public class InventorySetupPlanner {
      * Logs a comprehensive analysis of all requirements including quantities, availability, and missing items.
      * This provides a single, detailed summary instead of multiple scattered log messages.
      */
-    private void logComprehensiveRequirementAnalysis() {
+    private String getComprehensiveRequirementAnalysis(boolean verbose) {
         StringBuilder analysis = new StringBuilder();
         analysis.append("\n").append("=".repeat(80));
-        analysis.append("\n\tCOMPREHENSIVE REQUIREMENT ANALYSIS - ").append(scheduleContext);
+        analysis.append("\n\tCOMPREHENSIVE REQUIREMENT ANALYSIS - ").append(taskContext);
         analysis.append("\n\tOR Requirement Mode: ").append(orRequirementMode);
         analysis.append("\n").append("=".repeat(80));
         
@@ -1513,8 +1456,35 @@ public class InventorySetupPlanner {
         analysis.append("\n   ✓ Successfully planned: ").append(plannedEquipment).append(" slots");
         if (missingEquipment > 0) {
             analysis.append("\n   ❌ Missing mandatory: ").append(missingEquipment).append(" slots");
-            for (EquipmentInventorySlot slot : missingMandatoryEquipment) {
-                analysis.append("\n      - ").append(slot.name());
+            for (Map.Entry<EquipmentInventorySlot, List<ItemRequirement>> entry : missingMandatoryEquipment.entrySet()) {
+                EquipmentInventorySlot slot = entry.getKey();
+                List<ItemRequirement> items = entry.getValue();
+                if (items != null && !items.isEmpty()) {
+                    analysis.append("\n      - Slot: ").append(slot.name()).append(" (missing ");                
+                    for (ItemRequirement item : items) {
+                        if (verbose) {
+                            analysis.append("\n         ").append(item.displayString());
+                        } else {
+                            int available = 0;
+                            try {
+                                available = Rs2Inventory.itemQuantity(item.getId()) + Rs2Bank.count(item.getUnNotedId());
+                            } catch (Exception e) {
+                                // ignore, just show 0
+                            }
+                            analysis.append(item.getName())
+                                .append(" [id:").append(item.getId()).append("]")
+                                .append(", need: ").append(item.getAmount())
+                                .append(", available: ").append(available);
+                            if (item.isStackable()) analysis.append(", stackable");
+                            if (item.getEquipmentSlot() != null)
+                                analysis.append(", slot: ").append(item.getEquipmentSlot().name());
+                            if (item.getRequirementType() == RequirementType.EITHER)
+                                analysis.append(", flexible");
+                            analysis.append("; ");
+                        }
+                    }
+                     analysis.append(")\n");
+                }               
             }
         }
         
@@ -1530,7 +1500,7 @@ public class InventorySetupPlanner {
         analysis.append("\n      - Flexible items: ").append(plannedFlexibleItems);
         
         // DEBUG: Show what flexible items are planned
-        if (log.isDebugEnabled() && !flexibleInventoryItems.isEmpty()) {
+        if (!flexibleInventoryItems.isEmpty()) {
             analysis.append("\n   📋 DEBUG - Flexible items planned:");
             for (ItemRequirement flexItem : flexibleInventoryItems) {
                 analysis.append("\n      - ").append(flexItem.getName()).append(" (IDs: ").append(flexItem.getIds()).append(", Priority: ").append(flexItem.getPriority()).append(")");
@@ -1577,7 +1547,7 @@ public class InventorySetupPlanner {
         analysis.append("\n   Total Slots Needed: ").append(getTotalInventorySlotsNeeded()).append("/28");
         analysis.append("\n").append("=".repeat(80));
         
-        log.info(analysis.toString());
+        return analysis.toString();
     }
     
     /**
@@ -1593,13 +1563,13 @@ public class InventorySetupPlanner {
         }
         
         // Search through current context logical requirements to find which OR group this item belongs to
-        Map<Integer, LogicalRequirement> slotSpecificReqs = registry.getAllInventorySlotRequirements(scheduleContext);
+        Map<Integer, OrRequirement> slotSpecificReqs = registry.getInventorySlotLogicalRequirements(taskContext);
         
-        for (Map.Entry<Integer, LogicalRequirement> entry : slotSpecificReqs.entrySet()) {
-            LogicalRequirement logicalReq = entry.getValue();
+        for (Map.Entry<Integer, OrRequirement> entry : slotSpecificReqs.entrySet()) {
+            OrRequirement logicalReq = entry.getValue();
             
             if (logicalReq instanceof OrRequirement) {
-                List<ItemRequirement> orItems = LogicalRequirement.extractItemRequirementsFromLogical(logicalReq);
+                List<ItemRequirement> orItems = OrRequirement.extractItemRequirementsFromLogical(logicalReq);
                 
                 // Check if this item belongs to this OR requirement
                 for (ItemRequirement orItem : orItems) {
@@ -1642,44 +1612,48 @@ public class InventorySetupPlanner {
         }
         
         // Calculate total available and usable items across all types in the OR requirement
-        int totalInventoryCount = 0;
+        int totalInventoryQuantity = 0;
         int totalBankCount = 0;
         int totalUsableCount = 0;
         Map<String, ItemAvailabilityInfo> itemAnalysis = new HashMap<>();
         
         for (ItemRequirement item : groupItems) {
+            int inventoryQuantity = 0;
             int inventoryCount = 0;
             int bankCount = 0;
             
             try {
                 // Safely get inventory and bank counts with error handling
-                inventoryCount = Rs2Inventory.count(item.getName());
-                bankCount = Rs2Bank.count(item.getName());
+                inventoryQuantity = Rs2Inventory.itemQuantity(item.getId());
+                bankCount = Rs2Bank.count(item.getUnNotedId());
+                inventoryCount = Rs2Inventory.count(item.getId());
             } catch (ArrayIndexOutOfBoundsException e) {
                 log.warn("ArrayIndexOutOfBoundsException when counting item '{}' (ID: {}): {}", 
                          item.getName(), item.getId(), e.getMessage());
                 // Continue with 0 counts to avoid crashing
+                inventoryQuantity = 0;
                 inventoryCount = 0;
                 bankCount = 0;
             } catch (Exception e) {
                 log.warn("Unexpected error when counting item '{}' (ID: {}): {}", 
                          item.getName(), item.getId(), e.getMessage());
+                inventoryQuantity = 0;
                 inventoryCount = 0;
                 bankCount = 0;
             }
             
-            int totalCount = inventoryCount + bankCount;
+            int totalCount = inventoryQuantity + bankCount;
             
-            totalInventoryCount += inventoryCount;
+            totalInventoryQuantity += inventoryQuantity;
             totalBankCount += bankCount;
             
             if (totalCount > 0) {
                 // Analyze usability based on skill requirements and requirement type
-                boolean canUse = checkItemUsability(item, inventoryCount, bankCount);
+                boolean canUse = checkItemUsability(item, inventoryQuantity, bankCount);
                 boolean meetsSkillReqs = item.meetsSkillRequirements();
                 
                 ItemAvailabilityInfo info = new ItemAvailabilityInfo(
-                    inventoryCount, bankCount, canUse, meetsSkillReqs, item.getRequirementType(),
+                    inventoryQuantity,inventoryCount, bankCount, canUse, meetsSkillReqs, item.getRequirementType(),
                     item.getSkillToUse(), item.getMinimumLevelToUse(),
                     item.getSkillToEquip(), item.getMinimumLevelToEquip()
                 );
@@ -1692,8 +1666,8 @@ public class InventorySetupPlanner {
             }
         }
         
-        int totalAvailable = totalInventoryCount + totalBankCount;
-        analysis.append("\n         Total Available: ").append(totalAvailable).append(" (Inventory: ").append(totalInventoryCount).append(", Bank: ").append(totalBankCount).append(")");
+        int totalAvailable = totalInventoryQuantity + totalBankCount;
+        analysis.append("\n         Total Available: ").append(totalAvailable).append(" (Inventory: ").append(totalInventoryQuantity).append(", Bank: ").append(totalBankCount).append(")");
         analysis.append("\n         Total Usable: ").append(totalUsableCount).append(" (considering skill requirements)");
         
         // Show detailed breakdown of available items with usability analysis
@@ -1704,8 +1678,8 @@ public class InventorySetupPlanner {
                 ItemAvailabilityInfo info = entry.getValue();
                 
                 analysis.append("\n           🔍 ").append(itemName).append(": ")
-                       .append(info.inventoryCount + info.bankCount).append(" total")
-                       .append(" (Inv: ").append(info.inventoryCount).append(", Bank: ").append(info.bankCount).append(")");
+                       .append(info.inventoryQuantity + info.bankCount).append(" total")
+                       .append(" (Inv: ").append(info.inventoryQuantity).append("("+info.inventoryCount+")").append(", Bank: ").append(info.bankCount).append(")");
                 
                 if (info.canUse) {
                     analysis.append(" ✅ USABLE");
@@ -1829,6 +1803,7 @@ public class InventorySetupPlanner {
      */
     private static class ItemAvailabilityInfo {
         final int inventoryCount;
+        final int inventoryQuantity;
         final int bankCount;
         final boolean canUse;
         final boolean meetsSkillRequirements;
@@ -1838,10 +1813,11 @@ public class InventorySetupPlanner {
         final Skill skillToEquip;
         final Integer minimumLevelToEquip;
         
-        ItemAvailabilityInfo(int inventoryCount, int bankCount, boolean canUse, boolean meetsSkillRequirements,
+        ItemAvailabilityInfo(int inventoryCount,  int inventoryQuantity, int bankCount, boolean canUse, boolean meetsSkillRequirements,
                            RequirementType requirementType, Skill skillToUse, Integer minimumLevelToUse,
                            Skill skillToEquip, Integer minimumLevelToEquip) {
             this.inventoryCount = inventoryCount;
+            this.inventoryQuantity = inventoryQuantity;
             this.bankCount = bankCount;
             this.canUse = canUse;
             this.meetsSkillRequirements = meetsSkillRequirements;
@@ -1865,13 +1841,13 @@ public class InventorySetupPlanner {
         analysis.append("\n         Required: ").append(missingItem.getAmount());
         
         // Check current inventory and bank for availability with error handling
-        int inventoryCount = 0;
+        int getInventoryQuantity = 0;
         int bankCount = 0;
         
         try {
             // Safely get inventory and bank counts with error handling
-            inventoryCount = Rs2Inventory.count(missingItem.getName());
-            bankCount = Rs2Bank.count(missingItem.getName());
+            getInventoryQuantity = Rs2Inventory.itemQuantity(missingItem.getId());
+            bankCount = Rs2Bank.count(missingItem.getUnNotedId());
         } catch (ArrayIndexOutOfBoundsException e) {
             log.warn("ArrayIndexOutOfBoundsException when counting individual item '{}' (ID: {}): {}", 
                      missingItem.getName(), missingItem.getId(), e.getMessage());
@@ -1883,12 +1859,12 @@ public class InventorySetupPlanner {
             analysis.append("\n         ⚠️ Error accessing item data - using 0 counts");
         }
         
-        int totalAvailable = inventoryCount + bankCount;
+        int totalAvailable = getInventoryQuantity + bankCount;
         
-        analysis.append("\n         Available: ").append(totalAvailable).append(" (Inventory: ").append(inventoryCount).append(", Bank: ").append(bankCount).append(")");
+        analysis.append("\n         Available: ").append(totalAvailable).append(" (Inventory: ").append(getInventoryQuantity).append(", Bank: ").append(bankCount).append(")");
         
         // Analyze usability based on skill requirements and requirement type
-        boolean canUse = checkItemUsability(missingItem, inventoryCount, bankCount);
+        boolean canUse = checkItemUsability(missingItem, getInventoryQuantity, bankCount);
         boolean meetsSkillReqs = missingItem.meetsSkillRequirements();
         boolean hasEnoughQuantity = totalAvailable >= missingItem.getAmount();
         
@@ -1925,9 +1901,9 @@ public class InventorySetupPlanner {
             
             // Add requirement type context
             RequirementType reqType = missingItem.getRequirementType();
-            if (reqType == RequirementType.EQUIPMENT && inventoryCount > 0 && bankCount == 0) {
+            if (reqType == RequirementType.EQUIPMENT && getInventoryQuantity > 0 && bankCount == 0) {
                 analysis.append("\n         📍 Location Issue: Item in inventory but requirement needs it equipped");
-            } else if (reqType == RequirementType.INVENTORY && inventoryCount == 0 && bankCount > 0) {
+            } else if (reqType == RequirementType.INVENTORY && getInventoryQuantity == 0 && bankCount > 0) {
                 analysis.append("\n         📍 Location Issue: Item in bank but requirement needs it in inventory");
             }
         } else {
@@ -1937,7 +1913,12 @@ public class InventorySetupPlanner {
         
         // Add detailed item properties for debugging
         analysis.append("\n         Properties:");
-        analysis.append("\n            - Stackable: ").append(missingItem.isStackable() ? "Yes" : "No");
+        analysis.append("\n            - Name: ").append(missingItem.getName());
+        analysis.append("\n            - ID: ").append(missingItem.getId());
+        analysis.append("\n            - noted ID: ").append(missingItem.getNotedId());
+        analysis.append("\n            - is noted item: ").append(missingItem.getNotedId() == missingItem.getId() );
+        analysis.append("\n            - Amount: ").append(missingItem.getAmount());        
+        analysis.append("\n            - Stackable: ").append(missingItem.isStackable() ? "Yes" : "No");        
         analysis.append("\n            - Priority: ").append(missingItem.getPriority());
         analysis.append("\n            - Requirement Type: ").append(missingItem.getRequirementType());
         
@@ -2351,8 +2332,9 @@ public class InventorySetupPlanner {
             log.info("Plan is not feasible - has missing mandatory items:");
             plan.getMissingMandatoryItems().forEach(item -> 
                 log.info("  - Missing: {}", item.getName()));
-            plan.getMissingMandatoryEquipment().forEach(slot -> 
-                log.info("  - Missing equipment slot: {}", slot));
+            plan.getMissingMandatoryEquipment().forEach((slot,items) -> 
+                log.info("  - Missing equipment slot: {}", slot+ " with items: {}", 
+                         items.stream().map(ItemRequirement::getName).collect(Collectors.joining(", "))));
             return false; // Early exit if plan is not feasible
         }
         
@@ -2453,15 +2435,17 @@ public class InventorySetupPlanner {
             if (item.isMandatory()) {
                 // Use ItemRequirement's own availability checking which handles fuzzy matching and amounts
                 if (!item.isAvailableInInventoryOrBank()) {
-                    unsatisfiedRequirements.add(item.getName() + " (flexible inventory)");
+                    unsatisfiedRequirements.add("(flexible inventory): "+ item.displayString() );
                     allSatisfied = false;
                 }
             }
         }
         
         if (!allSatisfied) {
-            log.error("Final validation failed. {} mandatory requirements not satisfied:", unsatisfiedRequirements.size());
-            unsatisfiedRequirements.forEach(req -> log.error("  - {}", req));
+            StringBuilder unsatisfiedRequirementsBuilder = new StringBuilder();
+            unsatisfiedRequirementsBuilder.append(String.format("\nFinal validation failed. {} mandatory requirements not satisfied:", unsatisfiedRequirements.size()));
+            unsatisfiedRequirements.forEach(req -> unsatisfiedRequirementsBuilder.append(String.format("\n - {}", req)));
+            log.error(unsatisfiedRequirementsBuilder.toString());
         } else {
             log.info("Final validation passed - all mandatory requirements in plan are satisfied");
         }
@@ -2597,7 +2581,7 @@ public class InventorySetupPlanner {
             
             if (slot >= 0 && slot < 28) {
                 inventoryItems.set(slot, createInventorySetupsItem(item, slot));
-                log.info("Added specific slot assignment: {} -> slot {}", item.getName(), slot);
+                log.debug("\n\t Added specific slot assignment: {} -> slot {}", item.getName(), slot);
             }
         }
         
@@ -2611,7 +2595,7 @@ public class InventorySetupPlanner {
             
             if (currentSlot < 28) {
                 inventoryItems.set(currentSlot, createInventorySetupsItem(item, currentSlot));
-                log.info("Added flexible item: {} -> slot {}", item.getName(), currentSlot);
+                log.debug("\n\t -Added flexible item: {} -> slot {}", item.getName(), currentSlot);
                 currentSlot++;
             } else {
                 log.warn("No available inventory slot for flexible item: {}", item.getName());
@@ -2761,7 +2745,7 @@ public class InventorySetupPlanner {
      */
     private InventorySetupsItem createInventorySetupsItem(ItemRequirement item, int slot) {
         // Use fuzzy matching for items that have multiple variations
-        boolean fuzzy = item.isFuzzy() || hasItemVariations(item.getId());
+        boolean fuzzy = item.isStackable() || hasItemVariations(item.getId());
         
         // Default stack compare type - could be enhanced based on item type
         InventorySetupsStackCompareID stackCompare = 
@@ -2888,6 +2872,11 @@ public class InventorySetupPlanner {
             boolean highlightDifference, java.awt.Color displayColor, boolean filterBank, 
             boolean unorderedHighlight, int spellbook, boolean favorite, int iconID) {
         try {
+            int MAX_SETUP_NAME_LENGTH = MInventorySetupsPlugin.MAX_SETUP_NAME_LENGTH;
+            if( setupName.length() > MAX_SETUP_NAME_LENGTH) {
+                // Trim the setup name to the maximum allowed length
+                setupName = setupName.substring(0, MAX_SETUP_NAME_LENGTH);
+            }
             // Convert this plan to an InventorySetup with all configuration parameters
             InventorySetup inventorySetup = convertToInventorySetup(setupName, highlightColor, 
                 highlightDifference, displayColor, filterBank, unorderedHighlight, spellbook, favorite, iconID);
@@ -2900,7 +2889,7 @@ public class InventorySetupPlanner {
             // Update or add the setup using the same logic as Rs2InventorySetup
             updateSetup(inventorySetup);
             
-            log.info("Successfully added InventorySetup '{}' to MInventorySetupsPlugin", setupName);
+            log.debug("Successfully added InventorySetup '{}' to MInventorySetupsPlugin", setupName);
             return inventorySetup;
             
         } catch (Exception e) {
@@ -2933,11 +2922,22 @@ public class InventorySetupPlanner {
      * 
      * @param setup The setup to add
      */
-    private void addSetupToPlugin(InventorySetup setup) {
-        MInventorySetupsPlugin.getInventorySetups().add(setup);
+    private void addSetupToPlugin(InventorySetup setup) {        
         MInventorySetupsPlugin plugin = getMInventorySetupsPlugin();
+        log.debug("\n\t Adding setup '{}' (name length{}) to MInventorySetupsPlugin", setup.getName() ,setup.getName().length()  ); 
         if (plugin != null) {
-            plugin.getCache().addSetup(setup);
+            plugin.addInventorySetup(setup);
+            
+            Rs2InventorySetup.isInventorySetup(setup.getName()); // Ensure setup is recognized as an inventory setup
+            sleepUntil( () -> Rs2InventorySetup.isInventorySetup(setup.getName()), 5000);
+            
+            //plugin.getCache().addSetup(setup);
+            //MInventorySetupsPlugin.getInventorySetups().add(setup);
+            //plugin.getDataManager().updateConfig(true, false);
+			//Layout setupLayout = plugin.getLayoutUtilities().createSetupLayout(setup);
+			//plugin.getLayoutManager().saveLayout(setupLayout);
+			//plugin.getTagManager().setHidden(setupLayout.getTag(), true);
+			//SwingUtilities.invokeLater(() -> plugin.getPan().redrawOverviewPanel(false));
         }
     }
     
@@ -2982,10 +2982,10 @@ public class InventorySetupPlanner {
             }
             
             // Create Rs2InventorySetup using the setup name
-            net.runelite.client.plugins.microbot.util.Rs2InventorySetup rs2Setup = 
-                new net.runelite.client.plugins.microbot.util.Rs2InventorySetup(createdSetup.getName(), mainScheduler);
+            Rs2InventorySetup rs2Setup = 
+                new Rs2InventorySetup(createdSetup.getName(), mainScheduler);
             
-            log.info("Successfully created Rs2InventorySetup from planner: {}", createdSetup.getName());
+            log.info("\n\t-Successfully created Rs2InventorySetup from planner: {}", createdSetup.getName());
             return rs2Setup;
             
         } catch (Exception e) {
@@ -3003,8 +3003,21 @@ public class InventorySetupPlanner {
      * @return true if execution was successful
      */
     public boolean executeUsingRs2InventorySetup(CompletableFuture<Boolean> scheduledFuture, String setupName) {
+        return executeUsingRs2InventorySetup(scheduledFuture, setupName, false);
+    }
+    
+    /**
+     * Executes this plan using the Rs2InventorySetup approach with optional banking of items not in setup.
+     * This provides a more integrated solution that reuses existing bank and equipment management.
+     * 
+     * @param scheduledFuture The future to monitor for cancellation
+     * @param setupName The name for the temporary setup
+     * @param bankItemsNotInSetup Whether to bank items not in the setup first (excludes teleport items)
+     * @return true if execution was successful
+     */
+    public boolean executeUsingRs2InventorySetup(CompletableFuture<Boolean> scheduledFuture, String setupName, boolean bankItemsNotInSetup) {
         try {
-            log.info("Executing plan using Rs2InventorySetup approach: {}", setupName);
+            log.info("\n\t-Executing plan using Rs2InventorySetup approach: {}", setupName);
             
             // Convert CompletableFuture to ScheduledFuture (simplified conversion)
             ScheduledFuture<?> mainScheduler = new ScheduledFuture<Object>() {
@@ -3032,7 +3045,28 @@ public class InventorySetupPlanner {
                 log.error("Failed to create Rs2InventorySetup");
                 return false;
             }
+            if(rs2Setup.doesEquipmentMatch() && rs2Setup.doesInventoryMatch()){
+                log.info("Plan already matches current inventory and equipment setup, skipping execution");
+                return true; // No need to execute if already matches
+            }
+            if (!Rs2Bank.isOpen()) {
+                if (!Rs2Bank.walkToBankAndUseBank() && !Rs2Player.isInteracting() && !Rs2Player.isMoving()) {
+                    log.error("\n\tFailed to open bank for comprehensive item management");                    
+                }
+                boolean openBank= sleepUntil(() -> Rs2Bank.isOpen(), 5000);
+                if (!openBank) {
+                    log.error("\n\tFailed to open bank within timeout period,for invntory setup execution \"{}\"", setupName);
+                    return false;
+                }
+            }
             
+            // Bank items not in setup first if requested (excludes teleport items)
+            if (bankItemsNotInSetup) {
+                log.info("Banking items not in setup (excluding teleport items) before setting up: {}", setupName);
+                if (!rs2Setup.bankAllItemsNotInSetup(true)) {
+                    log.warn("Failed to bank all items not in setup, continuing with setup anyway");
+                }
+            }
             // Use existing Rs2InventorySetup methods to fulfill the requirements
             boolean equipmentSuccess = rs2Setup.loadEquipment();
             if (!equipmentSuccess) {

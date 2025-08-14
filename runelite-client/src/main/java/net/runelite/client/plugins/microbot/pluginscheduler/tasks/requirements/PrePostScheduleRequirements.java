@@ -1,10 +1,14 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements;
 import net.runelite.api.EquipmentInventorySlot;
+import net.runelite.api.GameState;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.cache.Rs2CacheManager;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2FuzzyItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Spellbook;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
@@ -25,7 +29,7 @@ import java.util.concurrent.TimeUnit;
 
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.PrePostScheduleRequirements;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.OrRequirementMode;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.registry.RequirementRegistry;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.InventorySetupPlanner;
@@ -38,6 +42,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.r
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.conditional.ConditionalRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.conditional.OrderedRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.logical.LogicalRequirement;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.logical.OrRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.util.RequirementSolver;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.state.FulfillmentStep;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.state.TaskExecutionState;
@@ -57,9 +62,7 @@ public abstract class PrePostScheduleRequirements  {
     @Getter
     private final String collectionName;
     @Getter
-    private final String activityType;
-    @Setter
-    @Getter
+    private final String activityType;    
     private boolean initialized = false;
     // Centralized requirement management
 
@@ -79,9 +82,7 @@ public abstract class PrePostScheduleRequirements  {
      */
     private volatile Rs2Spellbook originalSpellbook;
     
-    // Centralized state tracking for overlay display
-    @Getter
-    private final TaskExecutionState executionState = new TaskExecutionState();
+    
     
     @Getter
     private final boolean isWildernessCollection;
@@ -100,10 +101,55 @@ public abstract class PrePostScheduleRequirements  {
         this.collectionName = collectionName;
         this.activityType = activityType;
         this.isWildernessCollection = isWildernessCollection; // Set wilderness flag
-        initializeRequirements();
+        initialize(); // try to Initialize requirements collection
+       
     }
-    protected abstract boolean initializeRequirements();
-    public abstract void reset();
+    public boolean isInitialized(){
+        if (!initialized) {
+            
+            initialized = initialize(); // Initialize if not already done
+            if (initialized) log.info("\nPrePostScheduleRequirements <{}> initialized:\n{}",collectionName, this.getDetailedDisplay());
+            return initialized;            
+        }
+        return initialized; // Return current initialization state
+    }
+    public boolean initialize() {
+        if (initialized) {
+            log.warn("Requirements collection already initialized: " + collectionName);
+            return false; // Already initialized
+        }
+        if (!Microbot.isLoggedIn() || !Rs2CacheManager.isCacheDataVaild()){
+            log.error("Cannot initialize requirements collection: " + collectionName + " - not logged in or cache data invalid");
+            return false; // Cannot initialize if not logged in or cache is invalid
+        }
+        try {
+            boolean success = initializeRequirements();
+            if (success) {
+                initialized = true;
+                log.info("Successfully initialized requirements collection: " + collectionName);
+            } else {
+                log.error("Failed to initialize requirements collection: " + collectionName);
+            }
+            return success;
+        } catch (Exception e) {
+            log.error("Error initializing requirements collection: " + collectionName, e);
+            return false;
+        }
+    }
+    /**
+     * Initializes the requirements for this collection.
+     * This method should be called after the plugin is started to ensure all requirements are set up.
+     * 
+     * @return true if initialization was successful, false otherwise
+     */
+    protected abstract boolean initializeRequirements();    
+    public void reset() {
+        initialized = false;
+        clearOriginalSpellbook();
+        this.getRegistry().clear(); // Clear the registry to remove all requirements
+        initializeRequirements(); // Reinitialize requirements  
+
+    }
 
     /**
      * Gets access to the internal requirement registry.
@@ -120,25 +166,25 @@ public abstract class PrePostScheduleRequirements  {
      * Custom requirements are marked with CUSTOM type and are fulfilled after all standard requirements.
      * 
      * @param requirement The requirement to add
-     * @param scheduleContext The context in which this requirement should be fulfilled
+     * @param TaskContext The context in which this requirement should be fulfilled
      * @return true if the requirement was successfully added, false otherwise
      */
-    public boolean addCustomRequirement(Requirement requirement, ScheduleContext scheduleContext) {
+    public boolean addCustomRequirement(Requirement requirement, TaskContext taskContext) {
         if (requirement == null) {
             log.warn("Cannot add null custom requirement");
             return false;
         }
         
-        if (scheduleContext == null) {
+        if (taskContext == null) {
             log.warn("Cannot add custom requirement without schedule context");
             return false;
         }
         
         try {
             // Update the requirement's schedule context if needed
-            if (requirement.getScheduleContext() != scheduleContext && 
-                requirement.getScheduleContext() != ScheduleContext.BOTH) {
-                requirement.setScheduleContext(scheduleContext);
+            if (requirement.getTaskContext() != taskContext && 
+                requirement.getTaskContext() != TaskContext.BOTH) {
+                requirement.setTaskContext(taskContext);
             }
             
             // Register in the registry as an external requirement
@@ -146,7 +192,7 @@ public abstract class PrePostScheduleRequirements  {
             
             if (registered) {
                 log.info("Successfully registered custom requirement: {} for context: {}", 
-                    requirement.getDescription(), scheduleContext);
+                    requirement.getDescription(), taskContext);
                 return true;
             } else {
                 log.warn("Failed to register custom requirement in registry: {}", 
@@ -159,102 +205,7 @@ public abstract class PrePostScheduleRequirements  {
             return false;
         }
     }
-    
-    /**
-     * Gets all mandatory equipment items organized by slot.
-     * 
-     * @return A map of equipment slot to list of mandatory equipment requirements
-     */
-    public Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> getEquipmentItemsBySlot(RequirementPriority priority) {
-        Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> mandatoryEquipment = new HashMap<>();
-        
-        // Get equipment requirements from slot-based cache
-        Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> equipmentSlotRequirements = registry.getEquipmentSlotItems();
-        for (Map.Entry<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> entry : equipmentSlotRequirements.entrySet()) {
-            LinkedHashSet<ItemRequirement> mandatorySlotItems = entry.getValue().stream()
-                    .filter(item -> item.getPriority() == priority)
-                    .collect(Collectors.toCollection(LinkedHashSet::new));
-            
-            if (!mandatorySlotItems.isEmpty()) {
-                mandatoryEquipment.put(entry.getKey(), mandatorySlotItems);
-            }
-        }
-        
-        return mandatoryEquipment;
-    }
-    
-    /**
-     * Gets all mandatory inventory items (excluding equipment items).
-     */
-    public LinkedHashSet<ItemRequirement> getInventoryItems(RequirementPriority priority) {
-        LinkedHashSet<ItemRequirement> mandatoryInventory = new LinkedHashSet<>();
-        
-        // Get inventory items from slot-based cache (slot -1 represents "any slot")
-        LinkedHashSet<ItemRequirement> inventoryItems = registry.getInventorySlotItems();
-        mandatoryInventory.addAll(inventoryItems.stream()
-                .filter(item -> item.getPriority() == priority)
-                .collect(Collectors.toCollection(LinkedHashSet::new)));
-        
-        return mandatoryInventory;
-    }
-   
-    /**
-     * Validates that all mandatory items are available for this collection.
-     * Checks both equipment (at least one per required slot) and inventory items.
-     * 
-     * @return true if all mandatory requirements are met, false otherwise
-     */
-    public boolean validateItems(RequirementPriority priority) {
-        PrePostScheduleRequirements collection = this; // Use the current collection           
-        
-        // Check mandatory equipment items by slot
-        Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> mandatoryEquipmentBySlot = collection.getEquipmentItemsBySlot(priority);
-        
-        // For each slot with mandatory items, check if we have at least one item for that slot
-        for (Map.Entry<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> entry : mandatoryEquipmentBySlot.entrySet()) {
-            EquipmentInventorySlot slot = entry.getKey();
-            LinkedHashSet<ItemRequirement> slotItems = entry.getValue();
-            
-            boolean hasSlotItem = false;
-            
-            // Check if we have any variant of any mandatory item for this slot
-            for (ItemRequirement item : slotItems) {
-                Integer itemId = item.getId();
-                if (Rs2Inventory.hasItem(itemId) || Rs2Equipment.isWearing(itemId) || Rs2Bank.hasItem(itemId)) {
-                    hasSlotItem = true;
-                    break;
-                }
-            }
-            
-            if (!hasSlotItem) {
-                Microbot.log("Missing mandatory equipment for slot: " + slot);
-                return false;
-            }
-        }
-        
-        // Check mandatory inventory items
-        LinkedHashSet<ItemRequirement> mandatoryInventoryItems = collection.getInventoryItems(priority);
-        
-        for (ItemRequirement item : mandatoryInventoryItems) {
-            // Check if we have this mandatory inventory item
-            Integer itemId = item.getId();
-            if (!(Rs2Inventory.hasItem(itemId) || Rs2Bank.hasItem(itemId))) {
-                Microbot.log("Missing mandatory inventory item: " + itemId);
-                return false;
-            }
-        }
-        
-        return true;
-    }
 
-    /**
-     * Gets the most effective item for a specific equipment slot.
-     */
-    public Optional<ItemRequirement> getBestItemForSlot(EquipmentInventorySlot slot) {
-        LinkedHashSet<ItemRequirement> items = registry.getEquipmentSlotItems().getOrDefault(slot, new LinkedHashSet<>());
-        return items.isEmpty() ? Optional.empty() : Optional.of(items.iterator().next());
-    }
-    
     /**
      * Merges another collection into this one.
      */
@@ -266,145 +217,8 @@ public abstract class PrePostScheduleRequirements  {
     }
   
  
-    
-   
-       
-    /**
-     * Gets all equipment slots that have recommended items.
-     */
-    public Set<EquipmentInventorySlot> getEquipmentSlots() {
-        Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> equipmentItems = registry.getEquipmentSlotItems();
-        return equipmentItems.keySet();
-    }
-     /**
-     * Gets all pritems across all categories.
-     */
-    public LinkedHashSet<ItemRequirement> getItems(RequirementPriority priority) {
-        LinkedHashSet<ItemRequirement> recommended = new LinkedHashSet<>();
-        
-        // Add recommended inventory items
-        recommended.addAll(getInventoryItems(priority));
-        
-        // Add one item from each recommended equipment slot
-        for (LinkedHashSet<ItemRequirement> slotItems : getEquipmentItemsBySlot(priority).values()) {
-            if (!slotItems.isEmpty()) {
-                recommended.add(slotItems.iterator().next());
-            }
-        }
-        
-        return recommended;
-    }
-    
-   
-    
-    /**
-     /**
-     * *****************************************************
-     * Location req. related section
-     * **************************************************************
-     * 
-     */
-
   
-    
-    /**
-     * Attempts to fulfill the pre-schedule location requirement.
-     * This method should be called before starting the script.
-     * 
-     * @return true if positioning was successful or no requirement exists, false otherwise
-     */
-    public boolean fulfillPreScheduleLocationRequirement(CompletableFuture<Boolean> scheduledFuture) {
-        LocationRequirement preScheduleLocationRequirement = registry.getPreScheduleLocationRequirement();
-        if (preScheduleLocationRequirement == null) {
-            log.debug("No pre-schedule location requirement to fulfill");
-            return true; // No pre-schedule location requirement
-        }
-        
-        // Update state tracking for this specific requirement
-        updateFulfillmentStep(FulfillmentStep.LOCATION, "Traveling to " + preScheduleLocationRequirement.getName(), 1);
-        updateCurrentRequirement(preScheduleLocationRequirement, 1);
-        log.debug("Processing pre-schedule location requirement: {}", preScheduleLocationRequirement.getName());
-        
-        return preScheduleLocationRequirement.fulfillRequirement(scheduledFuture);
-    }
-    
-    /**
-     * Attempts to fulfill the post-schedule location requirement.
-     * This method should be called after the script completes.
-     * 
-     * @return true if positioning was successful or no requirement exists, false otherwise
-     */
-    public boolean fulfillPostScheduleLocationRequirement(CompletableFuture<Boolean> scheduledFuture) {
-        LocationRequirement postScheduleLocationRequirement = registry.getPostScheduleLocationRequirement();
-        if (postScheduleLocationRequirement == null) {
-            log.debug("No post-schedule location requirement to fulfill");
-            return true; // No post-schedule location requirement
-        }
-        
-        // Update state tracking for this specific requirement
-        updateFulfillmentStep(FulfillmentStep.LOCATION, "Traveling to " + postScheduleLocationRequirement.getName(), 1);
-        updateCurrentRequirement(postScheduleLocationRequirement, 1);
-        log.debug("Processing post-schedule location requirement: {}", postScheduleLocationRequirement.getName());
-        
-        return postScheduleLocationRequirement.fulfillRequirement(scheduledFuture);
-    }
-
-    /***************
-     * *************************+
-     * Spellbook req. related section
-     * ****************
-     * 
-     */
-         
-    /**
-     * Attempts to fulfill the pre-schedule spellbook requirement.
-     * This method should be called before starting the script.
-     * 
-     * @return true if spellbook switching was successful or no requirement exists, false otherwise
-     */
-    public boolean fulfillPreScheduleSpellbookRequirement(CompletableFuture<Boolean> scheduledFuture) {
-        SpellbookRequirement preScheduleSpellbookRequirement = registry.getPreScheduleSpellbookRequirement();
-        if (preScheduleSpellbookRequirement == null) {
-            log.debug("No pre-schedule spellbook requirement to fulfill");
-            return true; // No pre-schedule spellbook requirement
-        }
-         if (Microbot.getClient().isClientThread()) {
-            Microbot.log("Please run fulfillPreScheduleSpellbookRequirement() on a non-client thread.", Level.ERROR);
-            return false;
-        }
-        
-        // Update state tracking for this specific requirement
-        updateFulfillmentStep(FulfillmentStep.SPELLBOOK, "Switching to " + preScheduleSpellbookRequirement.getRequiredSpellbook(), 1);
-        updateCurrentRequirement(preScheduleSpellbookRequirement, 1);
-        log.debug("Processing pre-schedule spellbook requirement: {}", preScheduleSpellbookRequirement.getName());
-        
-        return preScheduleSpellbookRequirement.fulfillRequirement(scheduledFuture);
-    }
-    
-    /**
-     * Attempts to fulfill the post-schedule spellbook requirement.
-     * This method should be called after the script completes.
-     * 
-     * @return true if spellbook switching was successful or no requirement exists, false otherwise
-     */
-    public boolean fulfillPostScheduleSpellbookRequirement( CompletableFuture<Boolean> scheduledFuture) {
-        SpellbookRequirement postScheduleSpellbookRequirement = registry.getPostScheduleSpellbookRequirement();
-        if (postScheduleSpellbookRequirement == null) {
-            log.debug("No post-schedule spellbook requirement to fulfill");
-            return true; // No post-schedule spellbook requirement
-        }
-        if (Microbot.getClient().isClientThread()) {
-            Microbot.log("Please run fulfillPostScheduleSpellbookRequirement() on a non-client thread.", Level.ERROR);
-            return false;
-        }
-        
-        // Update state tracking for this specific requirement
-        updateFulfillmentStep(FulfillmentStep.SPELLBOOK, "Switching to " + postScheduleSpellbookRequirement.getRequiredSpellbook(), 1);
-        updateCurrentRequirement(postScheduleSpellbookRequirement, 1);
-        log.debug("Processing post-schedule spellbook requirement: {}", postScheduleSpellbookRequirement.getName());
-        
-        return postScheduleSpellbookRequirement.fulfillRequirement(scheduledFuture);
-    }   
+     
     /**
      * Switches back to the original spellbook that was active before pre-schedule requirements.
      * This method should be called after completing activities that required a specific spellbook.
@@ -413,25 +227,25 @@ public abstract class PrePostScheduleRequirements  {
      */
     public boolean switchBackToOriginalSpellbook() {
         if (originalSpellbook == null) {
-            Microbot.log("No original spellbook saved - no switch needed");
+            log.info("No original spellbook saved - no switch needed");
             return true; // No original spellbook saved, so no switch needed
         }
         
         Rs2Spellbook currentSpellbook = Rs2Spellbook.getCurrentSpellbook();
         if (currentSpellbook == originalSpellbook) {
-            Microbot.log("Already on original spellbook: " + originalSpellbook);
+            log.info("Already on original spellbook: " + originalSpellbook);
             return true; // Already on the original spellbook
         }
         
-        Microbot.log("Switching back to original spellbook: " + originalSpellbook + " from current: " + currentSpellbook);
+        log.info("Switching back to original spellbook: " + originalSpellbook + " from current: " + currentSpellbook);
         boolean success = SpellbookRequirement.switchBackToSpellbook(originalSpellbook);
         
         if (success) {
             // Clear the saved spellbook after successful restoration
             originalSpellbook = null;
-            Microbot.log("Successfully restored original spellbook");
+            log.info("Successfully restored original spellbook");
         } else {
-            Microbot.log("Failed to restore original spellbook: " + originalSpellbook, Level.ERROR);
+            log.error("Failed to restore original spellbook: " + originalSpellbook);
         }
         
         return success;
@@ -493,7 +307,11 @@ public abstract class PrePostScheduleRequirements  {
      * @param saveCurrentSpellbook Whether to save the current spellbook for restoration
      * @return true if all requirements were fulfilled successfully, false otherwise
      */
-    public boolean fulfillAllRequirements(CompletableFuture<Boolean> scheduledFuture, ScheduleContext context, boolean saveCurrentSpellbook) {
+    
+    private boolean fulfillAllRequirements(CompletableFuture<Boolean> scheduledFuture, TaskContext context, 
+                                            boolean saveCurrentSpellbook,
+                                            TaskExecutionState executionState) 
+    {
         boolean success = true;
         ScheduledExecutorService cancellationWatchdogService = null;
         ScheduledFuture<?> cancellationWatchdog = null;
@@ -502,26 +320,27 @@ public abstract class PrePostScheduleRequirements  {
             // Fulfill requirements in logical order -> we should always fulfill loot requirements first, then shop, then item, then spellbook, and finally location requirements
             // when adding new requirements, make sure to follow this order or think about the order in which they should be fulfilled
             // we can also think about changing the order for pre and post schedule requirements, but for now we will keep it the same
+        // Initialize state tracking
+        TaskExecutionState.ExecutionPhase phase = context == TaskContext.PRE_SCHEDULE ? 
+            TaskExecutionState.ExecutionPhase.PRE_SCHEDULE : TaskExecutionState.ExecutionPhase.POST_SCHEDULE;
         if (context == null) {
-            Microbot.log("Context cannot be null", Level.ERROR);
+            log.error("Schedule Context is null!");
             executionState.markError("Context cannot be null");
             return false;
         }
         if (Microbot.getClient().isClientThread()) {
-            Microbot.log("Please run fulfillAllRequirements() on a non-client thread.", Level.ERROR);
+            log.error("\n\tPlease run fulfillAllRequirements() on a non-client thread.");
             executionState.markError("Cannot run on client thread");
             return false;
         }
 
-        // Initialize state tracking
-        TaskExecutionState.ExecutionPhase phase = context == ScheduleContext.PRE_SCHEDULE ? 
-            TaskExecutionState.ExecutionPhase.PRE_SCHEDULE : TaskExecutionState.ExecutionPhase.POST_SCHEDULE;
-        executionState.updatePhase(phase);
+
+        executionState.update(phase,TaskExecutionState.ExecutionState.FULFILLING_REQUIREMENTS );
 
         // Start cancellation watchdog if we have a scheduledFuture to monitor
         if (scheduledFuture != null) {
             cancellationWatchdogService = Executors.newSingleThreadScheduledExecutor(r -> {
-                Thread thread = new Thread(r, "RequirementFulfillment-CancellationWatchdog-" + context);
+                Thread thread = new Thread(r, "RequirementFulfillment - CancellationWatchdog - context:" + context);
                 thread.setDaemon(true);
                 return thread;
             });
@@ -529,19 +348,20 @@ public abstract class PrePostScheduleRequirements  {
             cancellationWatchdog = startCancellationWatchdog(cancellationWatchdogService, scheduledFuture, context);
             log.debug("Started cancellation watchdog for requirement fulfillment: {}", context);
         }
-
-        log.info("\n" + "=".repeat(80));
-        log.info("FULFILLING REQUIREMENTS FOR CONTEXT: {}", context);
-        log.info("Collection: {} | Activity: {} | Wilderness: {}", collectionName, activityType, isWildernessCollection);
-        log.info("=".repeat(80));
+        StringBuilder logMessage = new StringBuilder();
+        logMessage.append("\n" + "=".repeat(80));
+        logMessage.append(String.format("\nFULFILLING REQUIREMENTS FOR CONTEXT: {}", context));
+        logMessage.append(String.format("\nCollection: %s| Activity: %s | Wilderness: %s\n", collectionName, activityType, isWildernessCollection));
+        logMessage.append("=".repeat(80));
         
         // Display complete registry information
-        log.info("\n=== COMPLETE REQUIREMENT REGISTRY ===");
-        log.info(registry.getDetailedRegistryString());
-        
+        logMessage.append("\n=== COMPLETE REQUIREMENT REGISTRY ===");
+        logMessage.append(registry.getDetailedCacheStringForContext(context));
+        //logMessage.append(this.registry.getDetailedCacheStringForContext(context));
+        log.info(logMessage.toString());
         // Step 0: Conditional and Ordered Requirements (execute first as they may contain prerequisites)
-        List<ConditionalRequirement> conditionalReqs = this.registry.getStandardRequirements(ConditionalRequirement.class, context);
-        List<OrderedRequirement> orderedReqs = this.registry.getStandardRequirements(OrderedRequirement.class, context);
+        List<ConditionalRequirement> conditionalReqs = this.registry.getRequirements(ConditionalRequirement.class, context);
+        List<OrderedRequirement> orderedReqs = this.registry.getRequirements(OrderedRequirement.class, context);
         
         StringBuilder conditionalReqInfo = new StringBuilder();
         conditionalReqInfo.append("\n=== STEP 0: CONDITIONAL REQUIREMENTS ===\n");
@@ -566,9 +386,13 @@ public abstract class PrePostScheduleRequirements  {
             }
         }
         
-        log.info(conditionalReqInfo.toString());
-        executionState.updateFulfillmentStep(FulfillmentStep.CONDITIONAL, "Executing conditional and ordered requirements");
-        success &= fulfillConditionalRequirements(scheduledFuture, context);
+        
+
+        // Only fulfill 'mixed' conditional requirements (not just item requirements alone)
+        List<ConditionalRequirement> mixedConditionalReqs = this.registry.getMixedConditionalRequirements(context);
+        if (!mixedConditionalReqs.isEmpty() || !orderedReqs.isEmpty()) {            
+            success &= RequirementSolver.fulfillConditionalRequirements(scheduledFuture,executionState, mixedConditionalReqs, orderedReqs, context);
+        }
         
         // Check for cancellation after conditional requirements
         if (scheduledFuture != null && scheduledFuture.isCancelled()) {
@@ -582,22 +406,20 @@ public abstract class PrePostScheduleRequirements  {
         }
         
         // Step 2: Loot Requirements
-        List<LootRequirement> lootReqs = this.registry.getStandardRequirements(LootRequirement.class, context);
+        List<LootRequirement> lootReqs = this.registry.getRequirements(LootRequirement.class, context);
         StringBuilder lootReqInfo = new StringBuilder();
         lootReqInfo.append("\n=== STEP 2: LOOT REQUIREMENTS ===\n");
         if (lootReqs.isEmpty()) {
-            lootReqInfo.append(String.format("No loot requirements for context: %s\n", context));
+            lootReqInfo.append(String.format("\tNo loot requirements for context: %s\n", context));
         } else {
-            lootReqInfo.append(String.format("Found %d loot requirement(s):\n", lootReqs.size()));
+            lootReqInfo.append(String.format("\tFound %d loot requirement(s):\n", lootReqs.size()));
             for (int i = 0; i < lootReqs.size(); i++) {
-                lootReqInfo.append(String.format("\n--- Loot Requirement %d ---\n", i + 1));
+                lootReqInfo.append(String.format("\n\t\t--- Loot Requirement %d ---\n\t\t\t", i + 1));
                 lootReqInfo.append(lootReqs.get(i).displayString()).append("\n");
             }
-        }
-        
-        log.info(lootReqInfo.toString());
-        executionState.updateFulfillmentStep(FulfillmentStep.LOOT, "Collecting loot items ");
-        success &= fulfillPrePostLootRequirements(scheduledFuture, context);
+        }        
+        log.info(lootReqInfo.toString());        
+        success &= fulfillPrePostLootRequirements(scheduledFuture, executionState,context);
         
         // Check for cancellation after loot requirements
         if (scheduledFuture != null && scheduledFuture.isCancelled()) {
@@ -611,13 +433,13 @@ public abstract class PrePostScheduleRequirements  {
         }
         
         // Step 3: Shop Requirements
-        List<ShopRequirement> shopReqs = this.registry.getStandardRequirements(ShopRequirement.class, context);
+        List<ShopRequirement> shopReqs = this.registry.getRequirements(ShopRequirement.class, context);
         StringBuilder shopReqInfo = new StringBuilder();
         shopReqInfo.append("\n=== STEP 3: SHOP REQUIREMENTS ===\n");
         if (shopReqs.isEmpty()) {
-            shopReqInfo.append(String.format("No shop requirements for context: %s\n", context));
+            shopReqInfo.append(String.format("\tNo shop requirements for context: %s\n", context));
         } else {
-            shopReqInfo.append(String.format("Found %d shop requirement(s):\n", shopReqs.size()));
+            shopReqInfo.append(String.format("\tFound %d shop requirement(s):\n", shopReqs.size()));
             for (int i = 0; i < shopReqs.size(); i++) {
                 shopReqInfo.append(String.format("\n--- Shop Requirement %d ---\n", i + 1));
                 shopReqInfo.append(shopReqs.get(i).displayString()).append("\n");
@@ -625,12 +447,11 @@ public abstract class PrePostScheduleRequirements  {
         }
         
         log.info(shopReqInfo.toString());
-        executionState.updateFulfillmentStep(FulfillmentStep.SHOP, "Purchasing shop items");
-        success &= fulfillPrePostShopRequirements(scheduledFuture, context);
+        success &= fulfillPrePostShopRequirements(scheduledFuture, executionState,context);
         
         // Check for cancellation after shop requirements
         if (scheduledFuture != null && scheduledFuture.isCancelled()) {
-            log.warn("Requirements fulfillment cancelled after shop requirements");
+            log.warn("\n\tRequirements fulfillment cancelled after shop requirements");
             return false;
         }
         
@@ -644,24 +465,14 @@ public abstract class PrePostScheduleRequirements  {
         RequirementRegistry.RequirementBreakdown itemReqBreakdown = this.registry.getItemRequirementBreakdown( context);
         itemReqInfo.append("\n=== STEP 4: ITEM REQUIREMENTS ===\n");
         if (itemReqBreakdown.isEmpty()) {
-            itemReqInfo.append(String.format("No item requirements for context: %s\n", context));
-        } else {           
-            
-            itemReqInfo.append(itemReqBreakdown.getDetailedBreakdownString());
-            
-            /**for (int i = 0; i < itemReqs.size(); i++) {
-               itemReqInfo.append(String.format("--- Item Requirement %d ---\n", i + 1));
-                itemReqInfo.append(itemReqs.get(i).displayString()).append("\n");
-            }**/
-           itemReqInfo.append(this.registry.getDetailedCacheStringForContext(context));
-           
-            
-            
+            itemReqInfo.append(String.format("\tNo item requirements for context: %s\n", context));
+        } else {                       
+            itemReqInfo.append("\t"+itemReqBreakdown.getDetailedBreakdownString());                
         }
         
         log.info(itemReqInfo.toString());
         executionState.updateFulfillmentStep(FulfillmentStep.ITEMS, "Preparing inventory and equipment");
-        success &= fulfillPrePostItemRequirements(scheduledFuture, context);
+        success &= fulfillPrePostItemRequirements(scheduledFuture,executionState,context);
         
         // Check for cancellation after item requirements
         if (scheduledFuture != null && scheduledFuture.isCancelled()) {
@@ -675,7 +486,7 @@ public abstract class PrePostScheduleRequirements  {
         }
         
         // Step 5: Spellbook Requirements
-        List<SpellbookRequirement> spellbookReqs = this.registry.getStandardRequirements(SpellbookRequirement.class, context);
+        List<SpellbookRequirement> spellbookReqs = this.registry.getRequirements(SpellbookRequirement.class, context);
         StringBuilder spellbookReqInfo = new StringBuilder();
         spellbookReqInfo.append("\n=== STEP 5: SPELLBOOK REQUIREMENTS ===\n");
         if (spellbookReqs.isEmpty()) {
@@ -690,7 +501,7 @@ public abstract class PrePostScheduleRequirements  {
         
         log.info(spellbookReqInfo.toString());
         executionState.updateFulfillmentStep(FulfillmentStep.SPELLBOOK, "Switching spellbook");
-        success &= fulfillPrePostSpellbookRequirements(scheduledFuture, context, saveCurrentSpellbook);
+        success &= fulfillPrePostSpellbookRequirements(scheduledFuture, executionState,context, saveCurrentSpellbook);
         
         // Check for cancellation after spellbook requirements
         if (scheduledFuture != null && scheduledFuture.isCancelled()) {
@@ -704,7 +515,7 @@ public abstract class PrePostScheduleRequirements  {
         }
         
         // Step 6: Location Requirements (always fulfill location requirements last)
-        List<LocationRequirement> locationReqs = this.registry.getStandardRequirements(LocationRequirement.class, context);
+        List<LocationRequirement> locationReqs = this.registry.getRequirements(LocationRequirement.class, context);
         StringBuilder locationReqInfo = new StringBuilder();
         locationReqInfo.append("\n=== STEP 6: LOCATION REQUIREMENTS ===\n");
         if (locationReqs.isEmpty()) {
@@ -718,8 +529,8 @@ public abstract class PrePostScheduleRequirements  {
         }
         
         log.info(locationReqInfo.toString());
-        executionState.updateFulfillmentStep(FulfillmentStep.LOCATION, "Moving to required location");        
-        success &= fulfillPrePostLocationRequirements(scheduledFuture, context);
+        
+        success &= fulfillPrePostLocationRequirements(scheduledFuture,executionState, context);
         
         // Check for cancellation after location requirements
         if (scheduledFuture != null && scheduledFuture.isCancelled()) {
@@ -745,7 +556,7 @@ public abstract class PrePostScheduleRequirements  {
             log.info(externalReqInfo.toString());
             
             if (!externalRequirements.isEmpty()) {
-                executionState.updateFulfillmentStep(FulfillmentStep.EXTERNAL_REQUIREMENTS, "Fulfilling external requirements");
+               updateFulfillmentStep( executionState,FulfillmentStep.EXTERNAL_REQUIREMENTS, "Fulfilling external requirements", externalRequirements.size());
                 
                 for (Requirement externalReq : externalRequirements) {
                     try {
@@ -780,7 +591,7 @@ public abstract class PrePostScheduleRequirements  {
         }
         
         if (success) {
-            executionState.updateState(TaskExecutionState.ExecutionState.COMPLETED, "All requirements fulfilled successfully");
+            executionState.update(phase,TaskExecutionState.ExecutionState.COMPLETED );
             log.info("\n" + "=".repeat(80) + "\nALL REQUIREMENTS FULFILLED SUCCESSFULLY FOR CONTEXT: {}\n" + "=".repeat(80), context);
         } else {
             executionState.markFailed("Failed to fulfill location requirements");
@@ -823,7 +634,7 @@ public abstract class PrePostScheduleRequirements  {
      */
     private ScheduledFuture<?> startCancellationWatchdog(   ScheduledExecutorService executorService, 
                                                             CompletableFuture<Boolean> scheduledFuture, 
-                                                            ScheduleContext context) {
+                                                            TaskContext context) {
         return executorService.scheduleAtFixedRate(() -> {
             try {
                 // Check for cancellation
@@ -850,8 +661,8 @@ public abstract class PrePostScheduleRequirements  {
      * @param saveCurrentSpellbook Whether to save current spellbook for restoration
      * @return true if all pre-schedule requirements were fulfilled successfully, false otherwise
      */
-    public boolean fulfillPreScheduleRequirements(CompletableFuture<Boolean> scheduledFuture, boolean saveCurrentSpellbook) {
-        return fulfillAllRequirements(scheduledFuture,ScheduleContext.PRE_SCHEDULE, saveCurrentSpellbook);
+    public boolean fulfillPreScheduleRequirements(CompletableFuture<Boolean> scheduledFuture, boolean saveCurrentSpellbook,TaskExecutionState executionState) {
+        return fulfillAllRequirements(scheduledFuture,TaskContext.PRE_SCHEDULE, saveCurrentSpellbook,executionState);
     }
     
   
@@ -863,8 +674,8 @@ public abstract class PrePostScheduleRequirements  {
      * @param saveCurrentSpellbook Whether to save current spellbook for restoration
      * @return true if all post-schedule requirements were fulfilled successfully, false otherwise
      */
-    public boolean fulfillPostScheduleRequirements(CompletableFuture<Boolean> scheduledFuture, boolean saveCurrentSpellbook) {
-        return fulfillAllRequirements(scheduledFuture, ScheduleContext.POST_SCHEDULE, saveCurrentSpellbook);
+    public boolean fulfillPostScheduleRequirements(CompletableFuture<Boolean> scheduledFuture, boolean saveCurrentSpellbook, TaskExecutionState executionState) {
+        return fulfillAllRequirements(scheduledFuture, TaskContext.POST_SCHEDULE, saveCurrentSpellbook, executionState);
     }
     
 
@@ -877,7 +688,7 @@ public abstract class PrePostScheduleRequirements  {
      * @param executorService The ScheduledExecutorService on which fulfillment is running
      * @return true if all item requirements were fulfilled successfully, false otherwise
      */
-    public boolean fulfillPrePostItemRequirements(CompletableFuture<Boolean> scheduledFuture, ScheduleContext context) {
+    public boolean fulfillPrePostItemRequirements(CompletableFuture<Boolean> scheduledFuture, TaskExecutionState executionState, TaskContext context) {
         // Get count of logical requirements for this context using the unified API
         int logicalReqsCount = registry.getItemCount(context);
         
@@ -887,7 +698,7 @@ public abstract class PrePostScheduleRequirements  {
         }
         
         // Initialize step tracking
-        updateFulfillmentStep(FulfillmentStep.ITEMS, "Processing item requirements", logicalReqsCount);
+        updateFulfillmentStep(executionState, FulfillmentStep.ITEMS, "Processing item requirements", logicalReqsCount);
         
         boolean success = true;
         success = fulfillOptimalInventoryAndEquipmentLayout(scheduledFuture, context);
@@ -905,8 +716,8 @@ public abstract class PrePostScheduleRequirements  {
      * @param scheduledFuture The CompletableFuture to monitor for cancellation
      * @return true if all shop requirements were fulfilled successfully, false otherwise
      */
-    public boolean fulfillPrePostShopRequirements(CompletableFuture<Boolean> scheduledFuture,ScheduleContext context ) {
-        LinkedHashSet<LogicalRequirement> shopLogical = registry.getStandardShopLogicalRequirements();
+    public boolean fulfillPrePostShopRequirements(CompletableFuture<Boolean> scheduledFuture,TaskExecutionState executionState, TaskContext context ) {
+        LinkedHashSet<OrRequirement> shopLogical = registry.getShopRequirements(context);
         
         if (shopLogical.isEmpty()) {
             log.debug("No shop requirements to fulfill for context: {}", context);
@@ -914,11 +725,15 @@ public abstract class PrePostScheduleRequirements  {
         }
         
         // Initialize step tracking
-        List<LogicalRequirement> contextReqs = LogicalRequirement.filterByContext(new ArrayList<>(shopLogical), context);
-        updateFulfillmentStep(FulfillmentStep.SHOP, "Processing shop requirements", contextReqs.size());
-        log.info("Processing shop requirements for context: {} number of  req.", context, contextReqs.size());
+
+        updateFulfillmentStep(executionState, FulfillmentStep.SHOP, "Processing shop requirements", shopLogical.size());
+        log.info("Processing shop requirements for context: {} number of  req.", context, shopLogical.size());
         // Use the utility class for fulfillment
-        return LogicalRequirement.fulfillLogicalRequirements(scheduledFuture,contextReqs, "shop");
+        return LogicalRequirement.fulfillLogicalRequirements(
+            scheduledFuture,
+            new ArrayList<>(shopLogical),
+            "shop"
+        );
     }
     
   
@@ -930,9 +745,9 @@ public abstract class PrePostScheduleRequirements  {
      * @param scheduledFuture The CompletableFuture to monitor for cancellation
      * @return true if all loot requirements were fulfilled successfully, false otherwise
      */
-    public boolean fulfillPrePostLootRequirements(CompletableFuture<Boolean> scheduledFuture, ScheduleContext context ) {
+    public boolean fulfillPrePostLootRequirements(CompletableFuture<Boolean> scheduledFuture, TaskExecutionState executionState, TaskContext context ) {
         // Get requirements count for step tracking
-        LinkedHashSet<LogicalRequirement> lootLogical = registry.getStandardLootLogicalRequirements();
+        LinkedHashSet<OrRequirement> lootLogical = registry.getLootLogicalRequirements(context);
         
         if (lootLogical.isEmpty()) {
             log.debug("No loot requirements to fulfill for context: {}", context);
@@ -941,7 +756,7 @@ public abstract class PrePostScheduleRequirements  {
         
         // Initialize step tracking
         List<LogicalRequirement> contextReqs = LogicalRequirement.filterByContext(new ArrayList<>(lootLogical), context);
-        updateFulfillmentStep(FulfillmentStep.LOOT, "Collecting loot items", contextReqs.size());
+        updateFulfillmentStep(executionState,FulfillmentStep.LOOT, "Collecting loot items", contextReqs.size());
         
         // Use the utility class for fulfillment
         return LogicalRequirement.fulfillLogicalRequirements(scheduledFuture,contextReqs, "loot");
@@ -959,9 +774,9 @@ public abstract class PrePostScheduleRequirements  {
      * @param executorService The ScheduledExecutorService on which fulfillment is running
      * @return true if all location requirements were fulfilled successfully, false otherwise
      */
-    public boolean fulfillPrePostLocationRequirements(CompletableFuture<Boolean> scheduledFuture, ScheduleContext context) {
+    public boolean fulfillPrePostLocationRequirements(CompletableFuture<Boolean> scheduledFuture,TaskExecutionState executionState, TaskContext context) {
         // Get requirements count for step tracking
-        List<LocationRequirement> locationReqs = this.registry.getStandardRequirements(LocationRequirement.class, context);
+        List<LocationRequirement> locationReqs = this.registry.getRequirements(LocationRequirement.class, context);
         
         if (locationReqs.isEmpty()) {
             log.debug("No location requirements to fulfill for context: {}", context);
@@ -974,7 +789,7 @@ public abstract class PrePostScheduleRequirements  {
         
         // Initialize step tracking
         LocationRequirement locationReq = locationReqs.get(0);
-        updateFulfillmentStep(FulfillmentStep.LOCATION, "Moving to " + locationReq.getName(), locationReqs.size());
+        updateFulfillmentStep(executionState,FulfillmentStep.LOCATION, "Moving to " + locationReq.getName(), locationReqs.size());
         
         boolean success = true;
         
@@ -982,7 +797,7 @@ public abstract class PrePostScheduleRequirements  {
             LocationRequirement requirement = locationReqs.get(i);
             
             // Update current requirement tracking
-            updateCurrentRequirement(requirement, i + 1);
+            updateCurrentRequirement(executionState,requirement, i + 1);
             
             try {
                 log.debug("Processing location requirement {}/{}: {}", i + 1, locationReqs.size(), requirement.getName());
@@ -1001,7 +816,7 @@ public abstract class PrePostScheduleRequirements  {
             }
         }
         
-        log.debug("Location requirements fulfillment completed. Success: {}", success);
+        log.info("Location requirements fulfillment completed. Success: {}", success);
         return success;
     }
     
@@ -1015,8 +830,8 @@ public abstract class PrePostScheduleRequirements  {
      * @param saveCurrentSpellbook Whether to save the current spellbook before switching (for pre-schedule)
      * @return true if all spellbook requirements were fulfilled successfully, false otherwise
      */
-    public boolean fulfillPrePostSpellbookRequirements(CompletableFuture<Boolean> scheduledFuture, ScheduleContext context, boolean saveCurrentSpellbook) {
-        List<SpellbookRequirement> spellbookReqs = this.registry.getStandardRequirements(SpellbookRequirement.class, context);
+    public boolean fulfillPrePostSpellbookRequirements(CompletableFuture<Boolean> scheduledFuture,TaskExecutionState executionState, TaskContext context, boolean saveCurrentSpellbook) {
+        List<SpellbookRequirement> spellbookReqs = this.registry.getRequirements(SpellbookRequirement.class, context);
         
         if (spellbookReqs.isEmpty()) {
             log.debug("No spellbook requirements to fulfill for context: {}", context);
@@ -1030,12 +845,12 @@ public abstract class PrePostScheduleRequirements  {
         SpellbookRequirement spellbookReq = spellbookReqs.get(0);
         
         // Initialize step tracking
-        updateFulfillmentStep(FulfillmentStep.SPELLBOOK, "Switching to " + spellbookReq.getRequiredSpellbook().name(), spellbookReqs.size());
+        updateFulfillmentStep(executionState,FulfillmentStep.SPELLBOOK, "Switching to " + spellbookReq.getRequiredSpellbook().name(), spellbookReqs.size());
         
         boolean success = true;
         
         // Save original spellbook if this is for pre-schedule and we should save it
-        if (context == ScheduleContext.PRE_SCHEDULE && saveCurrentSpellbook) {
+        if (context == TaskContext.PRE_SCHEDULE && saveCurrentSpellbook) {
             originalSpellbook = Rs2Spellbook.getCurrentSpellbook();
             log.debug("Saved original spellbook: " + originalSpellbook + " before switching for pre-schedule requirements");
         }
@@ -1044,7 +859,7 @@ public abstract class PrePostScheduleRequirements  {
             SpellbookRequirement requirement = spellbookReqs.get(i);
             
             // Update current requirement tracking
-            updateCurrentRequirement(requirement, i + 1);
+            updateCurrentRequirement(executionState,requirement, i + 1);
             
             try {
                 log.debug("Processing spellbook requirement {}/{}: {}", i + 1, spellbookReqs.size(), requirement.getName());
@@ -1065,7 +880,7 @@ public abstract class PrePostScheduleRequirements  {
         
         // Special handling for post-schedule: if no post-schedule spellbook requirement is defined
         // but we have a saved original spellbook, automatically restore it
-        if (context == ScheduleContext.POST_SCHEDULE && spellbookReqs.isEmpty() && originalSpellbook != null) {
+        if (context == TaskContext.POST_SCHEDULE && spellbookReqs.isEmpty() && originalSpellbook != null) {
             log.debug("No post-schedule spellbook requirement defined, automatically restoring original spellbook");
             boolean restored = switchBackToOriginalSpellbook();
             if (!restored) {
@@ -1086,18 +901,18 @@ public abstract class PrePostScheduleRequirements  {
      * @param scheduledFuture The CompletableFuture to monitor for cancellation
      * @return true if all conditional requirements were fulfilled successfully, false otherwise
      */
-    public boolean fulfillConditionalRequirements(CompletableFuture<Boolean> scheduledFuture, ScheduleContext context ) {
+    public boolean fulfillConditionalRequirements(CompletableFuture<Boolean> scheduledFuture, TaskExecutionState executionState, TaskContext context ) {
         // Get requirements count for step tracking
-        List<ConditionalRequirement> conditionalReqs = this.registry.getStandardRequirements(ConditionalRequirement.class, context);
-        List<OrderedRequirement> orderedReqs = this.registry.getStandardRequirements(OrderedRequirement.class, context);
+        List<ConditionalRequirement> conditionalReqs = this.registry.getRequirements(ConditionalRequirement.class, context);
+        List<OrderedRequirement> orderedReqs = this.registry.getRequirements(OrderedRequirement.class, context);
         
         // Initialize step tracking
         int totalReqs = conditionalReqs.size() + orderedReqs.size();
-        updateFulfillmentStep(FulfillmentStep.CONDITIONAL, 
+        updateFulfillmentStep(executionState,FulfillmentStep.CONDITIONAL, 
                 "Processing " + totalReqs + " conditional/ordered requirement(s)", totalReqs);
         
         // Use the utility class for fulfillment
-        return RequirementSolver.fulfillConditionalRequirements(scheduledFuture,conditionalReqs, orderedReqs, context);
+        return RequirementSolver.fulfillConditionalRequirements(scheduledFuture,executionState,conditionalReqs, orderedReqs, context);
               
     }
     
@@ -1111,7 +926,7 @@ public abstract class PrePostScheduleRequirements  {
      * @param details Descriptive text about what's happening in this step
      * @param totalRequirements Total number of requirements in this step
      */
-    protected void updateFulfillmentStep(FulfillmentStep step, String details, int totalRequirements) {
+    protected void updateFulfillmentStep(TaskExecutionState executionState, FulfillmentStep step, String details, int totalRequirements) {
         executionState.updateFulfillmentStep(step, details, totalRequirements);
     }
     
@@ -1122,33 +937,10 @@ public abstract class PrePostScheduleRequirements  {
      * @param requirement The specific requirement being processed
      * @param requirementIndex The 1-based index of this requirement in the current step
      */
-    protected void updateCurrentRequirement(Requirement requirement, int requirementIndex) {
+    protected void updateCurrentRequirement(TaskExecutionState executionState, Requirement requirement, int requirementIndex) {
         if (requirement != null) {
             executionState.updateCurrentRequirement(requirement, requirement.getName(), requirementIndex);
         }
-    }
-   
-    
-    /**
-     * Clears the current fulfillment state
-     */
-    public void clearFulfillmentState() {
-        executionState.clear();
-    }
-    
-    /**
-     * Gets the current fulfillment status for overlay display
-     * @return A formatted string describing the current state, or null if not fulfilling
-     */
-    public String getCurrentFulfillmentStatus() {
-        return executionState.getDisplayStatus();
-    }
-    
-    /**
-     * Checks if any requirement fulfillment is currently in progress
-     */
-    public boolean isFulfilling() {
-        return executionState.isExecuting();
     }
     
     /**
@@ -1160,7 +952,7 @@ public abstract class PrePostScheduleRequirements  {
      * @param executorService The ScheduledExecutorService on which fulfillment is running
      * @return true if all mandatory requirements can be fulfilled
      */
-    private boolean fulfillOptimalInventoryAndEquipmentLayout(CompletableFuture<Boolean> scheduledFuture, ScheduleContext context) {
+    private boolean fulfillOptimalInventoryAndEquipmentLayout(CompletableFuture<Boolean> scheduledFuture, TaskContext context) {
         try {
             StringBuilder sb = new StringBuilder();
             sb.append("\n" + "=".repeat(60));
@@ -1168,18 +960,7 @@ public abstract class PrePostScheduleRequirements  {
             sb.append("\n\tContext: "+ context +"| Collection: "+collectionName).append("\n");
             sb.append("=".repeat(60));
             log.info(sb.toString());
-            // Ensure bank is open for all operations
-            if (!Rs2Bank.isOpen()) {
-                log.info("\n\tBank is not open, attempting to open bank for comprehensive item management");
-                if (!Rs2Bank.walkToBankAndUseBank() && !Rs2Player.isInteracting() && !Rs2Player.isMoving()) {
-                   log.error("\n\tFailed to open bank for comprehensive item management");                    
-                }
-                boolean openBank= sleepUntil(() -> Rs2Bank.isOpen(), 5000);
-                if (!openBank) {
-                    log.error("\n\tFailed to open bank within timeout for context: {}", context);
-                    return false;
-                }
-            }
+          
 
             // Step 1: Analyze all requirements and create constraint maps
             log.info("\n--- Step 1: Analyzing Requirements and Creating Layout Plan ---");
@@ -1197,9 +978,10 @@ public abstract class PrePostScheduleRequirements  {
             // Step 2: Check if the plan is feasible (all mandatory items can be fulfilled)
             log.info("\n--- Step 2: Feasibility Check ---");
             boolean feasible = layoutPlan.isFeasible();
-            log.info("Plan Feasibility: {}", feasible ? "FEASIBLE" : "NOT FEASIBLE");
+            log.info("\n---Plan Feasibility: {}", feasible ? "FEASIBLE" : "NOT FEASIBLE");
             
             if (!feasible) {
+                
                 log.error("Layout plan is not feasible - missing mandatory items or insufficient space");
                 
                 // Log detailed failure reasons
@@ -1212,8 +994,13 @@ public abstract class PrePostScheduleRequirements  {
                 
                 if (!layoutPlan.getMissingMandatoryEquipment().isEmpty()) {
                     log.error("Missing mandatory equipment slots:");
-                    for (EquipmentInventorySlot slot : layoutPlan.getMissingMandatoryEquipment()) {
-                        log.error("\t- {}", slot.name());
+                    for (Map.Entry<EquipmentInventorySlot, List<ItemRequirement>> entry : layoutPlan.getMissingMandatoryEquipment().entrySet()) {
+                        EquipmentInventorySlot slot = entry.getKey();
+                        List<ItemRequirement> missingItems = entry.getValue();
+                        String itemNames = missingItems.stream()
+                                .map(ItemRequirement::getName)
+                                .collect(Collectors.joining(", "));
+                        log.error("\t- {}: {}", slot.name(), itemNames);
                     }
                 }
                 
@@ -1221,12 +1008,12 @@ public abstract class PrePostScheduleRequirements  {
             }
             
             // Display slot utilization summary
-            log.info("\n--- Slot Utilization Summary ---");
-            log.info("\n"+layoutPlan.getOccupiedSlotsSummary());
+            log.debug("\n--- Slot Utilization Summary ---");
+            log.debug("\n"+layoutPlan.getOccupiedSlotsSummary());
             
             // Step 2.5: Convert plan to InventorySetup and add to plugin BEFORE execution
-            log.info("\n--- Step 2.5: Creating InventorySetup from Plan ---");
-            String inventorySetupName = "Optimal_Setup_" + collectionName + "_" + context.name();
+            log.debug("\n--- Step 2.5: Creating InventorySetup from Plan ---");
+            String inventorySetupName = "[OS]_" + collectionName + "_" + context.name();//OS stands for Optimal Setup
             InventorySetup createdSetup = layoutPlan.addToInventorySetupsPlugin(inventorySetupName);
             
             if (createdSetup == null) {
@@ -1234,17 +1021,17 @@ public abstract class PrePostScheduleRequirements  {
                 return false;
             }
             
-            log.info("Successfully created InventorySetup: {}", createdSetup.getName());
+            log.debug("Successfully created InventorySetup: {}", createdSetup.getName());
             
             // Step 3: Execute using Rs2InventorySetup approach
-            log.info("\n--- Step 3: Executing Plan Using Rs2InventorySetup ---");
+            log.debug("\n--- Step 3: Executing Plan Using Rs2InventorySetup ---");
             boolean success = layoutPlan.executeUsingRs2InventorySetup(scheduledFuture, createdSetup.getName());
             
             if (success) {
-                log.info("\n" + "=".repeat(60));
-                log.info("SUCCESSFULLY EXECUTED OPTIMAL INVENTORY AND EQUIPMENT LAYOUT");
-                log.info("Used Rs2InventorySetup approach with setup: {}", createdSetup.getName());
-                log.info("=".repeat(60));
+                log.debug("\n" + "=".repeat(60));
+                log.debug("SUCCESSFULLY EXECUTED OPTIMAL INVENTORY AND EQUIPMENT LAYOUT");
+                log.debug("Used Rs2InventorySetup approach with setup: {}", createdSetup.getName());
+                log.debug("=".repeat(60));
             } else {
                 log.error("\n" + "=".repeat(60));
                 log.error("FAILED TO EXECUTE INVENTORY AND EQUIPMENT LAYOUT PLAN");
@@ -1271,7 +1058,172 @@ public abstract class PrePostScheduleRequirements  {
      * @param context The schedule context (PRE_SCHEDULE or POST_SCHEDULE)
      * @return The created inventory setup plan, or null if planning failed
      */
-    private InventorySetupPlanner analyzeRequirementsAndCreateLayoutPlan(CompletableFuture<?> scheduledFuture, ScheduleContext context) {
+    private InventorySetupPlanner analyzeRequirementsAndCreateLayoutPlan(CompletableFuture<?> scheduledFuture, TaskContext context) {
+        // Ensure bank is open for all operations
+        if (Rs2Bank.bankItems().size() == 0 && !Rs2Bank.isOpen()) {
+            log.info("\n\tBank Cach is null and bank not open, attempting to open bank for item management, update bank data");
+            if (!Rs2Bank.walkToBankAndUseBank() && !Rs2Player.isInteracting() && !Rs2Player.isMoving()) {
+                log.error("\n\tFailed to open bank for comprehensive item management");                    
+            }
+            boolean openBank= sleepUntil(() -> Rs2Bank.isOpen(), 5000);
+            if (!openBank) {
+                log.error("\n\tFailed to open bank within timeout for context: {}", context);
+                return null;
+            }
+        }
+        // get all inventory Item (Rs2Item) and all equipment items currently in inventory or equipped which are not in the inenvtory or equipment requirements
+//        List<Rs2ItemModel> currentInventoryItems = Rs2Inventory.get();
+  //      List<Rs2ItemModel> currentEquipmentItems = Rs2Equipment.getAllItems();
+        List<Rs2ItemModel> itemNotInItemReqsInventory = new ArrayList<>();
+        List<Rs2ItemModel> itemNotInItemReqsEquipment = new ArrayList<>();
+        Map<EquipmentInventorySlot, LinkedHashSet<ItemRequirement>> registeredEquipmentMap = registry.getEquipmentSlotItems(context);
+        Map<Integer, LinkedHashSet<ItemRequirement>> registeredInventoryMap = registry.getInventorySlotItems(context);
+        LinkedHashSet<ItemRequirement> registeredAnyInventoryMap = registry.getAnyInventorySlotItems(context);
+        List<ConditionalRequirement> registeredConditionalInventory = registry.getConditionalItemRequirements(context);
+        //iterate over inventoy, retrive unnecessary inventory items
+        for (int iiSlot = 0; iiSlot < 28; iiSlot++) {
+            if (scheduledFuture != null && scheduledFuture.isCancelled()) {
+                log.warn("Executor service is shutdown, skipping inventory scan at slot: {}", iiSlot);
+                return null; // Skip if executor service is shutdown
+            }
+            Rs2ItemModel invItem = Rs2Inventory.getItemInSlot(iiSlot);
+            if (invItem != null) {
+                boolean foundInReqs = false;
+                // Check against registered inventory requirements
+                if (registeredInventoryMap.containsKey(iiSlot)) {
+                    for (ItemRequirement req : registeredInventoryMap.get(iiSlot)) {
+                        if(invItem.getId() == req.getId()){
+                            foundInReqs = true;
+                            break;
+                        }
+                        //if (invItem.getName().toLowerCase().contains(req.getName().toLowerCase())) {
+                        //    foundInReqs = true;
+                        //    break;
+                       // }
+                    }
+                }
+                // Check against registered any-inventory requirements
+                if (!foundInReqs && !registeredAnyInventoryMap.isEmpty()) {
+                    for (ItemRequirement req : registeredAnyInventoryMap) {
+                        if(invItem.getId() == req.getId()){
+                            foundInReqs = true;
+                            break;
+                        }                        
+                    }
+                }
+                if (!foundInReqs && !registeredConditionalInventory.isEmpty()) {
+                    for (ConditionalRequirement condReq : registeredConditionalInventory) {
+                        for (ItemRequirement req : condReq.getActiveItemRequirements()) {
+                            if(invItem.getId() == req.getId()){
+                                foundInReqs = true;
+                                break;
+                            }                        
+                        }
+                        if(foundInReqs) break;
+                    }
+                }
+                if (!foundInReqs) {
+                    itemNotInItemReqsInventory.add(invItem);
+                }
+            }
+        }
+        //iterate over equipment slots, retrive unnecessary equipment items
+        for (EquipmentInventorySlot slot : EquipmentInventorySlot.values()) {
+            Rs2ItemModel equipItem = Rs2Equipment.get(slot);
+            if (scheduledFuture != null && scheduledFuture.isCancelled()) {
+                log.warn("Executor service is shutdown, skipping equipment scan at slot: {}", slot);
+                return null; // Skip if executor service is shutdown
+            }
+            if (equipItem != null) {
+                boolean foundInReqs = false;
+                // Check against registered equipment requirements
+                if (registeredEquipmentMap.containsKey(slot)) {
+                    for (ItemRequirement req : registeredEquipmentMap.get(slot)) {
+                        if (equipItem.getName().toLowerCase().contains(req.getName().toLowerCase())) {
+                            foundInReqs = true;
+                            break;
+                        }           
+                    }
+                }
+                if (!foundInReqs && !registeredConditionalInventory.isEmpty()) {
+                    for (ConditionalRequirement condReq : registeredConditionalInventory) {
+                        for (ItemRequirement req : condReq.getActiveItemRequirements()) {
+                            if(equipItem.getId() == req.getId()){
+                                foundInReqs = true;
+                                break;
+                            }                        
+                        }
+                        if(foundInReqs) break;
+                    }
+                }              
+                if (!foundInReqs) {
+                    itemNotInItemReqsEquipment.add(equipItem);
+                }
+            }
+        }
+        // we need do bank items which are not in the item requirements, move to bank and deposit
+        if (!itemNotInItemReqsInventory.isEmpty() || !itemNotInItemReqsEquipment.isEmpty()) {
+            log.info("\n\tFound {} inventory items and {} equipment items not in item requirements, depositing them to bank", itemNotInItemReqsInventory.size(), itemNotInItemReqsEquipment.size());
+            Rs2Bank.walkToBankAndUseBank();
+            boolean bankOpened = sleepUntil(() -> Rs2Bank.isOpen(), 5000);
+            if (!bankOpened) {
+                log.error("\n\tFailed to open bank within timeout for context: {}", context);
+                return null;
+            }            
+            // Deposit inventory items
+            for (Rs2ItemModel item : itemNotInItemReqsInventory) {
+                if (scheduledFuture != null && scheduledFuture.isCancelled()) {
+                    log.warn("Executor service is shutdown, skipping item deposit: {}", item.getName());
+                    return null; // Skip if executor service is shutdown
+                }
+                boolean deposited = Rs2Bank.depositAll(item.getId());
+                if (deposited) {
+                    log.info("\tDeposited inventory item: {} x{}", item.getName(), item.getQuantity());
+                    sleepUntil(()->!Rs2Inventory.hasItem(item.getName()), 200);
+                } else {
+                    log.warn("\tFailed to deposit inventory item: {} x{}", item.getName(), item.getQuantity());
+                }
+            }
+            // deposit all unnecessary equipment items at once using bulk deposit
+            if (!itemNotInItemReqsEquipment.isEmpty()) {
+                if (scheduledFuture != null && scheduledFuture.isCancelled()) {
+                    log.warn("Executor service is shutdown, skipping equipment deposit");
+                    return null; // Skip if executor service is shutdown
+                }
+                
+                // collect all equipment slots to deposit
+                EquipmentInventorySlot[] slotsToDeposit = itemNotInItemReqsEquipment.stream()
+                    .mapToInt(Rs2ItemModel::getSlot)
+                    .filter(slot -> slot >= 0 && slot < EquipmentInventorySlot.values().length)
+                    .mapToObj(slot -> EquipmentInventorySlot.values()[slot])
+                    .toArray(EquipmentInventorySlot[]::new);
+                
+                log.info("Depositing {} unnecessary equipment items in bulk", slotsToDeposit.length);
+                boolean deposited = Rs2Bank.depositEquippedItems(slotsToDeposit);
+                
+                if (deposited) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("Successfully deposited equipment items:\\n");
+                    for (Rs2ItemModel item : itemNotInItemReqsEquipment) {
+                        sb.append(String.format("\\t✓ %s x%d\\n", item.getName(), item.getQuantity()));
+                    }
+                    log.info(sb.toString());
+                } else {
+                    log.warn("Failed to deposit some or all equipment items");
+                    // fallback to individual deposits if bulk fails
+                    for (Rs2ItemModel item : itemNotInItemReqsEquipment) {
+                        EquipmentInventorySlot itemSlot = EquipmentInventorySlot.values()[item.getSlot()];
+                        boolean individualDeposited = Rs2Bank.depositEquippedItem(itemSlot);
+                        if (individualDeposited) {
+                            log.info("\\tDeposited individual equipment item: {} x{}", item.getName(), item.getQuantity());
+                        } else {
+                            log.warn("\\tFailed to deposit individual equipment item: {} x{}", item.getName(), item.getQuantity());
+                        }
+                    }
+                }
+            }
+        }
+
         // Create enhanced planner with registry and OR requirement mode
         InventorySetupPlanner plan = new InventorySetupPlanner(registry, context, orRequirementMode);
         
@@ -1292,14 +1244,14 @@ public abstract class PrePostScheduleRequirements  {
      * Dummy items are used to reserve slots without specifying actual items.
      * 
      * @param equipmentSlot The equipment slot to block
-     * @param scheduleContext When this requirement applies
+     * @param TaskContext When this requirement applies
      * @param description Description for the dummy requirement
      */
     protected void addDummyEquipmentRequirement(EquipmentInventorySlot equipmentSlot, 
-                                               ScheduleContext scheduleContext, 
+                                               TaskContext taskContext, 
                                                String description) {
         ItemRequirement dummy = ItemRequirement.createDummyEquipmentRequirement(
-            equipmentSlot, scheduleContext, description);
+            equipmentSlot, taskContext, description);
         registry.register(dummy);
         log.debug("Added dummy equipment requirement for slot {}: {}", equipmentSlot, description);
     }
@@ -1309,14 +1261,14 @@ public abstract class PrePostScheduleRequirements  {
      * Dummy items are used to reserve slots without specifying actual items.
      * 
      * @param inventorySlot The inventory slot to block (0-27)
-     * @param scheduleContext When this requirement applies
+     * @param TaskContext When this requirement applies
      * @param description Description for the dummy requirement
      */
     protected void addDummyInventoryRequirement(int inventorySlot, 
-                                               ScheduleContext scheduleContext, 
+                                               TaskContext taskContext, 
                                                String description) {
         ItemRequirement dummy = ItemRequirement.createDummyInventoryRequirement(
-            inventorySlot, scheduleContext, description);
+            inventorySlot, taskContext, description);
         registry.register(dummy);
         log.debug("Added dummy inventory requirement for slot {}: {}", inventorySlot, description);
     }
@@ -1331,17 +1283,16 @@ public abstract class PrePostScheduleRequirements  {
         sb.append("Total Pre\\Post Requirements Registered: ").append(getRegistry().getAllRequirements().size()).append("\n");
         
         // Pre-Schedule Requirements
-        sb.append(" Pre Requirements Registered: ").append(this.registry.getStandardRequirements(ScheduleContext.PRE_SCHEDULE).size()).append("\n");
-        sb.append("    - Spellbook Requirements: ").append(this.registry.getStandardRequirements(SpellbookRequirement.class,ScheduleContext.PRE_SCHEDULE).size()).append("\n");
-        sb.append("    - Location Requirements: ").append(this.registry.getStandardRequirements(LocationRequirement.class, ScheduleContext.PRE_SCHEDULE).size()).append("\n");
-        sb.append("    - Loot Requirements: ").append(this.registry.getStandardRequirements(LootRequirement.class, ScheduleContext.PRE_SCHEDULE).size()).append("\n");
+        sb.append(" Pre Requirements Registered: ").append(this.registry.getRequirements(TaskContext.PRE_SCHEDULE).size()).append("\n");
+        sb.append("    - Spellbook Requirements: ").append(this.registry.getRequirements(SpellbookRequirement.class,TaskContext.PRE_SCHEDULE).size()).append("\n");
+        sb.append("    - Location Requirements: ").append(this.registry.getRequirements(LocationRequirement.class, TaskContext.PRE_SCHEDULE).size()).append("\n");
+        sb.append("    - Loot Requirements: ").append(this.registry.getRequirements(LootRequirement.class, TaskContext.PRE_SCHEDULE).size()).append("\n");
         
         // Equipment Requirements breakdown
-        RequirementRegistry.RequirementBreakdown preEquipBreakdown = registry.getItemRequirementBreakdown(ScheduleContext.PRE_SCHEDULE);
+        RequirementRegistry.RequirementBreakdown preEquipBreakdown = registry.getItemRequirementBreakdown(TaskContext.PRE_SCHEDULE);
         sb.append("    - Equipment Requirements: ").append(preEquipBreakdown.getTotalEquipmentCount()).append("\n");
         sb.append("      └─ Mandatory: ").append(preEquipBreakdown.getEquipmentCount(RequirementPriority.MANDATORY)).append(", ");
-        sb.append("Recommended: ").append(preEquipBreakdown.getEquipmentCount(RequirementPriority.RECOMMENDED)).append(", ");
-        sb.append("Optional: ").append(preEquipBreakdown.getEquipmentCount(RequirementPriority.RECOMMENDED)).append("\n");
+        sb.append("Recommended: ").append(preEquipBreakdown.getEquipmentCount(RequirementPriority.RECOMMENDED)).append("\n ");        
         
         // Equipment slot details for Pre
         Map<EquipmentInventorySlot, Map<RequirementPriority, Integer>> preEquipSlots = preEquipBreakdown.getEquipmentSlotBreakdown();
@@ -1351,16 +1302,14 @@ public abstract class PrePostScheduleRequirements  {
                 EquipmentInventorySlot slot = entry.getKey();
                 Map<RequirementPriority, Integer> counts = entry.getValue();
                 sb.append("         ").append(slot.name()).append(": M=").append(counts.getOrDefault(RequirementPriority.MANDATORY, 0))
-                  .append(", R=").append(counts.getOrDefault(RequirementPriority.RECOMMENDED, 0))
-                  .append(", O=").append(counts.getOrDefault(RequirementPriority.RECOMMENDED, 0)).append("\n");
+                  .append(", R=").append(counts.getOrDefault(RequirementPriority.RECOMMENDED, 0)).append("\n");
             }
         }
         
         // Inventory Requirements breakdown
         sb.append("    - Inventory Requirements: ").append(preEquipBreakdown.getTotalInventoryCount()).append("\n");
-        sb.append("      └─ Mandatory: ").append(preEquipBreakdown.getInventoryCount(RequirementPriority.MANDATORY)).append(", ");
-        sb.append("Recommended: ").append(preEquipBreakdown.getInventoryCount(RequirementPriority.RECOMMENDED)).append(", ");
-        sb.append("Optional: ").append(preEquipBreakdown.getInventoryCount(RequirementPriority.RECOMMENDED)).append("\n");
+        sb.append("      └─ Mandatory: ").append(preEquipBreakdown.getInventoryCount(RequirementPriority.MANDATORY)).append("\n");
+        sb.append("      └─ Recommended: ").append(preEquipBreakdown.getInventoryCount(RequirementPriority.RECOMMENDED)).append("");
         
         // Inventory slot details for Pre
         Map<Integer, Map<RequirementPriority, Integer>> preInventorySlots = preEquipBreakdown.getInventorySlotBreakdown();
@@ -1375,21 +1324,20 @@ public abstract class PrePostScheduleRequirements  {
             }
         }
         
-        sb.append("    - Shop Requirements: ").append(this.registry.getStandardRequirements(ShopRequirement.class, ScheduleContext.PRE_SCHEDULE).size()).append("\n");
-        sb.append("    - all external requirements: ").append(registry.getExternalRequirements(ScheduleContext.PRE_SCHEDULE).size()).append("\n");
+        sb.append("\n    - Shop Requirements: ").append(this.registry.getRequirements(ShopRequirement.class, TaskContext.PRE_SCHEDULE).size()).append("\n");
+        sb.append("    - all external requirements: ").append(registry.getExternalRequirements(TaskContext.PRE_SCHEDULE).size()).append("\n");
         
         // Post-Schedule Requirements
-        sb.append(" Post Requirements Registered: ").append(this.registry.getStandardRequirements(ScheduleContext.POST_SCHEDULE).size()).append("\n");
-        sb.append("    - Spellbook Requirements: ").append(this.registry.getStandardRequirements(SpellbookRequirement.class, ScheduleContext.POST_SCHEDULE).size()).append("\n");
-        sb.append("    - Location Requirements: ").append(this.registry.getStandardRequirements(LocationRequirement.class, ScheduleContext.POST_SCHEDULE).size()).append("\n");
-        sb.append("    - Loot Requirements: ").append(this.registry.getStandardRequirements(LootRequirement.class, ScheduleContext.POST_SCHEDULE).size()).append("\n");
+        sb.append(" Post Requirements Registered: ").append(this.registry.getRequirements(TaskContext.POST_SCHEDULE).size()).append("\n");
+        sb.append("    - Spellbook Requirements: ").append(this.registry.getRequirements(SpellbookRequirement.class, TaskContext.POST_SCHEDULE).size()).append("\n");
+        sb.append("    - Location Requirements: ").append(this.registry.getRequirements(LocationRequirement.class, TaskContext.POST_SCHEDULE).size()).append("\n");
+        sb.append("    - Loot Requirements: ").append(this.registry.getRequirements(LootRequirement.class, TaskContext.POST_SCHEDULE).size()).append("\n");
         
         // Equipment Requirements breakdown for Post
-        RequirementRegistry.RequirementBreakdown postEquipBreakdown = registry.getItemRequirementBreakdown(ScheduleContext.POST_SCHEDULE);
+        RequirementRegistry.RequirementBreakdown postEquipBreakdown = registry.getItemRequirementBreakdown(TaskContext.POST_SCHEDULE);
         sb.append("    - Equipment Requirements: ").append(postEquipBreakdown.getTotalEquipmentCount()).append("\n");
         sb.append("      └─ Mandatory: ").append(postEquipBreakdown.getEquipmentCount(RequirementPriority.MANDATORY)).append(", ");
-        sb.append("Recommended: ").append(postEquipBreakdown.getEquipmentCount(RequirementPriority.RECOMMENDED)).append(", ");
-        sb.append("Optional: ").append(postEquipBreakdown.getEquipmentCount(RequirementPriority.RECOMMENDED)).append("\n");
+        sb.append("Recommended: ").append(postEquipBreakdown.getEquipmentCount(RequirementPriority.RECOMMENDED));     
         
         // Equipment slot details for Post
         Map<EquipmentInventorySlot, Map<RequirementPriority, Integer>> postEquipSlots = postEquipBreakdown.getEquipmentSlotBreakdown();
@@ -1399,14 +1347,13 @@ public abstract class PrePostScheduleRequirements  {
                 EquipmentInventorySlot slot = entry.getKey();
                 Map<RequirementPriority, Integer> counts = entry.getValue();
                 sb.append("         ").append(slot.name()).append(": M=").append(counts.getOrDefault(RequirementPriority.MANDATORY, 0))
-                  .append(", R=").append(counts.getOrDefault(RequirementPriority.RECOMMENDED, 0))
-                  .append(", O=").append(counts.getOrDefault(RequirementPriority.RECOMMENDED, 0)).append("\n");
+                  .append(", R=").append(counts.getOrDefault(RequirementPriority.RECOMMENDED, 0)).append("\n");
             }
         }
         
         // Extra statistics before Inventory Requirements breakdown for Post
         Map<Integer, Map<RequirementPriority, Integer>> postInventorySlots = postEquipBreakdown.getInventorySlotBreakdown();
-        sb.append("    - Inventory Slot Statistics (specific slots only):\n");
+        sb.append("\n    - Inventory Slot Statistics (specific slots only):\n");
         sb.append("      └─ Total Specific Slots Used: ").append(postInventorySlots.size()).append("\n");
         if (!postInventorySlots.isEmpty()) {
             sb.append("      └─ Slot Range: ").append(postInventorySlots.keySet().stream().min(Integer::compareTo).orElse(0))
@@ -1416,8 +1363,8 @@ public abstract class PrePostScheduleRequirements  {
         // Inventory Requirements breakdown for Post
         sb.append("    - Inventory Requirements: ").append(postEquipBreakdown.getTotalInventoryCount()).append("\n");
         sb.append("      └─ Mandatory: ").append(postEquipBreakdown.getInventoryCount(RequirementPriority.MANDATORY)).append(", ");
-        sb.append("Recommended: ").append(postEquipBreakdown.getInventoryCount(RequirementPriority.RECOMMENDED)).append(", ");
-        sb.append("Optional: ").append(postEquipBreakdown.getInventoryCount(RequirementPriority.RECOMMENDED)).append("\n");
+        sb.append("Recommended: ").append(postEquipBreakdown.getInventoryCount(RequirementPriority.RECOMMENDED));
+
         
         // Inventory slot details for Post
         if (!postInventorySlots.isEmpty()) {
@@ -1431,8 +1378,8 @@ public abstract class PrePostScheduleRequirements  {
             }
         }
         
-        sb.append("    - Shop Requirements: ").append(this.registry.getStandardRequirements(ShopRequirement.class, ScheduleContext.POST_SCHEDULE).size()).append("\n");
-        sb.append("    - all external requirements: ").append(registry.getExternalRequirements(ScheduleContext.POST_SCHEDULE).size()).append("\n");
+        sb.append("\n    - Shop Requirements: ").append(this.registry.getRequirements(ShopRequirement.class, TaskContext.POST_SCHEDULE).size()).append("\n");
+        sb.append("    - all external requirements: ").append(registry.getExternalRequirements(TaskContext.POST_SCHEDULE).size()).append("\n");
         sb.append("=============================================\n");
         return sb.toString();   
     }

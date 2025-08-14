@@ -1,14 +1,13 @@
 package net.runelite.client.plugins.microbot.pluginscheduler.tasks;
 
-import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.pluginscheduler.SchedulerPlugin;
 import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.ExecutionResult;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LockCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryMainTaskFinishedEvent;
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.PrePostScheduleRequirements;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.state.TaskExecutionState;
 import net.runelite.client.plugins.microbot.util.events.PluginPauseEvent;
@@ -20,14 +19,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
-import com.google.inject.Inject;
-
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.config.ConfigDescriptor;
 import net.runelite.client.input.KeyListener;
 import net.runelite.client.input.KeyManager;
-import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 /**
  * Abstract base class for managing pre and post schedule tasks for plugins operating under scheduler control.
@@ -112,7 +108,48 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
                     plugin.getClass().getSimpleName(), e.getMessage());
         }
     }
-    
+    private boolean canStartAnyTask(){
+        // Check if the plugin is running in schedule mode
+        if (plugin == null) {
+            log.warn("Plugin instance is null, cannot determine schedule mode");
+            return false; // Cannot determine schedule mode without plugin instance
+        }
+
+        if (getRequirements() == null || !getRequirements().isInitialized()) {
+            log.warn("Requirements are not initialized, cannot execute pre-schedule tasks");
+            return false; // Cannot run pre-schedule tasks if requirements are not met
+        }
+      
+        
+        if (postScheduledFuture != null && !postScheduledFuture.isDone()) {
+            log.warn("Post-schedule task is still running, cannot execute pre-schedule tasks yet");
+            return false; // Cannot run pre-schedule tasks while post-schedule is still running
+        }              
+        if (preScheduledFuture != null && !preScheduledFuture.isDone()) {
+            log.warn("Pre-schedule task already running, skipping duplicate execution");
+            return false; // Pre-schedule task already running, skip
+        }
+        return true;
+    }
+    public boolean canStartPreScheduleTasks() {
+          // Check state before execution
+        if (!executionState.canExecutePreTasks()) {
+            log.warn("Pre-schedule tasks cannot be executed - already started and not completed. Use reset() to allow re-execution.");
+            return false;
+        }
+        // Check if the plugin is running in schedule mode
+        return canStartAnyTask();
+
+    }
+    public boolean canStartPostScheduleTasks() {
+        // Check state before execution
+        if (!executionState.canExecutePostTasks()) {
+            log.warn("Post-schedule tasks cannot be executed - already started and not completed. Use reset() to allow re-execution.\n -executionState: {}",executionState);
+            return false;
+        }
+        // Check if the plugin is running in schedule mode
+        return canStartAnyTask();
+    }
     /**
      * Executes pre-schedule preparation tasks on a separate thread.
      * This method runs preparation tasks asynchronously and calls the provided callback when complete.
@@ -121,24 +158,14 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
      * @param timeout The timeout value (0 or negative means no timeout)
      * @param timeUnit The time unit for the timeout
      */
-    public final void executePreScheduleTasks(Runnable callback, LockCondition lockCondition, int timeout, TimeUnit timeUnit) {
-        // Check state before execution
-        if (!executionState.canExecutePreTasks()) {
-            log.warn("Pre-schedule tasks cannot be executed - already started and not completed. Use reset() to allow re-execution.");
-            return;
-        }
-        
-        if (postScheduledFuture != null && !postScheduledFuture.isDone()) {
-            log.warn("Post-schedule task is still running, cannot execute pre-schedule tasks yet");
-            return; // Cannot run pre-schedule tasks while post-schedule is still running
-        }              
-        if (preScheduledFuture != null && !preScheduledFuture.isDone()) {
-            log.warn("Pre-schedule task already running, skipping duplicate execution");
-            return; // Pre-schedule task already running, skip
+    public final void executePreScheduleTasks(Runnable callback, LockCondition lockCondition, int timeout, TimeUnit timeUnit) {        
+        if (!canStartPreScheduleTasks()) {
+            log.warn("Cannot execute pre-schedule tasks - conditions not met");
+            return; // Cannot run pre-schedule tasks if conditions are not met
         }
         
         // Update state to indicate pre-schedule tasks are starting
-        executionState.updatePhase(TaskExecutionState.ExecutionPhase.PRE_SCHEDULE);
+        executionState.update(  TaskExecutionState.ExecutionPhase.PRE_SCHEDULE,TaskExecutionState.ExecutionState.STARTING);
         
         // Initialize executor service for pre-actions
         if (preExecutorService == null || preExecutorService.isShutdown()) {
@@ -148,7 +175,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
                 return t;
             });
         }
-        look();      
+        lockPrePostTask();      
         preScheduledFuture = CompletableFuture.supplyAsync(() -> {
             try {
                 log.info("\n --> Starting pre-schedule preparation on separate thread for plugin: \n\t\t{}", 
@@ -159,19 +186,20 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
                 
                 if (success) {
                     log.info("\n\tPre-schedule preparation completed successfully - executing callback");
-                    executionState.updateState(TaskExecutionState.ExecutionState.COMPLETED, "Pre-schedule tasks completed successfully");
+                    executionState.update(  TaskExecutionState.ExecutionPhase.PRE_SCHEDULE,TaskExecutionState.ExecutionState.COMPLETED);
                     if (callback != null) {
                         callback.run();
                     }
                 } else {
                     log.warn("\n\tPre-schedule preparation failed - stopping plugin");
-                    executionState.updateState(TaskExecutionState.ExecutionState.FAILED, "Pre-schedule preparation failed");                                                        
+                    executionState.update(  TaskExecutionState.ExecutionPhase.PRE_SCHEDULE,TaskExecutionState.ExecutionState.FAILED);                                                             
                 }
                 
                 return success;
             } catch (Exception e) {
                 log.error("Error during pre-schedule preparation: {}", e.getMessage(), e);
-                executionState.updateState(TaskExecutionState.ExecutionState.ERROR, "Pre-schedule preparation error: " + e.getMessage());                                
+                executionState.update(  TaskExecutionState.ExecutionPhase.PRE_SCHEDULE,TaskExecutionState.ExecutionState.ERROR);                                               
+                 // Unlock is handled in handlePreTaskCompletion via whenComplete
                 throw new RuntimeException("Pre-schedule preparation failed", e);
             }
         }, preExecutorService);
@@ -188,7 +216,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
             });
         }
     }
-    private void look(){
+    private void lockPrePostTask(){
         PluginPauseEvent.setPaused(true);
         prePostScheduleTaskLock.lock();
     }
@@ -228,17 +256,15 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
      * @param timeUnit The time unit for the timeout
      */
     public final void executePostScheduleTasks(Runnable callback, LockCondition lockCondition, int timeout, TimeUnit timeUnit) {
-        if( preScheduledFuture != null && !preScheduledFuture.isDone()) {
-            log.warn("Pre-schedule task is still running, cannot execute post-schedule tasks yet");
-            return; // Cannot run post-schedule tasks while pre-schedule is still running
-        }               
-        if (postScheduledFuture != null && !postScheduledFuture.isDone()) {
-            log.warn("Post-schedule task already running, skipping duplicate execution");
-            return;
+        
+        if (!canStartPostScheduleTasks()) {
+            log.warn("Cannot execute post-schedule tasks - conditions not met");
+            return; // Cannot run post-schedule tasks if conditions are not met
         }
+        executionState.update(  TaskExecutionState.ExecutionPhase.POST_SCHEDULE,TaskExecutionState.ExecutionState.STARTING);           
         
         initializePostExecutorService();
-        look();
+        lockPrePostTask();
         postScheduledFuture = CompletableFuture.supplyAsync(() -> {
             try {
                 if (lockCondition != null && lockCondition.isLocked()) {
@@ -331,7 +357,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
      */
     protected final boolean executePreScheduleTask(LockCondition lockCondition) {
         try {
-            updateTaskState("PRE_SCHEDULE", "Starting", "Preparing for scheduled execution");
+            executionState.update(  TaskExecutionState.ExecutionPhase.PRE_SCHEDULE,TaskExecutionState.ExecutionState.FULFILLING_REQUIREMENTS);                               
             log.debug("Executing standard pre-schedule requirements fulfillment");
             
             // Always fulfill the standard requirements first
@@ -341,20 +367,16 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
                 log.warn("Standard pre-schedule requirements fulfillment failed, but continuing with custom tasks");
             }
             
-            // Execute any custom pre-schedule logic from the child class
-            updateTaskState("PRE_SCHEDULE", "Custom Tasks", "Executing plugin-specific preparation");
+            // Execute any custom pre-schedule logic from the child class            
+            executionState.update(  TaskExecutionState.ExecutionPhase.PRE_SCHEDULE,TaskExecutionState.ExecutionState.CUSTOM_TASKS);                               
             log.debug("Executing custom pre-schedule tasks");
             boolean customTasksSuccessful = executeCustomPreScheduleTask(preScheduledFuture,lockCondition);
             
             // Clear state when finished
             if (standardRequirementsFulfilled && customTasksSuccessful) {
-                updateTaskState("PRE_SCHEDULE", "Completed", "Pre-schedule preparation finished");
-                // Clear state after a brief delay to show completion
-                scheduleStateClear(2000);
+                executionState.update(  TaskExecutionState.ExecutionPhase.PRE_SCHEDULE,TaskExecutionState.ExecutionState.COMPLETED);                                               
             } else {
-                updateTaskState("PRE_SCHEDULE", "Failed", "Pre-schedule preparation encountered issues");
-                // Clear state after a longer delay to show error
-                scheduleStateClear(5000);
+                executionState.update(  TaskExecutionState.ExecutionPhase.PRE_SCHEDULE,TaskExecutionState.ExecutionState.FAILED);                           
             }
             
             // Return true only if both standard and custom tasks succeeded
@@ -362,7 +384,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
             return standardRequirementsFulfilled && customTasksSuccessful;
             
         } catch (Exception e) {
-            updateTaskState("PRE_SCHEDULE", "Error", "Exception during preparation: " + e.getMessage());
+            executionState.update(  TaskExecutionState.ExecutionPhase.PRE_SCHEDULE,TaskExecutionState.ExecutionState.ERROR);           
             log.error("Error during pre-schedule task execution: {}", e.getMessage(), e);
             return false;
         } finally {
@@ -380,37 +402,39 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
      * @return true if cleanup was successful, false otherwise
      */
     protected final boolean executePostScheduleTask(LockCondition lockCondition) {
-        try {
-            updateTaskState("POST_SCHEDULE", "Starting", "Beginning post-schedule cleanup");
-            log.debug("Executing custom post-schedule tasks");
-            
+        try {            
+            executionState.update(  TaskExecutionState.ExecutionPhase.POST_SCHEDULE,TaskExecutionState.ExecutionState.CUSTOM_TASKS);           
+            log.debug("Executing custom post-schedule tasks");            
             // Execute any custom post-schedule logic from the child class first
             // This allows plugins to handle their specific cleanup (like stopping scripts)
-            updateTaskState("POST_SCHEDULE", "Custom Tasks", "Executing plugin-specific cleanup");
+            
             boolean customTasksSuccessful = executeCustomPostScheduleTask(postScheduledFuture, lockCondition);
             
             if (!customTasksSuccessful) {
                 log.warn("Custom post-schedule tasks failed, but continuing with standard cleanup");
+                return false;
             }
             
-            // Always fulfill the standard requirements after custom tasks
-            updateTaskState("POST_SCHEDULE", "Requirements", "Executing standard cleanup requirements");
+            // Always fulfill the standard requirements after custom tasks            
+            executionState.update(  TaskExecutionState.ExecutionPhase.POST_SCHEDULE,TaskExecutionState.ExecutionState.FULFILLING_REQUIREMENTS);           
             log.debug("Executing standard post-schedule requirements fulfillment");
             boolean standardRequirementsFulfilled = fulfillPostScheduleRequirements();
             log.info("Standard post-schedule requirements fulfilled: {}", standardRequirementsFulfilled);
             
             // Update completion state
-            if (customTasksSuccessful || standardRequirementsFulfilled) {
-                updateTaskState("POST_SCHEDULE", "Completed", "Post-schedule cleanup finished");
+            if (customTasksSuccessful && standardRequirementsFulfilled) {
+                executionState.update(  TaskExecutionState.ExecutionPhase.POST_SCHEDULE,TaskExecutionState.ExecutionState.COMPLETED);                               
+                // Clear state after a brief delay to show completion
+                scheduleStateClear(2000);                
             } else {
-                updateTaskState("POST_SCHEDULE", "Failed", "Post-schedule cleanup encountered issues");
+                executionState.update(  TaskExecutionState.ExecutionPhase.POST_SCHEDULE,TaskExecutionState.ExecutionState.FAILED);                
             }
             
-            // Return true if either succeeded (cleanup is more lenient than setup)
-            return customTasksSuccessful || standardRequirementsFulfilled;
+            // Return true if both succeeded (cleanup is more lenient than setup)
+            return customTasksSuccessful && standardRequirementsFulfilled;
             
         } catch (Exception e) {
-            updateTaskState("POST_SCHEDULE", "Error", "Exception during cleanup: " + e.getMessage());
+            executionState.update(  TaskExecutionState.ExecutionPhase.POST_SCHEDULE,TaskExecutionState.ExecutionState.ERROR);
             log.error("Error during post-schedule task execution: {}", e.getMessage(), e);
             return false;
         } finally {           
@@ -452,7 +476,26 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
      * 
      * @return true if the plugin is running under scheduler control, false otherwise
      */
-    protected abstract String getConfigGroupName();
+    protected String getConfigGroupName(){
+        /**
+         * Returns the configuration group name for this plugin.
+         * This is used by the scheduler to manage configuration state.
+         * 
+         * @return The configuration group name
+         */
+        ConfigDescriptor pluginConfigDescriptor = this.plugin.getConfigDescriptor();
+        if (pluginConfigDescriptor == null) {
+            log.warn("\"{}\" plugin config descriptor is null", this.plugin.getClass().getSimpleName());
+            return ""; // Default group name if descriptor is not available
+        }
+        String configGroupName = pluginConfigDescriptor.getGroup().value();
+        if (configGroupName == null || configGroupName.isEmpty()) {
+            log.warn("\"{}\" plugin config group name is null or empty");
+            return ""; // Default group name if descriptor is not available
+        }
+        log.info("\"{}\" plugin config group name: {}", this.plugin.getClass().getSimpleName(),configGroupName);
+        return configGroupName;
+    }
     
     public boolean isScheduleMode() {
         // Check if the plugin is running in schedule mode
@@ -473,7 +516,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
     public static boolean isScheduleMode( SchedulablePlugin plugin, String configGroupName) {
 
         SchedulerPlugin schedulablePlugin =  (SchedulerPlugin) Microbot.getPlugin(SchedulerPlugin.class.getName());
-        Boolean scheduleModeConfig = null;
+        Boolean scheduleModeConfig = false;
         Boolean scheduleModeDetect = false;
         try {
             scheduleModeConfig = Microbot.getConfigManager().getConfiguration(
@@ -483,16 +526,16 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
             return false;
         }
         if (schedulablePlugin == null) {
-            log.info("SchedulerPlugin is not running, cannot  can not be in schedule mode");
+            log.warn("SchedulerPlugin is not running, cannot  can not be in schedule mode");
             scheduleModeDetect =  false; // SchedulerPlugin is not running, cannot determine schedule mode, so we dont run in schedule mode
         }else{
             PluginScheduleEntry currentPlugin =  schedulablePlugin.getCurrentPlugin();            
             if (currentPlugin == null) {
-                log.info("No current plugin is running by the Scheduler Plugin, so it also can be the plugin is start in scheduler mode");
+                log.warn("\nNo current plugin is running by the Scheduler Plugin, so it also can be the plugin is start in scheduler mode");
                 scheduleModeDetect =  false; // No current plugin is running, so it can not be in schedule mode
             }else{
                 if (currentPlugin.isRunning() && currentPlugin.getPlugin() != null && !currentPlugin.getPlugin().equals(plugin)) {
-                    log.info("Current plugin {} is running, but it is not the same as the pluginScheduleEntry {}, so it can not be in schedule mode", 
+                    log.warn("\n\tCurrent plugin {} is running, but it is not the same as the pluginScheduleEntry {}, so it can not be in schedule mode", 
                         currentPlugin.getPlugin().getClass().getSimpleName(),
                         plugin.getClass().getSimpleName());
                     scheduleModeDetect = false; // Current plugin is running, but it's not the same as the pluginSchedule
@@ -502,15 +545,23 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
                 }
             }
         }      
-        Microbot.getConfigManager().setConfiguration(configGroupName, "scheduleMode", scheduleModeDetect);                   
-        return scheduleModeDetect != null && scheduleModeDetect;
+        
+        if (configGroupName.isEmpty()) {
+            log.warn("Config group name is empty, cannot determine schedule mode");            
+        }else if(scheduleModeConfig){
+            Microbot.getConfigManager().setConfiguration(configGroupName, "scheduleMode", scheduleModeConfig);                   
+            scheduleModeDetect = true; // If scheduleMode config is set, we are in schedule mode
+        }
+               log.debug("\nPlugin {}, with config group name {}, \nis running in schedule mode (plugin detect): {}\n\t\tSchedule mode config: {}",
+            plugin.getClass().getSimpleName(), configGroupName, scheduleModeDetect, scheduleModeConfig);
+        return  scheduleModeDetect;
       
     }
     private void setScheduleMode(boolean scheduleMode) {
         try {
             String configGroupName = getConfigGroupName();
             if (configGroupName == null || configGroupName.isEmpty()) {
-                log.warn("Config group name is not set, cannot set schedule mode");
+                log.warn("\"{}\" plugin config group name is null or empty", this.plugin.getClass().getSimpleName());
                 return; // Cannot set schedule mode without config group
             }
             Microbot.getConfigManager().setConfiguration(configGroupName, "scheduleMode", scheduleMode);
@@ -550,11 +601,11 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
      * Custom requirements are marked as CUSTOM type and are fulfilled after all standard requirements.
      * 
      * @param requirement The requirement to add
-     * @param scheduleContext The context in which this requirement should be fulfilled
+     * @param TaskContext The context in which this requirement should be fulfilled
      * @return true if the requirement was successfully added, false otherwise
      */
     public boolean addCustomRequirement(Requirement requirement, 
-                                      ScheduleContext scheduleContext) {
+                                      TaskContext taskContext) {
         PrePostScheduleRequirements requirements = getPrePostScheduleRequirements();
         if (requirements == null) {
             log.warn("Cannot add custom requirement: No pre/post schedule requirements defined for this plugin");
@@ -563,14 +614,14 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
         
         // Mark this requirement as a custom requirement by creating a wrapper
         // We'll modify the requirement to ensure it's recognized as custom
-        boolean success = requirements.addCustomRequirement(requirement, scheduleContext);
+        boolean success = requirements.addCustomRequirement(requirement, taskContext);
         
         if (success) {
             log.info("Successfully added custom requirement: {} for context: {}", 
-                requirement.getDescription(), scheduleContext);
+                requirement.getDescription(), taskContext);
         } else {
             log.warn("Failed to add custom requirement: {} for context: {}", 
-                requirement.getDescription(), scheduleContext);
+                requirement.getDescription(), taskContext);
         }
         
         return success;
@@ -596,11 +647,11 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
                 return true;
             }
             
-            updateTaskState("PRE_SCHEDULE", "Requirements", "Analyzing requirements for " + requirements.getActivityType());
-            log.info("Fulfilling pre-schedule requirements for {}", requirements.getActivityType());
+            executionState.update(  TaskExecutionState.ExecutionPhase.PRE_SCHEDULE,TaskExecutionState.ExecutionState.FULFILLING_REQUIREMENTS);           
+            log.info("\n\tFulfilling pre-schedule requirements for {}", requirements.getActivityType());
             
             // Use the unified fulfillment method that handles all requirement types including conditional requirements
-            boolean fulfilled = requirements.fulfillPreScheduleRequirements(preScheduledFuture, true); // Pass executor service
+            boolean fulfilled = requirements.fulfillPreScheduleRequirements(preScheduledFuture, true, executionState); // Pass executor service
             
             if (!fulfilled) {
                 log.error("Failed to fulfill pre-schedule requirements");
@@ -635,12 +686,11 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
                 log.info("No post-schedule requirements defined");
                 return true;
             }
-            
-            updateTaskState("POST_SCHEDULE", "Requirements", "Processing post-schedule requirements for " + requirements.getActivityType());
+            executionState.update(  TaskExecutionState.ExecutionPhase.POST_SCHEDULE,TaskExecutionState.ExecutionState.FULFILLING_REQUIREMENTS);                       
             log.info("Fulfilling post-schedule requirements for {}", requirements.getActivityType());
             
             // Use the unified fulfillment method that handles all requirement types including conditional requirements
-            boolean fulfilled = requirements.fulfillPostScheduleRequirements(postScheduledFuture, true); // Pass executor service
+            boolean fulfilled = requirements.fulfillPostScheduleRequirements(postScheduledFuture, true,executionState ); // Pass executor service
             
             if (!fulfilled) {
                 log.error("Failed to fulfill all post-schedule requirements");
@@ -658,7 +708,7 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
             PrePostScheduleRequirements requirements = getPrePostScheduleRequirements();
             if (requirements != null) {
                 try {
-                    requirements.clearFulfillmentState();
+                    clearRequirementState();
                 } catch (Exception e) {
                     log.warn("Failed to clear fulfillment state: {}", e.getMessage());
                 }
@@ -677,17 +727,19 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
         if (throwable != null) {
             if (throwable instanceof TimeoutException) {
                 log.warn("Pre-schedule task timed out for plugin: {}", plugin.getClass().getSimpleName());
-                plugin.reportPreScheduleTaskFinished("Pre-schedule task timed out", false);
+                plugin.reportPreScheduleTaskFinished("Pre-schedule task timed out", ExecutionResult.SOFT_FAILURE);
             } else {
                 log.error("Pre-schedule task failed for plugin: {} - {}", 
                     plugin.getClass().getSimpleName(), throwable.getMessage());
-                plugin.reportPreScheduleTaskFinished("Pre-schedule task failed: " + throwable.getMessage(), false);
+                plugin.reportPreScheduleTaskFinished("Pre-schedule task failed: " + throwable.getMessage(), ExecutionResult.HARD_FAILURE);
             }
         } else if (result != null && result) {
             log.info("Pre-schedule task completed successfully for plugin: {}", plugin.getClass().getSimpleName());
-            plugin.reportPreScheduleTaskFinished("Pre-schedule preparation completed successfully", true);
+            executionState.update(  TaskExecutionState.ExecutionPhase.MAIN_EXECUTION,TaskExecutionState.ExecutionState.STARTING);
+            plugin.reportPreScheduleTaskFinished("Pre-schedule preparation completed successfully", ExecutionResult.SUCCESS);
         }else{
-            plugin.reportPreScheduleTaskFinished("\n\tPre-schedule preparation was not successfull", false);
+            executionState.update(  TaskExecutionState.ExecutionPhase.MAIN_EXECUTION,TaskExecutionState.ExecutionState.ERROR);
+            plugin.reportPreScheduleTaskFinished("\n\tPre-schedule preparation was not successful", ExecutionResult.SOFT_FAILURE);
         }
 
     }
@@ -703,20 +755,19 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
         if (throwable != null) {
             if (throwable instanceof TimeoutException) {
                 log.warn("Post-schedule task timed out for plugin: {}", plugin.getClass().getSimpleName());             
-                plugin.reportPostScheduleTaskFinished("Post-schedule task timed out", false);
+                plugin.reportPostScheduleTaskFinished("Post-schedule task timed out", ExecutionResult.SOFT_FAILURE);
             } else {
                 log.error("Post-schedule task failed for plugin: {} - {}", 
                     plugin.getClass().getSimpleName(), throwable.getMessage());
-                plugin.reportPostScheduleTaskFinished("Post-schedule task failed: " + throwable.getMessage(), false);
+                plugin.reportPostScheduleTaskFinished("Post-schedule task failed: " + throwable.getMessage(), ExecutionResult.HARD_FAILURE);
             }
         } else if (result != null && result) {
             log.debug("Post-schedule task completed successfully for plugin: {}", plugin.getClass().getSimpleName());
-            plugin.reportPostScheduleTaskFinished("\\n" + //
-                                "\\tPost-schedule task completed successfully", true);
+            executionState.update(  TaskExecutionState.ExecutionPhase.POST_SCHEDULE,TaskExecutionState.ExecutionState.COMPLETED);
+            plugin.reportPostScheduleTaskFinished("Post-schedule task completed successfully", ExecutionResult.SUCCESS);
         }else{
-            plugin.reportPostScheduleTaskFinished("\n\tPost-schedule task was not successfull", false);
-            
-
+            executionState.update(  TaskExecutionState.ExecutionPhase.POST_SCHEDULE,TaskExecutionState.ExecutionState.ERROR);
+            plugin.reportPostScheduleTaskFinished("\n\tPost-schedule task was not successful", ExecutionResult.SOFT_FAILURE);            
         }
     }
     
@@ -830,84 +881,14 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
     public final void shutdown() {
         close();
     }
-    
-    /**
-     * Updates the current task state for overlay display
-     * @deprecated Use executionState directly instead
-     */
-    @Deprecated
-    protected void updateTaskState(String phase, String action, String requirementDescription) {
-        // Convert old-style updates to new state system
-        TaskExecutionState.ExecutionPhase execPhase = mapPhaseString(phase);
-        if (execPhase != null) {
-            executionState.updatePhase(execPhase);
-        }
-        
-        TaskExecutionState.ExecutionState execState = mapActionString(action);
-        executionState.updateState(execState, requirementDescription);
-    }
-    
-    /**
-     * Updates the current task state with specific requirement information
-     * @deprecated Use executionState directly instead
-     */
-    @Deprecated
-    protected void updateTaskStateWithRequirement(String phase, String action, String requirementType, Object requirementObject, String description) {
-        // Convert old-style updates to new state system
-        TaskExecutionState.ExecutionPhase execPhase = mapPhaseString(phase);
-        if (execPhase != null) {
-            executionState.updatePhase(execPhase);
-        }
-        
-        TaskExecutionState.ExecutionState execState = mapActionString(action);
-        executionState.updateState(execState, description);
-    }
-    
-    /**
-     * Maps old phase strings to new execution phases
-     */
-    private TaskExecutionState.ExecutionPhase mapPhaseString(String phase) {
-        if (phase == null) return null;
-        
-        switch (phase) {
-            case "PRE_SCHEDULE":
-                return TaskExecutionState.ExecutionPhase.PRE_SCHEDULE;
-            case "POST_SCHEDULE":
-                return TaskExecutionState.ExecutionPhase.POST_SCHEDULE;
-            default:
-                return null;
-        }
-    }
-    
-    /**
-     * Maps old action strings to new execution states
-     */
-    private TaskExecutionState.ExecutionState mapActionString(String action) {
-        if (action == null) return TaskExecutionState.ExecutionState.STARTING;
-        
-        switch (action.toLowerCase()) {
-            case "starting":
-                return TaskExecutionState.ExecutionState.STARTING;
-            case "requirements":
-                return TaskExecutionState.ExecutionState.FULFILLING_REQUIREMENTS;
-            case "custom tasks":
-                return TaskExecutionState.ExecutionState.CUSTOM_TASKS;
-            case "completed":
-                return TaskExecutionState.ExecutionState.COMPLETED;
-            case "failed":
-                return TaskExecutionState.ExecutionState.FAILED;
-            case "error":
-                return TaskExecutionState.ExecutionState.ERROR;
-            default:
-                return TaskExecutionState.ExecutionState.FULFILLING_REQUIREMENTS;
-        }
-    }
-    
     /**
      * Clears the current task state
      */
     protected void clearTaskState() {
         executionState.clear();
+    }
+    protected void clearRequirementState() {
+        executionState.clearRequirementState();
     }
     
     /**
@@ -956,7 +937,10 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
         
         // Reset execution state
         executionState.reset();
-        
+        if ( getRequirements()!= null) {
+            clearRequirementState();
+            getRequirements().reset();  
+        }
         log.info("Reset completed - pre/post schedule tasks can now be executed again");
     }
     
@@ -969,10 +953,13 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
         return executionState.isPreTaskComplete();
     }
     
+    public boolean isHasPreTaskStarted() {
+        return executionState.isPreTaskRunning();
+    }
     /**
      * Checks if main task is running
      */
-    public boolean isMainTaskRunning() {
+    public boolean isHasMainTaskStarted() {
         return executionState.isMainTaskRunning();
     }
     
@@ -1077,7 +1064,8 @@ public abstract class AbstractPrePostScheduleTasks implements AutoCloseable, Key
             
             // Reset task execution state
             log.info("  • Resetting task execution state");
-            executionState.reset();                        
+            executionState.reset();     
+            unlock();                   
             log.warn("=== EMERGENCY CANCELLATION COMPLETED ===\n");
             
         } catch (Exception e) {

@@ -351,12 +351,21 @@ public class Microbot {
 			sleepUntil(() -> Microbot.isHopping() || Rs2Widget.getWidget(193, 0) != null, 2000);			
 			return Microbot.isHopping();
 		}).orElse(false);
-		if (!isHopping && Rs2Widget.getWidget(193, 0) != null)
+		if (!isHopping)
 		{
-			
-			List<Widget> areYouSureToSwitchWorldWidget = Arrays.stream(Rs2Widget.getWidget(193, 0).getDynamicChildren()).collect(Collectors.toList());
-			Widget switchWorldWidget = sleepUntilNotNull(() -> Rs2Widget.findWidget("Switch world", areYouSureToSwitchWorldWidget, true), 2000);
-			return Rs2Widget.clickWidget(switchWorldWidget);
+			Widget confirmRoot = Rs2Widget.getWidget(193, 0);
+			if (confirmRoot != null) {
+                List<Widget> children = Arrays.stream(confirmRoot.getDynamicChildren()).collect(Collectors.toList());
+                Widget switchWorldWidget =
+                    sleepUntilNotNull(() -> Rs2Widget.findWidget("Switch world", children, true), 2000);
+                if (switchWorldWidget != null) {
+                    boolean clicked = Rs2Widget.clickWidget(switchWorldWidget);
+                    if (clicked) {
+                        sleepUntil(Microbot::isHopping, 4000);
+                        return Microbot.isHopping();
+                    }
+                }
+            }						
 		}
 		if (!isHopping)
 		{

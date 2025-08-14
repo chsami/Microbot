@@ -8,6 +8,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.r
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.logical.LogicalRequirement;
 
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -51,23 +52,17 @@ public class RequirementSelector {
      * @param plan Current inventory setup plan
      * @return The best available ItemRequirement not already planned, or null if none found
      */
-    public static ItemRequirement findBestAvailableItemNotAlreadyPlannedForInventory(List<LogicalRequirement> logicalReqs, InventorySetupPlanner plan) {
-        log.debug("Finding best available item not already planned from {} logical requirements", logicalReqs.size());
-        
-        for (LogicalRequirement logicalReq : logicalReqs) {
-            List<ItemRequirement> items = LogicalRequirement.extractItemRequirementsFromLogical(logicalReq);
-            log.debug("Checking {} items in logical requirement: {}", items.size(), logicalReq.displayString());
-            
-            for (ItemRequirement item : items) {
-                if (isItemAvailable(item) && 
-                    canPlayerUse(item) && 
-                    !isItemAlreadyPlanned(item, plan)) {
-                    log.debug("Found available item not already planned: {}", item.displayString());
-                    return item;
-                }
+    public static ItemRequirement findBestAvailableItemNotAlreadyPlannedForInventory(LinkedHashSet<ItemRequirement> items, InventorySetupPlanner plan) {
+                                
+        for (ItemRequirement item : items) {
+            if (isItemAvailable(item) && 
+                canPlayerUse(item) && 
+                !isItemAlreadyPlanned(item, plan)) {
+                log.debug("Found available item not already planned: {}", item.displayString());
+                return item;
             }
         }
-        
+                
         log.debug("No available items found that aren't already planned");
         return null;
     }
@@ -83,11 +78,11 @@ public class RequirementSelector {
      * @param alreadyPlanned Items already planned (for conflict avoidance)
      * @return The best available item for the slot, or null if none found
      */
-    public static ItemRequirement findBestAvailableItemForEquipmentSlot(List<LogicalRequirement> logicalReqs, 
+    public static ItemRequirement findBestAvailableItemForEquipmentSlot(List<ItemRequirement> equipmentSlotReqs, 
                                                                         EquipmentInventorySlot targetEquipmentSlot,
                                                                         Set<ItemRequirement> alreadyPlanned) {
-        for (LogicalRequirement logicalReq : logicalReqs) {
-            List<ItemRequirement> items = LogicalRequirement.extractItemRequirementsFromLogical(logicalReq);
+        
+            List<ItemRequirement> items = equipmentSlotReqs;
             
             // Sort by priority, then by type priority: EQUIPMENT > EITHER > INVENTORY, then by rating
             items.sort((a, b) -> {
@@ -129,7 +124,7 @@ public class RequirementSelector {
                     return item;
                 }
             }
-        }
+        
         return null;
     }
     

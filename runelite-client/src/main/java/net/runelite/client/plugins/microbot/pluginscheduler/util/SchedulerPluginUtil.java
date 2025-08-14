@@ -29,6 +29,7 @@ import java.time.format.DateTimeFormatter;
 import net.runelite.client.plugins.microbot.pluginscheduler.SchedulerPlugin;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LockCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.PredicateCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
 import net.runelite.client.plugins.microbot.util.antiban.AntibanPlugin;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
@@ -876,10 +877,10 @@ public class SchedulerPluginUtil{
 
 
      /**
-     * Detects if any enabled SchedulablePlugin has locked LockConditions.
+     * Detects if any enabled SchedulablePlugin has locked LockConditions or unsatisfied PredicateConditions.
      * This prevents the break handler from taking breaks during critical plugin operations.
      * 
-     * @return true if any schedulable plugin has locked conditions, false otherwise
+     * @return true if any schedulable plugin has locked conditions or unsatisfied predicate conditions, false otherwise
      */
     public static boolean hasLockedSchedulablePlugins() {
         try {
@@ -896,7 +897,15 @@ public class SchedulerPluginUtil{
                             // Find all LockConditions in the logical condition structure using the utility method
                             List<LockCondition> lockConditions = stopCondition.findAllLockConditions();
                             // Check if any LockCondition is currently locked
-                            return lockConditions.stream().anyMatch(LockCondition::isLocked);
+                            boolean hasLockedConditions = lockConditions.stream().anyMatch(LockCondition::isLocked);
+                            
+                            // Find all PredicateConditions in the logical condition structure
+                            List<PredicateCondition<?>> predicateConditions = stopCondition.findAllPredicateConditions();
+                            // Check if any PredicateCondition is not satisfied
+                            boolean hasUnsatisfiedPredicates = predicateConditions.stream()
+                                .anyMatch(predicateCondition -> !predicateCondition.isSatisfied());
+                            
+                            return hasLockedConditions || hasUnsatisfiedPredicates;
                         }
                         return false;
                     } catch (Exception e) {

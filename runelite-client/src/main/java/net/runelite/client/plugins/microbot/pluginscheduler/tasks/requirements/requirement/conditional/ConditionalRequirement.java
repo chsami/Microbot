@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementPriority;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.RequirementType;
-import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.ScheduleContext;
+import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.enums.TaskContext;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.Requirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.requirements.requirement.logical.LogicalRequirement;
@@ -121,12 +121,12 @@ public class ConditionalRequirement extends Requirement {
      * @param priority Priority level for this conditional requirement
      * @param rating Effectiveness rating (1-10)
      * @param description Human-readable description
-     * @param scheduleContext When this requirement should be fulfilled
+     * @param TaskContext When this requirement should be fulfilled
      * @param stopOnFirstFailure Whether to stop execution on first failure
      */
     public ConditionalRequirement(RequirementPriority priority, int rating, String description, 
-                                ScheduleContext scheduleContext, boolean stopOnFirstFailure) {
-        this(priority, rating, description, scheduleContext, stopOnFirstFailure, false);
+                                TaskContext taskContext, boolean stopOnFirstFailure) {
+        this(priority, rating, description, taskContext, stopOnFirstFailure, false);
     }
     
     /**
@@ -135,14 +135,14 @@ public class ConditionalRequirement extends Requirement {
      * @param priority Priority level for this conditional requirement
      * @param rating Effectiveness rating (1-10)
      * @param description Human-readable description
-     * @param scheduleContext When this requirement should be fulfilled
+     * @param TaskContext When this requirement should be fulfilled
      * @param stopOnFirstFailure Whether to stop execution on first failure
      * @param allowParallelExecution Whether steps can be executed in parallel (when conditions don't depend on each other)
      */
     public ConditionalRequirement(RequirementPriority priority, int rating, String description, 
-                                ScheduleContext scheduleContext, boolean stopOnFirstFailure, 
+                                TaskContext taskContext, boolean stopOnFirstFailure, 
                                 boolean allowParallelExecution) {
-        super(RequirementType.CONDITIONAL, priority, rating, description, List.of(), scheduleContext);
+        super(RequirementType.CONDITIONAL, priority, rating, description, List.of(), taskContext);
         this.stopOnFirstFailure = stopOnFirstFailure;
         this.allowParallelExecution = allowParallelExecution;
     }
@@ -338,6 +338,42 @@ public class ConditionalRequirement extends Requirement {
     }
     
     /**
+     * Gets all ItemRequirements from currently active steps only.
+     * This method extracts ItemRequirements from steps that currently need execution,
+     * flattening any nested LogicalRequirements that contain ItemRequirements.
+     * 
+     * This is essential for InventorySetupPlanner integration, as it needs to know
+     * which specific items are required for the current conditional state.
+     * 
+     * Example: If we have a conditional with two steps:
+     * - Step 1 (active): Requires fire runes 
+     * - Step 2 (inactive): Requires fire staff
+     * 
+     * This method will return only the fire runes ItemRequirement since
+     * that's the only currently active step.
+     * 
+     * @return List of ItemRequirements from currently active conditional steps
+     */
+    public List<ItemRequirement> getActiveItemRequirements() {
+        List<ItemRequirement> activeItemRequirements = new ArrayList<>();
+        
+        for (ConditionalStep step : steps) {
+            if (step.needsExecution()) {
+                Requirement stepRequirement = step.getRequirement();
+                
+                if (stepRequirement instanceof ItemRequirement) {
+                    activeItemRequirements.add((ItemRequirement) stepRequirement);
+                } else if (stepRequirement instanceof LogicalRequirement) {
+                    LogicalRequirement logicalReq = (LogicalRequirement) stepRequirement;
+                    activeItemRequirements.addAll(logicalReq.getAllItemRequirements());
+                }
+            }
+        }
+        
+        return activeItemRequirements;
+    }
+    
+    /**
      * Checks if this conditional requirement contains only ItemRequirements (or LogicalRequirements that contain only ItemRequirements).
      * This is useful for RequirementRegistry caching to identify conditional requirements that can be processed
      * alongside other item-based requirements for inventory planning.
@@ -448,7 +484,7 @@ public class ConditionalRequirement extends Requirement {
         sb.append("Type:\t\t\t").append(getRequirementType().name()).append("\n");
         sb.append("Priority:\t\t").append(getPriority().name()).append("\n");
         sb.append("Rating:\t\t\t").append(getRating()).append("/10\n");
-        sb.append("Schedule Context:\t").append(getScheduleContext().name()).append("\n");
+        sb.append("Schedule Context:\t").append(getTaskContext().name()).append("\n");
         sb.append("Stop on Failure:\t").append(stopOnFirstFailure ? "Yes" : "No").append("\n");
         sb.append("Parallel Execution:\t").append(allowParallelExecution ? "Yes" : "No").append("\n");
         sb.append("Total Steps:\t\t").append(steps.size()).append("\n");

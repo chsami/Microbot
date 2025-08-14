@@ -69,6 +69,7 @@ public class AgilityScript extends Script
 				{
 					return;
 				}
+				
 				if (!plugin.hasRequiredLevel())
 				{
 					Microbot.showMessage("You do not have the required level for this course.");

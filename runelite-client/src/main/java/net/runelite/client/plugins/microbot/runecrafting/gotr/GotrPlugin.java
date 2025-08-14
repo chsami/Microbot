@@ -7,9 +7,12 @@ import net.runelite.api.events.*;
 import net.runelite.client.config.ConfigDescriptor;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.agility.MicroAgilityPrePostScheduleRequirements;
+import net.runelite.client.plugins.microbot.agility.tasks.MicroAgilityPrePostScheduleTasks;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerPlugin;
 import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
@@ -21,6 +24,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginSchedule
 import net.runelite.client.plugins.microbot.pluginscheduler.tasks.AbstractPrePostScheduleTasks;
 import net.runelite.client.plugins.microbot.qualityoflife.scripts.pouch.PouchOverlay;
 import net.runelite.client.plugins.microbot.runecrafting.gotr.requirement.GotrPrePostScheduleRequirements;
+import net.runelite.client.plugins.microbot.runecrafting.gotr.tasks.GotrPrePostScheduleTasks;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.ui.overlay.OverlayManager;
@@ -65,6 +69,9 @@ public class GotrPlugin extends Plugin implements SchedulablePlugin {
     public GotrConfig getConfig() {
         return config;
     }
+    public GotrScript getScript() {
+        return gotrScript;
+    }
 
 
     @Override
@@ -74,8 +81,7 @@ public class GotrPlugin extends Plugin implements SchedulablePlugin {
             overlayManager.add(gotrOverlay);
         }
         
-        // Initialize pre/post schedule tasks
-        
+        // Initialize pre/post schedule tasks        
         if (Microbot.isLoggedIn()) {
             // Check if running in schedule mode
             if (isScheduleMode()) {
@@ -99,7 +105,13 @@ public class GotrPlugin extends Plugin implements SchedulablePlugin {
         if(lockCondition != null) {
             lockCondition.unlock();
         }
-        
+        AbstractPrePostScheduleTasks tasks = getPrePostScheduleTasks();
+        if (tasks != null) {
+            tasks.close(); // Ensure tasks are closed properly
+        }
+        prePostScheduleRequirements.reset();
+        prePostScheduleRequirements = null; // Clear requirements to allow reinitialization next time
+        prePostScheduleTasks = null; // Clear tasks to allow reinitialization next time
         gotrScript.shutdown();
         overlayManager.remove(gotrOverlay);
         overlayManager.remove(pouchOverlay);
@@ -118,8 +130,7 @@ public class GotrPlugin extends Plugin implements SchedulablePlugin {
         if (event.getGameState() == GameState.LOADING) {
             GotrScript.resetPlugin();
         } else if (event.getGameState() == GameState.LOGGED_IN) {
-            log.info("GameState changed to LOGGED_IN - initializing GOTR tasks");
-            
+            log.info("GameState changed to LOGGED_IN - initializing GOTR tasks");            
             // Initialize Pre/Post Schedule Requirements and Tasks when game information is available
            
             
@@ -219,6 +230,27 @@ public class GotrPlugin extends Plugin implements SchedulablePlugin {
             GotrScript.catalyticRewardPoints = Integer.parseInt(rewardPointMatcher.group(2).replaceAll(",", ""));
         }
     }
+    @Subscribe	
+	public void onConfigChanged(ConfigChanged event)
+	{
+	    final ConfigDescriptor desc = getConfigDescriptor();
+		if (desc != null && desc.getGroup() != null && event.getGroup().equals(desc.getGroup().value())) {
+			log.info(
+				"Config change detected for {}: {}={}, config group {}",
+				getName(),
+				event.getGroup(),
+				event.getKey(),
+				desc.getGroup().value()
+			);
+			if (prePostScheduleTasks != null && !prePostScheduleTasks.isExecuting()) {
+				if (prePostScheduleRequirements != null) {
+					prePostScheduleRequirements.setConfig(config);
+					prePostScheduleRequirements.reset();
+				}
+				// prePostScheduleTasks.reset(); when we allow reexecution of pre/post-schedule tasks on config change
+			}
+		}
+	}
 
     @Subscribe
     public void onGameObjectSpawned(GameObjectSpawned event) {
@@ -267,23 +299,20 @@ public class GotrPlugin extends Plugin implements SchedulablePlugin {
     }
 
     @Override
-    public AbstractPrePostScheduleTasks getPrePostScheduleTasks() {
-        if (prePostScheduleRequirements == null || prePostScheduleTasks == null) {
-            log.info("Initializing GOTR Pre/Post Schedule Requirements and Tasks...");
-            this.prePostScheduleRequirements = new GotrPrePostScheduleRequirements();
-            this.prePostScheduleTasks = new GotrPrePostScheduleTasks(this,prePostScheduleRequirements);
-            
-            // Log the requirements status
-            log.info("GOTR PrePostScheduleRequirements initialized:\n{}", prePostScheduleRequirements.getDetailedDisplay());
-        }
-        
-        if (!prePostScheduleRequirements.isInitialized()) {
-            log.error("Failed to initialize GOTR Pre/Post Schedule Requirements. Cannot proceed with tasks.");
-            this.prePostScheduleRequirements = null;
-            this.prePostScheduleTasks = null;
-            return null; // Return null if requirements are not met
-        }
-        
+    public AbstractPrePostScheduleTasks getPrePostScheduleTasks() {      
+  
+        if (prePostScheduleRequirements == null) {
+			if(Microbot.getClient().getGameState() != GameState.LOGGED_IN) {
+               log.debug("GOTR - Cannot provide pre/post schedule tasks - not logged in");
+                return null; // Return null if not logged in
+            }
+			log.info("Initializing GOTR Pre/Post Schedule Requirements and Tasks...");
+            this.prePostScheduleRequirements = new GotrPrePostScheduleRequirements(config);			
+		}	
+        if (this.prePostScheduleTasks==null ){
+			this.prePostScheduleTasks = new GotrPrePostScheduleTasks(this, prePostScheduleRequirements);				
+			log.info("GOTR PrePostScheduleRequirements initialized:\n{}", prePostScheduleRequirements.getDetailedDisplay());
+		}               
         // Return the pre/post schedule tasks instance
         return this.prePostScheduleTasks;
     }
@@ -394,6 +423,9 @@ public class GotrPlugin extends Plugin implements SchedulablePlugin {
             AbstractPrePostScheduleTasks tasks = getPrePostScheduleTasks();
             if (tasks != null && !tasks.isPostScheduleRunning() && !tasks.isPostTaskComplete()) {
                 log.info("Running post-schedule tasks for scheduler stop");
+                if(gotrScript != null && gotrScript.isRunning()) {
+                    gotrScript.shutdown();
+                }
                 runPostScheduleTasks();
             } else {
                 log.info("Not in scheduler mode, performing direct shutdown");

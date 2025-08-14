@@ -24,7 +24,7 @@ The integration architecture is designed for extensibility, allowing new require
 
 The integration system uses a registry-based architecture for requirement management:
 
-**Centralized Registration**: All requirements are registered through the [`RequirementRegistry`](../../../runelite-client/src/main/java/net/runelite/client/plugins/microbot/pluginscheduler/tasks/requirements/RequirementRegistry.java), providing centralized management and coordination.
+**Centralized Registration**: All requirements are registered through the [`RequirementRegistry`](../../../runelite-client/src/main/java/net/runelite/client/plugins/microbot/pluginscheduler/tasks/requirements/registry/RequirementRegistry.java), providing centralized management and coordination.
 
 **Type System**: Requirements are organized by type, allowing for specialized handling of different resource categories like equipment, inventory, location, and game state.
 
@@ -50,9 +50,9 @@ Requirements are executed through a sophisticated framework that coordinates tim
 
 The system includes a comprehensive ecosystem of requirement types:
 
-**Equipment Requirements**: Managed through [`EquipmentRequirement`](../../../runelite-client/src/main/java/net/runelite/client/plugins/microbot/pluginscheduler/tasks/requirements/types/EquipmentRequirement.java) for automated equipment optimization and management.
+**Equipment Requirements**: Managed through [`ItemRequirement`](../../../runelite-client/src/main/java/net/runelite/client/plugins/microbot/pluginscheduler/tasks/requirements/requirement/item/ItemRequirement.java) for automated equipment optimization and management.
 
-**Inventory Requirements**: Handled by [`InventoryRequirement`](../../../runelite-client/src/main/java/net/runelite/client/plugins/microbot/pluginscheduler/tasks/requirements/types/InventoryRequirement.java) for complex inventory preparation and item management.
+**Inventory Requirements**: Handled by [`ItemRequirement`](../../../runelite-client/src/main/java/net/runelite/client/plugins/microbot/pluginscheduler/tasks/requirements/requirement/item/ItemRequirement.java) for complex inventory preparation and item management.
 
 **Location Requirements**: Coordinated through [`LocationRequirement`](../../../runelite-client/src/main/java/net/runelite/client/plugins/microbot/pluginscheduler/tasks/requirements/types/LocationRequirement.java) for precise positioning and area preparation.
 

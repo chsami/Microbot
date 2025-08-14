@@ -211,21 +211,21 @@ public class GroundItemUpdateStrategy implements CacheUpdateStrategy<String, Rs2
             }
             Player player = Microbot.getClient().getLocalPlayer();
             if (player == null) {
-                log.warn("Cannot perform ground item scene scan - no player");
+                log.debug("Cannot perform ground item scene scan - no player");
                 scanActive.set(false);
                 return;
             }
             
             Scene scene = player.getWorldView().getScene();
             if (scene == null) {
-                log.warn("Cannot perform ground item scene scan - no scene");
+                log.debug("Cannot perform ground item scene scan - no scene");
                 scanActive.set(false);
                 return;
             }
             
             Tile[][][] tiles = scene.getTiles();
             if (tiles == null) {
-                log.warn("Cannot perform ground item scene scan - no tiles");
+                log.debug("Cannot perform ground item scene scan - no tiles");
                 scanActive.set(false);
                 return;
             }

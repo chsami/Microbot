@@ -12,6 +12,7 @@ import net.runelite.client.ui.overlay.components.TitleComponent;
 import javax.inject.Inject;
 import java.awt.*;
 import java.time.Duration;
+import java.time.Instant;
 
 public class BreakHandlerOverlay extends OverlayPanel {
     private final BreakHandlerConfig config;
@@ -88,6 +89,20 @@ public class BreakHandlerOverlay extends OverlayPanel {
                         .left(BreakHandlerScript.formatDuration(Duration.ofSeconds(BreakHandlerScript.breakDuration), "Break duration:"))
                         .build());
             }
+            
+            // Display extended sleep countdown when in LOGIN_EXTENDED_SLEEP state
+            if (BreakHandlerScript.getCurrentState() == BreakHandlerState.LOGIN_EXTENDED_SLEEP && 
+                BreakHandlerScript.getExtendedSleepStartTime() != null) {
+                
+                long elapsedMinutes = Duration.between(BreakHandlerScript.getExtendedSleepStartTime(), Instant.now()).toMinutes();
+                long remainingMinutes = Math.max(0, config.extendedSleepDuration() - elapsedMinutes);
+                Duration remainingDuration = Duration.ofMinutes(remainingMinutes);
+                
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Extended sleep: " + BreakHandlerScript.formatDuration(remainingDuration))
+                        .leftColor(Color.BLUE)
+                        .build());
+            }
 
         } catch(Exception ex) {
             System.out.println(ex.getMessage());
@@ -110,10 +125,12 @@ public class BreakHandlerOverlay extends OverlayPanel {
             case LOGGING_IN:
                 return Color.CYAN;
             case LOGGED_OUT:
-            case MICRO_BREAK_ACTIVE:
+            case INGAME_BREAK_ACTIVE:
                 return Color.RED;
             case LOGIN_REQUESTED:
                 return Color.MAGENTA;
+            case LOGIN_EXTENDED_SLEEP:
+                return Color.BLUE;
             case BREAK_ENDING:
                 return Color.LIGHT_GRAY;
             default:

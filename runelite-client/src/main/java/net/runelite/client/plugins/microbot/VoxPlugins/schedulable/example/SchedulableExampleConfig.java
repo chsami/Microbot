@@ -790,8 +790,12 @@ public interface SchedulableExampleConfig extends Config {
         position = 0,
         section = debugSection
     )
+    @Range(
+            min = 10,
+            max = 100
+    )
     default int aliveReportTimeout() {
-        return 60;
+        return 10;
     }
 
     @ConfigItem(
@@ -881,14 +885,5 @@ public interface SchedulableExampleConfig extends Config {
     )
     default Keybind cancelTasksHotkey() {
         return Keybind.NOT_SET;
-    }
-    
-    @ConfigSection(
-        name = "Pre/Post Scheduler Example",
-        description = "Example toggles for Pre/Post Scheduler",
-        position = 100
-    )
-    String prePostSchedulerSection = "prePostSchedulerSection";
-
-   
+    }        
 }

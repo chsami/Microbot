@@ -52,9 +52,9 @@ Requirements operate within specific contexts (PRE_SCHEDULE, POST_SCHEDULE, IMME
 
 ### Foundation Documentation
 
-- **[Task Management System](task-management-system.md)** - Comprehensive guide to the infrastructure layer, covering execution services, lifecycle management, and error handling patterns
-- **[Requirements System](requirements-system.md)** - Complete exploration of the requirement type ecosystem, fulfillment strategies, and advanced logical combinations  
-- **[Enhanced SchedulablePlugin API](enhanced-schedulable-plugin-api.md)** - Advanced integration patterns for scheduler connectivity and lifecycle management
+- **[Task Management System](task-management-system.md)** — Comprehensive guide to the infrastructure layer, covering execution services, lifecycle management, and error handling patterns
+- **[Requirements System](requirements-system.md)** — Complete exploration of the requirement type ecosystem, fulfillment strategies, and advanced logical combinations
+- **[Enhanced SchedulablePlugin API](enhanced-schedulable-plugin-api.md)** — Advanced integration patterns for scheduler connectivity and lifecycle management
 
 ### Implementation Resources
 
