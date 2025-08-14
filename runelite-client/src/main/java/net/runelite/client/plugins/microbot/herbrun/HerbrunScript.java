@@ -104,6 +104,12 @@ public class HerbrunScript extends Script {
                 
             }
 
+            // Skip patch if it's been disabled while running
+            if (!currentPatch.isEnabled()) {
+                currentPatch = null;
+                return;
+            }
+
             if (!currentPatch.isInRange(10)) {
                 HerbrunPlugin.status = "Walking to " + currentPatch.getRegionName();
                 Rs2Walker.walkTo(currentPatch.getLocation(), 20);
@@ -139,12 +145,16 @@ public class HerbrunScript extends Script {
 
             // Start with weiss, getNearestBank doesn't like that area!
             currentPatch = herbPatches.stream()
-                    .filter(patch -> Objects.equals(patch.getRegionName(), "Weiss"))
+                    .filter(patch -> patch.isEnabled() && Objects.equals(patch.getRegionName(), "Weiss"))
                     .findFirst()
                     .orElseGet(() -> herbPatches.stream()
+                            .filter(HerbPatch::isEnabled)
                             .findFirst()
                             .orElse(null));
-            herbPatches.remove(currentPatch);
+            
+            if (currentPatch != null) {
+                herbPatches.remove(currentPatch);
+            }
         }
     }
 
