@@ -185,7 +185,7 @@ public class HerbrunScript extends Script {
                     
                     // Drop empty bucket if configured (not for bottomless bucket)
                     if (config.dropEmptyBuckets() && !config.compostType().isBottomless()) {
-                        Rs2Inventory.drop(ItemID.BUCKET);
+                        Rs2Inventory.drop(ItemID.BUCKET_EMPTY);
                     }
                 }
                 Rs2Inventory.use(" seed");
