@@ -17,6 +17,10 @@ import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
+import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
+import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
+import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -27,6 +31,8 @@ public class AutoHerbiboarScript extends Script {
     private boolean attackedTunnel;
     private static final WorldPoint BANK_LOCATION = new WorldPoint(3769, 3898, 0);
     private static final WorldPoint RETURN_LOCATION = new WorldPoint(3727, 3892, 0);
+    
+    public static String version = "1.0";
     
 
     public AutoHerbiboarState getCurrentState() {
@@ -226,11 +232,13 @@ public class AutoHerbiboarScript extends Script {
                     manageRunEnergy(config);
                 }
                 
-                if (needsToBank(config)) {
-                    state = AutoHerbiboarState.BANK;
-                } else if (hasRequiredInventorySetup(config) && isNearBank() && 
-                          (state == AutoHerbiboarState.START || state == AutoHerbiboarState.INITIALIZING)) {
-                    state = AutoHerbiboarState.RETURN_FROM_ISLAND;
+                if (state != AutoHerbiboarState.INITIALIZING && state != AutoHerbiboarState.CHECK_AUTO_RETALIATE) {
+                    if (needsToBank(config)) {
+                        state = AutoHerbiboarState.BANK;
+                    } else if (hasRequiredInventorySetup(config) && isNearBank() && 
+                              (state == AutoHerbiboarState.START)) {
+                        state = AutoHerbiboarState.RETURN_FROM_ISLAND;
+                    }
                 }
                 if ((Rs2Player.isMoving() || Rs2Player.isInteracting()) && 
                     (state == AutoHerbiboarState.START || state == AutoHerbiboarState.TRAIL || 
@@ -241,6 +249,17 @@ public class AutoHerbiboarScript extends Script {
                 switch (state) {
                     case INITIALIZING:
                         Microbot.status = "Starting...";
+                        state = AutoHerbiboarState.CHECK_AUTO_RETALIATE;
+                        break;
+                    case CHECK_AUTO_RETALIATE:
+                        Microbot.status = "Checking auto retaliate...";
+                        if (Microbot.getVarbitPlayerValue(172) == 0) {
+                            Microbot.status = "Disabling auto retaliate...";
+                            Rs2Tab.switchTo(InterfaceTab.COMBAT);
+                            sleepUntil(() -> Rs2Tab.getCurrentTab() == InterfaceTab.COMBAT, 2000);
+                            Rs2Widget.clickWidget(38862879);
+                            sleepUntil(() -> Microbot.getVarbitPlayerValue(172) == 1, 3000);
+                        }
                         state = AutoHerbiboarState.START;
                         break;
                     case START:

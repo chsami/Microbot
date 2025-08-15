@@ -10,9 +10,26 @@ import net.runelite.client.plugins.microbot.bga.autoherblore.enums.Mode;
 @ConfigGroup("AutoHerblore")
 public interface AutoHerbloreConfig extends Config {
     @ConfigSection(
+        name = "Optionals",
+        description = "Optional features",
+        position = 0
+    )
+    String OPTIONALS_SECTION = "optionals";
+
+    @ConfigItem(
+        keyName = "useAmuletOfChemistry",
+        name = "Amulet of chem. or Alch. amulet",
+        description = "Automatically withdraw and equip Amulet of Chemistry when making finished potions. Will re-equip when it breaks.",
+        section = OPTIONALS_SECTION
+    )
+    default boolean useAmuletOfChemistry() {
+        return false;
+    }
+
+    @ConfigSection(
         name = "Mode",
         description = "Select the herblore mode",
-        position = 0
+        position = 1
     )
     String MODE_SECTION = "mode";
 
@@ -29,7 +46,7 @@ public interface AutoHerbloreConfig extends Config {
     @ConfigSection(
         name = "Finished Potion Type",
         description = "Select which finished potion to create",
-        position = 1
+        position = 2
     )
     String POTION_SECTION = "potion";
 

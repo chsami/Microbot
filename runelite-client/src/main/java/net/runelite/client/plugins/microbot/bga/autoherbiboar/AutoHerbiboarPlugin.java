@@ -52,7 +52,8 @@ public class AutoHerbiboarPlugin extends Plugin {
     public void onChatMessage(ChatMessage chatMessage) {
         if (chatMessage.getType() == ChatMessageType.GAMEMESSAGE) {
             String message = chatMessage.getMessage();
-            if (message.equals("The creature has successfully confused you with its tracks, leading you round in circles.")) {
+            if (message.equals("The creature has successfully confused you with its tracks, leading you round in circles.") || 
+                message.equals("You'll need to start again.")) {
                 script.handleConfusionMessage();
             }
         }

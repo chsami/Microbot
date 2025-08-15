@@ -1,7 +1,10 @@
 package net.runelite.client.plugins.microbot.bga.autoherblore;
 
 import com.google.inject.Provides;
+import net.runelite.api.ChatMessageType;
+import net.runelite.api.events.ChatMessage;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import javax.inject.Inject;
@@ -33,5 +36,17 @@ public class AutoHerblorePlugin extends Plugin {
     @Override
     protected void shutDown() {
         script.shutdown();
+    }
+
+    @Subscribe
+    public void onChatMessage(ChatMessage chatMessage) {
+        if (chatMessage.getType() != ChatMessageType.GAMEMESSAGE) {
+            return;
+        }
+
+        String message = chatMessage.getMessage();
+        if (message.contains("It then crumbles to dust.")) {
+            script.setAmuletBroken(true);
+        }
     }
 }

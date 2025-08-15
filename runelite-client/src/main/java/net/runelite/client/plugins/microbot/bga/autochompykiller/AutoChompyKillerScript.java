@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 public class AutoChompyKillerScript extends Script {
-    public static double version = 1.0;
+    public static String version = "1.0";
 
     public static int chompyKills = 0;
     public static long startTime = 0;

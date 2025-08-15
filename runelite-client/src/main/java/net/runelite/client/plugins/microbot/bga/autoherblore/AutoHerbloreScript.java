@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.bga.autoherblore;
 
+import lombok.Setter;
 import net.runelite.api.Skill;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -7,6 +8,7 @@ import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.bga.autoherblore.enums.Herb;
@@ -14,9 +16,12 @@ import net.runelite.client.plugins.microbot.bga.autoherblore.enums.Mode;
 import net.runelite.client.plugins.microbot.bga.autoherblore.enums.HerblorePotion;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.inventory.InteractOrder;
+import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import java.util.concurrent.TimeUnit;
 
 public class AutoHerbloreScript extends Script {
+
+    public static String version = "1.0";
 
     private enum State {
         BANK,
@@ -31,6 +36,8 @@ public class AutoHerbloreScript extends Script {
     private boolean currentlyMakingPotions;
     private int withdrawnAmount;
     private AutoHerbloreConfig config;
+    @Setter
+    private boolean amuletBroken = false;
 
     private boolean usesStackableSecondary(HerblorePotion potion) {
         return getStackableSecondaryRatio(potion) > 1;
@@ -111,6 +118,8 @@ public class AutoHerbloreScript extends Script {
                         return;
                     }
                     if (config.mode() == Mode.FINISHED_POTIONS) {
+                        checkAndEquipAmulet();
+                        
                         if (currentPotion == null || !Rs2Bank.hasItem(currentPotion.unfinished) || !Rs2Bank.hasItem(currentPotion.secondary)) {
                             currentPotion = findPotion();
                             if (currentPotion == null) {
@@ -188,6 +197,7 @@ public class AutoHerbloreScript extends Script {
                         if (Rs2Inventory.combine(currentHerbForUnfinished.clean, ItemID.VIAL_WATER)) {
                             sleep(600, 800);
                             if (withdrawnAmount > 1) {
+                                Rs2Dialogue.sleepUntilHasCombinationDialogue();
                                 Rs2Keyboard.keyPress('1');
                             }
                             currentlyMakingPotions = true;
@@ -197,6 +207,12 @@ public class AutoHerbloreScript extends Script {
                     state = State.BANK;
                 }
                 if (config.mode() == Mode.FINISHED_POTIONS && state == State.MAKE_FINISHED) {
+                    if (amuletBroken && config.useAmuletOfChemistry()) {
+                        currentlyMakingPotions = false;
+                        state = State.BANK;
+                        return;
+                    }
+                    
                     if (currentlyMakingPotions) {
                         if (isSuperCombat(currentPotion)) {
                             if (!Rs2Inventory.hasItem(ItemID.TORSTOL) || !Rs2Inventory.hasItem(ItemID._4DOSE2ATTACK) ||
@@ -226,6 +242,7 @@ public class AutoHerbloreScript extends Script {
                             if (Rs2Inventory.combine(ItemID.TORSTOL, ItemID._4DOSE2ATTACK)) {
                                 sleep(600, 800);
                                 if (withdrawnAmount > 1) {
+                                    Rs2Dialogue.sleepUntilHasQuestion("How many do you wish to make?");
                                     Rs2Keyboard.keyPress('1');
                                 }
                                 currentlyMakingPotions = true;
@@ -236,6 +253,7 @@ public class AutoHerbloreScript extends Script {
                         if (Rs2Inventory.combine(currentPotion.unfinished, currentPotion.secondary)) {
                             sleep(600, 800);
                             if (withdrawnAmount > 1) {
+                                Rs2Dialogue.sleepUntilHasQuestion("How many do you wish to make?");
                                 Rs2Keyboard.keyPress('1');
                             }
                             currentlyMakingPotions = true;
@@ -292,6 +310,35 @@ public class AutoHerbloreScript extends Script {
         }
         return null;
     }
+
+    private void checkAndEquipAmulet() {
+        if (!config.useAmuletOfChemistry()) {
+            return;
+        }
+        
+        if (!Rs2Equipment.isWearing(ItemID.AMULET_OF_CHEMISTRY) && 
+            !Rs2Equipment.isWearing(ItemID.AMULET_OF_CHEMISTRY_IMBUED_CHARGED)) {
+            
+            if (!Rs2Bank.isOpen()) {
+                Rs2Bank.openBank();
+                Rs2Inventory.waitForInventoryChanges(1800);
+                if (!Rs2Bank.isOpen()) return;
+            }
+            
+            if (Rs2Bank.hasItem(ItemID.AMULET_OF_CHEMISTRY_IMBUED_CHARGED)) {
+                Rs2Bank.withdrawAndEquip(ItemID.AMULET_OF_CHEMISTRY_IMBUED_CHARGED);
+                Rs2Inventory.waitForInventoryChanges(1800);
+            } else if (Rs2Bank.hasItem(ItemID.AMULET_OF_CHEMISTRY)) {
+                Rs2Bank.withdrawAndEquip(ItemID.AMULET_OF_CHEMISTRY);
+                Rs2Inventory.waitForInventoryChanges(1800);
+            } else {
+                Microbot.showMessage("No Amulet of Chemistry found in bank");
+                return;
+            }
+            amuletBroken = false;
+        }
+    }
+
     public void shutdown() {
         super.shutdown();
         Rs2Antiban.resetAntibanSettings();

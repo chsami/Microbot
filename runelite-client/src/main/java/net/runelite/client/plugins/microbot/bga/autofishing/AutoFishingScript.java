@@ -279,12 +279,8 @@ public class AutoFishingScript extends Script {
         if (fishingSpot == null) {
             if (selectedSpotLocation != null && selectedSpotLocation.getLocations().length > 1) {
                 cycleToNextLocation();
-                WorldPoint playerLocation = Rs2Player.getWorldLocation();
-                if (fishingLocation != null && playerLocation.distanceTo(fishingLocation) <= 50) {
+                if (fishingLocation != null) {
                     Rs2Walker.walkTo(fishingLocation);
-                    return;
-                } else {
-                    state = AutoFishingState.TRAVELING;
                     return;
                 }
             } else {
