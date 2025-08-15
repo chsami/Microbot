@@ -13,7 +13,8 @@ public enum ThievingHouse {
             LAVINIA_LOCKED_DOOR_EGRESS,
             LAVINIA_WINDOW_ENTRANCE,
             LAVINIA_WINDOW_EGRESS,
-            LAVINIA_INITIAL_THIEVING_CHEST
+            LAVINIA_INITIAL_THIEVING_CHEST,
+            LAVINIA_SCOUT_POSITION
     ),
     VICTOR(
             "Victor",
@@ -22,7 +23,8 @@ public enum ThievingHouse {
             VICTOR_LOCKED_DOOR_EGRESS,
             VICTOR_WINDOW_ENTRANCE,
             VICTOR_WINDOW_EGRESS,
-            VICTOR_INITIAL_THIEVING_CHEST
+            VICTOR_INITIAL_THIEVING_CHEST,
+            VICTOR_SCOUT_POSITION
     ),
     CAIUS(
             "Caius",
@@ -31,7 +33,8 @@ public enum ThievingHouse {
             CAIUS_LOCKED_DOOR_EGRESS,
             CAIUS_WINDOW_ENTRANCE,
             CAIUS_WINDOW_EGRESS,
-            CAIUS_INITIAL_THIEVING_CHEST
+            CAIUS_INITIAL_THIEVING_CHEST,
+            CAIUS_SCOUT_POSITION
     );
 
     final String npcName;
@@ -41,6 +44,7 @@ public enum ThievingHouse {
     final WorldPoint windowEntrance;
     final WorldPoint windowEgress;
     final WorldPoint initialThievingChest;
+    final WorldPoint scoutPosition;
 
     ThievingHouse(
             final String npcName,
@@ -49,7 +53,8 @@ public enum ThievingHouse {
             final WorldPoint lockedDoorEgress,
             final WorldPoint windowEntrance,
             final WorldPoint windowEgress,
-            final WorldPoint initialThievingChest
+            final WorldPoint initialThievingChest,
+            final WorldPoint scoutPosition
     ) {
         this.npcName = npcName;
         this.houseCenter = houseCenter;
@@ -58,5 +63,6 @@ public enum ThievingHouse {
         this.windowEntrance = windowEntrance;
         this.windowEgress = windowEgress;
         this.initialThievingChest = initialThievingChest;
+        this.scoutPosition = scoutPosition;
     }
 }
