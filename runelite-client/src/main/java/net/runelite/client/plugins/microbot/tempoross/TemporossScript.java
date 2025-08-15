@@ -791,7 +791,7 @@ public class TemporossScript extends Script {
             if (state == State.INITIAL_FILL) {
                 // In solo mode with fish in inventory (less than 9), prioritize filling first
                 // But still handle critical nearby fires to prevent getting stuck
-                if (temporossConfig.solo() && State.getCookedFish() < 9 && State.getCookedFish() > 0) {
+                if (temporossConfig.solo() && State.getCookedFish() < 10 && State.getCookedFish() > 0) {
                     int distanceToFire = playerLocation.distanceTo(fire.getWorldLocation());
                     // Only handle fires that are very close (within 2 tiles) to prevent getting stuck
                     if (distanceToFire <= 2) {
