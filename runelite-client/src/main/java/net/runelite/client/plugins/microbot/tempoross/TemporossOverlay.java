@@ -96,6 +96,8 @@ public class TemporossOverlay extends Overlay {
             renderWorldPoint(graphics, workArea.totemPoint, Color.GREEN, "Totem Point");
             renderWorldPoint(graphics, workArea.rangePoint, Color.MAGENTA, "Range Point");
             renderWorldPoint(graphics, workArea.spiritPoolPoint, Color.ORANGE, "Spirit Pool");
+            renderWorldPoint(graphics, workArea.dockPumpPoint, Color.DARK_GRAY, "Dock Water Pump");
+            renderWorldPoint(graphics, workArea.dockBucketPoint, Color.YELLOW, "Dock Bucket Crate");
 
             // draw each lastWalkPath WorldPoint
             if (lastWalkPath != null) {

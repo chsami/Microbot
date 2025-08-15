@@ -2,6 +2,8 @@ package net.runelite.client.plugins.microbot.tempoross.enums;
 
 import net.runelite.api.gameval.AnimationID;
 import net.runelite.api.gameval.ItemID;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 
 public enum HarpoonType
 {
@@ -27,6 +29,7 @@ public enum HarpoonType
         this.name = name;
     }
 
+
     public int getId()
     {
         return id;
@@ -42,5 +45,49 @@ public enum HarpoonType
         return name;
     }
 
-
+    /**
+     * Checks if a variant of this harpoon type is in the player's inventory or equipment.
+     * This method encapsulates the logic for checking both inventory and equipment for any variant
+     * of the selected harpoon type.
+     *
+     * @return true if a variant of this harpoon is found in inventory or equipment, false otherwise
+     */
+    public boolean hasVariantInInventoryOrEquipment() {
+        // For barehand fishing, no item is needed
+        if (this == BAREHAND) {
+            return true;
+        }
+        
+        // First check for the main harpoon ID
+        if (Rs2Inventory.contains(this.id) || Rs2Equipment.isWearing(this.id)) {
+            return true;
+        }
+        
+        // Check for specific variants based on the harpoon type
+        switch (this) {
+            case DRAGON_HARPOON:
+                return Rs2Inventory.contains(ItemID.TRAILBLAZER_HARPOON_NO_INFERNAL, ItemID.TRAILBLAZER_RELOADED_HARPOON_NO_INFERNAL) || 
+                       Rs2Equipment.isWearing(ItemID.TRAILBLAZER_HARPOON_NO_INFERNAL) || 
+                       Rs2Equipment.isWearing(ItemID.TRAILBLAZER_RELOADED_HARPOON_NO_INFERNAL);
+                
+            case INFERNAL_HARPOON:
+                return Rs2Inventory.contains(ItemID.INFERNAL_HARPOON_EMPTY, 
+                                           ItemID.TRAILBLAZER_HARPOON, 
+                                           ItemID.TRAILBLAZER_HARPOON_EMPTY,
+                                           ItemID.TRAILBLAZER_RELOADED_HARPOON,
+                                           ItemID.TRAILBLAZER_RELOADED_HARPOON_EMPTY) || 
+                       Rs2Equipment.isWearing(ItemID.INFERNAL_HARPOON_EMPTY) || 
+                       Rs2Equipment.isWearing(ItemID.TRAILBLAZER_HARPOON) || 
+                       Rs2Equipment.isWearing(ItemID.TRAILBLAZER_HARPOON_EMPTY) ||
+                       Rs2Equipment.isWearing(ItemID.TRAILBLAZER_RELOADED_HARPOON) ||
+                       Rs2Equipment.isWearing(ItemID.TRAILBLAZER_RELOADED_HARPOON_EMPTY);
+                
+            case CRYSTAL_HARPOON:
+                return Rs2Inventory.contains(ItemID.CRYSTAL_HARPOON_INACTIVE) || 
+                       Rs2Equipment.isWearing(ItemID.CRYSTAL_HARPOON_INACTIVE);
+                
+            default:
+                return false;
+        }
+    }
 }

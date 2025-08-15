@@ -1,12 +1,12 @@
 package net.runelite.client.plugins.microbot.tempoross;
 
-import net.runelite.api.NullObjectID;
-import net.runelite.api.ObjectID;
 import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ObjectID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 
 public class TemporossWorkArea
@@ -22,14 +22,16 @@ public class TemporossWorkArea
     public final WorldPoint totemPoint;
     public final WorldPoint rangePoint;
     public final WorldPoint spiritPoolPoint;
+    public final WorldPoint dockPumpPoint;
+    public final WorldPoint dockBucketPoint;
 
     public TemporossWorkArea(WorldPoint exitNpc, boolean isWest)
     {
         this.exitNpc = exitNpc;
-        this.safePoint = exitNpc.dx(1).dy(1);
 
         if (isWest)
         {
+            this.safePoint = exitNpc.dx(1).dy(2);  // West side safe point
             this.bucketPoint = exitNpc.dx(-3).dy(-1);
             this.pumpPoint = exitNpc.dx(-3).dy(-2);
             this.ropePoint = exitNpc.dx(-3).dy(-5);
@@ -39,9 +41,12 @@ public class TemporossWorkArea
             this.totemPoint = exitNpc.dx(8).dy(15);
             this.rangePoint = exitNpc.dx(3).dy(21);
             this.spiritPoolPoint = exitNpc.dx(11).dy(4);
+            this.dockPumpPoint = exitNpc.dx(12).dy(6);    // TEMPOROSS_WATER_PUMP_DOCK
+            this.dockBucketPoint = exitNpc.dx(12).dy(7);  // TEMPOROSS_CRATE_BUCKET
         }
         else
         {
+            this.safePoint = exitNpc.dx(-1).dy(-2); // East side safe point
             this.bucketPoint = exitNpc.dx(3).dy(1);
             this.pumpPoint = exitNpc.dx(3).dy(2);
             this.ropePoint = exitNpc.dx(3).dy(5);
@@ -51,75 +56,104 @@ public class TemporossWorkArea
             this.totemPoint = exitNpc.dx(-15).dy(-13);
             this.rangePoint = exitNpc.dx(-23).dy(-19);
             this.spiritPoolPoint = exitNpc.dx(-11).dy(-4);
+            this.dockPumpPoint = exitNpc.dx(-12).dy(-6);    // TEMPOROSS_WATER_PUMP_DOCK
+            this.dockBucketPoint = exitNpc.dx(-12).dy(-7);  // TEMPOROSS_CRATE_BUCKET
         }
     }
 
     public TileObject getBucketCrate()
     {
-        return Rs2GameObject.findObject(ObjectID.BUCKETS, bucketPoint);
+        return Rs2GameObject.findObject(ObjectID.TEMPOROSS_CRATE_BUCKET, bucketPoint);
     }
 
     public TileObject getPump()
     {
-        return Rs2GameObject.findObject(ObjectID.WATER_PUMP_41000, pumpPoint);
+        return Rs2GameObject.findObject(ObjectID.TEMPOROSS_WATER_PUMP, pumpPoint);
     }
 
     public TileObject getRopeCrate()
     {
-        return Rs2GameObject.findObject(ObjectID.ROPES, ropePoint);
+        return Rs2GameObject.findObject(ObjectID.TEMPOROSS_CRATE_ROPE, ropePoint);
     }
 
     public TileObject getHammerCrate()
     {
-        return Rs2GameObject.findObject(ObjectID.HAMMERS_40964, hammerPoint);
+        return Rs2GameObject.findObject(ObjectID.TEMPOROSS_CRATE_HAMMER, hammerPoint);
     }
 
     public TileObject getHarpoonCrate()
     {
-        return Rs2GameObject.findObject(ObjectID.HARPOONS, harpoonPoint);
+        return Rs2GameObject.findObject(ObjectID.TEMPOROSS_CRATE_HARPOON, harpoonPoint);
+    }
+
+    public TileObject getDockPump()
+    {
+        return Rs2GameObject.findObject(ObjectID.TEMPOROSS_WATER_PUMP_DOCK, dockPumpPoint);
+    }
+
+    public TileObject getDockBucketCrate()
+    {
+        return Rs2GameObject.findObject(ObjectID.TEMPOROSS_CRATE_BUCKET, dockBucketPoint);
     }
 
     public TileObject getMast() {
         //WorldPoint localInstance = WorldPoint.toLocalInstance(Microbot.getClient().getTopLevelWorldView(),mastPoint).stream().findFirst().orElse(null);
     TileObject mast = Rs2GameObject.findGameObjectByLocation(mastPoint);
-    if (mast != null && (mast.getId() == NullObjectID.NULL_41352 || mast.getId() == NullObjectID.NULL_41353)) {
+    if (mast != null && (mast.getId() == ObjectID.TEMPOROSS_MAST_BOTTOM_WEST || mast.getId() == ObjectID.TEMPOROSS_MAST_BOTTOM_EAST)) {
         return mast;
     }
     return null;
 }
 
     public TileObject getBrokenMast() {
-        //WorldPoint localInstance = WorldPoint.toLocalInstance(Microbot.getClient().getTopLevelWorldView(),mastPoint).stream().findFirst().orElse(null);
-    TileObject mast = Rs2GameObject.findGameObjectByLocation(mastPoint);
-    if (mast != null && (mast.getId() == ObjectID.DAMAGED_MAST_40996 || mast.getId() == ObjectID.DAMAGED_MAST_40997))
-        return mast;
+        // First check if we have a cached broken mast
+        if (TemporossScript.cachedBrokenMast != null) {
+            return TemporossScript.cachedBrokenMast;
+        }
+        
+        // Fallback to the original method if cache is empty
+        TileObject mast = Rs2GameObject.findGameObjectByLocation(mastPoint);
+        if (mast != null && (mast.getId() == ObjectID.TEMPOROSS_MAST_BOTTOM_WEST_BROKEN || mast.getId() == ObjectID.TEMPOROSS_MAST_BOTTOM_EAST_BROKEN)) {
+            // Update the cache
+            TemporossScript.cachedBrokenMast = mast;
+            return mast;
+        }
 
-    return null;
+        return null;
     }
 
     public TileObject getTotem() {
         //WorldPoint localInstance = WorldPoint.toLocalInstance(Microbot.getClient().getTopLevelWorldView(),totemPoint).stream().findFirst().orElse(null);
         TileObject totem = Rs2GameObject.findGameObjectByLocation(totemPoint);
-    if (totem != null && (totem.getId() == NullObjectID.NULL_41355 || totem.getId() == NullObjectID.NULL_41354)) {
+    if (totem != null && (totem.getId() == ObjectID.TEMPOROSS_TOTEM_SOUTH || totem.getId() == ObjectID.TEMPOROSS_TOTEM_NORTH)) {
         return totem;
     }
     return null;
 }
 
     public TileObject getBrokenTotem() {
-        //WorldPoint localInstance = WorldPoint.toLocalInstance(Microbot.getClient().getTopLevelWorldView(),totemPoint).stream().findFirst().orElse(null);
-    TileObject totem = Rs2GameObject.findGameObjectByLocation(totemPoint);
-    if (totem != null && (totem.getId() == ObjectID.DAMAGED_TOTEM_POLE || totem.getId() == ObjectID.DAMAGED_TOTEM_POLE_41011))
-        return totem;
+        // First check if we have a cached broken totem
+        if (TemporossScript.cachedBrokenTotem != null) {
+            return TemporossScript.cachedBrokenTotem;
+        }
+        
+        // Fallback to the original method if cache is empty
+        TileObject totem = Rs2GameObject.findGameObjectByLocation(totemPoint);
+        if (totem != null && (totem.getId() == ObjectID.TEMPOROSS_TOTEM_NORTH_BROKEN || totem.getId() == ObjectID.TEMPOROSS_TOTEM_SOUTH_BROKEN)) {
+            // Update the cache
+            TemporossScript.cachedBrokenTotem = totem;
+            return totem;
+        }
 
-    return null;
+        return null;
     }
 
     public TileObject getRange()
     {
         //WorldPoint localInstance = WorldPoint.toLocalInstance(Microbot.getClient().getTopLevelWorldView(),rangePoint).stream().findFirst().orElse(null);
-        return Rs2GameObject.findObject(ObjectID.SHRINE_41236, rangePoint);
+        return Rs2GameObject.findObject(ObjectID.TEMPOROSS_SHRINE_FIRE, rangePoint);
     }
+
 
     public TileObject getClosestTether() {
     TileObject mast = getMast();
