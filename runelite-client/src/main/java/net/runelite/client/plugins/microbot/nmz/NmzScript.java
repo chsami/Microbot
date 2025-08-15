@@ -54,7 +54,7 @@ public class NmzScript extends Script {
 
     public boolean canStartNmz() {
         return Rs2Inventory.count("overload (4)") == config.overloadPotionAmount() ||
-                (Rs2Inventory.hasItem("prayer potion") && config.togglePrayerPotions());
+                (Rs2Inventory.hasItem("prayer potion") && (config.togglePrayProtect() || config.togglePrayPiety()));
     }
 
     @Inject
@@ -62,7 +62,6 @@ public class NmzScript extends Script {
         this.plugin = plugin;
         this.config = config;
     }
-
 
     public boolean run() {
         prayerPotionScript = new PrayerPotionScript();
@@ -118,8 +117,10 @@ public class NmzScript extends Script {
 
     public void handleOutsideNmz() {
         boolean hasStartedDream = Microbot.getVarbitValue(3946) > 0;
-        if (config.togglePrayerPotions())
+        if (config.togglePrayProtect())
             Rs2Prayer.toggle(Rs2PrayerEnum.PROTECT_MELEE, false);
+        if (config.togglePrayPiety())
+            Rs2Prayer.toggle(Rs2PrayerEnum.PIETY, false);
         if (!hasStartedDream) {
             startNmzDream();
         } else {
@@ -152,8 +153,10 @@ public class NmzScript extends Script {
             }
         }
         prayerPotionScript.run();
-        if (config.togglePrayerPotions())
+        if (config.togglePrayProtect())
             Rs2Prayer.toggle(Rs2PrayerEnum.PROTECT_MELEE, true);
+        if (config.togglePrayPiety())
+            Rs2Prayer.toggle(Rs2PrayerEnum.PIETY, true);
         if (!useOrbs() && config.walkToCenter()) {
             walkToCenter();
         }

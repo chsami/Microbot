@@ -41,7 +41,7 @@ public class PrayerPotionScript extends Script {
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!super.run()) return;
-                if (!config.togglePrayerPotions()) return;
+                if (!config.togglePrayPiety() && !config.togglePrayProtect()) return;
                 if ((Microbot.getClient().getBoostedSkillLevel(Skill.PRAYER) * 100) / Microbot.getClient().getRealSkillLevel(Skill.PRAYER) > Rs2Random.between(25, 30))
                     return;
                 List<Rs2ItemModel> potions = Microbot.getClientThread().runOnClientThreadOptional(Rs2Inventory::getPotions).orElse(null);
