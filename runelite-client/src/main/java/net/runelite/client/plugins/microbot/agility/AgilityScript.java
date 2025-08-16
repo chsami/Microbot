@@ -38,6 +38,9 @@ public class AgilityScript extends Script
 	final MicroAgilityConfig config;
 
 	WorldPoint startPoint = null;
+	int lastAgilityXp = 0;
+	long lastMovingTime = 0;
+	int waitDelay = 0;  // Random delay between 700-1100ms
 
 	@Inject
 	public AgilityScript(MicroAgilityPlugin plugin, MicroAgilityConfig config)
@@ -58,6 +61,7 @@ public class AgilityScript extends Script
 		Rs2Antiban.resetAntibanSettings();
 		Rs2Antiban.antibanSetupTemplates.applyAgilitySetup();
 		startPoint = plugin.getCourseHandler().getStartPoint();
+		lastAgilityXp = Microbot.getClient().getSkillExperience(Skill.AGILITY);
 		mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
 			try
 			{
@@ -87,6 +91,7 @@ public class AgilityScript extends Script
 				}
 
 				final WorldPoint playerWorldLocation = Microbot.getClient().getLocalPlayer().getWorldLocation();
+				final int currentAgilityXp = Microbot.getClient().getSkillExperience(Skill.AGILITY);
 
 				if (handleFood())
 				{
@@ -97,10 +102,24 @@ public class AgilityScript extends Script
 					return;
 				}
 
+				// Check if we're still completing an obstacle
 				if (plugin.getCourseHandler().getCurrentObstacleIndex() > 0)
 				{
-					if (Rs2Player.isMoving() || Rs2Player.isAnimating())
-					{
+					// Disable XP checks for Colossal Wyrm courses (they have multi-XP drop obstacles)
+					boolean isColossalWyrm = config.agilityCourse().name().contains("COLOSSAL_WYRM");
+					
+					// If we gained XP and not Colossal Wyrm, obstacle is complete
+					if (!isColossalWyrm && currentAgilityXp > lastAgilityXp) {
+						lastAgilityXp = currentAgilityXp;
+						// Small humanization delay after XP drop (100-300ms)
+						sleep(100, 300);
+					} else if (Rs2Player.isMoving() || Rs2Player.isAnimating()) {
+						// Still moving, update timestamp and generate new random wait delay
+						lastMovingTime = System.currentTimeMillis();
+						waitDelay = 700 + (int)(Math.random() * 401);  // 700-1100ms
+						return;
+					} else if (System.currentTimeMillis() - lastMovingTime < waitDelay) {
+						// Not moving but haven't waited long enough yet
 						return;
 					}
 				}
@@ -108,11 +127,6 @@ public class AgilityScript extends Script
 				if (lootMarksOfGrace())
 				{
 					return;
-				}
-
-				if (config.alchemy())
-				{
-					getAlchItem().ifPresent(item -> Rs2Magic.alch(item, 50, 75));
 				}
 
 				if (plugin.getCourseHandler() instanceof PrifddinasCourse)
@@ -171,11 +185,69 @@ public class AgilityScript extends Script
 					Rs2Walker.walkMiniMap(gameObject.getWorldLocation());
 				}
 
-				if (Rs2GameObject.interact(gameObject))
-				{
-					plugin.getCourseHandler().waitForCompletion(agilityExp, Microbot.getClient().getLocalPlayer().getWorldLocation().getPlane());
+				// Handle alchemy if enabled
+				if (config.alchemy()) {
+					// Check if we should skip alching based on configured chance
+					if (Math.random() * 100 < config.alchSkipChance()) {
+						// Skip alching this obstacle
+					} else {
+						Optional<String> alchItem = getAlchItem();
+						if (alchItem.isPresent()) {
+						// Check for efficient alching conditions
+						if (config.efficientAlching() && 
+							gameObject.getWorldLocation().distanceTo(playerWorldLocation) >= 5) {
+							// Efficient alching: click, alch, click
+							if (Rs2GameObject.interact(gameObject)) {
+								sleep(100, 200);
+								Rs2Magic.alch(alchItem.get(), 50, 75);
+								Rs2GameObject.interact(gameObject);
+								plugin.getCourseHandler().waitForCompletion(agilityExp, 
+									Microbot.getClient().getLocalPlayer().getWorldLocation().getPlane());
+								Rs2Antiban.actionCooldown();
+								Rs2Antiban.takeMicroBreakByChance();
+								// Update last XP after completing obstacle
+								lastAgilityXp = Microbot.getClient().getSkillExperience(Skill.AGILITY);
+								return;
+							}
+						} else {
+							// Normal alching - but skip if at first obstacle and still mid-obstacle
+							if (plugin.getCourseHandler().getCurrentObstacleIndex() == 0) {
+								// Disable XP checks for Colossal Wyrm courses
+								boolean isColossalWyrm = config.agilityCourse().name().contains("COLOSSAL_WYRM");
+								
+								// Skip if we haven't gained XP (unless Colossal Wyrm) AND (still moving OR haven't waited long enough)
+								if (isColossalWyrm || currentAgilityXp == lastAgilityXp) {
+									if (Rs2Player.isMoving() || Rs2Player.isAnimating()) {
+										lastMovingTime = System.currentTimeMillis();
+										waitDelay = 700 + (int)(Math.random() * 401);  // 700-1100ms
+										// Skip alching, we're mid-obstacle
+									} else if (System.currentTimeMillis() - lastMovingTime < waitDelay) {
+										// Skip alching, still waiting
+									} else {
+										// Waited long enough, alch
+										Rs2Magic.alch(alchItem.get(), 50, 75);
+									}
+								} else {
+									// Gained XP (and not Colossal Wyrm), safe to alch
+									Rs2Magic.alch(alchItem.get(), 50, 75);
+								}
+							} else {
+								// Not first obstacle, just alch normally
+								Rs2Magic.alch(alchItem.get(), 50, 75);
+							}
+						}
+					}
+					}
+				}
+				
+				// Normal obstacle interaction
+				if (Rs2GameObject.interact(gameObject)) {
+					plugin.getCourseHandler().waitForCompletion(agilityExp, 
+						Microbot.getClient().getLocalPlayer().getWorldLocation().getPlane());
 					Rs2Antiban.actionCooldown();
 					Rs2Antiban.takeMicroBreakByChance();
+					// Update last XP after completing obstacle
+					lastAgilityXp = Microbot.getClient().getSkillExperience(Skill.AGILITY);
 				}
 			}
 			catch (Exception ex)
