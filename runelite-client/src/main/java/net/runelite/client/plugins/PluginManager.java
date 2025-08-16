@@ -559,6 +559,14 @@ public class PluginManager {
     }
 
     public void remove(Plugin plugin) {
+        try
+        {
+            Microbot.stopPlugin(plugin);
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException(e);
+        }
         plugins.remove(plugin);
     }
 
