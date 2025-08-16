@@ -38,6 +38,8 @@ public class GiantSeaweedFarmerPlugin extends Plugin implements SchedulablePlugi
     private GiantSeaweedFarmerOverlay giantSeaweedFarmerOverlay;
     @Inject
     private GiantSeaweedFarmerScript giantSeaweedFarmerScript;
+    @Inject
+    private GiantSeaweedSporeScript giantSeaweedSporeScript;
     private LogicalCondition stopCondition = new AndCondition();
     private LockCondition lookCondition;
 
@@ -56,13 +58,20 @@ public class GiantSeaweedFarmerPlugin extends Plugin implements SchedulablePlugi
         }
         lookCondition.lock();
         giantSeaweedFarmerScript.run(config);
+        // Start the spore looting script if configured
+        if (config.lootSeaweedSpores()) {
+            giantSeaweedSporeScript.run(config);
+        }
     }
 
     @Override
     protected void shutDown() {
         if (giantSeaweedFarmerScript  != null && giantSeaweedFarmerScript.isRunning()) {
             giantSeaweedFarmerScript.shutdown();
-        } 
+        }
+        if (giantSeaweedSporeScript != null && giantSeaweedSporeScript.isRunning()) {
+            giantSeaweedSporeScript.shutdown();
+        }
         overlayManager.remove(giantSeaweedFarmerOverlay);
     }
 
@@ -102,5 +111,17 @@ public class GiantSeaweedFarmerPlugin extends Plugin implements SchedulablePlugi
         }
         // Create a new stop condition
         return this.stopCondition;
+    }
+    
+    public LockCondition getLockCondition(LogicalCondition stopCondition) {
+        return lookCondition;
+    }
+    
+    public void reportFinished(String message, boolean success) {
+        Microbot.showMessage(message);
+        if (!success) {
+            log.error(message);
+        }
+        Microbot.stopPlugin(this);
     }
 }
