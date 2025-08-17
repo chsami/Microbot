@@ -21,6 +21,7 @@ import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
+import net.runelite.api.Skill;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -31,6 +32,10 @@ public class AutoHerbiboarScript extends Script {
     private boolean attackedTunnel;
     private static final WorldPoint BANK_LOCATION = new WorldPoint(3769, 3898, 0);
     private static final WorldPoint RETURN_LOCATION = new WorldPoint(3727, 3892, 0);
+    private int stuckCounter = 0;
+    private WorldPoint lastPlayerLocation;
+    private int tunnelAttackAttempts = 0;
+    private java.util.Set<WorldPoint> blacklistedTunnels = new java.util.HashSet<>();
     
     public static String version = "1.0";
     
@@ -42,11 +47,44 @@ public class AutoHerbiboarScript extends Script {
     public void handleConfusionMessage() {
         state = AutoHerbiboarState.START;
         attackedTunnel = false;
+        tunnelAttackAttempts = 0;
+    }
+    
+    public void handleDeadEndTunnel() {
+        System.out.println("DEBUG: Dead end tunnel detected - 'Nothing seems to be out of place here.'");
+        if (herbiboarPlugin != null) {
+            int finishId = herbiboarPlugin.getFinishId();
+            if (finishId > 0) {
+                WorldPoint deadEndTunnel = herbiboarPlugin.getEndLocations().get(finishId - 1);
+                if (deadEndTunnel != null) {
+                    blacklistedTunnels.add(deadEndTunnel);
+                    System.out.println("DEBUG: Blacklisted tunnel at " + deadEndTunnel + ". Total blacklisted: " + blacklistedTunnels.size());
+                }
+            }
+        }
+        state = AutoHerbiboarState.START;
+        attackedTunnel = false;
+        tunnelAttackAttempts = 0;
     }
     
     
     private boolean isNearBank() {
         return Rs2Player.getWorldLocation().distanceTo(BANK_LOCATION) <= 5;
+    }
+    
+    private void manageHunterPotions(AutoHerbiboarConfig config) {
+        if (!config.useHunterPotions()) return;
+        if (Microbot.getClient().getBoostedSkillLevel(Skill.HUNTER) >= 80) return;
+        
+        if (Rs2Inventory.contains(9998)) {
+            Rs2Inventory.interact(9998, "Drink");
+        } else if (Rs2Inventory.contains(10000)) {
+            Rs2Inventory.interact(10000, "Drink");
+        } else if (Rs2Inventory.contains(10002)) {
+            Rs2Inventory.interact(10002, "Drink");
+        } else if (Rs2Inventory.contains(10004)) {
+            Rs2Inventory.interact(10004, "Drink");
+        }
     }
     
     private void manageRunEnergy(AutoHerbiboarConfig config) {
@@ -213,8 +251,12 @@ public class AutoHerbiboarScript extends Script {
             hasMagicSecateurs = Rs2Equipment.isWearing(ItemID.FAIRY_ENCHANTED_SECATEURS) ||
                                Rs2Inventory.contains(ItemID.FAIRY_ENCHANTED_SECATEURS);
         }
+        boolean hasHunterPotions = true;
+        if (config.useHunterPotions()) {
+            hasHunterPotions = Rs2Inventory.contains(9998, 10000, 10002, 10004);
+        }
         
-        return hasEnergyItems && hasHerbSack && hasMagicSecateurs;
+        return hasEnergyItems && hasHerbSack && hasMagicSecateurs && hasHunterPotions;
     }
 
     public boolean run(AutoHerbiboarConfig config) {
@@ -230,7 +272,23 @@ public class AutoHerbiboarScript extends Script {
                 if (!Rs2Player.isMoving() && !Rs2Player.isInteracting()) {
                     dropConfiguredItems(config);
                     manageRunEnergy(config);
+                    manageHunterPotions(config);
                 }
+                
+                WorldPoint currentLocation = Rs2Player.getWorldLocation();
+                if (lastPlayerLocation != null && lastPlayerLocation.equals(currentLocation) && 
+                    !Rs2Player.isMoving() && !Rs2Player.isInteracting()) {
+                    stuckCounter++;
+                    if (stuckCounter > 5) {
+                        Microbot.status = "Stuck detected - resetting...";
+                        state = AutoHerbiboarState.START;
+                        attackedTunnel = false;
+                        stuckCounter = 0;
+                    }
+                } else {
+                    stuckCounter = 0;
+                }
+                lastPlayerLocation = currentLocation;
                 
                 if (state != AutoHerbiboarState.INITIALIZING && state != AutoHerbiboarState.CHECK_AUTO_RETALIATE) {
                     if (needsToBank(config)) {
@@ -249,6 +307,10 @@ public class AutoHerbiboarScript extends Script {
                 switch (state) {
                     case INITIALIZING:
                         Microbot.status = "Starting...";
+                        if (config.useHerbSack() && Rs2Inventory.contains(ItemID.SLAYER_HERB_SACK)) {
+                            Rs2Inventory.interact(ItemID.SLAYER_HERB_SACK, "Open");
+                            sleepUntil(() -> Rs2Inventory.contains(ItemID.SLAYER_HERB_SACK_OPEN), 2000);
+                        }
                         state = AutoHerbiboarState.CHECK_AUTO_RETALIATE;
                         break;
                     case CHECK_AUTO_RETALIATE:
@@ -266,8 +328,19 @@ public class AutoHerbiboarScript extends Script {
                         Microbot.status = "Finding start location";
                         if (herbiboarPlugin.getCurrentGroup() == null) {
                             TileObject start = herbiboarPlugin.getStarts().values().stream()
+                                .filter(s -> !blacklistedTunnels.contains(s.getWorldLocation()))
                                 .min(java.util.Comparator.comparing(s -> Rs2Player.getWorldLocation().distanceTo(s.getWorldLocation())))
                                 .orElse(null);
+                            System.out.println("DEBUG: Looking for start location. Blacklisted tunnels: " + blacklistedTunnels.size());
+                            if (start != null) {
+                                System.out.println("DEBUG: Found valid start at " + start.getWorldLocation());
+                            } else {
+                                System.out.println("DEBUG: No valid start found, clearing blacklist and retrying");
+                                blacklistedTunnels.clear();
+                                start = herbiboarPlugin.getStarts().values().stream()
+                                    .min(java.util.Comparator.comparing(s -> Rs2Player.getWorldLocation().distanceTo(s.getWorldLocation())))
+                                    .orElse(null);
+                            }
                             if (start != null) {
                                 WorldPoint loc = start.getWorldLocation();
                                 LocalPoint localPoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), loc);
@@ -275,10 +348,10 @@ public class AutoHerbiboarScript extends Script {
                                     Rs2Walker.walkTo(loc);
                                 } else if (Rs2Player.getWorldLocation().distanceTo(loc) >= 50) {
                                     Rs2Walker.walkTo(loc);
-                                } else {
+                                } else if (!Rs2Player.isAnimating() && !Rs2Player.isInteracting()) {
                                     Rs2GameObject.interact(start, "Search");
                                     Rs2Player.waitForAnimation();
-                                    sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isInteracting(), 1000);
+                                    sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isInteracting(), 3000);
                                 }
                             }
                         } else {
@@ -300,10 +373,10 @@ public class AutoHerbiboarScript extends Script {
                                 Rs2Walker.walkTo(loc);
                             } else if (Rs2Player.getWorldLocation().distanceTo(loc) >= 50) {
                                 Rs2Walker.walkTo(loc);
-                            } else {
+                            } else if (!Rs2Player.isAnimating() && !Rs2Player.isInteracting()) {
                                 Rs2GameObject.interact(object, "Search");
                                 Rs2Player.waitForAnimation();
-                                sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isInteracting(), 1000);
+                                sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isInteracting(), 3000);
                             }
                         }
                         break;
@@ -313,23 +386,91 @@ public class AutoHerbiboarScript extends Script {
                             int finishId = herbiboarPlugin.getFinishId();
                             if (finishId > 0) {
                                 WorldPoint finishLoc = herbiboarPlugin.getEndLocations().get(finishId - 1);
+                                System.out.println("DEBUG: finishId=" + finishId + ", finishLoc=" + finishLoc);
+                                if (finishLoc == null) {
+                                    System.out.println("DEBUG: finishLoc is null, resetting to START");
+                                    Microbot.status = "Invalid tunnel location - resetting...";
+                                    state = AutoHerbiboarState.START;
+                                    attackedTunnel = false;
+                                    tunnelAttackAttempts = 0;
+                                    break;
+                                }
                                 LocalPoint localPoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), finishLoc);
                                 TileObject tunnel = herbiboarPlugin.getTunnels().get(finishLoc);
-                                if (localPoint == null) {
-                                    Rs2Walker.walkTo(finishLoc);
-                                } else if (Rs2Player.getWorldLocation().distanceTo(finishLoc) >= 50) {
-                                    Rs2Walker.walkTo(finishLoc);
-                                } else {
-                                    attackedTunnel = Rs2GameObject.interact(tunnel, "Attack") || Rs2GameObject.interact(tunnel, "Search");
-                                    if (attackedTunnel) {
-                                        Rs2Player.waitForAnimation();
-                                        sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isInteracting(), 5000);
+                                WorldPoint playerLoc = Rs2Player.getWorldLocation();
+                                double distance = playerLoc.distanceTo(finishLoc);
+                                System.out.println("DEBUG: playerLoc=" + playerLoc + ", finishLoc=" + finishLoc + ", distance=" + distance);
+                                System.out.println("DEBUG: localPoint=" + localPoint + ", tunnel=" + tunnel);
+                                if (distance > 3) {
+                                    if (!Rs2Player.isMoving()) {
+                                        System.out.println("DEBUG: Walking to tunnel - distance=" + distance);
+                                        Rs2Walker.walkTo(finishLoc);
+                                    } else {
+                                        System.out.println("DEBUG: Already moving towards tunnel, waiting...");
+                                    }
+                                } else if (!Rs2Player.isAnimating() && !Rs2Player.isInteracting()) {
+                                    System.out.println("DEBUG: Ready to attack - tunnel=" + tunnel + ", distance=" + Rs2Player.getWorldLocation().distanceTo(finishLoc));
+                                    if (tunnel != null && Rs2Player.getWorldLocation().distanceTo(finishLoc) <= 8) {
+                                        tunnelAttackAttempts++;
+                                        System.out.println("DEBUG: Tunnel attack attempt #" + tunnelAttackAttempts);
+                                        boolean attackSuccessful = false;
+                                        
+                                        if (tunnelAttackAttempts <= 3) {
+                                            System.out.println("DEBUG: Trying Attack action on tunnel");
+                                            attackSuccessful = Rs2GameObject.interact(tunnel, "Attack");
+                                        } else if (tunnelAttackAttempts <= 6) {
+                                            System.out.println("DEBUG: Trying Search action on tunnel");
+                                            attackSuccessful = Rs2GameObject.interact(tunnel, "Search");
+                                        } else {
+                                            System.out.println("DEBUG: Fallback attempt - walking closer to tunnel");
+                                            try {
+                                                System.out.println("DEBUG: Fallback walking to " + finishLoc);
+                                                double fallbackInitialDistance = Rs2Player.getWorldLocation().distanceTo(finishLoc);
+                                                Rs2Walker.walkMiniMap(finishLoc);
+                                                sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(finishLoc) <= 3, 3000);
+                                                double fallbackFinalDistance = Rs2Player.getWorldLocation().distanceTo(finishLoc);
+                                                System.out.println("DEBUG: Fallback distances - initial=" + fallbackInitialDistance + ", final=" + fallbackFinalDistance);
+                                                attackSuccessful = Rs2GameObject.interact(tunnel, "Attack") || Rs2GameObject.interact(tunnel, "Search");
+                                            } catch (Exception e) {
+                                                System.out.println("DEBUG: Fallback walker exception: " + e.getMessage());
+                                                System.out.println("DEBUG: Fallback failed - resetting to START");
+                                                Microbot.status = "Tunnel unreachable after retries - resetting...";
+                                                state = AutoHerbiboarState.START;
+                                                attackedTunnel = false;
+                                                tunnelAttackAttempts = 0;
+                                            }
+                                        }
+                                        
+                                        System.out.println("DEBUG: Attack attempt result: " + attackSuccessful);
+                                        if (attackSuccessful) {
+                                            System.out.println("DEBUG: Attack successful! Setting attackedTunnel=true");
+                                            attackedTunnel = true;
+                                            tunnelAttackAttempts = 0;
+                                            Rs2Player.waitForAnimation();
+                                            sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isInteracting(), 5000);
+                                        } else if (tunnelAttackAttempts >= 10) {
+                                            System.out.println("DEBUG: Max attempts reached (" + tunnelAttackAttempts + "), resetting to START");
+                                            Microbot.status = "Tunnel attack failed after retries - resetting...";
+                                            state = AutoHerbiboarState.START;
+                                            attackedTunnel = false;
+                                            tunnelAttackAttempts = 0;
+                                        } else {
+                                            System.out.println("DEBUG: Attack failed, will retry next cycle (attempt " + tunnelAttackAttempts + "/10)");
+                                        }
+                                    } else {
+                                        Microbot.status = "Tunnel not found - resetting...";
+                                        state = AutoHerbiboarState.START;
+                                        attackedTunnel = false;
+                                        tunnelAttackAttempts = 0;
                                     }
                                 }
                             }
                         } else {
                             Rs2NpcModel herb = Rs2Npc.getNpc("Herbiboar");
-                            if (herb != null) state = AutoHerbiboarState.HARVEST;
+                            if (herb != null) {
+                                state = AutoHerbiboarState.HARVEST;
+                                tunnelAttackAttempts = 0;
+                            }
                         }
                         break;
                     case HARVEST:
@@ -349,13 +490,14 @@ public class AutoHerbiboarScript extends Script {
                                     LocalPoint localPoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), startLoc);
                                     if (localPoint == null) {
                                         Rs2Walker.walkTo(startLoc);
-                                    } else if (Rs2Player.getWorldLocation().distanceTo(startLoc) >= 50) {
+                                    } else if (Rs2Player.getWorldLocation().distanceTo(startLoc) >= 20) {
                                         Rs2Walker.walkTo(startLoc);
-                                    } else {
+                                    } else if (!Rs2Player.isAnimating() && !Rs2Player.isInteracting()) {
                                         Rs2GameObject.interact(start, "Search");
                                     }
                                 }
                                 attackedTunnel = false;
+                                tunnelAttackAttempts = 0;
                                 if (needsToBank(config)) {
                                     state = AutoHerbiboarState.BANK;
                                 } else {
@@ -374,6 +516,11 @@ public class AutoHerbiboarScript extends Script {
                         } else if (!Rs2Bank.isOpen()) {
                             Rs2Bank.openBank();
                         } else {
+                            if (config.useHerbSack() && Rs2Inventory.contains(ItemID.SLAYER_HERB_SACK_OPEN)) {
+                                Rs2Inventory.interact(ItemID.SLAYER_HERB_SACK_OPEN, "Empty");
+                                sleepUntil(() -> !Rs2Inventory.contains(ItemID.SLAYER_HERB_SACK_OPEN) || 
+                                           Rs2Inventory.hasItem("herbs", "grimy"), 3000);
+                            }
                             Rs2Bank.depositAll();
                             sleepUntil(Rs2Inventory::isEmpty, 1000);
                             if (config.useHerbSack() && !Rs2Inventory.contains(ItemID.SLAYER_HERB_SACK, ItemID.SLAYER_HERB_SACK_OPEN)) {
@@ -388,19 +535,24 @@ public class AutoHerbiboarScript extends Script {
                                 Rs2Bank.withdrawX(ItemID.FAIRY_ENCHANTED_SECATEURS, 1);
                                 sleepUntil(() -> Rs2Inventory.contains(ItemID.FAIRY_ENCHANTED_SECATEURS), 1000);
                             }
+                            if (config.useHunterPotions() && !Rs2Inventory.contains(9998, 10000, 10002, 10004)) {
+                                Rs2Bank.withdrawX(9998, 6);
+                                sleepUntil(() -> (Rs2Inventory.count(9998) + Rs2Inventory.count(10000) + Rs2Inventory.count(10002) + Rs2Inventory.count(10004)) >= 6, 3000);
+                            }
+                            
                             AutoHerbiboarConfig.RunEnergyOption energyOption = config.runEnergyOption();
                             switch (energyOption) {
                                 case STAMINA_POTION:
                                     Rs2Bank.withdrawX(ItemID._4DOSESTAMINA, 6);
-                                    sleepUntil(() -> (Rs2Inventory.count(ItemID._4DOSESTAMINA) + Rs2Inventory.count(ItemID._3DOSESTAMINA) + Rs2Inventory.count(ItemID._2DOSESTAMINA) + Rs2Inventory.count(ItemID._1DOSESTAMINA)) >= 24, 3000);
+                                    sleepUntil(() -> (Rs2Inventory.count(ItemID._4DOSESTAMINA) + Rs2Inventory.count(ItemID._3DOSESTAMINA) + Rs2Inventory.count(ItemID._2DOSESTAMINA) + Rs2Inventory.count(ItemID._1DOSESTAMINA)) >= 6, 3000);
                                     break;
                                 case SUPER_ENERGY_POTION:
                                     Rs2Bank.withdrawX(ItemID._4DOSE2ENERGY, 6);
-                                    sleepUntil(() -> (Rs2Inventory.count(ItemID._4DOSE2ENERGY) + Rs2Inventory.count(ItemID._3DOSE2ENERGY) + Rs2Inventory.count(ItemID._2DOSE2ENERGY) + Rs2Inventory.count(ItemID._1DOSE2ENERGY)) >= 24, 3000);
+                                    sleepUntil(() -> (Rs2Inventory.count(ItemID._4DOSE2ENERGY) + Rs2Inventory.count(ItemID._3DOSE2ENERGY) + Rs2Inventory.count(ItemID._2DOSE2ENERGY) + Rs2Inventory.count(ItemID._1DOSE2ENERGY)) >= 6, 3000);
                                     break;
                                 case ENERGY_POTION:
                                     Rs2Bank.withdrawX(ItemID._4DOSE1ENERGY, 6);
-                                    sleepUntil(() -> (Rs2Inventory.count(ItemID._4DOSE1ENERGY) + Rs2Inventory.count(ItemID._3DOSE1ENERGY) + Rs2Inventory.count(ItemID._2DOSE1ENERGY) + Rs2Inventory.count(ItemID._1DOSE1ENERGY)) >= 24, 3000);
+                                    sleepUntil(() -> (Rs2Inventory.count(ItemID._4DOSE1ENERGY) + Rs2Inventory.count(ItemID._3DOSE1ENERGY) + Rs2Inventory.count(ItemID._2DOSE1ENERGY) + Rs2Inventory.count(ItemID._1DOSE1ENERGY)) >= 6, 3000);
                                     break;
                                 case STRANGE_FRUIT:
                                     Rs2Bank.withdrawX(ItemID.MACRO_TRIFFIDFRUIT, 6);

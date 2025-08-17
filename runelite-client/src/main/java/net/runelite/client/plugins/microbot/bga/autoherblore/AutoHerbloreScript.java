@@ -11,9 +11,11 @@ import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.bga.autoherblore.enums.CleanHerbMode;
 import net.runelite.client.plugins.microbot.bga.autoherblore.enums.Herb;
-import net.runelite.client.plugins.microbot.bga.autoherblore.enums.Mode;
 import net.runelite.client.plugins.microbot.bga.autoherblore.enums.HerblorePotion;
+import net.runelite.client.plugins.microbot.bga.autoherblore.enums.Mode;
+import net.runelite.client.plugins.microbot.bga.autoherblore.enums.UnfinishedPotionMode;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.inventory.InteractOrder;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
@@ -270,25 +272,47 @@ public class AutoHerbloreScript extends Script {
     }
     private Herb findHerb() {
         int level = Rs2Player.getRealSkillLevel(Skill.HERBLORE);
-        for (Herb h : Herb.values()) {
-            if (level >= h.level && Rs2Bank.hasItem(h.grimy)) {
-                return h;
+        CleanHerbMode herbMode = config.cleanHerbMode();
+        
+        if (herbMode == CleanHerbMode.ANY_AND_ALL) {
+            Herb[] herbs = Herb.values();
+            for (int i = herbs.length - 1; i >= 0; i--) {
+                Herb h = herbs[i];
+                if (level >= h.level && Rs2Bank.hasItem(h.grimy)) {
+                    return h;
+                }
+            }
+        } else {
+            Herb specificHerb = getHerbFromMode(herbMode);
+            if (specificHerb != null && level >= specificHerb.level && Rs2Bank.hasItem(specificHerb.grimy)) {
+                return specificHerb;
             }
         }
         return null;
     }
     private Herb findHerbForUnfinished() {
         int level = Rs2Player.getRealSkillLevel(Skill.HERBLORE);
-        for (Herb h : Herb.values()) {
-            if (level >= h.level && Rs2Bank.hasItem(h.clean) && Rs2Bank.hasItem(ItemID.VIAL_WATER)) {
-                return h;
+        UnfinishedPotionMode potionMode = config.unfinishedPotionMode();
+        
+        if (potionMode == UnfinishedPotionMode.ANY_AND_ALL) {
+            Herb[] herbs = Herb.values();
+            for (int i = herbs.length - 1; i >= 0; i--) {
+                Herb h = herbs[i];
+                if (level >= h.level && Rs2Bank.hasItem(h.clean) && Rs2Bank.hasItem(ItemID.VIAL_WATER)) {
+                    return h;
+                }
+            }
+        } else {
+            Herb specificHerb = getHerbFromUnfinishedMode(potionMode);
+            if (specificHerb != null && level >= specificHerb.level && Rs2Bank.hasItem(specificHerb.clean) && Rs2Bank.hasItem(ItemID.VIAL_WATER)) {
+                return specificHerb;
             }
         }
         return null;
     }
     private HerblorePotion findPotion() {
         int level = Rs2Player.getRealSkillLevel(Skill.HERBLORE);
-        HerblorePotion selectedPotion = config.potion();
+        HerblorePotion selectedPotion = config.finishedPotion();
         if (selectedPotion != null) {
             
             if (level >= selectedPotion.level) {
@@ -336,6 +360,46 @@ public class AutoHerbloreScript extends Script {
                 return;
             }
             amuletBroken = false;
+        }
+    }
+
+    private Herb getHerbFromMode(CleanHerbMode mode) {
+        switch (mode) {
+            case GUAM: return Herb.GUAM;
+            case MARRENTILL: return Herb.MARRENTILL;
+            case TARROMIN: return Herb.TARROMIN;
+            case HARRALANDER: return Herb.HARRALANDER;
+            case RANARR: return Herb.RANARR;
+            case TOADFLAX: return Herb.TOADFLAX;
+            case IRIT: return Herb.IRIT;
+            case AVANTOE: return Herb.AVANTOE;
+            case KWUARM: return Herb.KWUARM;
+            case SNAPDRAGON: return Herb.SNAPDRAGON;
+            case CADANTINE: return Herb.CADANTINE;
+            case LANTADYME: return Herb.LANTADYME;
+            case DWARF: return Herb.DWARF;
+            case TORSTOL: return Herb.TORSTOL;
+            default: return null;
+        }
+    }
+    
+    private Herb getHerbFromUnfinishedMode(UnfinishedPotionMode mode) {
+        switch (mode) {
+            case GUAM_POTION_UNF: return Herb.GUAM;
+            case MARRENTILL_POTION_UNF: return Herb.MARRENTILL;
+            case TARROMIN_POTION_UNF: return Herb.TARROMIN;
+            case HARRALANDER_POTION_UNF: return Herb.HARRALANDER;
+            case RANARR_POTION_UNF: return Herb.RANARR;
+            case TOADFLAX_POTION_UNF: return Herb.TOADFLAX;
+            case IRIT_POTION_UNF: return Herb.IRIT;
+            case AVANTOE_POTION_UNF: return Herb.AVANTOE;
+            case KWUARM_POTION_UNF: return Herb.KWUARM;
+            case SNAPDRAGON_POTION_UNF: return Herb.SNAPDRAGON;
+            case CADANTINE_POTION_UNF: return Herb.CADANTINE;
+            case LANTADYME_POTION_UNF: return Herb.LANTADYME;
+            case DWARF_WEED_POTION_UNF: return Herb.DWARF;
+            case TORSTOL_POTION_UNF: return Herb.TORSTOL;
+            default: return null;
         }
     }
 

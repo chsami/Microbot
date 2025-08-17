@@ -55,6 +55,8 @@ public class AutoHerbiboarPlugin extends Plugin {
             if (message.equals("The creature has successfully confused you with its tracks, leading you round in circles.") || 
                 message.equals("You'll need to start again.")) {
                 script.handleConfusionMessage();
+            } else if (message.equals("Nothing seems to be out of place here.")) {
+                script.handleDeadEndTunnel();
             }
         }
     }

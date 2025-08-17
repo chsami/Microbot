@@ -53,6 +53,16 @@ public interface AutoHerbiboarConfig extends Config {
     default boolean useMagicSecateurs() {
         return false;
     }
+    @ConfigItem(
+            keyName = "useHunterPotions",
+            name = "Hunter potions",
+            description = "Use Hunter potions when Hunter level falls below 80",
+            section = OPTIONALS_SECTION,
+            position = 2
+    )
+    default boolean useHunterPotions() {
+        return false;
+    }
     @ConfigSection(
         name = "Run energy management",
         description = "Run energy management",
