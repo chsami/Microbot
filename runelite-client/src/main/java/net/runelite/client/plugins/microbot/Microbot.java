@@ -309,50 +309,79 @@ public class Microbot {
 		{
 			return false;
 		}
-		boolean isHopping = Microbot.getClientThread().runOnClientThreadOptional(() -> {
-			if (Microbot.getClient().getLocalPlayer() != null && Microbot.getClient().getLocalPlayer().isInteracting())
-			{
-				return false;
-			}
-			if (quickHopTargetWorld != null || Microbot.getClient().getGameState() != GameState.LOGGED_IN)
-			{
-				return false;
-			}
-			if (Microbot.getClient().getWorld() == worldNumber)
-			{
-				return false;
-			}
-			World newWorld = Microbot.getWorldService().getWorlds().findWorld(worldNumber);
-			if (newWorld == null)
-			{
-				Microbot.getNotifier().notify("Invalid World");
-				System.out.println("Tried to hop to an invalid world");
-				return false;
-			}
-			final net.runelite.api.World rsWorld = Microbot.getClient().createWorld();
-			if (rsWorld == null) return false;
 
-			quickHopTargetWorld = rsWorld;
-			rsWorld.setActivity(newWorld.getActivity());
-			rsWorld.setAddress(newWorld.getAddress());
-			rsWorld.setId(newWorld.getId());
-			rsWorld.setPlayerCount(newWorld.getPlayers());
-			rsWorld.setLocation(newWorld.getLocation());
-			rsWorld.setTypes(WorldUtil.toWorldTypes(newWorld.getTypes()));
+		int maxAttempts = 5;
+		for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+			boolean isHopping = Microbot.getClientThread().runOnClientThreadOptional(() -> {
+				if (Microbot.getClient().getLocalPlayer() != null && Microbot.getClient().getLocalPlayer().isInteracting())
+				{
+					return false;
+				}
+				if (quickHopTargetWorld != null || Microbot.getClient().getGameState() != GameState.LOGGED_IN)
+				{
+					return false;
+				}
+				if (Microbot.getClient().getWorld() == worldNumber)
+				{
+					return false;
+				}
+				World newWorld = Microbot.getWorldService().getWorlds().findWorld(worldNumber);
+				if (newWorld == null)
+				{
+					Microbot.getNotifier().notify("Invalid World");
+					System.out.println("Tried to hop to an invalid world");
+					return false;
+				}
 
-			Microbot.getClient().openWorldHopper();
-			Microbot.getClient().hopToWorld(rsWorld);
-			quickHopTargetWorld = null;
-			sleep(600);
-			sleepUntil(() -> Microbot.isHopping() || Rs2Widget.getWidget(193, 0) != null, 2000);
-			return Microbot.isHopping();
-		}).orElse(false);
-		if (!isHopping && Rs2Widget.getWidget(193, 0) != null)
-		{
-			List<Widget> areYouSureToSwitchWorldWidget = Arrays.stream(Rs2Widget.getWidget(193, 0).getDynamicChildren()).collect(Collectors.toList());
-			Widget switchWorldWidget = sleepUntilNotNull(() -> Rs2Widget.findWidget("Switch world", areYouSureToSwitchWorldWidget, true), 2000);
-			return Rs2Widget.clickWidget(switchWorldWidget);
+				if (newWorld.getPlayers() >= 1950) {
+					System.out.println("World " + worldNumber + " is full (" + newWorld.getPlayers() + " players), will retry");
+					return false;
+				}
+
+				final net.runelite.api.World rsWorld = Microbot.getClient().createWorld();
+				if (rsWorld == null) return false;
+
+				quickHopTargetWorld = rsWorld;
+				rsWorld.setActivity(newWorld.getActivity());
+				rsWorld.setAddress(newWorld.getAddress());
+				rsWorld.setId(newWorld.getId());
+				rsWorld.setPlayerCount(newWorld.getPlayers());
+				rsWorld.setLocation(newWorld.getLocation());
+				rsWorld.setTypes(WorldUtil.toWorldTypes(newWorld.getTypes()));
+
+				Microbot.getClient().openWorldHopper();
+				Microbot.getClient().hopToWorld(rsWorld);
+				quickHopTargetWorld = null;
+				sleep(600);
+				sleepUntil(() -> Microbot.isHopping() || Rs2Widget.getWidget(193, 0) != null, 2000);
+				return Microbot.isHopping();
+			}).orElse(false);
+
+			if (isHopping) {
+				return true;
+			}
+
+			if (Rs2Widget.getWidget(193, 0) != null)
+			{
+				List<Widget> areYouSureToSwitchWorldWidget = Arrays.stream(Rs2Widget.getWidget(193, 0).getDynamicChildren()).collect(Collectors.toList());
+				Widget switchWorldWidget = sleepUntilNotNull(() -> Rs2Widget.findWidget("Switch world", areYouSureToSwitchWorldWidget, true), 2000);
+				if (Rs2Widget.clickWidget(switchWorldWidget)) {
+					return true;
+				}
+			}
+
+			if (attempt < maxAttempts) {
+				System.out.println("World hop attempt " + attempt + " failed, retrying in " + (attempt * 1000) + "ms...");
+				try {
+					Thread.sleep(attempt * 1000); // Exponential backoff: 1s, 2s, 3s, 4s
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					break;
+				}
+			}
 		}
+
+		System.out.println("Failed to hop to world " + worldNumber + " after " + maxAttempts + " attempts");
 		return false;
 	}
 
