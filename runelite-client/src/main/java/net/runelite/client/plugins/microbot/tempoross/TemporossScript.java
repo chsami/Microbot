@@ -79,13 +79,12 @@ public class TemporossScript extends Script {
         Rs2Antiban.resetAntibanSettings();
         Rs2AntibanSettings.naturalMouse = true;
         Rs2AntibanSettings.simulateMistakes = false;
-        Rs2AntibanSettings.takeMicroBreaks = false;
-        Rs2AntibanSettings.microBreakChance = 0.2;
+
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() ->{
             try {
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
-                if (BreakHandlerScript.isBreakActive()) return;
+                if (BreakHandlerScript.isBreakActive() || BreakHandlerScript.isMicroBreakActive()) return;
 
                 if (!isInMinigame()) {
                     handleEnterMinigame();

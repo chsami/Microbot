@@ -17,12 +17,12 @@ import static net.runelite.client.plugins.microbot.mining.motherloadmine.Motherl
 
 public class MotherloadMineOverlay extends OverlayPanel {
     @Inject
-    MotherloadMineOverlay(MotherloadMinePlugin plugin)
-    {
+    MotherloadMineOverlay(MotherloadMinePlugin plugin) {
         super(plugin);
         setPosition(OverlayPosition.TOP_LEFT);
         setSnappable(true);
     }
+
     @Override
     public Dimension render(Graphics2D graphics) {
         try {
@@ -34,7 +34,7 @@ public class MotherloadMineOverlay extends OverlayPanel {
                     .build());
 
 
-            if(Rs2AntibanSettings.devDebug)
+            if (Rs2AntibanSettings.devDebug)
                 Rs2Antiban.renderAntibanOverlayComponents(panelComponent);
 
             addEmptyLine();
@@ -51,7 +51,7 @@ public class MotherloadMineOverlay extends OverlayPanel {
                     .left(status.toString())
                     .right("Version: " + MotherloadMineScript.VERSION)
                     .build());
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
         }
         return super.render(graphics);

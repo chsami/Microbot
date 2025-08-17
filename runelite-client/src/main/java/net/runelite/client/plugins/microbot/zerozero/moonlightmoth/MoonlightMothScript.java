@@ -1,8 +1,9 @@
 package net.runelite.client.plugins.microbot.zerozero.moonlightmoth;
 
-import net.runelite.api.gameval.NpcID;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -16,30 +17,25 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import java.util.concurrent.TimeUnit;
 
-import static net.runelite.client.plugins.microbot.util.Global.sleepGaussian;
-
 public class MoonlightMothScript extends Script {
 
-    String lastChatMessage = "";
-
-    private enum State {
-        CHECK_STATE,
-        BANKING,
-        SHOPPING,
-        TRAVELLING,
-        CATCHING
-    }
-
+    public int totalCaught = 0;
+    public int pricePerMoth = 0;
+    private String lastChatMessage = "";
     private State currentState = State.CHECK_STATE;
 
     public boolean run(MoonlightMothConfig config) {
         shutdown();
         currentState = State.CHECK_STATE;
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            var itemManager = Microbot.getItemManager();
+            pricePerMoth = itemManager.getItemPrice(ItemID.BUTTERFLY_JAR_MOONMOTH);
+            return true;
+        });
 
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!Microbot.isLoggedIn() || !super.run()) return;
-
                 switch (currentState) {
                     case CHECK_STATE:
                         checkState(config);
@@ -132,7 +128,7 @@ public class MoonlightMothScript extends Script {
         }
 
         if (config.actionPreference().equals(MoonlightMothConfig.ActionPreference.BANK)) {
-            int emptySlots = Rs2Inventory.getEmptySlots();
+            int emptySlots = Rs2Inventory.emptySlotCount();
             if (emptySlots > 0) {
                 Rs2Bank.withdrawX("Butterfly jar", emptySlots);
                 logOnceToChat("Withdrew " + emptySlots + " Butterfly jars.", true);
@@ -179,7 +175,7 @@ public class MoonlightMothScript extends Script {
             return;
         }
 
-        int emptySlots = Rs2Inventory.getEmptySlots();
+        int emptySlots = Rs2Inventory.emptySlotCount();
 
         if (emptySlots == 0) {
             logOnceToChat("No inventory space available to buy Butterfly jars.", true);
@@ -241,13 +237,18 @@ public class MoonlightMothScript extends Script {
         WorldArea excludedArea = new WorldArea(1550, 9426, 21, 8, 0);
 
         Rs2Npc.getNpcs(NpcID.MOTH_MOONLIGHT).filter(moth -> {
-            WorldPoint location = Rs2Npc.getWorldLocation(moth);
+            WorldPoint location = moth.getWorldLocation();
             return location != null && !excludedArea.contains(location);
         }).findFirst().ifPresent(moth -> {
             if (!Rs2Player.isAnimating() && !Rs2Player.isInteracting()) {
+                var beforeCount = Rs2Inventory.count(ItemID.BUTTERFLY_JAR_MOONMOTH);
                 if (Rs2Npc.interact(moth, "Catch")) {
                     logOnceToChat("Attempting to catch Moonlight Moth at: " + moth.getWorldLocation(), true);
                     Rs2Player.waitForAnimation(2000);
+                    var afterCount = Rs2Inventory.count(ItemID.BUTTERFLY_JAR_MOONMOTH);
+                    if (afterCount > beforeCount) {
+                        totalCaught++;
+                    }
                 } else {
                     logOnceToChat("Failed to interact with Moonlight Moth.", true);
                 }
@@ -299,8 +300,8 @@ public class MoonlightMothScript extends Script {
                 logOnceToChat("No stamina potions available in the bank. Continuing without stamina.", true);
             }
         }
+        Rs2Inventory.dropAll("Vial");
     }
-
 
     void logOnceToChat(String message, boolean isDebug) {
         if (!message.equals(lastChatMessage)) {
@@ -315,6 +316,16 @@ public class MoonlightMothScript extends Script {
         logOnceToChat("MoonlightMoth stopped", false);
         currentState = State.CHECK_STATE;
         lastChatMessage = "";
+        totalCaught = 0;
+        pricePerMoth = 0;
         super.shutdown();
+    }
+
+    private enum State {
+        CHECK_STATE,
+        BANKING,
+        SHOPPING,
+        TRAVELLING,
+        CATCHING
     }
 }

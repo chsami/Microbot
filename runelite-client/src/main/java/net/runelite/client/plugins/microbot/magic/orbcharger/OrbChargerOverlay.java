@@ -1,8 +1,6 @@
 package net.runelite.client.plugins.microbot.magic.orbcharger;
 
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.example.ExamplePlugin;
-import net.runelite.client.plugins.microbot.mining.shootingstar.ShootingStarPlugin;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
