@@ -225,28 +225,28 @@ public class MotherloadMineScript extends Script
 	}
 
 
-    private void emptySack()
-    {
-        ensureLowerFloor();
+	private void emptySack()
+	{
+		ensureLowerFloor();
 
-        while (Microbot.getVarbitValue(VarbitID.MOTHERLODE_SACK_TRANSMIT) > 0 && isRunning())
-        {
-            if (Rs2Inventory.count() <= 2)
-            {
-                Rs2GameObject.interact(ObjectID.MOTHERLODE_SACK);
-                sleepUntil(this::hasOreInInventory);
-            }
-            if (hasOreInInventory())
-            {
-                useDepositBox();
-            }
-        }
+		while (Microbot.getVarbitValue(VarbitID.MOTHERLODE_SACK_TRANSMIT) > 0 && isRunning())
+		{
+			if (hasOreInInventory())
+			{
+				useDepositBox();
+			}
+			else
+			{
+				Rs2GameObject.interact(ObjectID.MOTHERLODE_SACK);
+				sleepUntil(this::hasOreInInventory);
+			}
+		}
 
-        shouldEmptySack = false;
+		shouldEmptySack = false;
 		shouldRepairWaterwheel = false;
-        Rs2Antiban.takeMicroBreakByChance();
-        status = MLMStatus.IDLE;
-    }
+		Rs2Antiban.takeMicroBreakByChance();
+		status = MLMStatus.IDLE;
+	}
 
     private boolean hasOreInInventory()
     {
