@@ -27,6 +27,7 @@ package net.runelite.client.plugins.microbot.ui;
 import com.google.common.html.HtmlEscapers;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.RuneLiteProperties;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ExternalPluginsChanged;
 import net.runelite.client.plugins.Plugin;
@@ -37,6 +38,7 @@ import net.runelite.client.plugins.config.SearchablePlugin;
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginClient;
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManager;
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManifest;
+import net.runelite.client.ui.ClientUI;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.FontManager;
@@ -245,6 +247,63 @@ public class MicrobotPluginHubPanel extends PluginPanel {
                 addrm.setText("Install");
                 addrm.setBackground(new Color(0x28BE28));
                 addrm.addActionListener(l -> {
+                    // Check version compatibility before installing
+                    if (!microbotPluginManager.isClientVersionCompatible(manifest.getMinClientVersion())) {
+                        String _currentMicrobotVersion = RuneLiteProperties.getMicrobotVersion();
+                        String requiredVersion = manifest.getMinClientVersion();
+
+                        String message = String.format(
+                            "Cannot install plugin '%s'.\n\n" +
+                            "Required client version: %s\n" +
+                            "Current client version: %s\n\n" +
+                            "Please update your Microbot client to install this plugin.",
+                            manifest.getDisplayName(),
+                            requiredVersion != null ? requiredVersion : "Unknown",
+							_currentMicrobotVersion != null ? _currentMicrobotVersion : "Unknown"
+                        );
+                        // Create a custom dialog
+                        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Version Incompatibility", true);
+                        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+                        dialog.setResizable(false);
+                        dialog.setIconImages(Arrays.asList(ClientUI.ICON_128, ClientUI.ICON_16));
+
+                        JPanel messagePanel = new JPanel(new BorderLayout(10, 0));
+                        messagePanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 10, 20));
+
+                        JLabel iconLabel = new JLabel(UIManager.getIcon("OptionPane.warningIcon"));
+                        iconLabel.setVerticalAlignment(SwingConstants.TOP);
+                        messagePanel.add(iconLabel, BorderLayout.WEST);
+
+                        JLabel messageLabel = new JLabel("<html>" + message.replace("\n", "<br>") + "</html>");
+                        messageLabel.setHorizontalAlignment(SwingConstants.LEFT);
+                        messagePanel.add(messageLabel, BorderLayout.CENTER);
+
+                        JButton okButton = new JButton("OK");
+                        okButton.setPreferredSize(new Dimension(67, 22));
+                        okButton.setBackground(ColorScheme.BRAND_ORANGE);
+                        okButton.setForeground(ColorScheme.DARKER_GRAY_COLOR);
+                        okButton.setBorder(BorderFactory.createCompoundBorder(
+                            BorderFactory.createEmptyBorder(1, 1, 1, 1),
+                            BorderFactory.createLineBorder(ColorScheme.MEDIUM_GRAY_COLOR, 1)
+                        ));
+                        okButton.setFocusPainted(false);
+                        okButton.setFont(okButton.getFont().deriveFont(Font.BOLD));
+                        okButton.addActionListener(e -> dialog.dispose());
+
+                        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+                        buttonPanel.setBorder(BorderFactory.createEmptyBorder(0, 20, 20, 20));
+                        buttonPanel.add(okButton);
+
+                        dialog.setLayout(new BorderLayout());
+                        dialog.add(messagePanel, BorderLayout.CENTER);
+                        dialog.add(buttonPanel, BorderLayout.SOUTH);
+
+                        dialog.pack();
+                        dialog.setLocationRelativeTo(this);
+                        dialog.setVisible(true);
+                        return;
+                    }
+
                     addrm.setText("Installing");
                     addrm.setBackground(ColorScheme.MEDIUM_GRAY_COLOR);
                     microbotPluginManager.install(manifest);
