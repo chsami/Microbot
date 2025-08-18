@@ -26,13 +26,6 @@ public interface AutoHerbiboarConfig extends Config {
             return name;
         }
     }
-    @ConfigSection(
-            name = "General settings",
-            description = "Basic plugin configuration",
-            position = 0
-    )
-    String GENERAL_SECTION = "general";
-
 
     @ConfigSection(
             name = "Optionals",

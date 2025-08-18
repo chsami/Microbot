@@ -34,7 +34,7 @@ public class AutoHerbiboarOverlay extends OverlayPanel
         // Header
         panelComponent.getChildren().add(
                 TitleComponent.builder()
-                        .text("Auto Herbiboar")
+                        .text("Auto Herbiboar v" + AutoHerbiboarScript.version)
                         .color(Color.WHITE)
                         .build()
         );

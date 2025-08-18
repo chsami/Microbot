@@ -79,7 +79,6 @@ public class AutoHerbloreScript extends Script {
             try {
                 long startTime = System.currentTimeMillis(); // remember when this loop iteration started
                 
-                // mandatory checks following claude.md standards
                 if (!super.run()) { // if the parent script tells us to stop
                      log.info("super.run() returned false - stopping script");
                     return;
@@ -418,7 +417,6 @@ public class AutoHerbloreScript extends Script {
                     state = State.BANK; // go back to banking if we can't combine
                 }
                 
-                // performance tracking following claude.md standards
                 long endTime = System.currentTimeMillis(); // remember when this loop iteration ended
                 long totalTime = endTime - startTime; // calculate how long this loop took to complete
                  {

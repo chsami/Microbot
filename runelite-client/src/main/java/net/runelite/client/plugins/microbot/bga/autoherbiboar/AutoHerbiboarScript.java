@@ -36,13 +36,12 @@ public class AutoHerbiboarScript extends Script {
     private boolean attackedTunnel;
     private static final WorldPoint BANK_LOCATION = new WorldPoint(3769, 3898, 0);
     private static final WorldPoint RETURN_LOCATION = new WorldPoint(3727, 3892, 0);
-    private int stuckCounter = 0;
-    private WorldPoint lastPlayerLocation;
     private int tunnelAttackAttempts = 0;
     private java.util.Set<WorldPoint> blacklistedTunnels = new java.util.HashSet<>();
     private AutoHerbiboarConfig config; // store config for access
+    private long stateStartTime = System.currentTimeMillis(); // track state start time for timeouts
     
-    public static String version = "1.0";
+    public static String version = "1.1";
     
 
     public AutoHerbiboarState getCurrentState() {
@@ -50,7 +49,7 @@ public class AutoHerbiboarScript extends Script {
     }
     
     public void handleConfusionMessage() {
-        state = AutoHerbiboarState.START;
+        changeState(AutoHerbiboarState.START);
         attackedTunnel = false;
         tunnelAttackAttempts = 0;
     }
@@ -60,16 +59,25 @@ public class AutoHerbiboarScript extends Script {
         if (herbiboarPlugin != null) { // if herbiboar plugin is available
             int finishId = herbiboarPlugin.getFinishId(); // get the current finish id
             if (finishId > 0) { // if we have a valid finish id
-                WorldPoint deadEndTunnel = herbiboarPlugin.getEndLocations().get(finishId - 1); // get the tunnel location
+                WorldPoint deadEndTunnel = herbiboarPlugin.getEndLocations().get(finishId - 1); // get tunnel location
                 if (deadEndTunnel != null) { // if the tunnel location is valid
                     blacklistedTunnels.add(deadEndTunnel); // add it to our blacklist
                     log.info("blacklisted tunnel at " + deadEndTunnel + ". total blacklisted: " + blacklistedTunnels.size());
                 }
             }
         }
-        state = AutoHerbiboarState.START; // reset to start state
+        changeState(AutoHerbiboarState.START); // reset to start state
         attackedTunnel = false; // reset attack flag
         tunnelAttackAttempts = 0; // reset attempt counter
+    }
+    
+    // helper method to change state with timeout reset
+    private void changeState(AutoHerbiboarState newState) {
+        if (newState != state) {
+            log.info("state change: " + state + " -> " + newState);
+            state = newState;
+            stateStartTime = System.currentTimeMillis(); // reset timeout timer
+        }
     }
     
     
@@ -118,8 +126,18 @@ public class AutoHerbiboarScript extends Script {
     
     private void manageRunEnergy(AutoHerbiboarConfig config) {
         int currentEnergy = Microbot.getClient().getEnergy(); // get current run energy
+        boolean runEnabled = Microbot.getVarbitPlayerValue(173) == 1; // check if run is enabled
         
         log.info("current run energy: " + currentEnergy);
+        log.info("run enabled: " + runEnabled);
+        
+        // enable run if energy is >= 10 and run is disabled
+        if (currentEnergy >= 10 && !runEnabled) {
+            log.info("enabling run - energy sufficient");
+            Rs2Player.toggleRunEnergy(true); // enable run
+            boolean runToggled = sleepUntil(() -> Microbot.getVarbitPlayerValue(173) == 1, 2000); // wait for run to enable
+            log.info("run enabled successfully: " + runToggled);
+        }
         
         if (currentEnergy >= 20) { // if energy is sufficient
             log.info("run energy sufficient - no energy restoration needed");
@@ -341,13 +359,12 @@ public class AutoHerbiboarScript extends Script {
     public boolean run(AutoHerbiboarConfig config) {
         this.config = config; // store config for debug access
         Microbot.enableAutoRunOn = false; // disable auto run
-        state = AutoHerbiboarState.INITIALIZING; // start in initializing state
+        changeState(AutoHerbiboarState.INITIALIZING); // start in initializing state
         
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 long startTime = System.currentTimeMillis(); // remember when this loop iteration started
                 
-                // mandatory checks following claude.md standards
                 if (!super.run()) { // if the parent script tells us to stop
                     log.info("super.run() returned false - stopping script");
                     return;
@@ -367,31 +384,15 @@ public class AutoHerbiboarScript extends Script {
                     manageHunterPotions(config);
                 }
                 
-                WorldPoint currentLocation = Rs2Player.getWorldLocation(); // get our current position
-                if (lastPlayerLocation != null && lastPlayerLocation.equals(currentLocation) && 
-                    !Rs2Player.isMoving() && !Rs2Player.isInteracting()) { // if we haven't moved and aren't doing anything
-                    stuckCounter++; // increment stuck counter
-                    log.info("stuck detection - counter: " + stuckCounter + "/5 at location: " + currentLocation);
-                    if (stuckCounter > 5) { // if we've been stuck for too long
-                        log.warn("stuck detected - resetting to START state");
-                        Microbot.status = "Stuck detected - resetting..."; // update status
-                        state = AutoHerbiboarState.START; // reset to start state
-                        attackedTunnel = false; // reset attack flag
-                        stuckCounter = 0; // reset counter
-                    }
-                } else {
-                    stuckCounter = 0; // reset counter if we moved or are doing something
-                }
-                lastPlayerLocation = currentLocation; // remember our current location
-                
-                if (state != AutoHerbiboarState.INITIALIZING && state != AutoHerbiboarState.CHECK_AUTO_RETALIATE) {
-                    if (needsToBank(config)) { // if we need to bank
+                if (state != AutoHerbiboarState.INITIALIZING && state != AutoHerbiboarState.CHECK_AUTO_RETALIATE && 
+                    state != AutoHerbiboarState.TUNNEL && state != AutoHerbiboarState.HARVEST) {
+                    boolean needsBank = needsToBank(config); // if we need to bank
+                    if (needsBank) {
                         log.info("transitioning to BANK state - need to bank");
-                        state = AutoHerbiboarState.BANK; // switch to banking
-                    } else if (hasRequiredInventorySetup(config) && isNearBank() && 
-                              (state == AutoHerbiboarState.START)) { // if we have setup and are near bank in start state
+                        changeState(AutoHerbiboarState.BANK); // switch to banking
+                    } else if (isNearBank() && state == AutoHerbiboarState.START) { // if we have setup and are near bank in start state
                         log.info("transitioning to RETURN_FROM_ISLAND state - ready to return");
-                        state = AutoHerbiboarState.RETURN_FROM_ISLAND; // switch to returning
+                        changeState(AutoHerbiboarState.RETURN_FROM_ISLAND); // switch to returning
                     }
                 }
                 if ((Rs2Player.isMoving() || Rs2Player.isInteracting()) && 
@@ -417,7 +418,7 @@ public class AutoHerbiboarScript extends Script {
                         }
                         
                         log.info("transitioning to CHECK_AUTO_RETALIATE state");
-                        state = AutoHerbiboarState.CHECK_AUTO_RETALIATE; // switch to auto retaliate check
+                        changeState(AutoHerbiboarState.CHECK_AUTO_RETALIATE); // switch to auto retaliate check
                         break;
                     case CHECK_AUTO_RETALIATE:
                         log.info("=== CHECK_AUTO_RETALIATE State ===");
@@ -444,7 +445,7 @@ public class AutoHerbiboarScript extends Script {
                         }
                         
                         log.info("transitioning to START state");
-                        state = AutoHerbiboarState.START; // switch to start state
+                        changeState(AutoHerbiboarState.START); // switch to start state
                         break;
                     case START:
                         log.info("=== START State ===");
@@ -501,20 +502,28 @@ public class AutoHerbiboarScript extends Script {
                             }
                         } else {
                              log.info("active trail group found - transitioning to TRAIL state");
-                            state = AutoHerbiboarState.TRAIL; // switch to trail following
+                            changeState(AutoHerbiboarState.TRAIL); // switch to trail following
                         }
                         break;
                     case TRAIL:
                          log.info("=== TRAIL State ===");
                         
                         Microbot.status = "Following trail"; // update status
+                        
+                        // check for trail state timeout (30 seconds)
+                        if (System.currentTimeMillis() - stateStartTime > 30000) {
+                            log.info("trail state timeout - resetting to START state");
+                            changeState(AutoHerbiboarState.START);
+                            break;
+                        }
+                        
                         int finishId = herbiboarPlugin.getFinishId(); // get finish id
                         
                          log.info("finish id: " + finishId);
                         
                         if (finishId > 0) { // if we found the tunnel
                              log.info("tunnel found - transitioning to TUNNEL state");
-                            state = AutoHerbiboarState.TUNNEL; // switch to tunnel state
+                            changeState(AutoHerbiboarState.TUNNEL); // switch to tunnel state
                             break; 
                         }
                         
@@ -577,7 +586,7 @@ public class AutoHerbiboarScript extends Script {
                                 if (finishLoc == null) { // if tunnel location is invalid
                                      log.info("finish location is null - resetting to START state");
                                     Microbot.status = "Invalid tunnel location - resetting..."; // update status
-                                    state = AutoHerbiboarState.START; // reset to start
+                                    changeState(AutoHerbiboarState.START); // reset to start
                                     attackedTunnel = false; // reset attack flag
                                     tunnelAttackAttempts = 0; // reset attempts
                                     break;
@@ -593,10 +602,12 @@ public class AutoHerbiboarScript extends Script {
                                     log.info("local point: " + localPoint + ", tunnel object exists: " + (tunnel != null));
                                 }
                                 
-                                if (distance > 3) { // if we are too far from tunnel
+                                if (distance > 6) { // if we are too far from tunnel
                                     if (!Rs2Player.isMoving()) { // if we aren't already moving
                                          log.info("walking to tunnel - distance: " + distance);
                                         Rs2Walker.walkTo(finishLoc); // walk to tunnel
+                                        boolean walkStarted = sleepUntil(() -> Rs2Player.isMoving() || Rs2Player.getWorldLocation().distanceTo(finishLoc) <= 6, 3000); // wait for walk to start or arrival
+                                        log.info("walk to tunnel started: " + walkStarted);
                                     } else {
                                          log.info("already moving towards tunnel - waiting");
                                     }
@@ -636,7 +647,7 @@ public class AutoHerbiboarScript extends Script {
                                                     log.info("fallback failed - resetting to START state");
                                                 }
                                                 Microbot.status = "Tunnel unreachable after retries - resetting..."; // update status
-                                                state = AutoHerbiboarState.START; // reset to start
+                                                changeState(AutoHerbiboarState.START); // reset to start
                                                 attackedTunnel = false; // reset attack flag
                                                 tunnelAttackAttempts = 0; // reset attempts
                                             }
@@ -654,7 +665,7 @@ public class AutoHerbiboarScript extends Script {
                                         } else if (tunnelAttackAttempts >= 10) { // if we've tried too many times
                                              log.info("max attempts reached (" + tunnelAttackAttempts + ") - resetting to START state");
                                             Microbot.status = "Tunnel attack failed after retries - resetting..."; // update status
-                                            state = AutoHerbiboarState.START; // reset to start
+                                            changeState(AutoHerbiboarState.START); // reset to start
                                             attackedTunnel = false; // reset attack flag
                                             tunnelAttackAttempts = 0; // reset attempts
                                         } else {
@@ -663,7 +674,7 @@ public class AutoHerbiboarScript extends Script {
                                     } else {
                                          log.info("tunnel object not found or too far - resetting to START state");
                                         Microbot.status = "Tunnel not found - resetting..."; // update status
-                                        state = AutoHerbiboarState.START; // reset to start
+                                        changeState(AutoHerbiboarState.START); // reset to start
                                         attackedTunnel = false; // reset attack flag
                                         tunnelAttackAttempts = 0; // reset attempts
                                     }
@@ -678,7 +689,7 @@ public class AutoHerbiboarScript extends Script {
                             
                             if (herb != null) { // if herbiboar appeared
                                  log.info("transitioning to HARVEST state");
-                                state = AutoHerbiboarState.HARVEST; // switch to harvest state
+                                changeState(AutoHerbiboarState.HARVEST); // switch to harvest state
                                 tunnelAttackAttempts = 0; // reset attempts
                             } else {
                                  log.info("waiting for herbiboar to appear");
@@ -743,10 +754,10 @@ public class AutoHerbiboarScript extends Script {
                                 
                                 if (needBank) {
                                      log.info("transitioning to BANK state");
-                                    state = AutoHerbiboarState.BANK; // switch to banking
+                                    changeState(AutoHerbiboarState.BANK); // switch to banking
                                 } else {
                                      log.info("transitioning to START state");
-                                    state = AutoHerbiboarState.START; // continue hunting
+                                    changeState(AutoHerbiboarState.START); // continue hunting
                                 }
                             } else {
                                  log.info("too far from herbiboar - moving closer");
@@ -889,7 +900,7 @@ public class AutoHerbiboarScript extends Script {
                              log.info("bank closed successfully: " + bankClosed);
                             
                              log.info("transitioning to RETURN_FROM_ISLAND state");
-                            state = AutoHerbiboarState.RETURN_FROM_ISLAND; // switch to return state
+                            changeState(AutoHerbiboarState.RETURN_FROM_ISLAND); // switch to return state
                         }
                         break;
                     case RETURN_FROM_ISLAND:
@@ -912,12 +923,11 @@ public class AutoHerbiboarScript extends Script {
                             Rs2Walker.walkTo(RETURN_LOCATION); // walk to return location
                         } else { // if we are close enough to return location
                              log.info("arrived at return location - transitioning to START state");
-                            state = AutoHerbiboarState.START; // switch to start hunting again
+                            changeState(AutoHerbiboarState.START); // switch to start hunting again
                         }
                         break;
                 }
                 
-                // performance tracking following claude.md standards
                  {
                     long endTime = System.currentTimeMillis(); // remember when this loop iteration ended
                     long totalTime = endTime - startTime; // calculate how long this loop took to complete
