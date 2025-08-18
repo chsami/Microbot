@@ -7,7 +7,6 @@ import java.awt.Shape;
 import javax.inject.Inject;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
-import net.runelite.client.plugins.microbot.example.ExamplePlugin;
 import net.runelite.client.plugins.microbot.util.walker.Rs2MiniMap;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
@@ -16,7 +15,7 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 public class MinimapOverlay extends Overlay
 {
 	@Inject
-	MinimapOverlay(ExamplePlugin plugin)
+	MinimapOverlay(ShortestPathPlugin plugin)
 	{
 		super(plugin);
 		setPosition(OverlayPosition.DYNAMIC);

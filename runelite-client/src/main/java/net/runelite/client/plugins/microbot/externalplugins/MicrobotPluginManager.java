@@ -147,6 +147,12 @@ public class MicrobotPluginManager
     public void install(MicrobotPluginManifest manifest)
     {
         executor.execute(() -> {
+            // Check if plugin is disabled
+            if (manifest.isDisable()) {
+                log.error("Plugin {} is disabled and cannot be installed.", manifest.getInternalName());
+                return;
+            }
+
             // Check version compatibility before installing
             if (!isClientVersionCompatible(manifest.getMinClientVersion())) {
                 log.error("Plugin {} requires client version {} or higher, but current version is {}. Installation aborted.",
@@ -455,6 +461,12 @@ public class MicrobotPluginManager
                     clazz.getSimpleName(), pluginDescriptor.minClientVersion(), RuneLiteProperties.getMicrobotVersion());
                 continue;
             }
+
+			// Check if the plugin is disabled
+			if (pluginDescriptor.disable()) {
+				log.error("Plugin {} has been disabled upstream", clazz.getSimpleName());
+				continue;
+			}
 
             graph.addNode((Class<Plugin>) clazz);
         }

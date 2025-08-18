@@ -178,7 +178,7 @@ public class MicrobotPluginHubPanel extends PluginPanel {
 
             Collections.addAll(keywords, SPACES.split(manifest.getDescription()));
 
-            Collections.addAll(keywords, manifest.getAuthor());
+            Collections.addAll(keywords, manifest.getAuthors());
 
             Collections.addAll(keywords, manifest.getTags());
 
@@ -576,6 +576,11 @@ public class MicrobotPluginHubPanel extends PluginPanel {
     private void reloadPluginList(List<MicrobotPluginManifest> manifest, Map<String, Integer> pluginCounts) {
         lastManifest = manifest;
 
+        // Filter out disabled plugins before processing
+        List<MicrobotPluginManifest> enabledManifest = manifest.stream()
+                .filter(m -> !m.isDisable())
+                .collect(Collectors.toList());
+
         Predicate<Plugin> isExternalPluginPredicate = plugin ->
                 plugin.getClass().getAnnotation(PluginDescriptor.class).isExternal();
 
@@ -587,8 +592,8 @@ public class MicrobotPluginHubPanel extends PluginPanel {
 
         Set<String> installed = new HashSet<>(microbotPluginManager.getInstalledPlugins());
 
-        // Pre-index manifests by internalName (lowercased)
-        Map<String, MicrobotPluginManifest> manifestByName = manifest.stream()
+        // Pre-index manifests by internalName (lowercased) - using filtered list
+        Map<String, MicrobotPluginManifest> manifestByName = enabledManifest.stream()
                 .filter(m -> m.getInternalName() != null)
                 .collect(Collectors.toMap(
                         m -> m.getInternalName().toLowerCase(Locale.ROOT),

@@ -54,6 +54,11 @@ public class Rs2Settings
 		return Microbot.getVarbitValue(VarbitID.KEYBINDING_ESC_TO_CLOSE) == 1;
 	}
 
+	public static boolean isWorldSwitcherConfirmationEnabled()
+	{
+		return Microbot.getVarbitValue(VarbitID.WORLDSWITCHER_DISABLE_CONFIRMATION) == 0;
+	}
+
 	public static boolean enableDropShiftSetting(boolean closeInterface)
 	{
 		if (isDropShiftSettingEnabled())
@@ -226,6 +231,35 @@ public class Rs2Settings
 			Rs2Widget.clickWidget(areaSoundBtn);
 			sleepGaussian(600, 150);
 		}
+	}
+
+	public static boolean disableWorldSwitcherConfirmation(boolean closeInterface) {
+		if (!isWorldSwitcherConfirmationEnabled()) return true;
+
+		if (!openSettings()) return false;
+
+		if (!switchToSettingsTab("Warnings")) return false;
+
+		sleepGaussian(800, 100);
+		Widget widget = Rs2Widget.getWidget(SETTINGS_CLICKABLE);
+		if (widget == null) return false;
+
+		// MenuEntryImpl(getOption=Toggle, getTarget=, getIdentifier=1, getType=CC_OP, getParam0=33, getParam1=8781843, getItemId=-1, isForceLeftClick=false, getWorldViewId=-1, isDeprioritized=false)
+		NewMenuEntry menuEntry = new NewMenuEntry("Toggle", "", 1, MenuAction.CC_OP, 33, widget.getId(), false);
+		Microbot.doInvoke(menuEntry, Rs2UiHelper.getDefaultRectangle());
+		boolean success = sleepUntil(() -> !isWorldSwitcherConfirmationEnabled());
+
+		if (closeInterface)
+		{
+			closeSettingsMenu();
+			Rs2Tab.switchTo(InterfaceTab.INVENTORY);
+		}
+		return success;
+	}
+
+	public static boolean disableWorldSwitcherConfirmation()
+	{
+		return disableWorldSwitcherConfirmation(true);
 	}
 
 	/**
