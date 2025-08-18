@@ -11,13 +11,13 @@ import net.runelite.client.ui.overlay.components.TitleComponent;
 import javax.inject.Inject;
 import java.awt.*;
 
-public class EssenceMiningOverlay extends OverlayPanel {
-    private final EssenceMiningPlugin plugin;
-    private final EssenceMiningConfig config;
+public class AutoEssenceMiningOverlay extends OverlayPanel {
+    private final AutoEssenceMiningPlugin plugin;
+    private final AutoEssenceMiningConfig config;
     private long startTime;
 
     @Inject
-    EssenceMiningOverlay(EssenceMiningPlugin plugin, EssenceMiningConfig config) {
+    AutoEssenceMiningOverlay(AutoEssenceMiningPlugin plugin, AutoEssenceMiningConfig config) {
         super(plugin);
         this.plugin = plugin;
         this.config = config;
@@ -31,7 +31,7 @@ public class EssenceMiningOverlay extends OverlayPanel {
         try {
             panelComponent.setPreferredSize(new Dimension(200, 300));
             panelComponent.getChildren().add(TitleComponent.builder()
-                    .text("Auto Essence Mining " + EssenceMiningScript.version)
+                    .text("Auto Essence Mining " + AutoAutoEssenceMiningScript.version)
                     .color(Color.GREEN)
                     .build());
 

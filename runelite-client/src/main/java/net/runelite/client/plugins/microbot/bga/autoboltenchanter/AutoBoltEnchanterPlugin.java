@@ -10,7 +10,7 @@ import javax.inject.Inject;
 import java.awt.*;
 
 @PluginDescriptor(
-    name = "[bga] Auto bolt enchanter",
+    name = "[bga] Auto Bolt Enchanter",
     description = "Automatically enchants crossbow bolts at the bank",
     tags = {"magic", "enchanting", "bolts", "skilling"},
     enabledByDefault = false

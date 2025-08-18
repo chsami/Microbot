@@ -6,6 +6,7 @@ import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.bga.autoessencemining.enums.AutoEssenceMiningState;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -15,25 +16,24 @@ import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
-import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 
 import java.util.concurrent.TimeUnit;
 
 
 @Slf4j
-public class EssenceMiningScript extends Script {
+public class AutoAutoEssenceMiningScript extends Script {
 
     public static final String version = "1.0";
     private static final WorldPoint AUBURY_LOCATION = new WorldPoint(3253, 3399, 0);
     private static final int ESSENCE_MINE_REGION = 11595; // Rune essence mine region ID
     
-    private EssenceMiningState state = EssenceMiningState.WALKING_TO_AUBURY;
+    private AutoEssenceMiningState state = AutoEssenceMiningState.WALKING_TO_AUBURY;
     private boolean hasTeleportedWithAubury = false;
     private boolean isInEssenceMine = false;
     private boolean needsToBank = false;
     private long stateStartTime = System.currentTimeMillis(); // track state timeout
 
-    public boolean run(EssenceMiningConfig config) {
+    public boolean run(AutoEssenceMiningConfig config) {
         log.info("Starting essence mining script");
         initialPlayerLocation = Rs2Player.getWorldLocation();
         Rs2Antiban.resetAntibanSettings();
@@ -61,7 +61,7 @@ public class EssenceMiningScript extends Script {
                 // state timeout protection
                 if (System.currentTimeMillis() - stateStartTime > 30000) {
                     log.info("State timeout after 30 seconds, resetting to WALKING_TO_AUBURY");
-                    changeState(EssenceMiningState.WALKING_TO_AUBURY);
+                    changeState(AutoEssenceMiningState.WALKING_TO_AUBURY);
                     return;
                 }
 
@@ -83,25 +83,25 @@ public class EssenceMiningScript extends Script {
                     if (!needsToBank) {
                         log.info("In mine with space, switching to MINING_ESSENCE");
                         hasTeleportedWithAubury = true;
-                        changeState(EssenceMiningState.MINING_ESSENCE);
+                        changeState(AutoEssenceMiningState.MINING_ESSENCE);
                     } else {
                         log.info("In mine but inventory full, switching to USING_PORTAL");
-                        changeState(EssenceMiningState.USING_PORTAL);
+                        changeState(AutoEssenceMiningState.USING_PORTAL);
                     }
                 } else {
                     if (needsToBank) {
                         log.info("Need to bank, switching to BANKING");
-                        changeState(EssenceMiningState.BANKING);
+                        changeState(AutoEssenceMiningState.BANKING);
                     } else {
                         if (Rs2Player.getWorldLocation().distanceTo(AUBURY_LOCATION) <= 8) {
                             log.info("Near Aubury, switching to TELEPORTING_WITH_AUBURY");
                             if (hasTeleportedWithAubury) {
                                 hasTeleportedWithAubury = false;
                             }
-                            changeState(EssenceMiningState.TELEPORTING_WITH_AUBURY);
+                            changeState(AutoEssenceMiningState.TELEPORTING_WITH_AUBURY);
                         } else {
                             log.info("Far from Aubury, switching to WALKING_TO_AUBURY");
-                            changeState(EssenceMiningState.WALKING_TO_AUBURY);
+                            changeState(AutoEssenceMiningState.WALKING_TO_AUBURY);
                         }
                     }
                 }
@@ -303,7 +303,7 @@ public class EssenceMiningScript extends Script {
     }
 
     // helper method to change state with timeout reset
-    private void changeState(EssenceMiningState newState) {
+    private void changeState(AutoEssenceMiningState newState) {
         if (newState != state) {
             log.info("State change: {} -> {}", state, newState);
             state = newState;

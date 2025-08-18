@@ -3,7 +3,7 @@ package net.runelite.client.plugins.microbot.bga.autoessencemining;
 import net.runelite.client.config.*;
 
 @ConfigGroup("EssenceMining")
-public interface EssenceMiningConfig extends Config {
+public interface AutoEssenceMiningConfig extends Config {
     @ConfigItem(
             keyName = "Guide",
             name = "Usage guide",

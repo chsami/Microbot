@@ -17,35 +17,35 @@ import java.awt.*;
         enabledByDefault = false
 )
 @Slf4j
-public class EssenceMiningPlugin extends Plugin {
+public class AutoEssenceMiningPlugin extends Plugin {
     @Inject
-    private EssenceMiningConfig config;
+    private AutoEssenceMiningConfig config;
     
     @Provides
-    EssenceMiningConfig provideConfig(ConfigManager configManager) {
-        return configManager.getConfig(EssenceMiningConfig.class);
+    AutoEssenceMiningConfig provideConfig(ConfigManager configManager) {
+        return configManager.getConfig(AutoEssenceMiningConfig.class);
     }
 
     @Inject
     private OverlayManager overlayManager;
     
     @Inject
-    private EssenceMiningOverlay essenceMiningOverlay;
+    private AutoEssenceMiningOverlay autoEssenceMiningOverlay;
 
     @Inject
-    EssenceMiningScript essenceMiningScript;
+    AutoAutoEssenceMiningScript autoEssenceMiningScript;
 
     @Override
     protected void startUp() throws AWTException {
         if (overlayManager != null) {
-            overlayManager.add(essenceMiningOverlay);
+            overlayManager.add(autoEssenceMiningOverlay);
         }
-        essenceMiningOverlay.resetStartTime();
-        essenceMiningScript.run(config);
+        autoEssenceMiningOverlay.resetStartTime();
+        autoEssenceMiningScript.run(config);
     }
 
     protected void shutDown() {
-        essenceMiningScript.shutdown();
-        overlayManager.remove(essenceMiningOverlay);
+        autoEssenceMiningScript.shutdown();
+        overlayManager.remove(autoEssenceMiningOverlay);
     }
 }

@@ -1,7 +1,9 @@
 package net.runelite.client.plugins.microbot.crafting.jewelry;
 
 import net.runelite.api.EquipmentInventorySlot;
+import net.runelite.api.GameObject;
 import net.runelite.api.ItemID;
+import net.runelite.api.ObjectComposition;
 import net.runelite.api.Skill;
 import net.runelite.api.TileObject;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -13,6 +15,7 @@ import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
+import net.runelite.client.plugins.microbot.util.gameobject.Rs2BankID;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
@@ -28,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntilTrue;
 
 public class JewelryScript extends Script {
@@ -73,7 +77,32 @@ public class JewelryScript extends Script {
                         Rs2Bank.preHover();
                         break;
                     case BANKING:
-                        boolean isBankOpen = Rs2Bank.isNearBank(plugin.getCraftingLocation().getBankLocation(),15) ? Rs2Bank.useBank() : Rs2Bank.walkToBankAndUseBank();
+                        boolean isBankOpen = false;
+                        if (Rs2Bank.isNearBank(plugin.getCraftingLocation().getBankLocation(), 15)) {
+                            // get all bank objects within 20 tiles
+                            List<GameObject> bankObjects = Rs2GameObject.getGameObjects(
+                                o -> Arrays.stream(Rs2BankID.bankIds).anyMatch(bid -> o.getId() == bid), 20
+                            );
+                            
+                            // filter for valid banks with proper actions and pick the nearest
+                            GameObject nearestBank = bankObjects.stream()
+                                .filter(bank -> {
+                                    ObjectComposition comp = Rs2GameObject.convertToObjectComposition(bank);
+                                    return comp != null && comp.getActions() != null && 
+                                           Arrays.stream(comp.getActions()).anyMatch(action -> "Bank".equals(action));
+                                })
+                                .min(Comparator.comparingInt(bank -> 
+                                    bank.getWorldLocation().distanceTo(Rs2Player.getWorldLocation())))
+                                .orElse(null);
+                            
+                            // interact with the nearest valid bank
+                            if (Rs2GameObject.interact(nearestBank, "Bank")) {
+                                sleepUntil(Rs2Bank::isOpen, 5000);
+                                isBankOpen = Rs2Bank.isOpen();
+                            }
+                        } else {
+                            isBankOpen = Rs2Bank.walkToBankAndUseBank();
+                        }
                         
                         if (!isBankOpen || !Rs2Bank.isOpen()) return;
                         

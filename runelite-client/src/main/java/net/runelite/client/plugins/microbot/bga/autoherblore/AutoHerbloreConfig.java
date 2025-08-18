@@ -33,14 +33,14 @@ public interface AutoHerbloreConfig extends Config {
     @ConfigSection(
         name = "Clean herbs",
         description = "Clean herb options",
-        position = 1,
+        position = 3,
         closedByDefault = true
     )
     String CLEAN_HERBS_SECTION = "cleanHerbs";
 
     @ConfigItem(
         keyName = "cleanHerbMode",
-        name = "Herb selection",
+        name = "Type",
         description = "Select specific herb to clean or clean any available",
         section = CLEAN_HERBS_SECTION
     )
@@ -51,14 +51,14 @@ public interface AutoHerbloreConfig extends Config {
     @ConfigSection(
         name = "Make unfinished potions",
         description = "Unfinished potion options",
-        position = 2,
+        position = 4,
         closedByDefault = true
     )
     String UNFINISHED_POTIONS_SECTION = "unfinishedPotions";
 
     @ConfigItem(
         keyName = "unfinishedPotionMode",
-        name = "Unfinished potion selection",
+        name = "Type",
         description = "Select specific unfinished potion to make or make any available",
         section = UNFINISHED_POTIONS_SECTION
     )
@@ -69,14 +69,14 @@ public interface AutoHerbloreConfig extends Config {
     @ConfigSection(
         name = "Make finished potions",
         description = "Finished potion options",
-        position = 3,
+        position = 5,
         closedByDefault = true
     )
     String FINISHED_POTIONS_SECTION = "finishedPotions";
 
     @ConfigItem(
         keyName = "finishedPotion",
-        name = "Finished potion",
+        name = "Type",
         description = "Select finished potion to make",
         section = FINISHED_POTIONS_SECTION
     )
@@ -87,7 +87,7 @@ public interface AutoHerbloreConfig extends Config {
     @ConfigSection(
         name = "Optionals",
         description = "Optional features",
-        position = 4,
+        position = 2,
         closedByDefault = true
     )
     String OPTIONALS_SECTION = "optionals";
