@@ -4,6 +4,7 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
+
 import net.runelite.client.plugins.microbot.bga.autoherblore.enums.CleanHerbMode;
 import net.runelite.client.plugins.microbot.bga.autoherblore.enums.HerblorePotion;
 import net.runelite.client.plugins.microbot.bga.autoherblore.enums.Mode;
@@ -27,6 +28,7 @@ public interface AutoHerbloreConfig extends Config {
     default Mode mode() {
         return Mode.CLEAN_HERBS;
     }
+
 
     @ConfigSection(
         name = "Clean herbs",

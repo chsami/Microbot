@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.bga.autochompykiller;
 
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.GameObject;
 import net.runelite.api.gameval.ItemID;
@@ -20,12 +21,15 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
+@Slf4j
 public class AutoChompyKillerScript extends Script {
     public static String version = "1.0";
 
     public static int chompyKills = 0;
     public static long startTime = 0;
     public AutoChompyKillerState state = AutoChompyKillerState.FILLING_BELLOWS;
+    private long stateStartTime = System.currentTimeMillis();
+    private AutoChompyKillerConfig config;
 
     private boolean isBloatedToadOnGround() {
         Stream<Rs2NpcModel> npcs = Rs2Npc.getNpcs();
@@ -170,12 +174,51 @@ public class AutoChompyKillerScript extends Script {
         return false;
     }
 
+    private void changeState(AutoChompyKillerState newState) {
+        if (newState != state) {
+            log.info("State change: {} -> {}", state, newState);
+            state = newState;
+            stateStartTime = System.currentTimeMillis();
+        }
+    }
+
+    private boolean validateConfig() {
+        if (config == null) {
+            log.info("Config is null");
+            Microbot.showMessage("Configuration error");
+            return false;
+        }
+        log.info("Config validation complete");
+        return true;
+    }
+
     public boolean run(AutoChompyKillerConfig config) {
+        this.config = config;
+        
+        if (!validateConfig()) {
+            shutdown();
+            return false;
+        }
+        
         Microbot.enableAutoRunOn = false;
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
-                if (!Microbot.isLoggedIn()) return;
-                if (!super.run()) return;
+                if (!super.run()) {
+                    log.info("Super.run() returned false");
+                    return;
+                }
+                if (!Microbot.isLoggedIn()) {
+                    log.info("Not logged in");
+                    return;
+                }
+                
+                long startTime = System.currentTimeMillis();
+                
+                if (System.currentTimeMillis() - stateStartTime > 60000) {
+                    log.info("State timeout - resetting to FILLING_BELLOWS");
+                    changeState(AutoChompyKillerState.FILLING_BELLOWS);
+                    return;
+                }
 
                 if (!Rs2Player.isMoving() && !Rs2Player.isInteracting()) {
                     dropConfiguredItems(config);
@@ -193,112 +236,180 @@ public class AutoChompyKillerScript extends Script {
                 }
 
                 if (!Rs2Equipment.isWearing(EquipmentInventorySlot.AMMO)) {
+                    log.info("No ammo equipped - shutting down");
                     Microbot.showMessage("No ammo - aborting...");
                     Microbot.status = "IDLE";
-                    sleep(3000);
+                    // wait briefly before shutdown to display message
+                    sleepUntil(() -> true, 3000);
                     shutdown();
                     return;
                 }
 
                 if (!Rs2Equipment.isWearing(ItemID.OGRE_BOW) && !Rs2Equipment.isWearing(ItemID.ZOGRE_BOW)) {
+                    log.info("No ogre bow equipped - shutting down");
                     Microbot.showMessage("No ogre bow equipped - aborting...");
                     Microbot.status = "IDLE";
-                    sleep(3000);
+                    // wait briefly before shutdown to display message
+                    sleepUntil(() -> true, 3000);
                     shutdown();
                     return;
                 }
 
                 switch (state) {
                     case FILLING_BELLOWS:
-                        Rs2GameObject.interact(ObjectID.SWAMPBUBBLES, "Suck");
-                        sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isInteracting());
-                        state = AutoChompyKillerState.INFLATING;
+                        log.info("State: FILLING_BELLOWS");
+                        Microbot.status = "Filling bellows";
+                        if (Rs2GameObject.interact(ObjectID.SWAMPBUBBLES, "Suck")) {
+                            boolean completed = sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isInteracting(), 5000);
+                            if (completed) {
+                                log.info("Successfully filled bellows");
+                                changeState(AutoChompyKillerState.INFLATING);
+                            } else {
+                                log.info("Failed to fill bellows within timeout");
+                            }
+                        } else {
+                            log.info("Failed to interact with swamp bubbles");
+                        }
                         break;
 
                     case INFLATING:
+                        log.info("State: INFLATING");
+                        Microbot.status = "Inflating toads";
+                        
                         Rs2NpcModel chompyBird = getNearestReachableNpc(NpcID.CHOMPYBIRD);
                         if (chompyBird != null) {
-                            state = AutoChompyKillerState.ATTACKING;
+                            log.info("Chompy bird found - switching to attacking");
+                            changeState(AutoChompyKillerState.ATTACKING);
                             break;
                         }
                         
                         if (config.pluckChompys() && isDeadChompyNearby()) {
-                            state = AutoChompyKillerState.PLUCKING;
+                            log.info("Dead chompy nearby - switching to plucking");
+                            changeState(AutoChompyKillerState.PLUCKING);
                             break;
                         }
                         
                         if (Rs2Inventory.hasItem(ItemID.BLOATED_TOAD) && !isBloatedToadOnGround()) {
+                            log.info("Dropping bloated toad");
                             Rs2Inventory.drop(ItemID.BLOATED_TOAD);
-                            sleepUntil(() -> Rs2Player.isAnimating() || Rs2Player.isInteracting());
-                            sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isInteracting());
+                            sleepUntil(() -> Rs2Player.isAnimating() || Rs2Player.isInteracting(), 3000);
+                            sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isInteracting(), 5000);
                         } else {
+                            // check if we have filled bellows to use
                             if (!(Rs2Inventory.hasItem(ItemID.FILLED_OGRE_BELLOW1) || Rs2Inventory.hasItem(ItemID.FILLED_OGRE_BELLOW2) || Rs2Inventory.hasItem(ItemID.FILLED_OGRE_BELLOW3))) {
+                                // check if we need to fill empty bellows
                                 if (Rs2Inventory.hasItem(ItemID.EMPTY_OGRE_BELLOWS)) {
-                                    state = AutoChompyKillerState.FILLING_BELLOWS;
+                                    log.info("Have empty bellows, need to fill them");
+                                    changeState(AutoChompyKillerState.FILLING_BELLOWS);
                                 } else {
-                                    Microbot.showMessage("Bellows missing - aborting...");
+                                    log.info("No bellows found in inventory, shutting down script");
                                     Microbot.status = "IDLE";
-                                    sleep(10000);
+                                    // wait before shutting down to display message
+                                    sleepUntil(() -> true, 10000);
                                     shutdown();
                                     return;
                                 }
                             } else {
+                                // find a swamp toad to inflate
                                 Rs2NpcModel swampToad = getNearestReachableNpc(NpcID.TOAD);
-                                if (swampToad == null || !Rs2Npc.interact(swampToad, "Inflate")) {
-                                    Microbot.showMessage("Could not find toads - aborting...");
+                                if (swampToad == null) {
+                                    log.info("No swamp toads found nearby, shutting down script");
                                     Microbot.status = "IDLE";
-                                    sleep(10000);
+                                    // wait before shutting down to display message
+                                    sleepUntil(() -> true, 10000);
                                     shutdown();
                                     return;
+                                }
+                                
+                                log.info("Found swamp toad, attempting to inflate it");
+                                if (Rs2Npc.interact(swampToad, "Inflate")) {
+                                    // wait for interaction to start
+                                    boolean interactionStarted = sleepUntil(() -> Rs2Player.isAnimating() || Rs2Player.isInteracting(), 3000);
+                                    if (interactionStarted) {
+                                        log.info("Started inflating toad");
+                                    } else {
+                                        log.info("Inflation interaction did not start");
+                                    }
+                                    
+                                    // wait for animation to complete
+                                    boolean completed = sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isInteracting(), 5000);
+                                    log.info("Inflation animation completed: {}", completed);
+                                    
+                                    // verify we have a bloated toad after inflation
+                                    if (Rs2Inventory.hasItem(ItemID.BLOATED_TOAD)) {
+                                        log.info("Successfully created bloated toad");
+                                    } else {
+                                        log.info("No bloated toad found after inflation");
+                                    }
                                 } else {
-                                    sleepUntil(() -> Rs2Player.isAnimating() || Rs2Player.isInteracting());
-                                    sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isInteracting());
+                                    log.info("Failed to interact with swamp toad");
                                 }
                             }
                         }
                         break;
                     case ATTACKING:
+                        log.info("State: ATTACKING");
+                        Microbot.status = "Attacking chompy";
+                        
                         if (config.pluckChompys() && !Rs2Player.isInteracting() && !Rs2Player.isAnimating() && isDeadChompyNearby()) {
-                            state = AutoChompyKillerState.PLUCKING;
+                            log.info("Dead chompy nearby - switching to plucking");
+                            changeState(AutoChompyKillerState.PLUCKING);
                             break;
                         }
                         
                         Rs2NpcModel targetChompy = getNearestReachableNpc(NpcID.CHOMPYBIRD);
-                        if (targetChompy != null && Rs2Npc.interact(targetChompy, "Attack")) {
-                            sleepUntil(() -> Rs2Player.isAnimating() || Rs2Player.isInteracting());
-                            sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isInteracting());
+                        if (targetChompy != null) {
+                            log.info("Attacking chompy");
+                            if (Rs2Npc.interact(targetChompy, "Attack")) {
+                                sleepUntil(() -> Rs2Player.isAnimating() || Rs2Player.isInteracting(), 3000);
+                                boolean completed = sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isInteracting(), 10000);
+                                log.info("Attack animation completed: {}", completed);
+                            } else {
+                                log.info("Failed to attack chompy");
+                            }
                         } else {
-                            state = AutoChompyKillerState.INFLATING;
+                            log.info("No chompy found - returning to inflating");
+                            changeState(AutoChompyKillerState.INFLATING);
                         }
                         break;
                     case PLUCKING:
+                        log.info("State: PLUCKING");
+                        Microbot.status = "Plucking chompy";
+                        
                         Rs2NpcModel deadChompy = getNearestReachableNpc(NpcID.CHOMPYBIRD_DEAD);
-                        if (deadChompy != null && Rs2Npc.interact(deadChompy, "Pluck")) {
-                            sleepUntil(() -> Rs2Player.isAnimating() || Rs2Player.isInteracting());
-                            sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isInteracting());
-                            
-                            Rs2NpcModel nearbyChompy = getNearestReachableNpc(NpcID.CHOMPYBIRD);
-                            if (nearbyChompy != null) {
-                                state = AutoChompyKillerState.ATTACKING;
+                        if (deadChompy != null) {
+                            log.info("Plucking dead chompy");
+                            if (Rs2Npc.interact(deadChompy, "Pluck")) {
+                                sleepUntil(() -> Rs2Player.isAnimating() || Rs2Player.isInteracting(), 3000);
+                                boolean completed = sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isInteracting(), 5000);
+                                log.info("Plucking animation completed: {}", completed);
                             } else {
-                                state = AutoChompyKillerState.INFLATING;
+                                log.info("Failed to pluck dead chompy");
                             }
                         } else {
-                            Rs2NpcModel nearbyChompy = getNearestReachableNpc(NpcID.CHOMPYBIRD);
-                            if (nearbyChompy != null) {
-                                state = AutoChompyKillerState.ATTACKING;
-                            } else {
-                                state = AutoChompyKillerState.INFLATING;
-                            }
+                            log.info("No dead chompy found");
+                        }
+                        
+                        Rs2NpcModel nearbyChompy = getNearestReachableNpc(NpcID.CHOMPYBIRD);
+                        if (nearbyChompy != null) {
+                            log.info("Chompy nearby - switching to attacking");
+                            changeState(AutoChompyKillerState.ATTACKING);
+                        } else {
+                            log.info("No chompy nearby - switching to inflating");
+                            changeState(AutoChompyKillerState.INFLATING);
                         }
                         break;
                     case STOPPED:
+                        log.info("State: STOPPED");
                         return;
                 }
-
+                
+                long endTime = System.currentTimeMillis();
+                long totalTime = endTime - startTime;
+                log.info("Total time for loop: {}ms", totalTime);
 
             } catch (Exception ex) {
-                ex.printStackTrace();
+                log.error("Error in main loop", ex);
             }
         }, 0, 600, TimeUnit.MILLISECONDS);
         return true;

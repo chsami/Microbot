@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.bga.autofishing;
 
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
@@ -27,6 +28,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 public class AutoFishingScript extends Script {
 
     public static String version = "1.0";
@@ -34,6 +36,7 @@ public class AutoFishingScript extends Script {
     private AutoFishingState state = AutoFishingState.INITIALIZING;
     private AutoFishingConfig config;
     private Fish selectedFish;
+    private long stateStartTime = System.currentTimeMillis(); // track state timeout
     @Getter
     private HarpoonType selectedHarpoon;
     private WorldPoint fishingLocation;
@@ -198,42 +201,109 @@ public class AutoFishingScript extends Script {
             return;
         }
         
+        // withdraw required fishing tools with validation
         if (!selectedFish.getMethod().getRequiredItems().isEmpty()) {
             for (String tool : selectedFish.getMethod().getRequiredItems()) {
+                // pre-condition validation
                 if (!Rs2Equipment.isWearing(tool) && !Rs2Inventory.contains(tool)) {
-                    if (Rs2Bank.hasItem(tool)) {
-                        Rs2Bank.withdrawOne(tool);
-                        sleep(600);
-                        break;
+                    if (!Rs2Bank.hasItem(tool)) {
+                        log.info("Required tool {} not found in bank", tool);
+                        continue;
                     }
+                    
+                    // perform action
+                    log.info("Withdrawing required tool: {}", tool);
+                    Rs2Bank.withdrawOne(tool);
+                    
+                    // post-condition validation
+                    boolean success = sleepUntil(() -> Rs2Inventory.contains(tool), 3000);
+                    if (success) {
+                        log.info("Successfully withdrew tool: {}", tool);
+                    } else {
+                        log.info("Failed to withdraw tool {} within timeout", tool);
+                    }
+                    // small delay to prevent spam clicking
+                    sleepUntil(() -> true, 600);
+                    break;
                 }
             }
         }
         
+        // withdraw harpoon if needed with validation
         if (selectedHarpoon != HarpoonType.NONE) {
             if (!Rs2Equipment.isWearing(selectedHarpoon.getName()) && !Rs2Inventory.contains(selectedHarpoon.getName())) {
-                if (Rs2Bank.hasItem(selectedHarpoon.getName())) {
+                if (!Rs2Bank.hasItem(selectedHarpoon.getName())) {
+                    log.info("Required harpoon {} not found in bank", selectedHarpoon.getName());
+                } else {
+                    // perform action
+                    log.info("Withdrawing harpoon: {}", selectedHarpoon.getName());
                     Rs2Bank.withdrawOne(selectedHarpoon.getName());
-                    sleep(600);
+                    
+                    // post-condition validation
+                    boolean success = sleepUntil(() -> Rs2Inventory.contains(selectedHarpoon.getName()), 3000);
+                    if (success) {
+                        log.info("Successfully withdrew harpoon: {}", selectedHarpoon.getName());
+                    } else {
+                        log.info("Failed to withdraw harpoon {} within timeout", selectedHarpoon.getName());
+                    }
+                    // small delay after withdrawal
+                    sleepUntil(() -> true, 600);
                 }
             }
         }
         
+        log.info("Closing bank after gear withdrawal");
         Rs2Bank.closeBank();
         
+        // equip withdrawn tools with validation
         for (String tool : selectedFish.getMethod().getRequiredItems()) {
             if (Rs2Inventory.contains(tool)) {
+                // pre-condition validation
+                if (Rs2Equipment.isWearing(tool)) {
+                    log.info("Tool {} already equipped", tool);
+                    continue;
+                }
+                
+                // perform action
+                log.info("Equipping tool: {}", tool);
                 Rs2Inventory.wield(tool);
-                sleep(600);
+                
+                // post-condition validation
+                boolean success = sleepUntil(() -> Rs2Equipment.isWearing(tool), 3000);
+                if (success) {
+                    log.info("Successfully equipped tool: {}", tool);
+                } else {
+                    log.info("Failed to equip tool {} within timeout", tool);
+                }
+                // small delay after equipping
+                sleepUntil(() -> true, 600);
             }
         }
         
+        // equip harpoon if withdrawn with validation
         if (selectedHarpoon != HarpoonType.NONE && Rs2Inventory.contains(selectedHarpoon.getName())) {
-            Rs2Inventory.wield(selectedHarpoon.getName());
-            sleep(600);
+            // pre-condition validation
+            if (!Rs2Equipment.isWearing(selectedHarpoon.getName())) {
+                // perform action
+                log.info("Equipping harpoon: {}", selectedHarpoon.getName());
+                Rs2Inventory.wield(selectedHarpoon.getName());
+                
+                // post-condition validation
+                boolean success = sleepUntil(() -> Rs2Equipment.isWearing(selectedHarpoon.getName()), 3000);
+                if (success) {
+                    log.info("Successfully equipped harpoon: {}", selectedHarpoon.getName());
+                } else {
+                    log.info("Failed to equip harpoon {} within timeout", selectedHarpoon.getName());
+                }
+                // small delay after equipping harpoon
+                sleepUntil(() -> true, 600);
+            } else {
+                log.info("Harpoon {} already equipped", selectedHarpoon.getName());
+            }
         }
         
-        state = AutoFishingState.CHECKING_GEAR;
+        log.info("Gear setup complete, rechecking gear");
+        changeState(AutoFishingState.CHECKING_GEAR);
     }
 
     private void handleTraveling() {
@@ -313,7 +383,8 @@ public class AutoFishingScript extends Script {
         
         if (selectedHarpoon != HarpoonType.NONE && Rs2Combat.getSpecEnergy() >= 100) {
             Rs2Combat.setSpecState(true, 1000);
-            sleep(1000);
+            // wait for special attack to activate
+            sleepUntil(() -> Rs2Combat.getSpecEnergy() < 100, 3000);
         }
         
         state = AutoFishingState.FISHING;
@@ -360,7 +431,8 @@ public class AutoFishingScript extends Script {
         for (String fishName : selectedFish.getRawNames()) {
             if (Rs2Inventory.contains(fishName)) {
                 Rs2Bank.depositAll(fishName);
-                sleep(300);
+                // wait for deposit to complete
+                sleepUntil(() -> !Rs2Inventory.contains(fishName), 2000);
             }
         }
         
@@ -396,15 +468,17 @@ public class AutoFishingScript extends Script {
         }
         
         fishAction = "";
-        sleep(2000);
+        // wait for any animations to complete during recovery
+        sleepUntil(() -> !Rs2Player.isAnimating() && !Rs2Player.isMoving(), 3000);
         
-        state = AutoFishingState.CHECKING_GEAR;
+        changeState(AutoFishingState.CHECKING_GEAR);
     }
 
     private void handleKarambwanLogic() {
         if (Rs2Inventory.hasItem(ItemID.TBWT_RAW_KARAMBWANJI) && Rs2Inventory.hasItem(ItemID.TBWT_KARAMBWAN_VESSEL)) {
             Rs2Inventory.combineClosest(ItemID.TBWT_RAW_KARAMBWANJI, ItemID.TBWT_KARAMBWAN_VESSEL);
-            sleep(600);
+            // wait for karambwanji combination to complete
+            sleepUntil(() -> !Rs2Inventory.hasItem(ItemID.TBWT_RAW_KARAMBWANJI) || Rs2Player.isAnimating(), 3000);
         }
     }
 
@@ -517,11 +591,22 @@ public class AutoFishingScript extends Script {
         }
     }
 
+    // helper method to change state with timeout reset
+    private void changeState(AutoFishingState newState) {
+        if (newState != state) {
+            log.info("State change: {} -> {}", state, newState);
+            state = newState;
+            stateStartTime = System.currentTimeMillis();
+        }
+    }
+
     @Override
     public void shutdown() {
+        log.info("Shutting down auto fishing script");
         super.shutdown();
         Rs2Antiban.resetAntibanSettings();
         
+        // cleanup any open interfaces
         if (Rs2Bank.isOpen()) {
             Rs2Bank.closeBank();
         }
@@ -529,10 +614,12 @@ public class AutoFishingScript extends Script {
             Rs2DepositBox.closeDepositBox();
         }
         
+        // reset all state variables
         closestBank = null;
         fishingLocation = null;
         selectedSpotLocation = null;
         currentLocationIndex = 0;
         fishAction = "";
+        log.info("Auto fishing script shutdown complete");
     }
 }

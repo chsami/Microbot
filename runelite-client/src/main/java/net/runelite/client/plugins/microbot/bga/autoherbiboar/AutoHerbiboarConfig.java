@@ -27,9 +27,17 @@ public interface AutoHerbiboarConfig extends Config {
         }
     }
     @ConfigSection(
+            name = "General settings",
+            description = "Basic plugin configuration",
+            position = 0
+    )
+    String GENERAL_SECTION = "general";
+
+
+    @ConfigSection(
             name = "Optionals",
             description = "Optionals",
-            position = 0
+            position = 1
     )
     String OPTIONALS_SECTION = "optionals";
 
@@ -66,7 +74,7 @@ public interface AutoHerbiboarConfig extends Config {
     @ConfigSection(
         name = "Run energy management",
         description = "Run energy management",
-        position = 1
+        position = 2
     )
     String RUN_ENERGY_SECTION = "runenergy";
 
@@ -95,7 +103,7 @@ public interface AutoHerbiboarConfig extends Config {
     @ConfigSection(
         name = "Fossils to drop",
         description = "Fossils you don't want to keep",
-        position = 2,
+        position = 3,
         closedByDefault = true
     )
     String FOSSILS_SECTION = "fossils";
@@ -147,7 +155,7 @@ public interface AutoHerbiboarConfig extends Config {
     @ConfigSection(
         name = "Herbs to drop",
         description = "Herbs you don't want to keep",
-        position = 3,
+        position = 4,
         closedByDefault = true
     )
     String HERBS_SECTION = "herbs";
