@@ -50,6 +50,7 @@ import okhttp3.Response;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import javax.swing.*;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -201,21 +202,53 @@ public class MicrobotPluginManager
     public void remove(String internalName)
     {
         executor.execute(() -> {
-            // Remove the jar file
-            File pluginFile = getPluginJarFile(internalName);
-            if (pluginFile.exists() && !pluginFile.delete())
-            {
-                log.warn("Could not delete plugin file: {}", pluginFile);
+            List<Plugin> pluginsToRemove = pluginManager.getPlugins().stream()
+                    .filter(plugin -> {
+                        PluginDescriptor descriptor = plugin.getClass().getAnnotation(PluginDescriptor.class);
+                        if (descriptor == null) {
+                            return false;
+                        }
+
+                        boolean isExternal = descriptor.isExternal();
+                        String className = plugin.getClass().getSimpleName();
+                        String descriptorName = descriptor.name();
+
+                        boolean nameMatches = className.equals(internalName) ||
+                                            descriptorName.equals(internalName) ||
+                                            className.toLowerCase().equals(internalName.toLowerCase()) ||
+                                            descriptorName.toLowerCase().equals(internalName.toLowerCase());
+
+                        return isExternal && nameMatches;
+                    })
+                    .collect(Collectors.toList());
+
+            for (Plugin plugin : pluginsToRemove) {
+                if (pluginManager.isPluginEnabled(plugin)) {
+                    try {
+                        pluginManager.setPluginEnabled(plugin, false);
+
+                        if (pluginManager.isPluginActive(plugin)) {
+                            SwingUtilities.invokeLater(() -> {
+                                try {
+                                    pluginManager.stopPlugin(plugin);
+                                } catch (PluginInstantiationException e) {
+                                    log.warn("Error stopping plugin {}: {}", plugin.getClass().getSimpleName(), e.getMessage());
+                                }
+                            });
+                        }
+                    } catch (Exception e) {
+                        log.warn("Error stopping plugin {}: {}", plugin.getClass().getSimpleName(), e.getMessage());
+                    }
+                }
+
+                pluginManager.remove(plugin);
             }
 
-            pluginManager.remove(pluginManager.getPlugins().stream()
-                    .filter(x ->
-                            x.getClass().getSimpleName().equals(internalName)
-                                    && x.getClass().getAnnotation(PluginDescriptor.class).isExternal())
-                    .findFirst()
-                    .orElse(null));
+            File pluginFile = getPluginJarFile(internalName);
+            if (pluginFile.exists()) {
+                pluginFile.delete();
+            }
 
-            // Update installed plugins list
             List<String> plugins = getInstalledPlugins();
             if (plugins.contains(internalName))
             {
@@ -223,17 +256,41 @@ public class MicrobotPluginManager
                 saveInstalledPlugins(plugins);
             }
 
-            // Notify for plugin change
             eventBus.post(new ExternalPluginsChanged());
         });
     }
 
     private boolean verifyHash(byte[] jarData, String expectedHash)
     {
+        if ((expectedHash == null || expectedHash.isEmpty()) || (jarData == null || jarData.length == 0))
+        {
+            throw new IllegalArgumentException("Hash or jar data is null/empty");
+        }
+
+        String computedHash = calculateSHA256Hash(jarData);
+        return computedHash.equals(expectedHash);
+    }
+
+    /**
+     * Calculate SHA-256 hash for byte array data and return as hex string
+     */
+    private String calculateSHA256Hash(byte[] data)
+    {
         try
         {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(jarData);
+
+            int offset = 0;
+            int bufferSize = 8192;
+
+            while (offset < data.length)
+            {
+                int bytesToProcess = Math.min(bufferSize, data.length - offset);
+                digest.update(data, offset, bytesToProcess);
+                offset += bytesToProcess;
+            }
+
+            byte[] hash = digest.digest();
 
             StringBuilder hexString = new StringBuilder();
             for (byte b : hash)
@@ -245,24 +302,24 @@ public class MicrobotPluginManager
                 }
                 hexString.append(hex);
             }
-
-            return hexString.toString().equals(expectedHash);
+            return hexString.toString();
         }
         catch (NoSuchAlgorithmException e)
         {
-            log.error("Error verifying plugin hash", e);
-            return false;
+            log.trace("Error computing SHA-256 hash", e);
+			throw new RuntimeException("SHA-256 algorithm not found", e);
         }
     }
+
     public static File[] createSideloadingFolder() {
         final File MICROBOT_PLUGINS = new File(RuneLite.RUNELITE_DIR, "microbot-plugins");
         if (!java.nio.file.Files.exists(MICROBOT_PLUGINS.toPath())) {
             try {
                 java.nio.file.Files.createDirectories(MICROBOT_PLUGINS.toPath());
-                System.out.println("Directory for sideloading was created successfully.");
+                log.debug("Directory for sideloading was created successfully.");
                 return MICROBOT_PLUGINS.listFiles();
             } catch (IOException e) {
-                e.printStackTrace();
+                log.trace("Error creating directory for sideloading!", e);
             }
         }
         return MICROBOT_PLUGINS.listFiles();
@@ -293,7 +350,7 @@ public class MicrobotPluginManager
 
             if (f.getName().endsWith(".jar"))
             {
-                log.info("Side-loading plugin " + f.getName());
+                log.info("Side-loading plugin {}", f.getName());
 
                 try
                 {
@@ -301,7 +358,7 @@ public class MicrobotPluginManager
 
                     List<Class<?>> plugins = new ArrayList<>();
 
-                    MicrobotPluginClassLoader classLoader = new MicrobotPluginClassLoader(fileBytes, getClass().getClassLoader());
+                    MicrobotPluginClassLoader classLoader = new MicrobotPluginClassLoader(getClass().getClassLoader(), f.getName(), fileBytes);
 
                     // Assuming you know the class names you want to load
                     Set<String> classNamesToLoad = classLoader.getLoadedClassNames();
@@ -311,7 +368,7 @@ public class MicrobotPluginManager
                             Class<?> clazz = classLoader.loadClass(className);
                             plugins.add(clazz);
                         } catch (ClassNotFoundException e) {
-                            e.printStackTrace();
+                            log.trace("Class not found during sideloading: {}", className, e);
                         }
                     }
 
@@ -320,9 +377,9 @@ public class MicrobotPluginManager
                     eventBus.post(new ExternalPluginsChanged());
 
                 }
-                catch (PluginInstantiationException | IOException ex)
+                catch (PluginInstantiationException | IOException e)
                 {
-                    System.out.println("error sideloading plugin " + ex);
+                    log.trace("Error loading side-loaded plugin!", e);
                 }
             }
         }
@@ -410,7 +467,7 @@ public class MicrobotPluginManager
             Plugin plugin;
             try {
                 plugin = instantiate(pluginManager.getPlugins(), (Class<Plugin>) pluginClazz);
-                log.info("Microbot pluginManager loaded " + plugin.getName());
+                log.info("Microbot pluginManager loaded " + plugin.getClass().getSimpleName());
                 newPlugins.add(plugin);
                 pluginManager.addPlugin(plugin);
             } catch (PluginInstantiationException ex) {

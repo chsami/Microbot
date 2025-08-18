@@ -1218,7 +1218,7 @@ public class BarrowsScript extends Script {
         NPC hintArrow = Microbot.getClient().getHintArrowNpc();
         Rs2NpcModel currentBrother = null;
         if(hintArrow != null)  currentBrother = new Rs2NpcModel(hintArrow);
-        if(currentBrother != null && !currentBrother.getName().contains("Dharok") && currentBrother.getHealthPercentage() < Rs2Random.between(35,42)) skipThePot = true;
+        if(currentBrother != null && !currentBrother.getName().contains("Dharok") && currentBrother.getHealthPercentage() < Rs2Random.between(40,50)) skipThePot = true;
 
         if(!skipThePot) {
             if (Rs2Player.getBoostedSkillLevel(Skill.PRAYER) <= Rs2Random.between(8, 15)) {
@@ -1391,21 +1391,32 @@ public class BarrowsScript extends Script {
     public void solvePuzzle(){
         //correct model ids are  6725, 6731, 6713, 6719
         //widget ids are 1638413, 1638415,1638417
+        boolean stoppedTheWalker = false;
 
         int widgets[] = {1638413, 1638415, 1638417};
         int modelIDs[] = {6725, 6731, 6713, 6719};
+        int random = Rs2Random.between(0,1000);
+        int secondRandom = Rs2Random.between(1,10);
+
+        sleepUntil(()-> Rs2Widget.getWidget(widgets[0]) != null ||
+                Rs2Widget.getWidget(widgets[1]) != null ||
+                Rs2Widget.getWidget(widgets[2]) != null, Rs2Random.between(300,800));
 
         for (int widget : widgets) {
             if(!super.isRunning()) break;
 
             if(Rs2Widget.getWidget(widget)!=null){
+                if(!stoppedTheWalker){
+                    stopFutureWalker();
+                    stoppedTheWalker = true;
+                }
                 for (int modelID : modelIDs) {
                     if(!super.isRunning()) break;
 
-                    if(Rs2Widget.getWidget(widget).getModelId() == modelID){
+                    if(Rs2Widget.getWidget(widget).getModelId() == modelID || random <= secondRandom){
                         Microbot.log("Solution found");
-                        stopFutureWalker();
                         Rs2Widget.clickWidget(widget);
+                        break;
                     }
                 }
             } else {

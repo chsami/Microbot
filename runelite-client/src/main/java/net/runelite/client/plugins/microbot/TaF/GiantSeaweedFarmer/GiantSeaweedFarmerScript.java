@@ -20,6 +20,7 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -142,6 +143,8 @@ public class GiantSeaweedFarmerScript extends Script {
             try {
                 if (!super.run()) return;
                 if (!Microbot.isLoggedIn()) return;
+                // Respect pause state from other scripts (like spore looting)
+                if (Microbot.pauseAllScripts.get()) return;
 
                 switch (BOT_STATE) {
                     case BANKING:
@@ -288,6 +291,8 @@ public class GiantSeaweedFarmerScript extends Script {
                 .findFirst()
                 .orElse(null);
 
+        Microbot.log("Attempting to farm patch: " + patchToFarm + ", handled patches: " + handledPatches);
+        
         if (patchToFarm == null) {
             if (config.returnToBank()) {
                 BOT_STATE = GiantSeaweedFarmerStatus.RETURN_TO_BANK;
@@ -323,28 +328,45 @@ public class GiantSeaweedFarmerScript extends Script {
                 patchId
         };
         var obj = Rs2GameObject.findObject(ids);
+        
+        // If not found by ID, look for Dead seaweed specifically
+        if (obj == null) {
+            obj = Rs2GameObject.getGameObjects()
+                    .stream()
+                    .filter(o -> {
+                        var objComp = Rs2GameObject.convertToObjectComposition(o, false);
+                        return objComp != null && objComp.getName() != null && 
+                               objComp.getName().equalsIgnoreCase("Dead seaweed");
+                    })
+                    .findFirst()
+                    .orElse(null);
+        }
+        
         if (obj == null) return false;
-        var state = getSeaweedPatchState(obj);
+        
+        // Make final reference for lambda usage
+        final var patchObj = obj;
+        var state = getSeaweedPatchState(patchObj);
         switch (state) {
             case "Empty":
                 Rs2Inventory.use("compost");
-                Rs2GameObject.interact(obj, "Compost");
+                Rs2GameObject.interact(patchObj, "Compost");
                 Rs2Player.waitForXpDrop(Skill.FARMING);
                 Rs2Inventory.use(" spore");
-                Rs2GameObject.interact(obj, "Plant");
-                sleepUntil(() -> getSeaweedPatchState(obj).equals("Growing"));
+                Rs2GameObject.interact(patchObj, "Plant");
+                sleepUntil(() -> getSeaweedPatchState(patchObj).equals("Growing"));
                 return false;
             case "Harvestable":
-                Rs2GameObject.interact(obj, "Pick");
-                sleepUntil(() -> getSeaweedPatchState(obj).equals("Empty") || Rs2Inventory.isFull(), 20000);
+                Rs2GameObject.interact(patchObj, "Pick");
+                sleepUntil(() -> getSeaweedPatchState(patchObj).equals("Empty") || Rs2Inventory.isFull(), 20000);
                 return false;
             case "Weeds":
-                Rs2GameObject.interact(obj);
-                Rs2Player.waitForAnimation(10000);
+                Rs2GameObject.interact(patchObj);
+                sleepUntil(() -> !getSeaweedPatchState(patchObj).equals("Weeds"), 10000);
                 return false;
             case "Dead":
-                Rs2GameObject.interact(obj, "Clear");
-                sleepUntil(() -> getSeaweedPatchState(obj).equals("Empty"));
+                Rs2GameObject.interact(patchObj, "Clear");
+                sleepUntil(() -> getSeaweedPatchState(patchObj).equals("Empty"));
                 return false;
             default:
                 currentPatch = null;

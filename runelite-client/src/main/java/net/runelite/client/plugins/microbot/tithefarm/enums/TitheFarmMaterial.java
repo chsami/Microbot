@@ -69,6 +69,37 @@ public enum TitheFarmMaterial {
         return -1;
     }
 
+    public static int getWateringCan() {
+        if (hasGricollersCan()) {
+            return ItemID.ZEAH_WATERINGCAN;
+        }
+        if (Rs2Inventory.hasItem(ItemID.WATERING_CAN_1)) {
+            return ItemID.WATERING_CAN_1;
+        }
+        if (Rs2Inventory.hasItem(ItemID.WATERING_CAN_2)) {
+            return ItemID.WATERING_CAN_2;
+        }
+        if (Rs2Inventory.hasItem(ItemID.WATERING_CAN_3)) {
+            return ItemID.WATERING_CAN_3;
+        }
+        if (Rs2Inventory.hasItem(ItemID.WATERING_CAN_4)) {
+            return ItemID.WATERING_CAN_4;
+        }
+        if (Rs2Inventory.hasItem(ItemID.WATERING_CAN_5)) {
+            return ItemID.WATERING_CAN_5;
+        }
+        if (Rs2Inventory.hasItem(ItemID.WATERING_CAN_6)) {
+            return ItemID.WATERING_CAN_6;
+        }
+        if (Rs2Inventory.hasItem(ItemID.WATERING_CAN_7)) {
+            return ItemID.WATERING_CAN_7;
+        }
+        if (Rs2Inventory.hasItem(ItemID.WATERING_CAN_8)) {
+            return ItemID.WATERING_CAN_8;
+        }
+        return -1;
+    }
+
     @Override
     public String toString() {
         return name;

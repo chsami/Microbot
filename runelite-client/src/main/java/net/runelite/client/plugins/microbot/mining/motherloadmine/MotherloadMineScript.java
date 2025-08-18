@@ -148,10 +148,10 @@ public class MotherloadMineScript extends Script
         }
     }
 
-    private void handlePickaxeSpec()
-    {
-        if (Rs2Equipment.isWearing("dragon pickaxe") || Rs2Equipment.isWearing("crystal pickaxe"))
-        {
+    private String[] SPEC_PICKAXES = {"dragon pickaxe", "crystal pickaxe", "infernal pickaxe"};
+
+    private void handlePickaxeSpec() {
+        if (Rs2Equipment.isWearing(SPEC_PICKAXES)) {
             Rs2Combat.setSpecState(true, 1000);
         }
     }
@@ -170,16 +170,15 @@ public class MotherloadMineScript extends Script
             return;
         }
 
-		if (Rs2Inventory.isFull() && Rs2Inventory.hasItem(ItemID.PAYDIRT))
-		{
-			resetMiningState();
-			status = MLMStatus.DEPOSIT_HOPPER;
-			return;
-		}
+        int payDirtCount = payDirtCount();
+        if (payDirtCount > 0 && Rs2Inventory.isFull()) {
+            resetMiningState();
+            status = MLMStatus.DEPOSIT_HOPPER;
+            return;
+        }
 
-		int sackCount = Microbot.getVarbitValue(VarbitID.MOTHERLODE_SACK_TRANSMIT);
-        if (sackCount >= maxSackSize || (shouldEmptySack && !Rs2Inventory.contains(ItemID.PAYDIRT)))
-        {
+        int sackCount = Microbot.getVarbitValue(VarbitID.MOTHERLODE_SACK_TRANSMIT);
+        if (sackCount >= maxSackSize || hasOreInInventory() || (shouldEmptySack && !Rs2Inventory.contains(ItemID.PAYDIRT))) {
             resetMiningState();
             status = MLMStatus.EMPTY_SACK;
             return;
@@ -225,28 +224,31 @@ public class MotherloadMineScript extends Script
 	}
 
 
-    private void emptySack()
-    {
-        ensureLowerFloor();
+	private void emptySack()
+	{
+		ensureLowerFloor();
 
-        while (Microbot.getVarbitValue(VarbitID.MOTHERLODE_SACK_TRANSMIT) > 0 && isRunning())
-        {
-            if (Rs2Inventory.count() <= 2)
-            {
-                Rs2GameObject.interact(ObjectID.MOTHERLODE_SACK);
-                sleepUntil(this::hasOreInInventory);
+		while ((Microbot.getVarbitValue(VarbitID.MOTHERLODE_SACK_TRANSMIT) > 0 || hasOreInInventory()) && isRunning())
+		{
+			if (hasOreInInventory())
+			{
+				useDepositBox();
+			}
+            else if (canDropPayDirt()) {
+                depositHopper();
             }
-            if (hasOreInInventory())
-            {
-                useDepositBox();
-            }
-        }
+			else
+			{
+				Rs2GameObject.interact(ObjectID.MOTHERLODE_SACK);
+				sleepUntil(this::hasOreInInventory);
+			}
+		}
 
-        shouldEmptySack = false;
+		shouldEmptySack = false;
 		shouldRepairWaterwheel = false;
-        Rs2Antiban.takeMicroBreakByChance();
-        status = MLMStatus.IDLE;
-    }
+		Rs2Antiban.takeMicroBreakByChance();
+		status = MLMStatus.IDLE;
+	}
 
     private boolean hasOreInInventory()
     {
@@ -256,8 +258,19 @@ public class MotherloadMineScript extends Script
         );
     }
 
-    private void fixWaterwheel()
-    {
+    private int payDirtCount() {
+        return Rs2Inventory.count(ItemID.PAYDIRT);
+    }
+
+    private boolean canDropPayDirt() {
+        return payDirtCount() > 0 && currentSackCount() < maxSackSize;
+    }
+
+    private int currentSackCount() {
+        return Microbot.getVarbitValue(VarbitID.MOTHERLODE_SACK_TRANSMIT);
+    }
+
+    private void fixWaterwheel() {
         ensureLowerFloor();
 
 		if (!hasHammer()) {
@@ -297,17 +310,16 @@ public class MotherloadMineScript extends Script
             ensureLowerFloor();
         }
 
-		final int paydirtToDeposit = Rs2Inventory.count(ItemID.PAYDIRT);
+        final int paydirtToDeposit = payDirtCount();
 
-        if (hopper.isPresent() && Rs2GameObject.interact(hopper.get()))
-        {
-			sleepUntil(() -> !Rs2Inventory.isFull() && !Rs2Player.isAnimating(), 10_000);
+        if (hopper.isPresent() && Rs2GameObject.interact(hopper.get())) {
+            sleepUntil(() -> payDirtCount() != paydirtToDeposit && !Rs2Player.isAnimating(), 10_000);
 
 			shouldRepairWaterwheel = true;
 
-			// Calculate the effective sack size after deposit as VarbitID.MOTHERLODE_SACK_TRANSMIT takes time to update
-			final int currentSackAmount = Microbot.getVarbitValue(VarbitID.MOTHERLODE_SACK_TRANSMIT);
-			final int effectiveSackAmount = Math.max(currentSackAmount, Math.min(maxSackSize, currentSackAmount + paydirtToDeposit));
+            // Calculate the effective sack size after deposit as VarbitID.MOTHERLODE_SACK_TRANSMIT takes time to update
+            final int currentSackAmount = currentSackCount();
+            final int effectiveSackAmount = Math.max(currentSackAmount, Math.min(maxSackSize, currentSackAmount + paydirtToDeposit));
 
 			shouldEmptySack = effectiveSackAmount >= (maxSackSize - 28);
         }
@@ -622,27 +634,22 @@ public class MotherloadMineScript extends Script
 			if (!Rs2Walker.walkTo(nearestCratePoint)) return false;
 		 */
 
-		while (!Rs2Inventory.hasItem("hammer") && isRunning()) {
-			List<GameObject> crates = Rs2GameObject.getGameObjects(o -> !plugin.getBlacklistedCrates().contains(o.getWorldLocation()) && o.getId() == ObjectID.CRATE2_OLD);
-			Optional<GameObject> closestCrate = Rs2GameObject.pickClosest(crates, GameObject::getWorldLocation, Microbot.getClient().getLocalPlayer().getWorldLocation());
+        if (Rs2Inventory.isFull()) {
+            if (Rs2Inventory.interact("pay-dirt", "drop")) {
+                sleepUntil(() -> !Rs2Inventory.isFull());
+            } else {
+                return false;
+            }
+        }
 
-			if (closestCrate.isEmpty()) {
-				log.error("Unable to find any crates to search for a hammer.");
-				break;
-			}
-
-			GameObject crate = closestCrate.get();
-
-			Rs2GameObject.interact(crate);
-			Rs2Inventory.waitForInventoryChanges(5_000);
-			if (!Rs2Inventory.hasItem("hammer")) {
-				plugin.getBlacklistedCrates().add(crate.getWorldLocation());
-				Rs2Inventory.drop("bronze pickaxe");
-				Rs2Inventory.waitForInventoryChanges(5_000);
-			} else {
-				pickedUpHammer = true;
-				break;
-			}
+        while (!Rs2Inventory.hasItem("hammer") && isRunning()) {
+            //The crate at this point ALWAYS gives the player a hammer
+            Rs2GameObject.interact(new WorldPoint(3752, 5674, 0), "Search");
+            Rs2Inventory.waitForInventoryChanges(5_000);
+            if (Rs2Inventory.hasItem("hammer")) {
+                pickedUpHammer = true;
+                break;
+            }
 
 			sleep(50, 100);
 		}

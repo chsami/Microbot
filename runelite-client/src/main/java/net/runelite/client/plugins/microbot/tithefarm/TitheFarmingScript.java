@@ -4,6 +4,7 @@ import net.runelite.api.*;
 import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.AnimationID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
@@ -73,26 +74,26 @@ public class TitheFarmingScript extends Script {
         switch (lane) {
             case LANE_1_2:
                 plants = new ArrayList<>(Arrays.asList(
-                        new TitheFarmPlant(35, 25, 1),
-                        new TitheFarmPlant(40, 25, 2),
-                        new TitheFarmPlant(35, 28, 3),
-                        new TitheFarmPlant(40, 28, 4),
-                        new TitheFarmPlant(35, 31, 5),
-                        new TitheFarmPlant(40, 31, 6),
-                        new TitheFarmPlant(35, 34, 7),
-                        new TitheFarmPlant(40, 34, 8),
-                        new TitheFarmPlant(35, 40, 9),
-                        new TitheFarmPlant(40, 40, 10),
-                        new TitheFarmPlant(35, 43, 11),
-                        new TitheFarmPlant(40, 43, 12),
-                        new TitheFarmPlant(35, 46, 13),
-                        new TitheFarmPlant(40, 46, 14),
-                        new TitheFarmPlant(35, 49, 15),
-                        new TitheFarmPlant(40, 49, 16),
-                        new TitheFarmPlant(45, 49, 17),
-                        new TitheFarmPlant(45, 46, 18),
-                        new TitheFarmPlant(45, 43, 19),
-                        new TitheFarmPlant(45, 40, 20)));
+                        new TitheFarmPlant(35, 25, 15),
+                        new TitheFarmPlant(40, 25, 16),
+                        new TitheFarmPlant(35, 28, 17),
+                        new TitheFarmPlant(40, 28, 18),
+                        new TitheFarmPlant(35, 31, 19),
+                        new TitheFarmPlant(40, 31, 20),
+                        new TitheFarmPlant(35, 34, 1),
+                        new TitheFarmPlant(40, 34, 2),
+                        new TitheFarmPlant(35, 40, 3),
+                        new TitheFarmPlant(40, 40, 4),
+                        new TitheFarmPlant(35, 43, 5),
+                        new TitheFarmPlant(40, 43, 6),
+                        new TitheFarmPlant(35, 46, 7),
+                        new TitheFarmPlant(40, 46, 8),
+                        new TitheFarmPlant(35, 49, 9),
+                        new TitheFarmPlant(40, 49, 10),
+                        new TitheFarmPlant(45, 49, 11),
+                        new TitheFarmPlant(45, 46, 12),
+                        new TitheFarmPlant(45, 43, 13),
+                        new TitheFarmPlant(45, 40, 14)));
                 break;
             case LANE_2_3:
                 plants = new ArrayList<>(Arrays.asList(
@@ -325,9 +326,14 @@ public class TitheFarmingScript extends Script {
         if (plant.isEmptyPatch()) { //start planting seeds
             Rs2Inventory.interact(TitheFarmMaterial.getSeedForLevel().getName(), "Use");
             clickPatch(plant);
+            // save 1 tick by manually clicking watering can immediately after planting seed
+            sleepUntil(() -> Rs2Player.getAnimation() == AnimationID.FARMING_SEED_DIBBING, 2_000);
+            Rs2Inventory.interact(TitheFarmMaterial.getWateringCan(), "Use");
+            sleep(200,300);
+            clickPatch(plant);
             sleepUntil(Rs2Player::isAnimating, config.sleepAfterPlantingSeed());
             if (Rs2Player.isAnimating()) {
-                sleepUntil(() -> plants.stream().noneMatch(x -> x.getIndex() == finalPlant.getIndex() && x.isEmptyPatch()));
+                sleepUntil(() -> plants.stream().noneMatch(x -> x.getIndex() == finalPlant.getIndex() && x.isValidToWater()));
             }
         }
 

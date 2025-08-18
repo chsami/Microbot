@@ -24,6 +24,10 @@ public class HouseThievingConstants {
     public final static WorldPoint CAIUS_WINDOW_EGRESS = new WorldPoint(1638, 3125, 0);
     public final static WorldPoint CAIUS_INITIAL_THIEVING_CHEST = new WorldPoint(1635, 3124, 0);
 
+    public final static WorldPoint CAIUS_SCOUT_POSITION = new WorldPoint(1628, 3110, 0);
+    public final static WorldPoint VICTOR_SCOUT_POSITION = new WorldPoint(1636, 3107, 0);
+    public final static WorldPoint LAVINIA_SCOUT_POSITION = new WorldPoint(1663, 3106, 0);
+
     public final static WorldPoint PICKPOCKET_LOCATION = new WorldPoint(1680, 3088, 0);
     public final static WorldPoint BANKING_LOCATION = new WorldPoint(1648, 3117, 0);
     public final static WorldPoint BANKING_TILE_LOCATION = new WorldPoint(1648, 3119, 0);
