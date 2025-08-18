@@ -12,7 +12,7 @@ import java.awt.*;
 @PluginDescriptor(
     name = "[bga] Auto Bolt Enchanter",
     description = "Automatically enchants crossbow bolts at the bank",
-    tags = {"magic", "enchanting", "bolts", "skilling"},
+    tags = {"magic"},
     enabledByDefault = false
 )
 @Slf4j

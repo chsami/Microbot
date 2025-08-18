@@ -18,21 +18,11 @@ public interface AutoBoltEnchanterConfig extends Config {
     
     @ConfigItem(
         keyName = "boltType",
-        name = "Bolt type",
+        name = "Type",
         description = "Select which type of bolt to enchant",
         section = generalSection
     )
     default BoltType boltType() {
         return BoltType.SAPPHIRE;
-    }
-    
-    @ConfigItem(
-        keyName = "debugMode",
-        name = "Debug mode",
-        description = "Show detailed debug information in console",
-        section = generalSection
-    )
-    default boolean debugMode() {
-        return false;
     }
 }

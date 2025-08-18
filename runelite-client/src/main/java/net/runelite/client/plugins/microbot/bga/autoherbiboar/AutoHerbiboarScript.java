@@ -843,6 +843,14 @@ public class AutoHerbiboarScript extends Script {
                                      log.info("magic secateurs not found in bank");
                                 }
                             }
+                            
+                            // equip magic secateurs if in inventory
+                            if (config.useMagicSecateurs() && !Rs2Equipment.isWearing(ItemID.FAIRY_ENCHANTED_SECATEURS) && Rs2Inventory.contains(ItemID.FAIRY_ENCHANTED_SECATEURS)) {
+                                log.info("equipping magic secateurs");
+                                Rs2Inventory.wield(ItemID.FAIRY_ENCHANTED_SECATEURS); // equip the secateurs
+                                boolean secateursEquipped = sleepUntil(() -> Rs2Equipment.isWearing(ItemID.FAIRY_ENCHANTED_SECATEURS), 3000); // wait for equipment
+                                log.info("magic secateurs equipped: " + secateursEquipped);
+                            }
                             // withdraw hunter potions if needed
                             if (config.useHunterPotions() && !Rs2Inventory.contains(9998, 10000, 10002, 10004)) {
                                  log.info("withdrawing hunter potions");
