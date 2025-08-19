@@ -322,7 +322,11 @@ class MicrobotConfigPanel extends PluginPanel
 
 			if (cid.getType() == boolean.class)
 			{
-				item.add(createCheckbox(cd, cid), BorderLayout.EAST);
+				if (hasToggleAnnotation(cid)) {
+					item.add(createToggleSwitch(cd, cid), BorderLayout.EAST);
+				} else {
+					item.add(createCheckbox(cd, cid), BorderLayout.EAST);
+				}
 			}
 			else if (cid.getType() == int.class)
 			{
@@ -376,7 +380,7 @@ class MicrobotConfigPanel extends PluginPanel
 			}
 			else
 			{
-				section.add(item);
+				addItemToSection(section, item, cid, cd);
 			}
 		}
 
@@ -440,7 +444,10 @@ class MicrobotConfigPanel extends PluginPanel
 	{
 		JCheckBox checkbox = new JCheckBox();
 		checkbox.setSelected(Boolean.parseBoolean(configManager.getConfiguration(cd.getGroup().value(), cid.getItem().keyName())));
-		checkbox.addActionListener(ae -> changeConfiguration(checkbox, cd, cid));
+		checkbox.addActionListener(ae -> {
+			handleExclusiveSelection(checkbox, cd, cid);
+			changeConfiguration(checkbox, cd, cid);
+		});
 		return checkbox;
 	}
 
@@ -808,6 +815,11 @@ class MicrobotConfigPanel extends PluginPanel
 			JCheckBox checkbox = (JCheckBox) component;
 			configManager.setConfiguration(cd.getGroup().value(), cid.getItem().keyName(), "" + checkbox.isSelected());
 		}
+		else if (component instanceof MicrobotPluginToggleButton)
+		{
+			MicrobotPluginToggleButton toggleSwitch = (MicrobotPluginToggleButton) component;
+			configManager.setConfiguration(cd.getGroup().value(), cid.getItem().keyName(), "" + toggleSwitch.isSelected());
+		}
 		else if (component instanceof JSpinner)
 		{
 			JSpinner spinner = (JSpinner) component;
@@ -891,5 +903,166 @@ class MicrobotConfigPanel extends PluginPanel
 			rebuild();
 		});
 		return menuItem;
+	}
+
+	private boolean hasToggleAnnotation(ConfigItemDescriptor cid) {
+		try {
+			// check if the item key name contains "toggle" as a convention
+			return cid.getItem().keyName().toLowerCase().contains("toggle");
+		} catch (Exception e) {
+			return false;
+		}
+	}
+
+	private MicrobotPluginToggleButton createToggleSwitch(ConfigDescriptor cd, ConfigItemDescriptor cid) {
+		MicrobotPluginToggleButton toggleSwitch = new MicrobotPluginToggleButton();
+		toggleSwitch.setSelected(Boolean.parseBoolean(configManager.getConfiguration(cd.getGroup().value(), cid.getItem().keyName())));
+		toggleSwitch.addActionListener(ae -> {
+			handleExclusiveSelection(toggleSwitch, cd, cid);
+			changeConfiguration(toggleSwitch, cd, cid);
+		});
+		return toggleSwitch;
+	}
+
+	private void addItemToSection(JPanel section, JPanel item, ConfigItemDescriptor cid, ConfigDescriptor cd) {
+		int columns = getColumnCount(cid, cd);
+		String columnSide = getColumnSide(cid);
+		
+		if (columns <= 1) {
+			// normal single-column layout
+			section.add(item);
+		} else {
+			// multi-column layout
+			JPanel gridContainer = findOrCreateGridContainer(section, columns);
+			addItemToColumn(gridContainer, item, columnSide, columns);
+		}
+	}
+	
+	private int getColumnCount(ConfigItemDescriptor cid, ConfigDescriptor cd) {
+		// find the section this item belongs to
+		String sectionKey = cid.getItem().section();
+		for (ConfigSectionDescriptor sectionDesc : cd.getSections()) {
+			if (sectionDesc.getKey().equals(sectionKey)) {
+				return sectionDesc.getSection().columns();
+			}
+		}
+		return 1; // default to single column if section not found
+	}
+	
+	private String getColumnSide(ConfigItemDescriptor cid) {
+		String columnSide = cid.getItem().columnSide();
+		// default to "left" if not specified or empty
+		return columnSide.isEmpty() ? "left" : columnSide;
+	}
+
+	private JPanel findOrCreateGridContainer(JPanel section, int columns) {
+		// look for existing grid container
+		for (Component comp : section.getComponents()) {
+			if (comp instanceof JPanel && "gridContainer".equals(comp.getName())) {
+				return (JPanel) comp;
+			}
+		}
+		
+		// create new grid container
+		JPanel gridContainer = new JPanel(new BorderLayout());
+		gridContainer.setName("gridContainer");
+		
+		if (columns == 2) {
+			// create left and right columns
+			JPanel leftColumn = new JPanel();
+			leftColumn.setLayout(new BoxLayout(leftColumn, BoxLayout.Y_AXIS));
+			leftColumn.setBorder(new EmptyBorder(0, 0, 0, 10)); // right padding
+			leftColumn.setName("leftColumn");
+			
+			JPanel rightColumn = new JPanel();
+			rightColumn.setLayout(new BoxLayout(rightColumn, BoxLayout.Y_AXIS));
+			rightColumn.setBorder(new EmptyBorder(0, 10, 0, 0)); // left padding
+			rightColumn.setName("rightColumn");
+			
+			gridContainer.add(leftColumn, BorderLayout.WEST);
+			gridContainer.add(rightColumn, BorderLayout.EAST);
+		} else {
+			// for other column counts, use horizontal flow layout
+			JPanel flowPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+			gridContainer.add(flowPanel, BorderLayout.CENTER);
+		}
+		
+		section.add(gridContainer);
+		return gridContainer;
+	}
+	
+	private void addItemToColumn(JPanel gridContainer, JPanel item, String columnSide, int columns) {
+		if (columns == 2) {
+			// find the correct column panel based on side
+			String targetColumnName = "left".equals(columnSide) ? "leftColumn" : "rightColumn";
+			for (Component comp : gridContainer.getComponents()) {
+				if (comp instanceof JPanel && targetColumnName.equals(comp.getName())) {
+					((JPanel) comp).add(item);
+					return;
+				}
+			}
+			// fallback to left column if target not found
+			for (Component comp : gridContainer.getComponents()) {
+				if (comp instanceof JPanel && "leftColumn".equals(comp.getName())) {
+					((JPanel) comp).add(item);
+					return;
+				}
+			}
+		} else {
+			// for other layouts, add to the flow panel
+			for (Component comp : gridContainer.getComponents()) {
+				if (comp instanceof JPanel) {
+					((JPanel) comp).add(item);
+					return;
+				}
+			}
+		}
+	}
+
+	private void handleExclusiveSelection(Component component, ConfigDescriptor cd, ConfigItemDescriptor cid) {
+		// check if this is a boolean component being set to true
+		boolean isSelected = false;
+		if (component instanceof JCheckBox) {
+			isSelected = ((JCheckBox) component).isSelected();
+		} else if (component instanceof MicrobotPluginToggleButton) {
+			isSelected = ((MicrobotPluginToggleButton) component).isSelected();
+		}
+
+		// only handle exclusive logic if the item is being turned on
+		if (!isSelected) {
+			return;
+		}
+
+		// find the section this item belongs to and check if it's exclusive
+		String sectionKey = cid.getItem().section();
+		ConfigSectionDescriptor exclusiveSection = null;
+		for (ConfigSectionDescriptor sectionDesc : cd.getSections()) {
+			if (sectionDesc.getKey().equals(sectionKey) && sectionDesc.getSection().exclusive()) {
+				exclusiveSection = sectionDesc;
+				break;
+			}
+		}
+
+		// if section is not exclusive, no special handling needed
+		if (exclusiveSection == null) {
+			return;
+		}
+
+		// turn off all other boolean items in this exclusive section
+		for (ConfigItemDescriptor otherItem : cd.getItems()) {
+			if (otherItem == cid) {
+				continue; // skip the current item
+			}
+			
+			// check if item is in the same section and is boolean type
+			if (otherItem.getItem().section().equals(sectionKey) && 
+				otherItem.getType() == boolean.class) {
+				// set other boolean items to false
+				configManager.setConfiguration(cd.getGroup().value(), otherItem.getItem().keyName(), "false");
+			}
+		}
+
+		// rebuild the panel to reflect the changes
+		SwingUtilities.invokeLater(this::rebuild);
 	}
 }
