@@ -40,4 +40,8 @@ public @interface ConfigSection
 	int position();
 
 	boolean closedByDefault() default false;
+
+	int columns() default 1;
+
+	boolean exclusive() default false;
 }
