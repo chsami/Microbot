@@ -11,7 +11,7 @@ import net.runelite.client.config.Notification;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.birdhouseruns.FornBirdhouseRunsInfo.states;
-import net.runelite.client.plugins.microbot.sticktothescript.common.enums.LogType;
+import net.runelite.client.plugins.microbot.birdhouseruns.enums.Log;
 import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
@@ -289,16 +289,16 @@ public class FornBirdhouseRunsScript extends Script {
         }
         
         // Withdraw logs
-        LogType selectedLogType = config.logType();
+		Log selectedLogType = config.logType();
         // Check if bank has enough logs first
-        int logCount = Rs2Bank.count(selectedLogType.getLogID());
+        int logCount = Rs2Bank.count(selectedLogType.getItemId());
         if (logCount < 4) {
-            setupErrorMessage = "Need 4 " + selectedLogType.getLogName().toLowerCase() + " but only have " + logCount + " in bank";
+            setupErrorMessage = "Need 4 " + selectedLogType.getItemName().toLowerCase() + " but only have " + logCount + " in bank";
             log.error(setupErrorMessage);
             return false;
         }
-        if (!Rs2Bank.withdrawX(selectedLogType.getLogID(), 4)) {
-            setupErrorMessage = "Failed to withdraw " + selectedLogType.getLogName().toLowerCase();
+        if (!Rs2Bank.withdrawX(selectedLogType.getItemId(), 4)) {
+            setupErrorMessage = "Failed to withdraw " + selectedLogType.getItemName().toLowerCase();
             log.error(setupErrorMessage);
             return false;
         }

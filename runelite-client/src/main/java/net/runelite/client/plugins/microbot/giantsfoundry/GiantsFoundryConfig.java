@@ -5,7 +5,6 @@ import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigInformation;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.plugins.microbot.giantsfoundry.enums.SmithableBars;
-import net.runelite.client.plugins.microbot.thieving.enums.ThievingNpc;
 
 @ConfigGroup(GiantsFoundryConfig.GROUP)
 @ConfigInformation(

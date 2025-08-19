@@ -48,7 +48,6 @@ public @interface PluginDescriptor
     String Geoff = "<html>[<font color=#ffbc03>G</font>] ";
     String Bttqjs = "<html>[<font color=#e57373>J</font>] ";
 	String VOX = "<html>[<font color=#5F0F40>\uD83C\uDF33</font>] ";
-    String StickToTheScript = "<html>[<font color=#FF4F00>STTS</font>] ";
     String Gabulhas = "<html>[<font color=#F44FB0>Gab</font>] ";
     String zerozero ="<html>[<font color=#000000>00</font>] " ;
     String LiftedMango = "<html>[<font color=#00FFFF>LM</font>] ";

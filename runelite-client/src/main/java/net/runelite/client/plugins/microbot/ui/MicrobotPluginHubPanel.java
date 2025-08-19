@@ -192,7 +192,7 @@ public class MicrobotPluginHubPanel extends PluginPanel {
             pluginName.setFont(FontManager.getRunescapeBoldFont());
             pluginName.setToolTipText(manifest.getDisplayName());
 
-            JLabel author = new JLabel(manifest.getAuthor());
+            JLabel author = new JLabel(manifest.getAuthors().length > 1 ? "Multiple authors" : manifest.getAuthor());
             author.setFont(FontManager.getRunescapeSmallFont());
             author.setToolTipText(manifest.getAuthor());
 
