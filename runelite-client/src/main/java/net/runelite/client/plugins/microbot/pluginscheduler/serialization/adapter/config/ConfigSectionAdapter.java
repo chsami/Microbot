@@ -19,6 +19,8 @@ public class ConfigSectionAdapter implements JsonSerializer<ConfigSection>, Json
         result.addProperty("description", src.description());
         result.addProperty("position", src.position());
         result.addProperty("closedByDefault", src.closedByDefault());
+        result.addProperty("columns", src.columns());
+        result.addProperty("exclusive", src.exclusive());
         return result;
     }
 
@@ -30,6 +32,8 @@ public class ConfigSectionAdapter implements JsonSerializer<ConfigSection>, Json
         final String description = jsonObject.has("description") ? jsonObject.get("description").getAsString() : "";
         final int position = jsonObject.has("position") ? jsonObject.get("position").getAsInt() : 0;
         final boolean closedByDefault = jsonObject.has("closedByDefault") && jsonObject.get("closedByDefault").getAsBoolean();
+        final int columns = jsonObject.has("columns") ? jsonObject.get("columns").getAsInt() : 1;
+        final boolean exclusive = jsonObject.has("exclusive") && jsonObject.get("exclusive").getAsBoolean();
         
         // Create a proxy implementation of ConfigSection annotation
         return new ConfigSection() {
@@ -56,6 +60,16 @@ public class ConfigSectionAdapter implements JsonSerializer<ConfigSection>, Json
             @Override
             public boolean closedByDefault() {
                 return closedByDefault;
+            }
+
+            @Override
+            public int columns() {
+                return columns;
+            }
+
+            @Override
+            public boolean exclusive() {
+                return exclusive;
             }
         };
     }

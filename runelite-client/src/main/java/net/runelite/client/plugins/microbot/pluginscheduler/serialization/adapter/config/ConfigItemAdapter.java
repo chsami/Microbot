@@ -23,6 +23,7 @@ public class ConfigItemAdapter implements JsonSerializer<ConfigItem>, JsonDeseri
         result.addProperty("hidden", src.hidden());
         result.addProperty("secret", src.secret());
         result.addProperty("warning", src.warning());
+        result.addProperty("columnSide", src.columnSide());
         return result;
     }
 
@@ -38,6 +39,7 @@ public class ConfigItemAdapter implements JsonSerializer<ConfigItem>, JsonDeseri
         final boolean hidden = jsonObject.has("hidden") && jsonObject.get("hidden").getAsBoolean();
         final boolean secret = jsonObject.has("secret") && jsonObject.get("secret").getAsBoolean();
         final String warning = jsonObject.has("warning") ? jsonObject.get("warning").getAsString() : "";
+        final String columnSide = jsonObject.has("columnSide") ? jsonObject.get("columnSide").getAsString() : "";
         
         // Create a proxy implementation of ConfigItem annotation
         return new ConfigItem() {
@@ -84,6 +86,11 @@ public class ConfigItemAdapter implements JsonSerializer<ConfigItem>, JsonDeseri
             @Override
             public String warning() {
                 return warning;
+            }
+
+            @Override
+            public String columnSide() {
+                return columnSide;
             }
         };
     }
