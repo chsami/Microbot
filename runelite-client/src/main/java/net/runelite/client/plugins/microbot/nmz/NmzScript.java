@@ -54,7 +54,7 @@ public class NmzScript extends Script {
 
     public boolean canStartNmz() {
         return Rs2Inventory.count("overload (4)") == config.overloadPotionAmount() ||
-                (Rs2Inventory.hasItem("prayer potion") && (config.togglePrayProtect() || config.togglePrayPiety()));
+                (Rs2Inventory.hasItem("prayer potion") && (config.togglePrayProtect() || config.toggleOffensivePrayer()));
     }
 
     @Inject
@@ -155,7 +155,7 @@ public class NmzScript extends Script {
         prayerPotionScript.run();
         if (config.togglePrayProtect())
             Rs2Prayer.toggle(Rs2PrayerEnum.PROTECT_MELEE, true);
-        if (config.togglePrayPiety())
+        if (config.toggleOffensivePray())
             Rs2Prayer.toggle(Rs2PrayerEnum.PIETY, true);
         if (!useOrbs() && config.walkToCenter()) {
             walkToCenter();
@@ -232,9 +232,30 @@ public class NmzScript extends Script {
         }
     }
 
+   private void handleAutoOffensivePrayer() {
+        if (!config.toggleOffensivePray() || !Rs2Player.isInCombat()) {
+           return;
+        }
+       if (meleeInventorySetup.doesEquipmentMatch()) {
+        var bestMeleePrayer = Rs2Prayer.getBestMeleePrayer();
+        if (bestMeleePrayer != null) {
+            Rs2Prayer.toggle(bestMeleePrayer, true);
+        }
+    } else if (rangedInventorySetup.doesEquipmentMatch()) {
+        var bestRangePrayer = Rs2Prayer.getBestRangePrayer();
+        if (bestRangePrayer != null) {
+            Rs2Prayer.toggle(bestRangePrayer, true);
+        }
+    } else if (magicInventorySetup.doesEquipmentMatch()) {
+        var bestMagePrayer = Rs2Prayer.getBestMagePrayer();
+        if (bestMagePrayer != null) {
+            Rs2Prayer.toggle(bestMagePrayer, true);
+        }
+    }
+}
 
     public void manageSelfHarm() {
-        int currentHP = Microbot.getClient().getBoostedSkillLevel(Skill.HITPOINTS);
+   int currentHP = Microbot.getClient().getBoostedSkillLevel(Skill.HITPOINTS);
         int currentRangedLevel = Microbot.getClient().getBoostedSkillLevel(Skill.RANGED);
         int realRangedLevel = Microbot.getClient().getRealSkillLevel(Skill.RANGED);
         boolean hasOverloadPotions = config.overloadPotionAmount() > 0;
