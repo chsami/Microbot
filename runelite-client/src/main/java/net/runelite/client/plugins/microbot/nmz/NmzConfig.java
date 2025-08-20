@@ -124,7 +124,7 @@ public interface NmzConfig extends Config {
             position = 6,
             section = generalSection
     )
-    default boolean togglePrayPiety()
+    default boolean toggleOffensivePray()
     {
         return false;
     }
