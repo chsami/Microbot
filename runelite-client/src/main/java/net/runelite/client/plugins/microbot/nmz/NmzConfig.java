@@ -107,7 +107,7 @@ public interface NmzConfig extends Config {
         return false;
     }
     @ConfigItem(
-            keyName = "Auto Pray",
+            keyName = "Auto Prayprotect",
             name = "Auto drink prayer potion and pray",
             description = "Automatically drinks prayer potions and protects",
             position = 5,
@@ -118,9 +118,9 @@ public interface NmzConfig extends Config {
         return false;
     }
     @ConfigItem(
-            keyName = "Piety",
+            keyName = "Offensive Pray",
             name = "Auto drink prayer potion and piety",
-            description = "Automatically drinks prayer potions and piety",
+            description = "sets best offensive prayers for current gear",
             position = 6,
             section = generalSection
     )
