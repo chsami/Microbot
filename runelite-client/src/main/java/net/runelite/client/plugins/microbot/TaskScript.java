@@ -15,8 +15,8 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class TaskScript extends Script {
 
-    private static List<Task> nodes;
-    private static Config config;
+    private List<Task> nodes;
+    private Config config;
 
     public TaskScript(Config pluginConfig) {
         config = pluginConfig;
@@ -30,11 +30,14 @@ public class TaskScript extends Script {
     }
 
     public void shutdown() {
-        nodes = null;
         super.shutdown();
+        nodes = java.util.Collections.emptyList();
     }
 
     public boolean run() {
+        if (mainScheduledFuture != null && !mainScheduledFuture.isDone()) {
+            return false; // already running
+        }
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             Rs2Antiban.setActivityIntensity(ActivityIntensity.LOW);
             Rs2AntibanSettings.naturalMouse = true;
@@ -42,15 +45,21 @@ public class TaskScript extends Script {
             if (!super.run()) return;
 
             try {
+                final List<Task> snapshot = this.nodes;
+                if (snapshot == null || snapshot.isEmpty()) {
+                    return;
+                }
                 for (Task node : nodes) {
                     if (node.accept()) {
                         sleep(node.execute());
                         break;
                     }
                 }
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                Microbot.logStackTrace(this.getClass().getSimpleName(), ie);
             } catch (Exception ex) {
-                System.out.println("Error was thrown");
-                System.out.println(ex.getMessage());
+                Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
             }
         }, 0, 100, TimeUnit.MILLISECONDS);
         return true;
