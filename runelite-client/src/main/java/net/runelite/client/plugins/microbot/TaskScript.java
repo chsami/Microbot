@@ -2,12 +2,9 @@ package net.runelite.client.plugins.microbot;
 
 
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.config.Config;
-import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity;
-import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -16,11 +13,6 @@ import java.util.concurrent.TimeUnit;
 public class TaskScript extends Script {
 
     private List<Task> nodes;
-    private Config config;
-
-    public TaskScript(Config pluginConfig) {
-        config = pluginConfig;
-    }
 
     public TaskScript() {
     }
