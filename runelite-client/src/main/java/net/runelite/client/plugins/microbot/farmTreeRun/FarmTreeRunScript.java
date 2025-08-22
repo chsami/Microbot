@@ -4,8 +4,6 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.Notifier;
-import net.runelite.client.config.Notification;
 import net.runelite.client.plugins.microbot.farmTreeRun.enums.FarmTreeRunState;
 import net.runelite.client.plugins.microbot.farmTreeRun.enums.FruitTreeEnum;
 import net.runelite.client.plugins.microbot.farmTreeRun.enums.HardTreeEnums;
@@ -16,7 +14,6 @@ import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
-import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
@@ -87,7 +84,10 @@ public class FarmTreeRunScript extends Script {
         LLETYA_FRUIT_TREE_PATCH(26579, new WorldPoint(2345, 3163, 0), TreeKind.FRUIT_TREE, 1, 0),
         FOSSIL_TREE_PATCH_A(30482, new WorldPoint(3718, 3835, 0), TreeKind.HARD_TREE, 1, 0),
         FOSSIL_TREE_PATCH_B(30480, new WorldPoint(3709, 3836, 0), TreeKind.HARD_TREE, 1, 0),
-        FOSSIL_TREE_PATCH_C(30481, new WorldPoint(3701, 3840, 0), TreeKind.HARD_TREE, 1, 0);
+        FOSSIL_TREE_PATCH_C(30481, new WorldPoint(3701, 3840, 0), TreeKind.HARD_TREE, 1, 0),
+        AUBURNVALE_TREE_PATCH(56953, new WorldPoint(1365, 3320, 0), TreeKind.TREE, 1, 0),
+        KASTORI_FRUIT_TREE_PATCH(56955, new WorldPoint(1349, 3058, 0), TreeKind.FRUIT_TREE, 1, 12765),
+        AVIUM_SAVANNAH_HARDWOOD_PATCH(50692, new WorldPoint(1684, 2974, 0), TreeKind.HARD_TREE,1,0);
 
         private final int id;
         private final WorldPoint location;
@@ -301,9 +301,46 @@ public class FarmTreeRunScript extends Script {
 							if (!handledPatch)
 								return;
 						}
-						botStatus = FINISHED;
+						botStatus = HANDLE_AUBURNVALE_TREE_PATCH;
 						break;
-					case FINISHED:
+
+                    case HANDLE_AUBURNVALE_TREE_PATCH: {
+                        patch = Patch.AUBURNVALE_TREE_PATCH;
+                        if (config.auburnTreePatch()) {
+                            if (walkToLocation(patch.getLocation())) {
+                                handledPatch = handlePatch(config, patch);
+                            }
+                            if (!handledPatch) return;  // stay in this state until done
+                        }
+                        botStatus = HANDLE_KASTORI_FRUIT_TREE_PATCH;
+                        break;
+                    }
+                    case HANDLE_KASTORI_FRUIT_TREE_PATCH: {
+                        patch = Patch.KASTORI_FRUIT_TREE_PATCH;
+                        if (config.kastoriFruitTreePatch()) {
+                            if (walkToLocation(patch.getLocation())) {
+                                handledPatch = handlePatch(config, patch);
+                            }
+                            if (!handledPatch) return;
+                        }
+                        botStatus = HANDLE_AVIUM_SAVANNAH_HARDWOOD_PATCH;
+                        break;
+                    }
+
+                    case HANDLE_AVIUM_SAVANNAH_HARDWOOD_PATCH: {
+                        patch = Patch.AVIUM_SAVANNAH_HARDWOOD_PATCH;
+                        if (config.aviumSavannahHardwoodPatch()) {
+                            if (walkToLocation(patch.getLocation())) {
+                                handledPatch = handlePatch(config, patch);
+                            }
+                            if (!handledPatch) return;
+                        }
+                        botStatus = FINISHED;
+                        break;
+                    }
+
+
+                    case FINISHED:
 						Microbot.getClientThread().runOnClientThreadOptional(() -> {
 								Microbot.getClient().addChatMessage(ChatMessageType.ENGINE, "", "Tree run completed.", "Acun", false);
 								Microbot.getClient().addChatMessage(ChatMessageType.ENGINE, "", "Made with love by Acun.", "Acun", false);
@@ -839,7 +876,8 @@ public class FarmTreeRunScript extends Script {
                 config::lumbridgeTreePatch,
                 config::taverleyTreePatch,
                 config::varrockTreePatch,
-                config::farmingGuildTreePatch
+                config::farmingGuildTreePatch,
+                config::auburnTreePatch
         );
 
         // Filter the patches to include only those that return true
@@ -853,7 +891,8 @@ public class FarmTreeRunScript extends Script {
         List<BooleanSupplier> allHardTreePatches = List.of(
                 config::fossilTreePatch,
                 config::fossilTreePatch,
-                config::fossilTreePatch
+                config::fossilTreePatch,
+                config::aviumSavannahHardwoodPatch
         );
 
         // Filter the patches to include only those that return true
@@ -870,7 +909,8 @@ public class FarmTreeRunScript extends Script {
                 config::farmingGuildFruitTreePatch,
                 config::lletyaFruitTreePatch,
                 config::gnomeStrongholdFruitTreePatch,
-                config::treeGnomeVillageFruitTreePatch
+                config::treeGnomeVillageFruitTreePatch,
+                config::kastoriFruitTreePatch
         );
 
         // Filter the patches to include only those that return true

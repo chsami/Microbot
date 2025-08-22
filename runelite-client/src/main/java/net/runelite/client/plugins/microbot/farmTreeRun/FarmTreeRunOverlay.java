@@ -23,7 +23,7 @@ public class FarmTreeRunOverlay extends OverlayPanel {
         try {
             panelComponent.setPreferredSize(new Dimension(200, 300));
             panelComponent.getChildren().add(TitleComponent.builder()
-                    .text("Acun's farm tree runner (v1.3.0)")
+                    .text("Acun's farm tree runner (v1.3.1)")
                     .color(Color.GREEN)
                     .build());
 
