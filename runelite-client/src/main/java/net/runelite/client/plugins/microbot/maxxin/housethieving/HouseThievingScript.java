@@ -6,9 +6,11 @@ import net.runelite.api.QuestState;
 import net.runelite.api.TileObject;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
@@ -75,6 +77,21 @@ public class HouseThievingScript extends Script {
                 if( state == null )
                     state = State.BANKING;
 
+                if (state != State.THIEVING_HOUSES)
+                {
+                    if (BreakHandlerScript.isLockState())
+                    {
+                        BreakHandlerScript.setLockState(false);
+                    }
+                }
+                else
+                {
+                    if (!BreakHandlerScript.isLockState())
+                    {
+                        BreakHandlerScript.setLockState(true);
+                    }
+                }
+
                 if( currentThievingHouse == null )
                     currentThievingHouse = getThievingHouse();
 
@@ -84,7 +101,7 @@ public class HouseThievingScript extends Script {
                         handlePickPocketing(config);
                         break;
                     case FINDING_HOUSE:
-                        handleFindingHouse(config, houseNpc);
+                        handleFindingHouse(config);
                         break;
                     case THIEVING_HOUSES:
                         handleThievingHouse(houseNpc);
@@ -103,6 +120,10 @@ public class HouseThievingScript extends Script {
     }
 
     private void handlePickPocketing(HouseThievingConfig config) {
+        if (Rs2Player.isInteracting()) {
+            Microbot.log("Player is already interacting with an NPC, waiting for interaction to finish", Level.DEBUG);
+            return;
+        }
         var hasFood = !Rs2Inventory.getInventoryFood().isEmpty();
         var hasDodgyNecklaceInv = getDodgyNecklaceAmount() > 0;
         var hasDodgyNecklaceEquipped = Rs2Equipment.isWearing(DODGY_NECKLACE);
@@ -182,12 +203,7 @@ public class HouseThievingScript extends Script {
                 sleepUntil(() -> !Rs2Player.isStunned(), 600);
             Rs2Npc.interact(targetWealthyCitizen, "Pickpocket");
             Rs2Random.waitEx(600.0, 200.0);
-
-            // Make sure we prioritize pickpocketing the distracted citizen
-            if(distractedWealthyCitizen != null && !Rs2Player.isInteracting()) {
-                Rs2Npc.interact(targetWealthyCitizen, "Pickpocket");
-                Rs2Random.waitEx(600.0, 200.0);
-            }
+            sleepUntil(() -> !Rs2Player.isInteracting() && !Rs2Player.isAnimating(), 10000);
         }
 
         if(distractedWealthyCitizen != null && config.worldHopForDistractedCitizens()) {
@@ -216,7 +232,7 @@ public class HouseThievingScript extends Script {
         ).findFirst().orElse(null);
     }
 
-    private void handleFindingHouse(HouseThievingConfig config, Rs2NpcModel houseNpc) {
+    private void handleFindingHouse(HouseThievingConfig config) {
         if( Rs2Inventory.emptySlotCount() < 5 ) {
             state = State.BANKING;
             return;
@@ -230,33 +246,43 @@ public class HouseThievingScript extends Script {
             }
         }
 
-        Rs2Random.waitEx(2000.0, 100.0);
-        attemptWaitForHouseNpc(houseNpc);
-
-        var lockedDoorEntrance = currentThievingHouse.lockedDoorEntrance;
-        if( Rs2Player.getWorldLocation().distanceTo(lockedDoorEntrance) >= 3 ) {
-            Rs2Walker.walkTo(lockedDoorEntrance, 5);
+        var distanceToScout = Rs2Player.getWorldLocation().distanceTo(currentThievingHouse.scoutPosition);
+        var distanceToDoor = Rs2Player.getWorldLocation().distanceTo(currentThievingHouse.lockedDoorEntrance);
+        if( distanceToScout >= 3 && distanceToDoor >= 3 ) {
+            Rs2Walker.walkTo(currentThievingHouse.scoutPosition, 2);
+            sleepUntil(() -> !Rs2Player.isAnimating());
             Rs2Random.waitEx(800.0, 200.0);
         }
+
         var lockedDoorTile = Rs2Tile.getTile(
                 currentThievingHouse.lockedDoorEgress.getX(),
                 currentThievingHouse.lockedDoorEgress.getY());
         if( lockedDoorTile != null ) {
             var wallObject = lockedDoorTile.getWallObject();
-            if( wallObject != null && wallObject.getId() == LOCKED_DOOR_ID ) {
+            var houseNpc = Rs2Npc.getNpc(currentThievingHouse.npcName);
+            if( wallObject != null && wallObject.getId() == LOCKED_DOOR_ID) {
                 Microbot.log(currentThievingHouse.npcName + " house can be thieved", Level.INFO);
-                Rs2GameObject.interact(wallObject);
-                Rs2Random.waitEx(2000.0, 100.0);
-                sleepUntil(() -> !Rs2Player.isInteracting());
-                Rs2Random.waitEx(2000.0, 100.0);
-                if( determineIfEnteredHouse() ) {
+                attemptWaitForHouseNpc(houseNpc);
+
+                if (!Rs2Tile.isTileReachable(currentThievingHouse.houseCenter))
+                {
+                    Rs2GameObject.interact(wallObject);
+                    Rs2Random.waitEx(2000.0, 100.0);
+                    sleepUntil(() -> !Rs2Player.isInteracting() && !Rs2Player.isAnimating(600));
+                    Rs2Random.waitEx(2000.0, 100.0);
+                    sleepUntil(() -> Rs2Tile.isTileReachable(currentThievingHouse.houseCenter), 10000);
+                    Microbot.log("Entered " + currentThievingHouse.npcName + " house", Level.INFO);
+                }
+                if (Rs2Tile.isTileReachable(currentThievingHouse.houseCenter)) {
                     currentThievingObject = null;
                     lastThievingSearch = null;
                     state = State.THIEVING_HOUSES;
+                    Microbot.log("Starting thieving in " + currentThievingHouse.npcName + " house.", Level.INFO);
+                    return;
                 }
+                Microbot.log("Failed to enter " + currentThievingHouse.npcName + " house, trying again..", Level.INFO);
             } else {
                 Rs2Random.waitEx(3000.0, 100.0);
-                attemptWaitForHouseNpc(houseNpc);
                 setNextThievingHouse();
                 Microbot.log("Checking " + currentThievingHouse.npcName + " house for thieving..", Level.INFO);
             }
@@ -267,36 +293,18 @@ public class HouseThievingScript extends Script {
         // Try to determine if NPC is leaving or not - could maybe look at overhead text?
         if(houseNpc != null) {
             var overheadText = houseNpc.getOverheadText();
-            var waitForHouseNpc = overheadText != null && !overheadText.isEmpty() || determineNpcLeaving(houseNpc);
-            if(waitForHouseNpc && !determineIfEnteredHouse() && determineNpcLeaving(houseNpc)) {
-                Microbot.log("Waiting in case house NPC is leaving..", Level.INFO);
+            if (overheadText != null && !overheadText.isEmpty()) {
+                Microbot.log("House NPC is talking about leaving, waiting for them to leave..", Level.INFO);
                 Rs2Random.waitEx(5000.0, 200.0);
             }
         }
-    }
-
-    private boolean determineNpcLeaving(Rs2NpcModel houseNpc) {
-        var houseNpcLoc = houseNpc.getWorldLocation();
-        switch (currentThievingHouse) {
-            case CAIUS:
-                return houseNpcLoc.getX() <= currentThievingHouse.lockedDoorEntrance.getX();
-            case LAVINIA:
-            case VICTOR:
-                return houseNpcLoc.getY() >= currentThievingHouse.lockedDoorEntrance.getY();
+        var distanceToHouseNpc = houseNpc != null ? currentThievingHouse.lockedDoorEntrance.distanceTo(houseNpc.getWorldLocation()) : 100;
+        Microbot.log("Distance from house NPC to Door: " + distanceToHouseNpc, Level.INFO);
+        if (distanceToHouseNpc < 6) {
+            Microbot.log("House NPC is too close to locked door, waiting for them to leave..", Level.INFO);
+            Rs2Walker.walkTo(currentThievingHouse.lockedDoorEntrance);
+            sleepUntil(() -> (houseNpc != null ? currentThievingHouse.lockedDoorEntrance.distanceTo(houseNpc.getWorldLocation()) : 100) > 6);
         }
-        return false;
-    }
-
-    private boolean determineIfEnteredHouse() {
-        var playerLoc = Rs2Player.getWorldLocation();
-        switch (currentThievingHouse) {
-            case CAIUS:
-                return playerLoc.getX() > currentThievingHouse.lockedDoorEntrance.getX();
-            case LAVINIA:
-            case VICTOR:
-                return playerLoc.getY() < currentThievingHouse.lockedDoorEntrance.getY();
-        }
-        return false;
     }
 
     private void handleThievingHouse(Rs2NpcModel houseNpc) {
@@ -309,7 +317,7 @@ public class HouseThievingScript extends Script {
 
         if( houseNpc != null ) {
             var laviniaWorldLoc = houseNpc.getWorldLocation();
-            if( laviniaWorldLoc.distanceTo(currentThievingHouse.houseCenter) < 9 ) {
+            if( laviniaWorldLoc.distanceTo(currentThievingHouse.lockedDoorEntrance) < 5 ) {
                 Microbot.log("Owner in house or approaching currently", Level.INFO);
                 if (exitHouse())
                     return;
@@ -323,12 +331,20 @@ public class HouseThievingScript extends Script {
                 var tileObject = Rs2Tile.getTile(currentThievingHouse.initialThievingChest.getX(), currentThievingHouse.initialThievingChest.getY());
                 if( tileObject != null ) {
                     currentThievingObject = Rs2GameObject.getGameObject(currentThievingHouse.initialThievingChest);
+                    if (!Rs2Camera.isTileOnScreen(currentThievingObject.getLocalLocation()))
+                    {
+                        Rs2Camera.turnTo(currentThievingObject);
+                    }
                     Rs2GameObject.interact(currentThievingObject, "Search");
                 }
                 currentThievingObject = Rs2GameObject.getGameObject(currentThievingHouse.initialThievingChest);
             }
 
             if( currentThievingObject != null && ( lastThievingSearch == null || (elapsedTime != null && elapsedTime > 50000) ) ) {
+                if (!Rs2Camera.isTileOnScreen(currentThievingObject.getLocalLocation()))
+                {
+                    Rs2Camera.turnTo(currentThievingObject);
+                }
                 Rs2GameObject.interact(currentThievingObject, "Search");
                 lastThievingSearch = System.currentTimeMillis();
                 Rs2Random.waitEx(1000.0, 200.0);
@@ -336,6 +352,10 @@ public class HouseThievingScript extends Script {
         } else {
             currentThievingObject = Rs2GameObject.getGameObject(hintArrow);
             if( !Rs2Player.isInteracting() || lastThievingSearch == null || (elapsedTime != null && elapsedTime > 50000) ) {
+                if (!Rs2Camera.isTileOnScreen(currentThievingObject.getLocalLocation()))
+                {
+                    Rs2Camera.turnTo(currentThievingObject);
+                }
                 Rs2GameObject.interact(currentThievingObject, "Search");
                 lastThievingSearch = System.currentTimeMillis();
                 Rs2Random.waitEx(1000.0, 200.0);
@@ -348,12 +368,17 @@ public class HouseThievingScript extends Script {
         if( windowTile != null ) {
             var windowTileWallObject = windowTile.getWallObject();
             if( windowTileWallObject != null ) {
+                if (!Rs2Camera.isTileOnScreen(windowTileWallObject.getLocalLocation()))
+                {
+                    Rs2Camera.turnTo(windowTileWallObject);
+                }
                 Rs2GameObject.interact(windowTileWallObject, "Exit-window");
                 Rs2Random.waitEx(5000.0, 200.0);
                 currentThievingObject = null;
                 lastThievingSearch = null;
                 setNextThievingHouse();
                 state = State.FINDING_HOUSE;
+                return true;
             }
         }
         return false;
@@ -366,10 +391,11 @@ public class HouseThievingScript extends Script {
 
     private void handleBanking(HouseThievingConfig config) {
         var hasFood = Rs2Inventory.getInventoryFood().size() >= config.pickpocketFoodAmount();
+        var hasAnyFood = !Rs2Inventory.getInventoryFood().isEmpty();
         var currentDodgyNecklace = getDodgyNecklaceAmount();
         var dodgyNecklaceReqsMet = !config.useDodgyNecklace() || (config.useDodgyNecklace() && currentDodgyNecklace >= config.dodgyNecklaceAmount());
 
-        if( hasMaxHouseKeys(config) && !hasFood && currentDodgyNecklace < 1 ) {
+        if( hasMaxHouseKeys(config) && !hasAnyFood && currentDodgyNecklace < 1 && Rs2Inventory.emptySlotCount() > 5) {
             state = State.FINDING_HOUSE;
             return;
         }

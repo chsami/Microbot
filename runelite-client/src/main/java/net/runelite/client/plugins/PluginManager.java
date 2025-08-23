@@ -76,7 +76,6 @@ public class PluginManager {
     private static final String PLUGIN_PACKAGE = "net.runelite.client.plugins";
     private static final File SIDELOADED_PLUGINS = new File(RuneLite.RUNELITE_DIR, "sideloaded-plugins");
 
-    private final boolean developerMode;
     private final boolean safeMode;
     private final EventBus eventBus;
     private final Scheduler scheduler;
@@ -93,13 +92,11 @@ public class PluginManager {
     @Inject
     @VisibleForTesting
     PluginManager(
-            @Named("developerMode") final boolean developerMode,
             @Named("safeMode") final boolean safeMode,
             final EventBus eventBus,
             final Scheduler scheduler,
             final ConfigManager configManager,
             final Provider<GameEventManager> sceneTileManager) {
-        this.developerMode = developerMode;
         this.safeMode = safeMode;
         this.eventBus = eventBus;
         this.scheduler = scheduler;
@@ -274,10 +271,6 @@ public class PluginManager {
     }
 
     public void loadSideLoadPlugins() {
-        if (!developerMode) {
-            return;
-        }
-
         File[] files = SIDELOADED_PLUGINS.listFiles();
         if (files == null) {
             return;

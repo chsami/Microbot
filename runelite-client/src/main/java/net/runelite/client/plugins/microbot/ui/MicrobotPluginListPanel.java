@@ -27,7 +27,10 @@ package net.runelite.client.plugins.microbot.ui;
 import com.google.common.collect.ImmutableList;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.config.*;
+import net.runelite.client.config.Config;
+import net.runelite.client.config.ConfigDescriptor;
+import net.runelite.client.config.ConfigGroup;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ExternalPluginsChanged;
@@ -43,7 +46,6 @@ import net.runelite.client.plugins.microbot.MicrobotConfig;
 import net.runelite.client.plugins.microbot.dashboard.DashboardWebSocket;
 import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManager;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.MultiplexingPluginPanel;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.IconTextField;
@@ -61,9 +63,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.function.Predicate;
 
 @Slf4j
 @Singleton
@@ -160,7 +162,7 @@ public class MicrobotPluginListPanel extends PluginPanel {
 
         mainPanel = new MicrobotFixedWidthPanel();
         mainPanel.setBorder(new EmptyBorder(8, 10, 10, 10));
-        mainPanel.setLayout(new DynamicGridLayout(0, 1, 0, 5));
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
         mainPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JPanel northPanel = new MicrobotFixedWidthPanel();
@@ -327,9 +329,10 @@ public class MicrobotPluginListPanel extends PluginPanel {
         SwingUtilities.invokeLater(this::refresh);
     }
 
-    @Override
-    public Dimension getPreferredSize() {
-        return new Dimension(PANEL_WIDTH + SCROLLBAR_WIDTH, super.getPreferredSize().height);
+    @Override public Dimension getPreferredSize() {
+        Dimension d = super.getPreferredSize();
+        d.height = Math.max(d.height, 24);
+        return d;
     }
 
     @Override

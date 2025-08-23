@@ -1072,8 +1072,8 @@ public class Rs2Walker {
                 if (object == null) continue;
 
                 ObjectComposition comp = Rs2GameObject.convertToObjectComposition(object);
-				// We include the name "null" here to ignore imposter objects
-                if (comp == null || comp.getName().equals("null")) continue;
+				// Ignore imposter objects
+                if (comp == null || comp.getImpostorIds() != null || comp.getName().equals("null")) continue;
 
                 String action = Arrays.stream(comp.getActions())
 					.filter(Objects::nonNull)

@@ -4,8 +4,8 @@ import com.google.inject.Provides;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Point;
 import net.runelite.api.*;
+import net.runelite.api.Point;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.*;
 import net.runelite.api.widgets.ComponentID;
@@ -55,7 +55,7 @@ import java.util.stream.Collectors;
 )
 @Slf4j
 public class AIOFighterPlugin extends Plugin {
-    public static final String version = "2.0.0 BETA";
+    public static final String version = "2.0.2 BETA";
     public static boolean needShopping = false;
     private static final String SET = "Set";
     private static final String CENTER_TILE = ColorUtil.wrapWithColorTag("Center Tile", JagexColors.MENU_TARGET);
@@ -85,6 +85,7 @@ public class AIOFighterPlugin extends Plugin {
     private final SafetyScript safetyScript = new SafetyScript();
     private final SlayerScript slayerScript = new SlayerScript();
     private final ShopScript shopScript = new ShopScript();
+    private final DodgeProjectileScript dodgeScript = new DodgeProjectileScript();
     @Inject
     private AIOFighterConfig config;
     @Inject
@@ -133,6 +134,7 @@ public class AIOFighterPlugin extends Plugin {
         }
         if (!config.toggleCenterTile() && Microbot.isLoggedIn() && !config.slayerMode())
             setCenter(Rs2Player.getWorldLocation());
+        dodgeScript.run(config);
         lootScript.run(config);
         cannonScript.run(config);
         attackNpc.run(config);
@@ -169,6 +171,7 @@ public class AIOFighterPlugin extends Plugin {
         lootScript.shutdown();
         cannonScript.shutdown();
         attackNpc.shutdown();
+        dodgeScript.shutdown();
         foodScript.shutdown();
         safeSpotScript.shutdown();
         flickerScript.shutdown();
@@ -408,6 +411,14 @@ public class AIOFighterPlugin extends Plugin {
         }
     }
 
+    @Subscribe
+    public void onProjectileMoved(ProjectileMoved event) {
+        Projectile projectile = event.getProjectile();
+        if (projectile.getTargetActor() == null) {
+            //Projectiles that have targetActor null are targeting a WorldPoint and are dodgeable.
+            dodgeScript.projectiles.add(event.getProjectile());
+        }
+    }
 
     @Subscribe
     public void onGameTick(GameTick gameTick) {
@@ -539,7 +550,6 @@ public class AIOFighterPlugin extends Plugin {
         if (entry.getOption().equals(SET) && entry.getTarget().equals(SAFE_SPOT)) {
             setSafeSpot(trueTile);
         }
-
 
 
         if (entry.getType() != MenuAction.WALK) {

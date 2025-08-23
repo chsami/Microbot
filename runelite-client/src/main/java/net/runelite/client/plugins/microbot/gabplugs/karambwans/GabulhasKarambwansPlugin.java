@@ -43,7 +43,7 @@ public class GabulhasKarambwansPlugin extends Plugin {
             overlayManager.add(gabulhasKarambwansOverlay);
         }
         gabulhasKarambwansScript.run(config);
-        GabulhasKarambwansInfo.botStatus = config.STARTINGSTATE();
+        GabulhasKarambwansInfo.botStatus = config.STARTING_STATE();
     }
 
     protected void shutDown() {

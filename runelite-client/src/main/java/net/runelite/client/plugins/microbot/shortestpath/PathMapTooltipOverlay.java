@@ -46,8 +46,8 @@ public class PathMapTooltipOverlay extends Overlay {
             return null;
         }
 
-        if (plugin.getPathfinder() != null) {
-            List<WorldPoint> path = plugin.getPathfinder().getPath();
+        if (ShortestPathPlugin.getPathfinder() != null) {
+            List<WorldPoint> path = ShortestPathPlugin.getPathfinder().getPath();
             Point cursorPos = client.getMouseCanvasPosition();
             for (int i = 0; i < path.size(); i++) {
                 WorldPoint nextPoint = null;
@@ -78,9 +78,9 @@ public class PathMapTooltipOverlay extends Overlay {
             return false;
         }
 
-        List<String> rows = new ArrayList<>(Arrays.asList("Shortest path:", "Step " + n + " of " + plugin.getPathfinder().getPath().size()));
+        List<String> rows = new ArrayList<>(Arrays.asList("Shortest path:", "Step " + n + " of " + ShortestPathPlugin.getPathfinder().getPath().size()));
         if (nextPoint != null) {
-            for (Transport transport : plugin.getTransports().getOrDefault(point, new HashSet<>())) {
+            for (Transport transport : ShortestPathPlugin.getTransports().getOrDefault(point, new HashSet<>())) {
                 if (nextPoint.equals(transport.getDestination())
                         && transport.getDisplayInfo() != null && !transport.getDisplayInfo().isEmpty()) {
                     rows.add(transport.getDisplayInfo());

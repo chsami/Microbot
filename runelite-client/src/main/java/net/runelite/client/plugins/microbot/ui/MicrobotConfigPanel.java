@@ -185,7 +185,7 @@ class MicrobotConfigPanel extends PluginPanel
 			uninstallItem.addActionListener(ev -> externalPluginManager.remove(iname));
 		}
 
-		MicrobotPluginListItem.addLabelPopupMenu(title, pluginConfig.createSupportMenuItem(), uninstallItem);
+		MicrobotPluginListItem.addLabelPopupMenu(title, pluginConfig.createSupportMenuItem(pluginConfig.getPlugin()), uninstallItem);
 
 		if (pluginConfig.getPlugin() != null)
 		{

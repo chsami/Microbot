@@ -10,6 +10,11 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.ActorModel;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Arrays;
+import java.util.Objects;
+import java.util.function.BiPredicate;
+import java.util.function.Predicate;
+
 @Getter
 @EqualsAndHashCode(callSuper = true) // Ensure equality checks include ActorModel fields
 public class Rs2NpcModel extends ActorModel implements NPC
@@ -149,5 +154,14 @@ public class Rs2NpcModel extends ActorModel implements NPC
 		return (double) ratio / (double) scale * 100.0;
 	}
 
-	
+	public static Predicate<Rs2NpcModel> matches(boolean exact, String... names) {
+		return npc -> {
+			String npcName = npc.getName();
+			if (npcName == null) return false;
+			if (exact) npcName = npcName.toLowerCase();
+			final String name = npcName;
+			return exact ? Arrays.stream(names).anyMatch(name::equalsIgnoreCase) :
+					Arrays.stream(names).anyMatch(s -> name.contains(s.toLowerCase()));
+		};
+	}
 }

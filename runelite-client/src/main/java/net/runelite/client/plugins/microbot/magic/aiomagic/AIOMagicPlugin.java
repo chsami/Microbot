@@ -36,9 +36,9 @@ import java.util.stream.Collectors;
 		enabledByDefault = false
 )
 public class AIOMagicPlugin extends Plugin {
-	
 	@Inject
 	private AIOMagicConfig config;
+
 	@Provides
 	AIOMagicConfig provideConfig(ConfigManager configManager) {
 		return configManager.getConfig(AIOMagicConfig.class);
@@ -46,36 +46,51 @@ public class AIOMagicPlugin extends Plugin {
 
 	@Inject
 	private OverlayManager overlayManager;
+
 	@Inject
 	private AIOMagicOverlay aioMagicOverlay;
-	
+
 	@Inject
 	private SplashScript splashScript;
+
 	@Inject
 	private AlchScript alchScript;
+
 	@Inject
 	private SuperHeatScript superHeatScript;
+
 	@Inject
 	private TeleportScript teleportScript;
+
 	@Inject
 	private TeleAlchScript teleAlchScript;
+
 	@Inject
 	private StunAlchScript stunAlchScript;
 
-	public static String version = "1.1.0";
-	
+	@Inject
+	private StunTeleAlchScript stunTeleAlchScript; // NEW
+
+	public static String version = "1.2.0"; // bumped
+
 	@Getter
 	private Rs2CombatSpells combatSpell;
+
 	@Getter
 	private List<String> alchItemNames = Collections.emptyList();
+
 	@Getter
 	private SuperHeatItem superHeatItem;
+
 	@Getter
 	private String npcName;
+
 	@Getter
 	private TeleportSpell teleportSpell;
+
 	@Getter
 	private StunSpell stunSpell;
+
 	@Getter
 	private String stunNpcName;
 
@@ -92,7 +107,7 @@ public class AIOMagicPlugin extends Plugin {
 		if (overlayManager != null) {
 			overlayManager.add(aioMagicOverlay);
 		}
-		
+
 		switch (config.magicActivity()) {
 			case SPLASHING:
 				splashScript.run();
@@ -112,6 +127,9 @@ public class AIOMagicPlugin extends Plugin {
 			case STUNALCH:
 				stunAlchScript.run();
 				break;
+			case STUNTELEALCH: // NEW
+				stunTeleAlchScript.run();
+				break;
 		}
 	}
 
@@ -122,17 +140,18 @@ public class AIOMagicPlugin extends Plugin {
 		teleportScript.shutdown();
 		teleAlchScript.shutdown();
 		stunAlchScript.shutdown();
+		if (stunTeleAlchScript != null) stunTeleAlchScript.shutdown(); // NEW
 		overlayManager.remove(aioMagicOverlay);
 	}
 
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event) {
 		if (!event.getGroup().equals(AIOMagicConfig.configGroup)) return;
-		
+
 		if (event.getKey().equals(AIOMagicConfig.combatSpell)) {
 			combatSpell = config.combatSpell();
 		}
-		
+
 		if (event.getKey().equals(AIOMagicConfig.alchItems)) {
 			alchItemNames = updateItemList(config.alchItems());
 		}
@@ -140,7 +159,7 @@ public class AIOMagicPlugin extends Plugin {
 		if (event.getKey().equals(AIOMagicConfig.superHeatItem)) {
 			superHeatItem = config.superHeatItem();
 		}
-		
+
 		if (event.getKey().equals(AIOMagicConfig.npcName)) {
 			npcName = config.npcName();
 		}
@@ -162,14 +181,13 @@ public class AIOMagicPlugin extends Plugin {
 		if (items == null || items.isBlank()) {
 			return Collections.emptyList();
 		}
-
 		return Arrays.stream(items.split(","))
 				.map(String::trim)
 				.filter(item -> !item.isEmpty())
 				.map(String::toLowerCase)
 				.collect(Collectors.toList());
 	}
-	
+
 	public Rs2Spells getAlchSpell() {
 		return Rs2Player.getSkillRequirement(Skill.MAGIC, 55) ? Rs2Spells.HIGH_LEVEL_ALCHEMY : Rs2Spells.LOW_LEVEL_ALCHEMY;
 	}

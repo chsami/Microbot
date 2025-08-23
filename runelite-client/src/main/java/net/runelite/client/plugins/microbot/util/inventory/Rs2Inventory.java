@@ -465,7 +465,7 @@ public class Rs2Inventory {
      * @return True if all matching items were successfully dropped, false otherwise.
      */
     public static boolean dropAll(int... ids) {
-        return dropAll(item -> Arrays.stream(ids).anyMatch(id -> id == item.getId()));
+        return dropAll(Rs2ItemModel.matches(ids));
     }
 
     /**
@@ -476,7 +476,7 @@ public class Rs2Inventory {
      * @return True if all matching items were successfully dropped, false otherwise.
      */
     public static boolean dropAll(String... names) {
-        return dropAll(item -> Arrays.stream(names).anyMatch(name -> item.getName().equalsIgnoreCase(name)));
+        return dropAll(true, names); // this was an exact match - standard should be inexact
     }
 
     /**
@@ -503,6 +503,17 @@ public class Rs2Inventory {
     }
 
     /**
+     * Drops all items in the inventory matching the specified names.
+     *
+     * @param names The names to match.
+     *
+     * @return True if all matching items were successfully dropped, false otherwise.
+     */
+    public static boolean dropAll(boolean exact, String... names) {
+        return dropAll(Rs2ItemModel.matches(exact, names), InteractOrder.STANDARD);
+    }
+
+    /**
      * Drops all items in the inventory that don't match the given IDs.
      *
      * @param ids The IDs to exclude.
@@ -510,7 +521,7 @@ public class Rs2Inventory {
      * @return True if all non-matching items were successfully dropped, false otherwise.
      */
     public static boolean dropAllExcept(int... ids) {
-        return dropAll(x -> Arrays.stream(ids).noneMatch(id -> id == x.getId()));
+        return dropAll(Rs2ItemModel.matches(ids).negate());
     }
 
     /**
@@ -540,8 +551,7 @@ public class Rs2Inventory {
      * @return True if all non-matching items were successfully dropped, false otherwise.
      */
     public static boolean dropAllExcept(boolean exact, InteractOrder dropOrder, String... names) {
-        return dropAll(exact ? item -> Arrays.stream(names).noneMatch(name -> name.equalsIgnoreCase(item.getName())) :
-                item -> Arrays.stream(names).noneMatch(name -> item.getName().toLowerCase().contains(name.toLowerCase())), dropOrder);
+        return dropAll(Rs2ItemModel.matches(exact, names).negate(), dropOrder);
     }
 
     /**

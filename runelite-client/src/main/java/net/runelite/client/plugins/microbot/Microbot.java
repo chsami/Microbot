@@ -191,18 +191,18 @@ public class Microbot {
 	public static int cantReachTargetRetries = 0;
 
 	@Getter
-	public static final BlockingEventManager blockingEventManager = new BlockingEventManager();
+	private static final BlockingEventManager blockingEventManager = new BlockingEventManager();
 
 	@Getter
-	public static HashMap<String, Integer> scriptRuntimes = new HashMap<>();
+	private static HashMap<String, Integer> scriptRuntimes = new HashMap<>();
 
 	@Getter
-	public static Rs2ItemManager rs2ItemManager = new Rs2ItemManager();
+	private static Rs2ItemManager rs2ItemManager = new Rs2ItemManager();
 
 	public static boolean loggedIn = false;
 
 	@Setter
-	public static Instant loginTime;
+	private static Instant loginTime;
 
 	/**
 	 * Get the total runtime of the script

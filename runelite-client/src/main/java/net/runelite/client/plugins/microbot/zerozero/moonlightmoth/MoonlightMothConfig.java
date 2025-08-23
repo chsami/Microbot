@@ -7,6 +7,16 @@ import net.runelite.client.config.*;
 public interface MoonlightMothConfig extends Config {
 
     @ConfigItem(
+            keyName = "debugMessages",
+            name = "Debug Messages",
+            description = "enable debug messages if any problems",
+            position = 5
+    )
+    static boolean debugMessages() {
+        return false;
+    }
+
+    @ConfigItem(
             keyName = "equipGraceful",
             name = "Graceful?",
             description = "Will equip graceful",
@@ -60,17 +70,6 @@ public interface MoonlightMothConfig extends Config {
     )
     default int staminaThreshold() {
         return 60; // Default threshold
-    }
-
-
-    @ConfigItem(
-            keyName = "debugMessages",
-            name = "Debug Messages",
-            description = "enable debug messages if any problems",
-            position = 5
-    )
-    static boolean debugMessages() {
-        return false;
     }
 
     enum ActionPreference {

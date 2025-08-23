@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot;
 
+import java.time.Instant;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import lombok.Getter;
@@ -44,7 +45,7 @@ public abstract class Script extends Global implements IScript {
 
     @Getter
     protected static WorldPoint initialPlayerLocation;
-    public LocalTime startTime;
+    public Instant startTime;
 
     /**
      * Get the total runtime of the script
@@ -53,8 +54,7 @@ public abstract class Script extends Global implements IScript {
      */
     public Duration getRunTime() {
         if (startTime == null) return Duration.ofSeconds(0);
-        LocalTime currentTime = LocalTime.now();
-        return Duration.between(startTime, currentTime);
+        return Duration.between(startTime, Instant.now());
     }
 
     public void shutdown() {
@@ -77,7 +77,7 @@ public abstract class Script extends Global implements IScript {
 
     public boolean run() {
         if (startTime == null) {
-            startTime = LocalTime.now();
+            startTime = Instant.now();
             //init - things that have to be checked once can be added here
         }
         if (Microbot.pauseAllScripts.get())

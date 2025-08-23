@@ -1,15 +1,5 @@
 package net.runelite.client.plugins.microbot.util.inventory;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.function.BiPredicate;
-import java.util.function.Predicate;
-import java.util.logging.Level;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import lombok.Getter;
 import lombok.Setter;
 import net.runelite.api.Varbits;
@@ -23,6 +13,13 @@ import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.magic.Runes;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
+
+import java.util.*;
+import java.util.function.BiPredicate;
+import java.util.function.Predicate;
+import java.util.logging.Level;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Utility class to manage and interact with the player's Rune Pouch.
@@ -258,6 +255,7 @@ public class Rs2RunePouch
 	 */
 	public static boolean contains(Runes rune, int amt, boolean allowCombinationRunes)
 	{
+		if (rune == null) return false;
 		Map<Runes, Integer> required = Map.of(rune, amt);
 		return contains(required, allowCombinationRunes);
 	}

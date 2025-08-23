@@ -2109,6 +2109,8 @@
 3615 3362 0	3614 3361 0	Open;Large door;39253									
 3613 3338 0	3613 3342 1	Climb-up;Staircase;39491									
 3613 3342 1	3613 3338 0	Climb-down;Staircase;39492									
+3611 3327 0	3611 3323 1	Climb-up;Staircase;39491									
+3611 3323 1	3611 3327 0	Climb-down;Staircase;39492									
 3599 3317 0	3603 3317 1	Climb-up;Staircase;39491									
 3603 3317 1	3599 3317 0	Climb-down;Staircase;39492									
 3667 3375 0	3670 3375 0	Climb;Wall;39542									

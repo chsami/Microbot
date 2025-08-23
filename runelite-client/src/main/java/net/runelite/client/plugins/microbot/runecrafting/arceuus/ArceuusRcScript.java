@@ -1,12 +1,15 @@
 package net.runelite.client.plugins.microbot.runecrafting.arceuus;
 
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.GameObject;
 import net.runelite.api.Skill;
+import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
@@ -16,19 +19,17 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import org.apache.commons.lang3.NotImplementedException;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
+@Slf4j
 public class ArceuusRcScript extends Script {
-    public static String version = "1.0.1";
-    public static int darkAltarTripCount = 0;
+    public static final String version = "1.0.2";
 
     private static ArceuusRcConfig config;
 
-    // TODO: Use to determine state
-    private static final int MAX_DARK_ESSENCE_FRAGMENTS = 108;
-    private static final int DARK_ESSENCE_FRAGS_PER_BLOCK = 4;
-
     private static final int BLOOD_ESSENCE_ACTIVE = ItemID.BLOOD_ESSENCE_ACTIVE;
     private static final int BLOOD_ESSENCE = ItemID.BLOOD_ESSENCE_INACTIVE;
+
     private static final int DARK_ESSENCE_FRAGMENTS = ItemID.BIGBLANKRUNE;
     private static final int DENSE_ESSENCE_BLOCK = ItemID.ARCEUUS_ESSENCE_BLOCK;
     private static final int DARK_ESSENCE_BLOCK = ItemID.ARCEUUS_ESSENCE_BLOCK_DARK;
@@ -36,27 +37,121 @@ public class ArceuusRcScript extends Script {
     private static final String DARK_ALTAR = "Dark altar";
     private static final String STR_DENSE_RUNESTONE = "Dense runestone";
 
-    public static final WorldPoint ARCEUUS_BLOOD_ALTAR = new WorldPoint(1720, 3828, 0);
-    public static final WorldPoint ARCEUUS_SOUL_ALTAR = new WorldPoint(1815, 3856, 0);
-    public static final WorldPoint ARCEUUS_DARK_ALTAR = new WorldPoint(1718, 3880, 0);
-    public static final WorldPoint DENSE_RUNESTONE = new WorldPoint(1760, 3853, 0);
+    private static final WorldArea ARCEUUS_RC_AREA = new WorldArea(1672, 3819, 171, 93, 0);
+
+    private static final WorldPoint ARCEUUS_BLOOD_ALTAR = new WorldPoint(1720, 3828, 0);
+    private static final WorldPoint ARCEUUS_SOUL_ALTAR = new WorldPoint(1815, 3856, 0);
+    private static final WorldPoint ARCEUUS_DARK_ALTAR = new WorldPoint(1718, 3880, 0);
+    private static final WorldPoint DENSE_RUNESTONE = new WorldPoint(1760, 3853, 0);
+
+    private static final int REACHED_DISTANCE = 5;
 
     @Getter
     private String state = "Unknown";
+    private boolean hasChippedEssence = false;
 
     public boolean run(ArceuusRcConfig config) {
         ArceuusRcScript.config = config;
         Rs2Antiban.antibanSetupTemplates.applyUniversalAntibanSetup();
+        hasChippedEssence = false;
         if(Microbot.isLoggedIn()) {
-            if(Rs2Inventory.hasItem(DARK_ESSENCE_FRAGMENTS)) {
-                darkAltarTripCount++;
-                if(Rs2Inventory.hasItem(DARK_ESSENCE_BLOCK)) {
-                    darkAltarTripCount++;
-                }
-            }
+            hasChippedEssence = Rs2Inventory.hasItem(DARK_ESSENCE_FRAGMENTS);
         }
+        if (config.showUpdateMessage()) log.info("Arceuus RC - Try out the new faster chiseling & soul altar!");
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(this::executeTask, 0, 600, TimeUnit.MILLISECONDS);
         return true;
+    }
+
+    private State getCurrentState() {
+        final WorldPoint myLocation = Rs2Player.getWorldLocation();
+
+        final int distanceToRuneStone = myLocation.distanceTo(DENSE_RUNESTONE);
+        if (distanceToRuneStone < 20) {
+            log.debug("At Runestone");
+            if (Rs2Inventory.isFull()) {
+                if (Rs2Inventory.hasItem(DENSE_ESSENCE_BLOCK)) {
+                    return State.GO_TO_DARK_ALTAR;
+                }
+                log.warn("Was at rune stone but mined no essence blocks");
+                if (Rs2Inventory.hasItem(DARK_ESSENCE_FRAGMENTS)) {
+                    return State.GO_TO_ALTAR;
+                }
+                log.error("At runestone with full inv and no essence");
+                return State.UNKNOWN;
+            }
+            if (distanceToRuneStone <= REACHED_DISTANCE) return State.MINE_ESSENCE;
+            // walk closer so the object search can find it
+            log.warn("Reactivating walker to walk closer to dense runestone");
+            return State.GO_TO_RUNESTONE;
+        }
+
+        final int distanceToAltar = myLocation.distanceTo(getAltarWorldPoint());
+        if (distanceToAltar < 20) {
+            log.debug("At soul or blood altar");
+            if (Rs2Inventory.hasItem(DARK_ESSENCE_FRAGMENTS)) {
+                if (distanceToAltar <= REACHED_DISTANCE) return State.USE_ALTAR;
+                // walk closer so the object search can find it
+                log.warn("Reactivating walker to walk closer to altar");
+                return State.GO_TO_ALTAR;
+            }
+            if (Rs2Inventory.hasItem(DARK_ESSENCE_BLOCK)) return State.CHIP_ESSENCE;
+            return State.GO_TO_RUNESTONE;
+        }
+
+        final int distanceToDarkAltar = myLocation.distanceTo(ARCEUUS_DARK_ALTAR);
+        if (distanceToDarkAltar < 20) {
+            log.debug("At Dark Altar");
+            if (Rs2Inventory.hasItem(DENSE_ESSENCE_BLOCK)) {
+                if (distanceToDarkAltar <= REACHED_DISTANCE) return State.USE_DARK_ALTAR;
+                log.warn("Reactivating walker to walk closer to dark altar");
+                return State.GO_TO_DARK_ALTAR;
+            }
+
+            if (hasChippedEssence) {
+                if (Rs2Inventory.isFull() || Rs2Inventory.hasItem(DARK_ESSENCE_BLOCK)) return State.GO_TO_ALTAR;
+            } else if (Rs2Inventory.hasItem(DARK_ESSENCE_BLOCK)) return State.CHIP_ESSENCE;
+            return State.GO_TO_RUNESTONE;
+
+        }
+
+        // user or walker error if we end up here
+        if (ARCEUUS_RC_AREA.contains(myLocation)) {
+            log.warn("Detected script error attempting recovery");
+            hasChippedEssence = Rs2Inventory.hasItem(DARK_ESSENCE_FRAGMENTS);
+            if (Rs2Inventory.isFull()) {
+                if (Rs2Inventory.hasItem(DENSE_ESSENCE_BLOCK)) return State.GO_TO_DARK_ALTAR;
+                if (!hasChippedEssence && Rs2Inventory.hasItem(DARK_ESSENCE_BLOCK)) return State.CHIP_ESSENCE;
+                return State.GO_TO_ALTAR;
+            }
+            return State.GO_TO_RUNESTONE;
+        }
+
+        // wait for user to navigate to area
+        while (!ARCEUUS_RC_AREA.contains(Rs2Player.getWorldLocation())) {
+            log.error("We are not near anything - Please walk to the starting location");
+            sleepUntil(() -> ARCEUUS_RC_AREA.contains(Rs2Player.getWorldLocation()), () -> {}, 60_000, 1_000);
+        }
+        int resumeSeconds = 4;
+        while (resumeSeconds-- > 0) {
+            log.info("Arceuus RC taking over in {}", resumeSeconds);
+            sleep(1_000);
+        }
+        return State.UNKNOWN;
+    }
+
+    private void logWalk(WorldPoint dst) {
+        WorldPoint myLocation = Rs2Player.getWorldLocation();
+        if (myLocation == null) {
+            log.error("MyLocation is null");
+            return;
+        }
+        BreakHandlerScript.setLockState(true);
+        log.info("Walking from ({},{},{}) to ({},{},{})",
+                myLocation.getX(), myLocation.getY(), myLocation.getPlane(),
+                dst.getX(), dst.getY(), dst.getPlane()
+        );
+        Rs2Walker.walkTo(dst, REACHED_DISTANCE);
+        BreakHandlerScript.setLockState(false);
     }
 
     private void executeTask() {
@@ -65,31 +160,41 @@ public class ArceuusRcScript extends Script {
                 state = "Disabled";
                 return;
             }
-            if (shouldGoToBloodAltar()) {
-                state = "Go to " + getAltarName();
-                goToAltar();
-            } else if (shouldUseAltar()) {
-                state = "Use " + getAltarName();
-                useAltar();
-            } else if (shouldGoToDarkAltar()) {
-                state = "Go to Dark Altar";
-                goToDarkAltar();
-            } else if (shouldUseDarkAltar()) {
-                state = "Use Dark Altar";
-                useDarkAltar();
-            } else if (shouldGoToRunestone()) {
-                state = "Go to Runestone";
-                goToRunestone();
-            } else if (shouldChipEssence()) {
-                state = "Chip Essence" + (config.getChipEssenceFast() ? " Fast" : "");
-                chipEssence(config.getChipEssenceFast());
-            } else if (shouldMineEssence()) {
-                state = "Mine Essence";
-                mineEssence();
-            } else {
-                state = "Unknown";
+
+            State state = getCurrentState();
+            log.debug("Current State={}", state);
+            this.state = String.format("(%s) %s", getAltarName(), state);
+            switch (state) {
+                case GO_TO_RUNESTONE:
+                    logWalk(DENSE_RUNESTONE);
+                    break;
+                case GO_TO_DARK_ALTAR:
+                    logWalk(ARCEUUS_DARK_ALTAR);
+                    break;
+                case GO_TO_ALTAR:
+                    logWalk(getAltarWorldPoint());
+                    break;
+                case MINE_ESSENCE:
+                    mineEssence();
+                    break;
+                case USE_DARK_ALTAR:
+                    useDarkAltar();
+                    break;
+                case CHIP_ESSENCE:
+                    this.state += config.getChipEssenceFast() ? "_FAST" : "";
+                    chipEssence(config.getChipEssenceFast());
+                    break;
+                case USE_ALTAR:
+                    useAltar();
+                    break;
+                case UNKNOWN:
+                    break;
+                default:
+                    log.error("Action not defined for State={}", state);
             }
         } catch (Exception e) {
+            // in-case we error before setting it
+            hasChippedEssence = Rs2Inventory.hasItem(DARK_ESSENCE_FRAGMENTS);
             Microbot.log("Error in Arceuus Runecrafter: " + e.getMessage());
         }
     }
@@ -97,9 +202,13 @@ public class ArceuusRcScript extends Script {
     public Altar getAltar() {
         if (config.getAltar() != Altar.AUTO) return config.getAltar();
         final int level = Microbot.getClient().getRealSkillLevel(Skill.RUNECRAFT);
+        // Cache not updated - but we don't want to shut down
+        if (level == 0) throw new IllegalStateException("Runecraft Level cannot be 0");
         if (level >= 90) return Altar.SOUL;
         if (level >= 77) return Altar.BLOOD;
-        // TODO: handle this better
+
+        this.shutdown();
+        this.state = "Runecraft Level " + level + " to low";
         throw new IllegalStateException("Runecraft Level " + level + " to low");
     }
 
@@ -113,61 +222,12 @@ public class ArceuusRcScript extends Script {
         return "Soul Altar";
     }
 
-    public boolean shouldGoToBloodAltar() {
-        return darkAltarTripCount >= 2
-                && Rs2Inventory.hasItem(DARK_ESSENCE_FRAGMENTS)
-                && Rs2Player.getWorldLocation().distanceTo(getAltarWorldPoint()) > 10;
-    }
-
-    public void goToAltar() {
-        Rs2Walker.walkTo(getAltarWorldPoint());
-    }
-
-    public boolean shouldGoToDarkAltar() {
-        return Rs2Inventory.isFull()
-                && Rs2Inventory.hasItem(DENSE_ESSENCE_BLOCK)
-                && Rs2Player.getWorldLocation().distanceTo(ARCEUUS_DARK_ALTAR) > 10
-                && darkAltarTripCount < 2;
-    }
-
-    public void goToDarkAltar() {
-        Rs2Walker.walkTo(ARCEUUS_DARK_ALTAR);
-    }
-
-    public boolean shouldGoToRunestone() {
-        return !Rs2Inventory.isFull()
-                && Rs2Player.getWorldLocation().distanceTo(DENSE_RUNESTONE) > 8
-                && darkAltarTripCount < 2
-                && !(Rs2Player.getWorldLocation().distanceTo(getAltarWorldPoint()) < 5
-                    && Rs2Inventory.hasItem(DARK_ESSENCE_BLOCK,DARK_ESSENCE_FRAGMENTS));
-    }
-
-    public void goToRunestone() {
-        Rs2Walker.walkTo(DENSE_RUNESTONE);
-    }
-
-    public boolean shouldUseAltar() {
-        if (!Rs2Inventory.hasItem(DARK_ESSENCE_FRAGMENTS)) return false;
-        final GameObject altar = Rs2GameObject.getGameObject(getAltarName(), true, 11);
-        return altar != null;
-    }
-
     public void useAltar() {
         final GameObject altar = Rs2GameObject.getGameObject(getAltarName(), true, 11);
         if (altar != null) {
-            if (Rs2GameObject.interact(altar,"Bind"))
-                Rs2Inventory.waitForInventoryChanges(6000);
-            darkAltarTripCount = 0;
-
+            if (Rs2GameObject.interact(altar,"Bind")) Rs2Inventory.waitForInventoryChanges(6_000);
+            hasChippedEssence = Rs2Inventory.hasItem(DARK_ESSENCE_FRAGMENTS);
         }
-    }
-
-    public boolean shouldChipEssence() {
-        final GameObject altar = Rs2GameObject.getGameObject(getAltarName(), true, 11);
-        return Rs2Inventory.isFull() && !Rs2Inventory.hasItem(DARK_ESSENCE_FRAGMENTS) && Rs2Inventory.hasItem(DARK_ESSENCE_BLOCK)
-                || (!Rs2Inventory.hasItem(DARK_ESSENCE_FRAGMENTS)
-                    && Rs2Inventory.hasItem(DARK_ESSENCE_BLOCK)
-                    && altar != null);
     }
 
     public boolean moveChisel() {
@@ -186,16 +246,29 @@ public class ArceuusRcScript extends Script {
         return true;
     }
 
-    public boolean chipEssence(boolean fast) {
-        if (!moveChisel()) return false;
-        return fast ? chipEssenceFast() : chipEssenceSlow();
+    public void chipEssence(boolean fast) {
+        if (!moveChisel()) return;
+        if (fast) chipEssenceFast();
+        else chipEssenceSlow();
+        hasChippedEssence = Rs2Inventory.hasItem(DARK_ESSENCE_FRAGMENTS);
+        if (!hasChippedEssence) log.error("Failed to chip essence");
     }
 
     public boolean chipEssenceSlow() {
         if(Rs2Inventory.combineClosest(DARK_ESSENCE_BLOCK,ItemID.CHISEL)) {
-            return sleepUntil(() -> !Rs2Inventory.hasItem(DARK_ESSENCE_BLOCK), 60_000);
+            int blocks = Rs2Inventory.count(DARK_ESSENCE_BLOCK);
+            while (blocks > 0) {
+                Rs2Inventory.waitForInventoryChanges(5_000);
+                final int newBlocks = Rs2Inventory.count(DARK_ESSENCE_BLOCK);
+                if (newBlocks == blocks) {
+                    log.warn("Failed to chip full inventory");
+                    return false;
+                }
+                blocks = newBlocks;
+            }
+            return true;
         }
-        Microbot.log("Failed to await no dark essence block in inventory");
+        log.warn("Failed to combine closest");
         return false;
     }
 
@@ -208,21 +281,25 @@ public class ArceuusRcScript extends Script {
 
     public boolean chipEssenceFast() {
         final int[] ids = {ItemID.CHISEL, DARK_ESSENCE_BLOCK};
-        while (Rs2Inventory.containsAll(ids)) {
+        long lastUpdate = System.currentTimeMillis();
+        int blocks = Rs2Inventory.count(DARK_ESSENCE_BLOCK);
+        while (Rs2Inventory.hasItem(ItemID.CHISEL) && blocks > 0) {
             if (!Rs2Inventory.combineClosest(ids[0], ids[1])) {
                 Microbot.log("Failed to combine closest chisel & dark essence block");
                 return false;
             }
             reverse(ids);
+            if (System.currentTimeMillis()-lastUpdate > 3_000) {
+                log.warn("Probably have max essence stopping combine");
+                return true;
+            }
+            final int newBlocks = Rs2Inventory.count(DARK_ESSENCE_BLOCK);
+            if (newBlocks < blocks) {
+                lastUpdate = System.currentTimeMillis();
+                blocks = newBlocks;
+            }
         }
         return true;
-    }
-
-    public boolean shouldUseDarkAltar() {
-        if (!Rs2Inventory.isFull()) return false;
-        if (!Rs2Inventory.hasItem(DENSE_ESSENCE_BLOCK)) return false;
-        final GameObject darkAltar = Rs2GameObject.getGameObject(DARK_ALTAR, true, 11);
-        return darkAltar != null;
     }
 
     public void useDarkAltar() {
@@ -231,7 +308,6 @@ public class ArceuusRcScript extends Script {
 
         Rs2GameObject.interact(darkAltar,"Venerate");
         sleepUntil(()->!Rs2Inventory.hasItem(DENSE_ESSENCE_BLOCK),6_000);
-        darkAltarTripCount++;
     }
 
     public void mineEssence() {
@@ -244,19 +320,38 @@ public class ArceuusRcScript extends Script {
             return;
         }
         Rs2GameObject.interact(runeStone,"Chip");
-        Rs2Player.waitForAnimation(10000);
-    }
-    public static boolean shouldMineEssence() {
-        if (Rs2Inventory.hasItem(DARK_ESSENCE_BLOCK)) return false;
-        if (Rs2Inventory.isFull()) return false;
-        if (Rs2Player.isAnimating()) return false;
-        final GameObject runeStone = Rs2GameObject.getGameObject(STR_DENSE_RUNESTONE, true, 11);
-        return runeStone != null;
+
+        // this checks if we are gaining essence from mining
+        final AtomicInteger emptyCount = new AtomicInteger(Rs2Inventory.emptySlotCount());
+        Rs2Player.waitForAnimation(10_000);
+        while (emptyCount.get() > 0) {
+            if (!Rs2Player.isAnimating(1_800)) return; // runestone probably mined - need to switch
+            if (sleepUntil(() -> {
+                if (!Rs2Player.isAnimating(1_800)) return true;
+                final int newEmptyCount = Rs2Inventory.emptySlotCount();
+                if (newEmptyCount >= emptyCount.get()) return false;
+                emptyCount.set(newEmptyCount);
+                return true;
+            }, 10_000)) continue;
+            log.warn("Failed to await mining essence");
+            return;
+        }
+
     }
 
     @Override
     public void shutdown() {
         super.shutdown();
-        darkAltarTripCount = 0;
+    }
+
+    private enum State {
+        GO_TO_RUNESTONE,
+        GO_TO_DARK_ALTAR,
+        GO_TO_ALTAR, // blood or soul
+        MINE_ESSENCE,
+        USE_DARK_ALTAR,
+        CHIP_ESSENCE,
+        USE_ALTAR,
+        UNKNOWN
     }
 }

@@ -54,11 +54,7 @@ public class BankerScript extends Script {
             try {
                 if (!Microbot.isLoggedIn()) return;
                 if(!super.run()) return;
-                if (config.bank() && needBanking() && ! AIOFighterPlugin.needShopping) {
-                    if (config.eatFoodForSpace() && Rs2Inventory.isFull() && !Rs2Inventory.getInventoryFood().isEmpty())
-                        if (Rs2Player.eatAt(100))
-                            return;
-
+                if (config.bank() && needBanking() && !AIOFighterPlugin.needShopping) {
                     if(handleBanking()){
                         Microbot.log("Banking handled successfully.");
                     }
@@ -115,6 +111,14 @@ public class BankerScript extends Script {
             }
         }        
         if(!config.bank()){
+            return false;
+        }
+
+        // Don't bank if we can eat food for space instead
+        if (config.eatFoodForSpace() && 
+            Rs2Inventory.getEmptySlots() <= config.minFreeSlots() && 
+            !Rs2Inventory.getInventoryFood().isEmpty()) {
+            // Food available to make space - let EatForSpaceScript handle it
             return false;
         }
 

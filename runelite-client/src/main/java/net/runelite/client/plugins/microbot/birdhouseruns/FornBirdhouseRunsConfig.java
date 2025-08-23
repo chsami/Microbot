@@ -1,8 +1,9 @@
 package net.runelite.client.plugins.microbot.birdhouseruns;
 
 import net.runelite.client.config.*;
+import net.runelite.client.plugins.microbot.birdhouseruns.enums.Log;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
-import net.runelite.client.plugins.microbot.sticktothescript.common.enums.LogType;
+
 
 @ConfigInformation("Automated Birdhouse Runs on Fossil Island<br/><br/>" +
         "<b>Requirements:</b><br/>" +
@@ -63,8 +64,8 @@ public interface FornBirdhouseRunsConfig extends Config {
             section = autoSection,
             position = 0
     )
-    default LogType logType() {
-        return LogType.NORMAL_LOGS;
+    default Log logType() {
+        return Log.NORMAL_LOGS;
     }
 
     @ConfigSection(

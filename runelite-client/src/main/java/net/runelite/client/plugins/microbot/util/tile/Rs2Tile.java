@@ -75,6 +75,29 @@ public abstract class Rs2Tile implements Tile {
     }
 
     /**
+     * Adds a dangerous tile from a gameobject, to the list of dangerous tiles
+     * @param gameObject the gameobject object
+     * @param time the time a tile is dangerous in milliseconds
+     */
+    public static void addDangerousGameObjectTile(GameObject gameObject, int time) {
+        if (gameObject == null) return;
+
+        WorldPoint worldPoint = gameObject.getWorldLocation();
+        if (worldPoint == null) return;
+
+        dangerousGraphicsObjectTilesInternal.merge(worldPoint, time, Math::max);
+
+        if (Rs2Player.getWorldLocation().equals(worldPoint)) {
+            Microbot.getClientThread().runOnSeperateThread(() -> {
+                final WorldPoint safeTile = Rs2Tile.getSafeTile();
+                System.out.println(safeTile);
+                Rs2Walker.walkFastCanvas(safeTile);
+                return true;
+            });
+        }
+    }
+
+    /**
      * Returns a safe tile based on dangerous tiles
      *
      * @return list of safe tile, sorted on the closest tile to the player

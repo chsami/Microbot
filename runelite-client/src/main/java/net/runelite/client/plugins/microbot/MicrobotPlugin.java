@@ -110,6 +110,9 @@ public class MicrobotPlugin extends Plugin
 	@Inject
 	private EventBus eventBus;
 	private GameChatAppender gameChatAppender;
+
+	@Inject
+	private MicrobotVersionChecker microbotVersionChecker;
 	
 	// Widget change tracking for overlay cache invalidation
 	private volatile boolean widgetLayoutChanged = false;
@@ -124,6 +127,8 @@ public class MicrobotPlugin extends Plugin
 	{
 		log.info("Microbot: {} - {}", RuneLiteProperties.getMicrobotVersion(), RuneLiteProperties.getMicrobotCommit());
 		log.info("JVM: {} {}", System.getProperty("java.vendor"), System.getProperty("java.runtime.version"));
+
+		microbotVersionChecker.checkForUpdate();
 
 		gameChatAppender = new GameChatAppender();
 		gameChatAppender.setName("GAME_CHAT");
@@ -195,6 +200,7 @@ public class MicrobotPlugin extends Plugin
 		microbotOverlay.cacheButton.unhookMouseListener();
 		clientToolbar.removeNavigation(navButton);
 		if (gameChatAppender.isStarted()) gameChatAppender.stop();
+		microbotVersionChecker.shutdown();
 		
 		// Shutdown the cache system
 		shutdownCacheSystem();
@@ -245,47 +251,45 @@ public class MicrobotPlugin extends Plugin
 	}
 
 	/**
-	 * Retrieves all container IDs from {@link net.runelite.api.gameval.InventoryID}
-	 * whose field names suggest they are shop-related.
+	 * Retrieves all currently open container IDs from {@link net.runelite.api.gameval.InventoryID}
+	 * and excludes specific container IDs.
 	 *
-	 * <p>This includes fields containing any of the following keywords
-	 * (case-insensitive): {@code "shop"}, {@code "store"}, {@code "merchant"},
-	 * {@code "bazaar"}, {@code "stall"}, {@code "trader"}, {@code "supplies"}, or {@code "seller"}.
-	 *
-	 * <p>The method reflects over the public static integer fields in the
-	 * {@code InventoryID} class and collects those whose names match
-	 * one or more of the defined keywords.
-	 *
-	 * @return an array of container IDs potentially associated with shop-like inventories
+	 * @return an array of open container IDs excluding the specified excluded IDs
 	 */
 	private int[] getShopContainerIds()
 	{
 		Field[] fields = net.runelite.api.gameval.InventoryID.class.getFields();
-		List<Integer> shopContainerIds = new ArrayList<>();
-		String[] keywords = { "shop", "store", "merchant", "bazaar", "stall", "trader", "supplies", "seller" };
+		List<Integer> openContainerIds = new ArrayList<>();
+		int[] excludedIds = { 90, 93, 94, 95 };
 
 		for (Field field : fields)
 		{
 			if (field.getType() != int.class)
 				continue;
 
-			String fieldName = field.getName().toLowerCase();
-
-			if (Arrays.stream(keywords).anyMatch(fieldName::contains))
+			try
 			{
-				try
-				{
-					int id = field.getInt(null);
-					shopContainerIds.add(id);
-				}
-				catch (IllegalAccessException e)
-				{
-					log.error("Failed to access field: {}", field.getName(), e);
+				int containerId = field.getInt(null);
+				ItemContainer container = Microbot.getClient().getItemContainer(containerId);
+				
+				if (container != null && container.getItems() != null && container.getItems().length > 0) {
+					boolean hasItems = Arrays.stream(container.getItems())
+						.anyMatch(item -> item != null && item.getId() != -1);
+						
+					if (hasItems && Arrays.stream(excludedIds).noneMatch(excludedId -> excludedId == containerId)) {
+						openContainerIds.add(containerId);
+					}
 				}
 			}
+			catch (IllegalAccessException e)
+            {
+                log.error("Failed to access field: {}", field.getName(), e);
+            }
 		}
-		return shopContainerIds.stream().mapToInt(Integer::intValue).toArray();
+		return openContainerIds.stream().mapToInt(Integer::intValue).toArray();
 	}
+
+
 
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged gameStateChanged)

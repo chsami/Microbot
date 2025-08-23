@@ -27,7 +27,8 @@ public class VolcanicAshMinerScript extends Script {
     public static VolcanicAshMinerState BOT_STATUS = VolcanicAshMinerState.MINING;
     private final WorldPoint VOLCANIC_ASH_LOCATION = new WorldPoint(3790, 3770, 0);
 
-    {
+    public boolean run(VolcanicAshMinerConfig config) {
+        BOT_STATUS = VolcanicAshMinerState.MINING;
         Microbot.enableAutoRunOn = false;
         Rs2Antiban.resetAntibanSettings();
         Rs2AntibanSettings.usePlayStyle = true;
@@ -43,10 +44,7 @@ public class VolcanicAshMinerScript extends Script {
         Rs2AntibanSettings.moveMouseRandomly = true;
         Rs2AntibanSettings.moveMouseRandomlyChance = 0.04;
         Rs2Antiban.setActivityIntensity(VERY_LOW);
-    }
 
-    public boolean run(VolcanicAshMinerConfig config) {
-        BOT_STATUS = VolcanicAshMinerState.MINING;
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!super.run()) return;
@@ -120,6 +118,12 @@ public class VolcanicAshMinerScript extends Script {
             }
         }
         return false;
+    }
+
+    @Override
+    public void shutdown() {
+        super.shutdown();
+        Rs2Antiban.resetAntibanSettings();
     }
 
     public enum VolcanicAshMinerState {DROPPING, MINING}

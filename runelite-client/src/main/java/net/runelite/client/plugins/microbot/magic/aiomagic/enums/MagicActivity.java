@@ -7,5 +7,5 @@ public enum MagicActivity {
     TELEPORT,
     TELEALCH,
     STUNALCH,
-
+    STUNTELEALCH, // NEW
 }

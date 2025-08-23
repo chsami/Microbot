@@ -195,6 +195,17 @@ public interface AIOFighterConfig extends Config {
     }
 
     @ConfigItem(
+            keyName = "DodgeProjectiles",
+            name = "Dodge AoE projectiles",
+            description = "Dodge projectiles that target player location.",
+            position = 9,
+            section = combatSection
+    )
+    default boolean dodgeProjectiles() {
+        return true;
+    }
+
+    @ConfigItem(
             keyName = "Food",
             name = "Auto eat food",
             description = "Automatically eats food",
@@ -241,7 +252,7 @@ public interface AIOFighterConfig extends Config {
     @ConfigItem(
             keyName = "Min Price of items to loot",
             name = "Min. Price of items to loot",
-            description = "Min. Price of items to loot",
+            description = "Min. Price of items (price * quantity) to loot",
             position = 10,
             section = lootSection
     )
@@ -252,7 +263,7 @@ public interface AIOFighterConfig extends Config {
     @ConfigItem(
             keyName = "Max Price of items to loot",
             name = "Max. Price of items to loot",
-            description = "Max. Price of items to loot default is set to 10M",
+            description = "Max. Price of individual item to loot. Default is set to 10M",
             position = 11,
             section = lootSection
     )
@@ -473,24 +484,38 @@ public interface AIOFighterConfig extends Config {
         return Rs2CombatSpells.WIND_STRIKE;
     }
 
+    //Avoid Controlled attack style
+    @ConfigItem(
+            keyName = "allowStyleSwitch",
+            name = "Allow switching combat style",
+            description = "Enable to allow script to automatically switch combat style.",
+            position = 10,
+            section = skillingSection
+    )
+    default boolean toggleAllowStyleSwitch() {
+        return true;
+    }
+
     //Balance combat skills
     @ConfigItem(
             keyName = "balanceCombatSkills",
             name = "Balance combat skills",
             description = "Balance combat skills",
-            position = 10,
+            position = 11,
             section = skillingSection
     )
     default boolean toggleBalanceCombatSkills() {
         return false;
     }
 
+
+
     //Avoid Controlled attack style
     @ConfigItem(
             keyName = "avoidControlled",
             name = "No Controlled Attack",
             description = "Avoid Controlled attack style so you won't accidentally train unwanted combat skills",
-            position = 11,
+            position = 12,
             section = skillingSection
     )
     default boolean toggleAvoidControlled() {

@@ -7,11 +7,11 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.sandcrabs.enums.State;
 import net.runelite.client.plugins.microbot.sandcrabs.models.ScanLocation;
+import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
-import net.runelite.client.plugins.microbot.util.math.Random;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
@@ -54,7 +54,7 @@ public class SandCrabScript extends Script {
 
     List<ScanLocation> sandCrabLocations = new ArrayList<>();
 
-    public boolean run(SandCrabConfig config) {
+    public boolean run(SandCrabConfig config, SandCrabPlugin plugin) {
         initialPlayerLocation = null;
         if (config.threeNpcs()) {
             sandCrabLocations = initSandCrabLocations.stream().filter(x -> x.hasThreeNpcs).collect(Collectors.toList());
@@ -69,8 +69,24 @@ public class SandCrabScript extends Script {
                     initialPlayerLocation = Rs2Player.getWorldLocation();
                 }
                 long startTime = System.currentTimeMillis();
+                var inventorySetup = new Rs2InventorySetup(config.inventorySetup().getName(), mainScheduledFuture);
+
+                if(inventorySetup == null || config.inventorySetup().getName().isEmpty()){
+                    Microbot.showMessage("Please setup your Inventory Setup for sand crabs! Stopping...");
+                    shutdown();
+                    return;
+                }
 
                 Rs2Combat.enableAutoRetialiate();
+
+                if(!inventorySetup.doesEquipmentMatch()){
+                    if(Rs2Bank.walkToBankAndUseBank()){
+                        if(inventorySetup.loadEquipment()){
+                            Microbot.log("We're setup for sand crabs!");
+                            return;
+                        }
+                    }
+                }
 
                 if (otherPlayerDetected() && !Rs2Combat.inCombat())
                     hijackTimer++;
@@ -88,7 +104,7 @@ public class SandCrabScript extends Script {
 
                 if (currentScanLocation != null && Microbot.getClient().getLocalPlayer().getWorldLocation().distanceTo(currentScanLocation.getWorldPoint()) > 10 && (state != State.RESET_AGGRO && state != State.WALK_BACK && state != State.BANK)) {
                     state = State.WALK_BACK;
-                    resetAggro();
+                    resetAggro(plugin);
                     resetAfkTimer();
                 }
                 currentScanLocation = sandCrabLocations.stream()
@@ -141,10 +157,10 @@ public class SandCrabScript extends Script {
                         }
                         break;
                     case RESET_AGGRO:
-                        resetAggro();
+                        resetAggro(plugin);
                         break;
                     case WALK_BACK:
-                        walkBack();
+                        walkBack(plugin);
                         break;
                     case HOP_WORLD:
                         int world = Login.getRandomWorld(true, null);
@@ -208,7 +224,9 @@ public class SandCrabScript extends Script {
     /**
      * Reset aggro will walk 40 tiles north
      */
-    private void resetAggro() {
+    private void resetAggro(SandCrabPlugin plugin) {
+        unlockTheScript(plugin);
+
         boolean walkedFarEnough = false;
         if (Rs2Player.getWorldLocation().getX() > 1805) {
             walkedFarEnough = Rs2Walker.walkTo(new WorldPoint(Rs2Random.between(1844, 1849), 3496, 0));
@@ -224,7 +242,9 @@ public class SandCrabScript extends Script {
     /**
      * Walks back to the initial player location when the script started
      */
-    private void walkBack() {
+    private void walkBack(SandCrabPlugin plugin) {
+        lockTheScript(plugin);
+
         boolean backToInitialLocation = Rs2Walker.walkTo(initialPlayerLocation, 0);
         if (!backToInitialLocation) return;
 
@@ -287,6 +307,20 @@ public class SandCrabScript extends Script {
     private void resetScanLocations() {
         for(ScanLocation scanLocation: sandCrabLocations) {
             scanLocation.reset();
+        }
+    }
+
+    private void lockTheScript(SandCrabPlugin plugin)
+    {
+        if (plugin.getLockCondition(plugin.getStopCondition()) != null) {
+            plugin.getLockCondition(plugin.getStopCondition()).lock();
+        }
+    }
+
+    private void unlockTheScript(SandCrabPlugin plugin)
+    {
+        if (plugin.getLockCondition(plugin.getStopCondition()) != null) {
+            plugin.getLockCondition(plugin.getStopCondition()).unlock();
         }
     }
 }

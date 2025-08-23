@@ -6,8 +6,8 @@ import net.runelite.api.*;
 import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
-import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.aiofighter.AIOFighterConfig;
+import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
@@ -64,9 +64,8 @@ public class AttackStyleScript extends Script {
     private void scheduledTask(AIOFighterConfig config) {
         try {
             // Early exit conditions
-            if (!Microbot.isLoggedIn() || !super.run() || disableIfMaxed(config.toggleDisableOnMaxCombat()))
+            if (!Microbot.isLoggedIn() || !super.run() || !config.toggleAllowStyleSwitch() || disableIfMaxed(config.toggleDisableOnMaxCombat()))
                 return;
-
 
             // Initialize levels if not done yet
             if (!initializedLevels) {
@@ -82,7 +81,7 @@ public class AttackStyleScript extends Script {
                 leveledUp = true;
             }
 
-            if(config.useMagic()){
+            if (config.useMagic()) {
                 if (Rs2Magic.getCurrentAutoCastSpell() != config.magicSpell()) {
                     Rs2Combat.setAutoCastSpell(config.magicSpell(), false);
                 }
@@ -109,8 +108,7 @@ public class AttackStyleScript extends Script {
                     if (attackStyleVarbit != 1) {
                         changeAttackStyle(config, WidgetInfo.COMBAT_STYLE_TWO);
                     }
-                }
-                else {
+                } else {
                     // if rapid is not available, switch to first attack style
                     int attackStyleVarbit = Microbot.getVarbitPlayerValue(VarPlayer.ATTACK_STYLE);
                     if (attackStyleVarbit != 0) {
@@ -132,7 +130,7 @@ public class AttackStyleScript extends Script {
             if (attackStyle != attackStyleToTrain) {
                 changeAttackStyle(config, componentToDisplay);
             }
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             Microbot.logStackTrace("AttackStyleScript", ex);
         }
 
@@ -206,16 +204,14 @@ public class AttackStyleScript extends Script {
             String attackStyleName = Microbot.getStructComposition(style).getStringValue(ParamID.ATTACK_STYLE_NAME);
             AttackStyle attackStyle = AttackStyle.valueOf(attackStyleName.toUpperCase());
 
-            if (attackStyle == AttackStyle.OTHER)
-            {
+            if (attackStyle == AttackStyle.OTHER) {
                 // "Other" is used for no style
                 ++i;
                 continue;
             }
 
             // "Defensive" is used for Defensive and also Defensive casting
-            if (i == 5 && attackStyle == AttackStyle.DEFENSIVE)
-            {
+            if (i == 5 && attackStyle == AttackStyle.DEFENSIVE) {
                 attackStyle = AttackStyle.DEFENSIVE_CASTING;
             }
 

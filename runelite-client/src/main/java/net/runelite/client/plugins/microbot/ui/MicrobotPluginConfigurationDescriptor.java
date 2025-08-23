@@ -69,18 +69,18 @@ public class MicrobotPluginConfigurationDescriptor
 	 * @return A {@link JMenuItem} which opens the plugin's wiki page URL in the browser when clicked
 	 */
 	@Nullable
-	JMenuItem createSupportMenuItem()
+	JMenuItem createSupportMenuItem(Plugin plugin)
 	{
 		String iname = getInternalPluginHubName();
 		if (iname != null)
 		{
-			JMenuItem menuItem = new JMenuItem("Support");
-			menuItem.addActionListener(e -> LinkBrowser.browse("https://runelite.net/plugin-hub/show/" + iname));
+			JMenuItem menuItem = new JMenuItem("Wiki");
+			menuItem.addActionListener(e -> LinkBrowser.browse("https://chsami.github.io/Microbot-Hub/" + iname));
 			return menuItem;
 		}
 
 		JMenuItem menuItem = new JMenuItem("Wiki");
-		menuItem.addActionListener(e -> LinkBrowser.browse("https://github.com/runelite/runelite/wiki/" + name.replace(' ', '-')));
+		menuItem.addActionListener(e -> LinkBrowser.browse("https://chsami.github.io/Microbot-Hub/" + (plugin != null ? plugin.getClass().getSimpleName() : "")));
 		return menuItem;
 	}
 

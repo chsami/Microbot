@@ -125,7 +125,7 @@ public class Rs2GroundItem {
         return interact(new InteractModel(groundItem.getId(), groundItem.getLocation(), groundItem.getName()), "Take");
     }
 
-    private static int calculateDespawnTime(GroundItem groundItem) {
+    public static int calculateDespawnTime(GroundItem groundItem) {
         Instant spawnTime = groundItem.getSpawnTime();
         if (spawnTime == null) {
             return 0;
