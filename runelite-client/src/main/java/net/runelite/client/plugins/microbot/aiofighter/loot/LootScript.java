@@ -12,12 +12,10 @@ import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2RunePouch;
+import net.runelite.client.plugins.microbot.util.magic.Runes;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -92,7 +90,8 @@ public class LootScript extends Script {
         if (!groundItem.isStackable()) {
             return false;
         }
-        if (Rs2RunePouch.contains(groundItem.getItemId())) {
+        int runePouchRunes = Rs2RunePouch.getQuantity(groundItem.getItemId());
+        if (runePouchRunes > 0 && runePouchRunes <= 16000 - groundItem.getQuantity()) {
             return true;
         }
         //TODO("Coal bag, Herb Sack, Seed pack")
@@ -100,6 +99,8 @@ public class LootScript extends Script {
     }
 
     private boolean shouldLootBasedOnValue(GroundItem groundItem, AIOFighterConfig config) {
+        if (config.looterStyle() != DefaultLooterStyle.GE_PRICE_RANGE && config.looterStyle() != DefaultLooterStyle.MIXED)
+            return false;
         int price = groundItem.getGePrice();
         return config.minPriceOfItemsToLoot() <= price && price / groundItem.getQuantity() <= config.maxPriceOfItemsToLoot();
     }

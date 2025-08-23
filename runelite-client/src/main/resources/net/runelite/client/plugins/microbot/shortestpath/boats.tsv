@@ -84,10 +84,10 @@
 # Fossil Island, Underwater									
 3724 3807 0	3734 3893 0	Travel;Rowboat;30914						4	2. North of Island
 3734 3893 0	3724 3807 0	Travel;Rowboat;30915						4	2. The Camp
-3734 3893 0	3768 3898 0	Travel;Rowboat;30915						4	3. To Sea
-3768 3898 0	3734 3893 0	Travel;Rowboat;30919						3	2. North of Island
-3724 3807 0	3768 3898 0	Travel;Rowboat;30914						4	4. To Sea
-3768 3898 0	3724 3807 0	Travel;Rowboat;30919						4	3. The Camp
+3734 3893 0	3763 3899 0	Travel;Rowboat;30915						4	3. To Sea
+3763 3899 0	3734 3893 0	Travel;Rowboat;30919						3	2. North of Island
+3724 3807 0	3763 3899 0	Travel;Rowboat;30914						4	4. To Sea
+3763 3899 0	3724 3807 0	Travel;Rowboat;30919						4	3. The Camp
 									
 # Hosidius, Crabclaw Isle									
 1783 3458 0	1779 3417 0	Travel;Sandicrahb;7483						5	

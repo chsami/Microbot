@@ -14,11 +14,10 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class ShortestPathScript extends Script {
 
-    @Setter
     @Getter
     // used for calling the walker from a mainthread
     // running the walker on a seperate thread is a lot easier for debugging
-    private WorldPoint triggerWalker;
+    private volatile WorldPoint triggerWalker;
 
     public boolean run(ShortestPathConfig config) {
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
@@ -49,4 +48,14 @@ public class ShortestPathScript extends Script {
     public void shutdown() {
         super.shutdown();
     }
+
+	public void setTriggerWalker(WorldPoint point) {
+		if (point == null)
+		{
+			triggerWalker = null;
+			Rs2Walker.setTarget(null);
+		} else {
+			triggerWalker = point;
+		}
+	}
 }

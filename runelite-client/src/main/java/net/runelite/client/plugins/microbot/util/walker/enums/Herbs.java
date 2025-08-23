@@ -12,7 +12,7 @@ public enum Herbs {
     FALADOR("Falador", new WorldPoint(3056, 3310, 0)),
     FARMING_GUILD("Farming Guild", new WorldPoint(1238, 3729, 0)),
     KOUREND("Kourend", new WorldPoint(1736, 3553, 0)),
-    MORYTANIA("Morytania", new WorldPoint(3600, 3523, 0)),
+    MORYTANIA("Morytania", new WorldPoint(3604, 3529, 0)),
     TROLLIEHM("Troll Stronghold", new WorldPoint(2828, 3695, 0)),
     WEISS("Weiss", new WorldPoint(2847, 3934, 0));
 

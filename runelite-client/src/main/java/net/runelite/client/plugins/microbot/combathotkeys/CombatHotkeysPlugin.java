@@ -152,7 +152,7 @@ public class CombatHotkeysPlugin extends Plugin implements KeyListener {
     @Subscribe
     public void onMenuEntryAdded(MenuEntryAdded event)
     {
-        if (event.getOption().equals("Walk here"))
+        if (event.getOption().equals("Walk here") && config.yesDance())
         {
             Microbot.getClient().getMenu().createMenuEntry(-1)
                     .setOption("Dancing -> mark tile 2")

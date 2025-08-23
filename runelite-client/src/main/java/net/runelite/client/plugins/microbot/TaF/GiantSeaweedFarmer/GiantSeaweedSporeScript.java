@@ -19,8 +19,9 @@ public class GiantSeaweedSporeScript extends Script {
                 if (!super.run() || !Microbot.isLoggedIn()) return;
                 if (!config.lootSeaweedSpores()) return;
                 
-                // Check for seaweed spores
-                if (Rs2GroundItem.exists(ItemID.SEAWEED_SPORE, 15)) {
+                // Check for seaweed spores - but respect critical farming operations
+                if (Rs2GroundItem.exists(ItemID.SEAWEED_SPORE, 15) && 
+                    !GiantSeaweedFarmerScript.inCriticalSection) {
                     // Pause all other scripts while we loot
                     Microbot.pauseAllScripts.set(true);
                     try {

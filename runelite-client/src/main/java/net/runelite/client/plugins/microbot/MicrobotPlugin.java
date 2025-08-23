@@ -110,6 +110,9 @@ public class MicrobotPlugin extends Plugin
 	@Inject
 	private EventBus eventBus;
 	private GameChatAppender gameChatAppender;
+
+	@Inject
+	private MicrobotVersionChecker microbotVersionChecker;
 	
 	// Widget change tracking for overlay cache invalidation
 	private volatile boolean widgetLayoutChanged = false;
@@ -124,6 +127,8 @@ public class MicrobotPlugin extends Plugin
 	{
 		log.info("Microbot: {} - {}", RuneLiteProperties.getMicrobotVersion(), RuneLiteProperties.getMicrobotCommit());
 		log.info("JVM: {} {}", System.getProperty("java.vendor"), System.getProperty("java.runtime.version"));
+
+		microbotVersionChecker.checkForUpdate();
 
 		gameChatAppender = new GameChatAppender();
 		gameChatAppender.setName("GAME_CHAT");
@@ -195,6 +200,7 @@ public class MicrobotPlugin extends Plugin
 		microbotOverlay.cacheButton.unhookMouseListener();
 		clientToolbar.removeNavigation(navButton);
 		if (gameChatAppender.isStarted()) gameChatAppender.stop();
+		microbotVersionChecker.shutdown();
 		
 		// Shutdown the cache system
 		shutdownCacheSystem();

@@ -633,7 +633,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         }
 
         if (entry.getOption().equals(CLEAR) && entry.getTarget().equals(PATH)) {
-            setTarget(null);
+			shortestPathScript.setTriggerWalker(null);
         }
     }
 
@@ -891,8 +891,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
          * Therefor CTRL + X seemed a bit more robust and userfriendly
          */
         if (e.getKeyCode() == KeyEvent.VK_X && e.isControlDown()) {
-            Rs2Walker.setTarget(null);
-            shortestPathScript.setTriggerWalker(null);
+			shortestPathScript.setTriggerWalker(null);
         }
     }
 

@@ -6,6 +6,7 @@ import net.runelite.api.coords.WorldPoint;
 @Getter
 public enum Trees {
     NONE("None"),
+	AUBURNVALE("Auburnvale", new WorldPoint(1365, 3319, 0)),
     FALADOR("Falador", new WorldPoint(3002, 3374, 0)),
     FARMING_GUILD("Farming Guild", new WorldPoint(1233, 3733, 0)),
     GNOME_STRONGHOLD("Gnome Stronghold", new WorldPoint(2437, 3418, 0)),

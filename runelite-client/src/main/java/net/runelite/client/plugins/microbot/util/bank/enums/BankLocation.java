@@ -49,7 +49,7 @@ public enum BankLocation {
     FEROX_ENCLAVE(new WorldPoint(3130, 3631, 0), false),
     FISHING_GUILD(new WorldPoint(2586, 3420, 0), true),
     FOSSIL_ISLAND(new WorldPoint(3739, 3804, 0), true),
-    FOSSIL_ISLAND_WRECK(new WorldPoint(3771, 3898, 0), true),
+    FOSSIL_ISLAND_WRECK(new WorldPoint(3766, 3898, 0), true),
     GNOME_BANK(new WorldPoint(2445, 3425, 1), true),
     GNOME_TREE_BANK_SOUTH(new WorldPoint(2449, 3482, 1), true),
     GNOME_TREE_BANK_WEST(new WorldPoint(2442, 3488, 1), true),

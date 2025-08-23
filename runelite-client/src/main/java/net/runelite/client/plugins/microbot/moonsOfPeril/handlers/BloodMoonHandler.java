@@ -193,7 +193,7 @@ public class BloodMoonHandler implements BaseHandler {
 
         while (isSpecialAttack1Sequence() && System.currentTimeMillis() - startMs < TIMEOUT_MS) {
             int bloodPoolTick = moonsOfPerilPlugin.bloodPoolTick;
-            if (targetJaguar.getAnimation() == 10960) {
+            if (targetJaguar.getAnimation() == 12492) {
                 sleep(600);
                 break;
             }

@@ -63,16 +63,15 @@ public class PathMapOverlay extends Overlay {
 
         if (plugin.drawTransports) {
             graphics.setColor(Color.WHITE);
-            if (plugin == null) return null;
-            if (plugin.getTransports() == null) return null;
-            if (plugin.getPathfinder() == null || !plugin.getPathfinder().isDone()) return null;
-            for (WorldPoint a : plugin.getTransports().keySet()) {
+            if (ShortestPathPlugin.getTransports() == null) return null;
+            if (ShortestPathPlugin.getPathfinder() == null || !ShortestPathPlugin.getPathfinder().isDone()) return null;
+            for (WorldPoint a : ShortestPathPlugin.getTransports().keySet()) {
                 Point mapA = worldMapOverlay.mapWorldPointToGraphicsPoint(a);
                 if (mapA == null || !worldMapClipArea.contains(mapA.getX(), mapA.getY())) {
                     continue;
                 }
 
-                for (Transport b : plugin.getTransports().getOrDefault(a, new HashSet<>())) {
+                for (Transport b : ShortestPathPlugin.getTransports().getOrDefault(a, new HashSet<>())) {
                     Point mapB = worldMapOverlay.mapWorldPointToGraphicsPoint(b.getDestination());
                     if (mapB == null || !worldMapClipArea.contains(mapB.getX(), mapB.getY())) {
                         continue;
@@ -83,9 +82,9 @@ public class PathMapOverlay extends Overlay {
             }
         }
 
-        if (plugin.getPathfinder() != null) {
-            Color colour = plugin.getPathfinder().isDone() ? plugin.colourPath : plugin.colourPathCalculating;
-            List<WorldPoint> path = plugin.getPathfinder().getPath();
+        if (ShortestPathPlugin.getPathfinder() != null) {
+            Color colour = ShortestPathPlugin.getPathfinder().isDone() ? plugin.colourPath : plugin.colourPathCalculating;
+            List<WorldPoint> path = ShortestPathPlugin.getPathfinder().getPath();
             for (int i = 0; i < path.size(); i++) {
                 graphics.setColor(colour);
                 WorldPoint point = path.get(i);

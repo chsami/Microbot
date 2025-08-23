@@ -6,9 +6,11 @@ import net.runelite.api.QuestState;
 import net.runelite.api.TileObject;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
@@ -74,6 +76,21 @@ public class HouseThievingScript extends Script {
 
                 if( state == null )
                     state = State.BANKING;
+
+                if (state != State.THIEVING_HOUSES)
+                {
+                    if (BreakHandlerScript.isLockState())
+                    {
+                        BreakHandlerScript.setLockState(false);
+                    }
+                }
+                else
+                {
+                    if (!BreakHandlerScript.isLockState())
+                    {
+                        BreakHandlerScript.setLockState(true);
+                    }
+                }
 
                 if( currentThievingHouse == null )
                     currentThievingHouse = getThievingHouse();
@@ -314,12 +331,20 @@ public class HouseThievingScript extends Script {
                 var tileObject = Rs2Tile.getTile(currentThievingHouse.initialThievingChest.getX(), currentThievingHouse.initialThievingChest.getY());
                 if( tileObject != null ) {
                     currentThievingObject = Rs2GameObject.getGameObject(currentThievingHouse.initialThievingChest);
+                    if (!Rs2Camera.isTileOnScreen(currentThievingObject.getLocalLocation()))
+                    {
+                        Rs2Camera.turnTo(currentThievingObject);
+                    }
                     Rs2GameObject.interact(currentThievingObject, "Search");
                 }
                 currentThievingObject = Rs2GameObject.getGameObject(currentThievingHouse.initialThievingChest);
             }
 
             if( currentThievingObject != null && ( lastThievingSearch == null || (elapsedTime != null && elapsedTime > 50000) ) ) {
+                if (!Rs2Camera.isTileOnScreen(currentThievingObject.getLocalLocation()))
+                {
+                    Rs2Camera.turnTo(currentThievingObject);
+                }
                 Rs2GameObject.interact(currentThievingObject, "Search");
                 lastThievingSearch = System.currentTimeMillis();
                 Rs2Random.waitEx(1000.0, 200.0);
@@ -327,6 +352,10 @@ public class HouseThievingScript extends Script {
         } else {
             currentThievingObject = Rs2GameObject.getGameObject(hintArrow);
             if( !Rs2Player.isInteracting() || lastThievingSearch == null || (elapsedTime != null && elapsedTime > 50000) ) {
+                if (!Rs2Camera.isTileOnScreen(currentThievingObject.getLocalLocation()))
+                {
+                    Rs2Camera.turnTo(currentThievingObject);
+                }
                 Rs2GameObject.interact(currentThievingObject, "Search");
                 lastThievingSearch = System.currentTimeMillis();
                 Rs2Random.waitEx(1000.0, 200.0);
@@ -339,6 +368,10 @@ public class HouseThievingScript extends Script {
         if( windowTile != null ) {
             var windowTileWallObject = windowTile.getWallObject();
             if( windowTileWallObject != null ) {
+                if (!Rs2Camera.isTileOnScreen(windowTileWallObject.getLocalLocation()))
+                {
+                    Rs2Camera.turnTo(windowTileWallObject);
+                }
                 Rs2GameObject.interact(windowTileWallObject, "Exit-window");
                 Rs2Random.waitEx(5000.0, 200.0);
                 currentThievingObject = null;
@@ -362,7 +395,7 @@ public class HouseThievingScript extends Script {
         var currentDodgyNecklace = getDodgyNecklaceAmount();
         var dodgyNecklaceReqsMet = !config.useDodgyNecklace() || (config.useDodgyNecklace() && currentDodgyNecklace >= config.dodgyNecklaceAmount());
 
-        if( hasMaxHouseKeys(config) && !hasAnyFood && currentDodgyNecklace < 1 ) {
+        if( hasMaxHouseKeys(config) && !hasAnyFood && currentDodgyNecklace < 1 && Rs2Inventory.emptySlotCount() > 5) {
             state = State.FINDING_HOUSE;
             return;
         }

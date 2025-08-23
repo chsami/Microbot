@@ -10,6 +10,7 @@ public enum FruitTrees {
     CATHERBY("Catherby", new WorldPoint(2858, 3434, 0)),
     FARMING_GUILD("Farming Guild", new WorldPoint(1243, 3756, 0)),
     GNOME_STRONGHOLD("Gnome Stronghold", new WorldPoint(2473, 3446, 0)),
+	KASTORI("Kastori", new WorldPoint(1350, 3055, 0)),
     TREE_GNOME_VILLAGE("Tree Gnome Village", new WorldPoint(2489, 3182, 0)),
     TAI_BWO_WANNAI("Tai Bwo Wannai", new WorldPoint(2798, 3101, 0)),
     PRIFDDINAS("Prifddinas", new WorldPoint(3292, 6117, 0));
