@@ -332,7 +332,7 @@ public interface AIOFighterConfig extends Config {
 
     @ConfigItem(
             keyName = "Scatter",
-            name = "Scatter",
+            name = "Scatter Ashes",
             description = "Picks up and Scatter ashes. Casts Demonic Offering if possible.",
             position = 97,
             section = lootSection
