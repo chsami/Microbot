@@ -16,32 +16,17 @@ public class BuryScatterScript extends Script {
     public boolean run(AIOFighterConfig config) {
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
-                if (!Microbot.isLoggedIn() || !super.run() || (!config.toggleBuryBones() && !config.toggleScatter())) {
+                if (!Microbot.isLoggedIn() || !super.run()) {
                     return;
                 }
 
-                List<Rs2ItemModel> bones = Rs2Inventory.getBones();
-                List<Rs2ItemModel> ashes = Rs2Inventory.getAshes();
-                if (!bones.isEmpty()) {
-                    if (Rs2Magic.canCast(Rs2Spells.SINISTER_OFFERING)) {
-                        if (bones.size() >= 3) {
-                            if (Rs2Magic.cast(Rs2Spells.SINISTER_OFFERING)) {
-                                sleepUntil(() -> Rs2Inventory.getBones().isEmpty());
-                            }
-                        }
-                    } else {
-                        processItems(config.toggleBuryBones(), bones, "bury");
-                    }
-                } else if (!ashes.isEmpty()) {
-                    if (Rs2Magic.canCast(Rs2Spells.DEMONIC_OFFERING)) {
-                        if (ashes.size() >= 3) {
-                            if (Rs2Magic.cast(Rs2Spells.DEMONIC_OFFERING)) {
-                                sleepUntil(() -> Rs2Inventory.getAshes().isEmpty());
-                            }
-                        }
-                    } else {
-                        processItems(config.toggleScatter(), ashes, "scatter");
-                    }
+                if (config.toggleBuryBones()) {
+                    List<Rs2ItemModel> bones = Rs2Inventory.getBones();
+                    processItems(bones, Rs2Spells.SINISTER_OFFERING, "bury");
+                }
+                if (config.toggleScatter()) {
+                    List<Rs2ItemModel> ashes = Rs2Inventory.getAshes();
+                    processItems(ashes, Rs2Spells.DEMONIC_OFFERING, "scatter");
                 }
             } catch (Exception ex) {
                 Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
@@ -51,12 +36,20 @@ public class BuryScatterScript extends Script {
     }
 
 
-    private void processItems(boolean toggle, List<Rs2ItemModel> items, String action) {
-        if (!toggle || items == null || items.isEmpty()) {
+    private void processItems(List<Rs2ItemModel> items, Rs2Spells spell, String action) {
+        if (items == null || items.isEmpty()) {
             return;
         }
-        Rs2Inventory.interact(items.get(0), action);
-        Rs2Player.waitForAnimation();
+        if (Rs2Magic.canCast(spell)) {
+            if (items.size() >= 3) {
+                if (Rs2Magic.cast(spell)) {
+                    sleepUntil(() -> Rs2Inventory.getList(item -> item.getName().equals(items.get(0).getName())).isEmpty());
+                }
+            }
+        } else {
+            Rs2Inventory.interact(items.get(0), action);
+            Rs2Player.waitForAnimation();
+        }
     }
 
     public void shutdown() {
