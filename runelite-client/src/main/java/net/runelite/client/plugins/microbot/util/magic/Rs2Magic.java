@@ -9,6 +9,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.util.Global;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.cache.Rs2SkillCache;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
@@ -32,8 +33,8 @@ import org.apache.commons.lang3.NotImplementedException;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
-import java.util.List;
 import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -58,9 +59,26 @@ public class Rs2Magic {
         return true;
     }
 
-	public static boolean canCast(Spell spell) {
-		return canCast(spell.getMagicAction());
-	}
+    /**
+     * Determines if the player can cast the given spell by verifying the
+     * player's active spellbook and the availability of the required runes.
+     *
+     * @param spell the spell that needs to be checked for rune availability
+     * @return true if the player has the correct spellbook and enough runes to cast the spell
+     */
+    public static boolean canCast(Spell spell) {
+        if (!isSpellbook(spell.getSpellbook())) {
+            Microbot.log("You need to be on the " + spell.getSpellbook() + " spellbook to cast " + spell.getClass().getSimpleName() + ".");
+            return false;
+        }
+        if (Rs2SkillCache.getBoostedSkillLevel(Skill.MAGIC) < spell.getRequiredLevel()) {
+            Microbot.log("You need to have a level of " + spell.getRequiredLevel() + " to cast " + spell.getClass().getSimpleName() + ".");
+            return false;
+        }
+        Map<Runes, Integer> requiredRunes = spell.getRequiredRunes();
+        Map<Runes, Integer> availableRunes = getRunes(RuneFilter.builder().includeRunePouch(true).includeBank(false).includeComboRunes(true).includeEquipment(true).includeInventory(true).build());
+        return requiredRunes.entrySet().stream().allMatch(x -> availableRunes.getOrDefault(x.getKey(), 0) >= x.getValue());
+    }
 
     /**
      * Checks if a specific spell can be cast
