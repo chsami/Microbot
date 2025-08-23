@@ -70,7 +70,7 @@ public class HighAlchScript extends Script
 					}
 					Rs2ExplorersRing.closeInterface();
 				}
-				else if (Rs2Player.getSkillRequirement(Skill.MAGIC, Rs2Spells.HIGH_LEVEL_ALCHEMY.getRequiredLevel()) && Rs2Magic.hasRequiredRunes(Rs2Spells.HIGH_LEVEL_ALCHEMY))
+				else if (Rs2Magic.canCast(Rs2Spells.HIGH_LEVEL_ALCHEMY))
 				{
 					for (Rs2ItemModel item : items)
 					{
