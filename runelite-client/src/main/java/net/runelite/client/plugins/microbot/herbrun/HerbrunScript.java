@@ -13,6 +13,7 @@ import net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.farm
 import net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.farmruns.FarmingWorld;
 import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.cache.Rs2SkillCache;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
@@ -323,10 +324,19 @@ public class HerbrunScript extends Script {
         
         // Withdraw herb seeds
         HerbSeedType seedType = config.herbSeedType();
-        int seedsNeeded = patchCount; // 1 seed per patch
-        if (!Rs2Bank.withdrawX(seedType.getItemId(), seedsNeeded)) {
-            log("Failed to withdraw " + seedsNeeded + " " + seedType.getSeedName());
-            return false;
+        if (seedType == HerbSeedType.BEST) {
+            // Handle dynamic seed selection based on farming level and availability
+            if (!withdrawBestAvailableSeeds(patchCount)) {
+                log("Failed to withdraw best available seeds for " + patchCount + " patches");
+                return false;
+            }
+        } else {
+            // Original logic for specific seed type
+            int seedsNeeded = patchCount; // 1 seed per patch
+            if (!Rs2Bank.withdrawX(seedType.getItemId(), seedsNeeded)) {
+                log("Failed to withdraw " + seedsNeeded + " " + seedType.getSeedName());
+                return false;
+            }
         }
         
         // Withdraw compost if enabled
@@ -355,6 +365,78 @@ public class HerbrunScript extends Script {
         sleepUntil(() -> !Rs2Bank.isOpen());
         
         log("Inventory setup complete - starting herb run");
+        return true;
+    }
+
+    /**
+     * Withdraws the best available herb seeds based on farming level and bank availability
+     * 
+     * @param patchCount Number of patches that need seeds
+     * @return true if enough seeds were withdrawn for all patches
+     */
+    private boolean withdrawBestAvailableSeeds(int patchCount) {
+        // Get player's farming level
+        int farmingLevel = Rs2SkillCache.getRealSkillLevel(Skill.FARMING);
+        
+        // Get all plantable herbs sorted by level (highest first)
+        List<HerbSeedType> plantableHerbs = HerbSeedType.getPlantableHerbs(farmingLevel);
+        
+        if (plantableHerbs.isEmpty()) {
+            log("No herbs can be planted at farming level " + farmingLevel);
+            return false;
+        }
+        
+        int seedsWithdrawn = 0;
+        int seedsNeeded = patchCount;
+        
+        // Track which seed types we're withdrawing for logging
+        Map<HerbSeedType, Integer> withdrawnSeeds = new HashMap<>();
+        
+        // Try to withdraw seeds starting from highest level herbs
+        for (HerbSeedType herb : plantableHerbs) {
+            if (seedsWithdrawn >= seedsNeeded) {
+                break; // We have enough seeds
+            }
+            
+            // Check how many of this seed type we have in bank
+            int availableSeeds = Rs2Bank.count(herb.getItemId());
+            
+            if (availableSeeds > 0) {
+                // Calculate how many to withdraw (up to what we need)
+                int toWithdraw = Math.min(availableSeeds, seedsNeeded - seedsWithdrawn);
+                
+                // Withdraw the seeds
+                if (Rs2Bank.withdrawX(herb.getItemId(), toWithdraw)) {
+                    seedsWithdrawn += toWithdraw;
+                    withdrawnSeeds.put(herb, toWithdraw);
+                    log("Withdrew " + toWithdraw + " " + herb.getSeedName() + " (level " + herb.getLevelRequired() + ")");
+                } else {
+                    log("Failed to withdraw " + herb.getSeedName() + " despite having " + availableSeeds + " in bank");
+                }
+            }
+        }
+        
+        // Check if we got enough seeds
+        if (seedsWithdrawn < seedsNeeded) {
+            log("Could only withdraw " + seedsWithdrawn + " seeds, need " + seedsNeeded + " for all patches");
+            
+            // Log what we managed to get
+            if (!withdrawnSeeds.isEmpty()) {
+                StringBuilder sb = new StringBuilder("Seeds withdrawn: ");
+                withdrawnSeeds.forEach((herb, count) -> 
+                    sb.append(count).append("x ").append(herb.getSeedName()).append(", "));
+                log(sb.toString());
+            }
+            
+            return seedsWithdrawn > 0; // Return true if we got at least some seeds
+        }
+        
+        // Success - log summary
+        StringBuilder summary = new StringBuilder("Successfully withdrew seeds for " + patchCount + " patches: ");
+        withdrawnSeeds.forEach((herb, count) -> 
+            summary.append(count).append("x ").append(herb.getSeedName()).append(" (lvl ").append(herb.getLevelRequired()).append("), "));
+        log(summary.toString());
+        
         return true;
     }
 
