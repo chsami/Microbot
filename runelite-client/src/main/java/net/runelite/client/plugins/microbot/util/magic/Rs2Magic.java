@@ -68,11 +68,11 @@ public class Rs2Magic {
      */
     public static boolean canCast(Spell spell) {
         if (!isSpellbook(spell.getSpellbook())) {
-            Microbot.log("You need to be on the " + spell.getSpellbook() + " spellbook to cast " + spell.getClass().getSimpleName() + ".");
+            Microbot.log("You need to be on the " + spell.getSpellbook() + " spellbook to cast " + spell.getMagicAction().name() + ".");
             return false;
         }
         if (Rs2SkillCache.getBoostedSkillLevel(Skill.MAGIC) < spell.getRequiredLevel()) {
-            Microbot.log("You need to have a level of " + spell.getRequiredLevel() + " to cast " + spell.getClass().getSimpleName() + ".");
+            Microbot.log("You need to have a level of " + spell.getRequiredLevel() + " to cast " + spell.getMagicAction().name() + ".");
             return false;
         }
         Map<Runes, Integer> requiredRunes = spell.getRequiredRunes();
