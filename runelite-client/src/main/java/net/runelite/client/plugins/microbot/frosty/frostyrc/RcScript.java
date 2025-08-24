@@ -710,6 +710,9 @@ public class RcScript extends Script {
             Microbot.log("Crafting runes");
             handleEmptyPouch();
         }
+
+		handleFeroxRunEnergy();
+
         state = State.BANKING;
     }
 
