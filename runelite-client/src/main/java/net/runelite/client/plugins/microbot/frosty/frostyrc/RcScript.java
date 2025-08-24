@@ -713,6 +713,10 @@ public class RcScript extends Script {
 
 		handleFeroxRunEnergy();
 
+		if (plugin.isBreakHandlerEnabled()) {
+			BreakHandlerScript.setLockState(false);
+		}
+
         state = State.BANKING;
     }
 
