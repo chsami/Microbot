@@ -459,7 +459,12 @@ public class RcScript extends Script {
             Microbot.log("Interacting with myth cape");
             Rs2Inventory.interact(mythCape, "Teleport");
             sleepUntil(() -> plugin.getMyWorldPoint().getRegionID() == mythicStatueRegion);
-            sleepGaussian(1100, 200);
+            sleepGaussian(600, 200);
+
+			GameObject statue = Rs2GameObject.get("Mythic Statue");
+			if (statue != null && !Rs2Player.isAnimating()) {
+				Rs2GameObject.interact(statue, "Teleport");
+			}
 
             if (plugin.getMyWorldPoint().getRegionID() == mythicStatueRegion) {
                 Microbot.log("Walking to Wrath ruins");
