@@ -334,6 +334,7 @@ public class RcScript extends Script {
     private void handleFeroxRunEnergy() {
 		if (forceDrinkAtFerox || Rs2Player.getRunEnergy() <= 15 || Rs2Player.getHealthPercentage() <= 20) {
 			Microbot.log("We are thirsty...let us Drink");
+            forceDrinkAtFerox = true;
             if (plugin.getMyWorldPoint().distanceTo(feroxPoolWp) > 5) {
                 Microbot.log("Walking to Ferox pool");
                 Rs2Walker.walkTo(feroxPoolWp);
@@ -746,7 +747,13 @@ public class RcScript extends Script {
         Rs2Tab.switchToEquipmentTab();
         sleepGaussian(1300, 200);
 
-        List<Teleports> bankTeleport = Arrays.asList(
+        boolean needRefill = (forceDrinkAtFerox || Rs2Player.getRunEnergy() <= 15 || Rs2Player.getHealthPercentage() <= 20);
+        List<Teleports> bankTeleport = needRefill
+                ? Arrays.asList(
+                Teleports.FEROX_ENCLAVE,
+                Teleports.CRAFTING_CAPE,
+                Teleports.FARMING_CAPE)
+                : Arrays.asList(
                 Teleports.CRAFTING_CAPE,
                 Teleports.FARMING_CAPE,
                 Teleports.FEROX_ENCLAVE
