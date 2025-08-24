@@ -48,6 +48,8 @@ public class RcScript extends Script {
     private final WorldPoint outsideWrathRuins = new WorldPoint(2445, 2818, 0);
     private final WorldPoint wrathRuinsLoc = new WorldPoint(2445, 2824, 0);
 
+	private volatile boolean forceDrinkAtFerox = false;
+
     public static final int pureEss = 7936;
     public static final int feroxPool = 39651;
     public static final int monasteryRegion = 10290;
@@ -330,8 +332,8 @@ public class RcScript extends Script {
     }
 
     private void handleFeroxRunEnergy() {
-        if (Rs2Player.getRunEnergy() < 45) {
-            Microbot.log("We are thirsty...let us Drink");
+		if (forceDrinkAtFerox || Rs2Player.getRunEnergy() <= 15 || Rs2Player.getHealthPercentage() <= 20) {
+			Microbot.log("We are thirsty...let us Drink");
             if (plugin.getMyWorldPoint().distanceTo(feroxPoolWp) > 5) {
                 Microbot.log("Walking to Ferox pool");
                 Rs2Walker.walkTo(feroxPoolWp);
@@ -344,6 +346,7 @@ public class RcScript extends Script {
             }
             sleepUntil(() -> (!Rs2Player.isInteracting()) && !Rs2Player.isAnimating() && Rs2Player.getRunEnergy() > 90);
             sleepGaussian(1100, 200);
+			forceDrinkAtFerox = false;
         }
     }
 
@@ -745,6 +748,10 @@ public class RcScript extends Script {
                     Rs2Equipment.interact(bankTeleportsId, teleport.getInteraction());
                     sleepUntil(() -> teleport.matchesRegion(plugin.getMyWorldPoint().getRegionID()));
                     sleepGaussian(1100, 200);
+					if (teleport == Teleports.FEROX_ENCLAVE) {
+						forceDrinkAtFerox = true;
+						handleFeroxRunEnergy();
+					}
                     teleportUsed = true;
                     break;
                 }
