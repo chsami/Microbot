@@ -24,7 +24,7 @@ import java.awt.*;
  */
 @PluginDescriptor(
         name = PluginDescriptor.Default + "Farm tree runner",
-        description = "Acun's farm tree runner. Supports regular and fruit trees",
+        description = "Acun's farm tree runner. Supports regular, fruit and hardwood trees",
         tags = {"Farming", "Tree run"},
         enabledByDefault = false
 )
