@@ -5,6 +5,7 @@ import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigInformation;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.Range;
 import net.runelite.client.plugins.microbot.agility.enums.AgilityCourse;
 
 @ConfigGroup("MicroAgility")
@@ -76,5 +77,42 @@ public interface MicroAgilityConfig extends Config
 	default String itemsToAlch()
 	{
 		return "";
+	}
+
+	@ConfigItem(
+		keyName = "efficientAlching",
+		name = "Efficient Alching",
+		description = "Click obstacle first, then alch, then click again (for obstacles 5+ tiles away)",
+		position = 6,
+		section = generalSection
+	)
+	default boolean efficientAlching()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "skipInefficient",
+		name = "Skip Inefficient",
+		description = "Only alch when obstacle is 5+ tiles away (skip inefficient alchs)",
+		position = 7,
+		section = generalSection
+	)
+	default boolean skipInefficient()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "alchSkipChance",
+		name = "Alch Skip Chance",
+		description = "Percentage chance to skip alching on any obstacle (0-100)",
+		position = 8,
+		section = generalSection
+	)
+	@Range(min = 0, max = 100)
+	default int alchSkipChance()
+	{
+		return 5;
 	}
 }
