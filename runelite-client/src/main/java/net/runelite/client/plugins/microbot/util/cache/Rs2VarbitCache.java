@@ -453,7 +453,7 @@ public class Rs2VarbitCache extends Rs2Cache<Integer, VarbitData> implements Cac
         String statsInfo = Rs2CacheLoggingUtils.formatCacheStatistics(
             stats.getHitRate(), stats.cacheHits, stats.cacheMisses, stats.cacheMode.toString());
         logContent.append(statsInfo).append("\n\n");
-        
+        int maxRows = mode == LogOutputMode.CONSOLE_ONLY ? 50 : cache.size();
         if (cache.size() == 0) {
             String emptyMsg = "Cache is empty";
             logContent.append(emptyMsg).append("\n");
@@ -490,7 +490,7 @@ public class Rs2VarbitCache extends Rs2Cache<Integer, VarbitData> implements Cac
             String tableFooter = Rs2CacheLoggingUtils.formatTableFooter(columnWidths);            
             logContent.append(tableFooter);
             
-            String limitMsg = Rs2CacheLoggingUtils.formatLimitMessage(cache.size(), 50);
+            String limitMsg = Rs2CacheLoggingUtils.formatLimitMessage(cache.size(), maxRows);
             if (!limitMsg.isEmpty()) {                
                 logContent.append(limitMsg).append("\n");
             }

@@ -73,7 +73,7 @@ public class VarbitCondition implements Condition {
     @Getter private final int targetValueMax;
     
     @Getter @Setter private transient int currentValue;
-    @Getter private transient boolean satisfied;
+    @Getter private transient volatile boolean satisfied;
     @Getter private transient int startValue;
     @Getter private transient int effectiveTargetValue;
 

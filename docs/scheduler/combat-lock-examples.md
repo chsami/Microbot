@@ -71,7 +71,7 @@ public class BossPlugin extends Plugin implements SchedulablePlugin {
     }
     
     @Subscribe
-    public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
+    public void onPluginScheduleEntryPostScheduleTaskEvent(PluginScheduleEntryPostScheduleTaskEvent event) {
         if (event.getPlugin() == this) {
             log.info("Scheduler requesting plugin shutdown");
             

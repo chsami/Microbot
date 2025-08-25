@@ -65,7 +65,7 @@ To make your plugin schedulable by the Plugin Scheduler, follow these steps:
    ```java
    @Override
    @Subscribe
-   public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
+   public void onPluginScheduleEntryPostScheduleTaskEvent(PluginScheduleEntryPostScheduleTaskEvent event) {
        if (event.getPlugin() == this) {
            // Save state if needed
            // Clean up resources

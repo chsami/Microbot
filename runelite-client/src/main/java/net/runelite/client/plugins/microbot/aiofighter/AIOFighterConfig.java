@@ -9,7 +9,7 @@ import net.runelite.client.plugins.microbot.aiofighter.enums.State;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 import net.runelite.client.plugins.microbot.util.magic.Rs2CombatSpells;
 import net.runelite.client.plugins.microbot.util.misc.SpecialAttackWeaponEnum;
-import net.runelite.client.plugins.microbot.util.slayer.enums.SlayerMaster;
+import net.runelite.client.plugins.microbot.util.skills.slayer.enums.SlayerMaster;
 
 @ConfigGroup(AIOFighterConfig.GROUP)
 @ConfigInformation("1. Make sure to place the cannon first before starting the plugin. <br />" +

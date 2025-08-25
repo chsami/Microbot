@@ -631,7 +631,7 @@ public class Rs2GroundItemCache extends Rs2Cache<String, Rs2GroundItemModel> {
                     return 0; // If value calculation fails, consider them equal
                 }
             });
-            
+            int maxRows = mode == LogOutputMode.CONSOLE_ONLY ? 50 : cache.size();
             // Process each item safely
             for (Rs2GroundItemModel item : items) {
                 try {
@@ -727,7 +727,7 @@ public class Rs2GroundItemCache extends Rs2Cache<String, Rs2GroundItemModel> {
             String tableFooter = Rs2CacheLoggingUtils.formatTableFooter(columnWidths);            
             logContent.append(tableFooter);
             
-            String limitMsg = Rs2CacheLoggingUtils.formatLimitMessage(cache.size(), 50);
+            String limitMsg = Rs2CacheLoggingUtils.formatLimitMessage(cache.size(), maxRows);
             if (!limitMsg.isEmpty()) {                
                 logContent.append(limitMsg).append("\n");
             }

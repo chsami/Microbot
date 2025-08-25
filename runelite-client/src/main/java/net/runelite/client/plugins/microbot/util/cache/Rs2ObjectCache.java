@@ -505,9 +505,8 @@ public class Rs2ObjectCache extends Rs2Cache<String, Rs2ObjectModel> {
             final WorldPoint finalPlayerLocation = playerLocation;
 
             // Use a fixed-size buffer to avoid excessive StringBuilder growth
-            int maxRows = 50;
+            int maxRows = mode == LogOutputMode.CONSOLE_ONLY ? 50 : cache.size();
             int rowCount = 0;
-
             // Precompute distances and actions in parallel for performance
             class ObjectLogInfo {
                 Rs2ObjectModel obj;
@@ -567,7 +566,7 @@ public class Rs2ObjectCache extends Rs2Cache<String, Rs2ObjectModel> {
             logContent.append(Rs2CacheLoggingUtils.formatTableFooter(columnWidths));
             String limitMsg = Rs2CacheLoggingUtils.formatLimitMessage(cache.size(), maxRows);
             if (!limitMsg.isEmpty()) {
-            logContent.append(limitMsg).append("\n");
+                logContent.append(limitMsg).append("\n");
             }
         }
         

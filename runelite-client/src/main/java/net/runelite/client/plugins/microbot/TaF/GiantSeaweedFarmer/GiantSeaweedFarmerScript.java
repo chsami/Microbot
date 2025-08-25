@@ -33,7 +33,7 @@ public class GiantSeaweedFarmerScript extends Script {
     // Critical section flag to prevent spore looting during compost+plant sequence
     public static volatile boolean inCriticalSection = false;
     private final GiantSeaweedFarmerPlugin giantSeaweedPlugin;
-    private final LockCondition lookCondition;
+    private final LockCondition lockCondition;
     public GiantSeaweedFarmerStatus BOT_STATE = GiantSeaweedFarmerStatus.BANKING;
     private TileObject currentPatch;
     private List<Integer> handledPatches = new ArrayList<>();
@@ -60,7 +60,7 @@ public class GiantSeaweedFarmerScript extends Script {
     @Inject
     public GiantSeaweedFarmerScript(GiantSeaweedFarmerPlugin giantSeaweedPlugin) {
         this.giantSeaweedPlugin = giantSeaweedPlugin;
-        this.lookCondition = giantSeaweedPlugin.getLockCondition(giantSeaweedPlugin.getStopCondition());
+        this.lockCondition = giantSeaweedPlugin.getLockCondition(giantSeaweedPlugin.getStopCondition());
     }
 
     private static void getToFossilIsland() {
@@ -166,7 +166,7 @@ public class GiantSeaweedFarmerScript extends Script {
             Microbot.log("We failed to get back to the surface");
             return;
         }
-        lookCondition.unlock();
+        lockCondition.unlock();
         Microbot.log("We're back at the bank, stopping the script");
         if (giantSeaweedPlugin != null) {
             giantSeaweedPlugin.reportFinished("Giant Seaweed Farming script finished successfully.", true);
@@ -179,18 +179,18 @@ public class GiantSeaweedFarmerScript extends Script {
         sleepUntil(() -> Rs2Player.getWorldLocation().getPlane() == 1, 5000);
         if (Rs2Player.getWorldLocation().getPlane() != 1) {
             Microbot.log("We failed to get underwater - Make sure to handle the warning dialog manually once");
-            lookCondition.unlock();
+            lockCondition.unlock();
             giantSeaweedPlugin.reportFinished("Giant Seaweed Farming script error. We failed to get underwater", false);
             this.shutdown();
             return;
         }
-        lookCondition.lock();
+        lockCondition.lock();
         Rs2Walker.walkTo(3731, 10273, 1); // Patch
         BOT_STATE = GiantSeaweedFarmerStatus.FARMING;
     }
 
     private boolean handleBanking(GiantSeaweedFarmerConfig config) {
-        lookCondition.unlock();
+        lockCondition.unlock();
         Rs2Bank.walkToBank(BankLocation.FOSSIL_ISLAND_WRECK);
         if (!Rs2Bank.openBank()) {
             return false;
@@ -287,7 +287,7 @@ public class GiantSeaweedFarmerScript extends Script {
                 return;
             }
             Microbot.log("Finished farming, stopping...");
-            lookCondition.unlock();
+            lockCondition.unlock();
             giantSeaweedPlugin.reportFinished("Giant Seaweed Farming script, finished farming not returning to bank", true);
             shutdown();
             return;
@@ -420,7 +420,7 @@ public class GiantSeaweedFarmerScript extends Script {
     public void shutdown() {
         BOT_STATE = GiantSeaweedFarmerStatus.BANKING;
         handledPatches = new ArrayList<>();
-        lookCondition.unlock();
+        lockCondition.unlock();
         inCriticalSection = false; // Ensure flag is cleared on shutdown
         super.shutdown();
     }

@@ -50,7 +50,7 @@ The `SchedulablePlugin` interface requires implementation of key methods:
 public interface SchedulablePlugin {
     LogicalCondition getStartCondition();
     LogicalCondition getStopCondition();
-    void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event);
+    void onPluginScheduleEntryPostScheduleTaskEvent(PluginScheduleEntryPostScheduleTaskEvent event);
     
     // Optional methods with default implementations
     void onStopConditionCheck();
@@ -125,7 +125,7 @@ public LogicalCondition getStartCondition() {
 ```java
 @Override
 @Subscribe
-public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
+public void onPluginScheduleEntryPostScheduleTaskEvent(PluginScheduleEntryPostScheduleTaskEvent event) {
     // Save state before stopping
     if (event.getPlugin() == this) {
         WorldPoint currentLocation = null;
@@ -148,7 +148,7 @@ public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent 
 }
 ```
 
-The `onPluginScheduleEntrySoftStopEvent` method is triggered when the Plugin Scheduler determines that a plugin's stop conditions have been met and requests the plugin to gracefully shut down. This implementation follows best practices for safely stopping a plugin:
+The `onPluginScheduleEntryPostScheduleTaskEvent` method is triggered when the Plugin Scheduler determines that a plugin's stop conditions have been met and requests the plugin to gracefully shut down. This implementation follows best practices for safely stopping a plugin:
 
 1. **State Preservation**: First saves the current player location to configuration for later use.
 2. **Thread Safety**: Uses `Microbot.getClientThread().invokeLater()` to ensure the plugin is stopped on the client thread, avoiding concurrency issues.
@@ -170,7 +170,7 @@ This is useful in situations where you need an immediate shutdown response, but 
 The scheduler-managed shutdown process follows this sequence:
 
 1. **Trigger**: Stop conditions are met or manual stop requested
-2. **Soft Stop Request**: The scheduler sends `PluginScheduleEntrySoftStopEvent` to the plugin
+2. **Soft Stop Request**: The scheduler sends `PluginScheduleEntryPostScheduleTaskEvent` to the plugin
 3. **Plugin Cleanup**: The plugin performs necessary cleanup operations 
 4. **Graceful Termination**: The plugin stops itself using one of the following methods:
    - `Microbot.getPluginManager().stopPlugin(this)`
@@ -254,7 +254,7 @@ The `SchedulableExamplePlugin` includes features specifically designed for testi
 ### Manual Condition Triggers
 
 ```java
-// HotkeyListener for testing PluginScheduleEntryFinishedEvent
+// HotkeyListener for testing PluginScheduleEntryMainTaskFinishedEvent
 private final HotkeyListener finishPluginHotkeyListener = new HotkeyListener(() -> config.finishPluginHotkey()) {
     @Override
     public void hotkeyPressed() {

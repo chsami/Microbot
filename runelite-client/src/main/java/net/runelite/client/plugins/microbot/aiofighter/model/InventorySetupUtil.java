@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.aiofighter.AIOFighterConfig;
 import net.runelite.client.plugins.microbot.aiofighter.AIOFighterPlugin;
 import net.runelite.client.plugins.microbot.aiofighter.bank.BankerScript;
-import net.runelite.client.plugins.microbot.util.slayer.enums.SlayerTaskMonster;
+import net.runelite.client.plugins.microbot.util.skills.slayer.enums.SlayerTaskMonster;
 
 import javax.inject.Inject;
 import java.util.Arrays;

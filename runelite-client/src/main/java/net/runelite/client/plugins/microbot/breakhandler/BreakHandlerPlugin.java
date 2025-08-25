@@ -64,15 +64,9 @@ public class BreakHandlerPlugin extends Plugin {
         }
     }
 
-    protected void shutDown() {
-        log.info("\nshutdown: "+
-                 "\nbreakDuration: " + BreakHandlerScript.breakDuration + 
-                 "\nbreakIn: " + BreakHandlerScript.breakIn + 
-                 "\nisLockState: " + BreakHandlerScript.isLockState() + 
-                 "\npauseAllScripts: " + Microbot.pauseAllScripts.get() + 
-                 "\nPluginPauseEvent.isPaused: " + PluginPauseEvent.isPaused());
+    protected void shutDown() {        
         breakHandlerScript.shutdown();
-        log.info("\nshutdown: "+
+        log.debug("\nshutdown: "+
                  "\nbreakDuration: " + BreakHandlerScript.breakDuration + 
                  "\nbreakIn: " + BreakHandlerScript.breakIn + 
                  "\nisLockState: " + BreakHandlerScript.isLockState() + 

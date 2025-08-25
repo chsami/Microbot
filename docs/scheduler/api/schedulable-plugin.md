@@ -21,9 +21,9 @@ The interface follows these core design principles:
 
 ### Essential Methods for Implementation
 
-#### `void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event)`
+#### `void onPluginScheduleEntryPostScheduleTaskEvent(PluginScheduleEntryPostScheduleTaskEvent event)`
 
-This is the only method without a default implementation that plugins must implement. It handles the soft stop request from the scheduler, which is triggered when stop conditions are met or when manual stop is initiated. The implementation should ensure the plugin stops gracefully, preserving state and cleaning up resources before terminating.
+This method handles the post-schedule task event from the scheduler, which is triggered when stop conditions are met or when manual stop is initiated. While the SchedulablePlugin interface provides a default no-op implementation, plugins should override this method to ensure they stop gracefully, preserving state and cleaning up resources before terminating.
 
 The implementation is expected to:
 
@@ -62,7 +62,7 @@ This is particularly useful when conditions depend on changing game state, such 
 
 #### `void reportFinished(String reason, boolean success)`
 
-Provides a way for plugins to proactively indicate completion without waiting for stop conditions to trigger. This method posts a `PluginScheduleEntryFinishedEvent` that notifies the scheduler the plugin has finished its task.
+Provides a way for plugins to proactively indicate completion without waiting for stop conditions to trigger. This method posts a `PluginScheduleEntryMainTaskFinishedEvent` that notifies the scheduler the plugin has finished its task.
 
 The implementation handles various edge cases:
 
@@ -112,12 +112,12 @@ Plugins can be stopped through various mechanisms:
 2. **Plugin Finished**: Plugin self-reports completion using `reportFinished()`
    - Appears as `StopReason.PLUGIN_FINISHED`
    - Indicates normal completion
-   - Flow: Plugin.reportFinished() → PluginScheduleEntryFinishedEvent → SchedulerPlugin.onPluginScheduleEntryFinishedEvent() → PluginScheduleEntry.stop() → Plugin stops
+   - Flow: Plugin.reportFinished() → PluginScheduleEntryMainTaskFinishedEvent → SchedulerPlugin.onPluginScheduleEntryMainTaskFinishedEvent() → PluginScheduleEntry.stop() → Plugin stops
 
 3. **Stop Conditions Met**: When plugin or user-defined stop conditions are satisfied
    - Appears as `StopReason.SCHEDULED_STOP`
    - Follows the soft-stop/hard-stop pattern
-   - Flow: SchedulerPlugin.checkCurrentPlugin() → PluginScheduleEntry.checkConditionsAndStop() → PluginScheduleEntry.softStop() → PluginScheduleEntrySoftStopEvent → Plugin.onPluginScheduleEntrySoftStopEvent() → Plugin stops
+   - Flow: SchedulerPlugin.checkCurrentPlugin() → PluginScheduleEntry.checkConditionsAndStop() → PluginScheduleEntry.softStop() → PluginScheduleEntryPostScheduleTaskEvent → Plugin.onPluginScheduleEntryPostScheduleTaskEvent() → Plugin stops
 
 4. **Error**: An exception occurs in the plugin
    - Appears as `StopReason.ERROR`
@@ -137,7 +137,7 @@ The `SchedulablePlugin` interface integrates with the broader scheduler architec
 
 2. **Condition Management**: The scheduler continuously evaluates both start and stop conditions through a `ConditionManager` that separates plugin-defined conditions from user-defined ones.
 
-3. **Event Communication**: The scheduler posts events like `PluginScheduleEntrySoftStopEvent` to initiate plugin stops, and receives events like `PluginScheduleEntryFinishedEvent` when plugins self-report completion.
+3. **Event Communication**: The scheduler posts events like `PluginScheduleEntryPostScheduleTaskEvent` to initiate plugin stops, and receives events like `PluginScheduleEntryMainTaskFinishedEvent` when plugins self-report completion.
 
 4. **Lifecycle Management**: The scheduler controls when plugins are enabled or disabled based on their schedule and conditions, but delegates the actual stopping process to the plugins themselves through the interface methods.
 
@@ -163,7 +163,7 @@ When the scheduler is running:
 1. The `SchedulerPlugin` periodically checks each registered `PluginScheduleEntry`
 2. If a plugin implements `SchedulablePlugin`, its conditions are retrieved and evaluated
 3. The `SchedulerPlugin` makes decisions about starting/stopping based on these conditions
-4. Events are sent back to the plugin through interface methods like `onPluginScheduleEntrySoftStopEvent`
+4. Events are sent back to the plugin through interface methods like `onPluginScheduleEntryPostScheduleTaskEvent`
 
 ## Plugin Conditions vs. User Conditions
 
@@ -241,7 +241,7 @@ When implementing the stop event handler:
 
 The Plugin Scheduler system relies heavily on RuneLite's event bus for communication between components. Two primary events facilitate this communication:
 
-### 1. PluginScheduleEntrySoftStopEvent
+### 1. PluginScheduleEntryPostScheduleTaskEvent
 
 This event represents a request from the scheduler to a plugin asking it to gracefully stop execution.
 
@@ -249,7 +249,7 @@ This event represents a request from the scheduler to a plugin asking it to grac
 
 1. **Event Creation:** When stop conditions are met, PluginScheduleEntry.softStop() creates the event
 2. **Event Posting:** The event is posted to the RuneLite EventBus
-3. **Event Handling:** The target plugin's onPluginScheduleEntrySoftStopEvent() method is called
+3. **Event Handling:** The target plugin's onPluginScheduleEntryPostScheduleTaskEvent() method is called
 4. **Response:** The plugin performs cleanup operations and stops itself
 
 **Example:**
@@ -257,14 +257,14 @@ This event represents a request from the scheduler to a plugin asking it to grac
 ```java
 // Inside PluginScheduleEntry.softStop()
 Microbot.getClientThread().runOnSeperateThread(() -> {
-    Microbot.getEventBus().post(new PluginScheduleEntrySoftStopEvent(plugin, ZonedDateTime.now()));
+    Microbot.getEventBus().post(new PluginScheduleEntryPostScheduleTaskEvent(plugin, ZonedDateTime.now()));
     return false;                
 });
 
 // Inside the plugin implementation
 @Subscribe
 @Override
-public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
+public void onPluginScheduleEntryPostScheduleTaskEvent(PluginScheduleEntryPostScheduleTaskEvent event) {
     if (event.getPlugin() == this) {
         // Cleanup operations
         Microbot.getClientThread().invokeLater(() -> {
@@ -274,7 +274,7 @@ public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent 
 }
 ```
 
-### 2. PluginScheduleEntryFinishedEvent
+### 2. PluginScheduleEntryMainTaskFinishedEvent
 
 This event allows plugins to proactively inform the scheduler that they have completed their task and should be stopped.
 
@@ -282,8 +282,8 @@ This event allows plugins to proactively inform the scheduler that they have com
 
 1. **Event Creation:** Plugin calls reportFinished() when its task is complete
 2. **Validation:** reportFinished() verifies the scheduler is active and this plugin is the current running plugin
-3. **Event Posting:** A PluginScheduleEntryFinishedEvent is posted to the RuneLite EventBus
-4. **Event Handling:** SchedulerPlugin.onPluginScheduleEntryFinishedEvent() processes the event
+3. **Event Posting:** A PluginScheduleEntryMainTaskFinishedEvent is posted to the RuneLite EventBus
+4. **Event Handling:** SchedulerPlugin.onPluginScheduleEntryMainTaskFinishedEvent() processes the event
 5. **Plugin Stopping:** The scheduler initiates a stop with PLUGIN_FINISHED reason
 
 **Example:**
@@ -293,7 +293,7 @@ This event allows plugins to proactively inform the scheduler that they have com
 reportFinished("Mining task completed - inventory full", true);
 
 // Inside the reportFinished() method
-Microbot.getEventBus().post(new PluginScheduleEntryFinishedEvent(
+Microbot.getEventBus().post(new PluginScheduleEntryMainTaskFinishedEvent(
     (Plugin) this,
     "Plugin [" + this.getClass().getSimpleName() + "] finished: " + reason,
     success
@@ -301,7 +301,7 @@ Microbot.getEventBus().post(new PluginScheduleEntryFinishedEvent(
 
 // Inside the SchedulerPlugin
 @Subscribe
-public void onPluginScheduleEntryFinishedEvent(PluginScheduleEntryFinishedEvent event) {
+public void onPluginScheduleEntryMainTaskFinishedEvent(PluginScheduleEntryMainTaskFinishedEvent event) {
     if (currentPlugin != null && event.getPlugin() == currentPlugin.getPlugin()) {
         // Stop the plugin with the success state from the event
         currentPlugin.stop(event.isSuccess(), StopReason.PLUGIN_FINISHED, event.getReason());
@@ -319,7 +319,7 @@ The `reportFinished()` method is a key component that allows plugins to proactiv
    - Ensures the current plugin matches this plugin instance
 
 2. **Event Creation and Posting:**
-   - Creates a PluginScheduleEntryFinishedEvent with:
+   - Creates a PluginScheduleEntryMainTaskFinishedEvent with:
      - Reference to the plugin
      - Formatted reason message
      - Success status flag
@@ -358,7 +358,7 @@ When implementing the `SchedulablePlugin` interface, consider the following best
 
 1. **Clear Conditions**: Define explicit start and stop conditions that clearly express your plugin's requirements.
 
-2. **Respect Soft Stops**: Implement `onPluginScheduleEntrySoftStopEvent` to clean up resources properly.
+2. **Respect Soft Stops**: Implement `onPluginScheduleEntryPostScheduleTaskEvent` to clean up resources properly.
 
 3. **Use Locks Carefully**: Lock your plugin only during critical operations that should not be interrupted.
 
@@ -462,7 +462,7 @@ The `SchedulablePlugin` interface is part of a larger system that enables automa
 
    ```text
    Stop conditions met → SchedulerPlugin posts event → 
-   Plugin's onPluginScheduleEntrySoftStopEvent handler called → 
+   Plugin's onPluginScheduleEntryPostScheduleTaskEvent handler called → 
    Plugin stops gracefully → PluginScheduleEntry updated
    ```
 
@@ -484,8 +484,8 @@ The `SchedulablePlugin` interface is part of a larger system that enables automa
 
 2. **Event System Integration:**
 
-   - `PluginScheduleEntrySoftStopEvent` - Sent from scheduler to plugin requesting stop
-   - `PluginScheduleEntryFinishedEvent` - Sent from plugin to scheduler reporting completion
+   - `PluginScheduleEntryPostScheduleTaskEvent` - Sent from scheduler to plugin requesting stop
+   - `PluginScheduleEntryMainTaskFinishedEvent` - Sent from plugin to scheduler reporting completion
 
 3. **State Protection Integration:**
 
@@ -528,7 +528,7 @@ When implementing the `SchedulablePlugin` interface in your plugin, consider the
 
    ```java
    @Subscribe
-   public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
+   public void onPluginScheduleEntryPostScheduleTaskEvent(PluginScheduleEntryPostScheduleTaskEvent event) {
        // Ensure this event is for our plugin
        if (event.getPlugin() != this) {
            return;
@@ -670,7 +670,7 @@ The scheduler manages a complex state machine that determines when and how plugi
 
 3. **RUNNING_PLUGIN → SOFT_STOPPING_PLUGIN**:
    - Triggered when: Any stop condition is met OR your plugin calls reportFinished()
-   - Actions: Scheduler sends PluginScheduleEntrySoftStopEvent to your plugin
+   - Actions: Scheduler sends PluginScheduleEntryPostScheduleTaskEvent to your plugin
 
 4. **SOFT_STOPPING_PLUGIN → HARD_STOPPING_PLUGIN**:
    - Triggered when: Your plugin doesn't stop within timeout period
@@ -707,11 +707,11 @@ To make the most of the Scheduler system, follow these guidelines when implement
    new TimeElapsedCondition(Duration.ofMinutes(30))
    ```
 
-2. **Implement Graceful Stopping**: Always handle the `onPluginScheduleEntrySoftStopEvent` properly to ensure your plugin can be stopped cleanly.
+2. **Implement Graceful Stopping**: Always handle the `onPluginScheduleEntryPostScheduleTaskEvent` properly to ensure your plugin can be stopped cleanly.
 
    ```java
    @Subscribe
-   public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
+   public void onPluginScheduleEntryPostScheduleTaskEvent(PluginScheduleEntryPostScheduleTaskEvent event) {
        if (event.getPlugin() != this) {
            return;
        }

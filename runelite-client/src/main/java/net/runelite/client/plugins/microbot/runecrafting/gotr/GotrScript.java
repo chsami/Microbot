@@ -148,10 +148,10 @@ public class GotrScript extends Script {
                     }
                 }
 
-                boolean isInMinigame = !isOutsideBarrier() && isInMainRegion();
+                GotrScript.isInMiniGame = !isOutsideBarrier() && isInMainRegion();
 
 
-                if (isInMinigame) {
+                if (isInMiniGame) {
 
                     if (lootChisel()) return;
 
@@ -531,7 +531,7 @@ public class GotrScript extends Script {
                     log("Traveling to large mine...");
                     Rs2GameObject.interact(ObjectID.RUBBLE_43724);
                     if (sleepUntil(Rs2Player::isAnimating)) {
-                        sleepUntil(this::isInLargeMine);
+                        sleepUntil(GotrScript::isInLargeMine);
                         if (isInLargeMine()) {
                             sleep(Rs2Random.randomGaussian(Rs2Random.between(2000, 2400), Rs2Random.between(100, 300)));
                             log("Interacting with large guardian remains...");
@@ -617,13 +617,13 @@ public class GotrScript extends Script {
         super.shutdown();
     }
 
-    public boolean isOutsideBarrier() {
+    public static boolean isOutsideBarrier() {
         int outsideBarrierY = 9482;
         return Rs2Player.getWorldLocation().getY() <= outsideBarrierY
                 && Rs2Player.getWorldLocation().getRegionID() == 14484;
     }
 
-    public  boolean isInLargeMine() {
+    public  static boolean isInLargeMine() {
         int largeMineX = 3637;
         return Rs2Player.getWorldLocation().getRegionID() == 14484
                 && Microbot.getClient().getLocalPlayer().getWorldLocation().getX() >= largeMineX;
@@ -745,5 +745,26 @@ public class GotrScript extends Script {
                 ObjectID.PORTAL_34753, ObjectID.PORTAL_34754, ObjectID.PORTAL_34755, ObjectID.PORTAL_34756, ObjectID.PORTAL_34757, ObjectID.PORTAL_34758,
                 ObjectID.PORTAL_34758, ObjectID.PORTAL_34759, ObjectID.PORTAL_43478};
         return Rs2GameObject.findObject(altarIds);
+    }
+    public static boolean leaveMinigame() {
+        GotrScript.isInMiniGame = !isOutsideBarrier() && isInMainRegion(); 
+        if (!isInMiniGame) {
+            return true;    // Already outside the minigame, successfully left     
+        }
+        if(isInLargeMine()) {
+            Rs2GameObject.interact(ObjectID.RUBBLE_43726);
+            Rs2Player.waitForAnimation();
+            sleepUntil(()-> !isInLargeMine());
+            if (isInLargeMine()){
+                log("Failed to leave large mine, retrying...");
+                return false;// Retry leaving large mine
+            }
+            
+        }        
+        Rs2GameObject.interact(ObjectID.BARRIER_43700, "quick-pass");
+        Rs2Player.waitForWalking();
+        sleepUntil( ()-> {return !(!isOutsideBarrier() && isInMainRegion());}, 200);
+        GotrScript.isInMiniGame  = !isOutsideBarrier() && isInMainRegion();
+        return !GotrScript.isInMiniGame;// Successfully left the minigame
     }
 }

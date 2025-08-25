@@ -23,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -48,6 +49,7 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
     private Point hoverLocation;
     private int hoverRow = -1;
     private int hoverColumn = -1;
+    private int lastSelectedRow = -1;
     private static final int TOOLTIP_REFRESH_INTERVAL = 1000; // 1 second refresh
     
     // Colors for different row states with improved visibility
@@ -194,24 +196,48 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         // Add mouse listener to handle clicks outside the table data and tooltip refreshing
         scheduleTable.addMouseListener(new MouseAdapter() {
             @Override
-            public void mouseClicked(MouseEvent e) {
+            public void mousePressed(MouseEvent e) {
                 int row = scheduleTable.rowAtPoint(e.getPoint());
                 int col = scheduleTable.columnAtPoint(e.getPoint());
+                // Explicitly select the row before custom logic
+                final int currentSelectedRow = scheduleTable.getSelectedRow();
+                boolean isLastSelected = currentSelectedRow == lastSelectedRow;
+                lastSelectedRow = row; // Update last selected row
+                // To check if the mouse event is a "pressed" event, use e.getID() == MouseEvent.MOUSE_PRESSED
+                if (e.getID() == MouseEvent.MOUSE_PRESSED && e.getButton() == MouseEvent.BUTTON1) {
 
-                // If clicked outside the table data area, clear selection
-                if (row == -1 || col == -1) {
-                    clearSelection();
-                    return;
-                }
-                
-                // Handle double-click on already selected row to deselect it
-                if (e.getClickCount() == 2) {
-                    int selectedRow = scheduleTable.getSelectedRow();
-                    if (selectedRow == row) {
-                        // Deselect the row
-                        clearSelection();
+                    if (!isLastSelected) {                        
+                        // If the clicked row is different, select it
+                        scheduleTable.setRowSelectionInterval(row, row);                        
+                        return;
+                    }                    
+                    if (row == -1 || col == -1) {
+                        clearSelection();                        
+                    }
+                    
+                        
+                    
+                    if (col != 6 && col != 5) {
+                        // handle single-click toggle for selection/deselection
+                        if (e.getClickCount() == 1) {
+                            // if we clicked on the previously selected row and it's still selected, deselect it
+                            if (currentSelectedRow == row) {                                
+                                clearSelection();
+                                return;
+                            }
+                        }
+
+                        // keep the double-click functionality for backwards compatibility
+                        if (e.getClickCount() == 2) {
+                            int selectedRow = scheduleTable.getSelectedRow();
+                            if (selectedRow == row) {                                
+                                clearSelection();
+                                return;
+                            }
+                        }
                     }
                 }
+                super.mousePressed(e);
             }
             
             @Override
@@ -263,7 +289,7 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         // Add mouse listener to header to clear selection when clicked
         header.addMouseListener(new MouseAdapter() {
             @Override
-            public void mouseClicked(MouseEvent e) {
+            public void mousePressed(MouseEvent e) {                
                 clearSelection();
             }
         });
@@ -485,8 +511,28 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         // Add mouse listener to the scroll pane to clear selection when clicking empty space
         scrollPane.addMouseListener(new MouseAdapter() {
             @Override
-            public void mouseClicked(MouseEvent e) {
+            public void mousePressed(MouseEvent e) {                
                 clearSelection();
+            }
+            
+        });
+        scrollPane.addMouseWheelListener(new MouseAdapter() {
+            @Override
+            public void mouseWheelMoved(MouseWheelEvent e) {                
+                if (e.getWheelRotation() == 0 || e.getUnitsToScroll() == 0) {
+                    return; // Ignore zero rotation events
+                }
+                // Check if the mouse location is within the table's visible rectangle
+                Rectangle tableRect = scheduleTable.getVisibleRect();
+                Point mousePoint = SwingUtilities.convertPoint(scrollPane, e.getPoint(), scheduleTable);
+                if (!tableRect.contains(mousePoint)) {
+                    // Mouse is over the table, do not clear selection
+                    return;
+                }
+                clearSelection();
+                // Handle the scroll event here
+                // e.getWheelRotation() gives the number of clicks (positive or negative)
+                // e.getUnitsToScroll() gives the number of units to scroll
             }
         });
 
@@ -1534,6 +1580,7 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
      */
     public void clearSelection() {
         scheduleTable.clearSelection();
+        lastSelectedRow = -1; // Reset last selected row
         if (selectionListener != null) {
             selectionListener.accept(null);
         }

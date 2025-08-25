@@ -245,7 +245,7 @@ public class CacheSerializationManager {
                                                                 "  -stale: {}\n" + //
                                                                 "  -age: {}ms -isfresh? {} -max Age {}ms\n" + //
                                                                 "  -from current session: {}\n" + //
-                                                                "  -current version {} - last version {}- is new version? {}", 
+                                                                "  -current version {} \n-last version {}\n-is new version? {}", 
                                     configKey, stale, age,  metadata.isFresh(maxAgeMs), maxAgeMs, fromCurrentSession, VERSION, oldVersion, metadata.isNewVersion(VERSION));                                    
                         } else {                        
                             log.warn("\nCache \"{}\" metadata indicated using a fresh cache \n" + //

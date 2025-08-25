@@ -389,8 +389,7 @@ public class Rs2Random {
      *
      * @param time The duration to wait in milliseconds.
      */
-    private static void systemWait(long time) {
-        log.info("Waiting for {} ms", time);
+    private static void systemWait(long time) {        
         Global.sleep((int) time);
     }
 

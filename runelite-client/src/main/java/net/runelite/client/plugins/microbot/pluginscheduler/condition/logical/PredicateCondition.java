@@ -134,7 +134,7 @@ public class PredicateCondition<T> extends LockCondition {
         try {
             // The condition is satisfied only if:
             // 1. It's not manually locked (from parent class)
-            // 2. The predicate evaluates to true
+            // 2. The predicate evaluates to true                     
             return super.isSatisfied() && evaluatePredicate();
         } catch (Exception e) {
             log.error("Exception in isSatisfied for predicateDescription: {} - {}", predicateDescription, e.getMessage(), e);

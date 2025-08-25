@@ -49,7 +49,7 @@ public class ProcessItemCondition extends ResourceCondition {
     // State tracking
     private transient Map<String, Integer> previousInventoryCounts = new HashMap<>();
     private transient int processedCount = 0;
-    private transient boolean satisfied = false;
+    private transient volatile boolean satisfied = false;
     private transient Instant lastInventoryChange = Instant.now();
     private transient boolean isProcessingActive = false;
     private transient boolean initialInventoryLoaded = false;
