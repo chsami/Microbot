@@ -246,7 +246,7 @@ public interface AIOFighterConfig extends Config {
             section = lootSection
     )
     default String listOfItemsToLoot() {
-        return "bones,ashes";
+        return "brimstone key";
     }
 
     @ConfigItem(
@@ -322,7 +322,7 @@ public interface AIOFighterConfig extends Config {
     @ConfigItem(
             keyName = "Bury Bones",
             name = "Bury Bones",
-            description = "Picks up and Bury Bones",
+            description = "Picks up and Bury Bones. Casts Sinister Offering if possible.",
             position = 96,
             section = lootSection
     )
@@ -332,8 +332,8 @@ public interface AIOFighterConfig extends Config {
 
     @ConfigItem(
             keyName = "Scatter",
-            name = "Scatter",
-            description = "Picks up and Scatter ashes",
+            name = "Scatter Ashes",
+            description = "Picks up and Scatter ashes. Casts Demonic Offering if possible.",
             position = 97,
             section = lootSection
     )

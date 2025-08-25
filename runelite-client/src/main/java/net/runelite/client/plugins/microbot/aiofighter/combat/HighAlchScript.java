@@ -1,8 +1,5 @@
 package net.runelite.client.plugins.microbot.aiofighter.combat;
 
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.aiofighter.AIOFighterConfig;
@@ -18,6 +15,9 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.settings.Rs2Settings;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
+
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class HighAlchScript extends Script
 {
@@ -70,7 +70,7 @@ public class HighAlchScript extends Script
 					}
 					Rs2ExplorersRing.closeInterface();
 				}
-				else if (Rs2Player.getSkillRequirement(Skill.MAGIC, Rs2Spells.HIGH_LEVEL_ALCHEMY.getRequiredLevel()) && Rs2Magic.hasRequiredRunes(Rs2Spells.HIGH_LEVEL_ALCHEMY))
+				else if (Rs2Magic.canCast(Rs2Spells.HIGH_LEVEL_ALCHEMY))
 				{
 					for (Rs2ItemModel item : items)
 					{
@@ -86,9 +86,9 @@ public class HighAlchScript extends Script
 							if (Rs2Widget.hasWidget("Proceed to cast High Alchemy on it"))
 							{
 								Rs2Keyboard.keyPress('1');
-								Rs2Player.waitForAnimation();
 							}
 						}
+						Rs2Player.waitForAnimation();
 					}
 				}
 			}
