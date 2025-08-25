@@ -102,7 +102,7 @@ public class HerbrunScript extends Script {
                 HerbrunPlugin.status = "Finished";
                 plugin.reportFinished("Herb run finished",true);
                 this.shutdown();
-                
+                return;
             }
 
             // Skip patch if it's been disabled while running
@@ -164,9 +164,18 @@ public class HerbrunScript extends Script {
             Rs2NpcModel leprechaun = Rs2Npc.getNpc("Tool leprechaun");
             if (leprechaun != null) {
                 Rs2ItemModel unNoted = Rs2Inventory.getUnNotedItem("Grimy", false);
-                Rs2Inventory.use(unNoted);
-                Rs2Npc.interact(leprechaun, "Talk-to");
-                Rs2Inventory.waitForInventoryChanges(10000);
+                if (unNoted != null) {
+                    Rs2Inventory.use(unNoted);
+                    Rs2Npc.interact(leprechaun, "Talk-to");
+                    Rs2Inventory.waitForInventoryChanges(10000);
+                } else {
+                    // No grimy herbs to note - try to drop weeds or empty buckets as fallback
+                    if (Rs2Inventory.hasItem("Weeds")) {
+                        Rs2Inventory.drop("Weeds");
+                    } else if (Rs2Inventory.hasItem(ItemID.BUCKET_EMPTY)) {
+                        Rs2Inventory.drop(ItemID.BUCKET_EMPTY);
+                    }
+                }
             }
             return false;
         }
@@ -189,8 +198,13 @@ public class HerbrunScript extends Script {
         switch (state) {
             case "Empty":
                 // Apply compost if configured
-                if (config.useCompost() && config.compostType() != CompostType.NONE) {
-                    Rs2Inventory.use("compost");
+                if (config.compostType() != CompostType.NONE) {
+                    CompostType compost = config.compostType();
+                    if (!Rs2Inventory.hasItem(compost.getItemId())) {
+                        log("Configured compost not found in inventory: " + compost.getCompostName());
+                        return false;
+                    }
+                    Rs2Inventory.use(compost.getItemId());
                     Rs2GameObject.interact(obj, "Compost");
                     Rs2Player.waitForXpDrop(Skill.FARMING);
                     
@@ -199,21 +213,25 @@ public class HerbrunScript extends Script {
                         Rs2Inventory.drop(ItemID.BUCKET_EMPTY);
                     }
                 }
-                Rs2Inventory.use(" seed");
-                Rs2GameObject.interact(obj, "Plant");
-                sleepUntil(() -> getHerbPatchState(obj).equals("Growing"));
+                // Find the first herb seed in inventory and use its specific ID
+                HerbSeedType seedInInventory = getFirstHerbSeedInInventory();
+                if (seedInInventory != null) {
+                    Rs2Inventory.use(seedInInventory.getItemId());
+                    Rs2GameObject.interact(obj, "Plant");
+                    sleepUntil(() -> getHerbPatchState(obj).equals("Growing"));
+                }
                 return false;
             case "Harvestable":
                 Rs2GameObject.interact(obj, "Pick");
                 sleepUntil(() -> getHerbPatchState(obj).equals("Empty") || Rs2Inventory.isFull(), 20000);
                 return false;
             case "Weeds":
-                Rs2GameObject.interact(obj);
+                Rs2GameObject.interact(obj, "Rake");
                 Rs2Player.waitForAnimation(10000);
                 return false;
             case "Dead":
                 Rs2GameObject.interact(obj, "Clear");
-                sleepUntil(() -> getHerbPatchState(obj).equals("Empty"));
+                sleepUntil(() -> getHerbPatchState(obj).equals("Empty"), 10000);
                 return false;
             default:
                 currentPatch = null;
@@ -291,7 +309,10 @@ public class HerbrunScript extends Script {
             log("Failed to open bank");
             return false;
         }
-        sleepUntil(Rs2Bank::isOpen);
+        if (!sleepUntil(Rs2Bank::isOpen, 10000)) {
+            log("Timeout waiting for bank to open after 10 seconds");
+            return false;
+        }
         
         // Deposit all except equipped items
         Rs2Bank.depositAllExcept(true);
@@ -300,10 +321,15 @@ public class HerbrunScript extends Script {
         // Count enabled patches to know how many seeds/compost we need
         int patchCount = (int) herbPatches.stream().filter(HerbPatch::isEnabled).count();
         
-        // Withdraw farming tools
-        Rs2Bank.withdrawX(ItemID.RAKE, 1);
-        Rs2Bank.withdrawX(ItemID.SPADE, 1);
-        Rs2Bank.withdrawX(ItemID.DIBBER, 1);
+        // Withdraw farming tools (fail fast if missing)
+        boolean toolsOk = true;
+        toolsOk &= Rs2Bank.withdrawX(ItemID.RAKE, 1);
+        toolsOk &= Rs2Bank.withdrawX(ItemID.SPADE, 1);
+        toolsOk &= Rs2Bank.withdrawX(ItemID.DIBBER, 1);
+        if (!toolsOk) {
+            log("Missing farming tools in bank (rake/spade/dibber)");
+            return false;
+        }
         
         // Withdraw magic secateurs if available
         if (Rs2Bank.hasItem(ItemID.FAIRY_ENCHANTED_SECATEURS)) {
@@ -334,38 +360,65 @@ public class HerbrunScript extends Script {
             // Original logic for specific seed type
             int seedsNeeded = patchCount; // 1 seed per patch
             if (!Rs2Bank.withdrawX(seedType.getItemId(), seedsNeeded)) {
-                log("Failed to withdraw " + seedsNeeded + " " + seedType.getSeedName());
-                return false;
+                if (!config.allowPartialRuns()) {
+                    log("Failed to withdraw " + seedsNeeded + " " + seedType.getSeedName());
+                    return false;
+                }
+                // Try to withdraw whatever is available
+                int availableSeeds = Rs2Bank.count(seedType.getItemId());
+                if (availableSeeds > 0) {
+                    if (Rs2Bank.withdrawX(seedType.getItemId(), availableSeeds)) {
+                        log("Partial run: withdrew " + availableSeeds + " " + seedType.getSeedName() + " instead of " + seedsNeeded);
+                    } else {
+                        log("Failed to withdraw any " + seedType.getSeedName());
+                        return false;
+                    }
+                } else {
+                    log("No " + seedType.getSeedName() + " available in bank");
+                    return false;
+                }
             }
         }
         
         // Withdraw compost if enabled
-        if (config.useCompost()) {
-            CompostType compostType = config.compostType();
-            if (compostType != CompostType.NONE) {
-                if (compostType.isBottomless()) {
-                    // For bottomless bucket, just withdraw the bucket itself
-                    if (!Rs2Bank.withdrawX(compostType.getItemId(), 1)) {
-                        log("Failed to withdraw bottomless compost bucket");
-                        return false;
-                    }
-                } else {
-                    // For regular compost, withdraw 1 bucket per patch
-                    int compostNeeded = patchCount;
-                    if (!Rs2Bank.withdrawX(compostType.getItemId(), compostNeeded)) {
-                        log("Failed to withdraw " + compostNeeded + " " + compostType.getCompostName());
-                        return false;
-                    }
+        CompostType compostType = config.compostType();
+        if (compostType != CompostType.NONE) {
+            if (compostType.isBottomless()) {
+                // For bottomless bucket, just withdraw the bucket itself
+                if (!Rs2Bank.withdrawX(compostType.getItemId(), 1)) {
+                    log("Failed to withdraw bottomless compost bucket");
+                    return false;
+                }
+            } else {
+                // For regular compost, withdraw 1 bucket per patch
+                int compostNeeded = patchCount;
+                if (!Rs2Bank.withdrawX(compostType.getItemId(), compostNeeded)) {
+                    log("Failed to withdraw " + compostNeeded + " " + compostType.getCompostName());
+                    return false;
                 }
             }
         }
         
         // Close bank
         Rs2Bank.closeBank();
-        sleepUntil(() -> !Rs2Bank.isOpen());
+        sleepUntil(() -> !Rs2Bank.isOpen(), 5000);
         
         log("Inventory setup complete - starting herb run");
         return true;
+    }
+
+    /**
+     * Helper method to find the first herb seed present in inventory
+     * 
+     * @return HerbSeedType of the first seed found, or null if none found
+     */
+    private HerbSeedType getFirstHerbSeedInInventory() {
+        for (HerbSeedType herbType : HerbSeedType.values()) {
+            if (herbType != HerbSeedType.BEST && Rs2Inventory.hasItem(herbType.getItemId())) {
+                return herbType;
+            }
+        }
+        return null;
     }
 
     /**
@@ -428,6 +481,9 @@ public class HerbrunScript extends Script {
                 log(sb.toString());
             }
             
+            if (!config.allowPartialRuns()) {
+                return false; // Require all seeds when partial runs are disabled
+            }
             return seedsWithdrawn > 0; // Return true if we got at least some seeds
         }
         

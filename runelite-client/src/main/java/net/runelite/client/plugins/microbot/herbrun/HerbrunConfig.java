@@ -69,25 +69,25 @@ public interface HerbrunConfig extends Config {
     }
 
     @ConfigItem(
-            keyName = "useCompost",
-            name = "Use Compost",
-            description = "Whether to apply compost to patches",
+            keyName = "compostType",
+            name = "Compost Type",
+            description = "Type of compost to use (select NONE to disable composting)",
             section = autoSection,
             position = 1
     )
-    default boolean useCompost() {
-        return true;
+    default CompostType compostType() {
+        return CompostType.ULTRA;
     }
 
     @ConfigItem(
-            keyName = "compostType",
-            name = "Compost Type",
-            description = "Type of compost to use (if enabled)",
+            keyName = "allowPartialRuns",
+            name = "Allow Partial Runs",
+            description = "Allow herb runs with fewer seeds than patches available",
             section = autoSection,
             position = 2
     )
-    default CompostType compostType() {
-        return CompostType.ULTRA;
+    default boolean allowPartialRuns() {
+        return false;
     }
 
     @ConfigItem(
@@ -175,9 +175,9 @@ public interface HerbrunConfig extends Config {
     }
 
     @ConfigItem(
-            keyName = "enableArdouge",
-            name = "Enable Ardouge Patch",
-            description = "Enable Ardouge patch in herb run",
+            keyName = "enableArdougne",
+            name = "Enable Ardougne Patch",
+            description = "Enable Ardougne patch in herb run",
             position = 6,
             section = locationSection
     )
