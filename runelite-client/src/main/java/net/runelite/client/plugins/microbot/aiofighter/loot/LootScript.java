@@ -38,7 +38,7 @@ public class LootScript extends Script {
                 if (AIOFighterPlugin.getState().equals(State.BANKING) || AIOFighterPlugin.getState().equals(State.WALKING)) {
                     return;
                 }
-                if (Rs2Player.isInCombat() && !config.toggleForceLoot()) {
+                if (Rs2Player.isInCombat() && !config.toggleForceLoot() && !AIOFighterPlugin.isWaitingForLoot()) {
                     return;
                 }
 
@@ -58,26 +58,41 @@ public class LootScript extends Script {
                 if (config.toggleDelayedLooting()) {
                     groundItems.sort(Comparator.comparingInt(Rs2GroundItem::calculateDespawnTime));
                 }
-                //Pause other scripts before looting
-                Microbot.pauseAllScripts.getAndSet(true);
-                for (GroundItem groundItem : groundItems) {
-                    if (Rs2Inventory.emptySlotCount() <= minFreeSlots && !canStackItem(groundItem)) {
-                        Microbot.log("Unable to pick loot: " + groundItem.getName() + " making space");
-                        if (!config.eatFoodForSpace()) {
+                // Defer clearing wait-for-loot until we successfully pick at least one item
+                //Pause other scripts before looting and always release
+                boolean previousPauseState = Microbot.pauseAllScripts.getAndSet(true);
+                try {
+                    boolean clearedWait = false;
+                    for (GroundItem groundItem : groundItems) {
+                        if (Rs2Inventory.emptySlotCount() <= minFreeSlots && !canStackItem(groundItem)) {
+                            Microbot.log("Unable to pick loot: " + groundItem.getName() + " making space");
+                            if (!config.eatFoodForSpace()) {
+                                continue;
+                            }
+                            int emptySlots = Rs2Inventory.emptySlotCount();
+                            if (Rs2Player.eatAt(100, true)) {
+                                sleepUntil(() -> emptySlots < Rs2Inventory.emptySlotCount(), 1200);
+                            }
+                            // If we still don't have space and can't stack this item, skip it
+                            if (Rs2Inventory.emptySlotCount() <= minFreeSlots && !canStackItem(groundItem)) {
+                                continue;
+                            }
+                        }
+                        Microbot.log("Picking up loot: " + groundItem.getName());
+                        if (!waitForGroundItemDespawn(() -> interact(groundItem), groundItem)) {
+                            // Skip this item and continue to the next rather than aborting the whole pass
                             continue;
                         }
-                        int emptySlots = Rs2Inventory.emptySlotCount();
-                        if (Rs2Player.eatAt(100)) {
-                            sleepUntil(() -> emptySlots < Rs2Inventory.emptySlotCount(), 1200);
+                        // Clear wait state after first successful pickup
+                        if (!clearedWait && AIOFighterPlugin.isWaitingForLoot()) {
+                            AIOFighterPlugin.clearWaitForLoot("First loot item picked up");
+                            clearedWait = true;
                         }
                     }
-                    Microbot.log("Picking up loot: " + groundItem.getName());
-                    if (!waitForGroundItemDespawn(() -> interact(groundItem), groundItem)) {
-                        return;
-                    }
+                    Microbot.log("Looting complete");
+                } finally {
+                    Microbot.pauseAllScripts.set(previousPauseState);
                 }
-                Microbot.log("Looting complete");
-                Microbot.pauseAllScripts.compareAndSet(true, false);
             } catch (Exception ex) {
                 Microbot.log("Looterscript: " + ex.getMessage());
             }

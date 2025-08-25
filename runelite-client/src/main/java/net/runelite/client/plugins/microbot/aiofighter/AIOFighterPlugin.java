@@ -68,6 +68,26 @@ public class AIOFighterPlugin extends Plugin {
     @Getter
     @Setter
     public static int cooldown = 0;
+    
+    @Getter @Setter
+    private static volatile long lastNpcKilledTime = 0;
+    
+    @Getter @Setter
+    private static volatile boolean waitingForLoot = false;
+    
+    /**
+     * Centralized method to clear wait-for-loot state
+     * @param reason Optional reason for clearing the state (for logging)
+     */
+    public static void clearWaitForLoot(String reason) {
+        setWaitingForLoot(false);
+        setLastNpcKilledTime(0L);
+        AttackNpcScript.cachedTargetNpcIndex = -1;
+        if (reason != null) {
+            Microbot.log("Clearing wait-for-loot state: " + reason);
+        }
+    }
+    
     private final CannonScript cannonScript = new CannonScript();
     private final AttackNpcScript attackNpc = new AttackNpcScript();
 
@@ -117,6 +137,9 @@ public class AIOFighterPlugin extends Plugin {
                 return;
             }
             setState(State.IDLE);
+            // Reset wait for loot state on startup
+            setWaitingForLoot(false);
+            setLastNpcKilledTime(0L);
             // Get the future from the reference and cancel it
             ScheduledFuture<?> scheduledFuture = futureRef.get();
             if (scheduledFuture != null) {
@@ -167,6 +190,10 @@ public class AIOFighterPlugin extends Plugin {
     }
 
     protected void shutDown() {
+        // Reset wait for loot state on shutdown
+        setWaitingForLoot(false);
+        setLastNpcKilledTime(0L);
+        
         highAlchScript.shutdown();
         lootScript.shutdown();
         cannonScript.shutdown();
