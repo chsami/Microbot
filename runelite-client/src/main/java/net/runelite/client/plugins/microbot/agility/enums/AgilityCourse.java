@@ -13,6 +13,7 @@ import net.runelite.client.plugins.microbot.agility.courses.FaladorCourse;
 import net.runelite.client.plugins.microbot.agility.courses.GnomeStrongholdCourse;
 import net.runelite.client.plugins.microbot.agility.courses.PollnivneachCourse;
 import net.runelite.client.plugins.microbot.agility.courses.PrifddinasCourse;
+import net.runelite.client.plugins.microbot.agility.courses.PyramidCourse;
 import net.runelite.client.plugins.microbot.agility.courses.RellekkaCourse;
 import net.runelite.client.plugins.microbot.agility.courses.SeersCourse;
 import net.runelite.client.plugins.microbot.agility.courses.ShayzienAdvancedCourse;
@@ -23,12 +24,13 @@ import net.runelite.client.plugins.microbot.agility.courses.WerewolfCourse;
 @Getter
 public enum AgilityCourse
 {
+	AGILITY_PYRAMID("Agility Pyramid", new PyramidCourse()),
 	AL_KHARID_ROOFTOP_COURSE("Al Kharid Rooftop Course", new AlKharidCourse()),
 	APE_ATOLL_AGILITY_COURSE("Ape Atoll Agility Course", new ApeAtollCourse()),
 	ARDOUGNE_ROOFTOP_COURSE("Ardougne Rooftop Course", new ArdougneCourse()),
+	CANIFIS_ROOFTOP_COURSE("Canifis Rooftop Course", new CanafisCourse()),
 	COLOSSAL_WYRM_ADVANCED_COURSE("Colossal Wyrm Advanced Course", new ColossalWyrmAdvancedCourse()),
 	COLOSSAL_WYRM_BASIC_COURSE("Colossal Wyrm Basic Course", new ColossalWyrmBasicCourse()),
-	CANIFIS_ROOFTOP_COURSE("Canifis Rooftop Course", new CanafisCourse()),
 	DRAYNOR_VILLAGE_ROOFTOP_COURSE("Draynor Village Rooftop Course", new DraynorCourse()),
 	FALADOR_ROOFTOP_COURSE("Falador Rooftop Course", new FaladorCourse()),
 	GNOME_STRONGHOLD_AGILITY_COURSE("Gnome Stronghold Agility Course", new GnomeStrongholdCourse()),
@@ -36,8 +38,8 @@ public enum AgilityCourse
 	PRIFDDINAS_AGILITY_COURSE("Prifddinas Agility Course", new PrifddinasCourse()),
 	RELLEKKA_ROOFTOP_COURSE("Rellekka Rooftop Course", new RellekkaCourse()),
 	SEERS_VILLAGE_ROOFTOP_COURSE("Seers' Village Rooftop Course", new SeersCourse()),
-	SHAYZIEN_BASIC_COURSE("Shayzien Basic Agility Course", new ShayzienBasicCourse()),
 	SHAYZIEN_ADVANCED_COURSE("Shayzien Advanced Agility Course", new ShayzienAdvancedCourse()),
+	SHAYZIEN_BASIC_COURSE("Shayzien Basic Agility Course", new ShayzienBasicCourse()),
 	VARROCK_ROOFTOP_COURSE("Varrock Rooftop Course", new VarrockCourse()),
 	WEREWOLF_COURSE("Werewolf Agility Course", new WerewolfCourse())
 	;
