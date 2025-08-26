@@ -756,7 +756,7 @@ public class ShortestPathPanel extends PluginPanel
 					}
 				}
 				
-				return questName;
+				return questName + " - " + stepText;
 			}
 			
 			return questName + " - No active step";
