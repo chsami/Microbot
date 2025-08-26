@@ -53,6 +53,10 @@ import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep;
+import net.runelite.client.plugins.cluescrolls.ClueScrollPlugin;
+import net.runelite.client.plugins.cluescrolls.clues.ClueScroll;
+import net.runelite.client.plugins.cluescrolls.clues.LocationClueScroll;
+import net.runelite.client.plugins.cluescrolls.clues.LocationsClueScroll;
 
 public class ShortestPathPanel extends PluginPanel
 {
@@ -97,6 +101,8 @@ public class ShortestPathPanel extends PluginPanel
 		add(createSlayerMasterPanel());
 		add(Box.createRigidArea(new Dimension(0, 10)));
 		add(createQuestLocationPanel());
+		add(Box.createRigidArea(new Dimension(0, 10)));
+		add(createClueLocationPanel());
 		add(Box.createRigidArea(new Dimension(0, 10)));
 		add(createFarmingPanel());
 		add(Box.createRigidArea(new Dimension(0, 10)));
@@ -757,5 +763,156 @@ public class ShortestPathPanel extends PluginPanel
 		{
 			return "Error reading quest info";
 		}
+	}
+
+	private JPanel createClueLocationPanel()
+	{
+		JPanel panel = new JPanel();
+		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+		panel.setBorder(createCenteredTitledBorder("Travel to Clue Location", "/net/runelite/client/plugins/microbot/shortestpath/Clue_scroll_icon.png"));
+
+		// Clue info label
+		JLabel clueInfoLabel = new JLabel("Loading clue info...");
+		clueInfoLabel.setHorizontalAlignment(SwingConstants.CENTER);
+		clueInfoLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+		clueInfoLabel.setMaximumSize(new Dimension(Integer.MAX_VALUE, clueInfoLabel.getPreferredSize().height * 2));
+		
+		// Update clue info dynamically
+		javax.swing.Timer timer = new javax.swing.Timer(1000, e -> {
+			String clueInfo = getCurrentClueInfo();
+			clueInfoLabel.setText("<html><center>" + clueInfo + "</center></html>");
+		});
+		timer.start();
+
+		JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+		JButton startButton = new JButton("Start");
+		JButton stopButton = new JButton("Stop");
+
+		startButton.addActionListener(e -> {
+			WorldPoint clueLocation = getCurrentClueLocation();
+			if (clueLocation != null)
+			{
+				Microbot.log("Walking to clue scroll location");
+				startWalking(clueLocation);
+			}
+			else
+			{
+				String errorInfo = getCurrentClueInfo();
+				if (errorInfo.contains("No active clue"))
+				{
+					Microbot.log("Cannot walk to clue location: No active clue scroll");
+				}
+				else if (errorInfo.contains("not enabled"))
+				{
+					Microbot.log("Cannot walk to clue location: ClueScroll plugin not enabled");
+				}
+				else
+				{
+					Microbot.log("Cannot walk to clue location: Current clue has no location");
+				}
+			}
+		});
+		
+		stopButton.addActionListener(e -> stopWalking());
+
+		buttonPanel.add(startButton);
+		buttonPanel.add(stopButton);
+
+		JPanel helpPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+		JLabel helpLabel = new JLabel("<html><center><small>Requires ClueScroll plugin<br>with an active clue</small></center></html>");
+		helpLabel.setHorizontalAlignment(SwingConstants.CENTER);
+		helpPanel.add(helpLabel);
+
+		panel.add(Box.createRigidArea(new Dimension(0, 5)));
+		panel.add(clueInfoLabel);
+		panel.add(Box.createRigidArea(new Dimension(0, 10)));
+		panel.add(buttonPanel);
+		panel.add(Box.createRigidArea(new Dimension(0, 2)));
+		panel.add(helpPanel);
+
+		return panel;
+	}
+
+	private ClueScrollPlugin getCluePlugin()
+	{
+		return (ClueScrollPlugin) Microbot.getPluginManager().getPlugins().stream()
+			.filter(x -> x instanceof ClueScrollPlugin)
+			.findFirst()
+			.orElse(null);
+	}
+
+	private WorldPoint getCurrentClueLocation()
+	{
+		ClueScrollPlugin cluePlugin = getCluePlugin();
+		if (cluePlugin == null)
+		{
+			return null;
+		}
+
+		ClueScroll clue = cluePlugin.getClue();
+		if (clue == null)
+		{
+			return null;
+		}
+
+		// Check if clue implements LocationClueScroll (single location)
+		if (clue instanceof LocationClueScroll)
+		{
+			WorldPoint location = ((LocationClueScroll) clue).getLocation(cluePlugin);
+			if (location != null)
+			{
+				return location;
+			}
+		}
+
+		// Check if clue implements LocationsClueScroll (multiple locations)
+		if (clue instanceof LocationsClueScroll)
+		{
+			WorldPoint[] locations = ((LocationsClueScroll) clue).getLocations(cluePlugin);
+			if (locations != null && locations.length > 0)
+			{
+				// Return the first location for now
+				// Could be improved to find the nearest one
+				return locations[0];
+			}
+		}
+
+		return null;
+	}
+
+	private String getCurrentClueInfo()
+	{
+		ClueScrollPlugin cluePlugin = getCluePlugin();
+		if (cluePlugin == null)
+		{
+			return "ClueScroll plugin not enabled";
+		}
+
+		ClueScroll clue = cluePlugin.getClue();
+		if (clue == null)
+		{
+			return "No active clue scroll";
+		}
+
+		// Get clue type from class name
+		String clueType = clue.getClass().getSimpleName();
+		
+		// Remove "Clue" suffix if present
+		if (clueType.endsWith("Clue"))
+		{
+			clueType = clueType.substring(0, clueType.length() - 4);
+		}
+		
+		// Add spaces between camelCase words
+		clueType = clueType.replaceAll("([a-z])([A-Z])", "$1 $2");
+		
+		// Check if clue has a location
+		WorldPoint location = getCurrentClueLocation();
+		if (location == null)
+		{
+			return clueType + " - No location";
+		}
+
+		return clueType + " clue";
 	}
 }
