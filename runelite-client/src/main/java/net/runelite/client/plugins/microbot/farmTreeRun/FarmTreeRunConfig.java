@@ -36,7 +36,7 @@ import net.runelite.client.plugins.microbot.farmTreeRun.enums.TreeEnums;
         "<br> If you want to stop the script during your farm run (maybe it gets stuck or whatever reason), make sure to disable 'Banking' and disable patches you previously ran." +
         "Happy botting\n" +
         "<br><br>UI and new trees added thanks to Diogenes and T\n" +
-        "<br><br> Note: banking is broken, manually setup your inventory. <br><br>The tree order is as follows: GS Fruit → GS Tree → TGV Fruit → Farming Guild Tree → Farming Guild Fruit → Taverley → Falador → Lumbridge → Varrock → Brimhaven Fruit → Catherby Fruit → Fossil A/B/C → Lletya Fruit → Auburnvale Tree → Kastori Fruit → Avium Savannah Hardwood. <br><br>Patches are listed in the order they will be attended filtered by type\n"
+        "<br><br> The tree order is as follows: GS Fruit → GS Tree → TGV Fruit → Farming Guild Tree → Farming Guild Fruit → Taverley → Falador → Lumbridge → Varrock → Brimhaven Fruit → Catherby Fruit → Fossil A/B/C → Lletya Fruit → Auburnvale Tree → Kastori Fruit → Avium Savannah Hardwood. <br><br>Patches are listed in the order they will be attended filtered by type\n"
 )
 public interface FarmTreeRunConfig extends Config {
     public static final boolean DEBUG_MODE = System.getProperty("java.vm.info", "").contains("sharing");
