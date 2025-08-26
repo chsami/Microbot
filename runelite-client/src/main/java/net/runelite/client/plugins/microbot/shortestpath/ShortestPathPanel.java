@@ -387,14 +387,14 @@ public class ShortestPathPanel extends PluginPanel
 			}
 			else
 			{
-				String errorInfo = getCurrentQuestInfo();
-				if (errorInfo.contains("No quest selected"))
-				{
-					Microbot.log("Cannot walk to quest location: No quest selected in QuestHelper");
-				}
-				else if (errorInfo.contains("not enabled"))
+				QuestHelperPlugin qhp = getQuestHelperPlugin();
+				if (qhp == null)
 				{
 					Microbot.log("Cannot walk to quest location: QuestHelper plugin not enabled");
+				}
+				else if (qhp.getSelectedQuest() == null)
+				{
+					Microbot.log("Cannot walk to quest location: No quest selected in QuestHelper");
 				}
 				else
 				{
@@ -797,14 +797,14 @@ public class ShortestPathPanel extends PluginPanel
 			}
 			else
 			{
-				String errorInfo = getCurrentClueInfo();
-				if (errorInfo.contains("No active clue"))
-				{
-					Microbot.log("Cannot walk to clue location: No active clue scroll");
-				}
-				else if (errorInfo.contains("not enabled"))
+				ClueScrollPlugin cluePlugin = getCluePlugin();
+				if (cluePlugin == null)
 				{
 					Microbot.log("Cannot walk to clue location: ClueScroll plugin not enabled");
+				}
+				else if (cluePlugin.getClue() == null)
+				{
+					Microbot.log("Cannot walk to clue location: No active clue scroll");
 				}
 				else
 				{
