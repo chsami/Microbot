@@ -1,26 +1,14 @@
 package net.runelite.client.plugins.microbot.util.reflection;
 
 import lombok.SneakyThrows;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.AbstractInsnNode;
-import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.FieldInsnNode;
-import org.objectweb.asm.tree.InsnList;
-import org.objectweb.asm.tree.IntInsnNode;
-import org.objectweb.asm.tree.LdcInsnNode;
-import org.objectweb.asm.tree.MethodInsnNode;
-import org.objectweb.asm.tree.MethodNode;
-import net.runelite.api.Actor;
-import net.runelite.api.HeadIcon;
-import net.runelite.api.ItemComposition;
-import net.runelite.api.MenuAction;
-import net.runelite.api.MenuEntry;
-import net.runelite.api.NPC;
+import net.runelite.api.*;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.*;
 
 import java.awt.event.KeyEvent;
 import java.lang.reflect.Field;
@@ -114,75 +102,50 @@ public class Rs2Reflection {
         }
         System.out.println("[INVOKE] => param0: " + param0 + " param1: " + param1 + " opcode: " + opcode + " id: " + identifier + " itemid: " + itemId);
     }
-	/**
 
+    /**
+     * Gets the animation of an NPC by using reflection.
+     * @param npc
+     * @return
+     */
     @SneakyThrows
-    public static int getAnimation(Rs2NpcModel npc)
-    {
-        return getAnimation(npc.getRuneliteNpc());
-    }
-
-    private static Field sequenceField;
-    private static int sequenceFieldMultiplierValue;
-    @SneakyThrows
-    public static int getAnimation(Actor actor)
-    {
-        if (actor == null)
-        {
+    @Deprecated(since="1.9.8.7 - Runelite exposes all animations", forRemoval=true)
+    public static int getAnimation(NPC npc) {
+        if (npc == null) {
             return -1;
         }
-
-        try
-        {
-            if (sequenceField == null)
-            {
-                final Class<?> actorSubClazz = actor.getClass();
-                final Class<?> actorClazz = actorSubClazz.getSuperclass();
-                //log.info("Actor class: {} | Actor sub class: {}", actorClazz.getName(), actorSubClazz.getName());
-                final ClassReader classReader = new ClassReader(actorClazz.getName());
-                final ClassNode classNode = new ClassNode(Opcodes.ASM9);
-                classReader.accept(classNode, ClassReader.SKIP_FRAMES);
-                final MethodNode getAnimationMethodNode = classNode.methods.stream()
-                        .filter(m -> m.name.equals("getAnimation") && m.desc.equals("()I"))
-                        .findFirst()
-                        .orElse(null);
-                if (getAnimationMethodNode != null)
-                {
-                    final InsnList instructions = getAnimationMethodNode.instructions;
-                    for (AbstractInsnNode insnNode : instructions)
-                    {
-                        if (insnNode instanceof FieldInsnNode && ((FieldInsnNode) insnNode).desc.equals("I")
-                                && insnNode.getNext() instanceof LdcInsnNode)
-                        {
-                            final FieldInsnNode sequenceFieldInsn = (FieldInsnNode) insnNode;
-                            final LdcInsnNode multiplierInsn = (LdcInsnNode) insnNode.getNext();
-                            //log.info("Found sequence field: {}.{} * {}", sequenceFieldInsn.owner, sequenceFieldInsn.name, multiplierInsn.cst);
-
-                            sequenceField = actorClazz.getDeclaredField(sequenceFieldInsn.name);
-                            sequenceFieldMultiplierValue = (int) multiplierInsn.cst;
-                        }
-                    }
-                }
-            }
-
-            if (sequenceField == null)
-            {
-                Microbot.showMessage("getAnimation method is broken!");
-                return -1;
-            }
-
-            sequenceField.setAccessible(true);
-            final int animationId = sequenceField.getInt(actor) * sequenceFieldMultiplierValue;
-            sequenceField.setAccessible(false);
-            return animationId;
-        }
-        catch (Exception e)
-        {
-            Microbot.log("getAnimation method is broken! " + e.getMessage());
-        }
-        return -1;
+        return npc.getAnimation();
     }
-	 **/
+
+    /**
+     * Gets the head icons of an NPC by using reflection.
+     * @param npc
+     * @return
+     */
+    @SneakyThrows
+    @Deprecated(since="1.9.8.7 - Runelite exposes overheads on npcs", forRemoval = true)
+    public static HeadIcon getHeadIcon(Rs2NpcModel npc) {
+        if (npc == null) {
+            return null;
+        }
+
+        if (npc.getOverheadSpriteIds() == null) {
+            Microbot.log("Failed to find the correct overhead prayer.");
+            return null;
+        }
+
+        for (int i = 0; i < npc.getOverheadSpriteIds().length; i++) {
+            int overheadSpriteId = npc.getOverheadSpriteIds()[i];
+
+            if (overheadSpriteId == -1) continue;
+
+            return HeadIcon.values()[overheadSpriteId];
+        }
+
+        Microbot.log("Found overheadSpriteIds: " + Arrays.toString(npc.getOverheadSpriteIds()) + " but failed to find valid overhead prayer.");
+
+        return null;
+    }
 
     @SneakyThrows
     public static String[] getGroundItemActions(ItemComposition item) {
@@ -207,111 +170,6 @@ public class Rs2Reflection {
 
          list.get(0)
                 .invoke(menuEntry, itemId); //use the setItemId method through reflection
-    }
-
-    /**
-     * Credits to EthanApi
-     * @param npc
-     * @return
-     */
-    public static HeadIcon headIconThruLengthEightArrays(NPC npc) throws IllegalAccessException {
-        Class<?>[] trying = new Class<?>[]{npc.getClass(),npc.getComposition().getClass()};
-        for (Class<?> aClass : trying) {
-            for (Field declaredField : aClass.getDeclaredFields()) {
-                Field[] decFields = declaredField.getType().getDeclaredFields();
-                if(decFields.length==2){
-                    if(decFields[0].getType().isArray()&&decFields[1].getType().isArray()){
-                        for (Field decField : decFields) {
-                            decField.setAccessible(true);
-                        }
-                        Object[] array1 = (Object[]) decFields[0].get(npc);
-                        Object[] array2 = (Object[]) decFields[1].get(npc);
-                        for (Field decField : decFields) {
-                            decField.setAccessible(false);
-                        }
-                        if(array1.length==8&array2.length==8){
-                            if(decFields[0].getType()==short[].class){
-                                if((short)array1[0]==-1){
-                                    return null;
-                                }
-                                return HeadIcon.values()[(short)array1[0]];
-                            }
-                            if((short)array2[0]==-1){
-                                return null;
-                            }
-                            return HeadIcon.values()[(short)array2[0]];
-                        }
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
-    @SneakyThrows
-    public static HeadIcon getHeadIcon(Rs2NpcModel npc) {
-        if(npc==null) return null;
-        HeadIcon icon = getOldHeadIcon(npc.getRuneliteNpc());
-        if(icon!=null){
-            //System.out.println("Icon returned using oldHeadIcon");
-            return icon;
-        }
-        icon = getOlderHeadicon(npc.getRuneliteNpc());
-        if(icon!=null){
-            //System.out.println("Icon returned using OlderHeadicon");
-            return icon;
-        }
-        //System.out.println("Icon returned using headIconThruLengthEightArrays");
-        icon = headIconThruLengthEightArrays(npc.getRuneliteNpc());
-        return icon;
-    }
-
-    @SneakyThrows
-    public static HeadIcon getOlderHeadicon(NPC npc){
-        Method getHeadIconMethod = null;
-        for (Method declaredMethod : npc.getComposition().getClass().getDeclaredMethods()) {
-            if (declaredMethod.getName().length() == 2 && declaredMethod.getReturnType() == short.class && declaredMethod.getParameterCount() == 1) {
-                getHeadIconMethod = declaredMethod;
-                getHeadIconMethod.setAccessible(true);
-                short headIcon = -1;
-                try {
-                    headIcon = (short) getHeadIconMethod.invoke(npc.getComposition(), 0);
-                }catch (Exception e){
-                    //nothing
-                }
-                getHeadIconMethod.setAccessible(false);
-
-                if (headIcon == -1) {
-                    continue;
-                }
-                return HeadIcon.values()[headIcon];
-            }
-        }
-        return null;
-    }
-
-    @SneakyThrows
-    public static HeadIcon getOldHeadIcon(NPC npc) {
-        Method getHeadIconMethod;
-        for (Method declaredMethod : npc.getClass().getDeclaredMethods()) {
-            if (declaredMethod.getName().length() == 2 && declaredMethod.getReturnType() == short[].class && declaredMethod.getParameterCount() == 0) {
-                getHeadIconMethod = declaredMethod;
-                getHeadIconMethod.setAccessible(true);
-                short[] headIcon = null;
-                try {
-                    headIcon = (short[]) getHeadIconMethod.invoke(npc);
-                } catch (Exception e) {
-                    //nothing
-                }
-                getHeadIconMethod.setAccessible(false);
-
-                if (headIcon == null) {
-                    continue;
-                }
-                return HeadIcon.values()[headIcon[0]];
-            }
-        }
-        return null;
     }
 }
 

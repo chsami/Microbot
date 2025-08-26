@@ -446,7 +446,6 @@ public class MicrobotPluginHubPanel extends PluginPanel {
     private final JLabel refreshing;
     private final JPanel mainPanel;
     private List<PluginItem> plugins = null;
-    private List<MicrobotPluginManifest> lastManifest;
 
     @Inject
     MicrobotPluginHubPanel(
@@ -572,46 +571,45 @@ public class MicrobotPluginHubPanel extends PluginPanel {
         reloadPluginList();
     }
 
-    private void reloadPluginList() {
-        if (refreshing.isVisible()) {
-            return;
-        }
+	private void reloadPluginList()
+	{
+		if (refreshing.isVisible())
+		{
+			return;
+		}
 
-        refreshing.setVisible(true);
-        mainPanel.removeAll();
+		refreshing.setVisible(true);
+		mainPanel.removeAll();
 
-        executor.submit(() ->
-        {
-            List<MicrobotPluginManifest> manifest;
-            try {
-                manifest = microbotPluginClient.downloadManifest();
-            } catch (IOException e) {
-                log.error("Error loading plugins from Microbot Hub", e);
-                SwingUtilities.invokeLater(() ->
-                {
-                    refreshing.setVisible(false);
-                    mainPanel.add(new JLabel("Downloading the plugin manifest failed"));
+		executor.submit(() ->
+		{
+			Collection<MicrobotPluginManifest> manifestCollection = microbotPluginManager.getManifestMap().values();
 
-                    JButton retry = new JButton("Retry");
-                    retry.addActionListener(l -> reloadPluginList());
-                    mainPanel.add(retry);
-                });
-                return;
-            }
+			Map<String, Integer> pluginCounts = Collections.emptyMap();
+			try
+			{
+				pluginCounts = microbotPluginClient.getPluginCounts();
+			}
+			catch (IOException e)
+			{
+				log.warn("Unable to download plugin counts", e);
+				SwingUtilities.invokeLater(() ->
+				{
+					refreshing.setVisible(false);
+					mainPanel.add(new JLabel("Downloading the plugin manifest failed"));
 
-            Map<String, Integer> pluginCounts = Collections.emptyMap();
-            try {
-                pluginCounts = microbotPluginClient.getPluginCounts();
-            } catch (IOException e) {
-                log.warn("Unable to download plugin counts", e);
-            }
+					JButton retry = new JButton("Retry");
+					retry.addActionListener(l -> reloadPluginList());
+					mainPanel.add(retry);
+					mainPanel.revalidate();
+				});
+			}
 
-            reloadPluginList(manifest, pluginCounts);
-        });
-    }
+			reloadPluginList(manifestCollection, pluginCounts);
+		});
+	}
 
-    private void reloadPluginList(List<MicrobotPluginManifest> manifest, Map<String, Integer> pluginCounts) {
-        lastManifest = manifest;
+    private void reloadPluginList(Collection<MicrobotPluginManifest> manifest, Map<String, Integer> pluginCounts) {
 
         // Filter out disabled plugins before processing
         List<MicrobotPluginManifest> enabledManifest = manifest.stream()
@@ -714,7 +712,6 @@ public class MicrobotPluginHubPanel extends PluginPanel {
         mainPanel.removeAll();
         refreshing.setVisible(false);
         plugins = null;
-        lastManifest = null;
 
         synchronized (iconLoadQueue) {
             for (PluginIcon pi; (pi = iconLoadQueue.poll()) != null; ) {
@@ -723,16 +720,10 @@ public class MicrobotPluginHubPanel extends PluginPanel {
         }
     }
 
-    @Subscribe
-    private void onExternalPluginsChanged(ExternalPluginsChanged ev) {
-        if (!refreshing.isVisible() && lastManifest != null) {
-            refreshing.setVisible(true);
-
-            Map<String, Integer> pluginCounts = plugins == null ? Collections.emptyMap()
-                    : plugins.stream().collect(Collectors.toMap(pi -> pi.manifest.getInternalName(), PluginItem::getUserCount));
-            executor.submit(() -> reloadPluginList(lastManifest, pluginCounts));
-        }
-    }
+	@Subscribe
+	private void onExternalPluginsChanged(ExternalPluginsChanged ev) {
+		reloadPluginList();
+	}
 
     // A utility class copied from the original PluginHubPanel
     private static class FixedWidthPanel extends JPanel {

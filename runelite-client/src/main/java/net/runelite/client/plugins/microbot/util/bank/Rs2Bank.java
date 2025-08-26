@@ -2212,6 +2212,15 @@ public class Rs2Bank {
     }
 
     /**
+     * Empty log basket
+     *
+     * @return true if log basket was emptied
+     */
+    public static boolean emptyLogBasket() {
+        return empty(ItemID.LOG_BASKET_CLOSED, ItemID.LOG_BASKET_OPEN);
+    }
+
+    /**
      * Empties the looting bag if one is present. The bank must be open.
      *
      * @return true if the looting bag was emptied, false otherwise.

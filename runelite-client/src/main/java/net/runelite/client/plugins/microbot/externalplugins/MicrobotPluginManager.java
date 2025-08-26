@@ -31,11 +31,14 @@ import com.google.common.graph.Graphs;
 import com.google.common.graph.MutableGraph;
 import com.google.common.io.Files;
 import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import com.google.inject.Binder;
 import com.google.inject.CreationException;
 import com.google.inject.Injector;
 import com.google.inject.Module;
+import java.util.concurrent.TimeUnit;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLite;
 import net.runelite.client.RuneLiteProperties;
@@ -59,6 +62,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -77,55 +81,106 @@ public class MicrobotPluginManager
     private final PluginManager pluginManager;
     private final Gson gson;
 
-    @Inject
-    private MicrobotPluginManager(
-        OkHttpClient okHttpClient,
-        MicrobotPluginClient microbotPluginClient,
-        EventBus eventBus,
-        ScheduledExecutorService executor,
-        PluginManager pluginManager,
-        Gson gson)
-    {
-        this.okHttpClient = okHttpClient;
-        this.microbotPluginClient = microbotPluginClient;
-        this.eventBus = eventBus;
-        this.executor = executor;
-        this.pluginManager = pluginManager;
-        this.gson = gson;
+    private final Map<String, MicrobotPluginManifest> manifestMap = new ConcurrentHashMap<>();
 
-        PLUGIN_DIR.mkdirs();
+	public Map<String, MicrobotPluginManifest> getManifestMap() {
+		return Collections.unmodifiableMap(manifestMap);
+	}
 
-        if (!PLUGIN_LIST.exists())
-        {
-            try
-            {
-                PLUGIN_LIST.createNewFile();
-                Files.asCharSink(PLUGIN_LIST, StandardCharsets.UTF_8).write("[]");
-            }
-            catch (IOException e)
-            {
-                log.error("Unable to create Microbot plugin list", e);
-            }
-        }
-    }
+	private void loadManifest()
+	{
+		try
+		{
+			List<MicrobotPluginManifest> manifests = microbotPluginClient.downloadManifest();
+			Map<String, MicrobotPluginManifest> next = new HashMap<>(manifests.size());
+			for (MicrobotPluginManifest m : manifests)
+			{
+				next.put(m.getInternalName(), m);
+			}
+			boolean changed = !next.keySet().equals(manifestMap.keySet())
+				|| next.entrySet().stream().anyMatch(e -> {
+				MicrobotPluginManifest cur = manifestMap.get(e.getKey());
+				return cur == null || !Objects.equals(cur.getSha256(), e.getValue().getSha256());
+			});
+			if (changed)
+			{
+				manifestMap.clear();
+				manifestMap.putAll(next);
+				log.info("Loaded {} plugin manifests.", manifestMap.size());
+				eventBus.post(new ExternalPluginsChanged());
+			}
+			else
+			{
+				log.debug("Plugin manifests unchanged ({} entries), skipping event.", manifestMap.size());
+			}
+		}
+		catch (Exception e)
+		{
+			log.error("Failed to fetch plugin manifests", e);
+		}
+	}
 
-    public List<String> getInstalledPlugins()
-    {
-        List<String> plugins = new ArrayList<>();
-        try (FileReader reader = new FileReader(PLUGIN_LIST))
-        {
-            plugins = gson.fromJson(reader, new TypeToken<List<String>>(){}.getType());
-            if (plugins == null)
-            {
-                plugins = new ArrayList<>();
-            }
-        }
-        catch (IOException | com.google.gson.JsonSyntaxException e)
-        {
-            log.error("Error reading Microbot plugin list", e);
-        }
-        return plugins;
-    }
+	@Inject
+	private MicrobotPluginManager(
+		OkHttpClient okHttpClient,
+		MicrobotPluginClient microbotPluginClient,
+		EventBus eventBus,
+		ScheduledExecutorService executor,
+		PluginManager pluginManager,
+		Gson gson)
+	{
+		this.okHttpClient = okHttpClient;
+		this.microbotPluginClient = microbotPluginClient;
+		this.eventBus = eventBus;
+		this.executor = executor;
+		this.pluginManager = pluginManager;
+		this.gson = gson;
+
+		PLUGIN_DIR.mkdirs();
+
+		if (!PLUGIN_LIST.exists())
+		{
+			try
+			{
+				PLUGIN_LIST.createNewFile();
+				Files.asCharSink(PLUGIN_LIST, StandardCharsets.UTF_8).write("[]");
+			}
+			catch (IOException e)
+			{
+				log.error("Unable to create Microbot plugin list", e);
+			}
+		}
+
+		loadManifest();
+		executor.scheduleWithFixedDelay(this::loadManifest, 10, 10, TimeUnit.MINUTES);
+	}
+
+	public List<String> getInstalledPlugins()
+	{
+		List<String> plugins = new ArrayList<>();
+		try (FileReader reader = new FileReader(PLUGIN_LIST))
+		{
+			plugins = gson.fromJson(reader, new TypeToken<List<String>>() {}.getType());
+			if (plugins == null)
+			{
+				plugins = new ArrayList<>();
+			}
+		}
+		catch (IOException | JsonSyntaxException e)
+		{
+			log.error("Error reading Microbot plugin list", e);
+			// Auto-heal corrupt file to reduce repeated failures
+			try
+			{
+				Files.asCharSink(PLUGIN_LIST, StandardCharsets.UTF_8).write("[]");
+			}
+			catch (IOException ioEx)
+			{
+				log.warn("Failed to auto-heal plugins.json", ioEx);
+			}
+		}
+		return plugins;
+	}
 
     public void saveInstalledPlugins(List<String> plugins)
     {
@@ -144,74 +199,74 @@ public class MicrobotPluginManager
         return new File(PLUGIN_DIR, internalName + ".jar");
     }
 
-    public void install(MicrobotPluginManifest manifest)
-    {
-        executor.execute(() -> {
-            // Check if plugin is disabled
-            if (manifest.isDisable()) {
-                log.error("Plugin {} is disabled and cannot be installed.", manifest.getInternalName());
-                return;
-            }
+	public void install(MicrobotPluginManifest manifest)
+	{
+		executor.execute(() -> {
+			// Check if plugin is disabled
+			if (manifest.isDisable())
+			{
+				log.error("Plugin {} is disabled and cannot be installed.", manifest.getInternalName());
+				return;
+			}
 
-            // Check version compatibility before installing
-            if (!isClientVersionCompatible(manifest.getMinClientVersion())) {
-                log.error("Plugin {} requires client version {} or higher, but current version is {}. Installation aborted.",
-                    manifest.getInternalName(), manifest.getMinClientVersion(), RuneLiteProperties.getMicrobotVersion());
-                return;
-            }
+			// Check version compatibility before installing
+			if (!isClientVersionCompatible(manifest.getMinClientVersion()))
+			{
+				log.error("Plugin {} requires client version {} or higher, but current version is {}. Installation aborted.",
+					manifest.getInternalName(), manifest.getMinClientVersion(), RuneLiteProperties.getMicrobotVersion());
+				return;
+			}
 
-            try
-            {
-                HttpUrl url = microbotPluginClient.getJarURL(manifest);
-                if (url == null)
-                {
+			try
+			{
+				HttpUrl url = microbotPluginClient.getJarURL(manifest);
+				if (url == null)
+				{
 
-                    log.error("Invalid URL for plugin: {}", manifest.getInternalName());
-                    return;
-                }
+					log.error("Invalid URL for plugin: {}", manifest.getInternalName());
+					return;
+				}
 
-                Request request = new Request.Builder()
-                    .url(url)
-                    .build();
+				Request request = new Request.Builder()
+					.url(url)
+					.build();
 
-                try (Response response = okHttpClient.newCall(request).execute())
-                {
-                    if (!response.isSuccessful())
-                    {
-                        log.error("Error downloading plugin: {}, code: {}", manifest.getInternalName(), response.code());
-                        return;
-                    }
+				try (Response response = okHttpClient.newCall(request).execute())
+				{
+					if (!response.isSuccessful())
+					{
+						log.error("Error downloading plugin: {}, code: {}", manifest.getInternalName(), response.code());
+						return;
+					}
 
-                    byte[] jarData = response.body().bytes();
+					byte[] jarData = response.body().bytes();
 
-                    // Verify the SHA-256 hash
-                    if (!verifyHash(jarData, manifest.getSha256()))
-                    {
-                        log.error("Plugin hash verification failed for: {}", manifest.getInternalName());
-                        return;
-                    }
+					// Verify the SHA-256 hash
+					if (!verifyHash(jarData, manifest.getSha256()))
+					{
+						log.error("Plugin hash verification failed for: {}", manifest.getInternalName());
+						return;
+					}
 
-                    // Save the jar file
-                    File pluginFile = getPluginJarFile(manifest.getInternalName());
-                    Files.write(jarData, pluginFile);
-
-                    List<String> plugins = getInstalledPlugins();
-                    if (!plugins.contains(manifest.getInternalName()))
-                    {
-                        plugins.add(manifest.getInternalName());
-                        saveInstalledPlugins(plugins);
-                    }
-
-                    loadSideLoadPlugins();
-
-                }
-            }
-            catch (IOException e)
-            {
-                log.error("Error installing plugin: {}", manifest.getInternalName(), e);
-            }
-        });
-    }
+					manifestMap.put(manifest.getInternalName(), manifest);
+					// Save the jar file
+					File pluginFile = getPluginJarFile(manifest.getInternalName());
+					Files.write(jarData, pluginFile);
+					List<String> plugins = getInstalledPlugins();
+					if (!plugins.contains(manifest.getInternalName()))
+					{
+						plugins.add(manifest.getInternalName());
+						saveInstalledPlugins(plugins);
+					}
+					loadSideLoadPlugin(manifest.getInternalName());
+				}
+			}
+			catch (IOException e)
+			{
+				log.error("Error installing plugin: {}", manifest.getInternalName(), e);
+			}
+		});
+	}
 
     public void remove(String internalName)
     {
@@ -339,65 +394,132 @@ public class MicrobotPluginManager
         return MICROBOT_PLUGINS.listFiles();
     }
 
+	public void syncPlugins()
+	{
+		List<String> installed = getInstalledPlugins();
+		Map<String, Plugin> loadedByInternalName = pluginManager.getPlugins().stream()
+			.filter(p -> p.getClass().isAnnotationPresent(PluginDescriptor.class))
+			.filter(p -> {
+				PluginDescriptor d = p.getClass().getAnnotation(PluginDescriptor.class);
+				return d != null && d.isExternal();
+			})
+			.collect(Collectors.toMap(
+				p -> p.getClass().getAnnotation(PluginDescriptor.class).name(),
+				p -> p,
+				(a, b) -> a
+			));
+
+		// Remove plugins that are loaded but not installed
+		for (Map.Entry<String, Plugin> entry : loadedByInternalName.entrySet())
+		{
+			if (!installed.contains(entry.getKey()))
+			{
+				remove(entry.getKey());
+			}
+		}
+	}
+
     /**
-     * Load plugins from the sideloading folder, matching the provided jar names.
+     * Loads a single plugin from the sideload folder if not already loaded.
      */
-    public void loadSideLoadPlugins() {
-        File[] files = createSideloadingFolder();
-        if (files == null)
-        {
-            return;
-        }
+	private void loadSideLoadPlugin(String internalName)
+	{
+		File pluginFile = getPluginJarFile(internalName);
+		if (!pluginFile.exists())
+		{
+			log.debug("Plugin file {} does not exist", pluginFile);
+			return;
+		}
+		List<String> installedPlugins = getInstalledPlugins();
+		if (!installedPlugins.contains(internalName))
+		{
+			return; // Not installed
+		}
+		Set<String> loadedInternalNames = pluginManager.getPlugins().stream()
+			.filter(p -> p.getClass().isAnnotationPresent(PluginDescriptor.class))
+			.filter(p -> p.getClass().getAnnotation(PluginDescriptor.class).isExternal())
+			.map(p -> p.getClass().getAnnotation(PluginDescriptor.class).name())
+			.collect(Collectors.toSet());
+		if (loadedInternalNames.contains(internalName))
+		{
+			return; // Already loaded
+		}
+		MicrobotPluginManifest manifest = manifestMap.get(internalName);
+		if (manifest == null)
+		{
+			log.warn("No manifest found for plugin {}. Skipping hash validation and load.", internalName);
+			return;
+		}
+		try
+		{
+			byte[] fileBytes = Files.toByteArray(pluginFile);
+			// Validate hash before loading
+			if (!verifyHash(fileBytes, manifest.getSha256()))
+			{
+				log.error("Hash mismatch for plugin {}. Skipping load.", internalName);
+				pluginFile.delete();
+				List<String> plugins = getInstalledPlugins();
+				plugins.remove(internalName);
+				saveInstalledPlugins(plugins);
+				eventBus.post(new ExternalPluginsChanged());
+				return;
+			}
+			List<Class<?>> plugins = new ArrayList<>();
+			MicrobotPluginClassLoader classLoader = new MicrobotPluginClassLoader(getClass().getClassLoader(), pluginFile.getName(), fileBytes);
+			Set<String> classNamesToLoad = classLoader.getLoadedClassNames();
+			for (String className : classNamesToLoad)
+			{
+				try
+				{
+					Class<?> clazz = classLoader.loadClass(className);
+					plugins.add(clazz);
+				}
+				catch (ClassNotFoundException e)
+				{
+					log.trace("Class not found during sideloading: {}", className, e);
+				}
+			}
+			loadPlugins(plugins, null);
+			eventBus.post(new ExternalPluginsChanged());
+		}
+		catch (PluginInstantiationException | IOException e)
+		{
+			log.trace("Error loading side-loaded plugin!", e);
+		}
+	}
 
-        for (File f : files)
-        {
-            var installedPlugins = getInstalledPlugins();
-
-            var match = installedPlugins.stream()
-                    .filter(x -> x.equals(f.getName().replace(".jar", "")))
-                    .findFirst();
-
-            if (!match.isPresent())
-            {
-                continue; // Skip if the plugin is not in the installed list
-            }
-
-            if (f.getName().endsWith(".jar"))
-            {
-                log.info("Side-loading plugin {}", f.getName());
-
-                try
-                {
-                    byte[] fileBytes = Files.toByteArray(f);
-
-                    List<Class<?>> plugins = new ArrayList<>();
-
-                    MicrobotPluginClassLoader classLoader = new MicrobotPluginClassLoader(getClass().getClassLoader(), f.getName(), fileBytes);
-
-                    // Assuming you know the class names you want to load
-                    Set<String> classNamesToLoad = classLoader.getLoadedClassNames();
-
-                    for (String className : classNamesToLoad) {
-                        try {
-                            Class<?> clazz = classLoader.loadClass(className);
-                            plugins.add(clazz);
-                        } catch (ClassNotFoundException e) {
-                            log.trace("Class not found during sideloading: {}", className, e);
-                        }
-                    }
-
-                    loadPlugins(plugins, null);
-
-                    eventBus.post(new ExternalPluginsChanged());
-
-                }
-                catch (PluginInstantiationException | IOException e)
-                {
-                    log.trace("Error loading side-loaded plugin!", e);
-                }
-            }
-        }
-    }
+	public void loadSideLoadPlugins()
+	{
+		syncPlugins();
+		File[] files = createSideloadingFolder();
+		if (files == null)
+		{
+			return;
+		}
+		List<String> installedPlugins = getInstalledPlugins();
+		Set<String> loadedInternalNames = pluginManager.getPlugins().stream()
+			.filter(p -> p.getClass().isAnnotationPresent(PluginDescriptor.class))
+			.filter(p -> p.getClass().getAnnotation(PluginDescriptor.class).isExternal())
+			.map(p -> p.getClass().getAnnotation(PluginDescriptor.class).name())
+			.collect(Collectors.toSet());
+		for (File f : files)
+		{
+			if (!f.getName().endsWith(".jar"))
+			{
+				continue;
+			}
+			String internalName = f.getName().replace(".jar", "");
+			if (!installedPlugins.contains(internalName))
+			{
+				continue; // Skip if not in installed list
+			}
+			if (loadedInternalNames.contains(internalName))
+			{
+				continue; // Already loaded
+			}
+			loadSideLoadPlugin(internalName);
+		}
+	}
 
     /**
      * Topologically sort a graph. Uses Kahn's algorithm.
@@ -435,80 +557,105 @@ public class MicrobotPluginManager
         return l;
     }
 
-    public List<Plugin> loadPlugins(List<Class<?>> plugins, BiConsumer<Integer, Integer> onPluginLoaded) throws PluginInstantiationException {
-        MutableGraph<Class<? extends Plugin>> graph = GraphBuilder
-                .directed()
-                .build();
+	public List<Plugin> loadPlugins(List<Class<?>> plugins, BiConsumer<Integer, Integer> onPluginLoaded) throws PluginInstantiationException
+	{
+		MutableGraph<Class<? extends Plugin>> graph = GraphBuilder
+			.directed()
+			.build();
 
-        for (Class<?> clazz : plugins) {
-            PluginDescriptor pluginDescriptor = clazz.getAnnotation(PluginDescriptor.class);
+		Set<Class<?>> alreadyLoaded = pluginManager.getPlugins().stream()
+			.map(Object::getClass)
+			.collect(Collectors.toSet());
 
-            if (pluginDescriptor == null) {
-                if (clazz.getSuperclass() == Plugin.class) {
-                    log.error("Class {} is a plugin, but has no plugin descriptor", clazz);
-                }
-                continue;
-            }
+		for (Class<?> clazz : plugins)
+		{
+			if (alreadyLoaded.contains(clazz))
+			{
+				log.debug("Plugin {} is already loaded, skipping duplicate.", clazz.getSimpleName());
+				continue;
+			}
+			PluginDescriptor pluginDescriptor = clazz.getAnnotation(PluginDescriptor.class);
 
-            if (clazz.getSuperclass() != Plugin.class) {
-                log.error("Class {} has plugin descriptor, but is not a plugin", clazz);
-                continue;
-            }
+			if (pluginDescriptor == null)
+			{
+				if (clazz.getSuperclass() == Plugin.class)
+				{
+					log.error("Class {} is a plugin, but has no plugin descriptor", clazz);
+				}
+				continue;
+			}
 
-            // Check version compatibility for external plugins
-            if (pluginDescriptor.isExternal() && !isClientVersionCompatible(pluginDescriptor.minClientVersion())) {
-                log.error("Plugin {} requires client version {} or higher, but current version is {}. Skipping plugin loading.",
-                    clazz.getSimpleName(), pluginDescriptor.minClientVersion(), RuneLiteProperties.getMicrobotVersion());
-                continue;
-            }
+			if (clazz.getSuperclass() != Plugin.class)
+			{
+				log.error("Class {} has plugin descriptor, but is not a plugin", clazz);
+				continue;
+			}
+
+			// Check version compatibility for external plugins
+			if (pluginDescriptor.isExternal() && !isClientVersionCompatible(pluginDescriptor.minClientVersion()))
+			{
+				log.error("Plugin {} requires client version {} or higher, but current version is {}. Skipping plugin loading.",
+					clazz.getSimpleName(), pluginDescriptor.minClientVersion(), RuneLiteProperties.getMicrobotVersion());
+				continue;
+			}
 
 			// Check if the plugin is disabled
-			if (pluginDescriptor.disable()) {
+			if (pluginDescriptor.disable())
+			{
 				log.error("Plugin {} has been disabled upstream", clazz.getSimpleName());
 				continue;
 			}
 
-            graph.addNode((Class<Plugin>) clazz);
-        }
+			graph.addNode((Class<Plugin>) clazz);
+		}
 
-        // Build plugin graph
-        for (Class<? extends Plugin> pluginClazz : graph.nodes()) {
-            PluginDependency[] pluginDependencies = pluginClazz.getAnnotationsByType(PluginDependency.class);
+		// Build plugin graph
+		for (Class<? extends Plugin> pluginClazz : graph.nodes())
+		{
+			PluginDependency[] pluginDependencies = pluginClazz.getAnnotationsByType(PluginDependency.class);
 
-            for (PluginDependency pluginDependency : pluginDependencies) {
-                if (graph.nodes().contains(pluginDependency.value())) {
-                    graph.putEdge(pluginDependency.value(), pluginClazz);
-                }
-            }
-        }
+			for (PluginDependency pluginDependency : pluginDependencies)
+			{
+				if (graph.nodes().contains(pluginDependency.value()))
+				{
+					graph.putEdge(pluginDependency.value(), pluginClazz);
+				}
+			}
+		}
 
-        if (Graphs.hasCycle(graph)) {
-            throw new PluginInstantiationException("Plugin dependency graph contains a cycle!");
-        }
+		if (Graphs.hasCycle(graph))
+		{
+			throw new PluginInstantiationException("Plugin dependency graph contains a cycle!");
+		}
 
-        List<Class<? extends Plugin>> sortedPlugins = topologicalSort(graph);
+		List<Class<? extends Plugin>> sortedPlugins = topologicalSort(graph);
 
-        int loaded = 0;
-        List<Plugin> newPlugins = new ArrayList<>();
-        for (Class<? extends Plugin> pluginClazz : sortedPlugins) {
-            Plugin plugin;
-            try {
-                plugin = instantiate(pluginManager.getPlugins(), (Class<Plugin>) pluginClazz);
-                log.info("Microbot pluginManager loaded " + plugin.getClass().getSimpleName());
-                newPlugins.add(plugin);
-                pluginManager.addPlugin(plugin);
-            } catch (PluginInstantiationException ex) {
-                log.error("Error instantiating plugin!", ex);
-            }
+		int loaded = 0;
+		List<Plugin> newPlugins = new ArrayList<>();
+		for (Class<? extends Plugin> pluginClazz : sortedPlugins)
+		{
+			Plugin plugin;
+			try
+			{
+				plugin = instantiate(pluginManager.getPlugins(), (Class<Plugin>) pluginClazz);
+				log.info("Plugin loaded {}", plugin.getClass().getSimpleName());
+				newPlugins.add(plugin);
+				pluginManager.addPlugin(plugin);
+				loaded++;
+			}
+			catch (PluginInstantiationException ex)
+			{
+				log.error("Error instantiating plugin!", ex);
+			}
 
-            loaded++;
-            if (onPluginLoaded != null) {
-                onPluginLoaded.accept(loaded, sortedPlugins.size());
-            }
-        }
+			if (onPluginLoaded != null)
+			{
+				onPluginLoaded.accept(loaded, sortedPlugins.size());
+			}
+		}
 
-        return newPlugins;
-    }
+		return newPlugins;
+	}
 
     private Plugin instantiate(Collection<Plugin> scannedPlugins, Class<Plugin> clazz) throws PluginInstantiationException {
         PluginDependency[] pluginDependencies = clazz.getAnnotationsByType(PluginDependency.class);
