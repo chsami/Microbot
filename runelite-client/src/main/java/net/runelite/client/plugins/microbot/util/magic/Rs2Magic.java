@@ -64,20 +64,10 @@ public class Rs2Magic {
      * player's active spellbook and the availability of the required runes.
      *
      * @param spell the spell that needs to be checked for rune availability
-     * @return true if the player has the correct spellbook and enough runes to cast the spell
+     * @return true if the player has the correct spellbook, high enough level and enough runes to cast the spell
      */
     public static boolean canCast(Spell spell) {
-        if (!isSpellbook(spell.getSpellbook())) {
-            Microbot.log("You need to be on the " + spell.getSpellbook() + " spellbook to cast " + spell.getMagicAction().name() + ".");
-            return false;
-        }
-        if (Rs2SkillCache.getBoostedSkillLevel(Skill.MAGIC) < spell.getRequiredLevel()) {
-            Microbot.log("You need to have a level of " + spell.getRequiredLevel() + " to cast " + spell.getMagicAction().name() + ".");
-            return false;
-        }
-        Map<Runes, Integer> requiredRunes = spell.getRequiredRunes();
-        Map<Runes, Integer> availableRunes = getRunes(RuneFilter.builder().includeRunePouch(true).includeBank(false).includeComboRunes(true).includeEquipment(true).includeInventory(true).build());
-        return requiredRunes.entrySet().stream().allMatch(x -> availableRunes.getOrDefault(x.getKey(), 0) >= x.getValue());
+        return spell.hasRequirements() && hasRequiredRunes(spell);
     }
 
     /**
