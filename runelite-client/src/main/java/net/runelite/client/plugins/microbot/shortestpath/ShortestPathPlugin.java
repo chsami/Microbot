@@ -240,6 +240,9 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         overlayManager.remove(debugOverlayPanel);
         clientToolbar.removeNavigation(navButton);
         navButton = null;
+        if (panel != null) {
+            panel.disposeTimers();
+        }
         panel = null;
 
         shortestPathScript.shutdown();

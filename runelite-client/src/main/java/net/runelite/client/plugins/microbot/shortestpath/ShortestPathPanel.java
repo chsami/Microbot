@@ -82,6 +82,8 @@ public class ShortestPathPanel extends PluginPanel
 	private JComboBox<Kebbits> kebbitsJComboBox;
 	private JComboBox<Salamanders> salamandersComboBox;
 	private JComboBox<SpecialHuntingAreas> specialHuntingAreasJComboBox;
+	private javax.swing.Timer questInfoTimer;
+	private javax.swing.Timer clueInfoTimer;
 
 	@Inject
 	private ShortestPathPanel(ShortestPathPlugin plugin)
@@ -368,11 +370,11 @@ public class ShortestPathPanel extends PluginPanel
 		questInfoLabel.setMaximumSize(new Dimension(Integer.MAX_VALUE, questInfoLabel.getPreferredSize().height * 2));
 		
 		// Update quest info dynamically
-		javax.swing.Timer timer = new javax.swing.Timer(1000, e -> {
+		questInfoTimer = new javax.swing.Timer(1000, e -> {
 			String questInfo = getCurrentQuestInfo();
 			questInfoLabel.setText("<html><center>" + questInfo + "</center></html>");
 		});
-		timer.start();
+		questInfoTimer.start();
 
 		JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
 		JButton startButton = new JButton("Start");
@@ -778,11 +780,11 @@ public class ShortestPathPanel extends PluginPanel
 		clueInfoLabel.setMaximumSize(new Dimension(Integer.MAX_VALUE, clueInfoLabel.getPreferredSize().height * 2));
 		
 		// Update clue info dynamically
-		javax.swing.Timer timer = new javax.swing.Timer(1000, e -> {
+		clueInfoTimer = new javax.swing.Timer(1000, e -> {
 			String clueInfo = getCurrentClueInfo();
 			clueInfoLabel.setText("<html><center>" + clueInfo + "</center></html>");
 		});
-		timer.start();
+		clueInfoTimer.start();
 
 		JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
 		JButton startButton = new JButton("Start");
@@ -914,5 +916,19 @@ public class ShortestPathPanel extends PluginPanel
 		}
 
 		return clueType + " clue";
+	}
+
+	public void disposeTimers()
+	{
+		if (questInfoTimer != null)
+		{
+			questInfoTimer.stop();
+			questInfoTimer = null;
+		}
+		if (clueInfoTimer != null)
+		{
+			clueInfoTimer.stop();
+			clueInfoTimer = null;
+		}
 	}
 }
