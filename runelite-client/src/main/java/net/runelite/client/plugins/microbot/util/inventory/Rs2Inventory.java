@@ -2241,4 +2241,12 @@ public class Rs2Inventory {
         Microbot.getNaturalMouse().moveTo(point.getX(), point.getY());
         return true;
     }
+
+    /* This was easy to add because I like making a list of item ids in my scripts, and didn't have any easy function to do:
+    Rs2Inventory.hasItem(itemList);
+     */
+
+    public static boolean hasItem(List<Integer> ids) {
+        return hasItem(ids.stream().mapToInt(i->i).toArray());
+    }
 }

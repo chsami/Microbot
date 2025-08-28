@@ -4,6 +4,7 @@ import com.google.common.collect.Table;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.grounditems.GroundItem;
 import net.runelite.client.plugins.grounditems.GroundItemsPlugin;
@@ -125,7 +126,7 @@ public class Rs2GroundItem {
         return interact(new InteractModel(groundItem.getId(), groundItem.getLocation(), groundItem.getName()), "Take");
     }
 
-    public static int calculateDespawnTime(GroundItem groundItem) {
+    private static int calculateDespawnTime(GroundItem groundItem) {
         Instant spawnTime = groundItem.getSpawnTime();
         if (spawnTime == null) {
             return 0;
@@ -173,7 +174,7 @@ public class Rs2GroundItem {
 
     /**
      * Retrieves all RS2Item objects within a specified range of a WorldPoint, sorted by distance.
-     * 
+     *
      * @param range The radius in tiles to search around the given world point
      * @param worldPoint The center WorldPoint to search around
      * @return An array of RS2Item objects found within the specified range, sorted by proximity
@@ -183,24 +184,24 @@ public class Rs2GroundItem {
         if (worldPoint == null) return (RS2Item[]) EMPTY_ARRAY;
 
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
-                    List<RS2Item> temp = new ArrayList<>();
-                    final int pX = worldPoint.getX();
-                    final int pY = worldPoint.getY();
-                    final int minX = pX - range, minY = pY - range;
-                    final int maxX = pX + range, maxY = pY + range;
-                    for (int x = minX; x <= maxX; x++) {
-                        for (int y = minY; y <= maxY; y++) {
-                            for (RS2Item item : getAllAt(x, y)) {
-                                if (item == null) continue;
-                                temp.add(item);
-                            }
-                        }
+            List<RS2Item> temp = new ArrayList<>();
+            final int pX = worldPoint.getX();
+            final int pY = worldPoint.getY();
+            final int minX = pX - range, minY = pY - range;
+            final int maxX = pX + range, maxY = pY + range;
+            for (int x = minX; x <= maxX; x++) {
+                for (int y = minY; y <= maxY; y++) {
+                    for (RS2Item item : getAllAt(x, y)) {
+                        if (item == null) continue;
+                        temp.add(item);
                     }
-                    //sort on closest item first
-                    return temp.stream().sorted(Comparator.comparingInt(value -> value.getTile().getLocalLocation()
-                                    .distanceTo(Microbot.getClient().getLocalPlayer().getLocalLocation())))
-                            .toArray(RS2Item[]::new);
-                }).orElse(EMPTY_ARRAY);
+                }
+            }
+            //sort on closest item first
+            return temp.stream().sorted(Comparator.comparingInt(value -> value.getTile().getLocalLocation()
+                            .distanceTo(Microbot.getClient().getLocalPlayer().getLocalLocation())))
+                    .toArray(RS2Item[]::new);
+        }).orElse(EMPTY_ARRAY);
     }
 
 
@@ -226,7 +227,7 @@ public class Rs2GroundItem {
     }
 
     public static boolean lootItemBasedOnValue(int value, int range) {
-         final RS2Item rs2Item = Arrays.stream(Rs2GroundItem.getAll(range))
+        final RS2Item rs2Item = Arrays.stream(Rs2GroundItem.getAll(range))
                 .filter(item -> hasLineOfSight(item.getTile()))
                 .filter(item -> {
                     final long totalPrice = (long) Microbot.getClientThread().runOnClientThreadOptional(() ->
@@ -234,10 +235,10 @@ public class Rs2GroundItem {
                     return totalPrice >= value;
                 }).findFirst().orElse(null);
 
-         if (rs2Item == null) return false;
-         if (Rs2Inventory.isFull() && Rs2Player.eatAt(100)) Rs2Player.waitForAnimation();
-         if (!interact(rs2Item)) return false;
-         return Rs2Inventory.waitForInventoryChanges(5_000);
+        if (rs2Item == null) return false;
+        if (Rs2Inventory.isFull() && Rs2Player.eatAt(100)) Rs2Player.waitForAnimation();
+        if (!interact(rs2Item)) return false;
+        return Rs2Inventory.waitForInventoryChanges(5_000);
     }
 
     /**
@@ -538,5 +539,162 @@ public class Rs2GroundItem {
      */
     public static Table<WorldPoint, Integer, GroundItem> getGroundItems() {
         return GroundItemsPlugin.getCollectedGroundItems();
+    }
+
+    /*
+    Helpers added to identify singular items based on different params. Including world areas,
+    just finding a singular item based off area, worldpoint etc.
+     */
+
+    public static GroundItem getGroundItem(String itemName) {
+        return getGroundItems().values().stream()
+                .filter(item -> item.getName().toLowerCase().contains(itemName.toLowerCase()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    public static GroundItem getGroundItem(String itemName, WorldPoint location, boolean exact) {
+        return getGroundItems().values().stream()
+                .filter(item -> {
+                    boolean nameMatch = exact ?
+                            item.getName().equals(itemName) :
+                            item.getName().toLowerCase().contains(itemName.toLowerCase());
+                    return nameMatch && item.getLocation().equals(location);
+                })
+                .findFirst()
+                .orElse(null);
+    }
+
+    public static GroundItem getGroundItem(String itemName, WorldPoint location) {
+        return getGroundItem(itemName, location, false);
+    }
+
+    public static GroundItem getGroundItem(String itemName, List<WorldPoint> locations, boolean exact) {
+        return getGroundItems().values().stream()
+                .filter(item -> {
+                    boolean nameMatch = exact ?
+                            item.getName().equals(itemName) :
+                            item.getName().toLowerCase().contains(itemName.toLowerCase());
+                    return nameMatch && locations.contains(item.getLocation());
+                })
+                .findFirst()
+                .orElse(null);
+    }
+
+    public static GroundItem getGroundItem(String itemName, List<WorldPoint> locations) {
+        return getGroundItem(itemName, locations, false);
+    }
+
+    public static GroundItem getGroundItem(int itemId, WorldPoint location) {
+        return getGroundItems().get(location, itemId); // Direct table lookup
+    }
+
+    public static GroundItem getGroundItem(int itemId, List<WorldPoint> locations) {
+        return getGroundItems().values().stream()
+                .filter(item -> item.getId() == itemId &&
+                        locations.contains(item.getLocation()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    public static GroundItem getGroundItem(String itemName, WorldPoint anchor, int radius, boolean exact) {
+        return getGroundItems().values().stream()
+                .filter(item -> {
+                    boolean nameMatch = exact ?
+                            item.getName().equals(itemName) :
+                            item.getName().toLowerCase().contains(itemName.toLowerCase());
+                    return nameMatch && item.getLocation().distanceTo(anchor) <= radius;
+                })
+                .findFirst()
+                .orElse(null);
+    }
+
+    public static GroundItem getGroundItem(String itemName, WorldPoint anchor, int radius) {
+        return getGroundItem(itemName, anchor, radius, false);
+    }
+
+    public static GroundItem getGroundItem(int itemId, WorldPoint anchor, int radius) {
+        return getGroundItems().values().stream()
+                .filter(item -> item.getId() == itemId &&
+                        item.getLocation().distanceTo(anchor) <= radius)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public static List<GroundItem> getGroundItems(String itemName, WorldPoint anchor, int radius, boolean exact) {
+        return getGroundItems().values().stream()
+                .filter(item -> {
+                    boolean nameMatch = exact ?
+                            item.getName().equals(itemName) :
+                            item.getName().toLowerCase().contains(itemName.toLowerCase());
+                    return nameMatch && item.getLocation().distanceTo(anchor) <= radius;
+                })
+                .collect(Collectors.toList());
+    }
+
+    public static List<GroundItem> getGroundItems(String itemName, WorldPoint anchor, int radius) {
+        return getGroundItems(itemName, anchor, radius, false);
+    }
+
+    public static List<GroundItem> getGroundItems(int itemId, WorldPoint anchor, int radius) {
+        return getGroundItems().values().stream()
+                .filter(item -> item.getId() == itemId &&
+                        item.getLocation().distanceTo(anchor) <= radius)
+                .collect(Collectors.toList());
+    }
+
+    public static GroundItem getGroundItem(String itemName, List<WorldPoint> anchorPoints, int radius, boolean exact) {
+        return getGroundItems().values().stream()
+                .filter(item -> {
+                    boolean nameMatch = exact ?
+                            item.getName().equals(itemName) :
+                            item.getName().toLowerCase().contains(itemName.toLowerCase());
+
+                    if (!nameMatch) return false;
+
+                    return anchorPoints.stream()
+                            .anyMatch(anchor -> item.getLocation().distanceTo(anchor) <= radius);
+                })
+                .findFirst()
+                .orElse(null);
+    }
+
+    public static GroundItem getGroundItem(String itemName, List<WorldPoint> anchorPoints, int radius) {
+        return getGroundItem(itemName, anchorPoints, radius, false);
+    }
+
+    public static GroundItem getGroundItem(int itemId, List<WorldPoint> anchorPoints, int radius) {
+        return getGroundItems().values().stream()
+                .filter(item -> item.getId() == itemId &&
+                        anchorPoints.stream()
+                                .anyMatch(anchor -> item.getLocation().distanceTo(anchor) <= radius))
+                .findFirst()
+                .orElse(null);
+    }
+
+    public static List<GroundItem> getGroundItems(String itemName, List<WorldPoint> anchorPoints, int radius, boolean exact) {
+        return getGroundItems().values().stream()
+                .filter(item -> {
+                    boolean nameMatch = exact ?
+                            item.getName().equals(itemName) :
+                            item.getName().toLowerCase().contains(itemName.toLowerCase());
+
+                    if (!nameMatch) return false;
+
+                    return anchorPoints.stream()
+                            .anyMatch(anchor -> item.getLocation().distanceTo(anchor) <= radius);
+                })
+                .collect(Collectors.toList());
+    }
+
+    public static GroundItem findLootableItemInArea(WorldArea area, String configItemList) {
+        String[] itemsToLoot = configItemList.trim().split(",\\s*");
+
+        return Rs2GroundItem.getGroundItems().values().stream()
+                .filter(item -> area.contains(item.getLocation()))
+                .filter(item -> Arrays.stream(itemsToLoot)
+                        .anyMatch(name -> item.getName().toLowerCase().trim().contains(name.toLowerCase().trim())))
+                .findFirst()
+                .orElse(null);
     }
 }

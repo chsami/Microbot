@@ -6,12 +6,17 @@ import net.runelite.api.ItemComposition;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.MenuAction;
 import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
+import net.runelite.api.widgets.Widget;
+import net.runelite.api.widgets.WidgetID;
+import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
+import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import org.slf4j.event.Level;
 
 import java.awt.Rectangle;
@@ -424,6 +429,8 @@ public class Rs2Equipment {
         return !isWearing();
     }
 
+
+
     public static void invokeMenu(Rs2ItemModel rs2Item, String action) {
         if (action == null || action.isEmpty()) return;
         if (rs2Item == null) return;
@@ -438,6 +445,7 @@ public class Rs2Equipment {
         int param1 = -1;
         int identifier;
         MenuAction menuAction = MenuAction.CC_OP;
+
         if (action.equalsIgnoreCase("remove")) {
             identifier = 1;
         } else {
@@ -479,7 +487,37 @@ public class Rs2Equipment {
             param1 = 25362456;
         }
 
-        Microbot.doInvoke(new NewMenuEntry(param0, param1, menuAction.getId(), identifier, -1, rs2Item.getName()), new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()));
-        //Rs2Reflection.invokeMenu(param0, param1, menuAction.getId(), identifier, rs2Item.id, action, target, -1, -1);
+        // Fall back to our original method if we can't get the bounds of whatever we're interacting with
+        Rectangle bounds = getEquipmentItemBounds(rs2Item, param1);
+
+        Microbot.doInvoke(new NewMenuEntry(param0, param1, menuAction.getId(), identifier, -1, rs2Item.getName()), bounds);
+    }
+
+    private static Rectangle getEquipmentItemBounds(Rs2ItemModel rs2Item, int param1) {
+        try {
+            Rectangle bounds = Microbot.getClientThread().runOnClientThreadOptional(() -> {
+                try {
+                    Widget widget = Microbot.getClient().getWidget(param1);
+                    if (widget != null && !widget.isHidden()) {
+                        return widget.getBounds();
+                    }
+                    return null;
+                } catch (Exception e) {
+                    Microbot.log("Exception getting widget bounds: " + e.getMessage());
+                    return null;
+                }
+            }).orElse(null);
+
+            if (bounds != null) {
+                return bounds;
+            }
+
+            return new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight());
+
+        } catch (Exception e) {
+            Microbot.log("Exception in getEquipmentItemBounds: " + e.getMessage(), Level.ERROR);
+            e.printStackTrace();
+            return new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight());
+        }
     }
 }
