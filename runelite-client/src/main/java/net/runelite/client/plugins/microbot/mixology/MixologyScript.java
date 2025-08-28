@@ -137,6 +137,7 @@ public class MixologyScript extends Script {
                     case BANK:
                         if (Rs2Inventory.hasItem("paste")) {
                             if (Rs2Bank.openBank()) {
+                                sleepUntil(Rs2Bank::isOpen);
                                 Rs2Bank.depositAll();
                             }
                             return;
