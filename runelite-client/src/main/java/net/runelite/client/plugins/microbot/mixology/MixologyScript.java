@@ -137,8 +137,11 @@ public class MixologyScript extends Script {
                     case BANK:
                         if (Rs2Inventory.hasItem("paste")) {
                             if (Rs2Bank.openBank()) {
-                                sleepUntil(Rs2Bank::isOpen);
-                                Rs2Bank.depositAll();
+                                if (sleepUntil(Rs2Bank::isOpen, 15000)) {
+                                    Rs2Bank.depositAll();
+                                } else {
+                                    Microbot.log("Failed to open bank within timeout");
+                                }
                             }
                             return;
                         }
@@ -162,35 +165,43 @@ public class MixologyScript extends Script {
                             return;
                         }
                         if (Rs2Bank.openBank()) {
-                            sleepUntil(Rs2Bank::isOpen);
-                            moxPasteAmount = Rs2Bank.count(ItemID.MM_MOX_PASTE);
-                            lyePasteAmount = Rs2Bank.count(ItemID.MM_LYE_PASTE);
-                            agaPasteAmount = Rs2Bank.count(ItemID.MM_AGA_PASTE);
-                            if (moxPasteAmount < config.amtMoxHerb()) {
-                                herb = config.moxHerb().toString();
-                            } else if (lyePasteAmount < config.amtLyeHerb()) {
-                                herb = config.lyeHerb().toString();
-                            } else if (agaPasteAmount < config.amtAgaHerb()) {
-                                herb = config.agaHerb().toString();
-                            } else {
-                                if (Rs2Bank.openBank()) {
-                                    Rs2Bank.depositAll();
-                                    Rs2Bank.withdrawAll(ItemID.MM_MOX_PASTE);
-                                    Rs2Bank.withdrawAll(ItemID.MM_LYE_PASTE);
-                                    Rs2Bank.withdrawAll(ItemID.MM_AGA_PASTE);
-                                    mixologyState = MixologyState.DEPOSIT_HOPPER;
+                            if (sleepUntil(Rs2Bank::isOpen, 15000)) {
+                                moxPasteAmount = Rs2Bank.count(ItemID.MM_MOX_PASTE);
+                                lyePasteAmount = Rs2Bank.count(ItemID.MM_LYE_PASTE);
+                                agaPasteAmount = Rs2Bank.count(ItemID.MM_AGA_PASTE);
+                                if (moxPasteAmount < config.amtMoxHerb()) {
+                                    herb = config.moxHerb().toString();
+                                } else if (lyePasteAmount < config.amtLyeHerb()) {
+                                    herb = config.lyeHerb().toString();
+                                } else if (agaPasteAmount < config.amtAgaHerb()) {
+                                    herb = config.agaHerb().toString();
+                                } else {
+                                    if (Rs2Bank.openBank()) {
+                                        if (sleepUntil(Rs2Bank::isOpen, 15000)) {
+                                            Rs2Bank.depositAll();
+                                            Rs2Bank.withdrawAll(ItemID.MM_MOX_PASTE);
+                                            Rs2Bank.withdrawAll(ItemID.MM_LYE_PASTE);
+                                            Rs2Bank.withdrawAll(ItemID.MM_AGA_PASTE);
+                                            mixologyState = MixologyState.DEPOSIT_HOPPER;
+                                        } else {
+                                            Microbot.log("Failed to open bank within timeout");
+                                        }
+                                        return;
+                                    }
+                                }
+                                Rs2Bank.depositAll();
+                                if (!Rs2Bank.hasItem(herb, true)) {
+                                    Microbot.showMessage("Failed to find " + herb + " in your bank. Shutting down script...");
+                                    shutdown();
                                     return;
                                 }
-                            }
-                            Rs2Bank.depositAll();
-                            if (!Rs2Bank.hasItem(herb, true)) {
-                                Microbot.showMessage("Failed to find " + herb + " in your bank. Shutting down script...");
-                                shutdown();
+                                Rs2Bank.withdrawAll(herb, true);
+                                Rs2Bank.closeBank();
+                                sleepGaussian(600, 150);
+                            } else {
+                                Microbot.log("Failed to open bank within timeout");
                                 return;
                             }
-                            Rs2Bank.withdrawAll(herb, true);
-                            Rs2Bank.closeBank();
-                            sleepGaussian(600, 150);
                         }
                         break;
                     case DEPOSIT_HOPPER:
