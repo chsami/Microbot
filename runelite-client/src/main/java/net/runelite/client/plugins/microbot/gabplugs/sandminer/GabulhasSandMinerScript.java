@@ -83,6 +83,11 @@ public class GabulhasSandMinerScript extends Script {
             sleep(100, 4000);
         }
         while (!Rs2Inventory.isFull() && super.isRunning()) {
+            // Drop empty waterskins if not using humidify
+            if (!config.useHumidify()) {
+                dropEmptyWaterskins();
+            }
+            
             while (Rs2Player.hopIfPlayerDetected(1, 3000, 100) && super.isRunning()) {
                 sleepUntil(() -> Microbot.getClient().getGameState() == GameState.HOPPING);
                 sleepUntil(() -> Microbot.getClient().getGameState() == GameState.LOGGED_IN);
@@ -128,6 +133,12 @@ public class GabulhasSandMinerScript extends Script {
             Rs2Antiban.actionCooldown();
             Rs2Antiban.takeMicroBreakByChance();
             sleep(1000, 2000);
+        }
+    }
+
+    private void dropEmptyWaterskins() {
+        if (Rs2Inventory.hasItem(ItemID.WATER_SKIN0)) {
+            Rs2Inventory.drop(ItemID.WATER_SKIN0);
         }
     }
 
