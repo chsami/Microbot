@@ -7,6 +7,8 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
+import net.runelite.client.plugins.microbot.util.antiban.enums.Activity;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -42,6 +44,14 @@ public class BlueDragonsPlugin extends Plugin {
         overlay.setConfig(config);
         
         overlayManager.add(overlay);
+
+        Rs2Antiban.activateAntiban();
+
+        Rs2Antiban.resetAntibanSettings();
+
+        Rs2Antiban.antibanSetupTemplates.applyCombatSetup();
+
+        Rs2Antiban.setActivity(Activity.KILLING_BLUE_DRAGONS);
         
         if (config.startPlugin()) {
             script.run(config);

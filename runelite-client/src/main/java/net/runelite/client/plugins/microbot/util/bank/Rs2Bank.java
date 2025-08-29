@@ -74,10 +74,6 @@ public class Rs2Bank {
     public static final int BANK_ITEM_HEIGHT = 32;
     public static final int BANK_ITEM_Y_PADDING = 4;
     public static final int BANK_ITEMS_PER_ROW = 8;
-    private static final int X_AMOUNT_VARBIT = VarbitID.BANK_REQUESTEDQUANTITY;
-    private static final int SELECTED_OPTION_VARBIT = VarbitID.BANK_QUANTITY_TYPE;
-
-    private static final int WITHDRAW_AS_NOTE_VARBIT = 3958;
 
     // Bank data caching system
     private static final String CONFIG_GROUP = "microbot";
@@ -517,35 +513,21 @@ public class Rs2Bank {
         boolean hasX = configuredX > 0;
         boolean isInventory = (container == BANK_INVENTORY_ITEM_CONTAINER);
         int xSetOffset = -1;
-        int xPromptOffset = -1;
+        int xPromptOffset = isInventory ? 7 : 6;
+
         if (hasX) {
             switch (selected) {
                 case 0:
                 case 1:
                 case 2:
-                    xSetOffset = isInventory ? 6 : 4;
-                    xPromptOffset = isInventory ? 7 : 5;
+                case 4:
+					xSetOffset = isInventory ? 6 : 5;
                     break;
                 case 3:
-                    xSetOffset = isInventory ? 2 : 1;
-                    xPromptOffset = isInventory ? 7 : 5;
-                    break;
-                case 4:
-                    xSetOffset = isInventory ? 6 : 5;
-                    xPromptOffset = isInventory ? 7 : 6;
+					xSetOffset = isInventory ? 2 : 1;
                     break;
                 default:
                     throw new IllegalStateException("Unknown BANK_QUANTITY_TYPE: " + selected);
-            }
-        } else {
-            switch (selected) {
-                case 0:
-                case 1:
-                case 2:
-                    xPromptOffset = isInventory ? 7 : 4;
-                    break;
-                default:
-                    xPromptOffset = isInventory ? 7 : 5;
             }
         }
 
@@ -1022,7 +1004,7 @@ public class Rs2Bank {
         if (Microbot.getVarbitValue(VarbitID.BANK_QUANTITY_TYPE) == 4) {
             invokeMenu(1, rs2Item);
         } else {
-            invokeMenu(6, rs2Item);
+            invokeMenu(7, rs2Item);
         }
         return true;
     }

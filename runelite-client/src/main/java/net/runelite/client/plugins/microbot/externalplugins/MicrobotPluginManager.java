@@ -394,31 +394,6 @@ public class MicrobotPluginManager
         return MICROBOT_PLUGINS.listFiles();
     }
 
-	public void syncPlugins()
-	{
-		List<String> installed = getInstalledPlugins();
-		Map<String, Plugin> loadedByInternalName = pluginManager.getPlugins().stream()
-			.filter(p -> p.getClass().isAnnotationPresent(PluginDescriptor.class))
-			.filter(p -> {
-				PluginDescriptor d = p.getClass().getAnnotation(PluginDescriptor.class);
-				return d != null && d.isExternal();
-			})
-			.collect(Collectors.toMap(
-				p -> p.getClass().getAnnotation(PluginDescriptor.class).name(),
-				p -> p,
-				(a, b) -> a
-			));
-
-		// Remove plugins that are loaded but not installed
-		for (Map.Entry<String, Plugin> entry : loadedByInternalName.entrySet())
-		{
-			if (!installed.contains(entry.getKey()))
-			{
-				remove(entry.getKey());
-			}
-		}
-	}
-
     /**
      * Loads a single plugin from the sideload folder if not already loaded.
      */
@@ -490,7 +465,6 @@ public class MicrobotPluginManager
 
 	public void loadSideLoadPlugins()
 	{
-		syncPlugins();
 		File[] files = createSideloadingFolder();
 		if (files == null)
 		{

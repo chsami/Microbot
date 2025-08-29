@@ -4,11 +4,9 @@ import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
-import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
 import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
-import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldArea;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
@@ -21,7 +19,6 @@ import net.runelite.client.plugins.microbot.util.magic.Rs2CombatSpells;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Food;
-import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
@@ -146,7 +143,7 @@ public class BarrowsScript extends Script {
                     }
                 }
 
-                if(!inTunnels && shouldBank == false) {
+                if(!inTunnels && !shouldBank) {
                     for (BarrowsBrothers brother : BarrowsBrothers.values()) {
                         Rs2WorldArea mound = brother.getHumpWP();
                         NeededPrayer = brother.whatToPray;
@@ -238,10 +235,10 @@ public class BarrowsScript extends Script {
                             Microbot.log("We're in the mound");
 
                             if(config.shouldPrayAgainstWeakerBrothers()){
-                                activatePrayer();
+                                activatePrayer(brother.getWhatToPray());
                             } else {
                                 if(!brother.getName().contains("Torag") && !brother.getName().contains("Guthan") && !brother.getName().contains("Verac")){
-                                    activatePrayer();
+                                    activatePrayer(brother.getWhatToPray());
                                 }
                             }
 
@@ -278,61 +275,9 @@ public class BarrowsScript extends Script {
                                     break;
                                 }
                             }
-                            //The ghost should be here assuming its not the tunnel.
-                            if(currentBrother != null && !Rs2Player.isInCombat()){
-                                while(!Rs2Player.isInCombat()){
-                                    if (!super.isRunning()) {
-                                        break;
-                                    }
-                                    Microbot.log("Attacking the brother");
-                                    Rs2Npc.interact(currentBrother, "Attack");
-                                    sleepUntil(()-> Rs2Player.isInCombat(), Rs2Random.between(3000,6000));
-                                }
-                            }
-                            //fighting
-                            if(Rs2Player.isInCombat()){
-                                Microbot.log("Fighting the brother.");
-                                while(!currentBrother.isDead()){
-                                    if (!super.isRunning()) {
-                                        break;
-                                    }
 
-                                    if(config.shouldPrayAgainstWeakerBrothers()){
-                                        activatePrayer();
-                                    } else {
-                                        if(!brother.getName().contains("Torag") && !brother.getName().contains("Guthan") && !brother.getName().contains("Verac")){
-                                            activatePrayer();
-                                        }
-                                    }
+                            checkForAndFightBrother(config);
 
-                                    sleep(500,1500);
-                                    eatFood();
-                                    outOfSupplies(config);
-                                    antiPatternDropVials();
-                                    drinkforgottonbrew();
-
-                                    if(config.shouldPrayAgainstWeakerBrothers()){
-                                        drinkPrayerPot();
-                                    } else {
-                                        if(!brother.getName().contains("Torag") && !brother.getName().contains("Guthan") && !brother.getName().contains("Verac")){
-                                            drinkPrayerPot();
-                                        }
-                                    }
-
-                                    if(Microbot.getClient().getHintArrowNpc() == null){
-                                        break;
-                                    }
-
-                                    if(currentBrother.isDead()){
-                                        //anti pattern
-                                        disablePrayer();
-                                        //anti pattern
-                                        break;
-                                    }
-                                }
-                            }
-                            // at this point the brother should be dead and we should be free to leave.
-                            // We could be in ahrims mound while ahrim is tunnel. We need to stop the bot from leaving the mound and going back in.
                             if(brother.name.equals(WhoisTun) && brother.name.contains("Ahrim")) {
                                 if (Rs2Dialogue.isInDialogue()) {
                                     dialogueEnterTunnels();
@@ -345,7 +290,7 @@ public class BarrowsScript extends Script {
                     }
                 }
 
-                if(!WhoisTun.equals("Unknown") && shouldBank == false && !inTunnels){
+                if(!WhoisTun.equals("Unknown") && !shouldBank && !inTunnels){
                     int howManyBrothersWereKilled = Microbot.getVarbitValue(Varbits.BARROWS_KILLED_DHAROK) + Microbot.getVarbitValue(Varbits.BARROWS_KILLED_GUTHAN) + Microbot.getVarbitValue(Varbits.BARROWS_KILLED_KARIL) + Microbot.getVarbitValue(Varbits.BARROWS_KILLED_TORAG) + Microbot.getVarbitValue(Varbits.BARROWS_KILLED_VERAC) + Microbot.getVarbitValue(Varbits.BARROWS_KILLED_AHRIM);
                     if(howManyBrothersWereKilled <= 4){
                         Microbot.log("We seem to have missed someone, checking all mounds again.");
@@ -357,6 +302,7 @@ public class BarrowsScript extends Script {
                     stopFutureWalker();
                     for (BarrowsBrothers brother : BarrowsBrothers.values()) {
                         if (brother.name.equals(WhoisTun)) {
+                            NeededPrayer = brother.getWhatToPray();
                             // Found the tunnel brother's mound
                             Rs2WorldArea tunnelMound = brother.getHumpWP();
 
@@ -416,10 +362,11 @@ public class BarrowsScript extends Script {
                     if(!varbitCheckEnabled){
                         varbitCheckEnabled=true;
                     }
+
                     leaveTheMound();
                     stuckInTunsCheck();
                     solvePuzzle();
-                    checkForBrother(config);
+                    checkForAndFightBrother(config);
                     eatFood();
                     outOfSupplies(config);
                     gainRP(config);
@@ -429,7 +376,7 @@ public class BarrowsScript extends Script {
                     }
 
                     solvePuzzle();
-                    checkForBrother(config);
+                    checkForAndFightBrother(config);
 
                     if(Rs2GameObject.findObjectById(20973) != null && Rs2GameObject.hasLineOfSight(Rs2GameObject.findObjectById(20973))){
                         //chest ID: 20973
@@ -439,9 +386,11 @@ public class BarrowsScript extends Script {
 
                         if(Rs2GameObject.interact(chest, "Open")){
                             sleepUntil(()-> Microbot.getClient().getHintArrowNpc()!=null && Microbot.getClient().getHintArrowNpc().getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) <= 5, Rs2Random.between(4000,6000));
+                        } else {
+                            return;
                         }
 
-                        checkForBrother(config);
+                        checkForAndFightBrother(config);
 
                         if(Microbot.getClient().getHintArrowNpc()==null) {
                             int io = 0;
@@ -718,7 +667,6 @@ public class BarrowsScript extends Script {
     public void closeBank(){
         if(Rs2Bank.isOpen()){
             while(Rs2Bank.isOpen()) {
-
                 if(!super.isRunning()){break;}
 
                 if (Rs2Bank.closeBank()) {
@@ -976,78 +924,65 @@ public class BarrowsScript extends Script {
     }
     public void suppliesCheck(BarrowsConfig config){
         if(!usingPoweredStaffs) {
-            if (Rs2Equipment.get(EquipmentInventorySlot.RING) == null || !Rs2Inventory.contains("Spade") ||
-                    Rs2Inventory.count(config.food().getName()) < 2 || (Rs2Inventory.get(config.selectedToBarrowsTPMethod().getToBarrowsTPMethodItemID()) == null)
-                    || Rs2Inventory.count(it->it!=null&&it.getName().contains("Forgotten brew(")) < minForgottenBrews ||
-                    Rs2Inventory.count(config.prayerRestoreType().getPrayerRestoreTypeID()) < 1 ||
-                    Rs2Inventory.get(neededRune) == null || Rs2Inventory.get(neededRune).getQuantity() <= minRuneAmt || Rs2Player.getRunEnergy() <= 5) {
-                Microbot.log("We need to bank.");
-                if (Rs2Equipment.get(EquipmentInventorySlot.RING) == null) {
-                    Microbot.log("We don't have a ring of dueling equipped.");
-                }
-                if (!Rs2Inventory.contains("Spade")) {
-                    Microbot.log("We don't have a spade.");
-                }
-                if (Rs2Inventory.count(config.food().getName()) < 2) {
-                    Microbot.log("We have less than 2 food.");
-                }
-                if ((Rs2Inventory.get(config.selectedToBarrowsTPMethod().getToBarrowsTPMethodItemID()) == null)) {
-                    Microbot.log("We don't have a "+config.selectedToBarrowsTPMethod().getToBarrowsTPMethodItemName());
-                }
-                if (Rs2Inventory.count(it->it!=null&&it.getName().contains("Forgotten brew(")) < minForgottenBrews) {
-                    Microbot.log("We forgot our Forgotten brew.");
-                }
-                if (Rs2Inventory.count(config.prayerRestoreType().getPrayerRestoreTypeID()) < 1) {
-                    Microbot.log("We don't have enough "+config.prayerRestoreType().getPrayerRestoreTypeName());
-                }
-                if (Rs2Inventory.get(neededRune) == null || Rs2Inventory.get(neededRune).getQuantity() <= minRuneAmt) {
-                    Microbot.log("We have less than 180 " + neededRune);
-                }
-                if(Rs2Player.getRunEnergy() <= 5){
-                    Microbot.log("We need more run energy ");
-                }
+            if (Rs2Inventory.get(neededRune) == null || Rs2Inventory.get(neededRune).getQuantity() <= minRuneAmt) {
+                Microbot.log("We have less than 180 " + neededRune);
                 shouldBank = true;
-            } else {
-                shouldBank = false;
+                return;
             }
         }
+
         if(usingPoweredStaffs){
-            if(Rs2Equipment.get(EquipmentInventorySlot.RING)==null || !Rs2Inventory.contains("Spade") ||
-                    Rs2Inventory.count(config.food().getName())<2 || (Rs2Inventory.get(config.selectedToBarrowsTPMethod().getToBarrowsTPMethodItemID()) == null)
-                    || Rs2Inventory.count(it->it!=null&&it.getName().contains("Forgotten brew(")) < minForgottenBrews ||
-                    Rs2Inventory.count(config.prayerRestoreType().getPrayerRestoreTypeID()) < 1 || outOfPoweredStaffCharges
-                    || Rs2Player.getRunEnergy() <= 5){
-                Microbot.log("We need to bank.");
-                if(Rs2Equipment.get(EquipmentInventorySlot.RING)==null){
-                    Microbot.log("We don't have a ring of dueling equipped.");
-                }
-                if(!Rs2Inventory.contains("Spade")){
-                    Microbot.log("We don't have a spade.");
-                }
-                if(Rs2Inventory.count(config.food().getName())<2){
-                    Microbot.log("We have less than 2 food.");
-                }
-                if((Rs2Inventory.get(config.selectedToBarrowsTPMethod().getToBarrowsTPMethodItemID()) ==null)){
-                    Microbot.log("We don't have a "+config.selectedToBarrowsTPMethod().getToBarrowsTPMethodItemName());
-                }
-                if(Rs2Inventory.count(it->it!=null&&it.getName().contains("Forgotten brew(")) < minForgottenBrews){
-                    Microbot.log("We forgot our Forgotten brew.");
-                }
-                if(Rs2Inventory.count(config.prayerRestoreType().getPrayerRestoreTypeID()) < 1){
-                    Microbot.log("We don't have enough prayer potions.");
-                }
-                if(outOfPoweredStaffCharges){
-                    Microbot.log("We're out of staff charges.");
-                }
-                if(Rs2Player.getRunEnergy() <= 5){
-                    Microbot.log("We need more run energy ");
-                }
+            if(outOfPoweredStaffCharges){
+                Microbot.log("We're out of staff charges.");
                 shouldBank = true;
-            } else {
-                shouldBank = false;
+                return;
             }
         }
+
+        if (Rs2Equipment.get(EquipmentInventorySlot.RING) == null) {
+            Microbot.log("We don't have a ring of dueling equipped.");
+            shouldBank = true;
+            return;
+        }
+        if (!Rs2Inventory.contains("Spade")) {
+            Microbot.log("We don't have a spade.");
+            shouldBank = true;
+            return;
+        }
+        if (Rs2Inventory.count(config.food().getName()) < 1) {
+            Microbot.log("We have less than 1 food.");
+            shouldBank = true;
+            return;
+        }
+        if ((Rs2Inventory.get(config.selectedToBarrowsTPMethod().getToBarrowsTPMethodItemID()) == null)) {
+            Microbot.log("We don't have a "+config.selectedToBarrowsTPMethod().getToBarrowsTPMethodItemName());
+            shouldBank = true;
+            return;
+        }
+        if (Rs2Inventory.count(it->it!=null&&it.getName().contains("Forgotten brew(")) < minForgottenBrews) {
+            Microbot.log("We forgot our Forgotten brew.");
+            shouldBank = true;
+            return;
+        }
+
+        String name = config.prayerRestoreType().getPrayerRestoreTypeName();
+        if(name.contains("(")) name = config.prayerRestoreType().getPrayerRestoreTypeName().split("\\(")[0];
+        String splitName = name;
+        if (Rs2Inventory.count(it->it!=null&&it.getName().toLowerCase().contains(splitName.toLowerCase())) < 1) {
+            Microbot.log("We don't have enough "+config.prayerRestoreType().getPrayerRestoreTypeName());
+            shouldBank = true;
+            return;
+        }
+
+        if(Rs2Player.getRunEnergy() <= 5){
+            Microbot.log("We need more run energy ");
+            shouldBank = true;
+            return;
+        }
+
+        shouldBank = false;
     }
+
     public void stuckInTunsCheck(){
         //needed for rare occasions where the walker messes up
         if(tunnelLoopCount < 1){
@@ -1107,21 +1042,11 @@ public class BarrowsScript extends Script {
         }
     }
 
-    public void activatePrayer(){
-        if(!Rs2Prayer.isPrayerActive(NeededPrayer)){
+    public void activatePrayer(Rs2PrayerEnum prayer){
+        if(!Rs2Prayer.isPrayerActive(prayer)){
             Microbot.log("Turning on Prayer.");
-            while(!Rs2Prayer.isPrayerActive(NeededPrayer)){
-                if (!super.isRunning()) {
-                    break;
-                }
-                drinkPrayerPot();
-                Rs2Prayer.toggle(NeededPrayer);
-                sleep(0,750);
-                if (Rs2Prayer.isPrayerActive(NeededPrayer)) {
-                    Microbot.log("Praying");
-                    break;
-                }
-            }
+            drinkPrayerPot();
+            Rs2Prayer.toggle(prayer);
         }
     }
     public void antiPatternEnableWrongPrayer(){
@@ -1222,8 +1147,8 @@ public class BarrowsScript extends Script {
 
         if(!skipThePot) {
             if (Rs2Player.getBoostedSkillLevel(Skill.PRAYER) <= Rs2Random.between(8, 15)) {
-                if (Rs2Inventory.contains(it -> it != null && it.getName().contains("Prayer potion") || it.getName().contains("moth mix") || it.getName().contains("Moonlight moth"))) {
-                    Rs2ItemModel prayerpotion = Rs2Inventory.get(it -> it != null && it.getName().contains("Prayer potion") || it.getName().contains("moth mix") || it.getName().contains("Moonlight moth"));
+                if (Rs2Inventory.contains(it -> it != null && it.getName().contains("Prayer potion") || it.getName().contains("Moonlight moth"))) {
+                    Rs2ItemModel prayerpotion = Rs2Inventory.get(it -> it != null && it.getName().contains("Prayer potion") || it.getName().contains("Moonlight moth"));
                     String action = "Drink";
                     if (prayerpotion.getName().equals("Moonlight moth")) {
                         action = "Release";
@@ -1235,7 +1160,7 @@ public class BarrowsScript extends Script {
             }
         }
     }
-    public void checkForBrother(BarrowsConfig config){
+    public void checkForAndFightBrother(BarrowsConfig config){
         NPC hintArrow = Microbot.getClient().getHintArrowNpc();
         Rs2NpcModel currentBrother = null;
         if (hintArrow != null) {
@@ -1249,43 +1174,40 @@ public class BarrowsScript extends Script {
                 if(currentBrother.getName().contains("Karil")){
                     neededprayer = Rs2PrayerEnum.PROTECT_RANGE;
                 }
-                //activate prayer
-                if(!Rs2Prayer.isPrayerActive(neededprayer)){
-                    Microbot.log("Turning on Prayer.");
-                    while(!Rs2Prayer.isPrayerActive(neededprayer)){
-                        if (!super.isRunning()) {
-                            break;
-                        }
-                        drinkPrayerPot();
-                        Rs2Prayer.toggle(neededprayer);
-                        sleep(0,750);
-                        if (Rs2Prayer.isPrayerActive(neededprayer)) {
-                            //we made it in
-                            Microbot.log("Praying");
-                            break;
-                        }
-                    }
-                }
-                //fight brother
-                if(currentBrother != null && !Rs2Player.isInCombat()){
-                    while(!Rs2Player.isInCombat()){
-                        if (!super.isRunning()) {
-                            break;
-                        }
-                        Microbot.log("Attacking the brother");
-                        Rs2Npc.interact(currentBrother, "Attack");
-                        sleepUntil(()-> Rs2Player.isInCombat(), Rs2Random.between(3000,6000));
-                    }
-                }
-                //fighting
+
                     while(Microbot.getClient().getHintArrowNpc() != null){
                         Microbot.log("Fighting the brother.");
                         if (!super.isRunning()) {
                             break;
                         }
-                        if(!Rs2Npc.hasLineOfSight(currentBrother)){
-                            break;
+
+                        if(inTunnels) {
+                            if (!Rs2Npc.hasLineOfSight(currentBrother)) {
+                                Microbot.log("No LOS!");
+                                break;
+                            }
                         }
+
+                        if(config.shouldPrayAgainstWeakerBrothers()){
+                            activatePrayer(neededprayer);
+                        } else {
+                            if(!currentBrother.getName().contains("Torag") && !currentBrother.getName().contains("Guthan") && !currentBrother.getName().contains("Verac")){
+                                activatePrayer(neededprayer);
+                            }
+                        }
+
+                        if(currentBrother != null && Rs2Player.getInteracting() != null && !Rs2Player.getInteracting().getName().equals(currentBrother.getName())){
+                            if(Rs2Npc.interact(currentBrother, "Attack")){
+                                sleepUntil(()-> Rs2Player.isInCombat(), Rs2Random.between(3000,6000));
+                            }
+                        } else {
+                            if(!Rs2Player.isInCombat()){
+                                if(Rs2Npc.interact(currentBrother, "Attack")){
+                                    sleepUntil(()-> Rs2Player.isInCombat(), Rs2Random.between(3000,6000));
+                                }
+                            }
+                        }
+
                         sleep(750,1500);
                         drinkPrayerPot();
                         eatFood();
@@ -1293,38 +1215,15 @@ public class BarrowsScript extends Script {
                         antiPatternDropVials();
                         drinkforgottonbrew();
 
-                        if(!Rs2Prayer.isPrayerActive(neededprayer)){
-                            Microbot.log("Turning on Prayer.");
-                            while(!Rs2Prayer.isPrayerActive(neededprayer)){
-                                if (!super.isRunning()) {
-                                    break;
-                                }
-                                drinkPrayerPot();
-                                Rs2Prayer.toggle(neededprayer);
-                                sleep(0,750);
-                                if (Rs2Prayer.isPrayerActive(neededprayer)) {
-                                    //we made it in
-                                    Microbot.log("Praying");
-                                    break;
-                                }
-                            }
-                        }
-
-                        if(!Rs2Player.isInCombat()){
-                            if(Microbot.getClient().getHintArrowNpc() == null) {
-                                // if we're not in combat and the brother isn't there.
-                                Microbot.log("Breaking out hint arrow is null.");
-                                break;
-                            } else {
-                                // if we're not in combat and the brother is there.
-                                Microbot.log("Attacking the brother");
-                                Rs2Npc.interact(currentBrother, "Attack");
-                                sleepUntil(()-> Rs2Player.isInCombat(), Rs2Random.between(3000,6000));
-                            }
+                        if(Microbot.getClient().getHintArrowNpc() == null) {
+                            Microbot.log("Breaking out the brother is null.");
+                            disablePrayer();
+                            break;
                         }
 
                         if(currentBrother.isDead()){
                             Microbot.log("Breaking out the brother is dead.");
+                            disablePrayer();
                             sleepUntil(()-> Microbot.getClient().getHintArrowNpc() == null, Rs2Random.between(3000,6000));
                             break;
                         }
@@ -1355,24 +1254,15 @@ public class BarrowsScript extends Script {
             if(Rs2Inventory.contains(it->it!=null&&it.getName().contains("Forgotten brew"))) {
                 if(Rs2Player.getBoostedSkillLevel(Skill.MAGIC) <= (Rs2Player.getRealSkillLevel(Skill.MAGIC) + Rs2Random.between(1,4))) {
                     Microbot.log("Drinking a Forgotten brew.");
-                    if(Rs2Inventory.contains("Forgotten brew(1)")) {
-                        Rs2Inventory.interact("Forgotten brew(1)", "Drink");
-                        sleep(300,1000);
-                        return;
-                    }
-                    if(Rs2Inventory.contains("Forgotten brew(2)")) {
-                        Rs2Inventory.interact("Forgotten brew(2)", "Drink");
-                        sleep(300,1000);
-                        return;
-                    }
-                    if(Rs2Inventory.contains("Forgotten brew(3)")) {
-                        Rs2Inventory.interact("Forgotten brew(3)", "Drink");
-                        sleep(300,1000);
-                        return;
-                    }
-                    if(Rs2Inventory.contains("Forgotten brew(4)")) {
-                        Rs2Inventory.interact("Forgotten brew(4)", "Drink");
-                        sleep(300,1000);
+                    String[] priorityOfBrews = {"Forgotten brew(1)", "Forgotten brew(2)", "Forgotten brew(3)", "Forgotten brew(4)" };
+
+                    for (String brew : priorityOfBrews) {
+                        if(Rs2Inventory.contains(brew)) {
+                            if(Rs2Inventory.interact(brew, "Drink")){
+                                sleep(300,1000);
+                                break;
+                            }
+                        }
                     }
                 }
             }

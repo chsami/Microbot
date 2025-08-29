@@ -352,7 +352,7 @@ public class PluginManager {
             try {
                 plugin = instantiate(this.plugins, (Class<Plugin>) pluginClazz);
                 newPlugins.add(plugin);
-                this.plugins.add(plugin);
+                add(plugin);
             } catch (PluginInstantiationException ex) {
                 log.error("Error instantiating plugin!", ex);
             }

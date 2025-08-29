@@ -4,7 +4,6 @@ import lombok.Getter;
 import lombok.Setter;
 import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.nmz.NmzScript;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
@@ -93,7 +92,7 @@ public class SpecialAttackConfigs {
             currentEquipment.addAll(Rs2Equipment.items());
         }
 
-        if (Rs2Combat.getSpecEnergy() < specEnergy && !NmzScript.isHasSurge()) {
+        if (Rs2Combat.getSpecEnergy() < specEnergy) {
             Rs2ItemModel rs2Item = currentEquipment.stream().filter(x -> x.getSlot() == EquipmentInventorySlot.WEAPON.getSlotIdx()).findFirst().orElse(null);
             if (rs2Item != null && rs2Item.getId() != Rs2Equipment.get(EquipmentInventorySlot.WEAPON).getId()) {
                 Rs2ItemModel weapon = currentEquipment
