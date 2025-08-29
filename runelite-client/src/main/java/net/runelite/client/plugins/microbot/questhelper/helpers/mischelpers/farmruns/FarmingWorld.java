@@ -540,10 +540,10 @@ public class FarmingWorld
 		), 14390);
 
 		add(new FarmingRegion("Nemus Retreat", 5427, false,
-			new FarmingPatch("", VarbitID.FARMING_TRANSMIT_A, PatchImplementation.TREE, new WorldPoint(0, 0, 0),
+			new FarmingPatch("", VarbitID.FARMING_TRANSMIT_A, PatchImplementation.TREE, new WorldPoint(1365, 3319, 0),
 					new Polygon(
-							new int[]{0, 0, 0, 0},
-							new int[]{0, 0, 0, 0},
+							new int[]{1365, 1365, 1367, 1367},
+							new int[]{3320, 3322, 3322, 3320},
 							4
 					),
 					NpcID.FARMING_GARDENER_TREE_7)
