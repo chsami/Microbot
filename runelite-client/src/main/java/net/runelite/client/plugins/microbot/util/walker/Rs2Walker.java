@@ -1734,6 +1734,13 @@ public class Rs2Walker {
 			Rs2Player.waitForAnimation(600 * 4);
 			return true;
 		}
+
+		if (tileObject.getId() == ObjectID.AERIAL_FISHING_BOAT) {
+			Rs2Dialogue.sleepUntilSelectAnOption();
+			Rs2Dialogue.clickOption(transport.getDisplayInfo(), true);
+			sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo2D(transport.getDestination()) < OFFSET, 10000);
+			return true;
+		}
         return false;
     }
     
