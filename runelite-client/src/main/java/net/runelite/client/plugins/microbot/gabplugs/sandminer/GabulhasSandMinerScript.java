@@ -83,8 +83,8 @@ public class GabulhasSandMinerScript extends Script {
             sleep(100, 4000);
         }
         while (!Rs2Inventory.isFull() && super.isRunning()) {
-            // Drop empty waterskins if not using humidify
-            if (!config.useHumidify()) {
+            // Drop empty waterskins if not using humidify (only when idle)
+            if (!config.useHumidify() && !Rs2Player.isAnimating()) {
                 dropEmptyWaterskins();
             }
             
@@ -137,7 +137,7 @@ public class GabulhasSandMinerScript extends Script {
     }
 
     private void dropEmptyWaterskins() {
-        if (Rs2Inventory.hasItem(ItemID.WATER_SKIN0)) {
+        while (Rs2Inventory.hasItem(ItemID.WATER_SKIN0)) {
             Rs2Inventory.drop(ItemID.WATER_SKIN0);
         }
     }
