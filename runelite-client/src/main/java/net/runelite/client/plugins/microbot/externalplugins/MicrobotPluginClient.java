@@ -65,8 +65,13 @@ public class MicrobotPluginClient
         HttpUrl manifestUrl = MICROBOT_PLUGIN_HUB_URL.newBuilder()
             .addPathSegment(PLUGINS_JSON_PATH)
             .build();
-            
-        try (Response res = okHttpClient.newCall(new Request.Builder().url(manifestUrl).build()).execute())
+
+        Request request = new Request.Builder()
+            .url(manifestUrl)
+            .header("Cache-Control", "no-cache")
+            .build();
+
+        try (Response res = okHttpClient.newCall(request).execute())
         {
             if (res.code() != 200)
             {

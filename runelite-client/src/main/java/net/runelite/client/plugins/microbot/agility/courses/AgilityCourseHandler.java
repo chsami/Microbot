@@ -77,18 +77,58 @@ public interface AgilityCourseHandler
 		return Rs2GameObject.getAll(validObjectPredicate).stream().findFirst().orElse(null);
 	}
 
+	// Simple method to check if we should click or wait
+	default boolean shouldClickObstacle(final int currentXp, final int lastXp)
+	{
+		// If animating/moving
+		if (Rs2Player.isAnimating() || Rs2Player.isMoving())
+		{
+			// Only click if we got XP (signals completion)
+			return currentXp > lastXp;
+		}
+		// Not animating, safe to click
+		return true;
+	}
+	
 	default boolean waitForCompletion(final int agilityExp, final int plane)
 	{
 		double initialHealth = Rs2Player.getHealthPercentage();
 		int timeoutMs = 15000;
-
-		Global.sleepUntil(() -> Microbot.getClient().getSkillExperience(Skill.AGILITY) != agilityExp || Rs2Player.getHealthPercentage() < initialHealth || Microbot.getClient().getTopLevelWorldView().getPlane() != plane, timeoutMs);
-
-		boolean gainedExp = Microbot.getClient().getSkillExperience(Skill.AGILITY) != agilityExp;
-		boolean planeChanged = Microbot.getClient().getTopLevelWorldView().getPlane() != plane;
-		boolean lostHealth = Rs2Player.getHealthPercentage() < initialHealth;
-
-		return gainedExp || planeChanged || lostHealth;
+		long startTime = System.currentTimeMillis();
+		long lastMovingTime = System.currentTimeMillis();
+		int waitDelay = 1000; // Default 1 second wait after movement stops
+		
+		// Check every 100ms for completion
+		while (System.currentTimeMillis() - startTime < timeoutMs)
+		{
+			// Update last moving time if player is still moving/animating
+			if (Rs2Player.isMoving() || Rs2Player.isAnimating())
+			{
+				lastMovingTime = System.currentTimeMillis();
+			}
+			
+			// Get current XP
+			int currentXp = Microbot.getClient().getSkillExperience(Skill.AGILITY);
+			
+			// Use the isObstacleComplete hook for course-specific completion logic
+			if (isObstacleComplete(currentXp, agilityExp, lastMovingTime, waitDelay))
+			{
+				return true;
+			}
+			
+			// Check other completion conditions (health loss, plane change)
+			if (Rs2Player.getHealthPercentage() < initialHealth || 
+				Microbot.getClient().getTopLevelWorldView().getPlane() != plane)
+			{
+				return true;
+			}
+			
+			// Sleep before next check
+			Global.sleep(100);
+		}
+		
+		// Timeout reached
+		return false;
 	}
 
 	default int getCurrentObstacleIndex()
@@ -168,5 +208,20 @@ public interface AgilityCourseHandler
 
 	default int getLootDistance() {
 		return 1;
+	}
+
+	default boolean isObstacleComplete(int currentXp, int previousXp, long lastMovingTime, int waitDelay) {
+		// Check if we gained XP (obstacle complete)
+		if (currentXp > previousXp) {
+			return true;
+		}
+		
+		// Check if still moving/animating
+		if (Rs2Player.isMoving() || Rs2Player.isAnimating()) {
+			return false;
+		}
+		
+		// Check if we've waited long enough after movement stopped
+		return System.currentTimeMillis() - lastMovingTime >= waitDelay;
 	}
 }

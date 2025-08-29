@@ -4692,9 +4692,9 @@
 											
 # watchtower											
 2933 4712 2	2549 3112 1	Climb-down;Ladder;2797									
-2549 3112 1	2933 4712 2	Climb-down;Ladder;2797									
+2549 3112 1	2933 4712 2	Climb-up;Ladder;2796
 2544 3112 1	2544 3112 0	Climb-down;Ladder;17122									
-2544 3112 0	2544 3112 1	Climb-down;Ladder;17122									
+2544 3112 0	2544 3112 1	Climb-up;Ladder;2833
 											
 # kourend											
 1618 3680 0	1614 3680 1	Climb-up;Staircase;11807									
