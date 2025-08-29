@@ -322,11 +322,22 @@ public class MahoganyHomesScript extends Script {
                 log("Getting new contract");
 
 
-                var npc = Rs2Npc.getNpcWithAction("Contract");
+                // Search for Mahogany Homes contract NPCs directly by name
+                var npc = Rs2Npc.getNpcs()
+                    .filter(n -> n.getName() != null && 
+                           (n.getName().equals("Amy") || 
+                            n.getName().equals("Marlo") || 
+                            n.getName().equals("Ellie") || 
+                            n.getName().equals("Angelo")))
+                    .findFirst()
+                    .orElse(null);
+                
                 if (npc == null) {
+                    log("No contract NPC found, waiting before retry");
+                    sleep(2000, 3000);  // Wait 2-3 seconds to prevent spam
                     return;
                 }
-                log("NPC found: " + npc.getComposition().transform().getName());
+                log("NPC found: " + npc.getName());
                 if (Rs2Npc.interact(npc, "Contract")) {
                     handleContractDialogue();
                 }
