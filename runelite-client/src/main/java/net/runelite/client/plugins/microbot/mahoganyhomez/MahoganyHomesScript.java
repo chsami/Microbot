@@ -262,7 +262,7 @@ public class MahoganyHomesScript extends Script {
         if (plugin.getCurrentHome() != null
                 && plugin.getCurrentHome().isInside(Rs2Player.getWorldLocation())
                 && Hotspot.isEverythingFixed()) {
-            if(plugin.getConfig().usePlankSack() && planksInPlankSack() > 0){
+            if(plugin.getConfig().usePlankSack() && planksInPlankSack() > 0 && !Rs2Inventory.isFull()){
                 if (Rs2Inventory.contains(ItemID.PLANK_SACK) && Rs2Inventory.contains(ItemID.STEEL_BAR)) {
                     Rs2ItemModel plankSack = Rs2Inventory.get(ItemID.PLANK_SACK);
                     if (plankSack != null) {
