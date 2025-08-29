@@ -27,9 +27,8 @@ package net.runelite.client.plugins.microbot.questhelper.panel.questorders;
 
 import com.google.common.collect.ImmutableList;
 import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
-import lombok.Getter;
-
 import java.util.List;
+import lombok.Getter;
 
 /**
  * The order of these quests are parsed using data from the <a href="https://oldschool.runescape.wiki/w/Quests/List">OSRS Wiki</a>
@@ -219,6 +218,9 @@ public class ReleaseDate
 		QuestHelperQuest.MEAT_AND_GREET,
 		QuestHelperQuest.ETHICALLY_ACQUIRED_ANTIQUITIES,
 		QuestHelperQuest.THE_CURSE_OF_ARRAV,
+		QuestHelperQuest.THE_FINAL_DAWN,
+		QuestHelperQuest.SHADOWS_OF_CUSTODIA,
+		QuestHelperQuest.SCRAMBLED,
 		// Miniquests
 		QuestHelperQuest.ALFRED_GRIMHANDS_BARCRAWL,
 		QuestHelperQuest.THE_MAGE_ARENA,
@@ -237,6 +239,7 @@ public class ReleaseDate
 		//QuestHelperQuest.THE_FROZEN_DOOR, - Placeholder for future addition.
 		QuestHelperQuest.HOPESPEARS_WILL,
 		//QuestHelperQuest.INTO_THE_TOMBS, - Placeholder for future addition.
-		QuestHelperQuest.HIS_FAITHFUL_SERVANTS
+		QuestHelperQuest.HIS_FAITHFUL_SERVANTS,
+		QuestHelperQuest.VALE_TOTEMS
 	);
 }

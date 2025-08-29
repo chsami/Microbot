@@ -27,9 +27,8 @@ package net.runelite.client.plugins.microbot.questhelper.panel.questorders;
 
 import com.google.common.collect.ImmutableList;
 import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
-import lombok.Getter;
-
 import java.util.List;
+import lombok.Getter;
 
 /**
  * The order of these quests are parsed using data from the <a href="https://oldschool.runescape.wiki/w/Optimal_quest_guide">OSRS Wiki</a>
@@ -224,6 +223,7 @@ public class OptimalQuestGuide
 		QuestHelperQuest.THE_GENERALS_SHADOW,
 		QuestHelperQuest.HIS_FAITHFUL_SERVANTS,
 		QuestHelperQuest.THE_GREAT_BRAIN_ROBBERY,
+		QuestHelperQuest.SCRAMBLED,
 		QuestHelperQuest.FAIRYTALE_II__CURE_A_QUEEN,
 		QuestHelperQuest.RECIPE_FOR_DISASTER_MONKEY_AMBASSADOR,
 		QuestHelperQuest.RECIPE_FOR_DISASTER_FINALE,
@@ -250,16 +250,19 @@ public class OptimalQuestGuide
 		QuestHelperQuest.MONKEY_MADNESS_II,
 		//QuestHelperQuest.INTO_THE_TOMBS, - Placeholder for future addition.
 		QuestHelperQuest.A_NIGHT_AT_THE_THEATRE,
+		QuestHelperQuest.SHADOWS_OF_CUSTODIA,
 		QuestHelperQuest.DRAGON_SLAYER_II,
 		QuestHelperQuest.THE_CURSE_OF_ARRAV,
 		QuestHelperQuest.MAKING_FRIENDS_WITH_MY_ARM,
 		QuestHelperQuest.SECRETS_OF_THE_NORTH,
+		QuestHelperQuest.THE_FINAL_DAWN,
 		QuestHelperQuest.WHILE_GUTHIX_SLEEPS,
 		QuestHelperQuest.DESERT_TREASURE_II,
 		QuestHelperQuest.SONG_OF_THE_ELVES,
 		QuestHelperQuest.CLOCK_TOWER,
 		QuestHelperQuest.THE_CORSAIR_CURSE,
 		// Quests & mini quests that are not part of the OSRS Wiki's Optimal Quest Guide
+		QuestHelperQuest.VALE_TOTEMS,
 		QuestHelperQuest.BARBARIAN_TRAINING,
 		QuestHelperQuest.BEAR_YOUR_SOUL,
 		QuestHelperQuest.ENCHANTED_KEY,

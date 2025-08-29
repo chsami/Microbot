@@ -31,6 +31,7 @@ import net.runelite.api.Client;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 
+import javax.annotation.Nullable;
 import java.awt.*;
 
 public class WidgetHighlight extends AbstractWidgetHighlight
@@ -52,6 +53,9 @@ public class WidgetHighlight extends AbstractWidgetHighlight
 	@Getter
 	protected String requiredText;
 
+	@Nullable
+	private String nameToCheckFor = null;
+
 
 	protected final boolean checkChildren;
 
@@ -61,6 +65,14 @@ public class WidgetHighlight extends AbstractWidgetHighlight
 		this.childChildId = -1;
 		this.checkChildren = false;
 	}
+
+	public WidgetHighlight(int interfaceID, boolean checkChildren)
+	{
+		this.interfaceID = interfaceID;
+		this.childChildId = -1;
+		this.checkChildren = checkChildren;
+	}
+
 
 	public WidgetHighlight(int groupId, int childId)
 	{
@@ -97,6 +109,33 @@ public class WidgetHighlight extends AbstractWidgetHighlight
 		this.childChildId = -1;
 		this.requiredText = requiredText;
 		this.checkChildren = checkChildren;
+	}
+
+	public static WidgetHighlight createMultiskillByName(String roughName)
+	{
+		var w = new WidgetHighlight(InterfaceID.Skillmulti.BOTTOM, true);
+		w.nameToCheckFor = roughName;
+		return w;
+	}
+
+
+	public static WidgetHighlight createMultiskillByItemId(int itemId)
+	{
+		var w = new WidgetHighlight(InterfaceID.Skillmulti.BOTTOM, true);
+		w.itemIdRequirement = itemId;
+		return w;
+  }
+
+	/**
+	 * Create a widget highlight that highlights an item inside the shop interface (e.g. general store)
+	 * @param itemIdRequirement The ID of the item to highlight
+	 * @return a fully built WidgetHighlight
+	 */
+	public static WidgetHighlight createShopItemHighlight(int itemIdRequirement)
+	{
+		var w = new WidgetHighlight(InterfaceID.Shopmain.ITEMS, true);
+		w.itemIdRequirement = itemIdRequirement;
+		return w;
 	}
 
 	@Override
@@ -140,13 +179,20 @@ public class WidgetHighlight extends AbstractWidgetHighlight
 	@Override
 	protected void highlightWidget(Graphics2D graphics, QuestHelperPlugin questHelper, Widget widgetToHighlight)
 	{
-		if (widgetToHighlight == null || !itemCheckPasses(widgetToHighlight) || !modelCheckPasses(widgetToHighlight) ||
-			(requiredText != null && (widgetToHighlight.getText() == null || !widgetToHighlight.getText().contains(requiredText)))
-		) return;
+		if (widgetToHighlight == null) return;
+		if (!itemCheckPasses(widgetToHighlight)) return;
+		if (!modelCheckPasses(widgetToHighlight)) return;
+		if (!requiredTextCheckPasses(widgetToHighlight)) return;
+		if (!roughNameCheckPasses(widgetToHighlight)) return;
 
 		super.highlightWidget(graphics, questHelper, widgetToHighlight);
 	}
 
+	public WidgetHighlight withModelRequirement(int modelIdRequirement)
+	{
+		this.modelIdRequirement = modelIdRequirement;
+		return this;
+	}
 
 	private boolean itemCheckPasses(Widget widgetToHighlight)
 	{
@@ -156,5 +202,20 @@ public class WidgetHighlight extends AbstractWidgetHighlight
 	private boolean modelCheckPasses(Widget widget)
 	{
 		return (modelIdRequirement == null || widget.getModelId() == modelIdRequirement);
+	}
+
+	private boolean requiredTextCheckPasses(Widget widget)
+	{
+		if (requiredText == null) return true;
+		if (widget.getText() == null) return false;
+		return widget.getText().contains(requiredText);
+	}
+
+	private boolean roughNameCheckPasses(Widget widget)
+	{
+		if (nameToCheckFor == null) return true;
+		var widgetName = widget.getName();
+		if (widgetName == null || widgetName.isEmpty()) return false;
+		return widgetName.contains(nameToCheckFor);
 	}
 }

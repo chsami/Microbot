@@ -183,13 +183,13 @@ public class RecruitmentDrive extends BasicQuestHelper
 
 	private QuestStep getSirKuam()
 	{
-		VarbitRequirement finishedRoom = new VarbitRequirement(661, 1);
+		VarbitRequirement finishedRoom = new VarbitRequirement(VarbitID.RD_ROOM3_COMPLETE, 1);
 
 		talkToSirKuam = new NpcStep(this, NpcID.RD_OBSERVER_ROOM_3, "Talk to Sir Kuam Ferentse to have him spawn Sir Leye.");
 		killSirLeye = new NpcStep(this, NpcID.RD_COMBAT_NPC_ROOM_3,
 			"Defeat Sir Leye to win this challenge. You must use the steel warhammer or your barehands to deal the final hit on him.", true);
 
-		leaveSirKuamRoom = new ObjectStep(this, 7317, "Leave through the portal to continue.");
+		leaveSirKuamRoom = new ObjectStep(this, ObjectID.RD_ROOM3_EXITDOOR, "Leave through the portal to continue.");
 		NpcCondition npcCondition = new NpcCondition(NpcID.RD_COMBAT_NPC_ROOM_3);
 
 		ConditionalStep sirKuamConditional = new ConditionalStep(this, talkToSirKuam);
@@ -211,19 +211,19 @@ public class RecruitmentDrive extends BasicQuestHelper
 		WorldPoint foxOnRightPoint = new WorldPoint(2485, 4974, 0);
 		WorldPoint grainOnRightPoint = new WorldPoint(2486, 4974, 0);
 
-		VarbitRequirement foxOnRightSide = new VarbitRequirement(680, 0);
-		VarbitRequirement foxOnLeftSide = new VarbitRequirement(681, 1);
-		VarbitRequirement foxNotOnRightSide = new VarbitRequirement(680, 1);
-		VarbitRequirement foxNotOnLeftSide = new VarbitRequirement(681, 0);
-		VarbitRequirement chickenOnRightSide = new VarbitRequirement(682, 0);
-		VarbitRequirement chickenOnLeftSide = new VarbitRequirement(683, 1);
-		VarbitRequirement chickenNotOnRightSide = new VarbitRequirement(682, 1);
-		VarbitRequirement chickenNotOnLeftSide = new VarbitRequirement(683, 0);
-		VarbitRequirement grainOnRightSide = new VarbitRequirement(684, 0);
-		VarbitRequirement grainOnLeftSide = new VarbitRequirement(685, 1);
-		VarbitRequirement grainNotOnRightSide = new VarbitRequirement(684, 1);
-		VarbitRequirement grainNotOnLeftSide = new VarbitRequirement(685, 0);
-		VarbitRequirement finishedSpishyus = new VarbitRequirement(659, 1);
+		VarbitRequirement foxOnRightSide = new VarbitRequirement(VarbitID.RD_FOXLEFT, 0);
+		VarbitRequirement foxOnLeftSide = new VarbitRequirement(VarbitID.RD_FOXRIGHT, 1);
+		VarbitRequirement foxNotOnRightSide = new VarbitRequirement(VarbitID.RD_FOXLEFT, 1);
+		VarbitRequirement foxNotOnLeftSide = new VarbitRequirement(VarbitID.RD_FOXRIGHT, 0);
+		VarbitRequirement chickenOnRightSide = new VarbitRequirement(VarbitID.RD_CHICKLEFT, 0);
+		VarbitRequirement chickenOnLeftSide = new VarbitRequirement(VarbitID.RD_CHICKRIGHT, 1);
+		VarbitRequirement chickenNotOnRightSide = new VarbitRequirement(VarbitID.RD_CHICKLEFT, 1);
+		VarbitRequirement chickenNotOnLeftSide = new VarbitRequirement(VarbitID.RD_CHICKRIGHT, 0);
+		VarbitRequirement grainOnRightSide = new VarbitRequirement(VarbitID.RD_GRAINLEFT, 0);
+		VarbitRequirement grainOnLeftSide = new VarbitRequirement(VarbitID.RD_GRAINRIGHT, 1);
+		VarbitRequirement grainNotOnRightSide = new VarbitRequirement(VarbitID.RD_GRAINLEFT, 1);
+		VarbitRequirement grainNotOnLeftSide = new VarbitRequirement(VarbitID.RD_GRAINRIGHT, 0);
+		VarbitRequirement finishedSpishyus = new VarbitRequirement(VarbitID.RD_ROOM1_COMPLETE, 1);
 
 		Conditions foxPickedUp = new Conditions(LogicType.AND, foxNotOnLeftSide, foxNotOnRightSide);
 		Conditions chickenPickedUp = new Conditions(LogicType.AND, chickenNotOnRightSide, chickenNotOnLeftSide);
@@ -232,7 +232,7 @@ public class RecruitmentDrive extends BasicQuestHelper
 		int chickenOnRightId = 7279;
 		moveChickenOnRightToLeft = new ObjectStep(this, chickenOnRightId, chickenOnRightPoint,
 			getSpishyusPickupText("Chicken", true));
-		finishedSpishyusRoom = new ObjectStep(this, 7274, "Leave through the portal to continue.");
+		finishedSpishyusRoom = new ObjectStep(this, ObjectID.RD_ROOM1_EXITDOOR, "Leave through the portal to continue.");
 
 		int foxOnRightId = 7275;
 		moveFoxOnRightToLeft = new ObjectStep(this, foxOnRightId, foxOnRightPoint,
@@ -295,7 +295,7 @@ public class RecruitmentDrive extends BasicQuestHelper
 
 	private QuestStep getSirRenItchood()
 	{
-		NpcStep talkToSirRenItchood = new NpcStep(this, NpcID.RD_OBSERVER_ROOM_5, "Talk to Sir Ren Itchood to recieve the clue.");
+		NpcStep talkToSirRenItchood = new NpcStep(this, NpcID.RD_OBSERVER_ROOM_5, "Talk to Sir Ren Itchood to receive the clue.");
 		talkToSirRenItchood.addDialogSteps("Can I have the clue for the door?");
 
 		sirRenStep = new SirRenItchoodStep(this, talkToSirRenItchood);
@@ -308,10 +308,10 @@ public class RecruitmentDrive extends BasicQuestHelper
 			"Talk to Sir Tinley. \n Once you have pressed continue do not do anything or you will fail.");
 		doNothingStep = new DetailedQuestStep(this,
 			"Press Continue and do nothing. Sir Tinley will eventually talk to you and let you pass.");
-		leaveSirTinleyRoom = new ObjectStep(this, 7320, "Leave through the portal to continue.");
+		leaveSirTinleyRoom = new ObjectStep(this, ObjectID.RD_ROOM4_EXITDOOR, "Leave through the portal to continue.");
 
 		VarbitRequirement waitForCondition = new VarbitRequirement(VarbitID.RD_TEMPLOCK_2, 1, Operation.GREATER_EQUAL);
-		VarbitRequirement finishedRoom = new VarbitRequirement(662, 1);
+		VarbitRequirement finishedRoom = new VarbitRequirement(VarbitID.RD_ROOM4_COMPLETE, 1);
 
 		ConditionalStep sirTinleyStep = new ConditionalStep(this, talkToSirTinley);
 		sirTinleyStep.addStep(finishedRoom, leaveSirTinleyRoom);

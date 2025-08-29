@@ -53,12 +53,12 @@ import net.runelite.client.plugins.microbot.questhelper.steps.*;
 import net.runelite.client.plugins.microbot.questhelper.tools.QuestTile;
 import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
-import net.runelite.api.SpriteID;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.NpcID;
 import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.gameval.SpriteID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.eventbus.Subscribe;
 
@@ -342,7 +342,7 @@ public class RagAndBoneManII extends BasicQuestHelper
 		onWaterbirth = new ZoneRequirement(waterbirth);
 		inWaterbirthDungeon = new ZoneRequirement(waterbirthDungeon);
 
-		addedRope = new VarbitRequirement(279, 1);
+		addedRope = new VarbitRequirement(VarbitID.SWAMP_CAVES_ROPED_ENTRANCE, 1);
 
 		boneNearby = new Conditions(LogicType.OR,
 			RagBoneGroups.getBonesOnFloor(RagBoneGroups.getBones(RagBoneGroups.getRagBoneIIStates())));
@@ -350,7 +350,7 @@ public class RagAndBoneManII extends BasicQuestHelper
 		logAdded = new VarbitRequirement(VarbitID.RAG_BOILER, 1, Operation.GREATER_EQUAL);
 		boneAddedToBoiler = new VarbitRequirement(VarbitID.RAG_BOILER, 2, Operation.GREATER_EQUAL);
 		logLit = new VarbitRequirement(VarbitID.RAG_BOILER, 3, Operation.GREATER_EQUAL);
-		boneReady = new VarbitRequirement(2046, 4);
+		boneReady = new VarbitRequirement(VarbitID.RAG_BOILER, 4);
 
 		jailKeyOnFloor = new ItemOnTileRequirement(jailKey);
 		mogreNearby = new NpcInteractingRequirement(NpcID.MUDSKIPPER_OGRE);
@@ -422,17 +422,17 @@ public class RagAndBoneManII extends BasicQuestHelper
 				"Beasts.", true);
 		((NpcStep) killCaveGoblin).addAlternateNpcs(NpcID.CAVE_GOBLIN2, NpcID.CAVE_GOBLIN3,
 			NpcID.CAVE_GOBLIN4);
-		killCaveGoblin.addTileMarker(new QuestTile(new WorldPoint(3161, 9573, 0), SpriteID.OPTIONS_RUNNING));
-		killCaveGoblin.addTileMarker(new QuestTile(new WorldPoint(3163, 9573, 0), SpriteID.OPTIONS_RUNNING));
+		killCaveGoblin.addTileMarker(new QuestTile(new WorldPoint(3161, 9573, 0), SpriteID.OptionsIcons.RUNNING));
+		killCaveGoblin.addTileMarker(new QuestTile(new WorldPoint(3163, 9573, 0), SpriteID.OptionsIcons.RUNNING));
 
-		killCaveGoblin.addTileMarker(new QuestTile(new WorldPoint(3163, 9555, 0), SpriteID.OPTIONS_RUNNING));
-		killCaveGoblin.addTileMarker(new QuestTile(new WorldPoint(3165, 9555, 0), SpriteID.OPTIONS_RUNNING));
+		killCaveGoblin.addTileMarker(new QuestTile(new WorldPoint(3163, 9555, 0), SpriteID.OptionsIcons.RUNNING));
+		killCaveGoblin.addTileMarker(new QuestTile(new WorldPoint(3165, 9555, 0), SpriteID.OptionsIcons.RUNNING));
 
-		killCaveGoblin.addTileMarker(new QuestTile(new WorldPoint(3197, 9553, 0), SpriteID.OPTIONS_RUNNING));
-		killCaveGoblin.addTileMarker(new QuestTile(new WorldPoint(3199, 9553, 0), SpriteID.OPTIONS_RUNNING));
+		killCaveGoblin.addTileMarker(new QuestTile(new WorldPoint(3197, 9553, 0), SpriteID.OptionsIcons.RUNNING));
+		killCaveGoblin.addTileMarker(new QuestTile(new WorldPoint(3199, 9553, 0), SpriteID.OptionsIcons.RUNNING));
 
-		killCaveGoblin.addTileMarker(new QuestTile(new WorldPoint(3214, 9559, 0), SpriteID.OPTIONS_RUNNING));
-		killCaveGoblin.addTileMarker(new QuestTile(new WorldPoint(3216, 9559, 0), SpriteID.OPTIONS_RUNNING));
+		killCaveGoblin.addTileMarker(new QuestTile(new WorldPoint(3214, 9559, 0), SpriteID.OptionsIcons.RUNNING));
+		killCaveGoblin.addTileMarker(new QuestTile(new WorldPoint(3216, 9559, 0), SpriteID.OptionsIcons.RUNNING));
 
 		killJackal = new NpcStep(this, NpcID.ICS_LITTLE_JACKAL, new WorldPoint(3400, 2997, 0),
 			"Kill Jackals north of Nardah.", true);
@@ -856,7 +856,7 @@ public class RagAndBoneManII extends BasicQuestHelper
 		requirements.add(new QuestRequirement(QuestHelperQuest.SKIPPY_AND_THE_MOGRES, QuestState.FINISHED));
 
 		Conditions canAccessExperimentCave = new Conditions(LogicType.OR,
-			new VarbitRequirement(192, 1),
+			new VarbitRequirement(VarbitID.FENK_COFFIN, 1),
 			new VarplayerRequirement(QuestVarPlayer.QUEST_CREATURE_OF_FENKENSTRAIN.getId(), 2, Operation.GREATER_EQUAL)
 		);
 		canAccessExperimentCave.setText("Partial completion of Creature of Fenkenstrain");
@@ -943,7 +943,7 @@ public class RagAndBoneManII extends BasicQuestHelper
 
 		PanelDetails collectingKaramjaPanel = new PanelDetails("Karamja bones",
 			Arrays.asList(killJogre, enterBrimhavenDungeon, killMossGiant, killFireGiant),
-			coins.quantity(875).hideConditioned(new VarbitRequirement(8122, 1)), axe);
+			coins.quantity(875).hideConditioned(new VarbitRequirement(VarbitID.KARAM_DUNGEON_PERMANENTACCESS, 1)), axe);
 		collectingKaramjaPanel.setLockingStep(karamjaSteps);
 		allSteps.add(collectingKaramjaPanel);
 		// 8123 0->8 also when paid 1m for perm access

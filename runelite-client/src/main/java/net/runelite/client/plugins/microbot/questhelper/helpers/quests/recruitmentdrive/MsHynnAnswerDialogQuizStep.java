@@ -32,6 +32,8 @@ import net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.gameval.VarbitID;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,9 +41,6 @@ import java.util.List;
 public class MsHynnAnswerDialogQuizStep extends ConditionalStep
 {
 	private QuestStep leaveRoom, talkToMsHynnTerprett;
-
-	private final int VARBIT_FINISHED_ROOM = 665;
-	private final int VARBIT_PUZZLE_SOLUTION = 667;
 
 	String[] answers = {
 		"unknown",
@@ -69,7 +68,7 @@ public class MsHynnAnswerDialogQuizStep extends ConditionalStep
 	public void startUp()
 	{
 		super.startUp();
-		int answerID = client.getVarbitValue(VARBIT_PUZZLE_SOLUTION);
+		int answerID = client.getVarbitValue(VarbitID.RD_TEMPLOCK_2);
 		if (answerID == 0)
 		{
 			return;
@@ -81,7 +80,7 @@ public class MsHynnAnswerDialogQuizStep extends ConditionalStep
 	@Override
 	public void onVarbitChanged(VarbitChanged varbitChanged)
 	{
-		int answerID = client.getVarbitValue(VARBIT_PUZZLE_SOLUTION);
+		int answerID = client.getVarbitValue(VarbitID.RD_TEMPLOCK_2);
 		if (answerID == 0)
 		{
 			return;
@@ -92,8 +91,8 @@ public class MsHynnAnswerDialogQuizStep extends ConditionalStep
 
 	private void addSteps()
 	{
-		VarbitRequirement finishedRoomCondition = new VarbitRequirement(VARBIT_FINISHED_ROOM, 1);
-		leaveRoom = new ObjectStep(questHelper, 7354, "Leave through the door to enter the portal and continue.");
+		VarbitRequirement finishedRoomCondition = new VarbitRequirement(VarbitID.RD_ROOM7_COMPLETE, 1);
+		leaveRoom = new ObjectStep(questHelper, ObjectID.RD_ROOM7_EXITDOOR, "Leave through the door to enter the portal and continue.");
 
 		addStep(finishedRoomCondition, leaveRoom);
 	}

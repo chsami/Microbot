@@ -26,7 +26,6 @@
  */
 package net.runelite.client.plugins.microbot.questhelper.requirements.util;
 
-import net.runelite.client.plugins.microbot.questhelper.requirements.ComplexRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.api.Client;
 
@@ -36,7 +35,7 @@ import java.util.function.Predicate;
 /**
  * Builder for building non-standard simple {@link Requirement}s.<br>
  * For complex requirements, use {@link ComplexRequirementBuilder},
- * {@link ComplexRequirement}, or
+ * {@link net.runelite.client.plugins.microbot.questhelper.requirements.ComplexRequirement}, or
  * implement your own {@link Requirement}.
  */
 public final class RequirementBuilder

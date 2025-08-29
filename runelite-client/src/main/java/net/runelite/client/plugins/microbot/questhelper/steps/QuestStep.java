@@ -27,7 +27,6 @@ package net.runelite.client.plugins.microbot.questhelper.steps;
 import com.google.inject.Binder;
 import com.google.inject.Inject;
 import com.google.inject.Module;
-import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestUtil;
@@ -47,12 +46,12 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
-import net.runelite.api.SpriteID;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.SpriteID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
@@ -221,6 +220,10 @@ public abstract class QuestStep implements Module
 	public QuestStep withId(Integer id)
 	{
 		this.id = id;
+		for (QuestStep substep : substeps)
+		{
+			substep.withId(id);
+		}
 		return this;
 	}
 
@@ -577,7 +580,7 @@ public abstract class QuestStep implements Module
 
 	public BufferedImage getQuestImage()
 	{
-		return spriteManager.getSprite(SpriteID.TAB_QUESTS, 0);
+		return spriteManager.getSprite(SpriteID.SideiconsInterface.QUESTS, 0);
 	}
 
 
@@ -664,9 +667,9 @@ public abstract class QuestStep implements Module
 		return requirement instanceof ItemRequirement && isValidRenderRequirementInInventory((ItemRequirement) requirement, item);
 	}
 
-	private boolean isValidRenderRequirementInInventory(ItemRequirement requirement, Widget item)
+	protected boolean isValidRenderRequirementInInventory(ItemRequirement requirement, Widget item)
 	{
-		return requirement.shouldHighlightInInventory(client) && requirement.getAllIds().contains(item.getItemId());
+		return (requirement.shouldHighlightInInventory(client)) && requirement.getAllIds().contains(item.getItemId());
 	}
 
 	protected void renderHoveredItemTooltip(String tooltipText)
@@ -694,8 +697,29 @@ public abstract class QuestStep implements Module
 		return new PuzzleWrapperStep(getQuestHelper(), this);
 	}
 
+	public PuzzleWrapperStep puzzleWrapStep(QuestStep questStep)
+	{
+		return new PuzzleWrapperStep(getQuestHelper(), this, questStep);
+	}
+
+	public PuzzleWrapperStep puzzleWrapStep(QuestStep questStep, boolean hiddenInSidebar)
+	{
+		return new PuzzleWrapperStep(getQuestHelper(), this, questStep).withNoHelpHiddenInSidebar(hiddenInSidebar);
+	}
+
 	public PuzzleWrapperStep puzzleWrapStep(String alternateText)
 	{
 		return new PuzzleWrapperStep(getQuestHelper(), this, alternateText);
+	}
+
+	/// Wraps this step in a PuzzleWrapperStep with the given alternate text and the default text on a new line.
+	public PuzzleWrapperStep puzzleWrapStepWithDefaultText(String alternateText)
+	{
+		return new PuzzleWrapperStep(getQuestHelper(), this, alternateText + "\n" + PuzzleWrapperStep.DEFAULT_TEXT);
+	}
+
+	public PuzzleWrapperStep puzzleWrapStep(boolean hiddenInSidebar)
+	{
+		return new PuzzleWrapperStep(getQuestHelper(), this).withNoHelpHiddenInSidebar(hiddenInSidebar);
 	}
 }

@@ -32,7 +32,6 @@ import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestUtil;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemOnTileRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
-import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.Operation;
 import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarbitRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.widget.WidgetTextRequirement;
@@ -91,9 +90,9 @@ public class SucellusSteps extends ConditionalStep
 		addStep(and(oddKeyDoorUnlocked, or(inDukeBossArena, inDukeEntrance)), talkToAssassinAfterDuke);
 		addStep(and(oddKey, or(inDukeBossArena, inDukeEntrance)), enterRoomWestOfDuke);
 		addStep(and(inDukeEntrance, killedDuke), retrieveKeyFromDoor);
-		addStep(LogicHelper.and(oddKeyNearby), pickUpOddKey);
-		addStep(LogicHelper.and(inDukeBossArena), defeatDuke);
-		addStep(LogicHelper.and(inDukeEntrance), enterDukeBossArea);
+		addStep(and(oddKeyNearby), pickUpOddKey);
+		addStep(and(inDukeBossArena), defeatDuke);
+		addStep(and(inDukeEntrance), enterDukeBossArea);
 		addStep(and(inPrisonF2, dukeArenaUnlocked), enterDukeArena);
 		addStep(and(inPrisonF2, defeatedJhallan), talkToAssassinAfterJhallanFight);
 		addStep(and(inPrisonF2, inJhallanFight), survive3Mins);
@@ -272,7 +271,7 @@ public class SucellusSteps extends ConditionalStep
 		gotGear = new VarbitRequirement(VarbitID.DT2_GHORROCK, 50, Operation.GREATER_EQUAL);
 		talkedToAssassinWithGear = new VarbitRequirement(VarbitID.DT2_GHORROCK, 52, Operation.GREATER_EQUAL);
 
-		unlockedSECrevice = new VarbitRequirement(15177, 1);
+		unlockedSECrevice = new VarbitRequirement(VarbitID.DT2_GHORROCK_SHORTCUT_1, 1);
 
 		inJhallanFight = new VarbitRequirement(VarbitID.DT2_GHORROCK, 54, Operation.GREATER_EQUAL);
 		defeatedJhallan = new VarbitRequirement(VarbitID.DT2_GHORROCK, 56, Operation.GREATER_EQUAL);
@@ -288,7 +287,7 @@ public class SucellusSteps extends ConditionalStep
 		// Global state 70->72
 		oddKeyNearby = new ItemOnTileRequirement(oddKey);
 
-		oddKeyDoorUnlocked = new VarbitRequirement(15179, 1);
+		oddKeyDoorUnlocked = new VarbitRequirement(VarbitID.DT2_GHORROCK_ASYLUM_GATE, 1);
 
 		talkedToAssassinAfterDuke = new VarbitRequirement(VarbitID.DT2_GHORROCK, 66, Operation.GREATER_EQUAL);
 

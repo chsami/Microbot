@@ -239,7 +239,7 @@ public class MQuestScript extends Script {
             if (requirement instanceof ItemRequirement) {
                 var itemRequirement = (ItemRequirement) requirement;
 
-                if (itemRequirement.isEquip() && Rs2Inventory.contains(itemRequirement.getAllIds().stream().mapToInt(i -> i).toArray())
+                if (itemRequirement.mustBeEquipped() && Rs2Inventory.contains(itemRequirement.getAllIds().stream().mapToInt(i -> i).toArray())
                         && itemRequirement.getAllIds().stream().noneMatch(Rs2Equipment::isWearing)) {
                     Rs2Inventory.wear(itemRequirement.getAllIds().stream().filter(Rs2Inventory::contains).findFirst().orElse(-1));
                     return true;

@@ -37,7 +37,6 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRe
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirements;
 import net.runelite.client.plugins.microbot.questhelper.requirements.player.SkillRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.quest.QuestRequirement;
-import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicType;
 import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarbitRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
@@ -55,6 +54,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.NpcID;
 import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.gameval.VarbitID;
 
 import java.util.*;
 
@@ -213,9 +213,9 @@ public class FishingContest extends BasicQuestHelper
 		notInWoods = new Conditions(LogicType.NOR, inWoods);
 
 		// 2051 0->1 also set for garlic in pipe
-		hasPutGarlicInPipe = new VarbitRequirement(2054, 1);
-		needsGarlic = and(LogicHelper.nor(hasPutGarlicInPipe), new ItemRequirements(LogicType.NOR, "", garlic));
-		hasEverything = new Conditions(LogicHelper.nor(needsGarlic), redVineWorm, fishingRod);
+		hasPutGarlicInPipe = new VarbitRequirement(VarbitID.FISHINGCOMPO_STRANGER, 1);
+		needsGarlic = and(nor(hasPutGarlicInPipe), new ItemRequirements(LogicType.NOR, "", garlic));
+		hasEverything = new Conditions(nor(needsGarlic), redVineWorm, fishingRod);
 		enteredContestArea = new Conditions(hasEverything, onContestGrounds);
 	}
 

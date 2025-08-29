@@ -57,6 +57,7 @@ public class WidgetChoiceStep
 
 	@Getter
 	protected final int groupId;
+	@Getter
 	protected final int childId;
 
 	protected boolean shouldNumber = false;

@@ -37,7 +37,6 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.npc.NpcRequ
 import net.runelite.client.plugins.microbot.questhelper.requirements.player.FreeInventorySlotRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.player.SkillRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.quest.QuestRequirement;
-import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.Operation;
 import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarbitRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
@@ -120,7 +119,7 @@ public class PerilousMoon extends BasicQuestHelper
 		steps.put(4, returnToAttala);
 
 		ConditionalStep goTalkToJess = new ConditionalStep(this, enterCamTorum);
-		goTalkToJess.addStep(LogicHelper.and(inCamTorum), talkToJessamine);
+		goTalkToJess.addStep(and(inCamTorum), talkToJessamine);
 		steps.put(5, goTalkToJess);
 		// 5->6 when entered cam torum
 		// 9826 0->1, probably builders going
@@ -198,7 +197,7 @@ public class PerilousMoon extends BasicQuestHelper
 		getItemsWhenInStream.addStep(and(hadPaste, hadScales), getHunterSupplies);
 		getItemsWhenInStream.addStep(and(hadPaste, bream), useKnifeOnBream);
 		getItemsWhenInStream.addStep(and(hadPaste, bigFishingNet), fishBream);
-		getItemsWhenInStream.addStep(LogicHelper.and(hadPaste), getFishingSupplies);
+		getItemsWhenInStream.addStep(and(hadPaste), getFishingSupplies);
 		getItemsWhenInStream.addStep(and(pestleAndMortar, moonlightGrub), useGrubOnPestle);
 		getItemsWhenInStream.addStep(and(pestleAndMortar), collectGrub);
 
@@ -322,11 +321,11 @@ public class PerilousMoon extends BasicQuestHelper
 
 	private void setupConditions()
 	{
-		talkedToBuilders = new VarbitRequirement(9824, 1);
+		talkedToBuilders = new VarbitRequirement(VarbitID.PMOON_RUIN_DIALOGUE, 1);
 		inCamTorum = new ZoneRequirement(camTorum);
 		inAntechamber = new ZoneRequirement(antechamber);
-		talkedToAttalaInNey = new VarbitRequirement(9823, 1);
-		talkedToZumaInNey = new VarbitRequirement(9823, 2);
+		talkedToAttalaInNey = new VarbitRequirement(VarbitID.PMOON_MURALS_INSPECTED, 1);
+		talkedToZumaInNey = new VarbitRequirement(VarbitID.PMOON_MURALS_INSPECTED, 2);
 		// 9826 0->2
 		// 9827 0->1 (Interrupted by guard to not risk stuff), increments each time, reached 5
 
@@ -341,9 +340,9 @@ public class PerilousMoon extends BasicQuestHelper
 			bloodMoonRoom, eclipseRoom);
 
 		// 15064 0->100
-		madePrisonCamp = new VarbitRequirement(9820, 1);
-		madeEarthCamp = new VarbitRequirement(9821, 1);
-		madeStreamCamp = new VarbitRequirement(9822, 1);
+		madePrisonCamp = new VarbitRequirement(VarbitID.PMOON_CAMP_1, 1);
+		madeEarthCamp = new VarbitRequirement(VarbitID.PMOON_CAMP_2, 1);
+		madeStreamCamp = new VarbitRequirement(VarbitID.PMOON_CAMP_3, 1);
 
 		// Found eyat
 		// Location: 1525, 9580, 0. 3x3 region for summoning. Directions work for exact row/column
@@ -351,8 +350,8 @@ public class PerilousMoon extends BasicQuestHelper
 		// 9825 0->1
 		eyatlalliNearby = new NpcRequirement(NpcID.PMOON_EYATLALLI_VIS);
 		// icosahedron
-		trapSetup = or(new VarbitRequirement(9871, 1), new VarbitRequirement(9872, 1),
-			new VarbitRequirement(9873, 1));
+		trapSetup = or(new VarbitRequirement(VarbitID.PMOON_LIZARD_TRAP_SET_1, 1), new VarbitRequirement(VarbitID.PMOON_LIZARD_TRAP_SET_2, 1),
+			new VarbitRequirement(VarbitID.PMOON_LIZARD_TRAP_SET_3, 1));
 		lizardNearby = new ItemOnTileRequirement(ItemID.RAW_LIZARD);
 		// 9871/2/3 for traps, 0->1
 
@@ -375,9 +374,9 @@ public class PerilousMoon extends BasicQuestHelper
 
 
 		// Varp 4150 0->1 blood moon ded
-		defeatedBloodMoon = new VarbitRequirement(9858, 1);
-		defeatedBlueMoon = new VarbitRequirement(9859, 1);
-		defeatedEclipseMoon = new VarbitRequirement(9860, 1);
+		defeatedBloodMoon = new VarbitRequirement(VarbitID.PMOON_BOSS_BLOOD_DEAD, 1);
+		defeatedBlueMoon = new VarbitRequirement(VarbitID.PMOON_BOSS_BLUE_DEAD, 1);
+		defeatedEclipseMoon = new VarbitRequirement(VarbitID.PMOON_BOSS_ECLIPSE_DEAD, 1);
 	}
 
 	private void setupSteps()

@@ -52,6 +52,8 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ItemDespawned;
 import net.runelite.api.events.ItemSpawned;
+import net.runelite.api.widgets.Widget;
+import net.runelite.api.gameval.SpriteID;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.PluginMessage;
@@ -124,6 +126,9 @@ public class DetailedQuestStep extends QuestStep
 	public boolean considerBankForItemHighlight;
 	public int iconToUseForNeededItems = -1;
 
+	@Setter
+	private boolean onlyHighlightItemsOnTile;
+
 
 	public DetailedQuestStep(QuestHelper questHelper, String text, Requirement... requirements)
 	{
@@ -169,8 +174,11 @@ public class DetailedQuestStep extends QuestStep
 		super.startUp();
 		if (worldPoint != null)
 		{
-			mapPoint = new QuestHelperWorldMapPoint(worldPoint, getQuestImage());
-			worldMapPointManager.add(mapPoint);
+			if (questHelper.getConfig().showWorldMapPoint())
+			{
+				mapPoint = new QuestHelperWorldMapPoint(worldPoint, getQuestImage());
+				worldMapPointManager.add(mapPoint);
+			}
 
 			setShortestPath();
 		}
@@ -251,8 +259,11 @@ public class DetailedQuestStep extends QuestStep
 			}
 			if (worldPoint != null)
 			{
-				mapPoint = new QuestHelperWorldMapPoint(worldPoint, getQuestImage());
-				worldMapPointManager.add(mapPoint);
+				if (questHelper.getConfig().showWorldMapPoint())
+				{
+					mapPoint = new QuestHelperWorldMapPoint(worldPoint, getQuestImage());
+					worldMapPointManager.add(mapPoint);
+				}
 			}
 			else
 			{
@@ -417,7 +428,7 @@ public class DetailedQuestStep extends QuestStep
 	{
 		for (WorldPoint worldPoint : worldPoints)
 		{
-			markedTiles.add(new QuestTile(worldPoint, SpriteID.TAB_COMBAT));
+			markedTiles.add(new QuestTile(worldPoint, SpriteID.SideIcons.COMBAT));
 		}
 	}
 
@@ -561,6 +572,7 @@ public class DetailedQuestStep extends QuestStep
 	{
 		TileItem item = itemSpawned.getItem();
 		Tile tile = itemSpawned.getTile();
+		if (onlyHighlightItemsOnTile && !QuestPerspective.getInstanceLocalPointFromReal(client, worldPoint).contains(tile.getLocalLocation())) return;
 		for (Requirement requirement : requirements)
 		{
 			if (isItemRequirement(requirement) && requirementContainsID((ItemRequirement) requirement, item.getId()))
@@ -610,6 +622,7 @@ public class DetailedQuestStep extends QuestStep
 					{
 						continue;
 					}
+					if (onlyHighlightItemsOnTile && !QuestPerspective.getInstanceLocalPointFromReal(client, worldPoint).contains(tile.getLocalLocation())) continue;
 					for (Requirement requirement : requirements)
 					{
 						if (isValidRequirementForTileItem(requirement, item))
@@ -824,17 +837,33 @@ public class DetailedQuestStep extends QuestStep
 	}
 
 	@Override
+	protected boolean isValidRenderRequirementInInventory(ItemRequirement requirement, Widget item)
+	{
+		return (teleport.contains(requirement) || requirement.shouldHighlightInInventory(client)) && requirement.getAllIds().contains(item.getItemId());
+	}
+
+	@Override
 	public void setShortestPath()
 	{
-		if (worldPoint != null && !isLineDrawn())
+		if (worldPoint == null)
 		{
-			WorldPoint playerWp = client.getLocalPlayer().getWorldLocation();
-			if (getQuestHelper().getConfig().useShortestPath() && playerWp != null) {
-				Map<String, Object> data = new HashMap<>();
-				data.put("start", playerWp);
-				data.put("target", worldPoint);
-				eventBus.post(new PluginMessage("shortestpath", "path", data));
-			}
+			return;
+		}
+		if (isLineDrawn())
+		{
+			return;
+		}
+		var playerWp = client.getLocalPlayer().getWorldLocation();
+		if (playerWp == null)
+		{
+			return;
+		}
+		if (getQuestHelper().getConfig().useShortestPath())
+		{
+			Map<String, Object> data = new HashMap<>();
+			data.put("start", playerWp);
+			data.put("target", worldPoint);
+			eventBus.post(new PluginMessage("shortestpath", "path", data));
 		}
 	}
 

@@ -53,22 +53,22 @@ public class FarmingPatch
 	@Getter
 	private final Shape patchArea;
 
-	FarmingPatch(String name, @Varbit int varbit, PatchImplementation implementation, WorldPoint location)
+	public FarmingPatch(String name, @Varbit int varbit, PatchImplementation implementation, WorldPoint location)
 	{
 		this(name, varbit, implementation, location, new Polygon(), -1);
 	}
 
-	FarmingPatch(String name, @Varbit int varbit, PatchImplementation implementation, WorldPoint location, Shape patchArea)
+	public FarmingPatch(String name, @Varbit int varbit, PatchImplementation implementation, WorldPoint location, Shape patchArea)
 	{
 		this(name, varbit, implementation, location, patchArea, -1, -1);
 	}
 
-	FarmingPatch(String name, @Varbit int varbit, PatchImplementation implementation, WorldPoint location, Shape patchArea, int farmer)
+	public FarmingPatch(String name, @Varbit int varbit, PatchImplementation implementation, WorldPoint location, Shape patchArea, int farmer)
 	{
 		this(name, varbit, implementation, location, patchArea, farmer, -1);
 	}
 
-	FarmingPatch(String name, @Varbit int varbit, PatchImplementation implementation, WorldPoint location, Shape patchArea, int farmer, int patchNumber)
+	public FarmingPatch(String name, @Varbit int varbit, PatchImplementation implementation, WorldPoint location, Shape patchArea, int farmer, int patchNumber)
 	{
 		this.name = name;
 		this.varbit = varbit;

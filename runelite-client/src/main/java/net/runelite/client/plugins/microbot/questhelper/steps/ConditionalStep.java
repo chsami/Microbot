@@ -59,7 +59,10 @@ public class ConditionalStep extends QuestStep implements OwnerStep
 
 	protected boolean started = false;
 
-	/** 
+	/// Controls whether the sidebar step text should use the current step / child step / fallback step instead of the ConditionalStep's text.
+	protected boolean passthroughText = false;
+
+	/**
 	 * Controls whether the sidebar highlight should consider child steps when determining what to highlight.
 	 * When true, the sidebar will highlight the most specific active step in the step hierarchy.
 	 * When false, the sidebar will only highlight this ConditionalStep itself, ignoring any active child steps.
@@ -71,7 +74,6 @@ public class ConditionalStep extends QuestStep implements OwnerStep
 	protected boolean checkAllChildStepsOnListenerCall = false;
 
 	protected LinkedHashMap<Requirement, QuestStep> steps;
-	protected final HashMap<Integer, QuestStep> orderedSteps;
 	protected final List<ChatMessageRequirement> chatConditions = new ArrayList<>();
 	protected final List<NpcCondition> npcConditions = new ArrayList<>();
 	protected final List<DialogRequirement> dialogConditions = new ArrayList<>();
@@ -102,11 +104,6 @@ public class ConditionalStep extends QuestStep implements OwnerStep
 		this.requirements.addAll(Arrays.asList(requirements));
 		this.steps = new LinkedHashMap<>();
 		this.steps.put(null, step);
-		this.orderedSteps = new LinkedHashMap<>();
-		if (id != null)
-		{
-			this.orderedSteps.put(id, step);
-		}
 		this.id = id;
 	}
 
@@ -485,6 +482,11 @@ public class ConditionalStep extends QuestStep implements OwnerStep
 		return steps.values();
 	}
 
+	public HashMap<Requirement, QuestStep> getStepsMap()
+	{
+		return steps;
+	}
+
 	public ConditionalStep copy()
 	{
 		ConditionalStep newStep = new ConditionalStep(getQuestHelper(), steps.get(null));
@@ -496,5 +498,27 @@ public class ConditionalStep extends QuestStep implements OwnerStep
 			.filter(Objects::nonNull)
 			.forEach(conditions -> newStep.addStep(conditions, steps.get(conditions)));
 		return newStep;
+	}
+
+	/// Set to true if this conditional step should pass through the current step's text in the sidebar
+	public void setShouldPassthroughText(boolean newPassthroughText)
+	{
+		this.passthroughText = newPassthroughText;
+	}
+
+	@Override
+	public List<String> getText()
+	{
+		if (passthroughText)
+		{
+			if (currentStep != null)
+			{
+				return currentStep.getText();
+			}
+
+			return steps.get(null).getText();
+		}
+
+		return super.getText();
 	}
 }

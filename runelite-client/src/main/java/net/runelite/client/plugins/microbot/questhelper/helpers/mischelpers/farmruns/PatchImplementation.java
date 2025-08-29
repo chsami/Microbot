@@ -2278,7 +2278,7 @@ public enum PatchImplementation
 				if (value == 20)
 				{
 					// Spirit Tree[Travel,Talk-to,Inspect,Guide,Clear] 8355
-					return new PatchState(Produce.SPIRIT_TREE, CropState.HARVESTABLE, 12);
+					return new PatchState(Produce.SPIRIT_TREE, CropState.GROWING, 12);
 				}
 				if (value >= 21 && value <= 31)
 				{

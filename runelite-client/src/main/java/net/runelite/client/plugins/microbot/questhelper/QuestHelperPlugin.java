@@ -46,11 +46,9 @@ import net.runelite.client.plugins.microbot.questhelper.util.worldmap.WorldMapAr
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
-import net.runelite.api.annotations.Varbit;
 import net.runelite.api.events.*;
 import net.runelite.api.gameval.InventoryID;
-import net.runelite.api.gameval.ItemID;
-import net.runelite.api.gameval.VarbitID;
+import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.client.RuneLite;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatMessageManager;
@@ -69,8 +67,8 @@ import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.components.colorpicker.ColorPickerManager;
 import net.runelite.client.util.Text;
-import org.apache.commons.lang3.ArrayUtils;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.swing.*;
@@ -198,6 +196,14 @@ public class QuestHelperPlugin extends Plugin
 
 		questOverlayManager.startUp();
 
+		if (developerMode)
+		{
+			if (config.devShowOverlayOnLaunch())
+			{
+				questOverlayManager.addDebugOverlay();
+			}
+		}
+
 		final BufferedImage icon = Icon.QUEST_ICON.getImage();
 
 		panel = new QuestHelperPanel(this, questManager, configManager);
@@ -229,6 +235,11 @@ public class QuestHelperPlugin extends Plugin
 		eventBus.unregister(playerStateManager);
 		eventBus.unregister(runeliteObjectManager);
 		eventBus.unregister(worldMapAreaManager);
+		if (developerMode)
+		{
+			// We don't check if it was added, since removing an unadded overlay is a no-op
+			questOverlayManager.removeDebugOverlay();
+		}
 		questOverlayManager.shutDown();
 		playerStateManager.shutDown();
 
@@ -333,7 +344,7 @@ public class QuestHelperPlugin extends Plugin
 		}
 
 		if (client.getWorldType().contains(WorldType.QUEST_SPEEDRUNNING)
-			&& event.getVarpId() == VarPlayer.IN_RAID_PARTY
+			&& event.getVarpId() == VarPlayerID.RAIDS_PARTY_GROUPHOLDER
 			&& event.getValue() == 0
 			&& client.getGameState() == GameState.LOGGED_IN)
 		{
@@ -409,6 +420,18 @@ public class QuestHelperPlugin extends Plugin
 				questManager.getSelectedQuest().setSidebarOrder(loadSidebarOrder(questManager.getSelectedQuest()));
 			}
 		}
+
+		if (developerMode && "devShowOverlayOnLaunch".equals(event.getKey()))
+		{
+			if (config.devShowOverlayOnLaunch())
+			{
+				questOverlayManager.addDebugOverlay();
+			}
+			else
+			{
+				questOverlayManager.removeDebugOverlay();
+			}
+		}
 	}
 
 	@Subscribe
@@ -462,7 +485,7 @@ public class QuestHelperPlugin extends Plugin
 		return questBankManager.getBankTagService().getPluginBankTagItemsForSections(false);
 	}
 
-	public QuestHelper getSelectedQuest()
+	public @Nullable QuestHelper getSelectedQuest()
 	{
 		return questManager.getSelectedQuest();
 	}

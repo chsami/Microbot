@@ -32,12 +32,12 @@ import net.runelite.client.plugins.microbot.questhelper.steps.DetailedOwnerStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.NpcStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.ObjectStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
-import net.runelite.api.InventoryID;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.Tile;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.NpcID;
 import net.runelite.api.gameval.ObjectID;
@@ -205,7 +205,7 @@ public class MonolithPuzzle extends DetailedOwnerStep
 
 	private int countShapes()
 	{
-		ItemContainer itemContainer = client.getItemContainer(InventoryID.INVENTORY);
+		ItemContainer itemContainer = client.getItemContainer(InventoryID.INV);
 		if (itemContainer == null)
 		{
 			return 0;
@@ -227,7 +227,7 @@ public class MonolithPuzzle extends DetailedOwnerStep
 
 	private boolean hasFirstChestKey()
 	{
-		ItemContainer itemContainer = client.getItemContainer(InventoryID.INVENTORY);
+		ItemContainer itemContainer = client.getItemContainer(InventoryID.INV);
 		if (itemContainer == null)
 		{
 			return false;
@@ -238,7 +238,7 @@ public class MonolithPuzzle extends DetailedOwnerStep
 
 	private boolean hasMachineRoomKey()
 	{
-		ItemContainer itemContainer = client.getItemContainer(InventoryID.INVENTORY);
+		ItemContainer itemContainer = client.getItemContainer(InventoryID.INV);
 		if (itemContainer == null)
 		{
 			return false;
@@ -250,6 +250,10 @@ public class MonolithPuzzle extends DetailedOwnerStep
 	private boolean tileHasBigMonolith(Tile[][] tiles, int sceneX, int sceneY)
 	{
 		var tile = tiles[sceneX][sceneY];
+		if (tile == null) {
+			// Tiles normally aren't null, but in tests they can be.
+			return false;
+		}
 		for (var gameObject : tile.getGameObjects())
 		{
 			if (gameObject != null && gameObject.getId() == BIG_MONOLITH)

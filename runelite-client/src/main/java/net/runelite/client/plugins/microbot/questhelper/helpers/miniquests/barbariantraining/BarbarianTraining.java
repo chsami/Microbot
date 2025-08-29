@@ -41,7 +41,6 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.npc.DialogR
 import net.runelite.client.plugins.microbot.questhelper.requirements.player.SkillRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.quest.QuestRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.runelite.RuneliteRequirement;
-import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicType;
 import net.runelite.client.plugins.microbot.questhelper.requirements.widget.WidgetTextRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.zone.Zone;
@@ -157,7 +156,7 @@ public class BarbarianTraining extends BasicQuestHelper
 		firemakingSteps.setLockingCondition(finishedFiremaking);
 
 		pyreSteps = new ConditionalStep(this, talkToOttoAboutPyre);
-		pyreSteps.addStep(LogicHelper.and(sacrificedRemains), talkToOttoAfterPyre);
+		pyreSteps.addStep(and(sacrificedRemains), talkToOttoAfterPyre);
 		pyreSteps.addStep(and(taskedWithPyre, chewedBones.alsoCheckBank(questBank)), useLogOnPyre);
 		pyreSteps.addStep(and(taskedWithPyre, chewedBonesNearby), pickupChewedBones);
 		pyreSteps.addStep(and(taskedWithPyre, inAncientCavernArrivalRoom), enterWhirlpool);
@@ -179,14 +178,14 @@ public class BarbarianTraining extends BasicQuestHelper
 		spearAndHastaeSteps.setLockingCondition(finishedHasta);
 
 		ConditionalStep allSteps = new ConditionalStep(this, fishingSteps);
-		allSteps.addStep(LogicHelper.nor(finishedFishing), fishingSteps);
-		allSteps.addStep(LogicHelper.nor(finishedHerblore), herbloreSteps);
-		allSteps.addStep(LogicHelper.nor(finishedHarpoon), harpoonSteps);
-		allSteps.addStep(LogicHelper.nor(finishedSeedPlanting), seedSteps);
-		allSteps.addStep(LogicHelper.nor(finishedPotSmashing), potSmashingSteps);
-		allSteps.addStep(LogicHelper.nor(finishedFiremaking), firemakingSteps);
+		allSteps.addStep(nor(finishedFishing), fishingSteps);
+		allSteps.addStep(nor(finishedHerblore), herbloreSteps);
+		allSteps.addStep(nor(finishedHarpoon), harpoonSteps);
+		allSteps.addStep(nor(finishedSeedPlanting), seedSteps);
+		allSteps.addStep(nor(finishedPotSmashing), potSmashingSteps);
+		allSteps.addStep(nor(finishedFiremaking), firemakingSteps);
 		allSteps.addStep(nand(finishedSpear, finishedHasta), spearAndHastaeSteps);
-		allSteps.addStep(LogicHelper.nor(finishedPyre), pyreSteps);
+		allSteps.addStep(nor(finishedPyre), pyreSteps);
 		allSteps.addDialogSteps("Let's talk about my training.", "I seek more knowledge.");
 		allSteps.setCheckAllChildStepsOnListenerCall(true);
 
@@ -667,13 +666,20 @@ public class BarbarianTraining extends BasicQuestHelper
 			bow, oakLogs, tinderbox, axe,
 			feathers, knife,
 			hammer, bronzeBar.quantity(2), logs.quantity(3),
-			attackPotion, roe);
+			attackPotion, roe,
+			antifireShield, combatGear);
 	}
 
 	@Override
 	public List<ItemRequirement> getItemRecommended()
 	{
 		return Arrays.asList(gamesNecklace.quantity(5), catherbyTeleport);
+	}
+
+	@Override
+	public List<String> getCombatRequirements()
+	{
+		return Collections.singletonList("Mithril Dragon (level 304)");
 	}
 
 	@Override

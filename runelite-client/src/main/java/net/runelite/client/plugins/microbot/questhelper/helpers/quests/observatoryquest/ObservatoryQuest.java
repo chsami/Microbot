@@ -40,11 +40,12 @@ import net.runelite.client.plugins.microbot.questhelper.rewards.QuestPointReward
 import net.runelite.client.plugins.microbot.questhelper.rewards.UnlockReward;
 import net.runelite.client.plugins.microbot.questhelper.steps.*;
 import net.runelite.api.Skill;
-import net.runelite.api.SpriteID;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.NpcID;
 import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.gameval.SpriteID;
+import net.runelite.api.gameval.VarbitID;
 
 import java.util.*;
 
@@ -136,11 +137,11 @@ public class ObservatoryQuest extends BasicQuestHelper
 		// Started quest
 		// 3828 = 9
 		// 3827 = 1
-		usedKey = new VarbitRequirement(3826, 1);
+		usedKey = new VarbitRequirement(VarbitID.OBSERVATORY_GATELOCK, 1);
 		sleepingGuardNearby = new NpcCondition(NpcID.QIP_OBS_GOBLIN_GUARD);
-		hasMould = new VarbitRequirement(3837, 1);
+		hasMould = new VarbitRequirement(VarbitID.OBSERVATORY_MOULD_PRES, 1);
 		// Watched cutscene, 3838 = 1
-		lookedThroughTelescope = new VarbitRequirement(3836, 1);
+		lookedThroughTelescope = new VarbitRequirement(VarbitID.OBSERVATORY_SCOPELOOKED, 1);
 	}
 
 	@Override
@@ -176,10 +177,10 @@ public class ObservatoryQuest extends BasicQuestHelper
 		prodGuard = new NpcStep(this, NpcID.QIP_OBS_GOBLIN_GUARD, new WorldPoint(2327, 9394, 0),
 			"Prod the sleeping guard in the north of the dungeon. He'll attack you. You need to then either kill him," +
 				" or get him in the marked spot to the north of the gate.");
-		prodGuard.addTileMarker(new WorldPoint(2327, 9399, 0), SpriteID.BARBARIAN_ASSAULT_HORN_FOR_HEALER_ICON);
+		prodGuard.addTileMarker(new WorldPoint(2327, 9399, 0), SpriteID.BarbassaultIcons.HORN_FOR_HEALER);
 		inspectStove = new ObjectStep(this, ObjectID.QIP_OBS_DUNGEON_STOVE_TOP_MULTI, new WorldPoint(2327, 9389, 0),
 			"Either kill or trap the guard on the marked tile to the north, then search the goblin stove.");
-		inspectStove.addTileMarker(new WorldPoint(2327, 9399, 0), SpriteID.BARBARIAN_ASSAULT_HORN_FOR_HEALER_ICON);
+		inspectStove.addTileMarker(new WorldPoint(2327, 9399, 0), SpriteID.BarbassaultIcons.HORN_FOR_HEALER);
 		leaveDungeon = new ObjectStep(this, ObjectID.QIP_OBS_STAIRS1_DUNGEON, new WorldPoint(2355, 9396, 0),
 			"Climb the stairs back to the surface.");
 		giveProfessorMould = new NpcStep(this, NpcID.OBSERVATORY_PROFESSOR, new WorldPoint(2442, 3186, 0),

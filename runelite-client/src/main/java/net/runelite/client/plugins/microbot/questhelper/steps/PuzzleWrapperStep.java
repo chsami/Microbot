@@ -35,6 +35,7 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicT
 import lombok.NonNull;
 import net.runelite.client.ui.overlay.components.PanelComponent;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -44,11 +45,12 @@ import static net.runelite.client.plugins.microbot.questhelper.requirements.util
 
 public class PuzzleWrapperStep extends ConditionalStep
 {
+	public static String DEFAULT_TEXT = "If you want help with this, enable 'Show Puzzle Solutions' in the Quest Helper configuration settings.";
 	final QuestHelperConfig questHelperConfig;
-	final DetailedQuestStep noSolvingStep;
+	final QuestStep noSolvingStep;
 	ManualRequirement shouldHideHiddenPuzzleHintInSidebar = new ManualRequirement();
 
-	public PuzzleWrapperStep(QuestHelper questHelper, QuestStep step, DetailedQuestStep hiddenStep, Requirement... requirements)
+	public PuzzleWrapperStep(QuestHelper questHelper, QuestStep step, QuestStep hiddenStep, Requirement... requirements)
 	{
 		super(questHelper, step, "", requirements);
 		this.text = hiddenStep.getText();
@@ -61,7 +63,7 @@ public class PuzzleWrapperStep extends ConditionalStep
 
 	public PuzzleWrapperStep(QuestHelper questHelper, QuestStep step, Requirement... requirements)
 	{
-		this(questHelper, step, new DetailedQuestStep(questHelper, "If you want help with this, enable 'Show Puzzle Solutions' in the Quest Helper configuration settings."), requirements);
+		this(questHelper, step, new DetailedQuestStep(questHelper, DEFAULT_TEXT), requirements);
 	}
 
 	public PuzzleWrapperStep(QuestHelper questHelper, QuestStep step, String text, Requirement... requirements)
@@ -110,7 +112,7 @@ public class PuzzleWrapperStep extends ConditionalStep
 		}
 		else
 		{
-			super.makeOverlayHint(panelComponent, plugin, additionalText, additionalRequirements);
+			noSolvingStep.makeOverlayHint(panelComponent, plugin, additionalText, additionalRequirements);
 		}
 	}
 

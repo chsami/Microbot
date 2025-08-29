@@ -29,12 +29,12 @@ package net.runelite.client.plugins.microbot.questhelper.requirements.player;
 import net.runelite.client.plugins.microbot.questhelper.requirements.AbstractRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.Spellbook;
 import net.runelite.api.Client;
+import net.runelite.api.gameval.VarbitID;
 
 import javax.annotation.Nonnull;
 
 public class SpellbookRequirement extends AbstractRequirement
 {
-	private static final int SPELLBOOK_VARBIT = 4070;
 	private final Spellbook spellBook;
 
 	public SpellbookRequirement(Spellbook spellBook)
@@ -46,7 +46,7 @@ public class SpellbookRequirement extends AbstractRequirement
 	@Override
 	public boolean check(Client client)
 	{
-		return spellBook.check(client, SPELLBOOK_VARBIT);
+		return spellBook.check(client, VarbitID.SPELLBOOK);
 	}
 
 	@Nonnull

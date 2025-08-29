@@ -85,6 +85,7 @@ import net.runelite.client.plugins.microbot.questhelper.helpers.miniquests.thege
 import net.runelite.client.plugins.microbot.questhelper.helpers.miniquests.themagearenai.TheMageArenaI;
 import net.runelite.client.plugins.microbot.questhelper.helpers.miniquests.themagearenaii.MA2Locator;
 import net.runelite.client.plugins.microbot.questhelper.helpers.miniquests.themagearenaii.TheMageArenaII;
+import net.runelite.client.plugins.microbot.questhelper.helpers.miniquests.valetotems.ValeTotems;
 import net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.allneededitems.AllNeededItems;
 import net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.knightswaves.KnightWaves;
 import net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.strongholdofsecurity.StrongholdOfSecurity;
@@ -201,10 +202,12 @@ import net.runelite.client.plugins.microbot.questhelper.helpers.quests.royaltrou
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.rumdeal.RumDeal;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.runemysteries.RuneMysteries;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.scorpioncatcher.ScorpionCatcher;
+import net.runelite.client.plugins.microbot.questhelper.helpers.quests.scrambled.Scrambled;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.seaslug.SeaSlug;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.secretsofthenorth.SecretsOfTheNorth;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.shadesofmortton.ShadesOfMortton;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.shadowofthestorm.ShadowOfTheStorm;
+import net.runelite.client.plugins.microbot.questhelper.helpers.quests.shadowsofcustodia.ShadowsOfCustodia;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.sheepherder.SheepHerder;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.sheepshearer.SheepShearer;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.shieldofarrav.ShieldOfArravBlackArmGang;
@@ -227,6 +230,7 @@ import net.runelite.client.plugins.microbot.questhelper.helpers.quests.thedepths
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.thedigsite.TheDigSite;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.theeyesofglouphrie.TheEyesOfGlouphrie;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.thefeud.TheFeud;
+import net.runelite.client.plugins.microbot.questhelper.helpers.quests.thefinaldawn.TheFinalDawn;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.theforsakentower.TheForsakenTower;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.thefremennikexiles.TheFremennikExiles;
 import net.runelite.client.plugins.microbot.questhelper.helpers.quests.thefremennikisles.TheFremennikIsles;
@@ -467,6 +471,9 @@ public enum QuestHelperQuest
 	MEAT_AND_GREET(new MeatAndGreet(), Quest.MEAT_AND_GREET, QuestVarbits.QUEST_MEAT_AND_GREET, QuestDetails.Type.P2P, QuestDetails.Difficulty.EXPERIENCED),
 	THE_HEART_OF_DARKNESS(new TheHeartOfDarkness(), Quest.THE_HEART_OF_DARKNESS, QuestVarbits.QUEST_THE_HEART_OF_DARKNESS, QuestDetails.Type.P2P, QuestDetails.Difficulty.EXPERIENCED),
 	THE_CURSE_OF_ARRAV(new TheCurseOfArrav(), Quest.THE_CURSE_OF_ARRAV, QuestVarbits.QUEST_THE_CURSE_OF_ARRAV, QuestDetails.Type.P2P, QuestDetails.Difficulty.MASTER),
+	THE_FINAL_DAWN(new TheFinalDawn(), Quest.THE_FINAL_DAWN, QuestVarbits.QUEST_THE_FINAL_DAWN, QuestDetails.Type.P2P, QuestDetails.Difficulty.MASTER),
+	SHADOWS_OF_CUSTODIA(new ShadowsOfCustodia(), Quest.SHADOWS_OF_CUSTODIA, QuestVarbits.QUEST_SHADOWS_OF_CUSTODIA, QuestDetails.Type.P2P, QuestDetails.Difficulty.MASTER /* TODO: CONFIRM DIFFICULTY */),
+	SCRAMBLED(new Scrambled(), Quest.SCRAMBLED, QuestVarbits.QUEST_SCRAMBLED, QuestDetails.Type.P2P, QuestDetails.Difficulty.INTERMEDIATE),
 
 	//Miniquests
 	ENTER_THE_ABYSS(new EnterTheAbyss(), Quest.ENTER_THE_ABYSS, QuestVarPlayer.QUEST_ENTER_THE_ABYSS, QuestDetails.Type.MINIQUEST, QuestDetails.Difficulty.MINIQUEST),
@@ -485,6 +492,7 @@ public enum QuestHelperQuest
 	HOPESPEARS_WILL(new HopespearsWill(), Quest.HOPESPEARS_WILL, QuestVarbits.QUEST_HOPESPEARS_WILL, QuestDetails.Type.MINIQUEST, QuestDetails.Difficulty.MINIQUEST),
 	HIS_FAITHFUL_SERVANTS(new HisFaithfulServants(), Quest.HIS_FAITHFUL_SERVANTS, QuestVarbits.HIS_FAITHFUL_SERVANTS, QuestDetails.Type.MINIQUEST, QuestDetails.Difficulty.MINIQUEST),
 	BARBARIAN_TRAINING(new BarbarianTraining(), Quest.BARBARIAN_TRAINING, QuestVarbits.BARBARIAN_TRAINING, QuestDetails.Type.MINIQUEST, QuestDetails.Difficulty.MINIQUEST),
+	VALE_TOTEMS(new ValeTotems(), Quest.VALE_TOTEMS, QuestVarbits.QUEST_VALE_TOTEMS, QuestDetails.Type.MINIQUEST, QuestDetails.Difficulty.MINIQUEST),
 
 	// Fake miniquests
 	KNIGHT_WAVES_TRAINING_GROUNDS(new KnightWaves(), "Knight Waves Training Grounds", QuestVarbits.KNIGHT_WAVES_TRAINING_GROUNDS, 8,

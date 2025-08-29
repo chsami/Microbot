@@ -32,7 +32,6 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicT
 import net.runelite.client.plugins.microbot.questhelper.steps.DetailedOwnerStep;
 import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
 import net.runelite.api.Client;
-import net.runelite.api.GraphicID;
 import net.runelite.api.GraphicsObject;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
@@ -41,6 +40,7 @@ import net.runelite.api.events.GraphicsObjectCreated;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.SpotanimID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
@@ -142,7 +142,7 @@ public class BaxtorianPuzzle extends DetailedOwnerStep
 	{
 		final GraphicsObject go = event.getGraphicsObject();
 
-		if (go.getId() == GraphicID.GREY_BUBBLE_TELEPORT)
+		if (go.getId() == SpotanimID.SMOKEPUFF)
 		{
 			clientThread.invokeLater(() ->
 			{

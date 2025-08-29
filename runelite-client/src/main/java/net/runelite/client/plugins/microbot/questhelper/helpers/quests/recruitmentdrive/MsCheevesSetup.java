@@ -37,6 +37,7 @@ import lombok.Getter;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.gameval.VarbitID;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -76,26 +77,6 @@ public class MsCheevesSetup
 		tinWithTinOre, tinWithAllOre, bronzeKey, knife, chisel, bronzeWire;
 	private VarbitRequirement hasLiquidInTin;
 	ItemRequirement hasGypsumTin, hasTinKeyPrint, hasTinCupricOre, hasTinWithTinOre, hasTinWithAllOre;
-
-	private final int VARBIT_NITROUS_OXIDE = 5581;
-	private final int VARBIT_VIAL_OF_LIQUID = 671;
-	private final int VARBIT_ACETIC_ACIDE = 672;
-	private final int VARBIT_CUPRIC_SULFATE = 673;
-	private final int VARBIT_GYPSUM = 674;
-	private final int VARBIT_SODIUM_CHLORIDE = 675;
-	private final int VARBIT_NITROUS_OXIDE_RETRIEVED = 676;
-	private final int VARBIT_TIN_ORE_POWDER = 677;
-	private final int VARBIT_CUPRIC_ORE_POWDER = 678;
-	private final int VARBIT_THREE_VIALS = 679; //(0 -> 3)
-
-	private final int VARBIT_SPADEHEAD_ON_DOOR = 686; //1
-	private final int VARBIT_USE_CUPRIC_SULFATE_ON_DOOR = 687;
-	private final int VARBIT_VIAL_OF_LIQUID_ON_DOOR = 686; // 2
-	private final int VARBIT_FIRST_DOOR_OPEN = 686; //3
-
-	private final int VARBIT_LIQUID_IN_TIN = 689;
-
-	private final int VARBIT_COMPLETE_ROOM = 664;
 
 	public MsCheevesSetup(QuestHelper questHelper)
 	{
@@ -138,19 +119,19 @@ public class MsCheevesSetup
 			, metalSpade);
 		useSpadeOnBunsenBurner.addIcon(ItemID.RD_METAL_SPADE);
 
-		useSpadeHeadOnDoor = new ObjectStep(questHelper, 7342, "Use the spade in your inventory on the door.",
+		useSpadeHeadOnDoor = new ObjectStep(questHelper, ObjectID.RD_STONE_DOOR, "Use the spade in your inventory on the door.",
 			metalSpadeHead);
 		useSpadeHeadOnDoor.addIcon(ItemID.RD_METAL_SPADE_NO_HANDLE);
 
-		useCupricSulfateOnDoor = new ObjectStep(questHelper, 7342, "Use Cupric Sulfate in your inventory on the door.",
+		useCupricSulfateOnDoor = new ObjectStep(questHelper, ObjectID.RD_STONE_DOOR, "Use Cupric Sulfate in your inventory on the door.",
 			cupricSulfate);
 		useCupricSulfateOnDoor.addIcon(ItemID.RD_CUPRIC_SULPHATE);
 
-		useVialOfLiquidOnDoor = new ObjectStep(questHelper, 7342, "Use vial of liquid in your inventory on the door.",
+		useVialOfLiquidOnDoor = new ObjectStep(questHelper, ObjectID.RD_STONE_DOOR, "Use vial of liquid in your inventory on the door.",
 			vialOfLiquid);
 		useVialOfLiquidOnDoor.addIcon(ItemID.RD_DIHYDROGEN_MONOXIDE);
 
-		openDoor = new ObjectStep(questHelper, 7342, "Open the door.");
+		openDoor = new ObjectStep(questHelper, ObjectID.RD_STONE_DOOR, "Open the door.");
 
 		useVialOfLiquidOnCakeTin = new DetailedQuestStep(questHelper, "Use a vial of liquid on the tin in your inventory.",
 			tin, vialOfLiquid);
@@ -175,7 +156,7 @@ public class MsCheevesSetup
 		useEquipmentOnTin = new DetailedQuestStep(questHelper, "Use your chisel,knife or bronze wires on your tin in your inventory.",
 			tinWithAllOre, chisel, knife, bronzeWire);
 
-		leaveRoom = new ObjectStep(questHelper, 7326, new WorldPoint(2478, 4940, 0), "Leave the room by the second door to enter the portal");
+		leaveRoom = new ObjectStep(questHelper, ObjectID.RD_ROOM6_EXITDOOR, new WorldPoint(2478, 4940, 0), "Leave the room by the second door to enter the portal");
 	}
 
 	private void addSteps()
@@ -391,13 +372,13 @@ public class MsCheevesSetup
 
 		hasBronzeKey = bronzeKey;
 
-		hasRetrievedThreeVials = new VarbitRequirement(VARBIT_THREE_VIALS, 3);
-		hasSpadeHeadOnDoor = new VarbitRequirement(VARBIT_SPADEHEAD_ON_DOOR, 1);
-		hasCupricSulfateOnDoor = new VarbitRequirement(VARBIT_USE_CUPRIC_SULFATE_ON_DOOR, 1);
-		hasVialOfLiquidOnDoor = new VarbitRequirement(VARBIT_VIAL_OF_LIQUID_ON_DOOR, 2);
-		hasFirstDoorOpen = new VarbitRequirement(VARBIT_FIRST_DOOR_OPEN, 3);
-		finishedRoom = new VarbitRequirement(VARBIT_COMPLETE_ROOM, 1);
+		hasRetrievedThreeVials = new VarbitRequirement(VarbitID.RD_SPARE_WATER, 3);
+		hasSpadeHeadOnDoor = new VarbitRequirement(VarbitID.RD_ROOM6_STONE_DOOR, 1);
+		hasCupricSulfateOnDoor = new VarbitRequirement(VarbitID.RD_REACT_ON_SPADE, 1);
+		hasVialOfLiquidOnDoor = new VarbitRequirement(VarbitID.RD_ROOM6_STONE_DOOR, 2);
+		hasFirstDoorOpen = new VarbitRequirement(VarbitID.RD_ROOM6_STONE_DOOR, 3);
+		finishedRoom = new VarbitRequirement(VarbitID.RD_ROOM6_COMPLETE, 1);
 
-		hasLiquidInTin = new VarbitRequirement(VARBIT_LIQUID_IN_TIN, 1);
+		hasLiquidInTin = new VarbitRequirement(VarbitID.RD_WATER_IN_TIN, 1);
 	}
 }

@@ -31,7 +31,7 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.AbstractReq
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.Operation;
 import lombok.Getter;
 import net.runelite.api.Client;
-import net.runelite.api.VarPlayer;
+import net.runelite.api.gameval.VarPlayerID;
 
 import javax.annotation.Nonnull;
 
@@ -72,7 +72,7 @@ public class QuestPointRequirement extends AbstractRequirement
 	@Override
 	public boolean check(Client client)
 	{
-		return operation.check(client.getVarpValue(VarPlayer.QUEST_POINTS), requiredQuestPoints);
+		return operation.check(client.getVarpValue(VarPlayerID.QP), requiredQuestPoints);
 	}
 
 	@Nonnull

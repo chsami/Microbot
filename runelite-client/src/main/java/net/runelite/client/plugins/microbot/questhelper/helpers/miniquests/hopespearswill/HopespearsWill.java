@@ -38,7 +38,6 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.npc.NpcRequ
 import net.runelite.client.plugins.microbot.questhelper.requirements.player.SkillRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.quest.QuestRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.ItemSlots;
-import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicType;
 import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarbitRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.widget.WidgetTextRequirement;
@@ -52,6 +51,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.NpcID;
 import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.gameval.VarbitID;
 
 import java.util.*;
 
@@ -113,11 +113,11 @@ public class HopespearsWill extends BasicQuestHelper
 		defeatGoblins.addStep(nor(hasStrongbonesBones), sayNameStrongbones);
 
 		ConditionalStep buryBones = new ConditionalStep(this, goToYubiusk);
-		buryBones.addStep(LogicHelper.nor(snotheadBuried), burySnothead);
-		buryBones.addStep(LogicHelper.nor(snailfeetBuried), burySnailfeet);
-		buryBones.addStep(LogicHelper.nor(mosschinBuried), buryMosschin);
-		buryBones.addStep(LogicHelper.nor(redeyesBuried), buryRedeyes);
-		buryBones.addStep(LogicHelper.nor(strongbonesBuried), buryStrongbones);
+		buryBones.addStep(nor(snotheadBuried), burySnothead);
+		buryBones.addStep(nor(snailfeetBuried), burySnailfeet);
+		buryBones.addStep(nor(mosschinBuried), buryMosschin);
+		buryBones.addStep(nor(redeyesBuried), buryRedeyes);
+		buryBones.addStep(nor(strongbonesBuried), buryStrongbones);
 
 		ConditionalStep finishQuest = new ConditionalStep(this, goToGoblinCaveAfterStart);
 		finishQuest.addStep(new Conditions(inYubiusk, hasAllBones), buryBones);
@@ -168,7 +168,7 @@ public class HopespearsWill extends BasicQuestHelper
 		inGoblinCave = new ZoneRequirement(goblinCave);
 		nothingEquipped = new NoItemRequirement("No items equipped", ItemSlots.ANY_EQUIPPED);
 		goblinWidgetActive = new WidgetTextRequirement(739, 2, 1, "Select Your Goblin");
-		isAGoblin = new VarbitRequirement(13612, 1);
+		isAGoblin = new VarbitRequirement(VarbitID.LOTG_PLAYER_IS_A_GOBLIN, 1);
 		inGoblinTemple = new ZoneRequirement(goblinTemple);
 		isInCrypt = new ZoneRequirement(crypt);
 		inYubiusk = new ZoneRequirement(yubiusk);
@@ -179,11 +179,11 @@ public class HopespearsWill extends BasicQuestHelper
 		redeyesAlive = new NpcRequirement("Redeyes", NpcID.LOTG_GOBLIN_SKELETON_HIGH_PRIEST4);
 		strongbonesAlive = new NpcRequirement("Strongbones", NpcID.LOTG_GOBLIN_SKELETON_HIGH_PRIEST5);
 
-		snotheadBuried = new VarbitRequirement(13620, 1);
-		snailfeetBuried = new VarbitRequirement(13621, 1);
-		mosschinBuried = new VarbitRequirement(13622, 1);
-		redeyesBuried = new VarbitRequirement(13623, 1);
-		strongbonesBuried = new VarbitRequirement(13624, 1);
+		snotheadBuried = new VarbitRequirement(VarbitID.HOPESPEAR_PRIEST_1, 1);
+		snailfeetBuried = new VarbitRequirement(VarbitID.HOPESPEAR_PRIEST_2, 1);
+		mosschinBuried = new VarbitRequirement(VarbitID.HOPESPEAR_PRIEST_3, 1);
+		redeyesBuried = new VarbitRequirement(VarbitID.HOPESPEAR_PRIEST_4, 1);
+		strongbonesBuried = new VarbitRequirement(VarbitID.HOPESPEAR_PRIEST_5, 1);
 
 		hasSnotheadBones = new Conditions(LogicType.OR, snotheadBones, snotheadBuried);
 		hasSnailfeetBones = new Conditions(LogicType.OR, snailfeetBones, snailfeetBuried);

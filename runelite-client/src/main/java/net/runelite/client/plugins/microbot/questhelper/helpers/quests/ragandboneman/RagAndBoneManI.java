@@ -41,12 +41,12 @@ import net.runelite.client.plugins.microbot.questhelper.rewards.QuestPointReward
 import net.runelite.client.plugins.microbot.questhelper.steps.*;
 import net.runelite.client.plugins.microbot.questhelper.tools.QuestTile;
 import net.runelite.api.Skill;
-import net.runelite.api.SpriteID;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.NpcID;
 import net.runelite.api.gameval.ObjectID;
+import net.runelite.api.gameval.SpriteID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.eventbus.Subscribe;
 
@@ -199,14 +199,14 @@ public class RagAndBoneManI extends BasicQuestHelper
 
 		// 2044 = 1, talked a bit to Odd Old Man
 
-		addedRope = new VarbitRequirement(279, 1);
+		addedRope = new VarbitRequirement(VarbitID.SWAMP_CAVES_ROPED_ENTRANCE, 1);
 
 		boneNearby = new Conditions(LogicType.OR, RagBoneGroups.getBonesOnFloor(RagBoneGroups.getBones(RagBoneGroups.getRagBoneIStates())));
 
 		logAdded = new VarbitRequirement(VarbitID.RAG_BOILER, 1, Operation.GREATER_EQUAL);
 		boneAddedToBoiler = new VarbitRequirement(VarbitID.RAG_BOILER, 2, Operation.GREATER_EQUAL);
 		logLit = new VarbitRequirement(VarbitID.RAG_BOILER, 3, Operation.GREATER_EQUAL);
-		boneReady = new VarbitRequirement(2046, 4);
+		boneReady = new VarbitRequirement(VarbitID.RAG_BOILER, 4);
 
 		// Every time handing in a bone, 2045 iterates from 0->28 1 by 1. Next time you hand in a bone it goes back
 		// to 0 and repeats???
@@ -217,7 +217,7 @@ public class RagAndBoneManI extends BasicQuestHelper
 
 		hadAllBones = new Conditions(RagBoneGroups.allBonesObtained(RagBoneGroups.getRagBoneIStates(), questBank));
 
-		talkedToFortunato = new VarbitRequirement(2047, 1);
+		talkedToFortunato = new VarbitRequirement(VarbitID.RAG_WINE, 1);
 
 		hadVinegar = new Conditions(jugOfVinegar.alsoCheckBank(questBank));
 	}
@@ -261,8 +261,8 @@ public class RagAndBoneManI extends BasicQuestHelper
 		killFrog = new NpcStep(this, NpcID.MEDIUM_FROG, new WorldPoint(3153, 9558, 0),
 			"Kill a big frog in the south west of the caves. Make sure to RUN between the two marked run tiles to " +
 				"avoid the Wall Beast.",	true);
-		killFrog.addTileMarker(new QuestTile(new WorldPoint(3161, 9574, 0), SpriteID.OPTIONS_RUNNING));
-		killFrog.addTileMarker(new QuestTile(new WorldPoint(3163, 9574, 0), SpriteID.OPTIONS_RUNNING));
+		killFrog.addTileMarker(new QuestTile(new WorldPoint(3161, 9574, 0), SpriteID.OptionsIcons.RUNNING));
+		killFrog.addTileMarker(new QuestTile(new WorldPoint(3163, 9574, 0), SpriteID.OptionsIcons.RUNNING));
 
 		ConditionalStep killFrogSteps = new ConditionalStep(this, addRope);
 		killFrogSteps.addStep(inSwamp, killFrog);

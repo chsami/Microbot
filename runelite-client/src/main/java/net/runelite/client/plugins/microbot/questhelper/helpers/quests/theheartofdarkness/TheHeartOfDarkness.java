@@ -41,7 +41,6 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.player.Free
 import net.runelite.client.plugins.microbot.questhelper.requirements.player.InInstanceRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.player.SkillRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.quest.QuestRequirement;
-import net.runelite.client.plugins.microbot.questhelper.requirements.util.LogicHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.util.Operation;
 import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarbitRequirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.var.VarplayerRequirement;
@@ -56,7 +55,6 @@ import net.runelite.client.plugins.microbot.questhelper.steps.widget.WidgetHighl
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
-import net.runelite.api.SpriteID;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ChatMessage;
@@ -230,7 +228,7 @@ public class TheHeartOfDarkness extends BasicQuestHelper
         firstTrialPuzzle.addStep(and(southWestChestOpened, scrapOfPaper1, scrapOfPaper2, hasReadPoem), talkToPrinceAfterPoem);
         firstTrialPuzzle.addStep(and(southWestChestOpened, scrapOfPaper1, scrapOfPaper2, poem), readPoem);
         firstTrialPuzzle.addStep(and(scrapOfPaper1, book), openKeywordChestSouthWest);
-        firstTrialPuzzle.addStep(LogicHelper.and(southEastGateUnlocked), searchChestForBookAndPaper);
+        firstTrialPuzzle.addStep(and(southEastGateUnlocked), searchChestForBookAndPaper);
         firstTrialPuzzle.addStep(and(towerKey), useKeyOnSouthEastGate);
 
         ConditionalStep goDoFirstChallenge = new ConditionalStep(this, climbUpToFirstTrial);
@@ -304,12 +302,12 @@ public class TheHeartOfDarkness extends BasicQuestHelper
         ConditionalStep goPullLevers = new ConditionalStep(this, enterRuins);
         goPullLevers.addStep(and(inThirdIceArea, pulledFirstLever, pulledSecondLever, pulledThirdLever), pullFourthLever);
         goPullLevers.addStep(and(inThirdIceArea, pulledFirstLever, pulledSecondLever), pullThirdLever);
-        goPullLevers.addStep(LogicHelper.and(inThirdIceArea), climbUpLedgeToSecondLever);
+        goPullLevers.addStep(and(inThirdIceArea), climbUpLedgeToSecondLever);
         goPullLevers.addStep(and(inSecondIceAreaSecondRoom, pulledFirstLever, pulledSecondLever), jumpOverFrozenPlatforms);
         goPullLevers.addStep(and(inSecondIceAreaSecondRoom, pulledFirstLever), pullSecondLever);
-        goPullLevers.addStep(LogicHelper.and(inSecondIceAreaSecondRoom), slideAlongIceLedgeBackToSecondLever);
+        goPullLevers.addStep(and(inSecondIceAreaSecondRoom), slideAlongIceLedgeBackToSecondLever);
         goPullLevers.addStep(and(inSecondIceAreaFirstRoom, pulledFirstLever), slideAlongIceLedge);
-        goPullLevers.addStep(LogicHelper.and(inSecondIceAreaFirstRoom), climbUpLedgeToFirstLever);
+        goPullLevers.addStep(and(inSecondIceAreaFirstRoom), climbUpLedgeToFirstLever);
         goPullLevers.addStep(and(inFirstIceRoom, pulledFirstLever), climbDownLedge);
         goPullLevers.addStep(inFirstIceRoom, pullFirstLever);
         steps.put(62, goPullLevers);
@@ -418,26 +416,26 @@ public class TheHeartOfDarkness extends BasicQuestHelper
         inFirstTrialRoom = new ZoneRequirement(firstTrialRoom);
         secondTrialRoom = new Zone(new WorldPoint(1635, 3216, 2), new WorldPoint(1650, 3230, 2));
         inSecondTrialRoom = new ZoneRequirement(secondTrialRoom);
-        builtLandingInOverlook = new VarbitRequirement(11379, 4);
-        talkedToFelius = new VarbitRequirement(11118, 1);
-        talkedToCaritta = new VarbitRequirement(11119, 1);
-        talkedToSergius = new VarbitRequirement(11120, 1);
-//        talkedToNova = new VarbitRequirement(11121, 1);
+        builtLandingInOverlook = new VarbitRequirement(VarbitID.QUETZAL_SALVAGEROVERLOOK, 4);
+        talkedToFelius = new VarbitRequirement(VarbitID.VMQ3_RECRUIT_1, 1);
+        talkedToCaritta = new VarbitRequirement(VarbitID.VMQ3_RECRUIT_2, 1);
+        talkedToSergius = new VarbitRequirement(VarbitID.VMQ3_RECRUIT_3, 1);
+//        talkedToNova = new VarbitRequirement(VarbitID.VMQ3_RECRUIT_4, 1);
         princeIsFollowing = new VarplayerRequirement(VarPlayerID.FOLLOWER_NPC, 14053, 16);
         // Overlook landing could also be varp 4182 480 -> 2528
-        southEastGateUnlocked = new VarbitRequirement(11165, 1);
-        southWestChestOpened = new VarbitRequirement(11166, 1);
-        hasReadPoem = new VarbitRequirement(11170, 1);
-        knowAboutDirections = new VarbitRequirement(11171, 1);
+        southEastGateUnlocked = new VarbitRequirement(VarbitID.VMQ3_TOWER_TRIAL_1_DOOR_UNLOCKED, 1);
+        southWestChestOpened = new VarbitRequirement(VarbitID.VMQ3_TOWER_TRIAL_1_LETTERS_UNLOCKED, 1);
+        hasReadPoem = new VarbitRequirement(VarbitID.VMQ3_TOWER_TRIAL_1_READ_POEM, 1);
+        knowAboutDirections = new VarbitRequirement(VarbitID.VMQ3_TOWER_TRIAL_1_FIRST_TRANSLATION, 1);
         knowPoemSolution = new ManualRequirement();
         inArrowPuzzle = new WidgetTextRequirement(810, 15, 9, "Confirm");
         hasReadCompletedNote = new ManualRequirement();
-//        northWestChestOpened = new VarbitRequirement(11167, 1);
+//        northWestChestOpened = new VarbitRequirement(VarbitID.VMQ3_TOWER_TRIAL_1_DIRECTIONS_UNLOCKED, 1);
 
         NpcCondition emissaryIsPassive = new NpcCondition(NpcID.VMQ3_TOWER_TWILIGHT_MELEE_VARIANT_1A, new WorldPoint(1641, 3227, 2));
         emissaryIsPassive.setAnimationIDRequired(-1);
         combatStarted = not(emissaryIsPassive);
-        startedInvestigation = new VarbitRequirement(11134, 1);
+        startedInvestigation = new VarbitRequirement(VarbitID.VMQ3_TOWER_TRIAL_3_ITZLA_CONSULTED, 1);
         // Accused Tenoch incorrectly
         // 11135 0->1
         // 11140 0->1
@@ -492,14 +490,14 @@ public class TheHeartOfDarkness extends BasicQuestHelper
         bossRoom = new Zone(new WorldPoint(1359, 4505, 0), new WorldPoint(1385, 4520, 0));
         inBossRoom = new ZoneRequirement(bossRoom);
 
-        pulledFirstLever = new VarbitRequirement(11138, 1);
-        pulledSecondLever = new VarbitRequirement(11139, 1);
+        pulledFirstLever = new VarbitRequirement(VarbitID.VMQ3_RUINS_LEVER_3, 1);
+        pulledSecondLever = new VarbitRequirement(VarbitID.VMQ3_RUINS_LEVER_4, 1);
         // on first frozen platform:
         // 11181 0->1
-        pulledThirdLever = new VarbitRequirement(11137, 1);
-//        pulledFourthLever = new VarbitRequirement(11136, 1);
+        pulledThirdLever = new VarbitRequirement(VarbitID.VMQ3_RUINS_LEVER_2, 1);
+//        pulledFourthLever = new VarbitRequirement(VarbitID.VMQ3_RUINS_LEVER_1, 1);
 
-        unlockedShortcut = new VarbitRequirement(11174, 1);
+        unlockedShortcut = new VarbitRequirement(VarbitID.VMQ3_RUINS_SHORTCUT_UNLOCKED, 1);
 
         inspectedAirMarkings = new ManualRequirement();
         inspectedEarthMarkings = new ManualRequirement();
@@ -516,10 +514,10 @@ public class TheHeartOfDarkness extends BasicQuestHelper
         takenOrUsedFireIcon = or(repairedFireStatue, fireIcon);
         takenOrUsedWaterIcon = or(repairedWaterStatue, waterIcon);
 
-        activatedFirstStatue = new VarbitRequirement(11161, -1);
-        activatedSecondStatue = new VarbitRequirement(11162, -1);
-        activatedThirdStatue = new VarbitRequirement(11163, -1);
-        activatedFourthStatue = new VarbitRequirement(11164, -1);
+        activatedFirstStatue = new VarbitRequirement(VarbitID.VMQ3_RUIN_STATUE_1_CHECK, -1);
+        activatedSecondStatue = new VarbitRequirement(VarbitID.VMQ3_RUIN_STATUE_2_CHECK, -1);
+        activatedThirdStatue = new VarbitRequirement(VarbitID.VMQ3_RUIN_STATUE_3_CHECK, -1);
+        activatedFourthStatue = new VarbitRequirement(VarbitID.VMQ3_RUIN_STATUE_4_CHECK, -1);
 
         activateStatueRequirements[0] = activatedFirstStatue;
         activateStatueRequirements[1] = activatedSecondStatue;
@@ -790,7 +788,7 @@ public class TheHeartOfDarkness extends BasicQuestHelper
         int LEVER_ID = 55367; // Decorative object
         pullFirstLever = new ObjectStep(this, LEVER_ID, new WorldPoint(1695, 9604, 2), "Pull the lever in the south-east of the area. Make sure to avoid the " +
                 "wall spikes.");
-        pullFirstLever.addTileMarkers(SpriteID.DEADMAN_EXCLAMATION_MARK_SKULLED_WARNING,
+        pullFirstLever.addTileMarkers(SpriteID.PvpwIcons.DEADMAN_EXCLAMATION_MARK_SKULLED_WARNING,
                 new WorldPoint(1682, 9603, 2), new WorldPoint(1682, 9604, 2), new WorldPoint(1682, 9605, 2),
                 new WorldPoint(1682, 9606, 2), new WorldPoint(1684, 9603, 2), new WorldPoint(1684, 9604, 2),
                 new WorldPoint(1684, 9605, 2), new WorldPoint(1684, 9606, 2), new WorldPoint(1686, 9603, 2),

@@ -67,7 +67,7 @@ public class VardorvisSteps extends ConditionalStep
 		inAnyStranglewood, inVardorvisArea, unlockedShortcut, defeatedVardorvis, templeKeyNearby, kasondeAggressive, givenKasondeKey, defeatedKasonde,
 		kasondeRevealedMedallion, gotVardorvisMedallion, inVault;
 	ItemRequirement potionNote, strangePotion, freezes, berry, herb, unfinishedSerum, serumWithHerb, stranglerSerum, templeKey,
-		vardorvisMedallion;
+		vardorvisMedallion, food;
 	Zone stranglewood, towerDefenseRoom, stranglewoodPyramidRoom, vardorvisArea, vault;
 
 	QuestBank questBank;
@@ -139,6 +139,7 @@ public class VardorvisSteps extends ConditionalStep
 
 		potionNote = new ItemRequirement("Potion note", ItemID.DT2_KASONDE_NOTE);
 		strangePotion = new ItemRequirement("Strange potion", ItemID.DT2_KASONDE_POTION);
+		food = new ItemRequirement("Bring high healing food to tank the infected.", -1);
 		freezes = new ItemRequirement("Freezing spells STRONGLY recommended + reasonable mage accuracy", -1);
 		berry = new ItemRequirement("Argian berries", ItemID.DT2_STRANGLEWOOD_BERRIES);
 		berry.setTooltip("You can get another from the south-west corner of The Stranglewood");
@@ -193,10 +194,10 @@ public class VardorvisSteps extends ConditionalStep
 		toldAboutHerbAndBerry = new VarbitRequirement(VarbitID.DT2_STRANGLEWOOD, 24, Operation.GREATER_EQUAL);
 		// 15136 0->2 taken herb
 		// 15125 24->26, herb taken
-		herbTaken = new VarbitRequirement(15136, 2);
+		herbTaken = new VarbitRequirement(VarbitID.DT2_STRANGLEWOOD_INGREDIENT_1, 2);
 		// 15125 26->28, picked berry
 		// 15137, 0->1 berry taken
-		berryTaken = new VarbitRequirement(15137, 1);
+		berryTaken = new VarbitRequirement(VarbitID.DT2_STRANGLEWOOD_INGREDIENT_2, 1);
 
 		// 15125 28->30->32 when entering pyramid
 		inStranglewoodPyramidRoom = new ZoneRequirement(stranglewoodPyramidRoom);
@@ -249,6 +250,7 @@ public class VardorvisSteps extends ConditionalStep
 
 		defendKasonde = new DetailedQuestStep(getQuestHelper(), "Defend Kasonde! Read the sidebar for more details.");
 		defendKasonde.addRecommended(freezes);
+		defendKasonde.addRecommended(food);
 		defendKasondeSidebar.addSubSteps(defendKasonde);
 
 		// TODO: Get actual coordinate and ladder ID!
