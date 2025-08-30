@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.accountselector;
 import net.runelite.api.GameState;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.http.api.worlds.WorldRegion;
 
