@@ -55,7 +55,9 @@ public class AutoLoginScript extends Script {
 
                 if (Microbot.getClient().getGameState() == GameState.LOGIN_SCREEN) {
                     if (autoLoginConfig.useRandomWorld()) {
-                        new Login(getRandomWorldWithRegionFilter(autoLoginConfig));
+                        final int world = getRandomWorldWithRegionFilter(autoLoginConfig);
+                        Microbot.log(Level.INFO, String.format("Auto-logging into random %s world: %d", autoLoginConfig.isMember() ? "member" : "free", world));
+                        new Login(world);
                     } else {
                         Microbot.log(Level.INFO, String.format("Auto-logging into world: %d", autoLoginConfig.world()));
                         new Login(autoLoginConfig.world());
