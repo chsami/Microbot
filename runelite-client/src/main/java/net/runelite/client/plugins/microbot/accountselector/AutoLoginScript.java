@@ -6,6 +6,7 @@ import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.http.api.worlds.WorldRegion;
+import org.slf4j.event.Level;
 
 import java.util.ArrayList;
 import java.util.List;
