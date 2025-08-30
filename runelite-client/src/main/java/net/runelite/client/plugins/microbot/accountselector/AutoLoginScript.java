@@ -56,6 +56,7 @@ public class AutoLoginScript extends Script {
                     if (autoLoginConfig.useRandomWorld()) {
                         new Login(getRandomWorldWithRegionFilter(autoLoginConfig));
                     } else {
+                        Microbot.log(Level.INFO, String.format("Auto-logging into world: %d", autoLoginConfig.world()));
                         new Login(autoLoginConfig.world());
                     }
                     sleep(5000);
