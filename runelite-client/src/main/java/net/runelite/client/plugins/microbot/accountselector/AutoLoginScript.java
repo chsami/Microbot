@@ -3,7 +3,9 @@ package net.runelite.client.plugins.microbot.accountselector;
 import net.runelite.api.GameState;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
 import net.runelite.client.plugins.microbot.util.security.Login;
+import org.slf4j.event.Level;
 
 import java.util.concurrent.TimeUnit;
 
@@ -13,16 +15,18 @@ public class AutoLoginScript extends Script {
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!super.run()) return;
+                if (BreakHandlerScript.isBreakActive() || BreakHandlerScript.isMicroBreakActive()) return;
 
                 if (Microbot.getClient().getGameState() == GameState.LOGIN_SCREEN) {
                     if (autoLoginConfig.useRandomWorld()) {
+                        Microbot.log(Level.INFO, "Auto logging in into random world. Member: " + autoLoginConfig.isMember());
                         new Login(Login.getRandomWorld(autoLoginConfig.isMember()));
                     } else {
+                        Microbot.log(Level.INFO, "Auto logging in into world: " + autoLoginConfig.world());
                         new Login(autoLoginConfig.world());
                     }
                     sleep(5000);
                 }
-
 
             } catch (Exception ex) {
                 Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
