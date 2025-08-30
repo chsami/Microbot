@@ -27,18 +27,63 @@ public interface AutoLoginConfig extends Config {
     @ConfigItem(
             keyName = "Is Member",
             name = "Is Member",
-            description = "use Member worlds",
-            position = 0,
+            description = "Use member worlds",
+            position = 1,
             section = generalSection
     )
     default boolean isMember() { return false; }
 
     @ConfigItem(
             keyName = "RandomWorld",
-            name = "RandomWorld",
-            description = "use random worlds",
-            position = 0,
+            name = "Use Random World",
+            description = "Use random worlds",
+            position = 2,
             section = generalSection
     )
     default boolean useRandomWorld() { return true; }
+
+    @ConfigSection(
+            name = "Region Filter",
+            description = "Filter random world selection by region",
+            position = 10,
+            closedByDefault = false
+    )
+    String regionSection = "region";
+
+
+    @ConfigItem(
+            keyName = "AllowUK",
+            name = "UK",
+            description = "Allow UK worlds",
+            position = 1,
+            section = regionSection
+    )
+    default boolean allowUK() { return true; }
+
+    @ConfigItem(
+            keyName = "AllowUS",
+            name = "US",
+            description = "Allow US worlds",
+            position = 2,
+            section = regionSection
+    )
+    default boolean allowUS() { return true; }
+
+    @ConfigItem(
+            keyName = "AllowGermany",
+            name = "Germany",
+            description = "Allow German worlds",
+            position = 3,
+            section = regionSection
+    )
+    default boolean allowGermany() { return true; }
+
+    @ConfigItem(
+            keyName = "AllowAustralia",
+            name = "Australia",
+            description = "Allow Australian worlds",
+            position = 4,
+            section = regionSection
+    )
+    default boolean allowAustralia() { return true; }
 }
