@@ -7,16 +7,20 @@ import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
+import net.runelite.client.plugins.microbot.util.cache.Rs2GroundItemCache;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldArea;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
+import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
+import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItemModel;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.magic.Rs2CombatSpells;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
+import net.runelite.client.plugins.microbot.util.magic.Rs2Spellbook;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.misc.Rs2Food;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
@@ -115,6 +119,10 @@ public class BarrowsScript extends Script {
                     usingPoweredStaffs = false;
                     gettheRune();
                     minRuneAmt = config.minRuneAmount();
+                    if(!Rs2Magic.getSpellbook().equals(Rs2Spellbook.MODERN)){
+                        swapTheSpellbook();
+                        return;
+                    }
                 }
 
                 minForgottenBrews = config.minForgottenBrew();
@@ -370,6 +378,7 @@ public class BarrowsScript extends Script {
                     eatFood();
                     outOfSupplies(config);
                     gainRP(config);
+                    lootChampionScroll();
 
                     if(!Rs2Player.isMoving()) {
                         startWalkingToTheChest();
@@ -378,7 +387,9 @@ public class BarrowsScript extends Script {
                     solvePuzzle();
                     checkForAndFightBrother(config);
 
-                    if(Rs2GameObject.findObjectById(20973) != null && Rs2GameObject.hasLineOfSight(Rs2GameObject.findObjectById(20973))){
+                    if(Rs2GameObject.findObjectById(20973) != null
+                            && (Rs2GameObject.hasLineOfSight(Rs2GameObject.findObjectById(20973))
+                            || Rs2Player.distanceTo(Rs2GameObject.findObjectById(20973).getWorldLocation()) < 4)){
                         //chest ID: 20973
                         stopFutureWalker();
 
@@ -853,6 +864,21 @@ public class BarrowsScript extends Script {
         }
     }
 
+    public void lootChampionScroll(){
+        Rs2GroundItemModel championScroll = Rs2GroundItemCache.getClosestItemByGameId(ItemID.SKELETON_CHAMPION_SCROLL).stream().findFirst().orElse(null);
+        if(championScroll != null){
+            Tile scrollsTile = championScroll.getTile();
+            if(championScroll.isClickable() && Rs2GroundItem.hasLineOfSight(scrollsTile)){
+                while(Rs2GroundItemCache.getClosestItemByGameId(ItemID.SKELETON_CHAMPION_SCROLL).stream().findFirst().orElse(null) != null && !Rs2Inventory.contains(championScroll.getId())){
+                    if(!super.isRunning()) break;
+
+                    Rs2GroundItem.interact(championScroll.getName(), "Take");
+                    sleepUntil(()-> !Rs2Player.isMoving() && Rs2Inventory.contains(championScroll.getId()), Rs2Random.between(4000,12000));
+                }
+            }
+        }
+    }
+
     public void gainRP(BarrowsConfig config){
         if(shouldAttackSkeleton){
             int RP = Microbot.getVarbitValue(Varbits.BARROWS_REWARD_POTENTIAL);
@@ -969,7 +995,7 @@ public class BarrowsScript extends Script {
         if(name.contains("(")) name = config.prayerRestoreType().getPrayerRestoreTypeName().split("\\(")[0];
         String splitName = name;
         if (Rs2Inventory.count(it->it!=null&&it.getName().toLowerCase().contains(splitName.toLowerCase())) < 1) {
-            Microbot.log("We don't have enough "+config.prayerRestoreType().getPrayerRestoreTypeName());
+            Microbot.log("We don't have enough "+splitName);
             shouldBank = true;
             return;
         }
@@ -1000,6 +1026,16 @@ public class BarrowsScript extends Script {
         }
         if(tunnelLoopCount >= 30){
             tunnelLoopCount = 0;
+        }
+    }
+
+    public void swapTheSpellbook(){
+        if(!Rs2Magic.getSpellbook().equals(Rs2Spellbook.MODERN)){
+            WorldPoint swapLocation = Rs2Magic.getSpellbook().getSwitchLocation();
+
+            if(Rs2Player.getWorldLocation().distanceTo(swapLocation) > 5) Rs2Walker.walkTo(swapLocation);
+
+            Rs2Spellbook.MODERN.switchTo();
         }
     }
 
