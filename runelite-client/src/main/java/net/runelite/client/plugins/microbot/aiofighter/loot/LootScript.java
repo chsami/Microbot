@@ -12,10 +12,12 @@ import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2RunePouch;
-import net.runelite.client.plugins.microbot.util.magic.Runes;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -43,11 +45,10 @@ public class LootScript extends Script {
                 }
 
 
-                String[] itemNamesToLoot = lootItemNames(config);
                 final Predicate<GroundItem> filter = groundItem ->
                         groundItem.getLocation().distanceTo(Microbot.getClient().getLocalPlayer().getWorldLocation()) < config.attackRadius() &&
                                 (!config.toggleOnlyLootMyItems() || groundItem.getOwnership() == OWNERSHIP_SELF) &&
-                                (shouldLootBasedOnName(groundItem, itemNamesToLoot) || shouldLootBasedOnValue(groundItem, config));
+                                shouldLoot(groundItem, config);
                 List<GroundItem> groundItems = getGroundItems().values().stream()
                         .filter(filter)
                         .collect(Collectors.toList());
@@ -98,6 +99,17 @@ public class LootScript extends Script {
         return Rs2Inventory.contains(groundItem.getItemId());
     }
 
+    private boolean shouldLoot(GroundItem groundItem, AIOFighterConfig config) {
+        return shouldLootArrow(groundItem, config)
+                || shouldLootBasedOnValue(groundItem, config)
+                || shouldLootBasedOnName(groundItem, lootItemNames(config))
+                || shouldLootUntradable(groundItem, config);
+    }
+
+    private boolean shouldLootArrow(GroundItem groundItem, AIOFighterConfig config) {
+        return config.toggleLootArrows() && groundItem.getName().contains("arrow") && groundItem.getQuantity() >= 10;
+    }
+
     private boolean shouldLootBasedOnValue(GroundItem groundItem, AIOFighterConfig config) {
         if (config.looterStyle() != DefaultLooterStyle.GE_PRICE_RANGE && config.looterStyle() != DefaultLooterStyle.MIXED)
             return false;
@@ -106,14 +118,15 @@ public class LootScript extends Script {
     }
 
     private boolean shouldLootBasedOnName(GroundItem groundItem, String[] itemNamesToLoot) {
-        return Arrays.stream(itemNamesToLoot).anyMatch(name -> groundItem.getName().trim().toLowerCase().contains(name.trim().toLowerCase()));
+        return Arrays.stream(itemNamesToLoot).anyMatch(name -> groundItem.getName().trim().toLowerCase().contains(name.toLowerCase()));
+    }
+
+    private boolean shouldLootUntradable(GroundItem groundItem, AIOFighterConfig config) {
+        return config.toggleLootUntradables() && !groundItem.isTradeable();
     }
 
     private String[] lootItemNames(AIOFighterConfig config) {
         ArrayList<String> itemNamesToLoot = new ArrayList<>();
-        if (config.toggleLootArrows()) {
-            itemNamesToLoot.add("arrow");
-        }
         if (config.toggleBuryBones()) {
             itemNamesToLoot.add("bones");
         }
@@ -125,10 +138,6 @@ public class LootScript extends Script {
         }
         if (config.toggleLootCoins()) {
             itemNamesToLoot.add("coins");
-        }
-        if (config.toggleLootUntradables()) {
-            itemNamesToLoot.add("untradeable");
-            itemNamesToLoot.add("scroll box");
         }
         if (config.looterStyle().equals(DefaultLooterStyle.MIXED) || config.looterStyle().equals(DefaultLooterStyle.ITEM_LIST)) {
             itemNamesToLoot.addAll(Arrays.asList(config.listOfItemsToLoot().trim().split(",")));
