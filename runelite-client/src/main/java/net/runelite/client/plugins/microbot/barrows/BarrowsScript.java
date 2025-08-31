@@ -69,12 +69,6 @@ public class BarrowsScript extends Script {
                 if (!super.run()) return;
                 long startTime = System.currentTimeMillis();
 
-                if (Rs2Player.getQuestState(Quest.HIS_FAITHFUL_SERVANTS) != QuestState.FINISHED) {
-                    Microbot.showMessage("Complete the 'His Faithful Servants' quest for the webwalker to function correctly");
-                    shutdown();
-                    return;
-                }
-
                 var inventorySetup = new Rs2InventorySetup(config.inventorySetup().getName(), mainScheduledFuture);
 
                 if(firstRun) {
@@ -367,6 +361,13 @@ public class BarrowsScript extends Script {
 
                 if(inTunnels && !shouldBank) {
                     Microbot.log("In the tunnels");
+
+                    if (Rs2Player.getQuestState(Quest.HIS_FAITHFUL_SERVANTS) != QuestState.FINISHED) {
+                        Microbot.showMessage("Complete the 'His Faithful Servants' quest for the webwalker to function correctly");
+                        shutdown();
+                        return;
+                    }
+
                     if(!varbitCheckEnabled){
                         varbitCheckEnabled=true;
                     }
