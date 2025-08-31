@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.GeoffPlugins.construction2;
 
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
@@ -16,6 +17,7 @@ import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
+import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
@@ -35,12 +37,31 @@ public class Construction2Script extends Script {
     private static final List<Integer> MAHOGANY_TABLE = List.of(13298, 15298);
     private static final List<Integer> MYTHICAL_CAPE_MOUNT = List.of(15394, 31986);
 
-    public GameObject getClosestTile(List<Integer> objIDs) {
+    private static List<Integer> objectIDs = List.of(0);
+
+    public static boolean firstRun = false;
+
+    public GameObject getClosestTileGameObject(List<Integer> objIDs) {
         List<GameObject> objects = Rs2GameObject.getGameObjects();
         GameObject closest = null;
         WorldPoint playerLocation = Rs2Player.getWorldLocation();
-        
+
         for (GameObject obj : objects) {
+            if (objIDs.contains(obj.getId())) {
+                if (closest == null || Rs2Walker.getDistanceBetween(playerLocation, obj.getWorldLocation()) < Rs2Walker.getDistanceBetween(playerLocation, closest.getWorldLocation())) {
+                    closest = obj;
+                }
+            }
+        }
+        return closest;
+    }
+
+    public TileObject getClosestTileTileObject(List<Integer> objIDs) {
+        List<TileObject> tileObjects = Rs2GameObject.getTileObjects();
+        TileObject closest = null;
+        WorldPoint playerLocation = Rs2Player.getWorldLocation();
+
+        for (TileObject obj : tileObjects) {
             if (objIDs.contains(obj.getId())) {
                 if (closest == null || Rs2Walker.getDistanceBetween(playerLocation, obj.getWorldLocation()) < Rs2Walker.getDistanceBetween(playerLocation, closest.getWorldLocation())) {
                     closest = obj;
@@ -133,9 +154,14 @@ public class Construction2Script extends Script {
         if(getButler() != null) {
             sleepUntil(()-> getButler() != null && getButler().isInteractingWithPlayer(), Rs2Random.between(750,1500));
             if(!getButler().isInteractingWithPlayer()){
-                if (Rs2Inventory.count(config.selectedMode().getPlankItemId()) <= Rs2Random.between(0, 18)) butler(config, actionDelay);
+                if (Rs2Inventory.count(config.selectedMode().getPlankItemId()) <= Rs2Random.between(10, 18)) butler(config, actionDelay);
             } else {
                 butler(config, actionDelay);
+            }
+        } else {
+            if(firstRun){
+                callTheButler();
+                if(getButler() != null) firstRun = false;
             }
         }
     }
@@ -143,7 +169,6 @@ public class Construction2Script extends Script {
     private void calculateState(Construction2Config config) {
         boolean hasRequiredPlanks;
         NPC butler = getButler();
-        List<Integer> objectIDs = List.of(0);
         switch (config.selectedMode()) {
             case OAK_DUNGEON_DOOR:
                 objectIDs = OAK_DUNGEON_DOOR;
@@ -162,37 +187,77 @@ public class Construction2Script extends Script {
         }
 
         if (workingTile == null) {
-            workingTile = getClosestTile(objectIDs).getWorldLocation();
+            if(!objectIDs.equals(OAK_DUNGEON_DOOR)){
+                workingTile = getClosestTileGameObject(objectIDs).getWorldLocation();
+            } else {
+                workingTile = getClosestTileTileObject(objectIDs).getWorldLocation();
+            }
         }
 
-        GameObject objOnWorkingTile = Rs2GameObject.getGameObject(workingTile);
-        if (objOnWorkingTile == null || !objectIDs.contains(objOnWorkingTile.getId())) {
-            // Find new working tile
-            workingTile = getClosestTile(objectIDs).getWorldLocation();
+        GameObject objOnWorkingTile = null;
+        TileObject tileObjOnWorkingTile = null;
+        if(!objectIDs.equals(OAK_DUNGEON_DOOR)){
             objOnWorkingTile = Rs2GameObject.getGameObject(workingTile);
+        } else {
+            tileObjOnWorkingTile = Rs2GameObject.getTileObject(workingTile);
         }
 
-        if (objOnWorkingTile.getId() == objectIDs.get(0)) {
-            state = Construction2State.Remove;
-        } else if (objOnWorkingTile.getId() == objectIDs.get(1) && hasRequiredPlanks) {
-            state = Construction2State.Build;
-        } else if (objOnWorkingTile.getId() == objectIDs.get(1) && butler != null) {
-            state = Construction2State.Butler;
-        } else if (!objectIDs.contains(objOnWorkingTile.getId())) {
-            state = Construction2State.Idle;
-            Microbot.getNotifier().notify("Looks like we are no longer in our house.");
-            returnToTheHouse();
+        if (objOnWorkingTile == null && tileObjOnWorkingTile == null) {
+            // Find new working tile
+            if(!objectIDs.equals(OAK_DUNGEON_DOOR)){
+                workingTile = getClosestTileGameObject(objectIDs).getWorldLocation();
+                objOnWorkingTile = Rs2GameObject.getGameObject(workingTile);
+            } else {
+                workingTile = getClosestTileTileObject(objectIDs).getWorldLocation();
+                tileObjOnWorkingTile = Rs2GameObject.getTileObject(workingTile);
+            }
+        }
+
+        if(!objectIDs.equals(OAK_DUNGEON_DOOR)){
+            if (objOnWorkingTile.getId() == objectIDs.get(0)) {
+                state = Construction2State.Remove;
+            } else if (objOnWorkingTile.getId() == objectIDs.get(1) && hasRequiredPlanks) {
+                state = Construction2State.Build;
+            } else if (objOnWorkingTile.getId() == objectIDs.get(1)) {
+                state = Construction2State.Butler;
+            } else if (!objectIDs.contains(objOnWorkingTile.getId())) {
+                state = Construction2State.Idle;
+                Microbot.getNotifier().notify("Looks like we are no longer in our house.");
+                returnToTheHouse(objectIDs);
+            }
+        } else {
+            if (tileObjOnWorkingTile.getId() == objectIDs.get(0)) {
+                state = Construction2State.Remove;
+            } else if (tileObjOnWorkingTile.getId() == objectIDs.get(1) && hasRequiredPlanks) {
+                state = Construction2State.Build;
+            } else if (tileObjOnWorkingTile.getId() == objectIDs.get(1)) {
+                state = Construction2State.Butler;
+            } else if (!objectIDs.contains(tileObjOnWorkingTile.getId())) {
+                state = Construction2State.Idle;
+                Microbot.getNotifier().notify("Looks like we are no longer in our house.");
+                returnToTheHouse(objectIDs);
+            }
         }
     }
 
-    private void returnToTheHouse(){
+    private void returnToTheHouse(List<Integer> objIDs){
         GameObject housePortal = Rs2GameObject.getGameObject("Portal");
+        firstRun = true; //we're returning from break we'll need to recall the butler
         if(housePortal != null){
             if(Rs2GameObject.interact(housePortal, "Build mode")){
                 sleepUntil(()-> Rs2Player.getWorldLocation() != null
                         && Rs2Player.getWorldLocation().getRegionX() == 29
                             && Rs2Player.getWorldLocation().getRegionY() == 89, Rs2Random.between(10000,20000));
                 sleep(2000,5000);
+            }
+            if(objIDs.equals(OAK_DUNGEON_DOOR)){
+                // We need to enter the dungeon
+                if(Rs2GameObject.getGameObject("Dungeon entrance", true) !=null){
+                    if(Rs2GameObject.interact("Dungeon entrance", "Enter", true)){
+                        sleepUntil(()-> Rs2Player.isMoving(), Rs2Random.between(500,1000));
+                        sleepUntil(()-> !Rs2Player.isMoving(), Rs2Random.between(10000,15000));
+                    }
+                }
             }
         } else {
             Microbot.getNotifier().notify("Can't find the house portal!");
@@ -201,75 +266,123 @@ public class Construction2Script extends Script {
     }
 
     private void buildSpace(Construction2Config config, int actionDelay) {
-        GameObject space = Rs2GameObject.getGameObject(workingTile);
-        int spaceId = space != null ? space.getId() : -1;
-        char buildKey = '1';
+        GameObject gameObjSpace = Rs2GameObject.getGameObject(workingTile);
+        TileObject tileObjSpace = Rs2GameObject.getTileObject(workingTile);
+        if(!objectIDs.equals(OAK_DUNGEON_DOOR)){
+            GameObject space = gameObjSpace;
+            int spaceId = space != null ? space.getId() : -1;
+            char buildKey = '1';
 
-        switch (config.selectedMode()) {
-            case OAK_DUNGEON_DOOR:
-                buildKey = '1';
-                break;
-            case OAK_LARDER:
-                buildKey = '2';
-                break;
-            case MAHOGANY_TABLE:
-                buildKey = '6';
-                break;
-            // case MYTHICAL_CAPE:
-            //     buildKey = '4';
-            //     break;
-            default:
-                return;
-        }
+            switch (config.selectedMode()) {
+                case OAK_DUNGEON_DOOR:
+                    buildKey = '1';
+                    break;
+                case OAK_LARDER:
+                    buildKey = '2';
+                    break;
+                case MAHOGANY_TABLE:
+                    buildKey = '6';
+                    break;
+                // case MYTHICAL_CAPE:
+                //     buildKey = '4';
+                //     break;
+                default:
+                    return;
+            }
 
-        if (space == null) return;
-        if (Rs2GameObject.interact(space, "Build")) {
-            System.out.println("Interacted with build space: " + space.getId());
-            sleepUntilOnClientThread(this::hasFurnitureInterfaceOpen, 2500);
-            System.out.println("Pressing key: " + buildKey);
-            Rs2Keyboard.keyPress(buildKey); // Ensure this is the correct key for the selected build option
-            sleepUntilOnClientThread(() -> spaceId != space.getId(), 2500);
-            System.out.println("Built object: " + config.selectedMode());
+            if (space == null) return;
+            if (Rs2GameObject.interact(space, "Build")) {
+                System.out.println("Interacted with build space: " + space.getId());
+                sleepUntilOnClientThread(this::hasFurnitureInterfaceOpen, 2500);
+                System.out.println("Pressing key: " + buildKey);
+                Rs2Keyboard.keyPress(buildKey); // Ensure this is the correct key for the selected build option
+                sleepUntilOnClientThread(() -> spaceId != space.getId(), 2500);
+                System.out.println("Built object: " + config.selectedMode());
+            } else {
+                System.out.println("Failed to interact with build space: " + space.getId());
+            }
         } else {
-            System.out.println("Failed to interact with build space: " + space.getId());
+            TileObject space = tileObjSpace;
+            int spaceId = space != null ? space.getId() : -1;
+            char buildKey = '1';
+
+            switch (config.selectedMode()) {
+                case OAK_DUNGEON_DOOR:
+                    buildKey = '1';
+                    break;
+                case OAK_LARDER:
+                    buildKey = '2';
+                    break;
+                case MAHOGANY_TABLE:
+                    buildKey = '6';
+                    break;
+                // case MYTHICAL_CAPE:
+                //     buildKey = '4';
+                //     break;
+                default:
+                    return;
+            }
+
+            if (space == null) return;
+            if (Rs2GameObject.interact(space, "Build")) {
+                System.out.println("Interacted with build space: " + space.getId());
+                sleepUntilOnClientThread(this::hasFurnitureInterfaceOpen, 2500);
+                System.out.println("Pressing key: " + buildKey);
+                Rs2Keyboard.keyPress(buildKey); // Ensure this is the correct key for the selected build option
+                sleepUntilOnClientThread(() -> spaceId != space.getId(), 2500);
+                System.out.println("Built object: " + config.selectedMode());
+            } else {
+                System.out.println("Failed to interact with build space: " + space.getId());
+            }
         }
     }
 
     private void removeSpace(Construction2Config config, int actionDelay) {
-        GameObject builtObject = Rs2GameObject.getGameObject(workingTile);
-        int spaceId = builtObject != null ? builtObject.getId() : -1;
+        GameObject gameObjSpace = Rs2GameObject.getGameObject(workingTile);
+        TileObject tileObjSpace = Rs2GameObject.getTileObject(workingTile);
 
-        if (builtObject == null) return;
-        if(builtObject.getId() == 15328 || builtObject.getId() == 15403 || builtObject.getId() == 15298 || builtObject.getId() == 31986) return;
+        if(!objectIDs.equals(OAK_DUNGEON_DOOR)){
+            GameObject builtObject = gameObjSpace;
+            int spaceId = builtObject != null ? builtObject.getId() : -1;
 
-        if (Rs2GameObject.interact(builtObject, "Remove")) {
-            System.out.println("Interacted with remove option: " + builtObject.getId());
-            sleepUntilOnClientThread(() -> hasRemoveInterfaceOpen(config), 2500);
-            Rs2Keyboard.keyPress('1');
-            sleepUntilOnClientThread(() -> spaceId != builtObject.getId(), 2500);
-            System.out.println("Removed object: " + config.selectedMode());
+            if (builtObject == null) return;
+            if(builtObject.getId() == 15328 || builtObject.getId() == 15403 || builtObject.getId() == 15298 || builtObject.getId() == 31986) return;
+
+            if (Rs2GameObject.interact(builtObject, "Remove")) {
+                System.out.println("Interacted with remove option: " + builtObject.getId());
+                sleepUntilOnClientThread(() -> hasRemoveInterfaceOpen(config), 2500);
+                Rs2Keyboard.keyPress('1');
+                sleepUntilOnClientThread(() -> spaceId != builtObject.getId(), 2500);
+                System.out.println("Removed object: " + config.selectedMode());
+            } else {
+                System.out.println("Failed to interact with remove option: " + builtObject.getId());
+            }
         } else {
-            System.out.println("Failed to interact with remove option: " + builtObject.getId());
+            TileObject builtObject = tileObjSpace;
+            int spaceId = builtObject != null ? builtObject.getId() : -1;
+
+            if (builtObject == null) return;
+            if(builtObject.getId() == 15328 || builtObject.getId() == 15403 || builtObject.getId() == 15298 || builtObject.getId() == 31986) return;
+
+            if (Rs2GameObject.interact(builtObject, "Remove")) {
+                System.out.println("Interacted with remove option: " + builtObject.getId());
+                sleepUntilOnClientThread(() -> hasRemoveInterfaceOpen(config), 2500);
+                Rs2Keyboard.keyPress('1');
+                sleepUntilOnClientThread(() -> spaceId != builtObject.getId(), 2500);
+                System.out.println("Removed object: " + config.selectedMode());
+            } else {
+                System.out.println("Failed to interact with remove option: " + builtObject.getId());
+            }
         }
     }
 
     private void butler(Construction2Config config, int actionDelay) {
         var butler = getButler();
-        if (butler == null) return;
+        if(butler == null) callTheButler();
         boolean butlerIsInteracting = butler.isInteractingWithPlayer();
 
         if (!butlerIsInteracting) {
-            Rs2Tab.switchTo(InterfaceTab.SETTINGS);
-
-            Widget houseOptionWidget = Rs2Widget.getWidget(7602207);
-            sleepUntil(()-> houseOptionWidget != null, Rs2Random.between(2000,5000));
-            if (houseOptionWidget != null) Rs2Widget.clickWidget(houseOptionWidget);
-
-            Widget callServantWidget = Rs2Widget.getWidget(24248342);
-            sleepUntil(()-> callServantWidget != null, Rs2Random.between(2000,5000));
-            if (callServantWidget != null) Rs2Widget.clickWidget(callServantWidget);
-
-            sleepUntil(()-> Rs2Dialogue.isInDialogue(), Rs2Random.between(2000,5000));
+            callTheButler();
         }
 
         if (Rs2Dialogue.isInDialogue() || Rs2Npc.interact(butler, "Talk-to")) {
@@ -298,6 +411,22 @@ public class Construction2Script extends Script {
                 Rs2Keyboard.keyPress('1');
             }
         }
+    }
+
+    public void callTheButler(){
+        Rs2Tab.switchTo(InterfaceTab.SETTINGS);
+
+        Widget houseOptionWidget = Rs2Widget.getWidget(7602207);
+        sleepUntil(()-> houseOptionWidget != null, Rs2Random.between(2000,5000));
+        if (houseOptionWidget != null) Rs2Widget.clickWidget(houseOptionWidget);
+
+        sleep(1000,2000); // allow the client to load the widget
+
+        Widget callServantWidget = Rs2Widget.getWidget(370,22);
+        sleepUntil(()-> callServantWidget != null, Rs2Random.between(2000,5000));
+        if (callServantWidget != null) Rs2Widget.clickWidget(callServantWidget);
+
+        sleepUntil(()-> Rs2Dialogue.isInDialogue(), Rs2Random.between(2000,5000));
     }
 
     private boolean hasRemoveInterfaceOpen(Construction2Config config) {
