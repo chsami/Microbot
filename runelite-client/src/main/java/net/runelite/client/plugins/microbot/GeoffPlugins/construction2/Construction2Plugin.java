@@ -46,6 +46,7 @@ public class Construction2Plugin extends Plugin {
         if (overlayManager != null) {
             overlayManager.add(construction2Overlay);
         }
+        Construction2Script.firstRun = true;
         construction2Script.run(config);
     }
 
