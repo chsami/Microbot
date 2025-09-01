@@ -77,6 +77,7 @@ public class Rs2Player {
     public static int antiPoisonTime = -1;
     public static int teleBlockTime = -1;
     public static int goadingTime = -1;
+    public static int moonlightTime = -1;
     public static Instant lastAnimationTime = null;
     private static final long COMBAT_TIMEOUT_MS = 10000;
     private static long lastCombatTime = 0;
@@ -117,6 +118,10 @@ public class Rs2Player {
 
     public static boolean hasGoadingActive() {
         return goadingTime > 0;
+    }
+
+    public static boolean hasMoonlightActive() {
+        return moonlightTime > 0;
     }
 
     public static boolean hasAttackActive(int threshold) {
@@ -176,6 +181,9 @@ public class Rs2Player {
         }
         if (event.getVarbitId() == Varbits.BUFF_GOADING_POTION) {
             goadingTime = event.getValue();
+        }
+        if (event.getVarbitId() == Varbits.MOONLIGHT_POTION) {
+            moonlightTime = event.getValue();
         }
         if (event.getVarbitId() == Varbits.DIVINE_MAGIC) {
             divineMagicTime = event.getValue();
