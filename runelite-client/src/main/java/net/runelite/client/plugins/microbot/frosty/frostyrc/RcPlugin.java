@@ -57,7 +57,7 @@ public class RcPlugin extends Plugin {
     @Getter
     private WorldPoint myWorldPoint;
     @Getter
-    public static String version = "v1.1.0";
+    public static String version = "v1.1.2";
 
     @Subscribe
     public void onGameObjectSpawned(GameObjectSpawned event) {
