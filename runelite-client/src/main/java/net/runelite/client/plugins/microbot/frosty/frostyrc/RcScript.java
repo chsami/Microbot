@@ -477,6 +477,8 @@ public class RcScript extends Script {
             BreakHandlerScript.setLockState(true);
         }
 
+		if (Rs2Bank.isOpen()) { Rs2Bank.closeBank(); }
+
         if (Rs2Inventory.contains(mythCape)) {
             Microbot.log("Interacting with myth cape");
             Rs2Inventory.interact(mythCape, "Teleport");
