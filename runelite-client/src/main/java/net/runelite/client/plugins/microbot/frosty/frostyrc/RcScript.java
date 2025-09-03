@@ -737,6 +737,9 @@ public class RcScript extends Script {
 
 		if (plugin.isBreakHandlerEnabled()) {
 			BreakHandlerScript.setLockState(false);
+			if (BreakHandlerScript.isBreakActive() || BreakHandlerScript.breakIn <= 0) {
+				return;
+			}
 		}
 
         state = State.BANKING;
