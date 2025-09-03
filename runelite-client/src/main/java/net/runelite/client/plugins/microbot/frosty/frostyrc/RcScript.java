@@ -194,6 +194,10 @@ public class RcScript extends Script {
             }
         }
 
+		if (plugin.isBreakHandlerEnabled()) {
+			BreakHandlerScript.setLockState(true);
+		}
+
         Rs2Tab.switchToInventoryTab();
 
 		if (Rs2Inventory.hasDegradedPouch()) {
