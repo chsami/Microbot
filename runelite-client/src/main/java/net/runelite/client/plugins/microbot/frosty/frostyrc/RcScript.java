@@ -215,13 +215,6 @@ public class RcScript extends Script {
             handleFeroxRunEnergy();
         }
 
-        if (plugin.isBreakHandlerEnabled()) {
-            BreakHandlerScript.setLockState(false);
-            if (BreakHandlerScript.isBreakActive() || BreakHandlerScript.breakIn <= 0) {
-                return;
-            }
-        }
-
         while (!Rs2Bank.isOpen() && isRunning() &&
                 (!Rs2Inventory.allPouchesFull()
                         || !Rs2Inventory.contains(colossalPouch)
