@@ -4,7 +4,6 @@ import lombok.SneakyThrows;
 import net.runelite.api.Actor;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
-import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.aiofighter.AIOFighterConfig;
@@ -20,6 +19,11 @@ import net.runelite.client.plugins.microbot.util.antiban.enums.ActivityIntensity
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldArea;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
+import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
+import net.runelite.client.plugins.microbot.util.magic.Rs2Spellbook;
+import net.runelite.client.plugins.microbot.util.magic.reanimate.HeadType;
+import net.runelite.client.plugins.microbot.util.magic.reanimate.Rs2Reanimate;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcManager;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
@@ -30,10 +34,7 @@ import net.runelite.client.plugins.microbot.util.slayer.Rs2Slayer;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import org.slf4j.event.Level;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -75,6 +76,29 @@ public class AttackNpcScript extends Script {
                     AIOFighterPlugin.setState(State.IDLE);
                 }
 
+                if (config.state().equals(State.BANKING) || config.state().equals(State.WALKING))
+                    return;
+
+                if (Rs2Magic.isSpellbook(Rs2Spellbook.ARCEUUS)) {
+                    Map.Entry<Rs2ItemModel, HeadType> head = Rs2Reanimate.getReanimatableHead();
+                    if (head != null) {
+                        boolean prevPause = Microbot.pauseAllScripts.getAndSet(true);
+                        try {
+                            if (head.getValue().reanimate(head.getKey())) {
+                                sleepUntil(() -> Rs2Npc.getNpcsForPlayer(Rs2Reanimate::isReanimated).findAny().isPresent(), 15000);
+                            }
+                        } finally {
+                            Microbot.pauseAllScripts.set(prevPause);
+                        }
+                    }
+                    Rs2NpcModel reanimated = Rs2Npc.getNpcsForPlayer(Rs2Reanimate::isReanimated).findAny().orElse(null);
+                    if (reanimated != null) {
+                        Rs2Npc.interact(reanimated, "Attack");
+                        return;
+                    }
+                }
+
+
                 attackableArea = new Rs2WorldArea(config.centerLocation().toWorldArea());
                 attackableArea = attackableArea.offset(config.attackRadius());
                 List<String> npcsToAttack = Arrays.stream(config.attackableNpcs().split(","))
@@ -99,9 +123,6 @@ public class AttackNpcScript extends Script {
                     }
                 }
                 filteredAttackableNpcs.set(attackableNpcs);
-
-                if (config.state().equals(State.BANKING) || config.state().equals(State.WALKING))
-                    return;
 
 
                 if (config.toggleCenterTile() && config.centerLocation().getX() == 0
@@ -197,7 +218,6 @@ public class AttackNpcScript extends Script {
             Rs2Player.waitForAnimation();
         }
     }
-
 
     @Override
     public void shutdown() {
