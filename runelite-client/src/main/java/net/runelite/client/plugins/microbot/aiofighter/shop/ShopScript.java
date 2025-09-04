@@ -11,7 +11,7 @@ import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.shop.Rs2Shop;
-import net.runelite.client.plugins.microbot.util.slayer.Rs2Slayer;
+import net.runelite.client.plugins.microbot.util.skills.slayer.Rs2Slayer;
 
 import java.util.ArrayList;
 import java.util.List;

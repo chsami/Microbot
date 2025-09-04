@@ -2,17 +2,17 @@
 
 ## Overview
 
-The `PluginScheduleEntrySoftStopEvent` is a critical component of the Plugin Scheduler system that enables graceful termination of plugins. This event is sent by the scheduler to notify a plugin that it should begin its shutdown process due to stop conditions being met or other scheduling requirements.
+The `PluginScheduleEntryPostScheduleTaskEvent` signals the start of post-schedule tasks for a plugin. It is emitted when the scheduler transitions a schedule entry out of its main task phase (e.g., stop conditions met, user-initiated stop, or scheduler shutdown) so that coordinated cleanup/post actions can run.
 
 ## Class Structure
 
 ```java
 @Getter
-public class PluginScheduleEntrySoftStopEvent {
+public class PluginScheduleEntryPostScheduleTaskEvent {
     private final Plugin plugin;
     private final ZonedDateTime stopDateTime;
     
-    public PluginScheduleEntrySoftStopEvent(Plugin plugin, ZonedDateTime stopDateTime) {
+    public PluginScheduleEntryPostScheduleTaskEvent(Plugin plugin, ZonedDateTime stopDateTime) {
         this.plugin = plugin;
         this.stopDateTime = stopDateTime;
     }
@@ -52,7 +52,7 @@ This event is sent through the RuneLite EventBus system:
 
 ```java
 // Inside the scheduler when a plugin should be stopped
-Microbot.getEventBus().post(new PluginScheduleEntrySoftStopEvent(
+Microbot.getEventBus().post(new PluginScheduleEntryPostScheduleTaskEvent(
     plugin,               // The plugin to stop
     ZonedDateTime.now()   // Current time
 ));
@@ -86,7 +86,7 @@ private void softStopPlugin(PluginScheduleEntry entry) {
         log.debug("Sending soft stop request to plugin {}", entry.getName());
         
         // Post the event to the EventBus
-        Microbot.getEventBus().post(new PluginScheduleEntrySoftStopEvent(
+        Microbot.getEventBus().post(new PluginScheduleEntryPostScheduleTaskEvent(
             plugin,
             ZonedDateTime.now()
         ));
@@ -110,7 +110,7 @@ Plugins that implement the `ConditionProvider` interface can handle the event:
 ```java
 @Subscribe
 @Override
-public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
+public void onPluginScheduleEntryPostScheduleTaskEvent(PluginScheduleEntryPostScheduleTaskEvent event) {
     // Only respond if this event is targeted at this plugin
     if (event.getPlugin() == this) {
         log.info("Received soft stop request, cleaning up and stopping...");
@@ -127,23 +127,23 @@ public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent 
 
 ## Relationship to Other Components
 
-The `PluginScheduleEntrySoftStopEvent` is part of a coordinated stop sequence:
+The `PluginScheduleEntryPostScheduleTaskEvent` is part of a coordinated stop sequence:
 
 1. **Trigger**: Stop conditions are met, manual stop requested, or scheduler is shutting down
-2. **Soft Stop**: The scheduler sends `PluginScheduleEntrySoftStopEvent` to request graceful termination
+2. **Soft Stop**: The scheduler sends `PluginScheduleEntryPostScheduleTaskEvent` to request graceful termination
 3. **Plugin Response**: The plugin performs cleanup and either:
    - Stops itself directly using `Microbot.stopPlugin(this)`
-   - Posts a `PluginScheduleEntryFinishedEvent` to report completion
+   - Posts a `PluginScheduleEntryMainTaskFinishedEvent` to report completion
 4. **Hard Stop Fallback**: If the plugin doesn't respond within a timeout period and is marked as hard-stoppable, the scheduler may forcibly terminate it
 
 ## Best Practices
 
 ### For Plugin Developers
 
-1. **Implement the Event Handler**: Ensure your plugin properly handles the `PluginScheduleEntrySoftStopEvent` if it implements `ConditionProvider`
+1. **Implement the Event Handler**: Ensure your plugin properly handles the `PluginScheduleEntryPostScheduleTaskEvent` if it implements `ConditionProvider`
 2. **Respond Promptly**: Complete cleanup operations quickly to avoid being hard-stopped
 3. **Check Target Plugin**: Always verify that the event is targeting your plugin before processing it
-4. **Report Completion**: Consider posting a `PluginScheduleEntryFinishedEvent` to provide more context about the stop reason
+4. **Report Completion**: Consider posting a `PluginScheduleEntryMainTaskFinishedEvent` to provide more context about the stop reason
 
 ### For Scheduler Implementation
 

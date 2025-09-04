@@ -21,7 +21,7 @@ public interface SchedulablePlugin {
     // Required methods
     LogicalCondition getStartCondition();
     LogicalCondition getStopCondition();
-    void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event);
+    void onPluginScheduleEntryPostScheduleTaskEvent(PluginScheduleEntryPostScheduleTaskEvent event);
     
     // Optional methods with default implementations
     void onStopConditionCheck();
@@ -40,7 +40,7 @@ Each method plays a specific role in how your plugin interacts with the schedule
 
 1. **getStartCondition()**: Defines when your plugin is eligible to start.
 2. **getStopCondition()**: Defines when your plugin should terminate.
-3. **onPluginScheduleEntrySoftStopEvent()**: Handles graceful shutdown requests from the scheduler.
+3. **onPluginScheduleEntryPostScheduleTaskEvent()**: Handles graceful shutdown requests from the scheduler.
 4. **onStopConditionCheck()**: Hook for updating condition state before evaluation.
 5. **reportFinished()**: Allows the plugin to self-report task completion.
 6. **allowHardStop()**: Indicates if the plugin can be forcibly terminated.
@@ -74,8 +74,8 @@ public LogicalCondition getStopCondition() {
     // Create a logical condition structure for when the plugin should stop
     OrCondition orCondition = new OrCondition();
     
-    // Create a lock condition to prevent stopping during critical operations
-    LockCondition lockCondition = new LockCondition("Locked during critical operation");
+    // Create a lock condition to prevent stopping during critical operations , and the break handler for taking a break
+    LockCondition lockCondition = new LockCondition("Locked during critical operation", true); //ensure unlock on shutdown of the plugin !
     
     // Add your specific conditions
     orCondition.addCondition(new TimeCondition(30, TimeUnit.MINUTES));
@@ -103,7 +103,7 @@ public LogicalCondition getStopCondition() {
 
 private LogicalCondition createStopCondition() {
     if (this.lockCondition == null) {
-        this.lockCondition = new LockCondition("Locked because the Plugin " + getName() + " is in a critical operation");
+        this.lockCondition = new LockCondition("Locked because the Plugin " + getName() + " is in a critical operation", true); //ensure unlock on shutdown of the plugin !
     }
 
     AndCondition andCondition = new AndCondition();
@@ -143,7 +143,7 @@ The soft stop handler is essential for graceful shutdown. It's triggered when th
 ```java
 @Override
 @Subscribe
-public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
+public void onPluginScheduleEntryPostScheduleTaskEvent(PluginScheduleEntryPostScheduleTaskEvent event) {
     if (event.getPlugin() == this) {
         log.info("Scheduler requesting plugin shutdown");
         
@@ -163,7 +163,7 @@ Real-world example from GotrPlugin:
 
 ```java
 @Subscribe
-public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
+public void onPluginScheduleEntryPostScheduleTaskEvent(PluginScheduleEntryPostScheduleTaskEvent event) {
     if (event.getPlugin() == this) {
         Microbot.log("Scheduler about to turn off Guardians of the Rift");
 
@@ -213,7 +213,7 @@ The lock condition is a powerful feature that prevents your plugin from being st
 
 ```java
 // Creating the lock condition
-this.lockCondition = new LockCondition("Locked during critical operation");
+this.lockCondition = new LockCondition("Locked during critical operation", true; //ensure unlock on shutdown of the plugin !
 
 // Locking before a critical operation
 lockCondition.lock();
@@ -387,7 +387,7 @@ root.addCondition(conditionC);
 
 1. **Always Use Lock Conditions**: Include a lock condition in your stop condition structure to prevent your plugin from being stopped during critical operations.
 
-2. **Handle Soft Stops Gracefully**: Implement proper cleanup in your `onPluginScheduleEntrySoftStopEvent` method.
+2. **Handle Soft Stops Gracefully**: Implement proper cleanup in your `onPluginScheduleEntryPostScheduleTaskEvent` method.
 
 3. **Use the Client Thread**: Always stop your plugin on the client thread to avoid synchronization issues.
 
@@ -554,7 +554,7 @@ Location conditions can serve various purposes:
 3. **Safety Checks**: Prevent dangerous activities
    ```java
    // Don't allow stop in dangerous areas
-   LockCondition lockCondition = new LockCondition("In wilderness");
+   LockCondition lockCondition = new LockCondition("In wilderness", true); //ensure unlock on shutdown of the plugin !
    
    // Lock when entering wilderness
    if (LocationCondition.inAnyArea(

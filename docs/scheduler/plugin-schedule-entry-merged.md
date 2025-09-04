@@ -204,7 +204,7 @@ The `PluginScheduleEntry` class supports several ways a plugin can be stopped, t
 The stopping process follows a sophisticated pattern:
 
 1. **Stop Initiation**: When conditions are met or user triggers a stop, the `stopInitiated` flag is set and the stop process begins
-2. **Soft Stop**: A `PluginScheduleEntrySoftStopEvent` is sent to the plugin, allowing it to perform cleanup operations
+2. **Soft Stop**: A `PluginScheduleEntryPostScheduleTaskEvent` is sent to the plugin, allowing it to perform cleanup operations
 3. **Grace Period**: The plugin gets time to clean up (based on `softStopRetryInterval`)
 4. **Stop Monitoring**: A separate monitoring thread tracks the stopping process
 5. **Hard Stop**: If the plugin doesn't respond within `hardStopTimeout`, a forced stop occurs
@@ -217,7 +217,7 @@ private void softStop(boolean successfulRun) {
     lastStopAttemptTime = stopInitiatedTime;
     
     // Create and post the stop event
-    PluginScheduleEntrySoftStopEvent stopEvent = new PluginScheduleEntrySoftStopEvent(
+    PluginScheduleEntryPostScheduleTaskEvent stopEvent = new PluginScheduleEntryPostScheduleTaskEvent(
         this,
         isRunning(),
         areUserDefinedStopConditionsMet(),
@@ -449,7 +449,7 @@ The scheduler can be configured to interrupt or prevent default plugins from run
 // In SchedulerPlugin.java
 if (prioritizeNonDefaultPlugins) {
     // Look for any upcoming non-default plugin within the configured time window
-    PluginScheduleEntry upcomingNonDefault = getNextScheduledPlugin(false, 
+    PluginScheduleEntry upcomingNonDefault = getNextScheduledPluginEntry(false, 
                                                 Duration.ofMinutes(nonDefaultPluginLookAheadMinutes))
         .filter(plugin -> !plugin.isDefault())
         .orElse(null);

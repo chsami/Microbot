@@ -123,7 +123,7 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
                     } else {
                         log.warn("No plugin selected for editing conditions and no current plugin found.");
                     
-                        PluginScheduleEntry nextPlugin = plugin.getNextScheduledPlugin(false,null).orElse(selected);
+                        PluginScheduleEntry nextPlugin = plugin.getNextScheduledPluginEntry(false,null).orElse(selected);
                         if (nextPlugin == null) {
                             log.warn("No plugin selected for editing conditions and no next scheduled plugin found.");                        
                         }else{
@@ -414,7 +414,7 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
         }
         
         // Save the plan
-        boolean success = plugin.saveScheduledPluginsToFile(saveFile);
+        boolean success = plugin.savePluginScheduleEntriesToFile(saveFile);
         
         if (success) {
             lastSaveFile = saveFile;
@@ -456,7 +456,7 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
         }
         
         // Load the plan
-        boolean success = plugin.loadScheduledPluginsFromFile(loadFile);
+        boolean success = plugin.loadPluginScheduleEntriesFromFile(loadFile);
         
         if (success) {
             lastSaveFile = loadFile;
@@ -672,7 +672,7 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
     public void refresh() {
         tablePanel.refreshTable();
         if (formPanel != null) {
-            formPanel.updateControlButton();
+            formPanel.refresh();
         }
         if (stopConditionPanel != null) {
             stopConditionPanel.refreshConditions();            
@@ -714,7 +714,7 @@ public class SchedulerWindow extends JFrame implements ConditionUpdateCallback {
             // Handle case where we have a plugin reference but nothing is selected
             log.info("No plugin selected for editing. Plugin: {}", plugin.getCleanName());
             // Find if this is the next scheduled plugin
-            PluginScheduleEntry nextPlugin = this.plugin.getNextScheduledPlugin(false,null).orElse(selected);
+            PluginScheduleEntry nextPlugin = this.plugin.getNextScheduledPluginEntry(false,null).orElse(selected);
             if (nextPlugin == null) {
                 log.warn("No plugin selected for editing conditions and no next scheduled plugin found.");                        
             } else {

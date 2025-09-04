@@ -194,14 +194,22 @@ public class PluginManager {
         int loaded = 0;
         for (Plugin plugin : scannedPlugins) {
             try {
-                SwingUtilities.invokeAndWait(() ->
-                {
+                Runnable runnable = () -> {
                     try {
-                        startPlugin(plugin);
-                    } catch (PluginInstantiationException ex) {
-                        log.error("Unable to start plugin {}", plugin.getClass().getSimpleName(), ex);
-                    }
-                });
+                            startPlugin(plugin);
+                        } catch (PluginInstantiationException ex) {
+                            log.error("Unable to start plugin {}", plugin.getClass().getSimpleName(), ex);
+                        }
+                };
+                if (SwingUtilities.isEventDispatchThread()) {
+                    runnable.run();
+                }else{
+                    SwingUtilities.invokeAndWait(() ->
+                    {
+                    runnable.run();
+                        
+                    });
+                }
             } catch (InterruptedException | InvocationTargetException e) {
                 throw new RuntimeException(e);
             }

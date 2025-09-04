@@ -29,7 +29,7 @@ import net.runelite.client.plugins.microbot.aiofighter.skill.AttackStyleScript;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer;
-import net.runelite.client.plugins.microbot.util.slayer.Rs2Slayer;
+import net.runelite.client.plugins.microbot.util.skills.slayer.Rs2Slayer;
 import net.runelite.client.ui.JagexColors;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ColorUtil;

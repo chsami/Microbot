@@ -14,7 +14,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugi
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.AndCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LockCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryPostScheduleTaskEvent;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.enums.Activity;
 import net.runelite.client.ui.overlay.OverlayManager;
@@ -45,7 +45,7 @@ public class BarrowsPlugin extends Plugin implements SchedulablePlugin {
     @Inject
     BarrowsScript barrowsScript;
     LogicalCondition stopCondition = new AndCondition();
-    LockCondition lockCondition = new LockCondition();
+    LockCondition lockCondition = new LockCondition("BarrowsPugin",false, true);
 
 
     @Override
@@ -65,6 +65,9 @@ public class BarrowsPlugin extends Plugin implements SchedulablePlugin {
     protected void shutDown() {
         Rs2Antiban.resetAntibanSettings();
         Rs2Antiban.deactivateAntiban();
+        if (lockCondition != null && lockCondition.isLocked()) {
+            lockCondition.unlock();
+        }
         barrowsScript.neededRune = "unknown";
         barrowsScript.shutdown();
         overlayManager.remove(barrowsOverlay);
@@ -90,7 +93,7 @@ public class BarrowsPlugin extends Plugin implements SchedulablePlugin {
     }
 
     @Subscribe
-    public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
+    public void onPluginScheduleEntryPostScheduleTaskEvent(PluginScheduleEntryPostScheduleTaskEvent event) {
         try{
             if (event.getPlugin() == this) {
                 Microbot.stopPlugin(this);

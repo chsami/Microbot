@@ -6,12 +6,14 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
-
+@Slf4j
 public class GrandExchangeWidget
 {
 
@@ -336,7 +338,12 @@ public class GrandExchangeWidget
 	 * @return an array of {@link Widget} objects representing collect buttons; empty if none found
 	 */
 	static Widget[] getCollectButtons()
-	{
+	{		
+		if (!Rs2Widget.isWidgetVisible(InterfaceID.GE_OFFERS,24))
+		{
+			log.info("Grand Exchange offers interface is not open, cannot retrieve collect buttons.");
+			return new Widget[0];
+		}
 		Widget parent = Rs2Widget.getWidget(InterfaceID.GE_OFFERS, 24);
 		List<Widget> buttons = new ArrayList<>();
 		if (parent != null && parent.getChildren() != null)
@@ -347,6 +354,7 @@ public class GrandExchangeWidget
 				{
 					continue;
 				}
+				
 
 				if (Arrays.stream(child.getActions()).filter(Objects::nonNull).anyMatch(act -> act.toLowerCase().contains("collect")))
 				{

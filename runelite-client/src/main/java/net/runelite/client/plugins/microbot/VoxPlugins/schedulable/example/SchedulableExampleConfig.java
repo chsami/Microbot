@@ -1,6 +1,5 @@
 package net.runelite.client.plugins.microbot.VoxPlugins.schedulable.example;
 
-import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
@@ -10,10 +9,10 @@ import net.runelite.client.config.Keybind;
 import net.runelite.client.config.Range;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
+import net.runelite.client.plugins.microbot.VoxPlugins.schedulable.example.enums.UnifiedLocation;
+import net.runelite.client.plugins.microbot.VoxPlugins.schedulable.example.enums.SpellbookOption;
 
 import java.awt.event.KeyEvent;
-import java.util.Arrays;
-import java.util.List;
 
 @ConfigGroup("SchedulableExample")
 public interface SchedulableExampleConfig extends Config {
@@ -147,6 +146,24 @@ public interface SchedulableExampleConfig extends Config {
                 }
         }
 
+        enum ProcessTrackingMode {
+                SOURCE_CONSUMPTION("Source Consumption"),
+                TARGET_PRODUCTION("Target Production"),
+                EITHER("Either"),
+                BOTH("Both");
+                
+                private final String name;
+                
+                ProcessTrackingMode(String name) {
+                    this.name = name;
+                }
+                
+                @Override
+                public String toString() {
+                    return name;
+                }
+        }
+
 
     @ConfigSection(
         name = "Stop Conditions",
@@ -194,6 +211,13 @@ public interface SchedulableExampleConfig extends Config {
     )
     String npcConditionSection = "npcConditions";
     
+    @ConfigSection(
+        name = "Pre/Post Schedule Requirements",
+        description = "Configure requirements for pre and post schedule tasks",
+        position = 107,
+        closedByDefault = false
+    )
+    String prePostScheduleRequirementsSection = "prePostScheduleRequirements";
     
     // Time Condition Settings
     @ConfigItem(
@@ -526,13 +550,130 @@ public interface SchedulableExampleConfig extends Config {
 
     }
     
-    // Enum for process tracking modes
-    enum ProcessTrackingMode {
-        SOURCE_CONSUMPTION,
-        TARGET_PRODUCTION,
-        EITHER,
-        BOTH
+    // Pre/Post Schedule Requirements Configuration
+    @ConfigItem(
+        keyName = "enablePrePostRequirements",
+        name = "Enable Pre/Post Requirements",
+        description = "Enable pre and post schedule requirements and tasks",
+        position = 0,
+        section = prePostScheduleRequirementsSection
+    )
+    default boolean enablePrePostRequirements() {
+        return false;
     }
+    
+    @ConfigItem(
+        keyName = "preScheduleSpellbook",
+        name = "Pre-Schedule Spellbook",
+        description = "Spellbook required before starting the plugin (None = no switching)",
+        position = 1,
+        section = prePostScheduleRequirementsSection
+    )
+    default SpellbookOption preScheduleSpellbook() {
+        return SpellbookOption.NONE;
+    }
+    
+    @ConfigItem(
+        keyName = "postScheduleSpellbook",
+        name = "Post-Schedule Spellbook",
+        description = "Spellbook to switch to after plugin completion (None = no switching)",
+        position = 2,
+        section = prePostScheduleRequirementsSection
+    )
+    default SpellbookOption postScheduleSpellbook() {
+        return SpellbookOption.NONE;
+    }
+    
+    @ConfigItem(
+        keyName = "preScheduleLocation",
+        name = "Pre-Schedule Location",
+        description = "Location required before starting the plugin (None = no location requirement)",
+        position = 3,
+        section = prePostScheduleRequirementsSection
+    )
+    default UnifiedLocation preScheduleLocation() {
+        return UnifiedLocation.NONE;
+    }
+    
+    @ConfigItem(
+        keyName = "postScheduleLocation",
+        name = "Post-Schedule Location",
+        description = "Location to move to after plugin completion (None = no location requirement)",
+        position = 4,
+        section = prePostScheduleRequirementsSection
+    )
+    default UnifiedLocation postScheduleLocation() {
+        return UnifiedLocation.NONE;
+    }
+    
+  
+       
+    @ConfigItem(
+        keyName = "enableConditionalItemRequirement",
+        name = "Enable Alch Conditional Requirement based on Fire Staff/Rune",
+        description = "Enable the fire staff/fire rune conditional requirement for alching in pre-schedule tasks.",
+        position = 5,
+        section = prePostScheduleRequirementsSection
+    )
+    default boolean enableConditionalItemRequirement() {
+        return false;
+    }
+  
+    
+    @ConfigItem(
+        keyName = "enableEquipmentRequirement",
+        name = "Enable Equipment Requirement",
+        description = "Enable equipment requirement",
+        position = 6,
+        section = prePostScheduleRequirementsSection
+    )
+    default boolean enableEquipmentRequirement() {
+        return false;
+    }
+    
+    @ConfigItem(
+        keyName = "enableInventoryRequirement",
+        name = "Enable Inventory Requirement",
+        description = "Enable inventory requirement",
+        position = 7,
+        section = prePostScheduleRequirementsSection
+    )
+    default boolean enableInventoryRequirement() {
+        return false;
+    }
+      @ConfigItem(
+        keyName = "enableLootRequirement",
+        name = "Enable Loot Requirement",
+        description = "Enable loot requirement for coins near Lumbridge",
+        position = 8,
+        section = prePostScheduleRequirementsSection
+    )
+    default boolean enableLootRequirement() {
+        return false;
+    }
+      @ConfigItem(
+        keyName = "enableShopRequirement",
+        name = "Enable Shop Requirement",
+        description = "Enable shop maple longbow, buy from grand exchange as pre-schedule and sell at store on post-schedule",
+        position = 9,
+        section = prePostScheduleRequirementsSection
+    )
+    default boolean enableShopRequirement() {
+        return false;
+    }
+
+    @ConfigItem(
+        keyName = "externalRequirements",
+        name = "Enable External Requirements",
+        description = "Enable external requirements test for pre and post schedule tasks",
+        position = 10,
+        section = prePostScheduleRequirementsSection
+    )
+    default boolean externalRequirements() {
+        return false;
+    }
+
+
 
     @ConfigSection(
         name = "Antiban Testing",
@@ -643,10 +784,25 @@ public interface SchedulableExampleConfig extends Config {
     String debugSection = "debugSection";
 
     @ConfigItem(
+        keyName = "aliveReportTimeout",
+        name = "Alive Report Timeout (sec)",
+        description = "Time in seconds before script reports it's alive",
+        position = 0,
+        section = debugSection
+    )
+    @Range(
+            min = 10,
+            max = 100
+    )
+    default int aliveReportTimeout() {
+        return 10;
+    }
+
+    @ConfigItem(
         keyName = "finishPluginNotSuccessfulHotkey",
         name = "Finish Plugin Not-Successful Hotkey",
-        description = "Press this hotkey to manually trigger the PluginScheduleEntryFinishedEvent for testing not successful completion",
-        position = 0,
+        description = "Press this hotkey to manually trigger the PluginScheduleEntryMainTaskFinishedEvent for testing not successful completion",
+        position = 1,
         section = debugSection
     )
     default Keybind finishPluginNotSuccessfulHotkey() {
@@ -656,8 +812,8 @@ public interface SchedulableExampleConfig extends Config {
     @ConfigItem(
         keyName = "finishPluginSuccessfulHotkey",
         name = "Finish Plugin Hotkey",
-        description = "Press this hotkey to manually trigger the PluginScheduleEntryFinishedEvent for testing successful completion",
-        position = 0,
+        description = "Press this hotkey to manually trigger the PluginScheduleEntryMainTaskFinishedEvent for testing successful completion",
+        position = 2,
         section = debugSection
     )
     default Keybind finishPluginSuccessfulHotkey() {
@@ -669,7 +825,7 @@ public interface SchedulableExampleConfig extends Config {
         keyName = "finishReason",
         name = "Finish Reason",
         description = "The reason to report when finishing the plugin",
-        position = 2,
+        position = 3,
         section = debugSection
     )
     default String finishReason() {
@@ -680,7 +836,7 @@ public interface SchedulableExampleConfig extends Config {
         keyName = "lockConditionHotkey",
         name = "Lock Condition Hotkey",
         description = "Press this hotkey to toggle the lock condition (prevents plugin from being stopped)",
-        position = 3,
+        position = 4,
         section = debugSection
     )
     default Keybind lockConditionHotkey() {
@@ -691,10 +847,43 @@ public interface SchedulableExampleConfig extends Config {
         keyName = "lockDescription",
         name = "Lock Reason",
         description = "Description of why the plugin is locked",
-        position = 4,
+        position = 5,
         section = debugSection
     )
     default String lockDescription() {
         return "Plugin in critical state - do not stop";
     }
+    
+    @ConfigItem(
+        keyName = "testPreScheduleTasksHotkey",
+        name = "Test Pre-Schedule Tasks Hotkey",
+        description = "Press this hotkey to test pre-schedule tasks functionality (equipment, spellbook, location setup)",
+        position = 6,
+        section = debugSection
+    )
+    default Keybind testPreScheduleTasksHotkey() {
+        return Keybind.NOT_SET;
+    }
+    
+    @ConfigItem(
+        keyName = "testPostScheduleTasksHotkey", 
+        name = "Test Post-Schedule Tasks Hotkey",
+        description = "Press this hotkey to test post-schedule tasks functionality (cleanup, banking, spellbook restoration)",
+        position = 7,
+        section = debugSection
+    )
+    default Keybind testPostScheduleTasksHotkey() {
+        return Keybind.NOT_SET;
+    }
+    
+    @ConfigItem(
+        keyName = "cancelTasksHotkey",
+        name = "Cancel & Reset Tasks Hotkey", 
+        description = "Press this hotkey to cancel any running pre/post schedule tasks and reset execution state",
+        position = 8,
+        section = debugSection
+    )
+    default Keybind cancelTasksHotkey() {
+        return Keybind.NOT_SET;
+    }        
 }

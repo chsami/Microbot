@@ -80,12 +80,15 @@ public class ObjectUpdateStrategy implements CacheUpdateStrategy<String, Rs2Obje
    
     @Override
     public void handleEvent(final Object event, final CacheOperations<String, Rs2ObjectModel> cache) {
-        if (executorService == null || executorService.isShutdown()) {
+  
+        if (executorService == null || executorService.isShutdown() || !Microbot.loggedIn || Microbot.getClient() == null || Microbot.getClient().getLocalPlayer() == null) {
             log.warn("ObjectUpdateStrategy is shut down, ignoring event: {}", event.getClass().getSimpleName());
             return; // Don't process events if shut down
         }
-        
-        
+        if(scanActive.get()){
+            log.debug("Skipping event processing - scan already active: {}", event.getClass().getSimpleName());
+            return; // Don't process events if a scan is already active
+        }                
         // Submit event handling to executor service for non-blocking processing
         //executorService.submit(() -> {
             //try {
@@ -427,16 +430,16 @@ public class ObjectUpdateStrategy implements CacheUpdateStrategy<String, Rs2Obje
             // Only add multi-tile objects from their primary (southwest) tile to prevent duplicates
             String cacheId = generateCacheIdForGameObject(gameObject, tile);
             if (cache.containsKey(cacheId)) {
-                log.debug("GameObject {} already in cache, skipping spawn event", gameObject.getId());
+                log.warn("GameObject {} already in cache, skipping spawn event", gameObject.getId());
                 return; // Already cached, skip
             }
-            if (isPrimaryTile(gameObject, tile)) {                
+            if (isPrimaryTile(gameObject, tile) || !cache.containsKey(cacheId)) {                
                 Rs2ObjectModel objectModel = new Rs2ObjectModel(gameObject, tile);                
                 cache.put(cacheId, objectModel);                
                 log.debug("Added GameObject {} (id: {}) to cache via spawn event from primary tile", 
                          gameObject.getId(), cacheId);
             } else {
-                log.trace("Skipped GameObject {} spawn event from non-primary tile", gameObject.getId());
+                log.warn("Skipped GameObject {} spawn event from non-primary tile", gameObject.getId());
             }
         }
     }
@@ -446,13 +449,17 @@ public class ObjectUpdateStrategy implements CacheUpdateStrategy<String, Rs2Obje
         Tile tile = event.getTile();
         if (gameObject != null && tile != null) {
             // Only process despawn events from the primary tile to prevent multiple removal attempts
-            if (isPrimaryTile(gameObject, tile)) {
-                String cacheId = generateCacheIdForGameObject(gameObject, tile);
+            String cacheId = generateCacheIdForGameObject(gameObject, tile);
+            if (!cache.containsKey(cacheId)) {
+                log.warn("GameObject {} not in cache, skipping despawn event", gameObject.getId());
+                return; // Not in cache, skip
+            }
+            if (isPrimaryTile(gameObject, tile)|| cache.containsKey(cacheId)) {                
                 cache.remove(cacheId);
                 log.debug("Removed GameObject {} (id: {}) from cache via despawn event from primary tile", 
                          gameObject.getId(), cacheId);
             } else {
-                log.trace("Skipped GameObject {} despawn event from non-primary tile", gameObject.getId());
+                log.warn("Skipped GameObject {} despawn event from non-primary tile", gameObject.getId());
             }
         }
     }
@@ -462,7 +469,7 @@ public class ObjectUpdateStrategy implements CacheUpdateStrategy<String, Rs2Obje
         Tile tile = event.getTile();
         String cacheId = generateCacheId("GroundObject", groundObject.getId(), groundObject.getWorldLocation());
         if (cache.containsKey(cacheId)) {
-            log.trace("GroundObject {} already in cache, skipping spawn event", groundObject.getId());
+            log.warn("GroundObject {} already in cache, skipping spawn event", groundObject.getId());
             return; // Already cached, skip
         }
         if (groundObject != null && tile != null) {            
@@ -488,7 +495,7 @@ public class ObjectUpdateStrategy implements CacheUpdateStrategy<String, Rs2Obje
         if (wallObject != null && tile != null) {
             String cacheId = generateCacheId("WallObject", wallObject.getId(), wallObject.getWorldLocation());
             if (cache.containsKey(cacheId)) {
-                log.trace("WallObject {} already in cache, skipping spawn event", wallObject.getId());
+                log.warn("WallObject {} already in cache, skipping spawn event", wallObject.getId());
                 return; // Already cached, skip
             }
             Rs2ObjectModel objectModel = new Rs2ObjectModel(wallObject, tile);
@@ -513,7 +520,7 @@ public class ObjectUpdateStrategy implements CacheUpdateStrategy<String, Rs2Obje
         if (decorativeObject != null && tile != null) {
             String cacheId = generateCacheId("DecorativeObject", decorativeObject.getId(), decorativeObject.getWorldLocation());
             if (cache.containsKey(cacheId)) {
-                log.trace("DecorativeObject {} already in cache, skipping spawn event", decorativeObject.getId());
+                log.warn("DecorativeObject {} already in cache, skipping spawn event", decorativeObject.getId());
                 return; // Already cached, skip
             }
             Rs2ObjectModel objectModel = new Rs2ObjectModel(decorativeObject, tile);            

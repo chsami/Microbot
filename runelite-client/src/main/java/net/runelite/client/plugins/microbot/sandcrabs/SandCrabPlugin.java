@@ -54,6 +54,9 @@ public class SandCrabPlugin extends Plugin implements SchedulablePlugin {
 
     protected void shutDown() {
         sandCrabScript.shutdown();
+        if (lockCondition != null && lockCondition.isLocked()) {
+            lockCondition.unlock();
+        }
         overlayManager.remove(sandCrabOverlay);
     }
 
@@ -71,7 +74,7 @@ public class SandCrabPlugin extends Plugin implements SchedulablePlugin {
     @Override
     public LogicalCondition getStopCondition() {
         if (this.stopCondition == null) {
-            this.lockCondition = new LockCondition("We're in combat");
+            this.lockCondition = new LockCondition(" SandCrabPlugin - We're in combat", false,true); //ensure unlock on shutdown of the plugin !
             AndCondition andCondition = new AndCondition();
             andCondition.addCondition(lockCondition);
             this.stopCondition = andCondition;

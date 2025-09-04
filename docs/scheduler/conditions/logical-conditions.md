@@ -70,9 +70,8 @@ The `LockCondition` is a special logical condition that remains satisfied once i
 **Usage:**
 ```java
 // Create a lock condition that stays satisfied once the player reaches level 70
-LockCondition condition = new LockCondition(
-    new SkillLevelCondition(Skill.MINING, 70, )
-);
+LockCondition condition =
+    new SkillLevelCondition(Skill.MINING, 70);
 ```
 
 **Key features:**

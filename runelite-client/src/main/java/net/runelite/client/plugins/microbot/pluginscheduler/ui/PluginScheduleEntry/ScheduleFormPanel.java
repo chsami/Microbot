@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.pluginscheduler.ui.PluginScheduleEn
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.pluginscheduler.SchedulerPlugin;
+import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.DayOfWeekCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.IntervalCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.SingleTriggerTimeCondition;
@@ -10,6 +11,10 @@ import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeC
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.TimeWindowCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.time.ui.TimeConditionPanelUtil;
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
+import net.runelite.client.plugins.microbot.pluginscheduler.util.PluginFilterUtil;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 
@@ -24,8 +29,12 @@ import java.awt.event.ItemEvent;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 @Slf4j
 public class ScheduleFormPanel extends JPanel {
     private final SchedulerPlugin plugin;
@@ -35,6 +44,9 @@ public class ScheduleFormPanel extends JPanel {
 
     @Getter
     private JComboBox<String> pluginComboBox;
+    private JComboBox<String> primeFilterComboBox;
+    private JComboBox<String> primaryFilterComboBox;
+    private JComboBox<String> secondaryFilterComboBox;
     private JComboBox<String> timeConditionTypeComboBox;
     private JCheckBox randomSchedulingCheckbox;
     private JCheckBox timeBasedStopConditionCheckbox;
@@ -73,6 +85,9 @@ public class ScheduleFormPanel extends JPanel {
     
     // Flag to prevent update loops
     private boolean updatingValues = false;
+    
+    // Plugin change tracking
+    private Set<Plugin> lastKnownPlugins = new HashSet<>();
 
     // Constants for time condition types
     private static final String CONDITION_DEFAULT = "Run Default";
@@ -164,9 +179,16 @@ public class ScheduleFormPanel extends JPanel {
         gbc.weightx = 1.0; // Make components expand horizontally
         gbc.anchor = GridBagConstraints.WEST;
 
-        // Plugin selection
+        // Filter section
         gbc.gridx = 0;
         gbc.gridy = 0;
+        gbc.gridwidth = 4;
+        JPanel filterPanel = createFilterPanel();
+        formPanel.add(filterPanel, gbc);
+
+        // Plugin selection
+        gbc.gridx = 0;
+        gbc.gridy = 1;
         gbc.gridwidth = 1;
         JLabel pluginLabel = new JLabel("Plugin:");
         pluginLabel.setForeground(Color.WHITE);
@@ -174,11 +196,20 @@ public class ScheduleFormPanel extends JPanel {
         formPanel.add(pluginLabel, gbc);
 
         gbc.gridx = 1;
-        gbc.gridy = 0;
+        gbc.gridy = 1;
         gbc.gridwidth = 3;
         pluginComboBox = new JComboBox<>();
         formPanel.add(pluginComboBox, gbc);
-        updatePluginList(plugin.getAvailablePlugins());
+        
+        // Initialize filters now that pluginComboBox exists
+        updateSecondaryFilter();
+        
+        // Initialize known plugins for change detection
+        lastKnownPlugins = Microbot.getPluginManager().getPlugins().stream()
+            .filter(plugin -> plugin instanceof SchedulablePlugin)
+            .collect(Collectors.toSet());
+        
+        updateFilteredPluginList();
 
         // Add listener to clear table selection when ComboBox changes
         pluginComboBox.addActionListener(e -> {
@@ -191,7 +222,7 @@ public class ScheduleFormPanel extends JPanel {
         
         // Plugin settings section with improved UI
         gbc.gridx = 0;
-        gbc.gridy = 1;
+        gbc.gridy = 2;
         gbc.gridwidth = 4;
         JPanel pluginSettingsPanel = new JPanel(new BorderLayout());
         pluginSettingsPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
@@ -297,7 +328,7 @@ public class ScheduleFormPanel extends JPanel {
         formPanel.add(pluginSettingsPanel, gbc);
         // Time condition type selection
         gbc.gridx = 0;
-        gbc.gridy = 2;
+        gbc.gridy = 3;
         gbc.gridwidth = 1;
         JLabel conditionTypeLabel = new JLabel("Schedule Type:");
         conditionTypeLabel.setForeground(Color.WHITE);
@@ -305,7 +336,7 @@ public class ScheduleFormPanel extends JPanel {
         formPanel.add(conditionTypeLabel, gbc);
 
         gbc.gridx = 1;
-        gbc.gridy = 2;
+        gbc.gridy = 3;
         gbc.gridwidth = 3;
         timeConditionTypeComboBox = new JComboBox<>(TIME_CONDITION_TYPES);
         timeConditionTypeComboBox.addActionListener(e -> updateConditionPanel());
@@ -313,7 +344,7 @@ public class ScheduleFormPanel extends JPanel {
 
         // Dynamic condition config panel
         gbc.gridx = 0;
-        gbc.gridy = 3;
+        gbc.gridy = 4;
         gbc.gridwidth = 4;
         conditionConfigPanel = new JPanel(new BorderLayout());
         conditionConfigPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
@@ -341,6 +372,132 @@ public class ScheduleFormPanel extends JPanel {
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         
         return scrollPane;
+    }
+    
+    /**
+     * Creates the filter panel with primary and secondary filter comboboxes
+     */
+    private JPanel createFilterPanel() {
+        JPanel filterPanel = new JPanel(new GridBagLayout());
+        filterPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        filterPanel.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(ColorScheme.MEDIUM_GRAY_COLOR),
+                "Plugin Filters",
+                TitledBorder.DEFAULT_JUSTIFICATION,
+                TitledBorder.DEFAULT_POSITION,
+                FontManager.getRunescapeBoldFont(),
+                Color.WHITE
+        ));
+        
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.WEST;
+        
+        // Primary filter
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 0.0;
+        JLabel primaryFilterLabel = new JLabel("Filter by:");
+        primaryFilterLabel.setForeground(Color.WHITE);
+        primaryFilterLabel.setFont(FontManager.getRunescapeFont());
+        filterPanel.add(primaryFilterLabel, gbc);
+        
+        gbc.gridx = 1;
+        gbc.weightx = 0.5;
+        primaryFilterComboBox = new JComboBox<>();
+        for (String category : PluginFilterUtil.getPrimaryFilterCategories()) {
+            primaryFilterComboBox.addItem(category);
+        }
+        primaryFilterComboBox.addActionListener(e -> updateSecondaryFilter());
+        filterPanel.add(primaryFilterComboBox, gbc);
+        
+        // Secondary filter
+        gbc.gridx = 2;
+        gbc.weightx = 0.0;
+        JLabel secondaryFilterLabel = new JLabel("Sub-filter:");
+        secondaryFilterLabel.setForeground(Color.WHITE);
+        secondaryFilterLabel.setFont(FontManager.getRunescapeFont());
+        filterPanel.add(secondaryFilterLabel, gbc);
+        
+        gbc.gridx = 3;
+        gbc.weightx = 0.5;
+        secondaryFilterComboBox = new JComboBox<>();
+        secondaryFilterComboBox.addActionListener(e -> updateFilteredPluginList());
+        filterPanel.add(secondaryFilterComboBox, gbc);
+        
+        // Don't initialize filters here - wait until pluginComboBox is created
+        // updateSecondaryFilter() will be called later in initialization
+        
+        return filterPanel;
+    }
+    
+    /**
+     * Updates the secondary filter combobox based on primary filter selection
+     */
+    private void updateSecondaryFilter() {
+        String selectedPrimary = (String) primaryFilterComboBox.getSelectedItem();
+        if (selectedPrimary == null) return;
+        
+        secondaryFilterComboBox.removeAllItems();
+        
+        List<Plugin> allPlugins = lastKnownPlugins.stream()
+                        .filter(plugin -> plugin instanceof SchedulablePlugin)
+                        .filter(plugin -> {
+                            net.runelite.client.plugins.PluginDescriptor descriptor = 
+                                plugin.getClass().getAnnotation(net.runelite.client.plugins.PluginDescriptor.class);
+                            return descriptor != null && !descriptor.hidden();
+                        })
+                        .collect(Collectors.toList());
+        List<String> secondaryOptions = PluginFilterUtil.getSecondaryFilterOptions(selectedPrimary, allPlugins);
+        
+        for (String option : secondaryOptions) {
+            secondaryFilterComboBox.addItem(option);
+        }
+        
+        updateFilteredPluginList();
+    }
+    
+    /**
+     * Updates the plugin combobox based on current filter selections
+     */
+    private void updateFilteredPluginList() {
+        String primaryFilter = (String) primaryFilterComboBox.getSelectedItem();
+        String secondaryFilter = (String) secondaryFilterComboBox.getSelectedItem();
+        
+        if (primaryFilter == null || pluginComboBox == null) return;
+        List<Plugin> allPlugins = lastKnownPlugins.stream()
+                        .filter(plugin -> plugin instanceof SchedulablePlugin)
+                        .filter(plugin -> {
+                            PluginDescriptor descriptor = 
+                                plugin.getClass().getAnnotation(PluginDescriptor.class);
+                            return descriptor != null && !descriptor.hidden();
+                        })
+                        .collect(Collectors.toList());
+        
+        List<Plugin> filteredPlugins = PluginFilterUtil.filterPlugins(allPlugins, primaryFilter, secondaryFilter);
+        
+        // Convert to plugin names and update the main plugin combobox
+        List<String> pluginNames = filteredPlugins.stream()
+                .map(Plugin::getName)
+                .sorted()
+                .collect(Collectors.toList());
+        
+        // Temporarily disable action listeners to prevent feedback loops
+        ActionListener[] listeners = pluginComboBox.getActionListeners();
+        for (ActionListener listener : listeners) {
+            pluginComboBox.removeActionListener(listener);
+        }
+        
+        pluginComboBox.removeAllItems();
+        for (String name : pluginNames) {
+            pluginComboBox.addItem(name);
+        }
+        
+        // Re-add listeners
+        for (ActionListener listener : listeners) {
+            pluginComboBox.addActionListener(listener);
+        }
     }
     
     /**
@@ -741,9 +898,15 @@ public class ScheduleFormPanel extends JPanel {
             return;
         }
 
-        pluginComboBox.removeAllItems();
-        for (String plugin : plugins) {
-            pluginComboBox.addItem(plugin);
+        // If filters are not yet initialized, use the old method
+        if (primaryFilterComboBox == null || secondaryFilterComboBox == null) {
+            pluginComboBox.removeAllItems();
+            for (String plugin : plugins) {
+                pluginComboBox.addItem(plugin);
+            }
+        } else {
+            // Use the filter system to populate the combo box
+            updateFilteredPluginList();
         }
     }
 
@@ -1047,7 +1210,20 @@ public class ScheduleFormPanel extends JPanel {
         // Notify the main window to refresh the table
         //plugin.refreshScheduleTable();
     }
-
+    public void refresh(){
+        // Check if plugins have changed
+        Set<Plugin> currentPlugins = Microbot.getPluginManager().getPlugins().stream()
+            .filter(plugin -> plugin instanceof SchedulablePlugin)
+            .collect(Collectors.toSet());
+            
+        if (!currentPlugins.equals(lastKnownPlugins)) {
+            log.info("Plugin changes detected, updating plugin list");
+            lastKnownPlugins = new HashSet<>(currentPlugins);
+            updateFilteredPluginList();
+        }
+        
+        updateControlButton();
+    }
     public void updateControlButton() {
         boolean isRunning = selectedPlugin != null && selectedPlugin.isRunning();
         boolean isEnabled = selectedPlugin != null && selectedPlugin.isEnabled();

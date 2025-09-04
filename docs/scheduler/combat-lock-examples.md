@@ -22,7 +22,7 @@ public class BossPlugin extends Plugin implements SchedulablePlugin {
     
     private LogicalCondition createStopCondition() {
         // Create a lock condition specifically for boss combat
-        this.lockCondition = new LockCondition("Locked during boss fight");
+        this.lockCondition = new LockCondition("Locked during boss fight"); //ensure unlock on shutdown of the plugin !
         
         // Create stop conditions
         OrCondition stopTriggers = new OrCondition();
@@ -71,7 +71,7 @@ public class BossPlugin extends Plugin implements SchedulablePlugin {
     }
     
     @Subscribe
-    public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
+    public void onPluginScheduleEntryPostScheduleTaskEvent(PluginScheduleEntryPostScheduleTaskEvent event) {
         if (event.getPlugin() == this) {
             log.info("Scheduler requesting plugin shutdown");
             
@@ -262,10 +262,10 @@ public void doBossFight() {
 
 ```java
 // BAD
-this.lockCondition = new LockCondition();
+this.lockCondition = new LockCondition(); //ensure unlock on shutdown of the plugin !
 
 // GOOD
-this.lockCondition = new LockCondition("Locked during Zulrah's blue phase");
+this.lockCondition = new LockCondition("Locked during Zulrah's blue phase"); //ensure unlock on shutdown of the plugin !
 ```
 
 4. **Consider timeout mechanisms** for locks that might get stuck:
@@ -298,7 +298,7 @@ try {
 
 ```java
 // Create a locked condition from the start
-this.lockCondition = new LockCondition("Locked during combat sequence", true);
+this.lockCondition = new LockCondition("Locked during combat sequence", true); //ensure unlock on shutdown of the plugin !
 
 // Later when it's safe to unlock
 this.lockCondition.unlock();

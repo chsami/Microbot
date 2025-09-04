@@ -2,7 +2,9 @@ package net.runelite.client.plugins.microbot.woodcutting;
 
 import net.runelite.client.config.*;
 import net.runelite.client.plugins.microbot.util.inventory.InteractOrder;
-import net.runelite.client.plugins.microbot.woodcutting.enums.WoodcuttingResetOptions;
+import net.runelite.client.plugins.microbot.util.skills.fletching.data.FletchingItem;
+import net.runelite.client.plugins.microbot.woodcutting.enums.WoodcuttingPrimaryAction;
+import net.runelite.client.plugins.microbot.woodcutting.enums.WoodcuttingSecondaryAction;
 import net.runelite.client.plugins.microbot.woodcutting.enums.WoodcuttingTree;
 import net.runelite.client.plugins.microbot.woodcutting.enums.WoodcuttingWalkBack;
 
@@ -22,11 +24,11 @@ public interface AutoWoodcuttingConfig extends Config {
     )
     String generalSection = "general";
     @ConfigSection(
-            name = "Reset",
-            description = "Options for clearing logs from inventory",
+            name = "Inventory management",
+            description = "Configure how to handle full inventory",
             position = 1
     )
-    String resetSection = "reset";
+    String inventorySection = "inventory";
 
     @ConfigSection(
             name = "Forestry",
@@ -119,58 +121,93 @@ public interface AutoWoodcuttingConfig extends Config {
     default boolean lootMyItemsOnly() { return false;}
 
     @ConfigItem(
-            keyName = "ItemAction",
-            name = "Item Action",
-            description = "Task to perform with logs",
+            keyName = "PrimaryAction",
+            name = "Primary action",
+            description = "What to do when inventory is full",
             position = 0,
-            section = resetSection
+            section = inventorySection
     )
-    default WoodcuttingResetOptions resetOptions() {
-        return WoodcuttingResetOptions.DROP;
+    default WoodcuttingPrimaryAction primaryAction() {
+        return WoodcuttingPrimaryAction.DROP;
     }
 
     @ConfigItem(
-            keyName = "ItemsToBank",
-            name = "Items to bank (Comma seperated)",
-            description = "Items to bank",
+            keyName = "FletchingType",
+            name = "Fletching type",
+            description = "Type of item to fletch (only applies if primary action is FLETCH)",
             position = 1,
-            section = resetSection
+            section = inventorySection
     )
-    default String itemsToBank() {
-        return "logs,sturdy beehive parts,petal garland,golden pheasant egg,pheasant tail feathers,fox whistle,key,nest,fruit";
+    default FletchingItem fletchingType() {
+        return FletchingItem.ARROW_SHAFT;
     }
+
+    @ConfigItem(
+            keyName = "SecondaryAction",
+            name = "Secondary action",
+            description = "What to do with fletched items (only applies after fletching)",
+            position = 2,
+            section = inventorySection
+    )
+    default WoodcuttingSecondaryAction secondaryAction() {
+        return WoodcuttingSecondaryAction.DROP;
+    }
+
+
 
     @ConfigItem(
             keyName = "dropOrder",
-            name = "Drop Order",
+            name = "Drop order",
             description = "Order to drop items",
-            position = 2,
-            section = resetSection
+            position = 4,
+            section = inventorySection
     )
     default InteractOrder interactOrder() {
         return InteractOrder.STANDARD;
     }
-
+    @ConfigItem(
+            keyName = "ItemsToBank",
+            name = "Additional items to bank",
+            description = "Extra items to bank (comma separated)",
+            position = 5,
+            section = inventorySection
+    )
+    default String itemsToBank() {
+        return "sturdy beehive parts,petal garland,golden pheasant egg,pheasant tail feathers,fox whistle,key,nest,fruit";
+    }
     @ConfigItem(
             keyName = "ItemsToKeep",
-            name = "Items to keep when dropping (Comma separated)",
-            description = "Items to keep in inventory",
-            position = 3,
-            section = resetSection
+            name = "Items to keep when dropping",
+            description = "Items to keep in inventory (comma separated)",
+            position = 6,
+            section = inventorySection
     )
     default String itemsToKeep() {
-        return "axe,tinderbox,crystal shard,demon tear,petal garland,golden pheasant egg,pheasant tail feathers,fox whistle,key";
+        return "axe,tinderbox,knife,bowstring,crystal shard,demon tear,petal garland,golden pheasant egg,pheasant tail feathers,fox whistle,key";
     }
 
     @ConfigItem(
             keyName = "WalkBack",
-            name = "Walk Back",
-            description = "Walk back the initial spot or last cut down",
-            position = 4,
-            section = resetSection
+            name = "Walk back",
+            description = "Walk back to initial spot or last cut down",
+            position = 5,
+            section = inventorySection
     )
     default WoodcuttingWalkBack walkBack() {
         return WoodcuttingWalkBack.LAST_LOCATION;
+    }
+
+   
+
+    @ConfigItem(
+            keyName = "StringBows",
+            name = "String bows",
+            description = "String unstrung bows if bowstring is available",
+            position = 8,
+            section = inventorySection
+    )
+    default boolean stringBows() {
+        return false;
     }
 
     @ConfigItem(
@@ -212,7 +249,7 @@ public interface AutoWoodcuttingConfig extends Config {
              description = "Enable the Flowers forestry event",
              position = 3,
              section = forestrySection,
-             hidden = true //TODO: Remove this when the event is implemented
+             hidden = false //TODO: Remove this when the event is implemented
      )
      default boolean flowersEvent() {
          return false;

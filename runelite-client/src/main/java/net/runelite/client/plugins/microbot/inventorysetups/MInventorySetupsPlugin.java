@@ -1047,6 +1047,32 @@ public class MInventorySetupsPlugin extends Plugin
 		});
 	}
 
+	public void addInventorySetup(InventorySetup invSetup){
+		if (invSetup == null || invSetup.getName() == null || invSetup.getName().trim().isEmpty()) {
+			return;
+		}
+		if (MAX_SETUP_NAME_LENGTH < invSetup.getName().length()) {
+			invSetup.setName(invSetup.getName().substring(0, MAX_SETUP_NAME_LENGTH));
+		}
+		if (cache.getInventorySetupNames().containsKey(invSetup.getName())) {
+			updateExisting(invSetup);
+			return;
+		}
+		clientThread.invokeLater(() ->{
+
+			cache.addSetup(invSetup);
+			inventorySetups.add(invSetup);
+			dataManager.updateConfig(true, false);
+
+			Layout setupLayout = layoutUtilities.createSetupLayout(invSetup);
+			layoutManager.saveLayout(setupLayout);
+			tagManager.setHidden(setupLayout.getTag(), true);
+
+			SwingUtilities.invokeLater(() -> panel.redrawOverviewPanel(false));
+
+		});
+	}
+
 	public void addSection()
 	{
 		final String msg = "Enter the name of this section (max " + MAX_SETUP_NAME_LENGTH + " chars).";
@@ -1430,6 +1456,46 @@ public class MInventorySetupsPlugin extends Plugin
 			dataManager.updateConfig(true, false);
 			panel.refreshCurrentSetup();
 		});
+	}
+
+	/**
+	 * Updates an existing inventory setup with the provided data.
+	 * This method updates the existing setup by name rather than the currently selected setup.
+	 * 
+	 * @param invSetup The inventory setup containing the data to update the existing setup with
+	 */
+	public void updateExisting(InventorySetup invSetup) {
+		if (invSetup == null || invSetup.getName() == null || invSetup.getName().trim().isEmpty()) {
+			return;
+		}
+		
+		final String finalName = invSetup.getName();
+		InventorySetup existing = MInventorySetupsPlugin.getInventorySetups()
+				.stream()
+				.filter(Objects::nonNull)
+				.filter(x -> x.getName().equalsIgnoreCase(finalName))
+				.findFirst()
+				.orElse(null);
+				
+		if (existing != null) {
+			clientThread.invokeLater(() -> {
+				// Copy core fields from provided invSetup to the existing one
+				existing.updateInventory(invSetup.getInventory());
+				existing.updateEquipment(invSetup.getEquipment());
+				existing.updateSpellbook(invSetup.getSpellBook());
+				existing.getAdditionalFilteredItems().clear();
+				if (invSetup.getAdditionalFilteredItems() != null) {
+					existing.getAdditionalFilteredItems().putAll(invSetup.getAdditionalFilteredItems());
+				}
+				
+				// Rebuild layout
+				Layout newLayout = layoutUtilities.createSetupLayout(existing);
+				layoutManager.saveLayout(newLayout);
+				tagManager.setHidden(newLayout.getTag(), true);
+				dataManager.updateConfig(true, false);
+				panel.refreshCurrentSetup();
+			});
+		}
 	}
 
 	private boolean updateAllInstancesInContainerSetupWithNewItem(final InventorySetup inventorySetup, List<InventorySetupsItem> containerToUpdate,

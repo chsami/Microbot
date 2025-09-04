@@ -11,6 +11,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import javax.swing.SwingUtilities;
 
@@ -19,6 +21,7 @@ import org.slf4j.event.Level;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.accountselector.AutoLoginPlugin;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerConfig;
@@ -27,12 +30,15 @@ import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
 import java.time.format.DateTimeFormatter;
 
 import net.runelite.client.plugins.microbot.pluginscheduler.SchedulerPlugin;
+import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LockCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
+import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.PredicateCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
 import net.runelite.client.plugins.microbot.util.antiban.AntibanPlugin;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+
 @Slf4j
 public class SchedulerPluginUtil{
     /**
@@ -876,18 +882,18 @@ public class SchedulerPluginUtil{
 
 
      /**
-     * Detects if any enabled SchedulablePlugin has locked LockConditions.
+     * Detects if any enabled SchedulablePlugin has locked LockConditions or unsatisfied PredicateConditions.
      * This prevents the break handler from taking breaks during critical plugin operations.
      * 
-     * @return true if any schedulable plugin has locked conditions, false otherwise
+     * @return true if any schedulable plugin has locked conditions or unsatisfied predicate conditions, false otherwise
      */
     public static boolean hasLockedSchedulablePlugins() {
         try {
             // Get all enabled plugins from the plugin manager
             return Microbot.getPluginManager().getPlugins().stream()
                 .filter(plugin -> Microbot.getPluginManager().isPluginEnabled(plugin))
-                .filter(plugin -> plugin instanceof net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin)
-                .map(plugin -> (net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin) plugin)
+                .filter(plugin -> plugin instanceof SchedulablePlugin)
+                .map(plugin -> (SchedulablePlugin) plugin)
                 .anyMatch(schedulablePlugin -> {
                     try {
                         // Get the stop condition from the schedulable plugin
@@ -896,16 +902,24 @@ public class SchedulerPluginUtil{
                             // Find all LockConditions in the logical condition structure using the utility method
                             List<LockCondition> lockConditions = stopCondition.findAllLockConditions();
                             // Check if any LockCondition is currently locked
-                            return lockConditions.stream().anyMatch(LockCondition::isLocked);
+                            boolean hasLockedConditions = lockConditions.stream().anyMatch(LockCondition::isLocked);
+                            
+                            // Find all PredicateConditions in the logical condition structure
+                            List<PredicateCondition<?>> predicateConditions = stopCondition.findAllPredicateConditions();
+                            // Check if any PredicateCondition is not satisfied
+                            boolean hasUnsatisfiedPredicates = predicateConditions.stream()
+                                .anyMatch(predicateCondition -> !predicateCondition.isSatisfied());
+                            
+                            return hasLockedConditions || hasUnsatisfiedPredicates;
                         }
                         return false;
                     } catch (Exception e) {
-                        Microbot.log("Error checking stop conditions for schedulable plugin - " + e.getMessage());
+                        log.error("Error checking stop conditions for schedulable plugin - " + e.getMessage());
                         return false;
                     }
                 });
         } catch (Exception e) {
-            Microbot.log("Error checking schedulable plugins for lock conditions: " + e.getMessage());
+            log.error("Error checking schedulable plugins for lock conditions: " + e.getMessage());
             return false;
         }
     }
@@ -1144,4 +1158,66 @@ public class SchedulerPluginUtil{
         }
     }
     
+    public static void disableAllRunningNonEessentialPlugin() {
+      
+    
+        // Check if client is at login screen
+        List<Plugin> conditionProviders = new ArrayList<>();
+        if (Microbot.getPluginManager() == null || Microbot.getClient() == null) {
+            return;
+
+        } else {
+            // Find all plugins implementing ConditionProvider
+            conditionProviders = Microbot.getPluginManager().getPlugins().stream()
+                    .filter(plugin -> plugin instanceof SchedulablePlugin)
+                    .collect(Collectors.toList());
+            
+            // Filter out essential plugins and disable non-essential enabled plugins
+            List<Plugin> enabledList = conditionProviders.stream()
+                    .filter(plugin -> Microbot.getPluginManager().isPluginEnabled(plugin))
+                    .filter(plugin -> {
+                        PluginDescriptor descriptor = plugin.getClass().getAnnotation(PluginDescriptor.class);
+                        return descriptor != null && !descriptor.enabledByDefault();
+                    })
+                    .collect(Collectors.toList());
+            
+            // Helper predicate to identify Microbot plugins
+            Predicate<Plugin> isMicrobotPlugin = plugin ->
+                    plugin.getClass().getPackage().getName().toLowerCase().contains("microbot");
+            
+            // Helper predicate to identify external plugins from Microbot Hub
+            Predicate<Plugin> isMicrobotExternalPlugin = plugin -> {
+                PluginDescriptor descriptor = plugin.getClass().getAnnotation(PluginDescriptor.class);
+                return descriptor != null && descriptor.isExternal() && 
+                        plugin.getClass().getPackage().getName().toLowerCase().contains("microbot");
+            };
+            
+            // Disable all non-essential plugins that are currently enabled, but exclude Microbot-related plugins
+            List<Plugin> allEnabledPlugins = Microbot.getPluginManager().getPlugins().stream()
+                    .filter(plugin -> Microbot.getPluginManager().isPluginEnabled(plugin)
+                        && !plugin.getClass().getName().equals("net.runelite.client.plugins.microbot.pluginscheduler.SchedulerPlugin"))
+                    .collect(Collectors.toList());
+                    
+            for (Plugin plugin : allEnabledPlugins) {
+                PluginDescriptor descriptor = plugin.getClass().getAnnotation(PluginDescriptor.class);
+                
+                // Skip if it's not a Microbot plugin (internal or external from Microbot Hub)
+                if (!(isMicrobotPlugin.test(plugin) || isMicrobotExternalPlugin.test(plugin))) {                        
+                    continue;
+                }
+                
+                // Only disable non-essential, Microbot
+                if (descriptor != null && !descriptor.enabledByDefault()) {
+                    try {
+                        Microbot.stopPlugin(plugin);
+                        log.debug("Disabled non-essential Microbot plugin: {}", plugin.getName());
+                    } catch (Exception e) {
+                        log.warn("Failed to disable plugin {}: {}", plugin.getName(), e.getMessage());
+                    }
+                }
+            }
+        }
+    }
+        
+
 }

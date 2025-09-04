@@ -3,7 +3,7 @@ package net.runelite.client.plugins.microbot.aiofighter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.aiofighter.combat.SlayerScript;
-import net.runelite.client.plugins.microbot.util.slayer.Rs2Slayer;
+import net.runelite.client.plugins.microbot.util.skills.slayer.Rs2Slayer;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.OverlayPanel;

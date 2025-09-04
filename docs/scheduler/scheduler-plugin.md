@@ -402,7 +402,7 @@ private void scheduleNextPlugin() {
     
     if (prioritizeNonDefaultPlugins) {
         // Look for any upcoming non-default plugin within the configured time window
-        PluginScheduleEntry upcomingNonDefault = getNextScheduledPlugin(false, 
+        PluginScheduleEntry upcomingNonDefault = getNextScheduledPluginEntry(false, 
                                                         Duration.ofMinutes(nonDefaultPluginLookAheadMinutes))
             .filter(plugin -> !plugin.isDefault())
             .orElse(null);
@@ -410,7 +410,7 @@ private void scheduleNextPlugin() {
         // If we found an upcoming non-default plugin, check if it's already due to run
         if (upcomingNonDefault != null && !upcomingNonDefault.isDueToRun()) {
             // Get the next plugin that's due to run now
-            Optional<PluginScheduleEntry> nextDuePlugin = getNextScheduledPlugin(true, null);
+            Optional<PluginScheduleEntry> nextDuePlugin = getNextScheduledPluginEntry(true, null);
             
             // If the next due plugin is a default plugin, don't start it
             // Instead, wait for the non-default plugin
@@ -425,7 +425,7 @@ private void scheduleNextPlugin() {
     }
     
     // Get the next plugin that's due to run
-    Optional<PluginScheduleEntry> selected = getNextScheduledPlugin(true, null);
+    Optional<PluginScheduleEntry> selected = getNextScheduledPluginEntry(true, null);
     if (selected.isEmpty()) {
         return;
     }
@@ -777,7 +777,7 @@ The scheduler implements a sophisticated multi-factor algorithm to determine whi
      Check if any non-default plugins are scheduled soon (within lookup window)
      If a non-default plugin is upcoming and current plugin is default:
        Don't start any default plugin, wait for the non-default plugin
-     Get next plugin that's due to run via getNextScheduledPlugin()
+     Get next plugin that's due to run via getNextScheduledPluginEntry()
      If on a break, interrupt it to start the selected plugin
      Start the selected plugin with startPluginScheduleEntry()
    END
@@ -901,13 +901,13 @@ private void checkSchedule() {
     if (!isScheduledPluginRunning()) {
         // Check if login is needed
         PluginScheduleEntry nextPluginWith = null;
-        PluginScheduleEntry nextPluginPossible = getNextScheduledPlugin(false, null).orElse(null);
+        PluginScheduleEntry nextPluginPossible = getNextScheduledPluginEntry(false, null).orElse(null);
         
         // Skip breaks if min break duration is 0
         int minBreakDuration = config.minBreakDuration();
         if (minBreakDuration == 0) {
             minBreakDuration = 1;
-            nextPluginWith = getNextScheduledPlugin(true, null).orElse(null);
+            nextPluginWith = getNextScheduledPluginEntry(true, null).orElse(null);
         } else {
             minBreakDuration = Math.max(1, minBreakDuration);
             // Get the next scheduled plugin within minBreakDuration

@@ -313,19 +313,23 @@ public class Microbot {
 		}
 		if (Microbot.isHopping())
 		{
+			log.error("Already hopping world");
 			return true;
 		}
 		if (Microbot.cantHopWorld)
 		{
+			log.error("Can't hop world, already trying to hop");
 			return false;
 		}
 		boolean isHopping = Microbot.getClientThread().runOnClientThreadOptional(() -> {
 			if (Microbot.getClient().getLocalPlayer() != null && Microbot.getClient().getLocalPlayer().isInteracting())
 			{
+				log.error("Local player is interacting, cannot hop worlds");
 				return false;
 			}
 			if (quickHopTargetWorld != null || Microbot.getClient().getGameState() != GameState.LOGGED_IN)
 			{
+				log.error("Quick hop target world is not null or game state is not logged in");
 				return false;
 			}
 			if (Microbot.getClient().getWorld() == worldNumber)
@@ -354,14 +358,28 @@ public class Microbot {
 			Microbot.getClient().hopToWorld(rsWorld);
 			quickHopTargetWorld = null;
 			sleep(600);
-			sleepUntil(() -> Microbot.isHopping() || Rs2Widget.getWidget(193, 0) != null, 2000);
+			sleepUntil(() -> Microbot.isHopping() || Rs2Widget.getWidget(193, 0) != null, 2000);			
 			return Microbot.isHopping();
 		}).orElse(false);
-		if (!isHopping && Rs2Widget.getWidget(193, 0) != null)
+		if (!isHopping)
 		{
-			List<Widget> areYouSureToSwitchWorldWidget = Arrays.stream(Rs2Widget.getWidget(193, 0).getDynamicChildren()).collect(Collectors.toList());
-			Widget switchWorldWidget = sleepUntilNotNull(() -> Rs2Widget.findWidget("Switch world", areYouSureToSwitchWorldWidget, true), 2000);
-			return Rs2Widget.clickWidget(switchWorldWidget);
+			Widget confirmRoot = Rs2Widget.getWidget(193, 0);
+			if (confirmRoot != null) {
+                List<Widget> children = Arrays.stream(confirmRoot.getDynamicChildren()).collect(Collectors.toList());
+                Widget switchWorldWidget =
+                    sleepUntilNotNull(() -> Rs2Widget.findWidget("Switch world", children, true), 2000);
+                if (switchWorldWidget != null) {
+                    boolean clicked = Rs2Widget.clickWidget(switchWorldWidget);
+                    if (clicked) {
+                        sleepUntil(Microbot::isHopping, 4000);
+                        return Microbot.isHopping();
+                    }
+                }
+            }						
+		}
+		if (!isHopping)
+		{
+			log.error("Failed to hop to world {}", worldNumber);						
 		}
 		return false;
 	}

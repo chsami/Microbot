@@ -41,11 +41,11 @@ public class Rs2GroundItemModel {
     
     private final TileItem tileItem;
     private final Tile tile;
-    private final ItemComposition itemComposition;
+    private ItemComposition itemComposition;
     private final WorldPoint location;
     private final int id;
     private final int quantity;
-    private final String name;
+    private String name;
     private final boolean isOwned;
     private final boolean isLootAble;
     private final long creationTime;
@@ -93,20 +93,65 @@ public class Rs2GroundItemModel {
         this.despawnDuration = Duration.of(despawnTime, RSTimeUnit.GAME_TICKS);
         this.visibleDuration = Duration.of(visibleTime, RSTimeUnit.GAME_TICKS);
         
-        // Load item composition on client thread
-        this.itemComposition = Microbot.getClientThread().runOnClientThreadOptional(
-            () -> Microbot.getClient().getItemDefinition(id)
-        ).orElse(null);
-        
-        // Get name from composition or use default
-        this.name = (itemComposition != null) ? itemComposition.getName() : "Unknown Item";
+        // Initialize composition and name as null for lazy loading
+        this.itemComposition = null;
+        this.name = null;
         log.debug("Created Rs2GroundItemModel: {} x{} at {} | Spawn: {} | Despawn: {} (Local) | tick despawn: {} | current tick: {}", 
-            name, quantity, location, 
+            getName(), quantity, location, 
             spawnTime.atZone(ZoneOffset.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
             getDespawnTime().atZone(ZoneOffset.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
             tileItem.getDespawnTime(),
              this.creationTick
             );
+    }
+
+    /**
+     * Lazy loads the ItemComposition if not already loaded.
+     * This ensures we can work with ground items while minimizing performance impact.
+     */
+    private void ensureCompositionLoaded() {
+        if (itemComposition == null && id > 0) {
+            try {
+                this.itemComposition = Microbot.getClientThread().runOnClientThreadOptional(() -> 
+                    Microbot.getClient().getItemDefinition(id)
+                ).orElse(null);
+                
+                if (itemComposition != null) {
+                    this.name = itemComposition.getName();
+                } else {
+                    log.warn("Failed to load ItemComposition for ground item id: {}, setting default name", id);
+                    this.name = "Unknown Item";
+                }
+            } catch (Exception e) {
+                log.warn("Error loading ItemComposition for ground item id: {}, using defaults: {}", id, e.getMessage());
+                this.name = "Unknown Item";
+                this.itemComposition = null;
+            }
+        }
+    }
+
+    /**
+     * Gets the item name, loading composition if needed.
+     * 
+     * @return The item name or "Unknown Item" if composition fails to load
+     */
+    public String getName() {
+        if (name == null) {
+            ensureCompositionLoaded();
+        }
+        return name != null ? name : "Unknown Item";
+    }
+
+    /**
+     * Gets the item composition, loading it if needed.
+     * 
+     * @return The ItemComposition or null if it fails to load
+     */
+    public ItemComposition getItemComposition() {
+        if (itemComposition == null) {
+            ensureCompositionLoaded();
+        }
+        return itemComposition;
     }
     
     // ============================================
@@ -315,7 +360,13 @@ public class Rs2GroundItemModel {
      * @return true if stackable, false otherwise
      */
     public boolean isStackable() {
-        return itemComposition != null && itemComposition.isStackable();
+        try {
+            ItemComposition composition = getItemComposition();
+            return composition != null && composition.isStackable();
+        } catch (Exception e) {
+            log.warn("Error checking if item is stackable for id: {}: {}", id, e.getMessage());
+            return false;
+        }
     }
     
     /**
@@ -324,7 +375,13 @@ public class Rs2GroundItemModel {
      * @return true if noted, false otherwise
      */
     public boolean isNoted() {
-        return itemComposition != null && itemComposition.getNote() != -1;
+        try {
+            ItemComposition composition = getItemComposition();
+            return composition != null && composition.getNote() != -1;
+        } catch (Exception e) {
+            log.warn("Error checking if item is noted for id: {}: {}", id, e.getMessage());
+            return false;
+        }
     }
     
     /**
@@ -333,7 +390,13 @@ public class Rs2GroundItemModel {
      * @return The item's store value
      */
     public int getValue() {
-        return itemComposition != null ? itemComposition.getPrice() : 0;
+        try {
+            ItemComposition composition = getItemComposition();
+            return composition != null ? composition.getPrice() : 0;
+        } catch (Exception e) {
+            log.warn("Error getting value for item id: {}: {}", id, e.getMessage());
+            return 0;
+        }
     }
     
     /**
@@ -369,7 +432,13 @@ public class Rs2GroundItemModel {
      * @return The high alchemy value
      */
     public int getHaPrice() {
-        return itemComposition != null ? itemComposition.getHaPrice() : 0;
+        try {
+            ItemComposition composition = getItemComposition();
+            return composition != null ? composition.getHaPrice() : 0;
+        } catch (Exception e) {
+            log.warn("Error getting high alchemy price for item id: {}: {}", id, e.getMessage());
+            return 0;
+        }
     }
     
     /**
@@ -388,7 +457,13 @@ public class Rs2GroundItemModel {
      * @return The low alchemy value
      */
     public int getLaValue() {
-        return itemComposition != null ? (int)(itemComposition.getPrice() * 0.4) : 0;
+        try {
+            ItemComposition composition = getItemComposition();
+            return composition != null ? (int)(composition.getPrice() * 0.4) : 0;
+        } catch (Exception e) {
+            log.warn("Error getting low alchemy value for item id: {}: {}", id, e.getMessage());
+            return 0;
+        }
     }
     
     /**
@@ -406,7 +481,13 @@ public class Rs2GroundItemModel {
      * @return true if members-only, false otherwise
      */
     public boolean isMembers() {
-        return itemComposition != null && itemComposition.isMembers();
+        try {
+            ItemComposition composition = getItemComposition();
+            return composition != null && composition.isMembers();
+        } catch (Exception e) {
+            log.warn("Error checking if item is members-only for id: {}: {}", id, e.getMessage());
+            return false;
+        }
     }
     
     /**
@@ -415,7 +496,13 @@ public class Rs2GroundItemModel {
      * @return true if tradeable, false otherwise
      */
     public boolean isTradeable() {
-        return itemComposition != null && itemComposition.isTradeable();
+        try {
+            ItemComposition composition = getItemComposition();
+            return composition != null && composition.isTradeable();
+        } catch (Exception e) {
+            log.warn("Error checking if item is tradeable for id: {}: {}", id, e.getMessage());
+            return false;
+        }
     }
     
     /**
@@ -424,7 +511,13 @@ public class Rs2GroundItemModel {
      * @return Array of inventory actions
      */
     public String[] getInventoryActions() {
-        return itemComposition != null ? itemComposition.getInventoryActions() : new String[0];
+        try {
+            ItemComposition composition = getItemComposition();
+            return composition != null ? composition.getInventoryActions() : new String[0];
+        } catch (Exception e) {
+            log.warn("Error getting inventory actions for item id: {}: {}", id, e.getMessage());
+            return new String[0];
+        }
     }
     
     // ============================================

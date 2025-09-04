@@ -117,6 +117,7 @@ public class ConditionTypeAdapter implements JsonSerializer<Condition>, JsonDese
         else if (src instanceof LockCondition) {
             LockCondition lock = (LockCondition) src;
             data.addProperty("reason", lock.getReason());
+            data.addProperty("withBreakHandlerLock", lock.isWithBreakHandlerLock());
         }
         else {
             log.warn("Unknown condition type: {}", src.getClass().getName());
@@ -202,7 +203,8 @@ public class ConditionTypeAdapter implements JsonSerializer<Condition>, JsonDese
                 if (data.has("data")){
                     data = data.getAsJsonObject("data");
                 }
-                return new LockCondition(data.get("reason").getAsString());
+                boolean isWithBreakHandlerLock = data.has("withBreakHandlerLock") ? data.get("withBreakHandlerLock").getAsBoolean(): false;
+                return new LockCondition(data.get("reason").getAsString(),isWithBreakHandlerLock);
             }
             
             throw new JsonParseException("Unknown condition type: " + typeStr);

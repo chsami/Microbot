@@ -1,8 +1,11 @@
 package net.runelite.client.plugins.microbot.util.grandexchange;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+
+import lombok.extern.slf4j.Slf4j;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.GrandExchangeOffer;
@@ -1882,5 +1885,196 @@ public class Rs2GrandExchange
 		return isCancelled && offer.getQuantitySold() > 0;
 	}
 	
+	/**
+	 * Enhanced slot management: Gets detailed information about an offer before cancelling it.
+	 * This information can be used to restore the offer later.
+	 * 
+	 * @param slot The slot to get offer details from
+	 * @return A map containing offer details, or null if no offer exists
+	 */
+	public static Map<String, Object> getOfferDetailsForCancellation(GrandExchangeSlots slot) {
+		if (slot == null) {
+			return null;
+		}
+		
+		GrandExchangeOffer offer = Microbot.getClient().getGrandExchangeOffers()[slot.ordinal()];
+		if (offer == null || offer.getItemId() == 0) {
+			return null;
+		}
+		
+		Map<String, Object> details = new HashMap<>();
+		details.put("itemId", offer.getItemId());
+		details.put("totalQuantity", offer.getTotalQuantity());
+		details.put("quantitySold", offer.getQuantitySold());
+		details.put("price", offer.getPrice());
+		details.put("spent", offer.getSpent());
+		details.put("state", offer.getState());
+		details.put("slot", slot);
+		
+		// Calculate remaining quantity
+		int remainingQuantity = offer.getTotalQuantity() - offer.getQuantitySold();
+		details.put("remainingQuantity", remainingQuantity);
+		
+		// Determine if it's a buy or sell offer based on state
+		boolean isBuyOffer = offer.getState() == GrandExchangeOfferState.BUYING || 
+							offer.getState() == GrandExchangeOfferState.BOUGHT ||
+							offer.getState() == GrandExchangeOfferState.CANCELLED_BUY;
+		details.put("isBuyOffer", isBuyOffer);
+		
+		return details;
+	}
+	
+	/**
+	 * Enhanced slot management: Cancels only specific Grand Exchange slots instead of all offers.
+	 * Returns details of cancelled offers for potential restoration.
+	 * 
+	 * @param slotsToCancel List of specific slots to cancel
+	 * @param collectToBank Whether to collect items to bank after cancelling
+	 * @return List of maps containing details of cancelled offers
+	 */
+	public static List<Map<String, Object>> cancelSpecificOffers(List<GrandExchangeSlots> slotsToCancel, boolean collectToBank) {
+		List<Map<String, Object>> cancelledOfferDetails = new ArrayList<>();
+		
+		if (!useGrandExchange() || slotsToCancel.isEmpty()) {
+			return cancelledOfferDetails;
+		}
+		
+		for (GrandExchangeSlots slot : slotsToCancel) {
+			try {
+				// Get offer details before cancelling
+				Map<String, Object> details = getOfferDetailsForCancellation(slot);
+				if (details != null) {
+					Widget parent = GrandExchangeWidget.getSlot(slot);
+					if (parent != null && !isSlotAvailable(slot)) {
+						// Cancel this specific offer
+						NewMenuEntry menuEntry = new NewMenuEntry("Abort offer", "", 2, MenuAction.CC_OP, 2, parent.getId(), false);
+						Rectangle bounds = parent.getBounds() != null && Rs2UiHelper.isRectangleWithinCanvas(parent.getBounds())
+							? parent.getBounds()
+							: Rs2UiHelper.getDefaultRectangle();
+						Microbot.doInvoke(menuEntry, bounds);
+						
+						// Store the cancelled offer details
+						cancelledOfferDetails.add(details);
+						
+						if (!Rs2AntibanSettings.naturalMouse) {
+							sleep(250, 750);
+						}
+					}
+				}
+			} catch (Exception e) {
+				log.error("Error cancelling offer in slot {}: {}", slot, e.getMessage());
+			}
+		}
+		
+		// Collect items after cancelling
+		if (!cancelledOfferDetails.isEmpty()) {
+			sleep(1000);
+			collectAll(collectToBank);
+		}
+		
+		return cancelledOfferDetails;
+	}
+	
+	/**
+	 * Enhanced slot management: Attempts to restore a cancelled offer using the provided details.
+	 * 
+	 * @param offerDetails Map containing the offer details to restore
+	 * @param targetSlot Preferred slot to restore to, or null for any available slot
+	 * @return true if the offer was successfully restored, false otherwise
+	 */
+	public static boolean restoreOffer(Map<String, Object> offerDetails, GrandExchangeSlots targetSlot) {
+		if (offerDetails == null || !useGrandExchange()) {
+			return false;
+		}
+		
+		try {
+			int itemId = (Integer) offerDetails.get("itemId");
+			int remainingQuantity = (Integer) offerDetails.get("remainingQuantity");
+			int price = (Integer) offerDetails.get("price");
+			boolean isBuyOffer = (Boolean) offerDetails.get("isBuyOffer");
+			
+			// Skip if no remaining quantity
+			if (remainingQuantity <= 0) {
+				return true; // Consider successful since there's nothing to restore
+			}
+			
+			// Find an available slot (prefer the target slot if available)
+			GrandExchangeSlots slotToUse = targetSlot;
+			if (slotToUse == null || !isSlotAvailable(slotToUse)) {
+				slotToUse = getAvailableSlot();
+			}
+			
+			if (slotToUse == null) {
+				log.warn("No available slots to restore offer for item {}", itemId);
+				return false;
+			}
+			
+			// Get item name for the offer
+			String itemName = Microbot.getClient().getItemDefinition(itemId).getName();
+			if (itemName == null || itemName.isEmpty()) {
+				log.warn("Could not find item name for ID {}", itemId);
+				return false;
+			}
+			
+			// Place the restored offer
+			boolean success;
+			if (isBuyOffer) {
+				success = buyItem(itemName, price, remainingQuantity);
+			} else {
+				success = sellItem(itemName, remainingQuantity, price);
+			}
+			
+			if (success) {
+				log.info("Successfully restored {} offer: {} x{} at {} gp", 
+						isBuyOffer ? "buy" : "sell", itemName, remainingQuantity, price);
+			} else {
+				log.warn("Failed to restore {} offer: {} x{} at {} gp", 
+						isBuyOffer ? "buy" : "sell", itemName, remainingQuantity, price);
+			}
+			
+			return success;
+			
+		} catch (Exception e) {
+			log.error("Error restoring offer: {}", e.getMessage());
+			return false;
+		}
+	}
+	
+	/**
+	 * Enhanced slot management: Returns a list of slots with active offers, sorted by progress.
+	 * Less progressed offers (fewer items bought/sold) are listed first, making them better 
+	 * candidates for cancellation.
+	 * 
+	 * @return List of slots sorted by offer progress (least progress first)
+	 */
+	public static List<GrandExchangeSlots> getActiveOfferSlotsByProgress() {
+		GrandExchangeOffer[] offers = Microbot.getClient().getGrandExchangeOffers();
+		List<Pair<GrandExchangeSlots, Double>> slotProgress = new ArrayList<>();
+		
+		for (int i = 0; i < offers.length && i < GrandExchangeSlots.values().length; i++) {
+			GrandExchangeOffer offer = offers[i];
+			GrandExchangeSlots slot = GrandExchangeSlots.values()[i];
+			
+			// Skip empty slots
+			if (offer == null || offer.getItemId() == 0 || isSlotAvailable(slot)) {
+				continue;
+			}
+			
+			// Calculate progress as percentage of completion
+			double progress = 0.0;
+			if (offer.getTotalQuantity() > 0) {
+				progress = (double) offer.getQuantitySold() / offer.getTotalQuantity();
+			}
+			
+			slotProgress.add(Pair.of(slot, progress));
+		}
+		
+		// Sort by progress (ascending - least progress first)
+		slotProgress.sort((a, b) -> Double.compare(a.getRight(), b.getRight()));
+		
+		return slotProgress.stream()
+				.map(Pair::getLeft)
+				.collect(Collectors.toList());
+	}
 
 }

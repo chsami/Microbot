@@ -8,6 +8,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.woodcutting.AutoWoodcuttingPlugin;
 import net.runelite.client.plugins.microbot.woodcutting.AutoWoodcuttingScript;
 import net.runelite.client.plugins.microbot.woodcutting.enums.ForestryEvents;
@@ -18,8 +19,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static net.runelite.api.gameval.ObjectID.*;
+import lombok.extern.slf4j.Slf4j;
 
+import static net.runelite.api.gameval.ObjectID.*;
+@Slf4j
 public class StrugglingSaplingEvent implements BlockingEvent {
     private final AutoWoodcuttingPlugin plugin;
     private final List<Integer> ingredientIds = List.of(
@@ -38,13 +41,20 @@ public class StrugglingSaplingEvent implements BlockingEvent {
 
     @Override
     public boolean validate() {
-        var strugglingSaplings = Rs2GameObject.getGameObjects(Rs2GameObject.nameMatches("Struggling sapling", false));
-        if (strugglingSaplings == null) return false;
-        if (strugglingSaplings.isEmpty()) return false;
-        return strugglingSaplings.stream().anyMatch(obj ->
-                Rs2GameObject.hasAction(Rs2GameObject.convertToObjectComposition(obj), "Add-mulch") &&
-                        obj.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) <= AutoWoodcuttingScript.FORESTRY_DISTANCE
-        );
+        try{
+            if (plugin == null || !Microbot.isPluginEnabled(plugin)) return false;
+            if (Microbot.getClient() == null || !Microbot.isLoggedIn()) return false;        
+            var strugglingSaplings = Rs2GameObject.getGameObjects(Rs2GameObject.nameMatches("Struggling sapling", false));
+            if (strugglingSaplings == null) return false;
+            if (strugglingSaplings.isEmpty()) return false;
+            return strugglingSaplings.stream().anyMatch(obj ->
+                    Rs2GameObject.hasAction(Rs2GameObject.convertToObjectComposition(obj), "Add-mulch") &&
+                            obj.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) <= AutoWoodcuttingScript.FORESTRY_DISTANCE
+            );
+        } catch (Exception e) {
+            log.error("StrugglingSaplingEvent: Exception in validate method", e);
+            return false;
+        }
     }
 
     @Override
@@ -69,14 +79,21 @@ public class StrugglingSaplingEvent implements BlockingEvent {
                     .collect(Collectors.toList());
 
             if (ingredients.isEmpty()) {
-                Microbot.log("StrugglingSaplingEvent: No leaf ingredients available to collect.");
-                return false;
+                Microbot.log("StrugglingSaplingEvent: No leaf ingredients available to collect. Ending event.");
+                return true;
             }
 
             Set<Integer> triedFirstIngredients = new HashSet<>();
             Set<Integer> triedSecondIngredients = new HashSet<>();
             Set<Integer> triedThirdIngredients = new HashSet<>();
-
+            Rs2Walker.setTarget(null); // stop walking, stop moving to bank for example
+            
+            // ensure inventory space for mulch items and reward (up to 25 items)
+            if (!plugin.ensureInventorySpace(5)) {
+                Microbot.log("StrugglingSaplingEvent: Cannot make enough inventory space, ending event.");
+                return true;
+            }
+            
             while (this.validate()) {
                 // If we have mulch stage 3 in inventory, add them to the sapling
                 if (Rs2Inventory.contains(ItemID.GATHERING_EVENT_SAPLING_MULCH_STAGE3)) {
@@ -136,11 +153,12 @@ public class StrugglingSaplingEvent implements BlockingEvent {
             plugin.saplingOrder[0] = null; // Reset the sapling order after processing
             plugin.saplingOrder[1] = null;
             plugin.saplingOrder[2] = null;
+            plugin.incrementForestryEventCompleted();
             return true;
         }
         catch (Exception e) {
             Microbot.log("StrugglingSaplingEvent: Error during execution: " + e.getMessage() + Arrays.toString(e.getStackTrace()));
-            return false;
+            return this.validate();
         }
     }
 

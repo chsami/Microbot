@@ -23,39 +23,43 @@ public class LockCondition implements Condition {
     private final AtomicBoolean locked = new AtomicBoolean(false);
     @Getter
     private final String reason;
-    
-    /**
-     * Creates a new lock condition with a default reason.
-     */
-    public LockCondition() {
-        this("Plugin is in a critical operation");
-    }
-      /**
-     * Creates a new lock condition with a default reason.
-     */
-    public LockCondition(boolean defaultLock) {
-        this("Plugin is in a critical operation");
-        this.locked.set(defaultLock);        
-    }
-    
-    /**
-     * Creates a new lock condition with the specified reason.
-     * 
-     * @param reason The reason why the plugin is locked
-     */
+    @Getter
+    private final boolean withBreakHandlerLock;
+
+    @Deprecated
     public LockCondition(String reason) {
-        this.reason = reason;
+        this(reason, false, true);
+    }
+    /**
+     * Creates a new LockCondition with the specified reason and withBreakHandlerLock flag.
+     * The lock will be initially unlocked (defaultLock = false).
+     *
+     * @param reason The reason or description for this lock condition
+     * @param withBreakHandlerLock Whether to also lock the BreakHandlerScript when this lock is active
+     */
+    public LockCondition(String reason, boolean withBreakHandlerLock) {
+        this(reason, false, withBreakHandlerLock);
     }
 
+    /**
+     * Creates a new LockCondition with a default reason and specified initial lock state.
+     *
+     * @param defaultLock The initial state of the lock (true for locked, false for unlocked)
+     * @param withBreakHandlerLock Whether to also lock the BreakHandlerScript when this lock is active
+     */
+    public LockCondition(boolean defaultLock, boolean withBreakHandlerLock) {
+        this("Plugin is in a critical operation", defaultLock, withBreakHandlerLock);
+    }
     /**
      * Creates a new LockCondition with the specified reason and initial lock state.
      *
      * @param reason The reason or description for this lock condition
      * @param defaultLock The initial state of the lock (true for locked, false for unlocked)
      */
-    public LockCondition(String reason, boolean defaultLock) {
+    public LockCondition(String reason, boolean defaultLock, boolean withBreakHandlerLock) {
         this.reason = reason;
         this.locked.set(defaultLock);
+        this.withBreakHandlerLock = withBreakHandlerLock;
     }
     
     /**
@@ -67,7 +71,9 @@ public class LockCondition implements Condition {
             return;
         }
         boolean wasLocked = locked.getAndSet(true);
-        BreakHandlerScript.setLockState(true);
+        if(withBreakHandlerLock){
+            BreakHandlerScript.setLockState(true);
+        }
         if (!wasLocked) {
             log.debug("LockCondition locked: {}", reason);
         }
@@ -82,7 +88,9 @@ public class LockCondition implements Condition {
             return;
         }
         boolean wasLocked = locked.getAndSet(false);
-        BreakHandlerScript.setLockState(false);
+        if (withBreakHandlerLock){
+            BreakHandlerScript.setLockState(false);
+        }
         if (wasLocked) {
             log.debug("LockCondition unlocked: {}", reason);
         }

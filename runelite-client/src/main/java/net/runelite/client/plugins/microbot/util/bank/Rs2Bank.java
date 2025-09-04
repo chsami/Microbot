@@ -3,6 +3,10 @@ package net.runelite.client.plugins.microbot.util.bank;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.EquipmentInventorySlot;
+
+import java.util.List;
+import java.util.stream.Collectors;
 import net.runelite.api.GameObject;
 import net.runelite.api.InventoryID;
 import net.runelite.api.ItemComposition;
@@ -55,6 +59,8 @@ import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.util.List;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.IntPredicate;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -80,9 +86,9 @@ public class Rs2Bank {
     private static final String BANK_KEY = "bankitems";
     private static final Rs2BankData rs2BankData = new Rs2BankData();
     private static final Gson gson = new Gson();
-    private static String rsProfileKey= null;
+    private static final AtomicReference<String> rsProfileKey = new AtomicReference<>("");
     private static RuneScapeProfileType worldType;
-    private static boolean vaildLoadedCache = false;
+    private static final AtomicBoolean validLoadedCache = new AtomicBoolean(false);
     // Used to synchronize calls
     private static final Object lock = new Object();
     /**
@@ -412,6 +418,376 @@ public class Rs2Bank {
 
         Microbot.getMouse().click(widget.getBounds());
         return true;
+    }
+
+    /**
+     * Deposits a single equipped item into the bank by equipment slot.
+     *
+     * @param equipmentSlot The equipment slot to deposit from
+     * @return true if the item was successfully deposited, false otherwise
+     */
+    public static boolean depositEquippedItem(EquipmentInventorySlot equipmentSlot) {
+        if (!isOpen()) return false;
+        
+        Rs2ItemModel equippedItem = Rs2Equipment.get(equipmentSlot);
+        if (equippedItem == null) return false;
+        
+        return depositEquippedItem(equippedItem);
+    }
+
+    /**
+     * Deposits a single equipped item into the bank by item ID.
+     *
+     * @param itemId The ID of the equipped item to deposit
+     * @return true if the item was successfully deposited, false otherwise
+     */
+    public static boolean depositEquippedItem(int itemId) {
+        if (!isOpen()) return false;
+        
+        Rs2ItemModel equippedItem = Rs2Equipment.get(itemId);
+        if (equippedItem == null) return false;
+        
+        return depositEquippedItem(equippedItem);
+    }
+
+    /**
+     * Deposits a single equipped item into the bank by name.
+     *
+     * @param itemName The name of the equipped item to deposit
+     * @param exact Whether to match the name exactly
+     * @return true if the item was successfully deposited, false otherwise
+     */
+    public static boolean depositEquippedItem(String itemName, boolean exact) {
+        if (!isOpen()) return false;
+        
+        Rs2ItemModel equippedItem = Rs2Equipment.get(itemName, exact);
+        if (equippedItem == null) return false;
+        
+        return depositEquippedItem(equippedItem);
+    }
+
+    /**
+     * Deposits a single equipped item into the bank by name (partial match).
+     *
+     * @param itemName The name of the equipped item to deposit
+     * @return true if the item was successfully deposited, false otherwise
+     */
+    public static boolean depositEquippedItem(String itemName) {
+        return depositEquippedItem(itemName, false);
+    }
+
+    /**
+     * Deposits multiple equipped items into the bank at once.
+     * Handles inventory space optimization by temporarily banking items if needed.
+     *
+     * @param equipmentSlots The equipment slots to deposit from
+     * @return true if all items were successfully deposited, false otherwise
+     */
+    public static boolean depositEquippedItems(EquipmentInventorySlot... equipmentSlots) {
+        if (!isOpen()) return false;
+        if (equipmentSlots == null || equipmentSlots.length == 0) return true;
+        
+        // get all equipped items to deposit
+        List<Rs2ItemModel> equippedItems = new ArrayList<>();
+        for (EquipmentInventorySlot slot : equipmentSlots) {
+            Rs2ItemModel equippedItem = Rs2Equipment.get(slot);
+            if (equippedItem != null) {
+                equippedItems.add(equippedItem);
+            }
+        }
+        
+        return depositEquippedItems(equippedItems);
+    }
+    
+    /**
+     * Deposits multiple equipped items into the bank at once.
+     * Handles inventory space optimization by temporarily banking items if needed.
+     *
+     * @param itemIds The IDs of equipped items to deposit
+     * @return true if all items were successfully deposited, false otherwise
+     */
+    public static boolean depositEquippedItems(int... itemIds) {
+        if (!isOpen()) return false;
+        if (itemIds == null || itemIds.length == 0) return true;
+        
+        // get all equipped items to deposit
+        List<Rs2ItemModel> equippedItems = new ArrayList<>();
+        for (int itemId : itemIds) {
+            Rs2ItemModel equippedItem = Rs2Equipment.get(itemId);
+            if (equippedItem != null) {
+                equippedItems.add(equippedItem);
+            }
+        }
+        
+        return depositEquippedItems(equippedItems);
+    }
+    
+    /**
+     * Deposits multiple equipped items into the bank at once.
+     * Handles inventory space optimization by temporarily banking items if needed.
+     *
+     * @param itemNames The names of equipped items to deposit
+     * @return true if all items were successfully deposited, false otherwise
+     */
+    public static boolean depositEquippedItems(String... itemNames) {
+        if (!isOpen()) return false;
+        if (itemNames == null || itemNames.length == 0) return true;
+        
+        // get all equipped items to deposit
+        List<Rs2ItemModel> equippedItems = new ArrayList<>();
+        for (String itemName : itemNames) {
+            Rs2ItemModel equippedItem = Rs2Equipment.get(itemName, false);
+            if (equippedItem != null) {
+                equippedItems.add(equippedItem);
+            }
+        }
+        
+        return depositEquippedItems(equippedItems);
+    }
+    
+    /**
+     * Deposits multiple equipped items into the bank at once.
+     * Core implementation that handles inventory space optimization.
+     *
+     * @param equippedItems The list of equipped items to deposit
+     * @return true if all items were successfully deposited, false otherwise
+     */
+    private static boolean depositEquippedItems(List<Rs2ItemModel> equippedItems) {
+        if (equippedItems == null || equippedItems.isEmpty()) return true;
+        if (!isOpen()) return false;
+        
+        int requiredSlots = equippedItems.size();
+        int availableSlots = Rs2Inventory.emptySlotCount();
+        
+        log.debug("Depositing {} equipped items, need {} slots, have {} available", 
+                equippedItems.size(), requiredSlots, availableSlots);
+        
+        // track items temporarily banked for space
+        Map<Integer, Integer> tempBankedItems = new HashMap<>();
+        
+        try {
+            // handle inventory space if needed
+            if (availableSlots < requiredSlots) {
+                if (!makeInventorySpace(requiredSlots - availableSlots, tempBankedItems)) {
+                    log.error("Failed to create sufficient inventory space");
+                    return false;
+                }
+            }
+            
+            // unequip all items
+            for (Rs2ItemModel equippedItem : equippedItems) {
+                boolean unequipped = Rs2Equipment.unEquip(equippedItem.getId());
+                if (!unequipped) {
+                    log.error("Failed to unequip item: {}", equippedItem.getName());
+                    return false;
+                }
+            }
+            
+            // wait for all items to appear in inventory
+            for (Rs2ItemModel equippedItem : equippedItems) {
+                boolean inInventory = sleepUntil(() -> Rs2Inventory.hasItem(equippedItem.getId()), 3000);
+                if (!inInventory) {
+                    log.error("Item did not appear in inventory after unequipping: {}", equippedItem.getName());
+                    return false;
+                }
+            }
+            
+            // deposit all unequipped items
+            for (Rs2ItemModel equippedItem : equippedItems) {
+                boolean deposited = depositOne(equippedItem.getId());
+                if (!deposited) {
+                    log.error("Failed to deposit item: {}", equippedItem.getName());
+                    return false;
+                }
+            }
+            
+            // wait for all items to be deposited
+            for (Rs2ItemModel equippedItem : equippedItems) {
+                boolean removed = sleepUntil(() -> !Rs2Inventory.hasItem(equippedItem.getId()), 3000);
+                if (!removed) {
+                    log.warn("Item may not have been deposited successfully: {}", equippedItem.getName());
+                }
+            }
+            
+            log.debug("Successfully deposited {} equipped items", equippedItems.size());
+            return true;
+            
+        } finally {
+            // restore temporarily banked items
+            if (!tempBankedItems.isEmpty()) {
+                restoreTemporaryBankedItems(tempBankedItems);
+            }
+        }
+    }
+    
+    /**
+     * Deposits a single equipped item into the bank by Rs2ItemModel.
+     * Enhanced version that handles inventory space optimization.
+     *
+     * @param equippedItem The equipped item to deposit
+     * @return true if the item was successfully deposited, false otherwise
+     */
+    private static boolean depositEquippedItem(Rs2ItemModel equippedItem) {
+        if (equippedItem == null) return false;
+        if (!isOpen()) return false;
+        
+        String itemName = equippedItem.getName();
+        int itemId = equippedItem.getId();
+        
+        // track items temporarily banked for space
+        Map<Integer, Integer> tempBankedItems = new HashMap<>();
+        
+        try {
+            // handle inventory space if needed
+            if (Rs2Inventory.isFull()) {
+                log.debug("Inventory full, making space for equipped item: {}", itemName);
+                if (!makeInventorySpace(1, tempBankedItems)) {
+                    log.error("Cannot deposit equipped item: failed to create inventory space");
+                    return false;
+                }
+            }
+            
+            // unequip the item first
+            boolean unequipped = Rs2Equipment.unEquip(itemId);
+            if (!unequipped) {
+                log.error("Failed to unequip item: {}", itemName);
+                return false;
+            }
+            
+            // wait for item to appear in inventory
+            boolean inInventory = sleepUntil(() -> Rs2Inventory.hasItem(itemId), 3000);
+            if (!inInventory) {
+                log.error("Item did not appear in inventory after unequipping: {}", itemName);
+                return false;
+            }
+            
+            // deposit the item from inventory
+            boolean deposited = depositOne(itemId);
+            if (!deposited) {
+                log.error("Failed to deposit item from inventory: {}", itemName);
+                return false;
+            }
+            
+            // wait for item to disappear from inventory
+            boolean removed = sleepUntil(() -> !Rs2Inventory.hasItem(itemId), 3000);
+            if (!removed) {
+                log.warn("Item may not have been deposited successfully: {}", itemName);
+                return false;
+            }
+            
+            log.debug("Successfully deposited equipped item: {}", itemName);
+            return true;
+            
+        } finally {
+            // restore temporarily banked items
+            if (!tempBankedItems.isEmpty()) {
+                restoreTemporaryBankedItems(tempBankedItems);
+            }
+        }
+    }
+    
+    /**
+     * Creates inventory space by temporarily banking items that free up the most slots.
+     * Prioritizes items with highest count to maximize space efficiency.
+     *
+     * @param slotsNeeded Number of inventory slots needed
+     * @param tempBankedItems Map to track temporarily banked items for restoration
+     * @return true if sufficient space was created, false otherwise
+     */
+    private static boolean makeInventorySpace(int slotsNeeded, Map<Integer, Integer> tempBankedItems) {
+        if (slotsNeeded <= 0) return true;
+        if (!isOpen()) return false;
+        
+        // get current inventory items sorted by quantity (descending) to maximize space freed
+        List<Rs2ItemModel> inventoryItems = Rs2Inventory.all().stream()
+            .filter(Objects::nonNull)
+            .collect(Collectors.groupingBy(Rs2ItemModel::getId))
+            .values().stream()
+            .map(items -> {
+                Rs2ItemModel first = items.get(0);
+                int totalQuantity = items.stream().mapToInt(Rs2ItemModel::getQuantity).sum();
+                return new Rs2ItemModel(first.getId(),  totalQuantity, first.getSlot());
+            })
+            .sorted((a, b) -> Integer.compare(b.getQuantity(), a.getQuantity()))
+            .collect(Collectors.toList());
+        
+        int slotsFreed = 0;
+        StringBuilder sb = new StringBuilder();
+        sb.append("Making inventory space - need ").append(slotsNeeded).append(" slots:\n");
+        
+        for (Rs2ItemModel item : inventoryItems) {
+            if (slotsFreed >= slotsNeeded) break;
+            
+            int itemId = item.getId();
+            int quantity = Rs2Inventory.count(itemId);
+            
+            if (quantity > 0) {
+                // calculate how many slots this item type occupies
+                int slotsUsedByItem = (int) Rs2Inventory.all().stream()
+                    .filter(Objects::nonNull)
+                    .filter(invItem -> invItem.getId() == itemId)
+                    .count();
+                
+                // deposit the item
+                boolean deposited = depositX(itemId, quantity);
+                if (deposited) {
+                    boolean itemGone = sleepUntil(() -> !Rs2Inventory.hasItem(itemId), 3000);
+                    if (itemGone) {
+                        tempBankedItems.put(itemId, quantity);
+                        slotsFreed += slotsUsedByItem;
+                        sb.append(String.format("  ✓ Banked %s x%d (freed %d slots)\n", 
+                                item.getName(), quantity, slotsUsedByItem));
+                    }
+                } else {
+                    sb.append(String.format("  ✗ Failed to bank %s x%d\n", item.getName(), quantity));
+                }
+            }
+        }
+        
+        sb.append(String.format("Space creation result: %d/%d slots freed", slotsFreed, slotsNeeded));
+        log.debug(sb.toString());
+        
+        return slotsFreed >= slotsNeeded;
+    }
+    
+    /**
+     * Restores temporarily banked items back to inventory.
+     *
+     * @param tempBankedItems Map of item IDs to quantities that were temporarily banked
+     */
+    private static void restoreTemporaryBankedItems(Map<Integer, Integer> tempBankedItems) {
+        if (tempBankedItems.isEmpty()) return;
+        if (!isOpen()) return;
+        
+        StringBuilder sb = new StringBuilder();
+        sb.append("Restoring temporarily banked items:\n");
+        
+        for (Map.Entry<Integer, Integer> entry : tempBankedItems.entrySet()) {
+            int itemId = entry.getKey();
+            int quantity = entry.getValue();
+            
+            // check if we have inventory space
+            if (Rs2Inventory.isFull()) {
+                sb.append(String.format("  ⚠ Inventory full, cannot restore %d x%d\n", itemId, quantity));
+                continue;
+            }
+            
+            boolean withdrawn = withdrawX(itemId, quantity);
+            if (withdrawn) {
+                boolean itemRestored = sleepUntil(() -> Rs2Inventory.hasItem(itemId), 3000);
+                if (itemRestored) {
+                    sb.append(String.format("  ✓ Restored item %d x%d\n", itemId, quantity));
+                } else {
+                    sb.append(String.format("  ⚠ Withdrew but item did not appear: %d x%d\n", itemId, quantity));
+                }
+            } else {
+                sb.append(String.format("  ✗ Failed to restore item %d x%d\n", itemId, quantity));
+            }
+        }
+        
+        if (sb.length() > "Restoring temporarily banked items:\n".length()) {
+            log.debug(sb.toString());
+        }
     }
 
     /**
@@ -1575,7 +1951,7 @@ public class Rs2Bank {
                 .filter(BankLocation::hasRequirements)
                 .collect(Collectors.toSet());
         long accessibleBanksTime = System.nanoTime() - accessibleBanksStart;
-        log.info("\n\tAccessible banks filtering performance: \n\t{}ms, Found {} accessible banks out of {} total",
+        log.debug("\n\tAccessible banks filtering performance: \n\t{}ms, Found {} accessible banks out of {} total",
                 accessibleBanksTime / 1_000_000.0, accessibleBanks.size(), BankLocation.values().length);
 
         if (accessibleBanks.isEmpty()) {
@@ -1750,6 +2126,10 @@ public class Rs2Bank {
      * @return true if the bank interface is successfully opened.
      */
     public static boolean walkToBankAndUseBank(BankLocation bankLocation, boolean toggleRun) {
+        if (bankLocation == null) {
+            log.warn("Bank location is null, cannot walk to bank.");
+            return false;
+        }
         if (Rs2Bank.isOpen()) return true;
         Rs2Player.toggleRunEnergy(toggleRun);
         Microbot.status = "Walking to nearest bank " + bankLocation.toString();
@@ -1795,18 +2175,22 @@ public class Rs2Bank {
      * @param items The current bank items
      */
     private static void updateCache(List<Rs2ItemModel> items) {
-        if (items != null ) {
-            rs2BankData.set(items);
-            if (Rs2Bank.rsProfileKey  == null){
-                Rs2Bank.rsProfileKey = Microbot.getConfigManager().getRSProfileKey();
+        if (items != null) {
+            // save the current bank items before updating
+            if ( !rsProfileKey.get().isEmpty() && !rsProfileKey.get().equals(Microbot.getConfigManager().getRSProfileKey())){
+                saveCacheToConfig(rsProfileKey.get());
             }
-            saveCacheToConfig(Rs2Bank.rsProfileKey);
-            vaildLoadedCache = true;
+            rs2BankData.set(items);            
+            if (rsProfileKey.get().isEmpty() || !rsProfileKey.get().equals(Microbot.getConfigManager().getRSProfileKey())) {
+                rsProfileKey.set(Microbot.getConfigManager().getRSProfileKey());
+            }
+            saveCacheToConfig(rsProfileKey.get());
+            validLoadedCache.set(true);
         }
     }
     public static void loadInitialCacheFromCurrentConfig() {
-        Rs2Bank.rsProfileKey = Microbot.getConfigManager().getRSProfileKey();
-        loadCacheFromConfig(rsProfileKey);
+        rsProfileKey.set(Microbot.getConfigManager().getRSProfileKey());
+        loadCacheFromConfig(rsProfileKey.get());
     }
     /**
      * Loads the initial bank state from config. Should be called when a player logs in.
@@ -1814,12 +2198,12 @@ public class Rs2Bank {
      */
     public static void loadCacheFromConfig(String newRsProfileKey) {
         synchronized (lock) {
-            if (!vaildLoadedCache) {
+            if (!validLoadedCache.get()) {
                 Player localPlayer = Microbot.getClient().getLocalPlayer();
                 if (localPlayer != null && localPlayer.getName() != null) {
                     loadCache(newRsProfileKey);
                     log.debug("-load bank cache, bank items size: {}", rs2BankData.size());
-                    vaildLoadedCache = Microbot.loggedIn;
+                    validLoadedCache.set(Microbot.loggedIn);
                 }
             }
         }
@@ -1831,11 +2215,41 @@ public class Rs2Bank {
      */
     public static void setUnknownInitialCacheState() {
         synchronized (lock) {
-            if (vaildLoadedCache && Rs2Bank.rsProfileKey != null && Microbot.getConfigManager() != null && rsProfileKey == Microbot.getConfigManager().getRSProfileKey()) {
-                saveCacheToConfig(Rs2Bank.rsProfileKey);
+            if (validLoadedCache.get() && !rsProfileKey.get().isEmpty() && Microbot.getConfigManager() != null && rsProfileKey.get().equals(Microbot.getConfigManager().getRSProfileKey())) {
+                saveCacheToConfig(rsProfileKey.get());
             }
-            vaildLoadedCache = false;
-            rsProfileKey = null;
+            markCacheStale();
+            rsProfileKey.set("");
+        }
+    }
+
+    /**
+     * Handles profile changes by saving current cache and invalidating for the new profile.
+     * This ensures cache state is properly maintained across profile switches.
+     * 
+     * @param newProfileKey the new profile key
+     * @param oldProfileKey the previous profile key (can be null)
+     */
+    public static void handleProfileChange(String newProfileKey, String oldProfileKey) {
+        synchronized (lock) {
+            log.debug("Handling bank cache profile change from '{}' to '{}'", oldProfileKey, newProfileKey);
+            
+            // Save current cache state if valid
+            if (oldProfileKey != null && !oldProfileKey.isEmpty() && isCacheDataValid()) {
+                log.debug("Saving bank cache for previous profile: {}", oldProfileKey);
+                saveCacheToConfig(oldProfileKey);
+            }
+            
+            // Mark cache as stale for profile change
+            markCacheStale();
+            
+            // Update profile key
+            rsProfileKey.set(newProfileKey != null ? newProfileKey : "");
+            
+            // Load cache for new profile if available
+            if (newProfileKey != null && !newProfileKey.isEmpty()) {
+                loadCacheFromConfig(newProfileKey);
+            }
         }
     }
 
@@ -1845,10 +2259,10 @@ public class Rs2Bank {
      */
     private static void loadCache(String newRsProfileKey ) {
         // Only re-load from config if loading from a new profile
-        if (newRsProfileKey != null && !newRsProfileKey.equals(rsProfileKey)) {
+        if (newRsProfileKey != null && !newRsProfileKey.equals(rsProfileKey.get())) {
             // If we've hopped between profiles, save current state first
-            if (rsProfileKey != null && vaildLoadedCache) {
-                saveCacheToConfig(rsProfileKey);
+            if (!rsProfileKey.get().isEmpty() && validLoadedCache.get()) {
+                saveCacheToConfig(rsProfileKey.get());
             }
 
             loadCacheFromConfigInternal(newRsProfileKey);
@@ -1864,7 +2278,7 @@ public class Rs2Bank {
             log.warn("Cannot load bank data, rsProfileKey or config manager is null");
             return;
         }
-        Rs2Bank.rsProfileKey = rsProfileKey;
+        Rs2Bank.rsProfileKey.set(rsProfileKey);
         worldType = RuneScapeProfileType.getCurrent(Microbot.getClient());
         log.debug("Loading bank data for profile: {}, world type: {}", rsProfileKey, worldType);
         String json =Microbot.getConfigManager().getConfiguration(CONFIG_GROUP, rsProfileKey, BANK_KEY);
@@ -1889,7 +2303,7 @@ public class Rs2Bank {
         } catch (JsonSyntaxException err) {
             log.warn("Failed to parse cached bank data from config, resetting cache", err);
             rs2BankData.setEmpty();
-            saveCacheToConfig(Rs2Bank.rsProfileKey);
+            saveCacheToConfig(Rs2Bank.rsProfileKey.get());
         }
     }
 
@@ -1917,10 +2331,11 @@ public class Rs2Bank {
      */
     public static void emptyCacheState() {
         synchronized (lock) {
-            rsProfileKey = null;
+            rsProfileKey.set("");
             worldType = null;
             rs2BankData.setEmpty();
-            vaildLoadedCache = false;
+            validLoadedCache.set(false);
+            // Rs2BankData handles its own cache states when emptied
             log.debug("Emptied bank state and cache");
         }
     }
@@ -1933,6 +2348,138 @@ public class Rs2Bank {
      */
     public static boolean hasCachedBankData() {
         return !rs2BankData.isEmpty();
+    }
+
+    /**
+     * Checks if the bank cache data is VALID (Profile-level validation).
+     * 
+     * VALID = Rs2Bank profile state is consistent and trustworthy
+     * - validLoadedCache flag is true (Rs2Bank has processed cache data)
+     * - rsProfileKey matches current RuneLite profile (no profile switches)
+     * - ConfigManager is available for reading/writing cache
+     * - No stale cache from previous sessions or different characters
+     * - This is Rs2Bank's validation layer ON TOP OF Rs2BankData states
+     * 
+     * NOTE: This does NOT check if cache is loaded or built - only profile consistency
+     * Use isCacheLoaded() to check complete cache readiness
+     * 
+     * @return true if cache data is valid and current, false if stale or needs rebuild
+     */
+    public static boolean isCacheDataValid() {
+        return validLoadedCache.get() 
+                && !rsProfileKey.get().isEmpty() 
+                && Microbot.getConfigManager() != null 
+                && rsProfileKey.get().equals(Microbot.getConfigManager().getRSProfileKey());
+    }
+
+    /**
+     * Checks if the bank cache is COMPLETE AND READY for script usage.
+     * 
+     * This is the MASTER CHECK that combines all validation layers:
+     * 
+     * 1. VALID (Profile-level): Rs2Bank profile state is consistent
+     *    - No profile switches, config manager available, flags consistent
+     * 
+     * 2. LOADED (Data-level): Raw cache data exists from config
+     *    - idQuantityAndSlot array populated with [id, quantity, slot] triplets
+     * 
+     * 3. BUILT (Object-level): Rs2ItemModel objects are ready for use
+     *    - rebuildBankItemsList() executed successfully on client thread
+     *    - Items have proper names, properties, and are script-accessible
+     * 
+     * Scripts should ONLY use bank data when this returns true.
+     * This prevents NPE, stale data, and incomplete cache issues.
+     * 
+     * @return true if ALL cache layers are ready (valid + loaded + built), false otherwise
+     */
+    public static boolean isCacheLoaded() {
+        return isCacheDataValid() && rs2BankData.isCacheReady();
+    }
+
+    /**
+     * Marks the cache as "stale" requiring rebuild on invalid cache data.
+     * This is called when cache data becomes inconsistent or profile changes.
+     */
+    public static void markCacheStale() {
+        synchronized (lock) {
+            log.debug("Marking bank cache as stale - needs rebuild");
+            rs2BankData.markForRebuild();
+            validLoadedCache.set(false);
+        }
+    }
+
+    /**
+     * Invalidates the bank cache, optionally saving current state first.
+     * Similar to Rs2CacheManager invalidation pattern.
+     * 
+     * @param saveBeforeInvalidating if true, saves current cache state before invalidating
+     */
+    public static void invalidateCache(boolean saveBeforeInvalidating) {
+        synchronized (lock) {
+            if (saveBeforeInvalidating && isCacheDataValid()) {
+                log.debug("Saving bank cache before invalidation");
+                saveCacheToConfig(rsProfileKey.get());
+            }
+            log.debug("Invalidating bank cache");
+            rs2BankData.setEmpty();
+            markCacheStale();
+        }
+    }
+
+    /**
+     * Forces a cache rebuild by marking it as stale and clearing data.
+     * This should be called when profile switches or data becomes inconsistent.
+     */
+    public static void forceCacheRebuild() {
+        synchronized (lock) {
+            log.debug("Forcing bank cache rebuild due to inconsistent state");
+            invalidateCache(true);
+        }
+    }
+
+    /**
+     * Gets comprehensive cache state information for debugging.
+     * Includes both Rs2Bank and Rs2BankData states.
+     * 
+     * @return formatted string with complete cache state details
+     */
+    public static String getDetailedCacheState() {
+        return String.format("Rs2Bank[profileValid=%s, profileKey='%s'] + %s", 
+                           isCacheDataValid(), 
+                           rsProfileKey.get(), 
+                           rs2BankData.getCacheStateInfo());
+    }
+
+    /**
+     * Checks if the bank cache data is LOADED (Stage 1: Raw data from config).
+     * 
+     * STAGE 1 LOADED = Raw integers available but NOT usable yet
+     * - idQuantityAndSlot array contains [id, quantity, slot] triplets
+     * - Data restored from RuneLite config on login/profile switch
+     * - Items are still just numbers - NO Rs2ItemModel objects yet
+     * - Client thread processing NOT required for this stage
+     * - Does NOT mean scripts can use the data yet
+     * 
+     * @return true if raw cache data is loaded from config, false otherwise
+     */
+    public static boolean isCacheDataLoaded() {
+        return rs2BankData.isCacheLoaded();
+    }
+
+    /**
+     * Checks if the bank cache is BUILT (Stage 2: Usable objects ready).
+     * 
+     * STAGE 2 BUILT = Rs2ItemModel objects ready for script usage
+     * - rebuildBankItemsList() has completed successfully
+     * - Raw data converted to full Rs2ItemModel objects with names/properties
+     * - ItemManager validation completed on client thread
+     * - Scripts can immediately use hasItem(), count(), findBankItem(), etc.
+     * - No rebuild delays or client thread waiting required
+     * 
+     * @return true if bankItems list is fully built and ready, false otherwise
+     */
+    public static boolean isCacheDataBuilt() {
+        return rs2BankData.isCacheBuilt();
     }
 
     /**

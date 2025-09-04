@@ -4,6 +4,7 @@ import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
+import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugin;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -13,17 +14,23 @@ import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.grounditem.LootingParameters;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
+import net.runelite.client.plugins.microbot.util.inventory.InteractOrder;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.skills.woodcutting.Rs2Woodcutting;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
-import net.runelite.client.plugins.microbot.util.woodcutting.Rs2Woodcutting;
 import net.runelite.client.plugins.microbot.woodcutting.enums.*;
+import net.runelite.client.plugins.microbot.util.skills.fletching.Rs2Fletching;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2LogBasket;
 
 import javax.inject.Inject;
+
+import lombok.extern.slf4j.Slf4j;
+
 import java.awt.event.KeyEvent;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -33,6 +40,7 @@ import static net.runelite.api.gameval.AnimationID.*;
 import static net.runelite.api.gameval.ItemID.TINDERBOX;
 
 
+@Slf4j
 public class AutoWoodcuttingScript extends Script {
 
     public static final List<Integer> BURNING_ANIMATION_IDS = List.of(
@@ -54,8 +62,8 @@ public class AutoWoodcuttingScript extends Script {
     public volatile boolean cannotLightFire = false;
     WoodcuttingScriptState woodcuttingScriptState = WoodcuttingScriptState.WOODCUTTING;
     private boolean hasAutoHopMessageShown = false;
-    private final AutoWoodcuttingPlugin plugin;
-
+    private final AutoWoodcuttingPlugin plugin;    
+    public int currentLogBasketCount = -1;
     @Inject
     public AutoWoodcuttingScript(AutoWoodcuttingPlugin plugin) {
         this.plugin = plugin;
@@ -149,6 +157,26 @@ public class AutoWoodcuttingScript extends Script {
 
         if (Rs2Woodcutting.isWearingAxeWithSpecialAttack())
             Rs2Combat.setSpecState(true, 1000);
+        boolean willBank = willBankItems(config);
+        int currentLogCountBeforeFill = Rs2Inventory.count(config.TREE().getLogID());
+        if ( currentLogCountBeforeFill > 0 && currentLogBasketCount < Rs2LogBasket.LOG_BASKET_CAPACITY && Rs2LogBasket.hasLogBasket()  && willBank) {
+            if (currentLogBasketCount == -1) {
+                Rs2LogBasket.BasketContents content  = Rs2LogBasket.getCurrentBasketContents();
+                currentLogBasketCount = content == null ? 0 : content.quantity;
+                log.info("Initialized log basket count to {}", currentLogBasketCount);
+            }
+            if(currentLogBasketCount < Rs2LogBasket.LOG_BASKET_CAPACITY){
+                
+                if (Rs2LogBasket.fillLogBasket()) {
+                    Rs2Antiban.actionCooldown();                                                
+                }
+                int currentLogCountAfterFill = Rs2Inventory.count(config.TREE().getLogID());
+                int addedLogs = currentLogCountBeforeFill - currentLogCountAfterFill;
+                currentLogBasketCount += addedLogs;
+                log.info("Added {} logs to basket, current count: {}", addedLogs, currentLogBasketCount);
+            }
+        }
+       
 
         if (Rs2Inventory.isFull()) {
             woodcuttingScriptState = WoodcuttingScriptState.RESETTING;
@@ -214,7 +242,7 @@ public class AutoWoodcuttingScript extends Script {
     }
 
     private void resetInventory(AutoWoodcuttingConfig config) {
-        switch (config.resetOptions()) {
+        switch (config.primaryAction()) {
             case DROP:
                 var itemNames = Arrays.stream(config.itemsToKeep().split(",")).map(String::trim).toArray(String[]::new);
                 Rs2Inventory.dropAllExcept(false, config.interactOrder(), itemNames);
@@ -225,8 +253,8 @@ public class AutoWoodcuttingScript extends Script {
                     return;
                 woodcuttingScriptState = WoodcuttingScriptState.WOODCUTTING;
                 break;
-            case CAMPFIRE_FIREMAKE:
-            case FIREMAKE:
+            case BURN_CAMPFIRE:
+            case BURN:
                 burnLog(config);
 
                 if (Rs2Inventory.contains(config.TREE().getLog())) return;
@@ -239,24 +267,26 @@ public class AutoWoodcuttingScript extends Script {
                     woodcuttingScriptState = WoodcuttingScriptState.WOODCUTTING;
                 }
                 break;
-            case FLETCH_ARROWSHAFT:
-                fletchArrowShaft(config);
-
-                walkBack(config);
+            case FLETCH:
+                handleFletchingWorkflow(config);
                 woodcuttingScriptState = WoodcuttingScriptState.WOODCUTTING;
                 break;
         }
     }
 
-    private boolean handleBanking(AutoWoodcuttingConfig config)
-    {
+    private boolean handleBanking(AutoWoodcuttingConfig config) {
         BankLocation nearestBank = Rs2Bank.getNearestBank();
         boolean isBankOpen = Rs2Bank.isNearBank(nearestBank, 8) ? Rs2Bank.openBank() : Rs2Bank.walkToBankAndUseBank(nearestBank);
         if (!isBankOpen || !Rs2Bank.isOpen()) return false;
+        
+        // empty log basket first if we have one
+        Rs2LogBasket.emptyLogBasketAtBank();
+        currentLogBasketCount = 0;
+        // deposit items
         List<String> itemNames = Arrays.stream(config.itemsToBank().split(",")).map(String::toLowerCase).collect(Collectors.toList());
+        itemNames.add(config.fletchingType().getContainsInventoryName().toLowerCase());
         Rs2Bank.depositAll(i -> itemNames.stream().anyMatch(itemName -> i.getName().toLowerCase().contains(itemName)));
         Rs2Inventory.waitForInventoryChanges(1800);
-        Rs2Bank.emptyLogBasket();
 
         Rs2Bank.closeBank();
         sleepUntil(() -> !Rs2Bank.isOpen());
@@ -303,8 +333,7 @@ public class AutoWoodcuttingScript extends Script {
         if (fire == null) {
             fire = Rs2GameObject.getGameObject(26185, 6); // Regular fire
         }
-        if (config.resetOptions() == WoodcuttingResetOptions.CAMPFIRE_FIREMAKE) {
-
+        if (config.primaryAction() == WoodcuttingPrimaryAction.BURN_CAMPFIRE) {
             if (fire != null) {
                 useCampfire = true;
             }
@@ -384,10 +413,103 @@ public class AutoWoodcuttingScript extends Script {
         Rs2Walker.walkTo(new WorldPoint(getReturnPoint(config).getX() - Rs2Random.between(-1, 1), getReturnPoint(config).getY() - Rs2Random.between(-1, 1), getReturnPoint(config).getPlane()));
         sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(getReturnPoint(config)) <= 4);
     }
+    
+    /**
+     * determine if this workflow will bank items
+     */
+    private boolean willBankItems(AutoWoodcuttingConfig config) {
+        return config.primaryAction() == WoodcuttingPrimaryAction.BANK || 
+               (config.primaryAction() == WoodcuttingPrimaryAction.FLETCH && 
+                config.secondaryAction() == WoodcuttingSecondaryAction.BANK);
+    }
+    
+    /**
+     * handle fletching workflow with secondary actions
+     */
+    private void handleFletchingWorkflow(AutoWoodcuttingConfig config) {
+        // fletch logs in inventory
+        if (!Rs2Fletching.hasKnife()) {
+            log.info("Unable to find knife in inventory/equipped");
+            switch (config.secondaryAction()) {
+                case BANK:
+                case STRING_AND_BANK:                    
+                    if (!handleBanking(config)) {
+                        walkBack(config);
+                        return;
+                    }
+                    break;
+                case DROP:                
+                case STRING_AND_DROP:
+                    log.info("Dropping items to find knife");
+                    String [] itemNames = Arrays.stream(config.itemsToKeep().split(",")).map(String::trim).toArray(String[]::new);
+                    // additional item to keep axe and log basket
+                    itemNames = Arrays.copyOf(itemNames, itemNames.length + 1);
+                    itemNames[itemNames.length - 1] = "axe";
+                    if (Rs2Inventory.hasItem("log basket")) {
+                        itemNames = Arrays.copyOf(itemNames, itemNames.length + 1);
+                        itemNames[itemNames.length - 1] = "log basket";
+                    }
+
+                    
+                    Rs2Inventory.dropAllExcept(false, InteractOrder.COLUMN,itemNames );                    
+                    break;
+                case NONE:
+                    break;
+            }
+            return;
+        }
+        int logCount = Rs2Inventory.count(config.TREE().getLogID());
+        if (logCount > 0) {            
+            boolean startFletchingSucces = Rs2Fletching.fletchItems(config.TREE().getLogID(), config.fletchingType().getContainsInventoryName(), "All");
+            int fletchedItems = Rs2Inventory.getList( itemBounds -> itemBounds.getName().contains(config.fletchingType().getContainsInventoryName())).size();
+            log.info("We fletched " + logCount + " " + config.TREE() + " into " +fletchedItems + "of" + config.fletchingType().getContainsInventoryName() +  " "+ ", success: " + startFletchingSucces);
+            if (!startFletchingSucces) {
+                log.error("Failed to start fletching, stopping script");
+                shutdown();
+                return;
+
+            }
+            if (Rs2Inventory.count(config.TREE().getLogID())!=0){
+                return;
+            }            
+        }
+        
+        // handle secondary action
+        switch (config.secondaryAction()) {
+            case BANK:
+                if (!handleBanking(config)) return;
+                walkBack(config);
+                break;
+            case DROP:
+                
+                Rs2Fletching.dropFletchedItems(config.fletchingType().getContainsInventoryName());
+                break;
+            case STRING_AND_DROP:
+            case STRING_AND_BANK:
+                if (Rs2Inventory.contains("bow string")) {
+                    Rs2Fletching.stringBows(config.fletchingType().getContainsInventoryName());
+                }
+                if (config.secondaryAction() == WoodcuttingSecondaryAction.STRING_AND_BANK) {
+                    if (!handleBanking(config)) return;
+                    walkBack(config);
+                } else {
+                    Rs2Fletching.dropFletchedItems(config.fletchingType().getContainsInventoryName());
+                }
+                break;
+            case NONE:
+                break;
+        }
+        
+        
+        woodcuttingScriptState = WoodcuttingScriptState.WOODCUTTING;
+    }
 
     @Override
-    public void shutdown() {
+    public void shutdown() {        
         super.shutdown();
+        currentLogBasketCount = -1;
+        Rs2Fletching.stopFletchingWhileMoving();
+        Rs2Walker.setTarget(null);
         returnPoint = null;
         initialPlayerLocation = null;
         hasAutoHopMessageShown = false;

@@ -11,6 +11,7 @@ import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.microbot.woodcutting.AutoWoodcuttingPlugin;
 import net.runelite.client.plugins.microbot.woodcutting.enums.ForestryEvents;
@@ -18,8 +19,10 @@ import net.runelite.client.plugins.microbot.woodcutting.enums.ForestryEvents;
 import java.util.Comparator;
 import java.util.stream.Collectors;
 
-import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
+import lombok.extern.slf4j.Slf4j;
 
+import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
+@Slf4j
 public class EggEvent implements BlockingEvent {
 
     private final AutoWoodcuttingPlugin plugin;
@@ -29,8 +32,15 @@ public class EggEvent implements BlockingEvent {
 
     @Override
     public boolean validate() {
-        var forester = Rs2NpcCache.getClosestNpcByGameId(NpcID.GATHERING_EVENT_PHEASANT_FORESTER);
-        return forester.isPresent();
+        try{
+            if (plugin == null || !Microbot.isPluginEnabled(plugin)) return false;
+            if (Microbot.getClient() == null || !Microbot.isLoggedIn()) return false;
+            var forester = Rs2NpcCache.getClosestNpcByGameId(NpcID.GATHERING_EVENT_PHEASANT_FORESTER);
+            return forester.isPresent();
+        } catch (Exception e) {
+            log.error("EggEvent: Exception in validate method", e);
+            return false;
+        }
     }
 
     @Override
@@ -40,7 +50,7 @@ public class EggEvent implements BlockingEvent {
         var forester = Rs2NpcCache.getClosestNpcByGameId(NpcID.GATHERING_EVENT_PHEASANT_FORESTER);
         if (forester.isEmpty()) {
             Microbot.log("EggEvent: Forester not found, cannot proceed with egg event.");
-            return false; // If the forester is not found, we cannot proceed with the event
+            return true; // If the forester is not found, we cannot proceed with the event
         }
 
         plugin.currentForestryEvent = ForestryEvents.PHEASANT;
@@ -55,7 +65,7 @@ public class EggEvent implements BlockingEvent {
                 sleepUntil(() -> !Rs2Inventory.isFull(), 5000);
             }
         }
-
+        Rs2Walker.setTarget(null); // stop walking, stop moving to bank for example
         while (this.validate()) {
 
             // If we have an egg, interact with the forester
@@ -95,6 +105,7 @@ public class EggEvent implements BlockingEvent {
             Rs2Player.waitForAnimation();
         }
         Microbot.log("EggEvent: Ending Egg event.");
+        plugin.incrementForestryEventCompleted();
         return true;
     }
 

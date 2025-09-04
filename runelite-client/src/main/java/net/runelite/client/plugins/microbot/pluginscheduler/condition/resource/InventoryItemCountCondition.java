@@ -31,7 +31,7 @@ public class InventoryItemCountCondition extends ResourceCondition {
     
     private transient int currentTargetCount;
     private transient int currentItemCount;
-    private transient boolean satisfied = false;
+    private transient volatile boolean satisfied = false;
     private transient boolean initialInventoryLoaded = false;
     public InventoryItemCountCondition(String itemName, int targetCount, boolean includeNoted) {
         super(itemName);

@@ -65,7 +65,7 @@ To make your plugin schedulable by the Plugin Scheduler, follow these steps:
    ```java
    @Override
    @Subscribe
-   public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {
+   public void onPluginScheduleEntryPostScheduleTaskEvent(PluginScheduleEntryPostScheduleTaskEvent event) {
        if (event.getPlugin() == this) {
            // Save state if needed
            // Clean up resources
@@ -96,7 +96,7 @@ The `LockCondition` is a special condition that can prevent a plugin from being 
 
 ```java
 // In your plugin's getStopCondition method:
-LockCondition lockCondition = new LockCondition("Critical banking operation in progress");
+LockCondition lockCondition = new LockCondition("Critical banking operation in progress", true);
 AndCondition andCondition = new AndCondition();
 andCondition.addCondition(orCondition);   // Other stop conditions
 andCondition.addCondition(lockCondition); // Add the lock condition

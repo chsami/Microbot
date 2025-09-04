@@ -4,6 +4,7 @@ import net.runelite.api.gameval.InterfaceID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
 import net.runelite.client.plugins.microbot.pluginscheduler.model.PluginScheduleEntry;
+import net.runelite.client.plugins.microbot.pluginscheduler.util.SchedulerPluginUtil;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -161,7 +162,7 @@ public class SchedulerInfoOverlay extends OverlayPanel {
      * Adds next plugin information including time estimates
      */
     private void addNextPluginInfo(PluginScheduleEntry nextPlugin) {
-        String pluginName = nextPlugin.getName();
+        String pluginName = nextPlugin.getCleanName();
         if (pluginName.length() > 20) {
             pluginName = pluginName.substring(0, 17) + "...";
         }
@@ -216,19 +217,21 @@ public class SchedulerInfoOverlay extends OverlayPanel {
                         .build());
             }
         } else {
-            // Only show break countdown if not in micro-breaks-only mode
-            if (showBreakIn && BreakHandlerScript.breakIn > 0) {
-                panelComponent.getChildren().add(LineComponent.builder()
-                        .left("Break In:")
-                        .right(formatDuration(Duration.ofSeconds(BreakHandlerScript.breakIn)))
-                        .rightColor(Color.WHITE)
-                        .build());
-            } else if (onlyMicroBreaks && Rs2AntibanSettings.takeMicroBreaks) {
-                panelComponent.getChildren().add(LineComponent.builder()
-                        .left("Break Mode:")
-                        .right("Micro Breaks Only")
-                        .rightColor(Color.BLUE)
-                        .build());
+            if(SchedulerPluginUtil.isBreakHandlerEnabled() ){
+                // Only show break countdown if not in micro-breaks-only mode
+                if (showBreakIn && BreakHandlerScript.breakIn > 0) {
+                    panelComponent.getChildren().add(LineComponent.builder()
+                            .left("Break In:")
+                            .right(formatDuration(Duration.ofSeconds(BreakHandlerScript.breakIn)))
+                            .rightColor(Color.WHITE)
+                            .build());
+                } else if (onlyMicroBreaks && Rs2AntibanSettings.takeMicroBreaks) {
+                    panelComponent.getChildren().add(LineComponent.builder()
+                            .left("Break Mode:")
+                            .right("Micro Breaks Only")
+                            .rightColor(Color.BLUE)
+                            .build());
+                }
             }
         }
     }

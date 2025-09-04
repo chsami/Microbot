@@ -12,7 +12,7 @@ import net.runelite.client.plugins.microbot.pluginscheduler.api.SchedulablePlugi
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.AndCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LockCondition;
 import net.runelite.client.plugins.microbot.pluginscheduler.condition.logical.LogicalCondition;
-import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntrySoftStopEvent;
+import net.runelite.client.plugins.microbot.pluginscheduler.event.PluginScheduleEntryPostScheduleTaskEvent;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.misc.TimeUtils;
 import net.runelite.client.ui.overlay.OverlayManager;
@@ -41,7 +41,7 @@ public class GiantSeaweedFarmerPlugin extends Plugin implements SchedulablePlugi
     @Inject
     private GiantSeaweedSporeScript giantSeaweedSporeScript;
     private LogicalCondition stopCondition = new AndCondition();
-    private LockCondition lookCondition;
+    private LockCondition lockCondition;
 
     protected String getTimeRunning() {
         return scriptStartTime != null ? TimeUtils.getFormattedDurationBetween(scriptStartTime, Instant.now()) : "";
@@ -53,10 +53,10 @@ public class GiantSeaweedFarmerPlugin extends Plugin implements SchedulablePlugi
         if (overlayManager != null) {
             overlayManager.add(giantSeaweedFarmerOverlay);
         }
-        if(lookCondition == null) {
+        if(lockCondition == null) {
             getStopCondition();
         }
-        lookCondition.lock();
+        lockCondition.lock();
         giantSeaweedFarmerScript.run(config);
         // Start the spore looting script if configured
         if (config.lootSeaweedSpores()) {
@@ -72,6 +72,9 @@ public class GiantSeaweedFarmerPlugin extends Plugin implements SchedulablePlugi
         if (giantSeaweedSporeScript != null && giantSeaweedSporeScript.isRunning()) {
             giantSeaweedSporeScript.shutdown();
         }
+        if (lockCondition != null && lockCondition.isLocked()) {
+            lockCondition.unlock();
+        }
         overlayManager.remove(giantSeaweedFarmerOverlay);
     }
 
@@ -81,7 +84,7 @@ public class GiantSeaweedFarmerPlugin extends Plugin implements SchedulablePlugi
     }
     @Override
     @Subscribe    
-    public void onPluginScheduleEntrySoftStopEvent(PluginScheduleEntrySoftStopEvent event) {        
+    public void onPluginScheduleEntryPostScheduleTaskEvent(PluginScheduleEntryPostScheduleTaskEvent event) {        
         if (event.getPlugin() == this) {
             if ( giantSeaweedFarmerScript != null 
                     && giantSeaweedFarmerScript.isRunning() 
@@ -92,36 +95,28 @@ public class GiantSeaweedFarmerPlugin extends Plugin implements SchedulablePlugi
                 // not yet implemented implentented, upcomming in the next release.
                 return;
             }            
-            if ( lookCondition != null && lookCondition.isLocked()) {
+            if ( lockCondition != null && lockCondition.isLocked()) {
                 // If the lock condition is active, we can't stop the plugin yet
-                Microbot.log("Stopping Giant Seaweed Farmer script due to soft stop event, but we are currently locked.");
+                Microbot.log("Stopping Giant Seaweed Farmer script due to soft stop event, but we are currently locked. Waiting to unlock...");
                 return;
-            }
+        }
+            
             Microbot.log("Stopping Giant Seaweed Farmer script due to soft stop event.");
             Microbot.stopPlugin(this);
         }
     }    
     @Override
     public LogicalCondition getStopCondition() {
-        if (lookCondition == null) {
+        if (lockCondition == null) {
             // Create a lock condition to prevent the plugin from running while the bank is open
-            lookCondition = new LockCondition("Giant Seaweed Farmer lock",true
-            );
-            this.stopCondition.addCondition(lookCondition);
+            lockCondition = new LockCondition("Giant Seaweed Farmer lock",false,true);
+            this.stopCondition.addCondition(lockCondition);
         }
         // Create a new stop condition
         return this.stopCondition;
     }
     
     public LockCondition getLockCondition(LogicalCondition stopCondition) {
-        return lookCondition;
-    }
-    
-    public void reportFinished(String message, boolean success) {
-        Microbot.showMessage(message);
-        if (!success) {
-            log.error(message);
-        }
-        Microbot.stopPlugin(this);
-    }
+        return lockCondition;
+    }    
 }

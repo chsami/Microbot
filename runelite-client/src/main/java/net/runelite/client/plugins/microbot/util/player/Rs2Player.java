@@ -400,6 +400,9 @@ public class Rs2Player {
      * @return {@code true} if the player is interacting with another entity, {@code false} otherwise.
      */
     public static boolean isInteracting() {
+        if (Microbot.getClient().getLocalPlayer() == null) {
+            return false;
+        }
         return Optional.of(Microbot.getClient().getLocalPlayer().isInteracting()).orElse(false);
     }
 
@@ -1117,6 +1120,9 @@ public class Rs2Player {
             LocalPoint l = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), Microbot.getClient().getLocalPlayer().getWorldLocation());
             return WorldPoint.fromLocalInstance(Microbot.getClient(), l);
         } else {
+            if (Microbot.getClient().getLocalPlayer() == null) {
+                return null; // Handle case where local player is not available
+            }
             return Microbot.getClient().getLocalPlayer().getWorldLocation();
         }
     }

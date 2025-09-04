@@ -2,10 +2,12 @@ package net.runelite.client.plugins.microbot.util.bank;
 
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Thread-safe data class for caching bank items with ID, quantity, and slot information.
@@ -42,16 +44,37 @@ public class Rs2BankData {
      */
     private List<Rs2ItemModel> bankItems;
     
+    
     /**
-     * Flag to track if the cached bankItems list needs to be rebuilt.
-     * Made volatile to ensure visibility across threads.
+     * Atomic flag to track if the cache is LOADED (idQuantityAndSlot has data).
+     * 
+     * LOADED means:
+     * - Raw cache data (int[] idQuantityAndSlot) has been loaded from RuneLite config
+     * - Contains saved bank state from previous session as triplets: [id, quantity, slot, ...]
+     * - Data exists but items are NOT yet usable as Rs2ItemModel objects
+     * - This is the FIRST stage of cache initialization
+     * - Does NOT mean the bank interface is open or items are accessible in-game
      */
-    private volatile boolean needsRebuild = true;
+    private final AtomicBoolean isCacheLoaded = new AtomicBoolean(false);
+    
+    /**
+     * Atomic flag to track if the cache is BUILT (bankItems list is ready).
+     * 
+     * BUILT means:
+     * - The raw idQuantityAndSlot data has been processed via rebuildBankItemsList()
+     * - Rs2ItemModel objects have been created from cached data using ItemManager
+     * - Items have proper names, icons, and game properties loaded
+     * - The bankItems List<Rs2ItemModel> is ready for script usage
+     * - This is the SECOND stage requiring client thread execution
+     * - getBankItems() will return immediately without rebuilding
+     */
+    private final AtomicBoolean isCacheBuilt = new AtomicBoolean(false);
 
     public Rs2BankData() {
         idQuantityAndSlot = new int[0];
         bankItems = new ArrayList<>();
-        needsRebuild = true;
+        isCacheLoaded.set(false);
+        isCacheBuilt.set(false);
     }
 
     /**
@@ -79,9 +102,12 @@ public class Rs2BankData {
         idQuantityAndSlot = newIdQuantityAndSlot;
         bankItems.clear();
         bankItems.addAll(items);
-        needsRebuild = false;
         
-        log.trace("Bank data updated with {} items", items.size());
+        // Mark cache as both loaded and built since we have live data
+        isCacheLoaded.set(true);
+        isCacheBuilt.set(true);
+        
+        log.trace("Bank data updated with {} items - cache loaded and built", items.size());
     }
 
     /**
@@ -105,8 +131,12 @@ public class Rs2BankData {
     synchronized void setEmpty() {
         idQuantityAndSlot = new int[0];
         bankItems.clear();
-        needsRebuild = false;
-        log.trace("Bank data cleared");
+        
+        // Reset cache states
+        isCacheLoaded.set(false);
+        isCacheBuilt.set(false);
+        
+        log.trace("Bank data cleared - cache states reset");
     }
 
     /**
@@ -117,9 +147,14 @@ public class Rs2BankData {
      */
     synchronized void setIdQuantityAndSlot(int[] data) {
         this.idQuantityAndSlot = data != null ? data : new int[0];
-        needsRebuild = true;  // Mark for rebuild since we're loading from config
-        log.trace("Bank raw data set with {} entries, marked for rebuild", 
-                this.idQuantityAndSlot.length / 3);
+        
+        // Update cache states: loaded from config but not yet built
+        boolean hasData = this.idQuantityAndSlot.length > 0;
+        isCacheLoaded.set(hasData);
+        isCacheBuilt.set(false);  // Always false when loading from config
+        
+        log.trace("Bank raw data set with {} entries, cache loaded: {}, needs rebuild", 
+                this.idQuantityAndSlot.length / 3, hasData);
     }
 
     /**
@@ -140,7 +175,7 @@ public class Rs2BankData {
      * @return Defensive copy of bank items list
      */
     public synchronized List<Rs2ItemModel> getBankItems() {
-        if (needsRebuild) {
+        if (!isCacheBuilt.get()) {
             rebuildBankItemsList();
         }
         // Return defensive copy to prevent external modification
@@ -156,29 +191,37 @@ public class Rs2BankData {
         bankItems.clear();
 
         if (idQuantityAndSlot == null || idQuantityAndSlot.length < 3) {
-            needsRebuild = false;
+            isCacheBuilt.set(false);  // No items to build
             return;
         }        
         log.debug("Rebuilding bank items list from cached data, size: {}", idQuantityAndSlot.length / 3);
-        // Process items in triplets: [id, quantity, slot]
-        for (int i = 0; i < idQuantityAndSlot.length - 2; i += 3) {
-            int id = idQuantityAndSlot[i];
-            int quantity = idQuantityAndSlot[i + 1];
-            int slot = idQuantityAndSlot[i + 2];
-            
-            // Create Rs2ItemModel from cached data
-            try {               
-                //back to use lazy loading with Rs2ItemModel.createFromCache(id, quantity, slot)...
-                Rs2ItemModel item  =  Rs2ItemModel.createFromCache(id, quantity, slot);// new Rs2ItemModel(id, quantity, slot); // lazy loading with Rs2ItemModel.createFromCache(id, quantity, slot);                                       
-                bankItems.add(item);
-            } catch (Exception e) {
-                log.warn("Failed to recreate bank item from cache: id={}, qty={}, slot={}", id, quantity, slot, e);
-                // Skip invalid items that can't be recreated
-                continue;
+        
+        boolean rebuildSuccess = Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            // Ensure we are on the client thread 
+            log.debug("Rebuilding bank items list on client thread");            
+            // Process items in triplets: [id, quantity, slot]
+            for (int i = 0; i < idQuantityAndSlot.length - 2; i += 3) {
+                int id = idQuantityAndSlot[i];
+                int quantity = idQuantityAndSlot[i + 1];
+                int slot = idQuantityAndSlot[i + 2];                
+                // Create Rs2ItemModel from cached data
+                try {               
+                    Rs2ItemModel item = Rs2ItemModel.createFromCache(id, quantity, slot);
+                    bankItems.add(item);
+                } catch (Exception e) {
+                    log.warn("Failed to recreate bank item from cache: id={}, qty={}, slot={}", id, quantity, slot, e);
+                    // Skip invalid items that can't be recreated
+                    continue;
+                }
             }
-        }
-        needsRebuild = false;
-        log.debug("finished Rebuilt bank items list with {} items", bankItems.size());
+            return true;
+        }).orElse(false);
+        
+        // Update cache built state based on rebuild success
+        isCacheBuilt.set(rebuildSuccess);
+        
+        log.debug("Finished rebuilding bank items list with {} items, cache built: {}", 
+                  bankItems.size(), rebuildSuccess);
     }
 
     /**
@@ -210,5 +253,70 @@ public class Rs2BankData {
      */
     public synchronized boolean isEmpty() {
         return size() == 0;
+    }
+
+    /**
+     * Checks if the cache is LOADED (Stage 1: Raw data from config).
+     * 
+     * LOADED = Raw cache data exists in idQuantityAndSlot array
+     * - Data was restored from RuneLite config on login/profile change
+     * - Contains [id, quantity, slot] triplets from previous bank session
+     * - Items are NOT yet usable - just raw integers
+     * - This happens immediately when config is loaded
+     * 
+     * @return true if raw cache data is loaded from config, false otherwise
+     */
+    public boolean isCacheLoaded() {
+        return isCacheLoaded.get();
+    }
+
+    /**
+     * Checks if the cache is BUILT (Stage 2: Usable Rs2ItemModel objects).
+     * 
+     * BUILT = Rs2ItemModel objects are ready for script usage
+     * - rebuildBankItemsList() has been executed successfully
+     * - Raw data converted to Rs2ItemModel objects with names, properties, etc.
+     * - Items have been validated through ItemManager on client thread
+     * - getBankItems() will return immediately without rebuilding
+     * - Scripts can safely use hasItem(), count(), etc.
+     * 
+     * @return true if bankItems list is fully built and ready, false otherwise
+     */
+    public boolean isCacheBuilt() {
+        return isCacheBuilt.get();
+    }
+
+    /**
+     * Checks if the cache is READY (Both loaded AND built).
+     * 
+     * READY = Complete cache initialization, scripts can use bank data
+     * - Stage 1: Raw data loaded from config ✓
+     * - Stage 2: Rs2ItemModel objects built and validated ✓
+     * - Bank items are immediately available for script operations
+     * - No rebuilding or client thread delays required
+     * 
+     * @return true if cache is fully initialized and ready for use, false otherwise
+     */
+    public boolean isCacheReady() {
+        return isCacheLoaded() && isCacheBuilt();
+    }
+
+    /**
+     * Forces a cache rebuild by marking it as not built.
+     * This will trigger rebuildBankItemsList() on the next getBankItems() call.
+     */
+    public synchronized void markForRebuild() {
+        isCacheBuilt.set(false);
+        log.debug("Bank cache marked for rebuild");
+    }
+
+    /**
+     * Gets cache state information for debugging.
+     * 
+     * @return formatted string with cache state details
+     */
+    public String getCacheStateInfo() {
+        return String.format("Rs2BankData[loaded=%s, built=%s, size=%d, itemsReady=%d]", 
+                           isCacheLoaded(), isCacheBuilt(), size(), bankItems.size());
     }
 }

@@ -557,6 +557,36 @@ public abstract class LogicalCondition implements Condition {
         
         return lockConditions;
     }
+    
+    /**
+     * Recursively finds all PredicateConditions within this LogicalCondition structure.
+     * This utility method is used by the break handler to detect predicate conditions
+     * that may prevent breaks from occurring when their predicate is not satisfied.
+     * 
+     * @return List of all PredicateConditions found in the structure
+     */
+    public List<PredicateCondition<?>> findAllPredicateConditions() {
+        List<PredicateCondition<?>> predicateConditions = new ArrayList<>();
+        
+        for (Condition condition : conditions) {
+            if (condition instanceof PredicateCondition<?>) {
+                predicateConditions.add((PredicateCondition<?>) condition);
+            } else if (condition instanceof LogicalCondition) {
+                // Recursively search in nested logical conditions
+                predicateConditions.addAll(((LogicalCondition) condition).findAllPredicateConditions());
+            } else if (condition instanceof NotCondition) {
+                // Check if the wrapped condition is a PredicateCondition or contains PredicateConditions
+                Condition wrappedCondition = ((NotCondition) condition).getCondition();
+                if (wrappedCondition instanceof PredicateCondition<?>) {
+                    predicateConditions.add((PredicateCondition<?>) wrappedCondition);
+                } else if (wrappedCondition instanceof LogicalCondition) {
+                    predicateConditions.addAll(((LogicalCondition) wrappedCondition).findAllPredicateConditions());
+                }
+            }
+        }
+        
+        return predicateConditions;
+    }
     /**
      * Recursively finds all TimeCondition instances in this logical condition structure.
      * This searches through the entire hierarchy including nested logical conditions.

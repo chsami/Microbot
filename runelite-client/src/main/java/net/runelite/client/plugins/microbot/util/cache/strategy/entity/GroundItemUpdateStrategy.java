@@ -58,17 +58,21 @@ public class GroundItemUpdateStrategy implements CacheUpdateStrategy<String, Rs2
     @Override
     public void handleEvent(Object event, CacheOperations<String, Rs2GroundItemModel> cache) {
         if (executorService == null || executorService.isShutdown() || !Microbot.loggedIn || Microbot.getClient() == null || Microbot.getClient().getLocalPlayer() == null) {
+            log.warn("GroundItemUpdateStrategy is shut down or not logged in, ignoring event: {}", event.getClass().getSimpleName());
             return; // Don't process events if shut down
         }
-        
+        if (scanActive.get()){
+            log.debug("Skipping event processing - scan already active: {}", event.getClass().getSimpleName());
+            return; // Don't process events if a scan is already active
+        }
         // Submit event handling to executor service for non-blocking processing
-        executorService.submit(() -> {
-            try {
+        //executorService.submit(() -> {
+          //  try {
                 processEventInternal(event, cache);
-            } catch (Exception e) {
-                log.error("Error processing event: {}", event.getClass().getSimpleName(), e);
-            }
-        });
+            //} catch (Exception e) {
+              //  log.error("Error processing event: {}", event.getClass().getSimpleName(), e);
+            //}
+        //});
     }
     
     /**
@@ -211,21 +215,21 @@ public class GroundItemUpdateStrategy implements CacheUpdateStrategy<String, Rs2
             }
             Player player = Microbot.getClient().getLocalPlayer();
             if (player == null) {
-                log.warn("Cannot perform ground item scene scan - no player");
+                log.debug("Cannot perform ground item scene scan - no player");
                 scanActive.set(false);
                 return;
             }
             
             Scene scene = player.getWorldView().getScene();
             if (scene == null) {
-                log.warn("Cannot perform ground item scene scan - no scene");
+                log.debug("Cannot perform ground item scene scan - no scene");
                 scanActive.set(false);
                 return;
             }
             
             Tile[][][] tiles = scene.getTiles();
             if (tiles == null) {
-                log.warn("Cannot perform ground item scene scan - no tiles");
+                log.debug("Cannot perform ground item scene scan - no tiles");
                 scanActive.set(false);
                 return;
             }
@@ -310,8 +314,7 @@ public class GroundItemUpdateStrategy implements CacheUpdateStrategy<String, Rs2
     
     private void handleItemDespawned(ItemDespawned event, CacheOperations<String, Rs2GroundItemModel> cache) {
         TileItem item = event.getItem();
-        Rs2GroundItemModel groundItem = new Rs2GroundItemModel(item, event.getTile());
-        log.debug(groundItem.toDetailedString());
+        //Rs2GroundItemModel groundItem = new Rs2GroundItemModel(item, event.getTile());        
         if (item != null) {
             String key = generateKey(item, event.getTile().getWorldLocation());
             cache.remove(key);

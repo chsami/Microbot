@@ -4,86 +4,159 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.Range;
+import net.runelite.client.plugins.microbot.util.world.RegionPreference;
+import net.runelite.client.plugins.microbot.util.world.WorldSelectionMode;
 
 @ConfigGroup("AutoLoginConfig")
 public interface AutoLoginConfig extends Config {
     @ConfigSection(
-            name = "General",
-            description = "General",
+            name = "World Selection",
+            description = "Configure world selection for auto login",
             position = 0,
             closedByDefault = false
     )
-    String generalSection = "general";
+    String worldSelectionSection = "worldSelection";
+    
+    @ConfigSection(
+            name = "Login Behavior",
+            description = "Configure login retry and watchdog behavior",
+            position = 1,
+            closedByDefault = false
+    )
+    String loginBehaviorSection = "loginBehavior";
 
     @ConfigItem(
-            keyName = "World",
-            name = "World",
-            description = "World",
+            keyName = "worldSelectionMode",
+            name = "World selection mode",
+            description = "How to select worlds for auto login",
             position = 0,
-            section = generalSection
+            section = worldSelectionSection
+    )
+    default WorldSelectionMode worldSelectionMode() {
+        return WorldSelectionMode.RANDOM_WORLD;
+    }
+    
+    @ConfigItem(
+            keyName = "usePreferredWorld",
+            name = "Use Preferred world",
+            description = "When enabled, auto login will use the legacy numeric world defined below instead of the selection mode.",
+            position = 1,
+            section = worldSelectionSection
+    )
+    default boolean usePreferredWorld() {
+        return true;
+    }
+
+     // Legacy options for compatibility
+    @ConfigItem(
+            keyName = "World Preferred",
+            name = "World (Preferred)",
+            description = "Legacy world setting",
+            position = 2,
+            section = worldSelectionSection
     )
     default int world() { return 360; }
+    
+    @ConfigItem(
+            keyName = "regionPreference",
+            name = "Region preference",
+            description = "Preferred region for world selection",
+            position = 3,
+            section = worldSelectionSection
+    )
+    default RegionPreference regionPreference() {
+        return RegionPreference.ANY_REGION;
+    }
+    
+    @ConfigItem(
+            keyName = "avoidEmptyWorlds",
+            name = "Avoid empty worlds",
+            description = "Avoid worlds with very low population (< 50 players)",
+            position = 4,
+            section = worldSelectionSection
+    )
+    default boolean avoidEmptyWorlds() {
+        return true;
+    }
+    
+    @ConfigItem(
+            keyName = "avoidOvercrowdedWorlds",
+            name = "Avoid overcrowded worlds",
+            description = "Avoid worlds with very high population (> 1800 players)",
+            position = 5,
+            section = worldSelectionSection
+    )
+    default boolean avoidOvercrowdedWorlds() {
+        return true;
+    }
+
+   
 
     @ConfigItem(
             keyName = "Is Member",
-            name = "Is Member",
-            description = "Use member worlds",
-            position = 1,
-            section = generalSection
+            name = "Is member (Legacy)", 
+            description = "Legacy member setting - now auto-detected",
+            position = 6,
+            section = worldSelectionSection
     )
     default boolean isMember() { return false; }
-
+  
+    // Login behavior options
     @ConfigItem(
-            keyName = "RandomWorld",
-            name = "Use Random World",
-            description = "Use random worlds",
-            position = 2,
-            section = generalSection
+            keyName = "enableLoginWatchdog",
+            name = "Enable login watchdog",
+            description = "Enable watchdog to handle login failures and server issues",
+            position = 0,
+            section = loginBehaviorSection
     )
-    default boolean useRandomWorld() { return true; }
-
-    @ConfigSection(
-            name = "Region Filter",
-            description = "Filter random world selection by region",
-            position = 10,
-            closedByDefault = false
-    )
-    String regionSection = "region";
-
-
+    default boolean enableLoginWatchdog() { return true; }
+    
     @ConfigItem(
-            keyName = "AllowUK",
-            name = "UK",
-            description = "Allow UK worlds",
+            keyName = "loginWatchdogTimeout",
+            name = "Login watchdog timeout",
+            description = "Maximum time to attempt login before entering extended sleep (in minutes)",
             position = 1,
-            section = regionSection
+            section = loginBehaviorSection
     )
-    default boolean allowUK() { return true; }
-
+    @Range(min = 1, max = 50)
+    default int loginWatchdogTimeout() {
+        return 2;
+    }
+    
     @ConfigItem(
-            keyName = "AllowUS",
-            name = "US",
-            description = "Allow US worlds",
+            keyName = "extendedSleepDuration",
+            name = "Extended sleep duration",
+            description = "How long to sleep after login watchdog timeout (in minutes)",
             position = 2,
-            section = regionSection
+            section = loginBehaviorSection
     )
-    default boolean allowUS() { return true; }
-
+    @Range(min = 5, max = 120)
+    default int extendedSleepDuration() {
+        return 30;
+    }
+    
     @ConfigItem(
-            keyName = "AllowGermany",
-            name = "Germany",
-            description = "Allow German worlds",
+            keyName = "maxLoginRetries",
+            name = "Max login retries",
+            description = "Maximum number of login attempts before triggering watchdog",
             position = 3,
-            section = regionSection
+            section = loginBehaviorSection
     )
-    default boolean allowGermany() { return true; }
-
+    @Range(min = 1, max = 50)
+    default int maxLoginRetries() {
+        return 15;
+    }
+    
     @ConfigItem(
-            keyName = "AllowAustralia",
-            name = "Australia",
-            description = "Allow Australian worlds",
+            keyName = "loginRetryDelay",
+            name = "Login retry delay",
+            description = "Delay between login attempts (in seconds)",
             position = 4,
-            section = regionSection
+            section = loginBehaviorSection
     )
-    default boolean allowAustralia() { return true; }
+    @Range(min = 1, max = 60)
+    default int loginRetryDelay() {
+        return 5;
+    }
 }

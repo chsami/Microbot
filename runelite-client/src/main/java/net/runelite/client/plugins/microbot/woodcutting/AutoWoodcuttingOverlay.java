@@ -87,6 +87,15 @@ public class AutoWoodcuttingOverlay extends OverlayPanel {
                         .rightColor(HIGHLIGHT_COLOR)
                         .build());
             }
+            
+            // display forestry event completion counter when forestry is enabled
+            if (config.enableForestry()) {
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Events Completed:")
+                        .right(String.valueOf(plugin.getCompletedForestryEventCount()))
+                        .rightColor(NORMAL_TEXT_COLOR)
+                        .build());
+            }
             // Current tree
             if (config.TREE() != null) {
                 panelComponent.getChildren().add(LineComponent.builder()
@@ -157,10 +166,15 @@ public class AutoWoodcuttingOverlay extends OverlayPanel {
                     .leftColor(HEADER_COLOR)
                     .build());
 
-            // Reset option
+            // Reset option 1
             panelComponent.getChildren().add(LineComponent.builder()
-                    .left("Reset Method:")
-                    .right(config.resetOptions().toString())
+                    .left("Prime Action:")
+                    .right(config.primaryAction().toString())
+                    .rightColor(NORMAL_TEXT_COLOR)
+                    .build());
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Secondary Action:")
+                    .right(config.secondaryAction().toString())
                     .rightColor(NORMAL_TEXT_COLOR)
                     .build());
 

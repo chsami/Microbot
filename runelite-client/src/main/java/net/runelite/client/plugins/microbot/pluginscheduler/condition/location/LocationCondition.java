@@ -25,7 +25,7 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 @Slf4j
 @EqualsAndHashCode(callSuper = false)
 public abstract class LocationCondition implements Condition {
-    transient boolean satisfied = false;
+    protected transient volatile boolean satisfied = false;
     /**
      * Indicates whether the condition is satisfied based on the player's location.
      */
@@ -93,7 +93,7 @@ public abstract class LocationCondition implements Condition {
     public abstract String getDetailedDescription();
     
     /**
-     * Creates a condition that is satisfied when the player is at any of the locations for the given bank
+     * Creates a condition that is satisfied when the player is at the location for the given bank
      * 
      * @param bank The bank location
      * @param distance The maximum distance from the bank point
@@ -155,7 +155,6 @@ public abstract class LocationCondition implements Condition {
     //         return orCondition;
     //     }
     // }
-
     /**
      * Creates a condition that is satisfied when the player is at any of the given points
      * 
@@ -164,19 +163,29 @@ public abstract class LocationCondition implements Condition {
      * @param distance The maximum distance from any point
      * @return A condition that is satisfied when the player is at any of the points
      */
-    public static Condition atAnyPoint(String name, WorldPoint[] points, int distance) {
-        if (points.length == 1) {
-            return new PositionCondition(name, points[0], distance);
-        } else {
-            OrCondition orCondition = new OrCondition();
-            for (int i = 0; i < points.length; i++) {
-                orCondition.addCondition(
-                    new PositionCondition(name + " (point " + (i+1) + ")", points[i], distance)
-                );
-            }
-            return orCondition;
+     public static Condition atAnyPoint(String name, WorldPoint[] points, int distance) {
+        if (points == null || points.length == 0) {
+            throw new IllegalArgumentException("At least one point must be provided");
         }
-    }
+        if (distance < 0) {
+            throw new IllegalArgumentException("Distance must be >= 0");
+        }
+        for (int i = 0; i < points.length; i++) {
+            if (points[i] == null) {
+                throw new IllegalArgumentException("points[" + i + "] must not be null");
+            }
+        }
+        if (points.length == 1) {
+             return new PositionCondition(name, points[0], distance);
+         } else {
+             OrCondition orCondition = new OrCondition();            
+            for (int i = 0; i < points.length; i++) {
+                orCondition.addCondition(new PositionCondition(name + " (point " + (i + 1) + ")", points[i], distance));
+            }
+             return orCondition;
+        }
+     }
+
 
     /**
      * Creates a rectangle area condition centered on the given point
@@ -264,5 +273,6 @@ public abstract class LocationCondition implements Condition {
     @Override
     public void resume() {
        
-    }    
+    }
+    
 }

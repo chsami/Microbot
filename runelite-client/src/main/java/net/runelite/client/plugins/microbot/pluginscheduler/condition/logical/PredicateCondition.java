@@ -37,8 +37,8 @@ public class PredicateCondition<T> extends LockCondition {
      * @param predicateDescription A human-readable description of what the predicate checks
      * @throws IllegalArgumentException if predicate or stateSupplier is null
      */
-    public PredicateCondition(Predicate<T> predicate, Supplier<T> stateSupplier, String predicateDescription) {
-        super("Plugin is locked or predicate condition is not met", false);
+    public PredicateCondition(boolean withBreakHandlerLock , Predicate<T> predicate, Supplier<T> stateSupplier, String predicateDescription) {
+        super("Plugin is locked or predicate condition is not met", withBreakHandlerLock);
         validateConstructorArguments(predicate, stateSupplier, predicateDescription);
         this.predicate = predicate;
         this.stateSupplier = stateSupplier;
@@ -54,8 +54,8 @@ public class PredicateCondition<T> extends LockCondition {
      * @param predicateDescription A human-readable description of what the predicate checks
      * @throws IllegalArgumentException if predicate or stateSupplier is null
      */
-    public PredicateCondition(String reason, Predicate<T> predicate, Supplier<T> stateSupplier, String predicateDescription) {
-        super(reason, false);
+    public PredicateCondition(String reason, boolean withBreakHandlerLock ,Predicate<T> predicate, Supplier<T> stateSupplier, String predicateDescription) {
+        super(reason, withBreakHandlerLock);
         validateConstructorArguments(predicate, stateSupplier, predicateDescription);
         this.predicate = predicate;
         this.stateSupplier = stateSupplier;
@@ -66,14 +66,15 @@ public class PredicateCondition<T> extends LockCondition {
      * Creates a new predicate condition with a specified reason and initial lock state.
      * 
      * @param reason The reason why the plugin is locked
-     * @param defaultLock The initial lock state
+     * @param defaultLocked The initial locked state of the condition.
+    * @param withBreakHandlerLock Whether this condition participates in BreakHandler coordination (lock hand-off), not an initial lock state.
      * @param predicate The predicate to evaluate
      * @param stateSupplier A supplier that provides the current state to evaluate against the predicate
      * @param predicateDescription A human-readable description of what the predicate checks
      * @throws IllegalArgumentException if predicate or stateSupplier is null
      */
-    public PredicateCondition(String reason, boolean defaultLock, Predicate<T> predicate, Supplier<T> stateSupplier, String predicateDescription) {
-        super(reason, defaultLock);
+    public PredicateCondition(String reason, boolean defaultLocked, boolean withBreakHandlerLock, Predicate<T> predicate, Supplier<T> stateSupplier, String predicateDescription) {
+        super(reason, defaultLocked, withBreakHandlerLock);
         validateConstructorArguments(predicate, stateSupplier, predicateDescription);
         this.predicate = predicate;
         this.stateSupplier = stateSupplier;
@@ -134,7 +135,7 @@ public class PredicateCondition<T> extends LockCondition {
         try {
             // The condition is satisfied only if:
             // 1. It's not manually locked (from parent class)
-            // 2. The predicate evaluates to true
+            // 2. The predicate evaluates to true                     
             return super.isSatisfied() && evaluatePredicate();
         } catch (Exception e) {
             log.error("Exception in isSatisfied for predicateDescription: {} - {}", predicateDescription, e.getMessage(), e);

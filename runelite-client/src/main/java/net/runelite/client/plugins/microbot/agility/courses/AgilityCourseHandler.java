@@ -133,6 +133,10 @@ public interface AgilityCourseHandler
 
 	default int getCurrentObstacleIndex()
 	{
+		if(Microbot.getClient() == null || Microbot.getClient().getLocalPlayer() == null)
+		{
+			return 0;
+		}
 		WorldPoint playerLoc = Microbot.getClient().getLocalPlayer().getWorldLocation();
 		int playerPlane = Microbot.getClient().getTopLevelWorldView().getPlane();
 

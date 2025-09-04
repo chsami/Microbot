@@ -6,7 +6,7 @@ import net.runelite.api.World;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
-import net.runelite.client.plugins.microbot.util.slayer.enums.SlayerTaskMonster;
+import net.runelite.client.plugins.microbot.util.skills.slayer.enums.SlayerTaskMonster;
 
 import java.awt.*;
 

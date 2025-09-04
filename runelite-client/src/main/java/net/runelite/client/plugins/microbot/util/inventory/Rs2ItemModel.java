@@ -106,7 +106,7 @@ public class Rs2ItemModel {
     private void ensureCompositionLoaded() {
         
         if (itemComposition == null && id > 0) {
-            itemComposition = Microbot.getClientThread().runOnClientThreadOptional(()->Microbot.getItemManager().getItemComposition(id)).orElse(null);
+            this.itemComposition = Microbot.getClientThread().runOnClientThreadOptional(()-> Microbot.getClient().getItemDefinition(id)).orElse(null);
             if (itemComposition != null) {
                 this.name = itemComposition.getName();
                 this.isStackable = itemComposition.isStackable();
@@ -123,6 +123,10 @@ public class Rs2ItemModel {
 					return true;
 				});
             }
+            else {
+                // If we can't load the ItemComposition, set defaults
+                log.warn("Failed to load ItemComposition for id: {}, setting defaults", id);
+            }
         }
     }
 
@@ -130,7 +134,7 @@ public class Rs2ItemModel {
      * Gets the item name, loading composition if needed.
      */
     public String getName() {
-        if (name == null) {
+        if (itemComposition == null) {
             ensureCompositionLoaded();
         }
         return name != null ? name : "Unknown Item";
@@ -337,7 +341,7 @@ public class Rs2ItemModel {
      * Initialize default values when ItemComposition is not available.
      */
     private void initializeDefaults() {
-        this.name = "Unknown Item";
+        this.name = null;
         this.isStackable = false;
         this.isNoted = false;
         this.isTradeable = false;
@@ -345,6 +349,170 @@ public class Rs2ItemModel {
         this.itemComposition = null;
     }
     
+    /**
+     * Gets the noted variant of this item if it exists and is stackable.
+     * Returns this item's ID if the item is already noted or has no noted variant.
+     * 
+     * @return The noted item ID if available, otherwise the original item ID
+     */
+    public int getNotedId() {
+        if (itemComposition == null) {
+            ensureCompositionLoaded();
+        }
+        
+        if (itemComposition == null) {
+            return id; // fallback to original ID
+        }
+        if (!isNoted()) {
+            return itemComposition.getLinkedNoteId() != -1 ? itemComposition.getLinkedNoteId() : id;
+        }
+        return getNotedItemId(itemComposition);
+    }
+    
+    /**
+     * Gets the unnoted variant of this item if it exists.
+     * Returns this item's ID if the item is already unnoted or has no unnoted variant.
+     * 
+     * @return The unnoted item ID if available, otherwise the original item ID
+     */
+    public int getUnNotedId() {
+        if (itemComposition == null) {
+            ensureCompositionLoaded();
+        }
+        
+        if (itemComposition == null) {
+            return id; // fallback to original ID
+        }
+        if (isNoted()) {
+            // If this item is noted, return the unnoted variant
+            return itemComposition.getLinkedNoteId() != -1 ? itemComposition.getLinkedNoteId() : id; // return original ID if no unnoted variant
+        }
+        return getUnNotedId(itemComposition);
+    }
+    
+    /**
+     * Gets the linked item ID (noted/unnoted counterpart) of this item.
+     * 
+     * @return The linked item ID
+     */
+    public int getLinkedId() {
+        if (itemComposition == null) {
+            ensureCompositionLoaded();
+        }
+        
+        if (itemComposition == null) {
+            return id; // fallback to original ID
+        }
+        
+        return getLinkedItemId(itemComposition);
+    }
+    
+    /**
+     * Static method to get the noted variant of an item ID.
+     * 
+     * @param itemId The original item ID
+     * @return The noted item ID if available, otherwise the original item ID
+     */
+    public static int getNotedId(int itemId) {
+        ItemComposition composition = Microbot.getClientThread().runOnClientThreadOptional(() ->
+                Microbot.getClient().getItemDefinition(itemId)
+        ).orElse(null);
+        
+        return getNotedItemId(composition);
+    }
+    
+    /**
+     * Static method to get the unnoted variant of an item ID.
+     * 
+     * @param itemId The original item ID
+     * @return The unnoted item ID if available, otherwise the original item ID
+     */
+    public static int getUnNotedId(int itemId) {
+        ItemComposition composition = Microbot.getClientThread().runOnClientThreadOptional(() ->
+                Microbot.getClient().getItemDefinition(itemId)
+        ).orElse(null);
+        
+        return getUnNotedId(composition);
+    }
+    
+    /**
+     * Helper method to get the noted variant from ItemComposition.
+     * Returns the noted ID if the item has a stackable noted variant.
+     * 
+     * @param composition The ItemComposition to check
+     * @return The noted item ID if available, otherwise the original item ID
+     */
+    private static int getNotedItemId(ItemComposition composition) {
+        try {
+            if (composition == null) {
+                return -1;
+            }
+            
+            int itemId = composition.getId();
+            boolean isNoted = composition.getNote() == 799;
+            int linkedNoteId = composition.getLinkedNoteId();
+            // if already stackable, return original ID
+            if ( (isNoted && composition.isStackable()) || linkedNoteId == - 1) {
+                return itemId;
+            }                        
+            
+            return linkedNoteId;
+            
+        } catch (Exception e) {
+            return -1; // fall back to original on error
+        }
+    }
+    
+    /**
+     * Helper method to get the unnoted variant from ItemComposition.
+     * Returns the unnoted ID if the item has an unnoted variant.
+     * 
+     * @param composition The ItemComposition to check
+     * @return The unnoted item ID if available, otherwise the original item ID
+     */
+    private static int getUnNotedId(ItemComposition composition) {
+        try {
+            if (composition == null) {
+                log.warn("Could not get item composition for item ID, returning original ID");
+                return -1;
+            }                                    
+            int itemId = composition.getId();
+            boolean isNoted = composition.getNote() == 799;
+            int linkedNoteId = composition.getLinkedNoteId();
+            // if already stackable, return original ID
+            if ( (!isNoted && !composition.isStackable()) || linkedNoteId == - 1) {
+                return itemId;
+            }                                    
+            return linkedNoteId;
+            
+        } catch (Exception e) {
+            log.error("Error getting unnoted item ID: {}", e.getMessage());
+            return -1; // fall back to original on error
+        }
+    }
+    
+    /**
+     * Helper method to get the linked item ID from ItemComposition.
+     * 
+     * @param composition The ItemComposition to check
+     * @return The linked item ID
+     */
+    private static int getLinkedItemId(ItemComposition composition) {
+        try {
+            if (composition == null) {
+                log.warn("no item composition for item ID, returning -1");
+                return -1;
+            }
+            
+            // check if this item has a noted variant
+            return composition.getLinkedNoteId();
+            
+        } catch (Exception e) {
+            log.error("Error getting linked item ID: {}", e.getMessage());
+            return -1; // fall back on error
+        }
+    }
+
     /**
      * Initialize item properties from ItemComposition.
      */

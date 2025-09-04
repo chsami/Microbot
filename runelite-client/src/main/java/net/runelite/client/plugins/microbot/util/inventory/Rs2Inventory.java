@@ -566,6 +566,87 @@ public class Rs2Inventory {
     }
 
     /**
+     * Drops a specific number of items matching the given name with the specified drop order.
+     *
+     * @param itemName The name of the items to drop
+     * @param quantity The number of items to drop
+     * @param dropOrder The order in which to drop the items
+     * @return actual number of items dropped
+     */
+    public static int dropAmount(String itemName, int quantity, InteractOrder dropOrder) {
+        return dropAmount(itemName, quantity, dropOrder, false);
+    }
+
+    /**
+     * Drops a specific number of items matching the given name with the specified drop order.
+     *
+     * @param itemName The name of the items to drop
+     * @param quantity The number of items to drop
+     * @param dropOrder The order in which to drop the items
+     * @param exact Whether to use exact name matching
+     * @return actual number of items dropped
+     */
+    public static int dropAmount(String itemName, int quantity, InteractOrder dropOrder, boolean exact) {
+        if (quantity <= 0) return 0;
+        
+        List<Rs2ItemModel> matchingItems = items(Rs2ItemModel.matches(exact, itemName))
+                .collect(Collectors.toList());
+        
+        if (matchingItems.isEmpty()) return 0;
+        
+        int itemsToDrop = Math.min(quantity, matchingItems.size());
+        List<Rs2ItemModel> sortedItems = calculateInteractOrder(matchingItems, dropOrder);
+        
+        int droppedCount = 0;
+        for (Rs2ItemModel item : sortedItems) {
+            if (droppedCount >= itemsToDrop) break;
+            if (item == null) continue;
+            
+            invokeMenu(item, "Drop");
+            droppedCount++;
+            
+            if (!Rs2AntibanSettings.naturalMouse)
+                sleep(150, 300);
+        }
+        
+        return droppedCount;
+    }
+
+    /**
+     * Drops a specific number of items matching the given item ID with the specified drop order.
+     *
+     * @param itemId The ID of the items to drop
+     * @param quantity The number of items to drop
+     * @param dropOrder The order in which to drop the items
+     * @return actual number of items dropped
+     */
+    public static int dropAmount(int itemId, int quantity, InteractOrder dropOrder) {
+        if (quantity <= 0) return 0;
+        
+        List<Rs2ItemModel> matchingItems = items(Rs2ItemModel.matches(itemId))
+                .collect(Collectors.toList());
+        
+        if (matchingItems.isEmpty()) return 0;
+        
+        int itemsToDrop = Math.min(quantity, matchingItems.size());
+        List<Rs2ItemModel> sortedItems = calculateInteractOrder(matchingItems, dropOrder);
+        
+        int droppedCount = 0;
+        for (Rs2ItemModel item : sortedItems) {
+            if (droppedCount >= itemsToDrop) break;
+            if (item == null) continue;
+            
+            invokeMenu(item, "Drop");
+            droppedCount++;
+            
+            if (!Rs2AntibanSettings.naturalMouse)
+                sleep(150, 300);
+        }
+        
+        return droppedCount;
+    }
+
+    /**
      * Drop all items that fall under the gpValue
      *
      * @param gpValue minimum amount of gp required to not drop the item

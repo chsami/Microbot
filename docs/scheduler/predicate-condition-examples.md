@@ -30,6 +30,7 @@ Supplier<T> stateSupplier = () -> {
 // Create the PredicateCondition
 PredicateCondition<T> condition = new PredicateCondition<>(
     "Human-readable reason for locking",
+    true, // with break handler lock, so during the predicate is true we cane take a break
     myPredicate,
     stateSupplier,
     "Description of what the predicate checks"
@@ -66,20 +67,20 @@ public class MicroAgilityPlugin extends Plugin implements SchedulablePlugin {
      */
     private void setupPredicateCondition() {
         // This predicate checks if the player is in an agility course region
-        Predicate<Player> notInAgilityRegion = player -> {
+        Predicate<Player> notInAgilityCourse = player -> {
             if (player == null) return true; // If player is null, condition is satisfied (safer to stop)
             
-            int playerRegionId = player.getWorldLocation().getRegionID();
-            
+            boolean playerPlayerIsNotInCourse = ((Microbot.getClient().getLocalPlayer()!=null && !Rs2Player.isInteracting()) && index == 0 && (AgilityPlugin.getMarksOfGrace() == null || AgilityPlugin.getMarksOfGrace().isEmpty()));
             // Return true if player is NOT in a course (condition to stop is satisfied)
-            return !courseRegionIds.contains(playerRegionId);
+            return playerPlayerIsNotInCourse;
         };
         
         // Create the predicate condition
         notInCourseCondition = new PredicateCondition<>(
                 "Player is currently in an agility course",
-                notInAgilityRegion,
-                () -> client.getLocalPlayer(),
+                true, // with break handler lock, so during the predicate is true we cane take a break
+                notInAgilityCourse,
+                () -> Rs2Player.getLocalPlayer(), // provider
                 "Player is not in an agility course region"
         );
     }
@@ -94,7 +95,7 @@ public class MicroAgilityPlugin extends Plugin implements SchedulablePlugin {
     
     private LogicalCondition createStopCondition() {
         if (this.lockCondition == null) {
-            this.lockCondition = new LockCondition("Locked because the Agility Plugin is in a critical operation");
+            this.lockCondition = new LockCondition("Locked because the Agility Plugin is in a critical operation", true); //ensure unlock on shutdown of the plugin !
         }
         
         // Setup course regions if not already done
@@ -152,7 +153,7 @@ public class CombatPluginExample extends Plugin implements SchedulablePlugin {
     @Override
     public LogicalCondition getStopCondition() {
         if (lockCondition == null) {
-            lockCondition = new LockCondition("Critical combat operation in progress");
+            lockCondition = new LockCondition("Critical combat operation in progress", true);
         }
         
         if (notInCombatCondition == null) {
@@ -212,7 +213,7 @@ public class FishingPluginExample extends Plugin implements SchedulablePlugin {
     @Override
     public LogicalCondition getStopCondition() {
         if (lockCondition == null) {
-            lockCondition = new LockCondition("Critical fishing operation in progress");
+            lockCondition = new LockCondition("Critical fishing operation in progress", true);
         }
         
         if (notFishingCondition == null || inventoryFullCondition == null) {

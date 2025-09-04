@@ -1,6 +1,6 @@
 package net.runelite.client.plugins.microbot.breakhandler;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Constants;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.pluginscheduler.util.SchedulerPluginUtil;
@@ -10,6 +10,7 @@ import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.security.Login;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.world.Rs2WorldUtil;
 import net.runelite.client.ui.ClientUI;
 import java.time.Duration;
 import java.time.Instant;
@@ -37,7 +38,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * WAITING_FOR_BREAK -> BREAK_REQUESTED -> INITIATING_BREAK -> LOGOUT_REQUESTED -> 
  * LOGGED_OUT -> LOGIN_REQUESTED -> LOGGING_IN -> BREAK_ENDING -> WAITING_FOR_BREAK
  * 
- * Micro breaks follow: WAITING_FOR_BREAK -> BREAK_REQUESTED -> MICRO_BREAK_ACTIVE -> BREAK_ENDING
+ * Micro breaks follow: WAITING_FOR_BREAK -> BREAK_REQUESTED -> INGAME_BREAK_ACTIVE -> BREAK_ENDING
  * 
  * @version 2.0.0
  */
@@ -86,6 +87,9 @@ public class BreakHandlerScript extends Script {
     private static final AtomicInteger retryCount = new AtomicInteger(0);
     private static Instant lastCombatCheckTime = Instant.now();
     private static Instant safeConditionWaitStartTime = null;
+    private static volatile Instant loginWatchdogStartTime = null;
+    @Getter
+    private static volatile Instant extendedSleepStartTime = null;
     
     // Lock state management
     public static AtomicBoolean lockState = new AtomicBoolean(false);
@@ -98,7 +102,7 @@ public class BreakHandlerScript extends Script {
         boolean currentState = BreakHandlerScript.lockState.get();
         if (currentState != state) {
             BreakHandlerScript.lockState.set(state);
-            log.info("Break handler lock state changed: {} -> {}", currentState, state);
+            log.debug("Break handler lock state changed: {} -> {}", currentState, state);
         }
     }
     
@@ -120,12 +124,14 @@ public class BreakHandlerScript extends Script {
     /**
      * Checks if a micro break is currently active.
      */
-    public static boolean isMicroBreakActive() {
+    public static boolean isIngameBreakActive() {
         BreakHandlerState state = currentState.get();
-        return state == BreakHandlerState.MICRO_BREAK_ACTIVE ||
+        return state == BreakHandlerState.INGAME_BREAK_ACTIVE ||
                (Rs2AntibanSettings.takeMicroBreaks && Rs2AntibanSettings.microBreakActive);
     }
-
+    public static boolean isMicroBreakActive() {
+        return Rs2AntibanSettings.takeMicroBreaks && Rs2AntibanSettings.microBreakActive;
+    }
     /**
      * Gets the current break handler state.
      */
@@ -202,14 +208,17 @@ public class BreakHandlerScript extends Script {
             case LOGGED_OUT:
                 handleLoggedOutState();
                 break;
-            case MICRO_BREAK_ACTIVE:
-                handleMicroBreakActiveState();
+            case INGAME_BREAK_ACTIVE:
+                handleLoginBreakActiveState();
                 break;
             case LOGIN_REQUESTED:
                 handleLoginRequestedState();
                 break;
             case LOGGING_IN:
                 handleLoggingInState();
+                break;
+            case LOGIN_EXTENDED_SLEEP:
+                handleLoginExtendedSleepState();
                 break;
             case BREAK_ENDING:
                 handleBreakEndingState();
@@ -236,10 +245,10 @@ public class BreakHandlerScript extends Script {
 
         if (config.breakEndNow() && isBreakActive() && state != BreakHandlerState.BREAK_ENDING && state != BreakHandlerState.LOGGING_IN) {
             log.info("Manual break end requested");
-            if (state == BreakHandlerState.LOGGED_OUT || state == BreakHandlerState.MICRO_BREAK_ACTIVE) {
+            if (state == BreakHandlerState.LOGGED_OUT || state == BreakHandlerState.INGAME_BREAK_ACTIVE) {
                 if (state == BreakHandlerState.LOGGED_OUT){
                     transitionToState(BreakHandlerState.LOGGING_IN);
-                }else if (state == BreakHandlerState.MICRO_BREAK_ACTIVE) {
+                }else if (state == BreakHandlerState.INGAME_BREAK_ACTIVE) {
                     transitionToState(BreakHandlerState.BREAK_ENDING);
                 }
                 resetConfigToggles();
@@ -263,11 +272,11 @@ public class BreakHandlerScript extends Script {
         }
         
         // Check for normal break conditions
-        boolean normalBreakTime = breakIn <= 0 && !isLockState();
-        boolean microBreakTime = Rs2AntibanSettings.microBreakActive && !isLockState();
+        boolean normalBreakTime = (breakIn <= 0 && !isLockState()) && !config.onlyMicroBreaks();
+        boolean microBreakInitiated = Rs2AntibanSettings.microBreakActive && !isLockState();
         
-        if (normalBreakTime || microBreakTime) {
-            log.info("Break time reached - Normal: {}, Micro: {}", normalBreakTime, microBreakTime);
+        if (normalBreakTime || microBreakInitiated) {
+            log.info("Break time reached \n\t- Normal: {}, Micro: {}", normalBreakTime, microBreakInitiated);
             transitionToState(BreakHandlerState.BREAK_REQUESTED);
         }
     }
@@ -297,17 +306,17 @@ public class BreakHandlerScript extends Script {
                     return;
                 }
             }
-        } else {
-            safeConditionWaitStartTime = Instant.now();
         }
         
         // Check for safe conditions periodically
         Instant now = Instant.now();
-        if (Duration.between(lastCombatCheckTime, now).toMillis() >= getCombatCheckIntervalMs()) {
+        if (safeConditionWaitStartTime==null || Duration.between(lastCombatCheckTime, now).toMillis() >= getCombatCheckIntervalMs()) {
             lastCombatCheckTime = now;
-            
+            if(safeConditionWaitStartTime == null) {
+                safeConditionWaitStartTime = now;
+            }
             if (isSafeToBreak()) {
-                log.info("Safe conditions met, initiating break");
+                log.debug("Safe conditions met, initiating break");
                 transitionToState(BreakHandlerState.INITIATING_BREAK);
             } else {
                 log.debug("Waiting for safe conditions - Combat: {}, Interacting: {}", 
@@ -321,7 +330,7 @@ public class BreakHandlerScript extends Script {
      * Safe to pause scripts, starting break process.
      */
     private void handleInitiatingBreakState() {
-        log.info("Initiating break - pausing all scripts");
+        log.debug("Initiating break - pausing all scripts");
         
         // Pause all scripts
         Microbot.pauseAllScripts.compareAndSet(false, true);
@@ -332,12 +341,12 @@ public class BreakHandlerScript extends Script {
         preBreakWorld = Microbot.getClient().getWorld();
 
         // Determine next state based on break type
-        boolean logout = shouldLogout();
-        loggedOutDuringBreak = logout && !(Rs2AntibanSettings.microBreakActive && config.onlyMicroBreaks());
-        if (!logout || (Rs2AntibanSettings.microBreakActive && config.onlyMicroBreaks())) {
-            setBreakDuration();
-            transitionToState(BreakHandlerState.MICRO_BREAK_ACTIVE);
-        } else {
+        setBreakDuration();
+        if ((Rs2AntibanSettings.microBreakActive && config.onlyMicroBreaks())) {            
+            transitionToState(BreakHandlerState.INGAME_BREAK_ACTIVE);
+        } else if (!shouldLogout()){              
+            transitionToState(BreakHandlerState.INGAME_BREAK_ACTIVE);
+        }else{      
             transitionToState(BreakHandlerState.LOGOUT_REQUESTED);
         }
     }
@@ -348,7 +357,7 @@ public class BreakHandlerScript extends Script {
      */
     private void handleClientShutdown() {
         try {
-            log.info("Shutting down RuneLite client due to break handler configuration");
+            log.warn("Shutting down RuneLite client due to break handler configuration");
             
             // Update break statistics before shutdown
             updateBreakStatistics();
@@ -375,13 +384,18 @@ public class BreakHandlerScript extends Script {
      * Attempting to logout, with retry logic.
      */
     private void handleLogoutRequestedState() {
+        if (!Microbot.isLoggedIn()) {     
+            retryCount.set(0);
+            log.debug("Logout successful");                    
+            transitionToState(BreakHandlerState.LOGGED_OUT);
+            return;
+        }
         int currentRetryCount = retryCount.get();
         Instant currentStateChangeTime = stateChangeTime.get();
         
         if (currentRetryCount >= getMaxLogoutRetries()) {
             log.warn("Max logout retries reached, continuing with logged-in break");
-            setBreakDuration();
-            transitionToState(BreakHandlerState.MICRO_BREAK_ACTIVE);
+            transitionToState(BreakHandlerState.INGAME_BREAK_ACTIVE);
             return;
         }
         
@@ -390,26 +404,14 @@ public class BreakHandlerScript extends Script {
             long remainingTime = getLogoutRetryDelayMs() - Duration.between(currentStateChangeTime, Instant.now()).toMillis();
             log.debug("Waiting for next logout retry ({} ms remaining)", remainingTime);
             return;
-        }
-        
+        }        
         log.info("Attempting logout (attempt {}/{})", currentRetryCount + 1, getMaxLogoutRetries());
-        
         try {
             Rs2Player.logout();
             // Don't immediately transition - wait for next cycle to check if logout was successful
             retryCount.incrementAndGet();
-            stateChangeTime.set(Instant.now());
-            if (scheduledFuture != null && !scheduledFuture.isDone()) {
-                scheduledFuture.cancel(true);
-            }
-            // Check on next cycle if we successfully logged out
-            scheduledFuture = scheduledExecutorService.schedule(() -> {
-                if (!Microbot.isLoggedIn()) {
-                    log.info("Logout successful");
-                    setBreakDuration();
-                    transitionToState(BreakHandlerState.LOGGED_OUT);
-                }
-            }, 2000, TimeUnit.MILLISECONDS);
+            stateChangeTime.set(Instant.now());                      
+            // Check on next cycle if we successfully logged out           
             
         } catch (Exception ex) {
             log.error("Error during logout attempt", ex);
@@ -423,69 +425,148 @@ public class BreakHandlerScript extends Script {
      * Successfully logged out, waiting for break duration to complete.
      */
     private void handleLoggedOutState() {
-        // Check if break should end
-        if (breakDuration <= 0 || config.breakEndNow()) {
-            log.info("Break duration completed, requesting login");
-            transitionToState(BreakHandlerState.LOGIN_REQUESTED);
+        if(!Microbot.isLoggedIn()) {
+            // Check if break should end
+            if (breakDuration <= 0 || config.breakEndNow()) {
+                log.debug("Break duration completed, requesting login");
+                transitionToState(BreakHandlerState.LOGIN_REQUESTED);
+            }
+        }else{
+            log.error("Unexpected state: Logged in while in LOGGED_OUT state. Resetting state.");
+            if (breakDuration <= 0 || config.breakEndNow()){
+                // Reset state to waiting for break if logged in unexpectedly
+                transitionToState(BreakHandlerState.BREAK_ENDING);
+            }else{
+                // If still logged in, reset break duration
+                setBreakDuration();
+                transitionToState( BreakHandlerState.LOGOUT_REQUESTED);
+            }
         }
     }
 
     /**
-     * State: MICRO_BREAK_ACTIVE
+     * State: INGAME_BREAK_ACTIVE
      * In micro break state (no logout), waiting for duration to complete.
      */
-    private void handleMicroBreakActiveState() {
+    private void handleLoginBreakActiveState() {
         // Check if micro break should end
         if ((breakDuration <= 0 && !Rs2AntibanSettings.microBreakActive) || config.breakEndNow()) {
-            log.info("Micro break completed");
+            log.debug("Micro break completed");
             transitionToState(BreakHandlerState.BREAK_ENDING);
         }
     }
 
     /**
      * State: LOGIN_REQUESTED
-     * Break ended, attempting to login.
+     * Break ended, attempting to login with intelligent world selection and watchdog.
      */
     private void handleLoginRequestedState() {
         if (Microbot.isLoggedIn()) {
-            log.info("Already logged in, proceeding to break ending");
+            log.debug("Already logged in, proceeding to break ending");
+            loginWatchdogStartTime = null; // reset watchdog
             transitionToState(BreakHandlerState.BREAK_ENDING);
             return;
         }
         
-        log.info("Attempting login");
+        // initialize login watchdog timer
+        if (loginWatchdogStartTime == null) {
+            loginWatchdogStartTime = Instant.now();
+            log.debug("Login watchdog started for {} minutes", config.loginWatchdogTimeout());
+        }
+        
+        log.info("Attempting intelligent login with world selection");
         try {
-            // Use the Login utility class to handle login
-            if (Login.activeProfile != null) {
-                int world = config.useRandomWorld()
-                        ? Login.getRandomWorld(Rs2Player.isMember(), config.regionFilter().getRegion())
-                        : preBreakWorld;
-                new Login(world);
+            int targetWorld = -1;                       
+            // use world selection mode if no last world or last world not accessible
+            
+            switch (config.worldSelectionMode()) {
+                case CURRENT_PREFERRED_WORLD:
+                    if (preBreakWorld != -1) {
+                        boolean isAccessible = Rs2WorldUtil.canAccessWorld(preBreakWorld);
+                        if (isAccessible) {
+                            targetWorld = preBreakWorld;
+                            log.info("Using last world before break: {}", targetWorld);
+                        } else {
+                            log.warn("Last world {} is not accessible, falling back to world selection mode", preBreakWorld);
+                        }
+                    }
+        
+                    // no specific world selection - use default login
+                    break;
+                    
+                case RANDOM_WORLD:
+                    targetWorld = Rs2WorldUtil.getRandomAccessibleWorldFromRegion(
+                        config.regionPreference().getWorldRegion(),
+                        config.avoidEmptyWorlds(),
+                        config.avoidOvercrowdedWorlds());
+                    break;
+                    
+                case BEST_POPULATION:
+                    targetWorld = Rs2WorldUtil.getBestAccessibleWorldForLogin(
+                        false,
+                        config.regionPreference().getWorldRegion(),
+                        config.avoidEmptyWorlds(),
+                        config.avoidOvercrowdedWorlds());
+                    break;
+                    
+                case BEST_PING:
+                    targetWorld = Rs2WorldUtil.getBestAccessibleWorldForLogin(
+                        true,
+                        config.regionPreference().getWorldRegion(),
+                        config.avoidEmptyWorlds(),
+                        config.avoidOvercrowdedWorlds());
+                    break;
+                    
+                case REGIONAL_RANDOM:
+                    targetWorld = Rs2WorldUtil.getRandomAccessibleWorldFromRegion(
+                        config.regionPreference().getWorldRegion(),
+                        config.avoidEmptyWorlds(),
+                        config.avoidOvercrowdedWorlds());
+                    break;
+                    
+                default:
+                    // fallback to current world
+                    break;
+                }
+        
+            
+            // perform login attempt
+            if (targetWorld != -1) {
+                log.info("Attempting login to selected world: {}", targetWorld);
+                new Login(targetWorld);
             } else {
-                // If no active profile, fall back to default login
+                log.info("Using default login (current world or last used)");
                 new Login();
             }
-            transitionToState(BreakHandlerState.LOGGING_IN);
+            
         } catch (Exception ex) {
             log.error("Error initiating login", ex);
-            // Retry login request after delay
-            scheduledFuture = scheduledExecutorService.schedule(() -> {
-                if (currentState.get() == BreakHandlerState.LOGIN_REQUESTED) {
-                    retryCount.incrementAndGet();
-                }
-            }, getLoginRetryDelayMs(), TimeUnit.MILLISECONDS);
         }
     }
 
     /**
      * State: LOGGING_IN
-     * Currently attempting to log in, with retry logic.
+     * Currently attempting to log in, with retry logic and watchdog timeout.
      */
     private void handleLoggingInState() {
         if (Microbot.isLoggedIn()) {
             log.info("Login successful");
+            loginWatchdogStartTime = null; // reset watchdog
+            retryCount.set(0);
             transitionToState(BreakHandlerState.BREAK_ENDING);
             return;
+        }
+        
+        // check login watchdog timeout
+        if (loginWatchdogStartTime != null) {
+            long watchdogTime = Duration.between(loginWatchdogStartTime, Instant.now()).toMinutes();
+            if (watchdogTime >= config.loginWatchdogTimeout()) {
+                log.warn("Login watchdog timeout reached after {} minutes, entering extended sleep", watchdogTime);
+                loginWatchdogStartTime = null; // reset watchdog
+                extendedSleepStartTime = Instant.now();
+                transitionToState(BreakHandlerState.LOGIN_EXTENDED_SLEEP);
+                return;
+            }
         }
         
         // Get current values atomically
@@ -499,10 +580,44 @@ public class BreakHandlerScript extends Script {
             retryCount.incrementAndGet();
             transitionToState(BreakHandlerState.LOGIN_REQUESTED);
         } else if (currentRetryCount >= getMaxLoginRetries()) {
-            log.warn("Max login retries reached, staying logged out");
-            // Stay in logged out state and wait for manual intervention or next attempt
-            setBreakDuration(); // Reset break duration to prevent immediate retry
-            transitionToState(BreakHandlerState.LOGGED_OUT);
+            log.warn("Max login retries reached for this attempt, returning to login request");
+            // Reset retry count and return to login request to try again
+            retryCount.set(0);
+            transitionToState(BreakHandlerState.LOGIN_REQUESTED);
+        }
+    }
+    
+    /**
+     * State: LOGIN_EXTENDED_SLEEP
+     * Extended sleep state after login watchdog timeout to avoid constant retry attempts.
+     */
+    private void handleLoginExtendedSleepState() {
+        if (Microbot.isLoggedIn()) {
+            log.info("Login successful during extended sleep, proceeding to break ending");
+            extendedSleepStartTime = null; // reset extended sleep timer
+            transitionToState(BreakHandlerState.BREAK_ENDING);
+            return;
+        }
+        
+        if (extendedSleepStartTime == null) {
+            extendedSleepStartTime = Instant.now();
+            log.info("Extended sleep started for {} minutes", config.extendedSleepDuration());
+            return;
+        }
+        
+        // check if extended sleep period is complete
+        long sleepTime = Duration.between(extendedSleepStartTime, Instant.now()).toMinutes();
+        if (sleepTime >= config.extendedSleepDuration()) {
+            log.info("Extended sleep period completed after {} minutes, resuming login attempts", sleepTime);
+            extendedSleepStartTime = null; // reset extended sleep timer
+            retryCount.set(0); // reset retry count for fresh attempt
+            transitionToState(BreakHandlerState.LOGIN_REQUESTED);
+        } else {
+            // still in extended sleep - show progress occasionally
+            if (sleepTime % 5 == 0) { // every 5 minutes
+                long remaining = config.extendedSleepDuration() - sleepTime;
+                log.debug("Extended sleep in progress - {} minutes remaining", remaining);
+            }
         }
     }
 
@@ -516,8 +631,8 @@ public class BreakHandlerScript extends Script {
         // Resume scripts and reset state
         resumeFromBreak();
         
-        // Handle world switching if configured
-        handleWorldSwitching();
+        // Note: World selection is now handled during login in handleLoginRequestedState()
+        // No need for separate world switching here
         
         // Update statistics and UI
         updateBreakStatistics();
@@ -620,20 +735,6 @@ public class BreakHandlerScript extends Script {
         Rs2AntibanSettings.microBreakActive = false;
     }
 
-    /**
-     * Handles world switching based on configuration.
-     */
-    private void handleWorldSwitching() {
-        if (config.useRandomWorld() && !loggedOutDuringBreak) {
-            try {
-                int randomWorld = Login.getRandomWorld(Rs2Player.isMember(), config.regionFilter().getRegion());
-                Microbot.hopToWorld(randomWorld);
-                log.info("Switched to world {}", randomWorld);
-            } catch (Exception ex) {
-                log.error("Error switching worlds", ex);
-            }
-        }
-    }
 
     /**
      * Updates break statistics.
@@ -676,14 +777,17 @@ public class BreakHandlerScript extends Script {
      */
     private void updateBreakTimers() {
         BreakHandlerState state = currentState.get();
-        
+     
         // Count down to next break (only in waiting state and when logged in)
         if (state == BreakHandlerState.WAITING_FOR_BREAK && breakIn >= 0 && Microbot.isLoggedIn()) {
-            breakIn--;
+            if (!config.onlyMicroBreaks()){
+                breakIn--;    
+            }
+            
         }
 
         // Count down active break duration
-        if ((state == BreakHandlerState.LOGGED_OUT || state == BreakHandlerState.MICRO_BREAK_ACTIVE) 
+        if ((state == BreakHandlerState.LOGGED_OUT || state == BreakHandlerState.INGAME_BREAK_ACTIVE) 
             && breakDuration >= 0) {
             breakDuration--;
         }
@@ -695,8 +799,8 @@ public class BreakHandlerScript extends Script {
     private void updateWindowTitle() {
         BreakHandlerState state = currentState.get();
         
-        if (state == BreakHandlerState.LOGGED_OUT || state == BreakHandlerState.MICRO_BREAK_ACTIVE) {
-            String breakType = state == BreakHandlerState.MICRO_BREAK_ACTIVE ? "Micro Break" : "Break";
+        if (state == BreakHandlerState.LOGGED_OUT || state == BreakHandlerState.INGAME_BREAK_ACTIVE) {
+            String breakType = state == BreakHandlerState.INGAME_BREAK_ACTIVE ? "In Game Break(Microbreak)" : "Break";
             ClientUI.getFrame().setTitle(originalWindowTitle + " - " + breakType + ": " + 
                                        formatDuration(Duration.ofSeconds(Math.max(0, breakDuration))));
         } else if (isBreakActive()) {
@@ -714,6 +818,9 @@ public class BreakHandlerScript extends Script {
     @Override
     public void shutdown() {
         BreakHandlerState state = currentState.get();
+        if(scheduledFuture != null && !scheduledFuture.isDone()) {
+            scheduledFuture.cancel(true);
+        }        
         log.info("Break handler shutting down. Current state: {}", state);
         
         // If we're in a break state, try to clean up gracefully
@@ -723,9 +830,9 @@ public class BreakHandlerScript extends Script {
         } else if (isBreakActive()) {
             log.info("Attempting to end break gracefully");
             transitionToState(BreakHandlerState.BREAK_ENDING);
-        }
-        
+        }        
         resetWindowTitle();
+        resumeFromBreak();
         super.shutdown();
     }
 

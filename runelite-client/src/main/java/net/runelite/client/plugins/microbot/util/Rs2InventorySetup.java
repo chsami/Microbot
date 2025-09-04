@@ -39,6 +39,7 @@ import java.util.stream.IntStream;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleep;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
 /**
  * Utility class for managing inventory setups in the Microbot plugin.
@@ -129,12 +130,13 @@ public class Rs2InventorySetup {
 
 			int withdrawQuantity = calculateWithdrawQuantity(matchingItems, item);
 			if (withdrawQuantity == 0) continue;
-
+			Rs2ItemModel existingItem = new Rs2ItemModel(item.getId(), withdrawQuantity, withdrawQuantity);
+			boolean isNoted = existingItem.isNoted(); //for noted items, we also need to use the name of the hasBankItem method, or the unnoted id
 			String lowerCaseName = item.getName().toLowerCase();
 			boolean isFuzzy = item.isFuzzy();
 			Object identifier = isFuzzy ? lowerCaseName : item.getId();
 
-			boolean hasBankItem = isFuzzy
+			boolean hasBankItem = isFuzzy || isNoted
 				? Rs2Bank.hasBankItem((String) identifier, withdrawQuantity, false)
 				: Rs2Bank.hasBankItem((int) identifier, withdrawQuantity);
 
@@ -144,7 +146,7 @@ public class Rs2InventorySetup {
 				return false;
 			}
 
-			withdrawItem(item, withdrawQuantity);
+			withdrawItem(item, withdrawQuantity,isNoted);
 		}
 
 		List<InventorySetupsItem> itemsWithSlots = setupItems.stream()
@@ -218,10 +220,13 @@ public class Rs2InventorySetup {
      * @param item     The item to withdraw.
      * @param quantity The quantity to withdraw.
      */
-    private void withdrawItem(InventorySetupsItem item, int quantity) {
-		boolean useName = item.isFuzzy();
+    private void withdrawItem(InventorySetupsItem item, int quantity,  boolean isNoted) {
+		boolean useName = item.isFuzzy() || isNoted; // when notded we must use the name to withdraw or we must use the unnoted id
 		Object identifier = useName ? item.getName().toLowerCase() : item.getId();
-
+		boolean isWithdrawAs= Rs2Bank.isWithdrawAs(isNoted);
+		if(!isWithdrawAs){
+			Rs2Bank.setWithdrawAs(isNoted);
+		}
 		if (quantity > 1) {
 			if (useName) {
 				Rs2Bank.withdrawX((String) identifier, quantity);
@@ -953,4 +958,216 @@ public class Rs2InventorySetup {
 			.collect(Collectors.toList());
 		return prePot(boostingPotionNames);
 	}
+
+	/**
+	 * Detects items in the player's inventory that are not part of the inventory setup.
+	 * Optionally excludes teleportation items from detection.
+	 * 
+	 * @param excludeTeleportItems Whether to exclude teleportation items from detection
+	 * @return List of items in inventory that are not in the setup
+	 */
+	public List<Rs2ItemModel> getItemsNotInInventorySetup(boolean excludeTeleportItems) {
+		if (inventorySetup == null || inventorySetup.getInventory() == null) {
+			return Rs2Inventory.all(); // Return all items if no setup defined
+		}
+
+		// Get all setup item IDs and names for comparison
+		Set<Integer> setupItemIds = inventorySetup.getInventory().stream()
+			.filter(item -> !InventorySetupsItem.itemIsDummy(item))
+			.map(InventorySetupsItem::getId)
+			.collect(Collectors.toSet());
+
+		Set<String> setupItemNames = inventorySetup.getInventory().stream()
+			.filter(item -> !InventorySetupsItem.itemIsDummy(item) && item.isFuzzy())
+			.map(item -> item.getName().toLowerCase())
+			.collect(Collectors.toSet());
+
+		return Rs2Inventory.all().stream()
+			.filter(item -> {
+				// Check if item is excluded due to teleport filter
+				if (excludeTeleportItems && Rs2Walker.isTeleportItem(item.getId())) {
+					return false;
+				}
+
+				// Check if item matches any setup item by ID
+				if (setupItemIds.contains(item.getId())) {
+					return false;
+				}
+
+				// Check if item matches any fuzzy setup item by name
+				String itemName = item.getName().toLowerCase();
+				for (String setupName : setupItemNames) {
+					if (itemName.contains(setupName)) {
+						return false;
+					}
+				}
+
+				return true; // Item is not in setup
+			})
+			.collect(Collectors.toList());
+	}
+
+	/**
+	 * Detects items in the player's equipment that are not part of the equipment setup.
+	 * Optionally excludes teleportation items from detection.
+	 * 
+	 * @param excludeTeleportItems Whether to exclude teleportation items from detection
+	 * @return List of equipment items that are not in the setup
+	 */
+	public List<Rs2ItemModel> getEquipmentNotInSetup(boolean excludeTeleportItems) {
+		if (inventorySetup == null || inventorySetup.getEquipment() == null) {
+			return Rs2Equipment.all().collect(Collectors.toList()); // Return all equipment if no setup defined
+		}
+
+		// Get all setup equipment IDs and names for comparison
+		Set<Integer> setupEquipmentIds = inventorySetup.getEquipment().stream()
+			.filter(item -> !InventorySetupsItem.itemIsDummy(item))
+			.map(InventorySetupsItem::getId)
+			.collect(Collectors.toSet());
+
+		Set<String> setupEquipmentNames = inventorySetup.getEquipment().stream()
+			.filter(item -> !InventorySetupsItem.itemIsDummy(item) && item.isFuzzy())
+			.map(item -> item.getName().toLowerCase())
+			.collect(Collectors.toSet());
+
+		return Rs2Equipment.all()
+			.filter(Objects::nonNull)
+			.filter(item -> {
+				// Check if item is excluded due to teleport filter
+				if (excludeTeleportItems && Rs2Walker.isTeleportItem(item.getId())) {
+					return false;
+				}
+
+				// Check if item matches any setup item by ID
+				if (setupEquipmentIds.contains(item.getId())) {
+					return false;
+				}
+
+				// Check if item matches any fuzzy setup item by name
+				String itemName = item.getName().toLowerCase();
+				for (String setupName : setupEquipmentNames) {
+					if (itemName.contains(setupName)) {
+						return false;
+					}
+				}
+
+				return true; // Equipment is not in setup
+			})
+			.collect(Collectors.toList());
+	}
+
+	/**
+	 * Banks all items in the inventory that are not part of the inventory setup.
+	 * Optionally excludes teleportation items from banking.
+	 * 
+	 * @param excludeTeleportItems Whether to exclude teleportation items from banking
+	 * @return true if banking was successful, false otherwise
+	 */
+	public boolean bankItemsNotInInventorySetup(boolean excludeTeleportItems) {
+		List<Rs2ItemModel> itemsToBank = getItemsNotInInventorySetup(excludeTeleportItems);
+		
+		if (itemsToBank.isEmpty()) {
+			Microbot.log("No items to bank from inventory - all items match setup", Level.DEBUG);
+			return true;
+		}
+
+		// Ensure bank is open
+		if (!Rs2Bank.isOpen()) {
+			Microbot.log("Bank must be open to deposit items not in setup", Level.WARN);
+			return false;
+		}
+
+		Microbot.log("Banking {} items not in inventory setup (teleport exclusion: {})", 
+				itemsToBank.size(), excludeTeleportItems, Level.INFO);
+
+		for (Rs2ItemModel item : itemsToBank) {
+			if (isMainSchedulerCancelled()) {
+				return false;
+			}
+
+			try {
+				Microbot.log("Depositing item not in setup: {}", item.getName(), Level.DEBUG);
+				Rs2Bank.depositAll(item.getId());
+				sleep(Rs2Random.between(200, 400));
+			} catch (Exception e) {
+				Microbot.log("Failed to deposit item {}: {}", item.getName(), e.getMessage(), Level.WARN);
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Banks all equipped items that are not part of the equipment setup.
+	 * Optionally excludes teleportation items from banking.
+	 * 
+	 * @param excludeTeleportItems Whether to exclude teleportation items from banking
+	 * @return true if banking was successful, false otherwise
+	 */
+	public boolean bankEquipmentNotInSetup(boolean excludeTeleportItems) {
+		List<Rs2ItemModel> equipmentToBank = getEquipmentNotInSetup(excludeTeleportItems);
+		
+		if (equipmentToBank.isEmpty()) {
+			Microbot.log("No equipment to bank - all equipment matches setup", Level.DEBUG);
+			return true;
+		}
+
+		// Ensure bank is open
+		if (!Rs2Bank.isOpen()) {
+			Microbot.log("Bank must be open to deposit equipment not in setup", Level.WARN);
+			return false;
+		}
+
+		Microbot.log("Banking {} equipment items not in setup (teleport exclusion: {})", 
+				equipmentToBank.size(), excludeTeleportItems, Level.INFO);
+
+		for (Rs2ItemModel item : equipmentToBank) {
+			if (isMainSchedulerCancelled()) {
+				return false;
+			}
+
+			try {
+				Microbot.log("Depositing equipment not in setup: {}", item.getName(), Level.DEBUG);
+				// Remove equipment first, then deposit
+				Rs2Equipment.unEquip(item.getId());
+				sleep(Rs2Random.between(300, 500));
+				if (Rs2Inventory.hasItem(item.getId())) {
+					Rs2Bank.depositAll(item.getId());
+					sleep(Rs2Random.between(200, 400));
+				}
+			} catch (Exception e) {
+				Microbot.log("Failed to deposit equipment {}: {}", item.getName(), e.getMessage(), Level.WARN);
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Banks all items (both inventory and equipment) that are not part of the setup.
+	 * Convenience method that calls both banking functions.
+	 * 
+	 * @param excludeTeleportItems Whether to exclude teleportation items from banking
+	 * @return true if both inventory and equipment banking was successful, false otherwise
+	 */
+	public boolean bankAllItemsNotInSetup(boolean excludeTeleportItems) {
+		boolean inventorySuccess = bankItemsNotInInventorySetup(excludeTeleportItems);
+		boolean equipmentSuccess = bankEquipmentNotInSetup(excludeTeleportItems);
+		return inventorySuccess && equipmentSuccess;
+	}
+
+	/**
+	 * Checks if there are any items in inventory or equipment that are not part of the setup.
+	 * This is useful for validating if the current state matches the desired setup.
+	 * 
+	 * @param excludeTeleportItems Whether to exclude teleportation items from the check
+	 * @return true if there are items not in the setup, false if everything matches the setup
+	 */
+	public boolean hasNotInventorySetup(boolean excludeTeleportItems) {
+		List<Rs2ItemModel> inventoryNotInSetup = getItemsNotInInventorySetup(excludeTeleportItems);
+		List<Rs2ItemModel> equipmentNotInSetup = getEquipmentNotInSetup(excludeTeleportItems);
+		
+		return !inventoryNotInSetup.isEmpty() || !equipmentNotInSetup.isEmpty();
+	}
+
 }

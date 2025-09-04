@@ -23,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -48,11 +49,12 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
     private Point hoverLocation;
     private int hoverRow = -1;
     private int hoverColumn = -1;
+    private int lastSelectedRow = -1;
     private static final int TOOLTIP_REFRESH_INTERVAL = 1000; // 1 second refresh
     
     // Colors for different row states with improved visibility
     private static final Color CURRENT_PLUGIN_COLOR = new Color(138, 43, 226, 80); // Purple with transparency
-    private static final Color NEXT_PLUGIN_COLOR = new Color(255, 193, 7, 60); // Amber with transparency
+    private static final Color NEXT_PLUGIN_COLOR = new Color(255, 140, 0, 90); // Dark orange with more opacity
     private static final Color SELECTION_COLOR = new Color(0, 120, 215, 150); // Blue with transparency
     private static final Color CONDITION_MET_COLOR = new Color(76, 175, 80, 45); // Darker green with lower transparency
     private static final Color CONDITION_NOT_MET_COLOR = new Color(244, 67, 54, 45); // Darker red with lower transparency
@@ -134,6 +136,11 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
                         if (row >= 0 && row < rowToPluginMap.size()) {
                             PluginScheduleEntry scheduled = rowToPluginMap.get(row);
                             
+                            // Skip separator rows (null) and unavailable plugins
+                            if (scheduled == null || !scheduled.isPluginAvailable()) {
+                                continue;
+                            }
+                            
                             if (e.getColumn() == 5) { // Priority column
                                 Integer priority = (Integer) tableModel.getValueAt(row, 5);
                                 
@@ -179,10 +186,53 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         });
 
         // Create table with custom styling
-        scheduleTable = new JTable(tableModel);
+        scheduleTable = new JTable(tableModel) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                // Only allow editing of available plugins (not separators or unavailable plugins)
+                if (row >= 0 && row < rowToPluginMap.size()) {
+                    PluginScheduleEntry plugin = rowToPluginMap.get(row);
+                    if (plugin == null) {
+                        return false; // Separator rows are not editable
+                    }
+                    // Unavailable plugins can't be edited for priority/enabled, but can be selected for removal
+                    if (!plugin.isPluginAvailable() && (column == 5 || column == 6)) {
+                        return false; // Priority and Enabled columns not editable for unavailable plugins
+                    }
+                }
+                return super.isCellEditable(row, column);
+            }
+        };
         scheduleTable.setFillsViewportHeight(true);
         scheduleTable.setRowHeight(25); // Reduced row height for better density
         scheduleTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        
+        // Custom selection model to prevent selection of separators and unavailable plugins
+        scheduleTable.setSelectionModel(new DefaultListSelectionModel() {
+            @Override
+            public void setSelectionInterval(int index0, int index1) {
+                if (isRowSelectable(index0)) {
+                    super.setSelectionInterval(index0, index1);
+                }
+            }
+            
+            @Override
+            public void addSelectionInterval(int index0, int index1) {
+                if (isRowSelectable(index0) && isRowSelectable(index1)) {
+                    super.addSelectionInterval(index0, index1);
+                }
+            }
+            
+            private boolean isRowSelectable(int row) {
+                if (row >= 0 && row < rowToPluginMap.size()) {
+                    PluginScheduleEntry plugin = rowToPluginMap.get(row);
+                    // Separator rows (null) are not selectable, but unavailable plugins ARE selectable for removal
+                    return plugin != null;
+                }
+                return false;
+            }
+        });
+        
         scheduleTable.setShowGrid(false);
         scheduleTable.setIntercellSpacing(new Dimension(0, 0));
         scheduleTable.setBackground(ColorScheme.DARKER_GRAY_COLOR);
@@ -194,24 +244,48 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         // Add mouse listener to handle clicks outside the table data and tooltip refreshing
         scheduleTable.addMouseListener(new MouseAdapter() {
             @Override
-            public void mouseClicked(MouseEvent e) {
+            public void mousePressed(MouseEvent e) {
                 int row = scheduleTable.rowAtPoint(e.getPoint());
                 int col = scheduleTable.columnAtPoint(e.getPoint());
+                // Explicitly select the row before custom logic
+                final int currentSelectedRow = scheduleTable.getSelectedRow();
+                boolean isLastSelected = currentSelectedRow == lastSelectedRow;
+                lastSelectedRow = row; // Update last selected row
+                // To check if the mouse event is a "pressed" event, use e.getID() == MouseEvent.MOUSE_PRESSED
+                if (e.getID() == MouseEvent.MOUSE_PRESSED && e.getButton() == MouseEvent.BUTTON1) {
 
-                // If clicked outside the table data area, clear selection
-                if (row == -1 || col == -1) {
-                    clearSelection();
-                    return;
-                }
-                
-                // Handle double-click on already selected row to deselect it
-                if (e.getClickCount() == 2) {
-                    int selectedRow = scheduleTable.getSelectedRow();
-                    if (selectedRow == row) {
-                        // Deselect the row
-                        clearSelection();
+                    if (!isLastSelected) {                        
+                        // If the clicked row is different, select it
+                        scheduleTable.setRowSelectionInterval(row, row);                        
+                        return;
+                    }                    
+                    if (row == -1 || col == -1) {
+                        clearSelection();                        
+                    }
+                    
+                        
+                    
+                    if (col != 6 && col != 5) {
+                        // handle single-click toggle for selection/deselection
+                        if (e.getClickCount() == 1) {
+                            // if we clicked on the previously selected row and it's still selected, deselect it
+                            if (currentSelectedRow == row) {                                
+                                clearSelection();
+                                return;
+                            }
+                        }
+
+                        // keep the double-click functionality for backwards compatibility
+                        if (e.getClickCount() == 2) {
+                            int selectedRow = scheduleTable.getSelectedRow();
+                            if (selectedRow == row) {                                
+                                clearSelection();
+                                return;
+                            }
+                        }
                     }
                 }
+                super.mousePressed(e);
             }
             
             @Override
@@ -263,7 +337,7 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         // Add mouse listener to header to clear selection when clicked
         header.addMouseListener(new MouseAdapter() {
             @Override
-            public void mouseClicked(MouseEvent e) {
+            public void mousePressed(MouseEvent e) {                
                 clearSelection();
             }
         });
@@ -286,11 +360,29 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
                 if (row >= 0 && row < rowToPluginMap.size()) {
                     PluginScheduleEntry rowPlugin = rowToPluginMap.get(row);
                     
+                    // Handle separator row (null plugin)
+                    if (rowPlugin == null) {
+                        c.setBackground(new Color(70, 70, 70)); // Dark gray background
+                        c.setForeground(new Color(169, 169, 169)); // Light gray text
+                        Font originalFont = c.getFont();
+                        c.setFont(originalFont.deriveFont(Font.BOLD));
+                        setHorizontalAlignment(SwingConstants.CENTER);
+                        return c;
+                    }
+                    
                     if (isSelected) {
                         // Selected row styling takes precedence - use a distinct blue color
                         c.setBackground(SELECTION_COLOR);
                         c.setForeground(Color.WHITE);
                     } 
+                    else if (!rowPlugin.isPluginAvailable()) {
+                        // Unavailable plugin styling (not installed) - improved styling
+                        c.setBackground(new Color(69, 39, 19, 80)); // Darker brown with more transparency
+                        c.setForeground(new Color(255, 160, 122)); // Sandy brown text for better readability
+                        // Add italic styling and slightly dimmed appearance
+                        Font originalFont = c.getFont();
+                        c.setFont(originalFont.deriveFont(Font.ITALIC));
+                    }
                     else if (!rowPlugin.isEnabled()) {
                         // Disabled plugin styling
                         c.setBackground(row % 2 == 0 ? ColorScheme.DARKER_GRAY_COLOR : ColorScheme.DARK_GRAY_COLOR);
@@ -311,9 +403,12 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
                         c.setForeground(Color.WHITE);
                     }
                     else if (isNextToRun(rowPlugin)) {
-                        // Next plugin to run
+                        // Next plugin to run - use better contrast colors
                         c.setBackground(NEXT_PLUGIN_COLOR);
                         c.setForeground(Color.BLACK);
+                        // Make text bold to stand out more
+                        Font originalFont = c.getFont();
+                        c.setFont(originalFont.deriveFont(Font.BOLD));
                     }
                     else if (rowPlugin.isDefault()) {
                         // Default plugin styling
@@ -485,8 +580,28 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         // Add mouse listener to the scroll pane to clear selection when clicking empty space
         scrollPane.addMouseListener(new MouseAdapter() {
             @Override
-            public void mouseClicked(MouseEvent e) {
+            public void mousePressed(MouseEvent e) {                
                 clearSelection();
+            }
+            
+        });
+        scrollPane.addMouseWheelListener(new MouseAdapter() {
+            @Override
+            public void mouseWheelMoved(MouseWheelEvent e) {                
+                if (e.getWheelRotation() == 0 || e.getUnitsToScroll() == 0) {
+                    return; // Ignore zero rotation events
+                }
+                // Check if the mouse location is within the table's visible rectangle
+                Rectangle tableRect = scheduleTable.getVisibleRect();
+                Point mousePoint = SwingUtilities.convertPoint(scrollPane, e.getPoint(), scheduleTable);
+                if (!tableRect.contains(mousePoint)) {
+                    // Mouse is over the table, do not clear selection
+                    return;
+                }
+                clearSelection();
+                // Handle the scroll event here
+                // e.getWheelRotation() gives the number of clicks (positive or negative)
+                // e.getUnitsToScroll() gives the number of units to scroll
             }
         });
 
@@ -1049,26 +1164,56 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
 //        return nextPlugin != null && nextPlugin.equals(scheduledPlugin);
     }   
     private void detectChangesInPluginlist(){
-        List<PluginScheduleEntry> sortedPlugins = schedulerPlugin.sortPluginScheduleEntries();
-        List<PluginScheduleEntry> currentRowToPluginMap = new ArrayList<>(sortedPlugins.size());
+        // Get the full combined list (available + separator + unavailable) like in refreshTable
+        List<PluginScheduleEntry> availablePlugins = schedulerPlugin.getScheduledPlugins();
+        List<PluginScheduleEntry> unavailablePlugins = schedulerPlugin.getUnavailableScheduledPlugins();
+        List<PluginScheduleEntry> sortedAvailablePlugins = SchedulerPluginUtil.sortPluginScheduleEntries(availablePlugins);
         
-        // Check if current rows match sorted plugins
-        for (int j = 0; j < rowToPluginMap.size(); j++) {
-            for (int i = 0; i < sortedPlugins.size(); i++) {
+        List<PluginScheduleEntry> expectedPlugins = new ArrayList<>();
+        expectedPlugins.addAll(sortedAvailablePlugins);
+        
+        // Add separator if there are unavailable plugins
+        if (!unavailablePlugins.isEmpty() && !sortedAvailablePlugins.isEmpty()) {
+            expectedPlugins.add(null); // separator
+        }
+        
+        expectedPlugins.addAll(unavailablePlugins);
+        
+        // Only refresh if the structure has actually changed
+        if (expectedPlugins.size() != rowToPluginMap.size()) {
+            log.info("Plugin list size changed: {} -> {}, refreshing", rowToPluginMap.size(), expectedPlugins.size());
+            this.rowToPluginMap = new ArrayList<>(expectedPlugins);
+            return;
+        }
+        
+        // Check if the content order has changed
+        boolean hasChanged = false;
+        for (int i = 0; i < expectedPlugins.size(); i++) {
+            PluginScheduleEntry expected = expectedPlugins.get(i);
+            PluginScheduleEntry current = i < rowToPluginMap.size() ? rowToPluginMap.get(i) : null;
             
-                if (sortedPlugins.get(i).equals(rowToPluginMap.get(j))){
-                    currentRowToPluginMap.add(sortedPlugins.get(i));
-                    break;
-                }
+            // Handle separator rows (both null)
+            if (expected == null && current == null) {
+                continue;
+            }
+            
+            // Handle mismatched null vs non-null
+            if (expected == null || current == null) {
+                hasChanged = true;
+                break;
+            }
+            
+            // Check if plugins are different
+            if (!expected.equals(current)) {
+                hasChanged = true;
+                break;
             }
         }
         
-        // If the sizes don't match, our list has changed and we need to refresh
-        if (currentRowToPluginMap.size() != rowToPluginMap.size()){
-            log.info("Plugin list changed, refreshing");
-            this.rowToPluginMap = new ArrayList<>(sortedPlugins);
+        if (hasChanged) {
+            log.info("Plugin list order changed, refreshing");
+            this.rowToPluginMap = new ArrayList<>(expectedPlugins);
         }
-
     }
 
 
@@ -1084,8 +1229,23 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
             // Save current selection
             PluginScheduleEntry selectedPlugin = getSelectedPlugin();
             int selectedRow = scheduleTable.getSelectedRow();
-            // Get current plugins and sort them by next run time
-            List<PluginScheduleEntry> sortedPlugins = schedulerPlugin.sortPluginScheduleEntries();
+            // Get available and unavailable plugins separately 
+            List<PluginScheduleEntry> availablePlugins = schedulerPlugin.getScheduledPlugins();
+            List<PluginScheduleEntry> unavailablePlugins = schedulerPlugin.getUnavailableScheduledPlugins();
+            
+            // Sort available plugins by next run time
+            List<PluginScheduleEntry> sortedAvailablePlugins = SchedulerPluginUtil.sortPluginScheduleEntries(availablePlugins);
+            
+            // Combine lists: available plugins first, then separator, then unavailable plugins
+            List<PluginScheduleEntry> sortedPlugins = new ArrayList<>();
+            sortedPlugins.addAll(sortedAvailablePlugins);
+            
+            // Add a placeholder separator entry if there are unavailable plugins
+            if (!unavailablePlugins.isEmpty() && !sortedAvailablePlugins.isEmpty()) {
+                sortedPlugins.add(null); // null entry will be rendered as separator
+            }
+            
+            sortedPlugins.addAll(unavailablePlugins);
             //SchedulerPluginUtil.logSortedPluginScheduleEntryList(sortedPlugins);
             
             
@@ -1109,8 +1269,8 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
             for (int newIndex = 0; newIndex < sortedPlugins.size(); newIndex++) {
                 PluginScheduleEntry plugin = sortedPlugins.get(newIndex);
                 
-                // Skip if this plugin has already been processed
-                if (processedPlugins.contains(plugin)) {
+                // Skip if this plugin has already been processed (but allow null separators)
+                if (plugin != null && processedPlugins.contains(plugin)) {
                     continue;
                 }
                                             
@@ -1124,6 +1284,11 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
                     needsRepaint = true;        
                 }                                      
                 newRowMap.set(newIndex, plugin);
+                
+                // Mark plugin as processed (if it's not a separator)
+                if (plugin != null) {
+                    processedPlugins.add(plugin);
+                }
             }
             
             // Remove any excess rows
@@ -1172,6 +1337,13 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
      */
     @SuppressWarnings("unused")
     private void updateRowData(Object[] rowData, PluginScheduleEntry plugin) {
+        // Handle separator row (null plugin)
+        if (plugin == null) {
+            Object[] separatorData = createRowData(null); // Use existing separator logic
+            System.arraycopy(separatorData, 0, rowData, 0, Math.min(separatorData.length, rowData.length));
+            return;
+        }
+        
         // Get basic information
         String pluginName = plugin.getCleanName();
         
@@ -1181,7 +1353,12 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         
         // For default plugins, add a visual indicator
         if (plugin.isDefault()) {
-            pluginName = "⭐ " + pluginName;
+            pluginName = "* " + pluginName; // Use simple asterisk instead of emoji
+        }
+        
+        // For unavailable plugins, add visual indicator
+        if (!plugin.isPluginAvailable()) {
+            pluginName = "❌ " + pluginName + " (Not Installed)";
         }
         
         // Update row data
@@ -1199,6 +1376,15 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
      * Updates existing row in the table with current plugin values
      */
     private void updateRowWithPlugin(int rowIndex, PluginScheduleEntry plugin) {
+        // Handle separator row (null plugin)
+        if (plugin == null) {
+            Object[] separatorData = createRowData(null); // Use existing separator logic
+            for (int col = 0; col < separatorData.length && col < tableModel.getColumnCount(); col++) {
+                tableModel.setValueAt(separatorData[col], rowIndex, col);
+            }
+            return;
+        }
+        
         // Get basic information
         String pluginName = plugin.getCleanName();
         
@@ -1208,8 +1394,14 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         
         // For default plugins, add a visual indicator
         if (plugin.isDefault()) {
-            pluginName = "⭐ " + pluginName;
-        }        
+            pluginName = "* " + pluginName; // Use simple asterisk instead of emoji
+        }
+        
+        // For unavailable plugins, add visual indicator
+        if (!plugin.isPluginAvailable()) {
+            pluginName = "❌ " + pluginName + " (Not Installed)";
+        }
+        
         // Update existing row with focused columns
         tableModel.setValueAt(pluginName, rowIndex, 0);
         tableModel.setValueAt(getEnhancedScheduleDisplay(plugin), rowIndex, 1);
@@ -1225,8 +1417,25 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
      * Creates a new row data array for a plugin
      */
     private Object[] createRowData(PluginScheduleEntry plugin) {
+        // Handle separator row (null plugin)
+        if (plugin == null) {
+            return new Object[]{
+                "────── Not Installed / Would be scheduled if installed ──────",
+                "",
+                "",
+                "",
+                "",
+                0,        // Priority column - Integer
+                false,    // Enabled column - Boolean  
+                0         // Run Count column - Integer
+            };
+        }
+        
         // Get basic information
         String pluginName = plugin.getCleanName();
+        
+        // Check if plugin is available
+        boolean isAvailable = plugin.isPluginAvailable();
         
         if (schedulerPlugin.isRunningEntry(plugin)) {
             pluginName = "▶ " + pluginName;
@@ -1234,7 +1443,12 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
         
         // For default plugins, add a visual indicator
         if (plugin.isDefault()) {
-            pluginName = "⭐ " + pluginName;
+            pluginName = "* " + pluginName; // Use simple asterisk instead of emoji
+        }
+        
+        // For unavailable plugins, add visual indicator
+        if (!isAvailable) {
+            pluginName = "❌ " + pluginName + " (Not Installed)";
         }
         
         return new Object[]{
@@ -1534,6 +1748,7 @@ public class ScheduleTablePanel extends JPanel implements ScheduleTableModel {
      */
     public void clearSelection() {
         scheduleTable.clearSelection();
+        lastSelectedRow = -1; // Reset last selected row
         if (selectionListener != null) {
             selectionListener.accept(null);
         }
