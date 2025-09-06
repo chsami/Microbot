@@ -12,6 +12,7 @@ public enum TransportType {
     QUETZAL,
     GNOME_GLIDER,
     MINECART,
+    POH,
     SPIRIT_TREE,
     TELEPORTATION_LEVER,
     TELEPORTATION_PORTAL,
@@ -36,9 +37,11 @@ public enum TransportType {
             case TELEPORTATION_ITEM:
             case TELEPORTATION_MINIGAME:
             case TELEPORTATION_SPELL:
+            case POH:
                 return true;
             default:
                 return false;
         }
     }
+
 }

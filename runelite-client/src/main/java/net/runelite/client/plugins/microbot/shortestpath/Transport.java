@@ -1,8 +1,8 @@
 package net.runelite.client.plugins.microbot.shortestpath;
 
-import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
@@ -10,12 +10,14 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
  * This class represents a travel point between two WorldPoints.
  */
+@Slf4j
 public class Transport {
     //START microbot variables
     @Getter
@@ -25,6 +27,13 @@ public class Transport {
     private int objectId;
     @Getter
     private String name;
+    /**
+     * Used by PohTransport to trace back to the PohTransportable that can execute the teleportation
+     */
+    @Getter
+    private String enumValue;
+    @Getter
+    private String enumClass;
     //END microbot variables
 
     /**
@@ -107,7 +116,7 @@ public class Transport {
      */
     @Getter
     private final Set<TransportVarPlayer> varplayers = new HashSet<>();
-    
+
     @Getter
     private String currencyName = "";
     @Getter
@@ -118,6 +127,8 @@ public class Transport {
      */
     @Getter
     private boolean isMembers = false;
+
+
 
     /**
      * Creates a new transport from an origin-only transport
@@ -159,10 +170,11 @@ public class Transport {
 
         this.varplayers.addAll(origin.varplayers);
         this.varplayers.addAll(destination.varplayers);
-        
+
         //START microbot variables
         this.name = origin.getName();
         this.objectId = origin.getObjectId();
+        this.enumValue = origin.getEnumValue();
         this.action = origin.getAction();
         this.currencyName = origin.getCurrencyName();
         this.currencyAmount = origin.getCurrencyAmount();
@@ -197,6 +209,12 @@ public class Transport {
         }
 
         //START microbot variables
+        if((value = fieldMap.get("EnumValue")) != null && !value.trim().isEmpty()) {
+            this.enumValue = value.trim();
+        }
+        if((value = fieldMap.get("EnumClass")) != null && !value.trim().isEmpty()) {
+            this.enumClass = value.trim();
+        }
 
         if ((value = fieldMap.get("menuOption menuTarget objectID")) != null && !value.trim().isEmpty()) {
             value = value.trim(); // Remove leading/trailing spaces
@@ -215,7 +233,7 @@ public class Transport {
                 System.out.println("Skipped invalid value: " + value);
             }
         }
-        
+
         if ((value = fieldMap.get("Currency")) != null) {
             // Split the string by space
             String[] parts = value.split(DELIM);
@@ -288,7 +306,7 @@ public class Transport {
         if ((value = fieldMap.get("Wilderness level")) != null && !value.trim().isEmpty()) {
             this.maxWildernessLevel = Integer.parseInt(value);
         }
-        
+
         if ((value = fieldMap.get("isMembers")) != null && !value.trim().isEmpty()) {
             this.isMembers = "Y".equals(value.trim()) || "yes".equals(value.trim().toLowerCase());
         }
@@ -448,6 +466,7 @@ public class Transport {
 
 
                 Transport transport = new Transport(fieldMap, transportType);
+
                 newTransports.add(transport);
 
             }
@@ -529,6 +548,9 @@ public class Transport {
         addTransports(transports, "wilderness_obelisks.tsv", TransportType.WILDERNESS_OBELISK);
         addTransports(transports, "magic_carpets.tsv", TransportType.MAGIC_CARPET);
         addTransports(transports, "npcs.tsv", TransportType.NPC);
+        addTransports(transports, "portal_poh.tsv", TransportType.TELEPORTATION_PORTAL);
+        addTransports(transports, "teleportation_poh.tsv", TransportType.POH);
+        System.out.println("Loaded " + transports.size() + " transports");
         return transports;
     }
 

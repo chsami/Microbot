@@ -130,6 +130,10 @@ public class Rs2WorldPoint {
         if (worldPoint == null) return null;
 
         LocalPoint l = Rs2LocalPoint.fromWorldInstance(worldPoint);
+        // If we're in PoH this function still gets called by handleDoors for the destination tile of the teleport.
+        // Since that tile is not in the instance map, it returns null.
+        // We can just return the worldPoint as is OR we can return null.
+        if (l == null) return null;
         WorldPoint globalWorldPoint = WorldPoint.fromLocal(Microbot.getClient(), l);
 
         return globalWorldPoint;

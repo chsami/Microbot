@@ -1,12 +1,7 @@
 package net.runelite.client.plugins.microbot.util.inventory;
 
-import net.runelite.api.Item;
-import net.runelite.api.ItemComposition;
-import net.runelite.api.ItemContainer;
-import net.runelite.api.MenuAction;
-import net.runelite.api.NPC;
+import net.runelite.api.*;
 import net.runelite.api.Point;
-import net.runelite.api.TileObject;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
@@ -35,18 +30,9 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import org.apache.commons.lang3.NotImplementedException;
 import org.slf4j.event.Level;
 
-import java.awt.Rectangle;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
+import java.awt.*;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.OptionalInt;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
@@ -296,7 +282,20 @@ public class Rs2Inventory {
      * @return True if the inventory contains all the specified names, false otherwise.
      */
     public static boolean contains(String... names) {
-        return contains(item -> Arrays.stream(names).anyMatch(name -> name.equalsIgnoreCase(item.getName())));
+        return contains(true);
+    }
+
+    public static boolean contains(boolean exact, String... names) {
+        if(exact) {
+            return contains(item -> Arrays.stream(names).anyMatch(name -> name.equalsIgnoreCase(item.getName())));
+        }
+        else {
+            return contains(item -> Arrays.stream(names).map(String::toLowerCase).anyMatch(name -> item.getName().toLowerCase().contains(name)));
+        }
+    }
+
+    public static boolean contains(String name, boolean exact) {
+        return contains(exact, name);
     }
 
     /**

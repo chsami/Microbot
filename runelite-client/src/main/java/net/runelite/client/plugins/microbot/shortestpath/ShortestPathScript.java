@@ -38,7 +38,7 @@ public class ShortestPathScript extends Script {
                 }
 
             } catch (Exception ex) {
-                log.trace("Exception in ShortestPathScript: {} - ", ex.getMessage(), ex);
+                log.error("Exception in ShortestPathScript: {} - ", ex.getMessage(), ex);
             }
         }, 0, 1000, TimeUnit.MILLISECONDS);
         return true;
@@ -52,6 +52,7 @@ public class ShortestPathScript extends Script {
 	public void setTriggerWalker(WorldPoint point) {
 		if (point == null)
 		{
+            log.debug("ShortestPathScript: setTriggerWalker called with null point");
 			triggerWalker = null;
 			Rs2Walker.setTarget(null);
 		} else {

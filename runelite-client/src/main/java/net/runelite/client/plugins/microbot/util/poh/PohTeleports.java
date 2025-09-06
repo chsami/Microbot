@@ -1,20 +1,23 @@
 package net.runelite.client.plugins.microbot.util.poh;
 
-import net.runelite.api.NullObjectID;
-import net.runelite.api.ObjectID;
 import net.runelite.api.TileObject;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.equipment.JewelleryLocationEnum;
+import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
+import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
+import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
-import net.runelite.client.plugins.microbot.util.poh.data.NexusTeleport;
+import net.runelite.client.plugins.microbot.util.poh.data.JewelleryBoxType;
+import net.runelite.client.plugins.microbot.util.poh.data.NexusPortal;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.stream.Collectors;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
@@ -34,15 +37,17 @@ public class PohTeleports {
      * Checks if the player is in their house
      * based on the purple portal and if the player is
      * in an instance
+     *
      * @return
      */
     public static boolean isInHouse() {
-        return Rs2Player.IsInInstance() && Rs2GameObject.findObjectById(ObjectID.PORTAL_4525) != null;
+        return Rs2Player.IsInInstance() && Rs2GameObject.getGameObject(ObjectID.POH_EXIT_PORTAL) != null;
     }
 
     /**
      * Checks if a player is in their house
      * sends a microbot log if the player is not in their house
+     *
      * @return
      */
     public static boolean checkIsInHouse() {
@@ -61,6 +66,7 @@ public class PohTeleports {
      * or has in his inventory
      * Teleport currently not added: Fortis Colosseum.
      * Requirements: Hero	12,000	Ability to teleport to the Colosseum via the ring of dueling
+     *
      * @return
      */
     public static boolean useJewelleryBox(JewelleryLocationEnum jewelleryLocationEnum) {
@@ -73,9 +79,7 @@ public class PohTeleports {
         if (!checkIsInHouse()) return false;
 
         if (getJewelleryBoxInterface() == null) {
-            final Integer[] ornateJewelleryBox = new Integer[] { NullObjectID.NULL_29154, NullObjectID.NULL_29155, NullObjectID.NULL_29156};
-            TileObject tileObject = Rs2GameObject.findObject(ornateJewelleryBox);
-            Rs2GameObject.interact(tileObject, "Teleport Menu");
+            Rs2GameObject.interact(JewelleryBoxType.getObject(), "Teleport Menu");
         }
 
         sleepUntil(() -> getJewelleryBoxInterface() != null);
@@ -85,15 +89,17 @@ public class PohTeleports {
 
     /**
      * Checks if the jewellerybox interface is open
+     *
      * @return
      */
     public static Widget getJewelleryBoxInterface() {
-        return Rs2Widget.getWidget(590, 0);
+        return Rs2Widget.getWidget(InterfaceID.POH_JEWELLERY_BOX, 0);
     }
 
     /**
      * Interact with the jewellerybox widget based on the
      * JewelleryLocationEnum destination description
+     *
      * @param jewelleryLocationEnum
      * @return
      */
@@ -120,39 +126,37 @@ public class PohTeleports {
 
     /**
      * Will click on the nexus and interact with the widget
-     * @param nexusTeleport
+     *
+     * @param nexusPortal
      * @return
      */
-    public static boolean usePortalNexus(NexusTeleport nexusTeleport) {
+    public static boolean usePortalNexus(NexusPortal nexusPortal) {
         //TODO: Add config here to inform the user if the teleport is a wilderness teleport
         if (getPortalNexusInterface() == null) {
-            List<Integer> portalNexuses = new ArrayList<>();
-            for (int i = ObjectID.PORTAL_NEXUS; i < ObjectID.PORTAL_NEXUS_33410; i++) {
-                portalNexuses.add(i);
-            }
-            TileObject tileObject = Rs2GameObject.findObject(portalNexuses.toArray(Integer[]::new));
+            TileObject tileObject = Rs2GameObject.getTileObject(NexusPortal.PORTAL_IDS);
             Rs2GameObject.interact(tileObject, "Teleport Menu");
         }
 
         sleepUntil(() -> getPortalNexusInterface() != null);
 
-        return interactWithPortalNexusWidget(nexusTeleport);
+        return interactWithPortalNexusWidget(nexusPortal);
     }
 
     public static Widget getPortalNexusInterface() {
-        return Rs2Widget.getWidget(17, 0);
+        return Rs2Widget.getWidget(InterfaceID.TELENEXUS_TELEPORT, 0);
     }
 
     /**
      * Will interact with the portal nexus widget if it's open
-     * @param nexusTeleport
+     *
+     * @param nexusPortal
      * @return
      */
-    public static boolean interactWithPortalNexusWidget(NexusTeleport nexusTeleport) {
+    public static boolean interactWithPortalNexusWidget(NexusPortal nexusPortal) {
         Widget portalNexusWidget = getPortalNexusInterface();
         if (portalNexusWidget == null) return false;
 
-        Widget widget = Rs2Widget.findWidget(nexusTeleport.getText().toLowerCase(), Arrays.stream(portalNexusWidget.getStaticChildren()).collect(Collectors.toList()));
+        Widget widget = Rs2Widget.findWidget(nexusPortal.getText().toLowerCase(), Arrays.stream(portalNexusWidget.getStaticChildren()).collect(Collectors.toList()));
 
         if (widget == null) return false;
 
@@ -178,8 +182,50 @@ public class PohTeleports {
             Rs2Widget.enterWilderness();
         }
 
-        sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(nexusTeleport.getLocation()) < 10);
+        sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(nexusPortal.getLocation()) < 10);
 
         return true;
+    }
+
+    /**
+     * Attempts to teleport the player to their Player-Owned House (POH) using available methods in the following order:
+     * 1. If the player is wearing the “Construct. cape”, it interacts with it to teleport.
+     * 2. If the player has the “Construct. cape” in their inventory, it interacts with it to teleport.
+     * 3. If the player has a “Teleport to house” item in their inventory, it uses the item to teleport.
+     * 4. If the player can cast the "Teleport to house" spell, it casts the spell.
+     * If none of these conditions are met, the teleport will fail.
+     *
+     * @return true if the teleport action was successfully performed; false otherwise
+     */
+    public static boolean teleportToPoh() {
+        if (Rs2Equipment.isWearing("Construct. cape", false)) {
+            return Rs2Equipment.interact("Construct. cape", "Tele to POH");
+        } else if (Rs2Inventory.contains("Construct. cape", false)) {
+            return Rs2Inventory.interact("Construct. cape", "Tele to POH");
+        } else if (Rs2Inventory.contains("Teleport to house")) {
+            return Rs2Inventory.interact("Teleport to house", "Break");
+        } else if (Rs2Magic.canCast(Rs2Spells.TELEPORT_TO_HOUSE)) {
+            return Rs2Magic.cast(Rs2Spells.TELEPORT_TO_HOUSE);
+        }
+        return false;
+    }
+
+    /**
+     * Determines whether the player has a method to teleport to their Player-Owned House (POH).
+     * This can be satisfied by the following criteria:
+     * 1. The player has a "Construct. cape" in their inventory or is wearing it.
+     * 2. The player has a "Teleport to house" item in their inventory.
+     * 3. The player can cast the "Teleport to house" spell.
+     *
+     * @return true if the player possesses at least one method to teleport to their POH, false otherwise.
+     */
+    public static boolean hasTeleportToPoh() {
+        if (Rs2Inventory.contains(false, "Construct. cape") || Rs2Equipment.isWearing("Construct. cape", false)) {
+            return true;
+        }
+        if (Rs2Inventory.contains("Teleport to house")) {
+            return true;
+        }
+        return Rs2Magic.canCast(Rs2Spells.TELEPORT_TO_HOUSE);
     }
 }

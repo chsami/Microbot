@@ -39,6 +39,7 @@ import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
+import net.runelite.client.plugins.microbot.util.cache.Rs2PohCache;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.coords.Rs2LocalPoint;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldArea;
@@ -59,6 +60,8 @@ import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
 import net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.player.Rs2Pvp;
+import net.runelite.client.plugins.microbot.util.poh.PohTeleports;
+import net.runelite.client.plugins.microbot.util.poh.data.PohTeleport;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
@@ -343,7 +346,9 @@ public class Rs2Walker {
                     break;
                 }
 
-                if (!Microbot.getClient().getTopLevelWorldView().isInstance()) {
+                //Again, would be nice to have access to current node, since we're going to have to handle transports in instance (PoH)
+                boolean inInstance = Microbot.getClient().getTopLevelWorldView().isInstance();
+                if (config.usePoh() || !inInstance) {
                     doorOrTransportResult = handleTransports(path, i);
                 }
 
@@ -1047,6 +1052,12 @@ public class Rs2Walker {
                 ? Rs2WorldPoint.convertInstancedWorldPoint(rawTo)
                 : rawTo;
 
+        if (isInstance && toWp == null) {
+            //This happens when we're inside the PoH and the next tile is the teleport destination
+            //Rs2WorldPoint.convertInstancedWorldPoint(rawTo) -> LocalPoint l = Rs2LocalPoint.fromWorldInstance(worldPoint) returns null
+            return false;
+        }
+
         boolean diagonal = Math.abs(fromWp.getX() - toWp.getX()) > 0
                 && Math.abs(fromWp.getY() - toWp.getY()) > 0;
 
@@ -1480,6 +1491,14 @@ public class Rs2Walker {
                         }
                     }
 
+                    if (transport.getType() == TransportType.POH) {
+                        System.out.println("Using POH transport: " + transport.getName() + " " + transport.getType());
+                        if (handlePohTransport(transport)) {
+                            sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(transport.getDestination()) < OFFSET, 10000);
+                            break;
+                        }
+                    }
+
                     if (transport.getType() == TransportType.CANOE) {
                         if (handleCanoe(transport)) {
                             sleep(600 * 2); // wait 2 extra ticks before walking
@@ -1596,6 +1615,28 @@ public class Rs2Walker {
             }
         }
         return false;
+    }
+
+    /**
+     * Handles the transportation process specifically for instances of PohTransport.
+     * Any Transport param that reaches this is assumed to be a PohTransport.
+     *
+     * @param transport the transport object to be checked and processed
+     * @return true if the transport is an instance of PohTransport and its transport method executes successfully, false otherwise
+     */
+    private static boolean handlePohTransport(Transport transport) {
+        if (!PohTeleports.isInHouse()) {
+            if (PohTeleports.teleportToPoh()) {
+                if (!sleepUntil(PohTeleports::isInHouse, 10000)) {
+                    return false;
+                }
+            }
+        }
+        PohTeleport teleport = Rs2PohCache.getTeleport(transport);
+        if(teleport == null) {
+            throw new IllegalStateException(String.format("PohTransport for Transport {} is null", transport));
+        }
+        return teleport.execute();
     }
 
     private static void handleObject(Transport transport, TileObject tileObject) {
@@ -2022,6 +2063,11 @@ public class Rs2Walker {
         if (loc == null) return true;
 
         if (config.recalculateDistance() < 0 || lastPosition.equals(lastPosition = loc)) {
+            return true;
+        }
+
+        if (config.usePoh() && PohTeleports.isInHouse()) {
+            //Would be nice to have access to current node here and check if the current Node is a POH transport node.
             return true;
         }
 
