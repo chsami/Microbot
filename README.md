@@ -1,66 +1,75 @@
 ![image](https://github.com/user-attachments/assets/7c08e053-c84f-41f8-bc97-f55130100419)
 
+## Prerequisites Installation
 
-# Microbot
-Microbot is an opensource oldschool runescape client based on runelite. It uses a plugin system to enable scripting. Here is a youtube channel showing off some of the scripts
+Before building and running Microbot, you need to have Java 17+ and Maven installed on your system.
 
-## Youtube
+### Automated Setup
 
-[![image](https://github.com/user-attachments/assets/f15ec853-9b92-474e-a269-9a984e8bb792)](https://www.youtube.com/channel/UCEj_7N5OPJkdDi0VTMOJOpw)
+Use the provided setup scripts to automatically install dependencies:
 
-## Discord
+#### macOS/Linux
+```bash
+# Make the script executable
+chmod +x setup.sh
 
-[![Discord Banner 1](https://discord.com/api/guilds/1087718903985221642/widget.png?style=banner1)](https://discord.gg/zaGrfqFEWE)
+# Run the setup script
+./setup.sh
+```
 
- 
-If you have any questions, please join our [Discord](https://discord.gg/zaGrfqFEWE) server.
+The macOS setup script will:
+- Install Homebrew (if not present)
+- Install Java 17 via Homebrew
+- Install Maven via Homebrew
+- Configure JAVA_HOME environment variable
 
+#### Windows
+```cmd
+# Run as Administrator for best results
+setup.bat
+```
 
-## ☕ Buy Me a Coffee
+The Windows setup script will:
+- Install Chocolatey (if not present)
+- Install Java 17 via Chocolatey
+- Install Maven via Chocolatey
+- Provide manual installation instructions if needed
 
-If you enjoy my open source work and would like to support me, consider buying me a coffee! Your support helps me stay caffeinated and motivated to keep improving and creating awesome projects.
+### Manual Installation
 
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-donate-yellow)](https://www.paypal.com/paypalme/MicrobotBE?country.x=BE)
+If the automated setup fails, you can install the prerequisites manually:
 
+**Java 17:**
+- macOS: `brew install openjdk@17`
+- Windows: Download from [Adoptium](https://adoptium.net/temurin/releases/)
+- Linux: `sudo apt install openjdk-17-jdk` (Ubuntu/Debian)
 
-![image](https://github.com/user-attachments/assets/c510631d-5ecf-4968-a916-2942f9b754f8)
+**Maven:**
+- macOS: `brew install maven`
+- Windows: Download from [Maven.apache.org](https://maven.apache.org/download.cgi)
+- Linux: `sudo apt install maven` (Ubuntu/Debian)
 
+## Building and Running
 
-BTC Address: bc1q4c63nc5jt9wem87cy7llsk2ur5psjnqhltt2kf
+After installing the prerequisites, use the platform-specific scripts:
 
-LTC Address: ltc1qgk0dkchfd8tf7jvtj5708vheq82k2wyqucrqs7
+### macOS/Linux
+```bash
+# Build and start (first time or after changes)
+./_build_and_start.sh
 
-ETC Address: 0xf8A6d6Fae32319A93341aE45F1ED87DA2Aa04132
+# Start only (if already built)
+./_start.sh
+```
 
-DOGE Address: DNHQDHKn7MKdMQRZyoSrJ68Lnd1D9bjbTn
+### Windows
+```cmd
+# Build and start (first time or after changes)
+_build_and_start.bat
 
-
-Thank you for your support! 😊
-
-# I Want To Play
-
-## Non jagex account
-
-Here is a youtube video on how to setup microbot from scratch for **NON-JAGEX ACCOUNTS**
-
-https://www.youtube.com/watch?v=EbtdZnxq5iw
-
-## Jagex Account
-
-Follow the runelite wiki for setting up jagex accounts: https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts
-
-After you've done setting it up follow these two steps:
-
-1) Simply login with the jagex launcher for the first time. This will create a token for your account. Close everything after succesfully login in through the jagex launcher. 
-2) Open the microbot.jar from microbot and this should prompt you with the jagex account to login.
-
-# I Want To Develop
-
-## First Time Running the project as a Developer?
-
-Make sure to follow this guide if it's your first time running the project
-
-[https://github.com/runelite/runelite/wiki/Building-with-IntelliJ-IDEA](https://github.com/chsami/microbot/wiki/Building-with-IntelliJ-IDEA)
+# Start only (if already built)
+_start.bat
+```
 
 ## Microbot ChatGPT Chatbot
 
