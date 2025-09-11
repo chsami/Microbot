@@ -1,5 +1,22 @@
 ![image](https://github.com/user-attachments/assets/7c08e053-c84f-41f8-bc97-f55130100419)
 
+## Getting the Project
+
+First, download or clone the Microbot project to your local machine:
+
+### Option 1: Clone with Git (Recommended)
+```bash
+git clone https://github.com/ReposUniversity/microbot.git
+cd microbot
+```
+
+### Option 2: Download ZIP
+1. Go to [https://github.com/ReposUniversity/microbot](https://github.com/ReposUniversity/microbot)
+2. Click the green "Code" button
+3. Select "Download ZIP"
+4. Extract the ZIP file to your desired location
+5. Open terminal/command prompt and navigate to the extracted folder
+
 ## Prerequisites Installation
 
 Before building and running Microbot, you need to have Java 17+ and Maven installed on your system.
@@ -10,6 +27,9 @@ Use the provided setup scripts to automatically install dependencies:
 
 #### macOS/Linux
 ```bash
+# Navigate to the project directory
+cd microbot
+
 # Make the script executable
 chmod +x setup.sh
 
@@ -25,6 +45,9 @@ The macOS setup script will:
 
 #### Windows
 ```cmd
+# Navigate to the project directory
+cd microbot
+
 # Run as Administrator for best results
 setup.bat
 ```
@@ -53,21 +76,38 @@ If the automated setup fails, you can install the prerequisites manually:
 
 After installing the prerequisites, use the platform-specific scripts:
 
-### macOS/Linux
+### Complete Workflow Example
+
+#### macOS/Linux
 ```bash
-# Build and start (first time or after changes)
+# 1. Download the project
+git clone https://github.com/chsami/microbot.git
+cd microbot
+
+# 2. Install dependencies
+chmod +x setup.sh
+./setup.sh
+
+# 3. Build and start (first time or after changes)
 ./_build_and_start.sh
 
-# Start only (if already built)
+# Or start only (if already built)
 ./_start.sh
 ```
 
-### Windows
+#### Windows
 ```cmd
-# Build and start (first time or after changes)
+# 1. Download the project
+git clone https://github.com/chsami/microbot.git
+cd microbot
+
+# 2. Install dependencies (run as Administrator)
+setup.bat
+
+# 3. Build and start (first time or after changes)
 _build_and_start.bat
 
-# Start only (if already built)
+# Or start only (if already built)
 _start.bat
 ```
 
