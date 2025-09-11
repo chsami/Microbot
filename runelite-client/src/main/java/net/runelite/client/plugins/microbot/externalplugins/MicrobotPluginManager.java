@@ -38,11 +38,6 @@ import com.google.inject.Binder;
 import com.google.inject.CreationException;
 import com.google.inject.Injector;
 import com.google.inject.Module;
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import javax.annotation.Nullable;
-import javax.inject.Named;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLite;
 import net.runelite.client.RuneLiteProperties;
@@ -50,8 +45,8 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ClientShutdown;
-import net.runelite.client.events.ProfileChanged;
 import net.runelite.client.events.ExternalPluginsChanged;
+import net.runelite.client.events.ProfileChanged;
 import net.runelite.client.plugins.*;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.MicrobotConfig;
@@ -59,14 +54,22 @@ import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.ui.SplashScreen;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
+import javax.inject.Named;
 import javax.inject.Singleton;
 import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.net.Proxy;
 import java.net.ProxySelector;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
@@ -74,8 +77,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
-import okhttp3.Request;
-import okhttp3.Response;
 
 @Slf4j
 @Singleton
@@ -802,12 +803,14 @@ public class MicrobotPluginManager
 				})
 				.collect(Collectors.toList());
 
-			Set<String> loadedPluginNames = loadedExternalPlugins.stream()
-				.map(plugin -> plugin.getClass().getSimpleName())
-				.collect(Collectors.toSet());
+			Set<String> loadedByInternalName = loadedExternalPlugins.stream()
+					.map(this::getPluginManifest) // your helper
+					.filter(Objects::nonNull)
+					.map(MicrobotPluginManifest::getInternalName)
+					.collect(Collectors.toSet());
 
 			log.info("Profile refresh - Installed plugins: {}, Currently loaded Microbot plugins: {}",
-				installedNames, loadedPluginNames);
+				installedNames, loadedByInternalName);
 
 			log.debug("All loaded plugins ({}):", allLoadedPlugins.size());
 			for (Plugin plugin : allLoadedPlugins) {
@@ -859,6 +862,8 @@ public class MicrobotPluginManager
 
 			needsDownload.addAll(needsRedownload);
 
+			Set<String> needsReload = new HashSet<>(needsDownload);
+
 			Set<File> keepFiles = validManifests.keySet().stream()
 				.map(this::getPluginJarFile)
 				.filter(File::exists)
@@ -894,21 +899,33 @@ public class MicrobotPluginManager
 				.collect(Collectors.toSet());
 
 			Set<MicrobotPluginManifest> toAdd = validPluginManifests.stream()
-				.filter(manifest -> !loadedPluginNames.contains(manifest.getInternalName()))
-				.collect(Collectors.toSet());
+					.filter(m -> needsReload.contains(m.getInternalName())
+							|| !loadedByInternalName.contains(m.getInternalName()))
+					.collect(Collectors.toSet());
 
 			List<Plugin> toRemove = loadedExternalPlugins.stream()
-				.filter(plugin -> !installedPluginNames.contains(plugin.getClass().getSimpleName()))
-				.collect(Collectors.toList());
+					.filter(p -> {
+						MicrobotPluginManifest m = getPluginManifest(p);
+						if (m == null) return true; // unknown → remove
+						String name = m.getInternalName();
+						return !installedPluginNames.contains(name) || needsReload.contains(name);
+					})
+					.collect(Collectors.toList());
 
 			log.info("Plugin refresh - Will add: {} plugins, Will remove: {} plugins",
 				toAdd.stream().map(MicrobotPluginManifest::getInternalName).collect(Collectors.toSet()),
 				toRemove.stream().map(p -> p.getClass().getSimpleName()).collect(Collectors.toSet()));
 
-			toRemove.forEach(plugin -> {
-				log.info("Stopping plugin \"{}\" (no longer installed for this profile)", plugin.getClass().getSimpleName());
-				stopPlugin(plugin);
-			});
+			for (Plugin plugin : toRemove) {
+				String simple = plugin.getClass().getSimpleName();
+				log.info("Stopping plugin \"{}\"", simple);
+				try {
+					SwingUtilities.invokeAndWait(() -> stopPlugin(plugin));
+				} catch (InterruptedException | InvocationTargetException e) {
+					log.warn("Failed to stop plugin {}", simple, e);
+				}
+			}
+
 
 			for (MicrobotPluginManifest manifest : toAdd) {
 				String pluginName = manifest.getInternalName();

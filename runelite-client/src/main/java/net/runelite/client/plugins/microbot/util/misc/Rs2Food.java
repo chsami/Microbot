@@ -64,7 +64,10 @@ public enum Rs2Food {
     COOKED_DASHING_KEBBIT(29134, 23, "Cooked dashing kebbit",3),
     COOKED_MOONLIGHT_ANTELOPE(29143, 26, "Cooked moonlight antelope",3),
     PURPLE_SWEETS(10476, 3, "Purple Sweets",3),
-    CABBAGE(ItemID.CABBAGE, 1, "Cabbage",3);
+    CABBAGE(ItemID.CABBAGE, 1, "Cabbage",3),
+    BLIGHTED_MANTA_RAY(24589, 22, "Blighted manta ray", 3),
+    BLIGHTED_ANGLERFISH(24592, 22, "Blighted anglerfish", 3),
+    BLIGHTED_KARAMBWAN(24595, 18, "Blighted karambwan", 3);
 
     private int id;
     private int heal;

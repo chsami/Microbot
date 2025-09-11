@@ -2545,64 +2545,67 @@ public class Rs2Walker {
 
     private static boolean handleFairyRing(Transport transport) {
 
-		Rs2ItemModel startingWeapon = null;
+        Rs2ItemModel startingWeapon = null;
 
-		TileObject fairyRingObject = PohTeleports.isInHouse() ? PohTeleports.getFairyRings() : Rs2GameObject.getAll(o -> Objects.equals(o.getWorldLocation(), transport.getOrigin())).stream().findFirst().orElse(null);
-		if (fairyRingObject == null) return false;
+        TileObject fairyRingObject = PohTeleports.isInHouse() ? PohTeleports.getFairyRings() : Rs2GameObject.getAll(o -> Objects.equals(o.getWorldLocation(), transport.getOrigin())).stream().findFirst().orElse(null);
+        if (fairyRingObject == null) return false;
 
-		if (!PohTeleports.isInHouse() && !Rs2GameObject.canWalkTo(fairyRingObject, 25)) return false;
+        if (!PohTeleports.isInHouse() && !Rs2GameObject.canWalkTo(fairyRingObject, 25)) return false;
 
-		boolean hasLumbridgeElite = Microbot.getVarbitValue(VarbitID.LUMBRIDGE_DIARY_ELITE_COMPLETE) == 1;
+        boolean hasLumbridgeElite = Microbot.getVarbitValue(VarbitID.LUMBRIDGE_DIARY_ELITE_COMPLETE) == 1;
 
-		if (!hasLumbridgeElite) {
-			if (Rs2Equipment.isWearing(EquipmentInventorySlot.WEAPON)) {
-				startingWeapon = Rs2Equipment.get(EquipmentInventorySlot.WEAPON);
-			}
+        if (!hasLumbridgeElite) {
+            if (Rs2Equipment.isWearing(EquipmentInventorySlot.WEAPON)) {
+                startingWeapon = Rs2Equipment.get(EquipmentInventorySlot.WEAPON);
+            }
 
-			if (!Rs2Equipment.isWearing("Dramen staff") && !Rs2Equipment.isWearing("Lunar staff")) {
-				if (Rs2Inventory.contains("Dramen staff")) {
-					Rs2Inventory.equip("Dramen staff");
-					sleepUntil(() -> Rs2Equipment.isWearing("Dramen staff"));
-				} else if (Rs2Inventory.contains("Lunar staff")) {
-					Rs2Inventory.equip("Lunar staff");
-					sleepUntil(() -> Rs2Equipment.isWearing("Lunar staff"));
-				} else {
-					return false;
-				}
-			}
-		}
+            if (!Rs2Equipment.isWearing("Dramen staff") && !Rs2Equipment.isWearing("Lunar staff")) {
+                if (Rs2Inventory.contains("Dramen staff")) {
+                    Rs2Inventory.equip("Dramen staff");
+                    sleepUntil(() -> Rs2Equipment.isWearing("Dramen staff"));
+                } else if (Rs2Inventory.contains("Lunar staff")) {
+                    Rs2Inventory.equip("Lunar staff");
+                    sleepUntil(() -> Rs2Equipment.isWearing("Lunar staff"));
+                } else {
+                    return false;
+                }
+            }
+        }
 
-        String lastDestinationAction = "last-destination-" + transport.getDisplayInfo();
+        String lastDestinationAction = "last-destination (" + transport.getDisplayInfo() + ")";
         String treeLastDestinationAction = "Ring-last-destination (" + transport.getDisplayInfo() + ")";
         ObjectComposition composition = Rs2GameObject.convertToObjectComposition(fairyRingObject);
         log.info("Interacting with Fairy Ring @ {}", fairyRingObject.getWorldLocation());
 
+        // we can use the last-destination to handle fairy rings
         if (Rs2GameObject.hasAction(composition, lastDestinationAction, true)) {
-            return Rs2GameObject.interact(fairyRingObject, lastDestinationAction);
-        }else if (Rs2GameObject.hasAction(composition, treeLastDestinationAction, true)) {
-            return Rs2GameObject.interact(fairyRingObject, treeLastDestinationAction);
+            Rs2GameObject.interact(fairyRingObject, lastDestinationAction);
+        } else if (Rs2GameObject.hasAction(composition, treeLastDestinationAction, true)) {
+            Rs2GameObject.interact(fairyRingObject, treeLastDestinationAction);
+        } else {
+            // We have to configure fairy rings through the interface
+            if (Rs2GameObject.hasAction(composition, "Configure", true)) {
+                Rs2GameObject.interact(fairyRingObject, "Configure");
+            } else if (Rs2GameObject.hasAction(composition, "Ring-configure", true)) {
+                Rs2GameObject.interact(fairyRingObject, "Ring-configure");
+            }
+            sleepUntil(() -> !Rs2Player.isMoving() && !Rs2Widget.isHidden(ComponentID.FAIRY_RING_TELEPORT_BUTTON), 10000);
+
+            rotateSlotToDesiredRotation(SLOT_ONE, Rs2Widget.getWidget(SLOT_ONE).getRotationY(), getDesiredRotation(transport.getDisplayInfo().charAt(0)), SLOT_ONE_ACW_ROTATION, SLOT_ONE_CW_ROTATION);
+            rotateSlotToDesiredRotation(SLOT_TWO, Rs2Widget.getWidget(SLOT_TWO).getRotationY(), getDesiredRotation(transport.getDisplayInfo().charAt(1)), SLOT_TWO_ACW_ROTATION, SLOT_TWO_CW_ROTATION);
+            rotateSlotToDesiredRotation(SLOT_THREE, Rs2Widget.getWidget(SLOT_THREE).getRotationY(), getDesiredRotation(transport.getDisplayInfo().charAt(2)), SLOT_THREE_ACW_ROTATION, SLOT_THREE_CW_ROTATION);
+            Rs2Widget.clickWidget(ComponentID.FAIRY_RING_TELEPORT_BUTTON);
         }
-        if (Rs2GameObject.hasAction(composition, "Configure", true)) {
-            Rs2GameObject.interact(fairyRingObject, "Configure");
-        } else if (Rs2GameObject.hasAction(composition, "Ring-configure", true)) {
-            Rs2GameObject.interact(fairyRingObject, "Ring-configure");
+
+        sleepUntil(() -> Rs2Player.getGraphicId() == fairyRingGraphicId, 5000);
+        sleepUntil(() -> Objects.equals(Rs2Player.getWorldLocation(), transport.getDestination()) && Rs2Player.getGraphicId() != fairyRingGraphicId, 10000);
+
+        if (startingWeapon != null) {
+            Rs2ItemModel finalStartingWeapon = startingWeapon;
+            Rs2Inventory.equip(finalStartingWeapon.getId());
+            sleepUntil(() -> Rs2Equipment.isWearing(finalStartingWeapon.getId()));
         }
-		sleepUntil(() -> !Rs2Player.isMoving() && !Rs2Widget.isHidden(ComponentID.FAIRY_RING_TELEPORT_BUTTON), 10000);
-
-		rotateSlotToDesiredRotation(SLOT_ONE, Rs2Widget.getWidget(SLOT_ONE).getRotationY(), getDesiredRotation(transport.getDisplayInfo().charAt(0)), SLOT_ONE_ACW_ROTATION, SLOT_ONE_CW_ROTATION);
-		rotateSlotToDesiredRotation(SLOT_TWO, Rs2Widget.getWidget(SLOT_TWO).getRotationY(), getDesiredRotation(transport.getDisplayInfo().charAt(1)), SLOT_TWO_ACW_ROTATION, SLOT_TWO_CW_ROTATION);
-		rotateSlotToDesiredRotation(SLOT_THREE, Rs2Widget.getWidget(SLOT_THREE).getRotationY(), getDesiredRotation(transport.getDisplayInfo().charAt(2)), SLOT_THREE_ACW_ROTATION, SLOT_THREE_CW_ROTATION);
-		Rs2Widget.clickWidget(ComponentID.FAIRY_RING_TELEPORT_BUTTON);
-
-		sleepUntil(() -> Rs2Player.hasSpotAnimation(fairyRingGraphicId));
-		sleepUntil(() -> Objects.equals(Rs2Player.getWorldLocation(), transport.getDestination()) && !Rs2Player.hasSpotAnimation(fairyRingGraphicId), 10000);
-
-		if (startingWeapon != null) {
-			Rs2ItemModel finalStartingWeapon = startingWeapon;
-			Rs2Inventory.equip(finalStartingWeapon.getId());
-			sleepUntil(() -> Rs2Equipment.isWearing(finalStartingWeapon.getId()));
-		}
-		return true;
+        return true;
     }
 
     /**

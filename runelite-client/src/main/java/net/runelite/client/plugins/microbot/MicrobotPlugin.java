@@ -251,14 +251,14 @@ public class MicrobotPlugin extends Plugin
 	}
 
 	/**
-	 * Retrieves all currently open container IDs from {@link net.runelite.api.gameval.InventoryID}
+	 * Retrieves all currently open container IDs from {@link InventoryID}
 	 * and excludes specific container IDs.
 	 *
 	 * @return an array of open container IDs excluding the specified excluded IDs
 	 */
 	private int[] getShopContainerIds()
 	{
-		Field[] fields = net.runelite.api.gameval.InventoryID.class.getFields();
+		Field[] fields = InventoryID.class.getFields();
 		List<Integer> openContainerIds = new ArrayList<>();
 		int[] excludedIds = { 90, 93, 94, 95 };
 
@@ -593,7 +593,7 @@ public class MicrobotPlugin extends Plugin
 	}
 	/**
 	 * Dynamically checks if any visible widget overlaps with the specified bounds
-	 * @param overlayBounds The bounds to check for widget overlap
+	 * @param overlayBoundsCanvas The bounds to check for widget overlap
 	 * @return true if any visible widget overlaps with the specified bounds
 	 */
 	public boolean hasWidgetOverlapWithBounds(Rectangle overlayBoundsCanvas) {

@@ -29,18 +29,18 @@
 # 8 - Hosidius								
 1740 3517 0	40 Magic		19	4070=0;2187=8		Y	4	Teleport to House: Outside
 # Teleport to House - Inside - These depend on the player's house style - determined by varbit 2188								
-1858 5707 0	40 Magic		19	2188=1		Y	4	Teleport to House: Inside
-1858 5707 0	40 Magic		19	2188=2		Y	4	Teleport to House: Inside
-1858 5707 0	40 Magic		19	2188=3		Y	4	Teleport to House: Inside
-1858 5707 0	40 Magic		19	2188=4		Y	4	Teleport to House: Inside
-1922 5707 2	40 Magic		19	2188=5		Y	4	Teleport to House: Inside
-1922 5707 2	40 Magic		19	2188=6		Y	4	Teleport to House: Inside
-1922 5707 2	40 Magic		19	2188=7		Y	4	Teleport to House: Inside
-1922 5707 2	40 Magic		19	2188=8		Y	4	Teleport to House: Inside
-1986 5707 0	40 Magic		19	2188=10		Y	4	Teleport to House: Inside
-1986 5707 0	40 Magic		19	2188=11		Y	4	Teleport to House: Inside
-1986 5707 0	40 Magic		19	2188=13		Y	4	Teleport to House: Inside
-1986 5707 0	40 Magic		19	2188=14		Y	4	Teleport to House: Inside
+1858 5707 0	40 Magic		19	2188=1		Y	4	Teleport to House
+1858 5707 0	40 Magic		19	2188=2		Y	4	Teleport to House
+1858 5707 0	40 Magic		19	2188=3		Y	4	Teleport to House
+1858 5707 0	40 Magic		19	2188=4		Y	4	Teleport to House
+1922 5707 1	40 Magic		19	2188=5		Y	4	Teleport to House
+1922 5707 1	40 Magic		19	2188=6		Y	4	Teleport to House
+1922 5707 1	40 Magic		19	2188=7		Y	4	Teleport to House
+1922 5707 1	40 Magic		19	2188=8		Y	4	Teleport to House
+1986 5707 0	40 Magic		19	2188=10		Y	4	Teleport to House
+1986 5707 0	40 Magic		19	2188=11		Y	4	Teleport to House
+1986 5707 0	40 Magic		19	2188=13		Y	4	Teleport to House
+1986 5707 0	40 Magic		19	2188=14		Y	4	Teleport to House
 								
 # Camelot Teleport								
 2757 3478 0	45 Magic		19	4070=0		Y	10	Camelot Teleport

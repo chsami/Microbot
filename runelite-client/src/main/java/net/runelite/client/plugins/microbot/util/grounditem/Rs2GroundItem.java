@@ -34,7 +34,7 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 public class Rs2GroundItem {
     private static final int DESPAWN_DELAY_THRESHOLD_TICKS = 150;
 
-    private static boolean runWhilePaused(BooleanSupplier booleanSupplier) {
+    public static boolean runWhilePaused(BooleanSupplier booleanSupplier) {
         final boolean paused = Microbot.pauseAllScripts.getAndSet(true);
         final boolean success = booleanSupplier.getAsBoolean();
         if (!paused && !Microbot.pauseAllScripts.compareAndSet(true, false)) {
@@ -262,7 +262,7 @@ public class Rs2GroundItem {
         return groundItem != getGroundItems().get(groundItem.getLocation(), groundItem.getId());
     }
 
-    private static boolean coreLoot(GroundItem groundItem) {
+    public static boolean coreLoot(GroundItem groundItem) {
         int quantity = Math.min(groundItem.isStackable() ? 1 : groundItem.getQuantity(),
                 Rs2Inventory.emptySlotCount());
 
@@ -552,7 +552,7 @@ public class Rs2GroundItem {
         return GroundItemsPlugin.getCollectedGroundItems();
     }
 
-    private static boolean canTakeGroundItem(GroundItem groundItem) {
+    public static boolean canTakeGroundItem(GroundItem groundItem) {
         int maxQuantity = groundItem.isStackable() ? 1 : groundItem.getQuantity();
         int availableSlots = Rs2Inventory.emptySlotCount();
         int quantity = Math.min(maxQuantity, availableSlots);
