@@ -587,8 +587,7 @@ public class AIOFighterPlugin extends Plugin {
 
         float pixelsPerTile = worldMap.getWorldMapZoom();
 
-        // Widget map = Microbot.getClient().getWidget(ComponentID.WORLD_MAP_MAPVIEW); // Temporarily commented out
-        Widget map = null; // Temporarily set to null
+        Widget map = Microbot.getClient().getWidget(ComponentID.WORLD_MAP_MAPVIEW); // Temporarily commented out
         if (map != null) {
             Rectangle worldMapRect = map.getBounds();
 
