@@ -385,7 +385,7 @@ public interface AIOFighterConfig extends Config {
 
     @ConfigItem(
             keyName = "delayedLooting",
-            name = "Delayed Looting",
+            name = "Kiils to loot",
             description = "Lets the loot stay on the ground for a while before picking it up",
             position = 30,
             section = lootSection
