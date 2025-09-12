@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.combathotkeys;
 
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.config.*;
+import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
 
 @ConfigInformation("IMPORTANT!<br/>"
         + "When Setting up hotkeys make sure to use something like CTRL +, ALT + or SHIFT +<br/><br/>"
@@ -10,10 +11,75 @@ import net.runelite.client.config.*;
 
 @ConfigGroup("combathotkeys")
 public interface CombatHotkeysConfig extends Config {
+
     @ConfigSection(
-            name = "Prayers",
-            description = "Prayer hotkeys",
+            name = "Offensive Prayers",
+            description = "Offensive Prayer hotkeys",
             position = 1
+    )
+    String offensivePrayerSection = "offensivePrayers";
+
+    // Melee
+    @ConfigItem(
+            keyName = "offensiveMeleeKey",
+            name = "Melee Prayer Hotkey",
+            description = "Hotkey for offensive melee prayer",
+            position = 0,
+            section = offensivePrayerSection
+    )
+    default Keybind offensiveMeleeKey() { return Keybind.NOT_SET; }
+
+    @ConfigItem(
+            keyName = "offensiveMeleePrayer",
+            name = "Melee Prayer",
+            description = "Prayer to toggle with the melee hotkey",
+            position = 1,
+            section = offensivePrayerSection
+    )
+    default MeleePrayerOption offensiveMeleePrayer() { return MeleePrayerOption.PIETY; }
+
+    // Ranged
+    @ConfigItem(
+            keyName = "offensiveRangeKey",
+            name = "Ranged Prayer Hotkey",
+            description = "Hotkey for offensive ranged prayer",
+            position = 2,
+            section = offensivePrayerSection
+    )
+    default Keybind offensiveRangeKey() { return Keybind.NOT_SET; }
+
+    @ConfigItem(
+            keyName = "offensiveRangePrayer",
+            name = "Ranged Prayer",
+            description = "Prayer to toggle with the ranged hotkey",
+            position = 3,
+            section = offensivePrayerSection
+    )
+    default RangedPrayerOption offensiveRangePrayer() { return RangedPrayerOption.RIGOUR; }
+
+    // Magic
+    @ConfigItem(
+            keyName = "offensiveMagicKey",
+            name = "Magic Prayer Hotkey",
+            description = "Hotkey for offensive magic prayer",
+            position = 4,
+            section = offensivePrayerSection
+    )
+    default Keybind offensiveMagicKey() { return Keybind.NOT_SET; }
+
+    @ConfigItem(
+            keyName = "offensiveMagicPrayer",
+            name = "Magic Prayer",
+            description = "Prayer to toggle with the magic hotkey",
+            position = 5,
+            section = offensivePrayerSection
+    )
+    default MagicPrayerOption offensiveMagicPrayer() { return MagicPrayerOption.AUGURY; }
+
+    @ConfigSection(
+            name = "Defensive Prayers",
+            description = "Defensive Prayer hotkeys",
+            position = 2
     )
     String prayerSection = "prayers";
 
@@ -56,7 +122,7 @@ public interface CombatHotkeysConfig extends Config {
     @ConfigSection(
             name = "Gear setup 1",
             description = "Gear setup 1",
-            position = 2
+            position = 3
     )
     String gearSetup1 = "gearSetup1";
 
@@ -87,7 +153,7 @@ public interface CombatHotkeysConfig extends Config {
     @ConfigSection(
             name = "Gear setup 2",
             description = "Gear setup 2",
-            position = 3
+            position = 4
     )
     String gearSetup2 = "gearSetup2";
 
@@ -118,7 +184,7 @@ public interface CombatHotkeysConfig extends Config {
     @ConfigSection(
             name = "Gear setup 3",
             description = "Gear setup 3",
-            position = 4
+            position = 5
     )
     String gearSetup3 = "gearSetup3";
 
@@ -147,7 +213,7 @@ public interface CombatHotkeysConfig extends Config {
     @ConfigSection(
             name = "Gear setup 4",
             description = "Gear setup 4",
-            position = 5
+            position = 6
     )
     String gearSetup4 = "gearSetup4";
 
@@ -176,7 +242,7 @@ public interface CombatHotkeysConfig extends Config {
     @ConfigSection(
             name = "Gear setup 5",
             description = "Gear setup 5",
-            position = 6
+            position = 7
     )
     String gearSetup5 = "gearSetup5";
 
@@ -241,5 +307,75 @@ public interface CombatHotkeysConfig extends Config {
     )
     default WorldPoint tile2() {
         return null;
+    }
+
+    @ConfigSection(
+            name = "Gear Equip Settings",
+            description = "Settings for randomized equip delays",
+            position = 9
+    )
+    String gearEquipSettings = "gearEquipSettings";
+
+    @ConfigItem(
+            keyName = "maxDelay",
+            name = "Max Equip Delay (ms)",
+            description = "Maximum random delay (in milliseconds) between equipping items",
+            position = 0,
+            section = gearEquipSettings
+    )
+    default int maxDelay() {
+        return 500; // default max delay of 500ms
+    }
+
+    public enum MeleePrayerOption {
+        SUPERHUMAN_STRENGTH(Rs2PrayerEnum.SUPERHUMAN_STRENGTH),
+        ULTIMATE_STRENGTH(Rs2PrayerEnum.ULTIMATE_STRENGTH),
+        CHIVALRY(Rs2PrayerEnum.CHIVALRY),
+        PIETY(Rs2PrayerEnum.PIETY);
+
+        private final Rs2PrayerEnum prayer;
+
+        MeleePrayerOption(Rs2PrayerEnum prayer) {
+            this.prayer = prayer;
+        }
+
+        public Rs2PrayerEnum getPrayer() {
+            return prayer;
+        }
+    }
+
+    public enum RangedPrayerOption {
+        SHARP_EYE(Rs2PrayerEnum.SHARP_EYE),
+        HAWK_EYE(Rs2PrayerEnum.HAWK_EYE),
+        EAGLE_EYE(Rs2PrayerEnum.EAGLE_EYE),
+        //DEADEYE(Rs2PrayerEnum.DEADEYE),
+        RIGOUR(Rs2PrayerEnum.RIGOUR);
+
+        private final Rs2PrayerEnum prayer;
+
+        RangedPrayerOption(Rs2PrayerEnum prayer) {
+            this.prayer = prayer;
+        }
+
+        public Rs2PrayerEnum getPrayer() {
+            return prayer;
+        }
+    }
+
+    public enum MagicPrayerOption {
+        MYSTIC_WILL(Rs2PrayerEnum.MYSTIC_WILL),
+        MYSTIC_LORE(Rs2PrayerEnum.MYSTIC_LORE),
+        MYSTIC_MIGHT(Rs2PrayerEnum.MYSTIC_MIGHT),
+        AUGURY(Rs2PrayerEnum.AUGURY);
+
+        private final Rs2PrayerEnum prayer;
+
+        MagicPrayerOption(Rs2PrayerEnum prayer) {
+            this.prayer = prayer;
+        }
+
+        public Rs2PrayerEnum getPrayer() {
+            return prayer;
+        }
     }
 }
