@@ -116,6 +116,7 @@ public class AIOFighterPlugin extends Plugin {
     private final FlickerScript flickerScript = new FlickerScript();
     private final UseSpecialAttackScript useSpecialAttackScript = new UseSpecialAttackScript();
     private final BuryScatterScript buryScatterScript = new BuryScatterScript();
+    private final ArrowWieldScript arrowWieldScript = new ArrowWieldScript();
     private final AttackStyleScript attackStyleScript = new AttackStyleScript();
     private final BankerScript bankerScript = new BankerScript();
     private final PrayerScript prayerScript = new PrayerScript();
@@ -187,6 +188,7 @@ public class AIOFighterPlugin extends Plugin {
         flickerScript.run(config);
         useSpecialAttackScript.run(config);
         buryScatterScript.run(config);
+        arrowWieldScript.run(config);
         attackStyleScript.run(config);
         prayerScript.run(config);
         highAlchScript.run(config);
@@ -226,6 +228,7 @@ public class AIOFighterPlugin extends Plugin {
         flickerScript.shutdown();
         useSpecialAttackScript.shutdown();
         buryScatterScript.shutdown();
+        arrowWieldScript.shutdown();
         attackStyleScript.shutdown();
         bankerScript.shutdown();
         prayerScript.shutdown();

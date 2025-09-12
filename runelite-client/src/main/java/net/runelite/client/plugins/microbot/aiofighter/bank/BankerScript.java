@@ -110,7 +110,6 @@ public class BankerScript extends Script {
             if(config.defaultInventorySetup() != null) {
                 AIOFighterPlugin.setCurrentSlayerInventorySetup(config.defaultInventorySetup());
             } else {
-                Microbot.log("No inventory setup configured, skipping banking.");
                 return false;
             }
         }        

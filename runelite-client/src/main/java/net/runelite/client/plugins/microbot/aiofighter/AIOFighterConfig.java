@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.aiofighter;
 
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.config.*;
+import net.runelite.client.plugins.microbot.aiofighter.enums.ArrowType;
 import net.runelite.client.plugins.microbot.aiofighter.enums.DefaultLooterStyle;
 import net.runelite.client.plugins.microbot.aiofighter.enums.PlayStyle;
 import net.runelite.client.plugins.microbot.aiofighter.enums.PrayerStyle;
@@ -339,6 +340,28 @@ public interface AIOFighterConfig extends Config {
     )
     default boolean toggleScatter() {
         return false;
+    }
+
+    @ConfigItem(
+            keyName = "Wield arrows",
+            name = "Auto wield arrows",
+            description = "Automatically wield arrows when found in inventory",
+            position = 106,
+            section = lootSection
+    )
+    default boolean toggleWieldArrows() {
+        return false;
+    }
+
+    @ConfigItem(
+            keyName = "Arrow type",
+            name = "Arrow type to wield",
+            description = "Choose which arrow type to auto-wield",
+            position = 107,
+            section = lootSection
+    )
+    default ArrowType arrowType() {
+        return ArrowType.IRON_ARROW;
     }
 
     // delayed looting
