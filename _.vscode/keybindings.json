@@ -1,0 +1,55 @@
+[
+    // Microbot-specific keybindings
+    {
+        "key": "cmd+shift+s",
+        "command": "workbench.action.tasks.runTask",
+        "args": "🚀 start-microbot (Default)"
+    },
+    {
+        "key": "cmd+shift+r",
+        "command": "workbench.action.tasks.runTask",
+        "args": "full-build",
+        "when": "resourceExtname == '.java'"
+    },
+    {
+        "key": "cmd+shift+j", 
+        "command": "workbench.action.tasks.runTask",
+        "args": "run-jar"
+    },
+    {
+        "key": "cmd+shift+c",
+        "command": "workbench.action.tasks.runTask", 
+        "args": "🧹 clean-project"
+    },
+    {
+        "key": "cmd+shift+b",
+        "command": "workbench.action.tasks.runTask",
+        "args": "⚡ build-and-start"
+    },
+    {
+        "key": "f6",
+        "command": "workbench.action.debug.restart",
+        "when": "inDebugMode"
+    },
+    {
+        "key": "cmd+shift+d",
+        "command": "workbench.action.debug.selectandstart",
+        "when": "!inDebugMode"
+    },
+    // Quick navigation for common files
+    {
+        "key": "cmd+shift+1",
+        "command": "workbench.action.quickOpen",
+        "args": "AutoLoginPlugin.java"
+    },
+    {
+        "key": "cmd+shift+2", 
+        "command": "workbench.action.quickOpen",
+        "args": "AutoLoginConfig.java"
+    },
+    {
+        "key": "cmd+shift+3",
+        "command": "workbench.action.quickOpen", 
+        "args": "AutoLoginScript.java"
+    }
+]

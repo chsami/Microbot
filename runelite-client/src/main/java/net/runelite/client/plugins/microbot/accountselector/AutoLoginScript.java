@@ -86,9 +86,14 @@ public class AutoLoginScript extends Script {
             return;
         }
       
-       
         if (Microbot.getClient()!=null && Microbot.getClient().getGameState() == GameState.LOGIN_SCREEN) {
-            log.info("Login screen detected, initiating login");
+            // Check if direct login is enabled - if so, let the plugin handle it
+            if (config.enableDirectLogin()) {
+                log.debug("Direct login is enabled, skipping world selection login");
+                return;
+            }
+            
+            log.info("Login screen detected, initiating world selection login");
             initiateLogin(config);
             transitionToState(LoginState.ATTEMPTING_LOGIN);
         }
@@ -102,6 +107,13 @@ public class AutoLoginScript extends Script {
         if (Microbot.isLoggedIn()) {
             log.info("Login successful");
             resetLoginState();
+            transitionToState(LoginState.WAITING_FOR_LOGIN_SCREEN);
+            return;
+        }
+        
+        // If direct login is enabled, let the plugin handle the login process
+        if (config.enableDirectLogin()) {
+            log.debug("Direct login is enabled, skipping world selection login attempts");
             transitionToState(LoginState.WAITING_FOR_LOGIN_SCREEN);
             return;
         }

@@ -1,0 +1,65 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "🚀 Launch Microbot/RuneLite",
+            "request": "launch",
+            "mainClass": "net.runelite.client.RuneLite",
+            "projectName": "client",
+            "vmArgs": [
+                "--add-opens=java.desktop/com.apple.eawt=ALL-UNNAMED",
+                "--add-exports=java.desktop/com.apple.eawt=ALL-UNNAMED"
+            ],
+            "args": [],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "preLaunchTask": "build-microbot",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "java",
+            "name": "🐛 Debug Microbot/RuneLite",
+            "request": "launch",
+            "mainClass": "net.runelite.client.RuneLite", 
+            "projectName": "client",
+            "vmArgs": [
+                "--add-opens=java.desktop/com.apple.eawt=ALL-UNNAMED",
+                "--add-exports=java.desktop/com.apple.eawt=ALL-UNNAMED"
+            ],
+            "args": [],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "preLaunchTask": "build-microbot",
+            "cwd": "${workspaceFolder}",
+            "stopOnEntry": false
+        },
+        {
+            "type": "java",
+            "name": "🏃 Run JAR (Production)",
+            "request": "launch",
+            "mainClass": "",
+            "vmArgs": [
+                "--add-opens=java.desktop/com.apple.eawt=ALL-UNNAMED", 
+                "--add-exports=java.desktop/com.apple.eawt=ALL-UNNAMED",
+                "-jar",
+                "${workspaceFolder}/runelite-client/target/microbot-2.0.4.jar"
+            ],
+            "args": [],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "preLaunchTask": "package-microbot",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "JAR_NAME": "microbot"
+            }
+        },
+        {
+            "type": "java",
+            "name": "🔧 Current Java File",
+            "request": "launch",
+            "mainClass": "${file}",
+            "console": "integratedTerminal"
+        }
+    ]
+}

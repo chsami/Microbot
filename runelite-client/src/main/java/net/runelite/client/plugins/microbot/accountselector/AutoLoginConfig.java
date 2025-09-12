@@ -11,9 +11,17 @@ import net.runelite.client.plugins.microbot.util.world.WorldSelectionMode;
 @ConfigGroup("AutoLoginConfig")
 public interface AutoLoginConfig extends Config {
     @ConfigSection(
+            name = "Credentials",
+            description = "Login credentials settings",
+            position = 0,
+            closedByDefault = false
+    )
+    String credentialsSection = "credentials";
+
+    @ConfigSection(
             name = "World Selection",
             description = "Configure world selection for auto login",
-            position = 0,
+            position = 1,
             closedByDefault = false
     )
     String worldSelectionSection = "worldSelection";
@@ -21,11 +29,61 @@ public interface AutoLoginConfig extends Config {
     @ConfigSection(
             name = "Login Behavior",
             description = "Configure login retry and watchdog behavior",
-            position = 1,
+            position = 2,
             closedByDefault = false
     )
     String loginBehaviorSection = "loginBehavior";
 
+    // Credentials configuration items
+    @ConfigItem(
+            keyName = "username",
+            name = "Username",
+            description = "RuneScape username",
+            section = credentialsSection,
+            position = 0
+    )
+    default String username() {
+        return "";
+    }
+
+    @ConfigItem(
+            keyName = "username",
+            name = "",
+            description = ""
+    )
+    void username(String username);
+
+    @ConfigItem(
+            keyName = "password",
+            name = "Password",
+            description = "RuneScape password (stored securely)",
+            section = credentialsSection,
+            position = 1,
+            secret = true
+    )
+    default String password() {
+        return "";
+    }
+
+    @ConfigItem(
+            keyName = "password",
+            name = "",
+            description = ""
+    )
+    void password(String password);
+
+    @ConfigItem(
+            keyName = "enableDirectLogin",
+            name = "Enable Direct Login",
+            description = "Use direct login with saved credentials instead of world selection logic",
+            section = credentialsSection,
+            position = 2
+    )
+    default boolean enableDirectLogin() {
+        return false;
+    }
+
+    // World selection configuration items
     @ConfigItem(
             keyName = "worldSelectionMode",
             name = "World selection mode",

@@ -1,0 +1,96 @@
+{
+    // Java Configuration
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.debug.settings.onBuildFailureProceed": true,
+    "java.debug.settings.console": "integratedTerminal",
+    "java.debug.settings.hotCodeReplace": "auto",
+    "java.configuration.maven.userSettings": null,
+    "java.import.maven.enabled": true,
+    "java.maven.downloadSources": true,
+    "java.maven.downloadJavadoc": false,
+    
+    // Project Structure
+    "java.project.sourcePaths": [
+        "runelite-client/src/main/java",
+        "runelite-api/src/main/java",
+        "cache/src/main/java"
+    ],
+    "java.project.resourcePaths": [
+        "runelite-client/src/main/resources",
+        "runelite-api/src/main/interfaces",
+        "cache/src/main/resources"
+    ],
+    "java.project.outputPath": "bin",
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar"
+    ],
+
+    // Code Formatting & Style
+    "java.format.settings.url": "./checkstyle.xml",
+    "java.checkstyle.configuration": "./checkstyle.xml",
+    "java.format.enabled": true,
+    "java.saveActions.organizeImports": true,
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": true,
+        "source.fixAll": false
+    },
+
+    // RuneLite/Microbot Specific
+    "files.exclude": {
+        "**/target": true,
+        "**/bin": true,
+        "**/.classpath": true,
+        "**/.project": true,
+        "**/.settings": true,
+        "**/.factorypath": true
+    },
+    "search.exclude": {
+        "**/target": true,
+        "**/bin": true,
+        "**/node_modules": true
+    },
+
+    // File Associations
+    "files.associations": {
+        "*.rs2asm": "plaintext",
+        "*.g4": "antlr",
+        "pom.xml": "xml"
+    },
+
+    // Terminal & Build
+    "terminal.integrated.shell.osx": "/bin/bash",
+    "terminal.integrated.cwd": "${workspaceFolder}",
+    "maven.terminal.useJavaHome": true,
+    "maven.executable.path": "mvn",
+
+    // Editor Settings
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.detectIndentation": false,
+    "editor.rulers": [120],
+    "editor.wordWrap": "wordWrapColumn",
+    "editor.wordWrapColumn": 120,
+
+    // Auto-completion
+    "java.completion.enabled": true,
+    "java.completion.guessMethodArguments": true,
+    "java.completion.favoriteStaticMembers": [
+        "java.util.Objects.requireNonNull",
+        "java.util.Objects.requireNonNullElse",
+        "java.util.Collections.emptyList",
+        "java.util.Collections.emptyMap",
+        "java.util.Collections.emptySet",
+        "java.util.Collections.singletonList",
+        "java.util.stream.Collectors.*",
+        "net.runelite.client.plugins.microbot.Microbot.*"
+    ],
+
+    // Git
+    "git.ignoreLimitWarning": true,
+    "git.autofetch": true,
+
+    // Extensions 
+    "extensions.ignoreRecommendations": false
+}
