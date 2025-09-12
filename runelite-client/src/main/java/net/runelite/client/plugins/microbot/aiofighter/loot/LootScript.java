@@ -27,89 +27,38 @@ public class LootScript extends Script {
     private static final int DEFAULT_MIN_STACK_EXCLUSIVE_RUNES  = 1; // allow 2+
 
     private int minFreeSlots = 0;
-    private int logCounter = 0;
 
     public LootScript() {}
 
     public boolean run(AIOFighterConfig config) {
-        // DEBUG: Log all loot config values on startup
-        Microbot.log("[LOOT STARTUP DEBUG] Loot configuration:");
-        Microbot.log("  - toggleLootItems: " + config.toggleLootItems());
-        Microbot.log("  - looterStyle: " + config.looterStyle());
-        Microbot.log("  - delayLootUntilKills: " + config.delayLootUntilKills() + " (attacks required)");
-        Microbot.log("  - minPriceOfItemsToLoot: " + config.minPriceOfItemsToLoot());
-        Microbot.log("  - maxPriceOfItemsToLoot: " + config.maxPriceOfItemsToLoot());
-        Microbot.log("  - toggleForceLoot: " + config.toggleForceLoot());
-        Microbot.log("  - eatFoodForSpace: " + config.eatFoodForSpace());
-        
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 minFreeSlots = config.bank() ? config.minFreeSlots() : 0;
 
                 if (!super.run()) return;
                 if (!Microbot.isLoggedIn()) return;
-                if (!config.toggleLootItems()) {
-                    // DEBUG: Log when looting is disabled in config
-                    if (logCounter++ % 100 == 0) { // Log every 100 checks to avoid spam
-                        Microbot.log("[LOOT CONFIG DEBUG] Looting disabled in config (toggleLootItems = false)");
-                    }
-                    return;
-                }
+                if (!config.toggleLootItems()) return;
 
                 final State st = AIOFighterPlugin.getState();
-                if (st == State.BANKING || st == State.WALKING) {
-                    // DEBUG: Log state blocking
-                    if (logCounter % 50 == 0) { // Log every 50 checks to avoid spam
-                        Microbot.log("[LOOT STATE DEBUG] Looting blocked by state: " + st);
-                    }
-                    return;
-                }
+                if (st == State.BANKING || st == State.WALKING) return;
 
                 // Check if enough monsters have been attacked before allowing loot
                 int currentAttackCount = AIOFighterPlugin.getKillCount();
                 int requiredAttacks = config.delayLootUntilKills();
                 
-                // DEBUG: Always log attack count and required attacks
-                if (requiredAttacks > 0) {
-                    Microbot.log("[LOOT DELAY DEBUG] Attack Count: " + currentAttackCount + "/" + requiredAttacks + " (Required: " + requiredAttacks + ")");
-                }
-                
                 if (currentAttackCount < requiredAttacks) {
-                    // Not enough attacks yet, don't loot
-                    Microbot.log("[LOOT DEBUG] 🚫 Looting delayed until " + requiredAttacks + " monsters attacked (current: " + currentAttackCount + ")");
                     return;
-                } else if (requiredAttacks > 0) {
-                    // We've reached the threshold, log once
-                    Microbot.log("[LOOT DEBUG] ✅ Attack threshold reached! Looting enabled (attacks: " + currentAttackCount + "/" + requiredAttacks + ")");
                 }
 
                 if (((Rs2Inventory.isFull() || Rs2Inventory.emptySlotCount() <= minFreeSlots) && !config.eatFoodForSpace())
                         || (Rs2Player.isInCombat() && !config.toggleForceLoot())) {
-                    // DEBUG: Log inventory/combat blocking  
-                    if (logCounter % 25 == 0) { // Log every 25 checks to avoid spam
-                        boolean inventoryFull = Rs2Inventory.isFull();
-                        int emptySlots = Rs2Inventory.emptySlotCount();
-                        boolean inCombat = Rs2Player.isInCombat();
-                        boolean canEat = config.eatFoodForSpace();
-                        boolean forceLoot = config.toggleForceLoot();
-                        Microbot.log("[LOOT INVENTORY DEBUG] InventoryFull: " + inventoryFull + 
-                                   " | EmptySlots: " + emptySlots + "/" + minFreeSlots + 
-                                   " | InCombat: " + inCombat + 
-                                   " | CanEat: " + canEat + 
-                                   " | ForceLoot: " + forceLoot);
-                    }
                     return;
                 }
                 
-                // DEBUG: We made it to the actual looting part!
-                if (logCounter % 10 == 0) { // Log every 10 checks
-                    Microbot.log("[LOOT DEBUG] 🎯 Attempting to loot! Attack count: " + AIOFighterPlugin.getKillCount());
-                }
-                
-                // Reset attack count when we start looting (user requested feature)
+                // Reset attack count when we start looting
                 int currentAttacks = AIOFighterPlugin.getKillCount();
                 if (currentAttacks > 0) {
-                    AIOFighterPlugin.resetKillCount("starting to loot after " + currentAttacks + " attacks");
+                    AIOFighterPlugin.resetKillCount("starting to loot");
                 }
 
                 LootingParameters params = new LootingParameters(

@@ -27,7 +27,6 @@ import net.runelite.client.plugins.microbot.aiofighter.safety.SafetyScript;
 import net.runelite.client.plugins.microbot.aiofighter.shop.ShopScript;
 import net.runelite.client.plugins.microbot.aiofighter.skill.AttackStyleScript;
 import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer;
 import net.runelite.client.plugins.microbot.util.skills.slayer.Rs2Slayer;
@@ -79,57 +78,33 @@ public class AIOFighterPlugin extends Plugin {
     @Getter @Setter
     private static volatile int killCount = 0;
     
-    // Custom setter with debugging
+    // Custom setter
     public static void setWaitingForLoot(boolean waiting) {
-        boolean previousState = waitingForLoot;
         waitingForLoot = waiting;
-        
-        // DEBUG: Log wait-for-loot state changes
-        if (previousState != waiting) {
-            if (waiting) {
-                Microbot.log("[LOOT DEBUG] ⏳ Wait-for-loot ACTIVATED - looting may be delayed until wait expires");
-            } else {
-                Microbot.log("[LOOT DEBUG] ✅ Wait-for-loot DEACTIVATED - normal looting should resume");
-            }
-        }
     }
     
     /**
      * Centralized method to clear wait-for-loot state
-     * @param reason Optional reason for clearing the state (for logging)
      */
     public static void clearWaitForLoot(String reason) {
-        boolean wasWaiting = isWaitingForLoot();
         setWaitingForLoot(false);
         setLastNpcKilledTime(0L);
         AttackNpcScript.cachedTargetNpcIndex = -1;
-        
-        // DEBUG: Log wait-for-loot state changes
-        if (wasWaiting) {
-            Microbot.log("[LOOT DEBUG] ✅ Cleared wait-for-loot state" + (reason != null ? " - " + reason : ""));
-        }
     }
     
     /**
-     * Reset attack count with optional debugging
-     * @param reason Optional reason for resetting (for logging)
+     * Reset attack count
      */
     public static void resetKillCount(String reason) {
-        int previousCount = killCount;
         setKillCount(0);
-        
-        if (previousCount > 0) {
-            Microbot.log("[ATTACK DEBUG] 🔄 Reset attack count from " + previousCount + " to 0" + (reason != null ? " - " + reason : ""));
-        }
     }
     
     /**
-     * Increment attack count with debugging (now counts attacks started, not kills)
+     * Increment attack count (counts attacks started, not kills)
      */
     public static void incrementAttackCount() {
         int newCount = killCount + 1;
         setKillCount(newCount);
-        Microbot.log("[ATTACK DEBUG] 🗡️ Attack count increased to " + newCount + " (New monster targeted)");
     }
     
     private final CannonScript cannonScript = new CannonScript();
@@ -180,12 +155,11 @@ public class AIOFighterPlugin extends Plugin {
             if (Microbot.getConfigManager() == null) {
                 return;
             }
-            Microbot.log("[STARTUP DEBUG] Initializing AIOFighter - setting state to IDLE and resetting loot state");
             setState(State.IDLE);
             // Reset wait for loot state on startup
             setWaitingForLoot(false);
             setLastNpcKilledTime(0L);
-            // Reset kill count on startup
+            // Reset attack count on startup
             resetKillCount("plugin startup");
             // Get the future from the reference and cancel it
             ScheduledFuture<?> scheduledFuture = futureRef.get();
@@ -205,20 +179,6 @@ public class AIOFighterPlugin extends Plugin {
         if (!config.toggleCenterTile() && Microbot.isLoggedIn() && !config.slayerMode())
             setCenter(Rs2Player.getWorldLocation());
         dodgeScript.run(config);
-        
-        // DEBUG: Log loot script startup
-        Microbot.log("[LOOT DEBUG] Starting loot script with config:");
-        Microbot.log("[LOOT DEBUG]   - toggleLootItems: " + config.toggleLootItems());
-        Microbot.log("[LOOT DEBUG]   - looterStyle: " + config.looterStyle());
-        Microbot.log("[LOOT DEBUG]   - minPriceOfItemsToLoot: " + config.minPriceOfItemsToLoot());
-        Microbot.log("[LOOT DEBUG]   - maxPriceOfItemsToLoot: " + config.maxPriceOfItemsToLoot());
-        Microbot.log("[LOOT DEBUG]   - listOfItemsToLoot: " + config.listOfItemsToLoot());
-        Microbot.log("[LOOT DEBUG]   - toggleWaitForLoot: " + config.toggleWaitForLoot());
-        Microbot.log("[LOOT DEBUG]   - toggleForceLoot: " + config.toggleForceLoot());
-        Microbot.log("[LOOT DEBUG]   - toggleDelayedLooting: " + config.toggleDelayedLooting());
-        Microbot.log("[LOOT DEBUG]   - toggleOnlyLootMyItems: " + config.toggleOnlyLootMyItems());
-        Microbot.log("[LOOT DEBUG]   - eatFoodForSpace: " + config.eatFoodForSpace());
-        
         lootScript.run(config);
         cannonScript.run(config);
         attackNpc.run(config);
@@ -248,60 +208,14 @@ public class AIOFighterPlugin extends Plugin {
         Rs2Slayer.blacklistedSlayerMonsters = getBlacklistedSlayerNpcs();
         bankerScript.run(config);
         shopScript.run(config);
-        
-        // DEBUG: Add periodic monitoring of looting conditions
-        ScheduledExecutorService lootMonitor = Executors.newSingleThreadScheduledExecutor();
-        lootMonitor.scheduleWithFixedDelay(() -> {
-            try {
-                if (!Microbot.isLoggedIn()) return;
-                
-                State currentState = getState();
-                boolean lootEnabled = config.toggleLootItems();
-                boolean inCombat = Rs2Player.isInCombat();
-                boolean inventoryFull = Rs2Inventory.isFull();
-                int emptySlots = Rs2Inventory.emptySlotCount();
-                int minFreeSlots = config.bank() ? config.minFreeSlots() : 0;
-                boolean canEatForSpace = config.eatFoodForSpace();
-                boolean forceLoot = config.toggleForceLoot();
-                boolean waitingForLoot = isWaitingForLoot();
-                
-                // Only log when conditions might be problematic
-                if (lootEnabled && (currentState == State.BANKING || currentState == State.WALKING || 
-                    (inventoryFull && !canEatForSpace) || (emptySlots <= minFreeSlots && !canEatForSpace))) {
-                    
-                    Microbot.log("[LOOT MONITOR] State: " + currentState + 
-                        " | LootEnabled: " + lootEnabled + 
-                        " | InCombat: " + inCombat + 
-                        " | EmptySlots: " + emptySlots + "/" + minFreeSlots +
-                        " | CanEatForSpace: " + canEatForSpace +
-                        " | ForceLoot: " + forceLoot +
-                        " | WaitingForLoot: " + waitingForLoot);
-                    
-                    if (currentState == State.BANKING) {
-                        Microbot.log("[LOOT MONITOR] ❌ LOOTING BLOCKED: Currently in BANKING state");
-                    } else if (currentState == State.WALKING) {
-                        Microbot.log("[LOOT MONITOR] ❌ LOOTING BLOCKED: Currently in WALKING state");
-                    } else if (inventoryFull && !canEatForSpace) {
-                        Microbot.log("[LOOT MONITOR] ❌ LOOTING BLOCKED: Inventory full and eatFoodForSpace disabled");
-                    } else if (emptySlots <= minFreeSlots && !canEatForSpace) {
-                        Microbot.log("[LOOT MONITOR] ❌ LOOTING BLOCKED: Low inventory space (" + emptySlots + " <= " + minFreeSlots + ")");
-                    }
-                }
-            } catch (Exception e) {
-                Microbot.log("Loot monitor error: " + e.getMessage());
-            }
-        }, 5, 10, TimeUnit.SECONDS);  // Check every 10 seconds, start after 5 seconds
     }
 
     protected void shutDown() {
         // Reset wait for loot state on shutdown
-        Microbot.log("[LOOT DEBUG] Shutting down AIOFighter - resetting loot state");
         setWaitingForLoot(false);
         setLastNpcKilledTime(0L);
-        // Reset kill count on shutdown
+        // Reset attack count on shutdown
         resetKillCount("plugin shutdown");
-        
-        Microbot.log("[LOOT DEBUG] Shutting down loot script");
         highAlchScript.shutdown();
         lootScript.shutdown();
         cannonScript.shutdown();
@@ -463,26 +377,11 @@ public class AIOFighterPlugin extends Plugin {
     }
 
     public static void setState(State state) {
-        State previousState = getState();
         Microbot.getConfigManager().setConfiguration(
                 AIOFighterConfig.GROUP,
                 "state",
                 state
         );
-        
-        // DEBUG: Log state changes and their impact on looting
-        if (previousState != state) {
-            Microbot.log("[STATE DEBUG] State changed: " + previousState + " → " + state);
-            
-            // Warn about states that block looting
-            if (state == State.BANKING) {
-                Microbot.log("[LOOTING DEBUG] ⚠️  State set to BANKING - LOOTING IS NOW BLOCKED!");
-            } else if (state == State.WALKING) {
-                Microbot.log("[LOOTING DEBUG] ⚠️  State set to WALKING - LOOTING IS NOW BLOCKED!");
-            } else if (previousState == State.BANKING || previousState == State.WALKING) {
-                Microbot.log("[LOOTING DEBUG] ✅ State changed from " + previousState + " to " + state + " - LOOTING SHOULD NOW RESUME!");
-            }
-        }
     }
     public static String getNpcAttackList() {
        return Microbot.getConfigManager().getConfiguration(
@@ -530,12 +429,6 @@ public class AIOFighterPlugin extends Plugin {
     // on setting change
     @Subscribe
     public void onConfigChanged(ConfigChanged event) {
-        // DEBUG: Log loot-related config changes
-        if (event.getKey().contains("oot") || event.getKey().contains("bank") || 
-            event.getKey().equals("eatFoodForSpace") || event.getKey().equals("minFreeSlots")) {
-            Microbot.log("[CONFIG DEBUG] Loot-related setting changed: " + event.getKey() + " = " + event.getNewValue());
-        }
-
         if (event.getKey().equals("Safe Spot")) {
 
             if (!config.toggleSafeSpot()) {
@@ -614,7 +507,6 @@ public class AIOFighterPlugin extends Plugin {
                         incrementAttackCount();
                         lastAttackedNpc = npcKey;
                         lastAttackTime = currentTime;
-                        Microbot.log("[ATTACK DEBUG] 🗡️ Started attacking: " + npcName + " (Attack #" + getKillCount() + ")");
                     }
                 }
             }
