@@ -671,10 +671,13 @@ public class TemporossScript extends Script {
                         if(!fightFiresInPath(fishSpot.getWorldLocation()))
                             return;
                     }
-                    if (Rs2Player.isInteracting() && Rs2Player.getInteracting() != null) {
-                        Actor interactingNpc = Microbot.getClient().getLocalPlayer().getInteracting();
-                        if (interactingNpc.equals(fishSpot.getActor())) {
-                            return;
+                    if (Rs2Player.isInteracting()) {
+                        Actor currentTarget = Rs2Player.getInteracting();
+                        if (currentTarget != null && currentTarget instanceof NPC) {
+                            NPC targetNpc = (NPC) currentTarget;
+                          if (targetNpc.getId() == fishSpot.getId()) {
+                                return;
+                              }
                         }
                     }
                     Rs2Camera.turnTo(fishSpot);

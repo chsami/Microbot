@@ -1,298 +1,1189 @@
 Origin	Destination	isMembers	EnumValue	EnumClass	Display info	Wilderness level	Duration
-1858 5707 0	3213 3424 0	Y	VARROCK	NexusPortal	NexusTeleport -> Varrock	19	6
-1922 5707 2	3213 3424 0	Y	VARROCK	NexusPortal	NexusTeleport -> Varrock	19	6
-1986 5707 0	3213 3424 0	Y	VARROCK	NexusPortal	NexusTeleport -> Varrock	19	6
-1858 5707 0	3164 3478 0	Y	VARROCK_GE	NexusPortal	NexusTeleport -> Grand Exchange	19	6
-1922 5707 2	3164 3478 0	Y	VARROCK_GE	NexusPortal	NexusTeleport -> Grand Exchange	19	6
-1986 5707 0	3164 3478 0	Y	VARROCK_GE	NexusPortal	NexusTeleport -> Grand Exchange	19	6
-1858 5707 0	3222 3218 0	Y	LUMBRIDGE	NexusPortal	NexusTeleport -> Lumbridge	19	6
-1922 5707 2	3222 3218 0	Y	LUMBRIDGE	NexusPortal	NexusTeleport -> Lumbridge	19	6
-1986 5707 0	3222 3218 0	Y	LUMBRIDGE	NexusPortal	NexusTeleport -> Lumbridge	19	6
-1858 5707 0	2965 3381 0	Y	FALADOR	NexusPortal	NexusTeleport -> Falador	19	6
-1922 5707 2	2965 3381 0	Y	FALADOR	NexusPortal	NexusTeleport -> Falador	19	6
-1986 5707 0	2965 3381 0	Y	FALADOR	NexusPortal	NexusTeleport -> Falador	19	6
-1858 5707 0	2757 3477 0	Y	CAMELOT	NexusPortal	NexusTeleport -> Camelot	19	6
-1922 5707 2	2757 3477 0	Y	CAMELOT	NexusPortal	NexusTeleport -> Camelot	19	6
-1986 5707 0	2757 3477 0	Y	CAMELOT	NexusPortal	NexusTeleport -> Camelot	19	6
-1858 5707 0	1643 3672 0	Y	KOUREND	NexusPortal	NexusTeleport -> Kourend Castle	19	6
-1922 5707 2	1643 3672 0	Y	KOUREND	NexusPortal	NexusTeleport -> Kourend Castle	19	6
-1986 5707 0	1643 3672 0	Y	KOUREND	NexusPortal	NexusTeleport -> Kourend Castle	19	6
-1858 5707 0	2664 3306 0	Y	ARDOUGNE	NexusPortal	NexusTeleport -> Ardougne	19	6
-1922 5707 2	2664 3306 0	Y	ARDOUGNE	NexusPortal	NexusTeleport -> Ardougne	19	6
-1986 5707 0	2664 3306 0	Y	ARDOUGNE	NexusPortal	NexusTeleport -> Ardougne	19	6
-1858 5707 0	2547 3114 0	Y	WATCHTOWER	NexusPortal	NexusTeleport -> Watchtower	19	6
-1922 5707 2	2547 3114 0	Y	WATCHTOWER	NexusPortal	NexusTeleport -> Watchtower	19	6
-1986 5707 0	2547 3114 0	Y	WATCHTOWER	NexusPortal	NexusTeleport -> Watchtower	19	6
-1858 5707 0	2796 2791 0	Y	MARIM	NexusPortal	NexusTeleport -> Marim	19	6
-1922 5707 2	2796 2791 0	Y	MARIM	NexusPortal	NexusTeleport -> Marim	19	6
-1986 5707 0	2796 2791 0	Y	MARIM	NexusPortal	NexusTeleport -> Marim	19	6
-1858 5707 0	3319 3336 0	Y	SENNTISTEN	NexusPortal	NexusTeleport -> Senntisten	19	6
-1922 5707 2	3319 3336 0	Y	SENNTISTEN	NexusPortal	NexusTeleport -> Senntisten	19	6
-1986 5707 0	3319 3336 0	Y	SENNTISTEN	NexusPortal	NexusTeleport -> Senntisten	19	6
-1858 5707 0	3494 3473 0	Y	KHARYRLL	NexusPortal	NexusTeleport -> Kharyrll	19	6
-1922 5707 2	3494 3473 0	Y	KHARYRLL	NexusPortal	NexusTeleport -> Kharyrll	19	6
-1986 5707 0	3494 3473 0	Y	KHARYRLL	NexusPortal	NexusTeleport -> Kharyrll	19	6
-1858 5707 0	3157 3667 0	Y	CARRALLANGER	NexusPortal	NexusTeleport -> Carrallanger	19	6
-1922 5707 2	3157 3667 0	Y	CARRALLANGER	NexusPortal	NexusTeleport -> Carrallanger	19	6
-1986 5707 0	3157 3667 0	Y	CARRALLANGER	NexusPortal	NexusTeleport -> Carrallanger	19	6
-1858 5707 0	2546 3755 0	Y	WATERBIRTH	NexusPortal	NexusTeleport -> Waterbirth Island	19	6
-1922 5707 2	2546 3755 0	Y	WATERBIRTH	NexusPortal	NexusTeleport -> Waterbirth Island	19	6
-1986 5707 0	2546 3755 0	Y	WATERBIRTH	NexusPortal	NexusTeleport -> Waterbirth Island	19	6
-1858 5707 0	3288 3888 0	Y	ANNAKARL	NexusPortal	NexusTeleport -> Annakarl	19	6
-1922 5707 2	3288 3888 0	Y	ANNAKARL	NexusPortal	NexusTeleport -> Annakarl	19	6
-1986 5707 0	3288 3888 0	Y	ANNAKARL	NexusPortal	NexusTeleport -> Annakarl	19	6
-1858 5707 0	2977 3872 0	Y	GHORROCK	NexusPortal	NexusTeleport -> Ghorrock	19	6
-1922 5707 2	2977 3872 0	Y	GHORROCK	NexusPortal	NexusTeleport -> Ghorrock	19	6
-1986 5707 0	2977 3872 0	Y	GHORROCK	NexusPortal	NexusTeleport -> Ghorrock	19	6
-1858 5707 0	2113 3915 0	Y	LUNAR_ISLE	NexusPortal	NexusTeleport -> Lunar Isle	19	6
-1922 5707 2	2113 3915 0	Y	LUNAR_ISLE	NexusPortal	NexusTeleport -> Lunar Isle	19	6
-1986 5707 0	2113 3915 0	Y	LUNAR_ISLE	NexusPortal	NexusTeleport -> Lunar Isle	19	6
-1858 5707 0	2802 3449 0	Y	CATHERBY	NexusPortal	NexusTeleport -> Catherby	19	6
-1922 5707 2	2802 3449 0	Y	CATHERBY	NexusPortal	NexusTeleport -> Catherby	19	6
-1986 5707 0	2802 3449 0	Y	CATHERBY	NexusPortal	NexusTeleport -> Catherby	19	6
-1858 5707 0	2612 3391 0	Y	FISHING_GUILD	NexusPortal	NexusTeleport -> Fishing Guild	19	6
-1922 5707 2	2612 3391 0	Y	FISHING_GUILD	NexusPortal	NexusTeleport -> Fishing Guild	19	6
-1986 5707 0	2612 3391 0	Y	FISHING_GUILD	NexusPortal	NexusTeleport -> Fishing Guild	19	6
-1858 5707 0	2891 3678 0	Y	TROLL_STRONGHOLD	NexusPortal	NexusTeleport -> Troll Stronghold	19	6
-1922 5707 2	2891 3678 0	Y	TROLL_STRONGHOLD	NexusPortal	NexusTeleport -> Troll Stronghold	19	6
-1986 5707 0	2891 3678 0	Y	TROLL_STRONGHOLD	NexusPortal	NexusTeleport -> Troll Stronghold	19	6
-1858 5707 0	2846 3940 0	Y	WEISS	NexusPortal	NexusTeleport -> Weiss	19	6
-1922 5707 2	2846 3940 0	Y	WEISS	NexusPortal	NexusTeleport -> Weiss	19	6
-1986 5707 0	2846 3940 0	Y	WEISS	NexusPortal	NexusTeleport -> Weiss	19	6
-1858 5707 0	1632 3838 0	Y	ARCEUUS_LIBRARY	NexusPortal	NexusTeleport -> Arceuus Library	19	6
-1922 5707 2	1632 3838 0	Y	ARCEUUS_LIBRARY	NexusPortal	NexusTeleport -> Arceuus Library	19	6
-1986 5707 0	1632 3838 0	Y	ARCEUUS_LIBRARY	NexusPortal	NexusTeleport -> Arceuus Library	19	6
-1858 5707 0	3108 3352 0	Y	DRAYNOR_MANOR	NexusPortal	NexusTeleport -> Draynor Manor	19	6
-1922 5707 2	3108 3352 0	Y	DRAYNOR_MANOR	NexusPortal	NexusTeleport -> Draynor Manor	19	6
-1986 5707 0	3108 3352 0	Y	DRAYNOR_MANOR	NexusPortal	NexusTeleport -> Draynor Manor	19	6
-1858 5707 0	1349 3739 0	Y	BATTLEFRONT	NexusPortal	NexusTeleport -> Battlefront	19	6
-1922 5707 2	1349 3739 0	Y	BATTLEFRONT	NexusPortal	NexusTeleport -> Battlefront	19	6
-1986 5707 0	1349 3739 0	Y	BATTLEFRONT	NexusPortal	NexusTeleport -> Battlefront	19	6
-1858 5707 0	2979 3509 0	Y	MIND_ALTAR	NexusPortal	NexusTeleport -> Mind Altar	19	6
-1922 5707 2	2979 3509 0	Y	MIND_ALTAR	NexusPortal	NexusTeleport -> Mind Altar	19	6
-1986 5707 0	2979 3509 0	Y	MIND_ALTAR	NexusPortal	NexusTeleport -> Mind Altar	19	6
-1858 5707 0	3433 3461 0	Y	SALVE_GRAVEYARD	NexusPortal	NexusTeleport -> Salve Graveyard	19	6
-1922 5707 2	3433 3461 0	Y	SALVE_GRAVEYARD	NexusPortal	NexusTeleport -> Salve Graveyard	19	6
-1986 5707 0	3433 3461 0	Y	SALVE_GRAVEYARD	NexusPortal	NexusTeleport -> Salve Graveyard	19	6
-1858 5707 0	3548 3528 0	Y	FENKENSTRAINS_CASTLE	NexusPortal	NexusTeleport -> Fenken' Castle	19	6
-1922 5707 2	3548 3528 0	Y	FENKENSTRAINS_CASTLE	NexusPortal	NexusTeleport -> Fenken' Castle	19	6
-1986 5707 0	3548 3528 0	Y	FENKENSTRAINS_CASTLE	NexusPortal	NexusTeleport -> Fenken' Castle	19	6
-1858 5707 0	2500 3291 0	Y	WEST_ARDOUGNE	NexusPortal	NexusTeleport -> West Ardougne	19	6
-1922 5707 2	2500 3291 0	Y	WEST_ARDOUGNE	NexusPortal	NexusTeleport -> West Ardougne	19	6
-1986 5707 0	2500 3291 0	Y	WEST_ARDOUGNE	NexusPortal	NexusTeleport -> West Ardougne	19	6
-1858 5707 0	3797 2866 0	Y	HARMONY_ISLAND	NexusPortal	NexusTeleport -> Harmony Island	19	6
-1922 5707 2	3797 2866 0	Y	HARMONY_ISLAND	NexusPortal	NexusTeleport -> Harmony Island	19	6
-1986 5707 0	3797 2866 0	Y	HARMONY_ISLAND	NexusPortal	NexusTeleport -> Harmony Island	19	6
-1858 5707 0	2978 3763 0	Y	CEMETERY	NexusPortal	NexusTeleport -> Cemetery	19	6
-1922 5707 2	2978 3763 0	Y	CEMETERY	NexusPortal	NexusTeleport -> Cemetery	19	6
-1986 5707 0	2978 3763 0	Y	CEMETERY	NexusPortal	NexusTeleport -> Cemetery	19	6
-1858 5707 0	3565 3315 0	Y	BARROWS	NexusPortal	NexusTeleport -> Barrows	19	6
-1922 5707 2	3565 3315 0	Y	BARROWS	NexusPortal	NexusTeleport -> Barrows	19	6
-1986 5707 0	3565 3315 0	Y	BARROWS	NexusPortal	NexusTeleport -> Barrows	19	6
-1858 5707 0	2770 2703 0	Y	APE_ATOLL_DUNGEON	NexusPortal	NexusTeleport -> Ape Atoll Dungeon	19	6
-1922 5707 2	2770 2703 0	Y	APE_ATOLL_DUNGEON	NexusPortal	NexusTeleport -> Ape Atoll Dungeon	19	6
-1986 5707 0	2770 2703 0	Y	APE_ATOLL_DUNGEON	NexusPortal	NexusTeleport -> Ape Atoll Dungeon	19	6
-1858 5707 0	1681 3133 0	Y	CIVITAS_ILLA_FORTIS	NexusPortal	NexusTeleport -> Civitas illa Fortis	19	6
-1922 5707 2	1681 3133 0	Y	CIVITAS_ILLA_FORTIS	NexusPortal	NexusTeleport -> Civitas illa Fortis	19	6
-1986 5707 0	1681 3133 0	Y	CIVITAS_ILLA_FORTIS	NexusPortal	NexusTeleport -> Civitas illa Fortis	19	6
 1858 5707 0	3763 3869 0	Y	FOSSIL_ISLAND	MountedDigsite	MountedDigsite -> Fossil Island	19	4
+1858 5707 1	3763 3869 0	Y	FOSSIL_ISLAND	MountedDigsite	MountedDigsite -> Fossil Island	19	4
+1858 5707 2	3763 3869 0	Y	FOSSIL_ISLAND	MountedDigsite	MountedDigsite -> Fossil Island	19	4
+1858 5707 3	3763 3869 0	Y	FOSSIL_ISLAND	MountedDigsite	MountedDigsite -> Fossil Island	19	4
+1922 5707 0	3763 3869 0	Y	FOSSIL_ISLAND	MountedDigsite	MountedDigsite -> Fossil Island	19	4
+1922 5707 1	3763 3869 0	Y	FOSSIL_ISLAND	MountedDigsite	MountedDigsite -> Fossil Island	19	4
 1922 5707 2	3763 3869 0	Y	FOSSIL_ISLAND	MountedDigsite	MountedDigsite -> Fossil Island	19	4
+1922 5707 3	3763 3869 0	Y	FOSSIL_ISLAND	MountedDigsite	MountedDigsite -> Fossil Island	19	4
 1986 5707 0	3763 3869 0	Y	FOSSIL_ISLAND	MountedDigsite	MountedDigsite -> Fossil Island	19	4
+1986 5707 1	3763 3869 0	Y	FOSSIL_ISLAND	MountedDigsite	MountedDigsite -> Fossil Island	19	4
+1986 5707 2	3763 3869 0	Y	FOSSIL_ISLAND	MountedDigsite	MountedDigsite -> Fossil Island	19	4
+1986 5707 3	3763 3869 0	Y	FOSSIL_ISLAND	MountedDigsite	MountedDigsite -> Fossil Island	19	4
 1858 5707 0	3339 3445 0	Y	DIGSITE	MountedDigsite	MountedDigsite -> Digsite	19	4
+1858 5707 1	3339 3445 0	Y	DIGSITE	MountedDigsite	MountedDigsite -> Digsite	19	4
+1858 5707 2	3339 3445 0	Y	DIGSITE	MountedDigsite	MountedDigsite -> Digsite	19	4
+1858 5707 3	3339 3445 0	Y	DIGSITE	MountedDigsite	MountedDigsite -> Digsite	19	4
+1922 5707 0	3339 3445 0	Y	DIGSITE	MountedDigsite	MountedDigsite -> Digsite	19	4
+1922 5707 1	3339 3445 0	Y	DIGSITE	MountedDigsite	MountedDigsite -> Digsite	19	4
 1922 5707 2	3339 3445 0	Y	DIGSITE	MountedDigsite	MountedDigsite -> Digsite	19	4
+1922 5707 3	3339 3445 0	Y	DIGSITE	MountedDigsite	MountedDigsite -> Digsite	19	4
 1986 5707 0	3339 3445 0	Y	DIGSITE	MountedDigsite	MountedDigsite -> Digsite	19	4
+1986 5707 1	3339 3445 0	Y	DIGSITE	MountedDigsite	MountedDigsite -> Digsite	19	4
+1986 5707 2	3339 3445 0	Y	DIGSITE	MountedDigsite	MountedDigsite -> Digsite	19	4
+1986 5707 3	3339 3445 0	Y	DIGSITE	MountedDigsite	MountedDigsite -> Digsite	19	4
 1858 5707 0	3547 10456 0	Y	LITHKREN	MountedDigsite	MountedDigsite -> Lithkren	19	4
+1858 5707 1	3547 10456 0	Y	LITHKREN	MountedDigsite	MountedDigsite -> Lithkren	19	4
+1858 5707 2	3547 10456 0	Y	LITHKREN	MountedDigsite	MountedDigsite -> Lithkren	19	4
+1858 5707 3	3547 10456 0	Y	LITHKREN	MountedDigsite	MountedDigsite -> Lithkren	19	4
+1922 5707 0	3547 10456 0	Y	LITHKREN	MountedDigsite	MountedDigsite -> Lithkren	19	4
+1922 5707 1	3547 10456 0	Y	LITHKREN	MountedDigsite	MountedDigsite -> Lithkren	19	4
 1922 5707 2	3547 10456 0	Y	LITHKREN	MountedDigsite	MountedDigsite -> Lithkren	19	4
+1922 5707 3	3547 10456 0	Y	LITHKREN	MountedDigsite	MountedDigsite -> Lithkren	19	4
 1986 5707 0	3547 10456 0	Y	LITHKREN	MountedDigsite	MountedDigsite -> Lithkren	19	4
+1986 5707 1	3547 10456 0	Y	LITHKREN	MountedDigsite	MountedDigsite -> Lithkren	19	4
+1986 5707 2	3547 10456 0	Y	LITHKREN	MountedDigsite	MountedDigsite -> Lithkren	19	4
+1986 5707 3	3547 10456 0	Y	LITHKREN	MountedDigsite	MountedDigsite -> Lithkren	19	4
 1858 5707 0	3087 3496 0	Y	EDGEVILLE	MountedGlory	MountedGlory -> Edgeville	19	4
+1858 5707 1	3087 3496 0	Y	EDGEVILLE	MountedGlory	MountedGlory -> Edgeville	19	4
+1858 5707 2	3087 3496 0	Y	EDGEVILLE	MountedGlory	MountedGlory -> Edgeville	19	4
+1858 5707 3	3087 3496 0	Y	EDGEVILLE	MountedGlory	MountedGlory -> Edgeville	19	4
+1922 5707 0	3087 3496 0	Y	EDGEVILLE	MountedGlory	MountedGlory -> Edgeville	19	4
+1922 5707 1	3087 3496 0	Y	EDGEVILLE	MountedGlory	MountedGlory -> Edgeville	19	4
 1922 5707 2	3087 3496 0	Y	EDGEVILLE	MountedGlory	MountedGlory -> Edgeville	19	4
+1922 5707 3	3087 3496 0	Y	EDGEVILLE	MountedGlory	MountedGlory -> Edgeville	19	4
 1986 5707 0	3087 3496 0	Y	EDGEVILLE	MountedGlory	MountedGlory -> Edgeville	19	4
+1986 5707 1	3087 3496 0	Y	EDGEVILLE	MountedGlory	MountedGlory -> Edgeville	19	4
+1986 5707 2	3087 3496 0	Y	EDGEVILLE	MountedGlory	MountedGlory -> Edgeville	19	4
+1986 5707 3	3087 3496 0	Y	EDGEVILLE	MountedGlory	MountedGlory -> Edgeville	19	4
 1858 5707 0	2918 3176 0	Y	KARAMJA	MountedGlory	MountedGlory -> Karamja	19	4
+1858 5707 1	2918 3176 0	Y	KARAMJA	MountedGlory	MountedGlory -> Karamja	19	4
+1858 5707 2	2918 3176 0	Y	KARAMJA	MountedGlory	MountedGlory -> Karamja	19	4
+1858 5707 3	2918 3176 0	Y	KARAMJA	MountedGlory	MountedGlory -> Karamja	19	4
+1922 5707 0	2918 3176 0	Y	KARAMJA	MountedGlory	MountedGlory -> Karamja	19	4
+1922 5707 1	2918 3176 0	Y	KARAMJA	MountedGlory	MountedGlory -> Karamja	19	4
 1922 5707 2	2918 3176 0	Y	KARAMJA	MountedGlory	MountedGlory -> Karamja	19	4
+1922 5707 3	2918 3176 0	Y	KARAMJA	MountedGlory	MountedGlory -> Karamja	19	4
 1986 5707 0	2918 3176 0	Y	KARAMJA	MountedGlory	MountedGlory -> Karamja	19	4
+1986 5707 1	2918 3176 0	Y	KARAMJA	MountedGlory	MountedGlory -> Karamja	19	4
+1986 5707 2	2918 3176 0	Y	KARAMJA	MountedGlory	MountedGlory -> Karamja	19	4
+1986 5707 3	2918 3176 0	Y	KARAMJA	MountedGlory	MountedGlory -> Karamja	19	4
 1858 5707 0	3105 3251 0	Y	DRAYNOR_VILLAGE	MountedGlory	MountedGlory -> Draynor Village	19	4
+1858 5707 1	3105 3251 0	Y	DRAYNOR_VILLAGE	MountedGlory	MountedGlory -> Draynor Village	19	4
+1858 5707 2	3105 3251 0	Y	DRAYNOR_VILLAGE	MountedGlory	MountedGlory -> Draynor Village	19	4
+1858 5707 3	3105 3251 0	Y	DRAYNOR_VILLAGE	MountedGlory	MountedGlory -> Draynor Village	19	4
+1922 5707 0	3105 3251 0	Y	DRAYNOR_VILLAGE	MountedGlory	MountedGlory -> Draynor Village	19	4
+1922 5707 1	3105 3251 0	Y	DRAYNOR_VILLAGE	MountedGlory	MountedGlory -> Draynor Village	19	4
 1922 5707 2	3105 3251 0	Y	DRAYNOR_VILLAGE	MountedGlory	MountedGlory -> Draynor Village	19	4
+1922 5707 3	3105 3251 0	Y	DRAYNOR_VILLAGE	MountedGlory	MountedGlory -> Draynor Village	19	4
 1986 5707 0	3105 3251 0	Y	DRAYNOR_VILLAGE	MountedGlory	MountedGlory -> Draynor Village	19	4
+1986 5707 1	3105 3251 0	Y	DRAYNOR_VILLAGE	MountedGlory	MountedGlory -> Draynor Village	19	4
+1986 5707 2	3105 3251 0	Y	DRAYNOR_VILLAGE	MountedGlory	MountedGlory -> Draynor Village	19	4
+1986 5707 3	3105 3251 0	Y	DRAYNOR_VILLAGE	MountedGlory	MountedGlory -> Draynor Village	19	4
 1858 5707 0	3293 3163 0	Y	AL_KHARID	MountedGlory	MountedGlory -> Al Kharid	19	4
+1858 5707 1	3293 3163 0	Y	AL_KHARID	MountedGlory	MountedGlory -> Al Kharid	19	4
+1858 5707 2	3293 3163 0	Y	AL_KHARID	MountedGlory	MountedGlory -> Al Kharid	19	4
+1858 5707 3	3293 3163 0	Y	AL_KHARID	MountedGlory	MountedGlory -> Al Kharid	19	4
+1922 5707 0	3293 3163 0	Y	AL_KHARID	MountedGlory	MountedGlory -> Al Kharid	19	4
+1922 5707 1	3293 3163 0	Y	AL_KHARID	MountedGlory	MountedGlory -> Al Kharid	19	4
 1922 5707 2	3293 3163 0	Y	AL_KHARID	MountedGlory	MountedGlory -> Al Kharid	19	4
+1922 5707 3	3293 3163 0	Y	AL_KHARID	MountedGlory	MountedGlory -> Al Kharid	19	4
 1986 5707 0	3293 3163 0	Y	AL_KHARID	MountedGlory	MountedGlory -> Al Kharid	19	4
-1858 5707 0	2520 3571 0	Y	BARBARIAN_ASSAULT	JewelleryBox	JewelleryBox -> BARBARIAN_ASSAULT	19	6
-1922 5707 2	2520 3571 0	Y	BARBARIAN_ASSAULT	JewelleryBox	JewelleryBox -> BARBARIAN_ASSAULT	19	6
-1986 5707 0	2520 3571 0	Y	BARBARIAN_ASSAULT	JewelleryBox	JewelleryBox -> BARBARIAN_ASSAULT	19	6
-1858 5707 0	2898 3554 0	Y	BURTHORPE_GAMES_ROOM	JewelleryBox	JewelleryBox -> BURTHORPE_GAMES_ROOM	19	6
-1922 5707 2	2898 3554 0	Y	BURTHORPE_GAMES_ROOM	JewelleryBox	JewelleryBox -> BURTHORPE_GAMES_ROOM	19	6
-1986 5707 0	2898 3554 0	Y	BURTHORPE_GAMES_ROOM	JewelleryBox	JewelleryBox -> BURTHORPE_GAMES_ROOM	19	6
-1858 5707 0	3245 9500 0	Y	TEARS_OF_GUTHIX	JewelleryBox	JewelleryBox -> TEARS_OF_GUTHIX	19	6
-1922 5707 2	3245 9500 0	Y	TEARS_OF_GUTHIX	JewelleryBox	JewelleryBox -> TEARS_OF_GUTHIX	19	6
-1986 5707 0	3245 9500 0	Y	TEARS_OF_GUTHIX	JewelleryBox	JewelleryBox -> TEARS_OF_GUTHIX	19	6
-1858 5707 0	2967 4384 0	Y	CORPOREAL_BEAST	JewelleryBox	JewelleryBox -> CORPOREAL_BEAST	19	6
-1922 5707 2	2967 4384 0	Y	CORPOREAL_BEAST	JewelleryBox	JewelleryBox -> CORPOREAL_BEAST	19	6
-1986 5707 0	2967 4384 0	Y	CORPOREAL_BEAST	JewelleryBox	JewelleryBox -> CORPOREAL_BEAST	19	6
-1858 5707 0	1624 3938 0	Y	WINTERTODT_CAMP	JewelleryBox	JewelleryBox -> WINTERTODT_CAMP	19	6
-1922 5707 2	1624 3938 0	Y	WINTERTODT_CAMP	JewelleryBox	JewelleryBox -> WINTERTODT_CAMP	19	6
-1986 5707 0	1624 3938 0	Y	WINTERTODT_CAMP	JewelleryBox	JewelleryBox -> WINTERTODT_CAMP	19	6
-1858 5707 0	3315 3235 0	Y	PVP_ARENA	JewelleryBox	JewelleryBox -> PVP_ARENA	19	6
-1922 5707 2	3315 3235 0	Y	PVP_ARENA	JewelleryBox	JewelleryBox -> PVP_ARENA	19	6
-1986 5707 0	3315 3235 0	Y	PVP_ARENA	JewelleryBox	JewelleryBox -> PVP_ARENA	19	6
-1858 5707 0	3151 3636 0	Y	FEROX_ENCLAVE	JewelleryBox	JewelleryBox -> FEROX_ENCLAVE	19	6
-1922 5707 2	3151 3636 0	Y	FEROX_ENCLAVE	JewelleryBox	JewelleryBox -> FEROX_ENCLAVE	19	6
-1986 5707 0	3151 3636 0	Y	FEROX_ENCLAVE	JewelleryBox	JewelleryBox -> FEROX_ENCLAVE	19	6
-1858 5707 0	2441 3091 0	Y	CASTLE_WARS	JewelleryBox	JewelleryBox -> CASTLE_WARS	19	6
-1922 5707 2	2441 3091 0	Y	CASTLE_WARS	JewelleryBox	JewelleryBox -> CASTLE_WARS	19	6
-1986 5707 0	2441 3091 0	Y	CASTLE_WARS	JewelleryBox	JewelleryBox -> CASTLE_WARS	19	6
-1858 5707 0	1793 3107 0	Y	FORTIS_COLOSSEUM	JewelleryBox	JewelleryBox -> FORTIS_COLOSSEUM	19	6
-1922 5707 2	1793 3107 0	Y	FORTIS_COLOSSEUM	JewelleryBox	JewelleryBox -> FORTIS_COLOSSEUM	19	6
-1986 5707 0	1793 3107 0	Y	FORTIS_COLOSSEUM	JewelleryBox	JewelleryBox -> FORTIS_COLOSSEUM	19	6
-1858 5707 0	2883 3549 0	Y	WARRIORS_GUILD	JewelleryBox	JewelleryBox -> WARRIORS_GUILD	19	6
-1922 5707 2	2883 3549 0	Y	WARRIORS_GUILD	JewelleryBox	JewelleryBox -> WARRIORS_GUILD	19	6
-1986 5707 0	2883 3549 0	Y	WARRIORS_GUILD	JewelleryBox	JewelleryBox -> WARRIORS_GUILD	19	6
-1858 5707 0	3189 3368 0	Y	CHAMPIONS_GUILD	JewelleryBox	JewelleryBox -> CHAMPIONS_GUILD	19	6
-1922 5707 2	3189 3368 0	Y	CHAMPIONS_GUILD	JewelleryBox	JewelleryBox -> CHAMPIONS_GUILD	19	6
-1986 5707 0	3189 3368 0	Y	CHAMPIONS_GUILD	JewelleryBox	JewelleryBox -> CHAMPIONS_GUILD	19	6
-1858 5707 0	3053 3487 0	Y	EDGEVILLE_MONASTERY	JewelleryBox	JewelleryBox -> EDGEVILLE_MONASTERY	19	6
-1922 5707 2	3053 3487 0	Y	EDGEVILLE_MONASTERY	JewelleryBox	JewelleryBox -> EDGEVILLE_MONASTERY	19	6
-1986 5707 0	3053 3487 0	Y	EDGEVILLE_MONASTERY	JewelleryBox	JewelleryBox -> EDGEVILLE_MONASTERY	19	6
-1858 5707 0	2654 3441 0	Y	RANGING_GUILD	JewelleryBox	JewelleryBox -> RANGING_GUILD	19	6
-1922 5707 2	2654 3441 0	Y	RANGING_GUILD	JewelleryBox	JewelleryBox -> RANGING_GUILD	19	6
-1986 5707 0	2654 3441 0	Y	RANGING_GUILD	JewelleryBox	JewelleryBox -> RANGING_GUILD	19	6
-1858 5707 0	2613 3390 0	Y	FISHING_GUILD_NECK	JewelleryBox	JewelleryBox -> FISHING_GUILD_NECK	19	6
-1922 5707 2	2613 3390 0	Y	FISHING_GUILD_NECK	JewelleryBox	JewelleryBox -> FISHING_GUILD_NECK	19	6
-1986 5707 0	2613 3390 0	Y	FISHING_GUILD_NECK	JewelleryBox	JewelleryBox -> FISHING_GUILD_NECK	19	6
-1858 5707 0	3049 9762 0	Y	MINING_GUILD	JewelleryBox	JewelleryBox -> MINING_GUILD	19	6
-1922 5707 2	3049 9762 0	Y	MINING_GUILD	JewelleryBox	JewelleryBox -> MINING_GUILD	19	6
-1986 5707 0	3049 9762 0	Y	MINING_GUILD	JewelleryBox	JewelleryBox -> MINING_GUILD	19	6
-1858 5707 0	2934 3294 0	Y	CRAFTING_GUILD	JewelleryBox	JewelleryBox -> CRAFTING_GUILD	19	6
-1922 5707 2	2934 3294 0	Y	CRAFTING_GUILD	JewelleryBox	JewelleryBox -> CRAFTING_GUILD	19	6
-1986 5707 0	2934 3294 0	Y	CRAFTING_GUILD	JewelleryBox	JewelleryBox -> CRAFTING_GUILD	19	6
-1858 5707 0	3145 3438 0	Y	COOKING_GUILD	JewelleryBox	JewelleryBox -> COOKING_GUILD	19	6
-1922 5707 2	3145 3438 0	Y	COOKING_GUILD	JewelleryBox	JewelleryBox -> COOKING_GUILD	19	6
-1986 5707 0	3145 3438 0	Y	COOKING_GUILD	JewelleryBox	JewelleryBox -> COOKING_GUILD	19	6
-1858 5707 0	1662 3505 0	Y	WOODCUTTING_GUILD	JewelleryBox	JewelleryBox -> WOODCUTTING_GUILD	19	6
-1922 5707 2	1662 3505 0	Y	WOODCUTTING_GUILD	JewelleryBox	JewelleryBox -> WOODCUTTING_GUILD	19	6
-1986 5707 0	1662 3505 0	Y	WOODCUTTING_GUILD	JewelleryBox	JewelleryBox -> WOODCUTTING_GUILD	19	6
-1858 5707 0	1249 3717 0	Y	FARMING_GUILD	JewelleryBox	JewelleryBox -> FARMING_GUILD	19	6
-1922 5707 2	1249 3717 0	Y	FARMING_GUILD	JewelleryBox	JewelleryBox -> FARMING_GUILD	19	6
-1986 5707 0	1249 3717 0	Y	FARMING_GUILD	JewelleryBox	JewelleryBox -> FARMING_GUILD	19	6
-1858 5707 0	3087 3496 0	Y	EDGEVILLE	JewelleryBox	JewelleryBox -> EDGEVILLE	19	6
-1922 5707 2	3087 3496 0	Y	EDGEVILLE	JewelleryBox	JewelleryBox -> EDGEVILLE	19	6
-1986 5707 0	3087 3496 0	Y	EDGEVILLE	JewelleryBox	JewelleryBox -> EDGEVILLE	19	6
-1858 5707 0	2918 3176 0	Y	KARAMJA	JewelleryBox	JewelleryBox -> KARAMJA	19	6
-1922 5707 2	2918 3176 0	Y	KARAMJA	JewelleryBox	JewelleryBox -> KARAMJA	19	6
-1986 5707 0	2918 3176 0	Y	KARAMJA	JewelleryBox	JewelleryBox -> KARAMJA	19	6
-1858 5707 0	3105 3251 0	Y	DRAYNOR_VILLAGE	JewelleryBox	JewelleryBox -> DRAYNOR_VILLAGE	19	6
-1922 5707 2	3105 3251 0	Y	DRAYNOR_VILLAGE	JewelleryBox	JewelleryBox -> DRAYNOR_VILLAGE	19	6
-1986 5707 0	3105 3251 0	Y	DRAYNOR_VILLAGE	JewelleryBox	JewelleryBox -> DRAYNOR_VILLAGE	19	6
-1858 5707 0	3293 3163 0	Y	AL_KHARID	JewelleryBox	JewelleryBox -> AL_KHARID	19	6
-1922 5707 2	3293 3163 0	Y	AL_KHARID	JewelleryBox	JewelleryBox -> AL_KHARID	19	6
-1986 5707 0	3293 3163 0	Y	AL_KHARID	JewelleryBox	JewelleryBox -> AL_KHARID	19	6
-1858 5707 0	2535 3862 0	Y	MISCELLANIA	JewelleryBox	JewelleryBox -> MISCELLANIA	19	6
-1922 5707 2	2535 3862 0	Y	MISCELLANIA	JewelleryBox	JewelleryBox -> MISCELLANIA	19	6
-1986 5707 0	2535 3862 0	Y	MISCELLANIA	JewelleryBox	JewelleryBox -> MISCELLANIA	19	6
-1858 5707 0	3162 3480 0	Y	GRAND_EXCHANGE	JewelleryBox	JewelleryBox -> GRAND_EXCHANGE	19	6
-1922 5707 2	3162 3480 0	Y	GRAND_EXCHANGE	JewelleryBox	JewelleryBox -> GRAND_EXCHANGE	19	6
-1986 5707 0	3162 3480 0	Y	GRAND_EXCHANGE	JewelleryBox	JewelleryBox -> GRAND_EXCHANGE	19	6
-1858 5707 0	2995 3375 0	Y	FALADOR_PARK	JewelleryBox	JewelleryBox -> FALADOR_PARK	19	6
-1922 5707 2	2995 3375 0	Y	FALADOR_PARK	JewelleryBox	JewelleryBox -> FALADOR_PARK	19	6
-1986 5707 0	2995 3375 0	Y	FALADOR_PARK	JewelleryBox	JewelleryBox -> FALADOR_PARK	19	6
-1858 5707 0	2831 10165 0	Y	DONDAKAN	JewelleryBox	JewelleryBox -> DONDAKAN	19	6
-1922 5707 2	2831 10165 0	Y	DONDAKAN	JewelleryBox	JewelleryBox -> DONDAKAN	19	6
-1986 5707 0	2831 10165 0	Y	DONDAKAN	JewelleryBox	JewelleryBox -> DONDAKAN	19	6
+1986 5707 1	3293 3163 0	Y	AL_KHARID	MountedGlory	MountedGlory -> Al Kharid	19	4
+1986 5707 2	3293 3163 0	Y	AL_KHARID	MountedGlory	MountedGlory -> Al Kharid	19	4
+1986 5707 3	3293 3163 0	Y	AL_KHARID	MountedGlory	MountedGlory -> Al Kharid	19	4
 1858 5707 0	3213 3424 0	Y	VARROCK	PohPortal	PoHPortal -> Varrock	19	4
+1858 5707 1	3213 3424 0	Y	VARROCK	PohPortal	PoHPortal -> Varrock	19	4
+1858 5707 2	3213 3424 0	Y	VARROCK	PohPortal	PoHPortal -> Varrock	19	4
+1858 5707 3	3213 3424 0	Y	VARROCK	PohPortal	PoHPortal -> Varrock	19	4
+1922 5707 0	3213 3424 0	Y	VARROCK	PohPortal	PoHPortal -> Varrock	19	4
+1922 5707 1	3213 3424 0	Y	VARROCK	PohPortal	PoHPortal -> Varrock	19	4
 1922 5707 2	3213 3424 0	Y	VARROCK	PohPortal	PoHPortal -> Varrock	19	4
+1922 5707 3	3213 3424 0	Y	VARROCK	PohPortal	PoHPortal -> Varrock	19	4
 1986 5707 0	3213 3424 0	Y	VARROCK	PohPortal	PoHPortal -> Varrock	19	4
+1986 5707 1	3213 3424 0	Y	VARROCK	PohPortal	PoHPortal -> Varrock	19	4
+1986 5707 2	3213 3424 0	Y	VARROCK	PohPortal	PoHPortal -> Varrock	19	4
+1986 5707 3	3213 3424 0	Y	VARROCK	PohPortal	PoHPortal -> Varrock	19	4
 1858 5707 0	3162 3480 0	Y	GRAND_EXCHANGE	PohPortal	PoHPortal -> Grand Exchange	19	4
+1858 5707 1	3162 3480 0	Y	GRAND_EXCHANGE	PohPortal	PoHPortal -> Grand Exchange	19	4
+1858 5707 2	3162 3480 0	Y	GRAND_EXCHANGE	PohPortal	PoHPortal -> Grand Exchange	19	4
+1858 5707 3	3162 3480 0	Y	GRAND_EXCHANGE	PohPortal	PoHPortal -> Grand Exchange	19	4
+1922 5707 0	3162 3480 0	Y	GRAND_EXCHANGE	PohPortal	PoHPortal -> Grand Exchange	19	4
+1922 5707 1	3162 3480 0	Y	GRAND_EXCHANGE	PohPortal	PoHPortal -> Grand Exchange	19	4
 1922 5707 2	3162 3480 0	Y	GRAND_EXCHANGE	PohPortal	PoHPortal -> Grand Exchange	19	4
+1922 5707 3	3162 3480 0	Y	GRAND_EXCHANGE	PohPortal	PoHPortal -> Grand Exchange	19	4
 1986 5707 0	3162 3480 0	Y	GRAND_EXCHANGE	PohPortal	PoHPortal -> Grand Exchange	19	4
+1986 5707 1	3162 3480 0	Y	GRAND_EXCHANGE	PohPortal	PoHPortal -> Grand Exchange	19	4
+1986 5707 2	3162 3480 0	Y	GRAND_EXCHANGE	PohPortal	PoHPortal -> Grand Exchange	19	4
+1986 5707 3	3162 3480 0	Y	GRAND_EXCHANGE	PohPortal	PoHPortal -> Grand Exchange	19	4
 1858 5707 0	3222 3218 0	Y	LUMBRIDGE	PohPortal	PoHPortal -> Lumbridge	19	4
+1858 5707 1	3222 3218 0	Y	LUMBRIDGE	PohPortal	PoHPortal -> Lumbridge	19	4
+1858 5707 2	3222 3218 0	Y	LUMBRIDGE	PohPortal	PoHPortal -> Lumbridge	19	4
+1858 5707 3	3222 3218 0	Y	LUMBRIDGE	PohPortal	PoHPortal -> Lumbridge	19	4
+1922 5707 0	3222 3218 0	Y	LUMBRIDGE	PohPortal	PoHPortal -> Lumbridge	19	4
+1922 5707 1	3222 3218 0	Y	LUMBRIDGE	PohPortal	PoHPortal -> Lumbridge	19	4
 1922 5707 2	3222 3218 0	Y	LUMBRIDGE	PohPortal	PoHPortal -> Lumbridge	19	4
+1922 5707 3	3222 3218 0	Y	LUMBRIDGE	PohPortal	PoHPortal -> Lumbridge	19	4
 1986 5707 0	3222 3218 0	Y	LUMBRIDGE	PohPortal	PoHPortal -> Lumbridge	19	4
+1986 5707 1	3222 3218 0	Y	LUMBRIDGE	PohPortal	PoHPortal -> Lumbridge	19	4
+1986 5707 2	3222 3218 0	Y	LUMBRIDGE	PohPortal	PoHPortal -> Lumbridge	19	4
+1986 5707 3	3222 3218 0	Y	LUMBRIDGE	PohPortal	PoHPortal -> Lumbridge	19	4
 1858 5707 0	2965 3381 0	Y	FALADOR	PohPortal	PoHPortal -> Falador	19	4
+1858 5707 1	2965 3381 0	Y	FALADOR	PohPortal	PoHPortal -> Falador	19	4
+1858 5707 2	2965 3381 0	Y	FALADOR	PohPortal	PoHPortal -> Falador	19	4
+1858 5707 3	2965 3381 0	Y	FALADOR	PohPortal	PoHPortal -> Falador	19	4
+1922 5707 0	2965 3381 0	Y	FALADOR	PohPortal	PoHPortal -> Falador	19	4
+1922 5707 1	2965 3381 0	Y	FALADOR	PohPortal	PoHPortal -> Falador	19	4
 1922 5707 2	2965 3381 0	Y	FALADOR	PohPortal	PoHPortal -> Falador	19	4
+1922 5707 3	2965 3381 0	Y	FALADOR	PohPortal	PoHPortal -> Falador	19	4
 1986 5707 0	2965 3381 0	Y	FALADOR	PohPortal	PoHPortal -> Falador	19	4
+1986 5707 1	2965 3381 0	Y	FALADOR	PohPortal	PoHPortal -> Falador	19	4
+1986 5707 2	2965 3381 0	Y	FALADOR	PohPortal	PoHPortal -> Falador	19	4
+1986 5707 3	2965 3381 0	Y	FALADOR	PohPortal	PoHPortal -> Falador	19	4
 1858 5707 0	2757 3477 0	Y	CAMELOT	PohPortal	PoHPortal -> Camelot	19	4
+1858 5707 1	2757 3477 0	Y	CAMELOT	PohPortal	PoHPortal -> Camelot	19	4
+1858 5707 2	2757 3477 0	Y	CAMELOT	PohPortal	PoHPortal -> Camelot	19	4
+1858 5707 3	2757 3477 0	Y	CAMELOT	PohPortal	PoHPortal -> Camelot	19	4
+1922 5707 0	2757 3477 0	Y	CAMELOT	PohPortal	PoHPortal -> Camelot	19	4
+1922 5707 1	2757 3477 0	Y	CAMELOT	PohPortal	PoHPortal -> Camelot	19	4
 1922 5707 2	2757 3477 0	Y	CAMELOT	PohPortal	PoHPortal -> Camelot	19	4
+1922 5707 3	2757 3477 0	Y	CAMELOT	PohPortal	PoHPortal -> Camelot	19	4
 1986 5707 0	2757 3477 0	Y	CAMELOT	PohPortal	PoHPortal -> Camelot	19	4
+1986 5707 1	2757 3477 0	Y	CAMELOT	PohPortal	PoHPortal -> Camelot	19	4
+1986 5707 2	2757 3477 0	Y	CAMELOT	PohPortal	PoHPortal -> Camelot	19	4
+1986 5707 3	2757 3477 0	Y	CAMELOT	PohPortal	PoHPortal -> Camelot	19	4
 1858 5707 0	2664 3306 0	Y	ARDOUGNE	PohPortal	PoHPortal -> Ardougne	19	4
+1858 5707 1	2664 3306 0	Y	ARDOUGNE	PohPortal	PoHPortal -> Ardougne	19	4
+1858 5707 2	2664 3306 0	Y	ARDOUGNE	PohPortal	PoHPortal -> Ardougne	19	4
+1858 5707 3	2664 3306 0	Y	ARDOUGNE	PohPortal	PoHPortal -> Ardougne	19	4
+1922 5707 0	2664 3306 0	Y	ARDOUGNE	PohPortal	PoHPortal -> Ardougne	19	4
+1922 5707 1	2664 3306 0	Y	ARDOUGNE	PohPortal	PoHPortal -> Ardougne	19	4
 1922 5707 2	2664 3306 0	Y	ARDOUGNE	PohPortal	PoHPortal -> Ardougne	19	4
+1922 5707 3	2664 3306 0	Y	ARDOUGNE	PohPortal	PoHPortal -> Ardougne	19	4
 1986 5707 0	2664 3306 0	Y	ARDOUGNE	PohPortal	PoHPortal -> Ardougne	19	4
+1986 5707 1	2664 3306 0	Y	ARDOUGNE	PohPortal	PoHPortal -> Ardougne	19	4
+1986 5707 2	2664 3306 0	Y	ARDOUGNE	PohPortal	PoHPortal -> Ardougne	19	4
+1986 5707 3	2664 3306 0	Y	ARDOUGNE	PohPortal	PoHPortal -> Ardougne	19	4
 1858 5707 0	2547 3114 0	Y	WATCHTOWER	PohPortal	PoHPortal -> Watchtower	19	4
+1858 5707 1	2547 3114 0	Y	WATCHTOWER	PohPortal	PoHPortal -> Watchtower	19	4
+1858 5707 2	2547 3114 0	Y	WATCHTOWER	PohPortal	PoHPortal -> Watchtower	19	4
+1858 5707 3	2547 3114 0	Y	WATCHTOWER	PohPortal	PoHPortal -> Watchtower	19	4
+1922 5707 0	2547 3114 0	Y	WATCHTOWER	PohPortal	PoHPortal -> Watchtower	19	4
+1922 5707 1	2547 3114 0	Y	WATCHTOWER	PohPortal	PoHPortal -> Watchtower	19	4
 1922 5707 2	2547 3114 0	Y	WATCHTOWER	PohPortal	PoHPortal -> Watchtower	19	4
+1922 5707 3	2547 3114 0	Y	WATCHTOWER	PohPortal	PoHPortal -> Watchtower	19	4
 1986 5707 0	2547 3114 0	Y	WATCHTOWER	PohPortal	PoHPortal -> Watchtower	19	4
+1986 5707 1	2547 3114 0	Y	WATCHTOWER	PohPortal	PoHPortal -> Watchtower	19	4
+1986 5707 2	2547 3114 0	Y	WATCHTOWER	PohPortal	PoHPortal -> Watchtower	19	4
+1986 5707 3	2547 3114 0	Y	WATCHTOWER	PohPortal	PoHPortal -> Watchtower	19	4
 1858 5707 0	2891 3678 0	Y	TROLL_STRONGHOLD	PohPortal	PoHPortal -> Troll Stronghold	19	4
+1858 5707 1	2891 3678 0	Y	TROLL_STRONGHOLD	PohPortal	PoHPortal -> Troll Stronghold	19	4
+1858 5707 2	2891 3678 0	Y	TROLL_STRONGHOLD	PohPortal	PoHPortal -> Troll Stronghold	19	4
+1858 5707 3	2891 3678 0	Y	TROLL_STRONGHOLD	PohPortal	PoHPortal -> Troll Stronghold	19	4
+1922 5707 0	2891 3678 0	Y	TROLL_STRONGHOLD	PohPortal	PoHPortal -> Troll Stronghold	19	4
+1922 5707 1	2891 3678 0	Y	TROLL_STRONGHOLD	PohPortal	PoHPortal -> Troll Stronghold	19	4
 1922 5707 2	2891 3678 0	Y	TROLL_STRONGHOLD	PohPortal	PoHPortal -> Troll Stronghold	19	4
+1922 5707 3	2891 3678 0	Y	TROLL_STRONGHOLD	PohPortal	PoHPortal -> Troll Stronghold	19	4
 1986 5707 0	2891 3678 0	Y	TROLL_STRONGHOLD	PohPortal	PoHPortal -> Troll Stronghold	19	4
+1986 5707 1	2891 3678 0	Y	TROLL_STRONGHOLD	PohPortal	PoHPortal -> Troll Stronghold	19	4
+1986 5707 2	2891 3678 0	Y	TROLL_STRONGHOLD	PohPortal	PoHPortal -> Troll Stronghold	19	4
+1986 5707 3	2891 3678 0	Y	TROLL_STRONGHOLD	PohPortal	PoHPortal -> Troll Stronghold	19	4
 1858 5707 0	2796 2791 0	Y	APE_ATOLL	PohPortal	PoHPortal -> Ape Atoll	19	4
+1858 5707 1	2796 2791 0	Y	APE_ATOLL	PohPortal	PoHPortal -> Ape Atoll	19	4
+1858 5707 2	2796 2791 0	Y	APE_ATOLL	PohPortal	PoHPortal -> Ape Atoll	19	4
+1858 5707 3	2796 2791 0	Y	APE_ATOLL	PohPortal	PoHPortal -> Ape Atoll	19	4
+1922 5707 0	2796 2791 0	Y	APE_ATOLL	PohPortal	PoHPortal -> Ape Atoll	19	4
+1922 5707 1	2796 2791 0	Y	APE_ATOLL	PohPortal	PoHPortal -> Ape Atoll	19	4
 1922 5707 2	2796 2791 0	Y	APE_ATOLL	PohPortal	PoHPortal -> Ape Atoll	19	4
+1922 5707 3	2796 2791 0	Y	APE_ATOLL	PohPortal	PoHPortal -> Ape Atoll	19	4
 1986 5707 0	2796 2791 0	Y	APE_ATOLL	PohPortal	PoHPortal -> Ape Atoll	19	4
+1986 5707 1	2796 2791 0	Y	APE_ATOLL	PohPortal	PoHPortal -> Ape Atoll	19	4
+1986 5707 2	2796 2791 0	Y	APE_ATOLL	PohPortal	PoHPortal -> Ape Atoll	19	4
+1986 5707 3	2796 2791 0	Y	APE_ATOLL	PohPortal	PoHPortal -> Ape Atoll	19	4
 1858 5707 0	1643 3672 0	Y	KOUREND_CASTLE	PohPortal	PoHPortal -> Kourend Castle	19	4
+1858 5707 1	1643 3672 0	Y	KOUREND_CASTLE	PohPortal	PoHPortal -> Kourend Castle	19	4
+1858 5707 2	1643 3672 0	Y	KOUREND_CASTLE	PohPortal	PoHPortal -> Kourend Castle	19	4
+1858 5707 3	1643 3672 0	Y	KOUREND_CASTLE	PohPortal	PoHPortal -> Kourend Castle	19	4
+1922 5707 0	1643 3672 0	Y	KOUREND_CASTLE	PohPortal	PoHPortal -> Kourend Castle	19	4
+1922 5707 1	1643 3672 0	Y	KOUREND_CASTLE	PohPortal	PoHPortal -> Kourend Castle	19	4
 1922 5707 2	1643 3672 0	Y	KOUREND_CASTLE	PohPortal	PoHPortal -> Kourend Castle	19	4
+1922 5707 3	1643 3672 0	Y	KOUREND_CASTLE	PohPortal	PoHPortal -> Kourend Castle	19	4
 1986 5707 0	1643 3672 0	Y	KOUREND_CASTLE	PohPortal	PoHPortal -> Kourend Castle	19	4
+1986 5707 1	1643 3672 0	Y	KOUREND_CASTLE	PohPortal	PoHPortal -> Kourend Castle	19	4
+1986 5707 2	1643 3672 0	Y	KOUREND_CASTLE	PohPortal	PoHPortal -> Kourend Castle	19	4
+1986 5707 3	1643 3672 0	Y	KOUREND_CASTLE	PohPortal	PoHPortal -> Kourend Castle	19	4
 1858 5707 0	3319 3336 0	Y	SENNTISTEN	PohPortal	PoHPortal -> Senntisten	19	4
+1858 5707 1	3319 3336 0	Y	SENNTISTEN	PohPortal	PoHPortal -> Senntisten	19	4
+1858 5707 2	3319 3336 0	Y	SENNTISTEN	PohPortal	PoHPortal -> Senntisten	19	4
+1858 5707 3	3319 3336 0	Y	SENNTISTEN	PohPortal	PoHPortal -> Senntisten	19	4
+1922 5707 0	3319 3336 0	Y	SENNTISTEN	PohPortal	PoHPortal -> Senntisten	19	4
+1922 5707 1	3319 3336 0	Y	SENNTISTEN	PohPortal	PoHPortal -> Senntisten	19	4
 1922 5707 2	3319 3336 0	Y	SENNTISTEN	PohPortal	PoHPortal -> Senntisten	19	4
+1922 5707 3	3319 3336 0	Y	SENNTISTEN	PohPortal	PoHPortal -> Senntisten	19	4
 1986 5707 0	3319 3336 0	Y	SENNTISTEN	PohPortal	PoHPortal -> Senntisten	19	4
+1986 5707 1	3319 3336 0	Y	SENNTISTEN	PohPortal	PoHPortal -> Senntisten	19	4
+1986 5707 2	3319 3336 0	Y	SENNTISTEN	PohPortal	PoHPortal -> Senntisten	19	4
+1986 5707 3	3319 3336 0	Y	SENNTISTEN	PohPortal	PoHPortal -> Senntisten	19	4
 1858 5707 0	3494 3473 0	Y	KHARYRLL	PohPortal	PoHPortal -> Kharyrll	19	4
+1858 5707 1	3494 3473 0	Y	KHARYRLL	PohPortal	PoHPortal -> Kharyrll	19	4
+1858 5707 2	3494 3473 0	Y	KHARYRLL	PohPortal	PoHPortal -> Kharyrll	19	4
+1858 5707 3	3494 3473 0	Y	KHARYRLL	PohPortal	PoHPortal -> Kharyrll	19	4
+1922 5707 0	3494 3473 0	Y	KHARYRLL	PohPortal	PoHPortal -> Kharyrll	19	4
+1922 5707 1	3494 3473 0	Y	KHARYRLL	PohPortal	PoHPortal -> Kharyrll	19	4
 1922 5707 2	3494 3473 0	Y	KHARYRLL	PohPortal	PoHPortal -> Kharyrll	19	4
+1922 5707 3	3494 3473 0	Y	KHARYRLL	PohPortal	PoHPortal -> Kharyrll	19	4
 1986 5707 0	3494 3473 0	Y	KHARYRLL	PohPortal	PoHPortal -> Kharyrll	19	4
+1986 5707 1	3494 3473 0	Y	KHARYRLL	PohPortal	PoHPortal -> Kharyrll	19	4
+1986 5707 2	3494 3473 0	Y	KHARYRLL	PohPortal	PoHPortal -> Kharyrll	19	4
+1986 5707 3	3494 3473 0	Y	KHARYRLL	PohPortal	PoHPortal -> Kharyrll	19	4
 1858 5707 0	3157 3667 0	Y	CARRALLANGAR	PohPortal	PoHPortal -> Carrallangar	19	4
+1858 5707 1	3157 3667 0	Y	CARRALLANGAR	PohPortal	PoHPortal -> Carrallangar	19	4
+1858 5707 2	3157 3667 0	Y	CARRALLANGAR	PohPortal	PoHPortal -> Carrallangar	19	4
+1858 5707 3	3157 3667 0	Y	CARRALLANGAR	PohPortal	PoHPortal -> Carrallangar	19	4
+1922 5707 0	3157 3667 0	Y	CARRALLANGAR	PohPortal	PoHPortal -> Carrallangar	19	4
+1922 5707 1	3157 3667 0	Y	CARRALLANGAR	PohPortal	PoHPortal -> Carrallangar	19	4
 1922 5707 2	3157 3667 0	Y	CARRALLANGAR	PohPortal	PoHPortal -> Carrallangar	19	4
+1922 5707 3	3157 3667 0	Y	CARRALLANGAR	PohPortal	PoHPortal -> Carrallangar	19	4
 1986 5707 0	3157 3667 0	Y	CARRALLANGAR	PohPortal	PoHPortal -> Carrallangar	19	4
+1986 5707 1	3157 3667 0	Y	CARRALLANGAR	PohPortal	PoHPortal -> Carrallangar	19	4
+1986 5707 2	3157 3667 0	Y	CARRALLANGAR	PohPortal	PoHPortal -> Carrallangar	19	4
+1986 5707 3	3157 3667 0	Y	CARRALLANGAR	PohPortal	PoHPortal -> Carrallangar	19	4
 1858 5707 0	3288 3888 0	Y	ANNAKARL	PohPortal	PoHPortal -> Annakarl	19	4
+1858 5707 1	3288 3888 0	Y	ANNAKARL	PohPortal	PoHPortal -> Annakarl	19	4
+1858 5707 2	3288 3888 0	Y	ANNAKARL	PohPortal	PoHPortal -> Annakarl	19	4
+1858 5707 3	3288 3888 0	Y	ANNAKARL	PohPortal	PoHPortal -> Annakarl	19	4
+1922 5707 0	3288 3888 0	Y	ANNAKARL	PohPortal	PoHPortal -> Annakarl	19	4
+1922 5707 1	3288 3888 0	Y	ANNAKARL	PohPortal	PoHPortal -> Annakarl	19	4
 1922 5707 2	3288 3888 0	Y	ANNAKARL	PohPortal	PoHPortal -> Annakarl	19	4
+1922 5707 3	3288 3888 0	Y	ANNAKARL	PohPortal	PoHPortal -> Annakarl	19	4
 1986 5707 0	3288 3888 0	Y	ANNAKARL	PohPortal	PoHPortal -> Annakarl	19	4
+1986 5707 1	3288 3888 0	Y	ANNAKARL	PohPortal	PoHPortal -> Annakarl	19	4
+1986 5707 2	3288 3888 0	Y	ANNAKARL	PohPortal	PoHPortal -> Annakarl	19	4
+1986 5707 3	3288 3888 0	Y	ANNAKARL	PohPortal	PoHPortal -> Annakarl	19	4
 1858 5707 0	2977 3872 0	Y	GHORROCK	PohPortal	PoHPortal -> Ghorrock	19	4
+1858 5707 1	2977 3872 0	Y	GHORROCK	PohPortal	PoHPortal -> Ghorrock	19	4
+1858 5707 2	2977 3872 0	Y	GHORROCK	PohPortal	PoHPortal -> Ghorrock	19	4
+1858 5707 3	2977 3872 0	Y	GHORROCK	PohPortal	PoHPortal -> Ghorrock	19	4
+1922 5707 0	2977 3872 0	Y	GHORROCK	PohPortal	PoHPortal -> Ghorrock	19	4
+1922 5707 1	2977 3872 0	Y	GHORROCK	PohPortal	PoHPortal -> Ghorrock	19	4
 1922 5707 2	2977 3872 0	Y	GHORROCK	PohPortal	PoHPortal -> Ghorrock	19	4
+1922 5707 3	2977 3872 0	Y	GHORROCK	PohPortal	PoHPortal -> Ghorrock	19	4
 1986 5707 0	2977 3872 0	Y	GHORROCK	PohPortal	PoHPortal -> Ghorrock	19	4
+1986 5707 1	2977 3872 0	Y	GHORROCK	PohPortal	PoHPortal -> Ghorrock	19	4
+1986 5707 2	2977 3872 0	Y	GHORROCK	PohPortal	PoHPortal -> Ghorrock	19	4
+1986 5707 3	2977 3872 0	Y	GHORROCK	PohPortal	PoHPortal -> Ghorrock	19	4
 1858 5707 0	2113 3915 0	Y	LUNAR_ISLE	PohPortal	PoHPortal -> Lunar Isle	19	4
+1858 5707 1	2113 3915 0	Y	LUNAR_ISLE	PohPortal	PoHPortal -> Lunar Isle	19	4
+1858 5707 2	2113 3915 0	Y	LUNAR_ISLE	PohPortal	PoHPortal -> Lunar Isle	19	4
+1858 5707 3	2113 3915 0	Y	LUNAR_ISLE	PohPortal	PoHPortal -> Lunar Isle	19	4
+1922 5707 0	2113 3915 0	Y	LUNAR_ISLE	PohPortal	PoHPortal -> Lunar Isle	19	4
+1922 5707 1	2113 3915 0	Y	LUNAR_ISLE	PohPortal	PoHPortal -> Lunar Isle	19	4
 1922 5707 2	2113 3915 0	Y	LUNAR_ISLE	PohPortal	PoHPortal -> Lunar Isle	19	4
+1922 5707 3	2113 3915 0	Y	LUNAR_ISLE	PohPortal	PoHPortal -> Lunar Isle	19	4
 1986 5707 0	2113 3915 0	Y	LUNAR_ISLE	PohPortal	PoHPortal -> Lunar Isle	19	4
+1986 5707 1	2113 3915 0	Y	LUNAR_ISLE	PohPortal	PoHPortal -> Lunar Isle	19	4
+1986 5707 2	2113 3915 0	Y	LUNAR_ISLE	PohPortal	PoHPortal -> Lunar Isle	19	4
+1986 5707 3	2113 3915 0	Y	LUNAR_ISLE	PohPortal	PoHPortal -> Lunar Isle	19	4
 1858 5707 0	2546 3755 0	Y	WATERBIRTH	PohPortal	PoHPortal -> Waterbirth	19	4
+1858 5707 1	2546 3755 0	Y	WATERBIRTH	PohPortal	PoHPortal -> Waterbirth	19	4
+1858 5707 2	2546 3755 0	Y	WATERBIRTH	PohPortal	PoHPortal -> Waterbirth	19	4
+1858 5707 3	2546 3755 0	Y	WATERBIRTH	PohPortal	PoHPortal -> Waterbirth	19	4
+1922 5707 0	2546 3755 0	Y	WATERBIRTH	PohPortal	PoHPortal -> Waterbirth	19	4
+1922 5707 1	2546 3755 0	Y	WATERBIRTH	PohPortal	PoHPortal -> Waterbirth	19	4
 1922 5707 2	2546 3755 0	Y	WATERBIRTH	PohPortal	PoHPortal -> Waterbirth	19	4
+1922 5707 3	2546 3755 0	Y	WATERBIRTH	PohPortal	PoHPortal -> Waterbirth	19	4
 1986 5707 0	2546 3755 0	Y	WATERBIRTH	PohPortal	PoHPortal -> Waterbirth	19	4
+1986 5707 1	2546 3755 0	Y	WATERBIRTH	PohPortal	PoHPortal -> Waterbirth	19	4
+1986 5707 2	2546 3755 0	Y	WATERBIRTH	PohPortal	PoHPortal -> Waterbirth	19	4
+1986 5707 3	2546 3755 0	Y	WATERBIRTH	PohPortal	PoHPortal -> Waterbirth	19	4
 1858 5707 0	2802 3449 0	Y	CATHERBY	PohPortal	PoHPortal -> Catherby	19	4
+1858 5707 1	2802 3449 0	Y	CATHERBY	PohPortal	PoHPortal -> Catherby	19	4
+1858 5707 2	2802 3449 0	Y	CATHERBY	PohPortal	PoHPortal -> Catherby	19	4
+1858 5707 3	2802 3449 0	Y	CATHERBY	PohPortal	PoHPortal -> Catherby	19	4
+1922 5707 0	2802 3449 0	Y	CATHERBY	PohPortal	PoHPortal -> Catherby	19	4
+1922 5707 1	2802 3449 0	Y	CATHERBY	PohPortal	PoHPortal -> Catherby	19	4
 1922 5707 2	2802 3449 0	Y	CATHERBY	PohPortal	PoHPortal -> Catherby	19	4
+1922 5707 3	2802 3449 0	Y	CATHERBY	PohPortal	PoHPortal -> Catherby	19	4
 1986 5707 0	2802 3449 0	Y	CATHERBY	PohPortal	PoHPortal -> Catherby	19	4
+1986 5707 1	2802 3449 0	Y	CATHERBY	PohPortal	PoHPortal -> Catherby	19	4
+1986 5707 2	2802 3449 0	Y	CATHERBY	PohPortal	PoHPortal -> Catherby	19	4
+1986 5707 3	2802 3449 0	Y	CATHERBY	PohPortal	PoHPortal -> Catherby	19	4
 1858 5707 0	1632 3838 0	Y	ARCEUUS_LIBRARY	PohPortal	PoHPortal -> Arceuus Library	19	4
+1858 5707 1	1632 3838 0	Y	ARCEUUS_LIBRARY	PohPortal	PoHPortal -> Arceuus Library	19	4
+1858 5707 2	1632 3838 0	Y	ARCEUUS_LIBRARY	PohPortal	PoHPortal -> Arceuus Library	19	4
+1858 5707 3	1632 3838 0	Y	ARCEUUS_LIBRARY	PohPortal	PoHPortal -> Arceuus Library	19	4
+1922 5707 0	1632 3838 0	Y	ARCEUUS_LIBRARY	PohPortal	PoHPortal -> Arceuus Library	19	4
+1922 5707 1	1632 3838 0	Y	ARCEUUS_LIBRARY	PohPortal	PoHPortal -> Arceuus Library	19	4
 1922 5707 2	1632 3838 0	Y	ARCEUUS_LIBRARY	PohPortal	PoHPortal -> Arceuus Library	19	4
+1922 5707 3	1632 3838 0	Y	ARCEUUS_LIBRARY	PohPortal	PoHPortal -> Arceuus Library	19	4
 1986 5707 0	1632 3838 0	Y	ARCEUUS_LIBRARY	PohPortal	PoHPortal -> Arceuus Library	19	4
+1986 5707 1	1632 3838 0	Y	ARCEUUS_LIBRARY	PohPortal	PoHPortal -> Arceuus Library	19	4
+1986 5707 2	1632 3838 0	Y	ARCEUUS_LIBRARY	PohPortal	PoHPortal -> Arceuus Library	19	4
+1986 5707 3	1632 3838 0	Y	ARCEUUS_LIBRARY	PohPortal	PoHPortal -> Arceuus Library	19	4
 1858 5707 0	3108 3352 0	Y	DRAYNOR_MANOR	PohPortal	PoHPortal -> Draynor Manor	19	4
+1858 5707 1	3108 3352 0	Y	DRAYNOR_MANOR	PohPortal	PoHPortal -> Draynor Manor	19	4
+1858 5707 2	3108 3352 0	Y	DRAYNOR_MANOR	PohPortal	PoHPortal -> Draynor Manor	19	4
+1858 5707 3	3108 3352 0	Y	DRAYNOR_MANOR	PohPortal	PoHPortal -> Draynor Manor	19	4
+1922 5707 0	3108 3352 0	Y	DRAYNOR_MANOR	PohPortal	PoHPortal -> Draynor Manor	19	4
+1922 5707 1	3108 3352 0	Y	DRAYNOR_MANOR	PohPortal	PoHPortal -> Draynor Manor	19	4
 1922 5707 2	3108 3352 0	Y	DRAYNOR_MANOR	PohPortal	PoHPortal -> Draynor Manor	19	4
+1922 5707 3	3108 3352 0	Y	DRAYNOR_MANOR	PohPortal	PoHPortal -> Draynor Manor	19	4
 1986 5707 0	3108 3352 0	Y	DRAYNOR_MANOR	PohPortal	PoHPortal -> Draynor Manor	19	4
+1986 5707 1	3108 3352 0	Y	DRAYNOR_MANOR	PohPortal	PoHPortal -> Draynor Manor	19	4
+1986 5707 2	3108 3352 0	Y	DRAYNOR_MANOR	PohPortal	PoHPortal -> Draynor Manor	19	4
+1986 5707 3	3108 3352 0	Y	DRAYNOR_MANOR	PohPortal	PoHPortal -> Draynor Manor	19	4
 1858 5707 0	1349 3739 0	Y	BATTLEFRONT	PohPortal	PoHPortal -> Battlefront	19	4
+1858 5707 1	1349 3739 0	Y	BATTLEFRONT	PohPortal	PoHPortal -> Battlefront	19	4
+1858 5707 2	1349 3739 0	Y	BATTLEFRONT	PohPortal	PoHPortal -> Battlefront	19	4
+1858 5707 3	1349 3739 0	Y	BATTLEFRONT	PohPortal	PoHPortal -> Battlefront	19	4
+1922 5707 0	1349 3739 0	Y	BATTLEFRONT	PohPortal	PoHPortal -> Battlefront	19	4
+1922 5707 1	1349 3739 0	Y	BATTLEFRONT	PohPortal	PoHPortal -> Battlefront	19	4
 1922 5707 2	1349 3739 0	Y	BATTLEFRONT	PohPortal	PoHPortal -> Battlefront	19	4
+1922 5707 3	1349 3739 0	Y	BATTLEFRONT	PohPortal	PoHPortal -> Battlefront	19	4
 1986 5707 0	1349 3739 0	Y	BATTLEFRONT	PohPortal	PoHPortal -> Battlefront	19	4
+1986 5707 1	1349 3739 0	Y	BATTLEFRONT	PohPortal	PoHPortal -> Battlefront	19	4
+1986 5707 2	1349 3739 0	Y	BATTLEFRONT	PohPortal	PoHPortal -> Battlefront	19	4
+1986 5707 3	1349 3739 0	Y	BATTLEFRONT	PohPortal	PoHPortal -> Battlefront	19	4
 1858 5707 0	2979 3509 0	Y	MIND_ALTAR	PohPortal	PoHPortal -> Mind Altar	19	4
+1858 5707 1	2979 3509 0	Y	MIND_ALTAR	PohPortal	PoHPortal -> Mind Altar	19	4
+1858 5707 2	2979 3509 0	Y	MIND_ALTAR	PohPortal	PoHPortal -> Mind Altar	19	4
+1858 5707 3	2979 3509 0	Y	MIND_ALTAR	PohPortal	PoHPortal -> Mind Altar	19	4
+1922 5707 0	2979 3509 0	Y	MIND_ALTAR	PohPortal	PoHPortal -> Mind Altar	19	4
+1922 5707 1	2979 3509 0	Y	MIND_ALTAR	PohPortal	PoHPortal -> Mind Altar	19	4
 1922 5707 2	2979 3509 0	Y	MIND_ALTAR	PohPortal	PoHPortal -> Mind Altar	19	4
+1922 5707 3	2979 3509 0	Y	MIND_ALTAR	PohPortal	PoHPortal -> Mind Altar	19	4
 1986 5707 0	2979 3509 0	Y	MIND_ALTAR	PohPortal	PoHPortal -> Mind Altar	19	4
+1986 5707 1	2979 3509 0	Y	MIND_ALTAR	PohPortal	PoHPortal -> Mind Altar	19	4
+1986 5707 2	2979 3509 0	Y	MIND_ALTAR	PohPortal	PoHPortal -> Mind Altar	19	4
+1986 5707 3	2979 3509 0	Y	MIND_ALTAR	PohPortal	PoHPortal -> Mind Altar	19	4
 1858 5707 0	3433 3461 0	Y	SALVE_GRAVEYARD	PohPortal	PoHPortal -> Salve Graveyard	19	4
+1858 5707 1	3433 3461 0	Y	SALVE_GRAVEYARD	PohPortal	PoHPortal -> Salve Graveyard	19	4
+1858 5707 2	3433 3461 0	Y	SALVE_GRAVEYARD	PohPortal	PoHPortal -> Salve Graveyard	19	4
+1858 5707 3	3433 3461 0	Y	SALVE_GRAVEYARD	PohPortal	PoHPortal -> Salve Graveyard	19	4
+1922 5707 0	3433 3461 0	Y	SALVE_GRAVEYARD	PohPortal	PoHPortal -> Salve Graveyard	19	4
+1922 5707 1	3433 3461 0	Y	SALVE_GRAVEYARD	PohPortal	PoHPortal -> Salve Graveyard	19	4
 1922 5707 2	3433 3461 0	Y	SALVE_GRAVEYARD	PohPortal	PoHPortal -> Salve Graveyard	19	4
+1922 5707 3	3433 3461 0	Y	SALVE_GRAVEYARD	PohPortal	PoHPortal -> Salve Graveyard	19	4
 1986 5707 0	3433 3461 0	Y	SALVE_GRAVEYARD	PohPortal	PoHPortal -> Salve Graveyard	19	4
+1986 5707 1	3433 3461 0	Y	SALVE_GRAVEYARD	PohPortal	PoHPortal -> Salve Graveyard	19	4
+1986 5707 2	3433 3461 0	Y	SALVE_GRAVEYARD	PohPortal	PoHPortal -> Salve Graveyard	19	4
+1986 5707 3	3433 3461 0	Y	SALVE_GRAVEYARD	PohPortal	PoHPortal -> Salve Graveyard	19	4
 1858 5707 0	3548 3528 0	Y	FENKENSTRAINS_CASTLE	PohPortal	PoHPortal -> Fenkenstrain's Castle	19	4
+1858 5707 1	3548 3528 0	Y	FENKENSTRAINS_CASTLE	PohPortal	PoHPortal -> Fenkenstrain's Castle	19	4
+1858 5707 2	3548 3528 0	Y	FENKENSTRAINS_CASTLE	PohPortal	PoHPortal -> Fenkenstrain's Castle	19	4
+1858 5707 3	3548 3528 0	Y	FENKENSTRAINS_CASTLE	PohPortal	PoHPortal -> Fenkenstrain's Castle	19	4
+1922 5707 0	3548 3528 0	Y	FENKENSTRAINS_CASTLE	PohPortal	PoHPortal -> Fenkenstrain's Castle	19	4
+1922 5707 1	3548 3528 0	Y	FENKENSTRAINS_CASTLE	PohPortal	PoHPortal -> Fenkenstrain's Castle	19	4
 1922 5707 2	3548 3528 0	Y	FENKENSTRAINS_CASTLE	PohPortal	PoHPortal -> Fenkenstrain's Castle	19	4
+1922 5707 3	3548 3528 0	Y	FENKENSTRAINS_CASTLE	PohPortal	PoHPortal -> Fenkenstrain's Castle	19	4
 1986 5707 0	3548 3528 0	Y	FENKENSTRAINS_CASTLE	PohPortal	PoHPortal -> Fenkenstrain's Castle	19	4
+1986 5707 1	3548 3528 0	Y	FENKENSTRAINS_CASTLE	PohPortal	PoHPortal -> Fenkenstrain's Castle	19	4
+1986 5707 2	3548 3528 0	Y	FENKENSTRAINS_CASTLE	PohPortal	PoHPortal -> Fenkenstrain's Castle	19	4
+1986 5707 3	3548 3528 0	Y	FENKENSTRAINS_CASTLE	PohPortal	PoHPortal -> Fenkenstrain's Castle	19	4
 1858 5707 0	2500 3291 0	Y	WEST_ARDOUGNE	PohPortal	PoHPortal -> West Ardougne	19	4
+1858 5707 1	2500 3291 0	Y	WEST_ARDOUGNE	PohPortal	PoHPortal -> West Ardougne	19	4
+1858 5707 2	2500 3291 0	Y	WEST_ARDOUGNE	PohPortal	PoHPortal -> West Ardougne	19	4
+1858 5707 3	2500 3291 0	Y	WEST_ARDOUGNE	PohPortal	PoHPortal -> West Ardougne	19	4
+1922 5707 0	2500 3291 0	Y	WEST_ARDOUGNE	PohPortal	PoHPortal -> West Ardougne	19	4
+1922 5707 1	2500 3291 0	Y	WEST_ARDOUGNE	PohPortal	PoHPortal -> West Ardougne	19	4
 1922 5707 2	2500 3291 0	Y	WEST_ARDOUGNE	PohPortal	PoHPortal -> West Ardougne	19	4
+1922 5707 3	2500 3291 0	Y	WEST_ARDOUGNE	PohPortal	PoHPortal -> West Ardougne	19	4
 1986 5707 0	2500 3291 0	Y	WEST_ARDOUGNE	PohPortal	PoHPortal -> West Ardougne	19	4
+1986 5707 1	2500 3291 0	Y	WEST_ARDOUGNE	PohPortal	PoHPortal -> West Ardougne	19	4
+1986 5707 2	2500 3291 0	Y	WEST_ARDOUGNE	PohPortal	PoHPortal -> West Ardougne	19	4
+1986 5707 3	2500 3291 0	Y	WEST_ARDOUGNE	PohPortal	PoHPortal -> West Ardougne	19	4
 1858 5707 0	3797 2866 0	Y	HARMONY_ISLAND	PohPortal	PoHPortal -> Harmony Island	19	4
+1858 5707 1	3797 2866 0	Y	HARMONY_ISLAND	PohPortal	PoHPortal -> Harmony Island	19	4
+1858 5707 2	3797 2866 0	Y	HARMONY_ISLAND	PohPortal	PoHPortal -> Harmony Island	19	4
+1858 5707 3	3797 2866 0	Y	HARMONY_ISLAND	PohPortal	PoHPortal -> Harmony Island	19	4
+1922 5707 0	3797 2866 0	Y	HARMONY_ISLAND	PohPortal	PoHPortal -> Harmony Island	19	4
+1922 5707 1	3797 2866 0	Y	HARMONY_ISLAND	PohPortal	PoHPortal -> Harmony Island	19	4
 1922 5707 2	3797 2866 0	Y	HARMONY_ISLAND	PohPortal	PoHPortal -> Harmony Island	19	4
+1922 5707 3	3797 2866 0	Y	HARMONY_ISLAND	PohPortal	PoHPortal -> Harmony Island	19	4
 1986 5707 0	3797 2866 0	Y	HARMONY_ISLAND	PohPortal	PoHPortal -> Harmony Island	19	4
+1986 5707 1	3797 2866 0	Y	HARMONY_ISLAND	PohPortal	PoHPortal -> Harmony Island	19	4
+1986 5707 2	3797 2866 0	Y	HARMONY_ISLAND	PohPortal	PoHPortal -> Harmony Island	19	4
+1986 5707 3	3797 2866 0	Y	HARMONY_ISLAND	PohPortal	PoHPortal -> Harmony Island	19	4
 1858 5707 0	3565 3315 0	Y	BARROWS	PohPortal	PoHPortal -> Barrows	19	4
+1858 5707 1	3565 3315 0	Y	BARROWS	PohPortal	PoHPortal -> Barrows	19	4
+1858 5707 2	3565 3315 0	Y	BARROWS	PohPortal	PoHPortal -> Barrows	19	4
+1858 5707 3	3565 3315 0	Y	BARROWS	PohPortal	PoHPortal -> Barrows	19	4
+1922 5707 0	3565 3315 0	Y	BARROWS	PohPortal	PoHPortal -> Barrows	19	4
+1922 5707 1	3565 3315 0	Y	BARROWS	PohPortal	PoHPortal -> Barrows	19	4
 1922 5707 2	3565 3315 0	Y	BARROWS	PohPortal	PoHPortal -> Barrows	19	4
+1922 5707 3	3565 3315 0	Y	BARROWS	PohPortal	PoHPortal -> Barrows	19	4
 1986 5707 0	3565 3315 0	Y	BARROWS	PohPortal	PoHPortal -> Barrows	19	4
+1986 5707 1	3565 3315 0	Y	BARROWS	PohPortal	PoHPortal -> Barrows	19	4
+1986 5707 2	3565 3315 0	Y	BARROWS	PohPortal	PoHPortal -> Barrows	19	4
+1986 5707 3	3565 3315 0	Y	BARROWS	PohPortal	PoHPortal -> Barrows	19	4
 1858 5707 0	2846 3940 0	Y	WEISS	PohPortal	PoHPortal -> Weiss	19	4
+1858 5707 1	2846 3940 0	Y	WEISS	PohPortal	PoHPortal -> Weiss	19	4
+1858 5707 2	2846 3940 0	Y	WEISS	PohPortal	PoHPortal -> Weiss	19	4
+1858 5707 3	2846 3940 0	Y	WEISS	PohPortal	PoHPortal -> Weiss	19	4
+1922 5707 0	2846 3940 0	Y	WEISS	PohPortal	PoHPortal -> Weiss	19	4
+1922 5707 1	2846 3940 0	Y	WEISS	PohPortal	PoHPortal -> Weiss	19	4
 1922 5707 2	2846 3940 0	Y	WEISS	PohPortal	PoHPortal -> Weiss	19	4
+1922 5707 3	2846 3940 0	Y	WEISS	PohPortal	PoHPortal -> Weiss	19	4
 1986 5707 0	2846 3940 0	Y	WEISS	PohPortal	PoHPortal -> Weiss	19	4
+1986 5707 1	2846 3940 0	Y	WEISS	PohPortal	PoHPortal -> Weiss	19	4
+1986 5707 2	2846 3940 0	Y	WEISS	PohPortal	PoHPortal -> Weiss	19	4
+1986 5707 3	2846 3940 0	Y	WEISS	PohPortal	PoHPortal -> Weiss	19	4
 1858 5707 0	1576 3528 0	Y	LOOKOUT	MountedXerics	MountedXerics -> Xeric's Lookout	19	4
+1858 5707 1	1576 3528 0	Y	LOOKOUT	MountedXerics	MountedXerics -> Xeric's Lookout	19	4
+1858 5707 2	1576 3528 0	Y	LOOKOUT	MountedXerics	MountedXerics -> Xeric's Lookout	19	4
+1858 5707 3	1576 3528 0	Y	LOOKOUT	MountedXerics	MountedXerics -> Xeric's Lookout	19	4
+1922 5707 0	1576 3528 0	Y	LOOKOUT	MountedXerics	MountedXerics -> Xeric's Lookout	19	4
+1922 5707 1	1576 3528 0	Y	LOOKOUT	MountedXerics	MountedXerics -> Xeric's Lookout	19	4
 1922 5707 2	1576 3528 0	Y	LOOKOUT	MountedXerics	MountedXerics -> Xeric's Lookout	19	4
+1922 5707 3	1576 3528 0	Y	LOOKOUT	MountedXerics	MountedXerics -> Xeric's Lookout	19	4
 1986 5707 0	1576 3528 0	Y	LOOKOUT	MountedXerics	MountedXerics -> Xeric's Lookout	19	4
+1986 5707 1	1576 3528 0	Y	LOOKOUT	MountedXerics	MountedXerics -> Xeric's Lookout	19	4
+1986 5707 2	1576 3528 0	Y	LOOKOUT	MountedXerics	MountedXerics -> Xeric's Lookout	19	4
+1986 5707 3	1576 3528 0	Y	LOOKOUT	MountedXerics	MountedXerics -> Xeric's Lookout	19	4
 1858 5707 0	1754 3564 0	Y	GLADE	MountedXerics	MountedXerics -> Xeric's Glade	19	4
+1858 5707 1	1754 3564 0	Y	GLADE	MountedXerics	MountedXerics -> Xeric's Glade	19	4
+1858 5707 2	1754 3564 0	Y	GLADE	MountedXerics	MountedXerics -> Xeric's Glade	19	4
+1858 5707 3	1754 3564 0	Y	GLADE	MountedXerics	MountedXerics -> Xeric's Glade	19	4
+1922 5707 0	1754 3564 0	Y	GLADE	MountedXerics	MountedXerics -> Xeric's Glade	19	4
+1922 5707 1	1754 3564 0	Y	GLADE	MountedXerics	MountedXerics -> Xeric's Glade	19	4
 1922 5707 2	1754 3564 0	Y	GLADE	MountedXerics	MountedXerics -> Xeric's Glade	19	4
+1922 5707 3	1754 3564 0	Y	GLADE	MountedXerics	MountedXerics -> Xeric's Glade	19	4
 1986 5707 0	1754 3564 0	Y	GLADE	MountedXerics	MountedXerics -> Xeric's Glade	19	4
+1986 5707 1	1754 3564 0	Y	GLADE	MountedXerics	MountedXerics -> Xeric's Glade	19	4
+1986 5707 2	1754 3564 0	Y	GLADE	MountedXerics	MountedXerics -> Xeric's Glade	19	4
+1986 5707 3	1754 3564 0	Y	GLADE	MountedXerics	MountedXerics -> Xeric's Glade	19	4
 1858 5707 0	1504 3819 0	Y	INFERNO	MountedXerics	MountedXerics -> Xeric's Inferno	19	4
+1858 5707 1	1504 3819 0	Y	INFERNO	MountedXerics	MountedXerics -> Xeric's Inferno	19	4
+1858 5707 2	1504 3819 0	Y	INFERNO	MountedXerics	MountedXerics -> Xeric's Inferno	19	4
+1858 5707 3	1504 3819 0	Y	INFERNO	MountedXerics	MountedXerics -> Xeric's Inferno	19	4
+1922 5707 0	1504 3819 0	Y	INFERNO	MountedXerics	MountedXerics -> Xeric's Inferno	19	4
+1922 5707 1	1504 3819 0	Y	INFERNO	MountedXerics	MountedXerics -> Xeric's Inferno	19	4
 1922 5707 2	1504 3819 0	Y	INFERNO	MountedXerics	MountedXerics -> Xeric's Inferno	19	4
+1922 5707 3	1504 3819 0	Y	INFERNO	MountedXerics	MountedXerics -> Xeric's Inferno	19	4
 1986 5707 0	1504 3819 0	Y	INFERNO	MountedXerics	MountedXerics -> Xeric's Inferno	19	4
+1986 5707 1	1504 3819 0	Y	INFERNO	MountedXerics	MountedXerics -> Xeric's Inferno	19	4
+1986 5707 2	1504 3819 0	Y	INFERNO	MountedXerics	MountedXerics -> Xeric's Inferno	19	4
+1986 5707 3	1504 3819 0	Y	INFERNO	MountedXerics	MountedXerics -> Xeric's Inferno	19	4
 1858 5707 0	1641 3670 0	Y	HEART	MountedXerics	MountedXerics -> Xeric's Heart	19	4
+1858 5707 1	1641 3670 0	Y	HEART	MountedXerics	MountedXerics -> Xeric's Heart	19	4
+1858 5707 2	1641 3670 0	Y	HEART	MountedXerics	MountedXerics -> Xeric's Heart	19	4
+1858 5707 3	1641 3670 0	Y	HEART	MountedXerics	MountedXerics -> Xeric's Heart	19	4
+1922 5707 0	1641 3670 0	Y	HEART	MountedXerics	MountedXerics -> Xeric's Heart	19	4
+1922 5707 1	1641 3670 0	Y	HEART	MountedXerics	MountedXerics -> Xeric's Heart	19	4
 1922 5707 2	1641 3670 0	Y	HEART	MountedXerics	MountedXerics -> Xeric's Heart	19	4
+1922 5707 3	1641 3670 0	Y	HEART	MountedXerics	MountedXerics -> Xeric's Heart	19	4
 1986 5707 0	1641 3670 0	Y	HEART	MountedXerics	MountedXerics -> Xeric's Heart	19	4
+1986 5707 1	1641 3670 0	Y	HEART	MountedXerics	MountedXerics -> Xeric's Heart	19	4
+1986 5707 2	1641 3670 0	Y	HEART	MountedXerics	MountedXerics -> Xeric's Heart	19	4
+1986 5707 3	1641 3670 0	Y	HEART	MountedXerics	MountedXerics -> Xeric's Heart	19	4
 1858 5707 0	2458 2851 0	Y	MYTHS_GUILD	MountedMythical	MountedMythical -> Myths guild	19	4
+1858 5707 1	2458 2851 0	Y	MYTHS_GUILD	MountedMythical	MountedMythical -> Myths guild	19	4
+1858 5707 2	2458 2851 0	Y	MYTHS_GUILD	MountedMythical	MountedMythical -> Myths guild	19	4
+1858 5707 3	2458 2851 0	Y	MYTHS_GUILD	MountedMythical	MountedMythical -> Myths guild	19	4
+1922 5707 0	2458 2851 0	Y	MYTHS_GUILD	MountedMythical	MountedMythical -> Myths guild	19	4
+1922 5707 1	2458 2851 0	Y	MYTHS_GUILD	MountedMythical	MountedMythical -> Myths guild	19	4
 1922 5707 2	2458 2851 0	Y	MYTHS_GUILD	MountedMythical	MountedMythical -> Myths guild	19	4
+1922 5707 3	2458 2851 0	Y	MYTHS_GUILD	MountedMythical	MountedMythical -> Myths guild	19	4
 1986 5707 0	2458 2851 0	Y	MYTHS_GUILD	MountedMythical	MountedMythical -> Myths guild	19	4
+1986 5707 1	2458 2851 0	Y	MYTHS_GUILD	MountedMythical	MountedMythical -> Myths guild	19	4
+1986 5707 2	2458 2851 0	Y	MYTHS_GUILD	MountedMythical	MountedMythical -> Myths guild	19	4
+1986 5707 3	2458 2851 0	Y	MYTHS_GUILD	MountedMythical	MountedMythical -> Myths guild	19	4
+1858 5707 0	2520 3571 0	Y	BARBARIAN_ASSAULT	JewelleryBox	JewelleryBox -> BARBARIAN_ASSAULT	19	6
+1858 5707 1	2520 3571 0	Y	BARBARIAN_ASSAULT	JewelleryBox	JewelleryBox -> BARBARIAN_ASSAULT	19	6
+1858 5707 2	2520 3571 0	Y	BARBARIAN_ASSAULT	JewelleryBox	JewelleryBox -> BARBARIAN_ASSAULT	19	6
+1858 5707 3	2520 3571 0	Y	BARBARIAN_ASSAULT	JewelleryBox	JewelleryBox -> BARBARIAN_ASSAULT	19	6
+1922 5707 0	2520 3571 0	Y	BARBARIAN_ASSAULT	JewelleryBox	JewelleryBox -> BARBARIAN_ASSAULT	19	6
+1922 5707 1	2520 3571 0	Y	BARBARIAN_ASSAULT	JewelleryBox	JewelleryBox -> BARBARIAN_ASSAULT	19	6
+1922 5707 2	2520 3571 0	Y	BARBARIAN_ASSAULT	JewelleryBox	JewelleryBox -> BARBARIAN_ASSAULT	19	6
+1922 5707 3	2520 3571 0	Y	BARBARIAN_ASSAULT	JewelleryBox	JewelleryBox -> BARBARIAN_ASSAULT	19	6
+1986 5707 0	2520 3571 0	Y	BARBARIAN_ASSAULT	JewelleryBox	JewelleryBox -> BARBARIAN_ASSAULT	19	6
+1986 5707 1	2520 3571 0	Y	BARBARIAN_ASSAULT	JewelleryBox	JewelleryBox -> BARBARIAN_ASSAULT	19	6
+1986 5707 2	2520 3571 0	Y	BARBARIAN_ASSAULT	JewelleryBox	JewelleryBox -> BARBARIAN_ASSAULT	19	6
+1986 5707 3	2520 3571 0	Y	BARBARIAN_ASSAULT	JewelleryBox	JewelleryBox -> BARBARIAN_ASSAULT	19	6
+1858 5707 0	2898 3554 0	Y	BURTHORPE_GAMES_ROOM	JewelleryBox	JewelleryBox -> BURTHORPE_GAMES_ROOM	19	6
+1858 5707 1	2898 3554 0	Y	BURTHORPE_GAMES_ROOM	JewelleryBox	JewelleryBox -> BURTHORPE_GAMES_ROOM	19	6
+1858 5707 2	2898 3554 0	Y	BURTHORPE_GAMES_ROOM	JewelleryBox	JewelleryBox -> BURTHORPE_GAMES_ROOM	19	6
+1858 5707 3	2898 3554 0	Y	BURTHORPE_GAMES_ROOM	JewelleryBox	JewelleryBox -> BURTHORPE_GAMES_ROOM	19	6
+1922 5707 0	2898 3554 0	Y	BURTHORPE_GAMES_ROOM	JewelleryBox	JewelleryBox -> BURTHORPE_GAMES_ROOM	19	6
+1922 5707 1	2898 3554 0	Y	BURTHORPE_GAMES_ROOM	JewelleryBox	JewelleryBox -> BURTHORPE_GAMES_ROOM	19	6
+1922 5707 2	2898 3554 0	Y	BURTHORPE_GAMES_ROOM	JewelleryBox	JewelleryBox -> BURTHORPE_GAMES_ROOM	19	6
+1922 5707 3	2898 3554 0	Y	BURTHORPE_GAMES_ROOM	JewelleryBox	JewelleryBox -> BURTHORPE_GAMES_ROOM	19	6
+1986 5707 0	2898 3554 0	Y	BURTHORPE_GAMES_ROOM	JewelleryBox	JewelleryBox -> BURTHORPE_GAMES_ROOM	19	6
+1986 5707 1	2898 3554 0	Y	BURTHORPE_GAMES_ROOM	JewelleryBox	JewelleryBox -> BURTHORPE_GAMES_ROOM	19	6
+1986 5707 2	2898 3554 0	Y	BURTHORPE_GAMES_ROOM	JewelleryBox	JewelleryBox -> BURTHORPE_GAMES_ROOM	19	6
+1986 5707 3	2898 3554 0	Y	BURTHORPE_GAMES_ROOM	JewelleryBox	JewelleryBox -> BURTHORPE_GAMES_ROOM	19	6
+1858 5707 0	3245 9500 0	Y	TEARS_OF_GUTHIX	JewelleryBox	JewelleryBox -> TEARS_OF_GUTHIX	19	6
+1858 5707 1	3245 9500 0	Y	TEARS_OF_GUTHIX	JewelleryBox	JewelleryBox -> TEARS_OF_GUTHIX	19	6
+1858 5707 2	3245 9500 0	Y	TEARS_OF_GUTHIX	JewelleryBox	JewelleryBox -> TEARS_OF_GUTHIX	19	6
+1858 5707 3	3245 9500 0	Y	TEARS_OF_GUTHIX	JewelleryBox	JewelleryBox -> TEARS_OF_GUTHIX	19	6
+1922 5707 0	3245 9500 0	Y	TEARS_OF_GUTHIX	JewelleryBox	JewelleryBox -> TEARS_OF_GUTHIX	19	6
+1922 5707 1	3245 9500 0	Y	TEARS_OF_GUTHIX	JewelleryBox	JewelleryBox -> TEARS_OF_GUTHIX	19	6
+1922 5707 2	3245 9500 0	Y	TEARS_OF_GUTHIX	JewelleryBox	JewelleryBox -> TEARS_OF_GUTHIX	19	6
+1922 5707 3	3245 9500 0	Y	TEARS_OF_GUTHIX	JewelleryBox	JewelleryBox -> TEARS_OF_GUTHIX	19	6
+1986 5707 0	3245 9500 0	Y	TEARS_OF_GUTHIX	JewelleryBox	JewelleryBox -> TEARS_OF_GUTHIX	19	6
+1986 5707 1	3245 9500 0	Y	TEARS_OF_GUTHIX	JewelleryBox	JewelleryBox -> TEARS_OF_GUTHIX	19	6
+1986 5707 2	3245 9500 0	Y	TEARS_OF_GUTHIX	JewelleryBox	JewelleryBox -> TEARS_OF_GUTHIX	19	6
+1986 5707 3	3245 9500 0	Y	TEARS_OF_GUTHIX	JewelleryBox	JewelleryBox -> TEARS_OF_GUTHIX	19	6
+1858 5707 0	2967 4384 0	Y	CORPOREAL_BEAST	JewelleryBox	JewelleryBox -> CORPOREAL_BEAST	19	6
+1858 5707 1	2967 4384 0	Y	CORPOREAL_BEAST	JewelleryBox	JewelleryBox -> CORPOREAL_BEAST	19	6
+1858 5707 2	2967 4384 0	Y	CORPOREAL_BEAST	JewelleryBox	JewelleryBox -> CORPOREAL_BEAST	19	6
+1858 5707 3	2967 4384 0	Y	CORPOREAL_BEAST	JewelleryBox	JewelleryBox -> CORPOREAL_BEAST	19	6
+1922 5707 0	2967 4384 0	Y	CORPOREAL_BEAST	JewelleryBox	JewelleryBox -> CORPOREAL_BEAST	19	6
+1922 5707 1	2967 4384 0	Y	CORPOREAL_BEAST	JewelleryBox	JewelleryBox -> CORPOREAL_BEAST	19	6
+1922 5707 2	2967 4384 0	Y	CORPOREAL_BEAST	JewelleryBox	JewelleryBox -> CORPOREAL_BEAST	19	6
+1922 5707 3	2967 4384 0	Y	CORPOREAL_BEAST	JewelleryBox	JewelleryBox -> CORPOREAL_BEAST	19	6
+1986 5707 0	2967 4384 0	Y	CORPOREAL_BEAST	JewelleryBox	JewelleryBox -> CORPOREAL_BEAST	19	6
+1986 5707 1	2967 4384 0	Y	CORPOREAL_BEAST	JewelleryBox	JewelleryBox -> CORPOREAL_BEAST	19	6
+1986 5707 2	2967 4384 0	Y	CORPOREAL_BEAST	JewelleryBox	JewelleryBox -> CORPOREAL_BEAST	19	6
+1986 5707 3	2967 4384 0	Y	CORPOREAL_BEAST	JewelleryBox	JewelleryBox -> CORPOREAL_BEAST	19	6
+1858 5707 0	1624 3938 0	Y	WINTERTODT_CAMP	JewelleryBox	JewelleryBox -> WINTERTODT_CAMP	19	6
+1858 5707 1	1624 3938 0	Y	WINTERTODT_CAMP	JewelleryBox	JewelleryBox -> WINTERTODT_CAMP	19	6
+1858 5707 2	1624 3938 0	Y	WINTERTODT_CAMP	JewelleryBox	JewelleryBox -> WINTERTODT_CAMP	19	6
+1858 5707 3	1624 3938 0	Y	WINTERTODT_CAMP	JewelleryBox	JewelleryBox -> WINTERTODT_CAMP	19	6
+1922 5707 0	1624 3938 0	Y	WINTERTODT_CAMP	JewelleryBox	JewelleryBox -> WINTERTODT_CAMP	19	6
+1922 5707 1	1624 3938 0	Y	WINTERTODT_CAMP	JewelleryBox	JewelleryBox -> WINTERTODT_CAMP	19	6
+1922 5707 2	1624 3938 0	Y	WINTERTODT_CAMP	JewelleryBox	JewelleryBox -> WINTERTODT_CAMP	19	6
+1922 5707 3	1624 3938 0	Y	WINTERTODT_CAMP	JewelleryBox	JewelleryBox -> WINTERTODT_CAMP	19	6
+1986 5707 0	1624 3938 0	Y	WINTERTODT_CAMP	JewelleryBox	JewelleryBox -> WINTERTODT_CAMP	19	6
+1986 5707 1	1624 3938 0	Y	WINTERTODT_CAMP	JewelleryBox	JewelleryBox -> WINTERTODT_CAMP	19	6
+1986 5707 2	1624 3938 0	Y	WINTERTODT_CAMP	JewelleryBox	JewelleryBox -> WINTERTODT_CAMP	19	6
+1986 5707 3	1624 3938 0	Y	WINTERTODT_CAMP	JewelleryBox	JewelleryBox -> WINTERTODT_CAMP	19	6
+1858 5707 0	3315 3235 0	Y	PVP_ARENA	JewelleryBox	JewelleryBox -> PVP_ARENA	19	6
+1858 5707 1	3315 3235 0	Y	PVP_ARENA	JewelleryBox	JewelleryBox -> PVP_ARENA	19	6
+1858 5707 2	3315 3235 0	Y	PVP_ARENA	JewelleryBox	JewelleryBox -> PVP_ARENA	19	6
+1858 5707 3	3315 3235 0	Y	PVP_ARENA	JewelleryBox	JewelleryBox -> PVP_ARENA	19	6
+1922 5707 0	3315 3235 0	Y	PVP_ARENA	JewelleryBox	JewelleryBox -> PVP_ARENA	19	6
+1922 5707 1	3315 3235 0	Y	PVP_ARENA	JewelleryBox	JewelleryBox -> PVP_ARENA	19	6
+1922 5707 2	3315 3235 0	Y	PVP_ARENA	JewelleryBox	JewelleryBox -> PVP_ARENA	19	6
+1922 5707 3	3315 3235 0	Y	PVP_ARENA	JewelleryBox	JewelleryBox -> PVP_ARENA	19	6
+1986 5707 0	3315 3235 0	Y	PVP_ARENA	JewelleryBox	JewelleryBox -> PVP_ARENA	19	6
+1986 5707 1	3315 3235 0	Y	PVP_ARENA	JewelleryBox	JewelleryBox -> PVP_ARENA	19	6
+1986 5707 2	3315 3235 0	Y	PVP_ARENA	JewelleryBox	JewelleryBox -> PVP_ARENA	19	6
+1986 5707 3	3315 3235 0	Y	PVP_ARENA	JewelleryBox	JewelleryBox -> PVP_ARENA	19	6
+1858 5707 0	3151 3636 0	Y	FEROX_ENCLAVE	JewelleryBox	JewelleryBox -> FEROX_ENCLAVE	19	6
+1858 5707 1	3151 3636 0	Y	FEROX_ENCLAVE	JewelleryBox	JewelleryBox -> FEROX_ENCLAVE	19	6
+1858 5707 2	3151 3636 0	Y	FEROX_ENCLAVE	JewelleryBox	JewelleryBox -> FEROX_ENCLAVE	19	6
+1858 5707 3	3151 3636 0	Y	FEROX_ENCLAVE	JewelleryBox	JewelleryBox -> FEROX_ENCLAVE	19	6
+1922 5707 0	3151 3636 0	Y	FEROX_ENCLAVE	JewelleryBox	JewelleryBox -> FEROX_ENCLAVE	19	6
+1922 5707 1	3151 3636 0	Y	FEROX_ENCLAVE	JewelleryBox	JewelleryBox -> FEROX_ENCLAVE	19	6
+1922 5707 2	3151 3636 0	Y	FEROX_ENCLAVE	JewelleryBox	JewelleryBox -> FEROX_ENCLAVE	19	6
+1922 5707 3	3151 3636 0	Y	FEROX_ENCLAVE	JewelleryBox	JewelleryBox -> FEROX_ENCLAVE	19	6
+1986 5707 0	3151 3636 0	Y	FEROX_ENCLAVE	JewelleryBox	JewelleryBox -> FEROX_ENCLAVE	19	6
+1986 5707 1	3151 3636 0	Y	FEROX_ENCLAVE	JewelleryBox	JewelleryBox -> FEROX_ENCLAVE	19	6
+1986 5707 2	3151 3636 0	Y	FEROX_ENCLAVE	JewelleryBox	JewelleryBox -> FEROX_ENCLAVE	19	6
+1986 5707 3	3151 3636 0	Y	FEROX_ENCLAVE	JewelleryBox	JewelleryBox -> FEROX_ENCLAVE	19	6
+1858 5707 0	2441 3091 0	Y	CASTLE_WARS	JewelleryBox	JewelleryBox -> CASTLE_WARS	19	6
+1858 5707 1	2441 3091 0	Y	CASTLE_WARS	JewelleryBox	JewelleryBox -> CASTLE_WARS	19	6
+1858 5707 2	2441 3091 0	Y	CASTLE_WARS	JewelleryBox	JewelleryBox -> CASTLE_WARS	19	6
+1858 5707 3	2441 3091 0	Y	CASTLE_WARS	JewelleryBox	JewelleryBox -> CASTLE_WARS	19	6
+1922 5707 0	2441 3091 0	Y	CASTLE_WARS	JewelleryBox	JewelleryBox -> CASTLE_WARS	19	6
+1922 5707 1	2441 3091 0	Y	CASTLE_WARS	JewelleryBox	JewelleryBox -> CASTLE_WARS	19	6
+1922 5707 2	2441 3091 0	Y	CASTLE_WARS	JewelleryBox	JewelleryBox -> CASTLE_WARS	19	6
+1922 5707 3	2441 3091 0	Y	CASTLE_WARS	JewelleryBox	JewelleryBox -> CASTLE_WARS	19	6
+1986 5707 0	2441 3091 0	Y	CASTLE_WARS	JewelleryBox	JewelleryBox -> CASTLE_WARS	19	6
+1986 5707 1	2441 3091 0	Y	CASTLE_WARS	JewelleryBox	JewelleryBox -> CASTLE_WARS	19	6
+1986 5707 2	2441 3091 0	Y	CASTLE_WARS	JewelleryBox	JewelleryBox -> CASTLE_WARS	19	6
+1986 5707 3	2441 3091 0	Y	CASTLE_WARS	JewelleryBox	JewelleryBox -> CASTLE_WARS	19	6
+1858 5707 0	1793 3107 0	Y	FORTIS_COLOSSEUM	JewelleryBox	JewelleryBox -> FORTIS_COLOSSEUM	19	6
+1858 5707 1	1793 3107 0	Y	FORTIS_COLOSSEUM	JewelleryBox	JewelleryBox -> FORTIS_COLOSSEUM	19	6
+1858 5707 2	1793 3107 0	Y	FORTIS_COLOSSEUM	JewelleryBox	JewelleryBox -> FORTIS_COLOSSEUM	19	6
+1858 5707 3	1793 3107 0	Y	FORTIS_COLOSSEUM	JewelleryBox	JewelleryBox -> FORTIS_COLOSSEUM	19	6
+1922 5707 0	1793 3107 0	Y	FORTIS_COLOSSEUM	JewelleryBox	JewelleryBox -> FORTIS_COLOSSEUM	19	6
+1922 5707 1	1793 3107 0	Y	FORTIS_COLOSSEUM	JewelleryBox	JewelleryBox -> FORTIS_COLOSSEUM	19	6
+1922 5707 2	1793 3107 0	Y	FORTIS_COLOSSEUM	JewelleryBox	JewelleryBox -> FORTIS_COLOSSEUM	19	6
+1922 5707 3	1793 3107 0	Y	FORTIS_COLOSSEUM	JewelleryBox	JewelleryBox -> FORTIS_COLOSSEUM	19	6
+1986 5707 0	1793 3107 0	Y	FORTIS_COLOSSEUM	JewelleryBox	JewelleryBox -> FORTIS_COLOSSEUM	19	6
+1986 5707 1	1793 3107 0	Y	FORTIS_COLOSSEUM	JewelleryBox	JewelleryBox -> FORTIS_COLOSSEUM	19	6
+1986 5707 2	1793 3107 0	Y	FORTIS_COLOSSEUM	JewelleryBox	JewelleryBox -> FORTIS_COLOSSEUM	19	6
+1986 5707 3	1793 3107 0	Y	FORTIS_COLOSSEUM	JewelleryBox	JewelleryBox -> FORTIS_COLOSSEUM	19	6
+1858 5707 0	2883 3549 0	Y	WARRIORS_GUILD	JewelleryBox	JewelleryBox -> WARRIORS_GUILD	19	6
+1858 5707 1	2883 3549 0	Y	WARRIORS_GUILD	JewelleryBox	JewelleryBox -> WARRIORS_GUILD	19	6
+1858 5707 2	2883 3549 0	Y	WARRIORS_GUILD	JewelleryBox	JewelleryBox -> WARRIORS_GUILD	19	6
+1858 5707 3	2883 3549 0	Y	WARRIORS_GUILD	JewelleryBox	JewelleryBox -> WARRIORS_GUILD	19	6
+1922 5707 0	2883 3549 0	Y	WARRIORS_GUILD	JewelleryBox	JewelleryBox -> WARRIORS_GUILD	19	6
+1922 5707 1	2883 3549 0	Y	WARRIORS_GUILD	JewelleryBox	JewelleryBox -> WARRIORS_GUILD	19	6
+1922 5707 2	2883 3549 0	Y	WARRIORS_GUILD	JewelleryBox	JewelleryBox -> WARRIORS_GUILD	19	6
+1922 5707 3	2883 3549 0	Y	WARRIORS_GUILD	JewelleryBox	JewelleryBox -> WARRIORS_GUILD	19	6
+1986 5707 0	2883 3549 0	Y	WARRIORS_GUILD	JewelleryBox	JewelleryBox -> WARRIORS_GUILD	19	6
+1986 5707 1	2883 3549 0	Y	WARRIORS_GUILD	JewelleryBox	JewelleryBox -> WARRIORS_GUILD	19	6
+1986 5707 2	2883 3549 0	Y	WARRIORS_GUILD	JewelleryBox	JewelleryBox -> WARRIORS_GUILD	19	6
+1986 5707 3	2883 3549 0	Y	WARRIORS_GUILD	JewelleryBox	JewelleryBox -> WARRIORS_GUILD	19	6
+1858 5707 0	3189 3368 0	Y	CHAMPIONS_GUILD	JewelleryBox	JewelleryBox -> CHAMPIONS_GUILD	19	6
+1858 5707 1	3189 3368 0	Y	CHAMPIONS_GUILD	JewelleryBox	JewelleryBox -> CHAMPIONS_GUILD	19	6
+1858 5707 2	3189 3368 0	Y	CHAMPIONS_GUILD	JewelleryBox	JewelleryBox -> CHAMPIONS_GUILD	19	6
+1858 5707 3	3189 3368 0	Y	CHAMPIONS_GUILD	JewelleryBox	JewelleryBox -> CHAMPIONS_GUILD	19	6
+1922 5707 0	3189 3368 0	Y	CHAMPIONS_GUILD	JewelleryBox	JewelleryBox -> CHAMPIONS_GUILD	19	6
+1922 5707 1	3189 3368 0	Y	CHAMPIONS_GUILD	JewelleryBox	JewelleryBox -> CHAMPIONS_GUILD	19	6
+1922 5707 2	3189 3368 0	Y	CHAMPIONS_GUILD	JewelleryBox	JewelleryBox -> CHAMPIONS_GUILD	19	6
+1922 5707 3	3189 3368 0	Y	CHAMPIONS_GUILD	JewelleryBox	JewelleryBox -> CHAMPIONS_GUILD	19	6
+1986 5707 0	3189 3368 0	Y	CHAMPIONS_GUILD	JewelleryBox	JewelleryBox -> CHAMPIONS_GUILD	19	6
+1986 5707 1	3189 3368 0	Y	CHAMPIONS_GUILD	JewelleryBox	JewelleryBox -> CHAMPIONS_GUILD	19	6
+1986 5707 2	3189 3368 0	Y	CHAMPIONS_GUILD	JewelleryBox	JewelleryBox -> CHAMPIONS_GUILD	19	6
+1986 5707 3	3189 3368 0	Y	CHAMPIONS_GUILD	JewelleryBox	JewelleryBox -> CHAMPIONS_GUILD	19	6
+1858 5707 0	3053 3487 0	Y	EDGEVILLE_MONASTERY	JewelleryBox	JewelleryBox -> EDGEVILLE_MONASTERY	19	6
+1858 5707 1	3053 3487 0	Y	EDGEVILLE_MONASTERY	JewelleryBox	JewelleryBox -> EDGEVILLE_MONASTERY	19	6
+1858 5707 2	3053 3487 0	Y	EDGEVILLE_MONASTERY	JewelleryBox	JewelleryBox -> EDGEVILLE_MONASTERY	19	6
+1858 5707 3	3053 3487 0	Y	EDGEVILLE_MONASTERY	JewelleryBox	JewelleryBox -> EDGEVILLE_MONASTERY	19	6
+1922 5707 0	3053 3487 0	Y	EDGEVILLE_MONASTERY	JewelleryBox	JewelleryBox -> EDGEVILLE_MONASTERY	19	6
+1922 5707 1	3053 3487 0	Y	EDGEVILLE_MONASTERY	JewelleryBox	JewelleryBox -> EDGEVILLE_MONASTERY	19	6
+1922 5707 2	3053 3487 0	Y	EDGEVILLE_MONASTERY	JewelleryBox	JewelleryBox -> EDGEVILLE_MONASTERY	19	6
+1922 5707 3	3053 3487 0	Y	EDGEVILLE_MONASTERY	JewelleryBox	JewelleryBox -> EDGEVILLE_MONASTERY	19	6
+1986 5707 0	3053 3487 0	Y	EDGEVILLE_MONASTERY	JewelleryBox	JewelleryBox -> EDGEVILLE_MONASTERY	19	6
+1986 5707 1	3053 3487 0	Y	EDGEVILLE_MONASTERY	JewelleryBox	JewelleryBox -> EDGEVILLE_MONASTERY	19	6
+1986 5707 2	3053 3487 0	Y	EDGEVILLE_MONASTERY	JewelleryBox	JewelleryBox -> EDGEVILLE_MONASTERY	19	6
+1986 5707 3	3053 3487 0	Y	EDGEVILLE_MONASTERY	JewelleryBox	JewelleryBox -> EDGEVILLE_MONASTERY	19	6
+1858 5707 0	2654 3441 0	Y	RANGING_GUILD	JewelleryBox	JewelleryBox -> RANGING_GUILD	19	6
+1858 5707 1	2654 3441 0	Y	RANGING_GUILD	JewelleryBox	JewelleryBox -> RANGING_GUILD	19	6
+1858 5707 2	2654 3441 0	Y	RANGING_GUILD	JewelleryBox	JewelleryBox -> RANGING_GUILD	19	6
+1858 5707 3	2654 3441 0	Y	RANGING_GUILD	JewelleryBox	JewelleryBox -> RANGING_GUILD	19	6
+1922 5707 0	2654 3441 0	Y	RANGING_GUILD	JewelleryBox	JewelleryBox -> RANGING_GUILD	19	6
+1922 5707 1	2654 3441 0	Y	RANGING_GUILD	JewelleryBox	JewelleryBox -> RANGING_GUILD	19	6
+1922 5707 2	2654 3441 0	Y	RANGING_GUILD	JewelleryBox	JewelleryBox -> RANGING_GUILD	19	6
+1922 5707 3	2654 3441 0	Y	RANGING_GUILD	JewelleryBox	JewelleryBox -> RANGING_GUILD	19	6
+1986 5707 0	2654 3441 0	Y	RANGING_GUILD	JewelleryBox	JewelleryBox -> RANGING_GUILD	19	6
+1986 5707 1	2654 3441 0	Y	RANGING_GUILD	JewelleryBox	JewelleryBox -> RANGING_GUILD	19	6
+1986 5707 2	2654 3441 0	Y	RANGING_GUILD	JewelleryBox	JewelleryBox -> RANGING_GUILD	19	6
+1986 5707 3	2654 3441 0	Y	RANGING_GUILD	JewelleryBox	JewelleryBox -> RANGING_GUILD	19	6
+1858 5707 0	2613 3390 0	Y	FISHING_GUILD_NECK	JewelleryBox	JewelleryBox -> FISHING_GUILD_NECK	19	6
+1858 5707 1	2613 3390 0	Y	FISHING_GUILD_NECK	JewelleryBox	JewelleryBox -> FISHING_GUILD_NECK	19	6
+1858 5707 2	2613 3390 0	Y	FISHING_GUILD_NECK	JewelleryBox	JewelleryBox -> FISHING_GUILD_NECK	19	6
+1858 5707 3	2613 3390 0	Y	FISHING_GUILD_NECK	JewelleryBox	JewelleryBox -> FISHING_GUILD_NECK	19	6
+1922 5707 0	2613 3390 0	Y	FISHING_GUILD_NECK	JewelleryBox	JewelleryBox -> FISHING_GUILD_NECK	19	6
+1922 5707 1	2613 3390 0	Y	FISHING_GUILD_NECK	JewelleryBox	JewelleryBox -> FISHING_GUILD_NECK	19	6
+1922 5707 2	2613 3390 0	Y	FISHING_GUILD_NECK	JewelleryBox	JewelleryBox -> FISHING_GUILD_NECK	19	6
+1922 5707 3	2613 3390 0	Y	FISHING_GUILD_NECK	JewelleryBox	JewelleryBox -> FISHING_GUILD_NECK	19	6
+1986 5707 0	2613 3390 0	Y	FISHING_GUILD_NECK	JewelleryBox	JewelleryBox -> FISHING_GUILD_NECK	19	6
+1986 5707 1	2613 3390 0	Y	FISHING_GUILD_NECK	JewelleryBox	JewelleryBox -> FISHING_GUILD_NECK	19	6
+1986 5707 2	2613 3390 0	Y	FISHING_GUILD_NECK	JewelleryBox	JewelleryBox -> FISHING_GUILD_NECK	19	6
+1986 5707 3	2613 3390 0	Y	FISHING_GUILD_NECK	JewelleryBox	JewelleryBox -> FISHING_GUILD_NECK	19	6
+1858 5707 0	3049 9762 0	Y	MINING_GUILD	JewelleryBox	JewelleryBox -> MINING_GUILD	19	6
+1858 5707 1	3049 9762 0	Y	MINING_GUILD	JewelleryBox	JewelleryBox -> MINING_GUILD	19	6
+1858 5707 2	3049 9762 0	Y	MINING_GUILD	JewelleryBox	JewelleryBox -> MINING_GUILD	19	6
+1858 5707 3	3049 9762 0	Y	MINING_GUILD	JewelleryBox	JewelleryBox -> MINING_GUILD	19	6
+1922 5707 0	3049 9762 0	Y	MINING_GUILD	JewelleryBox	JewelleryBox -> MINING_GUILD	19	6
+1922 5707 1	3049 9762 0	Y	MINING_GUILD	JewelleryBox	JewelleryBox -> MINING_GUILD	19	6
+1922 5707 2	3049 9762 0	Y	MINING_GUILD	JewelleryBox	JewelleryBox -> MINING_GUILD	19	6
+1922 5707 3	3049 9762 0	Y	MINING_GUILD	JewelleryBox	JewelleryBox -> MINING_GUILD	19	6
+1986 5707 0	3049 9762 0	Y	MINING_GUILD	JewelleryBox	JewelleryBox -> MINING_GUILD	19	6
+1986 5707 1	3049 9762 0	Y	MINING_GUILD	JewelleryBox	JewelleryBox -> MINING_GUILD	19	6
+1986 5707 2	3049 9762 0	Y	MINING_GUILD	JewelleryBox	JewelleryBox -> MINING_GUILD	19	6
+1986 5707 3	3049 9762 0	Y	MINING_GUILD	JewelleryBox	JewelleryBox -> MINING_GUILD	19	6
+1858 5707 0	2934 3294 0	Y	CRAFTING_GUILD	JewelleryBox	JewelleryBox -> CRAFTING_GUILD	19	6
+1858 5707 1	2934 3294 0	Y	CRAFTING_GUILD	JewelleryBox	JewelleryBox -> CRAFTING_GUILD	19	6
+1858 5707 2	2934 3294 0	Y	CRAFTING_GUILD	JewelleryBox	JewelleryBox -> CRAFTING_GUILD	19	6
+1858 5707 3	2934 3294 0	Y	CRAFTING_GUILD	JewelleryBox	JewelleryBox -> CRAFTING_GUILD	19	6
+1922 5707 0	2934 3294 0	Y	CRAFTING_GUILD	JewelleryBox	JewelleryBox -> CRAFTING_GUILD	19	6
+1922 5707 1	2934 3294 0	Y	CRAFTING_GUILD	JewelleryBox	JewelleryBox -> CRAFTING_GUILD	19	6
+1922 5707 2	2934 3294 0	Y	CRAFTING_GUILD	JewelleryBox	JewelleryBox -> CRAFTING_GUILD	19	6
+1922 5707 3	2934 3294 0	Y	CRAFTING_GUILD	JewelleryBox	JewelleryBox -> CRAFTING_GUILD	19	6
+1986 5707 0	2934 3294 0	Y	CRAFTING_GUILD	JewelleryBox	JewelleryBox -> CRAFTING_GUILD	19	6
+1986 5707 1	2934 3294 0	Y	CRAFTING_GUILD	JewelleryBox	JewelleryBox -> CRAFTING_GUILD	19	6
+1986 5707 2	2934 3294 0	Y	CRAFTING_GUILD	JewelleryBox	JewelleryBox -> CRAFTING_GUILD	19	6
+1986 5707 3	2934 3294 0	Y	CRAFTING_GUILD	JewelleryBox	JewelleryBox -> CRAFTING_GUILD	19	6
+1858 5707 0	3145 3438 0	Y	COOKING_GUILD	JewelleryBox	JewelleryBox -> COOKING_GUILD	19	6
+1858 5707 1	3145 3438 0	Y	COOKING_GUILD	JewelleryBox	JewelleryBox -> COOKING_GUILD	19	6
+1858 5707 2	3145 3438 0	Y	COOKING_GUILD	JewelleryBox	JewelleryBox -> COOKING_GUILD	19	6
+1858 5707 3	3145 3438 0	Y	COOKING_GUILD	JewelleryBox	JewelleryBox -> COOKING_GUILD	19	6
+1922 5707 0	3145 3438 0	Y	COOKING_GUILD	JewelleryBox	JewelleryBox -> COOKING_GUILD	19	6
+1922 5707 1	3145 3438 0	Y	COOKING_GUILD	JewelleryBox	JewelleryBox -> COOKING_GUILD	19	6
+1922 5707 2	3145 3438 0	Y	COOKING_GUILD	JewelleryBox	JewelleryBox -> COOKING_GUILD	19	6
+1922 5707 3	3145 3438 0	Y	COOKING_GUILD	JewelleryBox	JewelleryBox -> COOKING_GUILD	19	6
+1986 5707 0	3145 3438 0	Y	COOKING_GUILD	JewelleryBox	JewelleryBox -> COOKING_GUILD	19	6
+1986 5707 1	3145 3438 0	Y	COOKING_GUILD	JewelleryBox	JewelleryBox -> COOKING_GUILD	19	6
+1986 5707 2	3145 3438 0	Y	COOKING_GUILD	JewelleryBox	JewelleryBox -> COOKING_GUILD	19	6
+1986 5707 3	3145 3438 0	Y	COOKING_GUILD	JewelleryBox	JewelleryBox -> COOKING_GUILD	19	6
+1858 5707 0	1662 3505 0	Y	WOODCUTTING_GUILD	JewelleryBox	JewelleryBox -> WOODCUTTING_GUILD	19	6
+1858 5707 1	1662 3505 0	Y	WOODCUTTING_GUILD	JewelleryBox	JewelleryBox -> WOODCUTTING_GUILD	19	6
+1858 5707 2	1662 3505 0	Y	WOODCUTTING_GUILD	JewelleryBox	JewelleryBox -> WOODCUTTING_GUILD	19	6
+1858 5707 3	1662 3505 0	Y	WOODCUTTING_GUILD	JewelleryBox	JewelleryBox -> WOODCUTTING_GUILD	19	6
+1922 5707 0	1662 3505 0	Y	WOODCUTTING_GUILD	JewelleryBox	JewelleryBox -> WOODCUTTING_GUILD	19	6
+1922 5707 1	1662 3505 0	Y	WOODCUTTING_GUILD	JewelleryBox	JewelleryBox -> WOODCUTTING_GUILD	19	6
+1922 5707 2	1662 3505 0	Y	WOODCUTTING_GUILD	JewelleryBox	JewelleryBox -> WOODCUTTING_GUILD	19	6
+1922 5707 3	1662 3505 0	Y	WOODCUTTING_GUILD	JewelleryBox	JewelleryBox -> WOODCUTTING_GUILD	19	6
+1986 5707 0	1662 3505 0	Y	WOODCUTTING_GUILD	JewelleryBox	JewelleryBox -> WOODCUTTING_GUILD	19	6
+1986 5707 1	1662 3505 0	Y	WOODCUTTING_GUILD	JewelleryBox	JewelleryBox -> WOODCUTTING_GUILD	19	6
+1986 5707 2	1662 3505 0	Y	WOODCUTTING_GUILD	JewelleryBox	JewelleryBox -> WOODCUTTING_GUILD	19	6
+1986 5707 3	1662 3505 0	Y	WOODCUTTING_GUILD	JewelleryBox	JewelleryBox -> WOODCUTTING_GUILD	19	6
+1858 5707 0	1249 3717 0	Y	FARMING_GUILD	JewelleryBox	JewelleryBox -> FARMING_GUILD	19	6
+1858 5707 1	1249 3717 0	Y	FARMING_GUILD	JewelleryBox	JewelleryBox -> FARMING_GUILD	19	6
+1858 5707 2	1249 3717 0	Y	FARMING_GUILD	JewelleryBox	JewelleryBox -> FARMING_GUILD	19	6
+1858 5707 3	1249 3717 0	Y	FARMING_GUILD	JewelleryBox	JewelleryBox -> FARMING_GUILD	19	6
+1922 5707 0	1249 3717 0	Y	FARMING_GUILD	JewelleryBox	JewelleryBox -> FARMING_GUILD	19	6
+1922 5707 1	1249 3717 0	Y	FARMING_GUILD	JewelleryBox	JewelleryBox -> FARMING_GUILD	19	6
+1922 5707 2	1249 3717 0	Y	FARMING_GUILD	JewelleryBox	JewelleryBox -> FARMING_GUILD	19	6
+1922 5707 3	1249 3717 0	Y	FARMING_GUILD	JewelleryBox	JewelleryBox -> FARMING_GUILD	19	6
+1986 5707 0	1249 3717 0	Y	FARMING_GUILD	JewelleryBox	JewelleryBox -> FARMING_GUILD	19	6
+1986 5707 1	1249 3717 0	Y	FARMING_GUILD	JewelleryBox	JewelleryBox -> FARMING_GUILD	19	6
+1986 5707 2	1249 3717 0	Y	FARMING_GUILD	JewelleryBox	JewelleryBox -> FARMING_GUILD	19	6
+1986 5707 3	1249 3717 0	Y	FARMING_GUILD	JewelleryBox	JewelleryBox -> FARMING_GUILD	19	6
+1858 5707 0	3087 3496 0	Y	EDGEVILLE	JewelleryBox	JewelleryBox -> EDGEVILLE	19	6
+1858 5707 1	3087 3496 0	Y	EDGEVILLE	JewelleryBox	JewelleryBox -> EDGEVILLE	19	6
+1858 5707 2	3087 3496 0	Y	EDGEVILLE	JewelleryBox	JewelleryBox -> EDGEVILLE	19	6
+1858 5707 3	3087 3496 0	Y	EDGEVILLE	JewelleryBox	JewelleryBox -> EDGEVILLE	19	6
+1922 5707 0	3087 3496 0	Y	EDGEVILLE	JewelleryBox	JewelleryBox -> EDGEVILLE	19	6
+1922 5707 1	3087 3496 0	Y	EDGEVILLE	JewelleryBox	JewelleryBox -> EDGEVILLE	19	6
+1922 5707 2	3087 3496 0	Y	EDGEVILLE	JewelleryBox	JewelleryBox -> EDGEVILLE	19	6
+1922 5707 3	3087 3496 0	Y	EDGEVILLE	JewelleryBox	JewelleryBox -> EDGEVILLE	19	6
+1986 5707 0	3087 3496 0	Y	EDGEVILLE	JewelleryBox	JewelleryBox -> EDGEVILLE	19	6
+1986 5707 1	3087 3496 0	Y	EDGEVILLE	JewelleryBox	JewelleryBox -> EDGEVILLE	19	6
+1986 5707 2	3087 3496 0	Y	EDGEVILLE	JewelleryBox	JewelleryBox -> EDGEVILLE	19	6
+1986 5707 3	3087 3496 0	Y	EDGEVILLE	JewelleryBox	JewelleryBox -> EDGEVILLE	19	6
+1858 5707 0	2918 3176 0	Y	KARAMJA	JewelleryBox	JewelleryBox -> KARAMJA	19	6
+1858 5707 1	2918 3176 0	Y	KARAMJA	JewelleryBox	JewelleryBox -> KARAMJA	19	6
+1858 5707 2	2918 3176 0	Y	KARAMJA	JewelleryBox	JewelleryBox -> KARAMJA	19	6
+1858 5707 3	2918 3176 0	Y	KARAMJA	JewelleryBox	JewelleryBox -> KARAMJA	19	6
+1922 5707 0	2918 3176 0	Y	KARAMJA	JewelleryBox	JewelleryBox -> KARAMJA	19	6
+1922 5707 1	2918 3176 0	Y	KARAMJA	JewelleryBox	JewelleryBox -> KARAMJA	19	6
+1922 5707 2	2918 3176 0	Y	KARAMJA	JewelleryBox	JewelleryBox -> KARAMJA	19	6
+1922 5707 3	2918 3176 0	Y	KARAMJA	JewelleryBox	JewelleryBox -> KARAMJA	19	6
+1986 5707 0	2918 3176 0	Y	KARAMJA	JewelleryBox	JewelleryBox -> KARAMJA	19	6
+1986 5707 1	2918 3176 0	Y	KARAMJA	JewelleryBox	JewelleryBox -> KARAMJA	19	6
+1986 5707 2	2918 3176 0	Y	KARAMJA	JewelleryBox	JewelleryBox -> KARAMJA	19	6
+1986 5707 3	2918 3176 0	Y	KARAMJA	JewelleryBox	JewelleryBox -> KARAMJA	19	6
+1858 5707 0	3105 3251 0	Y	DRAYNOR_VILLAGE	JewelleryBox	JewelleryBox -> DRAYNOR_VILLAGE	19	6
+1858 5707 1	3105 3251 0	Y	DRAYNOR_VILLAGE	JewelleryBox	JewelleryBox -> DRAYNOR_VILLAGE	19	6
+1858 5707 2	3105 3251 0	Y	DRAYNOR_VILLAGE	JewelleryBox	JewelleryBox -> DRAYNOR_VILLAGE	19	6
+1858 5707 3	3105 3251 0	Y	DRAYNOR_VILLAGE	JewelleryBox	JewelleryBox -> DRAYNOR_VILLAGE	19	6
+1922 5707 0	3105 3251 0	Y	DRAYNOR_VILLAGE	JewelleryBox	JewelleryBox -> DRAYNOR_VILLAGE	19	6
+1922 5707 1	3105 3251 0	Y	DRAYNOR_VILLAGE	JewelleryBox	JewelleryBox -> DRAYNOR_VILLAGE	19	6
+1922 5707 2	3105 3251 0	Y	DRAYNOR_VILLAGE	JewelleryBox	JewelleryBox -> DRAYNOR_VILLAGE	19	6
+1922 5707 3	3105 3251 0	Y	DRAYNOR_VILLAGE	JewelleryBox	JewelleryBox -> DRAYNOR_VILLAGE	19	6
+1986 5707 0	3105 3251 0	Y	DRAYNOR_VILLAGE	JewelleryBox	JewelleryBox -> DRAYNOR_VILLAGE	19	6
+1986 5707 1	3105 3251 0	Y	DRAYNOR_VILLAGE	JewelleryBox	JewelleryBox -> DRAYNOR_VILLAGE	19	6
+1986 5707 2	3105 3251 0	Y	DRAYNOR_VILLAGE	JewelleryBox	JewelleryBox -> DRAYNOR_VILLAGE	19	6
+1986 5707 3	3105 3251 0	Y	DRAYNOR_VILLAGE	JewelleryBox	JewelleryBox -> DRAYNOR_VILLAGE	19	6
+1858 5707 0	3293 3163 0	Y	AL_KHARID	JewelleryBox	JewelleryBox -> AL_KHARID	19	6
+1858 5707 1	3293 3163 0	Y	AL_KHARID	JewelleryBox	JewelleryBox -> AL_KHARID	19	6
+1858 5707 2	3293 3163 0	Y	AL_KHARID	JewelleryBox	JewelleryBox -> AL_KHARID	19	6
+1858 5707 3	3293 3163 0	Y	AL_KHARID	JewelleryBox	JewelleryBox -> AL_KHARID	19	6
+1922 5707 0	3293 3163 0	Y	AL_KHARID	JewelleryBox	JewelleryBox -> AL_KHARID	19	6
+1922 5707 1	3293 3163 0	Y	AL_KHARID	JewelleryBox	JewelleryBox -> AL_KHARID	19	6
+1922 5707 2	3293 3163 0	Y	AL_KHARID	JewelleryBox	JewelleryBox -> AL_KHARID	19	6
+1922 5707 3	3293 3163 0	Y	AL_KHARID	JewelleryBox	JewelleryBox -> AL_KHARID	19	6
+1986 5707 0	3293 3163 0	Y	AL_KHARID	JewelleryBox	JewelleryBox -> AL_KHARID	19	6
+1986 5707 1	3293 3163 0	Y	AL_KHARID	JewelleryBox	JewelleryBox -> AL_KHARID	19	6
+1986 5707 2	3293 3163 0	Y	AL_KHARID	JewelleryBox	JewelleryBox -> AL_KHARID	19	6
+1986 5707 3	3293 3163 0	Y	AL_KHARID	JewelleryBox	JewelleryBox -> AL_KHARID	19	6
+1858 5707 0	2535 3862 0	Y	MISCELLANIA	JewelleryBox	JewelleryBox -> MISCELLANIA	19	6
+1858 5707 1	2535 3862 0	Y	MISCELLANIA	JewelleryBox	JewelleryBox -> MISCELLANIA	19	6
+1858 5707 2	2535 3862 0	Y	MISCELLANIA	JewelleryBox	JewelleryBox -> MISCELLANIA	19	6
+1858 5707 3	2535 3862 0	Y	MISCELLANIA	JewelleryBox	JewelleryBox -> MISCELLANIA	19	6
+1922 5707 0	2535 3862 0	Y	MISCELLANIA	JewelleryBox	JewelleryBox -> MISCELLANIA	19	6
+1922 5707 1	2535 3862 0	Y	MISCELLANIA	JewelleryBox	JewelleryBox -> MISCELLANIA	19	6
+1922 5707 2	2535 3862 0	Y	MISCELLANIA	JewelleryBox	JewelleryBox -> MISCELLANIA	19	6
+1922 5707 3	2535 3862 0	Y	MISCELLANIA	JewelleryBox	JewelleryBox -> MISCELLANIA	19	6
+1986 5707 0	2535 3862 0	Y	MISCELLANIA	JewelleryBox	JewelleryBox -> MISCELLANIA	19	6
+1986 5707 1	2535 3862 0	Y	MISCELLANIA	JewelleryBox	JewelleryBox -> MISCELLANIA	19	6
+1986 5707 2	2535 3862 0	Y	MISCELLANIA	JewelleryBox	JewelleryBox -> MISCELLANIA	19	6
+1986 5707 3	2535 3862 0	Y	MISCELLANIA	JewelleryBox	JewelleryBox -> MISCELLANIA	19	6
+1858 5707 0	3162 3480 0	Y	GRAND_EXCHANGE	JewelleryBox	JewelleryBox -> GRAND_EXCHANGE	19	6
+1858 5707 1	3162 3480 0	Y	GRAND_EXCHANGE	JewelleryBox	JewelleryBox -> GRAND_EXCHANGE	19	6
+1858 5707 2	3162 3480 0	Y	GRAND_EXCHANGE	JewelleryBox	JewelleryBox -> GRAND_EXCHANGE	19	6
+1858 5707 3	3162 3480 0	Y	GRAND_EXCHANGE	JewelleryBox	JewelleryBox -> GRAND_EXCHANGE	19	6
+1922 5707 0	3162 3480 0	Y	GRAND_EXCHANGE	JewelleryBox	JewelleryBox -> GRAND_EXCHANGE	19	6
+1922 5707 1	3162 3480 0	Y	GRAND_EXCHANGE	JewelleryBox	JewelleryBox -> GRAND_EXCHANGE	19	6
+1922 5707 2	3162 3480 0	Y	GRAND_EXCHANGE	JewelleryBox	JewelleryBox -> GRAND_EXCHANGE	19	6
+1922 5707 3	3162 3480 0	Y	GRAND_EXCHANGE	JewelleryBox	JewelleryBox -> GRAND_EXCHANGE	19	6
+1986 5707 0	3162 3480 0	Y	GRAND_EXCHANGE	JewelleryBox	JewelleryBox -> GRAND_EXCHANGE	19	6
+1986 5707 1	3162 3480 0	Y	GRAND_EXCHANGE	JewelleryBox	JewelleryBox -> GRAND_EXCHANGE	19	6
+1986 5707 2	3162 3480 0	Y	GRAND_EXCHANGE	JewelleryBox	JewelleryBox -> GRAND_EXCHANGE	19	6
+1986 5707 3	3162 3480 0	Y	GRAND_EXCHANGE	JewelleryBox	JewelleryBox -> GRAND_EXCHANGE	19	6
+1858 5707 0	2995 3375 0	Y	FALADOR_PARK	JewelleryBox	JewelleryBox -> FALADOR_PARK	19	6
+1858 5707 1	2995 3375 0	Y	FALADOR_PARK	JewelleryBox	JewelleryBox -> FALADOR_PARK	19	6
+1858 5707 2	2995 3375 0	Y	FALADOR_PARK	JewelleryBox	JewelleryBox -> FALADOR_PARK	19	6
+1858 5707 3	2995 3375 0	Y	FALADOR_PARK	JewelleryBox	JewelleryBox -> FALADOR_PARK	19	6
+1922 5707 0	2995 3375 0	Y	FALADOR_PARK	JewelleryBox	JewelleryBox -> FALADOR_PARK	19	6
+1922 5707 1	2995 3375 0	Y	FALADOR_PARK	JewelleryBox	JewelleryBox -> FALADOR_PARK	19	6
+1922 5707 2	2995 3375 0	Y	FALADOR_PARK	JewelleryBox	JewelleryBox -> FALADOR_PARK	19	6
+1922 5707 3	2995 3375 0	Y	FALADOR_PARK	JewelleryBox	JewelleryBox -> FALADOR_PARK	19	6
+1986 5707 0	2995 3375 0	Y	FALADOR_PARK	JewelleryBox	JewelleryBox -> FALADOR_PARK	19	6
+1986 5707 1	2995 3375 0	Y	FALADOR_PARK	JewelleryBox	JewelleryBox -> FALADOR_PARK	19	6
+1986 5707 2	2995 3375 0	Y	FALADOR_PARK	JewelleryBox	JewelleryBox -> FALADOR_PARK	19	6
+1986 5707 3	2995 3375 0	Y	FALADOR_PARK	JewelleryBox	JewelleryBox -> FALADOR_PARK	19	6
+1858 5707 0	2831 10165 0	Y	DONDAKAN	JewelleryBox	JewelleryBox -> DONDAKAN	19	6
+1858 5707 1	2831 10165 0	Y	DONDAKAN	JewelleryBox	JewelleryBox -> DONDAKAN	19	6
+1858 5707 2	2831 10165 0	Y	DONDAKAN	JewelleryBox	JewelleryBox -> DONDAKAN	19	6
+1858 5707 3	2831 10165 0	Y	DONDAKAN	JewelleryBox	JewelleryBox -> DONDAKAN	19	6
+1922 5707 0	2831 10165 0	Y	DONDAKAN	JewelleryBox	JewelleryBox -> DONDAKAN	19	6
+1922 5707 1	2831 10165 0	Y	DONDAKAN	JewelleryBox	JewelleryBox -> DONDAKAN	19	6
+1922 5707 2	2831 10165 0	Y	DONDAKAN	JewelleryBox	JewelleryBox -> DONDAKAN	19	6
+1922 5707 3	2831 10165 0	Y	DONDAKAN	JewelleryBox	JewelleryBox -> DONDAKAN	19	6
+1986 5707 0	2831 10165 0	Y	DONDAKAN	JewelleryBox	JewelleryBox -> DONDAKAN	19	6
+1986 5707 1	2831 10165 0	Y	DONDAKAN	JewelleryBox	JewelleryBox -> DONDAKAN	19	6
+1986 5707 2	2831 10165 0	Y	DONDAKAN	JewelleryBox	JewelleryBox -> DONDAKAN	19	6
+1986 5707 3	2831 10165 0	Y	DONDAKAN	JewelleryBox	JewelleryBox -> DONDAKAN	19	6
+1858 5707 0	3213 3424 0	Y	VARROCK	NexusPortal	NexusTeleport -> Varrock	19	6
+1858 5707 1	3213 3424 0	Y	VARROCK	NexusPortal	NexusTeleport -> Varrock	19	6
+1858 5707 2	3213 3424 0	Y	VARROCK	NexusPortal	NexusTeleport -> Varrock	19	6
+1858 5707 3	3213 3424 0	Y	VARROCK	NexusPortal	NexusTeleport -> Varrock	19	6
+1922 5707 0	3213 3424 0	Y	VARROCK	NexusPortal	NexusTeleport -> Varrock	19	6
+1922 5707 1	3213 3424 0	Y	VARROCK	NexusPortal	NexusTeleport -> Varrock	19	6
+1922 5707 2	3213 3424 0	Y	VARROCK	NexusPortal	NexusTeleport -> Varrock	19	6
+1922 5707 3	3213 3424 0	Y	VARROCK	NexusPortal	NexusTeleport -> Varrock	19	6
+1986 5707 0	3213 3424 0	Y	VARROCK	NexusPortal	NexusTeleport -> Varrock	19	6
+1986 5707 1	3213 3424 0	Y	VARROCK	NexusPortal	NexusTeleport -> Varrock	19	6
+1986 5707 2	3213 3424 0	Y	VARROCK	NexusPortal	NexusTeleport -> Varrock	19	6
+1986 5707 3	3213 3424 0	Y	VARROCK	NexusPortal	NexusTeleport -> Varrock	19	6
+1858 5707 0	3164 3478 0	Y	VARROCK_GE	NexusPortal	NexusTeleport -> Grand Exchange	19	6
+1858 5707 1	3164 3478 0	Y	VARROCK_GE	NexusPortal	NexusTeleport -> Grand Exchange	19	6
+1858 5707 2	3164 3478 0	Y	VARROCK_GE	NexusPortal	NexusTeleport -> Grand Exchange	19	6
+1858 5707 3	3164 3478 0	Y	VARROCK_GE	NexusPortal	NexusTeleport -> Grand Exchange	19	6
+1922 5707 0	3164 3478 0	Y	VARROCK_GE	NexusPortal	NexusTeleport -> Grand Exchange	19	6
+1922 5707 1	3164 3478 0	Y	VARROCK_GE	NexusPortal	NexusTeleport -> Grand Exchange	19	6
+1922 5707 2	3164 3478 0	Y	VARROCK_GE	NexusPortal	NexusTeleport -> Grand Exchange	19	6
+1922 5707 3	3164 3478 0	Y	VARROCK_GE	NexusPortal	NexusTeleport -> Grand Exchange	19	6
+1986 5707 0	3164 3478 0	Y	VARROCK_GE	NexusPortal	NexusTeleport -> Grand Exchange	19	6
+1986 5707 1	3164 3478 0	Y	VARROCK_GE	NexusPortal	NexusTeleport -> Grand Exchange	19	6
+1986 5707 2	3164 3478 0	Y	VARROCK_GE	NexusPortal	NexusTeleport -> Grand Exchange	19	6
+1986 5707 3	3164 3478 0	Y	VARROCK_GE	NexusPortal	NexusTeleport -> Grand Exchange	19	6
+1858 5707 0	3222 3218 0	Y	LUMBRIDGE	NexusPortal	NexusTeleport -> Lumbridge	19	6
+1858 5707 1	3222 3218 0	Y	LUMBRIDGE	NexusPortal	NexusTeleport -> Lumbridge	19	6
+1858 5707 2	3222 3218 0	Y	LUMBRIDGE	NexusPortal	NexusTeleport -> Lumbridge	19	6
+1858 5707 3	3222 3218 0	Y	LUMBRIDGE	NexusPortal	NexusTeleport -> Lumbridge	19	6
+1922 5707 0	3222 3218 0	Y	LUMBRIDGE	NexusPortal	NexusTeleport -> Lumbridge	19	6
+1922 5707 1	3222 3218 0	Y	LUMBRIDGE	NexusPortal	NexusTeleport -> Lumbridge	19	6
+1922 5707 2	3222 3218 0	Y	LUMBRIDGE	NexusPortal	NexusTeleport -> Lumbridge	19	6
+1922 5707 3	3222 3218 0	Y	LUMBRIDGE	NexusPortal	NexusTeleport -> Lumbridge	19	6
+1986 5707 0	3222 3218 0	Y	LUMBRIDGE	NexusPortal	NexusTeleport -> Lumbridge	19	6
+1986 5707 1	3222 3218 0	Y	LUMBRIDGE	NexusPortal	NexusTeleport -> Lumbridge	19	6
+1986 5707 2	3222 3218 0	Y	LUMBRIDGE	NexusPortal	NexusTeleport -> Lumbridge	19	6
+1986 5707 3	3222 3218 0	Y	LUMBRIDGE	NexusPortal	NexusTeleport -> Lumbridge	19	6
+1858 5707 0	2965 3381 0	Y	FALADOR	NexusPortal	NexusTeleport -> Falador	19	6
+1858 5707 1	2965 3381 0	Y	FALADOR	NexusPortal	NexusTeleport -> Falador	19	6
+1858 5707 2	2965 3381 0	Y	FALADOR	NexusPortal	NexusTeleport -> Falador	19	6
+1858 5707 3	2965 3381 0	Y	FALADOR	NexusPortal	NexusTeleport -> Falador	19	6
+1922 5707 0	2965 3381 0	Y	FALADOR	NexusPortal	NexusTeleport -> Falador	19	6
+1922 5707 1	2965 3381 0	Y	FALADOR	NexusPortal	NexusTeleport -> Falador	19	6
+1922 5707 2	2965 3381 0	Y	FALADOR	NexusPortal	NexusTeleport -> Falador	19	6
+1922 5707 3	2965 3381 0	Y	FALADOR	NexusPortal	NexusTeleport -> Falador	19	6
+1986 5707 0	2965 3381 0	Y	FALADOR	NexusPortal	NexusTeleport -> Falador	19	6
+1986 5707 1	2965 3381 0	Y	FALADOR	NexusPortal	NexusTeleport -> Falador	19	6
+1986 5707 2	2965 3381 0	Y	FALADOR	NexusPortal	NexusTeleport -> Falador	19	6
+1986 5707 3	2965 3381 0	Y	FALADOR	NexusPortal	NexusTeleport -> Falador	19	6
+1858 5707 0	2757 3477 0	Y	CAMELOT	NexusPortal	NexusTeleport -> Camelot	19	6
+1858 5707 1	2757 3477 0	Y	CAMELOT	NexusPortal	NexusTeleport -> Camelot	19	6
+1858 5707 2	2757 3477 0	Y	CAMELOT	NexusPortal	NexusTeleport -> Camelot	19	6
+1858 5707 3	2757 3477 0	Y	CAMELOT	NexusPortal	NexusTeleport -> Camelot	19	6
+1922 5707 0	2757 3477 0	Y	CAMELOT	NexusPortal	NexusTeleport -> Camelot	19	6
+1922 5707 1	2757 3477 0	Y	CAMELOT	NexusPortal	NexusTeleport -> Camelot	19	6
+1922 5707 2	2757 3477 0	Y	CAMELOT	NexusPortal	NexusTeleport -> Camelot	19	6
+1922 5707 3	2757 3477 0	Y	CAMELOT	NexusPortal	NexusTeleport -> Camelot	19	6
+1986 5707 0	2757 3477 0	Y	CAMELOT	NexusPortal	NexusTeleport -> Camelot	19	6
+1986 5707 1	2757 3477 0	Y	CAMELOT	NexusPortal	NexusTeleport -> Camelot	19	6
+1986 5707 2	2757 3477 0	Y	CAMELOT	NexusPortal	NexusTeleport -> Camelot	19	6
+1986 5707 3	2757 3477 0	Y	CAMELOT	NexusPortal	NexusTeleport -> Camelot	19	6
+1858 5707 0	1643 3672 0	Y	KOUREND	NexusPortal	NexusTeleport -> Kourend Castle	19	6
+1858 5707 1	1643 3672 0	Y	KOUREND	NexusPortal	NexusTeleport -> Kourend Castle	19	6
+1858 5707 2	1643 3672 0	Y	KOUREND	NexusPortal	NexusTeleport -> Kourend Castle	19	6
+1858 5707 3	1643 3672 0	Y	KOUREND	NexusPortal	NexusTeleport -> Kourend Castle	19	6
+1922 5707 0	1643 3672 0	Y	KOUREND	NexusPortal	NexusTeleport -> Kourend Castle	19	6
+1922 5707 1	1643 3672 0	Y	KOUREND	NexusPortal	NexusTeleport -> Kourend Castle	19	6
+1922 5707 2	1643 3672 0	Y	KOUREND	NexusPortal	NexusTeleport -> Kourend Castle	19	6
+1922 5707 3	1643 3672 0	Y	KOUREND	NexusPortal	NexusTeleport -> Kourend Castle	19	6
+1986 5707 0	1643 3672 0	Y	KOUREND	NexusPortal	NexusTeleport -> Kourend Castle	19	6
+1986 5707 1	1643 3672 0	Y	KOUREND	NexusPortal	NexusTeleport -> Kourend Castle	19	6
+1986 5707 2	1643 3672 0	Y	KOUREND	NexusPortal	NexusTeleport -> Kourend Castle	19	6
+1986 5707 3	1643 3672 0	Y	KOUREND	NexusPortal	NexusTeleport -> Kourend Castle	19	6
+1858 5707 0	2664 3306 0	Y	ARDOUGNE	NexusPortal	NexusTeleport -> Ardougne	19	6
+1858 5707 1	2664 3306 0	Y	ARDOUGNE	NexusPortal	NexusTeleport -> Ardougne	19	6
+1858 5707 2	2664 3306 0	Y	ARDOUGNE	NexusPortal	NexusTeleport -> Ardougne	19	6
+1858 5707 3	2664 3306 0	Y	ARDOUGNE	NexusPortal	NexusTeleport -> Ardougne	19	6
+1922 5707 0	2664 3306 0	Y	ARDOUGNE	NexusPortal	NexusTeleport -> Ardougne	19	6
+1922 5707 1	2664 3306 0	Y	ARDOUGNE	NexusPortal	NexusTeleport -> Ardougne	19	6
+1922 5707 2	2664 3306 0	Y	ARDOUGNE	NexusPortal	NexusTeleport -> Ardougne	19	6
+1922 5707 3	2664 3306 0	Y	ARDOUGNE	NexusPortal	NexusTeleport -> Ardougne	19	6
+1986 5707 0	2664 3306 0	Y	ARDOUGNE	NexusPortal	NexusTeleport -> Ardougne	19	6
+1986 5707 1	2664 3306 0	Y	ARDOUGNE	NexusPortal	NexusTeleport -> Ardougne	19	6
+1986 5707 2	2664 3306 0	Y	ARDOUGNE	NexusPortal	NexusTeleport -> Ardougne	19	6
+1986 5707 3	2664 3306 0	Y	ARDOUGNE	NexusPortal	NexusTeleport -> Ardougne	19	6
+1858 5707 0	2547 3114 0	Y	WATCHTOWER	NexusPortal	NexusTeleport -> Watchtower	19	6
+1858 5707 1	2547 3114 0	Y	WATCHTOWER	NexusPortal	NexusTeleport -> Watchtower	19	6
+1858 5707 2	2547 3114 0	Y	WATCHTOWER	NexusPortal	NexusTeleport -> Watchtower	19	6
+1858 5707 3	2547 3114 0	Y	WATCHTOWER	NexusPortal	NexusTeleport -> Watchtower	19	6
+1922 5707 0	2547 3114 0	Y	WATCHTOWER	NexusPortal	NexusTeleport -> Watchtower	19	6
+1922 5707 1	2547 3114 0	Y	WATCHTOWER	NexusPortal	NexusTeleport -> Watchtower	19	6
+1922 5707 2	2547 3114 0	Y	WATCHTOWER	NexusPortal	NexusTeleport -> Watchtower	19	6
+1922 5707 3	2547 3114 0	Y	WATCHTOWER	NexusPortal	NexusTeleport -> Watchtower	19	6
+1986 5707 0	2547 3114 0	Y	WATCHTOWER	NexusPortal	NexusTeleport -> Watchtower	19	6
+1986 5707 1	2547 3114 0	Y	WATCHTOWER	NexusPortal	NexusTeleport -> Watchtower	19	6
+1986 5707 2	2547 3114 0	Y	WATCHTOWER	NexusPortal	NexusTeleport -> Watchtower	19	6
+1986 5707 3	2547 3114 0	Y	WATCHTOWER	NexusPortal	NexusTeleport -> Watchtower	19	6
+1858 5707 0	2796 2791 0	Y	MARIM	NexusPortal	NexusTeleport -> Marim	19	6
+1858 5707 1	2796 2791 0	Y	MARIM	NexusPortal	NexusTeleport -> Marim	19	6
+1858 5707 2	2796 2791 0	Y	MARIM	NexusPortal	NexusTeleport -> Marim	19	6
+1858 5707 3	2796 2791 0	Y	MARIM	NexusPortal	NexusTeleport -> Marim	19	6
+1922 5707 0	2796 2791 0	Y	MARIM	NexusPortal	NexusTeleport -> Marim	19	6
+1922 5707 1	2796 2791 0	Y	MARIM	NexusPortal	NexusTeleport -> Marim	19	6
+1922 5707 2	2796 2791 0	Y	MARIM	NexusPortal	NexusTeleport -> Marim	19	6
+1922 5707 3	2796 2791 0	Y	MARIM	NexusPortal	NexusTeleport -> Marim	19	6
+1986 5707 0	2796 2791 0	Y	MARIM	NexusPortal	NexusTeleport -> Marim	19	6
+1986 5707 1	2796 2791 0	Y	MARIM	NexusPortal	NexusTeleport -> Marim	19	6
+1986 5707 2	2796 2791 0	Y	MARIM	NexusPortal	NexusTeleport -> Marim	19	6
+1986 5707 3	2796 2791 0	Y	MARIM	NexusPortal	NexusTeleport -> Marim	19	6
+1858 5707 0	3319 3336 0	Y	SENNTISTEN	NexusPortal	NexusTeleport -> Senntisten	19	6
+1858 5707 1	3319 3336 0	Y	SENNTISTEN	NexusPortal	NexusTeleport -> Senntisten	19	6
+1858 5707 2	3319 3336 0	Y	SENNTISTEN	NexusPortal	NexusTeleport -> Senntisten	19	6
+1858 5707 3	3319 3336 0	Y	SENNTISTEN	NexusPortal	NexusTeleport -> Senntisten	19	6
+1922 5707 0	3319 3336 0	Y	SENNTISTEN	NexusPortal	NexusTeleport -> Senntisten	19	6
+1922 5707 1	3319 3336 0	Y	SENNTISTEN	NexusPortal	NexusTeleport -> Senntisten	19	6
+1922 5707 2	3319 3336 0	Y	SENNTISTEN	NexusPortal	NexusTeleport -> Senntisten	19	6
+1922 5707 3	3319 3336 0	Y	SENNTISTEN	NexusPortal	NexusTeleport -> Senntisten	19	6
+1986 5707 0	3319 3336 0	Y	SENNTISTEN	NexusPortal	NexusTeleport -> Senntisten	19	6
+1986 5707 1	3319 3336 0	Y	SENNTISTEN	NexusPortal	NexusTeleport -> Senntisten	19	6
+1986 5707 2	3319 3336 0	Y	SENNTISTEN	NexusPortal	NexusTeleport -> Senntisten	19	6
+1986 5707 3	3319 3336 0	Y	SENNTISTEN	NexusPortal	NexusTeleport -> Senntisten	19	6
+1858 5707 0	3494 3473 0	Y	KHARYRLL	NexusPortal	NexusTeleport -> Kharyrll	19	6
+1858 5707 1	3494 3473 0	Y	KHARYRLL	NexusPortal	NexusTeleport -> Kharyrll	19	6
+1858 5707 2	3494 3473 0	Y	KHARYRLL	NexusPortal	NexusTeleport -> Kharyrll	19	6
+1858 5707 3	3494 3473 0	Y	KHARYRLL	NexusPortal	NexusTeleport -> Kharyrll	19	6
+1922 5707 0	3494 3473 0	Y	KHARYRLL	NexusPortal	NexusTeleport -> Kharyrll	19	6
+1922 5707 1	3494 3473 0	Y	KHARYRLL	NexusPortal	NexusTeleport -> Kharyrll	19	6
+1922 5707 2	3494 3473 0	Y	KHARYRLL	NexusPortal	NexusTeleport -> Kharyrll	19	6
+1922 5707 3	3494 3473 0	Y	KHARYRLL	NexusPortal	NexusTeleport -> Kharyrll	19	6
+1986 5707 0	3494 3473 0	Y	KHARYRLL	NexusPortal	NexusTeleport -> Kharyrll	19	6
+1986 5707 1	3494 3473 0	Y	KHARYRLL	NexusPortal	NexusTeleport -> Kharyrll	19	6
+1986 5707 2	3494 3473 0	Y	KHARYRLL	NexusPortal	NexusTeleport -> Kharyrll	19	6
+1986 5707 3	3494 3473 0	Y	KHARYRLL	NexusPortal	NexusTeleport -> Kharyrll	19	6
+1858 5707 0	3157 3667 0	Y	CARRALLANGER	NexusPortal	NexusTeleport -> Carrallanger	19	6
+1858 5707 1	3157 3667 0	Y	CARRALLANGER	NexusPortal	NexusTeleport -> Carrallanger	19	6
+1858 5707 2	3157 3667 0	Y	CARRALLANGER	NexusPortal	NexusTeleport -> Carrallanger	19	6
+1858 5707 3	3157 3667 0	Y	CARRALLANGER	NexusPortal	NexusTeleport -> Carrallanger	19	6
+1922 5707 0	3157 3667 0	Y	CARRALLANGER	NexusPortal	NexusTeleport -> Carrallanger	19	6
+1922 5707 1	3157 3667 0	Y	CARRALLANGER	NexusPortal	NexusTeleport -> Carrallanger	19	6
+1922 5707 2	3157 3667 0	Y	CARRALLANGER	NexusPortal	NexusTeleport -> Carrallanger	19	6
+1922 5707 3	3157 3667 0	Y	CARRALLANGER	NexusPortal	NexusTeleport -> Carrallanger	19	6
+1986 5707 0	3157 3667 0	Y	CARRALLANGER	NexusPortal	NexusTeleport -> Carrallanger	19	6
+1986 5707 1	3157 3667 0	Y	CARRALLANGER	NexusPortal	NexusTeleport -> Carrallanger	19	6
+1986 5707 2	3157 3667 0	Y	CARRALLANGER	NexusPortal	NexusTeleport -> Carrallanger	19	6
+1986 5707 3	3157 3667 0	Y	CARRALLANGER	NexusPortal	NexusTeleport -> Carrallanger	19	6
+1858 5707 0	2546 3755 0	Y	WATERBIRTH	NexusPortal	NexusTeleport -> Waterbirth Island	19	6
+1858 5707 1	2546 3755 0	Y	WATERBIRTH	NexusPortal	NexusTeleport -> Waterbirth Island	19	6
+1858 5707 2	2546 3755 0	Y	WATERBIRTH	NexusPortal	NexusTeleport -> Waterbirth Island	19	6
+1858 5707 3	2546 3755 0	Y	WATERBIRTH	NexusPortal	NexusTeleport -> Waterbirth Island	19	6
+1922 5707 0	2546 3755 0	Y	WATERBIRTH	NexusPortal	NexusTeleport -> Waterbirth Island	19	6
+1922 5707 1	2546 3755 0	Y	WATERBIRTH	NexusPortal	NexusTeleport -> Waterbirth Island	19	6
+1922 5707 2	2546 3755 0	Y	WATERBIRTH	NexusPortal	NexusTeleport -> Waterbirth Island	19	6
+1922 5707 3	2546 3755 0	Y	WATERBIRTH	NexusPortal	NexusTeleport -> Waterbirth Island	19	6
+1986 5707 0	2546 3755 0	Y	WATERBIRTH	NexusPortal	NexusTeleport -> Waterbirth Island	19	6
+1986 5707 1	2546 3755 0	Y	WATERBIRTH	NexusPortal	NexusTeleport -> Waterbirth Island	19	6
+1986 5707 2	2546 3755 0	Y	WATERBIRTH	NexusPortal	NexusTeleport -> Waterbirth Island	19	6
+1986 5707 3	2546 3755 0	Y	WATERBIRTH	NexusPortal	NexusTeleport -> Waterbirth Island	19	6
+1858 5707 0	3288 3888 0	Y	ANNAKARL	NexusPortal	NexusTeleport -> Annakarl	19	6
+1858 5707 1	3288 3888 0	Y	ANNAKARL	NexusPortal	NexusTeleport -> Annakarl	19	6
+1858 5707 2	3288 3888 0	Y	ANNAKARL	NexusPortal	NexusTeleport -> Annakarl	19	6
+1858 5707 3	3288 3888 0	Y	ANNAKARL	NexusPortal	NexusTeleport -> Annakarl	19	6
+1922 5707 0	3288 3888 0	Y	ANNAKARL	NexusPortal	NexusTeleport -> Annakarl	19	6
+1922 5707 1	3288 3888 0	Y	ANNAKARL	NexusPortal	NexusTeleport -> Annakarl	19	6
+1922 5707 2	3288 3888 0	Y	ANNAKARL	NexusPortal	NexusTeleport -> Annakarl	19	6
+1922 5707 3	3288 3888 0	Y	ANNAKARL	NexusPortal	NexusTeleport -> Annakarl	19	6
+1986 5707 0	3288 3888 0	Y	ANNAKARL	NexusPortal	NexusTeleport -> Annakarl	19	6
+1986 5707 1	3288 3888 0	Y	ANNAKARL	NexusPortal	NexusTeleport -> Annakarl	19	6
+1986 5707 2	3288 3888 0	Y	ANNAKARL	NexusPortal	NexusTeleport -> Annakarl	19	6
+1986 5707 3	3288 3888 0	Y	ANNAKARL	NexusPortal	NexusTeleport -> Annakarl	19	6
+1858 5707 0	2977 3872 0	Y	GHORROCK	NexusPortal	NexusTeleport -> Ghorrock	19	6
+1858 5707 1	2977 3872 0	Y	GHORROCK	NexusPortal	NexusTeleport -> Ghorrock	19	6
+1858 5707 2	2977 3872 0	Y	GHORROCK	NexusPortal	NexusTeleport -> Ghorrock	19	6
+1858 5707 3	2977 3872 0	Y	GHORROCK	NexusPortal	NexusTeleport -> Ghorrock	19	6
+1922 5707 0	2977 3872 0	Y	GHORROCK	NexusPortal	NexusTeleport -> Ghorrock	19	6
+1922 5707 1	2977 3872 0	Y	GHORROCK	NexusPortal	NexusTeleport -> Ghorrock	19	6
+1922 5707 2	2977 3872 0	Y	GHORROCK	NexusPortal	NexusTeleport -> Ghorrock	19	6
+1922 5707 3	2977 3872 0	Y	GHORROCK	NexusPortal	NexusTeleport -> Ghorrock	19	6
+1986 5707 0	2977 3872 0	Y	GHORROCK	NexusPortal	NexusTeleport -> Ghorrock	19	6
+1986 5707 1	2977 3872 0	Y	GHORROCK	NexusPortal	NexusTeleport -> Ghorrock	19	6
+1986 5707 2	2977 3872 0	Y	GHORROCK	NexusPortal	NexusTeleport -> Ghorrock	19	6
+1986 5707 3	2977 3872 0	Y	GHORROCK	NexusPortal	NexusTeleport -> Ghorrock	19	6
+1858 5707 0	2113 3915 0	Y	LUNAR_ISLE	NexusPortal	NexusTeleport -> Lunar Isle	19	6
+1858 5707 1	2113 3915 0	Y	LUNAR_ISLE	NexusPortal	NexusTeleport -> Lunar Isle	19	6
+1858 5707 2	2113 3915 0	Y	LUNAR_ISLE	NexusPortal	NexusTeleport -> Lunar Isle	19	6
+1858 5707 3	2113 3915 0	Y	LUNAR_ISLE	NexusPortal	NexusTeleport -> Lunar Isle	19	6
+1922 5707 0	2113 3915 0	Y	LUNAR_ISLE	NexusPortal	NexusTeleport -> Lunar Isle	19	6
+1922 5707 1	2113 3915 0	Y	LUNAR_ISLE	NexusPortal	NexusTeleport -> Lunar Isle	19	6
+1922 5707 2	2113 3915 0	Y	LUNAR_ISLE	NexusPortal	NexusTeleport -> Lunar Isle	19	6
+1922 5707 3	2113 3915 0	Y	LUNAR_ISLE	NexusPortal	NexusTeleport -> Lunar Isle	19	6
+1986 5707 0	2113 3915 0	Y	LUNAR_ISLE	NexusPortal	NexusTeleport -> Lunar Isle	19	6
+1986 5707 1	2113 3915 0	Y	LUNAR_ISLE	NexusPortal	NexusTeleport -> Lunar Isle	19	6
+1986 5707 2	2113 3915 0	Y	LUNAR_ISLE	NexusPortal	NexusTeleport -> Lunar Isle	19	6
+1986 5707 3	2113 3915 0	Y	LUNAR_ISLE	NexusPortal	NexusTeleport -> Lunar Isle	19	6
+1858 5707 0	2802 3449 0	Y	CATHERBY	NexusPortal	NexusTeleport -> Catherby	19	6
+1858 5707 1	2802 3449 0	Y	CATHERBY	NexusPortal	NexusTeleport -> Catherby	19	6
+1858 5707 2	2802 3449 0	Y	CATHERBY	NexusPortal	NexusTeleport -> Catherby	19	6
+1858 5707 3	2802 3449 0	Y	CATHERBY	NexusPortal	NexusTeleport -> Catherby	19	6
+1922 5707 0	2802 3449 0	Y	CATHERBY	NexusPortal	NexusTeleport -> Catherby	19	6
+1922 5707 1	2802 3449 0	Y	CATHERBY	NexusPortal	NexusTeleport -> Catherby	19	6
+1922 5707 2	2802 3449 0	Y	CATHERBY	NexusPortal	NexusTeleport -> Catherby	19	6
+1922 5707 3	2802 3449 0	Y	CATHERBY	NexusPortal	NexusTeleport -> Catherby	19	6
+1986 5707 0	2802 3449 0	Y	CATHERBY	NexusPortal	NexusTeleport -> Catherby	19	6
+1986 5707 1	2802 3449 0	Y	CATHERBY	NexusPortal	NexusTeleport -> Catherby	19	6
+1986 5707 2	2802 3449 0	Y	CATHERBY	NexusPortal	NexusTeleport -> Catherby	19	6
+1986 5707 3	2802 3449 0	Y	CATHERBY	NexusPortal	NexusTeleport -> Catherby	19	6
+1858 5707 0	2612 3391 0	Y	FISHING_GUILD	NexusPortal	NexusTeleport -> Fishing Guild	19	6
+1858 5707 1	2612 3391 0	Y	FISHING_GUILD	NexusPortal	NexusTeleport -> Fishing Guild	19	6
+1858 5707 2	2612 3391 0	Y	FISHING_GUILD	NexusPortal	NexusTeleport -> Fishing Guild	19	6
+1858 5707 3	2612 3391 0	Y	FISHING_GUILD	NexusPortal	NexusTeleport -> Fishing Guild	19	6
+1922 5707 0	2612 3391 0	Y	FISHING_GUILD	NexusPortal	NexusTeleport -> Fishing Guild	19	6
+1922 5707 1	2612 3391 0	Y	FISHING_GUILD	NexusPortal	NexusTeleport -> Fishing Guild	19	6
+1922 5707 2	2612 3391 0	Y	FISHING_GUILD	NexusPortal	NexusTeleport -> Fishing Guild	19	6
+1922 5707 3	2612 3391 0	Y	FISHING_GUILD	NexusPortal	NexusTeleport -> Fishing Guild	19	6
+1986 5707 0	2612 3391 0	Y	FISHING_GUILD	NexusPortal	NexusTeleport -> Fishing Guild	19	6
+1986 5707 1	2612 3391 0	Y	FISHING_GUILD	NexusPortal	NexusTeleport -> Fishing Guild	19	6
+1986 5707 2	2612 3391 0	Y	FISHING_GUILD	NexusPortal	NexusTeleport -> Fishing Guild	19	6
+1986 5707 3	2612 3391 0	Y	FISHING_GUILD	NexusPortal	NexusTeleport -> Fishing Guild	19	6
+1858 5707 0	2891 3678 0	Y	TROLL_STRONGHOLD	NexusPortal	NexusTeleport -> Troll Stronghold	19	6
+1858 5707 1	2891 3678 0	Y	TROLL_STRONGHOLD	NexusPortal	NexusTeleport -> Troll Stronghold	19	6
+1858 5707 2	2891 3678 0	Y	TROLL_STRONGHOLD	NexusPortal	NexusTeleport -> Troll Stronghold	19	6
+1858 5707 3	2891 3678 0	Y	TROLL_STRONGHOLD	NexusPortal	NexusTeleport -> Troll Stronghold	19	6
+1922 5707 0	2891 3678 0	Y	TROLL_STRONGHOLD	NexusPortal	NexusTeleport -> Troll Stronghold	19	6
+1922 5707 1	2891 3678 0	Y	TROLL_STRONGHOLD	NexusPortal	NexusTeleport -> Troll Stronghold	19	6
+1922 5707 2	2891 3678 0	Y	TROLL_STRONGHOLD	NexusPortal	NexusTeleport -> Troll Stronghold	19	6
+1922 5707 3	2891 3678 0	Y	TROLL_STRONGHOLD	NexusPortal	NexusTeleport -> Troll Stronghold	19	6
+1986 5707 0	2891 3678 0	Y	TROLL_STRONGHOLD	NexusPortal	NexusTeleport -> Troll Stronghold	19	6
+1986 5707 1	2891 3678 0	Y	TROLL_STRONGHOLD	NexusPortal	NexusTeleport -> Troll Stronghold	19	6
+1986 5707 2	2891 3678 0	Y	TROLL_STRONGHOLD	NexusPortal	NexusTeleport -> Troll Stronghold	19	6
+1986 5707 3	2891 3678 0	Y	TROLL_STRONGHOLD	NexusPortal	NexusTeleport -> Troll Stronghold	19	6
+1858 5707 0	2846 3940 0	Y	WEISS	NexusPortal	NexusTeleport -> Weiss	19	6
+1858 5707 1	2846 3940 0	Y	WEISS	NexusPortal	NexusTeleport -> Weiss	19	6
+1858 5707 2	2846 3940 0	Y	WEISS	NexusPortal	NexusTeleport -> Weiss	19	6
+1858 5707 3	2846 3940 0	Y	WEISS	NexusPortal	NexusTeleport -> Weiss	19	6
+1922 5707 0	2846 3940 0	Y	WEISS	NexusPortal	NexusTeleport -> Weiss	19	6
+1922 5707 1	2846 3940 0	Y	WEISS	NexusPortal	NexusTeleport -> Weiss	19	6
+1922 5707 2	2846 3940 0	Y	WEISS	NexusPortal	NexusTeleport -> Weiss	19	6
+1922 5707 3	2846 3940 0	Y	WEISS	NexusPortal	NexusTeleport -> Weiss	19	6
+1986 5707 0	2846 3940 0	Y	WEISS	NexusPortal	NexusTeleport -> Weiss	19	6
+1986 5707 1	2846 3940 0	Y	WEISS	NexusPortal	NexusTeleport -> Weiss	19	6
+1986 5707 2	2846 3940 0	Y	WEISS	NexusPortal	NexusTeleport -> Weiss	19	6
+1986 5707 3	2846 3940 0	Y	WEISS	NexusPortal	NexusTeleport -> Weiss	19	6
+1858 5707 0	1632 3838 0	Y	ARCEUUS_LIBRARY	NexusPortal	NexusTeleport -> Arceuus Library	19	6
+1858 5707 1	1632 3838 0	Y	ARCEUUS_LIBRARY	NexusPortal	NexusTeleport -> Arceuus Library	19	6
+1858 5707 2	1632 3838 0	Y	ARCEUUS_LIBRARY	NexusPortal	NexusTeleport -> Arceuus Library	19	6
+1858 5707 3	1632 3838 0	Y	ARCEUUS_LIBRARY	NexusPortal	NexusTeleport -> Arceuus Library	19	6
+1922 5707 0	1632 3838 0	Y	ARCEUUS_LIBRARY	NexusPortal	NexusTeleport -> Arceuus Library	19	6
+1922 5707 1	1632 3838 0	Y	ARCEUUS_LIBRARY	NexusPortal	NexusTeleport -> Arceuus Library	19	6
+1922 5707 2	1632 3838 0	Y	ARCEUUS_LIBRARY	NexusPortal	NexusTeleport -> Arceuus Library	19	6
+1922 5707 3	1632 3838 0	Y	ARCEUUS_LIBRARY	NexusPortal	NexusTeleport -> Arceuus Library	19	6
+1986 5707 0	1632 3838 0	Y	ARCEUUS_LIBRARY	NexusPortal	NexusTeleport -> Arceuus Library	19	6
+1986 5707 1	1632 3838 0	Y	ARCEUUS_LIBRARY	NexusPortal	NexusTeleport -> Arceuus Library	19	6
+1986 5707 2	1632 3838 0	Y	ARCEUUS_LIBRARY	NexusPortal	NexusTeleport -> Arceuus Library	19	6
+1986 5707 3	1632 3838 0	Y	ARCEUUS_LIBRARY	NexusPortal	NexusTeleport -> Arceuus Library	19	6
+1858 5707 0	3108 3352 0	Y	DRAYNOR_MANOR	NexusPortal	NexusTeleport -> Draynor Manor	19	6
+1858 5707 1	3108 3352 0	Y	DRAYNOR_MANOR	NexusPortal	NexusTeleport -> Draynor Manor	19	6
+1858 5707 2	3108 3352 0	Y	DRAYNOR_MANOR	NexusPortal	NexusTeleport -> Draynor Manor	19	6
+1858 5707 3	3108 3352 0	Y	DRAYNOR_MANOR	NexusPortal	NexusTeleport -> Draynor Manor	19	6
+1922 5707 0	3108 3352 0	Y	DRAYNOR_MANOR	NexusPortal	NexusTeleport -> Draynor Manor	19	6
+1922 5707 1	3108 3352 0	Y	DRAYNOR_MANOR	NexusPortal	NexusTeleport -> Draynor Manor	19	6
+1922 5707 2	3108 3352 0	Y	DRAYNOR_MANOR	NexusPortal	NexusTeleport -> Draynor Manor	19	6
+1922 5707 3	3108 3352 0	Y	DRAYNOR_MANOR	NexusPortal	NexusTeleport -> Draynor Manor	19	6
+1986 5707 0	3108 3352 0	Y	DRAYNOR_MANOR	NexusPortal	NexusTeleport -> Draynor Manor	19	6
+1986 5707 1	3108 3352 0	Y	DRAYNOR_MANOR	NexusPortal	NexusTeleport -> Draynor Manor	19	6
+1986 5707 2	3108 3352 0	Y	DRAYNOR_MANOR	NexusPortal	NexusTeleport -> Draynor Manor	19	6
+1986 5707 3	3108 3352 0	Y	DRAYNOR_MANOR	NexusPortal	NexusTeleport -> Draynor Manor	19	6
+1858 5707 0	1349 3739 0	Y	BATTLEFRONT	NexusPortal	NexusTeleport -> Battlefront	19	6
+1858 5707 1	1349 3739 0	Y	BATTLEFRONT	NexusPortal	NexusTeleport -> Battlefront	19	6
+1858 5707 2	1349 3739 0	Y	BATTLEFRONT	NexusPortal	NexusTeleport -> Battlefront	19	6
+1858 5707 3	1349 3739 0	Y	BATTLEFRONT	NexusPortal	NexusTeleport -> Battlefront	19	6
+1922 5707 0	1349 3739 0	Y	BATTLEFRONT	NexusPortal	NexusTeleport -> Battlefront	19	6
+1922 5707 1	1349 3739 0	Y	BATTLEFRONT	NexusPortal	NexusTeleport -> Battlefront	19	6
+1922 5707 2	1349 3739 0	Y	BATTLEFRONT	NexusPortal	NexusTeleport -> Battlefront	19	6
+1922 5707 3	1349 3739 0	Y	BATTLEFRONT	NexusPortal	NexusTeleport -> Battlefront	19	6
+1986 5707 0	1349 3739 0	Y	BATTLEFRONT	NexusPortal	NexusTeleport -> Battlefront	19	6
+1986 5707 1	1349 3739 0	Y	BATTLEFRONT	NexusPortal	NexusTeleport -> Battlefront	19	6
+1986 5707 2	1349 3739 0	Y	BATTLEFRONT	NexusPortal	NexusTeleport -> Battlefront	19	6
+1986 5707 3	1349 3739 0	Y	BATTLEFRONT	NexusPortal	NexusTeleport -> Battlefront	19	6
+1858 5707 0	2979 3509 0	Y	MIND_ALTAR	NexusPortal	NexusTeleport -> Mind Altar	19	6
+1858 5707 1	2979 3509 0	Y	MIND_ALTAR	NexusPortal	NexusTeleport -> Mind Altar	19	6
+1858 5707 2	2979 3509 0	Y	MIND_ALTAR	NexusPortal	NexusTeleport -> Mind Altar	19	6
+1858 5707 3	2979 3509 0	Y	MIND_ALTAR	NexusPortal	NexusTeleport -> Mind Altar	19	6
+1922 5707 0	2979 3509 0	Y	MIND_ALTAR	NexusPortal	NexusTeleport -> Mind Altar	19	6
+1922 5707 1	2979 3509 0	Y	MIND_ALTAR	NexusPortal	NexusTeleport -> Mind Altar	19	6
+1922 5707 2	2979 3509 0	Y	MIND_ALTAR	NexusPortal	NexusTeleport -> Mind Altar	19	6
+1922 5707 3	2979 3509 0	Y	MIND_ALTAR	NexusPortal	NexusTeleport -> Mind Altar	19	6
+1986 5707 0	2979 3509 0	Y	MIND_ALTAR	NexusPortal	NexusTeleport -> Mind Altar	19	6
+1986 5707 1	2979 3509 0	Y	MIND_ALTAR	NexusPortal	NexusTeleport -> Mind Altar	19	6
+1986 5707 2	2979 3509 0	Y	MIND_ALTAR	NexusPortal	NexusTeleport -> Mind Altar	19	6
+1986 5707 3	2979 3509 0	Y	MIND_ALTAR	NexusPortal	NexusTeleport -> Mind Altar	19	6
+1858 5707 0	3433 3461 0	Y	SALVE_GRAVEYARD	NexusPortal	NexusTeleport -> Salve Graveyard	19	6
+1858 5707 1	3433 3461 0	Y	SALVE_GRAVEYARD	NexusPortal	NexusTeleport -> Salve Graveyard	19	6
+1858 5707 2	3433 3461 0	Y	SALVE_GRAVEYARD	NexusPortal	NexusTeleport -> Salve Graveyard	19	6
+1858 5707 3	3433 3461 0	Y	SALVE_GRAVEYARD	NexusPortal	NexusTeleport -> Salve Graveyard	19	6
+1922 5707 0	3433 3461 0	Y	SALVE_GRAVEYARD	NexusPortal	NexusTeleport -> Salve Graveyard	19	6
+1922 5707 1	3433 3461 0	Y	SALVE_GRAVEYARD	NexusPortal	NexusTeleport -> Salve Graveyard	19	6
+1922 5707 2	3433 3461 0	Y	SALVE_GRAVEYARD	NexusPortal	NexusTeleport -> Salve Graveyard	19	6
+1922 5707 3	3433 3461 0	Y	SALVE_GRAVEYARD	NexusPortal	NexusTeleport -> Salve Graveyard	19	6
+1986 5707 0	3433 3461 0	Y	SALVE_GRAVEYARD	NexusPortal	NexusTeleport -> Salve Graveyard	19	6
+1986 5707 1	3433 3461 0	Y	SALVE_GRAVEYARD	NexusPortal	NexusTeleport -> Salve Graveyard	19	6
+1986 5707 2	3433 3461 0	Y	SALVE_GRAVEYARD	NexusPortal	NexusTeleport -> Salve Graveyard	19	6
+1986 5707 3	3433 3461 0	Y	SALVE_GRAVEYARD	NexusPortal	NexusTeleport -> Salve Graveyard	19	6
+1858 5707 0	3548 3528 0	Y	FENKENSTRAINS_CASTLE	NexusPortal	NexusTeleport -> Fenken' Castle	19	6
+1858 5707 1	3548 3528 0	Y	FENKENSTRAINS_CASTLE	NexusPortal	NexusTeleport -> Fenken' Castle	19	6
+1858 5707 2	3548 3528 0	Y	FENKENSTRAINS_CASTLE	NexusPortal	NexusTeleport -> Fenken' Castle	19	6
+1858 5707 3	3548 3528 0	Y	FENKENSTRAINS_CASTLE	NexusPortal	NexusTeleport -> Fenken' Castle	19	6
+1922 5707 0	3548 3528 0	Y	FENKENSTRAINS_CASTLE	NexusPortal	NexusTeleport -> Fenken' Castle	19	6
+1922 5707 1	3548 3528 0	Y	FENKENSTRAINS_CASTLE	NexusPortal	NexusTeleport -> Fenken' Castle	19	6
+1922 5707 2	3548 3528 0	Y	FENKENSTRAINS_CASTLE	NexusPortal	NexusTeleport -> Fenken' Castle	19	6
+1922 5707 3	3548 3528 0	Y	FENKENSTRAINS_CASTLE	NexusPortal	NexusTeleport -> Fenken' Castle	19	6
+1986 5707 0	3548 3528 0	Y	FENKENSTRAINS_CASTLE	NexusPortal	NexusTeleport -> Fenken' Castle	19	6
+1986 5707 1	3548 3528 0	Y	FENKENSTRAINS_CASTLE	NexusPortal	NexusTeleport -> Fenken' Castle	19	6
+1986 5707 2	3548 3528 0	Y	FENKENSTRAINS_CASTLE	NexusPortal	NexusTeleport -> Fenken' Castle	19	6
+1986 5707 3	3548 3528 0	Y	FENKENSTRAINS_CASTLE	NexusPortal	NexusTeleport -> Fenken' Castle	19	6
+1858 5707 0	2500 3291 0	Y	WEST_ARDOUGNE	NexusPortal	NexusTeleport -> West Ardougne	19	6
+1858 5707 1	2500 3291 0	Y	WEST_ARDOUGNE	NexusPortal	NexusTeleport -> West Ardougne	19	6
+1858 5707 2	2500 3291 0	Y	WEST_ARDOUGNE	NexusPortal	NexusTeleport -> West Ardougne	19	6
+1858 5707 3	2500 3291 0	Y	WEST_ARDOUGNE	NexusPortal	NexusTeleport -> West Ardougne	19	6
+1922 5707 0	2500 3291 0	Y	WEST_ARDOUGNE	NexusPortal	NexusTeleport -> West Ardougne	19	6
+1922 5707 1	2500 3291 0	Y	WEST_ARDOUGNE	NexusPortal	NexusTeleport -> West Ardougne	19	6
+1922 5707 2	2500 3291 0	Y	WEST_ARDOUGNE	NexusPortal	NexusTeleport -> West Ardougne	19	6
+1922 5707 3	2500 3291 0	Y	WEST_ARDOUGNE	NexusPortal	NexusTeleport -> West Ardougne	19	6
+1986 5707 0	2500 3291 0	Y	WEST_ARDOUGNE	NexusPortal	NexusTeleport -> West Ardougne	19	6
+1986 5707 1	2500 3291 0	Y	WEST_ARDOUGNE	NexusPortal	NexusTeleport -> West Ardougne	19	6
+1986 5707 2	2500 3291 0	Y	WEST_ARDOUGNE	NexusPortal	NexusTeleport -> West Ardougne	19	6
+1986 5707 3	2500 3291 0	Y	WEST_ARDOUGNE	NexusPortal	NexusTeleport -> West Ardougne	19	6
+1858 5707 0	3797 2866 0	Y	HARMONY_ISLAND	NexusPortal	NexusTeleport -> Harmony Island	19	6
+1858 5707 1	3797 2866 0	Y	HARMONY_ISLAND	NexusPortal	NexusTeleport -> Harmony Island	19	6
+1858 5707 2	3797 2866 0	Y	HARMONY_ISLAND	NexusPortal	NexusTeleport -> Harmony Island	19	6
+1858 5707 3	3797 2866 0	Y	HARMONY_ISLAND	NexusPortal	NexusTeleport -> Harmony Island	19	6
+1922 5707 0	3797 2866 0	Y	HARMONY_ISLAND	NexusPortal	NexusTeleport -> Harmony Island	19	6
+1922 5707 1	3797 2866 0	Y	HARMONY_ISLAND	NexusPortal	NexusTeleport -> Harmony Island	19	6
+1922 5707 2	3797 2866 0	Y	HARMONY_ISLAND	NexusPortal	NexusTeleport -> Harmony Island	19	6
+1922 5707 3	3797 2866 0	Y	HARMONY_ISLAND	NexusPortal	NexusTeleport -> Harmony Island	19	6
+1986 5707 0	3797 2866 0	Y	HARMONY_ISLAND	NexusPortal	NexusTeleport -> Harmony Island	19	6
+1986 5707 1	3797 2866 0	Y	HARMONY_ISLAND	NexusPortal	NexusTeleport -> Harmony Island	19	6
+1986 5707 2	3797 2866 0	Y	HARMONY_ISLAND	NexusPortal	NexusTeleport -> Harmony Island	19	6
+1986 5707 3	3797 2866 0	Y	HARMONY_ISLAND	NexusPortal	NexusTeleport -> Harmony Island	19	6
+1858 5707 0	2978 3763 0	Y	CEMETERY	NexusPortal	NexusTeleport -> Cemetery	19	6
+1858 5707 1	2978 3763 0	Y	CEMETERY	NexusPortal	NexusTeleport -> Cemetery	19	6
+1858 5707 2	2978 3763 0	Y	CEMETERY	NexusPortal	NexusTeleport -> Cemetery	19	6
+1858 5707 3	2978 3763 0	Y	CEMETERY	NexusPortal	NexusTeleport -> Cemetery	19	6
+1922 5707 0	2978 3763 0	Y	CEMETERY	NexusPortal	NexusTeleport -> Cemetery	19	6
+1922 5707 1	2978 3763 0	Y	CEMETERY	NexusPortal	NexusTeleport -> Cemetery	19	6
+1922 5707 2	2978 3763 0	Y	CEMETERY	NexusPortal	NexusTeleport -> Cemetery	19	6
+1922 5707 3	2978 3763 0	Y	CEMETERY	NexusPortal	NexusTeleport -> Cemetery	19	6
+1986 5707 0	2978 3763 0	Y	CEMETERY	NexusPortal	NexusTeleport -> Cemetery	19	6
+1986 5707 1	2978 3763 0	Y	CEMETERY	NexusPortal	NexusTeleport -> Cemetery	19	6
+1986 5707 2	2978 3763 0	Y	CEMETERY	NexusPortal	NexusTeleport -> Cemetery	19	6
+1986 5707 3	2978 3763 0	Y	CEMETERY	NexusPortal	NexusTeleport -> Cemetery	19	6
+1858 5707 0	3565 3315 0	Y	BARROWS	NexusPortal	NexusTeleport -> Barrows	19	6
+1858 5707 1	3565 3315 0	Y	BARROWS	NexusPortal	NexusTeleport -> Barrows	19	6
+1858 5707 2	3565 3315 0	Y	BARROWS	NexusPortal	NexusTeleport -> Barrows	19	6
+1858 5707 3	3565 3315 0	Y	BARROWS	NexusPortal	NexusTeleport -> Barrows	19	6
+1922 5707 0	3565 3315 0	Y	BARROWS	NexusPortal	NexusTeleport -> Barrows	19	6
+1922 5707 1	3565 3315 0	Y	BARROWS	NexusPortal	NexusTeleport -> Barrows	19	6
+1922 5707 2	3565 3315 0	Y	BARROWS	NexusPortal	NexusTeleport -> Barrows	19	6
+1922 5707 3	3565 3315 0	Y	BARROWS	NexusPortal	NexusTeleport -> Barrows	19	6
+1986 5707 0	3565 3315 0	Y	BARROWS	NexusPortal	NexusTeleport -> Barrows	19	6
+1986 5707 1	3565 3315 0	Y	BARROWS	NexusPortal	NexusTeleport -> Barrows	19	6
+1986 5707 2	3565 3315 0	Y	BARROWS	NexusPortal	NexusTeleport -> Barrows	19	6
+1986 5707 3	3565 3315 0	Y	BARROWS	NexusPortal	NexusTeleport -> Barrows	19	6
+1858 5707 0	2770 2703 0	Y	APE_ATOLL_DUNGEON	NexusPortal	NexusTeleport -> Ape Atoll Dungeon	19	6
+1858 5707 1	2770 2703 0	Y	APE_ATOLL_DUNGEON	NexusPortal	NexusTeleport -> Ape Atoll Dungeon	19	6
+1858 5707 2	2770 2703 0	Y	APE_ATOLL_DUNGEON	NexusPortal	NexusTeleport -> Ape Atoll Dungeon	19	6
+1858 5707 3	2770 2703 0	Y	APE_ATOLL_DUNGEON	NexusPortal	NexusTeleport -> Ape Atoll Dungeon	19	6
+1922 5707 0	2770 2703 0	Y	APE_ATOLL_DUNGEON	NexusPortal	NexusTeleport -> Ape Atoll Dungeon	19	6
+1922 5707 1	2770 2703 0	Y	APE_ATOLL_DUNGEON	NexusPortal	NexusTeleport -> Ape Atoll Dungeon	19	6
+1922 5707 2	2770 2703 0	Y	APE_ATOLL_DUNGEON	NexusPortal	NexusTeleport -> Ape Atoll Dungeon	19	6
+1922 5707 3	2770 2703 0	Y	APE_ATOLL_DUNGEON	NexusPortal	NexusTeleport -> Ape Atoll Dungeon	19	6
+1986 5707 0	2770 2703 0	Y	APE_ATOLL_DUNGEON	NexusPortal	NexusTeleport -> Ape Atoll Dungeon	19	6
+1986 5707 1	2770 2703 0	Y	APE_ATOLL_DUNGEON	NexusPortal	NexusTeleport -> Ape Atoll Dungeon	19	6
+1986 5707 2	2770 2703 0	Y	APE_ATOLL_DUNGEON	NexusPortal	NexusTeleport -> Ape Atoll Dungeon	19	6
+1986 5707 3	2770 2703 0	Y	APE_ATOLL_DUNGEON	NexusPortal	NexusTeleport -> Ape Atoll Dungeon	19	6
+1858 5707 0	1681 3133 0	Y	CIVITAS_ILLA_FORTIS	NexusPortal	NexusTeleport -> Civitas illa Fortis	19	6
+1858 5707 1	1681 3133 0	Y	CIVITAS_ILLA_FORTIS	NexusPortal	NexusTeleport -> Civitas illa Fortis	19	6
+1858 5707 2	1681 3133 0	Y	CIVITAS_ILLA_FORTIS	NexusPortal	NexusTeleport -> Civitas illa Fortis	19	6
+1858 5707 3	1681 3133 0	Y	CIVITAS_ILLA_FORTIS	NexusPortal	NexusTeleport -> Civitas illa Fortis	19	6
+1922 5707 0	1681 3133 0	Y	CIVITAS_ILLA_FORTIS	NexusPortal	NexusTeleport -> Civitas illa Fortis	19	6
+1922 5707 1	1681 3133 0	Y	CIVITAS_ILLA_FORTIS	NexusPortal	NexusTeleport -> Civitas illa Fortis	19	6
+1922 5707 2	1681 3133 0	Y	CIVITAS_ILLA_FORTIS	NexusPortal	NexusTeleport -> Civitas illa Fortis	19	6
+1922 5707 3	1681 3133 0	Y	CIVITAS_ILLA_FORTIS	NexusPortal	NexusTeleport -> Civitas illa Fortis	19	6
+1986 5707 0	1681 3133 0	Y	CIVITAS_ILLA_FORTIS	NexusPortal	NexusTeleport -> Civitas illa Fortis	19	6
+1986 5707 1	1681 3133 0	Y	CIVITAS_ILLA_FORTIS	NexusPortal	NexusTeleport -> Civitas illa Fortis	19	6
+1986 5707 2	1681 3133 0	Y	CIVITAS_ILLA_FORTIS	NexusPortal	NexusTeleport -> Civitas illa Fortis	19	6
+1986 5707 3	1681 3133 0	Y	CIVITAS_ILLA_FORTIS	NexusPortal	NexusTeleport -> Civitas illa Fortis	19	6
