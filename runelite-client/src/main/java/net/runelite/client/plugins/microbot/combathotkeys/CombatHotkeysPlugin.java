@@ -12,6 +12,7 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2Prayer;
 import net.runelite.client.plugins.microbot.util.prayer.Rs2PrayerEnum;
 import net.runelite.client.ui.overlay.OverlayManager;
@@ -19,6 +20,8 @@ import net.runelite.client.ui.overlay.OverlayManager;
 import javax.inject.Inject;
 import java.awt.*;
 import java.awt.event.KeyEvent;
+
+import static net.runelite.client.plugins.microbot.util.Global.sleep;
 
 @PluginDescriptor(
         name = PluginDescriptor.Cicire + "Combat hotkeys",
@@ -80,6 +83,21 @@ public class CombatHotkeysPlugin extends Plugin implements KeyListener {
             script.dance = !script.dance;
         }
 
+        if (config.offensiveMeleeKey().matches(e)) {
+            e.consume();
+            Rs2Prayer.toggle(config.offensiveMeleePrayer().getPrayer());
+        }
+
+        if (config.offensiveRangeKey().matches(e)) {
+            e.consume();
+            Rs2Prayer.toggle(config.offensiveRangePrayer().getPrayer());
+        }
+
+        if (config.offensiveMagicKey().matches(e)) {
+            e.consume();
+            Rs2Prayer.toggle(config.offensiveMagicPrayer().getPrayer());
+        }
+
         if (config.protectFromMagic().matches(e)) {
             e.consume();
             Rs2Prayer.toggle(Rs2PrayerEnum.PROTECT_MAGIC);
@@ -137,12 +155,15 @@ public class CombatHotkeysPlugin extends Plugin implements KeyListener {
     }
 
 
-    private static void equipGear(String gearListConfig) {
+    private void equipGear(String gearListConfig) {
         String[] itemIDs = gearListConfig.split(",");
 
         for (String value : itemIDs) {
             int itemId = Integer.parseInt(value);
             Rs2Inventory.equip(itemId);
+
+            int delay = Rs2Random.between(0, config.maxDelay());
+            sleep(delay);
         }
     }
 
