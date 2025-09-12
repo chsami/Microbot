@@ -8,7 +8,7 @@ import net.runelite.api.*;
 import net.runelite.api.Point;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.*;
-// import net.runelite.api.widgets.ComponentID; // Temporarily commented out - ComponentID not resolving
+import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.worldmap.WorldMap;
 import net.runelite.client.config.ConfigManager;
@@ -318,7 +318,6 @@ public class AIOFighterPlugin extends Plugin {
     }
     // Set currentInventorySetup
     public static void setCurrentSlayerInventorySetup(InventorySetup currentInventorySetup) {
-        Microbot.log("Setting current inventory setup to: " + currentInventorySetup.getName());
         Microbot.getConfigManager().setConfiguration(
                 AIOFighterConfig.GROUP,
                 "currentInventorySetup",
@@ -587,7 +586,7 @@ public class AIOFighterPlugin extends Plugin {
 
         float pixelsPerTile = worldMap.getWorldMapZoom();
 
-        Widget map = Microbot.getClient().getWidget(ComponentID.WORLD_MAP_MAPVIEW); // Temporarily commented out
+        Widget map = Microbot.getClient().getWidget(ComponentID.WORLD_MAP_MAPVIEW);
         if (map != null) {
             Rectangle worldMapRect = map.getBounds();
 

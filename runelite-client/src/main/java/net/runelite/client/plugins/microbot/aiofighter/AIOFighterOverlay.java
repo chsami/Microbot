@@ -74,13 +74,21 @@ public class AIOFighterOverlay extends OverlayPanel {
                 renderPath(graphics,lines,WHITE_TRANSLUCENT);
             }
         }
+        
+        // render loot radius from player location
+        LocalPoint playerLp = Microbot.getClient().getLocalPlayer().getLocalLocation();
+        if (playerLp != null && config.toggleLootItems()) {
+            Polygon lootPoly = Perspective.getCanvasTileAreaPoly(Microbot.getClient(), playerLp, config.lootRadius() * 2);
+            if (lootPoly != null) {
+                renderPolygon(graphics, lootPoly, new Color(255, 215, 0, 30)); // Cyan translucent for loot radius
+            }
+        }
         // render safe spot
         LocalPoint sslp = LocalPoint.fromWorld(Microbot.getClient(), config.safeSpot());
         if (sslp != null) {
             Polygon safeSpotPoly = Perspective.getCanvasTileAreaPoly(Microbot.getClient(), sslp, 1);
             if (safeSpotPoly != null && config.toggleSafeSpot()) {
                 renderPolygon(graphics, safeSpotPoly, RED_TRANSLUCENT);
-
             }
         }
 

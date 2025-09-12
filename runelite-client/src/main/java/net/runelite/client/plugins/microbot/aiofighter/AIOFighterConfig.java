@@ -94,6 +94,10 @@ public interface AIOFighterConfig extends Config {
     )
     String skillingSection = "Combat Skilling";
 
+    // =========================================
+    // =========== COMBAT SECTION =============
+    // =========================================
+
     @ConfigItem(
             keyName = "Combat",
             name = "Auto attack npc",
@@ -206,6 +210,10 @@ public interface AIOFighterConfig extends Config {
         return true;
     }
 
+    // =========================================
+    // ===== FOOD & POTIONS SECTION ==========
+    // =========================================
+
     @ConfigItem(
             keyName = "Food",
             name = "Auto eat food",
@@ -216,6 +224,10 @@ public interface AIOFighterConfig extends Config {
     default boolean toggleFood() {
         return false;
     }
+
+    // ========================================
+    // ============ LOOT SECTION =============
+    // ========================================
 
     @ConfigItem(
             keyName = "Loot items",
@@ -254,7 +266,7 @@ public interface AIOFighterConfig extends Config {
             keyName = "Min Price of items to loot",
             name = "Min. Price of items to loot",
             description = "Min. Price of items (price * quantity) to loot",
-            position = 10,
+            position = 3,
             section = lootSection
     )
     default int minPriceOfItemsToLoot() {
@@ -265,55 +277,62 @@ public interface AIOFighterConfig extends Config {
             keyName = "Max Price of items to loot",
             name = "Max. Price of items to loot",
             description = "Max. Price of individual item to loot. Default is set to 10M",
-            position = 11,
+            position = 4,
             section = lootSection
     )
     default int maxPriceOfItemsToLoot() {
         return 10000000;
     }
-    // toggle scatter
 
     @ConfigItem(
-            keyName = "Loot arrows",
-            name = "Auto loot arrows",
-            description = "Enable/disable loot arrows",
-            position = 20,
+            keyName = "Loot Radius",
+            name = "Loot Radius",
+            description = "The max radius to loot items",
+            position = 5,
             section = lootSection
     )
-    default boolean toggleLootArrows() {
-        return false;
+    default int lootRadius() {
+        return 10;
     }
 
-    // toggle loot runes
-    @ConfigItem(
-            keyName = "Loot runes",
-            name = "Loot runes",
-            description = "Enable/disable loot runes",
-            position = 30,
-            section = lootSection
-    )
-    default boolean toggleLootRunes() {
-        return false;
-    }
-
-    // toggle loot coins
     @ConfigItem(
             keyName = "Loot coins",
             name = "Loot coins",
             description = "Enable/disable loot coins",
-            position = 40,
+            position = 10,
             section = lootSection
     )
     default boolean toggleLootCoins() {
         return false;
     }
 
-    // toggle loot untreadables
+    @ConfigItem(
+            keyName = "Loot arrows",
+            name = "Auto loot arrows",
+            description = "Enable/disable loot arrows",
+            position = 11,
+            section = lootSection
+    )
+    default boolean toggleLootArrows() {
+        return false;
+    }
+
+    @ConfigItem(
+            keyName = "Loot runes",
+            name = "Loot runes",
+            description = "Enable/disable loot runes",
+            position = 12,
+            section = lootSection
+    )
+    default boolean toggleLootRunes() {
+        return false;
+    }
+
     @ConfigItem(
             keyName = "Loot untradables",
             name = "Loot untradables",
             description = "Enable/disable loot untradables",
-            position = 50,
+            position = 13,
             section = lootSection
     )
     default boolean toggleLootUntradables() {
@@ -324,7 +343,7 @@ public interface AIOFighterConfig extends Config {
             keyName = "Bury Bones",
             name = "Bury Bones",
             description = "Picks up and Bury Bones. Casts Sinister Offering if possible.",
-            position = 96,
+            position = 14,
             section = lootSection
     )
     default boolean toggleBuryBones() {
@@ -335,7 +354,7 @@ public interface AIOFighterConfig extends Config {
             keyName = "Scatter",
             name = "Scatter Ashes",
             description = "Picks up and Scatter ashes. Casts Demonic Offering if possible.",
-            position = 97,
+            position = 15,
             section = lootSection
     )
     default boolean toggleScatter() {
@@ -346,7 +365,7 @@ public interface AIOFighterConfig extends Config {
             keyName = "Wield arrows",
             name = "Auto wield arrows",
             description = "Automatically wield arrows when found in inventory",
-            position = 106,
+            position = 20,
             section = lootSection
     )
     default boolean toggleWieldArrows() {
@@ -357,55 +376,51 @@ public interface AIOFighterConfig extends Config {
             keyName = "Arrow type",
             name = "Arrow type to wield",
             description = "Choose which arrow type to auto-wield",
-            position = 107,
+            position = 21,
             section = lootSection
     )
     default ArrowType arrowType() {
         return ArrowType.IRON_ARROW;
     }
 
-    // delayed looting
     @ConfigItem(
             keyName = "delayedLooting",
             name = "Delayed Looting",
             description = "Lets the loot stay on the ground for a while before picking it up",
-            position = 98,
+            position = 30,
             section = lootSection
     )
     default boolean toggleDelayedLooting() {
         return false;
     }
 
-    // only loot my items
     @ConfigItem(
             keyName = "onlyLootMyItems",
             name = "Only Loot My Items",
             description = "Only loot items that are dropped for/by you",
-            position = 99,
+            position = 31,
             section = lootSection
     )
     default boolean toggleOnlyLootMyItems() {
         return false;
     }
 
-    //Force loot regardless if we are in combat or not
     @ConfigItem(
             keyName = "forceLoot",
             name = "Force Loot",
             description = "Force loot regardless if we are in combat or not",
-            position = 100,
+            position = 32,
             section = lootSection
     )
     default boolean toggleForceLoot() {
         return false;
     }
 
-    //toggle High Alch profitable items
     @ConfigItem(
             keyName = "highAlchProfitable",
             name = "High Alch Profitable",
             description = "High Alch Profitable items",
-            position = 101,
+            position = 33,
             section = lootSection
     )
     default boolean toggleHighAlchProfitable() {
@@ -416,16 +431,30 @@ public interface AIOFighterConfig extends Config {
             keyName =  "eatFoodForSpace",
             name = "Eat food for space",
             description = "Eats food before looting if low on space",
-            position = 102,
+            position = 34,
             section = lootSection
     )
-    default boolean eatFoodForSpace() { return false; }
+    default boolean eatFoodForSpace() { 
+        return false; 
+    }
+
+    @Range(min = 0, max = 100)
+    @ConfigItem(
+            keyName = "delayLootUntilKills",
+            name = "Delay loot until attacks",
+            description = "Number of monsters that must be attacked before looting starts (0 = disabled)",
+            position = 40,
+            section = lootSection
+    )
+    default int delayLootUntilKills() {
+        return 0;
+    }
 
     @ConfigItem(
             keyName = "waitForLoot",
             name = "Wait for Loot",
             description = "Wait for loot to appear before attacking next NPC",
-            position = 103,
+            position = 41,
             section = lootSection,
             hidden = true
     )
@@ -438,24 +467,12 @@ public interface AIOFighterConfig extends Config {
             keyName = "lootWaitTimeout",
             name = "Loot Wait Timeout (s)",
             description = "Seconds to wait for loot before resuming combat (1-10)",
-            position = 104,
+            position = 42,
             section = lootSection,
             hidden = true
     )
     default int lootWaitTimeout() {
         return 6;
-    }
-
-    @Range(min = 0, max = 100)
-    @ConfigItem(
-            keyName = "delayLootUntilKills",
-            name = "Delay loot until attacks",
-            description = "Number of monsters that must be attacked before looting starts (0 = disabled)",
-            position = 105,
-            section = lootSection
-    )
-    default int delayLootUntilKills() {
-        return 0;
     }
 
     //set center tile manually
@@ -469,6 +486,10 @@ public interface AIOFighterConfig extends Config {
     default boolean toggleCenterTile() {
         return false;
     }
+
+    // =========================================
+    // =========== PRAYER SECTION =============
+    // =========================================
 
     //Use quick prayer
     @ConfigItem(
@@ -520,6 +541,10 @@ public interface AIOFighterConfig extends Config {
                 "Continuous: Quick prayer is on when in combat\n" +
                 "Always On: Quick prayer is always on";
     }
+
+    // =========================================
+    // ========== SKILLING SECTION ============
+    // =========================================
 
     // Use Magic
     @ConfigItem(
@@ -652,6 +677,9 @@ public interface AIOFighterConfig extends Config {
         return 99;
     }
 
+    // =========================================
+    // ============ GEAR SECTION ==============
+    // =========================================
 
     // Use Inventory Setup
     @ConfigItem(
@@ -676,6 +704,10 @@ public interface AIOFighterConfig extends Config {
     default InventorySetup inventorySetup() {
         return null;
     }
+
+    // =========================================
+    // =========== BANKING SECTION ============
+    // =========================================
 
     @ConfigItem(
             keyName = "bank",
@@ -711,7 +743,11 @@ public interface AIOFighterConfig extends Config {
     default boolean usePoolAtFerox() {
         return false;
     }
-    // Safety section
+
+    // =========================================
+    // =========== SAFETY SECTION =============
+    // =========================================
+
     @ConfigItem(
             keyName = "useSafety",
             name = "Use Safety",
@@ -780,7 +816,10 @@ public interface AIOFighterConfig extends Config {
         return 25;
     }
 
-    // Slayer mode
+    // =========================================
+    // =========== SLAYER SECTION =============
+    // =========================================
+
     @ConfigItem(
             keyName = "slayerMode",
             name = "Slayer Mode",
