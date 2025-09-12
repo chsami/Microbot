@@ -665,6 +665,17 @@ public interface AIOFighterConfig extends Config {
     default int minFreeSlots() {
         return 0;
     }
+
+    @ConfigItem(
+            keyName = "usePoolAtFerox",
+            name = "Use Pool at Ferox",
+            description = "Use Pool of Restoration at Ferox Enclave after banking if HP/Prayer below 100% or Run below 90%",
+            position = 10,
+            section = banking
+    )
+    default boolean usePoolAtFerox() {
+        return false;
+    }
     // Safety section
     @ConfigItem(
             keyName = "useSafety",

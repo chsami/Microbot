@@ -15,6 +15,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.farmruns.CropState;
 import net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.farmruns.FarmingPatch;
 import net.runelite.client.plugins.microbot.util.cache.Rs2SpiritTreeCache;
+import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.poh.PohTeleports;
@@ -199,9 +200,9 @@ public enum SpiritTree {
             null, // Location is dynamic based on player's house
             SpiritTreeType.POH,
             List.of(Quest.TREE_GNOME_VILLAGE, Quest.THE_GRAND_TREE, Quest.FAIRYTALE_II__CURE_A_QUEEN),
-            75, // Requires 75 Construction
+            95, // Requires 95 Construction
             VarbitID.POH_SPIRIT_TREE_UPROOTED, // TODO Must be checkedPOH Spirit Tree varbit (combined tree/ring uses same varbit)
-            List.of(ObjectID.POH_SPIRIT_RING), // TODO Must be checked Spirit Ring object ID // we must update it. here are also variations for it.. leauge skins
+            Rs2GameObject.getObjectIdsByName("poh_spirit_ring"),
             new int[] {-1}, // Region must be player's own house 
             "Your house"
     );
@@ -247,16 +248,6 @@ public enum SpiritTree {
 
             // For farmable trees, check if they are planted and healthy
             return isPatchHealthyAndGrown();
-        }
-
-        // Check construction level for POH trees
-        if (type == SpiritTreeType.POH) {
-            if (Rs2Player.getRealSkillLevel(Skill.CONSTRUCTION) < requiredSkillLevel || !Rs2Farming.hasRequiredFarmingLevel(75)) {
-                return false;
-            }
-
-            // For POH trees, check if they are built and player is in their house
-            return isPOHTreeAvailable();
         }
 
         // Built-in trees are always available if quest requirements are met

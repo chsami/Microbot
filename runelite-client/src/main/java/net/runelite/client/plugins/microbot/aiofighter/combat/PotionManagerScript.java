@@ -7,6 +7,7 @@ import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.aiofighter.AIOFighterConfig;
 import net.runelite.client.plugins.microbot.aiofighter.AIOFighterPlugin;
 import net.runelite.client.plugins.microbot.aiofighter.enums.State;
+import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
@@ -35,25 +36,28 @@ public class PotionManagerScript extends Script {
                     Rs2Player.waitForAnimation();
                 }
 
-                // Always attempt to drink ranging potion
-                if (Rs2Player.drinkCombatPotionAt(Skill.RANGED, false)) {
-                    Rs2Player.waitForAnimation();
-                }
+                // Only drink combat potions when in combat
+                if (Rs2Combat.inCombat()) {
+                    // Attempt to drink ranging potion
+                    if (Rs2Player.drinkCombatPotionAt(Skill.RANGED, false)) {
+                        Rs2Player.waitForAnimation();
+                    }
 
-                // Always attempt to drink magic potion
-                if (Rs2Player.drinkCombatPotionAt(Skill.MAGIC, false)) {
-                    Rs2Player.waitForAnimation();
-                }
+                    // Attempt to drink magic potion
+                    if (Rs2Player.drinkCombatPotionAt(Skill.MAGIC, false)) {
+                        Rs2Player.waitForAnimation();
+                    }
 
-                // Always attempt to drink combat potions for STR, ATT, DEF
-                if (Rs2Player.drinkCombatPotionAt(Skill.STRENGTH)) {
-                    Rs2Player.waitForAnimation();
-                }
-                if (Rs2Player.drinkCombatPotionAt(Skill.ATTACK)) {
-                    Rs2Player.waitForAnimation();
-                }
-                if (Rs2Player.drinkCombatPotionAt(Skill.DEFENCE)) {
-                    Rs2Player.waitForAnimation();
+                    // Attempt to drink combat potions for STR, ATT, DEF
+                    if (Rs2Player.drinkCombatPotionAt(Skill.STRENGTH)) {
+                        Rs2Player.waitForAnimation();
+                    }
+                    if (Rs2Player.drinkCombatPotionAt(Skill.ATTACK)) {
+                        Rs2Player.waitForAnimation();
+                    }
+                    if (Rs2Player.drinkCombatPotionAt(Skill.DEFENCE)) {
+                        Rs2Player.waitForAnimation();
+                    }
                 }
 
                 // Always attempt to drink goading potion

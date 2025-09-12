@@ -41,7 +41,7 @@
 		<git.commit.id.abbrev>nogit</git.commit.id.abbrev>
 		<git.dirty>false</git.dirty>
 		<shade.skip>false</shade.skip>
-		<microbot.version>2.0.3</microbot.version>
+		<microbot.version>2.0.4</microbot.version>
 		<microbot.commit.sha>nogit</microbot.commit.sha>
 	</properties>
 

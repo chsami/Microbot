@@ -6,16 +6,13 @@ import net.runelite.api.GameState;
 import net.runelite.api.GameObject;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.events.VarbitChanged;
-import net.runelite.api.events.WidgetLoaded;
+import net.runelite.api.events.*;
 import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.farmruns.CropState;
 import net.runelite.client.plugins.microbot.util.cache.Rs2Cache;
-import net.runelite.client.plugins.microbot.util.cache.Rs2ObjectCache;
 import net.runelite.client.plugins.microbot.util.cache.model.SpiritTreeData;
 import net.runelite.client.plugins.microbot.util.cache.strategy.CacheOperations;
 import net.runelite.client.plugins.microbot.util.cache.strategy.CacheUpdateStrategy;
@@ -59,27 +56,41 @@ public class SpiritTreeUpdateStrategy implements CacheUpdateStrategy<SpiritTree,
         VarbitID.FARMING_TRANSMIT_B, // 4772 - Etceteria and Brimhaven patches
         VarbitID.FARMING_TRANSMIT_F  // 7904 - Hosidius
     );
-    
+
+    /**
+     * Handle an event from the client and update the cache accordingly.
+     * @param event The event that occurred
+     * @param cache The cache to potentially update
+     */
     @Override
     public void handleEvent(Object event, CacheOperations<SpiritTree, SpiritTreeData> cache) {
         try {
-            
             if (event instanceof WidgetLoaded) {
                 handleWidgetLoaded((WidgetLoaded) event, cache);
             } else if (event instanceof VarbitChanged) {
                 handleVarbitChanged((VarbitChanged) event, cache);
             } else if (event instanceof GameStateChanged) {
                 handleGameStateChanged((GameStateChanged) event, cache);
+            } else if (event instanceof GameObjectSpawned) {
+                GameObject go = ((GameObjectSpawned) event).getGameObject();
+                handleGameObjectChange(go, true, cache);
+            } else if (event instanceof GameObjectDespawned) {
+                GameObject go = ((GameObjectDespawned) event).getGameObject();
+                handleGameObjectChange(go, false, cache);
             }
         } catch (Exception e) {
             log.error("Error handling event in SpiritTreeUpdateStrategy: {}", e.getMessage(), e);
         }
     }
-    
+
+    /**
+     * Get the event types that are handled by this strategy
+     */
     @Override
     public Class<?>[] getHandledEventTypes() {
-        return new Class<?>[]{WidgetLoaded.class, VarbitChanged.class, GameStateChanged.class};
-    }    
+        return new Class<?>[]{WidgetLoaded.class, VarbitChanged.class, GameStateChanged.class, GameObjectSpawned.class, GameObjectDespawned.class};
+    }
+
     /**
      * Handle widget loaded events to detect spirit tree widget opening
      */
@@ -127,13 +138,38 @@ public class SpiritTreeUpdateStrategy implements CacheUpdateStrategy<SpiritTree,
         if(varbitId == VarbitID.POH_SPIRIT_TREE_UPROOTED){
             log.debug("TODO update cache for POH spirit tree uprooted varbit change,currently in POH? {} ",PohTeleports.isInHouse());
         }
-        if (Rs2Cache.isInPOH()) {
-            log.debug("Player in POH, checking for spirit tree objects,changed varbit {}", varbitId);
-            updatePOHSpiritTreeCache(cache);
-        }
-       
     }
-    
+
+    /**
+     * Handles changes to game objects related to spirit trees and updates the cache accordingly.
+     * If the provided game object matches known spirit tree objects, it logs the detection
+     * and updates the cache with the relevant state.
+     *
+     * @param gameObject The game object that has changed. May be null, in which case this method does nothing.
+     * @param spawned    Indicates whether the game object was spawned (true) or despawned (false).
+     * @param cache      The cache instance used for storing and updating {@link SpiritTreeData} for detected spirit trees.
+     */
+    private void handleGameObjectChange(GameObject gameObject, boolean spawned, CacheOperations<SpiritTree, SpiritTreeData> cache) {
+        if(gameObject == null){
+            return;
+        }
+        Arrays.stream(SpiritTree.values()).filter(tree -> tree.getType() == SpiritTree.SpiritTreeType.POH).forEach(tree -> {
+            if (tree.getObjectId().contains(gameObject.getId())) {
+                log.info("Found spirit tree object {} for POH spirit tree {}, {} to cache", gameObject.getId(), tree.name(), spawned ? "added" : "removed");
+                SpiritTreeData newData = new SpiritTreeData(
+                        tree,
+                        spawned ? CropState.HARVESTABLE: CropState.DEAD,
+                        spawned,
+                        gameObject.getWorldLocation(),
+                        false, // Not detected via widget
+                        true // Detected via nearby tree if present
+                );
+                cache.put(tree, newData);
+            }
+        });
+
+    }
+
     /**
      * Handle GameStateChanged events to detect POH region changes and validate spirit tree presence
      */
@@ -148,50 +184,8 @@ public class SpiritTreeUpdateStrategy implements CacheUpdateStrategy<SpiritTree,
         try {
             // Use unified region detection from Rs2Cache
             Rs2Cache.checkAndHandleRegionChange(cache);
-            
-            // Check if we're in POH and validate spirit tree presence
-            if (Rs2Cache.isInPOH()) {
-                log.debug("Player in POH, checking for spirit tree objects");
-                updatePOHSpiritTreeCache(cache);
-            }
         } catch (Exception e) {
             log.error("Error handling GameStateChanged in SpiritTreeUpdateStrategy: {}", e.getMessage(), e);
-        }
-    }
-    
-    /**
-     * Update cache for POH spirit tree based on object detection
-     */
-    private void updatePOHSpiritTreeCache(CacheOperations<SpiritTree, SpiritTreeData> cache) {
-        try {
-            WorldPoint playerLocation = getPlayerLocation();
-            if (playerLocation == null|| !Rs2Cache.isInPOH()) {
-                log.warn("Cannot determine player location for POH spirit tree detection");
-                return;
-            }
-            // Stream over all SpiritTree values, filter for POH type, and update cache for each
-            Arrays.stream(SpiritTree.values())
-                .filter(tree -> tree.getType() == SpiritTree.SpiritTreeType.POH)
-                .forEach(tree -> {
-                    // Check for POH spirit tree object nearby using the objectId defined in the enum
-                    boolean pohSpiritTreePresent = Rs2ObjectCache.getGameObjects()
-                        .anyMatch(obj -> tree.getObjectId().contains(obj.getId()) &&                                        
-                                         obj.getWorldLocation().distanceTo(playerLocation) <= 40);
-
-                    SpiritTreeData newData = new SpiritTreeData(
-                        tree,
-                        pohSpiritTreePresent ? CropState.HARVESTABLE : CropState.DEAD,
-                        pohSpiritTreePresent,
-                        playerLocation,
-                        false, // Not detected via widget
-                        pohSpiritTreePresent // Detected via nearby tree if present
-                    );
-
-                    cache.put(tree, newData);
-                    log.debug("Updated POH spirit tree cache for {} - {}", tree.name(), pohSpiritTreePresent ? "tree present and available" : "no tree present");
-                });
-        } catch (Exception e) {
-            log.error("Error updating POH spirit tree cache: {}", e.getMessage(), e);
         }
     }
     

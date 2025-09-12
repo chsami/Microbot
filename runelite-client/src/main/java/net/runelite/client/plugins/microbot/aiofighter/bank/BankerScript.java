@@ -1,7 +1,9 @@
 package net.runelite.client.plugins.microbot.aiofighter.bank;
 
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.GameObject;
 import net.runelite.api.ItemComposition;
+import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -16,7 +18,9 @@ import net.runelite.client.plugins.microbot.inventorysetups.InventorySetup;
 import net.runelite.client.plugins.microbot.inventorysetups.MInventorySetupsPlugin;
 import net.runelite.client.plugins.microbot.util.Rs2InventorySetup;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
+import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
@@ -359,6 +363,12 @@ public class BankerScript extends Script {
 
 
     public void withdrawUpkeepItems(AIOFighterConfig config) {
+        // Always empty special bags when banking
+        Rs2Bank.depositLootingBag();
+        Rs2Bank.emptyGemBag();
+        Rs2Bank.emptyHerbSack();
+        Rs2Bank.emptySeedBox();
+        
         if (config.useInventorySetup() || config.slayerMode()) {
             String setupName = null;
             if (config.slayerMode() && config.currentInventorySetup() != null) {
@@ -384,11 +394,6 @@ public class BankerScript extends Script {
             }
             inventorySetup.loadEquipment();
             inventorySetup.loadInventory();
-
-
-            Rs2Bank.emptyGemBag();
-            Rs2Bank.emptyHerbSack();
-            Rs2Bank.emptySeedBox();
 
             bankingTriggered = false;
 
@@ -473,8 +478,39 @@ public class BankerScript extends Script {
         Rs2Prayer.disableAllPrayers();
         if (Rs2Bank.walkToBankAndUseBank()) {
             withdrawUpkeepItems(config);
+            
+            // Use Pool of Restoration at Ferox if configured
+            if (config.usePoolAtFerox() && Rs2Bank.getNearestBank() == BankLocation.FEROX_ENCLAVE) {
+                usePoolIfNeeded();
+            }
         }
         return !needBanking();
+    }
+    
+    private void usePoolIfNeeded() {
+        // Check if we need restoration (HP < 100%, Prayer < 100%, or Run < 90%)
+        boolean needsPool = Rs2Player.getHealthPercentage() < 100 ||
+                           Rs2Player.getBoostedSkillLevel(Skill.PRAYER) < Rs2Player.getRealSkillLevel(Skill.PRAYER) ||
+                           Rs2Player.getRunEnergy() < 90;
+        
+        if (!needsPool) return;
+        
+        // Close bank first if open
+        if (Rs2Bank.isOpen()) {
+            Rs2Bank.closeBank();
+            sleepUntil(() -> !Rs2Bank.isOpen(), 2000);
+        }
+        
+        // Find and use the pool
+        GameObject pool = Rs2GameObject.get("Pool of Refreshment", true);
+        if (pool != null) {
+            if (Rs2GameObject.interact(pool, "Drink")) {
+                sleepUntil(Rs2Player::isMoving, 2000);
+                sleepUntil(() -> !Rs2Player.isMoving(), 5000);
+                sleepUntil(Rs2Player::isAnimating, 2000);
+                sleepUntil(() -> !Rs2Player.isAnimating(), 2000);
+            }
+        }
     }
     public boolean handleTeleports(Map<Integer,Integer> ids_quantity) {
          AIOFighterPlugin.setState(State.BANKING);

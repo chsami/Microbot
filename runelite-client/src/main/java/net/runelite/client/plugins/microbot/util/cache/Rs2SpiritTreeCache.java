@@ -97,19 +97,14 @@ public class Rs2SpiritTreeCache extends Rs2Cache<SpiritTree, SpiritTreeData> imp
         return getInstance().get(spiritTree, () -> {
             try {                            
                 // Determine initial state based on spiritTree type
-                CropState cropState = null;
-                boolean availableForTravel = false;
+                CropState cropState = CropState.HARVESTABLE;
+                boolean availableForTravel = spiritTree.hasQuestRequirements();
                 
-                if (spiritTree.getType() == SpiritTree.SpiritTreeType.BUILT_IN) {
-                    // Built-in trees are available if quest requirements are met
-                    availableForTravel = spiritTree.hasQuestRequirements();
-                } else if (spiritTree.getType() == SpiritTree.SpiritTreeType.FARMABLE) {
-                    // Farmable trees - get current farming state
+                if (spiritTree.getType() == SpiritTree.SpiritTreeType.FARMABLE) {
                     cropState = spiritTree.getPatchState();
-                    availableForTravel = spiritTree.isAvailableForTravel();
-                }else if (spiritTree.getType() == SpiritTree.SpiritTreeType.POH) {
-                    // Other types (e.g. POH spirit trees) - use default availability
-                    availableForTravel = spiritTree.isAvailableForTravel();
+                    availableForTravel &= spiritTree.isAvailableForTravel();
+                } else if (spiritTree.getType() == SpiritTree.SpiritTreeType.POH) {
+                    availableForTravel &= spiritTree.hasLevelRequirement();
                 }
                 
                 log.debug("Initial spirit tree data for {}: \n\tcropState={}, available={}", 
@@ -587,6 +582,14 @@ public class Rs2SpiritTreeCache extends Rs2Cache<SpiritTree, SpiritTreeData> imp
      */
     @Subscribe
     public void onGameObjectSpawned(net.runelite.api.events.GameObjectSpawned event) {
+        getInstance().handleEvent(event);
+    }
+
+    /**
+     * Handle GameObjectSpawned event and delegate to update strategy.
+     */
+    @Subscribe
+    public void onGameObjectDespawned(net.runelite.api.events.GameObjectDespawned event) {
         getInstance().handleEvent(event);
     }
 
