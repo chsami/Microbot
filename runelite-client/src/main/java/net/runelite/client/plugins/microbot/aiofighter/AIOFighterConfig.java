@@ -423,6 +423,18 @@ public interface AIOFighterConfig extends Config {
         return 6;
     }
 
+    @Range(min = 0, max = 100)
+    @ConfigItem(
+            keyName = "delayLootUntilKills",
+            name = "Delay loot until attacks",
+            description = "Number of monsters that must be attacked before looting starts (0 = disabled)",
+            position = 105,
+            section = lootSection
+    )
+    default int delayLootUntilKills() {
+        return 0;
+    }
+
     //set center tile manually
     @ConfigItem(
             keyName = "Center Tile",
