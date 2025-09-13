@@ -1,0 +1,80 @@
+# Origin	Destination	menuOption menuTarget objectID	Skills	Quests	Duration	Display info
+# Level 13 Wilderness - South-east of Ferox Enclave						
+3155 3619 0		Activate;Obelisk;14829			8	1: Level 13 Wilderness
+3155 3620 0		Activate;Obelisk;14829			8	1: Level 13 Wilderness
+3155 3621 0		Activate;Obelisk;14829			8	1: Level 13 Wilderness
+3156 3619 0		Activate;Obelisk;14829			8	1: Level 13 Wilderness
+3156 3620 0		Activate;Obelisk;14829			8	1: Level 13 Wilderness
+3156 3621 0		Activate;Obelisk;14829			8	1: Level 13 Wilderness
+3157 3619 0		Activate;Obelisk;14829			8	1: Level 13 Wilderness
+3157 3620 0		Activate;Obelisk;14829			8	1: Level 13 Wilderness
+3157 3621 0		Activate;Obelisk;14829			8	1: Level 13 Wilderness
+# Level 19 Wilderness - East of Graveyard of Shadows						
+3226 3666 0		Activate;Obelisk;14830			8	2: Level 19 Wilderness
+3226 3667 0		Activate;Obelisk;14830			8	2: Level 19 Wilderness
+3226 3668 0		Activate;Obelisk;14830			8	2: Level 19 Wilderness
+3227 3666 0		Activate;Obelisk;14830			8	2: Level 19 Wilderness
+3227 3667 0		Activate;Obelisk;14830			8	2: Level 19 Wilderness
+3227 3668 0		Activate;Obelisk;14830			8	2: Level 19 Wilderness
+3228 3666 0		Activate;Obelisk;14830			8	2: Level 19 Wilderness
+3228 3667 0		Activate;Obelisk;14830			8	2: Level 19 Wilderness
+3228 3668 0		Activate;Obelisk;14830			8	2: Level 19 Wilderness
+# Level 27 Wilderness -  North of Bandit Camp						
+3034 3731 0		Activate;Obelisk;14827			8	3: Level 27 Wilderness
+3034 3732 0		Activate;Obelisk;14827			8	3: Level 27 Wilderness
+3034 3733 0		Activate;Obelisk;14827			8	3: Level 27 Wilderness
+3035 3731 0		Activate;Obelisk;14827			8	3: Level 27 Wilderness
+3035 3732 0		Activate;Obelisk;14827			8	3: Level 27 Wilderness
+3035 3733 0		Activate;Obelisk;14827			8	3: Level 27 Wilderness
+3036 3731 0		Activate;Obelisk;14827			8	3: Level 27 Wilderness
+3036 3732 0		Activate;Obelisk;14827			8	3: Level 27 Wilderness
+3036 3733 0		Activate;Obelisk;14827			8	3: Level 27 Wilderness
+# Level 35 Wilderness -  South of Lava Maze						
+3105 3793 0		Activate;Obelisk;14828			8	4: Level 35 Wilderness
+3105 3794 0		Activate;Obelisk;14828			8	4: Level 35 Wilderness
+3105 3795 0		Activate;Obelisk;14828			8	4: Level 35 Wilderness
+3106 3793 0		Activate;Obelisk;14828			8	4: Level 35 Wilderness
+3106 3794 0		Activate;Obelisk;14828			8	4: Level 35 Wilderness
+3106 3795 0		Activate;Obelisk;14828			8	4: Level 35 Wilderness
+3107 3793 0		Activate;Obelisk;14828			8	4: Level 35 Wilderness
+3107 3794 0		Activate;Obelisk;14828			8	4: Level 35 Wilderness
+3107 3795 0		Activate;Obelisk;14828			8	4: Level 35 Wilderness
+# Level 44 Wilderness -  West of Lava Maze						
+2979 3865 0		Activate;Obelisk;14826			8	5: Level 44 Wilderness
+2979 3866 0		Activate;Obelisk;14826			8	5: Level 44 Wilderness
+2979 3867 0		Activate;Obelisk;14826			8	5: Level 44 Wilderness
+2980 3865 0		Activate;Obelisk;14826			8	5: Level 44 Wilderness
+2980 3866 0		Activate;Obelisk;14826			8	5: Level 44 Wilderness
+2980 3867 0		Activate;Obelisk;14826			8	5: Level 44 Wilderness
+2981 3865 0		Activate;Obelisk;14826			8	5: Level 44 Wilderness
+2981 3866 0		Activate;Obelisk;14826			8	5: Level 44 Wilderness
+2981 3867 0		Activate;Obelisk;14826			8	5: Level 44 Wilderness
+# Level 50 Wilderness - South-east of Rogues' Castle						
+3306 3915 0		Activate;Obelisk;14831			8	6: Level 50 Wilderness
+3306 3916 0		Activate;Obelisk;14831			8	6: Level 50 Wilderness
+3306 3917 0		Activate;Obelisk;14831			8	6: Level 50 Wilderness
+3307 3915 0		Activate;Obelisk;14831			8	6: Level 50 Wilderness
+3307 3916 0		Activate;Obelisk;14831			8	6: Level 50 Wilderness
+3307 3917 0		Activate;Obelisk;14831			8	6: Level 50 Wilderness
+3308 3915 0		Activate;Obelisk;14831			8	6: Level 50 Wilderness
+3308 3916 0		Activate;Obelisk;14831			8	6: Level 50 Wilderness
+3308 3917 0		Activate;Obelisk;14831			8	6: Level 50 Wilderness
+# Player Owned House						
+#		Activate;Obelisk;31554	80 Construction		3	
+# Level 13 Wilderness - South-east of Ferox Enclave						
+	3156 3620 0				3	1: Level 13 Wilderness
+						
+# Level 19 Wilderness - East of Graveyard of Shadows						
+	3227 3667 0				3	2: Level 19 Wilderness
+						
+# Level 27 Wilderness -  North of Bandit Camp						
+	3035 3732 0				3	3: Level 27 Wilderness
+						
+# Level 35 Wilderness -  South of Lava Maze						
+	3106 3794 0				3	4: Level 35 Wilderness
+						
+# Level 44 Wilderness -  West of Lava Maze						
+	2980 3866 0				3	5: Level 44 Wilderness
+						
+# Level 50 Wilderness - South-east of Rogues' Castle						
+	3307 3916 0				3	6: Level 50 Wilderness

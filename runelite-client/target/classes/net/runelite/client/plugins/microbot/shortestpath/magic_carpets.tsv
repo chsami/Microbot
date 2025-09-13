@@ -1,0 +1,18 @@
+# Origin	Destination	menuOption menuTarget objectID	Currency	Quests	Duration	Display info
+3309 3110 0	3470 3113 0	Travel;Rug Merchant;17	200 Coins	The Golem	3	Uzer
+3468 3110 0	3309 3110 0	Travel;Rug Merchant;20	200 Coins	The Golem	3	Shantay Pass
+						
+3309 3110 0	3181 3045 0	Travel;Rug Merchant;17	200 Coins		3	Bedabin Camp
+3180 3043 0	3309 3110 0	Travel;Rug Merchant;18	200 Coins		3	Shantay Pass
+						
+3309 3110 0	3351 3003 0	Travel;Rug Merchant;17	200 Coins		3	Pollnivneach
+3352 3001 0	3309 3110 0	Travel;Rug Merchant;20	200 Coins		3	Shantay Pass
+						
+3347 2944 0	3402 2916 0	Travel;Rug Merchant;19	200 Coins		3	Nardah
+3403 2917 0	3352 2941 0	Travel;Rug Merchant;22	200 Coins		3	Pollnivneach
+						
+3347 2944 0	3286 2813 0	Travel;Rug Merchant;19	200 Coins	Icthlarin's Little Helper	3	Sophanem
+3286 2813 0	3352 2941 0	Travel;Rug Merchant;22	200 Coins	Icthlarin's Little Helper	3	Pollnivneach
+						
+3347 2944 0	3246 2813 0	Travel;Rug Merchant;19	200 Coins	Icthlarin's Little Helper	3	Menaphos
+3246 2813 0	3352 2941 0	Travel;Rug Merchant;22	200 Coins	Icthlarin's Little Helper	3	Pollnivneach

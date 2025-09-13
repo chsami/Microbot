@@ -1,0 +1,6 @@
+//                    if (graphObject.getId() == 1311 && WorldPoint.fromLocalInstance(Microbot.getClient(),
+//                            graphObject.getLocation()).distanceTo(Rs2Player.getWorldLocation()) < 4) {
+//                        // this is the aoe snow detection
+//                        // this is currently not needed as our player will always stand
+//                        // next to an object
+//                    }

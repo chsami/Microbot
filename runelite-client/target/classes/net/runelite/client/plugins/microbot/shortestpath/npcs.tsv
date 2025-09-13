@@ -1,0 +1,37 @@
+# Origin	Destination	menuOption menuTarget objectID	Skills	Item IDs	Quests	Varbits	isMembers	Duration	Display info
+# Lumbridge cellar
+3319 9615 0	3232 9610 0	Cellar;Mistag;7299			Death to the Dorgeshuun		Y	2
+3319 9615 0	3245 9648 0	Watermill;Mistag;7299			Death to the Dorgeshuun		Y	2
+3229 9610 0	3313 9613 0	Mines;Kazgar;7301			Death to the Dorgeshuun		Y	2
+3229 9610 0	3245 9648 0	Watermill;Kazgar;7301			Death to the Dorgeshuun		Y	2
+3245 9648 0	3232 9610 0	Cellar;Dartog;997			Death to the Dorgeshuun		Y	2
+3245 9648 0	3313 9613 0	Mines;Dartog;997			Death to the Dorgeshuun		Y	2
+3319 9615 0	3232 9610 0	Follow;Mistag;7298			The Lost Tribe		Y	2
+3229 9610 0	3313 9613 0	Follow;Kazgar;7300			The Lost Tribe		Y	2
+# Tree gnome village
+2503 3193 0	2515 3159 0	Follow;Elkoy;4968			Tree Gnome Village		Y	2
+2515 3159 0	2503 3193 0	Follow;Elkoy;4968			Tree Gnome Village		Y	2
+# Quetzals
+3280 3412 0	1700 3141 0	Travel;Primio;12888					Y	2	Varlemore
+1703 3140 0	3280 3412 0	Travel;Primio;12889					Y	2	Varrock
+# Lunar Isle
+2090 3930 0	2451 4645 0	Go-inside;House;3836					Y	2
+# Mountain Guide
+1277 3558 0	1401 3536 0	Travel;Mountain Guide;24190				5421=1	Y	4	The Shayzien Outpost
+1277 3558 0	1272 3477 0	Travel;Mountain Guide;24190				5421=1	Y	4	South of Quidamortem
+1401 3536 0	1277 3558 0	Travel;Mountain Guide;27372				5421=1	Y	4	Mount Quidamortem
+1401 3536 0	1272 3477 0	Travel;Mountain Guide;27372				5421=1	Y	4	South of Quidamortem
+1272 3477 0	1277 3558 0	Travel;Mountain Guide;1141				5421=1	Y	4	Mount Quidamortem
+1272 3477 0	1401 3536 0	Travel;Mountain Guide;1141				5421=1	Y	4	The Shayzien Outpost
+
+# Kastori, Gloomthorn Trail, Tal Teklan
+1257 3126 0	1390 3074 0	Kastori;Achilka;14728				9650=1	Y	4	Kastori
+1257 3126 0	1400 3246 0	Gloomthorn Trail;Achilka;14728				9650=1	Y	4	Gloomthorn Trail
+1400 3246 0	1257 3126 0	Tal Teklan;Achilka;14729				9650=1	Y	4	Tal Teklan
+1400 3246 0	1390 3074 0	Kastori;Achilka;14729				9650=1	Y	4	Kastori
+1390 3074 0	1257 3126 0	Tal Teklan;Achilka;14727				9650=1	Y	4	Tal Teklan
+1390 3074 0	1400 3246 0	Gloomthorn Trail;Achilka;14727				9650=1	Y	4	Gloomthorn Trail
+
+# Quetzacalli Gorge, Auburn Valley
+1487 3232 0	1361 3309 0	Follow;Mountain Guide;14529				9650=1	Y	8	Auburn Valley
+1361 3309 0	1487 3232 0	Follow;Mountain Guide;14529				9650=1	Y	8	Quetzacalli Gorge

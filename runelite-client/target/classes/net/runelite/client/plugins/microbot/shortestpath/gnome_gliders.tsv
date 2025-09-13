@@ -1,0 +1,36 @@
+# Origin	Destination	menuOption menuTarget objectID	Quests	Duration	Display info
+# Ta Quir Priw (Gnome Stronghold)					
+2465 3501 3		Glider;Captain Errdo;10467	The Grand Tree	8
+# Gandius (Karamja)					
+2970 2972 0		Glider;Captain Klemfoodle;10479	The Grand Tree	8
+2969 2973 0		Glider;Captain Klemfoodle;10479	The Grand Tree	8
+2970 2974 0		Glider;Captain Klemfoodle;10479	The Grand Tree	8
+# Kar-Hewo (Al-Kharid)					
+3284 3211 0		Glider;Captain Dalbur;10452	The Grand Tree	8
+3285 3212 0		Glider;Captain Dalbur;10452	The Grand Tree	8
+3284 3213 0		Glider;Captain Dalbur;10452	The Grand Tree	8
+# Sindarpos (White Wolf Mountain)					
+2847 3498 0		Glider;Captain Bleemadge;10459	The Grand Tree	8
+2846 3499 0		Glider;Captain Bleemadge;10459	The Grand Tree	8
+# Lemantolly Undri (Feldip Hills)					
+2544 2972 0		Glider;Gnormadium Avlafrim;7517	The Grand Tree;One Small Favour	8
+2545 2973 0		Glider;Gnormadium Avlafrim;7517	The Grand Tree;One Small Favour	8
+2544 2974 0		Glider;Gnormadium Avlafrim;7517	The Grand Tree;One Small Favour	8
+# Ookookolly Undri (Ape Atoll)					
+2711 2801 0		Glider;Captain Shoracks;7178	The Grand Tree;Monkey Madness II	8
+2711 2803 0		Glider;Captain Shoracks;7178	The Grand Tree;Monkey Madness II	8
+2710 2802 0		Glider;Captain Shoracks;7178	The Grand Tree;Monkey Madness II	8
+# Ta Quir Priw (Gnome Stronghold)					
+	2465 3501 3		The Grand Tree	8	Ta Quir Priw
+# Gandius (Karamja)					
+	2971 2968 0		The Grand Tree	8	Gandius
+# Kar-Hewo (Al-Kharid)					
+	3284 3210 0		The Grand Tree	8	Kar-Hewo
+# Sindarpos (White Wolf Mountain)					
+	2850 3498 0		The Grand Tree	8	Sindarpos
+# Lemanto Andra (Digsite)					
+	3321 3429 0		The Grand Tree	8	Lemanto Andra
+# Lemantolly Undri (Feldip Hills)					
+	2550 2970 0		The Grand Tree;One Small Favour	8	Lemantolly Undri
+# Ookookolly Undri (Ape Atoll)					
+	2711 2803 0		The Grand Tree;Monkey Madness II	8	Ookookolly Undri

@@ -1,0 +1,15 @@
+T__0=1
+T__1=2
+T__2=3
+T__3=4
+NEWLINE=5
+INT=6
+QSTRING=7
+IDENTIFIER=8
+SYMBOL=9
+COMMENT=10
+WS=11
+'.id '=1
+'.int_arg_count '=2
+'.obj_arg_count '=3
+':'=4

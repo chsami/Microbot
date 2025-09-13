@@ -1,0 +1,80 @@
+# Origin	Destination	menuOption menuTarget objectID	Skills	Currency	Quests	Duration	Display info
+# Keldagrim, Grand Exchange							
+3141 3504 0	2909 10174 0	Travel;Trapdoor;16168			The Giant Dwarf	21	
+3140 3503 0	2909 10174 0	Travel;Trapdoor;16168			The Giant Dwarf	21	
+3139 3504 0	2909 10174 0	Travel;Trapdoor;16168			The Giant Dwarf	21	
+3140 3505 0	2909 10174 0	Travel;Trapdoor;16168			The Giant Dwarf	21	
+2923 10172 0	3141 3504 0	Ride;Train cart;7028			The Giant Dwarf		
+2923 10170 0	3141 3504 0	Ride;Train cart;7028			The Giant Dwarf		
+							
+# Keldagrim, Ice Mountain							
+2923 10176 0	2995 9835 0	Ride;Train cart;7028		150 Coins	The Giant Dwarf		
+2923 10174 0	2995 9835 0	Ride;Train cart;7028		150 Coins	The Giant Dwarf		
+2995 9835 0	2909 10174 0	Ride;Train cart;7029		150 Coins	The Giant Dwarf		
+2995 9837 0	2909 10174 0	Ride;Train cart;7029		150 Coins	The Giant Dwarf		
+							
+# Keldagrim, White Wolf Mountain							
+2919 10170 0	2876 9868 0	Ride;Train cart;7028		100 Coins	The Giant Dwarf;Fishing Contest		
+2919 10168 0	2876 9868 0	Ride;Train cart;7028		100 Coins	The Giant Dwarf;Fishing Contest		
+2876 9868 0	2909 10174 0	Ride;Train cart;7030		100 Coins	The Giant Dwarf;Fishing Contest		
+2874 9868 0	2909 10174 0	Ride;Train cart;7030		100 Coins	The Giant Dwarf;Fishing Contest		
+							
+# Lovakengj Minecart Network (free after The Forsaken Tower varbit 7796=11)							
+# Arceuus							
+1670 3833 0		Travel;Minecart;28835		20 Coins			
+# Farming Guild							
+1218 3739 0		Travel;Minecart;28835		20 Coins			
+1218 3737 0		Travel;Minecart;28835		20 Coins			
+# Hosidius South							
+1808 3481 0		Travel;Minecart;28835		20 Coins			
+1808 3479 0		Travel;Minecart;28835		20 Coins			
+# Hosidius West							
+1655 3543 0		Travel;Minecart;28835		20 Coins			
+1655 3541 0		Travel;Minecart;28835		20 Coins			
+# Kingstown							
+1697 3660 0		Travel;Minecart;28835		20 Coins			
+1699 3660 0		Travel;Minecart;28835		20 Coins			
+# Kourend Woodland							
+1572 3466 0		Travel;Minecart;28835		20 Coins			
+# Lovakengj							
+1518 3733 0		Travel;Minecart;28835		20 Coins			
+1518 3731 0		Travel;Minecart;28835		20 Coins			
+# Mount Quidamortem							
+1253 3548 0		Travel;Minecart;28835		20 Coins			
+1255 3548 0		Travel;Minecart;28835		20 Coins			
+# Northern Tundras (Wintertodt)							
+1648 3931 0		Travel;Minecart;28835		20 Coins			
+# Port Piscarilius							
+1759 3710 0		Travel;Minecart;28835		20 Coins			
+1761 3710 0		Travel;Minecart;28835		20 Coins			
+# Shayzien East							
+1590 3622 0		Travel;Minecart;28835		20 Coins			
+1590 3620 0		Travel;Minecart;28835		20 Coins			
+# Shayzien West							
+1413 3577 0		Travel;Minecart;28835		20 Coins			
+1415 3577 0		Travel;Minecart;28835		20 Coins			
+							
+# Arceuus							
+	1670 3833 0			20 Coins		5	1: Arceuus
+# Farming Guild							
+	1218 3737 0			20 Coins		5	2: Farming Guild
+# Hosidius South							
+	1808 3479 0			20 Coins		5	3: Hosidius South
+# Hosidius West							
+	1655 3543 0			20 Coins		5	4: Hosidius West
+# Kingstown							
+	1699 3660 0			20 Coins		5	5: Kingstown
+# Kourend Woodland							
+	1572 3466 0			20 Coins		5	6: Kourend Woodland
+# Lovakengj							
+	1518 3733 0			20 Coins		5	7: Lovakengj
+# Mount Quidamortem							
+	1255 3548 0			20 Coins		5	8: Mount Quidamortem
+# Northern Tundras (Wintertodt)							
+	1648 3931 0			20 Coins		5	9: Northern Tundras
+# Port Piscarilius							
+	1761 3710 0			20 Coins		5	A: Port Piscarilius
+# Shayzien East							
+	1590 3620 0			20 Coins		5	B: Shayzien East
+# Shayzien West							
+	1415 3577 0			20 Coins		5	C: Shayzien West

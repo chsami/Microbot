@@ -1,0 +1,51 @@
+# Quest Helper Sync Tracking File
+# This file tracks the last synchronized commit from the external quest-helper repository
+# 
+# External Repository: https://github.com/Zoinkwiz/quest-helper
+# Local Integration: runelite-client/src/main/java/net/runelite/client/plugins/microbot/questhelper/
+#
+# IMPORTANT: Do not manually edit this file unless you know what you're doing.
+# Use the quest-helper update scripts to manage synchronization.
+
+# Current sync position - this is the last external commit that has been integrated
+5539626281a502ba8c44fe59b8b57bce32fe4f16
+
+# Sync metadata (for script reference)
+# External repo HEAD at last check: 5539626281a502ba8c44fe59b8b57bce32fe4f16
+# Last sync date: 2025-08-29
+# Sync method: automated script with manual package transformation
+# Integration branch: quest-helper-update-20250829_063754
+# Local commit: cb416ef02a (quest-helper: polish Enakhras Lament)
+
+# Sync history log:
+# 2025-08-29 07:14:46 - Applied commit 55396262 (Polish enahkras lament #2294)
+#   - Enhanced EnakhrasLament.java with better code organization
+#   - Fixed Shadow Room brazier puzzle sequence and locations
+#   - Added missing chisel icon for cutOffLimb step
+#   - Files changed: 1 Java file, +359/-204 lines
+#   - Package transformation: com.questhelper -> net.runelite.client.plugins.microbot.questhelper
+#   - Status: SUCCESS
+#
+# 2025-08-28 16:35:20 - Complete sync to version 4.10.0
+#   - Applied 76 patches successfully from external repository
+#   - Skipped 4 patches (build files, CI workflows not applicable to Microbot)
+#   - Base sync point: 6329d81ee15a07a4b4fb53217bd4305e978c7a0e
+#   - Status: SUCCESS
+#
+# 2025-08-28 16:28:12 - Partial sync (first 4 patches)
+#   - Initial automated sync setup and testing
+#   - Applied commits d2df892a..4c204e89
+#   - Status: SUCCESS
+#
+# 2025-08-28 16:13:45 - Initial sync tracking setup
+#   - Created sync file and established tracking
+#   - Method: manual setup
+#   - Status: INITIALIZED
+
+# Integration status
+# Current external version: 4.10.0+
+# Integration health: HEALTHY  
+# Last validation: 2025-08-29
+# Compilation status: SUCCESS
+# Package transformation: COMPLETE
+# Sync file location: CORRECT (moved from project root)

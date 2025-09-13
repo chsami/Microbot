@@ -1,0 +1,35 @@
+# Origin	Destination	menuOption menuTarget objectID	Skills	Item IDs	Quest	Duration	Display info
+# Edgeville							
+3132 3510 0	3109 3415 0	Paddle Canoe;Canoe Station;12166	12 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Barbarian Village
+3132 3510 0	3199 3344 0	Paddle Canoe;Canoe Station;12166	27 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Champions Guild
+3132 3510 0	3240 3242 0	Paddle Canoe;Canoe Station;12166	42 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Lumbridge
+3132 3510 0	3154 3638 0	Paddle Canoe;Canoe Station;12166	57 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Ferox Enclave
+3132 3510 0	3141 3796 0	Paddle Canoe;Canoe Station;12166	57 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Wilderness Pond
+							
+# Barbarian Village							
+3112 3411 0	3199 3344 0	Paddle Canoe;Canoe Station;12165	12 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Champions Guild
+3112 3411 0	3128 3503 0	Paddle Canoe;Canoe Station;12165	12 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Edgeville
+3112 3411 0	3240 3242 0	Paddle Canoe;Canoe Station;12165	27 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Lumbridge
+3112 3411 0	3154 3638 0	Paddle Canoe;Canoe Station;12165	57 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Ferox Enclave
+3112 3411 0	3141 3796 0	Paddle Canoe;Canoe Station;12165	57 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Wilderness Pond
+							
+# Champions' Guild							
+3202 3343 0	3240 3242 0	Paddle Canoe;Canoe Station;12164	12 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Lumbridge
+3202 3343 0	3109 3415 0	Paddle Canoe;Canoe Station;12164	12 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Barbarian Village
+3202 3343 0	3128 3503 0	Paddle Canoe;Canoe Station;12164	27 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Edgeville
+3202 3343 0	3154 3638 0	Paddle Canoe;Canoe Station;12164	57 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Ferox Enclave
+3202 3343 0	3141 3796 0	Paddle Canoe;Canoe Station;12164	57 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Wilderness Pond
+							
+# Lumbridge							
+3243 3237 0	3199 3344 0	Paddle Canoe;Canoe Station;12163	12 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Champions Guild
+3243 3237 0	3109 3415 0	Paddle Canoe;Canoe Station;12163	27 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Barbarian Village
+3243 3237 0	3128 3503 0	Paddle Canoe;Canoe Station;12163	42 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Edgeville
+3243 3237 0	3154 3638 0	Paddle Canoe;Canoe Station;12163	57 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Ferox Enclave
+3243 3237 0	3141 3796 0	Paddle Canoe;Canoe Station;12163	57 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Wilderness Pond
+							
+# Ferox Enclave							
+3154 3630 0	3128 3503 0	Paddle Canoe;Canoe Station;39638	12 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Edgeville
+3154 3630 0	3109 3415 0	Paddle Canoe;Canoe Station;39638	27 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Barbarian Village
+3154 3630 0	3199 3344 0	Paddle Canoe;Canoe Station;39638	42 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Champions Guild
+3154 3630 0	3240 3242 0	Paddle Canoe;Canoe Station;39638	57 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Lumbridge
+3154 3630 0	3141 3796 0	Paddle Canoe;Canoe Station;39638	57 Woodcutting	1351;1349;1361;1353;1355;1357;1359		12	Wilderness Pond
