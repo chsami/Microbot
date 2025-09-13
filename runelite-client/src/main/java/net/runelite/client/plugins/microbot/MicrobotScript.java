@@ -6,9 +6,11 @@ import lombok.extern.slf4j.Slf4j;
 public class MicrobotScript extends  Script{
     @Override
     public boolean run() {
+        if (isRunning()) {
+            return true;
+        }
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
-                if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
             } catch (Exception ex) {
                 Microbot.logStackTrace(this.getClass().getSimpleName(), ex);
