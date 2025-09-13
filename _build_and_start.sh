@@ -1,5 +1,8 @@
 #!/bin/bash
 
+export JAVA_HOME=/usr/local/opt/openjdk@11/libexec/openjdk.jdk/Contents/Home
+export PATH="/usr/local/opt/openjdk@11/bin:$PATH"
+
 set -e  # Exit on any error
 
 # Colors for output
@@ -70,7 +73,7 @@ fi
 print_status "Found jar: $JAR_PATH"
 
 # Stop existing instances
-stop_runelite
+# stop_runelite
 
 # Start RuneLite
 print_status "Starting RuneLite..."

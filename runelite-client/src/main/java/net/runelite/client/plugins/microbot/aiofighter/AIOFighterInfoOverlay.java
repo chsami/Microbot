@@ -37,7 +37,7 @@ public class AIOFighterInfoOverlay extends OverlayPanel {
             Microbot.pauseAllScripts.set(!Microbot.pauseAllScripts.get());
             if (Microbot.pauseAllScripts.get()) {
                 Rs2Walker.setTarget(null);
-                myButton.setText("Unpause");
+                myButton.setText("Start");
             } else {
                 myButton.setText("Pause");
             }
@@ -53,26 +53,20 @@ public class AIOFighterInfoOverlay extends OverlayPanel {
              AIOFighterPlugin.addBlacklistedSlayerNpcs(Rs2Slayer.slayerTaskMonsterTarget);
             SlayerScript.reset();
         });
-
-
     }
 
     @Override
     public Dimension render(Graphics2D graphics) {
         try {
-            panelComponent.setPreferredSize(new Dimension(250, 400));
-            panelComponent.getChildren().add(TitleComponent.builder()
-                    .text("\uD83E\uDD86 AIO Fighter \uD83E\uDD86")
-                    .color(Color.ORANGE)
-                    .build());
+            panelComponent.setPreferredSize(new Dimension(60, 40));
 
-            panelComponent.getChildren().add(LineComponent.builder().build());
-            panelComponent.getChildren().add(LineComponent.builder()
+            if (config.slayerMode()) {
+                panelComponent.getChildren().add(LineComponent.builder().build());
+                panelComponent.getChildren().add(LineComponent.builder()
                     .left("Slayer Mode: ")
                     .right(config.slayerMode() ? "Enabled" : "Disabled")
                     .build());
 
-            if (config.slayerMode()) {
                 panelComponent.getChildren().add(LineComponent.builder()
                         .left("Slayer Task: ")
                         .right(config.slayerTask())
@@ -100,13 +94,14 @@ public class AIOFighterInfoOverlay extends OverlayPanel {
                         .left("Slayer Task Weakness Threshold: ")
                         .right(String.valueOf(config.slayerTaskWeaknessThreshold()))
                         .build());
+
+                panelComponent.getChildren().add(LineComponent.builder().build());
+                panelComponent.getChildren().add(blacklistButton);
+                panelComponent.getChildren().add(LineComponent.builder().build());
             }
-            panelComponent.getChildren().add(LineComponent.builder().build());
-            panelComponent.getChildren().add(blacklistButton);
-            panelComponent.getChildren().add(LineComponent.builder().build());
+
             panelComponent.getChildren().add(LineComponent.builder()
                     .left(Microbot.status)
-                    .right("Version:" +  AIOFighterPlugin.version)
                     .build());
 
             // Add the button to the overlay panel
