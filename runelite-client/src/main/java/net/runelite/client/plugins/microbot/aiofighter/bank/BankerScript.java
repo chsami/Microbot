@@ -54,15 +54,43 @@ public class BankerScript extends Script {
                 .map(plugin -> (MInventorySetupsPlugin) plugin)
                 .findFirst()
                 .orElse(null);
+        Microbot.log("DEBUG: BankerScript.run() called - Starting banker script...");
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
-                if (!Microbot.isLoggedIn()) return;
-                if(!super.run()) return;
-                if (config.bank() && needBanking() && !AIOFighterPlugin.needShopping) {
+                if (!Microbot.isLoggedIn()) {
+                    return;
+                }
+                if(!super.run()) {
+                    return;
+                }
+                
+                Microbot.log("=== DEBUG: BankerScript MAIN LOOP ===");
+                Microbot.log("DEBUG: Current AIO Fighter State: " + AIOFighterPlugin.getState());
+                
+                Microbot.log("DEBUG: Main loop - config.bank(): " + config.bank() + ", AIOFighterPlugin.needShopping: " + AIOFighterPlugin.needShopping);
+                boolean needsBanking = needBanking();
+                Microbot.log("DEBUG: needBanking() returned: " + needsBanking);
+                
+                if (config.bank() && needsBanking && !AIOFighterPlugin.needShopping) {
+                    Microbot.log("DEBUG: ALL CONDITIONS MET - Starting banking process...");
+                    AIOFighterPlugin.setState(State.BANKING);
+                    Microbot.log("DEBUG: Set state to BANKING");
                     if(handleBanking()){
                         Microbot.log("Banking handled successfully.");
+                    } else {
+                        Microbot.log("DEBUG: handleBanking() returned false");
                     }
-                } else if (!needBanking() &&
+                } else {
+                    if (!config.bank()) {
+                        Microbot.log("DEBUG: Banking disabled, skipping");
+                    } else if (!needsBanking) {
+                        Microbot.log("DEBUG: No banking needed, skipping");
+                    } else if (AIOFighterPlugin.needShopping) {
+                        Microbot.log("DEBUG: Shopping needed, skipping banking");
+                    }
+                }
+                
+                if (!needsBanking &&
                         config.centerLocation().distanceTo(Rs2Player.getWorldLocation()) > config.attackRadius() &&
                         !config.centerLocation().equals(new WorldPoint(0, 0, 0))) {
 
@@ -106,39 +134,60 @@ public class BankerScript extends Script {
      * Returns true if the player needs to bank (e.g., missing potions, full inventory).
      */
     public boolean needBanking() {
-        if(config.currentInventorySetup() == null){
-            if(config.defaultInventorySetup() != null) {
-                AIOFighterPlugin.setCurrentSlayerInventorySetup(config.defaultInventorySetup());
-            } else {
-                return false;
-            }
-        }        
+        Microbot.log("DEBUG: needBanking() called - checking conditions...");
+        Microbot.log("DEBUG: Inventory capacity: " + Rs2Inventory.capacity() + ", Empty slots: " + Rs2Inventory.getEmptySlots() + ", Is full: " + Rs2Inventory.isFull());
+        
         if(!config.bank()){
+            Microbot.log("DEBUG: Banking is disabled in config - returning false");
             return false;
         }
 
+        // ALWAYS check for full inventory first, regardless of inventory setups
+        if (Rs2Inventory.isFull()) {
+            Microbot.log("DEBUG: Inventory is full - FORCING banking regardless of inventory setups!");
+            bankingTriggered = true;
+            return true;
+        }
+
+        // Check inventory setups only if inventory isn't full
+        if(config.currentInventorySetup() == null){
+            Microbot.log("DEBUG: currentInventorySetup is null");
+            if(config.defaultInventorySetup() != null) {
+                Microbot.log("DEBUG: Using defaultInventorySetup: " + config.defaultInventorySetup().getName());
+                AIOFighterPlugin.setCurrentSlayerInventorySetup(config.defaultInventorySetup());
+            } else {
+                Microbot.log("DEBUG: defaultInventorySetup is also null - but checking other conditions...");
+                // Don't return false here - continue checking other banking conditions
+            }
+        } else {
+            Microbot.log("DEBUG: currentInventorySetup: " + config.currentInventorySetup().getName());
+        }
+
+        Microbot.log("DEBUG: Banking is enabled in config");
+
         // Don't bank if we can eat food for space instead
+        Microbot.log("DEBUG: Checking eatFoodForSpace - enabled: " + config.eatFoodForSpace() + ", emptySlots: " + Rs2Inventory.getEmptySlots() + ", minFreeSlots: " + config.minFreeSlots() + ", hasFood: " + !Rs2Inventory.getInventoryFood().isEmpty());
         if (config.eatFoodForSpace() && 
             Rs2Inventory.getEmptySlots() <= config.minFreeSlots() && 
             !Rs2Inventory.getInventoryFood().isEmpty()) {
             // Food available to make space - let EatForSpaceScript handle it
+            Microbot.log("DEBUG: eatFoodForSpace is enabled and food available - letting EatForSpaceScript handle it");
             return false;
         }
 
         if(bankingTriggered) {
+            Microbot.log("DEBUG: bankingTriggered is true - returning true");
             return true;
         }
 
-        // (1) If inventory is full, we need to bank
-        if (Rs2Inventory.isFull()) {
-            Microbot.log("Inventory is full, triggering banking.");
-            bankingTriggered = true;
-            Rs2Inventory.waitForInventoryChanges(2000);
-            return true;
-        }
+        Microbot.log("DEBUG: bankingTriggered is false, checking other conditions...");
 
         // (2) If there are too few empty slots, missing slayer items, or the inventory setup changed
-        if ((Rs2Inventory.getEmptySlots() <= config.minFreeSlots() && config.bank()) || needSlayerItems() || inventorySetupChanged) {
+        boolean lowFreeSlots = Rs2Inventory.getEmptySlots() <= config.minFreeSlots() && config.bank();
+        boolean needsSlayerItems = needSlayerItems();
+        Microbot.log("DEBUG: Checking additional banking conditions - lowFreeSlots: " + lowFreeSlots + ", needsSlayerItems: " + needsSlayerItems + ", inventorySetupChanged: " + inventorySetupChanged);
+        
+        if (lowFreeSlots || needsSlayerItems || inventorySetupChanged) {
             Microbot.log("Low free slots, missing slayer items, or inventory setup changed, triggering banking.");
             bankingTriggered = true;
             return true;
@@ -207,6 +256,7 @@ public class BankerScript extends Script {
             return true;
         }
 
+        Microbot.log("DEBUG: All banking checks passed - no banking needed");
         return false;
     }
 
@@ -377,7 +427,9 @@ public class BankerScript extends Script {
             }
             
             if (setupName == null) {
-                Microbot.log("Cannot load inventory setup - null setup name");
+                Microbot.log("Cannot load inventory setup - null setup name, depositing all items as fallback");
+                Rs2Bank.depositAll();
+                bankingTriggered = false;
                 return;
             }
             
@@ -448,6 +500,11 @@ public class BankerScript extends Script {
 //                    return;
             }
             inventorySetupChanged = false;
+        } else {
+            // No inventory setup or slayer mode - just deposit all items when inventory is full
+            Microbot.log("DEBUG: No inventory setups configured - depositing all items as fallback");
+            Rs2Bank.depositAll();
+            bankingTriggered = false;
         }
 
     }
