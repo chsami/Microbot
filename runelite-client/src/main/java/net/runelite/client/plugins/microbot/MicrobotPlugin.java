@@ -88,6 +88,9 @@ public class MicrobotPlugin extends Plugin
 	@Inject
 	private MicrobotConfig microbotConfig;
 
+	@Inject
+	private MicrobotScript microbotScript;
+
 	private MicrobotTopLevelConfigPanel topLevelConfigPanel;
 
 	private NavigationButton navButton;
@@ -177,7 +180,7 @@ public class MicrobotPlugin extends Plugin
 		clientToolbar.addNavigation(navButton);
 
 		new InputSelector(clientToolbar);
-
+		microbotScript.run();
 		Microbot.getPouchScript().startUp();
 
 		// Initialize the cache system
